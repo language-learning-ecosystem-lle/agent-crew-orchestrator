@@ -38,6 +38,10 @@ jobs:
     steps:
       # Полная история: ревьюеру нужен merge-base с main для честного диффа,
       # а ветка comms дотягивается отдельным fetch из промпта.
+      # Bash разрешён целиком (claude_args ниже): гранулярный allowlist из
+      # префиксов не переживает ни составные команды, ни подстановки — первый
+      # прогон дал 24 отказа прав и ноль публикаций при успешном статусе джобы.
+      # Раннер одноразовый, а метку `review` вешает человек с правами на репо.
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -72,21 +76,26 @@ jobs:
                `verdict: approve` либо `verdict: needs-fixes`).
 
             5. Дублем — сообщение в тред пакета, ветка `comms`. Это append-only протокол,
-               force-push запрещён, чужие сообщения не теряются:
+               force-push запрещён, чужие сообщения не теряются. Чекаут почты делай
+               ВНУТРИ рабочей директории (`.comms-mail`), а НЕ в /tmp: файловые
+               инструменты работают только в пределах рабочей директории, и worktree
+               в /tmp читать и править нечем.
                    git fetch --no-tags origin comms
-                   git worktree add /tmp/comms FETCH_HEAD
-                   # дописать в КОНЕЦ /tmp/comms/agent-comms/<NNN-slug>/_thread.md секцию
+                   git worktree add .comms-mail FETCH_HEAD
+                   # дописать в КОНЕЦ .comms-mail/agent-comms/<NNN-slug>/_thread.md секцию
                    #   ## msg-NNN · from: reviewer-pr · <сегодня> · expects: answer
                    # (NNN = следующий по порядку номер в этом треде)
-                   # и обновить строку треда в /tmp/comms/agent-comms/INDEX.md:
+                   # и обновить строку треда в .comms-mail/agent-comms/INDEX.md:
                    #   waiting-on → автор PR, updated → сегодня
-                   cd /tmp/comms && git add -A && git commit -m "docs(agent-comms): вердикт reviewer-pr по PR #<PR>"
-                   git push origin HEAD:comms
+                   git -C .comms-mail add -A
+                   git -C .comms-mail commit -m "docs(agent-comms): вердикт reviewer-pr по PR #<PR>"
+                   git -C .comms-mail push origin HEAD:comms
                Push отклонён (кто-то писал параллельно) — заново fetch, пересними свои
                правки поверх свежего origin/comms, пересчитай номер сообщения, push повторно.
 
             Обработка завершена только когда ОБА адресата получили вердикт: коммент в PR и
-            сообщение в треде с обновлённым INDEX.
+            сообщение в треде с обновлённым INDEX. Если что-то из двух не удалось —
+            скажи об этом в том, что удалось: молча недоставленный вердикт хуже частичного.
           claude_args: |
             --max-turns 60
-            --allowedTools "Read,Grep,Glob,Edit,Write,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(git fetch:*),Bash(git show:*),Bash(git log:*),Bash(git diff:*),Bash(git status:*),Bash(git worktree:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git checkout:*),Bash(cd:*)"
+            --allowedTools "Read,Grep,Glob,Edit,Write,Bash,mcp__github_inline_comment__create_inline_comment"
