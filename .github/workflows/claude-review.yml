@@ -17,16 +17,25 @@ on:
         required: true
         type: string
 
-# Один прогон на PR: перевесил метку — предыдущий прогон гасится, квота не жжётся дважды.
+# Один прогон на PR НА КАЖДЫЙ ТИП ТРИГГЕРА: перевесил метку — предыдущий
+# прогон по метке гасится, квота не жжётся дважды.
+#
+# github.event_name в группе — не украшение. Без него все триггеры делили одну
+# группу, а concurrency вычисляется ДО job-level `if`: коммент, отсеиваемый
+# условием ниже, всё равно успевал отменить идущий прогон по метке. На этом
+# ревьюер убил сам себя — опубликовал вердикт в PR, и его же коммент погасил
+# прогон до записи дубля в тред (run 29883515576, статус cancelled).
 concurrency:
-  group: claude-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+  group: claude-review-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
   cancel-in-progress: true
 
 jobs:
   review:
+    # Комменты ботов игнорируем: ревьюер не должен реагировать ни на себя, ни на
+    # другую автоматику — второй слой защиты от того же самозацикливания.
     if: |
       (github.event_name == 'pull_request' && github.event.label.name == 'review') ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && github.event.comment.user.type != 'Bot' && contains(github.event.comment.body, '@claude')) ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
