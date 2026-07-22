@@ -67,12 +67,8 @@ jobs:
             LAST=$(grep -oE '^## msg-[0-9]+' "$THREAD_FILE" | grep -oE '[0-9]+' | sort -n | tail -1)
             NEXT=$(printf '%03d' $(( 10#${LAST:-0} + 1 )))
 
-            {
-              printf '\n## msg-%s · from: github · %s · expects: none\n\n' "$NEXT" "$(date -u +%Y-%m-%d)"
-              printf 'PR #%s (%s) **merged** by %s.\n' "$PR_NUMBER" "$PR_TITLE" "${MERGED_BY:-неизвестно}"
-            } >> "$THREAD_FILE"
-
-            # waiting-on → роль, которую merge разблокирует.
+            # Передача хода объявляется В ТРЕДЕ, канонической строкой
+            # `waiting-on → …` — INDEX генерируется из неё (тред 006).
             #
             # ОГРАНИЧЕНИЕ, зафиксированное осознанно: вывести роль из автора PR
             # нельзя — все PR приходят из одной учётки GitHub независимо от
@@ -81,21 +77,19 @@ jobs:
             # верно всегда. При активации dev-speech это станет неверно —
             # тогда роль должна приходить явно (строкой в описании PR, рядом
             # с `thread:`), а не угадываться. Менять здесь, а не в вызывающем.
-            python3 - "$THREAD" "dev-core" <<'PY'
-          import sys, datetime
-          thread, role = sys.argv[1], sys.argv[2]
-          today = datetime.date.today().isoformat()
-          path = "agent-comms/INDEX.md"
-          lines = open(path, encoding="utf-8").read().split("\n")
-          for i, line in enumerate(lines):
-              if line.startswith(f"| {thread} "):
-                  cells = [c.strip() for c in line.strip().strip("|").split("|")]
-                  if len(cells) >= 5:
-                      cells[3], cells[4] = role, today
-                      lines[i] = "| " + " | ".join(cells) + " |"
-                  break
-          open(path, "w", encoding="utf-8").write("\n".join(lines))
-          PY
+            {
+              printf '\n## msg-%s · from: github · %s · expects: none\n\n' "$NEXT" "$(date -u +%Y-%m-%d)"
+              printf 'PR #%s (%s) **merged** by %s.\n' "$PR_NUMBER" "$PR_TITLE" "${MERGED_BY:-неизвестно}"
+              printf '\nwaiting-on → dev-core.\n'
+            } >> "$THREAD_FILE"
+
+            # INDEX руками больше не правится НИКЕМ — он производное от тредов.
+            # Раньше здесь стоял python-патч строки таблицы, и после треда 006
+            # это стало вторым писателем того же поля: бот ставил своё значение,
+            # а следующий прогон генератора возвращал объявленное в треде. Кто
+            # прав, зависело от того, кто отработал последним, — то есть ровно
+            # тот класс рассинхрона, ради которого INDEX и сделали генерируемым.
+            bash agent-comms/bin/rebuild-index.sh
 
             git add agent-comms
             git commit -m "chore(comms): PR #${PR_NUMBER} merged — уведомление в тред ${THREAD}"
