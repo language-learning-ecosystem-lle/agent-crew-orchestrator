@@ -1,0 +1,92 @@
+name: Claude PR Review
+
+# Ревьюер роли reviewer-pr (agent-comms/ROLES.md, ветка comms).
+# Триггеры намеренно РУЧНЫЕ — не на каждый synchronize: расход квоты под контролем.
+#   • метка `review` на PR
+#   • коммент `@claude` в PR
+#   • workflow_dispatch с номером PR
+on:
+  pull_request:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Номер PR для ревью
+        required: true
+        type: string
+
+# Один прогон на PR: перевесил метку — предыдущий прогон гасится, квота не жжётся дважды.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: |
+      (github.event_name == 'pull_request' && github.event.label.name == 'review') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && contains(github.event.comment.body, '@claude')) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # запись вердикта в ветку comms
+      pull-requests: write # review-коммент в PR
+      issues: write # триггер issue_comment
+      id-token: write
+      actions: read
+    steps:
+      # Полная история: ревьюеру нужен merge-base с main для честного диффа,
+      # а ветка comms дотягивается отдельным fetch из промпта.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+
+            Ты — роль `reviewer-pr` протокола agent-comms. Код ты НЕ меняешь и PR не мёрджишь.
+
+            1. Протокол-файлы лежат в ветке `comms`, в этом чекауте их нет. Подтяни и читай так:
+                   git fetch --no-tags --depth=1 origin comms
+                   git show FETCH_HEAD:agent-comms/ROLES.md
+                   git show FETCH_HEAD:agent-comms/INDEX.md
+               Свою карточку роли прочитай в ROLES.md.
+
+            2. Прочитай `REVIEWER.md` в корне репо — это единственный список критериев.
+               Отревьюй PR строго по нему: дифф (`gh pr diff`), описание и обсуждение
+               (`gh pr view --comments`) плюс ЛЮБЫЕ файлы базы, нужные для контекста —
+               ревью по одному диффу критериями 2, 3 и 9 не делается.
+
+            3. Постановка пакета — тред, указанный в описании PR строкой `thread: NNN-slug`.
+               Прочитай его целиком: `git show FETCH_HEAD:agent-comms/<NNN-slug>/_thread.md`.
+               Если строки `thread:` в описании нет — это само по себе находка (критерий 3):
+               скажи об этом в вердикте и ревьюй по остальным критериям.
+
+            4. Вердикт публикуй review-коммент в PR: `gh pr comment <PR> --body ...`,
+               формат — раздел «Формат вердикта» в REVIEWER.md (первая строка
+               `verdict: approve` либо `verdict: needs-fixes`).
+
+            5. Дублем — сообщение в тред пакета, ветка `comms`. Это append-only протокол,
+               force-push запрещён, чужие сообщения не теряются:
+                   git fetch --no-tags origin comms
+                   git worktree add /tmp/comms FETCH_HEAD
+                   # дописать в КОНЕЦ /tmp/comms/agent-comms/<NNN-slug>/_thread.md секцию
+                   #   ## msg-NNN · from: reviewer-pr · <сегодня> · expects: answer
+                   # (NNN = следующий по порядку номер в этом треде)
+                   # и обновить строку треда в /tmp/comms/agent-comms/INDEX.md:
+                   #   waiting-on → автор PR, updated → сегодня
+                   cd /tmp/comms && git add -A && git commit -m "docs(agent-comms): вердикт reviewer-pr по PR #<PR>"
+                   git push origin HEAD:comms
+               Push отклонён (кто-то писал параллельно) — заново fetch, пересними свои
+               правки поверх свежего origin/comms, пересчитай номер сообщения, push повторно.
+
+            Обработка завершена только когда ОБА адресата получили вердикт: коммент в PR и
+            сообщение в треде с обновлённым INDEX.
+          claude_args: |
+            --max-turns 60
+            --allowedTools "Read,Grep,Glob,Edit,Write,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(git fetch:*),Bash(git show:*),Bash(git log:*),Bash(git diff:*),Bash(git status:*),Bash(git worktree:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git checkout:*),Bash(cd:*)"
