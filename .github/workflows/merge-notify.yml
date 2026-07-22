@@ -1,0 +1,110 @@
+name: Merge Notify
+
+# Закрывает системную дыру протокола agent-comms (решение John 2026-07-22,
+# тред 002-reviewer-setup): merge — клик в GitHub UI, он НЕ попадает в почту.
+# waiting-on оставался на john, вахта исполнителя молчала, транзакция висела.
+# Два прецедента за один день (PR #2 и #4) чинились руками куратора.
+#
+# Намеренно БЕЗ LLM — чистый bash: задача механическая, а стоимость и
+# недетерминизм модели здесь ничем не оправданы.
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  notify:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # запись в ветку comms
+    steps:
+      # Ветка comms живёт отдельно от кода: чекаутим ЕЁ, а не merge-коммит.
+      - uses: actions/checkout@v5
+        with:
+          ref: comms
+          fetch-depth: 0
+
+      - name: Дописать merge в тред пакета
+        env:
+          # Через env, а не через ${{ }} в теле скрипта: заголовок PR —
+          # пользовательский текст, и подстановка его в bash склеивала бы
+          # команду с чем угодно, что в нём написано.
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+        run: |
+          set -euo pipefail
+
+          # Строка `thread: NNN-slug` в описании PR — единственная связь пакета
+          # с тредом (требование CLAUDE.md). Нет её — уведомлять некуда, и это
+          # не ошибка сборки: тихо выходим.
+          THREAD=$(printf '%s' "$PR_BODY" | grep -oiE '^[[:space:]]*thread:[[:space:]]*[0-9]{3}-[a-z0-9-]+' | head -1 | sed -E 's/.*:[[:space:]]*//') || true
+          if [ -z "${THREAD:-}" ]; then
+            echo "В описании PR #${PR_NUMBER} нет строки 'thread: NNN-slug' — уведомлять некуда."
+            exit 0
+          fi
+
+          THREAD_FILE="agent-comms/${THREAD}/_thread.md"
+          if [ ! -f "$THREAD_FILE" ]; then
+            echo "::warning::Тред '${THREAD}' указан в PR #${PR_NUMBER}, но ${THREAD_FILE} не существует."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # До пяти попыток: в comms пишут параллельно живые роли. Протокол
+          # append-only — свои правки каждый раз пересобираем ПОВЕРХ свежего
+          # origin/comms, а не переносим старый текст (иначе чужая секция,
+          # пришедшая между попытками, была бы затёрта).
+          for attempt in 1 2 3 4 5; do
+            git fetch --no-tags origin comms
+            git reset --hard origin/comms
+
+            # Номер сообщения считается по ФАКТИЧЕСКОМУ содержимому треда в
+            # момент записи — параллельная запись сдвигает нумерацию.
+            LAST=$(grep -oE '^## msg-[0-9]+' "$THREAD_FILE" | grep -oE '[0-9]+' | sort -n | tail -1)
+            NEXT=$(printf '%03d' $(( 10#${LAST:-0} + 1 )))
+
+            {
+              printf '\n## msg-%s · from: github · %s · expects: none\n\n' "$NEXT" "$(date -u +%Y-%m-%d)"
+              printf 'PR #%s (%s) **merged** by %s.\n' "$PR_NUMBER" "$PR_TITLE" "${MERGED_BY:-неизвестно}"
+            } >> "$THREAD_FILE"
+
+            # waiting-on → роль, которую merge разблокирует.
+            #
+            # ОГРАНИЧЕНИЕ, зафиксированное осознанно: вывести роль из автора PR
+            # нельзя — все PR приходят из одной учётки GitHub независимо от
+            # того, какая роль их писала, поэтому логин признаком не является.
+            # На сегодня активная dev-роль ровно одна, и жёсткое `dev-core`
+            # верно всегда. При активации dev-speech это станет неверно —
+            # тогда роль должна приходить явно (строкой в описании PR, рядом
+            # с `thread:`), а не угадываться. Менять здесь, а не в вызывающем.
+            python3 - "$THREAD" "dev-core" <<'PY'
+          import sys, datetime
+          thread, role = sys.argv[1], sys.argv[2]
+          today = datetime.date.today().isoformat()
+          path = "agent-comms/INDEX.md"
+          lines = open(path, encoding="utf-8").read().split("\n")
+          for i, line in enumerate(lines):
+              if line.startswith(f"| {thread} "):
+                  cells = [c.strip() for c in line.strip().strip("|").split("|")]
+                  if len(cells) >= 5:
+                      cells[3], cells[4] = role, today
+                      lines[i] = "| " + " | ".join(cells) + " |"
+                  break
+          open(path, "w", encoding="utf-8").write("\n".join(lines))
+          PY
+
+            git add agent-comms
+            git commit -m "chore(comms): PR #${PR_NUMBER} merged — уведомление в тред ${THREAD}"
+            if git push origin HEAD:comms; then
+              echo "Уведомление о merge PR #${PR_NUMBER} записано в ${THREAD} (msg-${NEXT})."
+              exit 0
+            fi
+            echo "Push отклонён (попытка ${attempt}) — в comms писали параллельно, пересобираю."
+          done
+
+          echo "::error::Не удалось записать уведомление о merge PR #${PR_NUMBER} в ${THREAD} за 5 попыток."
+          exit 1
