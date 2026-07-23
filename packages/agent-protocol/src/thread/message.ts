@@ -32,6 +32,15 @@ export type Expects = (typeof EXPECTS)[number];
 export type MessageFields = {
   /** Исторический номер (только у мигрированных): сохраняет ссылки в старых телах. */
   readonly msg?: number;
+  /**
+   * ПОЗИЦИЯ в треде (только у мигрированных) — она, а не `msg`, кодируется в
+   * ИМЕНИ файла. Исторические номера дублируются (в 011/012 два msg-002), и имя
+   * из номера при дубле сортируется по роли, переставляя сообщения: загрузка с
+   * диска (сортировка по имени) даёт не тот порядок, что был в треде. Позиция
+   * монотонна по треду, поэтому сортировка имён = исходный порядок. `msg` при
+   * этом остаётся в заголовке для ссылок «см. msg-002».
+   */
+  readonly seq?: number;
   readonly from: string;
   /** Новые — метка UTC `2026-07-23T13:45:12Z`; мигрированные — только дата. */
   readonly date: string;
@@ -105,11 +114,13 @@ export const parseMessageFile = (raw: string): Message => {
   }
 
   const msgRaw = raws.get("msg");
+  const seqRaw = raws.get("seq");
   const waitingRaw = raws.get("waiting-on");
   const suffix = raws.get("suffix");
 
   const fields: MessageFields = {
     ...(msgRaw === undefined ? {} : { msg: Number(msgRaw) }),
+    ...(seqRaw === undefined ? {} : { seq: Number(seqRaw) }),
     from,
     date,
     expects: expects as Expects,
@@ -118,6 +129,9 @@ export const parseMessageFile = (raw: string): Message => {
   };
   if (fields.msg !== undefined && !Number.isInteger(fields.msg)) {
     throw new MessageFormatError(`'msg: ${msgRaw}' — номер обязан быть целым`);
+  }
+  if (fields.seq !== undefined && !Number.isInteger(fields.seq)) {
+    throw new MessageFormatError(`'seq: ${seqRaw}' — позиция обязана быть целой`);
   }
 
   return {
@@ -134,6 +148,7 @@ export const renderMessageFile = (message: Message): string => {
   const { fields, text } = message;
   const head = [
     ...(fields.msg === undefined ? [] : [`msg: ${String(fields.msg).padStart(3, "0")}`]),
+    ...(fields.seq === undefined ? [] : [`seq: ${String(fields.seq).padStart(3, "0")}`]),
     `from: ${fields.from}`,
     `date: ${fields.date}`,
     `expects: ${fields.expects}`,
@@ -153,13 +168,20 @@ export const renderMessageFile = (message: Message): string => {
  * коллизия возможна только при двух сообщениях одной роли в одну секунду.
  *
  * Мигрированное: `2026-07-21-003-curator.md` — времени в истории нет, есть дата
- * и позиция. Формат отличим глазом и сортируется РАНЬШЕ нового в пределах дня
- * (`-` < `T`), то есть мигрированное всегда старше нового по построению.
+ * и ПОЗИЦИЯ (`seq`), НЕ исторический номер: номер дублируется и переставил бы
+ * сообщения при сортировке (см. `seq` в MessageFields). Формат отличим глазом и
+ * сортируется РАНЬШЕ нового в пределах дня (`-` < `T`), то есть мигрированное
+ * всегда старше нового по построению.
  */
-export const messageFileName = (fields: MessageFields): string =>
-  fields.msg === undefined
-    ? `${fields.date.replaceAll(":", "-")}-${fields.from}.md`
-    : `${fields.date}-${String(fields.msg).padStart(3, "0")}-${fields.from}.md`;
+export const messageFileName = (fields: MessageFields): string => {
+  if (fields.msg === undefined) return `${fields.date.replaceAll(":", "-")}-${fields.from}.md`;
+  if (fields.seq === undefined) {
+    throw new MessageFormatError(
+      "у мигрированного сообщения есть 'msg', но нет 'seq' — имя строится из позиции, не из номера",
+    );
+  }
+  return `${fields.date}-${String(fields.seq).padStart(3, "0")}-${fields.from}.md`;
+};
 
 /** Заголовок секции в собранном треде. `number` — витрина: позиция или исторический номер. */
 export const renderHeading = (fields: MessageFields, number: number): string => {
