@@ -54,3 +54,38 @@ export const messagesAtRef = (root: string, ref: string): Map<string, string> =>
   }
   return files;
 };
+
+/**
+ * Содержимое файла на момент `ref`.
+ *
+ * Конфиг протокола читается ТОЛЬКО так, а не с диска рабочей копии: worktree
+ * агента стоит на его же feature-ветке, и правка прав, лежащая в этой ветке,
+ * выглядела бы для контура действующей. Тот же класс, что cwd-слепота (008),
+ * только опаснее — он про права.
+ */
+export const readFileAtRef = (repo: string, ref: string, path: string): string =>
+  git(repo, ["show", `${ref}:${path}`]);
+
+/** Есть ли файл на момент `ref`. Нужен для проверки объявленных инструкций ролей. */
+export const fileExistsAtRef = (repo: string, ref: string, path: string): boolean => {
+  try {
+    execFileSync("git", ["-C", repo, "cat-file", "-e", `${ref}:${path}`], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Обновить remote-tracking ref перед чтением.
+ *
+ * `git show origin/main:…` читает локальную копию ветки, которая без fetch
+ * протухает МОЛЧА: конфиг месячной давности неотличим от свежего. Поэтому
+ * обновление — часть операции чтения, а отказ от него (`--no-fetch`) обязан
+ * сопровождаться громкой пометкой у вызывающего.
+ */
+export const fetchRef = (repo: string, ref: string): void => {
+  const at = ref.indexOf("/");
+  if (!ref.startsWith("origin/") || at === -1) return;
+  git(repo, ["fetch", "--quiet", "origin", ref.slice(at + 1)]);
+};

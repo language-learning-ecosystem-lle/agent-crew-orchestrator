@@ -1,27 +1,30 @@
+export {
+  DEFAULT_CONFIG_PATH,
+  type Mail,
+  mailSchema,
+  type ProtocolConfig,
+  parseProtocolConfig,
+  protocolConfigSchema,
+} from "./config/config.js";
+export { type LoadedConfig, type LoadOptions, loadProtocolConfig } from "./config/load.js";
 export { type LoadedThread, loadThread, loadThreads } from "./fs/comms.js";
-export { messagesAtRef } from "./fs/git.js";
+export { fetchRef, fileExistsAtRef, messagesAtRef, readFileAtRef } from "./fs/git.js";
 export {
   createRoleRegistry,
-  loadRoleRegistry,
   type NotificationTarget,
   RoleConfigError,
   type RoleRegistry,
+  type RolesSection,
   type WatchTarget,
 } from "./roles/registry.js";
 export {
-  diffRolesDoc,
-  parseRolesDocTable,
-  type RolesDocDrift,
-  type RolesDocRow,
-} from "./roles/roles-doc.js";
-export {
+  type Instructions,
+  instructionsSchema,
   type Permission,
   permissionSchema,
   type Role,
   type RoleId,
-  type RoleRegistryConfig,
   type RoleStatus,
-  roleRegistryConfigSchema,
   roleSchema,
   roleStatusSchema,
   type Wake,

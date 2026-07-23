@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { loadRoleRegistry, RoleConfigError } from "./registry.js";
+import { parseProtocolConfig } from "../config/config.js";
+import { createRoleRegistry, RoleConfigError } from "./registry.js";
 
 const john = {
   id: "john",
@@ -36,7 +37,10 @@ const reviewer = {
   summary: "ревью PR",
 };
 
-const registryOf = (...roles: unknown[]) => loadRoleRegistry({ version: 1, roles });
+const MAIL = { branch: "comms", dir: "agent-comms" };
+
+const registryOf = (...roles: unknown[]) =>
+  createRoleRegistry(parseProtocolConfig({ version: 1, mail: MAIL, roles }));
 
 describe("loadRoleRegistry", () => {
   it("ловит дубль роли", () => {

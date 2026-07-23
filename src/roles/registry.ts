@@ -20,13 +20,10 @@
  * встреченная: конфиг правит человек, и «почини это, потом узнаешь про
  * следующее» — плохой цикл.
  */
-import {
-  type Permission,
-  type Role,
-  type RoleId,
-  type RoleRegistryConfig,
-  roleRegistryConfigSchema,
-} from "./schema.js";
+import type { Permission, Role, RoleId } from "./schema.js";
+
+/** Всё, что реестру нужно от конфига: он не знает, какие ещё секции там есть. */
+export type RolesSection = { readonly roles: readonly Role[] };
 
 /** Кого уведомлять о переходе хода и в какой форме. Текст — не наше дело: он проектный. */
 export type NotificationTarget =
@@ -61,7 +58,7 @@ const hasPermission = (role: Role, permission: Permission): boolean =>
   role.permissions.includes(permission);
 
 /** Проверки, которые не выражаются схемой одного поля. */
-const crossCheck = (config: RoleRegistryConfig): string[] => {
+const crossCheck = (config: RolesSection): string[] => {
   const issues: string[] = [];
   const byId = new Map<RoleId, Role>();
 
@@ -103,7 +100,7 @@ const crossCheck = (config: RoleRegistryConfig): string[] => {
   return issues;
 };
 
-export const createRoleRegistry = (config: RoleRegistryConfig): RoleRegistry => {
+export const createRoleRegistry = (config: RolesSection): RoleRegistry => {
   const issues = crossCheck(config);
   if (issues.length > 0) throw new RoleConfigError(issues);
 
@@ -131,15 +128,4 @@ export const createRoleRegistry = (config: RoleRegistryConfig): RoleRegistry => 
         return [];
       }),
   };
-};
-
-/** Разбор непроверенного JSON (файл конфига) в реестр. Бросает `RoleConfigError`. */
-export const loadRoleRegistry = (raw: unknown): RoleRegistry => {
-  const parsed = roleRegistryConfigSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new RoleConfigError(
-      parsed.error.issues.map((issue) => `${issue.path.join(".") || "(корень)"}: ${issue.message}`),
-    );
-  }
-  return createRoleRegistry(parsed.data);
 };
