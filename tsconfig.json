@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // node:fs и process нужны точке входа CLI; ядро (roles/) их не трогает —
+    // граница проходит по файлам, а не по настройке компилятора.
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

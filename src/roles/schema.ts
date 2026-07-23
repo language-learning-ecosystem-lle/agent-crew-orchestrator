@@ -1,0 +1,101 @@
+/**
+ * Ролевая модель протокола как ДАННЫЕ (фаза P1, тред `012-agent-protocol-package`).
+ *
+ * До этого роли жили прозой в `ROLES.md`, а поведение выводилось из неё
+ * глазами и bash-скриптами: список известных ролей вырезался awk'ом из
+ * markdown-таблицы, состав уведомляемых был захардкожен строкой
+ * `NOTIFY_ROLES="john curator"`, имя tmux-сессии складывалось шаблоном
+ * `lle-<role>`, а «кого дёргать, чтобы ожил curator» вообще нигде не
+ * записано — оно жило в комментарии внутри awk-программы уведомителя.
+ *
+ * ЧТО ИМЕННО СТАЛО ДАННЫМИ И ПОЧЕМУ. В схему попадает ровно то, из чего
+ * сегодня ВЫВОДИТСЯ поведение живого контура, а не всё, что можно про роль
+ * рассказать:
+ *
+ * - `wake` — как роль узнаёт, что ход перешёл к ней. Это единственное поле,
+ *   из которого следуют и работа сторожа (кого будить и в какой сессии), и
+ *   работа уведомителя (кого звать и какой формулировкой). Различие
+ *   «⏳ твой ход» против «🔔 зайди в чат и дёрни его» (тред 008) — не
+ *   косметика: у dev-роли есть сессия и сторож, у ассистента нет ни того ни
+ *   другого, он оживает только через человека. В прозе это различие
+ *   объяснено, в данных — выражено.
+ * - `kind` — НЕ интерпретируется пакетом (свободная строка): «claude.ai»,
+ *   «gh-action» это ярлыки конкретного проекта. Поведение выводится из
+ *   `wake`/`permissions`, а не из вендора. Иначе нейтральный пакет знал бы
+ *   про наш стек.
+ * - `permissions` — сегодня ровно одно: правку `status` треда решением john
+ *   от 2026-07-22 держат curator и john (закрытие треда = приёмка, отдавать
+ *   её исполнителю нельзя). Принуждение появится в валидаторе P2; модель
+ *   обязана уметь это выразить уже сейчас, иначе P2 начнётся с миграции схемы.
+ * - `zones` — данные без кодового потребителя на P1 (сознательно, отмечено в
+ *   README): их потребитель — карточка роли при онбординге на новом проекте
+ *   (P4). Оставить их прозой значило бы, что конфиг не может стать источником
+ *   `ROLES.md`, ради чего всё и затевается.
+ *
+ * Неизвестные поля — ошибка, а не «проигнорируем»: опечатка в имени поля даёт
+ * молчаливое умолчание, то есть ровно тот класс тихих дефектов, ради которого
+ * пакет и пишется (боли 1-6 постановки).
+ */
+import { z } from "zod";
+
+/** Идентификатор роли: он же токен в `waiting-on` и в `from:` сообщения. */
+export const roleIdSchema = z
+  .string()
+  .regex(
+    /^[a-z][a-z0-9-]*$/,
+    "id роли — только строчные латинские, цифры и дефис (он попадает в `waiting-on` и разбирается как токен)",
+  );
+
+/**
+ * Как роль узнаёт, что ход её.
+ *
+ * - `self` — человек: узнаёт из уведомления сам, будить некого;
+ * - `via-human` — ассистент без своего процесса: оживает, только когда
+ *   названный человек откроет чат. `via` — кого именно звать (раньше это был
+ *   захардкоженный «john» в тексте уведомителя);
+ * - `watch` — агент с собственной сессией: его будит сторож, `session` — та
+ *   самая договорённость об имени, на которую сторож опирается;
+ * - `event` — просыпается от события платформы (CI, вебхук): ни будить, ни
+ *   уведомлять некого.
+ */
+export const wakeSchema = z.discriminatedUnion("mode", [
+  z.strictObject({ mode: z.literal("self") }),
+  z.strictObject({ mode: z.literal("via-human"), via: roleIdSchema }),
+  z.strictObject({ mode: z.literal("watch"), session: z.string().min(1) }),
+  z.strictObject({ mode: z.literal("event") }),
+]);
+
+/** Права, из которых что-то следует. Сегодня ровно одно — см. doc-блок. */
+export const permissionSchema = z.enum(["thread-status"]);
+
+/** Жизненный цикл роли: planned → active → paused/retired (строки не удаляются). */
+export const roleStatusSchema = z.enum(["planned", "active", "paused", "retired"]);
+
+export const zonesSchema = z.strictObject({
+  writes: z.array(z.string().min(1)).default([]),
+  forbidden: z.array(z.string().min(1)).default([]),
+});
+
+export const roleSchema = z.strictObject({
+  id: roleIdSchema,
+  /** Проектный ярлык типа роли; пакет его не интерпретирует, только сверяет с доком. */
+  kind: z.string().min(1),
+  status: roleStatusSchema,
+  wake: wakeSchema,
+  summary: z.string().min(1),
+  permissions: z.array(permissionSchema).default([]),
+  zones: zonesSchema.optional(),
+});
+
+export const roleRegistryConfigSchema = z.strictObject({
+  /** Версия формата конфига: менять модель придётся, и молча это делать нельзя. */
+  version: z.literal(1),
+  roles: z.array(roleSchema).min(1),
+});
+
+export type RoleId = string;
+export type Wake = z.infer<typeof wakeSchema>;
+export type Permission = z.infer<typeof permissionSchema>;
+export type RoleStatus = z.infer<typeof roleStatusSchema>;
+export type Role = z.infer<typeof roleSchema>;
+export type RoleRegistryConfig = z.infer<typeof roleRegistryConfigSchema>;
