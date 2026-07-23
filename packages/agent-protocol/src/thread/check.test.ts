@@ -1,30 +1,34 @@
 import { describe, expect, it } from "vitest";
 
-import { loadRoleRegistry } from "../roles/registry.js";
+import { parseProtocolConfig } from "../config/config.js";
+import { createRoleRegistry } from "../roles/registry.js";
 import { checkImmutable, checkThread, type ThreadInput } from "./check.js";
 import type { Message } from "./message.js";
 import { renderThread, type ThreadMeta } from "./thread.js";
 
-const registry = loadRoleRegistry({
-  version: 1,
-  roles: [
-    { id: "john", kind: "человек", status: "active", wake: { mode: "self" }, summary: "PM" },
-    {
-      id: "curator",
-      kind: "claude.ai",
-      status: "active",
-      wake: { mode: "via-human", via: "john" },
-      summary: "ассистент",
-    },
-    {
-      id: "dev-core",
-      kind: "claude-code",
-      status: "active",
-      wake: { mode: "watch", session: "lle-dev-core" },
-      summary: "поток",
-    },
-  ],
-});
+const registry = createRoleRegistry(
+  parseProtocolConfig({
+    version: 1,
+    mail: { branch: "comms", dir: "agent-comms" },
+    roles: [
+      { id: "john", kind: "человек", status: "active", wake: { mode: "self" }, summary: "PM" },
+      {
+        id: "curator",
+        kind: "claude.ai",
+        status: "active",
+        wake: { mode: "via-human", via: "john" },
+        summary: "ассистент",
+      },
+      {
+        id: "dev-core",
+        kind: "claude-code",
+        status: "active",
+        wake: { mode: "watch", session: "lle-dev-core" },
+        summary: "поток",
+      },
+    ],
+  }),
+);
 
 const meta: ThreadMeta = {
   title: "012-x · тред",

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { roleRegistryConfigSchema } from "./schema.js";
+import { protocolConfigSchema } from "../config/config.js";
+
+const MAIL = { branch: "comms", dir: "agent-comms" };
 
 const human = {
   id: "john",
@@ -10,9 +12,9 @@ const human = {
   summary: "владелец",
 };
 
-describe("roleRegistryConfigSchema", () => {
+describe("protocolConfigSchema", () => {
   it("принимает минимальный конфиг и по умолчанию не даёт роли никаких прав", () => {
-    const parsed = roleRegistryConfigSchema.parse({ version: 1, roles: [human] });
+    const parsed = protocolConfigSchema.parse({ version: 1, mail: MAIL, roles: [human] });
 
     expect(parsed.roles[0]?.permissions).toEqual([]);
   });
@@ -20,8 +22,9 @@ describe("roleRegistryConfigSchema", () => {
   it("отвергает неизвестное поле, а не проглатывает его", () => {
     // Опечатка в имени поля иначе означала бы молчаливое умолчание — тот самый
     // класс тихих дефектов, ради которого пакет и пишется.
-    const result = roleRegistryConfigSchema.safeParse({
+    const result = protocolConfigSchema.safeParse({
       version: 1,
+      mail: MAIL,
       roles: [{ ...human, sesion: "lle-john" }],
     });
 
@@ -29,8 +32,9 @@ describe("roleRegistryConfigSchema", () => {
   });
 
   it("отвергает id, который не переживёт разбора в waiting-on", () => {
-    const result = roleRegistryConfigSchema.safeParse({
+    const result = protocolConfigSchema.safeParse({
       version: 1,
+      mail: MAIL,
       roles: [{ ...human, id: "Dev Core" }],
     });
 
@@ -38,8 +42,9 @@ describe("roleRegistryConfigSchema", () => {
   });
 
   it("не даёт объявить сессию роли, которую никто не будит", () => {
-    const result = roleRegistryConfigSchema.safeParse({
+    const result = protocolConfigSchema.safeParse({
       version: 1,
+      mail: MAIL,
       roles: [{ ...human, wake: { mode: "self", session: "lle-john" } }],
     });
 
@@ -47,12 +52,14 @@ describe("roleRegistryConfigSchema", () => {
   });
 
   it("требует session у роли на вахте и via у роли, оживающей через человека", () => {
-    const noSession = roleRegistryConfigSchema.safeParse({
+    const noSession = protocolConfigSchema.safeParse({
       version: 1,
+      mail: MAIL,
       roles: [{ ...human, id: "dev-core", wake: { mode: "watch" } }],
     });
-    const noVia = roleRegistryConfigSchema.safeParse({
+    const noVia = protocolConfigSchema.safeParse({
       version: 1,
+      mail: MAIL,
       roles: [{ ...human, id: "curator", wake: { mode: "via-human" } }],
     });
 
@@ -61,7 +68,7 @@ describe("roleRegistryConfigSchema", () => {
   });
 
   it("отвергает конфиг неизвестной версии формата", () => {
-    const result = roleRegistryConfigSchema.safeParse({ version: 2, roles: [human] });
+    const result = protocolConfigSchema.safeParse({ version: 2, mail: MAIL, roles: [human] });
 
     expect(result.success).toBe(false);
   });

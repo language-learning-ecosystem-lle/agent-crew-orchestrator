@@ -1,17 +1,15 @@
 #!/usr/bin/env node
 /**
- * Точка входа для операторов контура.
+ * Точка входа для операторов контура. Полный синтаксис — в константе `USAGE`
+ * ниже, и это ЕДИНСТВЕННЫЙ его источник: шапка и справка уже разошлись однажды
+ * (здесь стоял синтаксис эпохи P1 — `roles check --config/--doc`, которого
+ * давно нет), так что список команд в двух местах не держим.
  *
- *   agent-protocol roles check  --config <roles.json> --doc <ROLES.md>
- *   agent-protocol index build  --root <agent-comms> --config <roles.json> [--write]
- *   agent-protocol thread build --root <agent-comms> --config <roles.json> --id <NNN-slug> [--write]
- *   agent-protocol check        --root <agent-comms> --config <roles.json> [--since <ref>]
- *   agent-protocol migrate      --root <agent-comms> --config <roles.json> [--id <NNN-slug>] [--write]
- *   agent-protocol mail         --root <agent-comms> --config <roles.json> --role <id>
- *
- * Пути ОБЯЗАТЕЛЬНЫ и умолчаний не имеют: умолчание вроде `agent-comms/ROLES.md`
- * было бы знанием о конкретном проекте внутри нейтрального пакета (дисциплина
- * выносимости). Расположение файлов — дело проекта, и документируется у проекта.
+ * `--ref` ОБЯЗАТЕЛЕН везде и умолчания не имеет: он определяет, КАКУЮ версию
+ * конфига читаем, и молчаливый выбор версии был бы тихой ошибкой. `--repo`
+ * умолчание имеет (репозиторий текущего каталога или того, где лежит почта):
+ * каталог однозначен, а требование указывать его руками ломало каждый
+ * документированный пример.
  *
  * КАЖДЫЙ ОТКАЗ ГРОМКИЙ. Урок спайка P0: команда, молча зависящая от окружения,
  * даёт результат, неотличимый от дефекта проверяемого — три из трёх сбоев
@@ -22,25 +20,28 @@
  * БЕЗ `--write` НИЧЕГО НЕ ПИШЕТСЯ: контур живой, и «посмотреть, что будет»
  * обязано быть дешевле и безопаснее, чем «сделать».
  */
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { loadProtocolConfig } from "./config/load.js";
 import { loadThreads } from "./fs/comms.js";
-import { messagesAtRef } from "./fs/git.js";
-import { loadRoleRegistry, RoleConfigError, type RoleRegistry } from "./roles/registry.js";
-import { diffRolesDoc } from "./roles/roles-doc.js";
+import { fileExistsAtRef, messagesAtRef } from "./fs/git.js";
+import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { renderThread } from "./thread/thread.js";
 
-const USAGE = `usage:
-  agent-protocol roles check  --config <roles.json> --doc <ROLES.md>
-  agent-protocol index build  --root <agent-comms> --config <roles.json> [--write]
-  agent-protocol thread build --root <agent-comms> --config <roles.json> --id <NNN-slug> [--write]
-  agent-protocol check        --root <agent-comms> --config <roles.json> [--since <ref>]
-  agent-protocol migrate      --root <agent-comms> --config <roles.json> [--id <NNN-slug>] [--write]
-  agent-protocol mail         --root <agent-comms> --config <roles.json> --role <id>`;
+const USAGE = `usage (--ref обязателен всегда; --repo по умолчанию — репозиторий текущего каталога):
+  agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
+  agent-protocol roles list   --ref <ref> [--repo <path>]
+  agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
+  agent-protocol index build  --root <mail> --ref <ref> [--write]
+  agent-protocol thread build --root <mail> --ref <ref> --id <NNN-slug> [--write]
+  agent-protocol check        --root <mail> --ref <ref> [--since <ref>]
+  agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
+  agent-protocol mail         --root <mail> --ref <ref> --role <id>`;
 
 const out = (line: string): void => {
   process.stdout.write(`${line}\n`);
@@ -70,20 +71,60 @@ const readFile = (path: string, what: string): string => {
   }
 };
 
-const registryFrom = (argv: readonly string[]): RoleRegistry => {
-  const path = required(argv, "--config");
-  const raw = readFile(path, "конфиг ролей");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (error) {
-    return fail(`конфиг '${path}' — не JSON: ${(error as Error).message}`, 2);
+/**
+ * Конфиг читается ТОЛЬКО через пакет и ТОЛЬКО по явному ref.
+ *
+ * `--repo` по умолчанию — репозиторий, которому принадлежит `--root`: почта и
+ * код у нас в одном репозитории, просто в разных ветках, и заставлять каждый
+ * вызов повторять путь значит плодить места, где он разъедется. Отдельный
+ * `--repo` нужен раннеру, где чекаут почты и чекаут кода — разные каталоги.
+ */
+const configFrom = (
+  argv: readonly string[],
+  root?: string,
+): ReturnType<typeof loadProtocolConfig> => {
+  const ref = required(argv, "--ref");
+  // Умолчания нет только у `ref` — именно он определяет, ЧТО мы читаем, и
+  // молчаливый выбор версии и был бы дефектом. Каталог же однозначен: репозиторий
+  // того места, откуда команду позвали (или того, где лежит почта). Требовать его
+  // явно значило сделать неработающим каждый пример в документации — что и
+  // случилось (находка ревьюера по PR #21).
+  const repo = flag(argv, "--repo") ?? repoOf(root ?? process.cwd());
+  const noFetch = argv.includes("--no-fetch");
+
+  if (noFetch && ref.startsWith("origin/")) {
+    // Молчаливо-старый конфиг неотличим от актуального — тот же класс, что
+    // молча-пустой ответ git. Отказ от обновления допустим, но не молча.
+    err(
+      `agent-protocol: ВНИМАНИЕ — '${ref}' не обновлялся (--no-fetch), конфиг может быть устаревшим`,
+    );
   }
+
   try {
-    return loadRoleRegistry(parsed);
+    return loadProtocolConfig({
+      repo,
+      ref,
+      fetch: !noFetch,
+      ...(flag(argv, "--config-path") === undefined
+        ? {}
+        : { path: flag(argv, "--config-path") as string }),
+    });
   } catch (error) {
     if (error instanceof RoleConfigError) return fail(error.message, 2);
-    throw error;
+    return fail(`конфиг протокола на '${ref}' не прочитан: ${(error as Error).message}`, 2);
+  }
+};
+
+const registryFrom = (argv: readonly string[], root?: string): RoleRegistry =>
+  configFrom(argv, root).registry;
+
+const repoOf = (at: string): string => {
+  try {
+    return execFileSync("git", ["-C", at, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+    }).trim();
+  } catch (error) {
+    return fail(`'${at}' не в git-репозитории: ${(error as Error).message}`, 2);
   }
 };
 
@@ -92,23 +133,48 @@ const writeOut = (path: string, content: string): void => {
   writeFileSync(path, content, "utf8");
 };
 
-const rolesCheck = (argv: readonly string[]): void => {
-  const registry = registryFrom(argv);
-  const drift = diffRolesDoc(registry, readFile(required(argv, "--doc"), "документ ролей"));
-  if (drift.length === 0) {
+const configCheck = (argv: readonly string[]): void => {
+  const loaded = configFrom(argv, undefined);
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+
+  // Объявленные инструкции проверяются НА ТОМ ЖЕ ref, что и конфиг: проверять
+  // существование файла на диске значило бы смотреть в другую версию дерева.
+  const missing: string[] = [];
+  for (const role of loaded.config.roles) {
+    for (const entry of role.instructions ?? []) {
+      if (!fileExistsAtRef(repo, loaded.ref, entry.path)) {
+        missing.push(
+          `роль '${role.id}': инструкции '${entry.path}' объявлены, но на ${loaded.ref} их нет`,
+        );
+      }
+    }
+  }
+
+  if (missing.length === 0) {
     out(
-      `agent-protocol: ok — конфиг и документ описывают одни и те же роли (${registry.ids().length})`,
+      `agent-protocol: ok — конфиг '${loaded.path}' на ${loaded.ref}: ролей ${loaded.registry.ids().length}, почта в ветке '${loaded.config.mail.branch}' (${loaded.config.mail.dir})`,
     );
     return;
   }
-  err("agent-protocol: конфиг ролей разошёлся с документом:");
-  for (const item of drift) err(`- ${item.message}`);
+  err("agent-protocol: конфиг ссылается на отсутствующие файлы:");
+  for (const item of missing) err(`- ${item}`);
+  process.exit(1);
+};
+
+const rolesList = (argv: readonly string[]): void => {
+  for (const id of registryFrom(argv, undefined).ids()) out(id);
+};
+
+const roleExists = (argv: readonly string[]): void => {
+  const role = required(argv, "--role");
+  if (registryFrom(argv, undefined).isKnown(role)) return;
+  err(`agent-protocol: роль '${role}' не значится в конфиге протокола`);
   process.exit(1);
 };
 
 const indexBuild = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
-  const registry = registryFrom(argv);
+  const registry = registryFrom(argv, repoOf(root));
   const threads = loadThreads(root, registry.ids());
   const rendered = renderIndex(threads.map((loaded) => loaded.thread));
   const path = join(root, "INDEX.md");
@@ -137,7 +203,7 @@ const indexBuild = (argv: readonly string[]): void => {
 const threadBuild = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const id = required(argv, "--id");
-  const registry = registryFrom(argv);
+  const registry = registryFrom(argv, repoOf(root));
   const loaded = loadThreads(root, registry.ids()).find((item) => item.thread.id === id);
   if (loaded === undefined) fail(`тред '${id}' не найден в '${root}'`, 2);
 
@@ -154,7 +220,7 @@ const threadBuild = (argv: readonly string[]): void => {
 
 const checkAll = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
-  const registry = registryFrom(argv);
+  const registry = registryFrom(argv, repoOf(root));
   const threads = loadThreads(root, registry.ids());
 
   const issues = threads.flatMap((loaded) =>
@@ -200,7 +266,7 @@ const checkAll = (argv: readonly string[]): void => {
 
 const migrate = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
-  const registry = registryFrom(argv);
+  const registry = registryFrom(argv, repoOf(root));
   const only = flag(argv, "--id");
   const doWrite = argv.includes("--write");
 
@@ -250,7 +316,7 @@ const migrate = (argv: readonly string[]): void => {
 const mail = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const role = required(argv, "--role");
-  const registry = registryFrom(argv);
+  const registry = registryFrom(argv, repoOf(root));
   if (!registry.isKnown(role)) fail(`роль '${role}' не значится в конфиге`, 2);
 
   // Почта считается из ТРЕДОВ, а не из производного INDEX: иначе падение
@@ -261,8 +327,12 @@ const mail = (argv: readonly string[]): void => {
 
 const main = (argv: readonly string[]): void => {
   const [command, subcommand] = argv;
-  if (command === "roles" && subcommand === "check") {
-    rolesCheck(argv.slice(2));
+  if (command === "config" && subcommand === "check") {
+    configCheck(argv.slice(2));
+  } else if (command === "roles" && subcommand === "list") {
+    rolesList(argv.slice(2));
+  } else if (command === "role" && subcommand === "exists") {
+    roleExists(argv.slice(2));
   } else if (command === "index" && subcommand === "build") {
     indexBuild(argv.slice(2));
   } else if (command === "thread" && subcommand === "build") {

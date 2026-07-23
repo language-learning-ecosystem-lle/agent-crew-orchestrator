@@ -71,6 +71,23 @@ export const permissionSchema = z.enum(["thread-status"]);
 /** Жизненный цикл роли: planned → active → paused/retired (строки не удаляются). */
 export const roleStatusSchema = z.enum(["planned", "active", "paused", "retired"]);
 
+/**
+ * Инструкции роли — МАССИВ, порядок = порядок чтения (общее правило проекта,
+ * затем ролевая карточка).
+ *
+ * Два поля (`common` + `card`) навязали бы нейтральному пакету нашу
+ * таксономию, а у роли завтра окажется три источника или ни одного общего.
+ * `kind` означает СПОСОБ ИСПОЛНЕНИЯ, а не наличие файла: `external` — текст
+ * лежит в репозитории, но исполняется снаружи (скилл на стороне чата). Это
+ * единственное место, где машинной гарантии нет — копия может разойтись с
+ * живым скиллом, и мы этого не обещаем.
+ */
+export const instructionsSchema = z.strictObject({
+  kind: z.enum(["in-repo", "external"]),
+  path: z.string().min(1),
+  note: z.string().min(1).optional(),
+});
+
 export const zonesSchema = z.strictObject({
   writes: z.array(z.string().min(1)).default([]),
   forbidden: z.array(z.string().min(1)).default([]),
@@ -85,12 +102,7 @@ export const roleSchema = z.strictObject({
   summary: z.string().min(1),
   permissions: z.array(permissionSchema).default([]),
   zones: zonesSchema.optional(),
-});
-
-export const roleRegistryConfigSchema = z.strictObject({
-  /** Версия формата конфига: менять модель придётся, и молча это делать нельзя. */
-  version: z.literal(1),
-  roles: z.array(roleSchema).min(1),
+  instructions: z.array(instructionsSchema).min(1).optional(),
 });
 
 export type RoleId = string;
@@ -98,4 +110,4 @@ export type Wake = z.infer<typeof wakeSchema>;
 export type Permission = z.infer<typeof permissionSchema>;
 export type RoleStatus = z.infer<typeof roleStatusSchema>;
 export type Role = z.infer<typeof roleSchema>;
-export type RoleRegistryConfig = z.infer<typeof roleRegistryConfigSchema>;
+export type Instructions = z.infer<typeof instructionsSchema>;
