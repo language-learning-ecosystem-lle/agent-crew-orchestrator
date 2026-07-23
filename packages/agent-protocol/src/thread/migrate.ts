@@ -14,11 +14,17 @@
  * Что сохраняется намеренно: исторические номера (включая дубли — в треде 012
  * их два), хвосты заголовков вроде `[СВЕРХПИСАНО msg-002]`, исходный порядок.
  * Ссылки «см. msg-003 п.4» в уже написанных телах обязаны продолжать указывать
- * на то, на что указывали. Порядок держит `seq` (позиция) в имени файла, а не
- * исторический номер: номера дублируются и переставили бы сообщения при
- * сортировке имён — см. `verifyMigration` (второе условие).
+ * на то, на что указывали. Порядок держит `seq` (позиция) через
+ * `compareMessageEntries`, а не имя файла: имя ведёт датой, дата бывает
+ * немонотонна ленте — см. `verifyMigration` (второе условие).
  */
-import { type Message, messageFileName, parseMessageFile, renderMessageFile } from "./message.js";
+import {
+  compareMessageEntries,
+  type Message,
+  messageFileName,
+  parseMessageFile,
+  renderMessageFile,
+} from "./message.js";
 import { parseLegacyThread, renderMetaFile, renderThread, type ThreadMeta } from "./thread.js";
 
 export type MigratedFile = {
@@ -95,26 +101,29 @@ const firstDiff = (a: string, b: string): string => {
  *
  * 1. Склейка из ПАМЯТИ (сообщения в исходном порядке) воспроизводит исходный
  *    `_thread.md` байт-в-байт.
- * 2. Склейка после ЗАГРУЗКИ С ДИСКА (сообщения, отсортированные по имени файла —
- *    ровно как это делает `loadThread`) даёт тот же результат.
+ * 2. Склейка после ЗАГРУЗКИ С ДИСКА (сообщения, упорядоченные
+ *    `compareMessageEntries` по `seq` — ровно как это делает `loadThread`) даёт
+ *    тот же результат.
  *
- * Второе условие добавлено потому, что первого НЕДОСТАТОЧНО: имя мигрированного
- * файла раньше кодировало исторический номер, и при дублирующихся номерах
- * (011/012) сортировка имён переставляла сообщения — склейка из памяти была
- * верной, а из файлов на диске врала. Поймано командой `derive` уже ПОСЛЕ
- * миграции; теперь ловится в гарде, до записи. `seq` в имени эту перестановку
- * закрывает, но гард обязан это ДОКАЗЫВАТЬ, а не полагаться.
+ * Второе условие добавлено потому, что первого НЕДОСТАТОЧНО: порядок на диске
+ * задаёт не память, а сортировка при загрузке. Пока ключом было ИМЯ файла,
+ * сообщение переставлялось — историч. номер дублируется (011/012), а у merge #27
+ * в 012 дата уведомителя оказалась РАНЬШЕ уже стоящих в ленте. Порядок по `seq`
+ * (позиция) это закрывает, но гард обязан ДОКАЗЫВАТЬ воспроизводимость, а не
+ * полагаться на неё.
  */
 export const verifyMigration = (migration: Migration, original: string): string | undefined => {
   const rebuilt = migration.files.find((file) => file.path === "_thread.md")?.content;
   if (rebuilt === undefined) return "миграция не собрала _thread.md";
   if (rebuilt !== original) return `склейка из памяти: ${firstDiff(original, rebuilt)}`;
 
-  // Симуляция loadThread: сообщения из messages/, отсортированные по имени.
+  // Симуляция loadThread: сообщения из messages/, упорядоченные компаратором
+  // (по `seq`) — тем же, что применяет loadThread, а не сортировкой имён.
   const fromDisk = migration.files
     .filter((file) => file.path.startsWith("messages/"))
-    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
-    .map((file) => parseMessageFile(file.content));
+    .map((file) => ({ fileName: file.path, message: parseMessageFile(file.content) }))
+    .sort(compareMessageEntries)
+    .map((entry) => entry.message);
   const rebuiltFromDisk = renderThread(migration.meta, fromDisk);
   if (rebuiltFromDisk !== original) {
     return `склейка после загрузки с диска (сортировка имён): ${firstDiff(original, rebuiltFromDisk)}`;
