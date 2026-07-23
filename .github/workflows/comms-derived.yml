@@ -1,0 +1,103 @@
+name: Comms Derived
+
+# Собирает производные почты (`_thread.md` мигрированных тредов + `INDEX.md`) из
+# источника (`messages/*` + `_meta.md`) на каждый push в ветку `comms`. Это
+# заменяет ручной прогон `rebuild-index.sh` ролями: реестр перестаёт быть
+# писателем-руками (класс «двух писателей» из треда 006) и становится
+# производным одного автоматического генератора.
+#
+# МЯГКИЙ ПЕРЕХОД (решение curator, тред 012 msg-035): генератор ИДЕМПОТЕНТЕН —
+# коммитит только при расхождении. Пока роль ещё прогоняет `rebuild-index` сама,
+# её коммит уже содержит актуальный INDEX, генератор видит совпадение и молчит.
+# Двух писателей нет ни в один момент; момент, когда роли перестают прогонять
+# rebuild вручную, объявляется явно и от этого workflow не зависит.
+on:
+  push:
+    branches: [comms]
+
+# Без cancel: два push подряд обязаны обработаться ОБА по очереди. Отмена
+# идущего генератора вторым push потеряла бы производные первого.
+concurrency:
+  group: comms-derived
+  cancel-in-progress: false
+
+jobs:
+  derive:
+    # Гард от петли: собственный коммит генератора («rebuild derived») сам
+    # порождает push в comms — без этого условия он триггерил бы себя без конца.
+    if: "!contains(github.event.head_commit.message, 'rebuild derived')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # запись производных в ветку comms
+    steps:
+      # Ветка comms (почта) — в корень workspace.
+      - uses: actions/checkout@v5
+        with:
+          ref: comms
+          fetch-depth: 0
+
+      # Код (пакет + конфиг протокола) живёт в main, НЕ в comms: генератор
+      # обязан исполнять протокол актуальной версией, а не той старой копией
+      # дерева, что лежит в ветке почты.
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          path: .code
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .code/.nvmrc
+          cache: pnpm
+          cache-dependency-path: .code/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: .code
+
+      - name: Пересобрать производные и запушить при расхождении
+        env:
+          MAIL: ${{ github.workspace }}/agent-comms
+          CODE: ${{ github.workspace }}/.code
+        run: |
+          set -euo pipefail
+
+          # `derive --write` пересобирает _thread.md мигрированных + INDEX.
+          # Конфиг протокола читается из main через git в .code (репо кода).
+          run_derive() {
+            (cd "$CODE" && pnpm -F agent-protocol --silent cli derive \
+              --root "$MAIL" --repo "$CODE" --ref origin/main --write)
+          }
+          run_derive
+
+          # Идемпотентность: расхождения нет — писать нечего, выходим тихо.
+          # Это и есть мягкий переход: пока роль сама прогоняет rebuild, здесь
+          # всегда пусто.
+          if git diff --quiet; then
+            echo "производные уже актуальны — коммитить нечего."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # До пяти попыток: в comms пишут параллельно живые роли. При гонке за
+          # push пересобираем производные ПОВЕРХ свежего origin/comms, а не
+          # переносим старые — источник (messages/) чужой роли уже там.
+          for attempt in 1 2 3 4 5; do
+            git add agent-comms
+            git commit -m "chore(comms): rebuild derived"
+            if git push origin HEAD:comms; then
+              echo "производные пересобраны и запушены (попытка ${attempt})."
+              exit 0
+            fi
+            echo "push отклонён (попытка ${attempt}) — пересобираю поверх свежего origin/comms."
+            git reset --soft HEAD~1
+            git fetch --no-tags origin comms
+            git reset --hard origin/comms
+            run_derive
+            git diff --quiet && { echo "после чужого push расхождений нет."; exit 0; }
+          done
+
+          # Провал ОБЯЗАН быть заметным (требование заметности из 014): молча
+          # разошедшиеся производные — тот же класс, что потерянный дубль
+          # вердикта. Красный job виден без ручной сверки.
+          echo "::error::не удалось запушить производные за 5 попыток."
+          exit 1
