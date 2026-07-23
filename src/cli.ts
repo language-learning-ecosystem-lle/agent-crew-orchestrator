@@ -21,7 +21,7 @@
  * обязано быть дешевле и безопаснее, чем «сделать».
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { loadProtocolConfig } from "./config/load.js";
@@ -30,8 +30,16 @@ import { fileExistsAtRef, messagesAtRef } from "./fs/git.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
+import type { Expects } from "./thread/message.js";
+import { EXPECTS } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { renderThread } from "./thread/thread.js";
+import {
+  messageTimestamp,
+  planNewMessage,
+  planNewThread,
+  WriteRefusedError,
+} from "./thread/write.js";
 
 const USAGE = `usage (--ref обязателен всегда; --repo по умолчанию — репозиторий текущего каталога):
   agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
@@ -42,7 +50,9 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol check        --root <mail> --ref <ref> [--since <ref>]
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
-  agent-protocol mail         --root <mail> --ref <ref> --role <id>`;
+  agent-protocol mail         --root <mail> --ref <ref> --role <id>
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]`;
 
 const out = (line: string): void => {
   process.stdout.write(`${line}\n`);
@@ -380,6 +390,117 @@ const derive = (argv: readonly string[]): void => {
   process.exit(1);
 };
 
+const parseExpects = (raw: string): Expects => {
+  if (!(EXPECTS as readonly string[]).includes(raw)) {
+    fail(`--expects '${raw}' — допустимо ${EXPECTS.join(" | ")}`, 2);
+  }
+  return raw as Expects;
+};
+
+const parseWaitingOn = (raw: string, registry: RoleRegistry): string[] => {
+  const roles =
+    raw === "—"
+      ? []
+      : raw
+          .split(",")
+          .map((r) => r.trim())
+          .filter((r) => r !== "");
+  for (const role of roles) {
+    // Неизвестная роль КРАСИТ, а не отбрасывается молча — иначе потеря роли из
+    // объявления (боль 2) вернулась бы через инструмент записи.
+    if (!registry.isKnown(role)) fail(`в --waiting-on роль '${role}', которой нет в конфиге`, 2);
+  }
+  return roles;
+};
+
+/**
+ * Создать файл-сообщение в СУЩЕСТВУЮЩЕМ треде. Отказывается, если тред в
+ * legacy-форме (нет `messages/`): файловая запись обрезала бы его историю.
+ */
+const newMessage = (argv: readonly string[]): void => {
+  const root = required(argv, "--root");
+  const threadId = required(argv, "--thread");
+  const from = required(argv, "--from");
+  const registry = registryFrom(argv, repoOf(root));
+  if (!registry.isKnown(from)) fail(`роль '${from}' не значится в конфиге`, 2);
+
+  const threadDir = join(root, threadId);
+  if (!existsSync(threadDir)) fail(`тред '${threadId}' не найден в '${root}'`, 2);
+  const threadHasMessages = existsSync(join(threadDir, "messages"));
+
+  const text = readFile(required(argv, "--body-file"), "тело сообщения");
+  const waitingRaw = flag(argv, "--waiting-on");
+  let planned: ReturnType<typeof planNewMessage>;
+  try {
+    planned = planNewMessage({
+      from,
+      date: messageTimestamp(new Date()),
+      expects: parseExpects(required(argv, "--expects")),
+      ...(waitingRaw === undefined ? {} : { waitingOn: parseWaitingOn(waitingRaw, registry) }),
+      text,
+      threadHasMessages,
+    });
+  } catch (error) {
+    if (error instanceof WriteRefusedError) {
+      fail(error.message, 2);
+    }
+    throw error;
+  }
+
+  const path = join(threadDir, planned.path);
+  if (existsSync(path))
+    fail(`файл '${planned.path}' уже существует — две записи в одну секунду?`, 2);
+
+  if (argv.includes("--write")) {
+    writeOut(path, planned.content);
+    out(`agent-protocol: создано ${threadId}/${planned.path}`);
+    return;
+  }
+  out(`agent-protocol: создаст ${threadId}/${planned.path} (--write запишет):`);
+  out(planned.content);
+};
+
+/** Создать НОВЫЙ тред сразу в файловой форме (`_meta.md` + первое сообщение). */
+const newThread = (argv: readonly string[]): void => {
+  const root = required(argv, "--root");
+  const id = required(argv, "--id");
+  const registry = registryFrom(argv, repoOf(root));
+
+  const from = required(argv, "--from");
+  if (!registry.isKnown(from)) fail(`роль '${from}' не значится в конфиге`, 2);
+  const participants = required(argv, "--participants")
+    .split(",")
+    .map((r) => r.trim())
+    .filter((r) => r !== "");
+  for (const p of participants) {
+    if (!registry.isKnown(p)) fail(`участник '${p}' не значится в конфиге`, 2);
+  }
+
+  const threadDir = join(root, id);
+  if (existsSync(threadDir)) fail(`тред '${id}' уже существует`, 2);
+
+  const text = readFile(required(argv, "--body-file"), "тело первого сообщения");
+  const files = planNewThread({
+    title: required(argv, "--title"),
+    participants,
+    from,
+    date: messageTimestamp(new Date()),
+    expects: parseExpects(required(argv, "--expects")),
+    ...(flag(argv, "--waiting-on") === undefined
+      ? {}
+      : { waitingOn: parseWaitingOn(flag(argv, "--waiting-on") as string, registry) }),
+    text,
+  });
+
+  if (argv.includes("--write")) {
+    for (const file of files) writeOut(join(threadDir, file.path), file.content);
+    out(`agent-protocol: создан тред ${id} (${files.length} файлов)`);
+    return;
+  }
+  out(`agent-protocol: создаст тред ${id} (--write запишет):`);
+  for (const file of files) out(`- ${id}/${file.path}`);
+};
+
 const mail = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const role = required(argv, "--role");
@@ -410,6 +531,10 @@ const main = (argv: readonly string[]): void => {
     migrate(argv.slice(1));
   } else if (command === "derive") {
     derive(argv.slice(1));
+  } else if (command === "new-message") {
+    newMessage(argv.slice(1));
+  } else if (command === "new-thread") {
+    newThread(argv.slice(1));
   } else if (command === "mail") {
     mail(argv.slice(1));
   } else {
