@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { messageFileName, parseMessageFile, renderHeading, renderMessageFile } from "./message.js";
+import type { Message } from "./message.js";
+import {
+  compareMessageEntries,
+  messageFileName,
+  parseMessageFile,
+  renderHeading,
+  renderMessageFile,
+} from "./message.js";
 
 const FILE = `---
 from: dev-core
@@ -120,5 +127,63 @@ describe("renderHeading", () => {
     expect(heading).toBe(
       "## msg-001 · from: curator · 2026-07-22 · expects: none · [СВЕРХПИСАНО msg-002]",
     );
+  });
+});
+
+describe("compareMessageEntries", () => {
+  const entry = (
+    fileName: string,
+    fields: Message["fields"],
+  ): { fileName: string; message: Message } => ({
+    fileName,
+    message: { fields, text: "x" },
+  });
+
+  it("порядок по seq, а не по имени: позже по ленте с ранней датой всё равно позже", () => {
+    // Мини-репро 012: имя мигрированного ведёт датой, у github дата 07-23 <
+    // 07-24, поэтому сортировка ИМЁН поставила бы его первым. seq (2 > 1) держит
+    // порядок ленты.
+    const late = entry("2026-07-23-002-github.md", {
+      msg: 2,
+      seq: 2,
+      from: "github",
+      date: "2026-07-23",
+      expects: "none",
+    });
+    const early = entry("2026-07-24-001-curator.md", {
+      msg: 1,
+      seq: 1,
+      from: "curator",
+      date: "2026-07-24",
+      expects: "answer",
+    });
+
+    expect([late, early].sort(compareMessageEntries).map((e) => e.message.fields.seq)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("новые (без seq) идут после мигрированных, между собой — по имени", () => {
+    const migrated = entry("2026-07-24-001-curator.md", {
+      msg: 1,
+      seq: 1,
+      from: "curator",
+      date: "2026-07-24",
+      expects: "answer",
+    });
+    const freshEarly = entry("2026-07-25T09-00-00Z-dev-core.md", {
+      from: "dev-core",
+      date: "2026-07-25T09:00:00Z",
+      expects: "answer",
+    });
+    const freshLate = entry("2026-07-25T10-00-00Z-curator.md", {
+      from: "curator",
+      date: "2026-07-25T10:00:00Z",
+      expects: "answer",
+    });
+
+    expect(
+      [freshLate, freshEarly, migrated].sort(compareMessageEntries).map((e) => e.fileName),
+    ).toEqual([migrated.fileName, freshEarly.fileName, freshLate.fileName]);
   });
 });

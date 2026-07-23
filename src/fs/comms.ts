@@ -11,7 +11,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import type { MessageEntry, ThreadInput } from "../thread/check.js";
-import { parseMessageFile } from "../thread/message.js";
+import { compareMessageEntries, parseMessageFile } from "../thread/message.js";
 import { parseLegacyThread, parseMetaFile, type Thread } from "../thread/thread.js";
 
 const THREAD_DIR = /^\d{3}-/;
@@ -37,13 +37,16 @@ export const loadThread = (
   }
 
   const meta = parseMetaFile(readFileSync(join(dir, "_meta.md"), "utf8"));
+  // Порядок — по `seq` (`compareMessageEntries`), НЕ по имени файла: имя ведёт
+  // датой, а дата бывает немонотонна ленте (msg-069 в 012). Сначала читаем,
+  // потом сортируем компаратором — плоский `.sort()` имён врал бы.
   const entries: MessageEntry[] = readdirSync(messagesDir)
     .filter((name) => name.endsWith(".md"))
-    .sort()
     .map((fileName) => ({
       fileName,
       message: parseMessageFile(readFileSync(join(messagesDir, fileName), "utf8")),
-    }));
+    }))
+    .sort(compareMessageEntries);
 
   const input: ThreadInput = {
     id,

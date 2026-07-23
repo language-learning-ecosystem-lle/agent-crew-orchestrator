@@ -39,6 +39,7 @@ export {
 } from "./thread/check.js";
 export { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 export {
+  compareMessageEntries,
   EXPECTS,
   type Expects,
   type Message,
