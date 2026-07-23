@@ -105,6 +105,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # Тело уведомления одно для обеих форм записи (см. ниже). Строится
+          # один раз: факт merge + либо передача хода, либо явное «не передан».
+          BODY_TMP="$(mktemp)"
+          {
+            printf 'PR #%s (%s) **merged** by %s.\n' "$PR_NUMBER" "$PR_TITLE" "${MERGED_BY:-неизвестно}"
+            if [ -z "${ROLE:-}" ]; then
+              printf '\n⚠️ Ход не передан: %s — объявите ожидание вручную.\n' "$ROLE_PROBLEM"
+            fi
+          } > "$BODY_TMP"
+
           # До пяти попыток: в comms пишут параллельно живые роли. Протокол
           # append-only — свои правки каждый раз пересобираем ПОВЕРХ свежего
           # origin/comms, а не переносим старый текст (иначе чужая секция,
@@ -113,41 +123,52 @@ jobs:
             git fetch --no-tags origin comms
             git reset --hard origin/comms
 
-            # Номер сообщения считается по ФАКТИЧЕСКОМУ содержимому треда в
-            # момент записи — параллельная запись сдвигает нумерацию.
-            LAST=$(grep -oE '^## msg-[0-9]+' "$THREAD_FILE" | grep -oE '[0-9]+' | sort -n | tail -1)
-            NEXT=$(printf '%03d' $(( 10#${LAST:-0} + 1 )))
-
-            # Передача хода объявляется В ТРЕДЕ, канонической строкой
-            # `waiting-on → …` — INDEX генерируется из неё (тред 006).
+            # АДАПТИВНАЯ ЗАПИСЬ (тред 012, msg-063). Форма зависит от того,
+            # мигрирован ли тред:
             #
-            # Роли НЕ УГАДЫВАЕМ. Нет строки `role:` — сообщение о merge всё
-            # равно пишется (факт события ценен сам по себе), но ход не
-            # передаётся и об этом сказано прямо в теле: молчаливая передача
-            # хода наугад дороже, чем явное «объявите вручную». Прошлая версия
-            # угадывала всегда и была бы неправа в первом же PR роли dev-speech.
-            {
-              printf '\n## msg-%s · from: github · %s · expects: none\n\n' "$NEXT" "$(date -u +%Y-%m-%d)"
-              printf 'PR #%s (%s) **merged** by %s.\n' "$PR_NUMBER" "$PR_TITLE" "${MERGED_BY:-неизвестно}"
-              if [ -n "${ROLE:-}" ]; then
-                printf '\nwaiting-on → %s.\n' "$ROLE"
-              else
-                printf '\n⚠️ Ход не передан: %s — объявите ожидание вручную.\n' "$ROLE_PROBLEM"
+            # - МИГРИРОВАН (есть messages/): пишем ФАЙЛ-сообщение через пакет и
+            #   INDEX НЕ трогаем — производные (_thread.md + INDEX) соберёт
+            #   генератор. Дописать здесь _thread.md было бы фатально: генератор
+            #   пересоберёт его из messages/ БЕЗ нашей секции, и уведомление
+            #   исчезнет молча. Ровно та потеря, которую этот переход и
+            #   предотвращает.
+            # - LEGACY (нет messages/): дописываем _thread.md и прогоняем
+            #   rebuild-index, как раньше — для непереехавшего треда это верно.
+            #
+            # Обе ветки ПИШУТ и никогда не выходят без записи: merge-notify —
+            # единственный писатель по событию, и молчаливая потеря факта здесь
+            # недопустима (пункт 2 curator).
+            if [ -d "agent-comms/${THREAD}/messages" ]; then
+              WAIT_ARGS=""
+              [ -n "${ROLE:-}" ] && WAIT_ARGS="--waiting-on ${ROLE}"
+              if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
+                    --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
+                    --thread "$THREAD" --from github --expects none ${WAIT_ARGS} \
+                    --body-file "$BODY_TMP" --write); then
+                echo "::error::new-message отказал для мигрированного треда ${THREAD} — уведомление НЕ записано."
+                exit 1
               fi
-            } >> "$THREAD_FILE"
-
-            # INDEX руками больше не правится НИКЕМ — он производное от тредов.
-            # Раньше здесь стоял python-патч строки таблицы, и после треда 006
-            # это стало вторым писателем того же поля: бот ставил своё значение,
-            # а следующий прогон генератора возвращал объявленное в треде. Кто
-            # прав, зависело от того, кто отработал последним, — то есть ровно
-            # тот класс рассинхрона, ради которого INDEX и сделали генерируемым.
-            bash agent-comms/bin/rebuild-index.sh
+            else
+              # Номер считается по ФАКТИЧЕСКОМУ содержимому треда — параллельная
+              # запись сдвигает нумерацию.
+              LAST=$(grep -oE '^## msg-[0-9]+' "$THREAD_FILE" | grep -oE '[0-9]+' | sort -n | tail -1)
+              NEXT=$(printf '%03d' $(( 10#${LAST:-0} + 1 )))
+              {
+                printf '\n## msg-%s · from: github · %s · expects: none\n\n' "$NEXT" "$(date -u +%Y-%m-%d)"
+                cat "$BODY_TMP"
+                if [ -n "${ROLE:-}" ]; then
+                  printf '\nwaiting-on → %s.\n' "$ROLE"
+                fi
+              } >> "$THREAD_FILE"
+              # INDEX — производное; для legacy-треда генератора ещё нет как
+              # источника, поэтому реестр пока собираем сами (уйдёт с миграцией).
+              bash agent-comms/bin/rebuild-index.sh
+            fi
 
             git add agent-comms
             git commit -m "chore(comms): PR #${PR_NUMBER} merged — уведомление в тред ${THREAD}"
             if git push origin HEAD:comms; then
-              echo "Уведомление о merge PR #${PR_NUMBER} записано в ${THREAD} (msg-${NEXT})."
+              echo "Уведомление о merge PR #${PR_NUMBER} записано в ${THREAD}."
               exit 0
             fi
             echo "Push отклонён (попытка ${attempt}) — в comms писали параллельно, пересобираю."
