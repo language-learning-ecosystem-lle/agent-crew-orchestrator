@@ -14,9 +14,11 @@
  * Что сохраняется намеренно: исторические номера (включая дубли — в треде 012
  * их два), хвосты заголовков вроде `[СВЕРХПИСАНО msg-002]`, исходный порядок.
  * Ссылки «см. msg-003 п.4» в уже написанных телах обязаны продолжать указывать
- * на то, на что указывали.
+ * на то, на что указывали. Порядок держит `seq` (позиция) в имени файла, а не
+ * исторический номер: номера дублируются и переставили бы сообщения при
+ * сортировке имён — см. `verifyMigration` (второе условие).
  */
-import { messageFileName, renderMessageFile } from "./message.js";
+import { type Message, messageFileName, parseMessageFile, renderMessageFile } from "./message.js";
 import { parseLegacyThread, renderMetaFile, renderThread, type ThreadMeta } from "./thread.js";
 
 export type MigratedFile = {
@@ -29,12 +31,13 @@ export type Migration = {
   readonly meta: ThreadMeta;
   readonly files: readonly MigratedFile[];
   /**
-   * Два сообщения, дающие одно имя файла (та же роль, та же дата, тот же
-   * исторический номер). Это ОТКАЗ, а не предупреждение: запись такого треда
-   * молча затёрла бы одно сообщение другим, а побайтовый гард этого не поймал
-   * бы — он сверяет склейку из разобранных сообщений, а не то, что осталось на
-   * диске. Потеря обнаружилась бы при следующей регенерации, когда источником
-   * станут файлы.
+   * Два сообщения, дающие одно имя файла. С именем из `seq` (позиция уникальна
+   * по треду) это СТРУКТУРНО НЕВОЗМОЖНО из текущего `migrateLegacyThread` —
+   * массив всегда пуст. Оставлено НЕ как рабочая защита, а как sanity-guard от
+   * будущего бага в генерации имён: если `seq` однажды перестанет быть
+   * уникальным, коллизия поймается здесь, а не всплывёт потерей сообщения при
+   * регенерации. Раньше имя строилось из дублирующегося номера, и это была
+   * реальная защита; теперь — страховка.
    */
   readonly collisions: readonly string[];
 };
@@ -47,13 +50,21 @@ export const migrateLegacyThread = (
   const thread = parseLegacyThread(id, raw, knownRoles);
   const collisions: string[] = [];
 
+  // Позиция (`seq`) — порядковый индекс секции, он идёт в имя файла и
+  // обеспечивает, что сортировка имён при загрузке = исходный порядок. `msg`
+  // (исторический) остаётся в заголовке для ссылок.
+  const seqed: Message[] = thread.messages.map((message, at) => ({
+    ...message,
+    fields: { ...message.fields, seq: at + 1 },
+  }));
+
   const files: MigratedFile[] = [
     { path: "_meta.md", content: renderMetaFile(thread.meta) },
-    ...thread.messages.map((message) => ({
+    ...seqed.map((message) => ({
       path: `messages/${messageFileName(message.fields)}`,
       content: renderMessageFile(message),
     })),
-    { path: "_thread.md", content: renderThread(thread.meta, thread.messages) },
+    { path: "_thread.md", content: renderThread(thread.meta, seqed) },
   ];
 
   const names = new Set<string>();
@@ -67,22 +78,47 @@ export const migrateLegacyThread = (
   return { id, meta: thread.meta, files, collisions };
 };
 
+const firstDiff = (a: string, b: string): string => {
+  for (let at = 0; at < Math.max(a.length, b.length); at++) {
+    if (a[at] !== b[at]) {
+      const from = Math.max(0, at - 40);
+      return `расхождение на байте ${at}: было ${JSON.stringify(
+        a.slice(from, at + 20),
+      )}, стало ${JSON.stringify(b.slice(from, at + 20))}`;
+    }
+  }
+  return "длины совпали, но содержимое различается";
+};
+
 /**
- * Гард: склейка мигрированного воспроизводит исходник байт-в-байт.
- * Возвращает описание расхождения либо `undefined`, если всё сошлось.
+ * Гард миграции — ДВА условия, оба обязательны:
+ *
+ * 1. Склейка из ПАМЯТИ (сообщения в исходном порядке) воспроизводит исходный
+ *    `_thread.md` байт-в-байт.
+ * 2. Склейка после ЗАГРУЗКИ С ДИСКА (сообщения, отсортированные по имени файла —
+ *    ровно как это делает `loadThread`) даёт тот же результат.
+ *
+ * Второе условие добавлено потому, что первого НЕДОСТАТОЧНО: имя мигрированного
+ * файла раньше кодировало исторический номер, и при дублирующихся номерах
+ * (011/012) сортировка имён переставляла сообщения — склейка из памяти была
+ * верной, а из файлов на диске врала. Поймано командой `derive` уже ПОСЛЕ
+ * миграции; теперь ловится в гарде, до записи. `seq` в имени эту перестановку
+ * закрывает, но гард обязан это ДОКАЗЫВАТЬ, а не полагаться.
  */
 export const verifyMigration = (migration: Migration, original: string): string | undefined => {
   const rebuilt = migration.files.find((file) => file.path === "_thread.md")?.content;
   if (rebuilt === undefined) return "миграция не собрала _thread.md";
-  if (rebuilt === original) return undefined;
+  if (rebuilt !== original) return `склейка из памяти: ${firstDiff(original, rebuilt)}`;
 
-  for (let at = 0; at < Math.max(rebuilt.length, original.length); at++) {
-    if (rebuilt[at] !== original[at]) {
-      const from = Math.max(0, at - 40);
-      return `расхождение на байте ${at}: было ${JSON.stringify(
-        original.slice(from, at + 20),
-      )}, стало ${JSON.stringify(rebuilt.slice(from, at + 20))}`;
-    }
+  // Симуляция loadThread: сообщения из messages/, отсортированные по имени.
+  const fromDisk = migration.files
+    .filter((file) => file.path.startsWith("messages/"))
+    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+    .map((file) => parseMessageFile(file.content));
+  const rebuiltFromDisk = renderThread(migration.meta, fromDisk);
+  if (rebuiltFromDisk !== original) {
+    return `склейка после загрузки с диска (сортировка имён): ${firstDiff(original, rebuiltFromDisk)}`;
   }
-  return "длины совпали, но содержимое различается";
+
+  return undefined;
 };

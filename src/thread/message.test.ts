@@ -63,9 +63,12 @@ describe("messageFileName", () => {
     ).toBe("2026-07-23T13-45-12Z-curator.md");
   });
 
-  it("мигрированное — дата, позиция, роль; и сортируется раньше нового в тот же день", () => {
+  it("мигрированное — имя из ПОЗИЦИИ (seq), а не из исторического номера", () => {
+    // Номер (msg) дублируется и переставил бы сообщения при сортировке; в имя
+    // идёт seq (позиция), номер остаётся только в заголовке.
     const migrated = messageFileName({
-      msg: 3,
+      msg: 2,
+      seq: 3,
       from: "curator",
       date: "2026-07-23",
       expects: "answer",
@@ -78,6 +81,12 @@ describe("messageFileName", () => {
 
     expect(migrated).toBe("2026-07-23-003-curator.md");
     expect([fresh, migrated].sort()).toEqual([migrated, fresh]);
+  });
+
+  it("мигрированное без seq — ошибка (имя нельзя построить из одного номера)", () => {
+    expect(() =>
+      messageFileName({ msg: 2, from: "curator", date: "2026-07-23", expects: "answer" }),
+    ).toThrow(/нет 'seq'/);
   });
 });
 

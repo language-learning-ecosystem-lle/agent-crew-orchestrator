@@ -41,6 +41,7 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol thread build --root <mail> --ref <ref> --id <NNN-slug> [--write]
   agent-protocol check        --root <mail> --ref <ref> [--since <ref>]
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
+  agent-protocol derive       --root <mail> --ref <ref> [--write]
   agent-protocol mail         --root <mail> --ref <ref> --role <id>`;
 
 const out = (line: string): void => {
@@ -290,8 +291,9 @@ const migrate = (argv: readonly string[]): void => {
       failed++;
       continue;
     }
-    // Коллизия имён — тоже отказ, а не строчка в stderr: запись затёрла бы одно
-    // сообщение другим, и потеря всплыла бы только при следующей регенерации.
+    // Коллизия имён — отказ (sanity-guard: с именем из seq она структурно
+    // невозможна, но если генерация имён однажды сломается, потеря сообщения
+    // не должна пройти молча — см. Migration.collisions).
     if (migration.collisions.length > 0) {
       for (const collision of migration.collisions) {
         err(`- ${id}: КОЛЛИЗИЯ ИМЁН, миграция не принята — ${collision}`);
@@ -311,6 +313,71 @@ const migrate = (argv: readonly string[]): void => {
 
   if (failed > 0) fail(`миграция не принята для ${failed} тредов`, 1);
   if (!doWrite) out("agent-protocol: показан план; запись — с --write");
+};
+
+/**
+ * Пересобрать ВСЕ производные разом: `_thread.md` каждого мигрированного треда
+ * (у кого есть `messages/`) + `INDEX.md`. Это то, что зовёт action на push в
+ * ветку почты — один вызов вместо цикла в YAML.
+ *
+ * Без `--write` — сухой прогон: показывает, что РАЗОШЛОСЬ, и выходит кодом 1,
+ * если расхождение есть. Молчаливо разошедшиеся производные — тот же класс, что
+ * потерянный дубль вердикта: если сборка не совпала с диском, это обязано быть
+ * видно (требование curated из 014), а не тихо «почти то же».
+ */
+const derive = (argv: readonly string[]): void => {
+  const root = required(argv, "--root");
+  const registry = registryFrom(argv, repoOf(root));
+  const doWrite = argv.includes("--write");
+  const threads = loadThreads(root, registry.ids());
+
+  const targets: { path: string; rendered: string }[] = [];
+  for (const loaded of threads) {
+    // `_thread.md` пересобирается только у мигрированных: у legacy он ИСТОЧНИК,
+    // трогать его нельзя — перезапись сгенерированным сломала бы ещё не
+    // перенесённый тред.
+    if (loaded.legacy) continue;
+    targets.push({
+      path: join(root, loaded.thread.id, "_thread.md"),
+      rendered: renderThread(loaded.thread.meta, loaded.thread.messages),
+    });
+  }
+  targets.push({
+    path: join(root, "INDEX.md"),
+    rendered: renderIndex(threads.map((l) => l.thread)),
+  });
+
+  const drifted: string[] = [];
+  for (const target of targets) {
+    let current = "";
+    try {
+      current = readFileSync(target.path, "utf8");
+    } catch {
+      current = "";
+    }
+    if (current !== target.rendered) drifted.push(target.path);
+  }
+
+  if (doWrite) {
+    for (const target of drifted) {
+      const rendered = targets.find((t) => t.path === target)?.rendered ?? "";
+      writeOut(target, rendered);
+    }
+    out(
+      drifted.length === 0
+        ? "agent-protocol: производные уже совпадают — писать нечего"
+        : `agent-protocol: пересобрано производных: ${drifted.length}`,
+    );
+    return;
+  }
+
+  if (drifted.length === 0) {
+    out(`agent-protocol: ok — производные совпадают (${targets.length} файлов проверено)`);
+    return;
+  }
+  err("agent-protocol: производные разошлись с источником (--write пересоберёт):");
+  for (const path of drifted) err(`- ${path}`);
+  process.exit(1);
 };
 
 const mail = (argv: readonly string[]): void => {
@@ -341,6 +408,8 @@ const main = (argv: readonly string[]): void => {
     checkAll(argv.slice(1));
   } else if (command === "migrate") {
     migrate(argv.slice(1));
+  } else if (command === "derive") {
+    derive(argv.slice(1));
   } else if (command === "mail") {
     mail(argv.slice(1));
   } else {

@@ -174,24 +174,40 @@ describe("migrateLegacyThread", () => {
     expect(verifyMigration(migration, LEGACY)).toBeUndefined();
   });
 
-  it("сообщает о коллизии имён — иначе одно сообщение затёрло бы другое", () => {
-    // Совпасть должны роль, дата и исторический номер разом. Побайтовый гард
-    // такую пару НЕ ловит: он сверяет склейку из разобранных сообщений, а не
-    // то, что осталось бы на диске после записи.
-    const collided = LEGACY.replace(
-      "## msg-002 · from: dev-core · 2026-07-23 · expects: none",
-      "## msg-001 · from: curator · 2026-07-23 · expects: none",
-    );
-    const migration = migrateLegacyThread("012-x", collided, ROLES);
+  it("дубль исторического номера НЕ ломает порядок и НЕ даёт коллизию (имя из seq)", () => {
+    // Регрессия: до seq имя строилось из номера, и два msg-002 (dev-core,
+    // curator) давали файлы `002-dev-core`/`002-curator`, которые сортировка
+    // переставляла (c < d) — загрузка с диска врала порядком. Второе условие
+    // verifyMigration (round-trip через сортировку имён) это теперь ловит.
+    const dup = `# 012-x · дубль номера
 
-    expect(migration.collisions).toEqual([
-      "два сообщения дают одно имя файла: messages/2026-07-23-001-curator.md",
+participants: curator, dev-core · status: open
+
+## msg-001 · from: curator · 2026-07-23 · expects: answer
+
+Первое.
+
+## msg-002 · from: dev-core · 2026-07-23 · expects: answer
+
+Второе (dev-core раньше curator).
+
+## msg-002 · from: curator · 2026-07-23 · expects: none
+
+Третье, тот же номер.
+`;
+    const migration = migrateLegacyThread("012-x", dup, ["curator", "dev-core"]);
+
+    // Имена из позиций 1/2/3 — сортировка совпадает с порядком, коллизий нет.
+    expect(migration.files.map((file) => file.path)).toEqual([
+      "_meta.md",
+      "messages/2026-07-23-001-curator.md",
+      "messages/2026-07-23-002-dev-core.md",
+      "messages/2026-07-23-003-curator.md",
+      "_thread.md",
     ]);
-    expect(verifyMigration(migration, collided)).toBeUndefined();
-  });
-
-  it("на чистом треде коллизий нет", () => {
-    expect(migrateLegacyThread("012-x", LEGACY, ROLES).collisions).toEqual([]);
+    expect(migration.collisions).toEqual([]);
+    // Оба условия гарда, включая round-trip через сортировку имён.
+    expect(verifyMigration(migration, dup)).toBeUndefined();
   });
 
   it("гард показывает место расхождения, а не просто «не совпало»", () => {
