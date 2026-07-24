@@ -32,6 +32,27 @@ export class WriteRefusedError extends Error {
 /** UTC-метка сообщения из момента времени: `2026-07-24T10:30:00Z` (без миллисекунд). */
 export const messageTimestamp = (at: Date): string => `${at.toISOString().slice(0, 19)}Z`;
 
+/**
+ * Метка НОВОГО сообщения, МОНОТОННАЯ по ленте. Сообщение дописано ПОСЛЕ уже
+ * лежащих — значит его метка обязана быть строго больше последней из них, иначе
+ * перекос часов писателей переставляет ленту. Реальный случай (тред 012): reply
+ * получил метку `22:45`, а вопрос curator, на который он отвечает, — `22:47`
+ * (часы curator впереди моих), и ответ встал ПЕРЕД вопросом, а INDEX показал ход
+ * не у того. Тот же класс, что seq для мигрированных: порядок не должен зависеть
+ * от согласованности часов.
+ *
+ * `existing` — метки уже лежащих НОВЫХ сообщений (мигрированные, датированные без
+ * времени, сюда НЕ входят: по компаратору они всегда раньше новых, а их «дата»
+ * бывает вообще в будущем относительно UTC). Возвращаем `max(now, последняя+1s)`
+ * — попутно это разводит и коллизию имён при двух записях в одну секунду.
+ */
+export const nextMessageTimestamp = (now: Date, existing: readonly string[]): string => {
+  const nowIso = messageTimestamp(now);
+  const latest = existing.reduce((max, ts) => (ts > max ? ts : max), "");
+  if (latest === "" || nowIso > latest) return nowIso;
+  return messageTimestamp(new Date(new Date(latest).getTime() + 1000));
+};
+
 export type NewMessageInput = {
   readonly from: string;
   readonly date: string;

@@ -21,7 +21,7 @@
  * обязано быть дешевле и безопаснее, чем «сделать».
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { loadProtocolConfig } from "./config/load.js";
@@ -31,11 +31,12 @@ import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 import type { Expects } from "./thread/message.js";
-import { EXPECTS } from "./thread/message.js";
+import { EXPECTS, parseMessageFile } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { renderThread } from "./thread/thread.js";
 import {
   messageTimestamp,
+  nextMessageTimestamp,
   planNewMessage,
   planNewThread,
   WriteRefusedError,
@@ -426,7 +427,19 @@ const newMessage = (argv: readonly string[]): void => {
 
   const threadDir = join(root, threadId);
   if (!existsSync(threadDir)) fail(`тред '${threadId}' не найден в '${root}'`, 2);
-  const threadHasMessages = existsSync(join(threadDir, "messages"));
+  const messagesDir = join(threadDir, "messages");
+  const threadHasMessages = existsSync(messagesDir);
+
+  // Метка монотонна по ленте: собираем метки уже лежащих НОВЫХ сообщений (с
+  // временем — мигрированные, датированные без времени, исключаем) и клампим
+  // новую строго после последней. Без этого перекос часов писателей ставит
+  // ответ раньше вопроса (реальный случай в 012).
+  const existingTs = threadHasMessages
+    ? readdirSync(messagesDir)
+        .filter((name) => name.endsWith(".md"))
+        .map((name) => parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date)
+        .filter((date) => date.includes("T"))
+    : [];
 
   const text = readFile(required(argv, "--body-file"), "тело сообщения");
   const waitingRaw = flag(argv, "--waiting-on");
@@ -434,7 +447,7 @@ const newMessage = (argv: readonly string[]): void => {
   try {
     planned = planNewMessage({
       from,
-      date: messageTimestamp(new Date()),
+      date: nextMessageTimestamp(new Date(), existingTs),
       expects: parseExpects(required(argv, "--expects")),
       ...(waitingRaw === undefined ? {} : { waitingOn: parseWaitingOn(waitingRaw, registry) }),
       text,
