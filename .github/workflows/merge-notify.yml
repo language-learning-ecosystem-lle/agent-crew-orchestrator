@@ -160,9 +160,13 @@ jobs:
                   printf '\nwaiting-on → %s.\n' "$ROLE"
                 fi
               } >> "$THREAD_FILE"
-              # INDEX — производное; для legacy-треда генератора ещё нет как
-              # источника, поэтому реестр пока собираем сами (уйдёт с миграцией).
-              bash agent-comms/bin/rebuild-index.sh
+              # INDEX НЕ трогаем — производное; его пересоберёт генератор
+              # comms-derived на этот же push, ровно как для мигрированных тредов
+              # (loadThreads/derive читают и legacy `_thread.md`). Прежний
+              # `rebuild-index.sh` убран: он брал список ролей из `ROLES.md`,
+              # который упразднён, и на legacy-тредах падал бы «не смог прочитать
+              # роли — INDEX не трогаю» — тихий отказ уведомления о merge ровно
+              # там, куда оно и пойдёт (009/010) при возврате john к фронтам.
             fi
 
             git add agent-comms
