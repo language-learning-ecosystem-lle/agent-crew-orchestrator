@@ -72,6 +72,7 @@ export {
   messageTimestamp,
   type NewMessageInput,
   type NewThreadInput,
+  nextMessageTimestamp,
   type PlannedFile,
   planNewMessage,
   planNewThread,

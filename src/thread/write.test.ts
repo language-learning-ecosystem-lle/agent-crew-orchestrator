@@ -2,11 +2,44 @@ import { describe, expect, it } from "vitest";
 
 import { parseMessageFile } from "./message.js";
 import { parseMetaFile } from "./thread.js";
-import { messageTimestamp, planNewMessage, planNewThread, WriteRefusedError } from "./write.js";
+import {
+  messageTimestamp,
+  nextMessageTimestamp,
+  planNewMessage,
+  planNewThread,
+  WriteRefusedError,
+} from "./write.js";
 
 describe("messageTimestamp", () => {
   it("даёт UTC-метку без миллисекунд", () => {
     expect(messageTimestamp(new Date("2026-07-24T10:30:00.123Z"))).toBe("2026-07-24T10:30:00Z");
+  });
+});
+
+describe("nextMessageTimestamp", () => {
+  it("без предыдущих новых сообщений — просто метка now", () => {
+    expect(nextMessageTimestamp(new Date("2026-07-23T22:45:21Z"), [])).toBe("2026-07-23T22:45:21Z");
+  });
+
+  it("now позже последней — берём now", () => {
+    expect(
+      nextMessageTimestamp(new Date("2026-07-23T22:50:00Z"), [
+        "2026-07-23T22:32:28Z",
+        "2026-07-23T22:47:00Z",
+      ]),
+    ).toBe("2026-07-23T22:50:00Z");
+  });
+
+  it("часы писателя ПОЗАДИ последней метки — кламп на секунду после неё, не раньше вопроса", () => {
+    // Реальный случай 012: ответ пишется в 22:45 (мои часы), а вопрос curator,
+    // на который он отвечает, уже лежит с меткой 22:47 (часы curator впереди).
+    // Без клампа ответ встал бы ПЕРЕД вопросом.
+    expect(
+      nextMessageTimestamp(new Date("2026-07-23T22:45:21Z"), [
+        "2026-07-23T22:32:28Z",
+        "2026-07-23T22:47:00Z",
+      ]),
+    ).toBe("2026-07-23T22:47:01Z");
   });
 });
 
