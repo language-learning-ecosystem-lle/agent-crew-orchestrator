@@ -63,6 +63,7 @@ import {
 import { foldLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
+import { type OrchestratorPaths, orchestratorPaths, renderPaths } from "./orchestrator/paths.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
@@ -94,15 +95,21 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
   agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
-  agent-protocol orchestrator status --journal <path> [--now <iso>] [--enable-flag <path>] [--mode-file <path>] [--holds <dir>]
-  agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
-  agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--force-flag <path>] [--now <iso>] [--write]
-  agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> --force-flag <path> [--holds <dir>] [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
-  agent-protocol orchestrator hold   --mode take    --holds <dir> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--write]
-  agent-protocol orchestrator hold   --mode release --holds <dir> --role <id> [--write]
-  agent-protocol orchestrator log    --journal <path>
-  agent-protocol orchestrator stop   --mode graceful --stop-flag <path> [--write]
-  agent-protocol orchestrator stop   --mode force --force-flag <path> --by <who> --reason <why> --root <mail> --ref <ref> [--repo <p>] --thread <slug> [--write]
+
+ОРКЕСТРАТОР: пути (журнал, флаги, holdʼы, корень почты) берутся ИЗ КОНФИГА,
+секция 'orchestrator'. Флаги-пути ниже — переопределение для проверок, в
+эксплуатации не нужны; обязателен только --ref.
+  agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
+  agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
+  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>]
+  agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write]
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+  agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
+  agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
+  agent-protocol orchestrator log    --ref <ref> [--journal <p>]
+  agent-protocol orchestrator stop   --mode graceful --ref <ref> [--stop-flag <p>] [--write]
+  agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--repo <p>] [--force-flag <p>] [--root <mail>] [--write]
   agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]`;
 
 const out = (line: string): void => {
@@ -626,6 +633,73 @@ const mail = (argv: readonly string[]): void => {
 };
 
 /**
+ * ПУТИ ОРКЕСТРАТОРА БЕРУТСЯ ИЗ КОНФИГА, а не из аргументов (решение john, тред
+ * 012, 22:45). Флаг остаётся уважаемым переопределением — им пользуются проверки
+ * и разовые прогоны на копии почты, — но ЭКСПЛУАТАЦИЯ не должна знать ни одного
+ * пути: `enable`, `daemon`, `status` работают без единого `--journal`.
+ *
+ * Секция `orchestrator` в конфиге необязательна (пакет проектируется как чужой),
+ * и её отсутствие ловится ЗДЕСЬ, громко: молчаливое умолчание вроде `.orchestrator`
+ * означало бы, что демон пишет журнал туда, где его никто не ищет.
+ */
+const pathsFrom = (argv: readonly string[]): OrchestratorPaths => {
+  const loaded = configFrom(argv, undefined);
+  const section = loaded.config.orchestrator;
+  if (section === undefined) {
+    return fail(
+      `в конфиге на ${loaded.ref} нет секции 'orchestrator' — добавьте { state, mailCheckout, ref }`,
+      2,
+    );
+  }
+  return orchestratorPaths({
+    repo: flag(argv, "--repo") ?? repoOf(process.cwd()),
+    orchestrator: section,
+    mail: loaded.config.mail,
+  });
+};
+
+/**
+ * Включение и выключение ЗАПУСКОВ — командой, а не `touch` по пути из чужой
+ * памяти (решение john, 22:45). Команда владеет каталогом состояния и создаёт
+ * его сама; печатает ГРОМКО: каким состояние было ДО, каким стало, где лежит
+ * флаг.
+ *
+ * ЧЕСТНО О ГАРАНТИИ: ни `touch`, ни эта команда не отличают john от агента.
+ * «Включает человек» — гарантия процедурная и была такой всегда; CLI её не
+ * усиливает и не ослабляет, он убирает из процедуры места, где ошибиться может
+ * каждый. Техническая гарантия (секрет, подпись) — отдельная развилка.
+ */
+const orchestratorEnable = (argv: readonly string[], on: boolean): void => {
+  const paths = pathsFrom(argv);
+  const was = existsSync(paths.enableFlag);
+  const write = argv.includes("--write");
+
+  if (was === on) {
+    out(`agent-protocol: запуски уже ${on ? "включены" : "выключены"} — ничего не меняю`);
+    out(`флаг: ${paths.enableFlag}`);
+    return;
+  }
+  if (!write) {
+    out(
+      `agent-protocol: ${on ? "включит" : "выключит"} запуски (сейчас ${was ? "включены" : "выключены"}); --write выполнит`,
+    );
+    out(`флаг: ${paths.enableFlag}`);
+    return;
+  }
+
+  if (on) {
+    mkdirSync(paths.state, { recursive: true });
+    writeFileSync(paths.enableFlag, "", "utf8");
+  } else {
+    rmSync(paths.enableFlag);
+  }
+  out(
+    `agent-protocol: запуски ${on ? "ВКЛЮЧЕНЫ" : "ВЫКЛЮЧЕНЫ"} (было: ${was ? "включены" : "выключены"})`,
+  );
+  out(renderPaths(paths));
+};
+
+/**
  * Момент, относительно которого считается `overdue` в `status`, и метка события
  * в `record`. По умолчанию — сейчас; `--now <iso>` фиксирует его для проверок
  * (тот же приём инъекции времени, что у ядра записи).
@@ -663,34 +737,38 @@ const loadHolds = (dir: string): HoldRecord[] => {
  * наличие файла-флага; показ его здесь и подтверждает персистентность (файл на
  * диске переживает ребут).
  *
- * S5: `--holds` добавляет строки ручных holdʼов — «роль занята человеком».
+ * S5: holdʼы — «роль занята человеком».
+ *
+ * S6: пути берутся ИЗ КОНФИГА, поэтому `status` показывает РЕЖИМ ЦЕЛИКОМ без
+ * единого аргумента: аренды, holdʼы, включены ли запуски и где лежат файлы.
+ * Требование «чтобы это не жило в чьей-то памяти» до сих пор было выполнено
+ * только на бумаге — команда умела показать режим, но лишь тому, кто помнил
+ * пути. Флаги-пути остаются переопределением для проверок на копии.
  */
 const orchestratorStatus = (argv: readonly string[]): void => {
-  const path = required(argv, "--journal");
-  const events = existsSync(path) ? parseJournal(readFile(path, "журнал оркестратора")) : [];
+  const paths = pathsFrom(argv);
+  const journal = flag(argv, "--journal") ?? paths.journal;
+  const holds = flag(argv, "--holds") ?? paths.holds;
+  const enableFlag = flag(argv, "--enable-flag") ?? paths.enableFlag;
+
+  const events = existsSync(journal) ? parseJournal(readFile(journal, "журнал оркестратора")) : [];
   const now = orchestratorNow(argv);
   out(renderStatus(foldLeases(events, now)));
+  out(renderHolds(foldHolds(loadHolds(holds), now)));
 
-  // S5: holdʼы — часть «что сейчас с контуром»; забытый (просроченный) hold
-  // должен быть видно той же командой, что и повисшую аренду.
-  const holds = flag(argv, "--holds");
-  if (holds !== undefined) out(renderHolds(foldHolds(loadHolds(holds), now)));
-
+  const launchesEnabled = existsSync(enableFlag);
   const modeFile = flag(argv, "--mode-file");
-  const enableFlag = flag(argv, "--enable-flag");
-  if (modeFile === undefined && enableFlag === undefined) return;
-
-  const launchesEnabled = enableFlag !== undefined && existsSync(enableFlag);
   if (modeFile === undefined) {
     out(`запуски: ${launchesEnabled ? "включены" : "выключены"}`);
-    return;
+  } else {
+    const mode = readFile(modeFile, "режим ребута").trim();
+    if (mode !== "systemd" && mode !== "manual") {
+      fail(`режим ребута '${mode}' в '${modeFile}' — ожидается systemd | manual`, 2);
+      return;
+    }
+    out(describeReboot(mode, launchesEnabled));
   }
-  const mode = readFile(modeFile, "режим ребута").trim();
-  if (mode !== "systemd" && mode !== "manual") {
-    fail(`режим ребута '${mode}' в '${modeFile}' — ожидается systemd | manual`, 2);
-    return;
-  }
-  out(describeReboot(mode, launchesEnabled));
+  out(renderPaths(paths));
 };
 
 /**
@@ -726,7 +804,7 @@ const orchestratorSystemdUnit = (argv: readonly string[]): void => {
  * опечатка не теряется молча — `status` покажет её строкой.
  */
 const orchestratorRecord = (argv: readonly string[]): void => {
-  const path = required(argv, "--journal");
+  const path = flag(argv, "--journal") ?? pathsFrom(argv).journal;
   const raw: Record<string, unknown> = {
     kind: required(argv, "--kind"),
     ts: messageTimestamp(orchestratorNow(argv)),
@@ -999,10 +1077,11 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
  * инъектируется: приёмка целится в реальный бинарник, проверки — в стаб.
  */
 const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
-  const journalPath = required(argv, "--journal");
+  const paths = pathsFrom(argv);
+  const journalPath = flag(argv, "--journal") ?? paths.journal;
   const roleId = required(argv, "--role");
   const thread = required(argv, "--thread");
-  const mailRoot = required(argv, "--root");
+  const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
   const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
 
   const registry = registryFrom(argv, undefined);
@@ -1081,13 +1160,16 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
  * кода демона: он одинаков, отличается лишь то, как его запускают.
  */
 const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
-  const journalPath = required(argv, "--journal");
-  const mailRoot = required(argv, "--root");
+  // S6: ни одного пути в команде эксплуатации — всё из конфига; флаги остались
+  // переопределением для проверок на копии почты.
+  const paths = pathsFrom(argv);
+  const journalPath = flag(argv, "--journal") ?? paths.journal;
+  const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
   const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
-  const enableFlag = required(argv, "--enable-flag");
-  const stopFlag = required(argv, "--stop-flag");
-  const forceFlag = required(argv, "--force-flag");
-  const holdsDir = flag(argv, "--holds");
+  const enableFlag = flag(argv, "--enable-flag") ?? paths.enableFlag;
+  const stopFlag = flag(argv, "--stop-flag") ?? paths.stopFlag;
+  const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
+  const holdsDir = flag(argv, "--holds") ?? paths.holds;
 
   const registry = registryFrom(argv, undefined);
   const ids = registry.ids();
@@ -1126,8 +1208,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       : [];
     // Holdʼы читаются КАЖДЫЙ тик, а не раз при старте: ручную сессию берут и
     // отпускают, пока демон уже крутится.
-    const held =
-      holdsDir === undefined ? [] : heldRoles(foldHolds(loadHolds(holdsDir), new Date()));
+    const held = heldRoles(foldHolds(loadHolds(holdsDir), new Date()));
     const decision = planTick({
       enabled: existsSync(enableFlag),
       held,
@@ -1191,7 +1272,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
 
 /** Вывод журнала наружу для john (S4): история событий по порядку, читаемо. */
 const orchestratorLog = (argv: readonly string[]): void => {
-  const path = required(argv, "--journal");
+  const path = flag(argv, "--journal") ?? pathsFrom(argv).journal;
   const events = existsSync(path) ? parseJournal(readFile(path, "журнал оркестратора")) : [];
   out(renderLog(events));
 };
@@ -1212,7 +1293,7 @@ const orchestratorStop = (argv: readonly string[]): void => {
   const write = argv.includes("--write");
 
   if (mode === "graceful") {
-    const stopFlag = required(argv, "--stop-flag");
+    const stopFlag = flag(argv, "--stop-flag") ?? pathsFrom(argv).stopFlag;
     if (!write) {
       out(
         `agent-protocol: создаст стоп-флаг '${stopFlag}' (демон дочитает текущее и гаснет); --write выполнит`,
@@ -1226,10 +1307,11 @@ const orchestratorStop = (argv: readonly string[]): void => {
   }
 
   // force: флаг с кто/почему + объявление в тред.
-  const forceFlag = required(argv, "--force-flag");
+  const paths = pathsFrom(argv);
+  const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
   const by = required(argv, "--by");
   const why = required(argv, "--reason");
-  const root = required(argv, "--root");
+  const root = flag(argv, "--root") ?? paths.mailRoot;
   const threadId = required(argv, "--thread");
   const registry = registryFrom(argv, repoOf(root));
   // Объявление в тред подписывается ТЕМ, КТО ФОРСИТ (`--by`), решение curator:
@@ -1275,7 +1357,7 @@ const orchestratorHold = (argv: readonly string[]): void => {
     fail(`--mode '${mode}' — допустимо take | release`, 2);
     return;
   }
-  const holds = required(argv, "--holds");
+  const holds = flag(argv, "--holds") ?? pathsFrom(argv).holds;
   const roleId = required(argv, "--role");
   const write = argv.includes("--write");
   const path = join(holds, roleId);
@@ -1364,6 +1446,10 @@ const main = async (argv: readonly string[]): Promise<void> => {
     orchestratorStop(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "hold") {
     orchestratorHold(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "enable") {
+    orchestratorEnable(argv.slice(2), true);
+  } else if (command === "orchestrator" && subcommand === "disable") {
+    orchestratorEnable(argv.slice(2), false);
   } else if (command === "orchestrator" && subcommand === "systemd-unit") {
     orchestratorSystemdUnit(argv.slice(2));
   } else {
