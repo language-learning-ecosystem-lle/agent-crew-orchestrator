@@ -21,12 +21,22 @@
  * обязано быть дешевле и безопаснее, чем «сделать».
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 
 import { loadProtocolConfig } from "./config/load.js";
 import { loadThreads } from "./fs/comms.js";
 import { fileExistsAtRef, messagesAtRef } from "./fs/git.js";
+import { orchestratorEventSchema, parseJournal, renderEventLine } from "./orchestrator/journal.js";
+import { foldLeases } from "./orchestrator/lease.js";
+import { renderStatus } from "./orchestrator/status.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
@@ -53,7 +63,9 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol derive       --root <mail> --ref <ref> [--write]
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
   agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]`;
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
+  agent-protocol orchestrator status --journal <path> [--now <iso>]
+  agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]`;
 
 const out = (line: string): void => {
   process.stdout.write(`${line}\n`);
@@ -526,6 +538,78 @@ const mail = (argv: readonly string[]): void => {
   for (const id of threadsWaitingOn(threads, role)) out(id);
 };
 
+/**
+ * Момент, относительно которого считается `overdue` в `status`, и метка события
+ * в `record`. По умолчанию — сейчас; `--now <iso>` фиксирует его для проверок
+ * (тот же приём инъекции времени, что у ядра записи).
+ */
+const orchestratorNow = (argv: readonly string[]): Date => {
+  const raw = flag(argv, "--now");
+  if (raw === undefined) return new Date();
+  const at = new Date(raw);
+  if (Number.isNaN(at.getTime())) return fail(`--now '${raw}' — не разбирается как дата`, 2);
+  return at;
+};
+
+/**
+ * Витрина состояния оркестратора — свёртка ЛОКАЛЬНОГО журнала. Отсутствующий
+ * журнал — это пустое состояние (сессий ещё не было), а не ошибка: файл
+ * появляется с первым событием. Нечитаемый по ДРУГОЙ причине — громкий отказ
+ * внутри `readFile`.
+ */
+const orchestratorStatus = (argv: readonly string[]): void => {
+  const path = required(argv, "--journal");
+  const events = existsSync(path) ? parseJournal(readFile(path, "журнал оркестратора")) : [];
+  out(renderStatus(foldLeases(events, orchestratorNow(argv))));
+};
+
+/**
+ * Дописать ОДНО событие в журнал. Это write-примитив, которым с S1 пользуется
+ * демон; в S0 он же делает шаг воспроизводимым руками. Форма события проверяется
+ * схемой (обязательность полей по виду — `lease-acquired` без `--deadline`,
+ * `lease-released` без `--reason` не пройдут), а не вручную. Роль против конфига
+ * здесь НЕ сверяется намеренно: журнал — собственный локальный лог оркестратора,
+ * авторитет «реальна ли роль» — тот конфиг, по которому демон и решил запуск;
+ * повторная сверка связала бы локальный append с git-fetch без новой гарантии, а
+ * опечатка не теряется молча — `status` покажет её строкой.
+ */
+const orchestratorRecord = (argv: readonly string[]): void => {
+  const path = required(argv, "--journal");
+  const raw: Record<string, unknown> = {
+    kind: required(argv, "--kind"),
+    ts: messageTimestamp(orchestratorNow(argv)),
+    role: required(argv, "--role"),
+    thread: required(argv, "--thread"),
+  };
+  for (const [option, field] of [
+    ["--deadline", "deadline"],
+    ["--reason", "reason"],
+    ["--mode", "mode"],
+  ] as const) {
+    const value = flag(argv, option);
+    if (value !== undefined) raw[field] = value;
+  }
+
+  const parsed = orchestratorEventSchema.safeParse(raw);
+  if (!parsed.success) {
+    // fail завершает процесс; return — чтобы CFA сузила parsed к успеху ниже
+    // (значение из void-функции не возвращаем — на это ругался бы линтер).
+    fail(`событие не прошло валидацию: ${parsed.error.issues.map((i) => i.message).join("; ")}`, 2);
+    return;
+  }
+  const event = parsed.data;
+  const line = renderEventLine(event);
+
+  if (argv.includes("--write")) {
+    mkdirSync(dirname(path), { recursive: true });
+    appendFileSync(path, `${line}\n`, "utf8");
+    out(`agent-protocol: записано событие ${event.kind} (${event.role} · ${event.thread})`);
+    return;
+  }
+  out(`agent-protocol: допишет в '${path}' (--write запишет):`);
+  out(line);
+};
+
 const main = (argv: readonly string[]): void => {
   const [command, subcommand] = argv;
   if (command === "config" && subcommand === "check") {
@@ -550,6 +634,10 @@ const main = (argv: readonly string[]): void => {
     newThread(argv.slice(1));
   } else if (command === "mail") {
     mail(argv.slice(1));
+  } else if (command === "orchestrator" && subcommand === "status") {
+    orchestratorStatus(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "record") {
+    orchestratorRecord(argv.slice(2));
   } else {
     fail(USAGE, 2);
   }
