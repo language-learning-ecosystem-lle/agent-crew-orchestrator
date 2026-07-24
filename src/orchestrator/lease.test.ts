@@ -151,3 +151,26 @@ describe("foldLeases — несколько связок", () => {
     expect(foldLeases([], NOW)).toEqual([]);
   });
 });
+
+describe("foldLeases — launch-refused не создаёт аренду", () => {
+  const refused = (role: string, thread: string): OrchestratorEvent => ({
+    kind: "launch-refused",
+    ts: ts(),
+    role,
+    thread,
+    reason: "run-budget",
+  });
+
+  it("связка только с launch-refused — фантомной аренды нет", () => {
+    expect(foldLeases([refused("dev-core", "t")], NOW)).toEqual([]);
+  });
+
+  it("launch-refused между реальными событиями связку не искажает", () => {
+    const v = only([
+      refused("dev-core", "t"),
+      acquire("dev-core", "t", FUTURE),
+      refused("dev-core", "t"),
+    ]);
+    expect(v).toMatchObject({ state: "running", attempt: 1, lastEvent: "lease-acquired" });
+  });
+});

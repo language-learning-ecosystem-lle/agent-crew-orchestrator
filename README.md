@@ -145,8 +145,10 @@ agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <
 agent-protocol orchestrator status --journal <path> [--now <iso>]          # свёртка аренды из журнала
 agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
-agent-protocol orchestrator run    --journal <path> --ref <ref> [--repo <p>] --role <id> --thread <slug> \
-                            [--wall-clock <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
+agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> \
+                            [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
+agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> \
+                            [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
 ```
 
 **Запись сообщения — `new-message`** (единственная точка правды по форме записи):
@@ -180,7 +182,7 @@ agent-protocol orchestrator run    --journal <path> --ref <ref> [--repo <p>] --r
 Оркестратор запускает роли сессиями `claude -p` из их `instructions`. Строится
 шагами: **S0** — данные (журнал/аренда/`status`) без спавна; **S1** — запуск
 одной роли на одном треде; **S2** — стоп по завершению (наблюдатель за переходом
-хода).
+хода); **S3** — запуск по почте без человека в цикле (демон).
 
 ### S0 — данные прежде поведения
 
@@ -251,6 +253,32 @@ agent-protocol orchestrator run    --journal <path> --ref <ref> [--repo <p>] --r
   лончеру не доходит до его детей (`claude` → его подпроцессы), и они осиротели
   бы; спавн идёт `detached`, снятие бьёт по группе. Наблюдатель читает файловую
   ленту `--root`; свежесть держит вызывающий (в S3 — демон).
+
+### S3 — запуск по почте (демон)
+
+`orchestrator daemon` убирает человека из цикла: каждый тик читает почту
+(источник-треды), находит пары «запускаемая роль ждёт по треду», и через
+`planTick` исполняет ОДНО решение — поднимает пару `run`'ом (S1+S2) и тикает
+заново. С этого момента дефект — не неудобство, а **расход без присмотра**,
+поэтому три гарда против него встроены по построению:
+
+- **Стартовое состояние — ВЫКЛЮЧЕНО.** Без файла `--enable-flag` на диске демон
+  не запускает ничего; включает человек, создав файл. Первый автономный запуск не
+  произойдёт случайно.
+- **Аварийный тормоз — `--stop-flag`.** Проверяется ПЕРЕД каждым тиком и
+  перекрывает включение: одним `touch` контур останавливается без знания
+  состояний и без `kill`. Простейшая форма S4 уже здесь, чтобы не было окна между
+  шагами.
+- **Глобальный потолок — со следом.** `MAX_CONSECUTIVE_RUNS` запусков подряд без
+  единого `completed` → демон пишет `launch-refused` (reason `run-budget`) и НЕ
+  запускает. Петля «запуск→обрыв→запуск» упирается в потолок и оставляет запись, а
+  не жжёт квоту молча.
+
+Один тик = максимум один запуск: демон ждёт терминала поднятой пары и тикает по
+свежему журналу, без гонок. **Роль ребута машины** (демон поднимается сам через
+systemd или руками) — владельческая развилка john, вне кода демона: он одинаков,
+отличается лишь то, как его СТАРТУЮТ. Пока — запуск ручной; демон уезжает в main
+выключенным, поэтому merge автономного расхода не создаёт.
 
 ## `spike/` — P0
 

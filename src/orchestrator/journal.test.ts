@@ -57,6 +57,38 @@ describe("renderEventLine / parseEventLine", () => {
   it("неизвестный kind отвергается", () => {
     expect(() => parseEventLine(JSON.stringify({ ...acquired, kind: "выдумка" }))).toThrow();
   });
+
+  it("launch-refused round-trip сохраняет reason", () => {
+    const refused: OrchestratorEvent = {
+      kind: "launch-refused",
+      ts: "2026-07-24T13:00:00Z",
+      role: "dev-core",
+      thread: "t",
+      reason: "run-budget",
+    };
+    expect(parseEventLine(renderEventLine(refused))).toEqual(refused);
+  });
+
+  it("launch-refused без reason не разбирается", () => {
+    const line = JSON.stringify({
+      kind: "launch-refused",
+      ts: "2026-07-24T13:00:00Z",
+      role: "dev-core",
+      thread: "t",
+    });
+    expect(() => parseEventLine(line)).toThrow();
+  });
+
+  it("launch-refused с reason вне REFUSAL_REASONS отвергается", () => {
+    const line = JSON.stringify({
+      kind: "launch-refused",
+      ts: "2026-07-24T13:00:00Z",
+      role: "dev-core",
+      thread: "t",
+      reason: "надоело",
+    });
+    expect(() => parseEventLine(line)).toThrow();
+  });
 });
 
 describe("parseJournal", () => {

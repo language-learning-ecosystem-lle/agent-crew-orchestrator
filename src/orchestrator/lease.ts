@@ -71,6 +71,9 @@ export const foldLeases = (events: readonly OrchestratorEvent[], now: Date): Lea
   const order: string[] = [];
 
   for (const event of events) {
+    // Отказ от запуска аренды не создаёт — это не состояние сессии, а след
+    // решения оркестратора. В свёртку аренд он не входит.
+    if (event.kind === "launch-refused") continue;
     const k = key(event.role, event.thread);
     let cur = acc.get(k);
     if (cur === undefined) {

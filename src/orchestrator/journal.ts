@@ -34,6 +34,15 @@ export const MAX_ATTEMPTS = 3;
 export const RELEASE_REASONS = ["completed", "forced", "timeout", "exhausted"] as const;
 export type ReleaseReason = (typeof RELEASE_REASONS)[number];
 
+/**
+ * Причина ОТКАЗА от запуска — событие `launch-refused` (S3). Оркестратор хотел
+ * поднять пару (role, thread), но не стал, и отказ оставляет СЛЕД (иначе петля
+ * «запуск→обрыв→запуск» жгла бы квоту молча — требование curator к S3). Сегодня
+ * одна причина: глобальный потолок прогонов без завершения.
+ */
+export const REFUSAL_REASONS = ["run-budget"] as const;
+export type RefusalReason = (typeof REFUSAL_REASONS)[number];
+
 const base = {
   /** UTC-метка события: `2026-07-24T13:45:12Z`. Проставляет писатель в момент записи. */
   ts: z
@@ -72,6 +81,12 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     kind: z.literal("stop"),
     ...base,
     mode: z.enum(["graceful", "forced"]),
+  }),
+  // Оркестратор ОТКАЗАЛСЯ запускать пару (role, thread) — со следом (S3).
+  z.object({
+    kind: z.literal("launch-refused"),
+    ...base,
+    reason: z.enum(REFUSAL_REASONS),
   }),
 ]);
 
