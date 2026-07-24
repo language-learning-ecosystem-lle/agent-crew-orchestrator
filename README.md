@@ -147,8 +147,11 @@ agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thr
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> \
                             [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
-agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> \
+agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> --force-flag <path> \
                             [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
+agent-protocol orchestrator log    --journal <path>                        # история событий для john
+agent-protocol orchestrator stop   --mode graceful --stop-flag <path> [--write]
+agent-protocol orchestrator stop   --mode force --force-flag <path> --by <who> --reason <why> --root <mail> --ref <ref> --thread <slug> [--write]
 ```
 
 **Запись сообщения — `new-message`** (единственная точка правды по форме записи):
@@ -182,7 +185,8 @@ agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [-
 Оркестратор запускает роли сессиями `claude -p` из их `instructions`. Строится
 шагами: **S0** — данные (журнал/аренда/`status`) без спавна; **S1** — запуск
 одной роли на одном треде; **S2** — стоп по завершению (наблюдатель за переходом
-хода); **S3** — запуск по почте без человека в цикле (демон).
+хода); **S3** — запуск по почте без человека в цикле (демон); **S4** —
+принудительная остановка и вывод журнала.
 
 ### S0 — данные прежде поведения
 
@@ -279,6 +283,40 @@ agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [-
 systemd или руками) — владельческая развилка john, вне кода демона: он одинаков,
 отличается лишь то, как его СТАРТУЮТ. Пока — запуск ручной; демон уезжает в main
 выключенным, поэтому merge автономного расхода не создаёт.
+
+### S4 — принудительная остановка и вывод журнала
+
+Две остановки разной силы, плюс `log` для john.
+
+- **graceful (`stop --mode graceful`)** — создаёт `--stop-flag`. Демон дочитывает
+  ТЕКУЩУЮ сессию до её естественного терминала (через `draining`) и гаснет,
+  нового не берёт. Сессию не режут.
+- **force (`stop --mode force`)** — создаёт `--force-flag` с `by`/`note` и
+  объявляет в тред. Наблюдатель проверяет флаг ПЕРВЫМ в каждом тике (на безопасной
+  точке — между поллингами, не посреди нашей записи) и гасит группу **SIGTERM**
+  (не KILL: даём `claude` дописать/закоммитить). След — **в двух местах**: событие
+  `stop {mode: forced, by, note}` в журнале (`by`/`note`/`ts` = кто/почему/когда,
+  самодостаточно) и сообщение в треде (кто форсит и зачем). Force-флаг ещё и
+  останавливает демон — иначе следующий тик поднял бы роль прямо под force.
+- **`orchestrator log`** — история событий по порядку, читаемо (в отличие от
+  `status`, который показывает текущее состояние аренд): что, когда, с кем.
+
+**Ребут машины (решение john — оба режима, выбор при установке).** Пакет НЕ
+прописывает себя в систему сам: `systemd-unit` печатает готовый unit, но
+`systemctl enable` выполняет человек — демон, который делает себя постоянным, был
+бы тем сюрпризом, от которого защищает старт в `disabled`.
+
+- **enable-состояние переживает ребут — по построению.** `--enable-flag` — файл на
+  диске, читается каждый тик; после ребута он в том положении, в каком его оставил
+  john. Автостарт (systemd) поднимает ДЕМОНА, но не включает ЗАПУСКИ: выключены —
+  останутся выключенными, включены — останутся включёнными (иначе автономность
+  отменялась бы каждым обновлением ядра). **Флаги обязаны лежать на постоянном
+  хранилище** (не tmpfs), иначе состояние не переживёт перезагрузку.
+- **`status` отражает режим** (`--mode-file` + `--enable-flag`): как демон поднят
+  (автостарт/руками), включены ли запуски и что будет после ребута — чтобы это не
+  жило в чьей-то памяти.
+- **Наша установка** (машина john): режим — отдельное решение john к боевому
+  включению; по умолчанию ручной как консервативный. Это не часть пакета.
 
 ## `spike/` — P0
 

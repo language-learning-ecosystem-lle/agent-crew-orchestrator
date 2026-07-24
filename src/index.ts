@@ -37,6 +37,7 @@ export {
   roleLaunchability,
 } from "./orchestrator/launch.js";
 export { foldLeases, type LeaseLifecycle, type LeaseView } from "./orchestrator/lease.js";
+export { renderLog } from "./orchestrator/log.js";
 export {
   type Lifecycle,
   type ObserveSignals,
@@ -44,6 +45,12 @@ export {
   observeStep,
   stepEvent,
 } from "./orchestrator/observe.js";
+export {
+  describeReboot,
+  REBOOT_MODES,
+  type RebootMode,
+  renderSystemdUnit,
+} from "./orchestrator/reboot.js";
 export { renderStatus } from "./orchestrator/status.js";
 export { type Candidate, planTick, type TickDecision } from "./orchestrator/tick.js";
 export {
