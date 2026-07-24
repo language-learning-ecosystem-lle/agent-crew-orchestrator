@@ -30,8 +30,28 @@ import { z } from "zod";
  */
 export const MAX_ATTEMPTS = 3;
 
-/** Причина снятия аренды. Терминальна всегда — аренда живёт до первого release. */
-export const RELEASE_REASONS = ["completed", "forced", "timeout", "exhausted"] as const;
+/**
+ * Причина снятия аренды. Терминальна всегда — аренда живёт до первого release.
+ *
+ * `forced` и `exited-without-handoff` РАЗДЕЛЕНЫ (постановка curator, тред 012,
+ * 20:55): до этого процесс, вышедший сам и не передавший хода, писался как
+ * `forced` — то есть падение сессии в журнале было неотличимо от остановки
+ * john'ом. Сценарий приёмки «`force` оставляет след кто/когда/почему» на таком
+ * приборе проходил бы одинаково и когда контур работает, и когда роль просто
+ * рухнула. `forced` теперь означает ровно одно: был форс, и у него есть `by`.
+ *
+ * `forced` из перечня НЕ убран, хотя путь `lease-released` его больше не пишет
+ * (реальный форс пишет событие `stop {mode: forced, by, note}`): журналы —
+ * append-only файлы на диске, и удаление значения сделало бы НЕЧИТАЕМЫМИ старые
+ * строки, а разбор у нас громкий. Прошлое перечнем не переписывают.
+ */
+export const RELEASE_REASONS = [
+  "completed",
+  "forced",
+  "exited-without-handoff",
+  "timeout",
+  "exhausted",
+] as const;
 export type ReleaseReason = (typeof RELEASE_REASONS)[number];
 
 /**

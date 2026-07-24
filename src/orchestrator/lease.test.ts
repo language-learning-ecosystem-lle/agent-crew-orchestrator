@@ -25,7 +25,7 @@ const acquire = (role: string, thread: string, deadline: string): OrchestratorEv
 const release = (
   role: string,
   thread: string,
-  reason: "completed" | "forced" | "timeout" | "exhausted",
+  reason: "completed" | "forced" | "exited-without-handoff" | "timeout" | "exhausted",
 ): OrchestratorEvent => ({ kind: "lease-released", ts: ts(), role, thread, reason });
 const handoff = (role: string, thread: string): OrchestratorEvent => ({
   kind: "handoff-detected",
@@ -121,6 +121,25 @@ describe("foldLeases — пробел 2: потолок попыток (exhauste
   it("явное lease-released reason=exhausted → exhausted независимо от счётчика", () => {
     const v = only([acquire("dev-core", "t", PAST), release("dev-core", "t", "exhausted")]);
     expect(v).toMatchObject({ exhausted: true, launchable: false });
+  });
+
+  it("exited-without-handoff — такой же неуспех для потолка, как timeout и forced", () => {
+    const v = only([
+      acquire("dev-core", "t", PAST),
+      release("dev-core", "t", "exited-without-handoff"),
+    ]);
+    expect(v).toMatchObject({ attempt: 1, launchable: true, exhausted: false });
+  });
+
+  it("самостоятельные выходы копятся до потолка и дальше связка не запускается", () => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(
+        acquire("dev-core", "t", PAST),
+        release("dev-core", "t", "exited-without-handoff"),
+      );
+    }
+    expect(only(events)).toMatchObject({ exhausted: true, launchable: false });
   });
 });
 
