@@ -33,16 +33,28 @@ describe("observeStep — running", () => {
     });
   });
 
-  it("процесс вышел САМ без перехода хода до дедлайна → forced, не completed", () => {
+  it("процесс вышел САМ без перехода хода до дедлайна → exited-without-handoff", () => {
     expect(observeStep("running", sig({ processExited: true }))).toEqual({
       record: "lease-released",
-      reason: "forced",
+      reason: "exited-without-handoff",
     });
+  });
+
+  it("самостоятельный выход НЕ выдаётся за форс — иначе журнал врёт в сценарии 3", () => {
+    const step = observeStep("running", sig({ processExited: true }));
+    expect(step).not.toEqual({ record: "lease-released", reason: "forced" });
   });
 
   it("код 0 без перехода хода ≠ завершение: handedOff=false → НЕ completed", () => {
     const step = observeStep("running", sig({ processExited: true }));
     expect(step).not.toEqual({ record: "lease-released", reason: "completed" });
+  });
+
+  it("таймаут сильнее самостоятельного выхода: overdue проверяется раньше", () => {
+    expect(observeStep("running", sig({ processExited: true, overdue: true }))).toEqual({
+      record: "lease-released",
+      reason: "timeout",
+    });
   });
 });
 
@@ -82,5 +94,15 @@ describe("stepEvent", () => {
       ...base,
       reason: "completed",
     });
+  });
+
+  it("новая причина доезжает до события журнала как есть", () => {
+    expect(stepEvent({ record: "lease-released", reason: "exited-without-handoff" }, base)).toEqual(
+      {
+        kind: "lease-released",
+        ...base,
+        reason: "exited-without-handoff",
+      },
+    );
   });
 });

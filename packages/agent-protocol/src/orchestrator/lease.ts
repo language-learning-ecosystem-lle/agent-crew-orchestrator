@@ -48,9 +48,15 @@ const key = (role: string, thread: string): string => JSON.stringify([role, thre
 /** Аренда активна (держится оркестратором прямо сейчас). */
 const isActive = (state: LeaseLifecycle): boolean => state === "running" || state === "draining";
 
-/** Терминальный НЕУСПЕХ: прогон оборван (таймаут/форс), не завершён штатно. */
+/**
+ * Терминальный НЕУСПЕХ: прогон оборван, не завершён штатно. Три причины —
+ * таймаут, форс и самостоятельный выход без передачи хода (последняя отделена
+ * от форса, см. `RELEASE_REASONS`); для потолка попыток они равны: во всех
+ * ход не перешёл, и повторять связку можно лишь до `MAX_ATTEMPTS`.
+ */
 const isFailedTerminal = (state: LeaseLifecycle, reason: LeaseView["reason"]): boolean =>
-  !isActive(state) && (reason === "timeout" || reason === "forced");
+  !isActive(state) &&
+  (reason === "timeout" || reason === "forced" || reason === "exited-without-handoff");
 
 type Acc = {
   role: string;

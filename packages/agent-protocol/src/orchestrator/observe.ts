@@ -32,7 +32,10 @@ export type ObserveSignals = {
 /** Что записать следующим шагом (или null — продолжать наблюдать). */
 export type ObserveStep =
   | { readonly record: "handoff-detected" }
-  | { readonly record: "lease-released"; readonly reason: "completed" | "timeout" | "forced" }
+  | {
+      readonly record: "lease-released";
+      readonly reason: "completed" | "timeout" | "exited-without-handoff";
+    }
   | null;
 
 export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): ObserveStep => {
@@ -42,7 +45,13 @@ export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): Obse
     // Дедлайн без перехода хода — застрял: предел draining/running (требование 2).
     if (signals.overdue) return { record: "lease-released", reason: "timeout" };
     // Процесс вышел САМ, хода не передав, до дедлайна — вышел, не сделав дело.
-    if (signals.processExited) return { record: "lease-released", reason: "forced" };
+    // Причина СВОЯ, не `forced`: форс — это внешнее решение человека со следом
+    // `by`, а здесь никто ничего не решал, сессия просто кончилась. Одно имя на
+    // оба случая делало журнал прибором, который врёт в сценарии приёмки 3
+    // (постановка curator 20:55).
+    if (signals.processExited) {
+      return { record: "lease-released", reason: "exited-without-handoff" };
+    }
     return null;
   }
 
