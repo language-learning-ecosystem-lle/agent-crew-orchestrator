@@ -1115,19 +1115,27 @@ const orchestratorStop = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const threadId = required(argv, "--thread");
   const registry = registryFrom(argv, repoOf(root));
+  // Объявление в тред подписывается ТЕМ, КТО ФОРСИТ (`--by`), решение curator:
+  // остановка — действие человека, оркестратор лишь исполняет; уведомитель о
+  // merge (`github`) её подписывать не должен — смешение идентичностей. Значит
+  // `--by` обязан быть известной ролью (john/curator), а не свободным текстом.
+  if (!registry.isKnown(by)) {
+    fail(`--by '${by}' — форс подписывается ролью (кто останавливает), а её нет в конфиге`, 2);
+    return;
+  }
   const flagBody = JSON.stringify({ by, note: why });
   const text = `Сессия по треду ${threadId} принудительно остановлена (by ${by}): ${why}`;
 
   if (!write) {
     out(
-      `agent-protocol: создаст force-флаг '${forceFlag}' и объявит в тред ${threadId}; --write выполнит`,
+      `agent-protocol: создаст force-флаг '${forceFlag}' и объявит в тред ${threadId} от ${by}; --write выполнит`,
     );
     return;
   }
   mkdirSync(dirname(forceFlag), { recursive: true });
   writeFileSync(forceFlag, flagBody, "utf8");
   postThreadMessage(root, threadId, registry, {
-    from: "github",
+    from: by,
     expects: "none",
     text,
   });
