@@ -17,6 +17,11 @@ on:
         description: Номер PR для ревью
         required: true
         type: string
+      max_turns:
+        description: Лимит ходов ревьюера (для проверки поведения на исчерпании бюджета, тред 014)
+        required: false
+        default: "100"
+        type: string
 
 jobs:
   review:
@@ -170,6 +175,9 @@ jobs:
             Готово, когда ОБА адресата получили вердикт: тред и коммент в PR. Не
             удалось одно из двух — скажи об этом в том, что удалось: молча
             недоставленный вердикт хуже частичного.
+          # Лимит ходов: по умолчанию 100 (метка/коммент его не задают); при
+          # workflow_dispatch берётся из input `max_turns` — так проверяется
+          # поведение на исчерпании бюджета (тред 014), не трогая обычные триггеры.
           claude_args: |
-            --max-turns 100
+            --max-turns ${{ github.event.inputs.max_turns || '100' }}
             --allowedTools "Read,Grep,Glob,Edit,Write,Bash,mcp__github_inline_comment__create_inline_comment"
