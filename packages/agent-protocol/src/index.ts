@@ -10,6 +10,20 @@ export { type LoadedConfig, type LoadOptions, loadProtocolConfig } from "./confi
 export { type LoadedThread, loadThread, loadThreads } from "./fs/comms.js";
 export { fetchRef, fileExistsAtRef, messagesAtRef, readFileAtRef } from "./fs/git.js";
 export {
+  type EventKind,
+  MAX_ATTEMPTS,
+  type OrchestratorEvent,
+  orchestratorEventSchema,
+  parseEventLine,
+  parseJournal,
+  RELEASE_REASONS,
+  type ReleaseReason,
+  renderEventLine,
+  renderJournal,
+} from "./orchestrator/journal.js";
+export { foldLeases, type LeaseLifecycle, type LeaseView } from "./orchestrator/lease.js";
+export { renderStatus } from "./orchestrator/status.js";
+export {
   createRoleRegistry,
   type NotificationTarget,
   RoleConfigError,
