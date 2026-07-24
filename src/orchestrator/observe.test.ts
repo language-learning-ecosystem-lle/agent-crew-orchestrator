@@ -1,12 +1,46 @@
 import { describe, expect, it } from "vitest";
 
-import { observeStep, stepEvent } from "./observe.js";
+import { handoffDetected, observeStep, stepEvent } from "./observe.js";
 
 const sig = (over: Partial<{ handedOff: boolean; processExited: boolean; overdue: boolean }>) => ({
   handedOff: false,
   processExited: false,
   overdue: false,
   ...over,
+});
+
+describe("handoffDetected — сломанный тред не выдаёт себя за переход хода", () => {
+  const base = { thread: "012-x", waitingThreads: ["012-x"], threadUnreadable: false };
+
+  it("тред всё ещё ждёт роль → ход НЕ перешёл", () => {
+    expect(handoffDetected(base)).toBe(false);
+  });
+
+  it("тред перестал ждать роль → ход перешёл", () => {
+    expect(handoffDetected({ ...base, waitingThreads: [] })).toBe(true);
+  });
+
+  it("свой тред не читается → НЕ переход хода, хотя в списке ожидающих его нет", () => {
+    expect(handoffDetected({ ...base, waitingThreads: [], threadUnreadable: true })).toBe(false);
+  });
+
+  it("нечитаемость перевешивает пустой список: иначе прогон закрылся бы как completed", () => {
+    const brokenLooksLikeHandoff = handoffDetected({
+      thread: "012-x",
+      waitingThreads: [],
+      threadUnreadable: true,
+    });
+    const realHandoff = handoffDetected({
+      thread: "012-x",
+      waitingThreads: [],
+      threadUnreadable: false,
+    });
+    expect(brokenLooksLikeHandoff).not.toBe(realHandoff);
+  });
+
+  it("чужие треды в списке ожидающих на решение не влияют", () => {
+    expect(handoffDetected({ ...base, waitingThreads: ["009-other", "014-other"] })).toBe(true);
+  });
 });
 
 describe("observeStep — running", () => {
