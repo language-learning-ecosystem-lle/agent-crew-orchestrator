@@ -20,7 +20,7 @@
  * БЕЗ `--write` НИЧЕГО НЕ ПИШЕТСЯ: контур живой, и «посмотреть, что будет»
  * обязано быть дешевле и безопаснее, чем «сделать».
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   appendFileSync,
   existsSync,
@@ -34,7 +34,19 @@ import { dirname, join } from "node:path";
 import { loadProtocolConfig } from "./config/load.js";
 import { loadThreads } from "./fs/comms.js";
 import { fileExistsAtRef, messagesAtRef } from "./fs/git.js";
-import { orchestratorEventSchema, parseJournal, renderEventLine } from "./orchestrator/journal.js";
+import {
+  eventTimestamp,
+  type OrchestratorEvent,
+  orchestratorEventSchema,
+  parseJournal,
+  renderEventLine,
+} from "./orchestrator/journal.js";
+import {
+  buildLaunchPrompt,
+  MAX_CONSECUTIVE_RUNS,
+  planLaunch,
+  roleLaunchability,
+} from "./orchestrator/launch.js";
 import { foldLeases } from "./orchestrator/lease.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
@@ -65,7 +77,8 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
   agent-protocol orchestrator status --journal <path> [--now <iso>]
-  agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]`;
+  agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
+  agent-protocol orchestrator run    --journal <path> --ref <ref> [--repo <p>] --role <id> --thread <slug> [--wall-clock <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]`;
 
 const out = (line: string): void => {
   process.stdout.write(`${line}\n`);
@@ -610,6 +623,108 @@ const orchestratorRecord = (argv: readonly string[]): void => {
   out(line);
 };
 
+const positiveInt = (argv: readonly string[], name: string, fallback: number): number => {
+  const raw = flag(argv, name);
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    return fail(`${name} '${raw}' — ожидается положительное целое`, 2);
+  }
+  return value;
+};
+
+/**
+ * Запуск роли сессией `claude -p` по ОДНОМУ треду (шаг S1). Собирает промпт из
+ * `instructions` роли (не из хардкода), пишет `lease-acquired`+`launch` в журнал
+ * ДО спавна и снимает аренду со следом по исходу процесса. Роль, которую
+ * оркестратор запускать не должен (человек, ассистент-через-человека, внешние
+ * инструкции), — явный отказ, а не падение (см. `roleLaunchability`). Потолки
+ * (`exhausted` на связку, глобальный `run-budget`) — в `planLaunch`.
+ *
+ * `--exec` (по умолчанию `claude`) инъектируется: живая приёмка и e2e целятся в
+ * реальный бинарник, проверки мехники — в стаб, без вызова модели в тестах.
+ */
+const orchestratorRun = (argv: readonly string[]): void => {
+  const journalPath = required(argv, "--journal");
+  const roleId = required(argv, "--role");
+  const thread = required(argv, "--thread");
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+
+  const role = registryFrom(argv, undefined).get(roleId);
+  if (role === undefined) {
+    fail(`роль '${roleId}' не значится в конфиге`, 2);
+    return;
+  }
+  const can = roleLaunchability(role);
+  if (!can.launchable) {
+    fail(`роль '${roleId}' оркестратором не запускается: ${can.reason}`, 2);
+    return;
+  }
+
+  const docs = (role.instructions ?? []).map((entry) => ({
+    path: entry.path,
+    text: readFile(join(repo, entry.path), `инструкции роли ${roleId}`),
+  }));
+  const prompt = buildLaunchPrompt({ role: roleId, thread, instructions: docs });
+
+  const now = orchestratorNow(argv);
+  const wallClockMs = positiveInt(argv, "--wall-clock", 900) * 1000;
+  const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
+  const events = existsSync(journalPath)
+    ? parseJournal(readFile(journalPath, "журнал оркестратора"))
+    : [];
+  const plan = planLaunch({ events, role: roleId, thread, now, wallClockMs, maxConsecutive });
+  if (!plan.ok) {
+    fail(`запуск отклонён (${plan.reason}) — потолок сработал, см. журнал`, 2);
+    return;
+  }
+
+  const exec = flag(argv, "--exec") ?? "claude";
+  const maxTurns = String(positiveInt(argv, "--max-turns", 60));
+
+  if (!argv.includes("--write")) {
+    out(
+      `agent-protocol: запустит '${exec} -p' (роль ${roleId}, тред ${thread}, deadline ${plan.deadline}, лимит ходов ${maxTurns}); --write выполнит. Пред-события:`,
+    );
+    for (const event of plan.events) out(renderEventLine(event));
+    return;
+  }
+
+  // ЗАПИСЬ ДО СПАВНА (требование 2 curator): умри процесс на старте — снаружи
+  // «попытка была и оборвалась», а не «ничего не происходило».
+  mkdirSync(dirname(journalPath), { recursive: true });
+  for (const event of plan.events)
+    appendFileSync(journalPath, `${renderEventLine(event)}\n`, "utf8");
+
+  const result = spawnSync(exec, ["-p", prompt, "--max-turns", maxTurns], {
+    stdio: "inherit",
+    timeout: wallClockMs,
+  });
+
+  // Исход → причина снятия аренды (со следом всегда). SIGTERM/ETIMEDOUT — сняли
+  // по wall-clock; ненулевой код или ошибка спавна — forced (аномалия); чистый
+  // выход — completed (в S1 это выход процесса; S2 уточнит до «ход передан»).
+  const errno = result.error as NodeJS.ErrnoException | undefined;
+  const reason: "completed" | "forced" | "timeout" =
+    errno?.code === "ETIMEDOUT" || result.signal === "SIGTERM"
+      ? "timeout"
+      : errno !== undefined || result.status !== 0
+        ? "forced"
+        : "completed";
+  const released: OrchestratorEvent = {
+    kind: "lease-released",
+    ts: eventTimestamp(new Date()),
+    role: roleId,
+    thread,
+    reason,
+  };
+  appendFileSync(journalPath, `${renderEventLine(released)}\n`, "utf8");
+  if (errno !== undefined && reason !== "timeout") {
+    err(`agent-protocol: спавн '${exec}' дал ошибку: ${errno.message}`);
+  }
+  out(`agent-protocol: прогон ${roleId}/${thread} завершён: ${reason}`);
+};
+
 const main = (argv: readonly string[]): void => {
   const [command, subcommand] = argv;
   if (command === "config" && subcommand === "check") {
@@ -638,6 +753,8 @@ const main = (argv: readonly string[]): void => {
     orchestratorStatus(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "record") {
     orchestratorRecord(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "run") {
+    orchestratorRun(argv.slice(2));
   } else {
     fail(USAGE, 2);
   }
