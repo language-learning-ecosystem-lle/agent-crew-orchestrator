@@ -78,6 +78,9 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
 export type OrchestratorEvent = z.infer<typeof orchestratorEventSchema>;
 export type EventKind = OrchestratorEvent["kind"];
 
+/** UTC-метка события из момента: `2026-07-24T13:45:12Z` (без миллисекунд). */
+export const eventTimestamp = (at: Date): string => `${at.toISOString().slice(0, 19)}Z`;
+
 /** Событие → строка JSONL. Ключи в стабильном порядке — дифф журнала читаем. */
 export const renderEventLine = (event: OrchestratorEvent): string => JSON.stringify(event);
 

@@ -11,6 +11,7 @@ export { type LoadedThread, loadThread, loadThreads } from "./fs/comms.js";
 export { fetchRef, fileExistsAtRef, messagesAtRef, readFileAtRef } from "./fs/git.js";
 export {
   type EventKind,
+  eventTimestamp,
   MAX_ATTEMPTS,
   type OrchestratorEvent,
   orchestratorEventSchema,
@@ -21,6 +22,18 @@ export {
   renderEventLine,
   renderJournal,
 } from "./orchestrator/journal.js";
+export {
+  buildLaunchPrompt,
+  consecutiveLaunchesWithoutCompletion,
+  type InstructionDoc,
+  type Launchability,
+  type LaunchBlock,
+  type LaunchPlan,
+  type LaunchRefusal,
+  MAX_CONSECUTIVE_RUNS,
+  planLaunch,
+  roleLaunchability,
+} from "./orchestrator/launch.js";
 export { foldLeases, type LeaseLifecycle, type LeaseView } from "./orchestrator/lease.js";
 export { renderStatus } from "./orchestrator/status.js";
 export {
