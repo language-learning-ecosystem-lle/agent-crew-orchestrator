@@ -76,11 +76,15 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     ...base,
     reason: z.enum(RELEASE_REASONS),
   }),
-  // Сессия остановлена (наполняется с S4). `graceful` — на безопасной точке.
+  // Сессия принудительно остановлена (S4). `by`/`note` — «кто» и «почему»,
+  // вместе с `ts` («когда») дают самодостаточный след force'а в журнале. Для
+  // `graceful` (демон дочитывает текущую сессию по стоп-флагу) они не обязательны.
   z.object({
     kind: z.literal("stop"),
     ...base,
     mode: z.enum(["graceful", "forced"]),
+    by: z.string().min(1).optional(),
+    note: z.string().min(1).optional(),
   }),
   // Оркестратор ОТКАЗАЛСЯ запускать пару (role, thread) — со следом (S3).
   z.object({

@@ -89,6 +89,30 @@ describe("renderEventLine / parseEventLine", () => {
     });
     expect(() => parseEventLine(line)).toThrow();
   });
+
+  it("stop forced с by/note (кто/почему) round-trip", () => {
+    const stop: OrchestratorEvent = {
+      kind: "stop",
+      ts: "2026-07-24T13:00:00Z",
+      role: "dev-core",
+      thread: "t",
+      mode: "forced",
+      by: "john",
+      note: "квота на исходе",
+    };
+    expect(parseEventLine(renderEventLine(stop))).toEqual(stop);
+  });
+
+  it("stop graceful без by/note разбирается (они не обязательны)", () => {
+    const stop: OrchestratorEvent = {
+      kind: "stop",
+      ts: "2026-07-24T13:00:00Z",
+      role: "dev-core",
+      thread: "t",
+      mode: "graceful",
+    };
+    expect(parseEventLine(renderEventLine(stop))).toEqual(stop);
+  });
 });
 
 describe("parseJournal", () => {

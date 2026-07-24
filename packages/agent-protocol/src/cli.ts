@@ -49,7 +49,9 @@ import {
   roleLaunchability,
 } from "./orchestrator/launch.js";
 import { foldLeases } from "./orchestrator/lease.js";
+import { renderLog } from "./orchestrator/log.js";
 import { type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
+import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
@@ -80,10 +82,14 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
   agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
-  agent-protocol orchestrator status --journal <path> [--now <iso>]
+  agent-protocol orchestrator status --journal <path> [--now <iso>] [--enable-flag <path>] [--mode-file <path>]
   agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
-  agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
-  agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]`;
+  agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--force-flag <path>] [--now <iso>] [--write]
+  agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> --force-flag <path> [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
+  agent-protocol orchestrator log    --journal <path>
+  agent-protocol orchestrator stop   --mode graceful --stop-flag <path> [--write]
+  agent-protocol orchestrator stop   --mode force --force-flag <path> --by <who> --reason <why> --root <mail> --ref <ref> [--repo <p>] --thread <slug> [--write]
+  agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]`;
 
 const out = (line: string): void => {
   process.stdout.write(`${line}\n`);
@@ -574,11 +580,55 @@ const orchestratorNow = (argv: readonly string[]): Date => {
  * журнал — это пустое состояние (сессий ещё не было), а не ошибка: файл
  * появляется с первым событием. Нечитаемый по ДРУГОЙ причине — громкий отказ
  * внутри `readFile`.
+ *
+ * S4: опционально отражает РЕЖИМ РЕБУТА и enable-состояние (`--mode-file`,
+ * `--enable-flag`). Так «как демон поднят и что будет после ребута» видно
+ * командой, а не живёт в чьей-то памяти (требование curator). enable-состояние —
+ * наличие файла-флага; показ его здесь и подтверждает персистентность (файл на
+ * диске переживает ребут).
  */
 const orchestratorStatus = (argv: readonly string[]): void => {
   const path = required(argv, "--journal");
   const events = existsSync(path) ? parseJournal(readFile(path, "журнал оркестратора")) : [];
   out(renderStatus(foldLeases(events, orchestratorNow(argv))));
+
+  const modeFile = flag(argv, "--mode-file");
+  const enableFlag = flag(argv, "--enable-flag");
+  if (modeFile === undefined && enableFlag === undefined) return;
+
+  const launchesEnabled = enableFlag !== undefined && existsSync(enableFlag);
+  if (modeFile === undefined) {
+    out(`запуски: ${launchesEnabled ? "включены" : "выключены"}`);
+    return;
+  }
+  const mode = readFile(modeFile, "режим ребута").trim();
+  if (mode !== "systemd" && mode !== "manual") {
+    fail(`режим ребута '${mode}' в '${modeFile}' — ожидается systemd | manual`, 2);
+    return;
+  }
+  out(describeReboot(mode, launchesEnabled));
+};
+
+/**
+ * Печатает systemd unit-файл для демона (S4). Пакет НЕ прописывает себя в
+ * систему: `systemctl enable` выполняет человек. Флаги (`--enable-flag` и др.)
+ * в `--exec-start` держите на ПОСТОЯННОМ хранилище — иначе enable-состояние не
+ * переживёт ребут.
+ */
+const orchestratorSystemdUnit = (argv: readonly string[]): void => {
+  const execStart = required(argv, "--exec-start");
+  const workingDir = flag(argv, "--working-dir") ?? process.cwd();
+  const description = flag(argv, "--description");
+  out(
+    renderSystemdUnit({
+      execStart,
+      workingDir,
+      ...(description === undefined ? {} : { description }),
+    }),
+  );
+  err(
+    "agent-protocol: `systemctl enable` — действие человека; флаги держите на постоянном хранилище (не tmpfs)",
+  );
 };
 
 /**
@@ -656,6 +706,51 @@ const buildPromptForRole = (role: Role, thread: string, repo: string): string =>
     })),
   });
 
+/**
+ * Дописать файл-сообщение в тред (тот же путь, что `new-message`, но как
+ * подпрограмма — нужен force-стопу для следа В ТРЕДЕ). Пишет файл; коммит/пуш —
+ * за вызывающим, как и у `new-message`.
+ */
+const postThreadMessage = (
+  root: string,
+  threadId: string,
+  registry: RoleRegistry,
+  input: { from: string; expects: Expects; waitingOn?: readonly string[]; text: string },
+): void => {
+  if (!registry.isKnown(input.from)) fail(`роль '${input.from}' не значится в конфиге`, 2);
+  const threadDir = join(root, threadId);
+  if (!existsSync(threadDir)) fail(`тред '${threadId}' не найден в '${root}'`, 2);
+  const messagesDir = join(threadDir, "messages");
+  const threadHasMessages = existsSync(messagesDir);
+  const existingTs = threadHasMessages
+    ? readdirSync(messagesDir)
+        .filter((name) => name.endsWith(".md"))
+        .map((name) => parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date)
+        .filter((date) => date.includes("T"))
+    : [];
+  let planned: ReturnType<typeof planNewMessage>;
+  try {
+    planned = planNewMessage({
+      from: input.from,
+      date: nextMessageTimestamp(new Date(), existingTs),
+      expects: input.expects,
+      ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
+      text: input.text,
+      threadHasMessages,
+    });
+  } catch (error) {
+    if (error instanceof WriteRefusedError) {
+      fail(error.message, 2);
+      return;
+    }
+    throw error;
+  }
+  const path = join(threadDir, planned.path);
+  if (existsSync(path))
+    fail(`файл '${planned.path}' уже существует — две записи в одну секунду?`, 2);
+  writeOut(path, planned.content);
+};
+
 type RunParams = {
   readonly journalPath: string;
   readonly mailRoot: string;
@@ -669,6 +764,21 @@ type RunParams = {
   readonly ids: readonly string[];
   readonly now: Date;
   readonly maxConsecutive: number;
+  /** Файл-флаг force-стопа (S4). Есть — гасим сессию на безопасной точке. */
+  readonly forceFlag?: string;
+};
+
+/** Кто/почему из файла force-флага (JSON, писан `stop --mode force`). Лениво. */
+const readForceFlag = (path: string): { by?: string; note?: string } => {
+  try {
+    const raw = JSON.parse(readFileSync(path, "utf8")) as { by?: unknown; note?: unknown };
+    return {
+      ...(typeof raw.by === "string" ? { by: raw.by } : {}),
+      ...(typeof raw.note === "string" ? { note: raw.note } : {}),
+    };
+  } catch {
+    return {}; // пустой/битый флаг — стоп всё равно исполняем, просто без кто/почему
+  }
 };
 
 /**
@@ -721,6 +831,32 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
 
   while (true) {
     await sleep(p.pollMs);
+
+    // FORCE-СТОП (S4) — проверяется ПЕРВЫМ в тике и на БЕЗОПАСНОЙ ТОЧКЕ: между
+    // поллингами, не посреди нашей записи (append атомарен). Гасим группу
+    // SIGTERM (не KILL): даём `claude` дописать/закоммитить. След — событие
+    // `stop` с `by`/`note` (кто/почему) + `ts` (когда): самодостаточно в журнале.
+    if (p.forceFlag !== undefined && existsSync(p.forceFlag)) {
+      if (!exited && child.pid !== undefined) {
+        try {
+          process.kill(-child.pid, "SIGTERM");
+        } catch {
+          // группы уже нет — ок
+        }
+      }
+      const { by, note } = readForceFlag(p.forceFlag);
+      appendEvent(p.journalPath, {
+        kind: "stop",
+        ts: eventTimestamp(new Date()),
+        role: p.roleId,
+        thread: p.thread,
+        mode: "forced",
+        ...(by === undefined ? {} : { by }),
+        ...(note === undefined ? {} : { note }),
+      });
+      return "forced";
+    }
+
     // Переход хода — из ИСТОЧНИКА-тредов (тот же, что `mail`): тред взят под
     // аренду, ждал роль; перестал ждать её → ход передан. Не «код 0», не «почта
     // пуста».
@@ -792,6 +928,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const exec = flag(argv, "--exec") ?? "claude";
   const maxTurns = String(positiveInt(argv, "--max-turns", 60));
+  const forceFlag = flag(argv, "--force-flag"); // force-стоп и для ручного run
 
   if (!argv.includes("--write")) {
     const events = existsSync(journalPath)
@@ -822,6 +959,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     ids: registry.ids(),
     now,
     maxConsecutive,
+    ...(forceFlag === undefined ? {} : { forceFlag }),
   });
   if (reason !== "skip") out(`agent-protocol: прогон ${roleId}/${thread} завершён: ${reason}`);
 };
@@ -849,6 +987,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
   const enableFlag = required(argv, "--enable-flag");
   const stopFlag = required(argv, "--stop-flag");
+  const forceFlag = required(argv, "--force-flag");
 
   const registry = registryFrom(argv, undefined);
   const ids = registry.ids();
@@ -866,7 +1005,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const once = argv.includes("--once"); // один тик — для проверок
 
   out(
-    `agent-protocol: демон поднят (ВЫКЛЮЧЕН, пока нет '${enableFlag}'); стоп-флаг '${stopFlag}'; роли ${launchable.join(", ") || "—"}`,
+    `agent-protocol: демон поднят (ВЫКЛЮЧЕН, пока нет '${enableFlag}'); стоп '${stopFlag}', force '${forceFlag}'; роли ${launchable.join(", ") || "—"}`,
   );
 
   for (;;) {
@@ -880,7 +1019,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       : [];
     const decision = planTick({
       enabled: existsSync(enableFlag),
-      stopped: existsSync(stopFlag),
+      // Force-флаг тоже останавливает демон (S4): его текущую сессию гасит
+      // наблюдатель, а нового брать нельзя — иначе следующий тик поднял бы роль
+      // прямо под force.
+      stopped: existsSync(stopFlag) || existsSync(forceFlag),
       events,
       candidates,
       now: new Date(),
@@ -888,7 +1030,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     });
 
     if (decision.kind === "halt") {
-      out(`agent-protocol: демон остановлен — стоп-флаг '${stopFlag}'`);
+      out(`agent-protocol: демон остановлен — ${existsSync(forceFlag) ? "force" : "стоп"}-флаг`);
       return;
     }
     if (decision.kind === "refused") {
@@ -918,6 +1060,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           ids,
           now: new Date(),
           maxConsecutive,
+          forceFlag,
         });
         out(`agent-protocol: демон — ${decision.role}/${decision.thread}: ${reason}`);
       }
@@ -927,6 +1070,68 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     if (once) return;
     await sleep(tickMs);
   }
+};
+
+/** Вывод журнала наружу для john (S4): история событий по порядку, читаемо. */
+const orchestratorLog = (argv: readonly string[]): void => {
+  const path = required(argv, "--journal");
+  const events = existsSync(path) ? parseJournal(readFile(path, "журнал оркестратора")) : [];
+  out(renderLog(events));
+};
+
+/**
+ * Принудительная остановка (S4). `graceful` — создаёт стоп-флаг: демон дочитывает
+ * текущую сессию до естественного терминала и гаснет (через draining), нового не
+ * берёт. `force` — создаёт force-флаг с `by`/`note` (его читает наблюдатель и
+ * гасит сессию на безопасной точке, оставляя журнальный след) И постит СЛЕД В
+ * ТРЕД (кто/почему), так что «кто/когда/почему» есть и в журнале, и в треде.
+ */
+const orchestratorStop = (argv: readonly string[]): void => {
+  const mode = required(argv, "--mode");
+  if (mode !== "graceful" && mode !== "force") {
+    fail(`--mode '${mode}' — допустимо graceful | force`, 2);
+    return;
+  }
+  const write = argv.includes("--write");
+
+  if (mode === "graceful") {
+    const stopFlag = required(argv, "--stop-flag");
+    if (!write) {
+      out(
+        `agent-protocol: создаст стоп-флаг '${stopFlag}' (демон дочитает текущее и гаснет); --write выполнит`,
+      );
+      return;
+    }
+    mkdirSync(dirname(stopFlag), { recursive: true });
+    writeFileSync(stopFlag, "", "utf8");
+    out(`agent-protocol: graceful-стоп — стоп-флаг '${stopFlag}' создан`);
+    return;
+  }
+
+  // force: флаг с кто/почему + объявление в тред.
+  const forceFlag = required(argv, "--force-flag");
+  const by = required(argv, "--by");
+  const why = required(argv, "--reason");
+  const root = required(argv, "--root");
+  const threadId = required(argv, "--thread");
+  const registry = registryFrom(argv, repoOf(root));
+  const flagBody = JSON.stringify({ by, note: why });
+  const text = `Сессия по треду ${threadId} принудительно остановлена (by ${by}): ${why}`;
+
+  if (!write) {
+    out(
+      `agent-protocol: создаст force-флаг '${forceFlag}' и объявит в тред ${threadId}; --write выполнит`,
+    );
+    return;
+  }
+  mkdirSync(dirname(forceFlag), { recursive: true });
+  writeFileSync(forceFlag, flagBody, "utf8");
+  postThreadMessage(root, threadId, registry, {
+    from: "github",
+    expects: "none",
+    text,
+  });
+  out(`agent-protocol: force-стоп — флаг '${forceFlag}' создан, след объявлен в тред ${threadId}`);
 };
 
 const main = async (argv: readonly string[]): Promise<void> => {
@@ -961,6 +1166,12 @@ const main = async (argv: readonly string[]): Promise<void> => {
     await orchestratorRun(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "daemon") {
     await orchestratorDaemon(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "log") {
+    orchestratorLog(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "stop") {
+    orchestratorStop(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "systemd-unit") {
+    orchestratorSystemdUnit(argv.slice(2));
   } else {
     fail(USAGE, 2);
   }
