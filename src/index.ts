@@ -35,6 +35,13 @@ export {
   roleLaunchability,
 } from "./orchestrator/launch.js";
 export { foldLeases, type LeaseLifecycle, type LeaseView } from "./orchestrator/lease.js";
+export {
+  type Lifecycle,
+  type ObserveSignals,
+  type ObserveStep,
+  observeStep,
+  stepEvent,
+} from "./orchestrator/observe.js";
 export { renderStatus } from "./orchestrator/status.js";
 export {
   createRoleRegistry,
