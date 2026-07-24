@@ -142,16 +142,18 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
                             [--waiting-on <r,r>] --body-file <p> [--write]
-agent-protocol orchestrator status --journal <path> [--now <iso>]          # свёртка аренды из журнала
+agent-protocol orchestrator status --journal <path> [--now <iso>] [--holds <dir>]  # свёртка аренды из журнала
 agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> \
                             [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
 agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> --force-flag <path> \
-                            [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
+                            [--holds <dir>] [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
 agent-protocol orchestrator log    --journal <path>                        # история событий для john
 agent-protocol orchestrator stop   --mode graceful --stop-flag <path> [--write]
 agent-protocol orchestrator stop   --mode force --force-flag <path> --by <who> --reason <why> --root <mail> --ref <ref> --thread <slug> [--write]
+agent-protocol orchestrator hold   --mode take    --holds <dir> --role <id> --by <who> --ref <ref> [--ttl <sec>] [--note <t>] [--write]
+agent-protocol orchestrator hold   --mode release --holds <dir> --role <id> [--write]   # роль занята ручной сессией
 ```
 
 **Запись сообщения — `new-message`** (единственная точка правды по форме записи):
@@ -317,6 +319,38 @@ systemd или руками) — владельческая развилка joh
   жило в чьей-то памяти.
 - **Наша установка** (машина john): режим — отдельное решение john к боевому
   включению; по умолчанию ручной как консервативный. Это не часть пакета.
+
+### S5 — hold: роль занята человеком
+
+Живая ручная сессия роли и демон — два претендента на ОДНУ аренду: почта ждёт
+`dev-core`, демон видит кандидата и поднимает вторую сессию поверх работающей.
+Из двух форм сосуществования выбрана **«аренда отказывает демону, пока жива
+ручная сессия»** (не «сессия паркуется навсегда») — на переходный период, пока
+автономный контур принимается.
+
+- **`hold --mode take`** — файл `<holds>/<role>` в том же файловом паттерне, что
+  enable/stop/force. `--role` и `--by` сверяются с конфигом: hold на роль,
+  которой нет, демон никогда не сопоставит с кандидатом — тихо не сработавшая
+  защита хуже её отсутствия. Повторный `take` = продление.
+- **Срок живёт В ФАЙЛЕ** (`expires`), как `deadline` у `lease-acquired`: держатель
+  объявляет, до какого момента роль занята, демон только сравнивает с `now`.
+  Иначе TTL пришлось бы держать в конфиге демона, и совпадение двух настроек
+  стало бы условием корректности. Умолчание — час, `--ttl` калибрует.
+- **Почему не heartbeat.** Первая форма (метка, обновляемая процессом-биением)
+  отвергнута при реализации: биение вёл бы процесс-ребёнок сессии, а осиротевший
+  ребёнок переживает её смерть и продолжает биться — hold остаётся вечно свежим и
+  блокирует контур навсегда. Это ровно тот класс «висит, выглядя нормально», ради
+  которого TTL и вводился. Объявленный вперёд срок той дыры не имеет.
+- **Hold держит РОЛЬ, а не связку**: ручная сессия занята собой на любом треде.
+  Остальные роли демон запускает как обычно.
+- **Пропуск не молчаливый.** Решение тика `held` — отдельное от `idle` («нечего
+  делать» и «есть что делать, но роль у человека» — разные состояния контура) и
+  печатается строкой каждый тик. В журнал НЕ пишется: hold живёт часами, запись
+  на каждом тике утопила бы журнал сессий в шуме.
+- **Просроченный hold не удаляется автоматически** — остаётся следом «здесь была
+  ручная сессия и она не убралась за собой»; демон его игнорирует (иначе мёртвая
+  сессия блокировала бы контур вечно), `status --holds` помечает его явно.
+- **`hold --mode release`** — снять; чистый выход сессии обязан звать его.
 
 ## `spike/` — P0
 

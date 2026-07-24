@@ -27,6 +27,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
@@ -34,6 +35,17 @@ import { dirname, join } from "node:path";
 import { loadProtocolConfig } from "./config/load.js";
 import { loadThreads } from "./fs/comms.js";
 import { fileExistsAtRef, messagesAtRef } from "./fs/git.js";
+import {
+  foldHolds,
+  HOLD_TTL_SECONDS,
+  type HoldRecord,
+  heldRoles,
+  holdExpiry,
+  holdStamp,
+  parseHold,
+  renderHold,
+  renderHolds,
+} from "./orchestrator/hold.js";
 import {
   eventTimestamp,
   type OrchestratorEvent,
@@ -82,10 +94,12 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
   agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
-  agent-protocol orchestrator status --journal <path> [--now <iso>] [--enable-flag <path>] [--mode-file <path>]
+  agent-protocol orchestrator status --journal <path> [--now <iso>] [--enable-flag <path>] [--mode-file <path>] [--holds <dir>]
   agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
   agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--force-flag <path>] [--now <iso>] [--write]
-  agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> --force-flag <path> [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
+  agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> --force-flag <path> [--holds <dir>] [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
+  agent-protocol orchestrator hold   --mode take    --holds <dir> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--write]
+  agent-protocol orchestrator hold   --mode release --holds <dir> --role <id> [--write]
   agent-protocol orchestrator log    --journal <path>
   agent-protocol orchestrator stop   --mode graceful --stop-flag <path> [--write]
   agent-protocol orchestrator stop   --mode force --force-flag <path> --by <who> --reason <why> --root <mail> --ref <ref> [--repo <p>] --thread <slug> [--write]
@@ -576,6 +590,19 @@ const orchestratorNow = (argv: readonly string[]): Date => {
 };
 
 /**
+ * Каталог holdʼов → записи (S5). Отсутствующий каталог — пусто (holdʼов ещё не
+ * брали), а вот НЕЧИТАЕМЫЙ файл внутри — громкий отказ через `parseHold`:
+ * пропустить сломанный hold значило бы поднять роль поверх живой сессии ровно
+ * тогда, когда что-то уже не так.
+ */
+const loadHolds = (dir: string): HoldRecord[] => {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .sort()
+    .map((name) => parseHold(readFile(join(dir, name), `hold '${name}'`)));
+};
+
+/**
  * Витрина состояния оркестратора — свёртка ЛОКАЛЬНОГО журнала. Отсутствующий
  * журнал — это пустое состояние (сессий ещё не было), а не ошибка: файл
  * появляется с первым событием. Нечитаемый по ДРУГОЙ причине — громкий отказ
@@ -586,11 +613,19 @@ const orchestratorNow = (argv: readonly string[]): Date => {
  * командой, а не живёт в чьей-то памяти (требование curator). enable-состояние —
  * наличие файла-флага; показ его здесь и подтверждает персистентность (файл на
  * диске переживает ребут).
+ *
+ * S5: `--holds` добавляет строки ручных holdʼов — «роль занята человеком».
  */
 const orchestratorStatus = (argv: readonly string[]): void => {
   const path = required(argv, "--journal");
   const events = existsSync(path) ? parseJournal(readFile(path, "журнал оркестратора")) : [];
-  out(renderStatus(foldLeases(events, orchestratorNow(argv))));
+  const now = orchestratorNow(argv);
+  out(renderStatus(foldLeases(events, now)));
+
+  // S5: holdʼы — часть «что сейчас с контуром»; забытый (просроченный) hold
+  // должен быть видно той же командой, что и повисшую аренду.
+  const holds = flag(argv, "--holds");
+  if (holds !== undefined) out(renderHolds(foldHolds(loadHolds(holds), now)));
 
   const modeFile = flag(argv, "--mode-file");
   const enableFlag = flag(argv, "--enable-flag");
@@ -977,6 +1012,9 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
  *  - аварийный тормоз: `--stop-flag` проверяется ПЕРЕД каждым тиком и
  *    перекрывает включение. Простейшая форма S4 уже здесь.
  *  - глобальный потолок — со следом в журнале.
+ *  - S5: `--holds` — роль, занятая ЖИВОЙ РУЧНОЙ СЕССИЕЙ, не поднимается (иначе
+ *    демон стартует вторую сессию той же роли поверх работающей). Пропуск не
+ *    молчаливый: строкой в поток на каждом тике.
  *
  * Роль ребута машины (демон поднимается сам или руками) — развилка john, вне
  * кода демона: он одинаков, отличается лишь то, как его запускают.
@@ -988,6 +1026,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const enableFlag = required(argv, "--enable-flag");
   const stopFlag = required(argv, "--stop-flag");
   const forceFlag = required(argv, "--force-flag");
+  const holdsDir = flag(argv, "--holds");
 
   const registry = registryFrom(argv, undefined);
   const ids = registry.ids();
@@ -1017,8 +1056,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const events = existsSync(journalPath)
       ? parseJournal(readFile(journalPath, "журнал оркестратора"))
       : [];
+    // Holdʼы читаются КАЖДЫЙ тик, а не раз при старте: ручную сессию берут и
+    // отпускают, пока демон уже крутится.
+    const held =
+      holdsDir === undefined ? [] : heldRoles(foldHolds(loadHolds(holdsDir), new Date()));
     const decision = planTick({
       enabled: existsSync(enableFlag),
+      held,
       // Force-флаг тоже останавливает демон (S4): его текущую сессию гасит
       // наблюдатель, а нового брать нельзя — иначе следующий тик поднял бы роль
       // прямо под force.
@@ -1033,7 +1077,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       out(`agent-protocol: демон остановлен — ${existsSync(forceFlag) ? "force" : "стоп"}-флаг`);
       return;
     }
-    if (decision.kind === "refused") {
+    if (decision.kind === "held") {
+      // В журнал НЕ пишем: hold живёт часами, и запись каждый тик утопила бы
+      // журнал сессий в шуме. Но и молчать нельзя — забытый hold обязан быть
+      // слышен, поэтому строка в поток демона на каждом тике.
+      err(`agent-protocol: пропускаю — заняты ручными сессиями: ${decision.roles.join(", ")}`);
+    } else if (decision.kind === "refused") {
       appendEvent(journalPath, {
         kind: "launch-refused",
         ts: eventTimestamp(new Date()),
@@ -1142,6 +1191,73 @@ const orchestratorStop = (argv: readonly string[]): void => {
   out(`agent-protocol: force-стоп — флаг '${forceFlag}' создан, след объявлен в тред ${threadId}`);
 };
 
+/**
+ * Hold ручной сессии (S5): `take` — объявить роль занятой до срока, `release` —
+ * снять. Срок пишется В ФАЙЛ (`expires`), а не берётся из настроек демона: так
+ * держатель и демон не обязаны сходиться конфигами, а «до какого момента» видно
+ * в самом файле.
+ *
+ * `--role` и `--by` сверяются с конфигом протокола: hold — заявление о РОЛИ
+ * контура, и роль, которой нет, значила бы hold, который демон никогда не
+ * сопоставит с кандидатом (тихо не сработавшая защита — худший её вид).
+ */
+const orchestratorHold = (argv: readonly string[]): void => {
+  const mode = required(argv, "--mode");
+  if (mode !== "take" && mode !== "release") {
+    fail(`--mode '${mode}' — допустимо take | release`, 2);
+    return;
+  }
+  const holds = required(argv, "--holds");
+  const roleId = required(argv, "--role");
+  const write = argv.includes("--write");
+  const path = join(holds, roleId);
+
+  if (mode === "release") {
+    if (!existsSync(path)) {
+      out(`agent-protocol: holdʼа на '${roleId}' нет — снимать нечего`);
+      return;
+    }
+    if (!write) {
+      out(`agent-protocol: снимет hold '${path}'; --write выполнит`);
+      return;
+    }
+    rmSync(path);
+    out(`agent-protocol: hold на '${roleId}' снят — демон может поднимать роль`);
+    return;
+  }
+
+  const by = required(argv, "--by");
+  const registry = registryFrom(argv, undefined);
+  if (!registry.isKnown(roleId)) {
+    fail(`--role '${roleId}' — такой роли в конфиге нет, hold не с чем сопоставить`, 2);
+    return;
+  }
+  if (!registry.isKnown(by)) {
+    fail(`--by '${by}' — hold держит роль (кто занял сессию), а её нет в конфиге`, 2);
+    return;
+  }
+  const at = orchestratorNow(argv);
+  const ttl = positiveInt(argv, "--ttl", HOLD_TTL_SECONDS);
+  const note = flag(argv, "--note");
+  const record: HoldRecord = {
+    role: roleId,
+    by,
+    taken: holdStamp(at),
+    expires: holdExpiry(at, ttl),
+    ...(note === undefined ? {} : { note }),
+  };
+
+  if (!write) {
+    out(`agent-protocol: займёт '${roleId}' до ${record.expires} (by ${by}); --write выполнит`);
+    return;
+  }
+  mkdirSync(holds, { recursive: true });
+  // Перезапись — это и есть продление: hold на роль один, второй держатель
+  // поверх первого виден в файле (`by`), а не прячется рядом.
+  writeFileSync(path, renderHold(record), "utf8");
+  out(`agent-protocol: '${roleId}' занята до ${record.expires} — демон её не поднимает`);
+};
+
 const main = async (argv: readonly string[]): Promise<void> => {
   const [command, subcommand] = argv;
   if (command === "config" && subcommand === "check") {
@@ -1178,6 +1294,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     orchestratorLog(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "stop") {
     orchestratorStop(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "hold") {
+    orchestratorHold(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "systemd-unit") {
     orchestratorSystemdUnit(argv.slice(2));
   } else {
