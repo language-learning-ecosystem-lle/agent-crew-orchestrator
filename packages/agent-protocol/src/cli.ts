@@ -33,7 +33,7 @@ import {
 import { dirname, join } from "node:path";
 
 import { loadProtocolConfig } from "./config/load.js";
-import { loadThreads } from "./fs/comms.js";
+import { loadThreads, renderThreadFailures } from "./fs/comms.js";
 import { fileExistsAtRef, messagesAtRef } from "./fs/git.js";
 import {
   foldHolds,
@@ -62,7 +62,7 @@ import {
 } from "./orchestrator/launch.js";
 import { foldLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
-import { type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
+import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
@@ -237,9 +237,16 @@ const roleExists = (argv: readonly string[]): void => {
 const indexBuild = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const registry = registryFrom(argv, repoOf(root));
-  const threads = loadThreads(root, registry.ids());
+  const { threads, failures } = loadThreads(root, registry.ids());
   const rendered = renderIndex(threads.map((loaded) => loaded.thread));
   const path = join(root, "INDEX.md");
+
+  // Реестр — витрина, и собрать её из части тредов значит опубликовать неполный
+  // реестр как полный. Здесь изоляция НЕ применяется: сбойный тред — отказ.
+  if (failures.length > 0) {
+    for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
+    fail(`INDEX собран не будет — тредов нечитаемо: ${failures.length}`, 2);
+  }
 
   if (argv.includes("--write")) {
     writeOut(path, rendered);
@@ -266,7 +273,12 @@ const threadBuild = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const id = required(argv, "--id");
   const registry = registryFrom(argv, repoOf(root));
-  const loaded = loadThreads(root, registry.ids()).find((item) => item.thread.id === id);
+  const scan = loadThreads(root, registry.ids());
+  // Тред спрошен ПОИМЁННО: если сбойный — именно он, то это отказ, а не «не
+  // найден». Разница существенная: «не найден» толкает искать опечатку в id.
+  const broken = scan.failures.find((failure) => failure.id === id);
+  if (broken !== undefined) fail(`тред '${id}' не прочитан: ${broken.problem}`, 2);
+  const loaded = scan.threads.find((item) => item.thread.id === id);
   if (loaded === undefined) fail(`тред '${id}' не найден в '${root}'`, 2);
 
   const { thread } = loaded as NonNullable<typeof loaded>;
@@ -283,12 +295,16 @@ const threadBuild = (argv: readonly string[]): void => {
 const checkAll = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const registry = registryFrom(argv, repoOf(root));
-  const threads = loadThreads(root, registry.ids());
+  const { threads, failures } = loadThreads(root, registry.ids());
 
   const issues = threads.flatMap((loaded) =>
     loaded.input === undefined ? [] : checkThread(loaded.input, registry),
   );
   const legacy = threads.filter((loaded) => loaded.legacy).map((loaded) => loaded.thread.id);
+  // Нечитаемый тред — нарушение того же рода, что нарушение формата: `check`
+  // существует, чтобы сказать «с почтой что-то не так», и молчать о треде,
+  // который вообще не разобрался, ему нельзя.
+  const failureIssues = renderThreadFailures(failures);
 
   // Неизменность сообщений проверяется ОТНОСИТЕЛЬНО ТОЧКИ В ИСТОРИИ: на диске
   // лежит только «сейчас», и вопрос «правили ли задним числом» без ref не имеет
@@ -315,13 +331,19 @@ const checkAll = (argv: readonly string[]): void => {
   if (legacy.length > 0) {
     out(`agent-protocol: ещё не мигрированы (читаются как есть): ${legacy.join(", ")}`);
   }
-  if (issues.length === 0) {
+  if (issues.length === 0 && failureIssues.length === 0) {
     out(`agent-protocol: ok — ${threads.length - legacy.length} тредов прошли проверку формата`);
     return;
   }
-  err("agent-protocol: формат нарушен:");
-  for (const issue of issues) {
-    err(`- ${issue.thread}${issue.file === undefined ? "" : `/${issue.file}`}: ${issue.message}`);
+  if (failureIssues.length > 0) {
+    err("agent-protocol: треды не прочитаны:");
+    for (const line of failureIssues) err(`- ${line}`);
+  }
+  if (issues.length > 0) {
+    err("agent-protocol: формат нарушен:");
+    for (const issue of issues) {
+      err(`- ${issue.thread}${issue.file === undefined ? "" : `/${issue.file}`}: ${issue.message}`);
+    }
   }
   process.exit(1);
 };
@@ -332,7 +354,12 @@ const migrate = (argv: readonly string[]): void => {
   const only = flag(argv, "--id");
   const doWrite = argv.includes("--write");
 
-  const threads = loadThreads(root, registry.ids()).filter(
+  const scan = loadThreads(root, registry.ids());
+  // Сбойные треды миграции не мешают — она идёт по legacy, которые прочитались.
+  // Но молчать о них нельзя: полу-мигрированный тред как раз и есть кандидат на
+  // домиграцию, и «мигрировать нечего» без этой строки читалось бы как «всё ок».
+  for (const line of renderThreadFailures(scan.failures)) err(`agent-protocol: ${line}`);
+  const threads = scan.threads.filter(
     (loaded) => loaded.legacy && (only === undefined || loaded.thread.id === only),
   );
   if (threads.length === 0) {
@@ -390,7 +417,13 @@ const derive = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const registry = registryFrom(argv, repoOf(root));
   const doWrite = argv.includes("--write");
-  const threads = loadThreads(root, registry.ids());
+  const { threads, failures } = loadThreads(root, registry.ids());
+  // Как и `index build`: производные — витрина, собирать её из части тредов
+  // значит опубликовать неполное как полное. Сбойный тред останавливает сборку.
+  if (failures.length > 0) {
+    for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
+    fail(`производные не собраны — тредов нечитаемо: ${failures.length}`, 2);
+  }
 
   const targets: { path: string; rendered: string }[] = [];
   for (const loaded of threads) {
@@ -572,8 +605,24 @@ const mail = (argv: readonly string[]): void => {
 
   // Почта считается из ТРЕДОВ, а не из производного INDEX: иначе падение
   // генератора реестра ослепило бы вахту и сторожа (боль 5, тред 008).
-  const threads = loadThreads(root, registry.ids()).map((loaded) => loaded.thread);
-  for (const id of threadsWaitingOn(threads, role)) out(id);
+  const { threads, failures } = loadThreads(root, registry.ids());
+  const hits = threadsWaitingOn(
+    threads.map((loaded) => loaded.thread),
+    role,
+  );
+  for (const id of hits) out(id);
+  for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
+
+  // КОД ВОЗВРАТА РЕШАЕТ ОДНУ ЗАДАЧУ: не дать объявить пустой ящик, которого мы
+  // не проверили. Обёртка входа (`has-mail.sh`) на ненулевом коде выбрасывает
+  // stdout и честно говорит «не отработал» — поэтому:
+  //  - нашли почту, часть тредов сбойна → код 0, тревога в stderr. Ненулевой
+  //    здесь ВЫБРОСИЛ БЫ найденную почту, то есть вернул ту самую слепоту,
+  //    ради устранения которой пакет и делается;
+  //  - почты не нашли, а что-то нечитаемо → «почты нет» НЕДОКАЗАНО, код 2.
+  if (failures.length > 0 && hits.length === 0) {
+    fail(`почта не подтверждена: нечитаемых тредов ${failures.length}, читаемые ждут не тебя`, 2);
+  }
 };
 
 /**
@@ -895,10 +944,22 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // Переход хода — из ИСТОЧНИКА-тредов (тот же, что `mail`): тред взят под
     // аренду, ждал роль; перестал ждать её → ход передан. Не «код 0», не «почта
     // пуста».
-    const handedOff = !threadsWaitingOn(
-      loadThreads(p.mailRoot, p.ids).map((loaded) => loaded.thread),
-      p.roleId,
-    ).includes(p.thread);
+    // САМОЕ ОПАСНОЕ МЕСТО ИЗОЛЯЦИИ — решение вынесено в `handoffDetected`, там
+    // же его тест и довод (сломанный тред под арендой не должен читаться как
+    // переход хода). Здесь остаётся только сбор входа и жалоба вслух.
+    const scan = loadThreads(p.mailRoot, p.ids);
+    const threadUnreadable = scan.failures.some((failure) => failure.id === p.thread);
+    if (threadUnreadable) {
+      err(`agent-protocol: тред ${p.thread} под арендой не читается — переход хода НЕ засчитан`);
+    }
+    const handedOff = handoffDetected({
+      threadUnreadable,
+      waitingThreads: threadsWaitingOn(
+        scan.threads.map((loaded) => loaded.thread),
+        p.roleId,
+      ),
+      thread: p.thread,
+    });
     const step = observeStep(lifecycle, {
       handedOff,
       processExited: exited,
@@ -1049,7 +1110,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
 
   for (;;) {
     // Кандидаты — пары (роль, тред), где запускаемая роль ждёт по треду.
-    const threads = loadThreads(mailRoot, ids).map((loaded) => loaded.thread);
+    // РАДИ ЭТОГО МЕСТА и делалась изоляция: демон тикает без человека рядом, и
+    // до неё один кривой файл в одном треде убивал весь цикл — а выглядело бы
+    // это как «ночью ничего не пришло». Теперь сбойный тред выбывает из
+    // кандидатов, жалоба повторяется КАЖДЫЙ тик (не одна строка при старте,
+    // которую никто не увидит), демон продолжает работать.
+    const scan = loadThreads(mailRoot, ids);
+    for (const line of renderThreadFailures(scan.failures)) err(`agent-protocol: ${line}`);
+    const threads = scan.threads.map((loaded) => loaded.thread);
     const candidates = launchable.flatMap((roleId) =>
       threadsWaitingOn(threads, roleId).map((thread) => ({ role: roleId, thread })),
     );
