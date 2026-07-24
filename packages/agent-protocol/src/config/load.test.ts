@@ -115,3 +115,63 @@ describe("loadProtocolConfig", () => {
     expect(() => loadProtocolConfig({ repo, ref: "no-such-ref", fetch: false })).toThrow();
   });
 });
+
+describe("секция orchestrator", () => {
+  it("необязательна — репозиторий, который возит только почту, законен", () => {
+    const { repo } = repoWithConfig();
+    expect(loadProtocolConfig({ repo, ref: "HEAD", fetch: false }).config.orchestrator).toBe(
+      undefined,
+    );
+  });
+
+  it("читается целиком, когда объявлена", () => {
+    const { repo, path } = repoWithConfig();
+    const withOrchestrator = {
+      ...CONFIG,
+      orchestrator: {
+        state: ".orchestrator",
+        mailCheckout: ".worktrees/comms",
+        ref: "origin/main",
+      },
+    };
+    writeFileSync(path, `${JSON.stringify(withOrchestrator, null, 2)}\n`);
+    execFileSync("git", [
+      "-C",
+      repo,
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@example.com",
+      "commit",
+      "-qam",
+      "секция оркестратора",
+    ]);
+
+    expect(loadProtocolConfig({ repo, ref: "HEAD", fetch: false }).config.orchestrator).toEqual({
+      state: ".orchestrator",
+      mailCheckout: ".worktrees/comms",
+      ref: "origin/main",
+    });
+  });
+
+  it("лишнее поле — громкий отказ, а не молча проигнорированное умолчание", () => {
+    const { repo, path } = repoWithConfig();
+    writeFileSync(
+      path,
+      `${JSON.stringify({ ...CONFIG, orchestrator: { state: ".o", mailCheckout: ".w", ref: "origin/main", journal: "чужое" } }, null, 2)}\n`,
+    );
+    execFileSync("git", [
+      "-C",
+      repo,
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@example.com",
+      "commit",
+      "-qam",
+      "лишнее поле",
+    ]);
+
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow();
+  });
+});

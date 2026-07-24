@@ -156,6 +156,9 @@ NNN-slug/
 `--ref` (какую версию конфига читать) обязателен и умолчания не имеет; `--repo`
 по умолчанию — репозиторий каталога. Без `--write` ничего не пишется.
 
+Вход в этом репозитории — `pnpm protocol <команда>` (пакет объявлен зависимостью
+корня); ниже команды записаны именем бинарника.
+
 ```
 agent-protocol config check --ref <ref> [--repo <p>]                       # конфиг цел
 agent-protocol roles list   --ref <ref>                                    # список ролей
@@ -171,18 +174,22 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
                             [--waiting-on <r,r>] --body-file <p> [--write]
-agent-protocol orchestrator status --journal <path> [--now <iso>] [--holds <dir>]  # свёртка аренды из журнала
-agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> \
+# оркестратор: пути — из конфига (секция `orchestrator`), в эксплуатации нужен только --ref;
+# флаги-пути ниже опущены — они остались переопределением для проверок на копии почты
+agent-protocol orchestrator enable  --ref <ref> [--write]                  # ВКЛЮЧИТЬ запуски
+agent-protocol orchestrator disable --ref <ref> [--write]                  # выключить
+agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>]   # режим целиком
+agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
-agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> \
+agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
                             [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
-agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> --force-flag <path> \
-                            [--holds <dir>] [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
-agent-protocol orchestrator log    --journal <path>                        # история событий для john
-agent-protocol orchestrator stop   --mode graceful --stop-flag <path> [--write]
-agent-protocol orchestrator stop   --mode force --force-flag <path> --by <who> --reason <why> --root <mail> --ref <ref> --thread <slug> [--write]
-agent-protocol orchestrator hold   --mode take    --holds <dir> --role <id> --by <who> --ref <ref> [--ttl <sec>] [--note <t>] [--write]
-agent-protocol orchestrator hold   --mode release --holds <dir> --role <id> [--write]   # роль занята ручной сессией
+agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] \
+                            [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
+agent-protocol orchestrator log    --ref <ref>                             # история событий для john
+agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
+agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
+agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--write]
+agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--write]   # роль занята ручной сессией
 ```
 
 **Запись сообщения — `new-message`** (единственная точка правды по форме записи):
@@ -391,6 +398,41 @@ systemd или руками) — владельческая развилка joh
   ручная сессия и она не убралась за собой»; демон его игнорирует (иначе мёртвая
   сессия блокировала бы контур вечно), `status --holds` помечает его явно.
 - **`hold --mode release`** — снять; чистый выход сессии обязан звать его.
+
+### S6 — эксплуатация без путей в командах
+
+Решение john: пакет используется как ЗАВИСИМОСТЬ репозитория, все действия идут
+через его CLI; ручных `touch`, `mkdir` и путей-аргументов в эксплуатации быть не
+должно. Повод — подготовка каталогов, путь журнала, папка holdʼов и точная
+команда демона выкатывались человеку списком в чат: пути жили в переписке, и
+вторая эксплуатация начиналась с реконструкции команды по памяти.
+
+- **Секция `orchestrator` в конфиге** — `state` (каталог оперативного
+  состояния), `mailCheckout`, `ref`. **Проект говорит ГДЕ, пакет — ЧТО внутри**:
+  имена журнала, трёх флагов и каталога holdʼов остаются конвенцией пакета и
+  наружу не выносятся. Иначе проект получил бы шесть способов разложить то, чем
+  он не управляет.
+- **Секция необязательна** — пакет проектируется как чужой, и репозиторий,
+  который возит почту без оркестратора, законен. Отсутствие ловится в момент
+  вызова оркестраторной команды, громко: молчаливое умолчание вроде
+  `.orchestrator` означало бы журнал там, где его никто не ищет.
+- **`enable` / `disable` вместо `touch`.** Команда владеет каталогом состояния и
+  создаёт его сама; печатает, каким состояние было ДО, каким стало и где лежат
+  файлы. Повторное включение — «уже включены, ничего не меняю», а не молчаливая
+  перезапись.
+- **Флаги-пути остались переопределением** (`--journal`, `--root`, `--holds`,
+  `--enable-flag`, …) — ими пользуются проверки и разовые прогоны на копии
+  почты. В эксплуатации обязателен только `--ref`.
+- **`status` показывает режим целиком**: аренды, holdʼы, включены ли запуски, что
+  будет после ребута и где лежит каждый файл. README требовал этого с S4, но
+  команда умела показать режим лишь тому, кто помнил пути.
+- **Вход — `pnpm protocol …`** (пакет в devDependencies корня), не путь к
+  каталогу пакета.
+
+**Честно о гаранте.** Ни `touch`, ни `orchestrator enable` не отличают john от
+агента: «включает человек» — гарантия ПРОЦЕДУРНАЯ и была такой всегда. CLI её не
+усиливает и не ослабляет, он убирает из процедуры места, где ошибиться может
+каждый. Техническая гарантия (секрет у владельца, подпись) — отдельная развилка.
 
 ## `spike/` — P0
 
