@@ -17,7 +17,9 @@ export {
   orchestratorEventSchema,
   parseEventLine,
   parseJournal,
+  REFUSAL_REASONS,
   RELEASE_REASONS,
+  type RefusalReason,
   type ReleaseReason,
   renderEventLine,
   renderJournal,
@@ -43,6 +45,7 @@ export {
   stepEvent,
 } from "./orchestrator/observe.js";
 export { renderStatus } from "./orchestrator/status.js";
+export { type Candidate, planTick, type TickDecision } from "./orchestrator/tick.js";
 export {
   createRoleRegistry,
   type NotificationTarget,

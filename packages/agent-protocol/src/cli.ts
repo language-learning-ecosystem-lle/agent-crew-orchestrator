@@ -39,6 +39,7 @@ import {
   type OrchestratorEvent,
   orchestratorEventSchema,
   parseJournal,
+  type ReleaseReason,
   renderEventLine,
 } from "./orchestrator/journal.js";
 import {
@@ -50,7 +51,9 @@ import {
 import { foldLeases } from "./orchestrator/lease.js";
 import { type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
 import { renderStatus } from "./orchestrator/status.js";
+import { planTick } from "./orchestrator/tick.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
+import type { Role } from "./roles/schema.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 import type { Expects } from "./thread/message.js";
@@ -79,7 +82,8 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
   agent-protocol orchestrator status --journal <path> [--now <iso>]
   agent-protocol orchestrator record --journal <path> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
-  agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]`;
+  agent-protocol orchestrator run    --journal <path> --root <mail> --ref <ref> [--repo <p>] --role <id> --thread <slug> [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
+  agent-protocol orchestrator daemon --journal <path> --root <mail> --ref <ref> [--repo <p>] --enable-flag <path> --stop-flag <path> [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]`;
 
 const out = (line: string): void => {
   process.stdout.write(`${line}\n`);
@@ -636,23 +640,131 @@ const positiveInt = (argv: readonly string[], name: string, fallback: number): n
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+const appendEvent = (journalPath: string, event: OrchestratorEvent): void => {
+  mkdirSync(dirname(journalPath), { recursive: true });
+  appendFileSync(journalPath, `${renderEventLine(event)}\n`, "utf8");
+};
+
+/** Промпт для роли из её `instructions` (тексты читаются с рабочего дерева). */
+const buildPromptForRole = (role: Role, thread: string, repo: string): string =>
+  buildLaunchPrompt({
+    role: role.id,
+    thread,
+    instructions: (role.instructions ?? []).map((entry) => ({
+      path: entry.path,
+      text: readFile(join(repo, entry.path), `инструкции роли ${role.id}`),
+    })),
+  });
+
+type RunParams = {
+  readonly journalPath: string;
+  readonly mailRoot: string;
+  readonly roleId: string;
+  readonly thread: string;
+  readonly prompt: string;
+  readonly exec: string;
+  readonly maxTurns: string;
+  readonly wallClockMs: number;
+  readonly pollMs: number;
+  readonly ids: readonly string[];
+  readonly now: Date;
+  readonly maxConsecutive: number;
+};
+
 /**
- * Запуск роли сессией `claude -p` по ОДНОМУ треду и НАБЛЮДЕНИЕ за ним до
- * завершения (шаги S1+S2). Собирает промпт из `instructions` роли, пишет
- * `lease-acquired`+`launch` в журнал ДО спавна, затем в цикле следит за
- * ПЕРЕХОДОМ ХОДА по этому треду (из источника-тредов) и за процессом, переводя
- * аренду running → draining → stopped со следом.
- *
- * Оркестратор НЕ останавливает агента — тот завершается сам, дописав ответ
- * (требование 3 curator): после перехода хода процесс не трогаем, ждём его
- * выхода. Предел — дедлайн аренды (`overdue`): застрял без перехода хода →
- * `timeout`, а не висит вечно (требование 2). Роль, которую запускать нельзя, —
- * явный отказ (`roleLaunchability`); потолки — в `planLaunch`.
- *
- * `--exec` (по умолчанию `claude`) инъектируется: приёмка и e2e целятся в
- * реальный бинарник, проверки мехники — в стаб, без вызова модели в тестах.
- * `--root` (каталог почты) держит свежим вызывающий (в S3 — демон fetch'ем);
- * наблюдатель читает файловую ленту тредов.
+ * ОДИН прогон: запуск роли `claude -p` по треду + наблюдение до терминала
+ * (S1+S2). Пишет `lease-acquired`+`launch` ДО спавна, следит за переходом хода
+ * (из источника-тредов) и процессом, снимает аренду со следом. Используется и
+ * ручным `run`, и демоном `daemon`. Возвращает исход (или `skip`, если
+ * `planLaunch` отказал — потолок/активна/exhausted).
+ */
+const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
+  const events = existsSync(p.journalPath)
+    ? parseJournal(readFile(p.journalPath, "журнал оркестратора"))
+    : [];
+  const plan = planLaunch({
+    events,
+    role: p.roleId,
+    thread: p.thread,
+    now: p.now,
+    wallClockMs: p.wallClockMs,
+    maxConsecutive: p.maxConsecutive,
+  });
+  if (!plan.ok) {
+    err(`agent-protocol: запуск ${p.roleId}/${p.thread} отклонён (${plan.reason})`);
+    return "skip";
+  }
+
+  // ЗАПИСЬ ДО СПАВНА (требование 2 curator): умри процесс на старте — снаружи
+  // «попытка была и оборвалась», а не «ничего не происходило».
+  for (const event of plan.events) appendEvent(p.journalPath, event);
+
+  // Спавн в СВОЕЙ процесс-группе (`detached`): гасить придётся всю группу, а не
+  // только прямого потомка — SIGTERM шеллу/лончеру не доходит до его детей
+  // (стаб → sleep, `claude` → его подпроцессы), и они осиротели бы.
+  const child = spawn(p.exec, ["-p", p.prompt, "--max-turns", p.maxTurns], {
+    stdio: "inherit",
+    detached: true,
+  });
+  let exited = false;
+  let spawnError: Error | undefined;
+  child.on("exit", () => {
+    exited = true;
+  });
+  child.on("error", (error) => {
+    exited = true;
+    spawnError = error;
+  });
+
+  const deadlineMs = new Date(plan.deadline).getTime();
+  let lifecycle: Lifecycle = "running";
+
+  while (true) {
+    await sleep(p.pollMs);
+    // Переход хода — из ИСТОЧНИКА-тредов (тот же, что `mail`): тред взят под
+    // аренду, ждал роль; перестал ждать её → ход передан. Не «код 0», не «почта
+    // пуста».
+    const handedOff = !threadsWaitingOn(
+      loadThreads(p.mailRoot, p.ids).map((loaded) => loaded.thread),
+      p.roleId,
+    ).includes(p.thread);
+    const step = observeStep(lifecycle, {
+      handedOff,
+      processExited: exited,
+      overdue: Date.now() > deadlineMs,
+    });
+    if (step === null) continue;
+
+    const base = { ts: eventTimestamp(new Date()), role: p.roleId, thread: p.thread };
+    if (step.record === "handoff-detected") {
+      appendEvent(p.journalPath, stepEvent(step, base));
+      lifecycle = "draining";
+      out(`agent-protocol: ход по ${p.thread} перешёл — ${p.roleId} в draining`);
+      continue;
+    }
+
+    // Терминальный lease-released. Процесс ещё жив (застрял/доживает) — гасим ВСЮ
+    // группу (`-pid`): wall-clock гигиена для timeout, уборка залипшего для
+    // completed. Группа уже мёртвая → ESRCH, глотаем.
+    if (!exited && child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, "SIGTERM");
+      } catch {
+        // группы уже нет — ок
+      }
+    }
+    appendEvent(p.journalPath, stepEvent(step, base));
+    if (spawnError !== undefined) {
+      err(`agent-protocol: спавн '${p.exec}' дал ошибку: ${spawnError.message}`);
+    }
+    return step.reason;
+  }
+};
+
+/**
+ * Ручной запуск ОДНОЙ роли по ОДНОМУ треду (S1+S2). Резолвит роль → промпт,
+ * проверяет запускаемость, дальше — `runOne`. `--exec` (по умолчанию `claude`)
+ * инъектируется: приёмка целится в реальный бинарник, проверки — в стаб.
  */
 const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const journalPath = required(argv, "--journal");
@@ -672,30 +784,24 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     fail(`роль '${roleId}' оркестратором не запускается: ${can.reason}`, 2);
     return;
   }
-
-  const docs = (role.instructions ?? []).map((entry) => ({
-    path: entry.path,
-    text: readFile(join(repo, entry.path), `инструкции роли ${roleId}`),
-  }));
-  const prompt = buildLaunchPrompt({ role: roleId, thread, instructions: docs });
+  const prompt = buildPromptForRole(role, thread, repo);
 
   const now = orchestratorNow(argv);
   const wallClockMs = positiveInt(argv, "--wall-clock", 900) * 1000;
   const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
-  const events = existsSync(journalPath)
-    ? parseJournal(readFile(journalPath, "журнал оркестратора"))
-    : [];
-  const plan = planLaunch({ events, role: roleId, thread, now, wallClockMs, maxConsecutive });
-  if (!plan.ok) {
-    fail(`запуск отклонён (${plan.reason}) — потолок сработал, см. журнал`, 2);
-    return;
-  }
-
   const exec = flag(argv, "--exec") ?? "claude";
   const maxTurns = String(positiveInt(argv, "--max-turns", 60));
 
   if (!argv.includes("--write")) {
+    const events = existsSync(journalPath)
+      ? parseJournal(readFile(journalPath, "журнал оркестратора"))
+      : [];
+    const plan = planLaunch({ events, role: roleId, thread, now, wallClockMs, maxConsecutive });
+    if (!plan.ok) {
+      fail(`запуск отклонён (${plan.reason}) — потолок сработал, см. журнал`, 2);
+      return;
+    }
     out(
       `agent-protocol: запустит '${exec} -p' и будет наблюдать переход хода по ${thread} (роль ${roleId}, deadline ${plan.deadline}, poll ${pollMs / 1000}s); --write выполнит. Пред-события:`,
     );
@@ -703,76 +809,123 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     return;
   }
 
-  // ЗАПИСЬ ДО СПАВНА (требование 2 curator): умри процесс на старте — снаружи
-  // «попытка была и оборвалась», а не «ничего не происходило».
-  mkdirSync(dirname(journalPath), { recursive: true });
-  for (const event of plan.events)
-    appendFileSync(journalPath, `${renderEventLine(event)}\n`, "utf8");
+  const reason = await runOne({
+    journalPath,
+    mailRoot,
+    roleId,
+    thread,
+    prompt,
+    exec,
+    maxTurns,
+    wallClockMs,
+    pollMs,
+    ids: registry.ids(),
+    now,
+    maxConsecutive,
+  });
+  if (reason !== "skip") out(`agent-protocol: прогон ${roleId}/${thread} завершён: ${reason}`);
+};
 
-  // Асинхронный спавн в СВОЕЙ процесс-группе (`detached`): гасить придётся всю
-  // группу, а не только прямого потомка — SIGTERM шеллу/лончеру не доходит до
-  // его детей (стаб → sleep, `claude` → его подпроцессы), и они осиротели бы.
-  const child = spawn(exec, ["-p", prompt, "--max-turns", maxTurns], {
-    stdio: "inherit",
-    detached: true,
-  });
-  let exited = false;
-  let spawnError: Error | undefined;
-  child.on("exit", () => {
-    exited = true;
-  });
-  child.on("error", (error) => {
-    exited = true;
-    spawnError = error;
-  });
+/**
+ * Демон: запуск ролей ПО ПОЧТЕ, без человека в цикле (S3). Каждый тик читает
+ * флаги-файлы (включение/стоп), почту (источник-треды) и журнал, зовёт
+ * `planTick` и исполняет ОДНО решение: `halt` (стоп-флаг) — выход; `disabled`
+ * (нет флага включения) — ждём; `refused` — пишем `launch-refused` (глобальный
+ * потолок со следом); `launch` — поднимаем пару `runOne` и тикаем заново.
+ *
+ * ТРИ ГАРДА ПРОТИВ РАСХОДА БЕЗ ПРИСМОТРА (требования curator к S3):
+ *  - стартовое состояние ВЫКЛЮЧЕНО: без `--enable-flag` на диске — ни одного
+ *    запуска; включает john, создав файл. Первый автономный запуск не случаен.
+ *  - аварийный тормоз: `--stop-flag` проверяется ПЕРЕД каждым тиком и
+ *    перекрывает включение. Простейшая форма S4 уже здесь.
+ *  - глобальный потолок — со следом в журнале.
+ *
+ * Роль ребута машины (демон поднимается сам или руками) — развилка john, вне
+ * кода демона: он одинаков, отличается лишь то, как его запускают.
+ */
+const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
+  const journalPath = required(argv, "--journal");
+  const mailRoot = required(argv, "--root");
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const enableFlag = required(argv, "--enable-flag");
+  const stopFlag = required(argv, "--stop-flag");
 
-  const deadlineMs = new Date(plan.deadline).getTime();
+  const registry = registryFrom(argv, undefined);
   const ids = registry.ids();
-  const appendEvent = (event: OrchestratorEvent): void => {
-    appendFileSync(journalPath, `${renderEventLine(event)}\n`, "utf8");
-  };
-  let lifecycle: Lifecycle = "running";
+  const launchable = registry
+    .active()
+    .filter((role) => roleLaunchability(role).launchable)
+    .map((role) => role.id);
 
-  while (true) {
-    await sleep(pollMs);
-    // Переход хода — из ИСТОЧНИКА-тредов (тот же, что `mail`): тред взят под
-    // аренду, ждал роль; перестал ждать её → ход передан. Не «код 0», не «почта
-    // пуста».
-    const handedOff = !threadsWaitingOn(
-      loadThreads(mailRoot, ids).map((loaded) => loaded.thread),
-      roleId,
-    ).includes(thread);
-    const step = observeStep(lifecycle, {
-      handedOff,
-      processExited: exited,
-      overdue: Date.now() > deadlineMs,
+  const tickMs = positiveInt(argv, "--tick", 30) * 1000;
+  const wallClockMs = positiveInt(argv, "--wall-clock", 900) * 1000;
+  const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
+  const pollMs = positiveInt(argv, "--poll", 10) * 1000;
+  const exec = flag(argv, "--exec") ?? "claude";
+  const maxTurns = String(positiveInt(argv, "--max-turns", 60));
+  const once = argv.includes("--once"); // один тик — для проверок
+
+  out(
+    `agent-protocol: демон поднят (ВЫКЛЮЧЕН, пока нет '${enableFlag}'); стоп-флаг '${stopFlag}'; роли ${launchable.join(", ") || "—"}`,
+  );
+
+  for (;;) {
+    // Кандидаты — пары (роль, тред), где запускаемая роль ждёт по треду.
+    const threads = loadThreads(mailRoot, ids).map((loaded) => loaded.thread);
+    const candidates = launchable.flatMap((roleId) =>
+      threadsWaitingOn(threads, roleId).map((thread) => ({ role: roleId, thread })),
+    );
+    const events = existsSync(journalPath)
+      ? parseJournal(readFile(journalPath, "журнал оркестратора"))
+      : [];
+    const decision = planTick({
+      enabled: existsSync(enableFlag),
+      stopped: existsSync(stopFlag),
+      events,
+      candidates,
+      now: new Date(),
+      maxConsecutive,
     });
-    if (step === null) continue;
 
-    const base = { ts: eventTimestamp(new Date()), role: roleId, thread };
-    if (step.record === "handoff-detected") {
-      appendEvent(stepEvent(step, base));
-      lifecycle = "draining";
-      out(`agent-protocol: ход по ${thread} перешёл — ${roleId} в draining`);
-      continue;
+    if (decision.kind === "halt") {
+      out(`agent-protocol: демон остановлен — стоп-флаг '${stopFlag}'`);
+      return;
     }
-
-    // Терминальный lease-released. Процесс ещё жив (застрял/доживает) — гасим
-    // ВСЮ группу (`-pid`): wall-clock гигиена (была в S1) для timeout, уборка
-    // залипшего для completed. Группа уже мёртвая → ESRCH, глотаем.
-    if (!exited && child.pid !== undefined) {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch {
-        // группы уже нет — ок
+    if (decision.kind === "refused") {
+      appendEvent(journalPath, {
+        kind: "launch-refused",
+        ts: eventTimestamp(new Date()),
+        role: decision.role,
+        thread: decision.thread,
+        reason: decision.reason,
+      });
+      err(
+        `agent-protocol: запуск ${decision.role}/${decision.thread} отклонён (${decision.reason})`,
+      );
+    } else if (decision.kind === "launch") {
+      const role = registry.get(decision.role);
+      if (role !== undefined) {
+        const reason = await runOne({
+          journalPath,
+          mailRoot,
+          roleId: decision.role,
+          thread: decision.thread,
+          prompt: buildPromptForRole(role, decision.thread, repo),
+          exec,
+          maxTurns,
+          wallClockMs,
+          pollMs,
+          ids,
+          now: new Date(),
+          maxConsecutive,
+        });
+        out(`agent-protocol: демон — ${decision.role}/${decision.thread}: ${reason}`);
       }
     }
-    appendEvent(stepEvent(step, base));
-    if (spawnError !== undefined) {
-      err(`agent-protocol: спавн '${exec}' дал ошибку: ${spawnError.message}`);
-    }
-    out(`agent-protocol: прогон ${roleId}/${thread} завершён: ${step.reason}`);
-    return;
+    // decision.kind === "disabled" | "idle" — ждём и тикаем заново.
+
+    if (once) return;
+    await sleep(tickMs);
   }
 };
 
@@ -806,6 +959,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     orchestratorRecord(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "run") {
     await orchestratorRun(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "daemon") {
+    await orchestratorDaemon(argv.slice(2));
   } else {
     fail(USAGE, 2);
   }
