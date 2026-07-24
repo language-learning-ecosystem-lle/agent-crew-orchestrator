@@ -124,17 +124,40 @@ NNN-slug/
 
 ### Команды
 
+`--ref` (какую версию конфига читать) обязателен и умолчания не имеет; `--repo`
+по умолчанию — репозиторий каталога. Без `--write` ничего не пишется.
+
 ```
-agent-protocol index build  --root <comms> --config <roles.json> [--write]
-agent-protocol thread build --root <comms> --config <roles.json> --id <NNN-slug> [--write]
-agent-protocol check        --root <comms> --config <roles.json> [--since <ref>]
-agent-protocol migrate      --root <comms> --config <roles.json> [--id <NNN-slug>] [--write]
-agent-protocol mail         --root <comms> --config <roles.json> --role <id>
+agent-protocol config check --ref <ref> [--repo <p>]                       # конфиг цел
+agent-protocol roles list   --ref <ref>                                    # список ролей
+agent-protocol role exists  --ref <ref> --role <id>                        # роль известна?
+agent-protocol mail    --root <comms> --ref <ref> --role <id>              # почта ИЗ ТРЕДОВ
+agent-protocol index build  --root <comms> --ref <ref> [--write]
+agent-protocol thread build --root <comms> --ref <ref> --id <NNN-slug> [--write]
+agent-protocol derive       --root <comms> --ref <ref> [--write]           # все производные
+agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
+agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
+agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
+                            --expects answer|ack|none [--waiting-on <r,r>] --body-file <p> [--write]
+agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
+                            --participants <r,r> --from <role> --expects <e> \
+                            [--waiting-on <r,r>] --body-file <p> [--write]
 ```
 
-Без `--write` ничего не пишется. `mail` считает почту **из тредов**, а не из
-`INDEX.md`: производный реестр может отстать или не собраться, и завязывать на
-него вахту значит ослепить контур ровно так, как это уже случалось.
+**Запись сообщения — `new-message`** (единственная точка правды по форме записи):
+создаёт файл `messages/<UTC-метка>Z-<role>.md`, а `_thread.md` и `INDEX.md` НЕ
+трогает — их пересобирает генератор. Метка **монотонна по ленте** (`max(now,
+последняя+1s)`): ответ не встаёт раньше сообщения, на которое отвечает, при
+перекосе часов писателей. `--waiting-on` — ПОЛНЫЙ остаточный состав, не дельта.
+Отказ push (параллельная запись) — освежить почту (`reset --hard origin/comms`)
+и повторить поверх свежего; append-only, force-push запрещён. `new-message`
+**ОТКАЗЫВАЕТСЯ** писать в немигрированный (legacy) тред: файловая запись обрезала
+бы его историю до одного файла — legacy до миграции дописывается секцией в
+`_thread.md` вручную (сейчас это только 009/010).
+
+`mail` считает почту **из тредов**, а не из `INDEX.md`: производный реестр может
+отстать или не собраться, и завязывать на него вахту значит ослепить контур
+ровно так, как это уже случалось.
 
 Миграция принимается только с побайтовым гардом: склейка мигрированных файлов
 обязана воспроизводить исходный `_thread.md` бит в бит, иначе тред не
