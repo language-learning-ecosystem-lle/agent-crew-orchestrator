@@ -97,6 +97,51 @@ describe("planTick — запуск", () => {
   });
 });
 
+describe("planTick — hold ручной сессии (S5)", () => {
+  it("роль занята человеком → held с её именем, а не launch", () => {
+    expect(planTick({ ...base, enabled: true, stopped: false, held: ["dev-core"] })).toEqual({
+      kind: "held",
+      roles: ["dev-core"],
+    });
+  });
+
+  it("работы нет вовсе → idle, а не held: hold без почты контур не тревожит", () => {
+    expect(
+      planTick({ ...base, candidates: [], enabled: true, stopped: false, held: ["dev-core"] }),
+    ).toEqual({ kind: "idle" });
+  });
+
+  it("hold держит РОЛЬ, а не связку — занята на всех своих тредах", () => {
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "t1" },
+      { role: "dev-core", thread: "t2" },
+    ];
+    expect(
+      planTick({ ...base, candidates, enabled: true, stopped: false, held: ["dev-core"] }),
+    ).toEqual({ kind: "held", roles: ["dev-core"] });
+  });
+
+  it("занята одна роль — другие запускаются как обычно", () => {
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "t1" },
+      { role: "dev-speech", thread: "t2" },
+    ];
+    expect(
+      planTick({ ...base, candidates, enabled: true, stopped: false, held: ["dev-core"] }),
+    ).toEqual({ kind: "launch", role: "dev-speech", thread: "t2" });
+  });
+
+  it("стоп-флаг сильнее holdʼа — аварийный тормоз ни с чем не спорит", () => {
+    expect(planTick({ ...base, enabled: true, stopped: true, held: ["dev-core"] }).kind).toBe(
+      "halt",
+    );
+  });
+
+  it("без holdʼов поведение прежнее", () => {
+    expect(planTick({ ...base, enabled: true, stopped: false, held: [] }).kind).toBe("launch");
+  });
+});
+
 describe("planTick — глобальный потолок со следом (требование 1)", () => {
   it("потолок исчерпан → refused run-budget (не launch)", () => {
     const events: OrchestratorEvent[] = [];
