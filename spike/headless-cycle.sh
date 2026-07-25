@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
-# P0-спайк: доказать, что headless-агент проходит ПОЛНЫЙ цикл протокола
-# agent-comms, а не только отвечает как команда (тред 012, фаза P0).
+# The P0 spike: prove that a headless agent goes through the FULL cycle of the
+# agent-comms protocol rather than merely answering like a command (thread 012,
+# phase P0).
 #
-# Что доказывается одним прогоном:
-#   почта (has-mail) → `claude -p` с промптом роли → агент читает тред,
-#   дописывает секцию, перегенерирует реестр, коммитит и пушит → процесс
-#   выходит кодом. Без tmux, без живой вахты, без /wake.
+# What one run proves:
+#   mail (has-mail) → `claude -p` with the role prompt → the agent reads the
+#   thread, appends a section, regenerates the index, commits and pushes → the
+#   process exits with a code. No tmux, no live watch, no /wake.
 #
-# Если это работает — из модели исполнения исчезает целый слой (tmux-сессия,
-# `wait-for-mail`, сторож-как-будильник), а с ним класс багов «сессия жива ≠
-# агент видит почту» (боль 5, тред 008): в модели «пробуждение = новый процесс»
-# его просто нет.
+# If this works, a whole layer disappears from the execution model (the tmux
+# session, `wait-for-mail`, the keeper-as-alarm-clock), and with it a class of
+# bugs, "the session is alive ≠ the agent sees mail" (pain 5, thread 008): in the
+# "waking = a new process" model it simply does not exist.
 #
-# БЕЗОПАСНОСТЬ. Спайк работает ТОЛЬКО в изолированной песочнице (свой bare-origin
-# в $TMPDIR, своя ветка comms-копия) и НЕ прикасается к боевому контуру. Это
-# честное доказательство механики (настоящий формат секций, настоящий git
-# push, настоящий rebuild-index), но на выброшенных данных.
+# SAFETY. The spike works ONLY inside an isolated sandbox (its own bare origin in
+# $TMPDIR, its own copy of the comms branch) and does NOT touch the production
+# circuit. It is an honest proof of the mechanics (the real section format, a real
+# git push, a real rebuild-index), but on throw-away data.
 #
 # usage: bash headless-cycle.sh
-# требует: git, claude CLI (проверено на 2.1.218), доступ к модели.
+# requires: git, the claude CLI (checked on 2.1.218), access to the model.
 
 set -uo pipefail
 
@@ -29,27 +30,30 @@ trap 'rm -rf "$SANDBOX"' EXIT
 
 log() { printf '\n=== %s\n' "$*"; }
 
-# Боевой протокол живёт в отдельном чекауте `.worktrees/comms`, откуда спайк
-# берёт rebuild-index.sh и ROLES.md. Путь ищем ЯВНО и падаем ГРОМКО, если не
-# нашли: молчаливая деградация подготовки стенда (`cp … 2>/dev/null`) один раз
-# уже дала ложную картину — агент увидел пустой bin/, не смог передать ход
-# генератором и импровизировал, а провал списался бы на «агент недетерминирован».
-# Урок cwd/has-mail (тред 008): стенд кричит, а не молчит.
+# The production protocol lives in a separate checkout, `.worktrees/comms`, from
+# which the spike takes rebuild-index.sh and ROLES.md. The path is looked up
+# EXPLICITLY and we crash LOUDLY if it is not found: a silent degradation of the
+# bench setup (`cp … 2>/dev/null`) has already produced a false picture once — the
+# agent saw an empty bin/, could not pass the turn through the generator and
+# improvised, and the failure would have been blamed on "the agent is
+# non-deterministic". The cwd/has-mail lesson (thread 008): the bench shouts, it
+# does not stay silent.
 COMMS_DIR=""
 for cand in "$REPO_ROOT/.worktrees/comms/agent-comms" "$REPO_ROOT/../comms/agent-comms"; do
   [ -f "$cand/bin/rebuild-index.sh" ] && { COMMS_DIR="$cand"; break; }
 done
 if [ -z "$COMMS_DIR" ]; then
-  echo "ОШИБКА: не нашёл боевой agent-comms с bin/rebuild-index.sh (искал в .worktrees/comms и ../comms)" >&2
+  echo "ERROR: production agent-comms with bin/rebuild-index.sh not found (looked in .worktrees/comms and ../comms)" >&2
   exit 2
 fi
-log "Боевой протокол: $COMMS_DIR"
+log "Production protocol: $COMMS_DIR"
 
-# Бинарь claude РЕЗОЛВИМ ЯВНО, а не зовём по имени. PATH под-шелла нестабилен
-# между вызовами (nvm-bin то есть, то нет), и голый `claude` давал exit 127
-# посреди прогона — тот же класс «молчаливая зависимость от окружения», что
-# cwd у has-mail. Ищем в PATH, затем в известном nvm-пути; нет нигде — падаем
-# ГРОМКО ДО запуска цикла, а не невнятным 127 в середине.
+# The claude binary is RESOLVED EXPLICITLY instead of being called by name. The
+# PATH of a sub-shell is unstable between calls (the nvm bin directory is there or
+# it is not), and a bare `claude` gave exit 127 in the middle of a run — the same
+# class of "a silent dependency on the environment" as the cwd of has-mail. We look
+# in PATH, then in the known nvm path; not there at all — we crash LOUDLY BEFORE
+# the cycle starts rather than with an obscure 127 halfway through.
 CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
 if [ -z "$CLAUDE_BIN" ]; then
   for cand in "$HOME"/.nvm/versions/node/*/bin/claude; do
@@ -57,13 +61,13 @@ if [ -z "$CLAUDE_BIN" ]; then
   done
 fi
 if [ -z "$CLAUDE_BIN" ]; then
-  echo "ОШИБКА: не нашёл бинарь claude ни в PATH, ни в ~/.nvm/versions/node/*/bin" >&2
+  echo "ERROR: the claude binary was found neither in PATH nor in ~/.nvm/versions/node/*/bin" >&2
   exit 3
 fi
 log "claude: $CLAUDE_BIN"
 
-# --- 1. Изолированный стенд с тредом, ждущим dev-core ---
-log "Строю песочницу: $SANDBOX"
+# --- 1. An isolated bench with a thread waiting on dev-core ---
+log "Building the sandbox: $SANDBOX"
 git init -q --bare "$SANDBOX/origin.git"
 git clone -q "$SANDBOX/origin.git" "$SANDBOX/work"
 cd "$SANDBOX/work"
@@ -74,6 +78,9 @@ mkdir -p agent-comms/900-spike agent-comms/bin
 cp "$COMMS_DIR/bin/rebuild-index.sh" agent-comms/bin/
 cp "$COMMS_DIR/ROLES.md" agent-comms/
 
+# The heading stays in the language of the project zone on purpose: the index in
+# the sandbox is rebuilt by the PROJECT's generator (`bin/rebuild-index.sh` copied
+# above), and its output is what the check compares against.
 cat > agent-comms/INDEX.md <<'IDX'
 # Реестр разговоров
 
@@ -83,66 +90,68 @@ cat > agent-comms/INDEX.md <<'IDX'
 IDX
 
 cat > agent-comms/900-spike/_thread.md <<'THR'
-# 900-spike · Проверка headless-цикла
+# 900-spike · A check of the headless cycle
 
 participants: curator, dev-core · status: open
 
 ## msg-001 · from: curator · 2026-07-23 · expects: answer
 
-dev-core, это спайк-проверка. Ответь секцией msg-002 в конец этого треда:
-подтверди, что прочитал постановку, и напиши число 42. Затем передай ход
-обратно куратору строкой waiting-on.
+dev-core, this is a spike check. Answer with an msg-002 section at the end of this
+thread: confirm that you have read the statement of work, and write the number 42.
+Then pass the turn back to the curator with a waiting-on line.
 THR
 
 git checkout -q -b comms
 git add -A
 git commit -qm "spike stand init"
-# Код возврата проверяем, вывод НЕ глушим (замечание ревьюера по PR #17): молчать
-# на push стенда — тот же паттерн `… 2>/dev/null`, который спайк сам называет
-# причиной одного из дефектов харнесса. Принцип «стенд кричит, а не молчит»
-# соблюдаем и здесь, а не только на резолве COMMS_DIR/CLAUDE_BIN.
+# The exit code is checked and the output is NOT muted (the reviewer's remark on
+# PR #17): staying silent on the bench push is the same `… 2>/dev/null` pattern the
+# spike itself names as the cause of one of the harness defects. The "the bench
+# shouts, it does not stay silent" principle holds here too, not only in the
+# resolution of COMMS_DIR/CLAUDE_BIN.
 if ! git push -q -u origin comms; then
-  echo "ОШИБКА: push стенда в bare-origin не прошёл — дальше цикл проверять не на чем" >&2
+  echo "ERROR: the bench push into the bare origin failed — there is nothing left to check the cycle on" >&2
   exit 4
 fi
 
-# --- 2. Проверка почты тем же разбором, что у боевого контура ---
-# (Здесь has-mail не тащим: тред очевидно ждёт dev-core. В боевом обёртка
-#  запускает claude ТОЛЬКО когда has-mail непуст — это и есть триггер.)
-log "Почта: 900-spike ждёт dev-core"
+# --- 2. A mail check by the same parsing the production circuit uses ---
+# (has-mail is not dragged in here: the thread obviously waits on dev-core. In
+#  production the wrapper starts claude ONLY when has-mail is non-empty — that is
+#  the trigger.)
+log "Mail: 900-spike is waiting on dev-core"
 
-# --- 3. Headless-агент проходит цикл ---
-PROMPT='Ты — роль dev-core в файловом протоколе agent-comms. Рабочая директория — git-репозиторий, ветка comms.
+# --- 3. The headless agent goes through the cycle ---
+PROMPT='You are the dev-core role in the file-based agent-comms protocol. The working directory is a git repository, branch comms.
 
-Задача одного цикла:
-1. Прочитай agent-comms/900-spike/_thread.md — там постановка от curator.
-2. Отработай её: допиши в КОНЕЦ файла секцию ровно в формате
+The task of one cycle:
+1. Read agent-comms/900-spike/_thread.md — the statement of work from curator is there.
+2. Carry it out: append to the END of the file a section in exactly this format
    ## msg-002 · from: dev-core · 2026-07-23 · expects: answer
-   с текстом ответа по постановке. Треды append-only — существующее не трогай, дописывай в конец.
-3. Прогони bash agent-comms/bin/rebuild-index.sh чтобы обновить agent-comms/INDEX.md (передай ход обратно: в своей секции строкой "waiting-on → curator").
-4. Закоммить и запушь: git add -A && git commit -m "docs(agent-comms): msg-002 в 900-spike — ответ dev-core" && git push origin HEAD:comms
-5. Кратко подтверди, что цикл выполнен.'
+   with the text of the answer to the statement of work. Threads are append-only — do not touch what exists, append to the end.
+3. Run bash agent-comms/bin/rebuild-index.sh to update agent-comms/INDEX.md (pass the turn back: in your own section, with the line "waiting-on → curator").
+4. Commit and push: git add -A && git commit -m "docs(agent-comms): msg-002 in 900-spike — the dev-core answer" && git push origin HEAD:comms
+5. Briefly confirm that the cycle is done.'
 
-log "Запуск headless-агента (claude -p, лимит 180с)"
+log "Starting the headless agent (claude -p, 180s limit)"
 timeout 180 "$CLAUDE_BIN" -p "$PROMPT" \
   --output-format json \
   --allowedTools "Bash,Read,Edit,Write" \
   --max-turns 25 > "$SANDBOX/run.json" 2>"$SANDBOX/run.err"
 CLAUDE_EXIT=$?
 
-# --- 4. Проверка ФАКТОМ (не рапортом агента) ---
-log "Проверка результата в origin"
+# --- 4. A check BY FACT (not by the agent's report) ---
+log "Checking the result in origin"
 git fetch -q origin comms
 THREAD="$(git show origin/comms:agent-comms/900-spike/_thread.md)"
 INDEX="$(git show origin/comms:agent-comms/INDEX.md)"
 
 pass=0 fail=0
-check() { if [ "$2" = "$3" ]; then echo "  ✓ $1"; pass=$((pass+1)); else echo "  ✗ $1 (ждали '$3', получили '$2')"; fail=$((fail+1)); fi; }
+check() { if [ "$2" = "$3" ]; then echo "  ✓ $1"; pass=$((pass+1)); else echo "  ✗ $1 (expected '$3', got '$2')"; fail=$((fail+1)); fi; }
 
-check "процесс вышел кодом 0"          "$CLAUDE_EXIT" "0"
-check "msg-002 записан агентом"        "$(printf '%s' "$THREAD" | grep -c 'msg-002 · from: dev-core')" "1"
-check "msg-001 сохранён (append-only)" "$(printf '%s' "$THREAD" | grep -c 'msg-001 · from: curator')" "1"
-check "ход передан curator в INDEX"    "$(printf '%s' "$INDEX" | awk -F'|' '/900-spike/{gsub(/ /,"",$5);print $5}')" "curator"
+check "the process exited with code 0"       "$CLAUDE_EXIT" "0"
+check "msg-002 was written by the agent"     "$(printf '%s' "$THREAD" | grep -c 'msg-002 · from: dev-core')" "1"
+check "msg-001 is preserved (append-only)"   "$(printf '%s' "$THREAD" | grep -c 'msg-001 · from: curator')" "1"
+check "the turn was passed to curator in INDEX" "$(printf '%s' "$INDEX" | awk -F'|' '/900-spike/{gsub(/ /,"",$5);print $5}')" "curator"
 
 python3 - "$SANDBOX/run.json" <<'PY'
 import json, sys
@@ -152,6 +161,6 @@ print(f"  · session_id={d.get('session_id')}")
 print(f"  · cost_usd={d.get('total_cost_usd')} duration_ms={d.get('duration_ms')}")
 PY
 
-log "Итог: $pass пройдено, $fail провалено"
-[ "$fail" -eq 0 ] && echo "P0 ДОКАЗАН: headless-агент проходит полный цикл протокола." || echo "P0 НЕ доказан — см. провалы выше."
+log "Result: $pass passed, $fail failed"
+[ "$fail" -eq 0 ] && echo "P0 PROVEN: the headless agent goes through the full protocol cycle." || echo "P0 NOT proven — see the failures above."
 exit "$fail"
