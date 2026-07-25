@@ -89,3 +89,38 @@ export const fetchRef = (repo: string, ref: string): void => {
   if (!ref.startsWith("origin/") || at === -1) return;
   git(repo, ["fetch", "--quiet", "origin", ref.slice(at + 1)]);
 };
+
+/**
+ * Состояние чекаута почты: ветка, чистота, отставание и опережение относительно
+ * `origin/<branch>`. Демон читает почту С ДИСКА, поэтому вопрос «свежая ли она»
+ * — вопрос про этот чекаут, и ответ на него обязан быть фактом, а не верой.
+ *
+ * Обновление — ТОЛЬКО fast-forward. `reset --hard` починил бы отставание и
+ * заодно стёр бы сообщение, которое роль пишет прямо сейчас; чинить нечужой
+ * ценой мы не умеем и не будем — расхождение остаётся отказом.
+ */
+export const mailCheckoutState = (
+  checkout: string,
+  branch: string,
+): { branch: string; dirty: boolean; behind: number; ahead: number } => {
+  git(checkout, ["fetch", "--quiet", "origin", branch]);
+  const current = git(checkout, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+  if (current === branch) {
+    // Может не получиться (расхождение, грязь) — это законный исход, его
+    // назовёт вердикт по фактам ниже, а не исключение отсюда.
+    try {
+      git(checkout, ["merge", "--ff-only", "--quiet", `origin/${branch}`]);
+    } catch {
+      // остаёмся с тем, что есть — счётчики покажут расхождение
+    }
+  }
+  const dirty = git(checkout, ["status", "--porcelain"]).trim() !== "";
+  const counts = git(checkout, [
+    "rev-list",
+    "--left-right",
+    "--count",
+    `origin/${branch}...HEAD`,
+  ]).trim();
+  const [behind = "0", ahead = "0"] = counts.split(/\s+/);
+  return { branch: current, dirty, behind: Number(behind), ahead: Number(ahead) };
+};
