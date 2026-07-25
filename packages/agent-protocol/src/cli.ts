@@ -50,6 +50,16 @@ import {
 import { loadThreads, renderThreadFailures } from "./fs/comms.js";
 import { fileExistsAtRef, mailCheckoutState, messagesAtRef, workdirState } from "./fs/git.js";
 import {
+  parseNotifyState,
+  planNotifications,
+  renderAnnouncement,
+  renderNotification,
+  renderNotifyState,
+  type WaitingPair,
+} from "./notify/notify.js";
+import { describeSecrets, type LoadedSecrets, loadSecrets } from "./notify/secrets.js";
+import { loadTransport, type Transport } from "./notify/transport.js";
+import {
   type ActivityTrace,
   describeQuiet,
   type IdleWatch,
@@ -172,6 +182,10 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
+  agent-protocol notify       --ref <ref> [--repo <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--local-config <p>] [--write]
+                              # the turn has passed to a HUMAN: whom is derived from wake.mode,
+                              # the words come from notifications.templates, delivery from the transport plugin
+                              # without --write: prints what it would send and leaves the state alone
   agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
@@ -901,6 +915,140 @@ const mail = (argv: readonly string[]): void => {
       2,
     );
   }
+};
+
+/**
+ * `notify` — telling a HUMAN that the turn has passed to them (R4).
+ *
+ * It replaces `bin/notify.sh`, and what it changes is not the delivery but the three
+ * things that were baked into that script: the set of those notified (now derived
+ * from the role model — `wake.mode`), the words (now the project's templates) and
+ * the channel (now a transport plugin). What it deliberately does NOT change is the
+ * behaviour that was paid for in threads 005/008/011 and is carried over verbatim:
+ * the trigger is a NEW pair, the text is the FULL composition, the unit is a thread.
+ *
+ * THE ORDER OF THE THREE SIDE EFFECTS IS THE DESIGN:
+ *
+ *  1. resolve the transport and the secrets — a setup defect (a module that does not
+ *     load, a named file that cannot be read) refuses HERE, while the state file is
+ *     still untouched, so the trigger is not consumed by a run that could never have
+ *     delivered anything;
+ *  2. write the state — BEFORE sending, as in the predecessor: a notification is
+ *     about a moment, and a moment does not come back because we retried it. A
+ *     delivery failure must not turn into a message on every tick from now on;
+ *  3. send, and report the outcome without failing. Notifications are a
+ *     superstructure, not a dependency: an unreachable Telegram is a line in a log,
+ *     not a non-zero exit that makes a cron mailbox look like a broken circuit.
+ *
+ * NOTHING HAPPENS WITHOUT `--write`, as everywhere in this package — and here that
+ * subsumes what used to be `NOTIFY_DRY_RUN=1`: the plan prints the message it would
+ * send and leaves the state alone.
+ */
+const notify = async (argv: readonly string[]): Promise<void> => {
+  const write = argv.includes("--write");
+  const loaded = configFrom(argv, undefined);
+  const registry = loaded.registry;
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const section = loaded.config.orchestrator;
+  const rootFlag = flag(argv, "--root");
+  const stateFlag = flag(argv, "--state");
+
+  if (section === undefined && (rootFlag === undefined || stateFlag === undefined)) {
+    return fail(
+      `the config at ${loaded.ref} has no 'orchestrator' section — either add it or pass both --root <mail> and --state <file>`,
+      2,
+    );
+  }
+  const paths =
+    section === undefined
+      ? undefined
+      : orchestratorPaths({ repo, orchestrator: section, mail: loaded.config.mail });
+  const root = rootFlag ?? (paths?.mailRoot as string);
+  const statePath = stateFlag ?? (paths?.notifyState as string);
+
+  // FRESHNESS IS REPORTED, NEVER REFUSED, and that is the one place this command
+  // parts ways with preflight. The daemon refuses on stale mail because acting on
+  // yesterday's mail is WRONG WORK; the notifier's failure mode is the opposite —
+  // refusing means saying nothing, which is precisely what it exists to prevent. So
+  // it does the same fetch and fast-forward and prints what came of it.
+  if (rootFlag === undefined && section !== undefined) {
+    try {
+      const state = mailCheckoutState(join(repo, section.mailCheckout), loaded.config.mail.branch);
+      const verdict = mailCheckoutVerdict({ ...state, expectedBranch: loaded.config.mail.branch });
+      out(`agent-protocol: mail — ${verdict.detail}`);
+    } catch (error) {
+      out(`agent-protocol: mail — the checkout was not refreshed: ${(error as Error).message}`);
+    }
+  }
+
+  const { threads, failures } = loadThreads(root, registry.ids());
+  for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
+
+  const targets = registry.notificationTargets();
+  const parsed = threads.map((entry) => entry.thread);
+  const waiting: WaitingPair[] = targets.flatMap((target) =>
+    threadsWaitingOn(parsed, target.id).map((thread) => ({ role: target.id, thread })),
+  );
+  const seen = existsSync(statePath) ? parseNotifyState(readFileSync(statePath, "utf8")) : [];
+  const plan = planNotifications({
+    targets,
+    waiting,
+    seen,
+    ...(loaded.config.notifications?.templates === undefined
+      ? {}
+      : { templates: loaded.config.notifications.templates }),
+  });
+  const message = renderNotification(plan.lines);
+
+  const describeWaits = `${plan.waiting.length} waits, ${plan.fresh.length} of them new`;
+  if (!write) {
+    out(`agent-protocol: ${describeWaits}; --write would update '${statePath}' and send:`);
+    out(message === "" ? "(nothing — nobody is waiting)" : message);
+    return;
+  }
+
+  // The transport is resolved even when there is nothing to send: a broken module or
+  // an unreadable secrets file that only surfaces on the first real event is a setup
+  // defect discovered at the worst possible moment.
+  const transportSection = loaded.config.notifications?.transport;
+  let transport: Transport | undefined;
+  if (transportSection !== undefined) {
+    const local = localFrom(argv);
+    const envFile = flag(argv, "--env-file") ?? local.config.secrets?.envFile ?? null;
+    let secrets: LoadedSecrets;
+    try {
+      secrets = loadSecrets({ path: envFile });
+    } catch (error) {
+      return fail((error as Error).message, 2);
+    }
+    out(`agent-protocol: secrets — ${describeSecrets(secrets)}`);
+    try {
+      transport = await loadTransport(transportSection.module, {
+        options: transportSection.options,
+        secrets: secrets.values,
+      });
+    } catch (error) {
+      return fail((error as Error).message, 2);
+    }
+  }
+
+  writeOut(statePath, renderNotifyState(plan.waiting));
+
+  if (plan.fresh.length === 0) {
+    out(`agent-protocol: ${describeWaits} — nothing to announce`);
+    return;
+  }
+  out(`agent-protocol: ${describeWaits} — ${plan.fresh.map((pair) => pair.thread).join(", ")}`);
+  if (transport === undefined) {
+    // A legitimate configuration: no transport means the message is printed and the
+    // state still moves. That is the honest form of "notifications are optional" —
+    // silence with a state that pretends something was delivered would not be.
+    out("agent-protocol: no transport configured (notifications.transport) — the message follows:");
+    out(message);
+    return;
+  }
+  const outcome = await transport.send(message);
+  out(`agent-protocol: ${outcome.detail}`);
 };
 
 /**
@@ -2399,7 +2547,8 @@ const orchestratorStop = (argv: readonly string[]): void => {
   const why = required(argv, "--reason");
   const root = flag(argv, "--root") ?? paths.mailRoot;
   const threadId = required(argv, "--thread");
-  const registry = registryFrom(argv, repoOf(root));
+  const loadedConfig = configFrom(argv, repoOf(root));
+  const registry = loadedConfig.registry;
   // The announcement in the thread is signed by WHOEVER IS FORCING (`--by`),
   // curator's decision: a stop is a human action, the orchestrator merely executes
   // it; the merge notifier (`github`) must not sign it — that would mix
@@ -2413,7 +2562,18 @@ const orchestratorStop = (argv: readonly string[]): void => {
     return;
   }
   const flagBody = JSON.stringify({ by, note: why });
-  const text = `The session on thread ${threadId} was force-stopped (by ${by}): ${why}`;
+  // THE TEXT IS THE PROJECT'S (R4). This is the one message the package composes and
+  // somebody else's role signs, and it lands in a CONVERSATION — R1 made the
+  // package's prose English and deferred exactly this case, because the language of
+  // a thread belongs to the team that writes it. The package's default stays
+  // English; a project that says otherwise says it as data.
+  const text = renderAnnouncement({
+    kind: "force-stop",
+    variables: { thread: threadId, by, reason: why },
+    ...(loadedConfig.config.announcements === undefined
+      ? {}
+      : { templates: loadedConfig.config.announcements }),
+  });
 
   if (!write) {
     out(
@@ -2538,6 +2698,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     newThread(argv.slice(1));
   } else if (command === "mail") {
     mail(argv.slice(1));
+  } else if (command === "notify") {
+    await notify(argv.slice(1));
   } else if (command === "orchestrator" && subcommand === "status") {
     orchestratorStatus(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "record") {

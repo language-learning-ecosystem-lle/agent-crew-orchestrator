@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // `fetch` and `AbortSignal` are the platform's; the node types are here for the
+    // process environment shape the contract passes in.
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

@@ -66,11 +66,27 @@ export const localAgentSchema = z.strictObject({
  * join: the repository says which tool raises a role, the machine says where that
  * tool is. Neither file mentions the other.
  */
+/**
+ * WHERE THIS MACHINE KEEPS THE SECRETS OF ITS TRANSPORTS (R4) — a PATH, and only a
+ * path. The values stay in that file, which is read and never printed; this one is
+ * printed on every preflight, so it may not carry anything that must not be shown.
+ *
+ * It is `WHERE` in exactly R14's sense, so it belongs on this side of the line: the
+ * repository says which transport is used and with which words, the machine says
+ * where the credentials for it happen to sit on this box.
+ */
+export const localSecretsSchema = z.strictObject({
+  /** A file of `KEY=value` lines. Absolute — a relative path would depend on cwd. */
+  envFile: z.string().min(1),
+});
+
 export const localConfigSchema = z.strictObject({
   agents: z.record(z.string().min(1), localAgentSchema).default({}),
+  secrets: localSecretsSchema.optional(),
 });
 
 export type LocalAgent = z.infer<typeof localAgentSchema>;
+export type LocalSecrets = z.infer<typeof localSecretsSchema>;
 export type LocalConfig = z.infer<typeof localConfigSchema>;
 
 /**
@@ -91,6 +107,11 @@ const POLICY_KEYS = [
   "permissions",
   "zones",
   "workdir",
+  // R4: which transport is used and WHICH WORDS are sent are statements about the
+  // project, reviewed in a PR like the rest. What the machine may say about
+  // notifications is where the credentials file lies, and that is `secrets.envFile`.
+  "notifications",
+  "announcements",
 ] as const;
 
 export class LocalConfigError extends Error {
@@ -128,7 +149,7 @@ export const parseLocalConfig = (raw: unknown, path: string): LocalConfig => {
   const policy = POLICY_KEYS.filter((key) => key in record);
   if (policy.length > 0) {
     throw new LocalConfigError(
-      `'${path}' carries ${policy.map((key) => `'${key}'`).join(", ")} — that is POLICY and it lives in the repository config, behind a PR. The machine config says only WHERE the agent binaries are`,
+      `'${path}' carries ${policy.map((key) => `'${key}'`).join(", ")} — that is POLICY and it lives in the repository config, behind a PR. The machine config says only WHERE things are on this box (agent binaries, the secrets file)`,
     );
   }
   const result = localConfigSchema.safeParse(record);
@@ -187,10 +208,18 @@ export const loadLocalConfig = (options?: {
   return { config: parseLocalConfig(parsed, path), path, found: true, explicit };
 };
 
-/** One line for `status` and `preflight`: which file, and whether it is there at all. */
+/**
+ * One line for `status` and `preflight`: which file, and whether it is there at all.
+ * The secrets FILE is named when declared (a path is not a secret and its absence is
+ * the first suspect when nothing was delivered); its contents are never touched here.
+ */
 export const describeLocalConfig = (loaded: LoadedLocalConfig): string => {
   if (!loaded.found) return `${loaded.path} — absent (the binaries are taken from PATH)`;
   const agents = Object.entries(loaded.config.agents);
-  if (agents.length === 0) return `${loaded.path} — no agents declared`;
-  return `${loaded.path} — ${agents.map(([id, agent]) => `${id} → ${agent.exec}`).join(", ")}`;
+  const secrets =
+    loaded.config.secrets === undefined ? "" : `; secrets ← ${loaded.config.secrets.envFile}`;
+  if (agents.length === 0) return `${loaded.path} — no agents declared${secrets}`;
+  return `${loaded.path} — ${agents
+    .map(([id, agent]) => `${id} → ${agent.exec}`)
+    .join(", ")}${secrets}`;
 };
