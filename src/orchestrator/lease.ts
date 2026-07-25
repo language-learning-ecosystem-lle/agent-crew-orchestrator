@@ -56,7 +56,10 @@ const isActive = (state: LeaseLifecycle): boolean => state === "running" || stat
  */
 const isFailedTerminal = (state: LeaseLifecycle, reason: LeaseView["reason"]): boolean =>
   !isActive(state) &&
-  (reason === "timeout" || reason === "forced" || reason === "exited-without-handoff");
+  (reason === "timeout" ||
+    reason === "forced" ||
+    reason === "exited-without-handoff" ||
+    reason === "supervisor-gone");
 
 type Acc = {
   role: string;
@@ -143,3 +146,12 @@ export const foldLeases = (events: readonly OrchestratorEvent[], now: Date): Lea
     };
   });
 };
+
+/**
+ * Связки, аренда по которым ЖИВА. Нужна на старте супервизора: аренда, которую
+ * некому закрыть, снаружи неотличима от нормальной работы — именно так журнал
+ * после приёмки 2026-07-25 сутки показывал `running` про давно сделанное.
+ * Новый супервизор обязан сказать о таких вслух, а не молча продолжить.
+ */
+export const unclosedLeases = (events: readonly OrchestratorEvent[], now: Date): LeaseView[] =>
+  foldLeases(events, now).filter((view) => view.state === "running" || view.state === "draining");

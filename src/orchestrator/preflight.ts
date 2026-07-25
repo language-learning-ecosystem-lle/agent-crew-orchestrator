@@ -128,3 +128,24 @@ export const renderPreflight = (checks: readonly PreflightCheck[]): string =>
   checks
     .map((check) => `${check.status === "ok" ? "✓" : "✗"} ${check.name}: ${check.detail}`)
     .join("\n");
+
+/**
+ * Вердикт по РАБОЧЕМУ репозиторию, куда приземляется сессия. Факт печатается
+ * всегда; отказ — только если проект объявил ожидаемую ветку. Пакет не знает,
+ * какая ветка «правильная» для чужого репозитория, и выдумывать её не станет.
+ */
+export const workdirVerdict = (input: {
+  readonly branch: string;
+  readonly dirty: boolean;
+  readonly expectedBranch?: string;
+}): PreflightCheck => {
+  const state = `${input.branch}${input.dirty ? ", есть несохранённые изменения" : ""}`;
+  if (input.expectedBranch !== undefined && input.branch !== input.expectedBranch) {
+    return {
+      name: "рабочее дерево",
+      status: "fail",
+      detail: `сессия приземлится на '${input.branch}', а проект ждёт '${input.expectedBranch}'`,
+    };
+  }
+  return { name: "рабочее дерево", status: "ok", detail: state };
+};

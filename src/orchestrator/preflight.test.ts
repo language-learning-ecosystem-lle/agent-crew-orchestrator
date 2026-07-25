@@ -8,6 +8,7 @@ import {
   type PreflightCheck,
   preflightPassed,
   renderPreflight,
+  workdirVerdict,
 } from "./preflight.js";
 
 const facts = (over: Partial<CheckoutFacts> = {}): CheckoutFacts => ({
@@ -101,5 +102,33 @@ describe("итог и витрина", () => {
     expect(rendered.split("\n")).toHaveLength(2);
     expect(rendered).toContain("✓ a");
     expect(rendered).toContain("✗ b: почему");
+  });
+});
+
+describe("workdirVerdict — сессия приземляется в рабочий репозиторий как есть", () => {
+  it("без объявленной ветки — только факт, отказа нет: пакет не знает «правильную»", () => {
+    const verdict = workdirVerdict({ branch: "feature/x", dirty: false });
+    expect(verdict.status).toBe("ok");
+    expect(verdict.detail).toContain("feature/x");
+  });
+
+  it("грязь показывается фактом, но сама по себе не валит", () => {
+    expect(workdirVerdict({ branch: "main", dirty: true })).toMatchObject({
+      status: "ok",
+    });
+    expect(workdirVerdict({ branch: "main", dirty: true }).detail).toContain("несохранённые");
+  });
+
+  it("проект объявил ветку и она не та → отказ с обоими именами", () => {
+    const verdict = workdirVerdict({ branch: "feature/x", dirty: false, expectedBranch: "main" });
+    expect(verdict.status).toBe("fail");
+    expect(verdict.detail).toContain("feature/x");
+    expect(verdict.detail).toContain("main");
+  });
+
+  it("объявленная ветка совпала → ok", () => {
+    expect(workdirVerdict({ branch: "main", dirty: false, expectedBranch: "main" }).status).toBe(
+      "ok",
+    );
   });
 });

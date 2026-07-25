@@ -36,7 +36,7 @@ import { dirname, join } from "node:path";
 
 import { loadProtocolConfig } from "./config/load.js";
 import { loadThreads, renderThreadFailures } from "./fs/comms.js";
-import { fileExistsAtRef, mailCheckoutState, messagesAtRef } from "./fs/git.js";
+import { fileExistsAtRef, mailCheckoutState, messagesAtRef, workdirState } from "./fs/git.js";
 import {
   foldHolds,
   HOLD_TTL_SECONDS,
@@ -64,7 +64,7 @@ import {
   planLaunch,
   roleLaunchability,
 } from "./orchestrator/launch.js";
-import { foldLeases } from "./orchestrator/lease.js";
+import { foldLeases, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
 import {
@@ -80,6 +80,7 @@ import {
   type PreflightCheck,
   preflightPassed,
   renderPreflight,
+  workdirVerdict,
 } from "./orchestrator/preflight.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
@@ -693,9 +694,15 @@ const childEnvFrom = (argv: readonly string[]): NodeJS.ProcessEnv => {
  */
 const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] => {
   const loaded = configFrom(argv, undefined);
-  const paths = pathsFrom(argv);
+  const section = loaded.config.orchestrator;
+  if (section === undefined) {
+    return [
+      { name: "конфиг", status: "fail", detail: "секции 'orchestrator' нет — контуру негде жить" },
+    ];
+  }
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
   const env = childEnvFrom(argv);
-  const preamble = Object.keys(loaded.config.orchestrator?.env ?? {});
+  const preamble = Object.keys(section.env ?? {});
 
   // Бинарь ищем В ОКРУЖЕНИИ РЕБЁНКА, а не в своём: PATH демона и PATH сессии —
   // разные вещи, и проверка «у меня есть» отвечала бы не на тот вопрос.
@@ -723,19 +730,37 @@ const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] =
 
   let checkout: PreflightCheck;
   try {
-    const state = mailCheckoutState(dirname(paths.mailRoot), loaded.config.mail.branch);
+    const state = mailCheckoutState(join(repo, section.mailCheckout), loaded.config.mail.branch);
     checkout = mailCheckoutVerdict({ ...state, expectedBranch: loaded.config.mail.branch });
   } catch (error) {
     checkout = {
       name: "почта: свежесть чекаута",
       status: "fail",
-      detail: `не опросил чекаут '${dirname(paths.mailRoot)}': ${(error as Error).message}`,
+      detail: `не опросил чекаут '${join(repo, section.mailCheckout)}': ${(error as Error).message}`,
+    };
+  }
+
+  // Рабочий репозиторий: сессия наследует его как есть, и «приземлилась на чужую
+  // ветку» снаружи не видно вовсе — в отличие от устаревшей почты.
+  let workdir: PreflightCheck;
+  try {
+    const state = workdirState(repo);
+    workdir = workdirVerdict({
+      ...state,
+      ...(section.workdir === undefined ? {} : { expectedBranch: section.workdir.branch }),
+    });
+  } catch (error) {
+    workdir = {
+      name: "рабочее дерево",
+      status: "fail",
+      detail: `не опросил '${repo}': ${(error as Error).message}`,
     };
   }
 
   return [
     agentBinaryVerdict(exec, resolved),
     checkout,
+    workdir,
     environmentVerdict({ nodeVersion, appliedKeys: preamble }),
   ];
 };
@@ -1087,6 +1112,57 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // «попытка была и оборвалась», а не «ничего не происходило».
   for (const event of plan.events) appendEvent(p.journalPath, event);
 
+  // СМЕРТЬ САМОГО НАБЛЮДАТЕЛЯ ТОЖЕ ОСТАВЛЯЕТ СЛЕД. Приёмка 2026-07-25: демон
+  // вернул управление сразу после спавна, сессия осталась сиротой и доделала
+  // работу — а аренда навсегда осталась `running`, то есть журнал стал врать
+  // «работает» про давно сделанное. Аренда, которую некому закрыть, — худший
+  // исход из всех: снаружи он неотличим от нормальной работы.
+  //
+  // Что покрыто: штатный выход, необработанное исключение, SIGINT, SIGTERM.
+  // SIGKILL перехватить нельзя, и мы этого не обещаем.
+  let settled = false;
+  const recordSupervisorGone = (): void => {
+    if (settled) return;
+    settled = true;
+    // ГАСИМ ГРУППУ ПЕРЕД ЗАПИСЬЮ — как и в двух других местах релиза. Иначе
+    // запись «аренда снята» уходит в журнал, пока осиротевшая сессия ещё пишет:
+    // `supervisor-gone` — неуспешный терминал, связка сразу становится
+    // `launchable`, и следующий тик (или демон, поднятый systemd секунды спустя)
+    // запустит ВТОРУЮ сессию по тому же треду поверх живой первой. Это ровно тот
+    // класс, ради которого весь пакет и делается (находка reviewer-pr по PR #9).
+    if (!exited && child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, "SIGTERM");
+      } catch {
+        // группы уже нет — ок
+      }
+    }
+    appendEvent(p.journalPath, {
+      kind: "lease-released",
+      ts: eventTimestamp(new Date()),
+      role: p.roleId,
+      thread: p.thread,
+      reason: "supervisor-gone",
+      output: p.sessionLog,
+    });
+  };
+  process.on("exit", recordSupervisorGone);
+  const onSignal = (signal: NodeJS.Signals) => (): void => {
+    recordSupervisorGone();
+    err(`agent-protocol: наблюдатель получил ${signal} — аренда закрыта как supervisor-gone`);
+    process.exit(1);
+  };
+  const onSigint = onSignal("SIGINT");
+  const onSigterm = onSignal("SIGTERM");
+  process.on("SIGINT", onSigint);
+  process.on("SIGTERM", onSigterm);
+  const releaseGuards = (): void => {
+    settled = true;
+    process.off("exit", recordSupervisorGone);
+    process.off("SIGINT", onSigint);
+    process.off("SIGTERM", onSigterm);
+  };
+
   // ВЫВОД СЕССИИ ПИШЕТСЯ НА ДИСК, а не только на экран оператора. Первый боевой
   // прогон: сессия пять минут выглядела работающей, вышла молча, и почему —
   // осталось только в терминале того, кто смотрел. Лог рядом с журналом делает
@@ -1140,6 +1216,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         }
       }
       const { by, note } = readForceFlag(p.forceFlag);
+      releaseGuards();
       appendEvent(p.journalPath, {
         kind: "stop",
         ts: eventTimestamp(new Date()),
@@ -1196,6 +1273,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // группы уже нет — ок
       }
     }
+    releaseGuards();
     appendEvent(p.journalPath, stepEvent(step, base, { exitCode, output: p.sessionLog }));
     if (spawnError !== undefined) {
       err(`agent-protocol: спавн '${p.exec}' дал ошибку: ${spawnError.message}`);
@@ -1275,7 +1353,12 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     exec,
     maxTurns,
     launch: role.launch,
-    sessionLog: sessionLogPath(paths, roleId, thread, eventTimestamp(now)),
+    sessionLog: sessionLogPath(
+      join(dirname(journalPath), "sessions"),
+      roleId,
+      thread,
+      eventTimestamp(now),
+    ),
     env: childEnvFrom(argv),
     wallClockMs,
     pollMs,
@@ -1339,9 +1422,24 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // почтой, «работает» — и делает не то. Отказ до первой аренды.
   requirePreflight(argv, exec);
 
+  // Баннер говорит ФАКТ, а не всегда «ВЫКЛЮЧЕН»: справка, врущая про состояние,
+  // при разборе приёмки стоила отдельной версии о причине сбоя.
+  const enabledAtStart = existsSync(enableFlag);
   out(
-    `agent-protocol: демон поднят (ВЫКЛЮЧЕН, пока нет '${enableFlag}'); стоп '${stopFlag}', force '${forceFlag}'; роли ${launchable.join(", ") || "—"}`,
+    `agent-protocol: демон поднят, запуски ${enabledAtStart ? "ВКЛЮЧЕНЫ" : `выключены (нет '${enableFlag}')`}; стоп '${stopFlag}', force '${forceFlag}'; роли ${launchable.join(", ") || "—"}`,
   );
+
+  // Аренда, которую некому было закрыть, снаружи неотличима от работы — новый
+  // супервизор обязан сказать о ней вслух, а не молча продолжить.
+  const orphans = unclosedLeases(
+    existsSync(journalPath) ? parseJournal(readFile(journalPath, "журнал оркестратора")) : [],
+    new Date(),
+  );
+  for (const orphan of orphans) {
+    err(
+      `agent-protocol: аренда ${orphan.role}/${orphan.thread} осталась НЕЗАКРЫТОЙ ничем (${orphan.state}, попытка ${orphan.attempt})${orphan.overdue ? ", ПРОСРОЧЕНА" : ""} — супервизора убили так, что записать он не успел (SIGKILL/падение машины). Закройте вручную: orchestrator record --kind lease-released --reason supervisor-gone`,
+    );
+  }
 
   for (;;) {
     // Кандидаты — пары (роль, тред), где запускаемая роль ждёт по треду.
@@ -1412,7 +1510,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           launch: role.launch,
           env: childEnv,
           sessionLog: sessionLogPath(
-            paths,
+            join(dirname(journalPath), "sessions"),
             decision.role,
             decision.thread,
             eventTimestamp(startedAt),

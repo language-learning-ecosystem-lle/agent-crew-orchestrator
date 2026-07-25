@@ -71,11 +71,11 @@ export const orchestratorPaths = (input: {
  * прогон куда писал, и логи не перетирают друг друга при повторных попытках.
  */
 export const sessionLogPath = (
-  paths: OrchestratorPaths,
+  sessions: string,
   role: string,
   thread: string,
   stamp: string,
-): string => join(paths.sessions, `${stamp.replace(/[:]/g, "-")}-${role}-${thread}.log`);
+): string => join(sessions, `${stamp.replace(/[:]/g, "-")}-${role}-${thread}.log`);
 
 export const renderPaths = (paths: OrchestratorPaths): string =>
   [
