@@ -1,17 +1,18 @@
 /**
- * Создание сообщений и тредов — операции записи, которые ДЕЛАЮТ файловую запись
- * в немигрированный тред невозможной по построению, а не запрещённой правилом.
+ * Creating messages and threads — the write operations that MAKE a file write
+ * into a non-migrated thread impossible by construction, rather than forbidden by
+ * a rule.
  *
- * Риск, который это закрывает (тред 012, msg-034/053/056): `loadThread` при
- * наличии `messages/` читает файлы и ИГНОРИРУЕТ legacy `_thread.md`. Значит
- * первая файловая запись в ещё не мигрированный тред заставила бы генератор
- * пересобрать ленту из ОДНОГО файла — то есть обрезать историю треда. Пока
- * тред в legacy-форме, писать в него файлом нельзя, и это должен гарантировать
- * инструмент, а не дисциплина автора: правило, которое держится дисциплиной, —
- * не правило (общий вывод дня).
+ * The risk this closes (thread 012, msg-034/053/056): when `messages/` is present,
+ * `loadThread` reads the files and IGNORES the legacy `_thread.md`. So the first
+ * file write into a not-yet-migrated thread would make the generator rebuild the
+ * feed from a SINGLE file — that is, truncate the thread's history. While a thread
+ * is in the legacy form, writing to it by file is not allowed, and that must be
+ * guaranteed by the tool rather than by the author's discipline: a rule that holds
+ * by discipline is not a rule (the general conclusion of the day).
  *
- * Здесь — чистое ядро (планирование файлов), «строка → файлы». Само создание на
- * диске и git — в CLI над этим.
+ * This module is the pure core (planning the files), "string → files". The actual
+ * creation on disk and git live in the CLI above it.
  */
 import type { MessageFields } from "./message.js";
 import { messageFileName, renderMessageFile } from "./message.js";
@@ -29,22 +30,23 @@ export class WriteRefusedError extends Error {
   }
 }
 
-/** UTC-метка сообщения из момента времени: `2026-07-24T10:30:00Z` (без миллисекунд). */
+/** A message's UTC stamp from a point in time: `2026-07-24T10:30:00Z` (no milliseconds). */
 export const messageTimestamp = (at: Date): string => `${at.toISOString().slice(0, 19)}Z`;
 
 /**
- * Метка НОВОГО сообщения, МОНОТОННАЯ по ленте. Сообщение дописано ПОСЛЕ уже
- * лежащих — значит его метка обязана быть строго больше последней из них, иначе
- * перекос часов писателей переставляет ленту. Реальный случай (тред 012): reply
- * получил метку `22:45`, а вопрос curator, на который он отвечает, — `22:47`
- * (часы curator впереди моих), и ответ встал ПЕРЕД вопросом, а INDEX показал ход
- * не у того. Тот же класс, что seq для мигрированных: порядок не должен зависеть
- * от согласованности часов.
+ * The stamp of a NEW message, MONOTONIC along the feed. A message is appended
+ * AFTER the ones already there — so its stamp must be strictly greater than the
+ * last of them, otherwise writer clock skew reorders the feed. A real case
+ * (thread 012): a reply got the stamp `22:45` while curator's question it answers
+ * had `22:47` (curator's clock runs ahead of mine), so the answer landed BEFORE
+ * the question and INDEX showed the turn with the wrong role. The same class as
+ * `seq` for migrated messages: order must not depend on clocks agreeing.
  *
- * `existing` — метки уже лежащих НОВЫХ сообщений (мигрированные, датированные без
- * времени, сюда НЕ входят: по компаратору они всегда раньше новых, а их «дата»
- * бывает вообще в будущем относительно UTC). Возвращаем `max(now, последняя+1s)`
- * — попутно это разводит и коллизию имён при двух записях в одну секунду.
+ * `existing` — stamps of the NEW messages already there (migrated ones, dated
+ * without a time, are NOT included: by the comparator they always precede new
+ * ones, and their "date" may even be in the future relative to UTC). We return
+ * `max(now, last + 1s)` — which along the way also resolves a name collision when
+ * two writes happen within one second.
  */
 export const nextMessageTimestamp = (now: Date, existing: readonly string[]): string => {
   const nowIso = messageTimestamp(now);
@@ -59,24 +61,24 @@ export type NewMessageInput = {
   readonly expects: MessageFields["expects"];
   readonly waitingOn?: readonly string[];
   readonly text: string;
-  /** true — у треда есть `messages/` (мигрирован/файловый). false — legacy. */
+  /** true — the thread has `messages/` (migrated / file-based). false — legacy. */
   readonly threadHasMessages: boolean;
 };
 
 /**
- * Файл нового сообщения для существующего файлового треда.
+ * The file of a new message for an existing file-based thread.
  *
- * ОТКАЗ, а не создание, если тред ещё в legacy-форме: `threadHasMessages=false`
- * ловит именно тот случай, из-за которого весь гард и заводится.
+ * A REFUSAL rather than a creation if the thread is still in the legacy form:
+ * `threadHasMessages=false` catches exactly the case the whole guard exists for.
  */
 export const planNewMessage = (input: NewMessageInput): PlannedFile => {
   if (!input.threadHasMessages) {
     throw new WriteRefusedError(
-      "тред ещё в legacy-форме (нет messages/): файловая запись обрезала бы его историю. Сначала мигрируй тред.",
+      "the thread is still in the legacy form (no messages/): a file write would truncate its history. Migrate the thread first.",
     );
   }
   if (input.text.trim() === "") {
-    throw new WriteRefusedError("тело сообщения пусто");
+    throw new WriteRefusedError("the message body is empty");
   }
 
   const fields: MessageFields = {
@@ -102,12 +104,12 @@ export type NewThreadInput = {
 };
 
 /**
- * Файлы нового треда СРАЗУ в файловой форме: `_meta.md` + первое сообщение в
- * `messages/`. Legacy-треды больше не рождаются — значит `new-message` в них
- * никогда не упрётся, а инвариант держится по построению.
+ * The files of a new thread STRAIGHT in the file form: `_meta.md` + the first
+ * message in `messages/`. Legacy threads are no longer born — so `new-message`
+ * will never hit one, and the invariant holds by construction.
  */
 export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
-  if (input.text.trim() === "") throw new WriteRefusedError("тело первого сообщения пусто");
+  if (input.text.trim() === "") throw new WriteRefusedError("the first message body is empty");
 
   const meta: ThreadMeta = {
     title: input.title,
@@ -120,7 +122,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
     text: input.text,
-    threadHasMessages: true, // новый тред файловый по построению
+    threadHasMessages: true, // a new thread is file-based by construction
   });
 
   return [{ path: "_meta.md", content: renderMetaFile(meta) }, first];

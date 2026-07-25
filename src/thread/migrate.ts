@@ -1,22 +1,23 @@
 /**
- * Миграция треда из единого `_thread.md` в файлы сообщений.
+ * Migrating a thread from a single `_thread.md` into message files.
  *
- * ПОЧЕМУ С ГАРДОМ. Разрезание переписывает `_thread.md` целиком, то есть
- * формально трогает ЧУЖИЕ секции, а протокол append-only без исключений
- * (правило john, 2026-07-22). Единственное, что делает такую операцию
- * допустимой, — доказуемость: склейка мигрированных файлов обязана
- * воспроизводить исходный файл **байт-в-байт**. Не воспроизвела — миграция
- * треда не принята, и это не предупреждение, а отказ.
+ * WHY WITH A GUARD. Splitting rewrites `_thread.md` as a whole, that is, formally
+ * it touches OTHER PEOPLE's sections, while the protocol is append-only without
+ * exceptions (john's rule, 2026-07-22). The only thing that makes such an
+ * operation admissible is provability: the assembly of the migrated files must
+ * reproduce the original file **byte for byte**. If it did not, the thread's
+ * migration is not accepted, and that is a refusal, not a warning.
  *
- * Побайтовость достижима: канон сборки проверен пробой на 12 живых тредах
- * (97 секций) ДО реализации.
+ * Byte-exactness is achievable: the assembly canon was verified by a probe on 12
+ * live threads (97 sections) BEFORE the implementation.
  *
- * Что сохраняется намеренно: исторические номера (включая дубли — в треде 012
- * их два), хвосты заголовков вроде `[СВЕРХПИСАНО msg-002]`, исходный порядок.
- * Ссылки «см. msg-003 п.4» в уже написанных телах обязаны продолжать указывать
- * на то, на что указывали. Порядок держит `seq` (позиция) через
- * `compareMessageEntries`, а не имя файла: имя ведёт датой, дата бывает
- * немонотонна ленте — см. `verifyMigration` (второе условие).
+ * What is preserved deliberately: the historical numbers (duplicates included —
+ * thread 012 has two), heading tails such as `[СВЕРХПИСАНО msg-002]`, the original
+ * order. References like "see msg-003 item 4" in already-written bodies must keep
+ * pointing at what they pointed at. The order is held by `seq` (position) through
+ * `compareMessageEntries`, not by the file name: the name leads with a date and
+ * the date is sometimes non-monotonic with the feed — see `verifyMigration` (the
+ * second condition).
  */
 import {
   compareMessageEntries,
@@ -37,13 +38,14 @@ export type Migration = {
   readonly meta: ThreadMeta;
   readonly files: readonly MigratedFile[];
   /**
-   * Два сообщения, дающие одно имя файла. С именем из `seq` (позиция уникальна
-   * по треду) это СТРУКТУРНО НЕВОЗМОЖНО из текущего `migrateLegacyThread` —
-   * массив всегда пуст. Оставлено НЕ как рабочая защита, а как sanity-guard от
-   * будущего бага в генерации имён: если `seq` однажды перестанет быть
-   * уникальным, коллизия поймается здесь, а не всплывёт потерей сообщения при
-   * регенерации. Раньше имя строилось из дублирующегося номера, и это была
-   * реальная защита; теперь — страховка.
+   * Two messages yielding one file name. With a name built from `seq` (the
+   * position is unique within a thread) this is STRUCTURALLY IMPOSSIBLE out of
+   * the current `migrateLegacyThread` — the array is always empty. It is kept NOT
+   * as a working defence but as a sanity guard against a future bug in name
+   * generation: if `seq` ever stops being unique, the collision is caught here
+   * instead of surfacing as a lost message on regeneration. The name used to be
+   * built from the duplicated number, and back then this was a real defence; now
+   * it is insurance.
    */
   readonly collisions: readonly string[];
 };
@@ -56,9 +58,9 @@ export const migrateLegacyThread = (
   const thread = parseLegacyThread(id, raw, knownRoles);
   const collisions: string[] = [];
 
-  // Позиция (`seq`) — порядковый индекс секции, он идёт в имя файла и
-  // обеспечивает, что сортировка имён при загрузке = исходный порядок. `msg`
-  // (исторический) остаётся в заголовке для ссылок.
+  // The position (`seq`) is the ordinal index of the section; it goes into the
+  // file name and guarantees that sorting names on load = the original order.
+  // `msg` (the historical one) stays in the heading for references.
   const seqed: Message[] = thread.messages.map((message, at) => ({
     ...message,
     fields: { ...message.fields, seq: at + 1 },
@@ -76,7 +78,7 @@ export const migrateLegacyThread = (
   const names = new Set<string>();
   for (const file of files) {
     if (names.has(file.path)) {
-      collisions.push(`два сообщения дают одно имя файла: ${file.path}`);
+      collisions.push(`two messages yield one file name: ${file.path}`);
     }
     names.add(file.path);
   }
@@ -88,37 +90,37 @@ const firstDiff = (a: string, b: string): string => {
   for (let at = 0; at < Math.max(a.length, b.length); at++) {
     if (a[at] !== b[at]) {
       const from = Math.max(0, at - 40);
-      return `расхождение на байте ${at}: было ${JSON.stringify(
+      return `divergence at byte ${at}: was ${JSON.stringify(
         a.slice(from, at + 20),
-      )}, стало ${JSON.stringify(b.slice(from, at + 20))}`;
+      )}, became ${JSON.stringify(b.slice(from, at + 20))}`;
     }
   }
-  return "длины совпали, но содержимое различается";
+  return "lengths matched, but the contents differ";
 };
 
 /**
- * Гард миграции — ДВА условия, оба обязательны:
+ * The migration guard — TWO conditions, both mandatory:
  *
- * 1. Склейка из ПАМЯТИ (сообщения в исходном порядке) воспроизводит исходный
- *    `_thread.md` байт-в-байт.
- * 2. Склейка после ЗАГРУЗКИ С ДИСКА (сообщения, упорядоченные
- *    `compareMessageEntries` по `seq` — ровно как это делает `loadThread`) даёт
- *    тот же результат.
+ * 1. The assembly FROM MEMORY (messages in the original order) reproduces the
+ *    original `_thread.md` byte for byte.
+ * 2. The assembly after LOADING FROM DISK (messages ordered by
+ *    `compareMessageEntries` via `seq` — exactly the way `loadThread` does it)
+ *    yields the same result.
  *
- * Второе условие добавлено потому, что первого НЕДОСТАТОЧНО: порядок на диске
- * задаёт не память, а сортировка при загрузке. Пока ключом было ИМЯ файла,
- * сообщение переставлялось — историч. номер дублируется (011/012), а у merge #27
- * в 012 дата уведомителя оказалась РАНЬШЕ уже стоящих в ленте. Порядок по `seq`
- * (позиция) это закрывает, но гард обязан ДОКАЗЫВАТЬ воспроизводимость, а не
- * полагаться на неё.
+ * The second condition was added because the first is NOT ENOUGH: the order on
+ * disk is set by the sort on load, not by memory. While the key was the file NAME,
+ * a message got reordered — the historical number is duplicated (011/012), and for
+ * merge #27 in 012 the notifier's date turned out to be EARLIER than messages
+ * already in the feed. Ordering by `seq` (position) closes that, but the guard
+ * must PROVE reproducibility rather than rely on it.
  */
 export const verifyMigration = (migration: Migration, original: string): string | undefined => {
   const rebuilt = migration.files.find((file) => file.path === "_thread.md")?.content;
-  if (rebuilt === undefined) return "миграция не собрала _thread.md";
-  if (rebuilt !== original) return `склейка из памяти: ${firstDiff(original, rebuilt)}`;
+  if (rebuilt === undefined) return "the migration did not assemble _thread.md";
+  if (rebuilt !== original) return `assembly from memory: ${firstDiff(original, rebuilt)}`;
 
-  // Симуляция loadThread: сообщения из messages/, упорядоченные компаратором
-  // (по `seq`) — тем же, что применяет loadThread, а не сортировкой имён.
+  // Simulating loadThread: messages from messages/, ordered by the comparator
+  // (by `seq`) — the same one loadThread applies, not by sorting names.
   const fromDisk = migration.files
     .filter((file) => file.path.startsWith("messages/"))
     .map((file) => ({ fileName: file.path, message: parseMessageFile(file.content) }))
@@ -126,7 +128,7 @@ export const verifyMigration = (migration: Migration, original: string): string 
     .map((entry) => entry.message);
   const rebuiltFromDisk = renderThread(migration.meta, fromDisk);
   if (rebuiltFromDisk !== original) {
-    return `склейка после загрузки с диска (сортировка имён): ${firstDiff(original, rebuiltFromDisk)}`;
+    return `assembly after loading from disk (name sorting): ${firstDiff(original, rebuiltFromDisk)}`;
   }
 
   return undefined;

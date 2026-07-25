@@ -17,15 +17,15 @@ const acquired: OrchestratorEvent = {
 };
 
 describe("renderEventLine / parseEventLine", () => {
-  it("round-trip сохраняет событие", () => {
+  it("the round-trip preserves the event", () => {
     expect(parseEventLine(renderEventLine(acquired))).toEqual(acquired);
   });
 
-  it("кривая строка — громкий отказ, а не пропуск", () => {
-    expect(() => parseEventLine("не json")).toThrow(/не JSON/);
+  it("a malformed line — a loud refusal, not a skip", () => {
+    expect(() => parseEventLine("not json")).toThrow(/not JSON/);
   });
 
-  it("lease-acquired без deadline не разбирается (обязательность по виду)", () => {
+  it("lease-acquired without a deadline does not parse (required per kind)", () => {
     const line = JSON.stringify({
       kind: "lease-acquired",
       ts: "2026-07-24T13:00:00Z",
@@ -35,7 +35,7 @@ describe("renderEventLine / parseEventLine", () => {
     expect(() => parseEventLine(line)).toThrow();
   });
 
-  it("lease-released без reason не разбирается", () => {
+  it("lease-released without a reason does not parse", () => {
     const line = JSON.stringify({
       kind: "lease-released",
       ts: "2026-07-24T13:00:00Z",
@@ -45,20 +45,20 @@ describe("renderEventLine / parseEventLine", () => {
     expect(() => parseEventLine(line)).toThrow();
   });
 
-  it("reason вне перечня отвергается", () => {
-    const line = JSON.stringify({ ...acquired, kind: "lease-released", reason: "передумал" });
+  it("a reason outside the list is rejected", () => {
+    const line = JSON.stringify({ ...acquired, kind: "lease-released", reason: "changed my mind" });
     expect(() => parseEventLine(line)).toThrow();
   });
 
-  it("ts не в UTC-форме отвергается", () => {
+  it("a ts not in UTC form is rejected", () => {
     expect(() => parseEventLine(JSON.stringify({ ...acquired, ts: "2026-07-24" }))).toThrow();
   });
 
-  it("неизвестный kind отвергается", () => {
-    expect(() => parseEventLine(JSON.stringify({ ...acquired, kind: "выдумка" }))).toThrow();
+  it("an unknown kind is rejected", () => {
+    expect(() => parseEventLine(JSON.stringify({ ...acquired, kind: "made up" }))).toThrow();
   });
 
-  it("launch-refused round-trip сохраняет reason", () => {
+  it("launch-refused round-trip preserves the reason", () => {
     const refused: OrchestratorEvent = {
       kind: "launch-refused",
       ts: "2026-07-24T13:00:00Z",
@@ -69,7 +69,7 @@ describe("renderEventLine / parseEventLine", () => {
     expect(parseEventLine(renderEventLine(refused))).toEqual(refused);
   });
 
-  it("launch-refused без reason не разбирается", () => {
+  it("launch-refused without a reason does not parse", () => {
     const line = JSON.stringify({
       kind: "launch-refused",
       ts: "2026-07-24T13:00:00Z",
@@ -79,18 +79,18 @@ describe("renderEventLine / parseEventLine", () => {
     expect(() => parseEventLine(line)).toThrow();
   });
 
-  it("launch-refused с reason вне REFUSAL_REASONS отвергается", () => {
+  it("launch-refused with a reason outside REFUSAL_REASONS is rejected", () => {
     const line = JSON.stringify({
       kind: "launch-refused",
       ts: "2026-07-24T13:00:00Z",
       role: "dev-core",
       thread: "t",
-      reason: "надоело",
+      reason: "got bored",
     });
     expect(() => parseEventLine(line)).toThrow();
   });
 
-  it("stop forced с by/note (кто/почему) round-trip", () => {
+  it("stop forced with by/note (who/why) round-trips", () => {
     const stop: OrchestratorEvent = {
       kind: "stop",
       ts: "2026-07-24T13:00:00Z",
@@ -98,12 +98,12 @@ describe("renderEventLine / parseEventLine", () => {
       thread: "t",
       mode: "forced",
       by: "john",
-      note: "квота на исходе",
+      note: "the quota is running out",
     };
     expect(parseEventLine(renderEventLine(stop))).toEqual(stop);
   });
 
-  it("stop graceful без by/note разбирается (они не обязательны)", () => {
+  it("stop graceful without by/note parses (they are optional)", () => {
     const stop: OrchestratorEvent = {
       kind: "stop",
       ts: "2026-07-24T13:00:00Z",
@@ -116,7 +116,7 @@ describe("renderEventLine / parseEventLine", () => {
 });
 
 describe("parseJournal", () => {
-  it("читает события по порядку строк, пустые пропускает", () => {
+  it("reads events in line order, skipping empty lines", () => {
     const released: OrchestratorEvent = {
       kind: "lease-released",
       ts: "2026-07-24T13:10:00Z",
@@ -128,17 +128,17 @@ describe("parseJournal", () => {
     expect(parseJournal(text)).toEqual([acquired, released]);
   });
 
-  it("пустой текст — пустой журнал", () => {
+  it("empty text — an empty journal", () => {
     expect(parseJournal("")).toEqual([]);
   });
 });
 
 describe("renderJournal", () => {
-  it("пустой список — пустая строка (append не с чего начинать)", () => {
+  it("an empty list — an empty string (nothing to append onto)", () => {
     expect(renderJournal([])).toBe("");
   });
 
-  it("round-trip через parseJournal", () => {
+  it("round-trip through parseJournal", () => {
     const events = [acquired];
     expect(parseJournal(renderJournal(events))).toEqual(events);
   });

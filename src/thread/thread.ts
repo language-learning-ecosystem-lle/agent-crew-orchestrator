@@ -1,19 +1,20 @@
 /**
- * Тред: шапка-источник (`_meta.md`), сообщения-файлы и ПРОИЗВОДНЫЙ `_thread.md`.
+ * A thread: the source header (`_meta.md`), the message files and the DERIVED
+ * `_thread.md`.
  *
- * ГРАНИЦА ИСТОЧНИКОВ, и она же ответ на вопрос «где живёт waiting-on»:
- * `_meta.md` — источник только для `title`, `participants` и `status` (их
- * правят curator/john: закрытие треда это приёмка). `waiting-on` живёт в
- * заголовках сообщений и в `_meta.md` НЕ дублируется — иначе у поля два
- * писателя, ровно тот дефект, который закрывали в треде 006 для INDEX.
+ * THE SOURCE BOUNDARY, which is also the answer to "where does waiting-on live":
+ * `_meta.md` is the source only for `title`, `participants` and `status` (edited
+ * by curator/john: closing a thread is an acceptance). `waiting-on` lives in the
+ * message headers and is NOT duplicated in `_meta.md` — otherwise the field has
+ * two writers, exactly the defect that was closed for INDEX in thread 006.
  *
- * ДВЕ ФОРМЫ ЧИТАЮТСЯ ОДНОВРЕМЕННО. Пока идёт переезд, часть тредов лежит
- * файлами, часть — единым legacy-`_thread.md`. Генератор умеет обе: только так
- * треды переезжают по одному и «дня переключения» не существует.
+ * BOTH FORMS ARE READ AT ONCE. While the move is in progress, some threads lie as
+ * files and some as a single legacy `_thread.md`. The generator handles both:
+ * only this way do threads move one at a time and no "switch-over day" exists.
  *
- * КАНОН СБОРКИ проверен фактом: на 12 живых тредах (97 секций) склейка
- * воспроизводит существующие файлы БАЙТ-В-БАЙТ. Поэтому у миграции есть
- * побайтовый гард, а не «выглядит похоже».
+ * THE ASSEMBLY CANON is verified by fact: across 12 live threads (97 sections) the
+ * assembly reproduces the existing files BYTE FOR BYTE. That is why the migration
+ * has a byte-exact guard rather than a "looks similar" one.
  */
 import {
   EXPECTS,
@@ -51,16 +52,15 @@ const parseParticipants = (value: string): string[] =>
 
 export const parseMetaFile = (raw: string): ThreadMeta => {
   const lines = raw.split("\n");
-  if (lines[0] !== FENCE)
-    throw new MessageFormatError("_meta.md обязан начинаться со строки '---'");
+  if (lines[0] !== FENCE) throw new MessageFormatError("_meta.md must start with a '---' line");
   const close = lines.indexOf(FENCE, 1);
-  if (close === -1) throw new MessageFormatError("_meta.md: не закрыт заголовок ('---')");
+  if (close === -1) throw new MessageFormatError("_meta.md: the header is not closed ('---')");
 
   const raws = new Map<string, string>();
   for (const line of lines.slice(1, close)) {
     if (line.trim() === "") continue;
     const at = line.indexOf(":");
-    if (at === -1) throw new MessageFormatError(`_meta.md: строка без 'ключ: значение': '${line}'`);
+    if (at === -1) throw new MessageFormatError(`_meta.md: line without 'key: value': '${line}'`);
     raws.set(line.slice(0, at).trim(), line.slice(at + 1).trim());
   }
 
@@ -68,10 +68,12 @@ export const parseMetaFile = (raw: string): ThreadMeta => {
   const participants = raws.get("participants");
   const status = raws.get("status");
   if (!title || !participants || !status) {
-    throw new MessageFormatError("_meta.md: обязательны 'title', 'participants', 'status'");
+    throw new MessageFormatError("_meta.md: 'title', 'participants', 'status' are required");
   }
   if (status !== "open" && status !== "closed") {
-    throw new MessageFormatError(`_meta.md: 'status: ${status}' — допустимо open | closed`);
+    throw new MessageFormatError(
+      `_meta.md: 'status: ${status}' — allowed values are open | closed`,
+    );
   }
 
   return { title, participants: parseParticipants(participants), status };
@@ -80,7 +82,7 @@ export const parseMetaFile = (raw: string): ThreadMeta => {
 export const renderMetaFile = (meta: ThreadMeta): string =>
   `${FENCE}\ntitle: ${meta.title}\nparticipants: ${meta.participants.join(", ")}\nstatus: ${meta.status}\n${FENCE}\n`;
 
-/** Сборка `_thread.md`: голова из `_meta.md` + секции из сообщений по порядку файлов. */
+/** Assembling `_thread.md`: the head from `_meta.md` + sections from the messages in file order. */
 export const renderThread = (meta: ThreadMeta, messages: readonly Message[]): string => {
   const head = `# ${meta.title}\n\nparticipants: ${meta.participants.join(", ")} · status: ${meta.status}\n\n`;
   return messages.reduce((acc, message, at) => {
@@ -91,12 +93,12 @@ export const renderThread = (meta: ThreadMeta, messages: readonly Message[]): st
 };
 
 /**
- * Разбор ЕДИНОГО legacy-`_thread.md` — нужен и для миграции, и для тредов,
- * которые ещё не переехали.
+ * Parsing a SINGLE legacy `_thread.md` — needed both for the migration and for
+ * threads that have not moved yet.
  *
- * Секции режутся срезами по смещениям, а не склейкой строк: склейка теряет
- * разделительный перевод строки между секциями, и побайтовое сравнение потом
- * врёт (поймано пробой перед реализацией).
+ * Sections are cut by offsets rather than by joining lines: joining loses the
+ * separating newline between sections, and the byte comparison then lies (caught
+ * by a probe before the implementation).
  */
 export const parseLegacyThread = (
   id: string,
@@ -106,12 +108,12 @@ export const parseLegacyThread = (
   const head = HEAD.exec(raw);
   if (!head?.groups) {
     throw new MessageFormatError(
-      `${id}: шапка не разобрана — ожидались '# заголовок', пустая строка и 'participants: … · status: …'`,
+      `${id}: header not parsed — expected '# title', a blank line and 'participants: … · status: …'`,
     );
   }
   const status = head.groups.status;
   if (status !== "open" && status !== "closed") {
-    throw new MessageFormatError(`${id}: 'status: ${status}' — допустимо open | closed`);
+    throw new MessageFormatError(`${id}: 'status: ${status}' — allowed values are open | closed`);
   }
 
   const meta: ThreadMeta = {
@@ -134,10 +136,10 @@ export const parseLegacyThread = (
     const body = section.slice(nl + 1);
 
     const parsed = HEADING.exec(heading);
-    if (!parsed?.groups) throw new MessageFormatError(`${id}: заголовок не разобран: '${heading}'`);
+    if (!parsed?.groups) throw new MessageFormatError(`${id}: heading not parsed: '${heading}'`);
     const expects = parsed.groups.expects ?? "";
     if (!(EXPECTS as readonly string[]).includes(expects)) {
-      throw new MessageFormatError(`${id}: 'expects: ${expects}' в '${heading}'`);
+      throw new MessageFormatError(`${id}: 'expects: ${expects}' in '${heading}'`);
     }
 
     const text = body.replace(/^\n+/, "").replace(/\n+$/, "");
@@ -159,20 +161,21 @@ export const parseLegacyThread = (
 };
 
 /**
- * Объявление ожидания в ТЕЛЕ (legacy-форма) — перенос правил bash-генератора
- * один в один, включая выученное:
+ * Declaring who is awaited in the BODY (the legacy form) — the bash generator's
+ * rules carried over one to one, including what was learned the hard way:
  *
- * - стрелка должна стоять сразу после слова (`waiting-on → …`): это синтаксис, а
- *   не оборот речи, иначе пересказ «waiting-on остаётся на john» принимается за
- *   объявление;
- * - режем по ПОСЛЕДНЕМУ `waiting-on`, а не по первой стрелке: стрелка ходовой
- *   символ в прозе, и разбор по первой уводил хвост в середину предложения;
- * - пояснения в скобках вычищаются до разбора ролей;
- * - роли ищутся по известным именам, а не разрезанием по запятым: разделитель в
- *   живых сообщениях бывает и запятой, и тире, и союзом.
+ * - the arrow must stand immediately after the word (`waiting-on → …`): that is
+ *   syntax, not a turn of phrase, otherwise a retelling like "waiting-on stays
+ *   with john" is taken for a declaration;
+ * - we cut at the LAST `waiting-on`, not at the first arrow: the arrow is a common
+ *   character in prose, and parsing from the first one dragged the tail into the
+ *   middle of a sentence;
+ * - parenthesised explanations are stripped before roles are parsed;
+ * - roles are matched by known names rather than by splitting on commas: in live
+ *   messages the separator can be a comma, a dash or a conjunction.
  *
- * `undefined` — объявления нет (ход не передавался). Пустой массив — объявление
- * есть, но ролей в нём не нашлось («—»).
+ * `undefined` — there is no declaration (the turn was not passed). An empty array
+ * — there is a declaration but no roles were found in it ("—").
  */
 export const declaredWaitingOn = (
   text: string,
@@ -191,17 +194,17 @@ export const declaredWaitingOn = (
     const at = new RegExp(`(^|[^a-z-])${role}([^a-z-]|$)`).test(cleaned);
     if (at && !found.includes(role)) found.push(role);
   }
-  // Порядок — как в строке, а не как в реестре ролей: состав читается человеком.
+  // Order follows the line, not the role registry: the set is read by a human.
   return found.sort((a, b) => cleaned.indexOf(a) - cleaned.indexOf(b));
 };
 
 /**
- * Текущее ожидание треда: ПОСЛЕДНЕЕ объявление, а не поле последней секции.
- * Последняя секция сплошь и рядом не передаёт ход (уведомитель о merge,
- * follow-up с `expects: none`, реплика без передачи) — читать её буквально
- * значит обнулить ожидание и оставить роль неразбуженной.
+ * The thread's current waiting: the LAST declaration, not the field of the last
+ * section. The last section very often does not pass the turn (a merge notifier, a
+ * follow-up with `expects: none`, a remark without handing over) — reading it
+ * literally means zeroing the waiting and leaving a role unwoken.
  *
- * `status: closed` приоритетнее любого объявления: закрытый тред не ждёт никого.
+ * `status: closed` outranks any declaration: a closed thread awaits nobody.
  */
 export const waitingOnOf = (thread: Thread): readonly string[] => {
   if (thread.meta.status === "closed") return [];
@@ -212,6 +215,6 @@ export const waitingOnOf = (thread: Thread): readonly string[] => {
   return [];
 };
 
-/** Дата последнего сообщения — колонка `updated` реестра. */
+/** Date of the last message — the `updated` column of the index. */
 export const updatedOf = (thread: Thread): string =>
   thread.messages.at(-1)?.fields.date.slice(0, 10) ?? "—";

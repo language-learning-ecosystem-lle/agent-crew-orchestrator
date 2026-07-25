@@ -9,7 +9,7 @@ const input = {
 };
 
 describe("orchestratorPaths", () => {
-  it("всё состояние — под одним каталогом из конфига", () => {
+  it("the whole state sits under one directory taken from the config", () => {
     const paths = orchestratorPaths(input);
     expect(paths.state).toBe("/repo/.orchestrator");
     expect(paths.journal).toBe("/repo/.orchestrator/journal.jsonl");
@@ -19,11 +19,11 @@ describe("orchestratorPaths", () => {
     expect(paths.holds).toBe("/repo/.orchestrator/holds");
   });
 
-  it("корень почты — чекаут ветки плюс каталог почты из секции mail", () => {
+  it("the mail root is the branch checkout plus the mail directory from the mail section", () => {
     expect(orchestratorPaths(input).mailRoot).toBe("/repo/.worktrees/comms/agent-comms");
   });
 
-  it("проект переносит состояние одним полем, имена файлов не меняются", () => {
+  it("the project moves the state with a single field, file names do not change", () => {
     const moved = orchestratorPaths({
       ...input,
       orchestrator: { ...input.orchestrator, state: "var/orchestrator" },
@@ -32,14 +32,14 @@ describe("orchestratorPaths", () => {
     expect(moved.holds).toBe("/repo/var/orchestrator/holds");
   });
 
-  it("каталог почты берётся из mail.dir, а не зашит", () => {
-    const other = orchestratorPaths({ ...input, mail: { branch: "comms", dir: "почта" } });
-    expect(other.mailRoot).toBe("/repo/.worktrees/comms/почта");
+  it("the mail directory comes from mail.dir and is not hardcoded", () => {
+    const other = orchestratorPaths({ ...input, mail: { branch: "comms", dir: "inbox" } });
+    expect(other.mailRoot).toBe("/repo/.worktrees/comms/inbox");
   });
 });
 
 describe("renderPaths", () => {
-  it("показывает человеку, где лежит каждый файл — включая флаги", () => {
+  it("shows a human where every file lies — the flags included", () => {
     const rendered = renderPaths(orchestratorPaths(input));
     expect(rendered).toContain("/repo/.orchestrator/journal.jsonl");
     expect(rendered).toContain("/repo/.orchestrator/enabled");

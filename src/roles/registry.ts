@@ -1,40 +1,41 @@
 /**
- * Реестр ролей: загрузка конфига и запросы, из которых живёт контур.
+ * The role registry: loading the config and the queries the circuit lives on.
  *
- * Пакет не хранит список ролей внутри себя — он принимает конфиг проекта
- * снаружи. Причина та же, по которой генератор реестра читает `ROLES.md`, а не
- * зашитый список: активировали новую роль — контур узнаёт о ней сам.
+ * The package does not keep the list of roles inside itself — it takes the
+ * project's config from outside. The reason is the same one for which the index
+ * generator reads `ROLES.md` instead of a baked-in list: activate a new role and
+ * the circuit learns about it by itself.
  *
- * ПРОВЕРКИ СВЯЗНОСТИ, которых не даёт схема поля-за-полем, и каждая — про
- * реальный отказ, а не про аккуратность:
+ * CONSISTENCY CHECKS that a field-by-field schema cannot give, each about a real
+ * failure rather than about tidiness:
  *
- * - **дубль id** — два описания одной роли расходятся, и какое победит,
- *   зависит от порядка в файле;
- * - **`via` ведёт в никуда или в роль, которую саму некому разбудить** — цепочка
- *   пробуждения обрывается молча: уведомление уходит тому, кто его не увидит;
- * - **общая tmux-сессия у двух ролей** — сторож будит по имени сессии, и
- *   `/wake` уехал бы в чужую сессию: одна роль получала бы чужую почту, вторая
- *   не получала бы своей.
+ * - **duplicate id** — two descriptions of one role drift apart, and which one
+ *   wins depends on the order in the file;
+ * - **`via` points nowhere, or to a role nobody can wake either** — the wake
+ *   chain breaks silently: the notification goes to someone who will not see it;
+ * - **two roles sharing one tmux session** — the watch-keeper wakes by session
+ *   name, so `/wake` would drive into a foreign session: one role would get
+ *   another's mail, the second would not get its own.
  *
- * Ошибка загрузки — исключение с полным перечнем претензий, а не первая
- * встреченная: конфиг правит человек, и «почини это, потом узнаешь про
- * следующее» — плохой цикл.
+ * A load error is an exception with the full list of complaints, not the first
+ * one encountered: the config is edited by a human, and "fix this, then you will
+ * learn about the next one" is a bad loop.
  */
 import type { Permission, Role, RoleId } from "./schema.js";
 
-/** Всё, что реестру нужно от конфига: он не знает, какие ещё секции там есть. */
+/** All the registry needs from the config: it does not know what other sections are there. */
 export type RolesSection = { readonly roles: readonly Role[] };
 
-/** Кого уведомлять о переходе хода и в какой форме. Текст — не наше дело: он проектный. */
+/** Whom to notify about the turn passing, and in which form. The text is not our business: it is the project's. */
 export type NotificationTarget =
   | { readonly id: RoleId; readonly style: "direct" }
   | { readonly id: RoleId; readonly style: "nudge"; readonly nudge: RoleId };
 
-/** Кого будит сторож и в какой сессии. */
+/** Whom the watch-keeper wakes and in which session. */
 export type WatchTarget = { readonly id: RoleId; readonly session: string };
 
 export type RoleRegistry = {
-  /** Все объявленные роли, включая retired: старые треды ссылаются на них, и разбор не должен их терять. */
+  /** All declared roles, retired included: old threads reference them, and parsing must not lose them. */
   ids(): readonly RoleId[];
   get(id: RoleId): Role | undefined;
   isKnown(id: RoleId): boolean;
@@ -48,7 +49,7 @@ export class RoleConfigError extends Error {
   readonly issues: readonly string[];
 
   constructor(issues: readonly string[]) {
-    super(`конфиг ролей невалиден:\n- ${issues.join("\n- ")}`);
+    super(`role config is invalid:\n- ${issues.join("\n- ")}`);
     this.name = "RoleConfigError";
     this.issues = issues;
   }
@@ -57,14 +58,14 @@ export class RoleConfigError extends Error {
 const hasPermission = (role: Role, permission: Permission): boolean =>
   role.permissions.includes(permission);
 
-/** Проверки, которые не выражаются схемой одного поля. */
+/** Checks that a single-field schema cannot express. */
 const crossCheck = (config: RolesSection): string[] => {
   const issues: string[] = [];
   const byId = new Map<RoleId, Role>();
 
   for (const role of config.roles) {
     if (byId.has(role.id)) {
-      issues.push(`роль '${role.id}' объявлена дважды`);
+      issues.push(`role '${role.id}' is declared twice`);
       continue;
     }
     byId.set(role.id, role);
@@ -76,11 +77,11 @@ const crossCheck = (config: RolesSection): string[] => {
       const via = byId.get(role.wake.via);
       if (!via) {
         issues.push(
-          `роль '${role.id}' оживает через '${role.wake.via}', но такой роли нет — цепочка пробуждения обрывается`,
+          `role '${role.id}' comes alive via '${role.wake.via}', but there is no such role — the wake chain breaks`,
         );
       } else if (via.wake.mode !== "self") {
         issues.push(
-          `роль '${role.id}' оживает через '${via.id}', а того самого некому разбудить (wake.mode='${via.wake.mode}', нужен 'self')`,
+          `role '${role.id}' comes alive via '${via.id}', and there is nobody to wake that one either (wake.mode='${via.wake.mode}', 'self' required)`,
         );
       }
     }
@@ -89,7 +90,7 @@ const crossCheck = (config: RolesSection): string[] => {
       const taken = sessions.get(role.wake.session);
       if (taken) {
         issues.push(
-          `роли '${taken}' и '${role.id}' делят сессию '${role.wake.session}' — пробуждение уехало бы не туда`,
+          `roles '${taken}' and '${role.id}' share session '${role.wake.session}' — the wake-up would go to the wrong place`,
         );
       } else {
         sessions.set(role.wake.session, role.id);

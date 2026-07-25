@@ -25,39 +25,39 @@ const role = (over: Partial<Role>): Role => ({
 });
 
 describe("roleLaunchability", () => {
-  it("watch + in-repo instructions + active → запускается", () => {
+  it("watch + in-repo instructions + active → launchable", () => {
     expect(roleLaunchability(role({}))).toEqual({ launchable: true });
   });
 
-  it("wake=self (человек) → не запускается", () => {
+  it("wake=self (a human) → not launchable", () => {
     expect(roleLaunchability(role({ wake: { mode: "self" } }))).toEqual({
       launchable: false,
       reason: "wake-not-watch",
     });
   });
 
-  it("wake=via-human (ассистент через человека) → не запускается", () => {
+  it("wake=via-human (an assistant reached through a human) → not launchable", () => {
     expect(roleLaunchability(role({ wake: { mode: "via-human", via: "john" } })).launchable).toBe(
       false,
     );
   });
 
-  it("wake=event (будит платформа) → не запускается", () => {
+  it("wake=event (the platform wakes it) → not launchable", () => {
     expect(roleLaunchability(role({ wake: { mode: "event" } })).launchable).toBe(false);
   });
 
-  it("нет instructions → отказ no-instructions, а не падение", () => {
+  it("no instructions → a no-instructions refusal, not a crash", () => {
     const r: Role = { ...role({}), instructions: undefined };
     expect(roleLaunchability(r)).toEqual({ launchable: false, reason: "no-instructions" });
   });
 
-  it("instructions external (исполняется снаружи) → отказ external-instructions", () => {
+  it("external instructions (executed outside) → an external-instructions refusal", () => {
     expect(
       roleLaunchability(role({ instructions: [{ kind: "external", path: "skill.md" }] })),
     ).toEqual({ launchable: false, reason: "external-instructions" });
   });
 
-  it("status не active → отказ inactive", () => {
+  it("status other than active → an inactive refusal", () => {
     expect(roleLaunchability(role({ status: "paused" }))).toEqual({
       launchable: false,
       reason: "inactive",
@@ -70,24 +70,24 @@ describe("buildLaunchPrompt", () => {
     role: "dev-core",
     thread: "014-x",
     instructions: [
-      { path: "CLAUDE.md", text: "правила проекта" },
-      { path: "apps/api/CLAUDE.md", text: "правила api" },
+      { path: "CLAUDE.md", text: "the project rules" },
+      { path: "apps/api/CLAUDE.md", text: "the api rules" },
     ],
   });
 
-  it("несёт роль и тред", () => {
+  it("carries the role and the thread", () => {
     expect(prompt).toContain("`dev-core`");
     expect(prompt).toContain("`014-x`");
   });
 
-  it("жёстко ограничивает одним тредом", () => {
-    expect(prompt).toContain("ТОЛЬКО ПО НЕМУ");
+  it("hard-limits the run to a single thread", () => {
+    expect(prompt).toContain("AND ON THAT ONE ONLY");
   });
 
-  it("включает тексты всех инструкций в порядке чтения", () => {
-    expect(prompt).toContain("правила проекта");
-    expect(prompt).toContain("правила api");
-    expect(prompt.indexOf("правила проекта")).toBeLessThan(prompt.indexOf("правила api"));
+  it("includes the texts of all instructions in reading order", () => {
+    expect(prompt).toContain("the project rules");
+    expect(prompt).toContain("the api rules");
+    expect(prompt.indexOf("the project rules")).toBeLessThan(prompt.indexOf("the api rules"));
   });
 });
 
@@ -113,7 +113,7 @@ const timedOut = (role: string, thread: string): OrchestratorEvent => ({
 });
 
 describe("consecutiveLaunchesWithoutCompletion", () => {
-  it("считает launch'и, completed обнуляет", () => {
+  it("counts launches, completed resets", () => {
     expect(
       consecutiveLaunchesWithoutCompletion([
         launch("a", "1"),
@@ -124,7 +124,7 @@ describe("consecutiveLaunchesWithoutCompletion", () => {
     ).toBe(2);
   });
 
-  it("петля обрыва (timeout, не completed) копится", () => {
+  it("a break loop (timeout, not completed) accumulates", () => {
     expect(
       consecutiveLaunchesWithoutCompletion([
         launch("a", "1"),
@@ -139,7 +139,7 @@ describe("consecutiveLaunchesWithoutCompletion", () => {
 const NOW = new Date("2026-07-24T14:00:00Z");
 
 describe("planLaunch", () => {
-  it("свежая связка → ok, события lease-acquired+launch с материализованным deadline", () => {
+  it("a fresh pair → ok, lease-acquired+launch events with a materialised deadline", () => {
     const plan = planLaunch({
       events: [],
       role: "dev-core",
@@ -153,7 +153,7 @@ describe("planLaunch", () => {
     expect(plan.events.map((e) => e.kind)).toEqual(["lease-acquired", "launch"]);
   });
 
-  it("связка уже running → отказ already-running (не плодим второй прогон)", () => {
+  it("the pair is already running → an already-running refusal (no second run)", () => {
     const events: OrchestratorEvent[] = [
       {
         kind: "lease-acquired",
@@ -171,7 +171,7 @@ describe("planLaunch", () => {
     });
   });
 
-  it("связка exhausted → отказ exhausted (потолок попыток на треде)", () => {
+  it("the pair is exhausted → an exhausted refusal (the attempt ceiling on the thread)", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < 3; i += 1) {
       events.push(
@@ -201,16 +201,16 @@ describe("planLaunch", () => {
     });
   });
 
-  it("глобальный потолок прогонов без completed → отказ run-budget", () => {
+  it("the global ceiling of runs without a completed → a run-budget refusal", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_CONSECUTIVE_RUNS; i += 1) events.push(launch("x", `t${i}`));
-    // другая, свежая связка — но глобальный потолок уже исчерпан
+    // a different, fresh pair — but the global ceiling is already exhausted
     expect(
       planLaunch({ events, role: "dev-core", thread: "fresh", now: NOW, wallClockMs: 900_000 }),
     ).toEqual({ ok: false, reason: "run-budget" });
   });
 
-  it("потолок прогонов калибруется параметром", () => {
+  it("the run ceiling is calibrated by a parameter", () => {
     const events = [launch("x", "1"), launch("x", "2")];
     expect(
       planLaunch({
@@ -235,8 +235,8 @@ describe("planLaunch", () => {
   });
 });
 
-describe("профиль прав — часть контракта запуска (S7)", () => {
-  it("роль без профиля НЕ запускается: поднимать с неназначенными правами нельзя", () => {
+describe("the permission profile — part of the launch contract (S7)", () => {
+  it("a role without a profile is NOT launched: raising it with unassigned permissions is not allowed", () => {
     const { launch: _dropped, ...without } = role({});
     expect(roleLaunchability(without as Role)).toEqual({
       launchable: false,
@@ -244,15 +244,15 @@ describe("профиль прав — часть контракта запуск
     });
   });
 
-  it("argv несёт --allowedTools — то, чего не было в первом боевом прогоне", () => {
+  it("argv carries --allowedTools — what the first production run did not have", () => {
     const argv = buildLaunchArgv({
-      prompt: "промпт",
+      prompt: "the prompt",
       maxTurns: "60",
       launch: { allowedTools: ["Bash", "Read", "Edit", "Write"] },
     });
     expect(argv).toEqual([
       "-p",
-      "промпт",
+      "the prompt",
       "--allowedTools",
       "Bash,Read,Edit,Write",
       "--max-turns",
@@ -260,9 +260,10 @@ describe("профиль прав — часть контракта запуск
     ]);
   });
 
-  it("состав argv ПРИБИТ: порядок и форма — контракт, а не деталь реализации", () => {
-    // Спайк P0 звал агента с --allowedTools и оставался зелёным, пока код
-    // регрессировал: argv не был закреплён ничем, и права выпали незаметно.
+  it("the shape of argv is NAILED DOWN: the order and the form are a contract, not an implementation detail", () => {
+    // The P0 spike called the agent with --allowedTools and stayed green while the
+    // code regressed: argv was pinned by nothing, and the permissions silently
+    // dropped out.
     const argv = buildLaunchArgv({
       prompt: "p",
       maxTurns: "25",
@@ -274,7 +275,7 @@ describe("профиль прав — часть контракта запуск
     expect(argv.at(-2)).toBe("--max-turns");
   });
 
-  it("инструменты уходят как есть, порядок сохраняется", () => {
+  it("the tools go through as they are, the order is preserved", () => {
     const argv = buildLaunchArgv({
       prompt: "p",
       maxTurns: "1",
@@ -283,11 +284,11 @@ describe("профиль прав — часть контракта запуск
     expect(argv[3]).toBe("Read,Bash");
   });
 
-  it("describeLaunch показывает полномочия роли строкой", () => {
+  it("describeLaunch shows the role's permissions as a line", () => {
     expect(describeLaunch(role({}))).toBe("dev-core: Bash, Read, Edit, Write");
   });
 
-  it("describeLaunch у роли без профиля называет ПРИЧИНУ, а не молчит", () => {
+  it("describeLaunch on a role without a profile names the REASON instead of staying silent", () => {
     const { launch: _dropped, ...without } = role({ instructions: undefined });
     expect(describeLaunch(without as Role)).toContain("no-instructions");
   });

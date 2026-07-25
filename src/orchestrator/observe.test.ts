@@ -9,22 +9,22 @@ const sig = (over: Partial<{ handedOff: boolean; processExited: boolean; overdue
   ...over,
 });
 
-describe("handoffDetected — сломанный тред не выдаёт себя за переход хода", () => {
+describe("handoffDetected — a broken thread does not pass itself off as a passed turn", () => {
   const base = { thread: "012-x", waitingThreads: ["012-x"], threadUnreadable: false };
 
-  it("тред всё ещё ждёт роль → ход НЕ перешёл", () => {
+  it("the thread is still waiting on the role → the turn has NOT passed", () => {
     expect(handoffDetected(base)).toBe(false);
   });
 
-  it("тред перестал ждать роль → ход перешёл", () => {
+  it("the thread stopped waiting on the role → the turn has passed", () => {
     expect(handoffDetected({ ...base, waitingThreads: [] })).toBe(true);
   });
 
-  it("свой тред не читается → НЕ переход хода, хотя в списке ожидающих его нет", () => {
+  it("our own thread is unreadable → NOT a passed turn, even though it is not in the waiting list", () => {
     expect(handoffDetected({ ...base, waitingThreads: [], threadUnreadable: true })).toBe(false);
   });
 
-  it("нечитаемость перевешивает пустой список: иначе прогон закрылся бы как completed", () => {
+  it("unreadability outweighs an empty list: otherwise the run would close as completed", () => {
     const brokenLooksLikeHandoff = handoffDetected({
       thread: "012-x",
       waitingThreads: [],
@@ -38,53 +38,53 @@ describe("handoffDetected — сломанный тред не выдаёт се
     expect(brokenLooksLikeHandoff).not.toBe(realHandoff);
   });
 
-  it("чужие треды в списке ожидающих на решение не влияют", () => {
+  it("other threads in the waiting list do not affect the decision", () => {
     expect(handoffDetected({ ...base, waitingThreads: ["009-other", "014-other"] })).toBe(true);
   });
 });
 
 describe("observeStep — running", () => {
-  it("ничего не произошло → наблюдаем дальше (null)", () => {
+  it("nothing happened → keep observing (null)", () => {
     expect(observeStep("running", sig({}))).toBeNull();
   });
 
-  it("ход перешёл → handoff-detected (в draining), процесс не трогаем", () => {
+  it("the turn passed → handoff-detected (into draining), the process is left alone", () => {
     expect(observeStep("running", sig({ handedOff: true }))).toEqual({
       record: "handoff-detected",
     });
   });
 
-  it("ход перешёл ПЕРЕВЕШИВАЕТ overdue: заметили на дедлайне — всё равно успех", () => {
+  it("a passed turn OUTWEIGHS overdue: noticed at the deadline — still a success", () => {
     expect(observeStep("running", sig({ handedOff: true, overdue: true }))).toEqual({
       record: "handoff-detected",
     });
   });
 
-  it("дедлайн без перехода хода → timeout (застрял, предел draining)", () => {
+  it("the deadline without a passed turn → timeout (stuck, the draining limit)", () => {
     expect(observeStep("running", sig({ overdue: true }))).toEqual({
       record: "lease-released",
       reason: "timeout",
     });
   });
 
-  it("процесс вышел САМ без перехода хода до дедлайна → exited-without-handoff", () => {
+  it("the process exited BY ITSELF without passing the turn before the deadline → exited-without-handoff", () => {
     expect(observeStep("running", sig({ processExited: true }))).toEqual({
       record: "lease-released",
       reason: "exited-without-handoff",
     });
   });
 
-  it("самостоятельный выход НЕ выдаётся за форс — иначе журнал врёт в сценарии 3", () => {
+  it("a self-exit is NOT passed off as a force — otherwise the journal lies in scenario 3", () => {
     const step = observeStep("running", sig({ processExited: true }));
     expect(step).not.toEqual({ record: "lease-released", reason: "forced" });
   });
 
-  it("код 0 без перехода хода ≠ завершение: handedOff=false → НЕ completed", () => {
+  it("code 0 without a passed turn ≠ completion: handedOff=false → NOT completed", () => {
     const step = observeStep("running", sig({ processExited: true }));
     expect(step).not.toEqual({ record: "lease-released", reason: "completed" });
   });
 
-  it("таймаут сильнее самостоятельного выхода: overdue проверяется раньше", () => {
+  it("a timeout beats a self-exit: overdue is checked earlier", () => {
     expect(observeStep("running", sig({ processExited: true, overdue: true }))).toEqual({
       record: "lease-released",
       reason: "timeout",
@@ -93,18 +93,18 @@ describe("observeStep — running", () => {
 });
 
 describe("observeStep — draining", () => {
-  it("ход уже перешёл, процесс ещё жив → ждём (null)", () => {
+  it("the turn has already passed, the process is still alive → wait (null)", () => {
     expect(observeStep("draining", sig({}))).toBeNull();
   });
 
-  it("процесс вышел сам → completed (агент дописал и завершился без сигнала)", () => {
+  it("the process exited by itself → completed (the agent finished writing and left without a signal)", () => {
     expect(observeStep("draining", sig({ processExited: true }))).toEqual({
       record: "lease-released",
       reason: "completed",
     });
   });
 
-  it("процесс залип за дедлайн → completed (дело сделано), CLI его гасит", () => {
+  it("the process hung past the deadline → completed (the job is done), the CLI puts it down", () => {
     expect(observeStep("draining", sig({ overdue: true }))).toEqual({
       record: "lease-released",
       reason: "completed",
@@ -115,14 +115,14 @@ describe("observeStep — draining", () => {
 describe("stepEvent", () => {
   const base = { ts: "2026-07-24T14:00:00Z", role: "dev-core", thread: "012-x" };
 
-  it("handoff-detected → событие того же вида", () => {
+  it("handoff-detected → an event of the same kind", () => {
     expect(stepEvent({ record: "handoff-detected" }, base)).toEqual({
       kind: "handoff-detected",
       ...base,
     });
   });
 
-  it("lease-released несёт reason", () => {
+  it("lease-released carries the reason", () => {
     expect(stepEvent({ record: "lease-released", reason: "completed" }, base)).toEqual({
       kind: "lease-released",
       ...base,
@@ -130,7 +130,7 @@ describe("stepEvent", () => {
     });
   });
 
-  it("новая причина доезжает до события журнала как есть", () => {
+  it("a new reason reaches the journal event as it is", () => {
     expect(stepEvent({ record: "lease-released", reason: "exited-without-handoff" }, base)).toEqual(
       {
         kind: "lease-released",

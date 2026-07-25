@@ -1,41 +1,43 @@
 /**
- * Пути оркестратора — ВЫВОДЯТСЯ, а не передаются (решение john, тред 012,
- * 22:45). Раньше журнал, три флага, каталог holdʼов и корень почты приходили
- * аргументами, то есть жили в переписке и в чьей-то памяти; вторая эксплуатация
- * начиналась с реконструкции команды по чату.
+ * Orchestrator paths are DERIVED, not passed in (john's decision, thread 012,
+ * 22:45). Previously the journal, the three flags, the holds directory and the
+ * mail root all arrived as arguments — that is, they lived in the correspondence
+ * and in somebody's memory; the second time the thing was operated it started
+ * with reconstructing the command from a chat.
  *
- * Разделение ответственности здесь ровно такое же, как во всём пакете: проект
- * говорит ГДЕ (`orchestrator.state`, `orchestrator.mailCheckout` в конфиге),
- * пакет — ЧТО там лежит. Имена файлов внутри каталога состояния — конвенция
- * пакета, и наружу они не выносятся: это его собственные файлы.
+ * The split of responsibility here is exactly the one used across the package:
+ * the project says WHERE (`orchestrator.state`, `orchestrator.mailCheckout` in
+ * the config), the package says WHAT lies there. File names inside the state
+ * directory are the package's own convention and are not exposed: they are its
+ * own files.
  *
- * Функция чистая: строки на входе, строки на выходе. Никакой файловой системы —
- * создание каталогов принадлежит командам, которые ими владеют.
+ * The function is pure: strings in, strings out. No file system — creating
+ * directories belongs to the commands that own them.
  */
 import { join } from "node:path";
 
 import type { Mail, Orchestrator } from "../config/config.js";
 
 export type OrchestratorPaths = {
-  /** Каталог оперативного состояния целиком — его создаёт команда, а не человек. */
+  /** The whole operational-state directory — created by a command, not by a human. */
   readonly state: string;
-  /** Журнал событий (JSONL, локальный, не в git). */
+  /** The event journal (JSONL, local, not in git). */
   readonly journal: string;
-  /** Флаг «запуски включены» — его создаёт `enable`. */
+  /** The "launches are enabled" flag — created by `enable`. */
   readonly enableFlag: string;
-  /** Флаг graceful-стопа. */
+  /** The graceful-stop flag. */
   readonly stopFlag: string;
-  /** Флаг force-стопа (несёт `by`/`note`). */
+  /** The force-stop flag (carries `by`/`note`). */
   readonly forceFlag: string;
-  /** Каталог holdʼов ручных сессий. */
+  /** The directory of holds for manual sessions. */
   readonly holds: string;
-  /** Каталог сохранённых выводов сессий — разбор молчания без свидетеля. */
+  /** The directory of saved session outputs — silence can be examined without a witness. */
   readonly sessions: string;
-  /** Корень почты на диске: чекаут ветки почты + каталог почты в нём. */
+  /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
   readonly mailRoot: string;
 };
 
-/** Имена внутри каталога состояния — конвенция пакета, не конфиг проекта. */
+/** Names inside the state directory are the package's convention, not project config. */
 const JOURNAL = "journal.jsonl";
 const ENABLE = "enabled";
 const STOP = "stop";
@@ -44,7 +46,7 @@ const HOLDS = "holds";
 const SESSIONS = "sessions";
 
 export const orchestratorPaths = (input: {
-  /** Корень репозитория: пути в конфиге относительны ему. */
+  /** The repository root: paths in the config are relative to it. */
   readonly repo: string;
   readonly orchestrator: Orchestrator;
   readonly mail: Mail;
@@ -63,12 +65,9 @@ export const orchestratorPaths = (input: {
 };
 
 /**
- * Человеку — куда пакет положил своё состояние. Печатается командами включения
- * и `status`: «где лежит флаг» обязано быть видно из вывода, а не из README.
- */
-/**
- * Файл вывода одной сессии. Имя несёт связку и момент — по журналу видно, какой
- * прогон куда писал, и логи не перетирают друг друга при повторных попытках.
+ * One session's output file. The name carries the pair and the moment — the
+ * journal then shows which run wrote where, and logs do not overwrite each other
+ * across retries.
  */
 export const sessionLogPath = (
   sessions: string,
@@ -77,12 +76,17 @@ export const sessionLogPath = (
   stamp: string,
 ): string => join(sessions, `${stamp.replace(/[:]/g, "-")}-${role}-${thread}.log`);
 
+/**
+ * For a human — where the package put its state. Printed by the enable commands
+ * and by `status`: "where the flag lies" has to be visible from the output, not
+ * from the README.
+ */
 export const renderPaths = (paths: OrchestratorPaths): string =>
   [
-    `состояние: ${paths.state}`,
-    `журнал:    ${paths.journal}`,
-    `флаги:     ${paths.enableFlag} · ${paths.stopFlag} · ${paths.forceFlag}`,
-    `holdʼы:    ${paths.holds}`,
-    `логи сессий: ${paths.sessions}`,
-    `почта:     ${paths.mailRoot}`,
+    `state:    ${paths.state}`,
+    `journal:  ${paths.journal}`,
+    `flags:    ${paths.enableFlag} · ${paths.stopFlag} · ${paths.forceFlag}`,
+    `holds:    ${paths.holds}`,
+    `session logs: ${paths.sessions}`,
+    `mail:     ${paths.mailRoot}`,
   ].join("\n");

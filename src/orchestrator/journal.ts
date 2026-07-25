@@ -1,57 +1,65 @@
 /**
- * Журнал оркестратора P3 — append-only лог того, ЧТО он сделал с сессиями ролей.
- * Шаг S0 (тред 012): данные прежде поведения. Здесь нет ни одного спавна —
- * только модель события и его запись/чтение; сам запуск сессий приходит с S1.
+ * The P3 orchestrator journal — an append-only log of WHAT it did with role
+ * sessions. Step S0 (thread 012): data before behaviour. There is not a single
+ * spawn here — only the event model and its reading/writing; launching sessions
+ * arrives with S1.
  *
- * Почему журнал первым (решение curator, тред 012): весь пакет строился так —
- * сначала наблюдаемость, потом рискованное действие. Спавн `claude -p` без
- * журнала диагностировался бы вслепую, ровно как контур до `derive`/`verify`.
+ * Why the journal comes first (curator's decision, thread 012): the whole package
+ * was built that way — observability first, the risky action after. Spawning
+ * `claude -p` without a journal would be diagnosed blind, exactly like the circuit
+ * before `derive`/`verify`.
  *
- * Журнал ЛОКАЛЬНЫЙ, не в git (развилка 3): состояние аренды транзиентно и в
- * истории `comms` ему не место. Файл — JSONL, ОДНО событие на строку: порядок
- * событий — это порядок строк единственного писателя (демона), а не результат
- * слияния веток, поэтому seq-компаратор мигрированных сообщений здесь не нужен —
- * append одного процесса уже даёт порядок по построению.
+ * The journal is LOCAL, not in git (fork 3): lease state is transient and has no
+ * place in the history of `comms`. The file is JSONL, ONE event per line: the
+ * order of events is the order of lines written by a single writer (the daemon),
+ * not the result of merging branches, so the seq comparator of migrated messages
+ * is not needed here — appending from one process already gives order by
+ * construction.
  *
- * КАЖДЫЙ ИСХОД СО СЛЕДОМ (урок 014): снятие аренды по ЛЮБОЙ причине — успех,
- * форс, таймаут, исчерпание попыток — это событие `lease-released` с полем
- * `reason`. Тихо повиснуть `draining` или тихо перестать пытаться нельзя: и то,
- * и другое обязано оставлять запись, иначе роль выпадает из системы незаметно
- * (два пробела, названные curator; закрыты в данных, не в исполнителе).
+ * EVERY OUTCOME LEAVES A TRACE (lesson of 014): releasing a lease for ANY reason —
+ * success, force, timeout, attempts exhausted — is a `lease-released` event with a
+ * `reason` field. Silently hanging in `draining` or silently ceasing to try is not
+ * allowed: both must leave a record, otherwise a role drops out of the system
+ * unnoticed (the two gaps named by curator; closed in the data, not in the
+ * executor).
  */
 import { z } from "zod";
 
 /**
- * Потолок попыток на связку (role, thread). Прошлый прогон роли на треде мог
- * оборваться системно — мал лимит ходов, сломано окружение; тогда условие
- * запуска («роль ждёт, аренды нет») снова истинно, и без потолка следующий тик
- * запускал бы её вечно, жёг квоту (пробел 2, curator). Достигнут потолок —
- * связка `exhausted`, дальше не пытаемся, смотрим журнал.
+ * The attempt ceiling per (role, thread) pair. A previous run of a role on a
+ * thread may have broken off systemically — a low turn limit, a broken
+ * environment; then the launch condition ("the role is awaited, there is no
+ * lease") becomes true again, and without a ceiling the next tick would launch it
+ * forever, burning quota (gap 2, curator). Ceiling reached — the pair is
+ * `exhausted`, we stop trying and look at the journal.
  */
 export const MAX_ATTEMPTS = 3;
 
 /**
- * Причина снятия аренды. Терминальна всегда — аренда живёт до первого release.
+ * The reason a lease was released. Always terminal — a lease lives until the first
+ * release.
  *
- * `forced` и `exited-without-handoff` РАЗДЕЛЕНЫ (постановка curator, тред 012,
- * 20:55): до этого процесс, вышедший сам и не передавший хода, писался как
- * `forced` — то есть падение сессии в журнале было неотличимо от остановки
- * john'ом. Сценарий приёмки «`force` оставляет след кто/когда/почему» на таком
- * приборе проходил бы одинаково и когда контур работает, и когда роль просто
- * рухнула. `forced` теперь означает ровно одно: был форс, и у него есть `by`.
+ * `forced` and `exited-without-handoff` ARE SEPARATED (curator's statement of
+ * work, thread 012, 20:55): before that, a process that exited on its own without
+ * passing the turn was recorded as `forced` — that is, a session crash was
+ * indistinguishable in the journal from a stop by john. The acceptance scenario
+ * "`force` leaves a who/when/why trace" would pass identically on such an
+ * instrument whether the circuit works or the role simply crashed. `forced` now
+ * means exactly one thing: there was a force, and it has a `by`.
  *
- * `supervisor-gone` — УМЕР НАБЛЮДАТЕЛЬ, а не сессия. Приёмка 2026-07-25: демон
- * вернул управление сразу после спавна, сессия осталась сиротой и доделала
- * работу, а аренда навсегда осталась `running` — журнал стал врать («работает»
- * при давно сделанном). Молчаливо висящая аренда хуже любой причины, поэтому
- * супервизор обязан записать исход даже собственной смертью. SIGKILL перехватить
- * нельзя, и мы этого не обещаем: гарантия покрывает выход, исключение, SIGINT и
- * SIGTERM.
+ * `supervisor-gone` — THE SUPERVISOR died, not the session. Acceptance
+ * 2026-07-25: the daemon returned control right after the spawn, the session was
+ * orphaned and finished the work, while the lease stayed `running` forever — the
+ * journal started lying ("working" about something long done). A silently hanging
+ * lease is worse than any reason, so the supervisor must record the outcome even
+ * with its own death. SIGKILL cannot be intercepted, and we do not promise that:
+ * the guarantee covers exit, exception, SIGINT and SIGTERM.
  *
- * `forced` из перечня НЕ убран, хотя путь `lease-released` его больше не пишет
- * (реальный форс пишет событие `stop {mode: forced, by, note}`): журналы —
- * append-only файлы на диске, и удаление значения сделало бы НЕЧИТАЕМЫМИ старые
- * строки, а разбор у нас громкий. Прошлое перечнем не переписывают.
+ * `forced` has NOT been removed from the list even though the `lease-released`
+ * path no longer writes it (a real force writes a `stop {mode: forced, by, note}`
+ * event): journals are append-only files on disk, and removing a value would make
+ * old lines UNREADABLE, while our parsing is loud. The past is not rewritten by
+ * editing an enum.
  */
 export const RELEASE_REASONS = [
   "completed",
@@ -64,47 +72,49 @@ export const RELEASE_REASONS = [
 export type ReleaseReason = (typeof RELEASE_REASONS)[number];
 
 /**
- * Причина ОТКАЗА от запуска — событие `launch-refused` (S3). Оркестратор хотел
- * поднять пару (role, thread), но не стал, и отказ оставляет СЛЕД (иначе петля
- * «запуск→обрыв→запуск» жгла бы квоту молча — требование curator к S3). Сегодня
- * одна причина: глобальный потолок прогонов без завершения.
+ * The reason a launch was REFUSED — a `launch-refused` event (S3). The
+ * orchestrator wanted to raise a (role, thread) pair but did not, and the refusal
+ * leaves a TRACE (otherwise a "launch → break → launch" loop would burn quota
+ * silently — curator's requirement for S3). Today there is one reason: the global
+ * ceiling of runs without completion.
  */
 export const REFUSAL_REASONS = ["run-budget"] as const;
 export type RefusalReason = (typeof REFUSAL_REASONS)[number];
 
 const base = {
-  /** UTC-метка события: `2026-07-24T13:45:12Z`. Проставляет писатель в момент записи. */
+  /** The event's UTC stamp: `2026-07-24T13:45:12Z`. Set by the writer at write time. */
   ts: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, "ts должен быть UTC ISO без миллисекунд"),
+    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, "ts must be UTC ISO without milliseconds"),
   role: z.string().min(1),
   thread: z.string().min(1),
 };
 
 /**
- * Событие журнала — дискриминированное объединение по `kind`. Обязательность
- * полей задаётся видом события, а не проверяется вручную: `lease-acquired` без
- * `deadline` или `lease-released` без `reason` не разберётся вовсе.
+ * A journal event — a discriminated union on `kind`. Which fields are required is
+ * set by the kind of event rather than checked by hand: a `lease-acquired` without
+ * a `deadline` or a `lease-released` without a `reason` will not parse at all.
  */
 export const orchestratorEventSchema = z.discriminatedUnion("kind", [
-  // Оркестратор взял аренду на запуск роли по треду; `deadline` — материализованный
-  // wall-clock предел прогона (развилка 2), по нему S2/S3 судят «повис ли», не
-  // пересчитывая срок на месте.
+  // The orchestrator took a lease to launch a role on a thread; `deadline` is the
+  // materialised wall-clock limit of the run (fork 2), by which S2/S3 judge
+  // "is it stuck" without recomputing the deadline on the spot.
   z.object({
     kind: z.literal("lease-acquired"),
     ...base,
     deadline: base.ts,
   }),
-  // Сессия роли запущена процессом (наполняется с S1).
+  // The role's session has been launched as a process (populated from S1 on).
   z.object({ kind: z.literal("launch"), ...base }),
-  // Ход ушёл с роли — сигнал завершения (наполняется с S2). Аренда → draining.
+  // The turn left the role — the completion signal (populated from S2 on). Lease → draining.
   z.object({ kind: z.literal("handoff-detected"), ...base }),
-  // Аренда снята — ВСЕГДА с причиной (со следом). `exitCode` и `output` —
-  // ПОЧЕМУ, а не только ЧТО: первый боевой прогон показал, что «сессия не смогла
-  // записать» и «сессия просто вышла» дают одну и ту же строку, и разбираться
-  // приходится по памяти того, кто смотрел в терминал. Код выхода и путь к
-  // сохранённому выводу сессии делают разбор возможным без свидетеля. Поля
-  // необязательны: ручной `record` их не проставляет, старые журналы читаются.
+  // The lease is released — ALWAYS with a reason (with a trace). `exitCode` and
+  // `output` are the WHY, not just the WHAT: the first production run showed that
+  // "the session could not write" and "the session simply exited" produce the same
+  // line, and the investigation has to rely on the memory of whoever watched the
+  // terminal. The exit code and the path to the saved session output make the
+  // investigation possible without a witness. The fields are optional: a manual
+  // `record` does not set them, and old journals still parse.
   z.object({
     kind: z.literal("lease-released"),
     ...base,
@@ -112,9 +122,10 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     exitCode: z.number().int().optional(),
     output: z.string().min(1).optional(),
   }),
-  // Сессия принудительно остановлена (S4). `by`/`note` — «кто» и «почему»,
-  // вместе с `ts` («когда») дают самодостаточный след force'а в журнале. Для
-  // `graceful` (демон дочитывает текущую сессию по стоп-флагу) они не обязательны.
+  // The session was stopped forcibly (S4). `by`/`note` are the "who" and the
+  // "why", and together with `ts` (the "when") they make the force trace in the
+  // journal self-sufficient. For `graceful` (the daemon lets the current session
+  // finish on a stop flag) they are not required.
   z.object({
     kind: z.literal("stop"),
     ...base,
@@ -122,7 +133,7 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     by: z.string().min(1).optional(),
     note: z.string().min(1).optional(),
   }),
-  // Оркестратор ОТКАЗАЛСЯ запускать пару (role, thread) — со следом (S3).
+  // The orchestrator REFUSED to launch a (role, thread) pair — with a trace (S3).
   z.object({
     kind: z.literal("launch-refused"),
     ...base,
@@ -133,28 +144,28 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
 export type OrchestratorEvent = z.infer<typeof orchestratorEventSchema>;
 export type EventKind = OrchestratorEvent["kind"];
 
-/** UTC-метка события из момента: `2026-07-24T13:45:12Z` (без миллисекунд). */
+/** An event's UTC stamp from a point in time: `2026-07-24T13:45:12Z` (no milliseconds). */
 export const eventTimestamp = (at: Date): string => `${at.toISOString().slice(0, 19)}Z`;
 
-/** Событие → строка JSONL. Ключи в стабильном порядке — дифф журнала читаем. */
+/** Event → a JSONL line. Keys in a stable order — the journal diff stays readable. */
 export const renderEventLine = (event: OrchestratorEvent): string => JSON.stringify(event);
 
 /**
- * Строка JSONL → событие. Кривая строка — ГРОМКИЙ отказ, а не пропуск: журнал
- * оркестратора — источник истины о его действиях, молча проглоченная строка
- * прятала бы ровно тот сбой, ради видимости которого журнал и заведён.
+ * A JSONL line → an event. A malformed line is a LOUD refusal, not a skip: the
+ * orchestrator's journal is the source of truth about its actions, and a silently
+ * swallowed line would hide exactly the failure the journal exists to make visible.
  */
 export const parseEventLine = (line: string): OrchestratorEvent => {
   let raw: unknown;
   try {
     raw = JSON.parse(line);
   } catch {
-    throw new Error(`строка журнала — не JSON: ${line}`);
+    throw new Error(`journal line is not JSON: ${line}`);
   }
   return orchestratorEventSchema.parse(raw);
 };
 
-/** Текст журнала (JSONL) → события по порядку строк. Пустые строки пропускаются. */
+/** Journal text (JSONL) → events in line order. Blank lines are skipped. */
 export const parseJournal = (text: string): OrchestratorEvent[] =>
   text
     .split("\n")
@@ -162,6 +173,6 @@ export const parseJournal = (text: string): OrchestratorEvent[] =>
     .filter((line) => line !== "")
     .map(parseEventLine);
 
-/** События → текст JSONL (с завершающим переводом строки — append дописывает следующую). */
+/** Events → JSONL text (with a trailing newline — an append writes the next line). */
 export const renderJournal = (events: readonly OrchestratorEvent[]): string =>
   events.length === 0 ? "" : `${events.map(renderEventLine).join("\n")}\n`;

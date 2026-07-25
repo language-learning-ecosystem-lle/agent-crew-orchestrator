@@ -4,11 +4,11 @@ import { MAX_ATTEMPTS, type OrchestratorEvent } from "./journal.js";
 import { foldLeases, type LeaseView, unclosedLeases } from "./lease.js";
 
 const NOW = new Date("2026-07-24T14:00:00Z");
-const PAST = "2026-07-24T13:30:00Z"; // раньше NOW
-const FUTURE = "2026-07-24T15:00:00Z"; // позже NOW
+const PAST = "2026-07-24T13:30:00Z"; // earlier than NOW
+const FUTURE = "2026-07-24T15:00:00Z"; // later than NOW
 
-// Метки событий не важны для свёртки (порядок — по строкам журнала), но обязаны
-// быть валидны по схеме; выдаём монотонные, чтобы читались.
+// Event stamps do not matter to the fold (order comes from the journal lines),
+// but they must be schema-valid; monotonic ones are issued so they read well.
 let clock = 0;
 const ts = (): string => {
   clock += 1;
@@ -59,8 +59,8 @@ const only = (events: OrchestratorEvent[]): LeaseView => {
   return views[0] as LeaseView;
 };
 
-describe("foldLeases — жизненный цикл", () => {
-  it("взятие аренды → running, deadline и attempt проставлены", () => {
+describe("foldLeases — the lifecycle", () => {
+  it("taking a lease → running, deadline and attempt are set", () => {
     const v = only([acquire("dev-core", "t", FUTURE)]);
     expect(v).toMatchObject({ state: "running", attempt: 1, deadline: FUTURE, reason: null });
   });
@@ -71,50 +71,50 @@ describe("foldLeases — жизненный цикл", () => {
     );
   });
 
-  it("stop → stopped с режимом в reason", () => {
+  it("stop → stopped with the mode in reason", () => {
     const v = only([acquire("dev-core", "t", FUTURE), stop("dev-core", "t", "forced")]);
     expect(v).toMatchObject({ state: "stopped", reason: "forced" });
   });
 
-  it("launch не меняет состояния аренды", () => {
+  it("launch does not change the lease state", () => {
     const v = only([acquire("dev-core", "t", FUTURE), launch("dev-core", "t")]);
     expect(v.state).toBe("running");
     expect(v.lastEvent).toBe("launch");
   });
 });
 
-describe("foldLeases — пробел 1: работает vs повис (overdue)", () => {
-  it("аренда жива, deadline прошёл → overdue", () => {
+describe("foldLeases — gap 1: working vs stuck (overdue)", () => {
+  it("the lease is alive, the deadline has passed → overdue", () => {
     expect(only([acquire("dev-core", "t", PAST)]).overdue).toBe(true);
   });
 
-  it("аренда жива, deadline впереди → не overdue", () => {
+  it("the lease is alive, the deadline is ahead → not overdue", () => {
     expect(only([acquire("dev-core", "t", FUTURE)]).overdue).toBe(false);
   });
 
-  it("overdue держится и в draining (ход ушёл, но сессия не закрыта)", () => {
+  it("overdue holds in draining too (the turn is gone, but the session is not closed)", () => {
     const v = only([acquire("dev-core", "t", PAST), handoff("dev-core", "t")]);
     expect(v).toMatchObject({ state: "draining", overdue: true });
   });
 
-  it("снятая аренда с прошедшим deadline — уже НЕ overdue (не активна)", () => {
+  it("a released lease with a passed deadline is NOT overdue any more (it is not active)", () => {
     const v = only([acquire("dev-core", "t", PAST), release("dev-core", "t", "timeout")]);
     expect(v.overdue).toBe(false);
   });
 });
 
-describe("foldLeases — пробел 2: потолок попыток (exhausted / launchable)", () => {
-  it("неуспешный финал, попыток меньше потолка → launchable, не exhausted", () => {
+describe("foldLeases — gap 2: the attempt ceiling (exhausted / launchable)", () => {
+  it("an unsuccessful finish below the ceiling → launchable, not exhausted", () => {
     const v = only([acquire("dev-core", "t", PAST), release("dev-core", "t", "timeout")]);
     expect(v).toMatchObject({ attempt: 1, launchable: true, exhausted: false });
   });
 
-  it("успешный финал (completed) → не launchable и не exhausted", () => {
+  it("a successful finish (completed) → neither launchable nor exhausted", () => {
     const v = only([acquire("dev-core", "t", FUTURE), release("dev-core", "t", "completed")]);
     expect(v).toMatchObject({ launchable: false, exhausted: false });
   });
 
-  it("attempt растёт с каждым взятием; на потолке — exhausted, не launchable", () => {
+  it("attempt grows with every taking; at the ceiling — exhausted, not launchable", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
       events.push(acquire("dev-core", "t", PAST), release("dev-core", "t", "timeout"));
@@ -124,12 +124,12 @@ describe("foldLeases — пробел 2: потолок попыток (exhauste
     expect(v).toMatchObject({ exhausted: true, launchable: false });
   });
 
-  it("явное lease-released reason=exhausted → exhausted независимо от счётчика", () => {
+  it("an explicit lease-released reason=exhausted → exhausted regardless of the counter", () => {
     const v = only([acquire("dev-core", "t", PAST), release("dev-core", "t", "exhausted")]);
     expect(v).toMatchObject({ exhausted: true, launchable: false });
   });
 
-  it("exited-without-handoff — такой же неуспех для потолка, как timeout и forced", () => {
+  it("exited-without-handoff — the same failure for the ceiling as timeout and forced", () => {
     const v = only([
       acquire("dev-core", "t", PAST),
       release("dev-core", "t", "exited-without-handoff"),
@@ -137,7 +137,7 @@ describe("foldLeases — пробел 2: потолок попыток (exhauste
     expect(v).toMatchObject({ attempt: 1, launchable: true, exhausted: false });
   });
 
-  it("самостоятельные выходы копятся до потолка и дальше связка не запускается", () => {
+  it("self-exits accumulate up to the ceiling, after which the pair is not launched", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
       events.push(
@@ -149,8 +149,8 @@ describe("foldLeases — пробел 2: потолок попыток (exhauste
   });
 });
 
-describe("foldLeases — несколько связок", () => {
-  it("разные (role, thread) независимы и сохраняют порядок появления", () => {
+describe("foldLeases — several pairs", () => {
+  it("different (role, thread) pairs are independent and keep the order of appearance", () => {
     const views = foldLeases(
       [
         acquire("dev-core", "t1", FUTURE),
@@ -164,7 +164,7 @@ describe("foldLeases — несколько связок", () => {
     expect(views[1]).toMatchObject({ state: "released", launchable: true });
   });
 
-  it("одна и та же роль на разных тредах — разные связки", () => {
+  it("the same role on different threads — different pairs", () => {
     const views = foldLeases(
       [acquire("dev-core", "t1", FUTURE), acquire("dev-core", "t2", FUTURE)],
       NOW,
@@ -172,12 +172,12 @@ describe("foldLeases — несколько связок", () => {
     expect(views).toHaveLength(2);
   });
 
-  it("пустой журнал — пустая свёртка", () => {
+  it("an empty journal — an empty fold", () => {
     expect(foldLeases([], NOW)).toEqual([]);
   });
 });
 
-describe("foldLeases — launch-refused не создаёт аренду", () => {
+describe("foldLeases — launch-refused creates no lease", () => {
   const refused = (role: string, thread: string): OrchestratorEvent => ({
     kind: "launch-refused",
     ts: ts(),
@@ -186,11 +186,11 @@ describe("foldLeases — launch-refused не создаёт аренду", () =>
     reason: "run-budget",
   });
 
-  it("связка только с launch-refused — фантомной аренды нет", () => {
+  it("a pair with launch-refused only — no phantom lease", () => {
     expect(foldLeases([refused("dev-core", "t")], NOW)).toEqual([]);
   });
 
-  it("launch-refused между реальными событиями связку не искажает", () => {
+  it("launch-refused between real events does not distort the pair", () => {
     const v = only([
       refused("dev-core", "t"),
       acquire("dev-core", "t", FUTURE),
@@ -200,19 +200,19 @@ describe("foldLeases — launch-refused не создаёт аренду", () =>
   });
 });
 
-describe("unclosedLeases — аренда, которую некому было закрыть", () => {
-  it("живая аренда попадает в список", () => {
+describe("unclosedLeases — a lease nobody was left to close", () => {
+  it("a live lease makes the list", () => {
     const views = unclosedLeases([acquire("dev-core", "t", FUTURE)], NOW);
     expect(views).toHaveLength(1);
     expect(views[0]).toMatchObject({ role: "dev-core", state: "running" });
   });
 
-  it("draining тоже считается живой: исход не записан", () => {
+  it("draining counts as live too: the outcome is not recorded", () => {
     const views = unclosedLeases([acquire("dev-core", "t", FUTURE), handoff("dev-core", "t")], NOW);
     expect(views[0]?.state).toBe("draining");
   });
 
-  it("закрытая любой причиной — не живая, в том числе supervisor-gone", () => {
+  it("closed for any reason — not live, supervisor-gone included", () => {
     const closed = unclosedLeases(
       [acquire("dev-core", "t", PAST), release("dev-core", "t", "supervisor-gone")],
       NOW,
@@ -220,7 +220,7 @@ describe("unclosedLeases — аренда, которую некому было 
     expect(closed).toEqual([]);
   });
 
-  it("supervisor-gone — неуспешный финал: связку можно пробовать снова", () => {
+  it("supervisor-gone — an unsuccessful finish: the pair may be tried again", () => {
     const v = only([acquire("dev-core", "t", PAST), release("dev-core", "t", "supervisor-gone")]);
     expect(v).toMatchObject({ launchable: true, exhausted: false });
   });

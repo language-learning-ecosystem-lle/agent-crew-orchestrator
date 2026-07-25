@@ -1,50 +1,56 @@
 /**
- * Hold — «роль занята человеком». Шаг S5 (тред 012, постановка curator 20:25).
+ * A hold means "the role is taken by a human". Step S5 (thread 012, curator's
+ * statement of work 20:25).
  *
- * Живая ручная сессия роли и демон — два претендента на ОДНУ аренду: почта ждёт
- * dev-core, демон видит кандидата и поднимает вторую сессию той же роли поверх
- * работающей. Из двух форм сосуществования («сессия паркуется навсегда» и
- * «аренда отказывает демону, пока жива ручная сессия») выбрана вторая — на
- * переходный период, пока автономный контур ещё принимается.
+ * A live manual session of a role and the daemon are two claimants to ONE lease:
+ * the mail awaits dev-core, the daemon sees a candidate and raises a second
+ * session of the same role on top of the working one. Of the two forms of
+ * coexistence ("the session parks forever" and "the lease refuses the daemon while
+ * a manual session is alive") the second was chosen — for the transition period,
+ * while the autonomous circuit is still being accepted.
  *
- * ФАЙЛОВЫЙ ПАТТЕРН тот же, что у enable/stop/force: hold — файл `<holds>/<role>`,
- * его наличие видно и человеку, и демону, и он переживает рестарт обоих.
+ * THE FILE PATTERN is the same as for enable/stop/force: a hold is a file
+ * `<holds>/<role>`, its presence is visible both to a human and to the daemon, and
+ * it survives a restart of either.
  *
- * СРОК ЖИВЁТ В САМОМ ФАЙЛЕ (`expires`), как `deadline` у `lease-acquired`:
- * держатель объявляет, до какого момента роль занята, а демон только сравнивает
- * с `now`. Иначе TTL пришлось бы держать в конфиге демона и совпадение двух
- * настроек стало бы условием корректности.
+ * THE DEADLINE LIVES IN THE FILE ITSELF (`expires`), like `deadline` in
+ * `lease-acquired`: the holder declares until when the role is taken, and the
+ * daemon merely compares that with `now`. Otherwise the TTL would have to live in
+ * the daemon config and two settings agreeing would become a correctness
+ * condition.
  *
- * ПОЧЕМУ НЕТ ФОНОВОГО HEARTBEAT'А. Первая форма (метка, обновляемая процессом-
- * биением) описана в моём сообщении 17:07 и при реализации отвергнута: биение
- * пришлось бы вести отдельному процессу-ребёнку сессии, а осиротевший ребёнок
- * переживает смерть сессии и продолжает биться — hold остаётся вечно свежим и
- * блокирует демон навсегда. Это ровно тот класс «висит, выглядя нормально»,
- * ради которого TTL и вводился. Срок, объявленный держателем вперёд, той дыры
- * не имеет: истёк — истёк, независимо от того, кто что делает.
+ * WHY THERE IS NO BACKGROUND HEARTBEAT. The first form (a stamp refreshed by a
+ * beating process) is described in my message of 17:07 and was rejected during
+ * implementation: the beating would have to be done by a separate child process of
+ * the session, and an orphaned child outlives the session's death and keeps
+ * beating — the hold stays forever fresh and blocks the daemon forever. That is
+ * exactly the "hangs while looking fine" class the TTL was introduced against. A
+ * deadline declared ahead by the holder does not have that hole: expired is
+ * expired, no matter who is doing what.
  *
- * ПРОСРОЧЕННЫЙ HOLD НЕ УДАЛЯЕТСЯ АВТОМАТИЧЕСКИ — он остаётся следом «здесь была
- * ручная сессия и она не убралась за собой» и печатается витриной. Демон его
- * игнорирует (иначе мёртвая сессия блокировала бы контур вечно), но молча этого
- * не делает: пропуск роли по holdʼу — отдельное решение тика со своей строкой.
+ * AN EXPIRED HOLD IS NOT DELETED AUTOMATICALLY — it stays as a trace of "a manual
+ * session was here and did not clean up after itself" and is printed by the
+ * display. The daemon ignores it (otherwise a dead session would block the circuit
+ * forever), but it does not do so silently: skipping a role because of a hold is a
+ * separate tick decision with its own line.
  */
 import { z } from "zod";
 
 /**
- * Срок holdʼа по умолчанию — час. Взят из размера реального пакета работы
- * ручной сессии: короче — держатель дописывает hold посреди работы и рискует
- * забыть, длиннее — забытый hold слишком долго держит контур выключенным.
- * Калибруется `--ttl`, поэтому число здесь — умолчание, а не инвариант.
+ * The default hold TTL is an hour. Taken from the size of a real work package of a
+ * manual session: shorter and the holder has to extend the hold mid-work and risks
+ * forgetting; longer and a forgotten hold keeps the circuit switched off for too
+ * long. Calibrated by `--ttl`, so the number here is a default, not an invariant.
  */
 export const HOLD_TTL_SECONDS = 3600;
 
 const UTC_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
-const stamp = z.string().regex(UTC_STAMP, "метка должна быть UTC ISO без миллисекунд");
+const stamp = z.string().regex(UTC_STAMP, "the stamp must be UTC ISO without milliseconds");
 
 /**
- * Запись holdʼа. `by` — КТО держит (роль-человек: john/curator — или сама роль,
- * если сессию ведёт агент вручную); `note` — зачем, чтобы чужой hold можно было
- * понять, не спрашивая держателя.
+ * A hold record. `by` is WHO holds it (a human role: john/curator — or the role
+ * itself, if an agent is driving the session manually); `note` is what for, so
+ * that someone else's hold can be understood without asking the holder.
  */
 export const holdRecordSchema = z.object({
   role: z.string().min(1),
@@ -56,70 +62,71 @@ export const holdRecordSchema = z.object({
 
 export type HoldRecord = z.infer<typeof holdRecordSchema>;
 
-/** UTC-метка без миллисекунд — тот же формат, что у журнала. */
+/** A UTC stamp without milliseconds — the same format as in the journal. */
 export const holdStamp = (at: Date): string => `${at.toISOString().slice(0, 19)}Z`;
 
-/** Момент истечения holdʼа, взятого в `at` на `ttlSeconds`. */
+/** The expiry moment of a hold taken at `at` for `ttlSeconds`. */
 export const holdExpiry = (at: Date, ttlSeconds: number): string =>
   holdStamp(new Date(at.getTime() + ttlSeconds * 1000));
 
-/** Запись → содержимое файла holdʼа (JSONL-совместимо: одна строка). */
+/** A record → the contents of the hold file (JSONL-compatible: one line). */
 export const renderHold = (record: HoldRecord): string => `${JSON.stringify(record)}\n`;
 
 /**
- * Содержимое файла → запись. Кривой hold — ГРОМКИЙ отказ, а не «считаем, что
- * holdʼа нет»: молчаливый пропуск нечитаемого файла означал бы, что демон
- * поднимет роль поверх живой сессии именно тогда, когда что-то уже сломано.
+ * File contents → a record. A malformed hold is a LOUD refusal, not "let's assume
+ * there is no hold": silently skipping an unreadable file would mean the daemon
+ * raises a role on top of a live session exactly when something is already broken.
  */
 export const parseHold = (text: string): HoldRecord => {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    throw new Error(`hold — не JSON: ${text.trim()}`);
+    throw new Error(`hold is not JSON: ${text.trim()}`);
   }
   return holdRecordSchema.parse(raw);
 };
 
-/** Взгляд на hold с точки зрения момента `now`. */
+/** A view of a hold from the point of view of the moment `now`. */
 export type HoldView = HoldRecord & {
-  /** Срок не истёк — роль занята, демон её не поднимает. */
+  /** The deadline has not passed — the role is taken, the daemon does not raise it. */
   readonly active: boolean;
 };
 
 /**
- * Записи → взгляды на момент `now`. Сравнение строковое: метки нормализованы к
- * одному UTC-формату фиксированной длины, поэтому лексикографический порядок и
- * есть хронологический (тот же приём, что в `foldLeases`).
+ * Records → views as of `now`. The comparison is string-based: stamps are
+ * normalised to one UTC format of fixed length, so lexicographic order is also
+ * chronological (the same technique as in `foldLeases`).
  */
 export const foldHolds = (records: readonly HoldRecord[], now: Date): HoldView[] => {
   const nowIso = holdStamp(now);
   return records.map((record) => ({ ...record, active: nowIso <= record.expires }));
 };
 
-/** Роли, занятые прямо сейчас, — то, что демон вычитает из кандидатов. */
+/** Roles taken right now — what the daemon subtracts from the candidates. */
 export const heldRoles = (views: readonly HoldView[]): string[] =>
   views.filter((view) => view.active).map((view) => view.role);
 
 /**
- * Витрина holdʼов. Пустой список — честная строка, а не пустой вывод (тот же
- * довод, что в `renderStatus`: молчание неотличимо от сбоя чтения).
+ * The holds display. An empty list gets an honest line rather than empty output
+ * (the same argument as in `renderStatus`: silence is indistinguishable from a
+ * read failure).
  */
 export const renderHolds = (views: readonly HoldView[]): string => {
-  if (views.length === 0) return "оркестратор: ручных holdʼов нет";
+  if (views.length === 0) return "orchestrator: no manual holds";
   return views
     .map((view) => {
       const cols = [
         view.role,
-        `держит ${view.by}`,
-        `до ${view.expires}`,
+        `held by ${view.by}`,
+        `until ${view.expires}`,
         view.note === undefined ? "" : `(${view.note})`,
       ]
         .filter((c) => c !== "")
         .join("  ·  ");
       const mark = view.active
-        ? "  ← ЗАНЯТА человеком, демон её не поднимает"
-        : "  ⚠ ПРОСРОЧЕН — демон роль поднимет; снимите файл, если сессия жива";
+        ? "  ← TAKEN by a human, the daemon does not raise it"
+        : "  ⚠ EXPIRED — the daemon will raise the role; remove the file if the session is alive";
       return `${cols}${mark}`;
     })
     .join("\n");

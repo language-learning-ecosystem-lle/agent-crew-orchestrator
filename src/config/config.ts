@@ -1,75 +1,81 @@
 /**
- * Конфиг протокола — ОДИН файл в корне репозитория, где протокол используется
- * (решение john, 2026-07-23, тред `012-agent-protocol-package`, msg-022).
+ * The protocol config is ONE file at the root of the repository where the
+ * protocol is used (john's decision, 2026-07-23, thread `012-agent-protocol-package`,
+ * msg-022).
  *
- * ПОЧЕМУ ОДИН, А НЕ «файл про роли». Роли — лишь одна секция протокола; рядом
- * живут каталог почты и её ветка, завтра — подключённые транспорты. Заведи
- * `roles.json` отдельно, и через месяц рядом появится второй конфигурационный
- * файл, а «где написано» снова станет вопросом.
+ * WHY ONE FILE AND NOT "the roles file". Roles are just one section of the
+ * protocol; next to them live the mail directory and its branch, and tomorrow —
+ * the connected transports. Add a separate `roles.json` and a month later a
+ * second config file shows up beside it, turning "where is it written" back into
+ * a question.
  *
- * ПОЧЕМУ В `main`, А НЕ В ВЕТКЕ ПОЧТЫ. Прямая запись в ветку почты — штатный
- * режим протокола, и конфиг прав, лежащий там, означал бы, что агент способен
- * расширить себе права коммитом мимо CI и ревьюера. В `main` изменение прав
- * проходит PR. Побочно исчезают «два корня»: конфиг и файлы, на которые он
- * ссылается (карточки ролей, критерии ревью), лежат в одном дереве.
+ * WHY IN `main` AND NOT IN THE MAIL BRANCH. Writing straight to the mail branch
+ * is a normal mode of the protocol, so a permissions config living there would
+ * mean an agent can widen its own permissions with a commit that bypasses CI and
+ * the reviewer. In `main` a permission change goes through a PR. As a side
+ * effect the "two roots" problem disappears: the config and the files it points
+ * at (role cards, review criteria) live in the same tree.
  *
- * `ROLES.md` УПРАЗДНЁН, а не переехал: таблица стала секцией `roles`, зоны и
- * права — полями, стоп-условия — карточками ролей (`instructions`), проза о
- * модели ролей — документом протокола. Собственного содержания не оставалось
- * ни строки, а два описания одного набора ролей расходятся по построению —
- * тот же вывод, что для INDEX (тред 006) и для `waiting-on` в `_meta.md`.
+ * `ROLES.md` IS ABOLISHED, not moved: the table became the `roles` section, zones
+ * and permissions became fields, stop conditions became role cards
+ * (`instructions`), and the prose about the role model became the protocol
+ * document. Not a line of its own content was left, and two descriptions of one
+ * set of roles drift apart by construction — the same conclusion as for INDEX
+ * (thread 006) and for `waiting-on` in `_meta.md`.
  */
 import { z } from "zod";
 
 import { roleSchema } from "../roles/schema.js";
 
-/** Где живёт почта. Ветка и каталог — данные протокола, а не знание вызывающего. */
+/** Where the mail lives. Branch and directory are protocol data, not caller knowledge. */
 export const mailSchema = z.strictObject({
   branch: z.string().min(1),
   dir: z.string().min(1),
 });
 
 /**
- * Где живёт оперативное состояние оркестратора и почта на диске — данные
- * ПРОЕКТА, а не знание вызывающего (решение john, тред 012, 22:45). До этого
- * пути жили в переписке: подготовка каталогов, путь журнала, папка holds и
- * точная команда демона выкатывались человеку списком в чат — то есть каждая
- * следующая эксплуатация начиналась с реконструкции команды по памяти.
+ * Where the orchestrator's operational state and the on-disk mail live — data of
+ * the PROJECT, not knowledge of the caller (john's decision, thread 012, 22:45).
+ * Until then the paths lived in correspondence: directory preparation, journal
+ * path, holds folder and the exact daemon command were handed to a human as a
+ * list in chat — that is, every next operation started by reconstructing the
+ * command from memory.
  *
- * ИМЕНА ФАЙЛОВ ВНУТРИ `state` — КОНВЕНЦИЯ ПАКЕТА, не конфиг: журнал, флаги и
- * каталог holdʼов принадлежат оркестратору, и выносить их именами наружу значило
- * бы дать проекту шесть способов разложить то, чем он не управляет. Проект
- * говорит ГДЕ (один каталог), пакет — ЧТО в нём лежит.
+ * FILE NAMES INSIDE `state` ARE A PACKAGE CONVENTION, not config: the journal,
+ * the flags and the holds directory belong to the orchestrator, and exposing them
+ * by name would give the project six ways to lay out something it does not
+ * manage. The project says WHERE (one directory), the package says WHAT is in it.
  *
- * Секция НЕОБЯЗАТЕЛЬНА: пакет проектируется как чужой, и репозиторий, который
- * возит почту без оркестратора, — законный случай. Её отсутствие ловится в
- * момент вызова оркестраторной команды, ГРОМКО.
+ * The section is OPTIONAL: the package is designed as a foreign one, and a
+ * repository that carries mail without an orchestrator is a legitimate case. Its
+ * absence is caught when an orchestrator command is invoked, LOUDLY.
  */
 export const orchestratorSchema = z.strictObject({
-  /** Каталог оперативного состояния (журнал, флаги, holdʼы) от корня репозитория. */
+  /** Operational state directory (journal, flags, holds), relative to the repo root. */
   state: z.string().min(1),
-  /** Чекаут ветки почты от корня репозитория; каталог почты внутри — `mail.dir`. */
+  /** Checkout of the mail branch relative to the repo root; the mail dir inside is `mail.dir`. */
   mailCheckout: z.string().min(1),
-  /** Точка истории, по которой демон читает конфиг: умолчания у ref нет нигде. */
+  /** The point in history the daemon reads the config at: ref has no default anywhere. */
   ref: z.string().min(1),
   /**
-   * ПРЕАМБУЛА ОКРУЖЕНИЯ ЗАПУСКОВ — переменные, которые проект добавляет
-   * дочернему процессу поверх унаследованных (решение curator, тред 012, 12:10).
+   * LAUNCH ENVIRONMENT PREAMBLE — variables the project adds to the child process
+   * on top of the inherited ones (curator's decision, thread 012, 12:10).
    *
-   * Тулчейн-менеджмент (`nvm use` и подобное) пакету НЕ отдаётся: это знание о
-   * проекте, а его у пакета ноль. Проект объявляет, что нужно его агенту, — в
-   * данных; пакет применяет и ПОКАЗЫВАЕТ результат в `preflight`, вместо того
-   * чтобы догадываться про чужой тулчейн.
+   * Toolchain management (`nvm use` and the like) is NOT handed to the package:
+   * that is knowledge about the project, and the package has none of it. The
+   * project declares what its agent needs — as data; the package applies it and
+   * SHOWS the result in `preflight`, instead of guessing about someone else's
+   * toolchain.
    */
   env: z.record(z.string().min(1), z.string()).optional(),
   /**
-   * ОЖИДАЕМОЕ СОСТОЯНИЕ РАБОЧЕГО РЕПОЗИТОРИЯ, куда приземляется поднятая сессия.
-   * Находка самой поднятой сессии (приёмка 2026-07-25): она наследует рабочую
-   * директорию как есть и может начать работу с произвольной чужой ветки —
-   * причём, в отличие от устаревшей почты, расхождения снаружи не видно.
+   * EXPECTED STATE OF THE WORKING REPOSITORY the launched session lands in.
+   * Found by a launched session itself (acceptance 2026-07-25): it inherits the
+   * working directory as is and may start work from an arbitrary foreign branch —
+   * and, unlike stale mail, the mismatch is not visible from the outside.
    *
-   * Показывать состояние preflight будет ВСЕГДА (факт бесплатный), а вот
-   * ОТКАЗ — opt-in: «правильная ветка» это знание проекта, а не пакета.
+   * Preflight will ALWAYS show the state (the fact is free), but REFUSAL is
+   * opt-in: "the right branch" is knowledge of the project, not of the package.
    */
   workdir: z.strictObject({ branch: z.string().min(1) }).optional(),
 });
@@ -85,9 +91,9 @@ export type Mail = z.infer<typeof mailSchema>;
 export type Orchestrator = z.infer<typeof orchestratorSchema>;
 export type ProtocolConfig = z.infer<typeof protocolConfigSchema>;
 
-/** Разбор непроверенного значения в конфиг. Бросает ZodError с перечнем претензий. */
+/** Parse an unchecked value into a config. Throws ZodError with the list of complaints. */
 export const parseProtocolConfig = (raw: unknown): ProtocolConfig =>
   protocolConfigSchema.parse(raw);
 
-/** Имя конфига по умолчанию — конвенция САМОГО пакета, а не знание о проекте. */
+/** The default config name is a convention of the PACKAGE itself, not knowledge about the project. */
 export const DEFAULT_CONFIG_PATH = "agent-protocol.json";

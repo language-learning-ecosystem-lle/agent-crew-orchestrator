@@ -1,58 +1,61 @@
 /**
- * Аренда — текущее оперативное состояние оркестратора, свёрнутое ИЗ журнала.
- * Шаг S0 (тред 012). Аренда не хранится отдельным мутируемым файлом: она —
- * проекция append-only журнала, `foldLeases(events, now)`. Тот же приём, что
- * `_thread.md`/`INDEX` в контуре — источник append-only, состояние поверх него
- * свёрткой, и разойтись двум писателям не на чем. Переживает рестарт демона
- * даром: журнал на диске, свёртка пересчитывается.
+ * A lease is the orchestrator's current operational state, folded FROM the
+ * journal. Step S0 (thread 012). A lease is not stored as a separate mutable
+ * file: it is a projection of the append-only journal, `foldLeases(events, now)`.
+ * The same technique as `_thread.md`/`INDEX` in the circuit — an append-only
+ * source with state folded on top of it, and there is nothing for two writers to
+ * drift on. It survives a daemon restart for free: the journal is on disk, the
+ * fold is recomputed.
  *
- * Здесь закрыты оба пробела, названные curator (тред 012), — ПОЛЯМИ, не
- * поведением (спавна в S0 нет):
- *  - пробел 1 «работает vs повис»: `overdue` — аренда жива, а `deadline` уже
- *    прошёл. Видно в данных ДО всякого действия; снятие по таймауту — поведение
- *    S2/S4, но признак существует с S0.
- *  - пробел 2 «оборвался, а почта осталась»: `attempt` (число взятий аренды) и
- *    `exhausted` (attempt ≥ MAX_ATTEMPTS после неуспешного финала). Условие
- *    запуска S3 прочитает `launchable`, и бесконечного релонча не будет по
- *    построению.
+ * Both gaps named by curator (thread 012) are closed here — with FIELDS, not with
+ * behaviour (there is no spawn in S0):
+ *  - gap 1 "working vs stuck": `overdue` — the lease is alive while its `deadline`
+ *    has already passed. Visible in the data BEFORE any action; releasing on
+ *    timeout is S2/S4 behaviour, but the sign exists from S0 on.
+ *  - gap 2 "broke off, but the mail stayed": `attempt` (how many times a lease was
+ *    taken) and `exhausted` (attempt ≥ MAX_ATTEMPTS after an unsuccessful finish).
+ *    The S3 launch condition reads `launchable`, and endless relaunching is gone
+ *    by construction.
  */
 import { MAX_ATTEMPTS, type OrchestratorEvent, type ReleaseReason } from "./journal.js";
 
-/** Жизненный цикл аренды. `released`/`stopped` терминальны (с `reason`/`mode`). */
+/** The lease lifecycle. `released`/`stopped` are terminal (with `reason`/`mode`). */
 export type LeaseLifecycle = "running" | "draining" | "released" | "stopped";
 
 export type LeaseView = {
   readonly role: string;
   readonly thread: string;
   readonly state: LeaseLifecycle;
-  /** Сколько раз аренда бралась на эту связку — счётчик потолка попыток. */
+  /** How many times a lease was taken on this pair — the attempt-ceiling counter. */
   readonly attempt: number;
-  /** Wall-clock предел текущего/последнего прогона; null, если аренды ещё не было. */
+  /** Wall-clock limit of the current/last run; null if there has been no lease yet. */
   readonly deadline: string | null;
-  /** Причина терминального состояния (release/stop), иначе null. */
+  /** Reason for the terminal state (release/stop), otherwise null. */
   readonly reason: ReleaseReason | "graceful" | "forced" | null;
-  /** Вид последнего события связки — для колонки «последнее» в status. */
+  /** Kind of the pair's last event — for the "last" column in status. */
   readonly lastEvent: OrchestratorEvent["kind"];
-  /** Аренда жива, но `deadline` уже прошёл относительно `now`. */
+  /** The lease is alive, but its `deadline` has already passed relative to `now`. */
   readonly overdue: boolean;
-  /** Потолок попыток исчерпан — дальше не запускаем. */
+  /** The attempt ceiling is exhausted — we do not launch any more. */
   readonly exhausted: boolean;
-  /** Связку МОЖНО запустить снова (неуспешный финал и потолок не достигнут). */
+  /** The pair CAN be launched again (unsuccessful finish and the ceiling not reached). */
   readonly launchable: boolean;
 };
 
-// Ключ связки (role, thread) — через JSON, чтобы не изобретать разделитель:
-// role/thread хранятся в аккумуляторе отдельно и обратно из ключа не разбираются.
+// The (role, thread) key goes through JSON so that no separator has to be
+// invented: role/thread are kept separately in the accumulator and are never
+// parsed back out of the key.
 const key = (role: string, thread: string): string => JSON.stringify([role, thread]);
 
-/** Аренда активна (держится оркестратором прямо сейчас). */
+/** The lease is active (held by the orchestrator right now). */
 const isActive = (state: LeaseLifecycle): boolean => state === "running" || state === "draining";
 
 /**
- * Терминальный НЕУСПЕХ: прогон оборван, не завершён штатно. Три причины —
- * таймаут, форс и самостоятельный выход без передачи хода (последняя отделена
- * от форса, см. `RELEASE_REASONS`); для потолка попыток они равны: во всех
- * ход не перешёл, и повторять связку можно лишь до `MAX_ATTEMPTS`.
+ * A terminal FAILURE: the run was broken off rather than finished normally. Three
+ * reasons — timeout, force and exiting on its own without passing the turn (the
+ * last one separated from force, see `RELEASE_REASONS`); for the attempt ceiling
+ * they are equal: in all of them the turn did not pass, and the pair may only be
+ * retried up to `MAX_ATTEMPTS`.
  */
 const isFailedTerminal = (state: LeaseLifecycle, reason: LeaseView["reason"]): boolean =>
   !isActive(state) &&
@@ -72,16 +75,16 @@ type Acc = {
 };
 
 /**
- * Свёртка журнала в состояние аренды по каждой связке (role, thread). События
- * идут по порядку строк — единственный писатель, порядок по построению.
+ * Folding the journal into the lease state of each (role, thread) pair. Events go
+ * in line order — a single writer, order by construction.
  */
 export const foldLeases = (events: readonly OrchestratorEvent[], now: Date): LeaseView[] => {
   const acc = new Map<string, Acc>();
   const order: string[] = [];
 
   for (const event of events) {
-    // Отказ от запуска аренды не создаёт — это не состояние сессии, а след
-    // решения оркестратора. В свёртку аренд он не входит.
+    // A refused launch creates no lease — it is not a session state but a trace of
+    // the orchestrator's decision. It does not enter the lease fold.
     if (event.kind === "launch-refused") continue;
     const k = key(event.role, event.thread);
     let cur = acc.get(k);
@@ -108,10 +111,10 @@ export const foldLeases = (events: readonly OrchestratorEvent[], now: Date): Lea
         cur.reason = null;
         break;
       case "launch":
-        // Процесс поднят; состояние аренды остаётся running.
+        // The process is up; the lease state stays running.
         break;
       case "handoff-detected":
-        // Ход ушёл с роли — сессия сворачивается.
+        // The turn left the role — the session is winding down.
         if (isActive(cur.state)) cur.state = "draining";
         break;
       case "lease-released":
@@ -148,10 +151,11 @@ export const foldLeases = (events: readonly OrchestratorEvent[], now: Date): Lea
 };
 
 /**
- * Связки, аренда по которым ЖИВА. Нужна на старте супервизора: аренда, которую
- * некому закрыть, снаружи неотличима от нормальной работы — именно так журнал
- * после приёмки 2026-07-25 сутки показывал `running` про давно сделанное.
- * Новый супервизор обязан сказать о таких вслух, а не молча продолжить.
+ * Pairs whose lease is still ALIVE. Needed at supervisor start-up: a lease nobody
+ * can close is indistinguishable from normal work from the outside — that is
+ * exactly how, after the acceptance of 2026-07-25, the journal showed `running`
+ * for a whole day about something long done. A new supervisor must speak up about
+ * such leases instead of silently carrying on.
  */
 export const unclosedLeases = (events: readonly OrchestratorEvent[], now: Date): LeaseView[] =>
   foldLeases(events, now).filter((view) => view.state === "running" || view.state === "draining");

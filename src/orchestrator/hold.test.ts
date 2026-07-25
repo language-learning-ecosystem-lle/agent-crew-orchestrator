@@ -21,51 +21,51 @@ const hold = (partial: Partial<HoldRecord> = {}): HoldRecord => ({
   ...partial,
 });
 
-describe("метки и срок", () => {
-  it("метка — UTC без миллисекунд", () => {
+describe("stamps and expiry", () => {
+  it("the stamp is UTC without milliseconds", () => {
     expect(holdStamp(new Date("2026-07-24T14:00:00.512Z"))).toBe("2026-07-24T14:00:00Z");
   });
 
-  it("срок считается вперёд от момента взятия", () => {
+  it("expiry is counted forward from the moment the hold was taken", () => {
     expect(holdExpiry(NOW, 3600)).toBe("2026-07-24T15:00:00Z");
   });
 });
 
-describe("parseHold — громкий отказ вместо тихого «holdʼа нет»", () => {
-  it("круглый рейс render → parse", () => {
-    expect(parseHold(renderHold(hold({ note: "приёмка целого" })))).toEqual(
-      hold({ note: "приёмка целого" }),
+describe("parseHold — a loud refusal instead of a quiet 'there is no hold'", () => {
+  it("render → parse round-trip", () => {
+    expect(parseHold(renderHold(hold({ note: "acceptance of the whole" })))).toEqual(
+      hold({ note: "acceptance of the whole" }),
     );
   });
 
-  it("не JSON — ошибка", () => {
-    expect(() => parseHold("держу роль")).toThrow(/не JSON/);
+  it("not JSON — an error", () => {
+    expect(() => parseHold("holding the role")).toThrow(/not JSON/);
   });
 
-  it("метка не в UTC-формате — ошибка схемы", () => {
+  it("a stamp not in UTC form — a schema error", () => {
     expect(() => parseHold(JSON.stringify(hold({ expires: "2026-07-24 14:30" })))).toThrow();
   });
 
-  it("без `by` не разбирается — hold без держателя нечитаем", () => {
+  it("without `by` it does not parse — a hold with no holder is unreadable", () => {
     const { by: _dropped, ...rest } = hold();
     expect(() => parseHold(JSON.stringify(rest))).toThrow();
   });
 });
 
-describe("foldHolds — срок решает, а не наличие файла", () => {
-  it("срок впереди → роль занята", () => {
+describe("foldHolds — expiry decides, not the presence of a file", () => {
+  it("expiry ahead → the role is taken", () => {
     expect(foldHolds([hold()], NOW)[0]?.active).toBe(true);
   });
 
-  it("срок истёк → hold не действует (мёртвая сессия контур не блокирует)", () => {
+  it("expired → the hold does not apply (a dead session does not block the circuit)", () => {
     expect(foldHolds([hold({ expires: "2026-07-24T13:59:59Z" })], NOW)[0]?.active).toBe(false);
   });
 
-  it("граница включительна — ровно в момент истечения роль ещё занята", () => {
+  it("the boundary is inclusive — exactly at the expiry moment the role is still taken", () => {
     expect(foldHolds([hold({ expires: "2026-07-24T14:00:00Z" })], NOW)[0]?.active).toBe(true);
   });
 
-  it("heldRoles отдаёт только действующие", () => {
+  it("heldRoles returns only the effective ones", () => {
     const views = foldHolds(
       [hold(), hold({ role: "dev-speech", expires: "2026-07-24T13:00:00Z" })],
       NOW,
@@ -75,26 +75,26 @@ describe("foldHolds — срок решает, а не наличие файла
 });
 
 describe("renderHolds", () => {
-  it("пусто — честная строка, а не пустой вывод", () => {
-    expect(renderHolds([])).toBe("оркестратор: ручных holdʼов нет");
+  it("empty — an honest line, not empty output", () => {
+    expect(renderHolds([])).toBe("orchestrator: no manual holds");
   });
 
-  it("действующий hold называет роль, держателя и срок", () => {
-    const line = renderHolds(foldHolds([hold({ note: "приёмка" })], NOW));
+  it("an effective hold names the role, the holder and the expiry", () => {
+    const line = renderHolds(foldHolds([hold({ note: "acceptance" })], NOW));
     expect(line).toContain("dev-core");
-    expect(line).toContain("держит john");
-    expect(line).toContain("до 2026-07-24T14:30:00Z");
-    expect(line).toContain("(приёмка)");
-    expect(line).toContain("ЗАНЯТА");
+    expect(line).toContain("held by john");
+    expect(line).toContain("until 2026-07-24T14:30:00Z");
+    expect(line).toContain("(acceptance)");
+    expect(line).toContain("TAKEN");
   });
 
-  it("просроченный hold помечен и говорит, что делать", () => {
+  it("an expired hold is marked and says what to do", () => {
     const line = renderHolds(foldHolds([hold({ expires: "2026-07-24T13:00:00Z" })], NOW));
-    expect(line).toContain("ПРОСРОЧЕН");
-    expect(line).toContain("снимите файл");
+    expect(line).toContain("EXPIRED");
+    expect(line).toContain("remove the file");
   });
 
-  it("несколько holdʼов — по строке на каждый", () => {
+  it("several holds — one line each", () => {
     const out = renderHolds(foldHolds([hold(), hold({ role: "dev-speech" })], NOW));
     expect(out.split("\n")).toHaveLength(2);
   });

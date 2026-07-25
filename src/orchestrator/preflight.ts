@@ -1,30 +1,34 @@
 /**
- * Preflight — проверки ПЕРЕД тем, как контур возьмёт аренду. Шаг S8 (тред 012).
+ * Preflight — the checks made BEFORE the circuit takes a lease. Step S8
+ * (thread 012).
  *
- * Правило, которое curator назвал после третьего случая одного класса за сутки:
- * **то, что человек обязан помнить перед прогоном, машина делает сама или громко
- * отказывается.** Пути жили в переписке (S6), полномочия — нигде (S7), среда и
- * свежесть почты — в подсказках в чате. Каждый раз цена одна: контур выглядит
- * работающим и работает не так.
+ * The rule curator named after the third case of one class within a day: **what a
+ * human is obliged to remember before a run, the machine either does itself or
+ * loudly refuses.** The paths lived in correspondence (S6), the permissions
+ * nowhere (S7), the environment and the freshness of the mail in chat hints. Each
+ * time the price is the same: the circuit looks like it works and works wrongly.
  *
- * ТРИ ВЕЩИ, КОТОРЫЕ НЕЛЬЗЯ ОСТАВЛЯТЬ ПАМЯТИ ЧЕЛОВЕКА:
+ * THREE THINGS THAT MUST NOT BE LEFT TO HUMAN MEMORY:
  *
- *  1. **Бинарь агента.** Его отсутствие выяснялось бы фактом спавна — при УЖЕ
- *     взятой аренде: в журнале появилась бы попытка, которой не было.
- *  2. **Свежесть чекаута почты.** Демон читает почту с диска. Устаревший чекаут
- *     значит «прочитал вчерашнюю почту и молча отработал по ней» — в автономном
- *     режиме это не сбой, а НЕПРАВИЛЬНАЯ РАБОТА, худший из исходов: результат
- *     есть, он неверен, и никто этого не видит.
- *  3. **Среда глазами ребёнка.** Печатаем то, что реально унаследует дочерний
- *     процесс, а не то, что «должно быть»: версия node у оболочки агента и у
- *     демона — разные вещи, и расхождение уже стоило проекту отдельного урока.
+ *  1. **The agent binary.** Its absence would surface as a fact of the spawn —
+ *     with the lease ALREADY taken: the journal would show an attempt that never
+ *     happened.
+ *  2. **Freshness of the mail checkout.** The daemon reads mail from disk. A stale
+ *     checkout means "read yesterday's mail and silently worked on it" — in
+ *     unattended mode that is not a failure but WRONG WORK, the worst outcome
+ *     there is: there is a result, it is incorrect, and nobody sees it.
+ *  3. **The environment through the child's eyes.** We print what the child
+ *     process will actually inherit rather than what "ought to be": the node
+ *     version of the agent's shell and of the daemon are different things, and the
+ *     mismatch has already cost this project a separate lesson.
  *
- * ТУЛЧЕЙН-МЕНЕДЖМЕНТ ПАКЕТУ НЕ ОТДАЁТСЯ (`nvm use` и подобное) — это знание о
- * проекте, а его у пакета ноль. Проект объявляет преамбулу окружения в конфиге
- * (`orchestrator.env`), пакет её применяет и ПОКАЗЫВАЕТ, что получилось.
+ * TOOLCHAIN MANAGEMENT IS NOT HANDED TO THE PACKAGE (`nvm use` and the like) —
+ * that is knowledge about the project, and the package has none of it. The project
+ * declares an environment preamble in the config (`orchestrator.env`), the package
+ * applies it and SHOWS what came out.
  *
- * Здесь — чистое ядро: факты на входе, вердикты на выходе. Зонды (git, `which`,
- * запуск `node --version`) живут в CLI, где им и место.
+ * This module is the pure core: facts in, verdicts out. The probes (git, `which`,
+ * running `node --version`) live in the CLI, where they belong.
  */
 
 export type CheckStatus = "ok" | "fail";
@@ -35,72 +39,73 @@ export type PreflightCheck = {
   readonly detail: string;
 };
 
-/** Наблюдаемое состояние чекаута почты — то, что CLI спрашивает у git. */
+/** The observable state of the mail checkout — what the CLI asks git about. */
 export type CheckoutFacts = {
-  /** Ветка, на которой стоит чекаут. */
+  /** The branch the checkout sits on. */
   readonly branch: string;
-  /** Ветка почты из конфига. */
+  /** The mail branch from the config. */
   readonly expectedBranch: string;
-  /** Есть несохранённые изменения (в т.ч. незакоммиченные сообщения). */
+  /** There are unsaved changes (including uncommitted messages). */
   readonly dirty: boolean;
-  /** Коммитов позади origin ПОСЛЕ попытки обновления. */
+  /** Commits behind origin AFTER the update attempt. */
   readonly behind: number;
-  /** Локальных коммитов, которых нет в origin. */
+  /** Local commits that origin does not have. */
   readonly ahead: number;
 };
 
 /**
- * Вердикт по чекауту почты. Отказ, а не автопочинка, там, где починка означала
- * бы уничтожение чужой работы: грязное дерево — это, возможно, сообщение,
- * которое роль прямо сейчас пишет, и `reset --hard` стёр бы его молча.
+ * The verdict on the mail checkout. A refusal rather than an auto-repair wherever
+ * repairing would mean destroying someone else's work: a dirty tree may well be a
+ * message a role is writing right now, and `reset --hard` would wipe it silently.
  */
 export const mailCheckoutVerdict = (facts: CheckoutFacts): PreflightCheck => {
-  const name = "почта: свежесть чекаута";
+  const name = "mail: checkout freshness";
   if (facts.branch !== facts.expectedBranch) {
     return {
       name,
       status: "fail",
-      detail: `чекаут стоит на '${facts.branch}', а почта живёт в '${facts.expectedBranch}'`,
+      detail: `the checkout sits on '${facts.branch}', while the mail lives in '${facts.expectedBranch}'`,
     };
   }
   if (facts.dirty) {
     return {
       name,
       status: "fail",
-      detail: "в чекауте несохранённые изменения — не трогаю их: возможно, роль пишет сообщение",
+      detail:
+        "unsaved changes in the checkout — leaving them alone: a role may be writing a message",
     };
   }
   if (facts.ahead > 0) {
     return {
       name,
       status: "fail",
-      detail: `в чекауте ${facts.ahead} незапушенных коммитов — контур читал бы почту, которой нет у остальных`,
+      detail: `${facts.ahead} unpushed commits in the checkout — the circuit would read mail nobody else has`,
     };
   }
   if (facts.behind > 0) {
     return {
       name,
       status: "fail",
-      detail: `чекаут отстал от origin на ${facts.behind} коммитов и не обновился — работа по вчерашней почте хуже отказа`,
+      detail: `the checkout is ${facts.behind} commits behind origin and did not update — working on yesterday's mail is worse than refusing`,
     };
   }
-  return { name, status: "ok", detail: `на '${facts.branch}', совпадает с origin` };
+  return { name, status: "ok", detail: `on '${facts.branch}', matches origin` };
 };
 
-/** Вердикт по бинарю агента: до аренды, а не фактом неудачного спавна. */
+/** The verdict on the agent binary: before the lease, not as a fact of a failed spawn. */
 export const agentBinaryVerdict = (exec: string, resolved: string | null): PreflightCheck => ({
-  name: "агент: бинарь",
+  name: "agent: binary",
   status: resolved === null ? "fail" : "ok",
   detail:
     resolved === null
-      ? `'${exec}' не найден в PATH дочернего процесса — спавн упал бы при уже взятой аренде`
+      ? `'${exec}' not found in the child process PATH — the spawn would fail with the lease already taken`
       : resolved,
 });
 
 /**
- * Вердикт по среде: показываем ТО, ЧТО УНАСЛЕДУЕТ РЕБЁНОК. Проверка мягкая по
- * построению — пакет не знает, какая версия «правильная» для чужого проекта;
- * его дело показать факт, а не судить о нём.
+ * The verdict on the environment: we show WHAT THE CHILD WILL INHERIT. The check
+ * is soft by construction — the package does not know which version is "right"
+ * for someone else's project; its job is to show the fact, not to judge it.
  */
 export const environmentVerdict = (input: {
   readonly nodeVersion: string | null;
@@ -108,12 +113,12 @@ export const environmentVerdict = (input: {
 }): PreflightCheck => {
   const preamble =
     input.appliedKeys.length === 0
-      ? "преамбулы окружения нет"
-      : `преамбула: ${input.appliedKeys.join(", ")}`;
+      ? "no environment preamble"
+      : `preamble: ${input.appliedKeys.join(", ")}`;
   return {
-    name: "среда: глазами ребёнка",
+    name: "environment: through the child's eyes",
     status: "ok",
-    detail: `node ${input.nodeVersion ?? "не определился"} · ${preamble}`,
+    detail: `node ${input.nodeVersion ?? "not resolved"} · ${preamble}`,
   };
 };
 
@@ -121,8 +126,8 @@ export const preflightPassed = (checks: readonly PreflightCheck[]): boolean =>
   checks.every((check) => check.status === "ok");
 
 /**
- * Витрина. Печатается ВСЕГДА целиком, а не только при провале: «что проверено»
- * само по себе ответ на вопрос «о чём мне не надо помнить».
+ * The display. Printed IN FULL always, not only on failure: "what has been
+ * checked" is in itself the answer to "what I no longer have to remember".
  */
 export const renderPreflight = (checks: readonly PreflightCheck[]): string =>
   checks
@@ -130,22 +135,23 @@ export const renderPreflight = (checks: readonly PreflightCheck[]): string =>
     .join("\n");
 
 /**
- * Вердикт по РАБОЧЕМУ репозиторию, куда приземляется сессия. Факт печатается
- * всегда; отказ — только если проект объявил ожидаемую ветку. Пакет не знает,
- * какая ветка «правильная» для чужого репозитория, и выдумывать её не станет.
+ * The verdict on the WORKING repository the session lands in. The fact is printed
+ * always; a refusal only if the project declared an expected branch. The package
+ * does not know which branch is "right" for someone else's repository and will not
+ * invent one.
  */
 export const workdirVerdict = (input: {
   readonly branch: string;
   readonly dirty: boolean;
   readonly expectedBranch?: string;
 }): PreflightCheck => {
-  const state = `${input.branch}${input.dirty ? ", есть несохранённые изменения" : ""}`;
+  const state = `${input.branch}${input.dirty ? ", has unsaved changes" : ""}`;
   if (input.expectedBranch !== undefined && input.branch !== input.expectedBranch) {
     return {
-      name: "рабочее дерево",
+      name: "working tree",
       status: "fail",
-      detail: `сессия приземлится на '${input.branch}', а проект ждёт '${input.expectedBranch}'`,
+      detail: `the session would land on '${input.branch}', while the project expects '${input.expectedBranch}'`,
     };
   }
-  return { name: "рабочее дерево", status: "ok", detail: state };
+  return { name: "working tree", status: "ok", detail: state };
 };

@@ -4,18 +4,18 @@ import type { OrchestratorEvent } from "./journal.js";
 import { renderLog } from "./log.js";
 
 describe("renderLog", () => {
-  it("пустой журнал — честная строка", () => {
-    expect(renderLog([])).toBe("оркестратор: журнал пуст");
+  it("an empty journal gives an honest line", () => {
+    expect(renderLog([])).toBe("orchestrator: the journal is empty");
   });
 
-  it("строка несёт ts, role/thread и kind", () => {
+  it("a line carries ts, role/thread and kind", () => {
     const events: OrchestratorEvent[] = [
       { kind: "launch", ts: "2026-07-24T14:00:00Z", role: "dev-core", thread: "t" },
     ];
     expect(renderLog(events)).toBe("2026-07-24T14:00:00Z  dev-core/t  launch");
   });
 
-  it("детали по видам: deadline, reason", () => {
+  it("details per kind: deadline, reason", () => {
     const events: OrchestratorEvent[] = [
       {
         kind: "lease-acquired",
@@ -37,7 +37,7 @@ describe("renderLog", () => {
     expect(out[1]).toContain("(completed)");
   });
 
-  it("force-стоп показывает кто/когда/почему (by, note, ts)", () => {
+  it("a force stop shows who/when/why (by, note, ts)", () => {
     const events: OrchestratorEvent[] = [
       {
         kind: "stop",
@@ -46,17 +46,17 @@ describe("renderLog", () => {
         thread: "t",
         mode: "forced",
         by: "john",
-        note: "квота на исходе",
+        note: "the quota is running out",
       },
     ];
     const line = renderLog(events);
     expect(line).toContain("2026-07-24T14:10:00Z");
     expect(line).toContain("forced");
     expect(line).toContain("by john");
-    expect(line).toContain("квота на исходе");
+    expect(line).toContain("the quota is running out");
   });
 
-  it("graceful-стоп без by/note не ломает вывод", () => {
+  it("a graceful stop without by/note does not break the output", () => {
     const events: OrchestratorEvent[] = [
       { kind: "stop", ts: "2026-07-24T14:10:00Z", role: "dev-core", thread: "t", mode: "graceful" },
     ];
@@ -64,8 +64,8 @@ describe("renderLog", () => {
   });
 });
 
-describe("lease-released: почему, а не только что", () => {
-  it("код выхода и путь к выводу попадают в строку", () => {
+describe("lease-released: the why, not only the what", () => {
+  it("the exit code and the path to the output make it into the line", () => {
     const line = renderLog([
       {
         kind: "lease-released",
@@ -78,11 +78,11 @@ describe("lease-released: почему, а не только что", () => {
       },
     ]);
     expect(line).toContain("exited-without-handoff");
-    expect(line).toContain("код 0");
+    expect(line).toContain("code 0");
     expect(line).toContain("sessions/2026-07-24T22-53-15Z-dev-core-012-x.log");
   });
 
-  it("старая запись без этих полей читается как прежде", () => {
+  it("an old record without those fields reads as before", () => {
     const line = renderLog([
       {
         kind: "lease-released",
@@ -93,6 +93,6 @@ describe("lease-released: почему, а не только что", () => {
       },
     ]);
     expect(line).toContain("(completed)");
-    expect(line).not.toContain("код");
+    expect(line).not.toContain("code");
   });
 });

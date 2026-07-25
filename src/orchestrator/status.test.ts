@@ -18,44 +18,44 @@ const view = (partial: Partial<LeaseView>): LeaseView => ({
 });
 
 describe("renderStatus", () => {
-  it("пустая свёртка — честная строка, а не пустой вывод", () => {
-    expect(renderStatus([])).toBe("оркестратор: сессий в журнале нет");
+  it("an empty fold gives an honest line, not empty output", () => {
+    expect(renderStatus([])).toBe("orchestrator: no sessions in the journal");
   });
 
-  it("обычная строка несёт роль, тред, состояние, попытку и deadline", () => {
+  it("a normal line carries the role, thread, state, attempt and deadline", () => {
     const line = renderStatus([view({})]);
     expect(line).toContain("dev-core");
     expect(line).toContain("014-reviewer-verdict-delivery");
     expect(line).toContain("running");
-    expect(line).toContain("попытка 1");
+    expect(line).toContain("attempt 1");
     expect(line).toContain("deadline 2026-07-24T13:30:00Z");
   });
 
-  it("overdue выносится явной пометкой", () => {
-    expect(renderStatus([view({ overdue: true })])).toContain("ПРОСРОЧЕНО");
+  it("overdue is called out as an explicit mark", () => {
+    expect(renderStatus([view({ overdue: true })])).toContain("OVERDUE");
   });
 
-  it("exhausted выносится явной пометкой и отсылает к журналу", () => {
+  it("exhausted is called out as an explicit mark and points at the journal", () => {
     const line = renderStatus([
       view({ state: "released", reason: "timeout", attempt: 3, exhausted: true }),
     ]);
-    expect(line).toContain("ИСЧЕРПАНО");
-    expect(line).toContain("журнал");
+    expect(line).toContain("EXHAUSTED");
+    expect(line).toContain("journal");
   });
 
-  it("exhausted приоритетнее overdue в пометке", () => {
-    // exhausted терминально (аренда снята), overdue тут не выставится вместе,
-    // но пометка на всякий случай не двоится — исчерпание важнее.
+  it("exhausted takes priority over overdue in the mark", () => {
+    // exhausted is terminal (the lease is released), overdue will not be set
+    // alongside it here, but the mark must not double up anyway — exhaustion wins.
     const line = renderStatus([view({ exhausted: true, overdue: true })]);
-    expect(line).toContain("ИСЧЕРПАНО");
-    expect(line).not.toContain("ПРОСРОЧЕНО");
+    expect(line).toContain("EXHAUSTED");
+    expect(line).not.toContain("OVERDUE");
   });
 
-  it("deadline null печатается как прочерк", () => {
+  it("a null deadline is printed as a dash", () => {
     expect(renderStatus([view({ deadline: null })])).toContain("deadline —");
   });
 
-  it("несколько связок — по строке на каждую", () => {
+  it("several pairs — one line each", () => {
     const out = renderStatus([view({ thread: "a" }), view({ thread: "b" })]);
     expect(out.split("\n")).toHaveLength(2);
   });

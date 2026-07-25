@@ -1,15 +1,16 @@
 /**
- * ПРОЦЕССНЫЙ тест наблюдателя — единственное место, где проверяется САМ прогон,
- * а не свёртка журнала.
+ * The PROCESS test of the observer — the only place where the RUN ITSELF is
+ * checked rather than a fold of the journal.
  *
- * Постановка curator после приёмки 2026-07-25 и находка reviewer-pr по PR #9:
- * инцидент случился в `cli.ts` (супервизор перестал существовать между спавном и
- * терминалом), а тесты били в чистые функции — регрессия вида «`await runOne` снова
- * потеряется» ими не ловится в принципе. Здесь CLI запускается настоящим
- * процессом против настоящего git-контура и проверяется ЖУРНАЛ, а не рапорт.
+ * curator's statement of work after the 2026-07-25 acceptance, plus reviewer-pr's
+ * finding on PR #9: the incident happened in `cli.ts` (the supervisor stopped
+ * existing between the spawn and the terminal state), while the tests hit pure
+ * functions — a regression of the form "`await runOne` is lost again" cannot be
+ * caught by them at all. Here the CLI is started as a real process against a real
+ * git circuit, and the JOURNAL is checked, not a report.
  *
- * Инвариант, который прибивается: **прогон не заканчивается, не записав исход.**
- * Как именно он закончился — второй вопрос; молча не заканчивается никогда.
+ * The invariant nailed down: **a run does not end without recording its outcome.**
+ * Exactly how it ended is a second question; it never ends silently.
  */
 import { execFileSync, spawn } from "node:child_process";
 import {
@@ -46,21 +47,22 @@ const CONFIG = {
       kind: "claude-code",
       status: "active",
       wake: { mode: "watch", session: "s" },
-      summary: "поток",
+      summary: "the stream",
       instructions: [{ kind: "in-repo", path: "CARD.md" }],
       launch: { allowedTools: ["Bash"] },
     },
   ],
 };
 
-const META = "---\ntitle: Т\nparticipants: dev-core, curator\nstatus: open\n---\n";
+const META = "---\ntitle: T\nparticipants: dev-core, curator\nstatus: open\n---\n";
 const WAITING =
-  "---\nfrom: curator\ndate: 2026-07-25T10:00:00Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nТело.\n";
+  "---\nfrom: curator\ndate: 2026-07-25T10:00:00Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nThe body.\n";
 
 /**
- * Полный контур на диске: bare-origin, рабочий чекаут с конфигом на `main` и
- * ОТДЕЛЬНЫЙ чекаут почты на ветке `comms` — preflight требует именно этого, и
- * подделать его дешёвым способом значило бы тестировать не то, что работает.
+ * The full circuit on disk: a bare origin, a working checkout with the config on
+ * `main` and a SEPARATE mail checkout on the `comms` branch — preflight demands
+ * exactly this, and faking it cheaply would mean testing something other than
+ * what actually runs.
  */
 const contour = (): { repo: string; mail: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-run-"));
@@ -70,13 +72,13 @@ const contour = (): { repo: string; mail: string } => {
   const repo = join(base, "work");
   execFileSync("git", ["clone", "-q", origin, repo]);
   writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
-  writeFileSync(join(repo, "CARD.md"), "карточка роли\n");
+  writeFileSync(join(repo, "CARD.md"), "the role card\n");
   git(repo, "add", ".");
-  git(repo, "commit", "-qm", "конфиг");
+  git(repo, "commit", "-qm", "config");
   git(repo, "push", "-q", "origin", "main");
 
-  // Ветка почты собирается в ОТДЕЛЬНОМ чекауте — так же, как в живом контуре:
-  // почта и код никогда не лежат в одном рабочем дереве.
+  // The mail branch is assembled in a SEPARATE checkout — just as in the live
+  // circuit: mail and code never lie in the same working tree.
   const mail = join(repo, "mailco");
   execFileSync("git", ["clone", "-q", origin, mail]);
   git(mail, "checkout", "-q", "--orphan", "comms");
@@ -85,12 +87,12 @@ const contour = (): { repo: string; mail: string } => {
   writeFileSync(join(thread, "_meta.md"), META);
   writeFileSync(join(thread, "messages", "2026-07-25T10-00-00Z-curator.md"), WAITING);
   git(mail, "add", "agent-comms");
-  git(mail, "commit", "-qm", "почта");
+  git(mail, "commit", "-qm", "mail");
   git(mail, "push", "-q", "-u", "origin", "comms");
   return { repo, mail };
 };
 
-/** Стаб «сессии»: делает то, что просят, и завершается. */
+/** A "session" stub: it does what it is asked and exits. */
 const stub = (repo: string, body: string): string => {
   const path = join(repo, "stub.sh");
   writeFileSync(path, `#!/bin/sh\n${body}\n`);
@@ -135,10 +137,11 @@ const run = (repo: string, exec: string): { code: number; out: string } => {
 const journal = (repo: string): ReturnType<typeof parseJournal> =>
   parseJournal(readFileSync(join(repo, ".orchestrator", "journal.jsonl"), "utf8"));
 
-describe("прогон роли процессом — исход записывается всегда", () => {
-  it("сессия ответила → handoff-detected и completed, а не рапорт об успехе", () => {
+describe("running a role as a process — the outcome is always recorded", () => {
+  it("the session answered → handoff-detected and completed, not a report of success", () => {
     const { repo, mail } = contour();
-    // Стаб отвечает так же, как живая сессия: пишет файл сообщения в чекаут почты.
+    // The stub answers the way a live session does: it writes a message file into
+    // the mail checkout.
     const answer = join(
       mail,
       "agent-comms",
@@ -148,7 +151,7 @@ describe("прогон роли процессом — исход записыв
     );
     const exec = stub(
       repo,
-      `sleep 1\nprintf '%s' '---\nfrom: dev-core\ndate: 2026-07-25T11:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nОтвет.\n' > ${answer}`,
+      `sleep 1\nprintf '%s' '---\nfrom: dev-core\ndate: 2026-07-25T11:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nThe answer.\n' > ${answer}`,
     );
 
     const result = run(repo, exec);
@@ -159,7 +162,7 @@ describe("прогон роли процессом — исход записыв
     expect(result.code).toBe(0);
   }, 60_000);
 
-  it("сессия вышла, не ответив → exited-without-handoff, аренда закрыта", () => {
+  it("the session exited without answering → exited-without-handoff, the lease is closed", () => {
     const { repo } = contour();
     const exec = stub(repo, "sleep 1");
 
@@ -174,7 +177,7 @@ describe("прогон роли процессом — исход записыв
     expect(events.at(-1)).toMatchObject({ reason: "exited-without-handoff" });
   }, 60_000);
 
-  it("дедлайн без ответа → timeout: роль не висит вечно", () => {
+  it("the deadline without an answer → timeout: the role does not hang forever", () => {
     const { repo } = contour();
     const exec = stub(repo, "sleep 120");
 
@@ -207,12 +210,13 @@ describe("прогон роли процессом — исход записыв
     expect(journal(repo).at(-1)).toMatchObject({ reason: "timeout" });
   }, 60_000);
 
-  it("супервизора убили SIGTERM → аренда закрыта supervisor-gone, сессия НЕ осиротела", async () => {
-    // Находка reviewer-pr по PR #9: запись «аренда снята» без гашения группы
-    // означала бы, что осиротевшая сессия продолжает писать, а связка уже
-    // `launchable` — и следующий тик поднял бы ВТОРУЮ сессию поверх живой.
+  it("the supervisor was killed with SIGTERM → the lease closes as supervisor-gone, the session is NOT orphaned", async () => {
+    // reviewer-pr's finding on PR #9: recording "the lease is released" without
+    // putting the group down would mean an orphaned session keeps writing while
+    // the pair is already `launchable` — and the next tick would raise a SECOND
+    // session on top of a live one.
     const { repo } = contour();
-    const marker = join(repo, "жив.txt");
+    const marker = join(repo, "alive.txt");
     const exec = stub(repo, `sleep 30\ntouch ${marker}`);
 
     const child = spawn(
@@ -247,20 +251,23 @@ describe("прогон роли процессом — исход записыв
     const last = journal(repo).at(-1);
     expect(last).toMatchObject({ kind: "lease-released", reason: "supervisor-gone" });
 
-    // Сессия должна быть погашена ВМЕСТЕ с наблюдателем: доживи она до конца
-    // своих 30 секунд — маркер появился бы.
+    // The session must be put down TOGETHER with the observer: had it lived out
+    // its full 30 seconds, the marker would have appeared.
     await new Promise((resolve) => setTimeout(resolve, 22_000));
-    expect(existsSync(marker), "осиротевшая сессия пережила супервизора").toBe(false);
+    expect(existsSync(marker), "the orphaned session outlived the supervisor").toBe(false);
   }, 90_000);
 
-  it("ИНВАРИАНТ: прогон не завершается, оставив аренду живой", () => {
-    // Именно это потерялось в приёмке 2026-07-25: процесс закончился, аренда
-    // осталась `running`, и снаружи это было неотличимо от работы.
+  it("INVARIANT: a run does not finish leaving the lease alive", () => {
+    // This is exactly what was lost in the 2026-07-25 acceptance: the process
+    // ended, the lease stayed `running`, and from the outside that was
+    // indistinguishable from work in progress.
     for (const body of ["sleep 1", "exit 3", "sleep 120"]) {
       const { repo } = contour();
       run(repo, stub(repo, body));
       const last = journal(repo).at(-1);
-      expect(last?.kind, `исход не записан для стаба '${body}'`).toBe("lease-released");
+      expect(last?.kind, `the outcome was not recorded for the stub '${body}'`).toBe(
+        "lease-released",
+      );
     }
   }, 120_000);
 });
