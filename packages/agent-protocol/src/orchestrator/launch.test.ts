@@ -257,6 +257,9 @@ describe("the permission profile — part of the launch contract (S7)", () => {
       "Bash,Read,Edit,Write",
       "--max-turns",
       "60",
+      "--output-format",
+      "stream-json",
+      "--verbose",
     ]);
   });
 
@@ -269,10 +272,22 @@ describe("the permission profile — part of the launch contract (S7)", () => {
       maxTurns: "25",
       launch: { allowedTools: ["Bash"] },
     });
-    expect(argv).toHaveLength(6);
+    expect(argv).toHaveLength(9);
     expect(argv[0]).toBe("-p");
     expect(argv.indexOf("--allowedTools")).toBe(2);
-    expect(argv.at(-2)).toBe("--max-turns");
+    expect(argv[4]).toBe("--max-turns");
+  });
+
+  it("argv asks for the STREAMING format — otherwise a broken-off run leaves an empty log (R6)", () => {
+    // With the default format the agent prints its answer once, at the end. A
+    // session cut by a deadline or a turn ceiling never gets there — and those are
+    // exactly the runs the log is read for.
+    const argv = buildLaunchArgv({
+      prompt: "p",
+      maxTurns: "1",
+      launch: { allowedTools: ["Bash"] },
+    });
+    expect(argv.slice(-3)).toEqual(["--output-format", "stream-json", "--verbose"]);
   });
 
   it("the tools go through as they are, the order is preserved", () => {

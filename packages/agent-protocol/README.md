@@ -158,6 +158,16 @@ bar is lower than usual:
 - **the layout of a thread directory**, the journal event kinds and their fields,
   the format of the hold and flag files.
 
+**One carve-out, named after R6 raised it: a NEW VALUE of an existing journal enum**
+(a release reason such as `stalled`) **is not a versioned change.** Every argument
+the list rests on is about data that TRAVELS — merged by two parties, or derived into
+a file both of them rewrite. The journal is neither: it is local operational state,
+outside git, with a single writer, and nothing is derived from it. What is left is
+one direction — an OLD package reading a journal a new one wrote — and that fails
+loudly on the line, naming the repair, which is what the version gate would have said
+anyway. A new event KIND or a new FIELD stays in the list above: those change the
+shape of what is written, not the vocabulary of one field.
+
 Not breaking: prose, help texts, a new command, a new optional flag, a new
 _optional_ config field the old package would nevertheless reject — that last one is
 the point of the list, it looks additive and is not.
@@ -301,8 +311,8 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>]  
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
-                            [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
-agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] \
+                            [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
+agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
 agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
@@ -700,6 +710,63 @@ work.
 - Closing an orphaned lease **by forging a `completed` is not allowed**: the work
   was done by the session, but nobody observed the outcome, and the record must say
   exactly that.
+
+### S10 — the session log, and a hang told apart from a long run (R6)
+
+Two failures of 2026-07-25, one package: **every session log was empty**, and **both
+breaks recorded as `timeout` were false in meaning** — those sessions were not
+stuck, they were working longer than the window. The second could only be analysed
+through the first, which is why they land together.
+
+**Why the logs were empty — two causes stacked, and only fixing both makes the file
+real.** The supervisor collected **stderr** while `claude -p` says what it did on
+**stdout**; and with the default `--output-format text` the agent speaks **once, at
+the end of a run** — so a session cut by a deadline or a turn ceiling produces zero
+bytes by construction, which is exactly the run whose analysis the log exists for.
+Hence `--output-format stream-json --verbose` in the launch contract (an event per
+step, as the work happens) and both streams piped through the supervisor.
+
+- **Two files per run.** `<stamp>-<role>-<thread>.jsonl` — the raw stream as it came,
+  the primary source; `.log` beside it — a human reading of the same events, stamped
+  per line, and the file the journal keeps pointing at. A rendering is lossy, and its
+  blind spots are precisely what one needs when the rendering failed to explain the
+  break.
+- **The rendering never drops a line.** An unknown event kind, a line that is not
+  JSON at all (a launcher's complaint, a stack trace) — everything reaches the log
+  as it was. The operator keeps the live view: the supervisor relays the same lines
+  to its own stdout.
+- **The `init` line carries the session id** — the identity a break analysis starts
+  from, and the answer R7 will need for the message header.
+
+**Idle detection — by traces, not by content.** A hang and a long piece of work are
+indistinguishable by the clock: both spend time. They differ by **side effects**. The
+observer samples them every poll — the growth of the session output, a signature of
+the working tree (the dirty set plus the head commit), the cumulative CPU time of the
+process group — and **any one of them moving means life**. Nothing moving for longer
+than the idle ceiling is a new terminal reason, **`stalled`**, distinct from
+`timeout`: the first says "it stopped doing anything" and calls for an
+investigation, the second says "it was working and did not fit" and calls for a wider
+window.
+
+- **Heuristics over the CONTENT of the output are deliberately not done** (curator's
+  statement of work): judging meaningfulness by the text means a heuristic over a
+  language model's output, and both of its errors are expensive. A trace is
+  objective — bytes either appeared or they did not.
+- **An unmeasurable trace is not evidence of death**: CPU time is absent without
+  /proc, and absence must not read as silence.
+- **The verdict does not depend on `--poll`**: the watch keeps the moment of the last
+  change, not a count of quiet ticks.
+
+**The three ceilings after this, and their roles.** `stalled` (`--idle`, default 600
+s) is the main catcher of a hang; **`--wall-clock` becomes the backstop against the
+opposite failure** — a session busy forever, circling and burning quota — and its
+default is raised **15 → 60 minutes**, because it is no longer the instrument that
+notices a hang and at 15 minutes it was cutting live work. **`--max-turns` is raised
+60 → 300**: it limits the length of the dialogue, not time, and the default
+calibrated for short packages killed a mechanically large one mid-work (`Reached max
+turns (60)`). `--idle 0` switches the detector off. Per-role ceilings in the config
+are R12's question — the shape of that section is decided there, once, rather than
+twice.
 
 ## `spike/` — P0
 

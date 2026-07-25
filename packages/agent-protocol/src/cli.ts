@@ -23,6 +23,7 @@
  * would happen" has to be cheaper and safer than "do it".
  */
 import { execFileSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   appendFileSync,
   closeSync,
@@ -34,6 +35,7 @@ import {
   rmSync,
   statSync,
   writeFileSync,
+  writeSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -41,6 +43,14 @@ import { DEFAULT_CONFIG_PATH } from "./config/config.js";
 import { loadProtocolConfig } from "./config/load.js";
 import { loadThreads, renderThreadFailures } from "./fs/comms.js";
 import { fileExistsAtRef, mailCheckoutState, messagesAtRef, workdirState } from "./fs/git.js";
+import {
+  type ActivityTrace,
+  DEFAULT_IDLE_MS,
+  describeQuiet,
+  type IdleWatch,
+  idleStep,
+  startWatch,
+} from "./orchestrator/activity.js";
 import {
   foldHolds,
   HOLD_TTL_SECONDS,
@@ -63,6 +73,8 @@ import {
 import {
   buildLaunchArgv,
   buildLaunchPrompt,
+  DEFAULT_MAX_TURNS,
+  DEFAULT_WALL_CLOCK_SECONDS,
   describeLaunch,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
@@ -76,6 +88,7 @@ import {
   orchestratorPaths,
   renderPaths,
   sessionLogPath,
+  sessionStreamPath,
 } from "./orchestrator/paths.js";
 import {
   agentBinaryVerdict,
@@ -89,6 +102,7 @@ import {
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
+import { renderStreamLine, splitStreamChunk, stampLine } from "./orchestrator/transcript.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import type { Launch, Role } from "./roles/schema.js";
 import {
@@ -140,8 +154,8 @@ and are not needed in operation; only --ref is required.
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write]
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write]
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
@@ -1131,6 +1145,22 @@ const positiveInt = (argv: readonly string[], name: string, fallback: number): n
   return value;
 };
 
+/**
+ * Same as `positiveInt`, but ZERO IS ALLOWED and means "switched off" (the idle
+ * ceiling). A separate parser rather than a special value inside the first one:
+ * "0 is off" holds for this ceiling and must not silently become legal for a poll
+ * interval or a turn limit, where zero is a mistake.
+ */
+const nonNegativeInt = (argv: readonly string[], name: string, fallback: number): number => {
+  const raw = flag(argv, name);
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) {
+    return fail(`${name} '${raw}' — a non-negative integer is expected (0 switches it off)`, 2);
+  }
+  return value;
+};
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const appendEvent = (journalPath: string, event: OrchestratorEvent): void => {
@@ -1204,6 +1234,10 @@ type RunParams = {
   readonly maxTurns: string;
   readonly wallClockMs: number;
   readonly pollMs: number;
+  /** The idle ceiling: no traces of activity for this long → `stalled` (R6). 0 — off. */
+  readonly idleMs: number;
+  /** The working repository whose traces are watched — the tree the session lands in. */
+  readonly repo: string;
   readonly ids: readonly string[];
   readonly now: Date;
   readonly maxConsecutive: number;
@@ -1213,8 +1247,77 @@ type RunParams = {
   readonly launch: Launch;
   /** Where to save the session output: silence can be examined without a witness. */
   readonly sessionLog: string;
+  /** The raw stream beside it (`.jsonl`) — the primary source a rendering cannot replace. */
+  readonly sessionStream: string;
   /** The child process environment: the inherited one + the project preamble (S8). */
   readonly env: NodeJS.ProcessEnv;
+};
+
+/**
+ * A SIGNATURE OF THE WORKING TREE — one of the activity traces (R6). The dirty set
+ * plus the head commit cover both halves of "the session did something with the
+ * code": an edit not committed yet, and a commit that cleaned the tree. Taken
+ * through git rather than by walking mtimes: git already keeps that index, and a
+ * walk of a monorepo every poll would be paid for by the observed session.
+ *
+ * An unreadable repository is a CONSTANT signature, not a throw: a broken git must
+ * not make the whole run look either alive or dead by itself — the other traces
+ * keep working.
+ */
+const worktreeSignature = (repo: string): string => {
+  try {
+    const status = execFileSync("git", ["-C", repo, "status", "--porcelain"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    const head = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return createHash("sha1").update(head).update(status).digest("hex").slice(0, 16);
+  } catch {
+    return "unavailable";
+  }
+};
+
+/** How many milliseconds of CPU one clock tick is. Linux USER_HZ is 100, fixed in practice. */
+const TICK_MS = 10;
+
+/**
+ * CUMULATIVE CPU TIME OF THE PROCESS GROUP — the trace that keeps growing while a
+ * session thinks in silence: a long model turn writes nothing to the stream and
+ * touches no file, yet it is alive. The whole GROUP is summed, not the direct
+ * child: the agent works through subprocesses, and their time is its time.
+ *
+ * `undefined` where there is no /proc (not Linux). An unmeasurable trace is absent
+ * rather than zero — `traceChanged` deliberately does not read it as silence.
+ */
+const groupCpuMs = (pgid: number): number | undefined => {
+  let entries: string[];
+  try {
+    entries = readdirSync("/proc");
+  } catch {
+    return undefined;
+  }
+  let total = 0;
+  let seen = false;
+  for (const entry of entries) {
+    if (!/^\d+$/.test(entry)) continue;
+    let stat: string;
+    try {
+      stat = readFileSync(`/proc/${entry}/stat`, "utf8");
+    } catch {
+      continue; // the process ended between the listing and the read — normal
+    }
+    // The command name is in parentheses and may itself contain spaces, so the
+    // fields are counted from the LAST ')': state, ppid, pgrp, … utime, stime.
+    const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+    if (Number(fields[2]) !== pgid) continue;
+    seen = true;
+    total += (Number(fields[11]) + Number(fields[12])) * TICK_MS;
+  }
+  return seen ? Math.round(total) : undefined;
 };
 
 /** Who/why from the force-flag file (JSON, written by `stop --mode force`). Lazily. */
@@ -1315,13 +1418,28 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     process.off("SIGTERM", onSigterm);
   };
 
-  // THE SESSION OUTPUT IS WRITTEN TO DISK, not only to the operator's screen. The
-  // first production run: the session looked busy for five minutes, exited
-  // silently, and the why stayed only in the terminal of whoever was watching. A
-  // log next to the journal makes the analysis possible without a witness; the
-  // lease-release event carries the path to it.
+  // THE SESSION OUTPUT IS WRITTEN TO DISK, not only to the operator's screen — and
+  // as of R6 it actually arrives there. Two files: the RAW stream as it came
+  // (`.jsonl`, the primary source) and its human reading (`.log`, what the journal
+  // points at). Why both, and why the stream format at all — see
+  // `orchestrator/transcript.ts`; in one line: the old log collected stderr while
+  // the agent speaks on stdout, and the old format spoke only once, at the end of a
+  // run that a break never reaches.
   mkdirSync(dirname(p.sessionLog), { recursive: true });
   const sink = openSync(p.sessionLog, "a");
+  const rawSink = openSync(p.sessionStream, "a");
+  let sinksOpen = true;
+  const closeSinks = (): void => {
+    if (!sinksOpen) return;
+    sinksOpen = false;
+    closeSync(sink);
+    closeSync(rawSink);
+  };
+  const writeLog = (text: string): void => {
+    if (!sinksOpen) return;
+    writeSync(sink, `${stampLine(new Date(), text)}\n`);
+  };
+  writeLog(`supervisor  ${p.roleId}/${p.thread}  raw stream ${p.sessionStream}`);
 
   // The spawn happens in ITS OWN process group (`detached`): the whole group will
   // have to be put down, not just the direct child — a SIGTERM to a shell/launcher
@@ -1331,21 +1449,54 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     p.exec,
     buildLaunchArgv({ prompt: p.prompt, maxTurns: p.maxTurns, launch: p.launch }),
     {
-      // The live output stays with the operator (stdout is inherited), while stderr
-      // goes into the log: the session's silence stops being indistinguishable from
-      // work.
-      stdio: ["ignore", "inherit", sink],
+      // BOTH streams are piped now. Inheriting stdout used to leave the operator's
+      // terminal as the only place the session's own words existed — that is,
+      // whoever was not watching had nothing to analyse afterwards. The supervisor
+      // relays the same lines to its own stdout, so the live view is not lost.
+      stdio: ["ignore", "pipe", "pipe"],
       detached: true,
       env: p.env,
     },
   );
+
+  // A chunk boundary falls in the middle of a JSON line far more often than it
+  // looks, so the tail is carried over rather than rendered as it is.
+  let pending = "";
+  child.stdout?.on("data", (chunk: Buffer) => {
+    if (!sinksOpen) return;
+    writeSync(rawSink, chunk);
+    const split = splitStreamChunk(pending, chunk.toString("utf8"));
+    pending = split.rest;
+    for (const line of split.lines) {
+      for (const rendered of renderStreamLine(line)) {
+        writeLog(rendered);
+        out(rendered);
+      }
+    }
+  });
+  // stderr keeps going into the readable log verbatim: a launcher's complaint ("the
+  // binary is not found", a stack trace) is not stream format and must not be
+  // rendered — it is the answer itself.
+  child.stderr?.on("data", (chunk: Buffer) => {
+    for (const line of chunk.toString("utf8").split("\n")) {
+      if (line.trim() !== "") writeLog(`stderr  ${line}`);
+    }
+  });
+
   let exited = false;
   let exitCode: number | null = null;
   let spawnError: Error | undefined;
   child.on("exit", (code) => {
     exited = true;
     exitCode = code;
-    closeSync(sink);
+    // The unfinished tail is flushed: half a line is neither renderable later nor
+    // recoverable, and the last line before a break is the one worth reading.
+    if (pending.trim() !== "") {
+      for (const rendered of renderStreamLine(pending)) writeLog(rendered);
+      pending = "";
+    }
+    writeLog(`supervisor  the session exited, code ${code}`);
+    closeSinks();
   });
   child.on("error", (error) => {
     exited = true;
@@ -1354,6 +1505,27 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
 
   const deadlineMs = new Date(plan.deadline).getTime();
   let lifecycle: Lifecycle = "running";
+
+  // THE IDLE WATCH (R6). The traces are sampled here, where the IO is; the verdict
+  // is `activity.ts`. The first sample is taken before the first poll, so the
+  // silence is counted from the launch and not from the first tick.
+  const fileSize = (path: string): number => {
+    try {
+      return statSync(path).size;
+    } catch {
+      return 0;
+    }
+  };
+  const sampleTrace = (): ActivityTrace => {
+    const cpuMs = child.pid === undefined ? undefined : groupCpuMs(child.pid);
+    return {
+      logBytes: fileSize(p.sessionLog) + fileSize(p.sessionStream),
+      worktree: worktreeSignature(p.repo),
+      ...(cpuMs === undefined ? {} : { cpuMs }),
+    };
+  };
+  let watch: IdleWatch = startWatch(sampleTrace(), Date.now());
+  let quietMs = 0;
 
   while (true) {
     await sleep(p.pollMs);
@@ -1382,6 +1554,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         ...(by === undefined ? {} : { by }),
         ...(note === undefined ? {} : { note }),
       });
+      writeLog(
+        `supervisor  the session was stopped by force${by === undefined ? "" : ` by ${by}`}`,
+      );
+      closeSinks();
       return "forced";
     }
 
@@ -1408,10 +1584,25 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       ),
       thread: p.thread,
     });
+    // The traces of activity: has the session produced ANYTHING since the last poll
+    // (R6). Sampled every tick, judged against the ceiling — a session that has gone
+    // quiet is `stalled`, not `timeout`.
+    const idle = idleStep({
+      watch,
+      trace: sampleTrace(),
+      nowMs: Date.now(),
+      idleMs: p.idleMs,
+    });
+    watch = idle.watch;
+    quietMs = idle.quietMs;
+
     const step = observeStep(lifecycle, {
       handedOff,
       processExited: exited,
       overdue: Date.now() > deadlineMs,
+      // A process that has already exited is closed by its own branch: "it produced
+      // nothing" is a statement about a LIVE session.
+      idle: !exited && idle.stalled,
     });
     if (step === null) continue;
 
@@ -1442,10 +1633,13 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // A run that did not pass the turn MUST show where to look: five minutes of
     // silence must not look like work.
     if (step.reason !== "completed") {
+      const quiet = step.reason === "stalled" ? ` (${describeQuiet(quietMs)})` : "";
+      writeLog(`supervisor  the lease was released: ${step.reason}${quiet}`);
       err(
-        `agent-protocol: the turn was not passed (${step.reason}) — session output: ${p.sessionLog}`,
+        `agent-protocol: the turn was not passed (${step.reason}${quiet}) — session output: ${p.sessionLog}`,
       );
     }
+    closeSinks();
     return step.reason;
   }
 };
@@ -1477,11 +1671,14 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const prompt = buildPromptForRole(role, thread, repo);
 
   const now = orchestratorNow(argv);
-  const wallClockMs = positiveInt(argv, "--wall-clock", 900) * 1000;
+  const wallClockMs = positiveInt(argv, "--wall-clock", DEFAULT_WALL_CLOCK_SECONDS) * 1000;
+  // `--idle 0` switches the detector off — the honest way to say "watch by the wall
+  // clock only", without a second flag beside it.
+  const idleMs = nonNegativeInt(argv, "--idle", DEFAULT_IDLE_MS / 1000) * 1000;
   const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const exec = flag(argv, "--exec") ?? "claude";
-  const maxTurns = String(positiveInt(argv, "--max-turns", 60));
+  const maxTurns = String(positiveInt(argv, "--max-turns", DEFAULT_MAX_TURNS));
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
 
   if (!argv.includes("--write")) {
@@ -1511,6 +1708,12 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     return;
   }
   requirePreflight(argv, exec);
+  const sessionLog = sessionLogPath(
+    join(dirname(journalPath), "sessions"),
+    roleId,
+    thread,
+    eventTimestamp(now),
+  );
   const reason = await runOne({
     journalPath,
     mailRoot,
@@ -1520,15 +1723,13 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     exec,
     maxTurns,
     launch: role.launch,
-    sessionLog: sessionLogPath(
-      join(dirname(journalPath), "sessions"),
-      roleId,
-      thread,
-      eventTimestamp(now),
-    ),
+    sessionLog,
+    sessionStream: sessionStreamPath(sessionLog),
     env: childEnvFrom(argv),
     wallClockMs,
     pollMs,
+    idleMs,
+    repo,
     ids: registry.ids(),
     now,
     maxConsecutive,
@@ -1581,11 +1782,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     .map((role) => role.id);
 
   const tickMs = positiveInt(argv, "--tick", 30) * 1000;
-  const wallClockMs = positiveInt(argv, "--wall-clock", 900) * 1000;
+  const wallClockMs = positiveInt(argv, "--wall-clock", DEFAULT_WALL_CLOCK_SECONDS) * 1000;
+  // `--idle 0` switches the detector off — the honest way to say "watch by the wall
+  // clock only", without a second flag beside it.
+  const idleMs = nonNegativeInt(argv, "--idle", DEFAULT_IDLE_MS / 1000) * 1000;
   const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const exec = flag(argv, "--exec") ?? "claude";
-  const maxTurns = String(positiveInt(argv, "--max-turns", 60));
+  const maxTurns = String(positiveInt(argv, "--max-turns", DEFAULT_MAX_TURNS));
   const once = argv.includes("--once"); // a single tick — for checks
 
   // Preflight BEFORE the loop: a daemon started without the agent binary or with
@@ -1677,6 +1881,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // through.
       if (role?.launch !== undefined) {
         const startedAt = new Date();
+        const sessionLog = sessionLogPath(
+          join(dirname(journalPath), "sessions"),
+          decision.role,
+          decision.thread,
+          eventTimestamp(startedAt),
+        );
         const reason = await runOne({
           journalPath,
           mailRoot,
@@ -1687,14 +1897,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           maxTurns,
           launch: role.launch,
           env: childEnv,
-          sessionLog: sessionLogPath(
-            join(dirname(journalPath), "sessions"),
-            decision.role,
-            decision.thread,
-            eventTimestamp(startedAt),
-          ),
+          sessionLog,
+          sessionStream: sessionStreamPath(sessionLog),
           wallClockMs,
           pollMs,
+          idleMs,
+          repo,
           ids,
           now: startedAt,
           maxConsecutive,
