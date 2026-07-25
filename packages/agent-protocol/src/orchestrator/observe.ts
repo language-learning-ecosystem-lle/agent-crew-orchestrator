@@ -83,11 +83,24 @@ export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): Obse
   return null;
 };
 
-/** Событие journal из шага наблюдателя — CLI проставляет ts/role/thread. */
+/**
+ * Событие journal из шага наблюдателя — CLI проставляет ts/role/thread, а на
+ * снятии аренды ещё и `detail`: код выхода сессии и путь к её сохранённому
+ * выводу. Без них «не смогла записать» и «просто вышла» — одна запись.
+ */
 export const stepEvent = (
   step: Exclude<ObserveStep, null>,
   base: { readonly ts: string; readonly role: string; readonly thread: string },
+  detail?: { readonly exitCode?: number | null; readonly output?: string },
 ): OrchestratorEvent =>
   step.record === "handoff-detected"
     ? { kind: "handoff-detected", ...base }
-    : { kind: "lease-released", ...base, reason: step.reason };
+    : {
+        kind: "lease-released",
+        ...base,
+        reason: step.reason,
+        ...(detail?.exitCode === undefined || detail.exitCode === null
+          ? {}
+          : { exitCode: detail.exitCode }),
+        ...(detail?.output === undefined ? {} : { output: detail.output }),
+      };

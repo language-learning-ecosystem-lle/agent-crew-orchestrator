@@ -9,8 +9,13 @@ const detail = (event: OrchestratorEvent): string => {
   switch (event.kind) {
     case "lease-acquired":
       return ` (deadline ${event.deadline})`;
-    case "lease-released":
-      return ` (${event.reason})`;
+    case "lease-released": {
+      // Код выхода и путь к выводу — ПОЧЕМУ, а не только ЧТО: без них прогон,
+      // не передавший ход, неотличим от прогона, который просто закончился.
+      const code = event.exitCode === undefined ? "" : `, код ${event.exitCode}`;
+      const log = event.output === undefined ? "" : `, вывод ${event.output}`;
+      return ` (${event.reason}${code}${log})`;
+    }
     case "launch-refused":
       return ` (${event.reason})`;
     case "stop": {

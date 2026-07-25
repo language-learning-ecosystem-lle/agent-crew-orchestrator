@@ -44,6 +44,6 @@ describe("renderPaths", () => {
     expect(rendered).toContain("/repo/.orchestrator/journal.jsonl");
     expect(rendered).toContain("/repo/.orchestrator/enabled");
     expect(rendered).toContain("/repo/.worktrees/comms/agent-comms");
-    expect(rendered.split("\n")).toHaveLength(5);
+    expect(rendered.split("\n")).toHaveLength(6);
   });
 });

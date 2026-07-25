@@ -23,8 +23,10 @@
 import { execFileSync, spawn } from "node:child_process";
 import {
   appendFileSync,
+  closeSync,
   existsSync,
   mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -55,7 +57,9 @@ import {
   renderEventLine,
 } from "./orchestrator/journal.js";
 import {
+  buildLaunchArgv,
   buildLaunchPrompt,
+  describeLaunch,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
   roleLaunchability,
@@ -63,12 +67,17 @@ import {
 import { foldLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
-import { type OrchestratorPaths, orchestratorPaths, renderPaths } from "./orchestrator/paths.js";
+import {
+  type OrchestratorPaths,
+  orchestratorPaths,
+  renderPaths,
+  sessionLogPath,
+} from "./orchestrator/paths.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
-import type { Role } from "./roles/schema.js";
+import type { Launch, Role } from "./roles/schema.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 import type { Expects } from "./thread/message.js";
@@ -769,6 +778,16 @@ const orchestratorStatus = (argv: readonly string[]): void => {
     out(describeReboot(mode, launchesEnabled));
   }
   out(renderPaths(paths));
+
+  // S7: ПОЛНОМОЧИЯ, с которыми контур поднимет роль. Тот же довод, что для путей
+  // в S6: режим не должен жить в чьей-то памяти — а профиль прав это ровно
+  // режим, и его отсутствие стоило целого прогона приёмки.
+  out("полномочия при запуске:");
+  for (const role of registryFrom(argv, undefined)
+    .active()
+    .filter((role) => role.wake.mode === "watch")) {
+    out(`  ${describeLaunch(role)}`);
+  }
 };
 
 /**
@@ -928,6 +947,10 @@ type RunParams = {
   readonly maxConsecutive: number;
   /** Файл-флаг force-стопа (S4). Есть — гасим сессию на безопасной точке. */
   readonly forceFlag?: string;
+  /** Профиль прав поднимаемой роли — часть контракта запуска (S7). */
+  readonly launch: Launch;
+  /** Куда сохранить вывод сессии: разбор молчания без свидетеля. */
+  readonly sessionLog: string;
 };
 
 /** Кто/почему из файла force-флага (JSON, писан `stop --mode force`). Лениво. */
@@ -971,17 +994,33 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // «попытка была и оборвалась», а не «ничего не происходило».
   for (const event of plan.events) appendEvent(p.journalPath, event);
 
+  // ВЫВОД СЕССИИ ПИШЕТСЯ НА ДИСК, а не только на экран оператора. Первый боевой
+  // прогон: сессия пять минут выглядела работающей, вышла молча, и почему —
+  // осталось только в терминале того, кто смотрел. Лог рядом с журналом делает
+  // разбор возможным без свидетеля; событие снятия аренды несёт путь к нему.
+  mkdirSync(dirname(p.sessionLog), { recursive: true });
+  const sink = openSync(p.sessionLog, "a");
+
   // Спавн в СВОЕЙ процесс-группе (`detached`): гасить придётся всю группу, а не
   // только прямого потомка — SIGTERM шеллу/лончеру не доходит до его детей
   // (стаб → sleep, `claude` → его подпроцессы), и они осиротели бы.
-  const child = spawn(p.exec, ["-p", p.prompt, "--max-turns", p.maxTurns], {
-    stdio: "inherit",
-    detached: true,
-  });
+  const child = spawn(
+    p.exec,
+    buildLaunchArgv({ prompt: p.prompt, maxTurns: p.maxTurns, launch: p.launch }),
+    {
+      // Живой вывод остаётся у оператора (stdout наследуется), а stderr уходит в
+      // лог: молчание сессии перестаёт быть неотличимым от работы.
+      stdio: ["ignore", "inherit", sink],
+      detached: true,
+    },
+  );
   let exited = false;
+  let exitCode: number | null = null;
   let spawnError: Error | undefined;
-  child.on("exit", () => {
+  child.on("exit", (code) => {
     exited = true;
+    exitCode = code;
+    closeSync(sink);
   });
   child.on("error", (error) => {
     exited = true;
@@ -1063,9 +1102,14 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // группы уже нет — ок
       }
     }
-    appendEvent(p.journalPath, stepEvent(step, base));
+    appendEvent(p.journalPath, stepEvent(step, base, { exitCode, output: p.sessionLog }));
     if (spawnError !== undefined) {
       err(`agent-protocol: спавн '${p.exec}' дал ошибку: ${spawnError.message}`);
+    }
+    // Прогон, не передавший ход, ОБЯЗАН показать, куда смотреть: пять минут
+    // молчания не должны выглядеть как работа.
+    if (step.reason !== "completed") {
+      err(`agent-protocol: ход не перешёл (${step.reason}) — вывод сессии: ${p.sessionLog}`);
     }
     return step.reason;
   }
@@ -1121,6 +1165,12 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     return;
   }
 
+  // Профиль есть по построению — `roleLaunchability` выше без него не пропустит;
+  // проверка тут для типов и на случай, если проверку когда-нибудь ослабят.
+  if (role.launch === undefined) {
+    fail(`у роли '${roleId}' нет профиля запуска — поднимать с неназначенными правами нельзя`, 2);
+    return;
+  }
   const reason = await runOne({
     journalPath,
     mailRoot,
@@ -1129,6 +1179,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     prompt,
     exec,
     maxTurns,
+    launch: role.launch,
+    sessionLog: sessionLogPath(paths, roleId, thread, eventTimestamp(now)),
     wallClockMs,
     pollMs,
     ids: registry.ids(),
@@ -1244,7 +1296,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       );
     } else if (decision.kind === "launch") {
       const role = registry.get(decision.role);
-      if (role !== undefined) {
+      // Профиль прав есть по построению: `launchable` считался через
+      // `roleLaunchability`, а он без профиля роль не пропускает.
+      if (role?.launch !== undefined) {
+        const startedAt = new Date();
         const reason = await runOne({
           journalPath,
           mailRoot,
@@ -1253,10 +1308,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           prompt: buildPromptForRole(role, decision.thread, repo),
           exec,
           maxTurns,
+          launch: role.launch,
+          sessionLog: sessionLogPath(
+            paths,
+            decision.role,
+            decision.thread,
+            eventTimestamp(startedAt),
+          ),
           wallClockMs,
           pollMs,
           ids,
-          now: new Date(),
+          now: startedAt,
           maxConsecutive,
           forceFlag,
         });
