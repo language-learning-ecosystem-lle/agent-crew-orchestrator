@@ -102,6 +102,26 @@ const stub = (repo: string, body: string): string => {
   return path;
 };
 
+/**
+ * THE HOME DIRECTORY OF THE TEST (R14). The machine config is read from
+ * `XDG_CONFIG_HOME`, so every run here gets its own — otherwise the outcome would
+ * depend on whether the person running the suite happens to have one, which is the
+ * class of defect the file was introduced to remove, reappearing in the tests.
+ */
+const xdgOf = (repo: string): string => join(repo, "..", "xdg");
+
+const sandbox = (repo: string): NodeJS.ProcessEnv => ({
+  ...process.env,
+  XDG_CONFIG_HOME: xdgOf(repo),
+});
+
+/** Write a machine config into the test's own home directory. */
+const machineConfig = (repo: string, agents: Record<string, { exec: string }>): void => {
+  const dir = join(xdgOf(repo), "agent-protocol");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "local.json"), `${JSON.stringify({ agents }, null, 2)}\n`);
+};
+
 const run = (repo: string, exec: string): { code: number; out: string } => {
   try {
     const out = execFileSync(
@@ -127,7 +147,7 @@ const run = (repo: string, exec: string): { code: number; out: string } => {
         "1",
         "--write",
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe" },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
     );
     return { code: 0, out };
   } catch (error) {
@@ -219,7 +239,7 @@ describe("running a role as a process — the outcome is always recorded", () =>
         "1",
         "--write",
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe" },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
     );
 
     expect(journal(repo).at(-1)).toMatchObject({ reason: "timeout" });
@@ -332,7 +352,7 @@ describe("running a role as a process — the outcome is always recorded", () =>
         "1",
         "--write",
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe" },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
     );
 
     const last = journal(repo).at(-1);
@@ -374,7 +394,7 @@ describe("running a role as a process — the outcome is always recorded", () =>
         "1",
         "--write",
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe" },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
     );
 
     expect(journal(repo).at(-1)).toMatchObject({ reason: "exited-without-handoff" });
@@ -455,7 +475,7 @@ describe("attached by default, detached on request (R12)", () => {
           "1",
           ...extra,
         ],
-        { cwd: repo, encoding: "utf8", stdio: "pipe" },
+        { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
       );
       return { code: 0, out };
     } catch (error) {
@@ -532,5 +552,148 @@ describe("attached by default, detached on request (R12)", () => {
     const result = runWith(repo, ["--exec", stub(repo, "sleep 1"), "--max-turns", "5", "--write"]);
 
     expect(result.out).toContain("max-turns 5 (flag)");
+  }, 60_000);
+});
+
+describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
+  /** `run`, but without `--exec`: the binary has to be found some other way. */
+  const runWithout = (repo: string, extra: readonly string[]): { code: number; out: string } => {
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "orchestrator",
+          "run",
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--repo",
+          repo,
+          "--role",
+          "dev-core",
+          "--thread",
+          "012-x",
+          "--wall-clock",
+          "20",
+          "--poll",
+          "1",
+          ...extra,
+        ],
+        { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  /** Put the role's launch section into the committed config. */
+  const withLaunch = (repo: string, launch: Record<string, unknown>): void => {
+    const path = join(repo, "agent-protocol.json");
+    const raw = JSON.parse(readFileSync(path, "utf8")) as typeof CONFIG;
+    (raw.roles[0] as { launch: unknown }).launch = { allowedTools: ["Bash"], ...launch };
+    writeFileSync(path, `${JSON.stringify(raw, null, 2)}\n`);
+    git(repo, "commit", "-qam", "launch");
+  };
+
+  it("the binary comes from the machine config — no --exec anywhere", () => {
+    // The hole R14 closes, end to end: until now this path lived in john's shell
+    // history, and a machine without the binary on PATH could not start the circuit
+    // at all.
+    const { repo } = contour();
+    const exec = stub(repo, "sleep 1");
+    machineConfig(repo, { "claude-code": { exec } });
+
+    const result = runWithout(repo, ["--write"]);
+
+    expect(result.out).toContain(`exec ${exec} (machine)`);
+    expect(journal(repo).at(-1)).toMatchObject({ kind: "lease-released" });
+  }, 60_000);
+
+  it("a flag still beats the machine, and the output says which layer won", () => {
+    const { repo } = contour();
+    const fromMachine = stub(repo, "sleep 1");
+    machineConfig(repo, { "claude-code": { exec: "/nowhere/claude" } });
+
+    const result = runWithout(repo, ["--exec", fromMachine, "--write"]);
+
+    expect(result.out).toContain(`exec ${fromMachine} (flag)`);
+  }, 60_000);
+
+  it("the machine config is NOT allowed to carry policy, and the refusal names the rule", () => {
+    // The boundary is the whole point of the second file. A box quietly running with
+    // ceilings nobody reviewed is exactly what keeping the config in `main` prevents.
+    const { repo } = contour();
+    mkdirSync(join(xdgOf(repo), "agent-protocol"), { recursive: true });
+    writeFileSync(
+      join(xdgOf(repo), "agent-protocol", "local.json"),
+      JSON.stringify({ agents: {}, limits: { maxTurns: 9000 } }),
+    );
+
+    const result = runWithout(repo, ["--exec", "/bin/true", "--write"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("POLICY");
+  }, 60_000);
+
+  it("nobody named a binary and there is none → preflight refuses BEFORE the lease", () => {
+    // With no machine config the name falls through to `claude` on PATH. The child's
+    // PATH is emptied through the project's own preamble rather than left to the
+    // machine running the suite: a test whose verdict depends on whether the
+    // developer has the agent installed is the very defect this layer removes.
+    // The refusal must arrive before an attempt is recorded — a journal showing a
+    // launch that never happened is worse than no journal.
+    const { repo } = contour();
+    const path = join(repo, "agent-protocol.json");
+    const raw = JSON.parse(readFileSync(path, "utf8")) as typeof CONFIG;
+    (raw.orchestrator as { env?: unknown }).env = { PATH: "/nonexistent" };
+    writeFileSync(path, `${JSON.stringify(raw, null, 2)}\n`);
+    git(repo, "commit", "-qam", "empty PATH");
+
+    const result = runWithout(repo, ["--write"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("agents['claude-code'].exec");
+    expect(existsSync(join(repo, ".orchestrator", "journal.jsonl"))).toBe(false);
+  }, 60_000);
+
+  it("the role's model and effort reach the agent's own argv (R15)", () => {
+    const { repo } = contour();
+    const dump = join(repo, "argv.txt");
+    const exec = stub(repo, `printf '%s\\n' "$@" > ${dump}\nsleep 1`);
+    withLaunch(repo, { agent: { kind: "claude-code", model: "opus", effort: "high" } });
+
+    const result = runWithout(repo, ["--exec", exec, "--write"]);
+    const argv = readFileSync(dump, "utf8").split("\n");
+
+    expect(argv).toContain("--model");
+    expect(argv).toContain("opus");
+    expect(argv).toContain("--effort");
+    expect(argv).toContain("high");
+    expect(result.out).toContain("model opus (role)");
+  }, 60_000);
+
+  it("no parameters declared → the tool's own defaults, not ours", () => {
+    const { repo } = contour();
+    const dump = join(repo, "argv.txt");
+    const exec = stub(repo, `printf '%s\\n' "$@" > ${dump}\nsleep 1`);
+
+    runWithout(repo, ["--exec", exec, "--write"]);
+
+    expect(readFileSync(dump, "utf8").split("\n")).not.toContain("--model");
+  }, 60_000);
+
+  it("a --worker that contradicts the role's declared tool is REFUSED", () => {
+    // Not pedantry: the parameters were written for one tool, and passing them to
+    // another — or dropping them quietly — are both worse than stopping.
+    const { repo } = contour();
+    withLaunch(repo, { agent: { kind: "claude-code", model: "opus" } });
+
+    const result = runWithout(repo, ["--exec", "/bin/true", "--worker", "cursor", "--write"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("cursor");
   }, 60_000);
 });

@@ -21,7 +21,13 @@
  *  - global: `consecutiveLaunchesWithoutCompletion` for the S3 auto loop — no more
  *    than `MAX_CONSECUTIVE_RUNS` launches in a row without a single `completed`.
  */
-import type { Launch, LaunchLimits, Role } from "../roles/schema.js";
+import type { LocalConfig } from "../config/local.js";
+import {
+  claudeCodeEffortSchema,
+  type Launch,
+  type LaunchLimits,
+  type Role,
+} from "../roles/schema.js";
 import { DEFAULT_IDLE_MS } from "./activity.js";
 import { eventTimestamp, type OrchestratorEvent } from "./journal.js";
 import { foldLeases } from "./lease.js";
@@ -180,6 +186,168 @@ export const describeCeilings = (ceilings: ResolvedCeilings): string =>
     `max-turns ${ceilings.maxTurns.value} (${ceilings.maxTurns.source})`,
   ].join(" · ");
 
+/**
+ * WHAT IS RAISED, FROM WHERE, AND WITH WHICH PARAMETERS (R14 + R15, thread 016) —
+ * three resolutions that share one join key, and that is why they were built in one
+ * pass. The key is the TOOL ID (`claude-code`): the role config says which tool
+ * raises it and with what, the machine config says where that tool's binary is, and
+ * a message header says which tool wrote it. One vocabulary, three uses.
+ *
+ * Each resolution follows the pattern R12 set for the ceilings — the operator's flag,
+ * then the standing declaration, then the package default — and each one PRINTS ITS
+ * SOURCE. The reason is unchanged and has been paid for: a run that behaved oddly is
+ * a different fact depending on whether the project asked for it, the machine did, or
+ * nobody did.
+ */
+export type WorkerSource = "flag" | "role" | "default";
+/** Where the binary path came from. `machine` is the R14 layer — the only one of the three. */
+export type ExecSource = "flag" | "machine" | "default";
+export type ParamSource = "flag" | "role";
+
+export type Resolved<T, S> = { readonly value: T; readonly source: S };
+export type ResolvedWorker = Resolved<string, WorkerSource>;
+export type ResolvedExec = Resolved<string, ExecSource>;
+
+/**
+ * The binary when nobody said anything: the bare name, found on the child's `PATH`.
+ * A machine that has the agent installed normally needs no config at all — which is
+ * what keeps the machine file honest as an ANSWER to a problem rather than a tax.
+ */
+export const DEFAULT_EXEC = "claude";
+
+/**
+ * WHICH TOOL RAISES THIS ROLE. `--worker` was born as a provenance override ("what
+ * the session calls itself in the messages it writes") and now also selects the
+ * parameters and the binary — deliberately the same field, because they are the same
+ * question asked three times. A run raises one tool; splitting the answer across two
+ * flags would let a session write `claude-code` in its header while `cursor` did the
+ * work.
+ */
+export const resolveWorker = (input: {
+  readonly flag?: string;
+  readonly launch?: Launch;
+}): ResolvedWorker => {
+  if (input.flag !== undefined) return { value: input.flag, source: "flag" };
+  const kind = input.launch?.agent?.kind;
+  if (kind !== undefined) return { value: kind, source: "role" };
+  return { value: DEFAULT_WORKER, source: "default" };
+};
+
+/**
+ * WHERE THAT TOOL'S BINARY IS — the machine layer sits BETWEEN the flag and the
+ * default, and nowhere else. The repository is not consulted at all: a path in a
+ * committed file would be a lie on every other machine, and the one place it lived
+ * until now (a shell history) is not a place.
+ */
+export const resolveExec = (input: {
+  readonly flag?: string;
+  readonly worker: string;
+  readonly local?: LocalConfig;
+}): ResolvedExec => {
+  if (input.flag !== undefined) return { value: input.flag, source: "flag" };
+  const declared = input.local?.agents[input.worker]?.exec;
+  if (declared !== undefined) return { value: declared, source: "machine" };
+  return { value: DEFAULT_EXEC, source: "default" };
+};
+
+/** The launch parameters of the resolved tool, each with the layer it came from. */
+export type AgentParams = {
+  readonly model?: Resolved<string, ParamSource>;
+  readonly effort?: Resolved<string, ParamSource>;
+};
+
+export type AgentResolution =
+  | { readonly ok: true; readonly params: AgentParams }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * THE PARAMETERS, AND THE DOOR THEY ARE REFUSED AT (R15). A parameter the tool does
+ * not understand must not be dropped in silence: silence here means a run that cost
+ * money and thought with settings nobody chose, and it looks exactly like a run that
+ * obeyed them. Three refusals, all of that one shape:
+ *
+ *  - the role declares parameters for one tool while the run raises another (a
+ *    `--worker` override contradicting `launch.agent.kind`) — that is not "this run
+ *    is a bit different", it is a different contract;
+ *  - `--model`/`--effort` typed for a tool the package cannot pass them to;
+ *  - an `--effort` level outside the tool's own vocabulary — the config path is
+ *    guarded by the schema, and the flag path has to be guarded here or it would be
+ *    the one way in.
+ */
+export const resolveAgentParams = (input: {
+  readonly flags: { readonly model?: string; readonly effort?: string };
+  readonly worker: ResolvedWorker;
+  readonly launch?: Launch;
+}): AgentResolution => {
+  const declared = input.launch?.agent;
+  const worker = input.worker.value;
+
+  if (declared !== undefined && declared.kind !== worker) {
+    return {
+      ok: false,
+      reason: `the role declares launch parameters for '${declared.kind}', but the run is being raised as '${worker}' (${input.worker.source}) — the parameters would be passed to a tool they were not written for, or dropped in silence`,
+    };
+  }
+
+  const typed = input.flags.model !== undefined || input.flags.effort !== undefined;
+  if (typed && worker !== "claude-code") {
+    return {
+      ok: false,
+      reason: `--model/--effort were given, but the run is being raised as '${worker}' — the package knows how to pass those to 'claude-code' only`,
+    };
+  }
+  if (
+    input.flags.effort !== undefined &&
+    !claudeCodeEffortSchema.safeParse(input.flags.effort).success
+  ) {
+    return {
+      ok: false,
+      reason: `--effort '${input.flags.effort}' — allowed levels are ${claudeCodeEffortSchema.options.join(", ")}`,
+    };
+  }
+
+  const fromRole = declared?.kind === "claude-code" ? declared : undefined;
+  const pick = <T extends string>(
+    flagValue: T | undefined,
+    roleValue: T | undefined,
+  ): Resolved<T, ParamSource> | undefined => {
+    if (flagValue !== undefined) return { value: flagValue, source: "flag" };
+    if (roleValue !== undefined) return { value: roleValue, source: "role" };
+    return undefined;
+  };
+  const model = pick(input.flags.model, fromRole?.model);
+  const effort = pick(input.flags.effort, fromRole?.effort);
+  return {
+    ok: true,
+    params: {
+      ...(model === undefined ? {} : { model }),
+      ...(effort === undefined ? {} : { effort }),
+    },
+  };
+};
+
+/**
+ * The launch line beside the ceilings: what is raised, from where, with what. Printed
+ * on every launch for the same reason `describeCeilings` is — the first question of a
+ * post-mortem is "what was this run actually given", and the answer belongs in the
+ * log of that run.
+ */
+export const describeAgent = (input: {
+  readonly worker: ResolvedWorker;
+  readonly exec: ResolvedExec;
+  readonly params: AgentParams;
+}): string =>
+  [
+    `${input.worker.value} (${input.worker.source})`,
+    `exec ${input.exec.value} (${input.exec.source})`,
+    ...(input.params.model === undefined
+      ? []
+      : [`model ${input.params.model.value} (${input.params.model.source})`]),
+    ...(input.params.effort === undefined
+      ? []
+      : [`effort ${input.params.effort.value} (${input.params.effort.source})`]),
+  ].join(" · ");
+
 /** Why a role is NOT launched by the orchestrator — mechanically, not "claude.ai" by eye. */
 export type LaunchBlock =
   | "inactive"
@@ -240,6 +408,12 @@ export const buildLaunchArgv = (input: {
   readonly prompt: string;
   readonly maxTurns: string;
   readonly launch: Launch;
+  /**
+   * The resolved tool parameters (R15). Absent means "say nothing" rather than "pass
+   * a default": the tool's own default is a value the package has no business
+   * restating, and restating it would freeze today's default into our argv.
+   */
+  readonly params?: AgentParams;
 }): string[] => [
   "-p",
   input.prompt,
@@ -247,6 +421,8 @@ export const buildLaunchArgv = (input: {
   input.launch.allowedTools.join(","),
   "--max-turns",
   input.maxTurns,
+  ...(input.params?.model === undefined ? [] : ["--model", input.params.model.value]),
+  ...(input.params?.effort === undefined ? [] : ["--effort", input.params.effort.value]),
   "--output-format",
   "stream-json",
   "--verbose",

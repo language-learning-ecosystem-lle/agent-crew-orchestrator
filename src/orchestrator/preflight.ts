@@ -103,14 +103,41 @@ export const mailCheckoutVerdict = (facts: CheckoutFacts): PreflightCheck => {
   return { name, status: "ok", detail: `on '${facts.branch}', matches origin` };
 };
 
-/** The verdict on the agent binary: before the lease, not as a fact of a failed spawn. */
-export const agentBinaryVerdict = (exec: string, resolved: string | null): PreflightCheck => ({
-  name: "agent: binary",
-  status: resolved === null ? "fail" : "ok",
+/**
+ * The verdict on the agent binary: before the lease, not as a fact of a failed spawn.
+ *
+ * SINCE R14 IT NAMES THE TOOL AND THE LAYER the path came from. "`claude` not found"
+ * is a true and useless sentence on a machine where the binary sits under a node
+ * version manager: what the reader needs to know is whether anybody has told the
+ * circuit where it is, and the answer is either a machine config or the absence of
+ * one.
+ */
+export const agentBinaryVerdict = (input: {
+  readonly worker: string;
+  readonly exec: string;
+  /** Which layer named the path: the operator's flag, the machine config, or the default. */
+  readonly source: string;
+  readonly resolved: string | null;
+}): PreflightCheck => ({
+  name: `agent: binary (${input.worker})`,
+  status: input.resolved === null ? "fail" : "ok",
   detail:
-    resolved === null
-      ? `'${exec}' not found in the child process PATH — the spawn would fail with the lease already taken`
-      : resolved,
+    input.resolved === null
+      ? `'${input.exec}' (${input.source}) not found in the child process PATH — the spawn would fail with the lease already taken${input.source === "default" ? `; declare it in the machine config as agents['${input.worker}'].exec` : ""}`
+      : `${input.resolved} (${input.source})`,
+});
+
+/**
+ * The machine config (R14) — a FACT, never a verdict: its absence is a legitimate
+ * state (the binary is simply on `PATH`), so there is nothing here to pass or fail.
+ * It is printed anyway, and always: "which file the paths came from" is the first
+ * thing one wants when a run started the wrong binary, and the second thing one wants
+ * when it started none.
+ */
+export const machineConfigVerdict = (detail: string): PreflightCheck => ({
+  name: "machine config",
+  status: "info",
+  detail,
 });
 
 /**

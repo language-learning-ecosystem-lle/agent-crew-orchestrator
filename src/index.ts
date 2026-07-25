@@ -7,6 +7,20 @@ export {
   protocolConfigSchema,
 } from "./config/config.js";
 export { type LoadedConfig, type LoadOptions, loadProtocolConfig } from "./config/load.js";
+export {
+  describeLocalConfig,
+  LOCAL_CONFIG_DIR,
+  LOCAL_CONFIG_FILE,
+  type LoadedLocalConfig,
+  type LocalAgent,
+  type LocalConfig,
+  LocalConfigError,
+  loadLocalConfig,
+  localAgentSchema,
+  localConfigPath,
+  localConfigSchema,
+  parseLocalConfig,
+} from "./config/local.js";
 export { type LoadedThread, loadThread, loadThreads } from "./fs/comms.js";
 export { fetchRef, fileExistsAtRef, messagesAtRef, readFileAtRef } from "./fs/git.js";
 export {
@@ -25,16 +39,30 @@ export {
   renderJournal,
 } from "./orchestrator/journal.js";
 export {
+  type AgentParams,
+  type AgentResolution,
   buildLaunchPrompt,
   consecutiveLaunchesWithoutCompletion,
+  DEFAULT_EXEC,
+  DEFAULT_WORKER,
+  describeAgent,
+  type ExecSource,
   type InstructionDoc,
   type Launchability,
   type LaunchBlock,
   type LaunchPlan,
   type LaunchRefusal,
   MAX_CONSECUTIVE_RUNS,
+  type ParamSource,
   planLaunch,
+  type Resolved,
+  type ResolvedExec,
+  type ResolvedWorker,
+  resolveAgentParams,
+  resolveExec,
+  resolveWorker,
   roleLaunchability,
+  type WorkerSource,
 } from "./orchestrator/launch.js";
 export { foldLeases, type LeaseLifecycle, type LeaseView } from "./orchestrator/lease.js";
 export { renderLog } from "./orchestrator/log.js";
@@ -62,8 +90,12 @@ export {
   type WatchTarget,
 } from "./roles/registry.js";
 export {
+  type ClaudeCodeEffort,
+  claudeCodeEffortSchema,
   type Instructions,
   instructionsSchema,
+  type LaunchAgent,
+  launchAgentSchema,
   type Permission,
   permissionSchema,
   type Role,
