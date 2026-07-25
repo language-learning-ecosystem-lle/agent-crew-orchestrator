@@ -16,13 +16,14 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { parseMessageFile } from "./message.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
 
 const CONFIG = {
-  protocolVersion: 1,
+  protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   roles: [
     {
@@ -70,10 +71,11 @@ const contour = (): { repo: string; root: string; body: string } => {
   return { repo, root: join(repo, "agent-comms"), body };
 };
 
-const write = (
+/** The command with everything but the provenance and the write mode filled in. */
+const run = (
   contest: { repo: string; root: string; body: string },
   env: NodeJS.ProcessEnv,
-  ...extra: string[]
+  extra: readonly string[],
 ): { code: number; out: string } => {
   try {
     const out = execFileSync(
@@ -98,7 +100,6 @@ const write = (
         "curator",
         "--body-file",
         contest.body,
-        "--write",
         ...extra,
       ],
       { encoding: "utf8", stdio: "pipe", env: { ...process.env, ...env } },
@@ -109,6 +110,12 @@ const write = (
     return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
   }
 };
+
+const write = (
+  contest: { repo: string; root: string; body: string },
+  env: NodeJS.ProcessEnv,
+  ...extra: string[]
+): { code: number; out: string } => run(contest, env, ["--write", ...extra]);
 
 const written = (root: string): ReturnType<typeof parseMessageFile> => {
   const dir = join(root, "016-x", "messages");
@@ -151,10 +158,11 @@ describe("new-message and provenance", () => {
     expect(written(contest.root).fields.session).toBe("hand-1");
   });
 
-  it("no environment, no flags → no provenance, and the message is still written", () => {
-    // The turn matters more than the metadata: a run that cannot name itself must
-    // still be able to hand over. This is the one place where the field is allowed
-    // to be missing rather than wrong.
+  it("no environment, no flags → REFUSED, and nothing is written", () => {
+    // The contract half of R7: the door requires what it can always obtain. Every
+    // writer knows what it is — a raised session from its environment, everybody
+    // else by saying so — and a message written without provenance can never be
+    // repaired, because the feed is append-only.
     const contest = contour();
 
     const result = write(contest, {
@@ -162,8 +170,32 @@ describe("new-message and provenance", () => {
       AGENT_PROTOCOL_SESSION_FILE: "",
     });
 
-    expect(result.code).toBe(0);
-    expect(written(contest.root).fields.worker).toBeUndefined();
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--worker is required");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("refuses BEFORE --write too: a dry run that succeeds where the write refuses is a lie", () => {
+    const contest = contour();
+
+    const result = run(contest, { AGENT_PROTOCOL_WORKER: "", AGENT_PROTOCOL_SESSION_FILE: "" }, []);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--worker is required");
+  });
+
+  it("a session without a worker is still refused — the id of a run does not name the tool", () => {
+    const contest = contour();
+
+    const result = write(
+      contest,
+      { AGENT_PROTOCOL_WORKER: "", AGENT_PROTOCOL_SESSION_FILE: "" },
+      "--session",
+      "hand-1",
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--worker is required");
   });
 
   it("a session file that is not there is silence, not a failure", () => {

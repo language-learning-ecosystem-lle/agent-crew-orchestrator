@@ -143,6 +143,7 @@ jobs:
                      (cd .code && pnpm -F agent-protocol --silent cli new-message \
                         --root "$GITHUB_WORKSPACE/.comms-mail/agent-comms" --repo . --ref origin/main \
                         --thread "$SLUG" --from reviewer-pr --expects answer --waiting-on "$WAIT" \
+                        --worker gh-action \
                         --body-file "$GITHUB_WORKSPACE/verdict.md" --write) \
                        || { echo "::error::new-message не записал вердикт"; exit 1; }
                    else

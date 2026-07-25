@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { parseProtocolConfig } from "../config/config.js";
 import { createRoleRegistry } from "../roles/registry.js";
+import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { checkImmutable, checkThread, type ThreadInput } from "./check.js";
 import type { Message } from "./message.js";
 import { renderThread, type ThreadMeta } from "./thread.js";
 
 const registry = createRoleRegistry(
   parseProtocolConfig({
-    protocolVersion: 1,
+    protocolVersion: CURRENT_PROTOCOL_VERSION,
     mail: { branch: "comms", dir: "agent-comms" },
     roles: [
       { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "PM" },
@@ -63,6 +64,33 @@ describe("checkThread", () => {
     );
 
     expect(checkThread(input({ threadDoc: doc }), registry)).toEqual([]);
+  });
+
+  it("does NOT require provenance on the read side, however loudly the door demands it", () => {
+    // The asymmetry of the R7 contract, pinned deliberately: `new-message` refuses
+    // without `--worker`, `check` accepts a message that has none. There are files
+    // nobody can repair — legacy threads, history that predates the field, and the
+    // window between the migration of the mail and the merge of the version bump —
+    // and a rule that cannot be met makes the validator permanently red. A red
+    // everybody has learned to ignore is worse than no rule at all.
+    const entries = [
+      { fileName: "2026-07-23T13-45-12Z-dev-core.md", message: message() },
+      {
+        fileName: "2026-07-23T13-45-13Z-curator.md",
+        message: message({
+          from: "curator",
+          date: "2026-07-23T13:45:13Z",
+          worker: "unknown",
+          waitingOn: ["dev-core"],
+        }),
+      },
+    ];
+    const doc = renderThread(
+      meta,
+      entries.map((entry) => entry.message),
+    );
+
+    expect(checkThread(input({ entries, threadDoc: doc }), registry)).toEqual([]);
   });
 
   it("flags an unknown role in from and in waiting-on instead of dropping it silently", () => {

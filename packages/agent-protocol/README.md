@@ -128,7 +128,7 @@ rather than going through that door.
 | version | shape |
 | ------- | ----- |
 | 1 | the initial one: `_meta.md` + `messages/` with `from`/`date`/`expects`/`waiting-on`, the config with `roles`/`mail`/`orchestrator`, the journal of `lease-*`/`launch`/`stop` events |
-| 2 | + provenance in the message header: `worker` and `session` (optional on read; the migration states the absence outright on everything already written — `worker: unknown`). **The number lands with the contract PR of R7** — the step for 1 → 2 is registered, `CURRENT_PROTOCOL_VERSION` is not moved yet |
+| 2 | + provenance in the message header: `worker` and `session`. Optional on READ (history, legacy threads and the migration window cannot be repaired), `worker` REQUIRED on a write. The migration stated the absence outright on everything already written — `worker: unknown`, 331 files, 2026-07-25 |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -215,6 +215,15 @@ left to do. And the config written by `--write` is carried into the contract PR
 rather than committed on the spot — a repository declaring a version its package does
 not support refuses every command, so a config bump committed early would take the
 whole circuit down until the merge.
+
+**Carry the NUMBER, not the file.** The runner re-renders the config as canonical
+two-space JSON, so a config that carries hand-written compact objects
+(`"wake": { "mode": "self" }` on one line) comes back reflowed — on this repository
+the one-line bump arrived as a 60-line diff. The reflow is harmless to every reader
+and pure noise to every reviewer, so the contract PR edits `protocolVersion` by hand
+and the file `--write` produced is thrown away. The step for the DATA is held to a
+stricter standard on purpose (a textual insertion with a byte-exact proof) — the mail
+is somebody's committed words, the config is not.
 
 `schema migrate` writes files and does NOT commit them: which commit goes to which
 branch is a decision of the protocol, not of the runner. The plan prints absolute
@@ -335,10 +344,10 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <r,r>] \
-                            [--worker <w>] [--session <id>] --body-file <p> [--write]
+                            --worker <w> [--session <id>] --body-file <p> [--write]
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <r,r>] [--worker <w>] [--session <id>] --body-file <p> [--write]
+                            [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
 # the orchestrator: the paths come from the config (section `orchestrator`), operation needs only --ref;
 # the path flags below are omitted — they remain an override for checks on a copy of the mail
 agent-protocol orchestrator preflight --ref <ref> [--exec <bin>]            # the checks BEFORE the lease
@@ -404,11 +413,23 @@ said above" starts to mean something it does not.
   its environment at spawn (`AGENT_PROTOCOL_SESSION_FILE`), because the value does
   not exist yet at that moment; `AGENT_PROTOCOL_WORKER` beside it carries the value.
   So `new-message` inside a raised session records both with no flags at all.
-- **Both are optional, and absence is not a defect.** Legacy threads carry no header
-  at all, history predates the field, and a human writing by hand may simply not say.
-  A missing field means "this writer did not record it" — while a WRONG value would
-  be permanent, which is why a malformed `--worker` is refused at the door instead of
-  being discovered later by a reader who cannot repair it.
+- **`worker` is REQUIRED on a write and optional on a read**, and the asymmetry is
+  the whole design. At the door the value is always obtainable — a raised session has
+  it in its environment, everybody else knows what they are — and a message written
+  without it can never be repaired, because the feed is append-only. On the read there
+  are messages nobody can fix by construction: legacy threads carry no header at all,
+  history predates the field, and between the migration of the mail and the merge of
+  the version bump there is a window in which somebody legitimately wrote with a
+  package that did not know it. So `check` does NOT require the field: a rule that
+  cannot be met makes the validator permanently red, and a red everybody has learned
+  to ignore is worse than no rule at all. A missing field means "this writer did not
+  record it"; a WRONG one would be permanent, which is why a malformed `--worker` is
+  refused at the door rather than discovered by a reader who cannot repair it.
+- **`session` stays optional on both sides**: it is minted by a runtime a human or a
+  chat simply does not have.
+- **The price, and it is on the human side:** writing by hand now costs one more flag
+  (`--worker human`). That is the trade the door makes — discipline forgets, a door
+  does not.
 - **They are deliberately absent from the assembled `_thread.md`.** That file is the
   conversation; provenance is a fact about the run, and its reader is the analysis of
   runs, which reads the message files.
