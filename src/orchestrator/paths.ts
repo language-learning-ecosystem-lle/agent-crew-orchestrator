@@ -33,6 +33,14 @@ export type OrchestratorPaths = {
   readonly holds: string;
   /** The directory of saved session outputs — silence can be examined without a witness. */
   readonly sessions: string;
+  /**
+   * What the notifier has already reported (R4). It lives in the state directory for
+   * the same reason the journal does: it is operational state, written by the package,
+   * disposable. Losing it costs ONE repeated message about waits that are still open —
+   * which is why the predecessor could keep it in `/tmp` and why nothing here is
+   * designed to make it durable.
+   */
+  readonly notifyState: string;
   /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
   readonly mailRoot: string;
 };
@@ -44,6 +52,7 @@ const STOP = "stop";
 const FORCE = "force";
 const HOLDS = "holds";
 const SESSIONS = "sessions";
+const NOTIFY_STATE = "notify.state";
 
 export const orchestratorPaths = (input: {
   /** The repository root: paths in the config are relative to it. */
@@ -60,6 +69,7 @@ export const orchestratorPaths = (input: {
     forceFlag: join(state, FORCE),
     holds: join(state, HOLDS),
     sessions: join(state, SESSIONS),
+    notifyState: join(state, NOTIFY_STATE),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),
   };
 };
@@ -120,5 +130,6 @@ export const renderPaths = (paths: OrchestratorPaths): string =>
     `flags:    ${paths.enableFlag} · ${paths.stopFlag} · ${paths.forceFlag}`,
     `holds:    ${paths.holds}`,
     `session logs: ${paths.sessions}`,
+    `notify state: ${paths.notifyState}`,
     `mail:     ${paths.mailRoot}`,
   ].join("\n");

@@ -26,10 +26,12 @@ commit:
   concepts, no paths of a particular repository in the code. Everything
   project-specific arrives from the outside — through the config and the command
   arguments;
-- the notification transport (Telegram and the like) is a **separate package**:
-  the core produces events, delivery is taken over by a pluggable plugin. The
-  texts of the notifications are not here either — that is the language of a
-  particular team;
+- the notification transport (Telegram and the like) is a **separate package** —
+  since R4 that is a fact rather than an intention: the core produces events and
+  renders text, delivery is taken over by the plugin named in the config, and the
+  first one lives in the workspace package `transport-telegram`. The texts are not
+  here either — that is the language of a particular team, and it arrives as
+  templates (see "Notifications" below);
 - the move must be mechanical (`git subtree split` plus replacing the workspace
   dependency with a version from a registry).
 
@@ -130,8 +132,15 @@ every machine and belongs to none of them.
 
 ```json
 // ~/.config/agent-protocol/local.json  (or --local-config <path>)
-{ "agents": { "claude-code": { "exec": "/home/j/.nvm/versions/node/v18.20.3/bin/claude" } } }
+{
+  "agents": { "claude-code": { "exec": "/home/j/.nvm/versions/node/v18.20.3/bin/claude" } },
+  "secrets": { "envFile": "/home/j/.config/lle/telegram.env" }
+}
 ```
+
+`secrets.envFile` (R4) is a PATH and only a path: the values live in that file, which
+is read and never printed, while this one is printed on every preflight. Both fields
+say the same kind of thing — where something on this box happens to sit.
 
 The hole this closes was visible in every command typed by hand:
 `--exec /home/…/versions/node/v18.20.3/bin/claude`. That path is not knowledge of the
@@ -183,6 +192,89 @@ for every launchable role. It is not decoration: the two files never mention eac
 other, so nowhere else can "what would actually be started, and who said so" be read
 off in one place.
 
+## Notifications: whom, in which words, through what (R4)
+
+The watch wakes an AGENT. The other direction — the turn has passed to a HUMAN — used
+to live in `bin/notify.sh`: a bash script in the project zone that parsed the mail
+through the shared entry point but held three unrelated things in one file. They come
+apart along lines the package already had:
+
+| the question | the answer, and where it lives |
+| --- | --- |
+| WHOM to tell | derived from the role model: `wake.mode: self` is a human who reads notifications, `via-human` is an assistant who comes alive only through the named human. `registry.notificationTargets()` has carried that since P1 |
+| WHEN | a NEW pair (role, thread) since the last run. The fact of waiting would arrive every five minutes and train its reader to ignore it |
+| WHAT is said | the project's templates — `notifications.templates`, three slots |
+| HOW it is delivered | a transport plugin named in the config; the first one is the workspace package `transport-telegram` |
+| WHERE the credentials are | the machine's secrets file (`secrets.envFile` of the machine config), never either config |
+
+```json
+"notifications": {
+  "transport": { "module": "transport-telegram", "options": {} },
+  "templates": {
+    "turn": "⏳ your turn: {thread}",
+    "turn-with-nudge": "⏳ your turn: {thread} ({nudged} is next)",
+    "nudge": "🔔 {thread} is waiting on {role} — open the chat and poke them ({via})"
+  }
+},
+"announcements": {
+  "force-stop": "The session on thread {thread} was force-stopped (by {by}): {reason}"
+}
+```
+
+- **A template, not a function.** A function would have to arrive as a module path,
+  turning "which words do we use" into a second plugin surface with its own contract
+  and no way for `config check` to say anything about it. A template is data: it is
+  validated at the door, printed, diffed and reviewed in the PR that changes it.
+- **An unknown placeholder is a REFUSAL, in `config check`.** Every slot has a fixed
+  vocabulary, so `{thraed}` fails in the PR that introduces it rather than at three in
+  the morning, in the one message the notifier exists to deliver.
+- **The conditional is a SLOT, not a branch inside a string.** A thread waiting on a
+  human and on an assistant at once is a queue, not a parallel — the human moves
+  first, and the script said so with an awk-glued suffix. The package knows the fact,
+  so it picks `turn-with-nudge`; the project writes two plain sentences and never
+  learns a template dialect.
+- **`announcements` is the language of texts written INTO A THREAD** — today exactly
+  one, the force-stop trace. This is R1's leftover question closed: the package's own
+  prose is English, and the language of somebody's conversation is theirs.
+- **The trigger is a new pair, the text is the FULL composition.** Both halves are
+  carried over verbatim from the predecessor, because both were paid for: notify only
+  on appearance, but list everything, since a list of one reads as "the rest is
+  closed" and that would be a lie at the price of a forgotten thread.
+
+```
+agent-protocol notify --ref origin/main --write
+```
+
+The order of the side effects is the design: **resolve the transport and the secrets,
+then write the state, then send.** A setup defect (a module that does not load, a
+named secrets file that cannot be read) refuses while the state is still untouched —
+otherwise it would consume the trigger and the pair would never be announced again. A
+DELIVERY failure, by contrast, does not retry and does not fail the command:
+notifications are a superstructure, not a dependency, and a notification is about a
+moment that no retry brings back. Without `--write` the command prints the message it
+would send and leaves the state alone (this is what `NOTIFY_DRY_RUN=1` used to be).
+
+Freshness is reported and never refused, and that is the one place this command parts
+ways with preflight: the daemon refuses on stale mail because acting on yesterday's
+mail is wrong work, while a notifier that refuses is a notifier that says nothing —
+precisely what it exists to prevent.
+
+**Writing a transport** is one export:
+
+```ts
+export const createTransport = ({ options, secrets }) => ({
+  async send(text) {
+    return { state: "sent" | "unconfigured" | "failed", detail: "one line, NO secrets" };
+  },
+});
+```
+
+`unconfigured` is the load-bearing one: a machine nobody set up to notify is a
+legitimate machine, and reporting that as a failure would send an operator looking for
+a breakage that is not there. `detail` is printed into a log that lives in a cron
+mailbox, so a transport that puts a token in it leaks it for ever — `transport-telegram`
+scrubs its own secrets out of every line it emits, and that is a test, not a promise.
+
 A role's `instructions` is an array, and the order is the reading order (the
 general rules of the project first, then the role card). `kind: external` means the
 text lies in the repository but is EXECUTED outside (a skill on the chat side) —
@@ -222,6 +314,7 @@ rather than going through that door.
 | 2 | + provenance in the message header: `worker` and `session`. Optional on READ (history, legacy threads and the migration window cannot be repaired), `worker` REQUIRED on a write. The migration stated the absence outright on everything already written — `worker: unknown`, 331 files, 2026-07-25 |
 | 3 | + per-role run ceilings: `roles[].launch.limits` (`idleSeconds`, `wallClockSeconds`, `maxTurns`), every field optional. NO data moves — a version-2 config is already a valid version-3 one; the number exists so an older build says "update the package" instead of "unrecognized key" |
 | 4 | + the per-role launch agent: `roles[].launch.agent` (`kind`, and for `claude-code` also `model` and `effort`). NO data moves either, for the same reason. The MACHINE config that arrived with it (R14) is deliberately outside this number — it does not travel |
+| 5 | + the texts and the delivery of notifications: `notifications` (a transport module with its options, the three notification templates) and `announcements` (the templates of what the package writes into a thread). NO data moves. The secrets FILE the machine config now points at is outside the number for the same reason the machine config itself is |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -444,6 +537,8 @@ agent-protocol schema migrate [--repo <p>] [--root <comms>] [--to <n>] [--write]
                                                                            # (no --ref: it plans against the tree it rewrites)
 agent-protocol role exists  --ref <ref> --role <id>                        # is the role known?
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
+agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p>] [--write]
+                                                                           # the turn has passed to a HUMAN (R4)
 agent-protocol index build  --root <comms> --ref <ref> [--write]
 agent-protocol thread build --root <comms> --ref <ref> --id <NNN-slug> [--write]
 agent-protocol derive       --root <comms> --ref <ref> [--write]           # all derived files

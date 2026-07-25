@@ -30,7 +30,7 @@
  * and with the `protocolVersion` of the config in the same PR — otherwise the
  * circuit halts on its own repository.
  */
-export const CURRENT_PROTOCOL_VERSION = 4;
+export const CURRENT_PROTOCOL_VERSION = 5;
 
 /** The key of the config field. Kept as a constant: the loader's hint quotes it. */
 export const PROTOCOL_VERSION_FIELD = "protocolVersion";

@@ -48,6 +48,7 @@ import { MigrationRefusedError } from "./step.js";
 import { MESSAGE_PROVENANCE_STEP } from "./v2-provenance.js";
 import { LAUNCH_LIMITS_STEP } from "./v3-launch-limits.js";
 import { AGENT_PARAMS_STEP } from "./v4-agent-params.js";
+import { NOTIFICATIONS_STEP } from "./v5-notifications.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -58,6 +59,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   MESSAGE_PROVENANCE_STEP,
   LAUNCH_LIMITS_STEP,
   AGENT_PARAMS_STEP,
+  NOTIFICATIONS_STEP,
 ];
 
 export type {

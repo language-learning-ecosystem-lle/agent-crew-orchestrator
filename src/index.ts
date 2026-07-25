@@ -1,7 +1,11 @@
 export {
+  type Announcements,
+  announcementsSchema,
   DEFAULT_CONFIG_PATH,
   type Mail,
   mailSchema,
+  type Notifications,
+  notificationsSchema,
   type ProtocolConfig,
   parseProtocolConfig,
   protocolConfigSchema,
@@ -15,14 +19,57 @@ export {
   type LocalAgent,
   type LocalConfig,
   LocalConfigError,
+  type LocalSecrets,
   loadLocalConfig,
   localAgentSchema,
   localConfigPath,
   localConfigSchema,
+  localSecretsSchema,
   parseLocalConfig,
 } from "./config/local.js";
 export { type LoadedThread, loadThread, loadThreads } from "./fs/comms.js";
 export { fetchRef, fileExistsAtRef, messagesAtRef, readFileAtRef } from "./fs/git.js";
+export {
+  ANNOUNCEMENT_KINDS,
+  ANNOUNCEMENT_VARIABLES,
+  type AnnouncementKind,
+  DEFAULT_ANNOUNCEMENT_TEMPLATES,
+  DEFAULT_NOTIFICATION_TEMPLATES,
+  NOTIFICATION_KINDS,
+  NOTIFICATION_VARIABLES,
+  type NotificationKind,
+  type NotificationLine,
+  type NotificationPlan,
+  parseNotifyState,
+  planNotifications,
+  renderAnnouncement,
+  renderNotification,
+  renderNotifyState,
+  type WaitingPair,
+} from "./notify/notify.js";
+export {
+  describeSecrets,
+  type LoadedSecrets,
+  loadSecrets,
+  parseEnvFile,
+  SecretsError,
+} from "./notify/secrets.js";
+export {
+  renderTemplate,
+  TemplateError,
+  templateIssues,
+  templateVariables,
+} from "./notify/template.js";
+export {
+  loadTransport,
+  TRANSPORT_EXPORT,
+  type Transport,
+  TransportError,
+  type TransportFactory,
+  type TransportInput,
+  type TransportOutcome,
+  transportFrom,
+} from "./notify/transport.js";
 export {
   type EventKind,
   eventTimestamp,
@@ -124,6 +171,7 @@ export {
   isMessagePath,
   MESSAGE_PROVENANCE_STEP,
 } from "./schema/v2-provenance.js";
+export { NOTIFICATIONS_STEP } from "./schema/v5-notifications.js";
 export {
   CURRENT_PROTOCOL_VERSION,
   compareProtocolVersion,

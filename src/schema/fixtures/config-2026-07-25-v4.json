@@ -1,0 +1,75 @@
+{
+  "protocolVersion": 4,
+  "mail": {
+    "branch": "comms",
+    "dir": "agent-comms"
+  },
+  "orchestrator": {
+    "state": ".orchestrator",
+    "mailCheckout": ".worktrees/comms",
+    "ref": "origin/main",
+    "workdir": { "branch": "main" }
+  },
+  "roles": [
+    {
+      "id": "john",
+      "kind": "человек",
+      "status": "active",
+      "wake": { "mode": "self" },
+      "summary": "PM-владелец: продуктовые/стратегические/денежные развилки, приёмки (merge PR), деструктивные разрешения, будильник сессий",
+      "permissions": ["thread-status"]
+    },
+    {
+      "id": "curator",
+      "kind": "claude.ai",
+      "status": "active",
+      "wake": { "mode": "via-human", "via": "john" },
+      "summary": "PM-ассистент: координация, постановки, разборы, межзонные стыки, REVIEWER.md; один на весь проект",
+      "permissions": ["thread-status"],
+      "instructions": [
+        {
+          "kind": "external",
+          "path": "docs/roles/curator.md",
+          "note": "исполняется скиллом на стороне claude.ai"
+        }
+      ]
+    },
+    {
+      "id": "dev-core",
+      "kind": "claude-code",
+      "status": "active",
+      "wake": { "mode": "watch", "session": "lle-dev-core" },
+      "summary": "Основной поток: API, web-app, extension, sync, mobile",
+      "zones": { "writes": [], "forbidden": ["apps/pronunciation-service"] },
+      "instructions": [{ "kind": "in-repo", "path": "CLAUDE.md" }],
+      "launch": {
+        "allowedTools": ["Bash", "Read", "Edit", "Write"],
+        "limits": { "idleSeconds": 600, "wallClockSeconds": 3600, "maxTurns": 300 },
+        "agent": { "kind": "claude-code" }
+      }
+    },
+    {
+      "id": "dev-speech",
+      "kind": "claude-code",
+      "status": "active",
+      "wake": { "mode": "watch", "session": "lle-dev-speech" },
+      "summary": "Поток произношения: apps/pronunciation-service, свои префиксы очередей",
+      "zones": { "writes": ["apps/pronunciation-service"], "forbidden": [] }
+    },
+    {
+      "id": "reviewer-pr",
+      "kind": "gh-action",
+      "status": "active",
+      "wake": { "mode": "event" },
+      "summary": "Ревью PR по REVIEWER.md; пишет вердикты в PR + тред, код не меняет",
+      "instructions": [{ "kind": "in-repo", "path": "REVIEWER.md" }]
+    },
+    {
+      "id": "github",
+      "kind": "gh-action",
+      "status": "active",
+      "wake": { "mode": "event" },
+      "summary": "Уведомитель о merge: пишет в тред факт merge и объявляет ход по строке role: из описания PR; ожиданий не принимает"
+    }
+  ]
+}
