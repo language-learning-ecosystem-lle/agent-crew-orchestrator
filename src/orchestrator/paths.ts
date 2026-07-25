@@ -29,6 +29,8 @@ export type OrchestratorPaths = {
   readonly forceFlag: string;
   /** Каталог holdʼов ручных сессий. */
   readonly holds: string;
+  /** Каталог сохранённых выводов сессий — разбор молчания без свидетеля. */
+  readonly sessions: string;
   /** Корень почты на диске: чекаут ветки почты + каталог почты в нём. */
   readonly mailRoot: string;
 };
@@ -39,6 +41,7 @@ const ENABLE = "enabled";
 const STOP = "stop";
 const FORCE = "force";
 const HOLDS = "holds";
+const SESSIONS = "sessions";
 
 export const orchestratorPaths = (input: {
   /** Корень репозитория: пути в конфиге относительны ему. */
@@ -54,6 +57,7 @@ export const orchestratorPaths = (input: {
     stopFlag: join(state, STOP),
     forceFlag: join(state, FORCE),
     holds: join(state, HOLDS),
+    sessions: join(state, SESSIONS),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),
   };
 };
@@ -62,11 +66,23 @@ export const orchestratorPaths = (input: {
  * Человеку — куда пакет положил своё состояние. Печатается командами включения
  * и `status`: «где лежит флаг» обязано быть видно из вывода, а не из README.
  */
+/**
+ * Файл вывода одной сессии. Имя несёт связку и момент — по журналу видно, какой
+ * прогон куда писал, и логи не перетирают друг друга при повторных попытках.
+ */
+export const sessionLogPath = (
+  paths: OrchestratorPaths,
+  role: string,
+  thread: string,
+  stamp: string,
+): string => join(paths.sessions, `${stamp.replace(/[:]/g, "-")}-${role}-${thread}.log`);
+
 export const renderPaths = (paths: OrchestratorPaths): string =>
   [
     `состояние: ${paths.state}`,
     `журнал:    ${paths.journal}`,
     `флаги:     ${paths.enableFlag} · ${paths.stopFlag} · ${paths.forceFlag}`,
     `holdʼы:    ${paths.holds}`,
+    `логи сессий: ${paths.sessions}`,
     `почта:     ${paths.mailRoot}`,
   ].join("\n");

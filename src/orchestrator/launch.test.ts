@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { Role } from "../roles/schema.js";
 import type { OrchestratorEvent } from "./journal.js";
 import {
+  buildLaunchArgv,
   buildLaunchPrompt,
   consecutiveLaunchesWithoutCompletion,
+  describeLaunch,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
   roleLaunchability,
@@ -18,6 +20,7 @@ const role = (over: Partial<Role>): Role => ({
   summary: "…",
   permissions: [],
   instructions: [{ kind: "in-repo", path: "CLAUDE.md" }],
+  launch: { allowedTools: ["Bash", "Read", "Edit", "Write"] },
   ...over,
 });
 
@@ -229,5 +232,63 @@ describe("planLaunch", () => {
         maxConsecutive: 5,
       }).ok,
     ).toBe(true);
+  });
+});
+
+describe("профиль прав — часть контракта запуска (S7)", () => {
+  it("роль без профиля НЕ запускается: поднимать с неназначенными правами нельзя", () => {
+    const { launch: _dropped, ...without } = role({});
+    expect(roleLaunchability(without as Role)).toEqual({
+      launchable: false,
+      reason: "no-launch-profile",
+    });
+  });
+
+  it("argv несёт --allowedTools — то, чего не было в первом боевом прогоне", () => {
+    const argv = buildLaunchArgv({
+      prompt: "промпт",
+      maxTurns: "60",
+      launch: { allowedTools: ["Bash", "Read", "Edit", "Write"] },
+    });
+    expect(argv).toEqual([
+      "-p",
+      "промпт",
+      "--allowedTools",
+      "Bash,Read,Edit,Write",
+      "--max-turns",
+      "60",
+    ]);
+  });
+
+  it("состав argv ПРИБИТ: порядок и форма — контракт, а не деталь реализации", () => {
+    // Спайк P0 звал агента с --allowedTools и оставался зелёным, пока код
+    // регрессировал: argv не был закреплён ничем, и права выпали незаметно.
+    const argv = buildLaunchArgv({
+      prompt: "p",
+      maxTurns: "25",
+      launch: { allowedTools: ["Bash"] },
+    });
+    expect(argv).toHaveLength(6);
+    expect(argv[0]).toBe("-p");
+    expect(argv.indexOf("--allowedTools")).toBe(2);
+    expect(argv.at(-2)).toBe("--max-turns");
+  });
+
+  it("инструменты уходят как есть, порядок сохраняется", () => {
+    const argv = buildLaunchArgv({
+      prompt: "p",
+      maxTurns: "1",
+      launch: { allowedTools: ["Read", "Bash"] },
+    });
+    expect(argv[3]).toBe("Read,Bash");
+  });
+
+  it("describeLaunch показывает полномочия роли строкой", () => {
+    expect(describeLaunch(role({}))).toBe("dev-core: Bash, Read, Edit, Write");
+  });
+
+  it("describeLaunch у роли без профиля называет ПРИЧИНУ, а не молчит", () => {
+    const { launch: _dropped, ...without } = role({ instructions: undefined });
+    expect(describeLaunch(without as Role)).toContain("no-instructions");
   });
 });

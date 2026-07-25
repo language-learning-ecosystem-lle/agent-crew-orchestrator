@@ -93,6 +93,30 @@ export const zonesSchema = z.strictObject({
   forbidden: z.array(z.string().min(1)).default([]),
 });
 
+/**
+ * ПОЛНОМОЧИЯ ПОДНЯТОЙ СЕССИИ — часть контракта запуска (решение john, тред 012,
+ * 23:30), а не свойство окружения.
+ *
+ * Повод — первый боевой прогон: контур поднял настоящую сессию, та прожила пять
+ * минут и вышла, ничего не записав. Спавн не передавал `--allowedTools`, а
+ * дефолтный `claude -p` не пишет — то есть роль физически не могла сделать
+ * единственное, ради чего её поднимают. Понятия прав в контракте не было вовсе:
+ * S1 строился вокруг «кого и каким промптом».
+ *
+ * ПОЧЕМУ PER-ROLE: полномочия у ролей разойдутся (у dev-speech своя зона), и
+ * читаться они должны из карточки роли, а не из кода запускающего.
+ *
+ * ГРАНИЦА ПРОХОДИТ НЕ ЗДЕСЬ, и это надо знать, чтобы не считать защитой то, что
+ * ею не является: роли нужен `Bash` (прогнать тесты, закоммитить, запушить), а с
+ * выданным `Bash` ограничение остальных инструментов добавляет мало. Настоящие
+ * защиты структурные и стоят снаружи: код только через PR, ревьюер, branch
+ * protection на `main`, дедлайн аренды, потолок прогонов, стоп/форс у john.
+ */
+export const launchSchema = z.strictObject({
+  /** Инструменты сессии — уходят в `--allowedTools` как есть, порядок сохраняется. */
+  allowedTools: z.array(z.string().min(1)).min(1),
+});
+
 export const roleSchema = z.strictObject({
   id: roleIdSchema,
   /** Проектный ярлык типа роли; пакет его не интерпретирует, только сверяет с доком. */
@@ -103,6 +127,13 @@ export const roleSchema = z.strictObject({
   permissions: z.array(permissionSchema).default([]),
   zones: zonesSchema.optional(),
   instructions: z.array(instructionsSchema).min(1).optional(),
+  /**
+   * Профиль запуска. Необязателен: у ролей, которые контур не поднимает (john,
+   * curator, gh-action'ы), его быть не должно. Отсутствие у ЗАПУСКАЕМОЙ роли —
+   * громкий отказ в `roleLaunchability`, а не молчаливое умолчание: умолчание
+   * здесь означало бы «поднял с правами, которых никто не назначал».
+   */
+  launch: launchSchema.optional(),
 });
 
 export type RoleId = string;
@@ -111,3 +142,4 @@ export type Permission = z.infer<typeof permissionSchema>;
 export type RoleStatus = z.infer<typeof roleStatusSchema>;
 export type Role = z.infer<typeof roleSchema>;
 export type Instructions = z.infer<typeof instructionsSchema>;
+export type Launch = z.infer<typeof launchSchema>;

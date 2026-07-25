@@ -63,3 +63,36 @@ describe("renderLog", () => {
     expect(renderLog(events)).toContain("(graceful)");
   });
 });
+
+describe("lease-released: почему, а не только что", () => {
+  it("код выхода и путь к выводу попадают в строку", () => {
+    const line = renderLog([
+      {
+        kind: "lease-released",
+        ts: "2026-07-24T22:58:36Z",
+        role: "dev-core",
+        thread: "012-x",
+        reason: "exited-without-handoff",
+        exitCode: 0,
+        output: "/repo/.orchestrator/sessions/2026-07-24T22-53-15Z-dev-core-012-x.log",
+      },
+    ]);
+    expect(line).toContain("exited-without-handoff");
+    expect(line).toContain("код 0");
+    expect(line).toContain("sessions/2026-07-24T22-53-15Z-dev-core-012-x.log");
+  });
+
+  it("старая запись без этих полей читается как прежде", () => {
+    const line = renderLog([
+      {
+        kind: "lease-released",
+        ts: "2026-07-24T22:58:36Z",
+        role: "dev-core",
+        thread: "012-x",
+        reason: "completed",
+      },
+    ]);
+    expect(line).toContain("(completed)");
+    expect(line).not.toContain("код");
+  });
+});

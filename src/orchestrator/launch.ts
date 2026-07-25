@@ -16,7 +16,7 @@
  *  - глобальный: `consecutiveLaunchesWithoutCompletion` под авто-цикл S3 —
  *    launch'ей подряд без единого `completed` не больше `MAX_CONSECUTIVE_RUNS`.
  */
-import type { Role } from "../roles/schema.js";
+import type { Launch, Role } from "../roles/schema.js";
 import { eventTimestamp, type OrchestratorEvent } from "./journal.js";
 import { foldLeases } from "./lease.js";
 
@@ -33,7 +33,8 @@ export type LaunchBlock =
   | "inactive"
   | "wake-not-watch"
   | "no-instructions"
-  | "external-instructions";
+  | "external-instructions"
+  | "no-launch-profile";
 
 export type Launchability = { launchable: true } | { launchable: false; reason: LaunchBlock };
 
@@ -58,7 +59,45 @@ export const roleLaunchability = (role: Role): Launchability => {
   if (instructions.some((entry) => entry.kind === "external")) {
     return { launchable: false, reason: "external-instructions" };
   }
+  // Профиль прав — часть контракта запуска: роль без него поднимать НЕЛЬЗЯ.
+  // Первый боевой прогон показал, чем оборачивается его отсутствие: сессия
+  // поднимается, живёт пять минут и выходит, ничего не записав, потому что
+  // писать ей нечем. Умолчание было бы хуже отказа — «поднял с правами,
+  // которых никто не назначал».
+  if (role.launch === undefined) return { launchable: false, reason: "no-launch-profile" };
   return { launchable: true };
+};
+
+/**
+ * Аргументы запуска сессии — ОДНО место, где они собираются, и оно закреплено
+ * тестом (требование 4 curator). Спайк P0 звал агента с `--allowedTools` и
+ * оставался зелёным, пока код регрессировал: argv не был прибит ничем, и
+ * полномочия выпали из контракта незаметно. Пока список аргументов живёт
+ * выражением внутри спавна, он выпадет снова тем же способом.
+ */
+export const buildLaunchArgv = (input: {
+  readonly prompt: string;
+  readonly maxTurns: string;
+  readonly launch: Launch;
+}): string[] => [
+  "-p",
+  input.prompt,
+  "--allowedTools",
+  input.launch.allowedTools.join(","),
+  "--max-turns",
+  input.maxTurns,
+];
+
+/** Полномочия роли одной строкой — для витрины `status` и вывода запуска. */
+export const describeLaunch = (role: Role): string => {
+  const profile = role.launch;
+  if (profile === undefined) {
+    const why = roleLaunchability(role);
+    return why.launchable
+      ? `${role.id}: профиля запуска нет`
+      : `${role.id}: не запускается контуром (${why.reason})`;
+  }
+  return `${role.id}: ${profile.allowedTools.join(", ")}`;
 };
 
 export type InstructionDoc = { readonly path: string; readonly text: string };
