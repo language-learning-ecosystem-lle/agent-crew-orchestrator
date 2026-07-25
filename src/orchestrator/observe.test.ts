@@ -140,3 +140,40 @@ describe("stepEvent", () => {
     );
   });
 });
+
+describe("idle — a stalled session is not a timeout (R6)", () => {
+  const running = { handedOff: false, processExited: false, overdue: false };
+
+  it("no traces past the ceiling → stalled", () => {
+    expect(observeStep("running", { ...running, idle: true })).toEqual({
+      record: "lease-released",
+      reason: "stalled",
+    });
+  });
+
+  it("stalled OUTRANKS the deadline: of two diagnoses at once, the truer one wins", () => {
+    // A session goes quiet long before its wall clock runs out; if both fire in the
+    // same poll, "it stopped doing anything" says more than "the window ended".
+    expect(observeStep("running", { ...running, idle: true, overdue: true })).toEqual({
+      record: "lease-released",
+      reason: "stalled",
+    });
+  });
+
+  it("a PASSED TURN outranks idle — success is not cancelled by silence", () => {
+    expect(observeStep("running", { ...running, handedOff: true, idle: true })).toEqual({
+      record: "handoff-detected",
+    });
+  });
+
+  it("without the signal nothing changes: the deadline still gives a timeout", () => {
+    expect(observeStep("running", { ...running, overdue: true })).toEqual({
+      record: "lease-released",
+      reason: "timeout",
+    });
+  });
+
+  it("in draining idle decides nothing — the job is already done", () => {
+    expect(observeStep("draining", { ...running, idle: true })).toBeNull();
+  });
+});

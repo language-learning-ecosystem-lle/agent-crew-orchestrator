@@ -77,6 +77,15 @@ export const sessionLogPath = (
 ): string => join(sessions, `${stamp.replace(/[:]/g, "-")}-${role}-${thread}.log`);
 
 /**
+ * The RAW session stream beside the human log (R6). The rendering is lossy — it
+ * previews texts and folds tool inputs — and its blind spots are exactly what one
+ * needs when the rendering failed to explain a break. Same name, different
+ * extension: the pair is obvious in a directory listing, and the journal keeps
+ * pointing at the readable half.
+ */
+export const sessionStreamPath = (logPath: string): string => logPath.replace(/\.log$/, ".jsonl");
+
+/**
  * For a human — where the package put its state. Printed by the enable commands
  * and by `status`: "where the flag lies" has to be visible from the output, not
  * from the README.

@@ -18,6 +18,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from "node:fs";
@@ -136,6 +137,13 @@ const run = (repo: string, exec: string): { code: number; out: string } => {
 
 const journal = (repo: string): ReturnType<typeof parseJournal> =>
   parseJournal(readFileSync(join(repo, ".orchestrator", "journal.jsonl"), "utf8"));
+
+/** The session log of a run — the file the journal points at. */
+const sessionLog = (repo: string): string => {
+  const dir = join(repo, ".orchestrator", "sessions");
+  const names = readdirSync(dir).filter((name) => name.endsWith(".log"));
+  return readFileSync(join(dir, names[names.length - 1] as string), "utf8");
+};
 
 describe("running a role as a process — the outcome is always recorded", () => {
   it("the session answered → handoff-detected and completed, not a report of success", () => {
@@ -256,6 +264,103 @@ describe("running a role as a process — the outcome is always recorded", () =>
     await new Promise((resolve) => setTimeout(resolve, 22_000));
     expect(existsSync(marker), "the orphaned session outlived the supervisor").toBe(false);
   }, 90_000);
+
+  it("THE SESSION OUTPUT REACHES THE FILE — every log used to be empty (R6)", () => {
+    // The diagnosis of 2026-07-25: the supervisor collected stderr while the agent
+    // speaks on stdout, so a run of any length left zero bytes behind and every
+    // break was analysed blind. The stub speaks on BOTH streams — a live agent's
+    // words and a launcher's complaint must both land.
+    const { repo } = contour();
+    const exec = stub(repo, "echo 'a word on stdout'\necho 'a complaint on stderr' >&2\nsleep 1");
+
+    run(repo, exec);
+    const log = sessionLog(repo);
+
+    expect(log).toContain("a word on stdout");
+    expect(log).toContain("a complaint on stderr");
+    // The path in the journal points at a file that is NOT empty — the whole point.
+    expect(log.length).toBeGreaterThan(0);
+  }, 60_000);
+
+  it("a session producing NO traces → stalled, not timeout (R6)", () => {
+    // A hang and a long piece of work are indistinguishable by the clock; they
+    // differ by side effects. The stub sleeps silently: no output, no file, no
+    // commit — the case the idle ceiling exists for.
+    const { repo } = contour();
+    const exec = stub(repo, "sleep 120");
+
+    execFileSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--exec",
+        exec,
+        "--wall-clock",
+        "60",
+        "--idle",
+        "3",
+        "--poll",
+        "1",
+        "--write",
+      ],
+      { cwd: repo, encoding: "utf8", stdio: "pipe" },
+    );
+
+    const last = journal(repo).at(-1);
+    expect(last).toMatchObject({ kind: "lease-released", reason: "stalled" });
+    // The wall clock was 60 seconds and was NOT what fired: the run ended on the
+    // idle ceiling, otherwise the test would have taken a minute.
+    expect(sessionLog(repo)).toContain("stalled");
+  }, 60_000);
+
+  it("a session that WORKS is not killed by the idle ceiling", () => {
+    // The expensive error of the detector: a false stall kills live work and burns
+    // one of the three attempts on the pair. The stub keeps writing — the ceiling
+    // must never fire, and the run ends the way it would without it.
+    const { repo } = contour();
+    const exec = stub(repo, 'for i in 1 2 3 4 5 6; do echo "step $i"; sleep 1; done');
+
+    execFileSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--exec",
+        exec,
+        "--wall-clock",
+        "60",
+        "--idle",
+        "3",
+        "--poll",
+        "1",
+        "--write",
+      ],
+      { cwd: repo, encoding: "utf8", stdio: "pipe" },
+    );
+
+    expect(journal(repo).at(-1)).toMatchObject({ reason: "exited-without-handoff" });
+  }, 60_000);
 
   it("INVARIANT: a run does not finish leaving the lease alive", () => {
     // This is exactly what was lost in the 2026-07-25 acceptance: the process

@@ -29,6 +29,12 @@ export type ObserveSignals = {
   readonly processExited: boolean;
   /** now > the lease deadline. */
   readonly overdue: boolean;
+  /**
+   * No traces of activity for longer than the idle ceiling (`activity.ts`). The
+   * signal arrives ready-made, exactly like `handedOff`: the sampling of traces is
+   * IO and lives in the CLI, the decision is here.
+   */
+  readonly idle?: boolean;
 };
 
 /** What to record at the next step (or null — keep observing). */
@@ -36,7 +42,7 @@ export type ObserveStep =
   | { readonly record: "handoff-detected" }
   | {
       readonly record: "lease-released";
-      readonly reason: "completed" | "timeout" | "exited-without-handoff";
+      readonly reason: "completed" | "timeout" | "stalled" | "exited-without-handoff";
     }
   | null;
 
@@ -69,8 +75,14 @@ export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): Obse
     // The turn has passed — move to draining, do NOT touch the process: it will
     // finish by itself (requirement 3).
     if (signals.handedOff) return { record: "handoff-detected" };
-    // The deadline without the turn passing — stuck: the limit of draining/running
-    // (requirement 2).
+    // NO TRACES for longer than the idle ceiling — the session is stuck (R6). It is
+    // checked BEFORE the deadline, and that order is the whole point: a stalled
+    // session normally goes quiet long before its wall clock runs out, and if both
+    // fire at once `stalled` is the truer of the two diagnoses. The wall clock is
+    // left for the opposite failure — a session that produces traces forever.
+    if (signals.idle === true) return { record: "lease-released", reason: "stalled" };
+    // The deadline without the turn passing — the session was alive and did not fit
+    // in the window: the limit of draining/running (requirement 2).
     if (signals.overdue) return { record: "lease-released", reason: "timeout" };
     // The process exited BY ITSELF, without passing the turn, before the deadline —
     // it left without doing the job. The reason is ITS OWN, not `forced`: a force is

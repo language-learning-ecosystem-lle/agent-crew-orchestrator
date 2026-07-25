@@ -55,6 +55,15 @@ export const MAX_ATTEMPTS = 3;
  * with its own death. SIGKILL cannot be intercepted, and we do not promise that:
  * the guarantee covers exit, exception, SIGINT and SIGTERM.
  *
+ * `stalled` — the session produced NO TRACES of activity for longer than the idle
+ * ceiling (R6, thread 016): no output, no change in the working tree, no commit,
+ * no CPU. It is split from `timeout` because the two say opposite things about the
+ * run: on 2026-07-25 both breaks were recorded as `timeout` while both sessions
+ * were alive and working — merely longer than the window. `timeout` now means "it
+ * was working and did not fit", `stalled` means "it stopped doing anything"; the
+ * first calls for a wider window, the second for an investigation. One name for
+ * both made the journal an instrument that cannot tell them apart at all.
+ *
  * `forced` has NOT been removed from the list even though the `lease-released`
  * path no longer writes it (a real force writes a `stop {mode: forced, by, note}`
  * event): journals are append-only files on disk, and removing a value would make
@@ -67,6 +76,7 @@ export const RELEASE_REASONS = [
   "exited-without-handoff",
   "supervisor-gone",
   "timeout",
+  "stalled",
   "exhausted",
 ] as const;
 export type ReleaseReason = (typeof RELEASE_REASONS)[number];

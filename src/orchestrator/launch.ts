@@ -34,6 +34,32 @@ import { foldLeases } from "./lease.js";
  */
 export const MAX_CONSECUTIVE_RUNS = 10;
 
+/**
+ * THE ROLES OF THE CEILINGS after idle detection arrived (R6 part 3, thread 016).
+ * There are three of them and they catch different failures — before R6 the wall
+ * clock was doing all three jobs badly at once:
+ *
+ *  - `stalled` (the idle ceiling, `activity.ts`) — the MAIN catcher of a hang: a
+ *    session that produces no traces at all;
+ *  - `--wall-clock` — the backstop against the opposite failure, a session that
+ *    stays busy forever (circling and burning quota produces traces, so only an
+ *    absolute limit and `--max-runs` hold it). Its default is RAISED from 15 to 60
+ *    minutes: it is no longer the instrument that notices a hang, and at 15 minutes
+ *    it was cutting live work — both breaks on 2026-07-25 were sessions that were
+ *    working, not stuck;
+ *  - `--max-turns` — a ceiling on the length of the dialogue, not on time. The
+ *    default of 60 was calibrated for short packages, and a mechanically large one
+ *    (the R1 translation) hit it mid-work: `Reached max turns (60)`, a run lost to a
+ *    limit that protects nothing here. 300 is the value john ran the real packages
+ *    at by hand.
+ *
+ * They are defaults, not policy: every one of them is a flag, and per-role ceilings
+ * in the config are R12's question (curator, 15:25) — the shape of that section is
+ * decided there, once, rather than twice.
+ */
+export const DEFAULT_WALL_CLOCK_SECONDS = 3600;
+export const DEFAULT_MAX_TURNS = 300;
+
 /** Why a role is NOT launched by the orchestrator — mechanically, not "claude.ai" by eye. */
 export type LaunchBlock =
   | "inactive"
@@ -82,6 +108,13 @@ export const roleLaunchability = (role: Role): Launchability => {
  * nothing, and the permissions fell out of the contract unnoticed. As long as the
  * argument list lives as an expression inside the spawn, it will fall out again
  * the same way.
+ *
+ * `--output-format stream-json --verbose` is part of the contract, not a display
+ * preference (R6, thread 016). With the default format the agent prints its answer
+ * ONCE, at the end of the run — so a session cut by a deadline or a turn ceiling
+ * leaves nothing behind, and those are precisely the runs the log exists for. The
+ * stream emits an event per step as the work happens; `--verbose` is what the
+ * agent requires of `stream-json` in print mode.
  */
 export const buildLaunchArgv = (input: {
   readonly prompt: string;
@@ -94,6 +127,9 @@ export const buildLaunchArgv = (input: {
   input.launch.allowedTools.join(","),
   "--max-turns",
   input.maxTurns,
+  "--output-format",
+  "stream-json",
+  "--verbose",
 ];
 
 /** A role's permissions in one line — for the `status` display and the launch output. */
