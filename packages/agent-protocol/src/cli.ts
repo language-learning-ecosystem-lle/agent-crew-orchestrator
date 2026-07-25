@@ -45,7 +45,6 @@ import { loadThreads, renderThreadFailures } from "./fs/comms.js";
 import { fileExistsAtRef, mailCheckoutState, messagesAtRef, workdirState } from "./fs/git.js";
 import {
   type ActivityTrace,
-  DEFAULT_IDLE_MS,
   describeQuiet,
   type IdleWatch,
   idleStep,
@@ -73,13 +72,14 @@ import {
 import {
   buildLaunchArgv,
   buildLaunchPrompt,
-  DEFAULT_MAX_TURNS,
-  DEFAULT_WALL_CLOCK_SECONDS,
   DEFAULT_WORKER,
+  describeCeilings,
   describeLaunch,
   LAUNCH_ENV,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
+  type ResolvedCeilings,
+  resolveCeilings,
   roleLaunchability,
 } from "./orchestrator/launch.js";
 import { foldLeases, unclosedLeases } from "./orchestrator/lease.js";
@@ -92,6 +92,7 @@ import {
   sessionIdPath,
   sessionLogPath,
   sessionStreamPath,
+  sessionSupervisorPath,
 } from "./orchestrator/paths.js";
 import {
   agentBinaryVerdict,
@@ -171,7 +172,9 @@ and are not needed in operation; only --ref is required.
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write] [-d|--detach]
+                              # attached by default: you watch what you raised. -d puts the supervisor in the background
+                              # ceilings: the flag wins over the role's launch.limits, which wins over the package default
   agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
@@ -1248,6 +1251,40 @@ const nonNegativeInt = (argv: readonly string[], name: string, fallback: number)
   return value;
 };
 
+/**
+ * A numeric flag that DISTINGUISHES "not given" from a value (R12) — the fallback
+ * form above cannot: it folds absence into the default, and the resolution of the
+ * ceilings has to know whether the operator said anything at all, because a role's
+ * `launch.limits` sits between the flag and the default.
+ */
+const flagInt = (
+  argv: readonly string[],
+  name: string,
+  options?: { readonly allowZero?: boolean },
+): number | undefined => {
+  if (flag(argv, name) === undefined) return undefined;
+  return options?.allowZero === true ? nonNegativeInt(argv, name, 0) : positiveInt(argv, name, 1);
+};
+
+/**
+ * The three ceilings of a run: the flag, then the role's `launch.limits`, then the
+ * package default (R12). Resolved in ONE place for both callers — the manual `run`
+ * and the daemon, which resolves per role inside its loop.
+ */
+const ceilingsFrom = (argv: readonly string[], role: Role): ResolvedCeilings => {
+  const flags: { idleSeconds?: number; wallClockSeconds?: number; maxTurns?: number } = {};
+  const idle = flagInt(argv, "--idle", { allowZero: true });
+  const wallClock = flagInt(argv, "--wall-clock");
+  const maxTurns = flagInt(argv, "--max-turns");
+  if (idle !== undefined) flags.idleSeconds = idle;
+  if (wallClock !== undefined) flags.wallClockSeconds = wallClock;
+  if (maxTurns !== undefined) flags.maxTurns = maxTurns;
+  return resolveCeilings({
+    flags,
+    ...(role.launch?.limits === undefined ? {} : { limits: role.launch.limits }),
+  });
+};
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const appendEvent = (journalPath: string, event: OrchestratorEvent): void => {
@@ -1453,11 +1490,6 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     return "skip";
   }
 
-  // WRITING BEFORE THE SPAWN (curator's requirement 2): should the process die at
-  // startup, from the outside it reads as "an attempt happened and broke off"
-  // rather than "nothing was going on".
-  for (const event of plan.events) appendEvent(p.journalPath, event);
-
   // THE DEATH OF THE OBSERVER ITSELF ALSO LEAVES A TRACE. The 2026-07-25
   // acceptance: the daemon returned control right after the spawn, the session was
   // left an orphan and finished the job — while the lease stayed `running`
@@ -1465,11 +1497,28 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // long done. A lease with nobody left to close it is the worst outcome of all:
   // from the outside it is indistinguishable from normal work.
   //
-  // What is covered: a normal exit, an unhandled exception, SIGINT, SIGTERM.
-  // SIGKILL cannot be intercepted, and we do not promise that.
+  // What is covered: a normal exit, an unhandled exception, SIGINT, SIGTERM and
+  // SIGHUP. SIGKILL cannot be intercepted, and we do not promise that.
+  //
+  // SIGHUP is here since R12 and it is not decoration: an attached run whose
+  // terminal is closed gets exactly that signal, and its DEFAULT action ends the
+  // process without running a single exit handler — the lease would stay `running`
+  // for ever. That is the S9 failure reachable by shutting a laptop lid.
+  //
+  // THE GUARDS ARE INSTALLED BEFORE THE LEASE IS WRITTEN, not after (found by the
+  // runner on R12: a SIGTERM that landed in the stretch between the journal write
+  // and the spawn left the journal at `launch` with no release — the very state
+  // this handler exists to prevent). Two consequences are deliberate:
+  //  - `leased` — before the lease events are on disk there is nothing to close,
+  //    and a release without an acquisition would be a worse lie than silence;
+  //  - `childRef` — the handler may fire before the process exists (the directory,
+  //    the two sinks and the spawn itself are all IO), so it must not assume one.
   let settled = false;
+  let leased = false;
+  let exited = false;
+  let childRef: ReturnType<typeof spawn> | undefined;
   const recordSupervisorGone = (): void => {
-    if (settled) return;
+    if (settled || !leased) return;
     settled = true;
     // WE PUT THE GROUP DOWN BEFORE WRITING — as in the two other release sites.
     // Otherwise the "lease released" record goes into the journal while the
@@ -1478,9 +1527,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // (or a daemon raised by systemd seconds later) would start a SECOND session on
     // the same thread on top of the live first one. This is exactly the class the
     // whole package is built for (reviewer-pr's finding on PR #9).
-    if (!exited && child.pid !== undefined) {
+    if (!exited && childRef?.pid !== undefined) {
       try {
-        process.kill(-child.pid, "SIGTERM");
+        process.kill(-childRef.pid, "SIGTERM");
       } catch {
         // the group is already gone — fine
       }
@@ -1502,16 +1551,25 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     );
     process.exit(1);
   };
-  const onSigint = onSignal("SIGINT");
-  const onSigterm = onSignal("SIGTERM");
-  process.on("SIGINT", onSigint);
-  process.on("SIGTERM", onSigterm);
+  const handlers: readonly [NodeJS.Signals, () => void][] = (
+    ["SIGINT", "SIGTERM", "SIGHUP"] as const
+  ).map((signal) => [signal, onSignal(signal)]);
+  for (const [signal, handler] of handlers) process.on(signal, handler);
   const releaseGuards = (): void => {
     settled = true;
     process.off("exit", recordSupervisorGone);
-    process.off("SIGINT", onSigint);
-    process.off("SIGTERM", onSigterm);
+    for (const [signal, handler] of handlers) process.off(signal, handler);
   };
+
+  // WRITING BEFORE THE SPAWN (curator's requirement 2): should the process die at
+  // startup, from the outside it reads as "an attempt happened and broke off"
+  // rather than "nothing was going on". `leased` is raised from the FIRST event on
+  // — a signal landing between the two writes must still leave a release, not an
+  // acquisition with no end.
+  for (const event of plan.events) {
+    appendEvent(p.journalPath, event);
+    leased = true;
+  }
 
   // THE SESSION OUTPUT IS WRITTEN TO DISK, not only to the operator's screen — and
   // as of R6 it actually arrives there. Two files: the RAW stream as it came
@@ -1560,6 +1618,8 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       },
     },
   );
+  // From here the guard has a group to put down together with the lease.
+  childRef = child;
 
   // A chunk boundary falls in the middle of a JSON line far more often than it
   // looks, so the tail is carried over rather than rendered as it is.
@@ -1605,7 +1665,6 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     }
   });
 
-  let exited = false;
   let exitCode: number | null = null;
   let spawnError: Error | undefined;
   child.on("exit", (code) => {
@@ -1767,6 +1826,73 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
 };
 
 /**
+ * DETACHING A RUN (R12, john's requirement: attached by default, `-d` to send it to
+ * the background).
+ *
+ * Attached is the default because that is what raising ONE agent by hand is for —
+ * you watch it. The background mode is a flag rather than a shell trick for a
+ * reason that is not convenience: `run … &` leaves the supervisor attached to the
+ * terminal, so closing that terminal delivers SIGHUP, whose default action ends the
+ * process WITHOUT running its exit handlers — the lease stays `running` forever and
+ * the journal starts lying "it is working" about something long dead. That is the
+ * exact failure S9 was written for, reachable through the one gesture an operator
+ * would reach for on their own.
+ *
+ * So detaching is done properly: the child gets its OWN session (`detached`), no
+ * controlling terminal to be hung up on, and its output goes to a file beside the
+ * session log. `unref` is what lets us exit while it lives on.
+ *
+ * The parent runs PREFLIGHT FIRST and only then detaches: a refusal has to land on
+ * the terminal of whoever typed the command. A backgrounded run that dies of a
+ * stale mail checkout, printing into a file nobody has been told to read, is the
+ * quiet defect this package exists against. The child repeats the preflight — it is
+ * the one whose verdict binds, and the second fetch is a fast-forward of what the
+ * first one already pulled.
+ */
+const detachRun = (
+  argv: readonly string[],
+  now: Date,
+  supervisorLog: string,
+  sessionLog: string,
+): void => {
+  // The command is re-executed AS IT WAS TYPED, minus the detach flag: rebuilding it
+  // from parsed values would mean maintaining a second spelling of every flag, and
+  // the first one to be forgotten would silently change what runs. `--now` is added
+  // when the operator did not give one, so the child names its files off the same
+  // moment the parent just announced.
+  const passthrough = [
+    ...process.argv.slice(2).filter((argument) => !DETACH_FLAGS.includes(argument)),
+    ...(flag(argv, "--now") === undefined ? ["--now", eventTimestamp(now)] : []),
+  ];
+  mkdirSync(dirname(supervisorLog), { recursive: true });
+  const sink = openSync(supervisorLog, "a");
+  // `process.execPath` + `execArgv` rather than the bin name: the CLI runs under a
+  // loader (tsx), and re-executing "agent-protocol" would require it to be installed
+  // on the PATH of a package that is deliberately not published.
+  const child = spawn(
+    process.execPath,
+    [...process.execArgv, process.argv[1] as string, ...passthrough],
+    {
+      detached: true,
+      stdio: ["ignore", sink, sink],
+      cwd: process.cwd(),
+      env: process.env,
+    },
+  );
+  child.unref();
+  closeSync(sink);
+  out(
+    `agent-protocol: the supervisor went to the background, pid ${child.pid} · its own output ${supervisorLog} · the session ${sessionLog}`,
+  );
+  out(
+    "agent-protocol: it is a normal process — 'orchestrator status' shows the lease, 'orchestrator stop --mode force' ends it",
+  );
+};
+
+/** `-d` is john's spelling; `--detach` is the one that reads in a script. */
+const DETACH_FLAGS = ["--detach", "-d"];
+
+/**
  * The manual launch of ONE role on ONE thread (S1+S2). It resolves the role into a
  * prompt, checks launchability, and hands over to `runOne`. `--exec` (default
  * `claude`) is injected: acceptance aims at the real binary, checks aim at a stub.
@@ -1793,17 +1919,30 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const prompt = buildPromptForRole(role, thread, repo);
 
   const now = orchestratorNow(argv);
-  const wallClockMs = positiveInt(argv, "--wall-clock", DEFAULT_WALL_CLOCK_SECONDS) * 1000;
-  // `--idle 0` switches the detector off — the honest way to say "watch by the wall
-  // clock only", without a second flag beside it.
-  const idleMs = nonNegativeInt(argv, "--idle", DEFAULT_IDLE_MS / 1000) * 1000;
+  // The flag, then the role's `launch.limits`, then the package default (R12) —
+  // and the line below says which of the three each number came from.
+  const ceilings = ceilingsFrom(argv, role);
+  const wallClockMs = ceilings.wallClock.value * 1000;
+  const idleMs = ceilings.idle.value * 1000;
   const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const exec = flag(argv, "--exec") ?? "claude";
-  const maxTurns = String(positiveInt(argv, "--max-turns", DEFAULT_MAX_TURNS));
+  const maxTurns = String(ceilings.maxTurns.value);
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
 
+  const detach = DETACH_FLAGS.some((name) => argv.includes(name));
+
   if (!argv.includes("--write")) {
+    // A dry run has nothing to background: it prints a plan and exits. Accepting the
+    // flag silently would return a prompt and no process — indistinguishable, from
+    // the terminal, from a run that started and died.
+    if (detach) {
+      fail(
+        "--detach without --write: a dry run prints its plan here, there is nothing to background",
+        2,
+      );
+      return;
+    }
     const events = existsSync(journalPath)
       ? parseJournal(readFile(journalPath, "orchestrator journal"))
       : [];
@@ -1815,6 +1954,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     out(
       `agent-protocol: would run '${exec} -p' and watch for the turn to be passed on ${thread} (role ${roleId}, deadline ${plan.deadline}, poll ${pollMs / 1000}s); --write performs it. Pre-events:`,
     );
+    out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
     for (const event of plan.events) out(renderEventLine(event));
     return;
   }
@@ -1836,6 +1976,15 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     thread,
     eventTimestamp(now),
   );
+  // The background mode forks HERE — after preflight (its refusals belong on the
+  // terminal) and after the session path is known, so the parent can name the file
+  // to watch. `--now` travels with the child precisely so that both halves derive
+  // the same name from the same moment.
+  if (detach) {
+    detachRun(argv, now, sessionSupervisorPath(sessionLog), sessionLog);
+    return;
+  }
+  out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
   const reason = await runOne({
     journalPath,
     mailRoot,
@@ -1906,18 +2055,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     .map((role) => role.id);
 
   const tickMs = positiveInt(argv, "--tick", 30) * 1000;
-  const wallClockMs = positiveInt(argv, "--wall-clock", DEFAULT_WALL_CLOCK_SECONDS) * 1000;
-  // `--idle 0` switches the detector off — the honest way to say "watch by the wall
-  // clock only", without a second flag beside it.
-  const idleMs = nonNegativeInt(argv, "--idle", DEFAULT_IDLE_MS / 1000) * 1000;
   const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const exec = flag(argv, "--exec") ?? "claude";
   // What the raised sessions call themselves in the messages they write (R7). It
   // stands beside `--exec` on purpose: change the binary and you change the answer.
   const worker = flag(argv, "--worker") ?? DEFAULT_WORKER;
-  const maxTurns = String(positiveInt(argv, "--max-turns", DEFAULT_MAX_TURNS));
   const once = argv.includes("--once"); // a single tick — for checks
+  // THE CEILINGS ARE RESOLVED PER ROLE, in the launch branch below — not once here
+  // (R12). A daemon raises different roles, and `launch.limits` belongs to the role
+  // it launches; hoisting the resolution out of the loop would silently give every
+  // role the ceilings of whichever one happened to be first.
 
   // Preflight BEFORE the loop: a daemon started without the agent binary or with
   // stale mail "works" — and does the wrong thing. A refusal before the first
@@ -2014,6 +2162,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           decision.thread,
           eventTimestamp(startedAt),
         );
+        const ceilings = ceilingsFrom(argv, role);
+        out(`agent-protocol: daemon — ${decision.role} ceilings: ${describeCeilings(ceilings)}`);
         const reason = await runOne({
           journalPath,
           mailRoot,
@@ -2021,16 +2171,16 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           thread: decision.thread,
           prompt: buildPromptForRole(role, decision.thread, repo),
           exec,
-          maxTurns,
+          maxTurns: String(ceilings.maxTurns.value),
           launch: role.launch,
           env: childEnv,
           sessionLog,
           sessionStream: sessionStreamPath(sessionLog),
           sessionIdFile: sessionIdPath(sessionLog),
           worker,
-          wallClockMs,
+          wallClockMs: ceilings.wallClock.value * 1000,
           pollMs,
-          idleMs,
+          idleMs: ceilings.idle.value * 1000,
           repo,
           ids,
           now: startedAt,

@@ -31,7 +31,18 @@
  * running `node --version`) live in the CLI, where they belong.
  */
 
-export type CheckStatus = "ok" | "fail";
+/**
+ * THREE OUTCOMES, NOT TWO (R12, thread 016). `ok` is a verdict — something was
+ * compared against an expectation and matched; `info` is a FACT nobody promised
+ * anything about; `fail` stops the circuit.
+ *
+ * The split was paid for twice: preflight printed `✓ working tree:
+ * agent-protocol/tails-readme` before two runs that then started work from the
+ * previous package's branch. The line was true and the tick was a lie — a check
+ * with no expectation to compare against cannot pass, it can only report. A tick
+ * on a line nobody verified is worse than no line: it is read as "checked".
+ */
+export type CheckStatus = "ok" | "info" | "fail";
 
 export type PreflightCheck = {
   readonly name: string;
@@ -103,9 +114,9 @@ export const agentBinaryVerdict = (exec: string, resolved: string | null): Prefl
 });
 
 /**
- * The verdict on the environment: we show WHAT THE CHILD WILL INHERIT. The check
- * is soft by construction — the package does not know which version is "right"
- * for someone else's project; its job is to show the fact, not to judge it.
+ * The environment: we show WHAT THE CHILD WILL INHERIT. It is `info` and never
+ * `ok` — the package does not know which node version is "right" for someone
+ * else's project, so there is nothing here it could pass or fail.
  */
 export const environmentVerdict = (input: {
   readonly nodeVersion: string | null;
@@ -117,28 +128,37 @@ export const environmentVerdict = (input: {
       : `preamble: ${input.appliedKeys.join(", ")}`;
   return {
     name: "environment: through the child's eyes",
-    status: "ok",
+    status: "info",
     detail: `node ${input.nodeVersion ?? "not resolved"} · ${preamble}`,
   };
 };
 
+/** Only `fail` stops the circuit: a fact that was never a verdict cannot refuse one. */
 export const preflightPassed = (checks: readonly PreflightCheck[]): boolean =>
-  checks.every((check) => check.status === "ok");
+  checks.every((check) => check.status !== "fail");
+
+/** The marks: a tick is a passed COMPARISON, a dot is a fact, a cross stops the run. */
+const MARK: Record<CheckStatus, string> = { ok: "✓", info: "·", fail: "✗" };
 
 /**
  * The display. Printed IN FULL always, not only on failure: "what has been
  * checked" is in itself the answer to "what I no longer have to remember".
  */
 export const renderPreflight = (checks: readonly PreflightCheck[]): string =>
-  checks
-    .map((check) => `${check.status === "ok" ? "✓" : "✗"} ${check.name}: ${check.detail}`)
-    .join("\n");
+  checks.map((check) => `${MARK[check.status]} ${check.name}: ${check.detail}`).join("\n");
 
 /**
  * The verdict on the WORKING repository the session lands in. The fact is printed
  * always; a refusal only if the project declared an expected branch. The package
  * does not know which branch is "right" for someone else's repository and will not
  * invent one.
+ *
+ * WITH NO EXPECTATION DECLARED THE LINE IS `info`, NOT `ok` (R12). Twice a run
+ * started from the previous package's branch under a tick that said `✓ working
+ * tree: agent-protocol/tails-readme` — the branch name was right there and read as
+ * confirmation. Nothing had been compared: the project had declared nothing to
+ * compare against. Now the mark says which of the two it is, and a project that
+ * wants the check to bite writes `orchestrator.workdir.branch`.
  */
 export const workdirVerdict = (input: {
   readonly branch: string;
@@ -146,12 +166,19 @@ export const workdirVerdict = (input: {
   readonly expectedBranch?: string;
 }): PreflightCheck => {
   const state = `${input.branch}${input.dirty ? ", has unsaved changes" : ""}`;
-  if (input.expectedBranch !== undefined && input.branch !== input.expectedBranch) {
+  if (input.expectedBranch === undefined) {
+    return {
+      name: "working tree",
+      status: "info",
+      detail: `${state} — no expected branch declared (orchestrator.workdir.branch), nothing was compared`,
+    };
+  }
+  if (input.branch !== input.expectedBranch) {
     return {
       name: "working tree",
       status: "fail",
       detail: `the session would land on '${input.branch}', while the project expects '${input.expectedBranch}'`,
     };
   }
-  return { name: "working tree", status: "ok", detail: state };
+  return { name: "working tree", status: "ok", detail: `${state}, matches the expected branch` };
 };

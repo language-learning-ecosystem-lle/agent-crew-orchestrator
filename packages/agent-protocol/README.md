@@ -92,6 +92,14 @@ of the PR branch, the circuit must look at `origin/main`.
 Freshness is part of the operation: `origin/*` goes stale silently without a
 `fetch`, so the command does the update itself, and `--no-fetch` prints a warning.
 
+A role's `launch` section is the LAUNCH CONTRACT of that role: `allowedTools` (what
+a raised session may do) and, since R12, `limits` — `idleSeconds`,
+`wallClockSeconds`, `maxTurns`, all optional. They sit together because they answer
+one question, "what a run of this role is allowed to be", and a role that needs its
+own permissions is exactly the one that needs its own window. Anything the config
+leaves unsaid falls through to the package default; `idleSeconds: 0` switches the
+idle detector off, as `--idle 0` does.
+
 A role's `instructions` is an array, and the order is the reading order (the
 general rules of the project first, then the role card). `kind: external` means the
 text lies in the repository but is EXECUTED outside (a skill on the chat side) —
@@ -129,6 +137,7 @@ rather than going through that door.
 | ------- | ----- |
 | 1 | the initial one: `_meta.md` + `messages/` with `from`/`date`/`expects`/`waiting-on`, the config with `roles`/`mail`/`orchestrator`, the journal of `lease-*`/`launch`/`stop` events |
 | 2 | + provenance in the message header: `worker` and `session`. Optional on READ (history, legacy threads and the migration window cannot be repaired), `worker` REQUIRED on a write. The migration stated the absence outright on everything already written — `worker: unknown`, 331 files, 2026-07-25 |
+| 3 | + per-role run ceilings: `roles[].launch.limits` (`idleSeconds`, `wallClockSeconds`, `maxTurns`), every field optional. NO data moves — a version-2 config is already a valid version-3 one; the number exists so an older build says "update the package" instead of "unrecognized key" |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -199,6 +208,20 @@ between them the circuit has to keep running:
    straight into its branch, as all mail does);
 3. **contract** — merge the PR that bumps both numbers and starts WRITING the new
    shape.
+
+**A step that moves NO DATA lands in ONE PR, and that is not an exception to the
+order but the order with an empty middle (R12).** The three landings exist because
+the middle one — running `schema migrate --write` over committed mail — must be
+performed by a merged package, and because the mail and the config live in
+different branches, so they cannot move in one commit. A version that only widens a
+schema has nothing in that middle: no message, no thread, no journal line changes,
+and the only file the step would touch is the config, whose number is carried by
+hand anyway. What is left is the reader and the pair of numbers, and those may not
+be split — they are one statement. Splitting them here would buy a second review
+cycle and pay for it with a window in which the package accepts a field the config
+is not allowed to carry yet. The registered step still earns its place: for a
+repository that carries this package and is not this one, it IS the answer to "my
+config is at 2, what now".
 
 **Why the order is not negotiable, learned on R7 — the migration is run by the
 MERGED package, never by the branch under review.** Compressing all three into one PR
@@ -357,7 +380,9 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>]  
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
-                            [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--now <iso>] [--write]
+                            [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--now <iso>] [--write] [-d|--detach]
+                            # attached by default (you watch what you raised); -d backgrounds the supervisor properly
+                            # the three ceilings: the flag beats roles[].launch.limits, which beats the package default
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--once]
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
@@ -522,6 +547,33 @@ then a refusal); and global — `MAX_CONSECUTIVE_RUNS` launches in a row without
 single `completed` (aimed at the S3 auto loop). `--exec` (default `claude`) is
 injected: e2e and live acceptance aim at the real binary, the mechanics checks aim
 at a stub.
+
+**ATTACHED BY DEFAULT, `-d`/`--detach` FOR THE BACKGROUND (R12).** Raising one
+agent by hand is something you watch, so `run` holds the terminal and relays the
+session's lines to it. The background mode is a flag rather than a shell trick, and
+not out of politeness: `run … &` leaves the supervisor attached to that terminal,
+and closing it delivers SIGHUP, whose DEFAULT action ends the process without
+running a single exit handler — the lease stays `running` for ever and the journal
+starts lying "it is working" about something long dead. That is the S9 failure,
+reachable by shutting a laptop lid. So `-d` does it properly: the supervisor gets
+its own session with no controlling terminal to be hung up on, its output goes to
+`<run>.supervisor` beside the session log, and the parent prints the pid and both
+paths before returning the prompt. `--detach` without `--write` is REFUSED — a dry
+run prints its plan and exits, and backgrounding it would return a prompt and no
+process. SIGHUP is handled in the attached case too, for the same reason it had to
+be named at all.
+
+**THE THREE CEILINGS ARE PER ROLE (R12).** `--idle`, `--wall-clock` and
+`--max-turns` are resolved as **the flag, then the role's `launch.limits`, then the
+package default**, field by field and independently — naming one flag does not
+return the other two to their defaults. The flag wins because it is the most
+specific statement there is: a human typed it for THIS run. Every launch prints the
+line `ceilings — idle 600s (role) · wall-clock 3600s (role) · max-turns 300
+(role)`, the source included: a run cut short is a different fact depending on
+whether the project asked for that window or the package did, and until R12 the
+output said only "timeout". The daemon resolves them PER ROLE inside its loop, not
+once at startup — it raises different roles, and hoisting the resolution would give
+every one of them the ceilings of whichever came first.
 
 ### S2 — stopping on completion
 
@@ -775,6 +827,16 @@ not forget" item.
   is nothing for it to diverge from. The refusal is opt-in through
   `orchestrator.workdir.branch`: which branch is "right" is knowledge of the
   project, not of the package.
+
+**A LINE THAT COMPARED NOTHING NO LONGER WEARS A TICK (R12).** A check has three
+outcomes, not two: `✓` is a passed COMPARISON, `·` is a fact nobody promised
+anything about, `✗` stops the circuit. The distinction was paid for twice — twice a
+run began from the previous package's branch under `✓ working tree:
+agent-protocol/tails-readme`. The line was true, the branch name was right there,
+and the tick was read as confirmation of something that had never been checked,
+because the project had declared nothing to check against. The working tree with no
+declared branch and the environment probe are `info` now; only `fail` refuses, so
+nothing that used to start stopped starting.
 
 **Toolchain management (`nvm use` and the like) is not handed to the package** —
 that is knowledge about the project, and the package has none of it. The project

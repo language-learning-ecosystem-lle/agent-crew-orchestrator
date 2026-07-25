@@ -46,13 +46,14 @@
 import type { MigrationContext, MigrationFile, MigrationStep } from "./step.js";
 import { MigrationRefusedError } from "./step.js";
 import { MESSAGE_PROVENANCE_STEP } from "./v2-provenance.js";
+import { LAUNCH_LIMITS_STEP } from "./v3-launch-limits.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
  * matter: the chain is assembled by looking up `from`, so a step cannot be applied
  * out of turn by being listed out of turn.
  */
-export const MIGRATIONS: readonly MigrationStep[] = [MESSAGE_PROVENANCE_STEP];
+export const MIGRATIONS: readonly MigrationStep[] = [MESSAGE_PROVENANCE_STEP, LAUNCH_LIMITS_STEP];
 
 export type {
   MigrationContext,

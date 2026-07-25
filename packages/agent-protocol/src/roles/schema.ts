@@ -113,9 +113,38 @@ export const zonesSchema = z.strictObject({
  * protection on `main`, the lease deadline, the run ceiling, stop/force in john's
  * hands.
  */
+/**
+ * THE CEILINGS OF ONE ROLE'S RUN (R12, thread 016) — the shape deferred out of R6
+ * on purpose: putting a global `orchestrator.limits` in then and migrating it to a
+ * per-role one now would have cost two migrations for one decision.
+ *
+ * WHY BESIDE `allowedTools` AND NOT IN A SECTION OF THEIR OWN. The launch profile
+ * already answers "what a raised session of this role may do"; how long it may run
+ * and how many turns it may take is the same contract, and a role that needs
+ * different permissions is exactly the kind of role that needs a different window.
+ * A separate global section would also give the project two places to say one
+ * thing: the package's defaults are already the global layer.
+ *
+ * EVERY FIELD IS OPTIONAL AND THERE IS NO DEFAULT HERE. A ceiling the config is
+ * silent about falls through to the package default, and the resolution prints
+ * WHERE each number came from (`resolveCeilings` in `orchestrator/launch.ts`) — a
+ * ceiling that fired is worth nothing if one cannot tell who set it.
+ *
+ * The units are in the names: seconds for the two clocks, a plain count for the
+ * turns. `idleSeconds: 0` switches the idle detector off, exactly as `--idle 0`
+ * does — the honest way to say "watch by the wall clock only".
+ */
+export const launchLimitsSchema = z.strictObject({
+  idleSeconds: z.number().int().min(0).optional(),
+  wallClockSeconds: z.number().int().min(1).optional(),
+  maxTurns: z.number().int().min(1).optional(),
+});
+
 export const launchSchema = z.strictObject({
   /** Session tools — passed to `--allowedTools` as is, order preserved. */
   allowedTools: z.array(z.string().min(1)).min(1),
+  /** The ceilings of a run of THIS role; anything unsaid falls through to the package default. */
+  limits: launchLimitsSchema.optional(),
 });
 
 export const roleSchema = z.strictObject({
@@ -144,3 +173,4 @@ export type RoleStatus = z.infer<typeof roleStatusSchema>;
 export type Role = z.infer<typeof roleSchema>;
 export type Instructions = z.infer<typeof instructionsSchema>;
 export type Launch = z.infer<typeof launchSchema>;
+export type LaunchLimits = z.infer<typeof launchLimitsSchema>;

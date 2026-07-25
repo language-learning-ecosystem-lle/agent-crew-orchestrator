@@ -139,6 +139,12 @@ const run = (repo: string, exec: string): { code: number; out: string } => {
 const journal = (repo: string): ReturnType<typeof parseJournal> =>
   parseJournal(readFileSync(join(repo, ".orchestrator", "journal.jsonl"), "utf8"));
 
+/** Has the run got as far as opening its session log — i.e. is there a session to kill? */
+const sessionLogExists = (repo: string): boolean => {
+  const dir = join(repo, ".orchestrator", "sessions");
+  return existsSync(dir) && readdirSync(dir).some((name) => name.endsWith(".log"));
+};
+
 /** The session log of a run — the file the journal points at. */
 const sessionLog = (repo: string): string => {
   const dir = join(repo, ".orchestrator", "sessions");
@@ -253,7 +259,18 @@ describe("running a role as a process — the outcome is always recorded", () =>
       ],
       { cwd: repo, stdio: "ignore" },
     );
-    await new Promise((resolve) => setTimeout(resolve, 12_000));
+    // WAIT FOR THE STATE, NOT FOR A CLOCK. The fixed pause this replaced measured
+    // the runner's mood: on a loaded CI machine the twelve seconds ran out while the
+    // supervisor was still starting, the signal landed before it had a session to
+    // watch, and the test failed for a reason that had nothing to do with the
+    // invariant. The precondition it actually needs is "the session is up and
+    // producing" — the log of the run says so.
+    const started = Date.now();
+    while (Date.now() - started < 45_000 && !sessionLogExists(repo)) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    // A moment of real work after the spawn, so the kill hits a live session.
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
     child.kill("SIGTERM");
     await new Promise((resolve) => setTimeout(resolve, 3_000));
 
@@ -412,5 +429,108 @@ describe("the session is told what it is and learns its own id (R7)", () => {
 
     const dir = join(repo, ".orchestrator", "sessions");
     expect(readdirSync(dir).filter((name) => name.endsWith(".session"))).toEqual([]);
+  }, 60_000);
+});
+
+describe("attached by default, detached on request (R12)", () => {
+  /** The command as `run` above, plus whatever this test needs. */
+  const runWith = (repo: string, extra: readonly string[]): { code: number; out: string } => {
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "orchestrator",
+          "run",
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--repo",
+          repo,
+          "--role",
+          "dev-core",
+          "--thread",
+          "012-x",
+          "--poll",
+          "1",
+          ...extra,
+        ],
+        { cwd: repo, encoding: "utf8", stdio: "pipe" },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("--detach returns the terminal at once and the supervisor still records the outcome", async () => {
+    // The whole point of the flag: the run outlives the command that started it. If
+    // it did not, `-d` would just be a fancier way of losing the lease.
+    const { repo } = contour();
+    const exec = stub(repo, "sleep 6");
+
+    const started = Date.now();
+    const result = runWith(repo, ["--exec", exec, "--wall-clock", "60", "--write", "-d"]);
+    const returnedAfter = Date.now() - started;
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("went to the background");
+    // The stub alone sleeps six seconds; returning inside that window is the proof
+    // that we did not simply wait for it.
+    expect(returnedAfter).toBeLessThan(6_000);
+
+    // …and the detached supervisor closes the lease on its own, later.
+    await new Promise((resolve) => setTimeout(resolve, 12_000));
+    expect(journal(repo).at(-1)).toMatchObject({ kind: "lease-released" });
+
+    // Its own words went to a file: a background run has no terminal, and a
+    // supervisor that speaks into /dev/null cannot be examined after a break.
+    const dir = join(repo, ".orchestrator", "sessions");
+    const supervisor = readdirSync(dir).filter((name) => name.endsWith(".supervisor"));
+    expect(supervisor).toHaveLength(1);
+    expect(readFileSync(join(dir, supervisor[0] as string), "utf8").length).toBeGreaterThan(0);
+  }, 60_000);
+
+  it("--detach without --write is REFUSED: a dry run has nothing to background", () => {
+    const { repo } = contour();
+    const result = runWith(repo, ["--exec", "/bin/true", "--detach"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("nothing to background");
+  }, 60_000);
+
+  it("the ceilings of the RUN come from the role's config and say so", () => {
+    // The wiring, not the pure resolver: `launch.limits` has to travel from the
+    // config file into the numbers the run is actually held to.
+    const { repo } = contour();
+    const config = join(repo, "agent-protocol.json");
+    const raw = JSON.parse(readFileSync(config, "utf8")) as typeof CONFIG;
+    (raw.roles[0] as { launch: { limits?: unknown } }).launch.limits = {
+      idleSeconds: 0,
+      wallClockSeconds: 45,
+      maxTurns: 17,
+    };
+    writeFileSync(config, `${JSON.stringify(raw, null, 2)}\n`);
+    git(repo, "commit", "-qam", "limits");
+
+    const result = runWith(repo, ["--exec", stub(repo, "sleep 1"), "--write"]);
+
+    expect(result.out).toContain("wall-clock 45s (role)");
+    expect(result.out).toContain("max-turns 17 (role)");
+    expect(result.out).toContain("idle off (role)");
+  }, 60_000);
+
+  it("a flag beats the role's ceiling — a human typed it for THIS run", () => {
+    const { repo } = contour();
+    const config = join(repo, "agent-protocol.json");
+    const raw = JSON.parse(readFileSync(config, "utf8")) as typeof CONFIG;
+    (raw.roles[0] as { launch: { limits?: unknown } }).launch.limits = { maxTurns: 17 };
+    writeFileSync(config, `${JSON.stringify(raw, null, 2)}\n`);
+    git(repo, "commit", "-qam", "limits");
+
+    const result = runWith(repo, ["--exec", stub(repo, "sleep 1"), "--max-turns", "5", "--write"]);
+
+    expect(result.out).toContain("max-turns 5 (flag)");
   }, 60_000);
 });

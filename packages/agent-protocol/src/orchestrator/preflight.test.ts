@@ -83,18 +83,28 @@ describe("environmentVerdict", () => {
     expect(verdict.detail).toContain("preamble: PATH");
   });
 
-  it("the check is soft: the package does not know which version is 'right' for a foreign project", () => {
-    expect(environmentVerdict({ nodeVersion: null, appliedKeys: [] }).status).toBe("ok");
+  it("nothing here is a verdict: with no 'right' version to compare against the line is info, not ok", () => {
+    // R12: the environment check never compared anything, so it never earned a
+    // tick. Its status says so now.
+    expect(environmentVerdict({ nodeVersion: null, appliedKeys: [] }).status).toBe("info");
   });
 });
 
 describe("the verdict and the display", () => {
   const ok: PreflightCheck = { name: "a", status: "ok", detail: "d" };
   const bad: PreflightCheck = { name: "b", status: "fail", detail: "why" };
+  const fact: PreflightCheck = { name: "c", status: "info", detail: "as it is" };
 
   it("a single failure fails the whole preflight", () => {
     expect(preflightPassed([ok, ok])).toBe(true);
     expect(preflightPassed([ok, bad])).toBe(false);
+  });
+
+  it("a fact does not stop the circuit — only a refusal does", () => {
+    // Otherwise the new status would silently become a third way to fail, and every
+    // run without a declared workdir branch would stop starting.
+    expect(preflightPassed([ok, fact])).toBe(true);
+    expect(preflightPassed([fact, bad])).toBe(false);
   });
 
   it("printed IN FULL: what has been checked is an answer in itself", () => {
@@ -103,18 +113,32 @@ describe("the verdict and the display", () => {
     expect(rendered).toContain("✓ a");
     expect(rendered).toContain("✗ b: why");
   });
+
+  it("THE MARKS DIFFER: a tick is a passed comparison, a dot is a fact (R12)", () => {
+    // The reason for the whole status: `✓ working tree: agent-protocol/tails-readme`
+    // was printed before two runs that then worked from the wrong branch. The tick
+    // was read as confirmation of something nobody had checked.
+    const rendered = renderPreflight([ok, fact, bad]);
+    expect(rendered).toContain("✓ a");
+    expect(rendered).toContain("· c: as it is");
+    expect(rendered).toContain("✗ b: why");
+    expect(rendered).not.toContain("✓ c");
+  });
 });
 
 describe("workdirVerdict — the session lands in the working repository as it is", () => {
-  it("with no declared branch it is only a fact, no refusal: the package does not know the 'right' one", () => {
+  it("with no declared branch it is a FACT and not a tick: nothing was compared (R12)", () => {
     const verdict = workdirVerdict({ branch: "feature/x", dirty: false });
-    expect(verdict.status).toBe("ok");
+    expect(verdict.status).toBe("info");
     expect(verdict.detail).toContain("feature/x");
+    // And it says what to write to make the check bite, rather than leaving the
+    // operator to find the field in the README.
+    expect(verdict.detail).toContain("orchestrator.workdir.branch");
   });
 
   it("dirtiness is shown as a fact, but does not fail on its own", () => {
     expect(workdirVerdict({ branch: "main", dirty: true })).toMatchObject({
-      status: "ok",
+      status: "info",
     });
     expect(workdirVerdict({ branch: "main", dirty: true }).detail).toContain("unsaved");
   });

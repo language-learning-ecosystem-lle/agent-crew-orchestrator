@@ -6,6 +6,7 @@ import {
   sessionIdPath,
   sessionLogPath,
   sessionStreamPath,
+  sessionSupervisorPath,
 } from "./paths.js";
 
 const input = {
@@ -60,5 +61,16 @@ describe("sessionIdPath", () => {
 
     expect(sessionIdPath(log)).toBe(log.replace(/\.log$/, ".session"));
     expect(sessionStreamPath(log)).toBe(log.replace(/\.log$/, ".jsonl"));
+  });
+});
+
+describe("sessionSupervisorPath", () => {
+  it("is the fourth file of one run's family — what the OBSERVER said (R12)", () => {
+    const log = sessionLogPath("/s", "dev-core", "016-x", "2026-07-25T18:00:00Z");
+
+    expect(sessionSupervisorPath(log)).toBe(log.replace(/\.log$/, ".supervisor"));
+    // One run is one name in a directory listing, four extensions apart.
+    const names = [log, sessionStreamPath(log), sessionIdPath(log), sessionSupervisorPath(log)];
+    expect(new Set(names.map((name) => name.replace(/\.[^.]+$/, ""))).size).toBe(1);
   });
 });
