@@ -11,17 +11,17 @@ import {
 } from "./write.js";
 
 describe("messageTimestamp", () => {
-  it("даёт UTC-метку без миллисекунд", () => {
+  it("gives a UTC stamp without milliseconds", () => {
     expect(messageTimestamp(new Date("2026-07-24T10:30:00.123Z"))).toBe("2026-07-24T10:30:00Z");
   });
 });
 
 describe("nextMessageTimestamp", () => {
-  it("без предыдущих новых сообщений — просто метка now", () => {
+  it("with no previous new messages — simply the stamp of now", () => {
     expect(nextMessageTimestamp(new Date("2026-07-23T22:45:21Z"), [])).toBe("2026-07-23T22:45:21Z");
   });
 
-  it("now позже последней — берём now", () => {
+  it("now is later than the last one — take now", () => {
     expect(
       nextMessageTimestamp(new Date("2026-07-23T22:50:00Z"), [
         "2026-07-23T22:32:28Z",
@@ -30,10 +30,11 @@ describe("nextMessageTimestamp", () => {
     ).toBe("2026-07-23T22:50:00Z");
   });
 
-  it("часы писателя ПОЗАДИ последней метки — кламп на секунду после неё, не раньше вопроса", () => {
-    // Реальный случай 012: ответ пишется в 22:45 (мои часы), а вопрос curator,
-    // на который он отвечает, уже лежит с меткой 22:47 (часы curator впереди).
-    // Без клампа ответ встал бы ПЕРЕД вопросом.
+  it("the writer's clock is BEHIND the last stamp — clamp to a second after it, not before the question", () => {
+    // A real case in 012: the reply is written at 22:45 (my clock), while
+    // curator's question it answers already lies with the stamp 22:47 (curator's
+    // clock runs ahead). Without the clamp the reply would land BEFORE the
+    // question.
     expect(
       nextMessageTimestamp(new Date("2026-07-23T22:45:21Z"), [
         "2026-07-23T22:32:28Z",
@@ -48,18 +49,18 @@ describe("planNewMessage", () => {
     from: "dev-core",
     date: "2026-07-24T10:30:00Z",
     expects: "answer" as const,
-    text: "Текст сообщения.",
+    text: "Message text.",
     threadHasMessages: true,
   };
 
-  it("ОТКАЗЫВАЕТСЯ писать в тред без messages/ (legacy)", () => {
-    // Тот самый гард: файловая запись в немигрированный тред обрезала бы его
-    // историю до одного файла (msg-034/056).
+  it("REFUSES to write into a thread without messages/ (legacy)", () => {
+    // That very guard: a file write into a non-migrated thread would truncate its
+    // history down to a single file (msg-034/056).
     expect(() => planNewMessage({ ...base, threadHasMessages: false })).toThrow(WriteRefusedError);
-    expect(() => planNewMessage({ ...base, threadHasMessages: false })).toThrow(/legacy-форме/);
+    expect(() => planNewMessage({ ...base, threadHasMessages: false })).toThrow(/legacy form/);
   });
 
-  it("создаёт файл с именем из метки времени и роли, без seq/msg", () => {
+  it("creates a file named from the timestamp and the role, without seq/msg", () => {
     const planned = planNewMessage(base);
 
     expect(planned.path).toBe("messages/2026-07-24T10-30-00Z-dev-core.md");
@@ -69,31 +70,31 @@ describe("planNewMessage", () => {
       date: "2026-07-24T10:30:00Z",
       expects: "answer",
     });
-    expect(parsed.text).toBe("Текст сообщения.");
+    expect(parsed.text).toBe("Message text.");
   });
 
-  it("кладёт waiting-on полем, когда он задан", () => {
+  it("puts waiting-on in as a field when it is given", () => {
     const parsed = parseMessageFile(planNewMessage({ ...base, waitingOn: ["curator"] }).content);
 
     expect(parsed.fields.waitingOn).toEqual(["curator"]);
   });
 
-  it("отказывается на пустом теле", () => {
-    expect(() => planNewMessage({ ...base, text: "   " })).toThrow(/пусто/);
+  it("refuses on an empty body", () => {
+    expect(() => planNewMessage({ ...base, text: "   " })).toThrow(/empty/);
   });
 });
 
 describe("planNewThread", () => {
   const base = {
-    title: "015-new · тред",
+    title: "015-new · thread",
     participants: ["curator", "dev-core"],
     from: "curator",
     date: "2026-07-24T10:30:00Z",
     expects: "answer" as const,
-    text: "Первое сообщение.",
+    text: "First message.",
   };
 
-  it("рождает тред СРАЗУ в файловой форме: _meta.md + первое сообщение", () => {
+  it("creates a thread STRAIGHT in the file form: _meta.md + the first message", () => {
     const files = planNewThread(base);
 
     expect(files.map((f) => f.path)).toEqual([
@@ -102,16 +103,16 @@ describe("planNewThread", () => {
     ]);
     const meta = parseMetaFile(files[0]?.content ?? "");
     expect(meta).toEqual({
-      title: "015-new · тред",
+      title: "015-new · thread",
       participants: ["curator", "dev-core"],
       status: "open",
     });
-    expect(parseMessageFile(files[1]?.content ?? "").text).toBe("Первое сообщение.");
+    expect(parseMessageFile(files[1]?.content ?? "").text).toBe("First message.");
   });
 
-  it("новый тред файловый по построению — legacy больше не рождается", () => {
-    // planNewThread не имеет ветки threadHasMessages=false: тред создаётся
-    // только файловым, поэтому new-message в него никогда не упрётся.
+  it("a new thread is file-based by construction — legacy ones are no longer born", () => {
+    // planNewThread has no threadHasMessages=false branch: a thread is only ever
+    // created in the file form, so new-message will never hit one.
     const files = planNewThread(base);
     expect(files.some((f) => f.path.startsWith("messages/"))).toBe(true);
   });

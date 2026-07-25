@@ -33,22 +33,22 @@ const launch = (role: string, thread: string): OrchestratorEvent => ({
 
 const base = { events: [] as OrchestratorEvent[], candidates: cand, now: NOW };
 
-describe("planTick — тормоз и выключение (требования 2, 3)", () => {
-  it("стоп-флаг → halt, даже при enabled и кандидатах", () => {
+describe("planTick — the brake and the off switch (requirements 2, 3)", () => {
+  it("the stop flag → halt, even when enabled and with candidates", () => {
     expect(planTick({ ...base, enabled: true, stopped: true })).toEqual({ kind: "halt" });
   });
 
-  it("не включён → disabled (стартовое состояние — выключено)", () => {
+  it("not enabled → disabled (the starting state is off)", () => {
     expect(planTick({ ...base, enabled: false, stopped: false })).toEqual({ kind: "disabled" });
   });
 
-  it("стоп перекрывает включение", () => {
+  it("stop overrides enable", () => {
     expect(planTick({ ...base, enabled: true, stopped: true }).kind).toBe("halt");
   });
 });
 
-describe("planTick — запуск", () => {
-  it("включён, кандидат свеж → launch первого пригодного", () => {
+describe("planTick — launching", () => {
+  it("enabled, a fresh candidate → launch the first suitable one", () => {
     expect(planTick({ ...base, enabled: true, stopped: false })).toEqual({
       kind: "launch",
       role: "dev-core",
@@ -56,13 +56,13 @@ describe("planTick — запуск", () => {
     });
   });
 
-  it("нет кандидатов → idle", () => {
+  it("no candidates → idle", () => {
     expect(planTick({ ...base, candidates: [], enabled: true, stopped: false })).toEqual({
       kind: "idle",
     });
   });
 
-  it("связка уже running → пропущена (idle, если других нет)", () => {
+  it("the pair is already running → skipped (idle, if there are no others)", () => {
     expect(
       planTick({
         ...base,
@@ -73,7 +73,7 @@ describe("planTick — запуск", () => {
     ).toEqual({ kind: "idle" });
   });
 
-  it("связка exhausted → пропущена (потолок попыток на треде)", () => {
+  it("an exhausted pair → skipped (the attempt ceiling on the thread)", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < 3; i += 1) {
       events.push(acquire("dev-core", "t1"), released("dev-core", "t1", "timeout"));
@@ -81,7 +81,7 @@ describe("planTick — запуск", () => {
     expect(planTick({ ...base, events, enabled: true, stopped: false })).toEqual({ kind: "idle" });
   });
 
-  it("выбирает ПЕРВУЮ пригодную, пропуская активную", () => {
+  it("picks the FIRST suitable one, skipping the active pair", () => {
     const candidates: Candidate[] = [
       { role: "dev-core", thread: "busy" },
       { role: "dev-core", thread: "free" },
@@ -97,21 +97,21 @@ describe("planTick — запуск", () => {
   });
 });
 
-describe("planTick — hold ручной сессии (S5)", () => {
-  it("роль занята человеком → held с её именем, а не launch", () => {
+describe("planTick — a hold on a manual session (S5)", () => {
+  it("the role is taken by a human → held with its name, not launch", () => {
     expect(planTick({ ...base, enabled: true, stopped: false, held: ["dev-core"] })).toEqual({
       kind: "held",
       roles: ["dev-core"],
     });
   });
 
-  it("работы нет вовсе → idle, а не held: hold без почты контур не тревожит", () => {
+  it("no work at all → idle, not held: a hold without mail does not disturb the circuit", () => {
     expect(
       planTick({ ...base, candidates: [], enabled: true, stopped: false, held: ["dev-core"] }),
     ).toEqual({ kind: "idle" });
   });
 
-  it("hold держит РОЛЬ, а не связку — занята на всех своих тредах", () => {
+  it("a hold holds the ROLE, not the pair — it is taken on all of its threads", () => {
     const candidates: Candidate[] = [
       { role: "dev-core", thread: "t1" },
       { role: "dev-core", thread: "t2" },
@@ -121,7 +121,7 @@ describe("planTick — hold ручной сессии (S5)", () => {
     ).toEqual({ kind: "held", roles: ["dev-core"] });
   });
 
-  it("занята одна роль — другие запускаются как обычно", () => {
+  it("one role is taken — the others launch as usual", () => {
     const candidates: Candidate[] = [
       { role: "dev-core", thread: "t1" },
       { role: "dev-speech", thread: "t2" },
@@ -131,19 +131,19 @@ describe("planTick — hold ручной сессии (S5)", () => {
     ).toEqual({ kind: "launch", role: "dev-speech", thread: "t2" });
   });
 
-  it("стоп-флаг сильнее holdʼа — аварийный тормоз ни с чем не спорит", () => {
+  it("the stop flag beats a hold — the emergency brake argues with nothing", () => {
     expect(planTick({ ...base, enabled: true, stopped: true, held: ["dev-core"] }).kind).toBe(
       "halt",
     );
   });
 
-  it("без holdʼов поведение прежнее", () => {
+  it("without holds the behaviour is unchanged", () => {
     expect(planTick({ ...base, enabled: true, stopped: false, held: [] }).kind).toBe("launch");
   });
 });
 
-describe("planTick — глобальный потолок со следом (требование 1)", () => {
-  it("потолок исчерпан → refused run-budget (не launch)", () => {
+describe("planTick — the global ceiling with a trace (requirement 1)", () => {
+  it("the ceiling is exhausted → refused run-budget (not launch)", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_CONSECUTIVE_RUNS; i += 1) events.push(launch("x", `t${i}`));
     expect(planTick({ ...base, events, enabled: true, stopped: false })).toEqual({
@@ -154,14 +154,14 @@ describe("planTick — глобальный потолок со следом (т
     });
   });
 
-  it("completed обнуляет счётчик → снова launch", () => {
+  it("completed resets the counter → launch again", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_CONSECUTIVE_RUNS; i += 1) events.push(launch("x", `t${i}`));
     events.push(released("x", "t0", "completed"));
     expect(planTick({ ...base, events, enabled: true, stopped: false }).kind).toBe("launch");
   });
 
-  it("потолок калибруется", () => {
+  it("the ceiling is calibratable", () => {
     const events = [launch("x", "1"), launch("x", "2")];
     expect(
       planTick({ ...base, events, enabled: true, stopped: false, maxConsecutive: 2 }).kind,

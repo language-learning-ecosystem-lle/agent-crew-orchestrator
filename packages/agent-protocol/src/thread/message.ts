@@ -1,64 +1,69 @@
 /**
- * Сообщение как ФАЙЛ (модель «одно сообщение — один файл», решение john
- * 2026-07-23, тред `012-agent-protocol-package`, msg-005 curator).
+ * A message as a FILE (the "one message — one file" model, john's decision
+ * 2026-07-23, thread `012-agent-protocol-package`, msg-005 by curator).
  *
- * Раньше сообщение было секцией общего `_thread.md`, и каждый писатель
- * дописывал общий файл. Это давало перепечатывание тела, порчу плейсхолдеров и
- * CAS-конфликты на одном файле. Теперь писатель создаёт СВОЙ файл, а `_thread.md`
- * собирается из файлов — гонок нет по построению.
+ * Previously a message was a section of a shared `_thread.md`, and every writer
+ * appended to that shared file. That produced re-typed bodies, corrupted
+ * placeholders and CAS conflicts on a single file. Now a writer creates ITS OWN
+ * file and `_thread.md` is assembled from the files — races are gone by
+ * construction.
  *
- * ЦЕНА, которую модель создаёт и которую здесь же закрываем: тихая правка
- * задним числом становится дешёвой (крошечный дифф, лента визуально та же).
- * Поэтому имя файла — идентификатор, а не порядковый номер, и валидатор
- * сверяет неизменность ранее закоммиченных файлов (`check.ts`).
+ * THE PRICE the model creates and which we settle right here: a quiet
+ * after-the-fact edit becomes cheap (a tiny diff, the feed looks the same). Hence
+ * the file name is an identifier rather than an ordinal, and the validator checks
+ * the immutability of previously committed files (`check.ts`).
  *
- * ЗАГОЛОВОК — ДАННЫЕ, А НЕ ПРОЗА. `waiting-on` парсился из тела последним
- * объявлением со стрелкой; из-за этого он терялся на пояснениях и оборотах
- * речи. Теперь это поле, а неизвестная роль в нём — красная проверка, а НЕ
- * молчаливый отброс: молчаливый отброс и был механизмом потери роли (боль 2).
+ * THE HEADER IS DATA, NOT PROSE. `waiting-on` used to be parsed out of the body
+ * as the last declaration with an arrow, which made it get lost on explanations
+ * and turns of phrase. Now it is a field, and an unknown role in it is a red
+ * check and NOT a silent drop: the silent drop was the very mechanism by which a
+ * role got lost (pain 2).
  *
- * НОМЕР — ВИТРИНА. Он печатается в собранном треде для чтения человеком, но
- * идентичность даёт имя файла: в живом треде 012 номера уже дважды
- * столкнулись (два msg-005 и два msg-006 от разных ролей), то есть номер не
- * идентификатор по факту, а не по опасению. Мигрированные сообщения хранят
- * исторический номер в поле `msg` — иначе ссылки «см. msg-003 п.4» в уже
- * написанных телах перестали бы указывать на то, на что указывали.
+ * THE NUMBER IS A DISPLAY. It is printed in the assembled thread for humans to
+ * read, but identity comes from the file name: in the live thread 012 the numbers
+ * have already collided twice (two msg-005 and two msg-006 from different roles),
+ * so the number is not an identifier as a matter of fact, not of worry. Migrated
+ * messages keep their historical number in the `msg` field — otherwise references
+ * like "see msg-003 item 4" in already-written bodies would stop pointing at what
+ * they pointed at.
  */
 
-/** `expects` — чего автор ждёт: содержательного ответа, подтверждения или ничего. */
+/** `expects` — what the author awaits: a substantive answer, an acknowledgement or nothing. */
 export const EXPECTS = ["answer", "ack", "none"] as const;
 export type Expects = (typeof EXPECTS)[number];
 
 export type MessageFields = {
-  /** Исторический номер (только у мигрированных): сохраняет ссылки в старых телах. */
+  /** Historical number (migrated messages only): keeps references in old bodies working. */
   readonly msg?: number;
   /**
-   * ПОЗИЦИЯ в треде (только у мигрированных) — ИСТОЧНИК ПОРЯДКА сообщений
-   * (`compareMessageEntries`), а не имя файла. Имя мигрированного ведёт датой, а
-   * дата НЕ монотонна порядку ленты: уведомитель стамповал merge #27 датой
-   * 2026-07-23, дописав секцию ПОСЛЕ сообщений 2026-07-24 (job до полуночи UTC,
-   * retry-цикл допушил после). Сортировка ИМЁН тогда переставляла бы сообщение —
-   * ловил `verifyMigration` (тред 012). `seq` монотонен по построению, порядок
-   * держит он. Исторический `msg` дублируется (в 011/012 два msg-002) и остаётся
-   * только в заголовке для ссылок «см. msg-002».
+   * POSITION in the thread (migrated messages only) — the SOURCE OF MESSAGE ORDER
+   * (`compareMessageEntries`), not the file name. A migrated file name leads with
+   * a date, and the date is NOT monotonic with the feed order: the notifier
+   * stamped merge #27 with 2026-07-23, appending a section AFTER the messages of
+   * 2026-07-24 (the job ran before UTC midnight, the retry loop pushed later).
+   * Sorting by NAME would then reorder the message — caught by `verifyMigration`
+   * (thread 012). `seq` is monotonic by construction, so it holds the order. The
+   * historical `msg` is duplicated (two msg-002 in 011/012) and stays in the
+   * heading only, for "see msg-002" references.
    */
   readonly seq?: number;
   readonly from: string;
-  /** Новые — метка UTC `2026-07-23T13:45:12Z`; мигрированные — только дата. */
+  /** New ones — a UTC stamp `2026-07-23T13:45:12Z`; migrated ones — a date only. */
   readonly date: string;
   readonly expects: Expects;
   /**
-   * Полный ОСТАТОЧНЫЙ состав ожидания, а не дельта. Отсутствие поля — «ход не
-   * передаю» (наследуется предыдущее), пустой список — ожидание снято.
+   * The full REMAINING set of who is awaited, not a delta. A missing field means
+   * "I am not passing the turn" (the previous one is inherited), an empty list
+   * means the waiting is lifted.
    */
   readonly waitingOn?: readonly string[];
-  /** Хвост заголовка из истории (`· [СВЕРХПИСАНО msg-002]`), чтобы склейка совпала байт-в-байт. */
+  /** Heading tail from history (`· [СВЕРХПИСАНО msg-002]`, quoted verbatim from live data), so the assembly matches byte for byte. */
   readonly suffix?: string;
 };
 
 export type Message = {
   readonly fields: MessageFields;
-  /** Тело без обрамляющих пустых строк: их расставляет сборка. */
+  /** Body without the surrounding blank lines: the assembly places those. */
   readonly text: string;
 };
 
@@ -82,20 +87,20 @@ const parseList = (value: string): string[] =>
         .map((part) => part.trim())
         .filter((part) => part !== "");
 
-/** Разбор файла сообщения: front-matter в `---` + тело. */
+/** Parsing a message file: front matter inside `---` + body. */
 export const parseMessageFile = (raw: string): Message => {
   const lines = raw.split("\n");
   if (lines[0] !== FENCE) {
-    throw new MessageFormatError("файл сообщения обязан начинаться со строки '---'");
+    throw new MessageFormatError("a message file must start with a '---' line");
   }
   const close = lines.indexOf(FENCE, 1);
-  if (close === -1) throw new MessageFormatError("не закрыт заголовок сообщения ('---')");
+  if (close === -1) throw new MessageFormatError("the message header is not closed ('---')");
 
   const raws = new Map<string, string>();
   for (const line of lines.slice(1, close)) {
     if (line.trim() === "") continue;
     const at = line.indexOf(":");
-    if (at === -1) throw new MessageFormatError(`строка заголовка без 'ключ: значение': '${line}'`);
+    if (at === -1) throw new MessageFormatError(`header line without 'key: value': '${line}'`);
     raws.set(line.slice(0, at).trim(), line.slice(at + 1).trim());
   }
 
@@ -103,16 +108,19 @@ export const parseMessageFile = (raw: string): Message => {
   const date = raws.get("date");
   const expects = raws.get("expects");
   if (!from || !date || !expects) {
-    throw new MessageFormatError("в заголовке обязательны 'from', 'date' и 'expects'");
+    throw new MessageFormatError("'from', 'date' and 'expects' are required in the header");
   }
-  if (!ROLE.test(from)) throw new MessageFormatError(`'from: ${from}' — не похоже на id роли`);
+  if (!ROLE.test(from))
+    throw new MessageFormatError(`'from: ${from}' does not look like a role id`);
   if (!DATE_ONLY.test(date) && !TIMESTAMP.test(date)) {
     throw new MessageFormatError(
-      `'date: ${date}' — нужна метка UTC вида 2026-07-23T13:45:12Z (или дата у мигрированных)`,
+      `'date: ${date}' — a UTC stamp like 2026-07-23T13:45:12Z is required (or a date for migrated messages)`,
     );
   }
   if (!(EXPECTS as readonly string[]).includes(expects)) {
-    throw new MessageFormatError(`'expects: ${expects}' — допустимо ${EXPECTS.join(" | ")}`);
+    throw new MessageFormatError(
+      `'expects: ${expects}' — allowed values are ${EXPECTS.join(" | ")}`,
+    );
   }
 
   const msgRaw = raws.get("msg");
@@ -130,10 +138,10 @@ export const parseMessageFile = (raw: string): Message => {
     ...(suffix === undefined ? {} : { suffix }),
   };
   if (fields.msg !== undefined && !Number.isInteger(fields.msg)) {
-    throw new MessageFormatError(`'msg: ${msgRaw}' — номер обязан быть целым`);
+    throw new MessageFormatError(`'msg: ${msgRaw}' — the number must be an integer`);
   }
   if (fields.seq !== undefined && !Number.isInteger(fields.seq)) {
-    throw new MessageFormatError(`'seq: ${seqRaw}' — позиция обязана быть целой`);
+    throw new MessageFormatError(`'seq: ${seqRaw}' — the position must be an integer`);
   }
 
   return {
@@ -163,38 +171,40 @@ export const renderMessageFile = (message: Message): string => {
 };
 
 /**
- * Имя файла — ИДЕНТИФИКАТОР сообщения (уникальность + читаемость), НЕ ключ
- * порядка: порядок в треде задаёт `compareMessageEntries` по `seq`, а не
- * лексикографика имени. Раньше имя было и тем и другим, и на немонотонной дате
- * (уведомление о merge #27, тред 012) сортировка имён переставляла сообщение.
+ * The file name is the message IDENTIFIER (uniqueness + readability), NOT the
+ * ordering key: order inside a thread is set by `compareMessageEntries` via `seq`,
+ * not by lexicographic order of names. The name used to be both, and on a
+ * non-monotonic date (the merge #27 notification, thread 012) sorting by name
+ * reordered a message.
  *
- * Новое: `2026-07-23T13-45-12Z-dev-core.md` — двоеточия метки заменены дефисом
- * (в имени законны, но недружелюбны); коллизия возможна только при двух
- * сообщениях одной роли в одну секунду.
+ * New: `2026-07-23T13-45-12Z-dev-core.md` — the colons of the stamp are replaced
+ * with hyphens (legal in a name, but unfriendly); a collision is only possible
+ * with two messages from one role within the same second.
  *
- * Мигрированное: `2026-07-21-003-curator.md` — времени в истории нет, есть дата
- * и ПОЗИЦИЯ (`seq`), НЕ исторический номер (он дублируется). Оба формата
- * различимы глазом.
+ * Migrated: `2026-07-21-003-curator.md` — history has no time, only a date and a
+ * POSITION (`seq`), NOT the historical number (that one is duplicated). Both
+ * formats are distinguishable by eye.
  */
 export const messageFileName = (fields: MessageFields): string => {
   if (fields.msg === undefined) return `${fields.date.replaceAll(":", "-")}-${fields.from}.md`;
   if (fields.seq === undefined) {
     throw new MessageFormatError(
-      "у мигрированного сообщения есть 'msg', но нет 'seq' — имя строится из позиции, не из номера",
+      "a migrated message has 'msg' but no 'seq' — the name is built from the position, not from the number",
     );
   }
   return `${fields.date}-${String(fields.seq).padStart(3, "0")}-${fields.from}.md`;
 };
 
 /**
- * Порядок сообщений в треде. Ключ — ПОЗИЦИЯ (`seq`), а не имя файла: имя ведёт
- * датой, а дата бывает немонотонна порядку ленты (перекос часов писателя,
- * граница полуночи UTC — реальный msg-069 в треде 012). `seq` монотонен по
- * построению миграции, поэтому источник порядка — он.
+ * Message order within a thread. The key is the POSITION (`seq`), not the file
+ * name: the name leads with a date, and the date is sometimes non-monotonic with
+ * the feed order (writer clock skew, the UTC midnight boundary — the real msg-069
+ * in thread 012). `seq` is monotonic by construction of the migration, so it is
+ * the source of order.
  *
- * Новые (пост-миграционные) сообщения `seq` не несут: они всегда идут ПОСЛЕ
- * мигрированных (дописаны позже по определению), а между собой — по имени файла,
- * где ключ снова верный: метка времени монотонна.
+ * New (post-migration) messages carry no `seq`: they always come AFTER the
+ * migrated ones (appended later by definition), and among themselves they order
+ * by file name, where the key is correct again: the timestamp is monotonic.
  */
 export const compareMessageEntries = (
   a: { readonly fileName: string; readonly message: Message },
@@ -208,7 +218,7 @@ export const compareMessageEntries = (
   return a.fileName < b.fileName ? -1 : a.fileName > b.fileName ? 1 : 0;
 };
 
-/** Заголовок секции в собранном треде. `number` — витрина: позиция или исторический номер. */
+/** Section heading in the assembled thread. `number` is a display value: position or historical number. */
 export const renderHeading = (fields: MessageFields, number: number): string => {
   const shown = fields.msg ?? number;
   const suffix = fields.suffix === undefined ? "" : ` · ${fields.suffix}`;

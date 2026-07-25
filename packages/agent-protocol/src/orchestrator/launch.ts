@@ -1,34 +1,40 @@
 /**
- * Запуск роли сессией — ядро шага S1 (тред 012). Чистая часть: КОГО можно
- * запустить, КАКИМ промптом и МОЖНО ли прямо сейчас (потолки). Сам спавн
- * `claude -p` и запись в журнал — в CLI над этим (там, где IO).
+ * Launching a role as a session — the core of step S1 (thread 012). The pure
+ * part: WHO may be launched, with WHICH prompt and WHETHER it is allowed right
+ * now (the ceilings). The `claude -p` spawn itself and the journal write live in
+ * the CLI above this (where the IO is).
  *
- * Три требования curator (тред 012, msg 14:15) закрыты здесь по построению:
- *  1. промпт собирается из `instructions` роли — `buildLaunchPrompt`, никакого
- *     «role → вот этот файл» в коде;
- *  2. запись в журнал ДО спавна — `planLaunch` возвращает события
- *     `lease-acquired`+`launch`, которые CLI пишет ПЕРЕД стартом процесса;
- *  3. один тред за прогон — и решение, и промпт берут ровно один `thread`.
+ * The three requirements of curator (thread 012, msg 14:15) are closed here by
+ * construction:
+ *  1. the prompt is assembled from the role's `instructions` — `buildLaunchPrompt`,
+ *     no "role → this particular file" in the code;
+ *  2. the journal write happens BEFORE the spawn — `planLaunch` returns the
+ *     `lease-acquired`+`launch` events, which the CLI writes BEFORE starting the
+ *     process;
+ *  3. one thread per run — both the decision and the prompt take exactly one
+ *     `thread`.
  *
- * Потолок — двумя слоями (оба против «запуск→обрыв→запуск съел квоту»):
- *  - на связку (role, thread): переиспользуем `exhausted` из S0 — три обрыва и
- *    больше не пытаемся;
- *  - глобальный: `consecutiveLaunchesWithoutCompletion` под авто-цикл S3 —
- *    launch'ей подряд без единого `completed` не больше `MAX_CONSECUTIVE_RUNS`.
+ * The ceiling comes in two layers (both against "launch → break → launch ate the
+ * quota"):
+ *  - per (role, thread) pair: we reuse `exhausted` from S0 — three breaks and we
+ *    stop trying;
+ *  - global: `consecutiveLaunchesWithoutCompletion` for the S3 auto loop — no more
+ *    than `MAX_CONSECUTIVE_RUNS` launches in a row without a single `completed`.
  */
 import type { Launch, Role } from "../roles/schema.js";
 import { eventTimestamp, type OrchestratorEvent } from "./journal.js";
 import { foldLeases } from "./lease.js";
 
 /**
- * Потолок глобального авто-цикла: сколько прогонов подряд БЕЗ единого успешного
- * завершения оркестратор вправе запустить, прежде чем упереться и позвать
- * человека (требование curator). Здоровая система завершает прогоны; пачка
- * launch'ей без `completed` — это и есть петля обрыва, жгущая квоту. Калибруемо.
+ * The ceiling of the global auto loop: how many runs in a row WITHOUT a single
+ * successful completion the orchestrator may launch before it stops and calls a
+ * human (curator's requirement). A healthy system completes its runs; a batch of
+ * launches without a `completed` is precisely the break loop burning quota.
+ * Calibratable.
  */
 export const MAX_CONSECUTIVE_RUNS = 10;
 
-/** Почему роль НЕ запускается оркестратором — машинно, не «claude.ai» глазами. */
+/** Why a role is NOT launched by the orchestrator — mechanically, not "claude.ai" by eye. */
 export type LaunchBlock =
   | "inactive"
   | "wake-not-watch"
@@ -39,17 +45,18 @@ export type LaunchBlock =
 export type Launchability = { launchable: true } | { launchable: false; reason: LaunchBlock };
 
 /**
- * Может ли оркестратор запустить роль сессией. Решение берётся из МАШИННО
- * ЗНАЧИМЫХ полей (`status`, `wake`, `instructions[].kind`), а НЕ из `role.kind`:
- * тот — свободный проектный ярлык («claude.ai», «gh-action»), и пакет его не
- * интерпретирует (см. doc-блок схемы роли). Отсюда:
- *  - `wake.mode !== "watch"` — у роли нет своей сессии, которую мы поднимаем:
- *    john (`self`, человек), curator (`via-human`, оживает через человека),
- *    reviewer-pr/github (`event`, будит платформа) — не наши для спавна;
- *  - `instructions` пусты — промпт собирать не из чего (это dev-speech сегодня):
- *    честный отказ, а не падение на отсутствии файла;
- *  - `instructions` с `external` — карточка исполняется СНАРУЖИ (скилл на стороне
- *    чата), локальный `claude -p` ею управлять не должен (это curator).
+ * Whether the orchestrator may launch a role as a session. The decision is taken
+ * from MACHINE-MEANINGFUL fields (`status`, `wake`, `instructions[].kind`) and NOT
+ * from `role.kind`: that one is a free-form project label ("claude.ai",
+ * "gh-action") and the package does not interpret it (see the role schema doc
+ * block). Hence:
+ *  - `wake.mode !== "watch"` — the role has no session of its own for us to raise:
+ *    john (`self`, a human), curator (`via-human`, comes alive through a human),
+ *    reviewer-pr/github (`event`, woken by the platform) are not ours to spawn;
+ *  - empty `instructions` — there is nothing to build a prompt from (that is
+ *    dev-speech today): an honest refusal rather than a crash on a missing file;
+ *  - `instructions` with `external` — the card is executed OUTSIDE (a skill on the
+ *    chat side) and a local `claude -p` must not drive it (that is curator).
  */
 export const roleLaunchability = (role: Role): Launchability => {
   if (role.status !== "active") return { launchable: false, reason: "inactive" };
@@ -59,21 +66,22 @@ export const roleLaunchability = (role: Role): Launchability => {
   if (instructions.some((entry) => entry.kind === "external")) {
     return { launchable: false, reason: "external-instructions" };
   }
-  // Профиль прав — часть контракта запуска: роль без него поднимать НЕЛЬЗЯ.
-  // Первый боевой прогон показал, чем оборачивается его отсутствие: сессия
-  // поднимается, живёт пять минут и выходит, ничего не записав, потому что
-  // писать ей нечем. Умолчание было бы хуже отказа — «поднял с правами,
-  // которых никто не назначал».
+  // The permission profile is part of the launch contract: a role without one MUST
+  // NOT be raised. The first production run showed what its absence leads to: the
+  // session comes up, lives five minutes and exits having written nothing, because
+  // it has nothing to write with. A default would be worse than a refusal —
+  // "raised with permissions nobody assigned".
   if (role.launch === undefined) return { launchable: false, reason: "no-launch-profile" };
   return { launchable: true };
 };
 
 /**
- * Аргументы запуска сессии — ОДНО место, где они собираются, и оно закреплено
- * тестом (требование 4 curator). Спайк P0 звал агента с `--allowedTools` и
- * оставался зелёным, пока код регрессировал: argv не был прибит ничем, и
- * полномочия выпали из контракта незаметно. Пока список аргументов живёт
- * выражением внутри спавна, он выпадет снова тем же способом.
+ * The session launch arguments — ONE place where they are assembled, and it is
+ * pinned by a test (curator's requirement 4). The P0 spike called the agent with
+ * `--allowedTools` and stayed green while the code regressed: argv was pinned by
+ * nothing, and the permissions fell out of the contract unnoticed. As long as the
+ * argument list lives as an expression inside the spawn, it will fall out again
+ * the same way.
  */
 export const buildLaunchArgv = (input: {
   readonly prompt: string;
@@ -88,14 +96,14 @@ export const buildLaunchArgv = (input: {
   input.maxTurns,
 ];
 
-/** Полномочия роли одной строкой — для витрины `status` и вывода запуска. */
+/** A role's permissions in one line — for the `status` display and the launch output. */
 export const describeLaunch = (role: Role): string => {
   const profile = role.launch;
   if (profile === undefined) {
     const why = roleLaunchability(role);
     return why.launchable
-      ? `${role.id}: профиля запуска нет`
-      : `${role.id}: не запускается контуром (${why.reason})`;
+      ? `${role.id}: no launch profile`
+      : `${role.id}: not launched by the circuit (${why.reason})`;
   }
   return `${role.id}: ${profile.allowedTools.join(", ")}`;
 };
@@ -103,10 +111,11 @@ export const describeLaunch = (role: Role): string => {
 export type InstructionDoc = { readonly path: string; readonly text: string };
 
 /**
- * Промпт для `claude -p` — из карточки роли (её `instructions`) и ОДНОГО треда.
- * Чистая: тексты инструкций уже прочитаны снаружи. «Только по этому треду» —
- * жёстко в промпте: признак завершения S2 привязан к переходу хода по нему, и
- * если прогон разберёт всю почту, критерий размажется (требование 3 curator).
+ * The prompt for `claude -p` — from the role card (its `instructions`) and ONE
+ * thread. Pure: the instruction texts are already read outside. "This thread
+ * only" is stated firmly in the prompt: the S2 completion signal is bound to the
+ * turn passing on that thread, and if a run handled the whole mailbox the
+ * criterion would smear (curator's requirement 3).
  */
 export const buildLaunchPrompt = (input: {
   readonly role: string;
@@ -115,22 +124,23 @@ export const buildLaunchPrompt = (input: {
 }): string => {
   const cards = input.instructions.map((doc) => `# ${doc.path}\n\n${doc.text}`).join("\n\n---\n\n");
   return [
-    `Ты — роль \`${input.role}\` протокола agent-comms. Твоя карточка роли — ниже.`,
+    `You are the \`${input.role}\` role of the agent-comms protocol. Your role card is below.`,
     "",
-    `Ход передан тебе по треду \`${input.thread}\` — И ТОЛЬКО ПО НЕМУ. Остальную свою почту НЕ разбирай: этот прогон закреплён ровно за одним тредом.`,
+    `The turn was passed to you on thread \`${input.thread}\` — AND ON THAT ONE ONLY. Do NOT handle the rest of your mail: this run is bound to exactly one thread.`,
     "",
-    "Прочитай тред целиком (включая файлы папки разговора), отработай постановку и ответь сообщением в конец треда по правилам протокола (`cli new-message`). Когда ответ записан и ход передан дальше — прогон закончен.",
+    "Read the whole thread (including the files in the conversation folder), carry out the statement of work and reply with a message at the end of the thread following the protocol rules (`cli new-message`). Once the reply is written and the turn is passed on, the run is over.",
     "",
-    "--- КАРТОЧКА РОЛИ ---",
+    "--- ROLE CARD ---",
     "",
     cards,
   ].join("\n");
 };
 
 /**
- * Launch'ей подряд без единого `completed`. Каждый `launch` увеличивает счётчик,
- * успешный `lease-released reason=completed` обнуляет его. Петля «запуск→обрыв»
- * (releases с timeout/forced, но не completed) копится — на этом её и ловим.
+ * Launches in a row without a single `completed`. Every `launch` increments the
+ * counter, a successful `lease-released reason=completed` resets it. A
+ * "launch → break" loop (releases with timeout/forced but never completed)
+ * accumulates — and that is what catches it.
  */
 export const consecutiveLaunchesWithoutCompletion = (
   events: readonly OrchestratorEvent[],
@@ -150,11 +160,11 @@ export type LaunchPlan =
   | { readonly ok: false; readonly reason: LaunchRefusal };
 
 /**
- * Решение о запуске + события ДО спавна. Отказ, если:
- *  - связка уже активна (`running`/`draining`) — не плодим второй прогон;
- *  - связка `exhausted` — потолок попыток на (role, thread) достигнут;
- *  - глобальный потолок прогонов без завершения исчерпан.
- * Иначе — `lease-acquired` (с материализованным `deadline`) + `launch`.
+ * The launch decision + the events written BEFORE the spawn. A refusal if:
+ *  - the pair is already active (`running`/`draining`) — we do not multiply runs;
+ *  - the pair is `exhausted` — the attempt ceiling on (role, thread) is reached;
+ *  - the global ceiling of runs without completion is used up.
+ * Otherwise — `lease-acquired` (with a materialised `deadline`) + `launch`.
  */
 export const planLaunch = (input: {
   readonly events: readonly OrchestratorEvent[];

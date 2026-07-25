@@ -1,19 +1,26 @@
 /**
- * Реестр разговоров как ОТРАЖЕНИЕ тредов (тред 006).
+ * The conversations index as a REFLECTION of the threads (thread 006).
  *
- * `waiting-on` правили руками трое — curator, dev-агенты и уведомитель о merge, —
- * и он расходился с телом тредов. Всё, что правится руками в нескольких местах,
- * расходится по построению, поэтому INDEX не источник, а производное.
+ * `waiting-on` used to be edited by hand by three parties — curator, the dev
+ * agents and the merge notifier — and it drifted from the bodies of the threads.
+ * Anything edited by hand in several places drifts by construction, so INDEX is
+ * not a source but a derived artifact.
  *
- * И следствие, которого в bash-версии не было: раз INDEX производный, **контур
- * не должен от него зависеть**. Если реестр пересобирает CI, то падение сборки
- * означало бы, что вахта и сторож перестали видеть почту — боль 5 (тред 008)
- * один в один. Поэтому «есть ли почта» считается из ТРЕДОВ (`waitingOnOf`), а
- * INDEX остаётся витриной для человека: его расхождение стоит косметики.
+ * And a consequence the bash version did not have: since INDEX is derived, **the
+ * circuit must not depend on it**. If the index is rebuilt by CI, a failed build
+ * would mean the watch and the keeper stopped seeing mail — pain 5 (thread 008)
+ * one to one. Hence "is there mail" is computed from the THREADS (`waitingOnOf`),
+ * and INDEX stays a display for humans: its drift costs cosmetics.
  */
 import { type Thread, updatedOf, waitingOnOf } from "./thread.js";
 
 const EMPTY = "—";
+
+// The heading is written INTO THE PROJECT ZONE (`INDEX.md` of the mail branch) and
+// is therefore deliberately left in the language of that zone: R1 makes the
+// package English, but the boundary of R1 is that the project zone is not touched
+// — translating it here would rewrite a project artifact on the next rebuild.
+const INDEX_HEADING = "# Реестр разговоров";
 
 export const renderIndex = (threads: readonly Thread[]): string => {
   const rows = threads.map((thread) => {
@@ -23,11 +30,11 @@ export const renderIndex = (threads: readonly Thread[]): string => {
     } | ${updatedOf(thread)} |`;
   });
 
-  return `# Реестр разговоров\n\n| id | participants | status | waiting-on | updated |\n|---|---|---|---|---|\n${rows.join(
+  return `${INDEX_HEADING}\n\n| id | participants | status | waiting-on | updated |\n|---|---|---|---|---|\n${rows.join(
     "\n",
   )}\n`;
 };
 
-/** Треды, ждущие роль. Это и есть «есть ли почта» — считается из источника, не из INDEX. */
+/** Threads awaiting a role. This is exactly "is there mail" — computed from the source, not from INDEX. */
 export const threadsWaitingOn = (threads: readonly Thread[], role: string): string[] =>
   threads.filter((thread) => waitingOnOf(thread).includes(role)).map((thread) => thread.id);

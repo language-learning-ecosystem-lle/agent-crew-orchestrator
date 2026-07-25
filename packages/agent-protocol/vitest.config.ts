@@ -1,7 +1,8 @@
 import { defineConfig } from "vitest/config";
 
-// Локальный конфиг: пакет — отдельный project корневого vitest (packages/*),
-// без него запуск изнутри пакета подхватывает корневой список projects.
+// A local config: the package is a separate project of the root vitest
+// (packages/*); without it a run started from inside the package picks up the
+// root list of projects.
 export default defineConfig({
   test: { include: ["src/**/*.test.ts"], environment: "node" },
 });

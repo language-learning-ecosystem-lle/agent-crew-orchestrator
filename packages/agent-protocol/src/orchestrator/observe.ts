@@ -1,35 +1,37 @@
 /**
- * Наблюдатель за прогоном — чистое ядро шага S2 (тред 012). Ключевое: оркестратор
- * НЕ останавливает агента. Агент завершается САМ, дописав ответ и передав ход;
- * наблюдатель лишь распознаёт исход и переводит аренду running → draining →
- * stopped СО СЛЕДОМ. Агент о своей остановке не знает и знать не должен
- * (требование 3 curator) — поэтому здесь нет и не может быть «сказать агенту».
+ * The run observer — the pure core of step S2 (thread 012). The key point: the
+ * orchestrator does NOT stop the agent. The agent finishes BY ITSELF, having
+ * written its reply and passed the turn; the observer only recognises the outcome
+ * and moves the lease running → draining → stopped WITH A TRACE. The agent does
+ * not know about its own stop and must not (curator's requirement 3) — hence there
+ * is not and cannot be a "tell the agent" here.
  *
- * Признак завершения — ПЕРЕХОД ХОДА по треду, под который взята аренда
- * (требование 1): не «код 0» (процесс мог выйти, не записав ответа) и не «почта
- * опустела» (могла опустеть чужой правкой). `handedOff` считается снаружи из
- * `threadsWaitingOn` по ИСТОЧНИКУ-тредам и приходит сюда булевом.
+ * The completion signal is THE TURN PASSING on the thread the lease was taken for
+ * (requirement 1): not "exit code 0" (the process may have exited without writing
+ * a reply) and not "the mailbox is empty" (it could have been emptied by someone
+ * else's edit). `handedOff` is computed outside from `threadsWaitingOn` over the
+ * SOURCE threads and arrives here as a boolean.
  *
- * `handedOff` проверяется РАНЬШЕ `overdue`: переход хода — это успех, и заметить
- * его на дедлайне или чуть позже не значит объявить таймаут. `overdue` бьёт лишь
- * там, где ход НЕ перешёл, — тогда дедлайн аренды и есть предел `draining`
- * (требование 2): «остановится по завершении» не превращается в «не остановится
- * никогда».
+ * `handedOff` is checked BEFORE `overdue`: the turn passing is a success, and
+ * noticing it at the deadline or slightly later does not mean declaring a timeout.
+ * `overdue` only strikes where the turn did NOT pass — then the lease deadline is
+ * the limit of `draining` (requirement 2): "it will stop on completion" does not
+ * turn into "it will never stop".
  */
 import type { OrchestratorEvent } from "./journal.js";
 
 export type Lifecycle = "running" | "draining";
 
 export type ObserveSignals = {
-  /** Тред больше НЕ ждёт роль — ход перешёл (из threadsWaitingOn). */
+  /** The thread no longer awaits the role — the turn has passed (from threadsWaitingOn). */
   readonly handedOff: boolean;
-  /** Процесс сессии завершился (сам или убит). */
+  /** The session process has finished (by itself or killed). */
   readonly processExited: boolean;
-  /** now > deadline аренды. */
+  /** now > the lease deadline. */
   readonly overdue: boolean;
 };
 
-/** Что записать следующим шагом (или null — продолжать наблюдать). */
+/** What to record at the next step (or null — keep observing). */
 export type ObserveStep =
   | { readonly record: "handoff-detected" }
   | {
@@ -39,54 +41,62 @@ export type ObserveStep =
   | null;
 
 /**
- * Перешёл ли ход — по СОСТОЯНИЮ ПОЧТЫ. Отдельная функция, а не выражение в
- * оболочке, ровно по одной причине: это самая опасная ветка изоляции сбойных
- * тредов, и ей нужен собственный тест (замечание reviewer-pr к PR #5).
+ * Whether the turn has passed — by THE STATE OF THE MAIL. A separate function
+ * rather than an expression in the shell for exactly one reason: this is the most
+ * dangerous branch of broken-thread isolation, and it needs a test of its own
+ * (reviewer-pr's remark on PR #5).
  *
- * Тред под арендой ЖДАЛ роль; перестал ждать — ход передан. Но «перестал ждать»
- * и «не смогли прочитать» — разные вещи, а по списку ожидающих они выглядят
- * одинаково: нечитаемого треда в списке нет. Считать это переходом хода значило
- * бы закрыть прогон как `completed`, хотя роль не ответила ни строчки, — то есть
- * сломанный файл почты тихо подделал бы результат приёмки. Поэтому нечитаемость
- * СВОЕГО треда — неизвестность: наблюдаем дальше, предел ставит дедлайн.
+ * The thread under the lease WAS awaiting the role; it stopped awaiting — the turn
+ * was passed. But "stopped awaiting" and "could not be read" are different things,
+ * and by the list of awaiting threads they look the same: an unreadable thread is
+ * not in the list. Treating that as the turn passing would mean closing the run as
+ * `completed` even though the role did not answer a single line — that is, a
+ * broken mail file would quietly forge the acceptance result. Hence unreadability
+ * of OUR OWN thread is uncertainty: we keep observing, and the deadline sets the
+ * limit.
  */
 export const handoffDetected = (input: {
-  /** Тред, под который взята аренда, не разобрался в этом обходе. */
+  /** The thread the lease was taken for did not parse during this walk. */
   readonly threadUnreadable: boolean;
-  /** Треды, ожидающие роль СЕЙЧАС (из `threadsWaitingOn` по читаемым). */
+  /** Threads awaiting the role NOW (from `threadsWaitingOn` over the readable ones). */
   readonly waitingThreads: readonly string[];
-  /** Тред, под который взята аренда. */
+  /** The thread the lease was taken for. */
   readonly thread: string;
 }): boolean => !input.threadUnreadable && !input.waitingThreads.includes(input.thread);
 
 export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): ObserveStep => {
   if (lifecycle === "running") {
-    // Ход перешёл — в draining, процесс НЕ трогаем: завершится сам (требование 3).
+    // The turn has passed — move to draining, do NOT touch the process: it will
+    // finish by itself (requirement 3).
     if (signals.handedOff) return { record: "handoff-detected" };
-    // Дедлайн без перехода хода — застрял: предел draining/running (требование 2).
+    // The deadline without the turn passing — stuck: the limit of draining/running
+    // (requirement 2).
     if (signals.overdue) return { record: "lease-released", reason: "timeout" };
-    // Процесс вышел САМ, хода не передав, до дедлайна — вышел, не сделав дело.
-    // Причина СВОЯ, не `forced`: форс — это внешнее решение человека со следом
-    // `by`, а здесь никто ничего не решал, сессия просто кончилась. Одно имя на
-    // оба случая делало журнал прибором, который врёт в сценарии приёмки 3
-    // (постановка curator 20:55).
+    // The process exited BY ITSELF, without passing the turn, before the deadline —
+    // it left without doing the job. The reason is ITS OWN, not `forced`: a force is
+    // an external human decision with a `by` trace, whereas here nobody decided
+    // anything, the session simply ended. One name for both cases made the journal
+    // an instrument that lies in acceptance scenario 3 (curator's statement of
+    // work, 20:55).
     if (signals.processExited) {
       return { record: "lease-released", reason: "exited-without-handoff" };
     }
     return null;
   }
 
-  // draining: ход уже перешёл (успех решён). Закрываем по выходу процесса; если
-  // процесс залип за дедлайн — всё равно completed (дело сделано), CLI его гасит.
+  // draining: the turn has already passed (the success is settled). We close on the
+  // process exit; if the process hangs past the deadline it is still completed (the
+  // job is done), and the CLI kills it.
   if (signals.processExited) return { record: "lease-released", reason: "completed" };
   if (signals.overdue) return { record: "lease-released", reason: "completed" };
   return null;
 };
 
 /**
- * Событие journal из шага наблюдателя — CLI проставляет ts/role/thread, а на
- * снятии аренды ещё и `detail`: код выхода сессии и путь к её сохранённому
- * выводу. Без них «не смогла записать» и «просто вышла» — одна запись.
+ * A journal event out of an observer step — the CLI fills in ts/role/thread, and
+ * on a lease release also the `detail`: the session's exit code and the path to
+ * its saved output. Without them "could not write" and "simply exited" are the
+ * same record.
  */
 export const stepEvent = (
   step: Exclude<ObserveStep, null>,

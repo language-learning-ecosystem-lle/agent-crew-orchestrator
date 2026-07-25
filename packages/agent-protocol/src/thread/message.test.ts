@@ -16,13 +16,13 @@ expects: answer
 waiting-on: john, curator
 ---
 
-Текст сообщения.
+Message text.
 
-waiting-on объявлен полем, а не прозой.
+waiting-on is declared as a field, not as prose.
 `;
 
 describe("parseMessageFile", () => {
-  it("разбирает заголовок и тело", () => {
+  it("parses the header and the body", () => {
     const message = parseMessageFile(FILE);
 
     expect(message.fields).toEqual({
@@ -31,12 +31,13 @@ describe("parseMessageFile", () => {
       expects: "answer",
       waitingOn: ["john", "curator"],
     });
-    expect(message.text.startsWith("Текст сообщения.")).toBe(true);
+    expect(message.text.startsWith("Message text.")).toBe(true);
   });
 
-  it("различает «поля нет» и «ожидание снято»", () => {
-    // Три состояния (решение john): нет поля — ход не передаю, ожидание
-    // наследуется; «—» — ожидание снято; список — полный остаточный состав.
+  it("tells 'no field' apart from 'waiting lifted'", () => {
+    // Three states (john's decision): no field — I am not passing the turn, the
+    // waiting is inherited; "—" — the waiting is lifted; a list — the full
+    // remaining set.
     const noField = parseMessageFile(FILE.replace("waiting-on: john, curator\n", ""));
     const cleared = parseMessageFile(FILE.replace("waiting-on: john, curator", "waiting-on: —"));
 
@@ -44,35 +45,35 @@ describe("parseMessageFile", () => {
     expect(cleared.fields.waitingOn).toEqual([]);
   });
 
-  it("отвергает файл без заголовка, без обязательных полей и с чужим expects", () => {
-    expect(() => parseMessageFile("просто текст")).toThrow(/'---'/);
-    expect(() => parseMessageFile("---\nfrom: dev-core\n---\n\nтекст\n")).toThrow(/обязательны/);
+  it("rejects a file without a header, without required fields and with a foreign expects", () => {
+    expect(() => parseMessageFile("just text")).toThrow(/'---'/);
+    expect(() => parseMessageFile("---\nfrom: dev-core\n---\n\ntext\n")).toThrow(/are required/);
     expect(() => parseMessageFile(FILE.replace("expects: answer", "expects: maybe"))).toThrow(
       /expects/,
     );
   });
 
-  it("отвергает метку времени не в UTC-форме", () => {
+  it("rejects a timestamp that is not in the UTC form", () => {
     expect(() =>
       parseMessageFile(FILE.replace("2026-07-23T13:45:12Z", "23.07.2026 13:45")),
-    ).toThrow(/метка UTC/);
+    ).toThrow(/UTC stamp/);
   });
 
-  it("склейка разбор→сборка не меняет файл", () => {
+  it("parse → render round-trip does not change the file", () => {
     expect(renderMessageFile(parseMessageFile(FILE))).toBe(FILE);
   });
 });
 
 describe("messageFileName", () => {
-  it("новое сообщение — метка времени и роль", () => {
+  it("a new message — timestamp and role", () => {
     expect(
       messageFileName({ from: "curator", date: "2026-07-23T13:45:12Z", expects: "answer" }),
     ).toBe("2026-07-23T13-45-12Z-curator.md");
   });
 
-  it("мигрированное — имя из ПОЗИЦИИ (seq), а не из исторического номера", () => {
-    // Номер (msg) дублируется и переставил бы сообщения при сортировке; в имя
-    // идёт seq (позиция), номер остаётся только в заголовке.
+  it("a migrated one — the name comes from the POSITION (seq), not from the historical number", () => {
+    // The number (msg) is duplicated and would reorder messages on sorting; the
+    // name takes seq (position), the number stays in the heading only.
     const migrated = messageFileName({
       msg: 2,
       seq: 3,
@@ -90,15 +91,15 @@ describe("messageFileName", () => {
     expect([fresh, migrated].sort()).toEqual([migrated, fresh]);
   });
 
-  it("мигрированное без seq — ошибка (имя нельзя построить из одного номера)", () => {
+  it("a migrated one without seq is an error (a name cannot be built from a number alone)", () => {
     expect(() =>
       messageFileName({ msg: 2, from: "curator", date: "2026-07-23", expects: "answer" }),
-    ).toThrow(/нет 'seq'/);
+    ).toThrow(/no 'seq'/);
   });
 });
 
 describe("renderHeading", () => {
-  it("у мигрированного печатает исторический номер, у нового — позицию", () => {
+  it("prints the historical number for a migrated message and the position for a new one", () => {
     const legacy = renderHeading(
       { msg: 5, from: "curator", date: "2026-07-21", expects: "none" },
       99,
@@ -112,7 +113,7 @@ describe("renderHeading", () => {
     expect(fresh).toBe("## msg-007 · from: dev-core · 2026-07-23 · expects: answer");
   });
 
-  it("сохраняет исторический хвост заголовка", () => {
+  it("preserves the historical heading tail", () => {
     const heading = renderHeading(
       {
         msg: 1,
@@ -139,10 +140,10 @@ describe("compareMessageEntries", () => {
     message: { fields, text: "x" },
   });
 
-  it("порядок по seq, а не по имени: позже по ленте с ранней датой всё равно позже", () => {
-    // Мини-репро 012: имя мигрированного ведёт датой, у github дата 07-23 <
-    // 07-24, поэтому сортировка ИМЁН поставила бы его первым. seq (2 > 1) держит
-    // порядок ленты.
+  it("orders by seq, not by name: later in the feed with an earlier date is still later", () => {
+    // A mini repro of 012: a migrated name leads with a date, github's date
+    // 07-23 < 07-24, so sorting by NAME would put it first. seq (2 > 1) holds the
+    // feed order.
     const late = entry("2026-07-23-002-github.md", {
       msg: 2,
       seq: 2,
@@ -163,7 +164,7 @@ describe("compareMessageEntries", () => {
     ]);
   });
 
-  it("новые (без seq) идут после мигрированных, между собой — по имени", () => {
+  it("new ones (without seq) come after migrated ones, and among themselves by name", () => {
     const migrated = entry("2026-07-24-001-curator.md", {
       msg: 1,
       seq: 1,

@@ -1,16 +1,17 @@
 /**
- * `status` оркестратора — читаемая витрина свёрнутой аренды (шаг S0, тред 012).
- * Чистая функция: аренда уже свёрнута `foldLeases`, здесь только формат. Смысл
- * шага — увидеть оба пробела в данных ДО всякого спавна: `overdue` (повис) и
- * `exhausted` (потолок попыток) выносятся явными пометками, а не прячутся в
- * колонке состояния.
+ * The orchestrator `status` — a readable view of the folded lease (step S0,
+ * thread 012). A pure function: the lease has already been folded by
+ * `foldLeases`, only formatting happens here. The point of the step is to see
+ * both gaps in the data BEFORE any spawn: `overdue` (stuck) and `exhausted` (the
+ * attempt ceiling) are called out as explicit marks instead of hiding inside the
+ * state column.
  */
 import type { LeaseView } from "./lease.js";
 
-/** Пометка проблемного состояния связки — то, что оператор обязан заметить. */
+/** A mark on a problem state of the pair — what the operator must not miss. */
 const flag = (view: LeaseView): string => {
-  if (view.exhausted) return "  ⚠ ИСЧЕРПАНО — дальше не пытаюсь, см. журнал";
-  if (view.overdue) return "  ⚠ ПРОСРОЧЕНО — deadline прошёл, аренда ещё жива";
+  if (view.exhausted) return "  ⚠ EXHAUSTED — no more attempts, see the journal";
+  if (view.overdue) return "  ⚠ OVERDUE — the deadline has passed, the lease is still alive";
   return "";
 };
 
@@ -19,7 +20,7 @@ const line = (view: LeaseView): string => {
     view.role,
     view.thread,
     view.state,
-    `попытка ${view.attempt}`,
+    `attempt ${view.attempt}`,
     view.deadline === null ? "deadline —" : `deadline ${view.deadline}`,
     view.reason === null ? "" : `(${view.reason})`,
   ]
@@ -29,11 +30,12 @@ const line = (view: LeaseView): string => {
 };
 
 /**
- * Строки состояния по каждой связке (role, thread). Пустая аренда — честная
- * строка «нет активных сессий», а не пустой вывод: молчание неотличимо от сбоя
- * чтения журнала (урок P0), поэтому отсутствие сессий проговаривается.
+ * State lines for every (role, thread) pair. An empty lease set produces an
+ * honest "no active sessions" line rather than empty output: silence is
+ * indistinguishable from a failure to read the journal (the P0 lesson), so the
+ * absence of sessions is spelled out.
  */
 export const renderStatus = (views: readonly LeaseView[]): string => {
-  if (views.length === 0) return "оркестратор: сессий в журнале нет";
+  if (views.length === 0) return "orchestrator: no sessions in the journal";
   return views.map(line).join("\n");
 };

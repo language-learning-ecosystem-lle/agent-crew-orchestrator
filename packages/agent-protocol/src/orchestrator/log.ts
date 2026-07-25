@@ -1,7 +1,7 @@
 /**
- * Человекочитаемый вывод журнала оркестратора для john (шаг S4). В отличие от
- * `status` (текущее состояние аренд — свёртка), `log` показывает ИСТОРИЮ: что,
- * когда и с кем произошло, событие за событием по порядку. Чистая функция.
+ * A human-readable rendering of the orchestrator journal for john (step S4).
+ * Unlike `status` (the current lease state — a fold), `log` shows the HISTORY:
+ * what happened, when and with whom, event after event in order. A pure function.
  */
 import type { OrchestratorEvent } from "./journal.js";
 
@@ -10,10 +10,11 @@ const detail = (event: OrchestratorEvent): string => {
     case "lease-acquired":
       return ` (deadline ${event.deadline})`;
     case "lease-released": {
-      // Код выхода и путь к выводу — ПОЧЕМУ, а не только ЧТО: без них прогон,
-      // не передавший ход, неотличим от прогона, который просто закончился.
-      const code = event.exitCode === undefined ? "" : `, код ${event.exitCode}`;
-      const log = event.output === undefined ? "" : `, вывод ${event.output}`;
+      // The exit code and the path to the output are the WHY, not just the WHAT:
+      // without them a run that did not pass the turn is indistinguishable from a
+      // run that simply finished.
+      const code = event.exitCode === undefined ? "" : `, code ${event.exitCode}`;
+      const log = event.output === undefined ? "" : `, output ${event.output}`;
       return ` (${event.reason}${code}${log})`;
     }
     case "launch-refused":
@@ -24,7 +25,7 @@ const detail = (event: OrchestratorEvent): string => {
       return ` (${event.mode}${by}${note})`;
     }
     default:
-      return ""; // launch, handoff-detected — без деталей
+      return ""; // launch, handoff-detected — no details
   }
 };
 
@@ -32,4 +33,4 @@ const logLine = (event: OrchestratorEvent): string =>
   `${event.ts}  ${event.role}/${event.thread}  ${event.kind}${detail(event)}`;
 
 export const renderLog = (events: readonly OrchestratorEvent[]): string =>
-  events.length === 0 ? "оркестратор: журнал пуст" : events.map(logLine).join("\n");
+  events.length === 0 ? "orchestrator: the journal is empty" : events.map(logLine).join("\n");

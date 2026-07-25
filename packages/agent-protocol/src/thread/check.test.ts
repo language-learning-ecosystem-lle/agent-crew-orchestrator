@@ -11,32 +11,32 @@ const registry = createRoleRegistry(
     version: 1,
     mail: { branch: "comms", dir: "agent-comms" },
     roles: [
-      { id: "john", kind: "человек", status: "active", wake: { mode: "self" }, summary: "PM" },
+      { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "PM" },
       {
         id: "curator",
         kind: "claude.ai",
         status: "active",
         wake: { mode: "via-human", via: "john" },
-        summary: "ассистент",
+        summary: "assistant",
       },
       {
         id: "dev-core",
         kind: "claude-code",
         status: "active",
         wake: { mode: "watch", session: "lle-dev-core" },
-        summary: "поток",
+        summary: "main stream",
       },
     ],
   }),
 );
 
 const meta: ThreadMeta = {
-  title: "012-x · тред",
+  title: "012-x · thread",
   participants: ["curator", "dev-core", "john"],
   status: "open",
 };
 
-const message = (over: Partial<Message["fields"]> = {}, text = "Текст."): Message => ({
+const message = (over: Partial<Message["fields"]> = {}, text = "Text."): Message => ({
   fields: {
     from: "dev-core",
     date: "2026-07-23T13:45:12Z",
@@ -55,7 +55,7 @@ const input = (over: Partial<ThreadInput> = {}): ThreadInput => {
 };
 
 describe("checkThread", () => {
-  it("молчит на корректном треде", () => {
+  it("stays silent on a correct thread", () => {
     const entries = input().entries;
     const doc = renderThread(
       meta,
@@ -65,9 +65,10 @@ describe("checkThread", () => {
     expect(checkThread(input({ threadDoc: doc }), registry)).toEqual([]);
   });
 
-  it("красит неизвестную роль в from и в waiting-on, а не отбрасывает её молча", () => {
-    // Молчаливый отброс и был механизмом потери роли из объявления (боль 2):
-    // опечатка давала пустое ожидание и тишину, неотличимую от штатной работы.
+  it("flags an unknown role in from and in waiting-on instead of dropping it silently", () => {
+    // The silent drop was the very mechanism by which a role got lost from a
+    // declaration (pain 2): a typo yielded an empty waiting and a silence
+    // indistinguishable from normal work.
     const issues = checkThread(
       input({
         entries: [
@@ -81,21 +82,21 @@ describe("checkThread", () => {
     );
 
     expect(issues.map((issue) => issue.message)).toEqual([
-      "'from: github' — такой роли нет в конфиге",
-      "в 'waiting-on' роль 'jonh', которой нет в конфиге",
+      "'from: github' — no such role in the config",
+      "'waiting-on' names role 'jonh', which is not in the config",
     ]);
   });
 
-  it("ловит имя файла, разошедшееся с заголовком", () => {
+  it("catches a file name that drifted from the header", () => {
     const issues = checkThread(
-      input({ entries: [{ fileName: "сообщение.md", message: message() }] }),
+      input({ entries: [{ fileName: "message.md", message: message() }] }),
       registry,
     );
 
-    expect(issues[0]?.message).toMatch(/ожидалось '2026-07-23T13-45-12Z-dev-core.md'/);
+    expect(issues[0]?.message).toMatch(/expected '2026-07-23T13-45-12Z-dev-core.md'/);
   });
 
-  it("ловит строку «## msg-» в теле — об неё развалилась бы склейка", () => {
+  it("catches a '## msg-' line in the body — the assembly would break on it", () => {
     const issues = checkThread(
       input({
         entries: [
@@ -103,7 +104,7 @@ describe("checkThread", () => {
             fileName: "2026-07-23T13-45-12Z-dev-core.md",
             message: message(
               {},
-              "Цитирую:\n\n## msg-001 · from: curator · 2026-07-22 · expects: none",
+              "Quoting:\n\n## msg-001 · from: curator · 2026-07-22 · expects: none",
             ),
           },
         ],
@@ -111,47 +112,47 @@ describe("checkThread", () => {
       registry,
     );
 
-    expect(issues[0]?.message).toMatch(/склейка треда развалится/);
+    expect(issues[0]?.message).toMatch(/thread assembly would break/);
   });
 
-  it("ловит производный файл, разошедшийся с сообщениями", () => {
-    const issues = checkThread(input({ threadDoc: "# что-то своё\n" }), registry);
+  it("catches a derived file that drifted from the messages", () => {
+    const issues = checkThread(input({ threadDoc: "# something of its own\n" }), registry);
 
-    expect(issues[0]?.message).toMatch(/производный файл разошёлся/);
+    expect(issues[0]?.message).toMatch(/derived file drifted/);
   });
 
-  it("ловит участника, которого нет в конфиге ролей", () => {
+  it("catches a participant missing from the role config", () => {
     const issues = checkThread(
-      input({ meta: { ...meta, participants: ["curator", "нет-роли"] } }),
+      input({ meta: { ...meta, participants: ["curator", "no-such-role"] } }),
       registry,
     );
 
-    expect(issues[0]?.message).toMatch(/не значится ролью/);
+    expect(issues[0]?.message).toMatch(/is not listed as a role/);
   });
 });
 
 describe("checkImmutable", () => {
-  it("красит правку и удаление ранее закоммиченного сообщения", () => {
+  it("flags an edit and a deletion of a previously committed message", () => {
     const before = new Map([
-      ["012-x/messages/a.md", "было"],
-      ["012-x/messages/b.md", "цело"],
+      ["012-x/messages/a.md", "was"],
+      ["012-x/messages/b.md", "intact"],
     ]);
     const after = new Map([
-      ["012-x/messages/a.md", "стало"],
-      ["012-x/messages/c.md", "новое"],
+      ["012-x/messages/a.md", "became"],
+      ["012-x/messages/c.md", "new"],
     ]);
 
     expect(checkImmutable(before, after).map((issue) => issue.message)).toEqual([
-      "файл сообщения изменён после коммита — правка задним числом",
-      "файл сообщения удалён — лента append-only",
+      "message file changed after the commit — a retroactive edit",
+      "message file deleted — the feed is append-only",
     ]);
   });
 
-  it("новые файлы правкой не считает — лента растёт", () => {
-    const before = new Map([["012-x/messages/a.md", "было"]]);
+  it("does not count new files as an edit — the feed grows", () => {
+    const before = new Map([["012-x/messages/a.md", "was"]]);
     const after = new Map([
-      ["012-x/messages/a.md", "было"],
-      ["012-x/messages/b.md", "новое"],
+      ["012-x/messages/a.md", "was"],
+      ["012-x/messages/b.md", "new"],
     ]);
 
     expect(checkImmutable(before, after)).toEqual([]);

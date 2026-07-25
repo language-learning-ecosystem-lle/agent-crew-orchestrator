@@ -8,36 +8,36 @@ import { loadThreads, renderThreadFailures } from "./comms.js";
 
 const ROLES = ["dev-core", "curator", "john"];
 
-const META = "---\ntitle: Тред\nparticipants: dev-core, curator\nstatus: open\n---\n";
+const META = "---\ntitle: Thread\nparticipants: dev-core, curator\nstatus: open\n---\n";
 const MESSAGE =
-  "---\nfrom: curator\ndate: 2026-07-24T13:45:12Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nТело.\n";
+  "---\nfrom: curator\ndate: 2026-07-24T13:45:12Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nBody.\n";
 
-/** Пустой корень почты во временном каталоге. */
+/** An empty mail root in a temporary directory. */
 const root = (): string => mkdtempSync(join(tmpdir(), "agent-protocol-comms-"));
 
-/** Мигрированный тред: `_meta.md` + одно сообщение файлом. */
+/** A migrated thread: `_meta.md` + one message as a file. */
 const migrated = (at: string, id: string): void => {
   mkdirSync(join(at, id, "messages"), { recursive: true });
   writeFileSync(join(at, id, "_meta.md"), META);
   writeFileSync(join(at, id, "messages", "2026-07-24T13-45-12Z-curator.md"), MESSAGE);
 };
 
-/** Legacy-тред: единый `_thread.md`, каталога сообщений нет. */
+/** A legacy thread: a single `_thread.md`, no messages directory. */
 const legacy = (at: string, id: string): void => {
   mkdirSync(join(at, id), { recursive: true });
   writeFileSync(
     join(at, id, "_thread.md"),
-    `# ${id} · Тред\n\nparticipants: dev-core, curator · status: open\n\n## msg-001 · from: curator · 2026-07-24 · expects: answer\n\nТело.\n\nwaiting-on → dev-core\n`,
+    `# ${id} · Thread\n\nparticipants: dev-core, curator · status: open\n\n## msg-001 · from: curator · 2026-07-24 · expects: answer\n\nBody.\n\nwaiting-on → dev-core\n`,
   );
 };
 
-describe("loadThreads — сбой одного треда не ослепляет контур", () => {
-  it("полу-мигрированный тред уходит в failures, остальные читаются", () => {
+describe("loadThreads — a failure of one thread does not blind the circuit", () => {
+  it("a half-migrated thread goes to failures, the rest are read", () => {
     const at = root();
     migrated(at, "012-ok");
     migrated(at, "013-ok");
-    // Файл сообщения, положенный в legacy-тред руками: `messages/` есть,
-    // `_meta.md` нет — ровно инцидент с 009.
+    // A message file dropped into a legacy thread by hand: `messages/` is there,
+    // `_meta.md` is not — exactly the incident with 009.
     legacy(at, "009-broken");
     mkdirSync(join(at, "009-broken", "messages"));
     writeFileSync(join(at, "009-broken", "messages", "2026-07-24T21-00-00Z-curator.md"), MESSAGE);
@@ -51,7 +51,7 @@ describe("loadThreads — сбой одного треда не ослепляе
     rmSync(at, { recursive: true, force: true });
   });
 
-  it("причина названа состоянием, а не путём файла", () => {
+  it("names the reason as a state, not as a file path", () => {
     const at = root();
     legacy(at, "009-broken");
     mkdirSync(join(at, "009-broken", "messages"));
@@ -59,19 +59,19 @@ describe("loadThreads — сбой одного треда не ослепляе
 
     const { failures } = loadThreads(at, ROLES);
 
-    expect(failures[0]?.problem).toContain("полу-мигрированный");
+    expect(failures[0]?.problem).toContain("half-migrated");
     expect(failures[0]?.problem).toContain("_meta.md");
-    // Рядом legacy-`_thread.md` — подсказка, что с этим делать, обязана быть.
-    expect(failures[0]?.problem).toContain("домигрируйте");
+    // A legacy `_thread.md` lies next to it — the hint on what to do must be there.
+    expect(failures[0]?.problem).toContain("finish migrating");
 
     rmSync(at, { recursive: true, force: true });
   });
 
-  it("сломанный `_meta.md` тоже изолируется, а не роняет обход", () => {
+  it("a broken `_meta.md` is isolated too instead of killing the walk", () => {
     const at = root();
     migrated(at, "012-ok");
     migrated(at, "013-broken");
-    writeFileSync(join(at, "013-broken", "_meta.md"), "мусор без заголовка\n");
+    writeFileSync(join(at, "013-broken", "_meta.md"), "garbage without a header\n");
 
     const { threads, failures } = loadThreads(at, ROLES);
 
@@ -81,7 +81,7 @@ describe("loadThreads — сбой одного треда не ослепляе
     rmSync(at, { recursive: true, force: true });
   });
 
-  it("всё цело — failures пуст, треды по порядку id", () => {
+  it("everything intact — failures is empty, threads in id order", () => {
     const at = root();
     migrated(at, "013-b");
     migrated(at, "012-a");
@@ -96,23 +96,21 @@ describe("loadThreads — сбой одного треда не ослепляе
     rmSync(at, { recursive: true, force: true });
   });
 
-  it("нечитаемый КОРЕНЬ — по-прежнему исключение: это не «часть почты», а её отсутствие", () => {
-    expect(() =>
-      loadThreads(join(tmpdir(), "agent-protocol-нет-такого-каталога"), ROLES),
-    ).toThrow();
+  it("an unreadable ROOT is still an exception: that is not 'part of the mail' but its absence", () => {
+    expect(() => loadThreads(join(tmpdir(), "agent-protocol-no-such-directory"), ROLES)).toThrow();
   });
 });
 
 describe("renderThreadFailures", () => {
-  it("строка на сбой: id треда и что именно не так", () => {
-    const lines = renderThreadFailures([{ id: "009-mobile-front", problem: "полу-мигрированный" }]);
+  it("one line per failure: thread id and what exactly is wrong", () => {
+    const lines = renderThreadFailures([{ id: "009-mobile-front", problem: "half-migrated" }]);
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain("009-mobile-front");
-    expect(lines[0]).toContain("не прочитан");
-    expect(lines[0]).toContain("полу-мигрированный");
+    expect(lines[0]).toContain("could not be read");
+    expect(lines[0]).toContain("half-migrated");
   });
 
-  it("нет сбоев — нет строк (тишина здесь честна: жаловаться не на что)", () => {
+  it("no failures — no lines (silence is honest here: there is nothing to complain about)", () => {
     expect(renderThreadFailures([])).toEqual([]);
   });
 });

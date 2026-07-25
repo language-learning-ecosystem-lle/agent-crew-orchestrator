@@ -4,46 +4,48 @@ import type { Message } from "./message.js";
 import { migrateLegacyThread, verifyMigration } from "./migrate.js";
 import { renderThread, type ThreadMeta } from "./thread.js";
 
-// Регрессия 012 (msg-069). Уведомитель о merge #27 стамповал сообщение датой
-// 2026-07-23, а дописал его в ленту ПОСЛЕ сообщений 2026-07-24 (job стартовал до
-// полуночи UTC, retry-цикл допушил после). Дата немонотонна порядку треда.
-// Имя мигрированного файла ведёт датой — плоская сортировка имён поставила бы
-// github(002) первым и переставила ленту. Порядок держит `seq` (позиция), и
-// миграция обязана ПРИНИМАТЬСЯ, а не падать round-trip'ом сортировки.
+// Regression from 012 (msg-069). The merge #27 notifier stamped its message with
+// the date 2026-07-23 but appended it to the feed AFTER the messages of
+// 2026-07-24 (the job started before UTC midnight, the retry loop pushed after).
+// The date is non-monotonic with the thread order. A migrated file name leads with
+// the date — a flat sort of names would put github(002) first and reorder the
+// feed. Order is held by `seq` (position), and the migration must be ACCEPTED
+// rather than fail the sorting round-trip.
 const roles = ["curator", "github"];
 
 const meta: ThreadMeta = {
-  title: "012-x · тред",
+  title: "012-x · thread",
   participants: ["curator", "github"],
   status: "open",
 };
 
-// Строим оригинал рендером — формат гарантирован тем же кодом, что читает миграция.
+// The original is built by the renderer — the format is guaranteed by the same
+// code the migration reads.
 const messages: Message[] = [
   {
     fields: { msg: 1, from: "curator", date: "2026-07-24", expects: "answer" },
-    text: "Первое, дата 24-го.",
+    text: "First, dated the 24th.",
   },
   {
     fields: { msg: 2, from: "github", date: "2026-07-23", expects: "none" },
-    text: "Позже по ленте, дата 23-я.",
+    text: "Later in the feed, dated the 23rd.",
   },
 ];
 const original = renderThread(meta, messages);
 
-describe("migrateLegacyThread + verifyMigration (немонотонная дата)", () => {
-  it("плоская сортировка имён переставила бы ленту — потому имя НЕ ключ порядка", () => {
+describe("migrateLegacyThread + verifyMigration (non-monotonic date)", () => {
+  it("a flat sort of names would reorder the feed — hence the name is NOT the ordering key", () => {
     const migration = migrateLegacyThread("012-x", original, roles);
     const names = migration.files
       .filter((f) => f.path.startsWith("messages/"))
       .map((f) => f.path)
       .sort();
 
-    // github(002) с датой 07-23 сортируется ИМЕНЕМ раньше curator(001) 07-24:
+    // github(002) dated 07-23 sorts BY NAME before curator(001) dated 07-24:
     expect(names[0]).toContain("002-github");
   });
 
-  it("гард принимает миграцию: порядок по seq воспроизводит оригинал байт-в-байт", () => {
+  it("the guard accepts the migration: ordering by seq reproduces the original byte for byte", () => {
     const migration = migrateLegacyThread("012-x", original, roles);
     expect(verifyMigration(migration, original)).toBeUndefined();
   });

@@ -4,35 +4,36 @@ import { renderIndex } from "./index-doc.js";
 import type { Message } from "./message.js";
 import { renderThread, type ThreadMeta } from "./thread.js";
 
-// derive() в CLI склеивает ровно эти два рендера — здесь проверяется их
-// согласованность на уровне ядра: собранный тред и реестр не расходятся между
-// собой, а повторная сборка идемпотентна (на этом стоит «коммитить только при
-// расхождении», то есть мягкий переход без двойного писателя).
+// derive() in the CLI glues exactly these two renderers together — here their
+// consistency is checked at the core level: the assembled thread and the index do
+// not contradict each other, and a repeated assembly is idempotent (that is what
+// "commit only on divergence" rests on, i.e. a soft transition without a second
+// writer).
 
 const meta = (status: "open" | "closed"): ThreadMeta => ({
-  title: "012-x · тред",
+  title: "012-x · thread",
   participants: ["curator", "dev-core"],
   status,
 });
 
 const msg = (from: string, date: string, waitingOn?: string[]): Message => ({
   fields: { from, date, expects: "answer", ...(waitingOn ? { waitingOn } : {}) },
-  text: "текст",
+  text: "text",
 });
 
-describe("derive (согласованность производных)", () => {
-  it("повторная сборка _thread.md идемпотентна", () => {
+describe("derive (consistency of the derived files)", () => {
+  it("a repeated assembly of _thread.md is idempotent", () => {
     const messages = [msg("curator", "2026-07-23T10:00:00Z", ["dev-core"])];
     const once = renderThread(meta("open"), messages);
-    // «Разобрать обратно» здесь не нужно: идемпотентность рендера — что при тех
-    // же входах выходит тот же байт-в-байт результат — и есть свойство, на
-    // которое опирается идемпотентный action.
+    // "Parsing it back" is not needed here: idempotence of the renderer — the same
+    // inputs yielding a byte-identical result — is exactly the property the
+    // idempotent action relies on.
     const twice = renderThread(meta("open"), messages);
 
     expect(twice).toBe(once);
   });
 
-  it("INDEX и _thread.md согласованы по waiting-on одного треда", () => {
+  it("INDEX and _thread.md agree on the waiting-on of one thread", () => {
     const messages = [
       msg("curator", "2026-07-23T10:00:00Z", ["dev-core"]),
       msg("dev-core", "2026-07-23T11:00:00Z", ["curator"]),
@@ -40,15 +41,15 @@ describe("derive (согласованность производных)", () =>
     const thread = { id: "012-x", meta: meta("open"), messages };
     const index = renderIndex([thread]);
 
-    // Последнее объявление — curator; и в INDEX колонка waiting-on, и хвост
-    // собранного треда должны говорить одно и то же.
+    // The last declaration is curator; both the waiting-on column in INDEX and the
+    // tail of the assembled thread must say the same thing.
     expect(index).toContain("| 012-x | curator, dev-core | open | curator |");
     expect(renderThread(thread.meta, messages)).toContain(
       "dev-core · 2026-07-23 · expects: answer",
     );
   });
 
-  it("закрытый тред в INDEX не ждёт никого, что бы ни было в последнем сообщении", () => {
+  it("a closed thread awaits nobody in INDEX, whatever the last message says", () => {
     const thread = {
       id: "012-x",
       meta: meta("closed"),

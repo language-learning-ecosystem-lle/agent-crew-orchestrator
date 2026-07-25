@@ -6,22 +6,22 @@ const MAIL = { branch: "comms", dir: "agent-comms" };
 
 const human = {
   id: "john",
-  kind: "человек",
+  kind: "human",
   status: "active",
   wake: { mode: "self" },
-  summary: "владелец",
+  summary: "owner",
 };
 
 describe("protocolConfigSchema", () => {
-  it("принимает минимальный конфиг и по умолчанию не даёт роли никаких прав", () => {
+  it("accepts a minimal config and by default grants a role no permissions", () => {
     const parsed = protocolConfigSchema.parse({ version: 1, mail: MAIL, roles: [human] });
 
     expect(parsed.roles[0]?.permissions).toEqual([]);
   });
 
-  it("отвергает неизвестное поле, а не проглатывает его", () => {
-    // Опечатка в имени поля иначе означала бы молчаливое умолчание — тот самый
-    // класс тихих дефектов, ради которого пакет и пишется.
+  it("rejects an unknown field instead of swallowing it", () => {
+    // Otherwise a typo in a field name would mean a silent default — the very
+    // class of quiet defects the package is being written for.
     const result = protocolConfigSchema.safeParse({
       version: 1,
       mail: MAIL,
@@ -31,7 +31,7 @@ describe("protocolConfigSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("отвергает id, который не переживёт разбора в waiting-on", () => {
+  it("rejects an id that would not survive parsing in waiting-on", () => {
     const result = protocolConfigSchema.safeParse({
       version: 1,
       mail: MAIL,
@@ -41,7 +41,7 @@ describe("protocolConfigSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("не даёт объявить сессию роли, которую никто не будит", () => {
+  it("does not let a session be declared for a role nobody wakes", () => {
     const result = protocolConfigSchema.safeParse({
       version: 1,
       mail: MAIL,
@@ -51,7 +51,7 @@ describe("protocolConfigSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("требует session у роли на вахте и via у роли, оживающей через человека", () => {
+  it("requires session for a role on watch and via for a role coming alive through a human", () => {
     const noSession = protocolConfigSchema.safeParse({
       version: 1,
       mail: MAIL,
@@ -67,7 +67,7 @@ describe("protocolConfigSchema", () => {
     expect(noVia.success).toBe(false);
   });
 
-  it("отвергает конфиг неизвестной версии формата", () => {
+  it("rejects a config of an unknown format version", () => {
     const result = protocolConfigSchema.safeParse({ version: 2, mail: MAIL, roles: [human] });
 
     expect(result.success).toBe(false);

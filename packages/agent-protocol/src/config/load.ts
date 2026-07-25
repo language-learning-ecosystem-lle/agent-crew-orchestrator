@@ -1,31 +1,31 @@
 /**
- * Единственная дверь к конфигу протокола.
+ * The single door to the protocol config.
  *
- * Читать конфиг с диска рабочей копии нельзя: worktree агента стоит на его же
- * feature-ветке, и правка прав, лежащая в этой ветке, выглядела бы для контура
- * действующей — молча. Поэтому чтение идёт через git по ЯВНОМУ ref, и это
- * обязанность пакета, а не дисциплина вызывающих: дисциплину обходят, дверь —
- * нет.
+ * Reading the config from the working copy on disk is not allowed: an agent's
+ * worktree sits on that agent's own feature branch, so a permissions change
+ * living in that branch would look effective to the circuit — silently. Hence
+ * reading goes through git at an EXPLICIT ref, and that is the package's duty,
+ * not the callers' discipline: discipline gets bypassed, a door does not.
  *
- * `ref` — параметр без умолчания. Умолчание `origin/main` было бы тем же
- * молчаливым допущением с другой стороны: проверка в CI обязана смотреть на
- * голову ветки PR, иначе она скажет «ок» про файл, которого в этом PR нет.
+ * `ref` is a parameter without a default. A default of `origin/main` would be the
+ * same silent assumption from the other side: a check in CI must look at the head
+ * of the PR branch, otherwise it says "ok" about a file this PR does not contain.
  *
- * Свежесть — часть операции: `origin/*` без `fetch` протухает молча, а старый
- * конфиг неотличим от актуального. Отказ от обновления возможен, но обязан быть
- * ГРОМКИМ у вызывающего (`onStale`).
+ * Freshness is part of the operation: `origin/*` without a `fetch` goes stale
+ * silently, and a stale config is indistinguishable from a current one. Declining
+ * to refresh is possible, but it must be LOUD at the caller (`onStale`).
  */
 import { fetchRef, readFileAtRef } from "../fs/git.js";
 import { createRoleRegistry, RoleConfigError, type RoleRegistry } from "../roles/registry.js";
 import { DEFAULT_CONFIG_PATH, type ProtocolConfig, protocolConfigSchema } from "./config.js";
 
 export type LoadOptions = {
-  /** Рабочая копия репозитория, где живёт конфиг (любая ветка — читаем по ref). */
+  /** Working copy of the repository where the config lives (any branch — we read at a ref). */
   readonly repo: string;
-  /** Явная точка истории: `origin/main`, `HEAD`, sha. Умолчания нет намеренно. */
+  /** Explicit point in history: `origin/main`, `HEAD`, a sha. There is deliberately no default. */
   readonly ref: string;
   readonly path?: string;
-  /** false — не обновлять remote-tracking ref; вызывающий обязан сказать об этом вслух. */
+  /** false — do not refresh the remote-tracking ref; the caller must say so out loud. */
   readonly fetch?: boolean;
 };
 
@@ -47,14 +47,14 @@ export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
     parsed = JSON.parse(raw);
   } catch (error) {
     throw new RoleConfigError([
-      `'${path}' на ${options.ref} — не JSON: ${(error as Error).message}`,
+      `'${path}' at ${options.ref} is not JSON: ${(error as Error).message}`,
     ]);
   }
 
   const result = protocolConfigSchema.safeParse(parsed);
   if (!result.success) {
     throw new RoleConfigError(
-      result.error.issues.map((issue) => `${issue.path.join(".") || "(корень)"}: ${issue.message}`),
+      result.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`),
     );
   }
 

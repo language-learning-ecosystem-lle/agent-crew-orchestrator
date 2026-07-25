@@ -1,40 +1,44 @@
 /**
- * Поведение при перезагрузке машины (S4, решение john по развилке — тред 012,
- * curator 16:25). Пакет поддерживает ОБА режима, проект выбирает при установке;
- * пакет НЕ прописывает себя в систему сам — `systemctl enable` делает человек.
+ * Behaviour across a machine reboot (S4, john's decision on the fork — thread
+ * 012, curator 16:25). The package supports BOTH modes, the project picks one at
+ * installation time; the package does NOT register itself with the system —
+ * `systemctl enable` is done by a human.
  *
- * Ключевое (item 3 curator, «самое важное»): автостарт поднимает ДЕМОНА, но не
- * включает ЗАПУСКИ. Состояние запусков — это `--enable-flag` (файл на диске),
- * и оно переживает ребут РОВНО в том положении, в каком его оставил john:
- * systemd не превращается молча в «после ребута всё само поехало». Гарантия — по
- * построению: enable-состояние = наличие файла, читается каждый тик; после ребута
- * файл тот же, если лежит на ПОСТОЯННОМ хранилище (не tmpfs). Отсюда — юнит и
- * доки указывают персистентный путь под флаги.
+ * The key part (curator's item 3, "the most important one"): autostart brings up
+ * the DAEMON, but does not enable LAUNCHES. The launch state is the
+ * `--enable-flag` (a file on disk), and it survives a reboot EXACTLY in the
+ * position john left it in: systemd does not quietly turn into "after the reboot
+ * everything started by itself". The guarantee holds by construction: the enable
+ * state is the presence of a file, read on every tick; after a reboot the file is
+ * the same one, provided it lies on PERSISTENT storage (not tmpfs). Hence the
+ * unit and the docs point at a persistent path for the flags.
  */
 export const REBOOT_MODES = ["systemd", "manual"] as const;
 export type RebootMode = (typeof REBOOT_MODES)[number];
 
 /**
- * Строка для `status`: как демон поднят и ЧТО будет после ребута — чтобы «через
- * месяц никто не вспомнил» не наступило. `launchesEnabled` — есть ли
- * `--enable-flag` (персистентное состояние запусков).
+ * A line for `status`: how the daemon is brought up and WHAT will happen after a
+ * reboot — so that "a month later nobody remembered" never arrives.
+ * `launchesEnabled` — whether the `--enable-flag` exists (the persistent launch
+ * state).
  */
 export const describeReboot = (mode: RebootMode, launchesEnabled: boolean): string => {
-  const launches = launchesEnabled ? "включены" : "выключены";
+  const launches = launchesEnabled ? "enabled" : "disabled";
   if (mode === "manual") {
-    return `демон: ручной старт; запуски: ${launches}; после ребута демон нужно поднять руками`;
+    return `daemon: manual start; launches: ${launches}; after a reboot the daemon has to be brought up by hand`;
   }
   const afterReboot = launchesEnabled
-    ? "запуски были включены — останутся включёнными"
-    : "запуски были выключены — останутся выключенными";
-  return `демон: автостарт (systemd); запуски: ${launches}; после ребута демон поднимется сам, ${afterReboot}`;
+    ? "launches were enabled — they will stay enabled"
+    : "launches were disabled — they will stay disabled";
+  return `daemon: autostart (systemd); launches: ${launches}; after a reboot the daemon comes up by itself, ${afterReboot}`;
 };
 
 /**
- * systemd unit-файл, запускающий демон. `systemctl enable` — ДЕЙСТВИЕ ЧЕЛОВЕКА,
- * не поведение кода: демон, который сам делает себя постоянным, — тот сюрприз,
- * от которого защищает старт в `disabled`. Флаги обязаны лежать на постоянном
- * хранилище — иначе enable-состояние не переживёт ребут (см. doc-блок).
+ * The systemd unit file that starts the daemon. `systemctl enable` is a HUMAN
+ * ACTION, not code behaviour: a daemon that makes itself permanent is exactly the
+ * surprise that starting in `disabled` protects against. The flags must lie on
+ * persistent storage — otherwise the enable state will not survive a reboot (see
+ * the doc block).
  */
 export const renderSystemdUnit = (params: {
   readonly execStart: string;

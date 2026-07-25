@@ -1,37 +1,40 @@
 /**
- * Валидатор формата — единственная защита новой модели.
+ * The format validator — the only defence the new model has.
  *
- * Размен, принятый осознанно (решение john, msg-005 треда 012): порча тела
- * треда становится НЕВОЗМОЖНОЙ по построению (писатель трогает только свой
- * файл), а кривой формат — ЛОВИМЫМ НЕМЕДЛЕННО. Раз запись больше не проходит
- * через код, проверка после записи — всё, что у нас есть, и потому она обязана
- * быть придирчивой.
+ * A trade-off taken deliberately (john's decision, msg-005 of thread 012):
+ * corrupting the body of a thread becomes IMPOSSIBLE by construction (a writer
+ * only touches its own file), while a malformed format becomes CATCHABLE
+ * IMMEDIATELY. Since writing no longer goes through code, a check after the write
+ * is all we have, and therefore it must be picky.
  *
- * Что проверяется и почему именно это:
+ * What is checked and why exactly this:
  *
- * - **`from` и роли в `waiting-on` известны реестру.** Неизвестная роль в
- *   старом разборе отбрасывалась МОЛЧА — это и был механизм потери роли из
- *   объявления (боль 2). Опечатка `jonh` дала бы пустое ожидание и тишину,
- *   неотличимую от штатной работы.
- * - **Имя файла соответствует полям.** Имя — идентификатор сообщения; разъехавшись
- *   с содержимым, оно перестаёт им быть.
- * - **В теле нет строк `## msg-`** — они развалили бы склейку: сборщик режет тред
- *   ровно по ним.
- * - **Тело непусто** — пустое сообщение в ленте это молчание, выглядящее как ход.
- * Чего здесь СОЗНАТЕЛЬНО НЕТ: проверки «даты не убывают в порядке треда».
- * Порядок держит `seq` (позиция), а не дата, и дата НАМЕРЕННО может быть
- * немонотонна ленте — перекос часов писателя, граница полуночи UTC (реальный
- * msg-069 в 012). Требовать монотонности дат было бы НЕВЕРНО, а не избыточно.
- * Настоящая смежная проверка — «порядок против порядка КОММИТОВ» — живёт на
- * git-слое рядом с проверкой неизменности, а не здесь.
- * - **Собранный `_thread.md` совпадает с закоммиченным** — иначе производное
- *   разошлось с источником, и человек читает не то, что есть.
- * - **Ранее закоммиченные файлы не изменились** (`checkImmutable`, включается
- *   флагом `--since <ref>`: без точки в истории вопрос «правили ли задним
- *   числом» не имеет смысла, а молчание об этом читалось бы как «цело»). Модель
- *   файл-на-сообщение делает тихую правку задним числом дешёвой: дифф крошечный,
- *   лента визуально та же. Технически правку не запрещаем, но она обязана
- *   оставлять красный след — раньше эту роль играла физика общего файла.
+ * - **`from` and the roles in `waiting-on` are known to the registry.** In the old
+ *   parser an unknown role was dropped SILENTLY — that was the very mechanism by
+ *   which a role got lost from a declaration (pain 2). A typo like `jonh` would
+ *   yield an empty waiting and a silence indistinguishable from normal work.
+ * - **The file name matches the fields.** The name is the message identifier; once
+ *   it drifts from the content it stops being one.
+ * - **No `## msg-` lines in the body** — they would break the assembly: the
+ *   assembler cuts a thread exactly at them.
+ * - **The body is non-empty** — an empty message in the feed is silence that looks
+ *   like a turn.
+ * What is DELIBERATELY NOT here: a "dates do not decrease in thread order" check.
+ * Order is held by `seq` (position), not by the date, and the date may be
+ * non-monotonic with the feed ON PURPOSE — writer clock skew, the UTC midnight
+ * boundary (the real msg-069 in 012). Requiring monotonic dates would be WRONG,
+ * not merely redundant. The genuinely adjacent check — "order against COMMIT
+ * order" — lives on the git layer next to the immutability check, not here.
+ * - **The assembled `_thread.md` matches the committed one** — otherwise the
+ *   derived file has drifted from the source and a human is reading something
+ *   other than what is there.
+ * - **Previously committed files have not changed** (`checkImmutable`, enabled by
+ *   the `--since <ref>` flag: without a point in history the question "was it
+ *   edited after the fact" makes no sense, and staying silent about that would
+ *   read as "intact"). The file-per-message model makes a quiet retroactive edit
+ *   cheap: the diff is tiny, the feed looks the same. Technically we do not forbid
+ *   the edit, but it must leave a red trace — that role used to be played by the
+ *   physics of a shared file.
  */
 import type { RoleRegistry } from "../roles/registry.js";
 import { type Message, messageFileName } from "./message.js";
@@ -45,9 +48,9 @@ export type MessageEntry = {
 export type ThreadInput = {
   readonly id: string;
   readonly meta: ThreadMeta;
-  /** Сообщения В ПОРЯДКЕ ТРЕДА (`compareMessageEntries`, по `seq`) — том же, в котором их склеит сборщик. */
+  /** Messages IN THREAD ORDER (`compareMessageEntries`, by `seq`) — the same one the assembler uses. */
   readonly entries: readonly MessageEntry[];
-  /** Закоммиченный производный файл, если он есть. */
+  /** The committed derived file, if there is one. */
   readonly threadDoc?: string;
 };
 
@@ -68,7 +71,7 @@ export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIs
       issues.push({
         thread: input.id,
         file: "_meta.md",
-        message: `участник '${participant}' не значится ролью в конфиге`,
+        message: `participant '${participant}' is not listed as a role in the config`,
       });
     }
   }
@@ -77,22 +80,22 @@ export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIs
     const { fields, text } = entry.message;
 
     if (!registry.isKnown(fields.from)) {
-      at(entry.fileName, `'from: ${fields.from}' — такой роли нет в конфиге`);
+      at(entry.fileName, `'from: ${fields.from}' — no such role in the config`);
     }
     for (const role of fields.waitingOn ?? []) {
       if (!registry.isKnown(role)) {
-        at(entry.fileName, `в 'waiting-on' роль '${role}', которой нет в конфиге`);
+        at(entry.fileName, `'waiting-on' names role '${role}', which is not in the config`);
       }
     }
 
     const expected = messageFileName(fields);
     if (expected !== entry.fileName) {
-      at(entry.fileName, `имя файла разошлось с заголовком, ожидалось '${expected}'`);
+      at(entry.fileName, `the file name drifted from the header, expected '${expected}'`);
     }
 
-    if (text.trim() === "") at(entry.fileName, "тело сообщения пусто");
+    if (text.trim() === "") at(entry.fileName, "the message body is empty");
     if (/^## msg-/m.test(text)) {
-      at(entry.fileName, "в теле строка '## msg-' — склейка треда развалится об неё");
+      at(entry.fileName, "a '## msg-' line in the body — the thread assembly would break on it");
     }
   }
 
@@ -105,7 +108,7 @@ export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIs
       issues.push({
         thread: input.id,
         file: "_thread.md",
-        message: "производный файл разошёлся с сообщениями — пересоберите его",
+        message: "the derived file drifted from the messages — rebuild it",
       });
     }
   }
@@ -114,8 +117,8 @@ export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIs
 };
 
 /**
- * Ранее закоммиченные файлы сообщений неизменны. `previous`/`current` — карты
- * «путь → содержимое» из двух состояний ветки.
+ * Previously committed message files are immutable. `previous`/`current` are
+ * "path → content" maps from two states of the branch.
  */
 export const checkImmutable = (
   previous: ReadonlyMap<string, string>,
@@ -125,13 +128,13 @@ export const checkImmutable = (
   for (const [path, was] of previous) {
     const now = current.get(path);
     if (now === undefined) {
-      issues.push({ thread: path, message: "файл сообщения удалён — лента append-only" });
+      issues.push({ thread: path, message: "message file deleted — the feed is append-only" });
       continue;
     }
     if (now !== was) {
       issues.push({
         thread: path,
-        message: "файл сообщения изменён после коммита — правка задним числом",
+        message: "message file changed after the commit — a retroactive edit",
       });
     }
   }

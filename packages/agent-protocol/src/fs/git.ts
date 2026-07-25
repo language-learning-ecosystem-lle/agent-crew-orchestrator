@@ -1,17 +1,18 @@
 /**
- * Предыдущее состояние ленты — из git.
+ * The previous state of the feed — from git.
  *
- * Проверка неизменности сообщений не может опираться на диск: на диске лежит
- * только «сейчас». Вопрос «менялся ли ранее закоммиченный файл» имеет смысл
- * лишь относительно точки в истории, и единственный, кто её знает, — git.
+ * The immutability check on messages cannot rely on disk: disk only holds "now".
+ * The question "was an already committed file changed" only makes sense relative
+ * to a point in history, and the only one who knows that point is git.
  *
- * Почему это не нарушает границу слоёв: ядро (`thread/`) остаётся функциями
- * «строка → строка» и о git не знает; `checkImmutable` принимает две карты
- * «путь → содержимое». Здесь — тонкая обёртка, добывающая вторую карту.
+ * Why this does not break the layering: the core (`thread/`) stays a set of
+ * "string → string" functions and knows nothing about git; `checkImmutable` takes
+ * two "path → content" maps. This module is the thin wrapper that obtains the
+ * second map.
  *
- * Отказ громкий: не тот ref, не репозиторий, нет git в PATH — исключение с
- * текстом, а не пустая карта. Пустая карта означала бы «ничего не менялось», то
- * есть проверка молча превратилась бы в свою противоположность.
+ * Failure is loud: wrong ref, not a repository, no git on PATH — an exception
+ * with a message, not an empty map. An empty map would mean "nothing changed",
+ * i.e. the check would silently turn into its own opposite.
  */
 import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
@@ -24,21 +25,21 @@ const git = (root: string, args: readonly string[]): string => {
       maxBuffer: 64 * 1024 * 1024,
     });
   } catch (error) {
-    throw new Error(`git ${args.join(" ")} в '${root}': ${(error as Error).message}`);
+    throw new Error(`git ${args.join(" ")} in '${root}': ${(error as Error).message}`);
   }
 };
 
 const MESSAGE_PATH = /\/messages\/[^/]+\.md$/;
 
 /**
- * Файлы сообщений на момент `ref`, ключ — путь относительно `root`
- * (тот же вид, что у путей на диске, иначе карты не сравнить).
+ * Message files as of `ref`, keyed by path relative to `root`
+ * (the same shape as on-disk paths, otherwise the maps cannot be compared).
  */
 export const messagesAtRef = (root: string, ref: string): Map<string, string> => {
-  // Все git-вызовы идут ОТ КОРНЯ РЕПОЗИТОРИЯ, а не от каталога почты: pathspec
-  // и вывод `ls-tree` резолвятся относительно текущей директории, и запуск из
-  // подкаталога давал пустой список — то есть «ничего не менялось» вместо
-  // ответа. Поймано тестом, а не рассуждением.
+  // Every git call is made FROM THE REPOSITORY ROOT, not from the mail directory:
+  // pathspecs and `ls-tree` output resolve relative to the current directory, and
+  // running from a subdirectory produced an empty list — that is, "nothing
+  // changed" instead of an answer. Caught by a test, not by reasoning.
   const top = git(root, ["rev-parse", "--show-toplevel"]).trim();
   const prefix = relative(top, realpathSync(root));
 
@@ -56,17 +57,18 @@ export const messagesAtRef = (root: string, ref: string): Map<string, string> =>
 };
 
 /**
- * Содержимое файла на момент `ref`.
+ * File contents as of `ref`.
  *
- * Конфиг протокола читается ТОЛЬКО так, а не с диска рабочей копии: worktree
- * агента стоит на его же feature-ветке, и правка прав, лежащая в этой ветке,
- * выглядела бы для контура действующей. Тот же класс, что cwd-слепота (008),
- * только опаснее — он про права.
+ * The protocol config is read ONLY this way and never from the working copy on
+ * disk: an agent's worktree sits on that agent's own feature branch, so a
+ * permissions change living in that branch would look effective to the circuit.
+ * The same class as cwd blindness (008), only more dangerous — this one is about
+ * permissions.
  */
 export const readFileAtRef = (repo: string, ref: string, path: string): string =>
   git(repo, ["show", `${ref}:${path}`]);
 
-/** Есть ли файл на момент `ref`. Нужен для проверки объявленных инструкций ролей. */
+/** Whether a file exists as of `ref`. Needed to verify the declared role instructions. */
 export const fileExistsAtRef = (repo: string, ref: string, path: string): boolean => {
   try {
     execFileSync("git", ["-C", repo, "cat-file", "-e", `${ref}:${path}`], { stdio: "ignore" });
@@ -77,12 +79,12 @@ export const fileExistsAtRef = (repo: string, ref: string, path: string): boolea
 };
 
 /**
- * Обновить remote-tracking ref перед чтением.
+ * Refresh the remote-tracking ref before reading.
  *
- * `git show origin/main:…` читает локальную копию ветки, которая без fetch
- * протухает МОЛЧА: конфиг месячной давности неотличим от свежего. Поэтому
- * обновление — часть операции чтения, а отказ от него (`--no-fetch`) обязан
- * сопровождаться громкой пометкой у вызывающего.
+ * `git show origin/main:…` reads the local copy of the branch, which without a
+ * fetch goes stale SILENTLY: a month-old config is indistinguishable from a fresh
+ * one. Hence refreshing is part of the read operation, and declining it
+ * (`--no-fetch`) must come with a loud note at the caller.
  */
 export const fetchRef = (repo: string, ref: string): void => {
   const at = ref.indexOf("/");
@@ -91,13 +93,13 @@ export const fetchRef = (repo: string, ref: string): void => {
 };
 
 /**
- * Состояние чекаута почты: ветка, чистота, отставание и опережение относительно
- * `origin/<branch>`. Демон читает почту С ДИСКА, поэтому вопрос «свежая ли она»
- * — вопрос про этот чекаут, и ответ на него обязан быть фактом, а не верой.
+ * State of the mail checkout: branch, cleanliness, how far behind and ahead of
+ * `origin/<branch>` it is. The daemon reads mail FROM DISK, so "is it fresh" is a
+ * question about this checkout, and the answer must be a fact rather than faith.
  *
- * Обновление — ТОЛЬКО fast-forward. `reset --hard` починил бы отставание и
- * заодно стёр бы сообщение, которое роль пишет прямо сейчас; чинить нечужой
- * ценой мы не умеем и не будем — расхождение остаётся отказом.
+ * Updating is fast-forward ONLY. `reset --hard` would fix being behind and wipe
+ * out the message a role is writing right now; we neither can nor will repair
+ * things at someone else's expense — divergence stays a refusal.
  */
 export const mailCheckoutState = (
   checkout: string,
@@ -106,12 +108,12 @@ export const mailCheckoutState = (
   git(checkout, ["fetch", "--quiet", "origin", branch]);
   const current = git(checkout, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
   if (current === branch) {
-    // Может не получиться (расхождение, грязь) — это законный исход, его
-    // назовёт вердикт по фактам ниже, а не исключение отсюда.
+    // This may fail (divergence, dirt) — a legitimate outcome, named by the
+    // fact-based verdict below rather than by an exception from here.
     try {
       git(checkout, ["merge", "--ff-only", "--quiet", `origin/${branch}`]);
     } catch {
-      // остаёмся с тем, что есть — счётчики покажут расхождение
+      // stay with what we have — the counters will show the divergence
     }
   }
   const dirty = git(checkout, ["status", "--porcelain"]).trim() !== "";
@@ -126,10 +128,10 @@ export const mailCheckoutState = (
 };
 
 /**
- * Состояние РАБОЧЕГО репозитория — того, куда приземляется поднятая сессия.
- * Она наследует рабочую директорию как есть, и «начала работу с чужой ветки»
- * снаружи не видно вовсе: в отличие от устаревшей почты, расхождения нет ни с
- * чем. Поэтому факт добывается и печатается всегда.
+ * State of the WORKING repository — the one a launched session lands in. It
+ * inherits the working directory as is, and "started work from a foreign branch"
+ * is not visible from the outside at all: unlike stale mail, there is nothing to
+ * diverge from. Hence the fact is obtained and printed always.
  */
 export const workdirState = (repo: string): { branch: string; dirty: boolean } => ({
   branch: git(repo, ["rev-parse", "--abbrev-ref", "HEAD"]).trim(),

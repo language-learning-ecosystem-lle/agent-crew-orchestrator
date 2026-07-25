@@ -14,31 +14,32 @@ import {
 
 const ROLES = ["john", "curator", "dev-core", "dev-speech", "reviewer-pr", "github"];
 
-// Слепок живого треда: две секции, объявление ожидания прозой со стрелкой,
-// исторический хвост заголовка и проза со словом waiting-on БЕЗ стрелки.
-const LEGACY = `# 012-agent-protocol-package · Вынос протокола в пакет
+// A cast of a live thread: two sections, a waiting declaration written as prose
+// with an arrow, a historical heading tail and prose containing the word
+// waiting-on WITHOUT an arrow.
+const LEGACY = `# 012-agent-protocol-package · Moving the protocol into a package
 
 participants: curator, dev-core, john · status: open
 
 ## msg-001 · from: curator · 2026-07-23 · expects: answer · [СВЕРХПИСАНО msg-002]
 
-Постановка. При непустом waiting-on генератор берёт последнее объявление.
+The statement of work. With a non-empty waiting-on the generator takes the last declaration.
 
 waiting-on → dev-core.
 
 ## msg-002 · from: dev-core · 2026-07-23 · expects: none
 
-Готово, PR открыт.
+Done, the PR is open.
 
-waiting-on → john (merge), curator (постановка).
+waiting-on → john (merge), curator (statement of work).
 `;
 
 describe("parseLegacyThread", () => {
-  it("разбирает шапку, секции и объявления ожидания", () => {
+  it("parses the header, the sections and the waiting declarations", () => {
     const thread = parseLegacyThread("012-x", LEGACY, ROLES);
 
     expect(thread.meta).toEqual({
-      title: "012-agent-protocol-package · Вынос протокола в пакет",
+      title: "012-agent-protocol-package · Moving the protocol into a package",
       participants: ["curator", "dev-core", "john"],
       status: "open",
     });
@@ -47,45 +48,45 @@ describe("parseLegacyThread", () => {
     expect(thread.messages[1]?.fields.waitingOn).toEqual(["john", "curator"]);
   });
 
-  it("падает на нестандартной шапке, а не додумывает её", () => {
-    expect(() => parseLegacyThread("012-x", "# только заголовок\n", ROLES)).toThrow(/шапка/);
+  it("fails on a non-standard header instead of guessing it", () => {
+    expect(() => parseLegacyThread("012-x", "# title only\n", ROLES)).toThrow(/header/);
   });
 });
 
 describe("declaredWaitingOn", () => {
-  it("считает объявлением только стрелку сразу после слова", () => {
-    expect(declaredWaitingOn("waiting-on остаётся на john", ROLES)).toBeUndefined();
+  it("counts only an arrow immediately after the word as a declaration", () => {
+    expect(declaredWaitingOn("waiting-on stays with john", ROLES)).toBeUndefined();
     expect(declaredWaitingOn("waiting-on → john", ROLES)).toEqual(["john"]);
   });
 
-  it("берёт последнее объявление, а не первое", () => {
-    const text = "waiting-on → john\n\nпотом передумали\n\nwaiting-on → curator";
+  it("takes the last declaration, not the first", () => {
+    const text = "waiting-on → john\n\nthen we changed our minds\n\nwaiting-on → curator";
 
     expect(declaredWaitingOn(text, ROLES)).toEqual(["curator"]);
   });
 
-  it("не теряет роль из-за пояснения в скобках", () => {
-    // Тред 011: гипотезу «скобки съедают следующую роль» проверяли фактом.
-    expect(declaredWaitingOn("waiting-on → dev-speech (этап 1), john (VPS)", ROLES)).toEqual([
+  it("does not lose a role because of a parenthesised explanation", () => {
+    // Thread 011: the hypothesis "parentheses eat the next role" was checked by fact.
+    expect(declaredWaitingOn("waiting-on → dev-speech (stage 1), john (VPS)", ROLES)).toEqual([
       "dev-speech",
       "john",
     ]);
   });
 
-  it("режет по последнему слову waiting-on, а не по первой стрелке в строке", () => {
-    // Стрелка — ходовой символ прозы (@BotFather → chat_id → chmod 600).
-    const text = "настройка: @BotFather → токен → chmod 600. waiting-on → john";
+  it("cuts at the last waiting-on word, not at the first arrow in the line", () => {
+    // The arrow is a common character in prose (@BotFather → chat_id → chmod 600).
+    const text = "setup: @BotFather → token → chmod 600. waiting-on → john";
 
     expect(declaredWaitingOn(text, ROLES)).toEqual(["john"]);
   });
 
-  it("объявление без известных ролей даёт пустой состав, а не отсутствие объявления", () => {
+  it("a declaration without known roles yields an empty set, not the absence of a declaration", () => {
     expect(declaredWaitingOn("waiting-on → —", ROLES)).toEqual([]);
   });
 });
 
 describe("waitingOnOf", () => {
-  it("берёт последнее ОБЪЯВЛЕНИЕ, даже если последняя секция ход не передавала", () => {
+  it("takes the last DECLARATION even if the last section did not pass the turn", () => {
     const thread = parseLegacyThread("012-x", LEGACY, ROLES);
     const withNote = {
       ...thread,
@@ -93,7 +94,7 @@ describe("waitingOnOf", () => {
         ...thread.messages,
         {
           fields: { msg: 3, from: "github", date: "2026-07-23", expects: "none" as const },
-          text: "PR смёржен.",
+          text: "The PR is merged.",
         },
       ],
     };
@@ -101,7 +102,7 @@ describe("waitingOnOf", () => {
     expect(waitingOnOf(withNote)).toEqual(["john", "curator"]);
   });
 
-  it("у закрытого треда ожидания нет, что бы ни говорила последняя секция", () => {
+  it("a closed thread awaits nobody, whatever the last section says", () => {
     const thread = parseLegacyThread(
       "012-x",
       LEGACY.replace("status: open", "status: closed"),
@@ -113,13 +114,13 @@ describe("waitingOnOf", () => {
 });
 
 describe("renderThread / _meta.md", () => {
-  it("сборка воспроизводит исходный тред байт-в-байт", () => {
+  it("the assembly reproduces the original thread byte for byte", () => {
     const thread = parseLegacyThread("012-x", LEGACY, ROLES);
 
     expect(renderThread(thread.meta, thread.messages)).toBe(LEGACY);
   });
 
-  it("_meta.md разбирается и собирается обратно", () => {
+  it("_meta.md is parsed and rendered back", () => {
     const thread = parseLegacyThread("012-x", LEGACY, ROLES);
     const raw = renderMetaFile(thread.meta);
 
@@ -128,7 +129,9 @@ describe("renderThread / _meta.md", () => {
 });
 
 describe("renderIndex / threadsWaitingOn", () => {
-  it("реестр собирается из тредов, закрытый показывает «—»", () => {
+  // The INDEX heading is deliberately left in the project zone's language — see
+  // the note in `index-doc.ts`.
+  it("the index is assembled from the threads, a closed one shows '—'", () => {
     const open = parseLegacyThread("012-x", LEGACY, ROLES);
     const closed = parseLegacyThread(
       "001-y",
@@ -147,22 +150,22 @@ describe("renderIndex / threadsWaitingOn", () => {
     );
   });
 
-  it("почта считается из тредов, а не из реестра", () => {
-    // Если бы «есть ли почта» читалось из производного INDEX, падение его
-    // генератора означало бы слепоту контура — боль 5 (тред 008).
+  it("mail is computed from the threads, not from the index", () => {
+    // If "is there mail" were read from the derived INDEX, a failure of its
+    // generator would mean the circuit goes blind — pain 5 (thread 008).
     const thread = parseLegacyThread("012-x", LEGACY, ROLES);
 
     expect(threadsWaitingOn([thread], "john")).toEqual(["012-x"]);
     expect(threadsWaitingOn([thread], "dev-core")).toEqual([]);
   });
 
-  it("updated — дата последнего сообщения", () => {
+  it("updated is the date of the last message", () => {
     expect(updatedOf(parseLegacyThread("012-x", LEGACY, ROLES))).toBe("2026-07-23");
   });
 });
 
 describe("migrateLegacyThread", () => {
-  it("режет тред на файлы и воспроизводит исходник байт-в-байт", () => {
+  it("splits the thread into files and reproduces the original byte for byte", () => {
     const migration = migrateLegacyThread("012-x", LEGACY, ROLES);
 
     expect(migration.files.map((file) => file.path)).toEqual([
@@ -174,30 +177,31 @@ describe("migrateLegacyThread", () => {
     expect(verifyMigration(migration, LEGACY)).toBeUndefined();
   });
 
-  it("дубль исторического номера НЕ ломает порядок и НЕ даёт коллизию (имя из seq)", () => {
-    // Регрессия: до seq имя строилось из номера, и два msg-002 (dev-core,
-    // curator) давали файлы `002-dev-core`/`002-curator`, которые сортировка
-    // переставляла (c < d) — загрузка с диска врала порядком. Второе условие
-    // verifyMigration (round-trip через сортировку имён) это теперь ловит.
-    const dup = `# 012-x · дубль номера
+  it("a duplicated historical number does NOT break the order and does NOT collide (the name comes from seq)", () => {
+    // Regression: before seq the name was built from the number, and two msg-002
+    // (dev-core, curator) produced files `002-dev-core`/`002-curator` which the
+    // sort reordered (c < d) — loading from disk lied about the order. The second
+    // condition of verifyMigration (a round-trip through name sorting) now catches
+    // this.
+    const dup = `# 012-x · duplicated number
 
 participants: curator, dev-core · status: open
 
 ## msg-001 · from: curator · 2026-07-23 · expects: answer
 
-Первое.
+First.
 
 ## msg-002 · from: dev-core · 2026-07-23 · expects: answer
 
-Второе (dev-core раньше curator).
+Second (dev-core before curator).
 
 ## msg-002 · from: curator · 2026-07-23 · expects: none
 
-Третье, тот же номер.
+Third, the same number.
 `;
     const migration = migrateLegacyThread("012-x", dup, ["curator", "dev-core"]);
 
-    // Имена из позиций 1/2/3 — сортировка совпадает с порядком, коллизий нет.
+    // Names from positions 1/2/3 — sorting matches the order, no collisions.
     expect(migration.files.map((file) => file.path)).toEqual([
       "_meta.md",
       "messages/2026-07-23-001-curator.md",
@@ -206,14 +210,14 @@ participants: curator, dev-core · status: open
       "_thread.md",
     ]);
     expect(migration.collisions).toEqual([]);
-    // Оба условия гарда, включая round-trip через сортировку имён.
+    // Both conditions of the guard, including the round-trip through name sorting.
     expect(verifyMigration(migration, dup)).toBeUndefined();
   });
 
-  it("гард показывает место расхождения, а не просто «не совпало»", () => {
+  it("the guard shows where the divergence is, not just 'did not match'", () => {
     const migration = migrateLegacyThread("012-x", LEGACY, ROLES);
-    const tampered = LEGACY.replace("Готово, PR открыт.", "Готово, PR открыт!");
+    const tampered = LEGACY.replace("Done, the PR is open.", "Done, the PR is open!");
 
-    expect(verifyMigration(migration, tampered)).toMatch(/расхождение на байте \d+/);
+    expect(verifyMigration(migration, tampered)).toMatch(/divergence at byte \d+/);
   });
 });

@@ -11,13 +11,13 @@ const CONFIG = {
   version: 1,
   mail: { branch: "comms", dir: "agent-comms" },
   roles: [
-    { id: "john", kind: "человек", status: "active", wake: { mode: "self" }, summary: "PM" },
+    { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "PM" },
     {
       id: "dev-core",
       kind: "claude-code",
       status: "active",
       wake: { mode: "watch", session: "lle-dev-core" },
-      summary: "поток",
+      summary: "main stream",
       permissions: ["thread-status"],
     },
   ],
@@ -37,13 +37,13 @@ const repoWithConfig = (): { repo: string; path: string } => {
   };
   git("init", "-q", "-b", "main");
   git("add", ".");
-  git("commit", "-q", "-m", "конфиг протокола");
+  git("commit", "-q", "-m", "protocol config");
 
   return { repo, path };
 };
 
 describe("loadProtocolConfig", () => {
-  it("читает конфиг на указанном ref и строит реестр ролей", () => {
+  it("reads the config at the given ref and builds the role registry", () => {
     const { repo } = repoWithConfig();
 
     const loaded = loadProtocolConfig({ repo, ref: "HEAD", fetch: false });
@@ -53,10 +53,10 @@ describe("loadProtocolConfig", () => {
     expect(loaded.registry.canEditThreadStatus("dev-core")).toBe(true);
   });
 
-  it("НЕ видит правку в рабочей копии — только закоммиченное на ref", () => {
-    // Ради этого конфиг и читается через git: worktree агента стоит на его же
-    // ветке, и права, которые он себе там дописал, не должны выглядеть
-    // действующими для контура.
+  it("does NOT see an edit in the working copy — only what is committed at the ref", () => {
+    // This is why the config is read through git: an agent's worktree sits on the
+    // agent's own branch, and the permissions it wrote for itself there must not
+    // look effective to the circuit.
     const { repo, path } = repoWithConfig();
     writeFileSync(
       path,
@@ -65,11 +65,11 @@ describe("loadProtocolConfig", () => {
         roles: [
           ...CONFIG.roles,
           {
-            id: "самозванец",
+            id: "impostor",
             kind: "claude-code",
             status: "active",
             wake: { mode: "event" },
-            summary: "дописал себе роль в рабочей копии",
+            summary: "granted itself a role in the working copy",
           },
         ],
       }),
@@ -77,10 +77,10 @@ describe("loadProtocolConfig", () => {
 
     const loaded = loadProtocolConfig({ repo, ref: "HEAD", fetch: false });
 
-    expect(loaded.registry.isKnown("самозванец")).toBe(false);
+    expect(loaded.registry.isKnown("impostor")).toBe(false);
   });
 
-  it("на кривом JSON и на невалидном конфиге падает с перечнем претензий", () => {
+  it("fails with a list of complaints on malformed JSON and on an invalid config", () => {
     const { repo, path } = repoWithConfig();
     const commit = (message: string): void => {
       execFileSync(
@@ -100,31 +100,31 @@ describe("loadProtocolConfig", () => {
       );
     };
 
-    writeFileSync(path, "{не json");
-    commit("кривой json");
-    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(/не JSON/);
+    writeFileSync(path, "{not json");
+    commit("malformed json");
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(/not JSON/);
 
     writeFileSync(path, JSON.stringify({ version: 1, roles: CONFIG.roles }));
-    commit("без секции mail");
+    commit("no mail section");
     expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(/mail/);
   });
 
-  it("на несуществующем ref падает, а не молчит", () => {
+  it("fails on a non-existent ref instead of staying silent", () => {
     const { repo } = repoWithConfig();
 
     expect(() => loadProtocolConfig({ repo, ref: "no-such-ref", fetch: false })).toThrow();
   });
 });
 
-describe("секция orchestrator", () => {
-  it("необязательна — репозиторий, который возит только почту, законен", () => {
+describe("the orchestrator section", () => {
+  it("is optional — a repository that only carries mail is legitimate", () => {
     const { repo } = repoWithConfig();
     expect(loadProtocolConfig({ repo, ref: "HEAD", fetch: false }).config.orchestrator).toBe(
       undefined,
     );
   });
 
-  it("читается целиком, когда объявлена", () => {
+  it("is read in full when declared", () => {
     const { repo, path } = repoWithConfig();
     const withOrchestrator = {
       ...CONFIG,
@@ -144,7 +144,7 @@ describe("секция orchestrator", () => {
       "user.email=test@example.com",
       "commit",
       "-qam",
-      "секция оркестратора",
+      "orchestrator section",
     ]);
 
     expect(loadProtocolConfig({ repo, ref: "HEAD", fetch: false }).config.orchestrator).toEqual({
@@ -154,11 +154,11 @@ describe("секция orchestrator", () => {
     });
   });
 
-  it("лишнее поле — громкий отказ, а не молча проигнорированное умолчание", () => {
+  it("rejects an unknown field loudly instead of silently ignoring it", () => {
     const { repo, path } = repoWithConfig();
     writeFileSync(
       path,
-      `${JSON.stringify({ ...CONFIG, orchestrator: { state: ".o", mailCheckout: ".w", ref: "origin/main", journal: "чужое" } }, null, 2)}\n`,
+      `${JSON.stringify({ ...CONFIG, orchestrator: { state: ".o", mailCheckout: ".w", ref: "origin/main", journal: "foreign" } }, null, 2)}\n`,
     );
     execFileSync("git", [
       "-C",
@@ -169,7 +169,7 @@ describe("секция orchestrator", () => {
       "user.email=test@example.com",
       "commit",
       "-qam",
-      "лишнее поле",
+      "unknown field",
     ]);
 
     expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow();

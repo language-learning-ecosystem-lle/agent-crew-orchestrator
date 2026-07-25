@@ -5,10 +5,10 @@ import { createRoleRegistry, RoleConfigError } from "./registry.js";
 
 const john = {
   id: "john",
-  kind: "человек",
+  kind: "human",
   status: "active",
   wake: { mode: "self" },
-  summary: "PM-владелец",
+  summary: "PM and owner",
   permissions: ["thread-status"],
 };
 
@@ -17,7 +17,7 @@ const curator = {
   kind: "claude.ai",
   status: "active",
   wake: { mode: "via-human", via: "john" },
-  summary: "PM-ассистент",
+  summary: "PM assistant",
   permissions: ["thread-status"],
 };
 
@@ -26,7 +26,7 @@ const devCore = {
   kind: "claude-code",
   status: "active",
   wake: { mode: "watch", session: "lle-dev-core" },
-  summary: "основной поток",
+  summary: "main stream",
 };
 
 const reviewer = {
@@ -34,7 +34,7 @@ const reviewer = {
   kind: "gh-action",
   status: "active",
   wake: { mode: "event" },
-  summary: "ревью PR",
+  summary: "PR review",
 };
 
 const MAIL = { branch: "comms", dir: "agent-comms" };
@@ -43,36 +43,36 @@ const registryOf = (...roles: unknown[]) =>
   createRoleRegistry(parseProtocolConfig({ version: 1, mail: MAIL, roles }));
 
 describe("loadRoleRegistry", () => {
-  it("ловит дубль роли", () => {
-    expect(() => registryOf(john, { ...john, summary: "он же, но другой" })).toThrow(
-      /объявлена дважды/,
+  it("catches a duplicated role", () => {
+    expect(() => registryOf(john, { ...john, summary: "the same one, but different" })).toThrow(
+      /declared twice/,
     );
   });
 
-  it("ловит обрыв цепочки пробуждения: via ведёт в несуществующую роль", () => {
+  it("catches a broken wake chain: via points at a non-existent role", () => {
     expect(() => registryOf({ ...curator, wake: { mode: "via-human", via: "jonh" } })).toThrow(
-      /цепочка пробуждения обрывается/,
+      /the wake chain breaks/,
     );
   });
 
-  it("ловит via на роль, которую саму некому разбудить", () => {
-    // Уведомление ушло бы тому, кто его не увидит: «дёрни того, кого тоже
-    // никто не дёргает» — тишина, неотличимая от штатной работы.
+  it("catches via pointing at a role nobody can wake either", () => {
+    // The notification would go to someone who will not see it: "poke the one
+    // nobody pokes either" — silence indistinguishable from normal work.
     expect(() =>
       registryOf(devCore, { ...curator, wake: { mode: "via-human", via: "dev-core" } }),
-    ).toThrow(/некому разбудить/);
+    ).toThrow(/nobody to wake that one/);
   });
 
-  it("ловит две роли на одной сессии", () => {
+  it("catches two roles on one session", () => {
     const devSpeech = { ...devCore, id: "dev-speech" };
 
-    expect(() => registryOf(devCore, devSpeech)).toThrow(/делят сессию/);
+    expect(() => registryOf(devCore, devSpeech)).toThrow(/share session/);
   });
 
-  it("перечисляет ВСЕ претензии сразу, а не первую встреченную", () => {
+  it("lists ALL complaints at once, not the first one encountered", () => {
     try {
       registryOf(john, john, { ...curator, wake: { mode: "via-human", via: "no-such-role" } });
-      expect.unreachable("конфиг обязан быть отвергнут");
+      expect.unreachable("the config must be rejected");
     } catch (error) {
       expect(error).toBeInstanceOf(RoleConfigError);
       expect((error as RoleConfigError).issues).toHaveLength(2);
@@ -81,7 +81,7 @@ describe("loadRoleRegistry", () => {
 });
 
 describe("RoleRegistry", () => {
-  it("знает все объявленные роли, включая ушедшие: старые треды на них ссылаются", () => {
+  it("knows every declared role, retired ones included: old threads reference them", () => {
     const retired = { ...devCore, id: "dev-legacy", status: "retired", wake: { mode: "event" } };
     const registry = registryOf(john, devCore, retired);
 
@@ -90,16 +90,16 @@ describe("RoleRegistry", () => {
     expect(registry.active().map((role) => role.id)).toEqual(["john", "dev-core"]);
   });
 
-  it("права на статус треда есть только у тех, кому они выданы", () => {
+  it("grants thread-status rights only to those they were given to", () => {
     const registry = registryOf(john, curator, devCore);
 
     expect(registry.canEditThreadStatus("john")).toBe(true);
     expect(registry.canEditThreadStatus("curator")).toBe(true);
     expect(registry.canEditThreadStatus("dev-core")).toBe(false);
-    expect(registry.canEditThreadStatus("никто")).toBe(false);
+    expect(registry.canEditThreadStatus("nobody")).toBe(false);
   });
 
-  it("сторожу отдаёт только роли с сессией, и только активные", () => {
+  it("hands the watch-keeper only roles with a session, and only active ones", () => {
     const paused = {
       ...devCore,
       id: "dev-speech",
@@ -111,9 +111,9 @@ describe("RoleRegistry", () => {
     expect(registry.watchTargets()).toEqual([{ id: "dev-core", session: "lle-dev-core" }]);
   });
 
-  it("уведомителю отдаёт человека напрямую, ассистента — через человека, а агентов не отдаёт вовсе", () => {
-    // Различие формулировок (тред 008) перестаёт быть знанием внутри awk и
-    // становится следствием данных: у dev-роли есть сторож, у curator нет.
+  it("hands the notifier a human directly, an assistant through a human, and no agents at all", () => {
+    // The difference in wording (thread 008) stops being knowledge inside awk and
+    // becomes a consequence of the data: a dev role has a keeper, curator has none.
     const registry = registryOf(john, curator, devCore, reviewer);
 
     expect(registry.notificationTargets()).toEqual([
