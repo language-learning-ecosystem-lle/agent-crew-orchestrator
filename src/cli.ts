@@ -32,10 +32,12 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { DEFAULT_CONFIG_PATH } from "./config/config.js";
 import { loadProtocolConfig } from "./config/load.js";
 import { loadThreads, renderThreadFailures } from "./fs/comms.js";
 import { fileExistsAtRef, mailCheckoutState, messagesAtRef, workdirState } from "./fs/git.js";
@@ -89,6 +91,18 @@ import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import type { Launch, Role } from "./roles/schema.js";
+import {
+  type MigrationContext,
+  MigrationRefusedError,
+  planMigration,
+  renderMigrationPlan,
+} from "./schema/migrate.js";
+import {
+  CURRENT_PROTOCOL_VERSION,
+  declaredProtocolVersion,
+  legacyVersionHint,
+  PROTOCOL_VERSION_FIELD,
+} from "./schema/version.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 import type { Expects } from "./thread/message.js";
@@ -106,6 +120,8 @@ import {
 const USAGE = `usage (--ref is always required; --repo defaults to the repository of the current directory):
   agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
   agent-protocol roles list   --ref <ref> [--repo <path>]
+  agent-protocol schema migrate [--repo <path>] [--config-path <p>] [--root <mail>] [--to <n>] [--write]
+                              # the ONE command with no --ref: it plans against the working tree it rewrites
   agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
   agent-protocol index build  --root <mail> --ref <ref> [--write]
   agent-protocol thread build --root <mail> --ref <ref> --id <NNN-slug> [--write]
@@ -243,13 +259,111 @@ const configCheck = (argv: readonly string[]): void => {
 
   if (missing.length === 0) {
     out(
-      `agent-protocol: ok — config '${loaded.path}' at ${loaded.ref}: ${loaded.registry.ids().length} roles, mail in branch '${loaded.config.mail.branch}' (${loaded.config.mail.dir})`,
+      `agent-protocol: ok — config '${loaded.path}' at ${loaded.ref}: protocol version ${loaded.config.protocolVersion}, ${loaded.registry.ids().length} roles, mail in branch '${loaded.config.mail.branch}' (${loaded.config.mail.dir})`,
     );
     return;
   }
   err("agent-protocol: the config points at missing files:");
   for (const item of missing) err(`- ${item}`);
   process.exit(1);
+};
+
+/**
+ * `schema migrate` — moving the repository from one protocol version to the next
+ * (R2). A dry run by default: the plan is the review of a change to files nobody
+ * can restore by hand.
+ *
+ * THIS ONE COMMAND READS THE CONFIG OFF THE DISK, and it is the only one. Two
+ * reasons, both of them the reverse of why all the others read at a ref:
+ *
+ *  - it is the only command whose job is to PRODUCE an edit of the working tree,
+ *    and planning against a different version of the file than the one it is about
+ *    to overwrite would mean writing a result that is not a function of its input;
+ *  - the version has to be readable BEFORE validation: a config one version behind
+ *    is a config whose shape the current schema may legitimately reject, and going
+ *    through the loader would turn "run the migration" into "invalid config".
+ *
+ * To keep the exception loud rather than silent, the command prints the file it
+ * read and the version it found before doing anything else.
+ */
+const schemaMigrate = (argv: readonly string[]): void => {
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const configPath = join(repo, flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH);
+  const raw = readFile(configPath, "protocol config");
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    fail(`'${configPath}' is not JSON: ${(error as Error).message}`, 2);
+    return;
+  }
+
+  const declared = declaredProtocolVersion(parsed);
+  if (declared === undefined) {
+    const hint = legacyVersionHint(parsed);
+    fail(
+      `'${configPath}' does not declare '${PROTOCOL_VERSION_FIELD}'${hint === undefined ? "" : ` — ${hint}`}`,
+      2,
+    );
+    return;
+  }
+  const target = positiveInt(argv, "--to", CURRENT_PROTOCOL_VERSION);
+  out(`agent-protocol: config '${configPath}' (read from the working tree), version ${declared}`);
+
+  // The mail root: the flag wins, otherwise it is assembled out of the raw config —
+  // raw, because at this point the config has not been validated and must not be.
+  const section = (parsed as { orchestrator?: { mailCheckout?: unknown } }).orchestrator;
+  const mailDir = (parsed as { mail?: { dir?: unknown } }).mail?.dir;
+  const mailRoot =
+    flag(argv, "--root") ??
+    (typeof section?.mailCheckout === "string" && typeof mailDir === "string"
+      ? join(repo, section.mailCheckout, mailDir)
+      : "");
+
+  const context: MigrationContext = {
+    config: parsed as Record<string, unknown>,
+    configPath,
+    mailRoot,
+    read: (path) => readFile(path, "file being migrated"),
+    list: (dir) => {
+      if (dir === "") {
+        return fail(
+          "a step asked for the mail, and its location is unknown — pass --root <mail> (the config declares no 'orchestrator.mailCheckout')",
+          2,
+        );
+      }
+      if (!existsSync(dir)) return [];
+      return readdirSync(dir, { recursive: true, encoding: "utf8" })
+        .map((name) => join(dir, name))
+        .filter((path) => statSync(path).isFile());
+    },
+  };
+
+  let plan: ReturnType<typeof planMigration>;
+  try {
+    plan = planMigration({ declared, target, context });
+  } catch (error) {
+    if (error instanceof MigrationRefusedError) {
+      fail(error.message, 2);
+      return;
+    }
+    throw error;
+  }
+  out(renderMigrationPlan(plan));
+
+  if (plan.writes.length === 0) return;
+  if (!argv.includes("--write")) {
+    out("agent-protocol: the plan is shown; writing happens with --write");
+    return;
+  }
+  // The writes are applied IN ORDER, and the config is last in that order: until it
+  // is written, the declared version keeps telling the truth about the data.
+  for (const file of plan.writes) writeOut(file.path, file.content);
+  out(`agent-protocol: migrated ${plan.from} → ${plan.to}, files written: ${plan.writes.length}`);
+  err(
+    "agent-protocol: the files are written but NOT committed — the config goes through a PR, the mail goes straight into its branch (README, 'Compatibility and breaking changes')",
+  );
 };
 
 const rolesList = (argv: readonly string[]): void => {
@@ -1757,6 +1871,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
   const [command, subcommand] = argv;
   if (command === "config" && subcommand === "check") {
     configCheck(argv.slice(2));
+  } else if (command === "schema" && subcommand === "migrate") {
+    schemaMigrate(argv.slice(2));
   } else if (command === "roles" && subcommand === "list") {
     rolesList(argv.slice(2));
   } else if (command === "role" && subcommand === "exists") {

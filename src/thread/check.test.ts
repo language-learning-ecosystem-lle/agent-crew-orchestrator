@@ -8,7 +8,7 @@ import { renderThread, type ThreadMeta } from "./thread.js";
 
 const registry = createRoleRegistry(
   parseProtocolConfig({
-    version: 1,
+    protocolVersion: 1,
     mail: { branch: "comms", dir: "agent-comms" },
     roles: [
       { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "PM" },

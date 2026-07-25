@@ -40,7 +40,7 @@ const reviewer = {
 const MAIL = { branch: "comms", dir: "agent-comms" };
 
 const registryOf = (...roles: unknown[]) =>
-  createRoleRegistry(parseProtocolConfig({ version: 1, mail: MAIL, roles }));
+  createRoleRegistry(parseProtocolConfig({ protocolVersion: 1, mail: MAIL, roles }));
 
 describe("loadRoleRegistry", () => {
   it("catches a duplicated role", () => {

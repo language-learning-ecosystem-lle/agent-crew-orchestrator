@@ -1,0 +1,111 @@
+/**
+ * The PROCESS test of `schema migrate`. The chain planner is covered by unit tests
+ * on pure functions; what cannot be covered there is the command's own promise —
+ * **a dry run leaves the tree exactly as it found it**, and a config it cannot
+ * place in the chain gets a refusal with the repair, not a stack trace.
+ *
+ * The same reason as for the run observer (`orchestrator/run.process.test.ts`): the
+ * expensive defects of this package have always lived in `cli.ts`, in the wiring
+ * between the pure core and the disk.
+ */
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
+
+const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
+const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
+
+const CONFIG = {
+  protocolVersion: 1,
+  mail: { branch: "comms", dir: "agent-comms" },
+  roles: [
+    {
+      id: "dev-core",
+      kind: "claude-code",
+      status: "active",
+      wake: { mode: "watch", session: "s" },
+      summary: "the stream",
+    },
+  ],
+};
+
+const repoWith = (config: unknown): { repo: string; path: string } => {
+  const repo = mkdtempSync(join(tmpdir(), "agent-protocol-schema-"));
+  const path = join(repo, "agent-protocol.json");
+  writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+  execFileSync("git", ["-C", repo, "init", "-q", "-b", "main"], { encoding: "utf8" });
+  return { repo, path };
+};
+
+const run = (repo: string, ...args: string[]): { code: number; out: string } => {
+  try {
+    const out = execFileSync(TSX, [CLI, "schema", "migrate", "--repo", repo, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? -1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
+describe("schema migrate", () => {
+  it("says there is nothing to migrate and does not touch the tree", () => {
+    const { repo, path } = repoWith(CONFIG);
+    const before = readFileSync(path, "utf8");
+
+    const result = run(repo);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("nothing to migrate");
+    expect(readFileSync(path, "utf8")).toBe(before);
+  });
+
+  it("prints the file it read and the version it found — the exception is loud", () => {
+    // It is the ONE command that reads the config off the working tree instead of
+    // at a ref, so it says so every time rather than leaving the operator to
+    // remember which of the two it is looking at.
+    const { repo, path } = repoWith(CONFIG);
+
+    const result = run(repo);
+
+    expect(result.out).toContain(path);
+    expect(result.out).toContain("working tree");
+    expect(result.out).toContain("version 1");
+  });
+
+  it("refuses a config that predates versioning and names the repair", () => {
+    const { protocolVersion: _dropped, ...rest } = CONFIG;
+    const { repo } = repoWith({ version: 1, ...rest });
+
+    const result = run(repo);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("protocolVersion");
+  });
+
+  it("refuses a downgrade instead of guessing at the older shape", () => {
+    const { repo } = repoWith({ ...CONFIG, protocolVersion: 5 });
+
+    const result = run(repo, "--to", "1");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("a downgrade is not performed");
+  });
+
+  it("refuses a target it has no step for, and writes nothing on the way", () => {
+    const { repo, path } = repoWith(CONFIG);
+    const before = readFileSync(path, "utf8");
+
+    const result = run(repo, "--to", "2", "--write");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("1 → 2");
+    expect(readFileSync(path, "utf8")).toBe(before);
+  });
+});

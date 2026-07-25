@@ -81,7 +81,19 @@ export const orchestratorSchema = z.strictObject({
 });
 
 export const protocolConfigSchema = z.strictObject({
-  version: z.literal(1),
+  /**
+   * THE VERSION OF THE PROTOCOL SCHEMA the repository's data is at — see
+   * `schema/version.ts`. It used to be `version`, a name that said nothing about
+   * WHAT it versioned (the file? the package? the protocol?); the ambiguity became
+   * load-bearing the moment migrations started keying off the number (R2).
+   *
+   * It is NOT a literal any more: the package supports one version at a time, but
+   * the field has to PARSE at any of them — otherwise a repository one version
+   * behind would fail as "invalid config" instead of as "run the migration", and
+   * the difference between those two is the difference between a diagnosis and a
+   * hunt. The comparison happens on the reading path, in the loader.
+   */
+  protocolVersion: z.number().int().min(1),
   mail: mailSchema,
   orchestrator: orchestratorSchema.optional(),
   roles: z.array(roleSchema).min(1),
