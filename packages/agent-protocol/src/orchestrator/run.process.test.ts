@@ -18,6 +18,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readdirSync,
   readFileSync,
   writeFileSync,
@@ -156,8 +157,9 @@ const run = (repo: string, exec: string): { code: number; out: string } => {
   }
 };
 
+const journalPath = (repo: string): string => join(repo, ".orchestrator", "journal.jsonl");
 const journal = (repo: string): ReturnType<typeof parseJournal> =>
-  parseJournal(readFileSync(join(repo, ".orchestrator", "journal.jsonl"), "utf8"));
+  parseJournal(readFileSync(journalPath(repo), "utf8"));
 
 /** Has the run got as far as opening its session log — i.e. is there a session to kill? */
 const sessionLogExists = (repo: string): boolean => {
@@ -254,6 +256,16 @@ describe("running a role as a process — the outcome is always recorded", () =>
     const marker = join(repo, "alive.txt");
     const exec = stub(repo, `sleep 30\ntouch ${marker}`);
 
+    // THE SIGNAL MUST LAND ON THE PROCESS THAT INSTALLED THE HANDLER, and `tsx` is a
+    // WRAPPER: it starts node as a grandchild and forwards signals to it. That
+    // forwarding is what failed on the runner of 2026-07-25 — twice, deterministically,
+    // while this machine handled the same test every time: the journal stopped at
+    // `launch` because the wrapper died of the signal and the node underneath it never
+    // saw one. So the run is put into its OWN PROCESS GROUP and the group is signalled
+    // — which is also what the supervisor itself does to the session it raises, and for
+    // the same reason (a signal to a launcher does not reach what it launched).
+    const supervisorOut = join(repo, "supervisor.txt");
+    const sink = openSync(supervisorOut, "a");
     const child = spawn(
       TSX,
       [
@@ -277,7 +289,9 @@ describe("running a role as a process — the outcome is always recorded", () =>
         "1",
         "--write",
       ],
-      { cwd: repo, stdio: "ignore" },
+      // Its own words are kept: when this fails, "did the handler run at all" is the
+      // first question, and `stdio: "ignore"` threw the answer away.
+      { cwd: repo, stdio: ["ignore", sink, sink], detached: true },
     );
     // WAIT FOR THE STATE, NOT FOR A CLOCK. The fixed pause this replaced measured
     // the runner's mood: on a loaded CI machine the twelve seconds ran out while the
@@ -289,19 +303,45 @@ describe("running a role as a process — the outcome is always recorded", () =>
     while (Date.now() - started < 45_000 && !sessionLogExists(repo)) {
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
+    const sessionUpAt = Date.now();
     // A moment of real work after the spawn, so the kill hits a live session.
     await new Promise((resolve) => setTimeout(resolve, 2_000));
-    child.kill("SIGTERM");
-    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    process.kill(-(child.pid as number), "SIGTERM");
+    // AND HERE TOO, THE STATE RATHER THAN A CLOCK. The three-second pause this
+    // replaced was the last fixed wait in the test: the invariant is "the outcome IS
+    // recorded", not "it is recorded within three seconds", and a deadline of twenty
+    // still fails if it is never recorded at all.
+    const killedAt = Date.now();
+    const lastKind = (): string | undefined =>
+      existsSync(journalPath(repo)) ? journal(repo).at(-1)?.kind : undefined;
+    while (Date.now() - killedAt < 20_000 && lastKind() !== "lease-released") {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    // A journal that does not exist at all means the supervisor never started — a
+    // different failure from "it started and said nothing", and the two must not be
+    // reported as one (the runner produced both on the same day).
+    expect(
+      existsSync(journalPath(repo)),
+      `the supervisor left no journal; it said: ${readFileSync(supervisorOut, "utf8")}`,
+    ).toBe(true);
 
     const last = journal(repo).at(-1);
-    expect(last).toMatchObject({ kind: "lease-released", reason: "supervisor-gone" });
+    expect(last, `the supervisor said: ${readFileSync(supervisorOut, "utf8")}`).toMatchObject({
+      kind: "lease-released",
+      reason: "supervisor-gone",
+    });
 
-    // The session must be put down TOGETHER with the observer: had it lived out
-    // its full 30 seconds, the marker would have appeared.
-    await new Promise((resolve) => setTimeout(resolve, 22_000));
+    // The session must be put down TOGETHER with the observer: had it lived out its
+    // full 30 seconds, the marker would have appeared. The wait is measured from the
+    // moment the session came up rather than from the kill — otherwise the length of
+    // the wait above would decide how long this one is, and a fast release would leave
+    // the check standing BEFORE the marker was due.
+    const dueAt = sessionUpAt + 35_000;
+    while (Date.now() < dueAt) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
     expect(existsSync(marker), "the orphaned session outlived the supervisor").toBe(false);
-  }, 90_000);
+  }, 120_000);
 
   it("THE SESSION OUTPUT REACHES THE FILE — every log used to be empty (R6)", () => {
     // The diagnosis of 2026-07-25: the supervisor collected stderr while the agent

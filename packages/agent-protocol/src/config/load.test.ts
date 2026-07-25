@@ -215,3 +215,55 @@ describe("the orchestrator section", () => {
     expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow();
   });
 });
+
+describe("the workspaces of the roles (R17)", () => {
+  const withWorkdir = (workdir: unknown): unknown => ({
+    ...CONFIG,
+    orchestrator: {
+      state: ".orchestrator",
+      mailCheckout: ".worktrees/comms",
+      ref: "origin/main",
+      workdir,
+    },
+  });
+
+  const commit = (repo: string, path: string, config: unknown): void => {
+    writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+    execFileSync("git", [
+      "-C",
+      repo,
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@example.com",
+      "commit",
+      "-qam",
+      "workdir",
+    ]);
+  };
+
+  it("'worktrees' is optional: a repository saying nothing keeps the pre-R17 behaviour", () => {
+    const { repo, path } = repoWithConfig();
+    commit(repo, path, withWorkdir({ branch: "main" }));
+
+    expect(
+      loadProtocolConfig({ repo, ref: "HEAD", fetch: false }).config.orchestrator?.workdir,
+    ).toEqual({ branch: "main" });
+  });
+
+  it("declared, it is read as the directory the per-role worktrees live in", () => {
+    const { repo, path } = repoWithConfig();
+    commit(repo, path, withWorkdir({ branch: "main", worktrees: ".worktrees" }));
+
+    expect(
+      loadProtocolConfig({ repo, ref: "HEAD", fetch: false }).config.orchestrator?.workdir,
+    ).toEqual({ branch: "main", worktrees: ".worktrees" });
+  });
+
+  it("the base branch stays REQUIRED — worktrees with nothing to be based on is meaningless", () => {
+    const { repo, path } = repoWithConfig();
+    commit(repo, path, withWorkdir({ worktrees: ".worktrees" }));
+
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow();
+  });
+});

@@ -32,6 +32,7 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -67,6 +68,12 @@ import {
   startWatch,
 } from "./orchestrator/activity.js";
 import {
+  type Continuation,
+  describeContinuation,
+  planContinuation,
+  previousRun,
+} from "./orchestrator/continuation.js";
+import {
   foldHolds,
   HOLD_TTL_SECONDS,
   type HoldRecord,
@@ -84,11 +91,13 @@ import {
   parseJournal,
   type ReleaseReason,
   renderEventLine,
+  type World,
 } from "./orchestrator/journal.js";
 import {
   type AgentParams,
   buildLaunchArgv,
   buildLaunchPrompt,
+  buildResumePrompt,
   describeAgent,
   describeCeilings,
   describeLaunch,
@@ -130,11 +139,23 @@ import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
 import {
+  isAssistantStep,
   renderStreamLine,
   sessionIdOf,
   splitStreamChunk,
   stampLine,
 } from "./orchestrator/transcript.js";
+import {
+  describeWorkspacePlan,
+  lockHolderPid,
+  lockReason,
+  mainCheckoutVerdict,
+  planWorkspace,
+  type WorkspaceFacts,
+  type WorkspacePlan,
+  workspacePath,
+  workspaceVerdict,
+} from "./orchestrator/workspace.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import type { Launch, Role } from "./roles/schema.js";
 import {
@@ -201,11 +222,13 @@ or --local-config <p>): the repository says WHAT is raised, the machine says WHE
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write] [-d|--detach]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
                               # ceilings: the flag wins over the role's launch.limits, which wins over the package default
                               # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+                              # the role works in its own worktree (orchestrator.workdir.worktrees), put at the base per package
+                              # --fresh: never resume the previous session, whatever the continuation policy says
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
@@ -1179,6 +1202,246 @@ const execTargets = (
 };
 
 /**
+ * A git call whose failure is an ANSWER rather than a crash: "the ref does not
+ * exist", "this is not a worktree". Used only where the absence is a legitimate
+ * state; everything that must be loud goes through `execFileSync` directly.
+ */
+const gitAsk = (args: readonly string[]): string | undefined => {
+  try {
+    return execFileSync("git", args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 16 * 1024 * 1024,
+    }).trim();
+  } catch {
+    return undefined;
+  }
+};
+
+/** A git call that MUST work; its failure is the operator's problem, named out loud. */
+const gitRun = (args: readonly string[], what: string): void => {
+  try {
+    execFileSync("git", args, { stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    fail(`${what}: git ${args.join(" ")} failed — ${(error as Error).message}`, 2);
+  }
+};
+
+/**
+ * THE BASE OF A ROLE'S WORKSPACE (R17): the commit a fresh package starts from.
+ *
+ * `origin/<branch>` WHEN IT EXISTS, and the local branch only as a fallback. The base
+ * of a new package is the state everyone else can see — a local `main` that has not
+ * been pulled is exactly the stale premise the circuit is built to stop, and unlike a
+ * human the session will never notice it started from one. The fetch is best-effort:
+ * a repository without a remote is legitimate, a network blip is not a reason to
+ * refuse a launch, and which ref was actually used is PRINTED beside every decision.
+ */
+const baseCommitOf = (repo: string, branch: string): { ref: string; commit: string } => {
+  gitAsk(["-C", repo, "fetch", "--quiet", "origin", branch]);
+  const remote = gitAsk(["-C", repo, "rev-parse", "--verify", "--quiet", `origin/${branch}`]);
+  if (remote !== undefined && remote !== "") return { ref: `origin/${branch}`, commit: remote };
+  const local = gitAsk(["-C", repo, "rev-parse", "--verify", "--quiet", branch]);
+  if (local !== undefined && local !== "") return { ref: branch, commit: local };
+  return fail(
+    `the base branch '${branch}' (orchestrator.workdir.branch) resolves to nothing in '${repo}' — neither 'origin/${branch}' nor '${branch}' exists`,
+    2,
+  );
+};
+
+/**
+ * The observable state of a role's workspace. A directory that exists but is not a
+ * worktree of this repository is a LOUD refusal rather than a fact: everything the
+ * orchestrator would do next (`worktree add`, `checkout --detach`) would either fail
+ * obscurely or, worse, operate on somebody else's repository that happens to sit at
+ * that path.
+ */
+const workspaceFacts = (path: string): WorkspaceFacts => {
+  if (!existsSync(path)) return { exists: false };
+  const branch = gitAsk(["-C", path, "rev-parse", "--abbrev-ref", "HEAD"]);
+  const head = gitAsk(["-C", path, "rev-parse", "HEAD"]);
+  if (branch === undefined || head === undefined) {
+    return fail(
+      `'${path}' exists but is not a git worktree — the orchestrator will not touch it; move it aside or remove it`,
+      2,
+    );
+  }
+  const locked = lockTextOf(path);
+  const holder = locked === undefined ? undefined : lockHolderPid(locked);
+  return {
+    exists: true,
+    branch,
+    head,
+    dirty: gitAsk(["-C", path, "status", "--porcelain"]) !== "",
+    ...(locked === undefined ? {} : { locked }),
+    ...(holder === undefined ? {} : { lockHolderAlive: processAlive(holder) }),
+  };
+};
+
+/**
+ * IS THE WORKTREE LOCKED, AND BY WHOM — read through `git worktree list --porcelain`
+ * rather than off the `locked` file inside the admin directory: the listing is the
+ * public interface, and the file is an implementation detail we would be betting on.
+ *
+ * The listing names EVERY worktree of the repository, so the block has to be found by
+ * path — and the comparison is made on resolved paths, because git records the path as
+ * it resolved it while ours is assembled from the config (`/tmp` is a symlink on more
+ * than one of the machines this runs on).
+ */
+const lockTextOf = (path: string): string | undefined => {
+  const listing = gitAsk(["-C", path, "worktree", "list", "--porcelain"]);
+  if (listing === undefined) return undefined;
+  const mine = realPath(path);
+  let inBlock = false;
+  for (const line of listing.split("\n")) {
+    if (line.startsWith("worktree ")) inBlock = realPath(line.slice("worktree ".length)) === mine;
+    else if (inBlock && line.startsWith("locked")) return line.slice("locked".length).trim();
+  }
+  return undefined;
+};
+
+/** The path as the filesystem knows it; the path itself when it cannot be resolved. */
+const realPath = (path: string): string => {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+};
+
+/**
+ * Whether a pid is still running. Signal 0 checks for the process without touching it;
+ * `EPERM` means it exists and belongs to somebody else — alive either way. Pids are
+ * reused, so this answers "is SOMETHING running under that number", which is why every
+ * message built on it is worded as evidence rather than as a verdict.
+ */
+const processAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+};
+
+/**
+ * Carrying out the plan — the only place in the package that creates or moves a git
+ * worktree. `refuse` is NOT handled here: what a refusal costs differs between the
+ * manual `run` (an exit code on the operator's terminal) and the daemon (that one
+ * role stands still while the others keep going), and both callers say so themselves.
+ */
+const applyWorkspacePlan = (input: {
+  readonly repo: string;
+  readonly path: string;
+  readonly base: string;
+  readonly plan: WorkspacePlan;
+}): void => {
+  switch (input.plan.action) {
+    case "create":
+      mkdirSync(dirname(input.path), { recursive: true });
+      // `--detach`: the base branch is normally checked out in the operator's own
+      // tree, and git refuses one branch in two worktrees. A detached head at the
+      // base COMMIT is the same starting point and says what a package start really
+      // is — a point to branch from.
+      gitRun(
+        ["-C", input.repo, "worktree", "add", "--detach", input.path, input.base],
+        `creating the workspace '${input.path}'`,
+      );
+      return;
+    case "rebase":
+      gitRun(
+        ["-C", input.path, "checkout", "--detach", "--quiet", input.base],
+        `moving the workspace '${input.path}' to the base`,
+      );
+      return;
+    default:
+      return; // ready / keep / refuse — nothing to do on disk
+  }
+};
+
+/**
+ * THE LOCK THIS PROCESS HOLDS, if any. One per process by construction: a supervisor
+ * raises one session, and the daemon raises them one at a time — a second entry would
+ * mean a shape the circuit does not have.
+ *
+ * It is module state rather than something threaded through the call chain for one
+ * reason that outweighs the tidiness: the release must also happen on the paths that
+ * do not return — `fail()` exits, a signal exits, an unhandled error exits — and an
+ * `exit` handler has nothing to be handed. A lock left behind by a refusal three
+ * lines after it was taken would block the role until a human read the message.
+ */
+let heldLock: { readonly repo: string; readonly path: string } | undefined;
+
+/**
+ * TAKING IT — before the tree is mutated and before the spawn (john, 22:20). `git
+ * worktree lock` FAILS when the tree is already locked, and that is the property this
+ * relies on: the check in `planWorkspace` reads a fact that could be a moment old,
+ * while this is the atomic one. `false` means somebody won the race, and the caller
+ * refuses exactly as it would have on the fact.
+ */
+const takeWorkspaceLock = (input: {
+  readonly repo: string;
+  readonly path: string;
+  readonly reason: string;
+}): boolean => {
+  const locked = gitAsk([
+    "-C",
+    input.repo,
+    "worktree",
+    "lock",
+    "--reason",
+    input.reason,
+    input.path,
+  ]);
+  if (locked === undefined) return false;
+  heldLock = { repo: input.repo, path: input.path };
+  return true;
+};
+
+/**
+ * Releasing it — idempotent, and safe to call on a path that never took one.
+ *
+ * THE HONEST BOUNDARY: a SIGKILL leaves the lock behind, and that is the safe
+ * direction. A stale lock costs a human one `git worktree unlock`, and `status` names
+ * it as stale (the reason text carries the pid); the opposite failure costs the working
+ * tree of a live session.
+ */
+const releaseWorkspaceLock = (): void => {
+  const held = heldLock;
+  if (held === undefined) return;
+  heldLock = undefined;
+  gitAsk(["-C", held.repo, "worktree", "unlock", held.path]);
+};
+
+// THE BACKSTOP for every exit this file takes without passing through a release: a
+// refused preflight, a ceiling that fires, an unhandled error, a signal (the run's own
+// handlers exit, and `exit` handlers run after them). The detached parent never takes
+// a lock at all — it plans in report-only mode and the child does the real work — so
+// this cannot fire while a child is holding the tree.
+process.on("exit", releaseWorkspaceLock);
+
+/**
+ * THE WORLD A RUN STARTS FROM (R18): the tree of the thread directory and the base
+ * commit. `undefined` when either cannot be read — a brand-new thread that is not
+ * committed yet, a project with no `workdir` at all — and that absence is what makes
+ * the continuation policy answer "fresh", which is the correct answer for a world
+ * nobody can vouch for.
+ *
+ * The thread's TREE rather than the mail branch's head: a message in some other
+ * conversation moves the branch and changes nothing about this run.
+ */
+const worldOf = (input: {
+  readonly mailRoot: string;
+  readonly thread: string;
+  readonly base?: string;
+}): World | undefined => {
+  if (input.base === undefined) return undefined;
+  const tree = gitAsk(["-C", input.mailRoot, "rev-parse", `HEAD:./${input.thread}`]);
+  if (tree === undefined || tree === "") return undefined;
+  return { thread: tree, base: input.base };
+};
+
+/**
  * PREFLIGHT — the checks made BEFORE the lease is taken (S8). curator's rule after
  * the third case of one class: whatever a human is obliged to remember before a
  * run, the machine either does itself or loudly refuses. The probes live here, the
@@ -1188,6 +1451,8 @@ const runPreflight = (
   argv: readonly string[],
   targets: readonly { worker: string; exec: ResolvedExec }[],
   local: LoadedLocalConfig,
+  /** The roles whose workspaces are reported (R17); empty in a repository that raises nothing. */
+  roles: readonly Role[] = [],
 ): PreflightCheck[] => {
   const loaded = configFrom(argv, undefined);
   const section = loaded.config.orchestrator;
@@ -1242,21 +1507,45 @@ const runPreflight = (
     };
   }
 
-  // The working repository: the session inherits it as it is, and "landed on the
-  // wrong branch" is not visible from the outside at all — unlike stale mail.
-  let workdir: PreflightCheck;
+  // WHERE THE SESSIONS WORK. Two modes, and which one is in force is a statement of
+  // the project: with `workdir.worktrees` declared each role has a worktree of its
+  // own (R17) and the operator's checkout stops being compared against anything —
+  // comparing it would resurrect the very refusal R17 removes. Without it, the
+  // pre-R17 behaviour stands whole: the session inherits the checkout, and "landed on
+  // the wrong branch" is not visible from the outside at all.
+  const workdirChecks: PreflightCheck[] = [];
   try {
     const state = workdirState(repo);
-    workdir = workdirVerdict({
-      ...state,
-      ...(section.workdir === undefined ? {} : { expectedBranch: section.workdir.branch }),
-    });
+    const worktrees = section.workdir?.worktrees;
+    if (worktrees === undefined || section.workdir === undefined) {
+      workdirChecks.push(
+        workdirVerdict({
+          ...state,
+          ...(section.workdir === undefined ? {} : { expectedBranch: section.workdir.branch }),
+        }),
+      );
+    } else {
+      const base = baseCommitOf(repo, section.workdir.branch);
+      workdirChecks.push(mainCheckoutVerdict({ repo, ...state }));
+      for (const role of roles) {
+        const path = workspacePath({ repo, worktrees, role: role.id });
+        workdirChecks.push(
+          workspaceVerdict({
+            role: role.id,
+            path,
+            facts: workspaceFacts(path),
+            base: base.commit,
+            baseRef: base.ref,
+          }),
+        );
+      }
+    }
   } catch (error) {
-    workdir = {
+    workdirChecks.push({
       name: "working tree",
       status: "fail",
       detail: `could not probe '${repo}': ${(error as Error).message}`,
-    };
+    });
   }
 
   return [
@@ -1270,7 +1559,7 @@ const runPreflight = (
       }),
     ),
     checkout,
-    workdir,
+    ...workdirChecks,
     environmentVerdict({ nodeVersion, appliedKeys: preamble }),
   ];
 };
@@ -1284,7 +1573,8 @@ const launchableRoles = (argv: readonly string[]): Role[] =>
 /** The `orchestrator preflight` command: show everything and return a code by the outcome. */
 const orchestratorPreflight = (argv: readonly string[]): void => {
   const local = localFrom(argv);
-  const checks = runPreflight(argv, execTargets(argv, local, launchableRoles(argv)), local);
+  const roles = launchableRoles(argv);
+  const checks = runPreflight(argv, execTargets(argv, local, roles), local, roles);
   out(renderPreflight(checks));
   if (!preflightPassed(checks)) fail("preflight failed — the circuit does not start", 2);
 };
@@ -1298,8 +1588,9 @@ const requirePreflight = (
   argv: readonly string[],
   targets: readonly { worker: string; exec: ResolvedExec }[],
   local: LoadedLocalConfig,
+  roles: readonly Role[] = [],
 ): void => {
-  const checks = runPreflight(argv, targets, local);
+  const checks = runPreflight(argv, targets, local, roles);
   err(renderPreflight(checks));
   if (!preflightPassed(checks)) fail("preflight failed — not starting", 2);
 };
@@ -1438,8 +1729,34 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   const local = localFrom(argv);
   out(`machine config: ${describeLocalConfig(local)}`);
   out("launch resolution:");
-  for (const role of launchableRoles(argv)) {
+  const roles = launchableRoles(argv);
+  for (const role of roles) {
     out(`  ${role.id}: ${describeAgent(agentFor(argv, local, role))}`);
+  }
+
+  // R17: WHERE EACH ROLE WORKS. It belongs beside the launch resolution for the same
+  // reason: it is a fact about the run that lives in no single file — the project
+  // names the directory, git owns its state, and the base is whatever `origin` says
+  // right now. `status` shows the state; it moves nothing.
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const workdirSection = configFrom(argv, undefined).config.orchestrator?.workdir;
+  if (workdirSection?.worktrees === undefined) {
+    out(`workspaces: not declared (orchestrator.workdir.worktrees) — the sessions inherit ${repo}`);
+  } else {
+    const base = baseCommitOf(repo, workdirSection.branch);
+    out(`workspaces (base ${base.ref} ${base.commit.slice(0, 8)}):`);
+    for (const role of roles) {
+      const path = workspacePath({ repo, worktrees: workdirSection.worktrees, role: role.id });
+      const facts = workspaceFacts(path);
+      const verdict = workspaceVerdict({
+        role: role.id,
+        path,
+        facts,
+        base: base.commit,
+        baseRef: base.ref,
+      });
+      out(`  ${role.id}: ${verdict.detail}`);
+    }
   }
 };
 
@@ -1653,8 +1970,14 @@ type RunParams = {
   readonly pollMs: number;
   /** The idle ceiling: no traces of activity for this long → `stalled` (R6). 0 — off. */
   readonly idleMs: number;
-  /** The working repository whose traces are watched — the tree the session lands in. */
-  readonly repo: string;
+  /**
+   * THE TREE THE SESSION WORKS IN — its `cwd` and the tree whose traces are watched,
+   * one field because they must be the same tree: watching one directory for signs of
+   * life while the session edits another is how a working run reads as stalled. Since
+   * R17 it is the role's own worktree; without workspaces declared it is the checkout
+   * the supervisor was started from, as before.
+   */
+  readonly workdir: string;
   readonly ids: readonly string[];
   readonly now: Date;
   readonly maxConsecutive: number;
@@ -1674,6 +1997,9 @@ type RunParams = {
   readonly worker: string;
   /** The tool's own launch parameters — model, effort (R15). Empty means "the tool's defaults". */
   readonly params: AgentParams;
+  /** How this run was decided (R18) — it carries the world onto the `launch` event. */
+  readonly continuation: Continuation;
+  readonly world?: World;
 };
 
 /**
@@ -1775,9 +2101,16 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     now: p.now,
     wallClockMs: p.wallClockMs,
     maxConsecutive: p.maxConsecutive,
+    continuation: p.continuation,
+    ...(p.world === undefined ? {} : { world: p.world }),
   });
   if (!plan.ok) {
     err(`agent-protocol: the launch of ${p.roleId}/${p.thread} was refused (${plan.reason})`);
+    // The workspace was locked before the launch was planned (a ceiling can only be
+    // read after the journal is), so a refusal here releases it. In the daemon this
+    // matters most: it ticks on, and a lock left by one refused tick would take the
+    // role out of the circuit until somebody noticed.
+    releaseWorkspaceLock();
     return "skip";
   }
 
@@ -1808,6 +2141,14 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   let leased = false;
   let exited = false;
   let childRef: ReturnType<typeof spawn> | undefined;
+  // WHAT A BROKEN RUN LEAVES FOR THE NEXT DECISION (R18): the id of the session and
+  // how much of it was burned. They are declared here, ahead of the guard, because
+  // the supervisor's own death is one of the two breaks a resume is allowed to follow
+  // — and a release written by the guard that omitted them would be a break nobody
+  // can continue.
+  let sessionId: string | undefined;
+  let steps = 0;
+
   const recordSupervisorGone = (): void => {
     if (settled || !leased) return;
     settled = true;
@@ -1825,6 +2166,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // the group is already gone — fine
       }
     }
+    releaseWorkspaceLock();
     appendEvent(p.journalPath, {
       kind: "lease-released",
       ts: eventTimestamp(new Date()),
@@ -1832,6 +2174,8 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       thread: p.thread,
       reason: "supervisor-gone",
       output: p.sessionLog,
+      ...(sessionId === undefined ? {} : { session: sessionId }),
+      steps,
     });
   };
   process.on("exit", recordSupervisorGone);
@@ -1896,8 +2240,14 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       maxTurns: p.maxTurns,
       launch: p.launch,
       params: p.params,
+      ...(p.continuation.mode === "resume" ? { resume: p.continuation.session } : {}),
     }),
     {
+      // THE SESSION LANDS IN THE ROLE'S OWN TREE (R17) and not in whatever directory
+      // the supervisor happened to be started from. It is also what makes a resume
+      // findable: the tool keeps its conversations per working directory, so a stable
+      // workspace per role is the precondition of `--resume` ever finding anything.
+      cwd: p.workdir,
       // BOTH streams are piped now. Inheriting stdout used to leave the operator's
       // terminal as the only place the session's own words existed — that is,
       // whoever was not watching had nothing to analyse afterwards. The supervisor
@@ -1926,12 +2276,11 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // rewrite would only add a window in which the file is empty while somebody reads
   // it. A failure to write is NOT fatal — the run goes on and its messages simply
   // carry no session; losing a run over a provenance field would be the wrong trade.
-  let sessionIdSeen = false;
   const rememberSessionId = (line: string): void => {
-    if (sessionIdSeen) return;
+    if (sessionId !== undefined) return;
     const id = sessionIdOf(line);
     if (id === undefined) return;
-    sessionIdSeen = true;
+    sessionId = id;
     try {
       writeFileSync(p.sessionIdFile, id, "utf8");
       writeLog(`supervisor  session ${id} → ${p.sessionIdFile}`);
@@ -1946,6 +2295,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     pending = split.rest;
     for (const line of split.lines) {
       rememberSessionId(line);
+      // How much of the run has been burned (R18) — counted as it happens, because a
+      // run that breaks leaves no summary line at all, and those are the only runs
+      // whose size the continuation policy ever has to judge.
+      if (isAssistantStep(line)) steps += 1;
       for (const rendered of renderStreamLine(line)) {
         writeLog(rendered);
         out(rendered);
@@ -1997,7 +2350,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     const cpuMs = child.pid === undefined ? undefined : groupCpuMs(child.pid);
     return {
       logBytes: fileSize(p.sessionLog) + fileSize(p.sessionStream),
-      worktree: worktreeSignature(p.repo),
+      worktree: worktreeSignature(p.workdir),
       ...(cpuMs === undefined ? {} : { cpuMs }),
     };
   };
@@ -2022,6 +2375,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       }
       const { by, note } = readForceFlag(p.forceFlag);
       releaseGuards();
+      releaseWorkspaceLock();
       appendEvent(p.journalPath, {
         kind: "stop",
         ts: eventTimestamp(new Date()),
@@ -2103,7 +2457,11 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       }
     }
     releaseGuards();
-    appendEvent(p.journalPath, stepEvent(step, base, { exitCode, output: p.sessionLog }));
+    releaseWorkspaceLock();
+    appendEvent(
+      p.journalPath,
+      stepEvent(step, base, { exitCode, output: p.sessionLog, session: sessionId, steps }),
+    );
     if (spawnError !== undefined) {
       err(`agent-protocol: the spawn of '${p.exec}' failed: ${spawnError.message}`);
     }
@@ -2189,6 +2547,147 @@ const detachRun = (
 const DETACH_FLAGS = ["--detach", "-d"];
 
 /**
+ * WHERE THIS RUN WILL WORK AND WHAT IT WILL CARRY (R17 + R18) — resolved in one
+ * place, because the two answers decide each other.
+ *
+ * The order is the whole content of this function: the continuation policy is
+ * consulted FIRST, and the workspace is then prepared according to it. A resume must
+ * find the tree exactly as its session left it — half-finished edits and all — while
+ * a fresh package must start from the base commit. Deciding the tree first and the
+ * mode second would mean either wiping the state a resume exists to continue, or
+ * starting a new package on top of a dead session's leftovers.
+ *
+ * A refusal here is returned rather than thrown: it costs different things to the two
+ * callers (an exit code on the operator's terminal; one role standing still while the
+ * daemon keeps raising the others), and choosing that is theirs.
+ */
+type RunSetup =
+  | {
+      readonly ok: true;
+      readonly workdir: string;
+      readonly continuation: Continuation;
+      readonly world?: World;
+      /** How the previous run ended — the one thing a resumed session is told about itself. */
+      readonly previousReason?: string;
+      readonly lines: readonly string[];
+    }
+  | { readonly ok: false; readonly reason: string; readonly lines: readonly string[] };
+
+const settleRun = (input: {
+  readonly argv: readonly string[];
+  readonly role: Role;
+  readonly thread: string;
+  readonly repo: string;
+  readonly mailRoot: string;
+  readonly events: readonly OrchestratorEvent[];
+  /**
+   * Whether the workspace may actually be created or moved. A dry run says what it
+   * WOULD do with somebody's tree and touches nothing — the same rule as everywhere
+   * else in this package, and here it also keeps `run` without `--write` free of side
+   * effects on disk.
+   */
+  readonly write: boolean;
+}): RunSetup => {
+  const { argv, role, thread, repo, mailRoot, events } = input;
+  const workdirSection = configFrom(argv, undefined).config.orchestrator?.workdir;
+  const base = workdirSection === undefined ? undefined : baseCommitOf(repo, workdirSection.branch);
+  const world = worldOf({ mailRoot, thread, ...(base === undefined ? {} : { base: base.commit }) });
+
+  const previous = previousRun(events, role.id, thread);
+  const continuation = planContinuation({
+    ...(previous === undefined ? {} : { previous }),
+    ...(world === undefined ? {} : { world }),
+    forceFresh: argv.includes("--fresh"),
+  });
+  const lines = [`continuation — ${describeContinuation(continuation)}`];
+  const previousReason = previous?.reason ?? undefined;
+
+  // No workspaces declared — the pre-R17 mode, kept whole: the session inherits the
+  // tree the supervisor was started in, and the package invents no directory of its
+  // own inside somebody else's repository.
+  if (workdirSection?.worktrees === undefined || base === undefined) {
+    return {
+      ok: true,
+      workdir: repo,
+      continuation,
+      ...(world === undefined ? {} : { world }),
+      ...(previousReason === undefined ? {} : { previousReason }),
+      lines,
+    };
+  }
+
+  const path = workspacePath({ repo, worktrees: workdirSection.worktrees, role: role.id });
+  const plan = planWorkspace({
+    facts: workspaceFacts(path),
+    base: base.commit,
+    resuming: continuation.mode === "resume",
+  });
+  lines.push(
+    `workspace — ${describeWorkspacePlan({
+      role: role.id,
+      path,
+      plan,
+      base: base.commit,
+      baseRef: base.ref,
+    })}`,
+  );
+  if (plan.action === "refuse") return { ok: false, reason: plan.reason, lines };
+  if (input.write) {
+    // THE ORDER OF THESE TWO IS THE REQUIREMENT (john, 22:20): the lock is taken
+    // BEFORE the tree is mutated, so that a second orchestrator cannot be moving the
+    // same tree at the same moment. `create` is the one case where it cannot be —
+    // there is nothing to lock until the worktree exists — and it is also the one case
+    // where nobody else can be in the tree: it did not exist a moment ago.
+    const reason = lockReason({
+      role: role.id,
+      thread,
+      pid: process.pid,
+      at: eventTimestamp(new Date()),
+    });
+    if (plan.action === "create") {
+      applyWorkspacePlan({ repo, path, base: base.commit, plan });
+      if (!takeWorkspaceLock({ repo, path, reason })) {
+        return { ok: false, reason: `the workspace '${path}' was locked as it was created`, lines };
+      }
+    } else {
+      if (!takeWorkspaceLock({ repo, path, reason })) {
+        return {
+          ok: false,
+          reason: `the workspace '${path}' was locked by another run a moment ago — it is not this run's tree`,
+          lines,
+        };
+      }
+      applyWorkspacePlan({ repo, path, base: base.commit, plan });
+    }
+  }
+  return {
+    ok: true,
+    workdir: path,
+    continuation,
+    ...(world === undefined ? {} : { world }),
+    ...(previousReason === undefined ? {} : { previousReason }),
+    lines,
+  };
+};
+
+/**
+ * The prompt of a run, from the mode it was settled into. Built separately from
+ * `settleRun` because a dry run must not read anything off a workspace it has just
+ * decided not to create.
+ */
+const promptForRun = (input: {
+  readonly role: Role;
+  readonly thread: string;
+  readonly setup: Extract<RunSetup, { ok: true }>;
+}): string =>
+  input.setup.continuation.mode === "resume"
+    ? buildResumePrompt({
+        thread: input.thread,
+        reason: input.setup.previousReason ?? "an external abort",
+      })
+    : buildPromptForRole(input.role, input.thread, input.setup.workdir);
+
+/**
  * The manual launch of ONE role on ONE thread (S1+S2). It resolves the role into a
  * prompt, checks launchability, and hands over to `runOne`. `--exec` (default
  * `claude`) is injected: acceptance aims at the real binary, checks aim at a stub.
@@ -2212,8 +2711,6 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     fail(`role '${roleId}' is not launched by the orchestrator: ${can.reason}`, 2);
     return;
   }
-  const prompt = buildPromptForRole(role, thread, repo);
-
   const now = orchestratorNow(argv);
   // The flag, then the role's `launch.limits`, then the package default (R12) —
   // and the line below says which of the three each number came from.
@@ -2231,8 +2728,28 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
 
   const detach = DETACH_FLAGS.some((name) => argv.includes(name));
+  const write = argv.includes("--write");
+  const events = existsSync(journalPath)
+    ? parseJournal(readFile(journalPath, "orchestrator journal"))
+    : [];
 
-  if (!argv.includes("--write")) {
+  // WHERE IT WILL WORK AND WHETHER IT CONTINUES (R17 + R18) — settled before the
+  // launch is planned, because both answers end up ON the launch event.
+  //
+  // A BACKGROUND RUN SETTLES NOTHING HERE. The parent forks a child that repeats this
+  // whole command, so the tree would be prepared twice and — since the lock is taken
+  // where it is prepared — the child would meet its own parent's lock and refuse
+  // itself. The parent plans in report-only mode: the lines still land on the terminal
+  // of whoever typed the command, and the tree is touched exactly once, by the process
+  // that will hold it.
+  const setup = settleRun({ argv, role, thread, repo, mailRoot, events, write: write && !detach });
+  for (const line of setup.lines) out(`agent-protocol: ${line}`);
+  if (!setup.ok) {
+    fail(`the workspace of '${roleId}' is not usable: ${setup.reason}`, 2);
+    return;
+  }
+
+  if (!write) {
     // A dry run has nothing to background: it prints a plan and exits. Accepting the
     // flag silently would return a prompt and no process — indistinguishable, from
     // the terminal, from a run that started and died.
@@ -2243,16 +2760,22 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       );
       return;
     }
-    const events = existsSync(journalPath)
-      ? parseJournal(readFile(journalPath, "orchestrator journal"))
-      : [];
-    const plan = planLaunch({ events, role: roleId, thread, now, wallClockMs, maxConsecutive });
+    const plan = planLaunch({
+      events,
+      role: roleId,
+      thread,
+      now,
+      wallClockMs,
+      maxConsecutive,
+      continuation: setup.continuation,
+      ...(setup.world === undefined ? {} : { world: setup.world }),
+    });
     if (!plan.ok) {
       fail(`the launch was refused (${plan.reason}) — a ceiling fired, see the journal`, 2);
       return;
     }
     out(
-      `agent-protocol: would run '${exec} -p' and watch for the turn to be passed on ${thread} (role ${roleId}, deadline ${plan.deadline}, poll ${pollMs / 1000}s); --write performs it. Pre-events:`,
+      `agent-protocol: would run '${exec} -p' in ${setup.workdir} and watch for the turn to be passed on ${thread} (role ${roleId}, deadline ${plan.deadline}, poll ${pollMs / 1000}s); --write performs it. Pre-events:`,
     );
     out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
     out(`agent-protocol: agent — ${describeAgent(agent)}`);
@@ -2270,7 +2793,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     );
     return;
   }
-  requirePreflight(argv, [{ worker: agent.worker.value, exec: agent.exec }], local);
+  requirePreflight(argv, [{ worker: agent.worker.value, exec: agent.exec }], local, [role]);
   const sessionLog = sessionLogPath(
     join(dirname(journalPath), "sessions"),
     roleId,
@@ -2292,7 +2815,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     mailRoot,
     roleId,
     thread,
-    prompt,
+    prompt: promptForRun({ role, thread, setup }),
     exec,
     maxTurns,
     launch: role.launch,
@@ -2305,7 +2828,9 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     wallClockMs,
     pollMs,
     idleMs,
-    repo,
+    workdir: setup.workdir,
+    continuation: setup.continuation,
+    ...(setup.world === undefined ? {} : { world: setup.world }),
     ids: registry.ids(),
     now,
     maxConsecutive,
@@ -2373,7 +2898,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // Preflight BEFORE the loop: a daemon started without the agent binary or with
   // stale mail "works" — and does the wrong thing. A refusal before the first
   // lease. The binaries of EVERY launchable role are probed, not one of them.
-  requirePreflight(argv, execTargets(argv, local, launchableList), local);
+  requirePreflight(argv, execTargets(argv, local, launchableList), local, launchableList);
 
   // The banner states the FACT rather than always "DISABLED": help text that lies
   // about the state cost a separate hypothesis about the cause of a failure during
@@ -2467,33 +2992,59 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         );
         const ceilings = ceilingsFrom(argv, role);
         const agent = agentFor(argv, local, role);
-        out(`agent-protocol: daemon — ${decision.role} ceilings: ${describeCeilings(ceilings)}`);
-        out(`agent-protocol: daemon — ${decision.role} agent: ${describeAgent(agent)}`);
-        const reason = await runOne({
-          journalPath,
-          mailRoot,
-          roleId: decision.role,
+        // The workspace and the continuation are settled PER LAUNCH, inside the loop:
+        // both are properties of this (role, thread) pair at this moment, and the
+        // daemon lives for days.
+        const setup = settleRun({
+          argv,
+          role,
           thread: decision.thread,
-          prompt: buildPromptForRole(role, decision.thread, repo),
-          exec: agent.exec.value,
-          maxTurns: String(ceilings.maxTurns.value),
-          launch: role.launch,
-          env: childEnv,
-          sessionLog,
-          sessionStream: sessionStreamPath(sessionLog),
-          sessionIdFile: sessionIdPath(sessionLog),
-          worker: agent.worker.value,
-          params: agent.params,
-          wallClockMs: ceilings.wallClock.value * 1000,
-          pollMs,
-          idleMs: ceilings.idle.value * 1000,
           repo,
-          ids,
-          now: startedAt,
-          maxConsecutive,
-          forceFlag,
+          mailRoot,
+          events,
+          write: true,
         });
-        out(`agent-protocol: daemon — ${decision.role}/${decision.thread}: ${reason}`);
+        for (const line of setup.lines) out(`agent-protocol: daemon — ${line}`);
+        if (!setup.ok) {
+          // A REFUSAL OF ONE ROLE, NOT OF THE CIRCUIT — and it is not written to the
+          // journal, for the same reason a hold is not: it lasts until a human looks
+          // at the tree, which is hours, and a record every tick would drown the
+          // journal of the runs. Staying silent is not allowed either, hence a line on
+          // every tick.
+          err(
+            `agent-protocol: skipping ${decision.role}/${decision.thread} — its workspace is not usable: ${setup.reason}`,
+          );
+        } else {
+          out(`agent-protocol: daemon — ${decision.role} ceilings: ${describeCeilings(ceilings)}`);
+          out(`agent-protocol: daemon — ${decision.role} agent: ${describeAgent(agent)}`);
+          const reason = await runOne({
+            journalPath,
+            mailRoot,
+            roleId: decision.role,
+            thread: decision.thread,
+            prompt: promptForRun({ role, thread: decision.thread, setup }),
+            exec: agent.exec.value,
+            maxTurns: String(ceilings.maxTurns.value),
+            launch: role.launch,
+            env: childEnv,
+            sessionLog,
+            sessionStream: sessionStreamPath(sessionLog),
+            sessionIdFile: sessionIdPath(sessionLog),
+            worker: agent.worker.value,
+            params: agent.params,
+            wallClockMs: ceilings.wallClock.value * 1000,
+            pollMs,
+            idleMs: ceilings.idle.value * 1000,
+            workdir: setup.workdir,
+            continuation: setup.continuation,
+            ...(setup.world === undefined ? {} : { world: setup.world }),
+            ids,
+            now: startedAt,
+            maxConsecutive,
+            forceFlag,
+          });
+          out(`agent-protocol: daemon — ${decision.role}/${decision.thread}: ${reason}`);
+        }
       }
     }
     // decision.kind === "disabled" | "idle" — we wait and tick again.

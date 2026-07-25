@@ -5,6 +5,7 @@ import type { OrchestratorEvent } from "./journal.js";
 import {
   buildLaunchArgv,
   buildLaunchPrompt,
+  buildResumePrompt,
   consecutiveLaunchesWithoutCompletion,
   DEFAULT_EXEC,
   DEFAULT_WORKER,
@@ -555,5 +556,81 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       expect(line).toContain("exec /opt/claude (machine)");
       expect(line).toContain("effort max (flag)");
     });
+  });
+});
+
+describe("continuing a session instead of starting one (R18)", () => {
+  it("a resume puts --resume before the prompt and keeps the rest of the contract", () => {
+    const argv = buildLaunchArgv({
+      prompt: "carry on",
+      maxTurns: "300",
+      launch: { allowedTools: ["Bash"] },
+      resume: "8f3a2b1c",
+    });
+
+    expect(argv.slice(0, 4)).toEqual(["--resume", "8f3a2b1c", "-p", "carry on"]);
+    // The permissions and the stream format are not a property of freshness.
+    expect(argv).toContain("--allowedTools");
+    expect(argv.join(" ")).toContain("--output-format stream-json");
+  });
+
+  it("a fresh run says nothing about resuming", () => {
+    expect(
+      buildLaunchArgv({ prompt: "p", maxTurns: "300", launch: { allowedTools: ["Bash"] } }),
+    ).not.toContain("--resume");
+  });
+
+  it("the resume prompt does NOT repeat the role card — that is what resuming saves", () => {
+    const prompt = buildResumePrompt({ thread: "016-x", reason: "supervisor-gone" });
+
+    expect(prompt).toContain("016-x");
+    expect(prompt).toContain("supervisor-gone");
+    expect(prompt).not.toContain("ROLE CARD");
+    // The finish line is unchanged: a continued session that stops quietly would be
+    // recorded as a break.
+    expect(prompt).toContain("new-message");
+  });
+
+  it("the launch event carries the mode, the resumed session and the world it saw", () => {
+    const plan = planLaunch({
+      events: [],
+      role: "dev-core",
+      thread: "t",
+      now: NOW,
+      wallClockMs: 900_000,
+      continuation: { mode: "resume", session: "sid", why: "the world stood still" },
+      world: { thread: "tree", base: "commit" },
+    });
+
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    const launch = plan.events.find((event) => event.kind === "launch");
+    expect(launch).toEqual({
+      kind: "launch",
+      ts: "2026-07-24T14:00:00Z",
+      role: "dev-core",
+      thread: "t",
+      mode: "resume",
+      resumes: "sid",
+      world: { thread: "tree", base: "commit" },
+    });
+  });
+
+  it("a fresh launch records the world too — it is what the NEXT decision compares against", () => {
+    const plan = planLaunch({
+      events: [],
+      role: "dev-core",
+      thread: "t",
+      now: NOW,
+      wallClockMs: 900_000,
+      continuation: { mode: "fresh", why: "no previous run" },
+      world: { thread: "tree", base: "commit" },
+    });
+
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    const launch = plan.events.find((event) => event.kind === "launch");
+    expect(launch).toMatchObject({ mode: "fresh", world: { thread: "tree", base: "commit" } });
+    expect(launch).not.toHaveProperty("resumes");
   });
 });

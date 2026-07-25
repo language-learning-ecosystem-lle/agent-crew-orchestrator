@@ -29,7 +29,8 @@ import {
   type Role,
 } from "../roles/schema.js";
 import { DEFAULT_IDLE_MS } from "./activity.js";
-import { eventTimestamp, type OrchestratorEvent } from "./journal.js";
+import type { Continuation } from "./continuation.js";
+import { eventTimestamp, type OrchestratorEvent, type World } from "./journal.js";
 import { foldLeases } from "./lease.js";
 
 /**
@@ -414,7 +415,16 @@ export const buildLaunchArgv = (input: {
    * restating, and restating it would freeze today's default into our argv.
    */
   readonly params?: AgentParams;
+  /**
+   * THE SESSION BEING CONTINUED (R18). Present only when the continuation policy said
+   * so, and it changes the run in two visible ways at once: `--resume` here, and a
+   * short continuation prompt instead of the role card (`buildResumePrompt`). They are
+   * assembled in the same place so that a resumed run cannot end up carrying the flag
+   * with the wrong prompt or the prompt without the flag.
+   */
+  readonly resume?: string;
 }): string[] => [
+  ...(input.resume === undefined ? [] : ["--resume", input.resume]),
   "-p",
   input.prompt,
   "--allowedTools",
@@ -469,6 +479,33 @@ export const buildLaunchPrompt = (input: {
 };
 
 /**
+ * THE PROMPT OF A RESUMED RUN (R18) — short, and it does NOT repeat the role card.
+ *
+ * The card is already in that session's context: that is the whole meaning of a
+ * resume, and re-sending it would pay the tokens twice for the one thing continuing
+ * was supposed to save. What the session cannot know by itself is the only thing said
+ * here — that it was interrupted from outside, that the world it was reasoning about
+ * has not moved (the guard in `continuation.ts` has just verified exactly that), and
+ * that the finish line is unchanged.
+ *
+ * The last sentence is a repetition of the fresh prompt's, deliberately: the
+ * completion signal is the turn being passed on THIS thread, and a continued session
+ * that finished quietly instead would be recorded as a break.
+ */
+export const buildResumePrompt = (input: {
+  readonly thread: string;
+  /** How the previous attempt ended, in the journal's own vocabulary. */
+  readonly reason: string;
+}): string =>
+  [
+    `Your previous session on thread \`${input.thread}\` was interrupted from the outside (${input.reason}) — this is that same session, resumed.`,
+    "",
+    "Nothing has moved since: the thread and the base branch are at the same commits you saw. Carry on from where you stopped — do not start the work again, and do not take on the rest of your mail.",
+    "",
+    "The run is over once the reply is written at the end of the thread (`cli new-message`) and the turn is passed on.",
+  ].join("\n");
+
+/**
  * Launches in a row without a single `completed`. Every `launch` increments the
  * counter, a successful `lease-released reason=completed` resets it. A
  * "launch → break" loop (releases with timeout/forced but never completed)
@@ -505,6 +542,14 @@ export const planLaunch = (input: {
   readonly now: Date;
   readonly wallClockMs: number;
   readonly maxConsecutive?: number;
+  /**
+   * How this run is being started and what it is starting from (R18). Recorded on the
+   * `launch` event, which is written BEFORE the spawn — so the world a session saw is
+   * on disk even if that session never gets to say anything at all, and the next
+   * launch has something to compare against.
+   */
+  readonly continuation?: Continuation;
+  readonly world?: World;
 }): LaunchPlan => {
   const { events, role, thread, now, wallClockMs } = input;
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
@@ -520,9 +565,18 @@ export const planLaunch = (input: {
 
   const ts = eventTimestamp(now);
   const deadline = eventTimestamp(new Date(now.getTime() + wallClockMs));
+  const continuation = input.continuation;
   const events2: OrchestratorEvent[] = [
     { kind: "lease-acquired", ts, role, thread, deadline },
-    { kind: "launch", ts, role, thread },
+    {
+      kind: "launch",
+      ts,
+      role,
+      thread,
+      ...(continuation === undefined ? {} : { mode: continuation.mode }),
+      ...(continuation?.mode === "resume" ? { resumes: continuation.session } : {}),
+      ...(input.world === undefined ? {} : { world: input.world }),
+    },
   ];
   return { ok: true, deadline, events: events2 };
 };
