@@ -57,6 +57,10 @@ export const nextMessageTimestamp = (now: Date, existing: readonly string[]): st
 
 export type NewMessageInput = {
   readonly from: string;
+  /** What is writing this (R7). Resolved by the CLI: the flag, or the launch channel. */
+  readonly worker?: string;
+  /** The id of the run writing it, where the run can name itself. */
+  readonly session?: string;
   readonly date: string;
   readonly expects: MessageFields["expects"];
   readonly waitingOn?: readonly string[];
@@ -83,6 +87,8 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
 
   const fields: MessageFields = {
     from: input.from,
+    ...(input.worker === undefined ? {} : { worker: input.worker }),
+    ...(input.session === undefined ? {} : { session: input.session }),
     date: input.date,
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
@@ -97,6 +103,8 @@ export type NewThreadInput = {
   readonly title: string;
   readonly participants: readonly string[];
   readonly from: string;
+  readonly worker?: string;
+  readonly session?: string;
   readonly date: string;
   readonly expects: MessageFields["expects"];
   readonly waitingOn?: readonly string[];
@@ -118,6 +126,8 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
   };
   const first = planNewMessage({
     from: input.from,
+    ...(input.worker === undefined ? {} : { worker: input.worker }),
+    ...(input.session === undefined ? {} : { session: input.session }),
     date: input.date,
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),

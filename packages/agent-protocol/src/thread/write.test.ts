@@ -117,3 +117,51 @@ describe("planNewThread", () => {
     expect(files.some((f) => f.path.startsWith("messages/"))).toBe(true);
   });
 });
+
+describe("provenance on the write path (R7)", () => {
+  it("records what wrote the message next to who said it", () => {
+    const planned = planNewMessage({
+      from: "dev-core",
+      worker: "claude-code",
+      session: "8f3a2b1c-0d4e",
+      date: "2026-07-25T18:00:00Z",
+      expects: "answer",
+      waitingOn: ["curator"],
+      text: "body",
+      threadHasMessages: true,
+    });
+
+    expect(planned.content).toContain(
+      "from: dev-core\nworker: claude-code\nsession: 8f3a2b1c-0d4e\n",
+    );
+  });
+
+  it("writes no provenance line at all when there is nothing to record", () => {
+    // An absent field is the honest form of "this writer did not say": a placeholder
+    // would be a claim, and the feed is append-only — a wrong claim stays.
+    const planned = planNewMessage({
+      from: "john",
+      date: "2026-07-25T18:00:00Z",
+      expects: "none",
+      text: "body",
+      threadHasMessages: true,
+    });
+
+    expect(planned.content).not.toContain("worker:");
+    expect(planned.content).not.toContain("session:");
+  });
+
+  it("carries provenance into the first message of a new thread as well", () => {
+    const files = planNewThread({
+      title: "017-x · title",
+      participants: ["curator", "dev-core"],
+      from: "dev-core",
+      worker: "claude-code",
+      date: "2026-07-25T18:00:00Z",
+      expects: "answer",
+      text: "body",
+    });
+
+    expect(files[1]?.content).toContain("worker: claude-code");
+  });
+});

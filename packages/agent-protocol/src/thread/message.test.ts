@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { Message } from "./message.js";
 import {
   compareMessageEntries,
+  isSessionId,
+  isWorkerId,
+  MessageFormatError,
   messageFileName,
   parseMessageFile,
   renderHeading,
@@ -186,5 +189,77 @@ describe("compareMessageEntries", () => {
     expect(
       [freshLate, freshEarly, migrated].sort(compareMessageEntries).map((e) => e.fileName),
     ).toEqual([migrated.fileName, freshEarly.fileName, freshLate.fileName]);
+  });
+});
+
+describe("provenance in the header (R7)", () => {
+  const withProvenance = [
+    "---",
+    "from: dev-core",
+    "worker: claude-code",
+    "session: 8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b",
+    "date: 2026-07-25T18:00:00Z",
+    "expects: answer",
+    "waiting-on: curator",
+    "---",
+    "",
+    "body",
+    "",
+  ].join("\n");
+
+  it("reads what wrote the message alongside who said it", () => {
+    const parsed = parseMessageFile(withProvenance);
+
+    expect(parsed.fields.from).toBe("dev-core");
+    expect(parsed.fields.worker).toBe("claude-code");
+    expect(parsed.fields.session).toBe("8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b");
+  });
+
+  it("round-trips: provenance is rendered right after 'from'", () => {
+    expect(renderMessageFile(parseMessageFile(withProvenance))).toBe(withProvenance);
+  });
+
+  it("is OPTIONAL — history and legacy threads carry none by construction", () => {
+    // A `_thread.md` section has no header at all, so a parser that demanded
+    // provenance would make every legacy thread unreadable.
+    const parsed = parseMessageFile(
+      "---\nfrom: john\ndate: 2026-07-21\nexpects: none\n---\n\nbody\n",
+    );
+
+    expect(parsed.fields.worker).toBeUndefined();
+    expect(parsed.fields.session).toBeUndefined();
+  });
+
+  it("but a present value must be well formed — a malformed one fails like a malformed 'from'", () => {
+    expect(() =>
+      parseMessageFile(
+        "---\nfrom: john\nworker: Claude Code\ndate: 2026-07-21\nexpects: none\n---\n\nb\n",
+      ),
+    ).toThrow(MessageFormatError);
+    expect(() =>
+      parseMessageFile(
+        "---\nfrom: john\nsession: two words\ndate: 2026-07-21\nexpects: none\n---\n\nb\n",
+      ),
+    ).toThrow(MessageFormatError);
+  });
+
+  it("stays out of the assembled heading — the feed is the conversation, not the run", () => {
+    const heading = renderHeading(parseMessageFile(withProvenance).fields, 7);
+
+    expect(heading).toBe("## msg-007 · from: dev-core · 2026-07-25 · expects: answer");
+  });
+
+  it("accepts a worker nobody has heard of yet: the vocabulary is open on purpose", () => {
+    // A closed enum would turn every new tool in the ecosystem into a schema
+    // migration of the protocol.
+    const parsed = parseMessageFile(
+      "---\nfrom: dev-core\nworker: cursor\ndate: 2026-07-25T18:00:00Z\nexpects: none\n---\n\nb\n",
+    );
+
+    expect(parsed.fields.worker).toBe("cursor");
+    expect(isWorkerId("cursor")).toBe(true);
+    expect(isWorkerId("Cursor 2")).toBe(false);
+    expect(isSessionId("8f3a2b1c-0d4e")).toBe(true);
+    expect(isSessionId("has space")).toBe(false);
   });
 });

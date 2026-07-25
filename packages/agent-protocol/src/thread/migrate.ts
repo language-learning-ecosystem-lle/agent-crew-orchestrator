@@ -25,6 +25,7 @@ import {
   messageFileName,
   parseMessageFile,
   renderMessageFile,
+  WORKER_UNRECORDED,
 } from "./message.js";
 import { parseLegacyThread, renderMetaFile, renderThread, type ThreadMeta } from "./thread.js";
 
@@ -61,9 +62,16 @@ export const migrateLegacyThread = (
   // The position (`seq`) is the ordinal index of the section; it goes into the
   // file name and guarantees that sorting names on load = the original order.
   // `msg` (the historical one) stays in the heading for references.
+  //
+  // `worker: unknown` is stamped for the same reason the schema migration stamps it
+  // on history (R7): a `_thread.md` section carries no provenance AT ALL, so the
+  // migrated file must say that outright rather than by silence — the threads that
+  // are still legacy (009, 010) move AFTER version 2 lands, and a message file with
+  // no `worker` written then would be indistinguishable from one whose writer simply
+  // failed to record it.
   const seqed: Message[] = thread.messages.map((message, at) => ({
     ...message,
-    fields: { ...message.fields, seq: at + 1 },
+    fields: { ...message.fields, seq: at + 1, worker: WORKER_UNRECORDED },
   }));
 
   const files: MigratedFile[] = [

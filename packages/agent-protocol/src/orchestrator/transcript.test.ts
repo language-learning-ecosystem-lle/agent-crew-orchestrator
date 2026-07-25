@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { renderStreamLine, splitStreamChunk, stampLine } from "./transcript.js";
+import { renderStreamLine, sessionIdOf, splitStreamChunk, stampLine } from "./transcript.js";
 
 describe("rendering the stream of a session", () => {
   it("the init line carries the SESSION ID — the identity an analysis starts from", () => {
@@ -126,5 +126,30 @@ describe("the stamp", () => {
     expect(stampLine(new Date("2026-07-25T16:41:07Z"), "assistant  hi")).toBe(
       "16:41:07  assistant  hi",
     );
+  });
+});
+
+describe("sessionIdOf", () => {
+  it("takes the id out of the init line — the session learns it from its own stream", () => {
+    // R7: this is the whole channel. The supervisor is already reading every line
+    // for the log, so no separate handshake with the agent is needed.
+    const line = JSON.stringify({
+      type: "system",
+      subtype: "init",
+      session_id: "8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b",
+      model: "claude-opus-5",
+    });
+
+    expect(sessionIdOf(line)).toBe("8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b");
+  });
+
+  it("says nothing about any other line, including later events that repeat the id", () => {
+    expect(sessionIdOf(JSON.stringify({ type: "assistant", session_id: "x" }))).toBeUndefined();
+    expect(
+      sessionIdOf(JSON.stringify({ type: "system", subtype: "compact", session_id: "x" })),
+    ).toBeUndefined();
+    expect(sessionIdOf(JSON.stringify({ type: "system", subtype: "init" }))).toBeUndefined();
+    expect(sessionIdOf("not json at all")).toBeUndefined();
+    expect(sessionIdOf("")).toBeUndefined();
   });
 });

@@ -37,11 +37,19 @@ const marking = (from: number, mark: string): MigrationStep => ({
 });
 
 describe("MIGRATIONS", () => {
-  it("is empty: version 1 is the shape the protocol has always had", () => {
-    // A frame written before its first migration would be guessing. The moment the
-    // list stops being empty, the README table of versions gains a row — that is
-    // the whole contract of a breaking change.
-    expect(MIGRATIONS).toEqual([]);
+  it("holds one step per version, keyed by the version it comes FROM", () => {
+    // The registry stayed empty until the change that needed it (R7): a frame
+    // written before its first migration would be guessing. What the list must
+    // guarantee now is that a version has AT MOST ONE step — two would make the
+    // chain depend on the order the array happens to be in.
+    const froms = MIGRATIONS.map((step) => step.from);
+
+    expect(froms).toEqual([...new Set(froms)]);
+    expect(MIGRATIONS.every((step) => step.summary.trim() !== "")).toBe(true);
+  });
+
+  it("registers the step for 1 → 2 — the row the README's version table describes", () => {
+    expect(MIGRATIONS.find((step) => step.from === 1)).toBeDefined();
   });
 });
 

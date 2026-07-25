@@ -99,13 +99,16 @@ describe("schema migrate", () => {
   });
 
   it("refuses a target it has no step for, and writes nothing on the way", () => {
+    // The registry now holds 1 → 2 (R7), so the gap is asked for one version
+    // further out: a chain whose middle is missing must not be started at all,
+    // rather than applied up to the hole.
     const { repo, path } = repoWith(CONFIG);
     const before = readFileSync(path, "utf8");
 
-    const result = run(repo, "--to", "2", "--write");
+    const result = run(repo, "--to", "3", "--write");
 
     expect(result.code).toBe(2);
-    expect(result.out).toContain("1 → 2");
+    expect(result.out).toContain("2 → 3");
     expect(readFileSync(path, "utf8")).toBe(before);
   });
 });

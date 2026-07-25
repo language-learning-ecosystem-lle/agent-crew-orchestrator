@@ -88,6 +88,11 @@ export {
   renderMigrationPlan,
 } from "./schema/migrate.js";
 export {
+  insertWorkerLine,
+  isMessagePath,
+  MESSAGE_PROVENANCE_STEP,
+} from "./schema/v2-provenance.js";
+export {
   CURRENT_PROTOCOL_VERSION,
   compareProtocolVersion,
   declaredProtocolVersion,
@@ -112,13 +117,18 @@ export {
   compareMessageEntries,
   EXPECTS,
   type Expects,
+  isSessionId,
+  isWorkerId,
+  KNOWN_WORKERS,
   type Message,
   type MessageFields,
   MessageFormatError,
   messageFileName,
+  PACKAGE_WORKER,
   parseMessageFile,
   renderHeading,
   renderMessageFile,
+  WORKER_UNRECORDED,
 } from "./thread/message.js";
 export {
   type MigratedFile,

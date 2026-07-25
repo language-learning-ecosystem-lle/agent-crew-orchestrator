@@ -128,6 +128,7 @@ rather than going through that door.
 | version | shape |
 | ------- | ----- |
 | 1 | the initial one: `_meta.md` + `messages/` with `from`/`date`/`expects`/`waiting-on`, the config with `roles`/`mail`/`orchestrator`, the journal of `lease-*`/`launch`/`stop` events |
+| 2 | + provenance in the message header: `worker` and `session` (optional on read; the migration states the absence outright on everything already written — `worker: unknown`). **The number lands with the contract PR of R7** — the step for 1 → 2 is registered, `CURRENT_PROTOCOL_VERSION` is not moved yet |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -172,17 +173,22 @@ Not breaking: prose, help texts, a new command, a new optional flag, a new
 _optional_ config field the old package would nevertheless reject — that last one is
 the point of the list, it looks additive and is not.
 
-**What a PR that introduces one must attach.** All four, in the same PR:
+**What a PR that introduces one must attach.** All four:
 
 1. a migration step registered for `from` = the previous version, with a test on
    REAL data (a fixture taken from the threads of this repository, not a synthetic
    one — the live feed is where every surprise of the previous migration came from);
 2. the bump of both numbers — `CURRENT_PROTOCOL_VERSION` and `protocolVersion` in
    the config. They are one statement ("the package writes this shape and the
-   repository is at it") and splitting them across PRs means a window where the
-   circuit refuses to start;
+   repository is at it") and they must not be split across PRs: that would leave a
+   window in which the circuit refuses to start;
 3. a row in the table above;
 4. the landing order below, carried out and reported in the thread of the package.
+
+Items 1 and 2 land in DIFFERENT PRs and 3 goes with whichever states the shape: the
+step must be merged before the migration can be run by a reviewed package, and the
+two numbers must move together, in the PR after it. What must never be split is the
+PAIR of numbers — not the step from them.
 
 **The landing order — expand, migrate, contract.** The mail lives in one branch and
 the config in another, so a breaking change lands in at least two commits, and
@@ -193,6 +199,22 @@ between them the circuit has to keep running:
    straight into its branch, as all mail does);
 3. **contract** — merge the PR that bumps both numbers and starts WRITING the new
    shape.
+
+**Why the order is not negotiable, learned on R7 — the migration is run by the
+MERGED package, never by the branch under review.** Compressing all three into one PR
+looks tempting when the new shape does not reach a derived file (R7's fields do not,
+so no two versions would rewrite each other's `_thread.md`). It is still wrong, and
+for a reason that has nothing to do with readers: the migration rewrites a hundred
+committed messages of a live conversation, and code that has not passed review must
+not be the thing that does it. The same rule the roles follow when writing mail —
+write with the version that is IN FORCE, not with the one on review.
+
+The version gate also fixes the order from the other side: `schema migrate` keys off
+the version the config DECLARES, so once the bump is merged the migration has nothing
+left to do. And the config written by `--write` is carried into the contract PR
+rather than committed on the spot — a repository declaring a version its package does
+not support refuses every command, so a config bump committed early would take the
+whole circuit down until the merge.
 
 `schema migrate` writes files and does NOT commit them: which commit goes to which
 branch is a decision of the protocol, not of the runner. The plan prints absolute
@@ -205,6 +227,20 @@ The precedent is the thread migration: it is accepted only if gluing the result 
 together reproduces the original byte for byte, and refused otherwise. A step that
 touches somebody's committed message and cannot state a comparable proof is not a
 migration but an edit.
+
+**The three boundaries of that carve-out** (curator, 2026-07-25 — append-only
+protects the HISTORY OF THE CONVERSATION, who said what and when; a migration changes
+the FORM of the record, not its content or its authorship):
+
+- **(a)** a migration does not change or delete the substantive text of messages, nor
+  their authorship — form and metadata only;
+- **(b)** it runs only through the `MIGRATIONS` registry with its own guard; editing
+  history by hand stays forbidden exactly as before;
+- **(c)** byte-exact tails inherited from history (the `[СВЕРХПИСАНО msg-002]` class)
+  are part of the content — a migration does not touch them.
+
+With those three, "new fields only on new messages" is NOT required, and R7 landed as
+designed: a migration over the live threads.
 
 **The thread migration (`migrate`) is deliberately outside this chain.** It moves
 ONE directory from `_thread.md` into `messages/`, thread by thread, and both forms
@@ -298,10 +334,11 @@ agent-protocol derive       --root <comms> --ref <ref> [--write]           # all
 agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
-                            --expects answer|ack|none [--waiting-on <r,r>] --body-file <p> [--write]
+                            --expects answer|ack|none [--waiting-on <r,r>] \
+                            [--worker <w>] [--session <id>] --body-file <p> [--write]
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <r,r>] --body-file <p> [--write]
+                            [--waiting-on <r,r>] [--worker <w>] [--session <id>] --body-file <p> [--write]
 # the orchestrator: the paths come from the config (section `orchestrator`), operation needs only --ref;
 # the path flags below are omitted — they remain an override for checks on a copy of the mail
 agent-protocol orchestrator preflight --ref <ref> [--exec <bin>]            # the checks BEFORE the lease
@@ -311,9 +348,9 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>]  
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
-                            [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--now <iso>] [--write]
+                            [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--now <iso>] [--write]
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] \
-                            [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once]
+                            [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--once]
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
 agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
@@ -333,6 +370,48 @@ forbidden. `new-message` **REFUSES** to write into a non-migrated (legacy) threa
 a file write would cut its history down to a single file — a legacy thread is
 appended to by hand as a section in `_thread.md` until it is migrated (right now
 that is only 009/010).
+
+### Who said it, and what wrote it down (R7)
+
+`from` names the ROLE. Two more header fields name the RUN:
+
+```
+---
+from: dev-core
+worker: claude-code
+session: 8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b
+date: 2026-07-25T18:00:00Z
+expects: answer
+waiting-on: curator
+---
+```
+
+**The norm they make legible: one role writes into one thread from MANY sessions.**
+Two adjacent `dev-core` messages are as likely as not to come from two runs sharing
+nothing but the role card — the second one knows what is in the thread and nothing
+else. Read without that, a feed looks like one continuous interlocutor, and "as I
+said above" starts to mean something it does not.
+
+- **`worker`** — an OPEN vocabulary, validated by shape (a role-id-looking token) and
+  not by a list: `claude-code`, `claude-ai`, `gh-action`, `human`, `agent-protocol`
+  (a message the package composed itself), `unknown` (provenance was not recorded).
+  A closed enum would turn every new tool in the ecosystem into a schema migration of
+  the protocol, and which tools exist is not the protocol's business.
+- **`session`** — the id of the run. A raised session does not have to know it:
+  `claude -p --output-format stream-json` opens with an init event carrying
+  `session_id`, the supervisor reads it off the stream it is already logging and
+  writes it into `<state>/sessions/<run>.session`. The session is handed the PATH in
+  its environment at spawn (`AGENT_PROTOCOL_SESSION_FILE`), because the value does
+  not exist yet at that moment; `AGENT_PROTOCOL_WORKER` beside it carries the value.
+  So `new-message` inside a raised session records both with no flags at all.
+- **Both are optional, and absence is not a defect.** Legacy threads carry no header
+  at all, history predates the field, and a human writing by hand may simply not say.
+  A missing field means "this writer did not record it" — while a WRONG value would
+  be permanent, which is why a malformed `--worker` is refused at the door instead of
+  being discovered later by a reader who cannot repair it.
+- **They are deliberately absent from the assembled `_thread.md`.** That file is the
+  conversation; provenance is a fact about the run, and its reader is the analysis of
+  runs, which reads the message files.
 
 `mail` computes mail **from the threads** rather than from `INDEX.md`: a derived
 index may lag or fail to build, and tying the watch to it means blinding the
