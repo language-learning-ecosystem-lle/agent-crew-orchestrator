@@ -4,6 +4,7 @@ import {
   agentBinaryVerdict,
   type CheckoutFacts,
   environmentVerdict,
+  machineConfigVerdict,
   mailCheckoutVerdict,
   type PreflightCheck,
   preflightPassed,
@@ -56,18 +57,52 @@ describe("mailCheckoutVerdict", () => {
 });
 
 describe("agentBinaryVerdict", () => {
-  it("the binary is found → ok with the path", () => {
-    expect(agentBinaryVerdict("claude", "/usr/bin/claude")).toEqual({
-      name: "agent: binary",
+  it("the binary is found → ok with the path, the tool and the layer that named it", () => {
+    expect(
+      agentBinaryVerdict({
+        worker: "claude-code",
+        exec: "claude",
+        source: "machine",
+        resolved: "/usr/bin/claude",
+      }),
+    ).toEqual({
+      name: "agent: binary (claude-code)",
       status: "ok",
-      detail: "/usr/bin/claude",
+      detail: "/usr/bin/claude (machine)",
     });
   });
 
   it("not found → a refusal, and it says WHY that matters before the lease", () => {
-    const verdict = agentBinaryVerdict("claude", null);
+    const verdict = agentBinaryVerdict({
+      worker: "claude-code",
+      exec: "claude",
+      source: "flag",
+      resolved: null,
+    });
     expect(verdict.status).toBe("fail");
     expect(verdict.detail).toContain("lease");
+  });
+
+  it("nobody named the path → the refusal points at the machine config (R14)", () => {
+    // The whole hole R14 closes: on a box where the binary sits under a version
+    // manager, "'claude' not found" is true and leaves the reader with nothing to do.
+    const verdict = agentBinaryVerdict({
+      worker: "claude-code",
+      exec: "claude",
+      source: "default",
+      resolved: null,
+    });
+    expect(verdict.detail).toContain("agents['claude-code'].exec");
+  });
+});
+
+describe("machineConfigVerdict (R14)", () => {
+  it("is a FACT and never a verdict: an absent machine config is a legitimate state", () => {
+    // A machine with the agent on PATH says nothing and is right to. A tick here
+    // would claim something was compared; a cross would refuse a working circuit.
+    expect(
+      machineConfigVerdict("/home/x/.config/agent-protocol/local.json — absent"),
+    ).toMatchObject({ name: "machine config", status: "info" });
   });
 });
 

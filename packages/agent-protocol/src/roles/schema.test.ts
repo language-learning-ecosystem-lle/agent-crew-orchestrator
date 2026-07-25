@@ -120,3 +120,64 @@ describe("launch.limits — the run ceilings of one role (R12)", () => {
     );
   });
 });
+
+describe("launch.agent — which tool raises the role, and with what (R15)", () => {
+  const withLaunch = (launch: unknown) =>
+    protocolConfigSchema.safeParse({
+      protocolVersion: 1,
+      mail: MAIL,
+      roles: [{ ...human, id: "dev-core", wake: { mode: "watch", session: "s" }, launch }],
+    });
+
+  it("accepts the tool and its parameters beside the tools and the ceilings", () => {
+    const result = withLaunch({
+      allowedTools: ["Bash"],
+      agent: { kind: "claude-code", model: "opus", effort: "high" },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.roles[0]?.launch?.agent).toEqual({
+      kind: "claude-code",
+      model: "opus",
+      effort: "high",
+    });
+  });
+
+  it("the block is optional, and so is every parameter in it", () => {
+    expect(withLaunch({ allowedTools: ["Bash"] }).success).toBe(true);
+    expect(withLaunch({ allowedTools: ["Bash"], agent: { kind: "claude-code" } }).success).toBe(
+      true,
+    );
+  });
+
+  it("REFUSES an effort level the tool does not have", () => {
+    // The vocabulary is `claude-code`'s own (`--effort`), and it is knowable in
+    // advance — so a value outside it is caught by the config's own door rather
+    // than by the agent, five seconds into a run that has already taken a lease.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "claude-code", effort: "extreme" } })
+        .success,
+    ).toBe(false);
+  });
+
+  it("REFUSES a parameter the named tool does not understand", () => {
+    // The reason for keying the block on the tool: parameters belong to the tool,
+    // and a field silently dropped here is a run that cost money with settings
+    // nobody chose.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "claude-code", temperature: 0.7 } })
+        .success,
+    ).toBe(false);
+  });
+
+  it("REFUSES a tool the package cannot raise — the union has one member today", () => {
+    // Honest about the boundary with R8: the general shape of "parameters of any
+    // connector" is not built here, so an unknown tool is refused rather than
+    // accepted with parameters nobody can pass.
+    expect(withLaunch({ allowedTools: ["Bash"], agent: { kind: "cursor" } }).success).toBe(false);
+  });
+
+  it("the tool must be NAMED: parameters with no owner are not a shape we accept", () => {
+    expect(withLaunch({ allowedTools: ["Bash"], agent: { model: "opus" } }).success).toBe(false);
+  });
+});

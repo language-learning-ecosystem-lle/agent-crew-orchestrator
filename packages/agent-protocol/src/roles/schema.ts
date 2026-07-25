@@ -140,11 +140,57 @@ export const launchLimitsSchema = z.strictObject({
   maxTurns: z.number().int().min(1).optional(),
 });
 
+/**
+ * THE EFFORT LEVELS `claude-code` ACCEPTS. A closed list, and this is the one place
+ * in the schema where the package knows a vendor's vocabulary — knowingly: it is
+ * inside the `claude-code` member of a union keyed on the tool, so what it knows is
+ * scoped to the tool it names. The value is passed to `--effort`, and the levels are
+ * that flag's own (`claude --help`).
+ */
+export const claudeCodeEffortSchema = z.enum(["low", "medium", "high", "xhigh", "max"]);
+
+/**
+ * WHICH TOOL RAISES THE ROLE, AND WITH WHAT (R15, thread 016) — model and effort for
+ * `claude-code`, other tools' equivalents when they arrive.
+ *
+ * WHY IN THE REPOSITORY CONFIG AND NOT ON THE MACHINE. "Which model a role thinks
+ * with" is the same class of statement as "how many turns it may take" and "which
+ * tools it may use": it decides what the work IS and what it costs. R14 draws the
+ * line and this stands on the policy side of it — the machine is told only where the
+ * binary is.
+ *
+ * WHY A UNION ON `kind` AND NOT A FLAT `model`/`effort` PAIR. The parameters are the
+ * tool's, not the protocol's: `effort` is a `claude-code` flag with a `claude-code`
+ * vocabulary, and a flat pair would quietly promise that whatever comes next takes
+ * the same two. Keyed on the tool, a field the tool does not understand is a REFUSAL
+ * AT THE DOOR rather than a value dropped in silence — the schemas are strict, so a
+ * `cursor` member simply will not accept `effort`, and nobody has to remember that.
+ *
+ * DELIBERATELY NOT THE R8 ABSTRACTION. R8 (connectors) is the general shape of
+ * "parameters of any tool"; this is one member of a union with one member in it,
+ * written for the single tool that is live. Building the general form now would mean
+ * guessing at the second tool's parameters from a repository that has never run one.
+ *
+ * `kind` is ALSO the join with the machine config: the tool named here is the key
+ * `local.json` maps to a binary path (`config/local.ts`). One id, said once.
+ */
+export const launchAgentSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("claude-code"),
+    /** `--model`: an alias (`opus`, `sonnet`) or a full name. Free-form — the list is the vendor's. */
+    model: z.string().min(1).optional(),
+    /** `--effort`: how hard the session thinks. Unsaid — the tool's own default. */
+    effort: claudeCodeEffortSchema.optional(),
+  }),
+]);
+
 export const launchSchema = z.strictObject({
   /** Session tools — passed to `--allowedTools` as is, order preserved. */
   allowedTools: z.array(z.string().min(1)).min(1),
   /** The ceilings of a run of THIS role; anything unsaid falls through to the package default. */
   limits: launchLimitsSchema.optional(),
+  /** Which tool raises this role and with which parameters; unsaid — the package default tool. */
+  agent: launchAgentSchema.optional(),
 });
 
 export const roleSchema = z.strictObject({
@@ -174,3 +220,5 @@ export type Role = z.infer<typeof roleSchema>;
 export type Instructions = z.infer<typeof instructionsSchema>;
 export type Launch = z.infer<typeof launchSchema>;
 export type LaunchLimits = z.infer<typeof launchLimitsSchema>;
+export type LaunchAgent = z.infer<typeof launchAgentSchema>;
+export type ClaudeCodeEffort = z.infer<typeof claudeCodeEffortSchema>;

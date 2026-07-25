@@ -93,12 +93,95 @@ Freshness is part of the operation: `origin/*` goes stale silently without a
 `fetch`, so the command does the update itself, and `--no-fetch` prints a warning.
 
 A role's `launch` section is the LAUNCH CONTRACT of that role: `allowedTools` (what
-a raised session may do) and, since R12, `limits` — `idleSeconds`,
-`wallClockSeconds`, `maxTurns`, all optional. They sit together because they answer
-one question, "what a run of this role is allowed to be", and a role that needs its
-own permissions is exactly the one that needs its own window. Anything the config
-leaves unsaid falls through to the package default; `idleSeconds: 0` switches the
-idle detector off, as `--idle 0` does.
+a raised session may do), since R12 `limits` — `idleSeconds`, `wallClockSeconds`,
+`maxTurns` — and since R15 `agent`, which names the TOOL that raises the role and its
+parameters (`kind: claude-code`, plus `model` and `effort`). They sit together because
+they answer one question, "what a run of this role is allowed to be", and a role that
+needs its own permissions is exactly the one that needs its own window and its own
+model. Everything here is optional; anything the config leaves unsaid falls through to
+the package default. `idleSeconds: 0` switches the idle detector off, as `--idle 0`
+does, and an unsaid `model`/`effort` means the tool's own default rather than a value
+we restate.
+
+`agent` is keyed on the tool because the parameters are the TOOL's, not the
+protocol's: `effort` is a `claude-code` flag with a `claude-code` vocabulary, and a
+flat `model`/`effort` pair would quietly promise that whatever comes next takes the
+same two. Keyed this way, a parameter the named tool does not understand is refused by
+the schema instead of being dropped in silence, and an unknown tool is refused
+outright — the general shape of "parameters of any connector" is R8's question, and
+guessing at it from a repository that has never run a second tool would be inventing
+an abstraction ahead of its first user.
+
+```json
+"launch": {
+  "allowedTools": ["Bash", "Read", "Edit", "Write"],
+  "limits": { "idleSeconds": 600, "wallClockSeconds": 3600, "maxTurns": 300 },
+  "agent": { "kind": "claude-code", "model": "opus", "effort": "high" }
+}
+```
+
+## The machine config (R14)
+
+**The repository says WHAT, the machine says WHERE.** Roles, permissions, ceilings,
+launch parameters, the expected branch — policy, and policy lives in
+`agent-protocol.json`, in git, behind a PR. Where the agent binaries happen to sit on
+one particular box — location, and location cannot be committed: it is different on
+every machine and belongs to none of them.
+
+```json
+// ~/.config/agent-protocol/local.json  (or --local-config <path>)
+{ "agents": { "claude-code": { "exec": "/home/j/.nvm/versions/node/v18.20.3/bin/claude" } } }
+```
+
+The hole this closes was visible in every command typed by hand:
+`--exec /home/…/versions/node/v18.20.3/bin/claude`. That path is not knowledge of the
+project and never was — it is knowledge of one laptop, living in one shell history,
+and a machine without the binary on `PATH` could not start the circuit at all while
+nothing anywhere said so.
+
+- **`XDG_CONFIG_HOME`, not a file in the repository.** The fact is a property of the
+  machine, not of a checkout: this repository alone has five working trees, and a
+  per-checkout copy of one fact drifts silently. `.orchestrator/` was the other
+  candidate and is worse still — it is disposable state, written by the package, and a
+  hand-written file has no business among files whose recovery procedure is `rm -rf`.
+  R13 (remote instances) wants exactly this shape too: one delivery per machine, not
+  one per clone.
+- **It cannot carry policy.** `roles`, `limits`, `allowedTools`, `permissions`,
+  `zones`, `workdir`, `mail`, `orchestrator`, `protocolVersion` are refused by name,
+  with the rule quoted — a box quietly running with ceilings nobody reviewed is
+  precisely what keeping the config in `main` was meant to prevent.
+- **Absence is legitimate.** A machine with the agent on `PATH` says nothing and is
+  right to; the binary then falls through to the bare name. A file the operator NAMED
+  and that cannot be read IS an error — answering an explicit `--local-config` with a
+  silent fallback is how a run ends up using settings nobody chose.
+- **It is not versioned by `protocolVersion`.** That number covers data that TRAVELS,
+  where two parties can disagree about what they are reading. This file travels
+  nowhere: one box, one writer, a human, outside git. What is left of the version's job
+  is the diagnosis, and the strict schema gives that directly by naming the field it
+  does not know.
+
+The tool id is the JOIN between the two files and is said once in each: the repository
+says which tool raises a role (`launch.agent.kind`), the machine says where that tool
+is (`agents.<id>.exec`), and a message header says which tool wrote it (`worker`).
+Neither file mentions the other.
+
+**Three resolutions, one pattern — the flag, then the standing declaration, then the
+default — and each prints its source:**
+
+| what | flag | then | then |
+| ---- | ---- | ---- | ---- |
+| the tool | `--worker` | `launch.agent.kind` | the package default (`claude-code`) |
+| its binary | `--exec` | the machine config | the bare name on `PATH` |
+| model / effort | `--model`, `--effort` | `launch.agent` | the tool's own default |
+
+```
+agent-protocol: agent — claude-code (role) · exec /home/j/…/claude (machine) · model opus (role)
+```
+
+That line is printed on every launch, and `orchestrator status` prints the same merge
+for every launchable role. It is not decoration: the two files never mention each
+other, so nowhere else can "what would actually be started, and who said so" be read
+off in one place.
 
 A role's `instructions` is an array, and the order is the reading order (the
 general rules of the project first, then the role card). `kind: external` means the
@@ -138,6 +221,7 @@ rather than going through that door.
 | 1 | the initial one: `_meta.md` + `messages/` with `from`/`date`/`expects`/`waiting-on`, the config with `roles`/`mail`/`orchestrator`, the journal of `lease-*`/`launch`/`stop` events |
 | 2 | + provenance in the message header: `worker` and `session`. Optional on READ (history, legacy threads and the migration window cannot be repaired), `worker` REQUIRED on a write. The migration stated the absence outright on everything already written — `worker: unknown`, 331 files, 2026-07-25 |
 | 3 | + per-role run ceilings: `roles[].launch.limits` (`idleSeconds`, `wallClockSeconds`, `maxTurns`), every field optional. NO data moves — a version-2 config is already a valid version-3 one; the number exists so an older build says "update the package" instead of "unrecognized key" |
+| 4 | + the per-role launch agent: `roles[].launch.agent` (`kind`, and for `claude-code` also `model` and `effort`). NO data moves either, for the same reason. The MACHINE config that arrived with it (R14) is deliberately outside this number — it does not travel |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -373,18 +457,22 @@ agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <
                             [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
 # the orchestrator: the paths come from the config (section `orchestrator`), operation needs only --ref;
 # the path flags below are omitted — they remain an override for checks on a copy of the mail
-agent-protocol orchestrator preflight --ref <ref> [--exec <bin>]            # the checks BEFORE the lease
+# the agent binaries come from the MACHINE config (~/.config/agent-protocol/local.json, or --local-config <p>)
+agent-protocol orchestrator preflight --ref <ref> [--exec <bin>] [--local-config <p>]   # the checks BEFORE the lease
 agent-protocol orchestrator enable  --ref <ref> [--write]                  # ENABLE launches
 agent-protocol orchestrator disable --ref <ref> [--write]                  # disable them
-agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>]   # the whole mode
+agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>]   # the whole mode + the launch merge
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
-                            [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--now <iso>] [--write] [-d|--detach]
+                            [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] \
+                            [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--now <iso>] [--write] [-d|--detach]
                             # attached by default (you watch what you raised); -d backgrounds the supervisor properly
                             # the three ceilings: the flag beats roles[].launch.limits, which beats the package default
+                            # the tool, its binary and its parameters: see "The machine config" above
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] \
-                            [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--once]
+                            [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] \
+                            [--local-config <p>] [--once]
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
 agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
@@ -544,9 +632,10 @@ hard-coded list) and spawns `claude -p` on ONE thread. Three rules keep it hones
 **The ceiling against "launch → break → launch ate the quota" comes in two
 layers:** per (role, thread) pair — `exhausted` from S0 (`MAX_ATTEMPTS` breaks,
 then a refusal); and global — `MAX_CONSECUTIVE_RUNS` launches in a row without a
-single `completed` (aimed at the S3 auto loop). `--exec` (default `claude`) is
-injected: e2e and live acceptance aim at the real binary, the mechanics checks aim
-at a stub.
+single `completed` (aimed at the S3 auto loop). `--exec` is injected: e2e and live
+acceptance aim at the real binary, the mechanics checks aim at a stub. Without the
+flag the binary comes from the machine config and, failing that, from `PATH` — see
+"The machine config" above.
 
 **ATTACHED BY DEFAULT, `-d`/`--detach` FOR THE BACKGROUND (R12).** Raising one
 agent by hand is something you watch, so `run` holds the terminal and relays the
@@ -808,7 +897,17 @@ not forget" item.
 - **The agent binary — BEFORE the lease is taken.** Otherwise the absence of
   `claude` would be discovered by the fact of the spawn, with the lease already
   taken: the journal would be left with an attempt that never happened. It is looked
-  up in the PATH of the **child** process, not of our own.
+  up in the PATH of the **child** process, not of our own. Since R14 the line names
+  the TOOL and the layer that gave the path, and a binary nobody named at all is
+  refused with the repair quoted (`agents['claude-code'].exec` in the machine
+  config) instead of a bare "not found". **The binaries of EVERY launchable role are
+  probed**, not one of them: the daemon raises several roles and they may name
+  different tools, so probing whichever happened to be first would answer a question
+  nobody asked.
+- **The machine config itself** is printed as a FACT (`·`), always: which file the
+  paths came from is the first thing one wants when a run started the wrong binary,
+  and the second thing one wants when it started none. Its absence is a legitimate
+  state, so there is nothing here to pass or fail.
 - **The freshness of the mail checkout.** The daemon reads the mail off the disk; a
   stale checkout means "read yesterday's mail and silently worked on it" — in an
   autonomous mode that is not a failure but WRONG WORK: there is a result, it is

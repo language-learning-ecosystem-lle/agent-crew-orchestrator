@@ -41,6 +41,12 @@ import { dirname, join } from "node:path";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
 import { loadProtocolConfig } from "./config/load.js";
+import {
+  describeLocalConfig,
+  type LoadedLocalConfig,
+  LocalConfigError,
+  loadLocalConfig,
+} from "./config/local.js";
 import { loadThreads, renderThreadFailures } from "./fs/comms.js";
 import { fileExistsAtRef, mailCheckoutState, messagesAtRef, workdirState } from "./fs/git.js";
 import {
@@ -70,16 +76,22 @@ import {
   renderEventLine,
 } from "./orchestrator/journal.js";
 import {
+  type AgentParams,
   buildLaunchArgv,
   buildLaunchPrompt,
-  DEFAULT_WORKER,
+  describeAgent,
   describeCeilings,
   describeLaunch,
   LAUNCH_ENV,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
   type ResolvedCeilings,
+  type ResolvedExec,
+  type ResolvedWorker,
+  resolveAgentParams,
   resolveCeilings,
+  resolveExec,
+  resolveWorker,
   roleLaunchability,
 } from "./orchestrator/launch.js";
 import { foldLeases, unclosedLeases } from "./orchestrator/lease.js";
@@ -97,6 +109,7 @@ import {
 import {
   agentBinaryVerdict,
   environmentVerdict,
+  machineConfigVerdict,
   mailCheckoutVerdict,
   type PreflightCheck,
   preflightPassed,
@@ -167,15 +180,18 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
 ORCHESTRATOR: the paths (journal, flags, holds, mail root) are taken FROM THE
 CONFIG, section 'orchestrator'. The path flags below are an override for checks
 and are not needed in operation; only --ref is required.
-  agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>]
+The agent BINARIES come from the machine config (~/.config/agent-protocol/local.json,
+or --local-config <p>): the repository says WHAT is raised, the machine says WHERE it is.
+  agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--local-config <p>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>]
+  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write] [-d|--detach]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
                               # ceilings: the flag wins over the role's launch.limits, which wins over the package default
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+                              # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
@@ -926,12 +942,105 @@ const childEnvFrom = (argv: readonly string[]): NodeJS.ProcessEnv => {
 };
 
 /**
+ * THE MACHINE CONFIG (R14) — read from the home directory, or from `--local-config`.
+ * A failure to read one that was NAMED is a refusal here rather than a fall-back to
+ * defaults: the operator pointed at a file, and answering that with silence is how a
+ * run ends up using settings nobody chose.
+ */
+const localFrom = (argv: readonly string[]): LoadedLocalConfig => {
+  const path = flag(argv, "--local-config");
+  try {
+    return loadLocalConfig(path === undefined ? {} : { path });
+  } catch (error) {
+    if (error instanceof LocalConfigError) return fail(error.message, 2);
+    throw error;
+  }
+};
+
+/**
+ * WHAT A ROLE WOULD BE RAISED WITH — the tool, its binary and its parameters,
+ * resolved together because they resolve off one key (R14 + R15). Used by `run` (one
+ * role), by the daemon (per role, inside the loop) and by `status`/`preflight`, which
+ * show the merge for everything the circuit can raise.
+ *
+ * The parameter refusal is FATAL here rather than a returned verdict: every caller
+ * would do the same thing with it, and the one thing none of them may do is carry on.
+ */
+const agentFor = (
+  argv: readonly string[],
+  local: LoadedLocalConfig,
+  role: Role,
+): { worker: ResolvedWorker; exec: ResolvedExec; params: AgentParams } => {
+  const worker = resolveWorker({
+    ...(flag(argv, "--worker") === undefined ? {} : { flag: flag(argv, "--worker") as string }),
+    ...(role.launch === undefined ? {} : { launch: role.launch }),
+  });
+  const exec = resolveExec({
+    ...(flag(argv, "--exec") === undefined ? {} : { flag: flag(argv, "--exec") as string }),
+    worker: worker.value,
+    local: local.config,
+  });
+  const flags: { model?: string; effort?: string } = {};
+  const model = flag(argv, "--model");
+  const effort = flag(argv, "--effort");
+  if (model !== undefined) flags.model = model;
+  if (effort !== undefined) flags.effort = effort;
+  const resolution = resolveAgentParams({
+    flags,
+    worker,
+    ...(role.launch === undefined ? {} : { launch: role.launch }),
+  });
+  if (!resolution.ok) return fail(`role '${role.id}': ${resolution.reason}`, 2);
+  return { worker, exec, params: resolution.params };
+};
+
+/**
+ * The distinct binaries preflight has to probe. It is a SET over the launchable
+ * roles, not one value: the daemon raises several roles, and since R15 they may name
+ * different tools — probing whichever one happened to be first would answer a
+ * question nobody asked. With no launchable role in sight (a bare `preflight` on a
+ * repository that launches nothing), the flag-or-default pair is probed instead, so
+ * the command still says something true.
+ */
+const execTargets = (
+  argv: readonly string[],
+  local: LoadedLocalConfig,
+  roles: readonly Role[],
+): { worker: string; exec: ResolvedExec }[] => {
+  const targets = new Map<string, { worker: string; exec: ResolvedExec }>();
+  for (const role of roles) {
+    const { worker, exec } = agentFor(argv, local, role);
+    targets.set(`${worker.value} ${exec.value}`, { worker: worker.value, exec });
+  }
+  if (targets.size === 0) {
+    const worker = resolveWorker({
+      ...(flag(argv, "--worker") === undefined ? {} : { flag: flag(argv, "--worker") as string }),
+    });
+    return [
+      {
+        worker: worker.value,
+        exec: resolveExec({
+          ...(flag(argv, "--exec") === undefined ? {} : { flag: flag(argv, "--exec") as string }),
+          worker: worker.value,
+          local: local.config,
+        }),
+      },
+    ];
+  }
+  return [...targets.values()];
+};
+
+/**
  * PREFLIGHT — the checks made BEFORE the lease is taken (S8). curator's rule after
  * the third case of one class: whatever a human is obliged to remember before a
  * run, the machine either does itself or loudly refuses. The probes live here, the
  * verdicts live in the core.
  */
-const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] => {
+const runPreflight = (
+  argv: readonly string[],
+  targets: readonly { worker: string; exec: ResolvedExec }[],
+  local: LoadedLocalConfig,
+): PreflightCheck[] => {
   const loaded = configFrom(argv, undefined);
   const section = loaded.config.orchestrator;
   if (section === undefined) {
@@ -950,20 +1059,21 @@ const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] =
   // The binary is looked up IN THE CHILD'S ENVIRONMENT, not in ours: the daemon's
   // PATH and the session's PATH are different things, and a check of "I have it"
   // would answer the wrong question.
-  let resolved: string | null = null;
-  try {
-    // The binary name goes through an ENVIRONMENT VARIABLE rather than being
-    // interpolated into a shell string: `--exec` is set by the operator, and
-    // assembling a command out of its value would be an injection for no reason.
-    // `shell: true` is not used — that is exactly what it warns about.
-    resolved = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
-      encoding: "utf8",
-      env: { ...env, AGENT_PROTOCOL_EXEC: exec },
-    }).trim();
-    if (resolved === "") resolved = null;
-  } catch {
-    resolved = null;
-  }
+  const probe = (exec: string): string | null => {
+    try {
+      // The binary name goes through an ENVIRONMENT VARIABLE rather than being
+      // interpolated into a shell string: `--exec` is set by the operator, and
+      // assembling a command out of its value would be an injection for no reason.
+      // `shell: true` is not used — that is exactly what it warns about.
+      const found = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
+        encoding: "utf8",
+        env: { ...env, AGENT_PROTOCOL_EXEC: exec },
+      }).trim();
+      return found === "" ? null : found;
+    } catch {
+      return null;
+    }
+  };
 
   let nodeVersion: string | null = null;
   try {
@@ -1002,16 +1112,31 @@ const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] =
   }
 
   return [
-    agentBinaryVerdict(exec, resolved),
+    machineConfigVerdict(describeLocalConfig(local)),
+    ...targets.map((target) =>
+      agentBinaryVerdict({
+        worker: target.worker,
+        exec: target.exec.value,
+        source: target.exec.source,
+        resolved: probe(target.exec.value),
+      }),
+    ),
     checkout,
     workdir,
     environmentVerdict({ nodeVersion, appliedKeys: preamble }),
   ];
 };
 
+/** Every role the circuit is able to raise — what preflight and `status` speak about. */
+const launchableRoles = (argv: readonly string[]): Role[] =>
+  registryFrom(argv, undefined)
+    .active()
+    .filter((role) => roleLaunchability(role).launchable);
+
 /** The `orchestrator preflight` command: show everything and return a code by the outcome. */
 const orchestratorPreflight = (argv: readonly string[]): void => {
-  const checks = runPreflight(argv, flag(argv, "--exec") ?? "claude");
+  const local = localFrom(argv);
+  const checks = runPreflight(argv, execTargets(argv, local, launchableRoles(argv)), local);
   out(renderPreflight(checks));
   if (!preflightPassed(checks)) fail("preflight failed — the circuit does not start", 2);
 };
@@ -1021,8 +1146,12 @@ const orchestratorPreflight = (argv: readonly string[]): void => {
  * start on a failure. Otherwise it stays yet another "do not forget" item, that
  * is, exactly the thing it was built to remove.
  */
-const requirePreflight = (argv: readonly string[], exec: string): void => {
-  const checks = runPreflight(argv, exec);
+const requirePreflight = (
+  argv: readonly string[],
+  targets: readonly { worker: string; exec: ResolvedExec }[],
+  local: LoadedLocalConfig,
+): void => {
+  const checks = runPreflight(argv, targets, local);
   err(renderPreflight(checks));
   if (!preflightPassed(checks)) fail("preflight failed — not starting", 2);
 };
@@ -1151,6 +1280,18 @@ const orchestratorStatus = (argv: readonly string[]): void => {
     .active()
     .filter((role) => role.wake.mode === "watch")) {
     out(`  ${describeLaunch(role)}`);
+  }
+
+  // R14/R15: THE EFFECTIVE MERGE of the two configs, per role, with the layer each
+  // value came from. `launch permissions` above answers "what may it do"; this
+  // answers "what would actually be started, and who said so" — and that question
+  // spans two files that never mention each other, so nowhere but here can it be
+  // read off in one place.
+  const local = localFrom(argv);
+  out(`machine config: ${describeLocalConfig(local)}`);
+  out("launch resolution:");
+  for (const role of launchableRoles(argv)) {
+    out(`  ${role.id}: ${describeAgent(agentFor(argv, local, role))}`);
   }
 };
 
@@ -1383,6 +1524,8 @@ type RunParams = {
   readonly env: NodeJS.ProcessEnv;
   /** What is being raised, as the session will record it in its messages (R7). */
   readonly worker: string;
+  /** The tool's own launch parameters — model, effort (R15). Empty means "the tool's defaults". */
+  readonly params: AgentParams;
 };
 
 /**
@@ -1600,7 +1743,12 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // and they would be orphaned.
   const child = spawn(
     p.exec,
-    buildLaunchArgv({ prompt: p.prompt, maxTurns: p.maxTurns, launch: p.launch }),
+    buildLaunchArgv({
+      prompt: p.prompt,
+      maxTurns: p.maxTurns,
+      launch: p.launch,
+      params: p.params,
+    }),
     {
       // BOTH streams are piped now. Inheriting stdout used to leave the operator's
       // terminal as the only place the session's own words existed — that is,
@@ -1926,7 +2074,11 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const idleMs = ceilings.idle.value * 1000;
   const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
-  const exec = flag(argv, "--exec") ?? "claude";
+  // What is raised, where its binary lives and with which parameters (R14 + R15) —
+  // one resolution, because all three key off the tool id.
+  const local = localFrom(argv);
+  const agent = agentFor(argv, local, role);
+  const exec = agent.exec.value;
   const maxTurns = String(ceilings.maxTurns.value);
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
 
@@ -1955,6 +2107,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       `agent-protocol: would run '${exec} -p' and watch for the turn to be passed on ${thread} (role ${roleId}, deadline ${plan.deadline}, poll ${pollMs / 1000}s); --write performs it. Pre-events:`,
     );
     out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
+    out(`agent-protocol: agent — ${describeAgent(agent)}`);
     for (const event of plan.events) out(renderEventLine(event));
     return;
   }
@@ -1969,7 +2122,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     );
     return;
   }
-  requirePreflight(argv, exec);
+  requirePreflight(argv, [{ worker: agent.worker.value, exec: agent.exec }], local);
   const sessionLog = sessionLogPath(
     join(dirname(journalPath), "sessions"),
     roleId,
@@ -1985,6 +2138,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     return;
   }
   out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
+  out(`agent-protocol: agent — ${describeAgent(agent)}`);
   const reason = await runOne({
     journalPath,
     mailRoot,
@@ -1997,7 +2151,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     sessionLog,
     sessionStream: sessionStreamPath(sessionLog),
     sessionIdFile: sessionIdPath(sessionLog),
-    worker: flag(argv, "--worker") ?? DEFAULT_WORKER,
+    worker: agent.worker.value,
+    params: agent.params,
     env: childEnvFrom(argv),
     wallClockMs,
     pollMs,
@@ -2049,28 +2204,28 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const registry = registryFrom(argv, undefined);
   const childEnv = childEnvFrom(argv);
   const ids = registry.ids();
-  const launchable = registry
-    .active()
-    .filter((role) => roleLaunchability(role).launchable)
-    .map((role) => role.id);
+  const launchableList = launchableRoles(argv);
+  const launchable = launchableList.map((role) => role.id);
+  // The machine config is read ONCE, at startup, like the rest of the launch mode: a
+  // daemon whose binaries changed under it should be restarted, and re-reading a
+  // home-directory file every tick would make "which binary this run used" depend on
+  // the moment rather than on the mode.
+  const local = localFrom(argv);
 
   const tickMs = positiveInt(argv, "--tick", 30) * 1000;
   const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
-  const exec = flag(argv, "--exec") ?? "claude";
-  // What the raised sessions call themselves in the messages they write (R7). It
-  // stands beside `--exec` on purpose: change the binary and you change the answer.
-  const worker = flag(argv, "--worker") ?? DEFAULT_WORKER;
   const once = argv.includes("--once"); // a single tick — for checks
-  // THE CEILINGS ARE RESOLVED PER ROLE, in the launch branch below — not once here
-  // (R12). A daemon raises different roles, and `launch.limits` belongs to the role
-  // it launches; hoisting the resolution out of the loop would silently give every
-  // role the ceilings of whichever one happened to be first.
+  // THE CEILINGS AND THE AGENT ARE RESOLVED PER ROLE, in the launch branch below —
+  // not once here (R12, R14, R15). A daemon raises different roles, and
+  // `launch.limits`/`launch.agent` belong to the role it launches; hoisting the
+  // resolution out of the loop would silently give every role the settings of
+  // whichever one happened to be first.
 
   // Preflight BEFORE the loop: a daemon started without the agent binary or with
   // stale mail "works" — and does the wrong thing. A refusal before the first
-  // lease.
-  requirePreflight(argv, exec);
+  // lease. The binaries of EVERY launchable role are probed, not one of them.
+  requirePreflight(argv, execTargets(argv, local, launchableList), local);
 
   // The banner states the FACT rather than always "DISABLED": help text that lies
   // about the state cost a separate hypothesis about the cause of a failure during
@@ -2163,21 +2318,24 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           eventTimestamp(startedAt),
         );
         const ceilings = ceilingsFrom(argv, role);
+        const agent = agentFor(argv, local, role);
         out(`agent-protocol: daemon — ${decision.role} ceilings: ${describeCeilings(ceilings)}`);
+        out(`agent-protocol: daemon — ${decision.role} agent: ${describeAgent(agent)}`);
         const reason = await runOne({
           journalPath,
           mailRoot,
           roleId: decision.role,
           thread: decision.thread,
           prompt: buildPromptForRole(role, decision.thread, repo),
-          exec,
+          exec: agent.exec.value,
           maxTurns: String(ceilings.maxTurns.value),
           launch: role.launch,
           env: childEnv,
           sessionLog,
           sessionStream: sessionStreamPath(sessionLog),
           sessionIdFile: sessionIdPath(sessionLog),
-          worker,
+          worker: agent.worker.value,
+          params: agent.params,
           wallClockMs: ceilings.wallClock.value * 1000,
           pollMs,
           idleMs: ceilings.idle.value * 1000,
