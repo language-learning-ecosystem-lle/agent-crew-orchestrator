@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 /**
- * Точка входа для операторов контура. Полный синтаксис — в константе `USAGE`
- * ниже, и это ЕДИНСТВЕННЫЙ его источник: шапка и справка уже разошлись однажды
- * (здесь стоял синтаксис эпохи P1 — `roles check --config/--doc`, которого
- * давно нет), так что список команд в двух местах не держим.
+ * The entry point for the operators of the circuit. The full syntax lives in the
+ * `USAGE` constant below, and that is its ONLY source: the header and the help
+ * text have drifted apart once already (the P1-era syntax stood here —
+ * `roles check --config/--doc`, long gone), so the command list is not kept in
+ * two places.
  *
- * `--ref` ОБЯЗАТЕЛЕН везде и умолчания не имеет: он определяет, КАКУЮ версию
- * конфига читаем, и молчаливый выбор версии был бы тихой ошибкой. `--repo`
- * умолчание имеет (репозиторий текущего каталога или того, где лежит почта):
- * каталог однозначен, а требование указывать его руками ломало каждый
- * документированный пример.
+ * `--ref` is MANDATORY everywhere and has no default: it decides WHICH version of
+ * the config we read, and a silent choice of version would be a quiet error.
+ * `--repo` does have a default (the repository of the current directory, or of
+ * the place where the mail lies): the directory is unambiguous, while demanding
+ * it by hand broke every documented example.
  *
- * КАЖДЫЙ ОТКАЗ ГРОМКИЙ. Урок спайка P0: команда, молча зависящая от окружения,
- * даёт результат, неотличимый от дефекта проверяемого — три из трёх сбоев
- * спайка были такими (пропавший файл, проигнорированное имя, PATH). Поэтому
- * нечитаемый файл, кривой JSON и невалидный конфиг — это ненулевой код и текст
- * в stderr, а не пустой вывод.
+ * EVERY REFUSAL IS LOUD. The lesson of the P0 spike: a command that silently
+ * depends on the environment produces a result indistinguishable from a defect in
+ * the thing under test — three failures out of three in the spike were of that
+ * kind (a missing file, an ignored name, PATH). Hence an unreadable file,
+ * malformed JSON and an invalid config all mean a non-zero code and text on
+ * stderr, not empty output.
  *
- * БЕЗ `--write` НИЧЕГО НЕ ПИШЕТСЯ: контур живой, и «посмотреть, что будет»
- * обязано быть дешевле и безопаснее, чем «сделать».
+ * WITHOUT `--write` NOTHING IS WRITTEN: the circuit is live, and "look at what
+ * would happen" has to be cheaper and safer than "do it".
  */
 import { execFileSync, spawn } from "node:child_process";
 import {
@@ -101,7 +103,7 @@ import {
   WriteRefusedError,
 } from "./thread/write.js";
 
-const USAGE = `usage (--ref обязателен всегда; --repo по умолчанию — репозиторий текущего каталога):
+const USAGE = `usage (--ref is always required; --repo defaults to the repository of the current directory):
   agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
   agent-protocol roles list   --ref <ref> [--repo <path>]
   agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
@@ -114,9 +116,9 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
   agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
 
-ОРКЕСТРАТОР: пути (журнал, флаги, holdʼы, корень почты) берутся ИЗ КОНФИГА,
-секция 'orchestrator'. Флаги-пути ниже — переопределение для проверок, в
-эксплуатации не нужны; обязателен только --ref.
+ORCHESTRATOR: the paths (journal, flags, holds, mail root) are taken FROM THE
+CONFIG, section 'orchestrator'. The path flags below are an override for checks
+and are not needed in operation; only --ref is required.
   agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
@@ -149,43 +151,44 @@ const flag = (argv: readonly string[], name: string): string | undefined => {
 };
 
 const required = (argv: readonly string[], name: string): string =>
-  flag(argv, name) ?? fail(`не задан ${name}\n${USAGE}`, 2);
+  flag(argv, name) ?? fail(`${name} is not set\n${USAGE}`, 2);
 
 const readFile = (path: string, what: string): string => {
   try {
     return readFileSync(path, "utf8");
   } catch (error) {
-    return fail(`не смог прочитать ${what} '${path}': ${(error as Error).message}`, 2);
+    return fail(`could not read the ${what} '${path}': ${(error as Error).message}`, 2);
   }
 };
 
 /**
- * Конфиг читается ТОЛЬКО через пакет и ТОЛЬКО по явному ref.
+ * The config is read ONLY through the package and ONLY at an explicit ref.
  *
- * `--repo` по умолчанию — репозиторий, которому принадлежит `--root`: почта и
- * код у нас в одном репозитории, просто в разных ветках, и заставлять каждый
- * вызов повторять путь значит плодить места, где он разъедется. Отдельный
- * `--repo` нужен раннеру, где чекаут почты и чекаут кода — разные каталоги.
+ * `--repo` defaults to the repository `--root` belongs to: mail and code live in
+ * one repository here, merely on different branches, and making every call repeat
+ * the path would breed places for it to drift. A separate `--repo` is needed by
+ * the runner, where the mail checkout and the code checkout are different
+ * directories.
  */
 const configFrom = (
   argv: readonly string[],
   root?: string,
 ): ReturnType<typeof loadProtocolConfig> => {
   const ref = required(argv, "--ref");
-  // Умолчания нет только у `ref` — именно он определяет, ЧТО мы читаем, и
-  // молчаливый выбор версии и был бы дефектом. Каталог же однозначен: репозиторий
-  // того места, откуда команду позвали (или того, где лежит почта). Требовать его
-  // явно значило сделать неработающим каждый пример в документации — что и
-  // случилось (находка ревьюера по PR #21).
+  // Only `ref` has no default — it is precisely what decides WHAT we read, and a
+  // silent choice of version would be the defect. The directory, by contrast, is
+  // unambiguous: the repository of the place the command was called from (or of
+  // the place where the mail lies). Demanding it explicitly meant breaking every
+  // example in the documentation — which is what happened (the reviewer's finding
+  // on PR #21).
   const repo = flag(argv, "--repo") ?? repoOf(root ?? process.cwd());
   const noFetch = argv.includes("--no-fetch");
 
   if (noFetch && ref.startsWith("origin/")) {
-    // Молчаливо-старый конфиг неотличим от актуального — тот же класс, что
-    // молча-пустой ответ git. Отказ от обновления допустим, но не молча.
-    err(
-      `agent-protocol: ВНИМАНИЕ — '${ref}' не обновлялся (--no-fetch), конфиг может быть устаревшим`,
-    );
+    // A silently stale config is indistinguishable from a current one — the same
+    // class as a silently empty answer from git. Skipping the update is allowed,
+    // but not silently.
+    err(`agent-protocol: WARNING — '${ref}' was not updated (--no-fetch), the config may be stale`);
   }
 
   try {
@@ -199,7 +202,7 @@ const configFrom = (
     });
   } catch (error) {
     if (error instanceof RoleConfigError) return fail(error.message, 2);
-    return fail(`конфиг протокола на '${ref}' не прочитан: ${(error as Error).message}`, 2);
+    return fail(`the protocol config at '${ref}' was not read: ${(error as Error).message}`, 2);
   }
 };
 
@@ -212,7 +215,7 @@ const repoOf = (at: string): string => {
       encoding: "utf8",
     }).trim();
   } catch (error) {
-    return fail(`'${at}' не в git-репозитории: ${(error as Error).message}`, 2);
+    return fail(`'${at}' is not inside a git repository: ${(error as Error).message}`, 2);
   }
 };
 
@@ -225,14 +228,14 @@ const configCheck = (argv: readonly string[]): void => {
   const loaded = configFrom(argv, undefined);
   const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
 
-  // Объявленные инструкции проверяются НА ТОМ ЖЕ ref, что и конфиг: проверять
-  // существование файла на диске значило бы смотреть в другую версию дерева.
+  // The declared instructions are checked AT THE SAME ref as the config: checking
+  // for the file on disk would mean looking at a different version of the tree.
   const missing: string[] = [];
   for (const role of loaded.config.roles) {
     for (const entry of role.instructions ?? []) {
       if (!fileExistsAtRef(repo, loaded.ref, entry.path)) {
         missing.push(
-          `роль '${role.id}': инструкции '${entry.path}' объявлены, но на ${loaded.ref} их нет`,
+          `role '${role.id}': instructions '${entry.path}' are declared, but are not there at ${loaded.ref}`,
         );
       }
     }
@@ -240,11 +243,11 @@ const configCheck = (argv: readonly string[]): void => {
 
   if (missing.length === 0) {
     out(
-      `agent-protocol: ok — конфиг '${loaded.path}' на ${loaded.ref}: ролей ${loaded.registry.ids().length}, почта в ветке '${loaded.config.mail.branch}' (${loaded.config.mail.dir})`,
+      `agent-protocol: ok — config '${loaded.path}' at ${loaded.ref}: ${loaded.registry.ids().length} roles, mail in branch '${loaded.config.mail.branch}' (${loaded.config.mail.dir})`,
     );
     return;
   }
-  err("agent-protocol: конфиг ссылается на отсутствующие файлы:");
+  err("agent-protocol: the config points at missing files:");
   for (const item of missing) err(`- ${item}`);
   process.exit(1);
 };
@@ -256,7 +259,7 @@ const rolesList = (argv: readonly string[]): void => {
 const roleExists = (argv: readonly string[]): void => {
   const role = required(argv, "--role");
   if (registryFrom(argv, undefined).isKnown(role)) return;
-  err(`agent-protocol: роль '${role}' не значится в конфиге протокола`);
+  err(`agent-protocol: role '${role}' is not listed in the protocol config`);
   process.exit(1);
 };
 
@@ -267,16 +270,17 @@ const indexBuild = (argv: readonly string[]): void => {
   const rendered = renderIndex(threads.map((loaded) => loaded.thread));
   const path = join(root, "INDEX.md");
 
-  // Реестр — витрина, и собрать её из части тредов значит опубликовать неполный
-  // реестр как полный. Здесь изоляция НЕ применяется: сбойный тред — отказ.
+  // The index is a display, and assembling it from part of the threads means
+  // publishing an incomplete index as a complete one. Isolation is NOT applied
+  // here: a broken thread is a refusal.
   if (failures.length > 0) {
     for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
-    fail(`INDEX собран не будет — тредов нечитаемо: ${failures.length}`, 2);
+    fail(`INDEX will not be assembled — unreadable threads: ${failures.length}`, 2);
   }
 
   if (argv.includes("--write")) {
     writeOut(path, rendered);
-    out(`agent-protocol: INDEX.md перегенерирован из ${threads.length} тредов`);
+    out(`agent-protocol: INDEX.md regenerated from ${threads.length} threads`);
     return;
   }
 
@@ -287,10 +291,10 @@ const indexBuild = (argv: readonly string[]): void => {
     current = "";
   }
   if (current === rendered) {
-    out("agent-protocol: ok — INDEX.md совпадает с тредами");
+    out("agent-protocol: ok — INDEX.md matches the threads");
     return;
   }
-  err("agent-protocol: INDEX.md разошёлся с тредами (--write перезапишет):");
+  err("agent-protocol: INDEX.md has drifted from the threads (--write will overwrite it):");
   err(rendered);
   process.exit(1);
 };
@@ -300,19 +304,20 @@ const threadBuild = (argv: readonly string[]): void => {
   const id = required(argv, "--id");
   const registry = registryFrom(argv, repoOf(root));
   const scan = loadThreads(root, registry.ids());
-  // Тред спрошен ПОИМЁННО: если сбойный — именно он, то это отказ, а не «не
-  // найден». Разница существенная: «не найден» толкает искать опечатку в id.
+  // The thread was asked for BY NAME: if the broken one is exactly it, that is a
+  // refusal, not a "not found". The difference matters: "not found" pushes one to
+  // hunt for a typo in the id.
   const broken = scan.failures.find((failure) => failure.id === id);
-  if (broken !== undefined) fail(`тред '${id}' не прочитан: ${broken.problem}`, 2);
+  if (broken !== undefined) fail(`thread '${id}' was not read: ${broken.problem}`, 2);
   const loaded = scan.threads.find((item) => item.thread.id === id);
-  if (loaded === undefined) fail(`тред '${id}' не найден в '${root}'`, 2);
+  if (loaded === undefined) fail(`thread '${id}' not found in '${root}'`, 2);
 
   const { thread } = loaded as NonNullable<typeof loaded>;
   const rendered = renderThread(thread.meta, thread.messages);
 
   if (argv.includes("--write")) {
     writeOut(join(root, id, "_thread.md"), rendered);
-    out(`agent-protocol: ${id}/_thread.md собран из ${thread.messages.length} сообщений`);
+    out(`agent-protocol: ${id}/_thread.md assembled from ${thread.messages.length} messages`);
     return;
   }
   out(rendered);
@@ -327,19 +332,19 @@ const checkAll = (argv: readonly string[]): void => {
     loaded.input === undefined ? [] : checkThread(loaded.input, registry),
   );
   const legacy = threads.filter((loaded) => loaded.legacy).map((loaded) => loaded.thread.id);
-  // Нечитаемый тред — нарушение того же рода, что нарушение формата: `check`
-  // существует, чтобы сказать «с почтой что-то не так», и молчать о треде,
-  // который вообще не разобрался, ему нельзя.
+  // An unreadable thread is a violation of the same order as a format violation:
+  // `check` exists to say "something is wrong with the mail", and it must not stay
+  // silent about a thread that did not parse at all.
   const failureIssues = renderThreadFailures(failures);
 
-  // Неизменность сообщений проверяется ОТНОСИТЕЛЬНО ТОЧКИ В ИСТОРИИ: на диске
-  // лежит только «сейчас», и вопрос «правили ли задним числом» без ref не имеет
-  // смысла. Нет `--since` — говорим об этом вслух: молчание читалось бы как
-  // «проверено и цело», то есть проверка превратилась бы в свою
-  // противоположность ровно там, где она и нужна.
+  // Message immutability is checked RELATIVE TO A POINT IN HISTORY: only "now"
+  // lies on disk, and the question "was it edited after the fact" makes no sense
+  // without a ref. No `--since` — we say so out loud: silence would read as
+  // "checked and intact", that is, the check would turn into its own opposite
+  // exactly where it is needed.
   const since = flag(argv, "--since");
   if (since === undefined) {
-    out("agent-protocol: неизменность сообщений НЕ проверялась — нужен --since <ref>");
+    out("agent-protocol: message immutability was NOT checked — --since <ref> is required");
   } else {
     const previous = messagesAtRef(root, since);
     const current = new Map<string, string>();
@@ -347,26 +352,26 @@ const checkAll = (argv: readonly string[]): void => {
       try {
         current.set(path, readFileSync(join(root, path), "utf8"));
       } catch {
-        // Файла нет — это и есть удаление; checkImmutable скажет об этом сам.
+        // No file — that IS the deletion; checkImmutable says so itself.
       }
     }
     issues.push(...checkImmutable(previous, current));
-    out(`agent-protocol: сверено с '${since}' — сообщений в истории: ${previous.size}`);
+    out(`agent-protocol: compared with '${since}' — messages in history: ${previous.size}`);
   }
 
   if (legacy.length > 0) {
-    out(`agent-protocol: ещё не мигрированы (читаются как есть): ${legacy.join(", ")}`);
+    out(`agent-protocol: not migrated yet (read as they are): ${legacy.join(", ")}`);
   }
   if (issues.length === 0 && failureIssues.length === 0) {
-    out(`agent-protocol: ok — ${threads.length - legacy.length} тредов прошли проверку формата`);
+    out(`agent-protocol: ok — ${threads.length - legacy.length} threads passed the format check`);
     return;
   }
   if (failureIssues.length > 0) {
-    err("agent-protocol: треды не прочитаны:");
+    err("agent-protocol: threads were not read:");
     for (const line of failureIssues) err(`- ${line}`);
   }
   if (issues.length > 0) {
-    err("agent-protocol: формат нарушен:");
+    err("agent-protocol: the format is violated:");
     for (const issue of issues) {
       err(`- ${issue.thread}${issue.file === undefined ? "" : `/${issue.file}`}: ${issue.message}`);
     }
@@ -381,36 +386,37 @@ const migrate = (argv: readonly string[]): void => {
   const doWrite = argv.includes("--write");
 
   const scan = loadThreads(root, registry.ids());
-  // Сбойные треды миграции не мешают — она идёт по legacy, которые прочитались.
-  // Но молчать о них нельзя: полу-мигрированный тред как раз и есть кандидат на
-  // домиграцию, и «мигрировать нечего» без этой строки читалось бы как «всё ок».
+  // Broken threads do not get in the way of the migration — it runs over the
+  // legacy ones that did parse. But staying silent about them is not allowed: a
+  // half-migrated thread is precisely the candidate for finishing the migration,
+  // and "nothing to migrate" without this line would read as "all good".
   for (const line of renderThreadFailures(scan.failures)) err(`agent-protocol: ${line}`);
   const threads = scan.threads.filter(
     (loaded) => loaded.legacy && (only === undefined || loaded.thread.id === only),
   );
   if (threads.length === 0) {
-    out("agent-protocol: мигрировать нечего — все треды уже в файлах сообщений");
+    out("agent-protocol: nothing to migrate — all threads are already message files");
     return;
   }
 
   let failed = 0;
   for (const loaded of threads) {
     const id = loaded.thread.id;
-    const original = readFile(join(root, id, "_thread.md"), `тред ${id}`);
+    const original = readFile(join(root, id, "_thread.md"), `thread ${id}`);
     const migration = migrateLegacyThread(id, original, registry.ids());
     const mismatch = verifyMigration(migration, original);
 
     if (mismatch !== undefined) {
-      err(`- ${id}: ГАРД НЕ ПРОЙДЕН, миграция не принята — ${mismatch}`);
+      err(`- ${id}: GUARD FAILED, the migration is not accepted — ${mismatch}`);
       failed++;
       continue;
     }
-    // Коллизия имён — отказ (sanity-guard: с именем из seq она структурно
-    // невозможна, но если генерация имён однажды сломается, потеря сообщения
-    // не должна пройти молча — см. Migration.collisions).
+    // A name collision is a refusal (a sanity guard: with a name taken from seq it
+    // is structurally impossible, but if name generation ever breaks, the loss of a
+    // message must not pass silently — see Migration.collisions).
     if (migration.collisions.length > 0) {
       for (const collision of migration.collisions) {
-        err(`- ${id}: КОЛЛИЗИЯ ИМЁН, миграция не принята — ${collision}`);
+        err(`- ${id}: NAME COLLISION, the migration is not accepted — ${collision}`);
       }
       failed++;
       continue;
@@ -419,43 +425,47 @@ const migrate = (argv: readonly string[]): void => {
     const messages = migration.files.filter((file) => file.path.startsWith("messages/")).length;
     if (doWrite) {
       for (const file of migration.files) writeOut(join(root, id, file.path), file.content);
-      out(`- ${id}: перенесён (${messages} сообщений), склейка воспроизводит исходник байт-в-байт`);
+      out(
+        `- ${id}: moved (${messages} messages), the assembly reproduces the original byte for byte`,
+      );
     } else {
-      out(`- ${id}: готов к переносу (${messages} сообщений), гард пройден`);
+      out(`- ${id}: ready to move (${messages} messages), the guard passed`);
     }
   }
 
-  if (failed > 0) fail(`миграция не принята для ${failed} тредов`, 1);
-  if (!doWrite) out("agent-protocol: показан план; запись — с --write");
+  if (failed > 0) fail(`the migration was not accepted for ${failed} threads`, 1);
+  if (!doWrite) out("agent-protocol: the plan is shown; writing happens with --write");
 };
 
 /**
- * Пересобрать ВСЕ производные разом: `_thread.md` каждого мигрированного треда
- * (у кого есть `messages/`) + `INDEX.md`. Это то, что зовёт action на push в
- * ветку почты — один вызов вместо цикла в YAML.
+ * Rebuild ALL derived files at once: the `_thread.md` of every migrated thread
+ * (the ones that have `messages/`) plus `INDEX.md`. This is what the action calls
+ * on a push to the mail branch — one call instead of a loop in YAML.
  *
- * Без `--write` — сухой прогон: показывает, что РАЗОШЛОСЬ, и выходит кодом 1,
- * если расхождение есть. Молчаливо разошедшиеся производные — тот же класс, что
- * потерянный дубль вердикта: если сборка не совпала с диском, это обязано быть
- * видно (требование curated из 014), а не тихо «почти то же».
+ * Without `--write` it is a dry run: it shows what HAS DRIFTED and exits with
+ * code 1 if there is any drift. Silently drifted derived files are the same class
+ * as a lost duplicate of a verdict: if the assembly does not match the disk, that
+ * has to be visible (curator's requirement from 014) rather than quietly "almost
+ * the same".
  */
 const derive = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const registry = registryFrom(argv, repoOf(root));
   const doWrite = argv.includes("--write");
   const { threads, failures } = loadThreads(root, registry.ids());
-  // Как и `index build`: производные — витрина, собирать её из части тредов
-  // значит опубликовать неполное как полное. Сбойный тред останавливает сборку.
+  // As in `index build`: derived files are a display, and assembling one from part
+  // of the threads means publishing the incomplete as complete. A broken thread
+  // stops the assembly.
   if (failures.length > 0) {
     for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
-    fail(`производные не собраны — тредов нечитаемо: ${failures.length}`, 2);
+    fail(`derived files were not assembled — unreadable threads: ${failures.length}`, 2);
   }
 
   const targets: { path: string; rendered: string }[] = [];
   for (const loaded of threads) {
-    // `_thread.md` пересобирается только у мигрированных: у legacy он ИСТОЧНИК,
-    // трогать его нельзя — перезапись сгенерированным сломала бы ещё не
-    // перенесённый тред.
+    // `_thread.md` is rebuilt only for migrated threads: for a legacy one it is the
+    // SOURCE and must not be touched — overwriting it with a generated file would
+    // break a thread that has not been moved yet.
     if (loaded.legacy) continue;
     targets.push({
       path: join(root, loaded.thread.id, "_thread.md"),
@@ -485,24 +495,24 @@ const derive = (argv: readonly string[]): void => {
     }
     out(
       drifted.length === 0
-        ? "agent-protocol: производные уже совпадают — писать нечего"
-        : `agent-protocol: пересобрано производных: ${drifted.length}`,
+        ? "agent-protocol: the derived files already match — nothing to write"
+        : `agent-protocol: derived files rebuilt: ${drifted.length}`,
     );
     return;
   }
 
   if (drifted.length === 0) {
-    out(`agent-protocol: ok — производные совпадают (${targets.length} файлов проверено)`);
+    out(`agent-protocol: ok — the derived files match (${targets.length} files checked)`);
     return;
   }
-  err("agent-protocol: производные разошлись с источником (--write пересоберёт):");
+  err("agent-protocol: the derived files drifted from the source (--write will rebuild them):");
   for (const path of drifted) err(`- ${path}`);
   process.exit(1);
 };
 
 const parseExpects = (raw: string): Expects => {
   if (!(EXPECTS as readonly string[]).includes(raw)) {
-    fail(`--expects '${raw}' — допустимо ${EXPECTS.join(" | ")}`, 2);
+    fail(`--expects '${raw}' — allowed values are ${EXPECTS.join(" | ")}`, 2);
   }
   return raw as Expects;
 };
@@ -516,33 +526,36 @@ const parseWaitingOn = (raw: string, registry: RoleRegistry): string[] => {
           .map((r) => r.trim())
           .filter((r) => r !== "");
   for (const role of roles) {
-    // Неизвестная роль КРАСИТ, а не отбрасывается молча — иначе потеря роли из
-    // объявления (боль 2) вернулась бы через инструмент записи.
-    if (!registry.isKnown(role)) fail(`в --waiting-on роль '${role}', которой нет в конфиге`, 2);
+    // An unknown role FAILS the command instead of being dropped silently —
+    // otherwise the loss of a role from the declaration (pain 2) would come back
+    // through the writing tool.
+    if (!registry.isKnown(role))
+      fail(`--waiting-on names role '${role}', which is not in the config`, 2);
   }
   return roles;
 };
 
 /**
- * Создать файл-сообщение в СУЩЕСТВУЮЩЕМ треде. Отказывается, если тред в
- * legacy-форме (нет `messages/`): файловая запись обрезала бы его историю.
+ * Create a message file in an EXISTING thread. Refuses if the thread is in the
+ * legacy form (no `messages/`): a file write would cut off its history.
  */
 const newMessage = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const threadId = required(argv, "--thread");
   const from = required(argv, "--from");
   const registry = registryFrom(argv, repoOf(root));
-  if (!registry.isKnown(from)) fail(`роль '${from}' не значится в конфиге`, 2);
+  if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
 
   const threadDir = join(root, threadId);
-  if (!existsSync(threadDir)) fail(`тред '${threadId}' не найден в '${root}'`, 2);
+  if (!existsSync(threadDir)) fail(`thread '${threadId}' not found in '${root}'`, 2);
   const messagesDir = join(threadDir, "messages");
   const threadHasMessages = existsSync(messagesDir);
 
-  // Метка монотонна по ленте: собираем метки уже лежащих НОВЫХ сообщений (с
-  // временем — мигрированные, датированные без времени, исключаем) и клампим
-  // новую строго после последней. Без этого перекос часов писателей ставит
-  // ответ раньше вопроса (реальный случай в 012).
+  // The stamp is monotonic along the feed: we collect the stamps of the NEW
+  // messages already lying there (the ones with a time — migrated ones, dated
+  // without a time, are excluded) and clamp the new one strictly after the last.
+  // Without this, clock skew between writers puts an answer before its question (a
+  // real case in 012).
   const existingTs = threadHasMessages
     ? readdirSync(messagesDir)
         .filter((name) => name.endsWith(".md"))
@@ -550,7 +563,7 @@ const newMessage = (argv: readonly string[]): void => {
         .filter((date) => date.includes("T"))
     : [];
 
-  const text = readFile(required(argv, "--body-file"), "тело сообщения");
+  const text = readFile(required(argv, "--body-file"), "message body");
   const waitingRaw = flag(argv, "--waiting-on");
   let planned: ReturnType<typeof planNewMessage>;
   try {
@@ -571,37 +584,37 @@ const newMessage = (argv: readonly string[]): void => {
 
   const path = join(threadDir, planned.path);
   if (existsSync(path))
-    fail(`файл '${planned.path}' уже существует — две записи в одну секунду?`, 2);
+    fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
 
   if (argv.includes("--write")) {
     writeOut(path, planned.content);
-    out(`agent-protocol: создано ${threadId}/${planned.path}`);
+    out(`agent-protocol: created ${threadId}/${planned.path}`);
     return;
   }
-  out(`agent-protocol: создаст ${threadId}/${planned.path} (--write запишет):`);
+  out(`agent-protocol: would create ${threadId}/${planned.path} (--write writes it):`);
   out(planned.content);
 };
 
-/** Создать НОВЫЙ тред сразу в файловой форме (`_meta.md` + первое сообщение). */
+/** Create a NEW thread straight in the file form (`_meta.md` + the first message). */
 const newThread = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const id = required(argv, "--id");
   const registry = registryFrom(argv, repoOf(root));
 
   const from = required(argv, "--from");
-  if (!registry.isKnown(from)) fail(`роль '${from}' не значится в конфиге`, 2);
+  if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
   const participants = required(argv, "--participants")
     .split(",")
     .map((r) => r.trim())
     .filter((r) => r !== "");
   for (const p of participants) {
-    if (!registry.isKnown(p)) fail(`участник '${p}' не значится в конфиге`, 2);
+    if (!registry.isKnown(p)) fail(`participant '${p}' is not listed in the config`, 2);
   }
 
   const threadDir = join(root, id);
-  if (existsSync(threadDir)) fail(`тред '${id}' уже существует`, 2);
+  if (existsSync(threadDir)) fail(`thread '${id}' already exists`, 2);
 
-  const text = readFile(required(argv, "--body-file"), "тело первого сообщения");
+  const text = readFile(required(argv, "--body-file"), "body of the first message");
   const files = planNewThread({
     title: required(argv, "--title"),
     participants,
@@ -616,10 +629,10 @@ const newThread = (argv: readonly string[]): void => {
 
   if (argv.includes("--write")) {
     for (const file of files) writeOut(join(threadDir, file.path), file.content);
-    out(`agent-protocol: создан тред ${id} (${files.length} файлов)`);
+    out(`agent-protocol: thread ${id} created (${files.length} files)`);
     return;
   }
-  out(`agent-protocol: создаст тред ${id} (--write запишет):`);
+  out(`agent-protocol: would create thread ${id} (--write writes it):`);
   for (const file of files) out(`- ${id}/${file.path}`);
 };
 
@@ -627,10 +640,11 @@ const mail = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const role = required(argv, "--role");
   const registry = registryFrom(argv, repoOf(root));
-  if (!registry.isKnown(role)) fail(`роль '${role}' не значится в конфиге`, 2);
+  if (!registry.isKnown(role)) fail(`role '${role}' is not listed in the config`, 2);
 
-  // Почта считается из ТРЕДОВ, а не из производного INDEX: иначе падение
-  // генератора реестра ослепило бы вахту и сторожа (боль 5, тред 008).
+  // Mail is computed from the THREADS, not from the derived INDEX: otherwise a
+  // failure of the index generator would blind the watch and the keeper (pain 5,
+  // thread 008).
   const { threads, failures } = loadThreads(root, registry.ids());
   const hits = threadsWaitingOn(
     threads.map((loaded) => loaded.thread),
@@ -639,34 +653,39 @@ const mail = (argv: readonly string[]): void => {
   for (const id of hits) out(id);
   for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
 
-  // КОД ВОЗВРАТА РЕШАЕТ ОДНУ ЗАДАЧУ: не дать объявить пустой ящик, которого мы
-  // не проверили. Обёртка входа (`has-mail.sh`) на ненулевом коде выбрасывает
-  // stdout и честно говорит «не отработал» — поэтому:
-  //  - нашли почту, часть тредов сбойна → код 0, тревога в stderr. Ненулевой
-  //    здесь ВЫБРОСИЛ БЫ найденную почту, то есть вернул ту самую слепоту,
-  //    ради устранения которой пакет и делается;
-  //  - почты не нашли, а что-то нечитаемо → «почты нет» НЕДОКАЗАНО, код 2.
+  // THE EXIT CODE SOLVES ONE PROBLEM: it must not let an empty mailbox be declared
+  // when we did not actually check it. The entry wrapper (`has-mail.sh`) throws
+  // stdout away on a non-zero code and honestly says "it did not work" — hence:
+  //  - mail found, some threads broken → code 0, the alarm on stderr. A non-zero
+  //    code here would THROW AWAY the mail we found, that is, bring back the very
+  //    blindness this package is built to remove;
+  //  - no mail found while something is unreadable → "there is no mail" is NOT
+  //    PROVEN, code 2.
   if (failures.length > 0 && hits.length === 0) {
-    fail(`почта не подтверждена: нечитаемых тредов ${failures.length}, читаемые ждут не тебя`, 2);
+    fail(
+      `mail is not confirmed: ${failures.length} unreadable threads, the readable ones are not waiting on you`,
+      2,
+    );
   }
 };
 
 /**
- * ПУТИ ОРКЕСТРАТОРА БЕРУТСЯ ИЗ КОНФИГА, а не из аргументов (решение john, тред
- * 012, 22:45). Флаг остаётся уважаемым переопределением — им пользуются проверки
- * и разовые прогоны на копии почты, — но ЭКСПЛУАТАЦИЯ не должна знать ни одного
- * пути: `enable`, `daemon`, `status` работают без единого `--journal`.
+ * THE ORCHESTRATOR PATHS COME FROM THE CONFIG, not from the arguments (john's
+ * decision, thread 012, 22:45). The flag remains a respected override — checks and
+ * one-off runs on a copy of the mail use it — but OPERATION must not know a single
+ * path: `enable`, `daemon` and `status` work without a single `--journal`.
  *
- * Секция `orchestrator` в конфиге необязательна (пакет проектируется как чужой),
- * и её отсутствие ловится ЗДЕСЬ, громко: молчаливое умолчание вроде `.orchestrator`
- * означало бы, что демон пишет журнал туда, где его никто не ищет.
+ * The `orchestrator` section of the config is optional (the package is designed as
+ * a foreign one), and its absence is caught HERE, loudly: a silent default such as
+ * `.orchestrator` would mean the daemon writes its journal where nobody looks for
+ * it.
  */
 const pathsFrom = (argv: readonly string[]): OrchestratorPaths => {
   const loaded = configFrom(argv, undefined);
   const section = loaded.config.orchestrator;
   if (section === undefined) {
     return fail(
-      `в конфиге на ${loaded.ref} нет секции 'orchestrator' — добавьте { state, mailCheckout, ref }`,
+      `the config at ${loaded.ref} has no 'orchestrator' section — add { state, mailCheckout, ref }`,
       2,
     );
   }
@@ -678,9 +697,10 @@ const pathsFrom = (argv: readonly string[]): OrchestratorPaths => {
 };
 
 /**
- * Окружение ДОЧЕРНЕГО процесса: унаследованное плюс преамбула из конфига
- * (`orchestrator.env`). Тулчейн-менеджмент пакету не отдан — проект объявляет,
- * что нужно его агенту, в данных; пакет применяет и показывает результат.
+ * The environment of the CHILD process: the inherited one plus the preamble from
+ * the config (`orchestrator.env`). Toolchain management is not handed to the
+ * package — the project declares what its agent needs, in data; the package
+ * applies it and shows the result.
  */
 const childEnvFrom = (argv: readonly string[]): NodeJS.ProcessEnv => {
   const section = configFrom(argv, undefined).config.orchestrator;
@@ -688,30 +708,36 @@ const childEnvFrom = (argv: readonly string[]): NodeJS.ProcessEnv => {
 };
 
 /**
- * PREFLIGHT — проверки ДО взятия аренды (S8). Правило curator после третьего
- * случая одного класса: то, что человек обязан помнить перед прогоном, машина
- * делает сама или громко отказывается. Зонды здесь, вердикты — в ядре.
+ * PREFLIGHT — the checks made BEFORE the lease is taken (S8). curator's rule after
+ * the third case of one class: whatever a human is obliged to remember before a
+ * run, the machine either does itself or loudly refuses. The probes live here, the
+ * verdicts live in the core.
  */
 const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] => {
   const loaded = configFrom(argv, undefined);
   const section = loaded.config.orchestrator;
   if (section === undefined) {
     return [
-      { name: "конфиг", status: "fail", detail: "секции 'orchestrator' нет — контуру негде жить" },
+      {
+        name: "config",
+        status: "fail",
+        detail: "there is no 'orchestrator' section — the circuit has nowhere to live",
+      },
     ];
   }
   const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
   const env = childEnvFrom(argv);
   const preamble = Object.keys(section.env ?? {});
 
-  // Бинарь ищем В ОКРУЖЕНИИ РЕБЁНКА, а не в своём: PATH демона и PATH сессии —
-  // разные вещи, и проверка «у меня есть» отвечала бы не на тот вопрос.
+  // The binary is looked up IN THE CHILD'S ENVIRONMENT, not in ours: the daemon's
+  // PATH and the session's PATH are different things, and a check of "I have it"
+  // would answer the wrong question.
   let resolved: string | null = null;
   try {
-    // Имя бинаря уходит ПЕРЕМЕННОЙ ОКРУЖЕНИЯ, а не подстановкой в строку шелла:
-    // `--exec` задаёт оператор, и склейка команды из его значения была бы
-    // инъекцией на ровном месте. `shell: true` не используем — он и предупреждает
-    // ровно об этом.
+    // The binary name goes through an ENVIRONMENT VARIABLE rather than being
+    // interpolated into a shell string: `--exec` is set by the operator, and
+    // assembling a command out of its value would be an injection for no reason.
+    // `shell: true` is not used — that is exactly what it warns about.
     resolved = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
       encoding: "utf8",
       env: { ...env, AGENT_PROTOCOL_EXEC: exec },
@@ -734,14 +760,14 @@ const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] =
     checkout = mailCheckoutVerdict({ ...state, expectedBranch: loaded.config.mail.branch });
   } catch (error) {
     checkout = {
-      name: "почта: свежесть чекаута",
+      name: "mail: checkout freshness",
       status: "fail",
-      detail: `не опросил чекаут '${join(repo, section.mailCheckout)}': ${(error as Error).message}`,
+      detail: `could not probe the checkout '${join(repo, section.mailCheckout)}': ${(error as Error).message}`,
     };
   }
 
-  // Рабочий репозиторий: сессия наследует его как есть, и «приземлилась на чужую
-  // ветку» снаружи не видно вовсе — в отличие от устаревшей почты.
+  // The working repository: the session inherits it as it is, and "landed on the
+  // wrong branch" is not visible from the outside at all — unlike stale mail.
   let workdir: PreflightCheck;
   try {
     const state = workdirState(repo);
@@ -751,9 +777,9 @@ const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] =
     });
   } catch (error) {
     workdir = {
-      name: "рабочее дерево",
+      name: "working tree",
       status: "fail",
-      detail: `не опросил '${repo}': ${(error as Error).message}`,
+      detail: `could not probe '${repo}': ${(error as Error).message}`,
     };
   }
 
@@ -765,34 +791,35 @@ const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] =
   ];
 };
 
-/** Команда `orchestrator preflight`: показать всё и вернуть код по итогу. */
+/** The `orchestrator preflight` command: show everything and return a code by the outcome. */
 const orchestratorPreflight = (argv: readonly string[]): void => {
   const checks = runPreflight(argv, flag(argv, "--exec") ?? "claude");
   out(renderPreflight(checks));
-  if (!preflightPassed(checks)) fail("preflight не пройден — контур не стартует", 2);
+  if (!preflightPassed(checks)) fail("preflight failed — the circuit does not start", 2);
 };
 
 /**
- * Preflight перед стартом: `daemon` и `run` зовут его сами и НЕ стартуют при
- * провале. Иначе он остаётся ещё одним пунктом «не забудь», то есть ровно тем,
- * ради устранения чего сделан.
+ * Preflight before the start: `daemon` and `run` call it themselves and do NOT
+ * start on a failure. Otherwise it stays yet another "do not forget" item, that
+ * is, exactly the thing it was built to remove.
  */
 const requirePreflight = (argv: readonly string[], exec: string): void => {
   const checks = runPreflight(argv, exec);
   err(renderPreflight(checks));
-  if (!preflightPassed(checks)) fail("preflight не пройден — не стартую", 2);
+  if (!preflightPassed(checks)) fail("preflight failed — not starting", 2);
 };
 
 /**
- * Включение и выключение ЗАПУСКОВ — командой, а не `touch` по пути из чужой
- * памяти (решение john, 22:45). Команда владеет каталогом состояния и создаёт
- * его сама; печатает ГРОМКО: каким состояние было ДО, каким стало, где лежит
- * флаг.
+ * Enabling and disabling LAUNCHES happens through a command, not through a `touch`
+ * at a path from somebody's memory (john's decision, 22:45). The command owns the
+ * state directory and creates it itself; it prints LOUDLY: what the state was
+ * BEFORE, what it became, and where the flag lies.
  *
- * ЧЕСТНО О ГАРАНТИИ: ни `touch`, ни эта команда не отличают john от агента.
- * «Включает человек» — гарантия процедурная и была такой всегда; CLI её не
- * усиливает и не ослабляет, он убирает из процедуры места, где ошибиться может
- * каждый. Техническая гарантия (секрет, подпись) — отдельная развилка.
+ * HONESTLY ABOUT THE GUARANTEE: neither `touch` nor this command tells john apart
+ * from an agent. "A human enables it" is a procedural guarantee and always has
+ * been; the CLI neither strengthens nor weakens it, it removes from the procedure
+ * the places where anyone can go wrong. A technical guarantee (a secret, a
+ * signature) is a separate fork.
  */
 const orchestratorEnable = (argv: readonly string[], on: boolean): void => {
   const paths = pathsFrom(argv);
@@ -800,15 +827,15 @@ const orchestratorEnable = (argv: readonly string[], on: boolean): void => {
   const write = argv.includes("--write");
 
   if (was === on) {
-    out(`agent-protocol: запуски уже ${on ? "включены" : "выключены"} — ничего не меняю`);
-    out(`флаг: ${paths.enableFlag}`);
+    out(`agent-protocol: launches are already ${on ? "enabled" : "disabled"} — changing nothing`);
+    out(`flag: ${paths.enableFlag}`);
     return;
   }
   if (!write) {
     out(
-      `agent-protocol: ${on ? "включит" : "выключит"} запуски (сейчас ${was ? "включены" : "выключены"}); --write выполнит`,
+      `agent-protocol: would ${on ? "enable" : "disable"} launches (currently ${was ? "enabled" : "disabled"}); --write performs it`,
     );
-    out(`флаг: ${paths.enableFlag}`);
+    out(`flag: ${paths.enableFlag}`);
     return;
   }
 
@@ -819,29 +846,29 @@ const orchestratorEnable = (argv: readonly string[], on: boolean): void => {
     rmSync(paths.enableFlag);
   }
   out(
-    `agent-protocol: запуски ${on ? "ВКЛЮЧЕНЫ" : "ВЫКЛЮЧЕНЫ"} (было: ${was ? "включены" : "выключены"})`,
+    `agent-protocol: launches are ${on ? "ENABLED" : "DISABLED"} (was: ${was ? "enabled" : "disabled"})`,
   );
   out(renderPaths(paths));
 };
 
 /**
- * Момент, относительно которого считается `overdue` в `status`, и метка события
- * в `record`. По умолчанию — сейчас; `--now <iso>` фиксирует его для проверок
- * (тот же приём инъекции времени, что у ядра записи).
+ * The moment `overdue` in `status` is computed against, and the timestamp of an
+ * event in `record`. It defaults to now; `--now <iso>` pins it for checks (the
+ * same time-injection technique as in the writing core).
  */
 const orchestratorNow = (argv: readonly string[]): Date => {
   const raw = flag(argv, "--now");
   if (raw === undefined) return new Date();
   const at = new Date(raw);
-  if (Number.isNaN(at.getTime())) return fail(`--now '${raw}' — не разбирается как дата`, 2);
+  if (Number.isNaN(at.getTime())) return fail(`--now '${raw}' — does not parse as a date`, 2);
   return at;
 };
 
 /**
- * Каталог holdʼов → записи (S5). Отсутствующий каталог — пусто (holdʼов ещё не
- * брали), а вот НЕЧИТАЕМЫЙ файл внутри — громкий отказ через `parseHold`:
- * пропустить сломанный hold значило бы поднять роль поверх живой сессии ровно
- * тогда, когда что-то уже не так.
+ * The holds directory → records (S5). A missing directory means empty (no holds
+ * have been taken yet), while an UNREADABLE file inside is a loud refusal through
+ * `parseHold`: skipping a broken hold would mean raising a role on top of a live
+ * session exactly when something is already wrong.
  */
 const loadHolds = (dir: string): HoldRecord[] => {
   if (!existsSync(dir)) return [];
@@ -851,24 +878,26 @@ const loadHolds = (dir: string): HoldRecord[] => {
 };
 
 /**
- * Витрина состояния оркестратора — свёртка ЛОКАЛЬНОГО журнала. Отсутствующий
- * журнал — это пустое состояние (сессий ещё не было), а не ошибка: файл
- * появляется с первым событием. Нечитаемый по ДРУГОЙ причине — громкий отказ
- * внутри `readFile`.
+ * The orchestrator state display — a fold of the LOCAL journal. A missing journal
+ * is an empty state (there have been no sessions yet), not an error: the file
+ * appears with the first event. Unreadable for ANY OTHER reason is a loud refusal
+ * inside `readFile`.
  *
- * S4: опционально отражает РЕЖИМ РЕБУТА и enable-состояние (`--mode-file`,
- * `--enable-flag`). Так «как демон поднят и что будет после ребута» видно
- * командой, а не живёт в чьей-то памяти (требование curator). enable-состояние —
- * наличие файла-флага; показ его здесь и подтверждает персистентность (файл на
- * диске переживает ребут).
+ * S4: optionally reflects the REBOOT MODE and the enable state (`--mode-file`,
+ * `--enable-flag`). That way "how the daemon is brought up and what happens after
+ * a reboot" is visible from a command instead of living in somebody's memory
+ * (curator's requirement). The enable state is the presence of the flag file;
+ * showing it here is also what confirms persistence (a file on disk survives a
+ * reboot).
  *
- * S5: holdʼы — «роль занята человеком».
+ * S5: holds — "the role is taken by a human".
  *
- * S6: пути берутся ИЗ КОНФИГА, поэтому `status` показывает РЕЖИМ ЦЕЛИКОМ без
- * единого аргумента: аренды, holdʼы, включены ли запуски и где лежат файлы.
- * Требование «чтобы это не жило в чьей-то памяти» до сих пор было выполнено
- * только на бумаге — команда умела показать режим, но лишь тому, кто помнил
- * пути. Флаги-пути остаются переопределением для проверок на копии.
+ * S6: the paths come FROM THE CONFIG, so `status` shows the MODE IN FULL without a
+ * single argument: leases, holds, whether launches are enabled and where the files
+ * lie. The requirement "so that this does not live in somebody's memory" had until
+ * now been met only on paper — the command could show the mode, but only to
+ * someone who remembered the paths. The path flags remain an override for checks
+ * on a copy.
  */
 const orchestratorStatus = (argv: readonly string[]): void => {
   const paths = pathsFrom(argv);
@@ -876,7 +905,7 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   const holds = flag(argv, "--holds") ?? paths.holds;
   const enableFlag = flag(argv, "--enable-flag") ?? paths.enableFlag;
 
-  const events = existsSync(journal) ? parseJournal(readFile(journal, "журнал оркестратора")) : [];
+  const events = existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
   const now = orchestratorNow(argv);
   out(renderStatus(foldLeases(events, now)));
   out(renderHolds(foldHolds(loadHolds(holds), now)));
@@ -884,21 +913,22 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   const launchesEnabled = existsSync(enableFlag);
   const modeFile = flag(argv, "--mode-file");
   if (modeFile === undefined) {
-    out(`запуски: ${launchesEnabled ? "включены" : "выключены"}`);
+    out(`launches: ${launchesEnabled ? "enabled" : "disabled"}`);
   } else {
-    const mode = readFile(modeFile, "режим ребута").trim();
+    const mode = readFile(modeFile, "reboot mode").trim();
     if (mode !== "systemd" && mode !== "manual") {
-      fail(`режим ребута '${mode}' в '${modeFile}' — ожидается systemd | manual`, 2);
+      fail(`reboot mode '${mode}' in '${modeFile}' — expected systemd | manual`, 2);
       return;
     }
     out(describeReboot(mode, launchesEnabled));
   }
   out(renderPaths(paths));
 
-  // S7: ПОЛНОМОЧИЯ, с которыми контур поднимет роль. Тот же довод, что для путей
-  // в S6: режим не должен жить в чьей-то памяти — а профиль прав это ровно
-  // режим, и его отсутствие стоило целого прогона приёмки.
-  out("полномочия при запуске:");
+  // S7: the PERMISSIONS the circuit will raise a role with. The same argument as
+  // for the paths in S6: the mode must not live in somebody's memory — and a
+  // permission profile is exactly the mode, and its absence cost a whole
+  // acceptance run.
+  out("launch permissions:");
   for (const role of registryFrom(argv, undefined)
     .active()
     .filter((role) => role.wake.mode === "watch")) {
@@ -907,10 +937,10 @@ const orchestratorStatus = (argv: readonly string[]): void => {
 };
 
 /**
- * Печатает systemd unit-файл для демона (S4). Пакет НЕ прописывает себя в
- * систему: `systemctl enable` выполняет человек. Флаги (`--enable-flag` и др.)
- * в `--exec-start` держите на ПОСТОЯННОМ хранилище — иначе enable-состояние не
- * переживёт ребут.
+ * Prints the systemd unit file for the daemon (S4). The package does NOT register
+ * itself with the system: `systemctl enable` is performed by a human. Keep the
+ * flags (`--enable-flag` and the rest) in `--exec-start` on PERSISTENT storage —
+ * otherwise the enable state will not survive a reboot.
  */
 const orchestratorSystemdUnit = (argv: readonly string[]): void => {
   const execStart = required(argv, "--exec-start");
@@ -924,19 +954,20 @@ const orchestratorSystemdUnit = (argv: readonly string[]): void => {
     }),
   );
   err(
-    "agent-protocol: `systemctl enable` — действие человека; флаги держите на постоянном хранилище (не tmpfs)",
+    "agent-protocol: `systemctl enable` is a human action; keep the flags on persistent storage (not tmpfs)",
   );
 };
 
 /**
- * Дописать ОДНО событие в журнал. Это write-примитив, которым с S1 пользуется
- * демон; в S0 он же делает шаг воспроизводимым руками. Форма события проверяется
- * схемой (обязательность полей по виду — `lease-acquired` без `--deadline`,
- * `lease-released` без `--reason` не пройдут), а не вручную. Роль против конфига
- * здесь НЕ сверяется намеренно: журнал — собственный локальный лог оркестратора,
- * авторитет «реальна ли роль» — тот конфиг, по которому демон и решил запуск;
- * повторная сверка связала бы локальный append с git-fetch без новой гарантии, а
- * опечатка не теряется молча — `status` покажет её строкой.
+ * Append ONE event to the journal. This is the write primitive the daemon uses
+ * from S1 on; in S0 it also makes the step reproducible by hand. The shape of the
+ * event is validated by the schema (fields required per kind — `lease-acquired`
+ * without `--deadline` and `lease-released` without `--reason` will not pass)
+ * rather than by hand. The role is deliberately NOT checked against the config
+ * here: the journal is the orchestrator's own local log, and the authority on "is
+ * this role real" is the config the daemon decided the launch by; a second check
+ * would tie a local append to a git fetch without adding a guarantee, while a typo
+ * is not lost silently — `status` shows it as a line.
  */
 const orchestratorRecord = (argv: readonly string[]): void => {
   const path = flag(argv, "--journal") ?? pathsFrom(argv).journal;
@@ -957,9 +988,10 @@ const orchestratorRecord = (argv: readonly string[]): void => {
 
   const parsed = orchestratorEventSchema.safeParse(raw);
   if (!parsed.success) {
-    // fail завершает процесс; return — чтобы CFA сузила parsed к успеху ниже
-    // (значение из void-функции не возвращаем — на это ругался бы линтер).
-    fail(`событие не прошло валидацию: ${parsed.error.issues.map((i) => i.message).join("; ")}`, 2);
+    // fail terminates the process; the return is there so that control-flow
+    // analysis narrows `parsed` to the success case below (we do not return a
+    // value from a void function — the linter would complain about that).
+    fail(`the event failed validation: ${parsed.error.issues.map((i) => i.message).join("; ")}`, 2);
     return;
   }
   const event = parsed.data;
@@ -968,10 +1000,10 @@ const orchestratorRecord = (argv: readonly string[]): void => {
   if (argv.includes("--write")) {
     mkdirSync(dirname(path), { recursive: true });
     appendFileSync(path, `${line}\n`, "utf8");
-    out(`agent-protocol: записано событие ${event.kind} (${event.role} · ${event.thread})`);
+    out(`agent-protocol: event ${event.kind} recorded (${event.role} · ${event.thread})`);
     return;
   }
-  out(`agent-protocol: допишет в '${path}' (--write запишет):`);
+  out(`agent-protocol: would append to '${path}' (--write writes it):`);
   out(line);
 };
 
@@ -980,7 +1012,7 @@ const positiveInt = (argv: readonly string[], name: string, fallback: number): n
   if (raw === undefined) return fallback;
   const value = Number(raw);
   if (!Number.isInteger(value) || value <= 0) {
-    return fail(`${name} '${raw}' — ожидается положительное целое`, 2);
+    return fail(`${name} '${raw}' — a positive integer is expected`, 2);
   }
   return value;
 };
@@ -992,21 +1024,21 @@ const appendEvent = (journalPath: string, event: OrchestratorEvent): void => {
   appendFileSync(journalPath, `${renderEventLine(event)}\n`, "utf8");
 };
 
-/** Промпт для роли из её `instructions` (тексты читаются с рабочего дерева). */
+/** The prompt for a role from its `instructions` (the texts are read off the working tree). */
 const buildPromptForRole = (role: Role, thread: string, repo: string): string =>
   buildLaunchPrompt({
     role: role.id,
     thread,
     instructions: (role.instructions ?? []).map((entry) => ({
       path: entry.path,
-      text: readFile(join(repo, entry.path), `инструкции роли ${role.id}`),
+      text: readFile(join(repo, entry.path), `instructions of role ${role.id}`),
     })),
   });
 
 /**
- * Дописать файл-сообщение в тред (тот же путь, что `new-message`, но как
- * подпрограмма — нужен force-стопу для следа В ТРЕДЕ). Пишет файл; коммит/пуш —
- * за вызывающим, как и у `new-message`.
+ * Append a message file to a thread (the same path as `new-message`, but as a
+ * subroutine — the force stop needs it for a trace IN THE THREAD). It writes the
+ * file; committing and pushing is up to the caller, as with `new-message`.
  */
 const postThreadMessage = (
   root: string,
@@ -1014,9 +1046,9 @@ const postThreadMessage = (
   registry: RoleRegistry,
   input: { from: string; expects: Expects; waitingOn?: readonly string[]; text: string },
 ): void => {
-  if (!registry.isKnown(input.from)) fail(`роль '${input.from}' не значится в конфиге`, 2);
+  if (!registry.isKnown(input.from)) fail(`role '${input.from}' is not listed in the config`, 2);
   const threadDir = join(root, threadId);
-  if (!existsSync(threadDir)) fail(`тред '${threadId}' не найден в '${root}'`, 2);
+  if (!existsSync(threadDir)) fail(`thread '${threadId}' not found in '${root}'`, 2);
   const messagesDir = join(threadDir, "messages");
   const threadHasMessages = existsSync(messagesDir);
   const existingTs = threadHasMessages
@@ -1044,7 +1076,7 @@ const postThreadMessage = (
   }
   const path = join(threadDir, planned.path);
   if (existsSync(path))
-    fail(`файл '${planned.path}' уже существует — две записи в одну секунду?`, 2);
+    fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
   writeOut(path, planned.content);
 };
 
@@ -1061,17 +1093,17 @@ type RunParams = {
   readonly ids: readonly string[];
   readonly now: Date;
   readonly maxConsecutive: number;
-  /** Файл-флаг force-стопа (S4). Есть — гасим сессию на безопасной точке. */
+  /** The force-stop flag file (S4). Present — we put the session down at a safe point. */
   readonly forceFlag?: string;
-  /** Профиль прав поднимаемой роли — часть контракта запуска (S7). */
+  /** The permission profile of the role being raised — part of the launch contract (S7). */
   readonly launch: Launch;
-  /** Куда сохранить вывод сессии: разбор молчания без свидетеля. */
+  /** Where to save the session output: silence can be examined without a witness. */
   readonly sessionLog: string;
-  /** Окружение дочернего процесса: унаследованное + преамбула проекта (S8). */
+  /** The child process environment: the inherited one + the project preamble (S8). */
   readonly env: NodeJS.ProcessEnv;
 };
 
-/** Кто/почему из файла force-флага (JSON, писан `stop --mode force`). Лениво. */
+/** Who/why from the force-flag file (JSON, written by `stop --mode force`). Lazily. */
 const readForceFlag = (path: string): { by?: string; note?: string } => {
   try {
     const raw = JSON.parse(readFileSync(path, "utf8")) as { by?: unknown; note?: unknown };
@@ -1080,20 +1112,21 @@ const readForceFlag = (path: string): { by?: string; note?: string } => {
       ...(typeof raw.note === "string" ? { note: raw.note } : {}),
     };
   } catch {
-    return {}; // пустой/битый флаг — стоп всё равно исполняем, просто без кто/почему
+    return {}; // an empty/broken flag — the stop still happens, merely without who/why
   }
 };
 
 /**
- * ОДИН прогон: запуск роли `claude -p` по треду + наблюдение до терминала
- * (S1+S2). Пишет `lease-acquired`+`launch` ДО спавна, следит за переходом хода
- * (из источника-тредов) и процессом, снимает аренду со следом. Используется и
- * ручным `run`, и демоном `daemon`. Возвращает исход (или `skip`, если
- * `planLaunch` отказал — потолок/активна/exhausted).
+ * ONE run: launching the role as `claude -p` on a thread plus observing it until a
+ * terminal state (S1+S2). It writes `lease-acquired`+`launch` BEFORE the spawn,
+ * watches for the turn being passed (from the thread source) and for the process,
+ * and releases the lease leaving a trace. Used both by the manual `run` and by the
+ * `daemon`. Returns the outcome (or `skip`, if `planLaunch` refused —
+ * ceiling/active/exhausted).
  */
 const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   const events = existsSync(p.journalPath)
-    ? parseJournal(readFile(p.journalPath, "журнал оркестратора"))
+    ? parseJournal(readFile(p.journalPath, "orchestrator journal"))
     : [];
   const plan = planLaunch({
     events,
@@ -1104,37 +1137,40 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     maxConsecutive: p.maxConsecutive,
   });
   if (!plan.ok) {
-    err(`agent-protocol: запуск ${p.roleId}/${p.thread} отклонён (${plan.reason})`);
+    err(`agent-protocol: the launch of ${p.roleId}/${p.thread} was refused (${plan.reason})`);
     return "skip";
   }
 
-  // ЗАПИСЬ ДО СПАВНА (требование 2 curator): умри процесс на старте — снаружи
-  // «попытка была и оборвалась», а не «ничего не происходило».
+  // WRITING BEFORE THE SPAWN (curator's requirement 2): should the process die at
+  // startup, from the outside it reads as "an attempt happened and broke off"
+  // rather than "nothing was going on".
   for (const event of plan.events) appendEvent(p.journalPath, event);
 
-  // СМЕРТЬ САМОГО НАБЛЮДАТЕЛЯ ТОЖЕ ОСТАВЛЯЕТ СЛЕД. Приёмка 2026-07-25: демон
-  // вернул управление сразу после спавна, сессия осталась сиротой и доделала
-  // работу — а аренда навсегда осталась `running`, то есть журнал стал врать
-  // «работает» про давно сделанное. Аренда, которую некому закрыть, — худший
-  // исход из всех: снаружи он неотличим от нормальной работы.
+  // THE DEATH OF THE OBSERVER ITSELF ALSO LEAVES A TRACE. The 2026-07-25
+  // acceptance: the daemon returned control right after the spawn, the session was
+  // left an orphan and finished the job — while the lease stayed `running`
+  // forever, that is, the journal started lying "it is working" about something
+  // long done. A lease with nobody left to close it is the worst outcome of all:
+  // from the outside it is indistinguishable from normal work.
   //
-  // Что покрыто: штатный выход, необработанное исключение, SIGINT, SIGTERM.
-  // SIGKILL перехватить нельзя, и мы этого не обещаем.
+  // What is covered: a normal exit, an unhandled exception, SIGINT, SIGTERM.
+  // SIGKILL cannot be intercepted, and we do not promise that.
   let settled = false;
   const recordSupervisorGone = (): void => {
     if (settled) return;
     settled = true;
-    // ГАСИМ ГРУППУ ПЕРЕД ЗАПИСЬЮ — как и в двух других местах релиза. Иначе
-    // запись «аренда снята» уходит в журнал, пока осиротевшая сессия ещё пишет:
-    // `supervisor-gone` — неуспешный терминал, связка сразу становится
-    // `launchable`, и следующий тик (или демон, поднятый systemd секунды спустя)
-    // запустит ВТОРУЮ сессию по тому же треду поверх живой первой. Это ровно тот
-    // класс, ради которого весь пакет и делается (находка reviewer-pr по PR #9).
+    // WE PUT THE GROUP DOWN BEFORE WRITING — as in the two other release sites.
+    // Otherwise the "lease released" record goes into the journal while the
+    // orphaned session is still writing: `supervisor-gone` is an unsuccessful
+    // terminal state, the pair immediately becomes `launchable`, and the next tick
+    // (or a daemon raised by systemd seconds later) would start a SECOND session on
+    // the same thread on top of the live first one. This is exactly the class the
+    // whole package is built for (reviewer-pr's finding on PR #9).
     if (!exited && child.pid !== undefined) {
       try {
         process.kill(-child.pid, "SIGTERM");
       } catch {
-        // группы уже нет — ок
+        // the group is already gone — fine
       }
     }
     appendEvent(p.journalPath, {
@@ -1149,7 +1185,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   process.on("exit", recordSupervisorGone);
   const onSignal = (signal: NodeJS.Signals) => (): void => {
     recordSupervisorGone();
-    err(`agent-protocol: наблюдатель получил ${signal} — аренда закрыта как supervisor-gone`);
+    err(
+      `agent-protocol: the observer received ${signal} — the lease was closed as supervisor-gone`,
+    );
     process.exit(1);
   };
   const onSigint = onSignal("SIGINT");
@@ -1163,22 +1201,25 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     process.off("SIGTERM", onSigterm);
   };
 
-  // ВЫВОД СЕССИИ ПИШЕТСЯ НА ДИСК, а не только на экран оператора. Первый боевой
-  // прогон: сессия пять минут выглядела работающей, вышла молча, и почему —
-  // осталось только в терминале того, кто смотрел. Лог рядом с журналом делает
-  // разбор возможным без свидетеля; событие снятия аренды несёт путь к нему.
+  // THE SESSION OUTPUT IS WRITTEN TO DISK, not only to the operator's screen. The
+  // first production run: the session looked busy for five minutes, exited
+  // silently, and the why stayed only in the terminal of whoever was watching. A
+  // log next to the journal makes the analysis possible without a witness; the
+  // lease-release event carries the path to it.
   mkdirSync(dirname(p.sessionLog), { recursive: true });
   const sink = openSync(p.sessionLog, "a");
 
-  // Спавн в СВОЕЙ процесс-группе (`detached`): гасить придётся всю группу, а не
-  // только прямого потомка — SIGTERM шеллу/лончеру не доходит до его детей
-  // (стаб → sleep, `claude` → его подпроцессы), и они осиротели бы.
+  // The spawn happens in ITS OWN process group (`detached`): the whole group will
+  // have to be put down, not just the direct child — a SIGTERM to a shell/launcher
+  // does not reach its children (the stub → sleep, `claude` → its subprocesses),
+  // and they would be orphaned.
   const child = spawn(
     p.exec,
     buildLaunchArgv({ prompt: p.prompt, maxTurns: p.maxTurns, launch: p.launch }),
     {
-      // Живой вывод остаётся у оператора (stdout наследуется), а stderr уходит в
-      // лог: молчание сессии перестаёт быть неотличимым от работы.
+      // The live output stays with the operator (stdout is inherited), while stderr
+      // goes into the log: the session's silence stops being indistinguishable from
+      // work.
       stdio: ["ignore", "inherit", sink],
       detached: true,
       env: p.env,
@@ -1203,16 +1244,17 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   while (true) {
     await sleep(p.pollMs);
 
-    // FORCE-СТОП (S4) — проверяется ПЕРВЫМ в тике и на БЕЗОПАСНОЙ ТОЧКЕ: между
-    // поллингами, не посреди нашей записи (append атомарен). Гасим группу
-    // SIGTERM (не KILL): даём `claude` дописать/закоммитить. След — событие
-    // `stop` с `by`/`note` (кто/почему) + `ts` (когда): самодостаточно в журнале.
+    // THE FORCE STOP (S4) is checked FIRST in the tick and at a SAFE POINT: between
+    // polls, not in the middle of our own write (an append is atomic). The group is
+    // put down with SIGTERM (not KILL): `claude` is given the chance to finish
+    // writing/committing. The trace is a `stop` event with `by`/`note` (who/why)
+    // plus `ts` (when): self-sufficient in the journal.
     if (p.forceFlag !== undefined && existsSync(p.forceFlag)) {
       if (!exited && child.pid !== undefined) {
         try {
           process.kill(-child.pid, "SIGTERM");
         } catch {
-          // группы уже нет — ок
+          // the group is already gone — fine
         }
       }
       const { by, note } = readForceFlag(p.forceFlag);
@@ -1229,16 +1271,20 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       return "forced";
     }
 
-    // Переход хода — из ИСТОЧНИКА-тредов (тот же, что `mail`): тред взят под
-    // аренду, ждал роль; перестал ждать её → ход передан. Не «код 0», не «почта
-    // пуста».
-    // САМОЕ ОПАСНОЕ МЕСТО ИЗОЛЯЦИИ — решение вынесено в `handoffDetected`, там
-    // же его тест и довод (сломанный тред под арендой не должен читаться как
-    // переход хода). Здесь остаётся только сбор входа и жалоба вслух.
+    // The passing of the turn comes from the THREAD SOURCE (the same one as
+    // `mail`): the thread was taken under lease and was waiting on the role; it
+    // stopped waiting on it → the turn was passed. Not "code 0", not "the mail is
+    // empty".
+    // THE MOST DANGEROUS PLACE OF THE ISOLATION — the decision is moved into
+    // `handoffDetected`, together with its test and its argument (a broken thread
+    // under lease must not read as a passed turn). What is left here is collecting
+    // the input and complaining out loud.
     const scan = loadThreads(p.mailRoot, p.ids);
     const threadUnreadable = scan.failures.some((failure) => failure.id === p.thread);
     if (threadUnreadable) {
-      err(`agent-protocol: тред ${p.thread} под арендой не читается — переход хода НЕ засчитан`);
+      err(
+        `agent-protocol: thread ${p.thread} under lease is unreadable — the passed turn is NOT counted`,
+      );
     }
     const handedOff = handoffDetected({
       threadUnreadable,
@@ -1259,38 +1305,41 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     if (step.record === "handoff-detected") {
       appendEvent(p.journalPath, stepEvent(step, base));
       lifecycle = "draining";
-      out(`agent-protocol: ход по ${p.thread} перешёл — ${p.roleId} в draining`);
+      out(`agent-protocol: the turn on ${p.thread} was passed — ${p.roleId} is draining`);
       continue;
     }
 
-    // Терминальный lease-released. Процесс ещё жив (застрял/доживает) — гасим ВСЮ
-    // группу (`-pid`): wall-clock гигиена для timeout, уборка залипшего для
-    // completed. Группа уже мёртвая → ESRCH, глотаем.
+    // A terminal lease-released. The process is still alive (stuck/finishing up) —
+    // we put down the WHOLE group (`-pid`): wall-clock hygiene for a timeout,
+    // clean-up of a hung process for completed. The group is already dead → ESRCH,
+    // swallowed.
     if (!exited && child.pid !== undefined) {
       try {
         process.kill(-child.pid, "SIGTERM");
       } catch {
-        // группы уже нет — ок
+        // the group is already gone — fine
       }
     }
     releaseGuards();
     appendEvent(p.journalPath, stepEvent(step, base, { exitCode, output: p.sessionLog }));
     if (spawnError !== undefined) {
-      err(`agent-protocol: спавн '${p.exec}' дал ошибку: ${spawnError.message}`);
+      err(`agent-protocol: the spawn of '${p.exec}' failed: ${spawnError.message}`);
     }
-    // Прогон, не передавший ход, ОБЯЗАН показать, куда смотреть: пять минут
-    // молчания не должны выглядеть как работа.
+    // A run that did not pass the turn MUST show where to look: five minutes of
+    // silence must not look like work.
     if (step.reason !== "completed") {
-      err(`agent-protocol: ход не перешёл (${step.reason}) — вывод сессии: ${p.sessionLog}`);
+      err(
+        `agent-protocol: the turn was not passed (${step.reason}) — session output: ${p.sessionLog}`,
+      );
     }
     return step.reason;
   }
 };
 
 /**
- * Ручной запуск ОДНОЙ роли по ОДНОМУ треду (S1+S2). Резолвит роль → промпт,
- * проверяет запускаемость, дальше — `runOne`. `--exec` (по умолчанию `claude`)
- * инъектируется: приёмка целится в реальный бинарник, проверки — в стаб.
+ * The manual launch of ONE role on ONE thread (S1+S2). It resolves the role into a
+ * prompt, checks launchability, and hands over to `runOne`. `--exec` (default
+ * `claude`) is injected: acceptance aims at the real binary, checks aim at a stub.
  */
 const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const paths = pathsFrom(argv);
@@ -1303,12 +1352,12 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const registry = registryFrom(argv, undefined);
   const role = registry.get(roleId);
   if (role === undefined) {
-    fail(`роль '${roleId}' не значится в конфиге`, 2);
+    fail(`role '${roleId}' is not listed in the config`, 2);
     return;
   }
   const can = roleLaunchability(role);
   if (!can.launchable) {
-    fail(`роль '${roleId}' оркестратором не запускается: ${can.reason}`, 2);
+    fail(`role '${roleId}' is not launched by the orchestrator: ${can.reason}`, 2);
     return;
   }
   const prompt = buildPromptForRole(role, thread, repo);
@@ -1319,28 +1368,32 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const exec = flag(argv, "--exec") ?? "claude";
   const maxTurns = String(positiveInt(argv, "--max-turns", 60));
-  const forceFlag = flag(argv, "--force-flag"); // force-стоп и для ручного run
+  const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
 
   if (!argv.includes("--write")) {
     const events = existsSync(journalPath)
-      ? parseJournal(readFile(journalPath, "журнал оркестратора"))
+      ? parseJournal(readFile(journalPath, "orchestrator journal"))
       : [];
     const plan = planLaunch({ events, role: roleId, thread, now, wallClockMs, maxConsecutive });
     if (!plan.ok) {
-      fail(`запуск отклонён (${plan.reason}) — потолок сработал, см. журнал`, 2);
+      fail(`the launch was refused (${plan.reason}) — a ceiling fired, see the journal`, 2);
       return;
     }
     out(
-      `agent-protocol: запустит '${exec} -p' и будет наблюдать переход хода по ${thread} (роль ${roleId}, deadline ${plan.deadline}, poll ${pollMs / 1000}s); --write выполнит. Пред-события:`,
+      `agent-protocol: would run '${exec} -p' and watch for the turn to be passed on ${thread} (role ${roleId}, deadline ${plan.deadline}, poll ${pollMs / 1000}s); --write performs it. Pre-events:`,
     );
     for (const event of plan.events) out(renderEventLine(event));
     return;
   }
 
-  // Профиль есть по построению — `roleLaunchability` выше без него не пропустит;
-  // проверка тут для типов и на случай, если проверку когда-нибудь ослабят.
+  // The profile exists by construction — `roleLaunchability` above does not let a
+  // role through without one; the check here is for the types and in case that
+  // check is ever relaxed.
   if (role.launch === undefined) {
-    fail(`у роли '${roleId}' нет профиля запуска — поднимать с неназначенными правами нельзя`, 2);
+    fail(
+      `role '${roleId}' has no launch profile — raising it with unassigned permissions is not allowed`,
+      2,
+    );
     return;
   }
   requirePreflight(argv, exec);
@@ -1367,32 +1420,35 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     maxConsecutive,
     ...(forceFlag === undefined ? {} : { forceFlag }),
   });
-  if (reason !== "skip") out(`agent-protocol: прогон ${roleId}/${thread} завершён: ${reason}`);
+  if (reason !== "skip") out(`agent-protocol: the run of ${roleId}/${thread} finished: ${reason}`);
 };
 
 /**
- * Демон: запуск ролей ПО ПОЧТЕ, без человека в цикле (S3). Каждый тик читает
- * флаги-файлы (включение/стоп), почту (источник-треды) и журнал, зовёт
- * `planTick` и исполняет ОДНО решение: `halt` (стоп-флаг) — выход; `disabled`
- * (нет флага включения) — ждём; `refused` — пишем `launch-refused` (глобальный
- * потолок со следом); `launch` — поднимаем пару `runOne` и тикаем заново.
+ * The daemon: launching roles BY MAIL, with no human in the loop (S3). Every tick
+ * it reads the flag files (enable/stop), the mail (the thread source) and the
+ * journal, calls `planTick` and executes ONE decision: `halt` (the stop flag) —
+ * exit; `disabled` (no enable flag) — wait; `refused` — write `launch-refused`
+ * (the global ceiling with a trace); `launch` — raise the pair through `runOne`
+ * and tick again.
  *
- * ТРИ ГАРДА ПРОТИВ РАСХОДА БЕЗ ПРИСМОТРА (требования curator к S3):
- *  - стартовое состояние ВЫКЛЮЧЕНО: без `--enable-flag` на диске — ни одного
- *    запуска; включает john, создав файл. Первый автономный запуск не случаен.
- *  - аварийный тормоз: `--stop-flag` проверяется ПЕРЕД каждым тиком и
- *    перекрывает включение. Простейшая форма S4 уже здесь.
- *  - глобальный потолок — со следом в журнале.
- *  - S5: `--holds` — роль, занятая ЖИВОЙ РУЧНОЙ СЕССИЕЙ, не поднимается (иначе
- *    демон стартует вторую сессию той же роли поверх работающей). Пропуск не
- *    молчаливый: строкой в поток на каждом тике.
+ * THREE GUARDS AGAINST UNSUPERVISED SPENDING (curator's requirements for S3):
+ *  - the starting state is OFF: without an `--enable-flag` on disk there is not a
+ *    single launch; john enables it by creating the file. The first autonomous
+ *    launch is not an accident.
+ *  - the emergency brake: `--stop-flag` is checked BEFORE every tick and overrides
+ *    the enable. The simplest form of S4 is already here.
+ *  - the global ceiling — with a trace in the journal.
+ *  - S5: `--holds` — a role taken by a LIVE MANUAL SESSION is not raised
+ *    (otherwise the daemon would start a second session of the same role on top of
+ *    a working one). The skip is not silent: a line into the stream on every tick.
  *
- * Роль ребута машины (демон поднимается сам или руками) — развилка john, вне
- * кода демона: он одинаков, отличается лишь то, как его запускают.
+ * The machine-reboot role (whether the daemon comes up by itself or by hand) is
+ * john's fork and lies outside the daemon code: the daemon is the same, only the
+ * way it is started differs.
  */
 const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
-  // S6: ни одного пути в команде эксплуатации — всё из конфига; флаги остались
-  // переопределением для проверок на копии почты.
+  // S6: not a single path in the operational command — everything comes from the
+  // config; the flags remain an override for checks on a copy of the mail.
   const paths = pathsFrom(argv);
   const journalPath = flag(argv, "--journal") ?? paths.journal;
   const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
@@ -1416,38 +1472,42 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const exec = flag(argv, "--exec") ?? "claude";
   const maxTurns = String(positiveInt(argv, "--max-turns", 60));
-  const once = argv.includes("--once"); // один тик — для проверок
+  const once = argv.includes("--once"); // a single tick — for checks
 
-  // Preflight ДО цикла: демон, стартовавший без бинаря агента или с протухшей
-  // почтой, «работает» — и делает не то. Отказ до первой аренды.
+  // Preflight BEFORE the loop: a daemon started without the agent binary or with
+  // stale mail "works" — and does the wrong thing. A refusal before the first
+  // lease.
   requirePreflight(argv, exec);
 
-  // Баннер говорит ФАКТ, а не всегда «ВЫКЛЮЧЕН»: справка, врущая про состояние,
-  // при разборе приёмки стоила отдельной версии о причине сбоя.
+  // The banner states the FACT rather than always "DISABLED": help text that lies
+  // about the state cost a separate hypothesis about the cause of a failure during
+  // an acceptance review.
   const enabledAtStart = existsSync(enableFlag);
   out(
-    `agent-protocol: демон поднят, запуски ${enabledAtStart ? "ВКЛЮЧЕНЫ" : `выключены (нет '${enableFlag}')`}; стоп '${stopFlag}', force '${forceFlag}'; роли ${launchable.join(", ") || "—"}`,
+    `agent-protocol: the daemon is up, launches are ${enabledAtStart ? "ENABLED" : `disabled (no '${enableFlag}')`}; stop '${stopFlag}', force '${forceFlag}'; roles ${launchable.join(", ") || "—"}`,
   );
 
-  // Аренда, которую некому было закрыть, снаружи неотличима от работы — новый
-  // супервизор обязан сказать о ней вслух, а не молча продолжить.
+  // A lease nobody was left to close is indistinguishable from work from the
+  // outside — a new supervisor must say so out loud instead of quietly carrying on.
   const orphans = unclosedLeases(
-    existsSync(journalPath) ? parseJournal(readFile(journalPath, "журнал оркестратора")) : [],
+    existsSync(journalPath) ? parseJournal(readFile(journalPath, "orchestrator journal")) : [],
     new Date(),
   );
   for (const orphan of orphans) {
     err(
-      `agent-protocol: аренда ${orphan.role}/${orphan.thread} осталась НЕЗАКРЫТОЙ ничем (${orphan.state}, попытка ${orphan.attempt})${orphan.overdue ? ", ПРОСРОЧЕНА" : ""} — супервизора убили так, что записать он не успел (SIGKILL/падение машины). Закройте вручную: orchestrator record --kind lease-released --reason supervisor-gone`,
+      `agent-protocol: lease ${orphan.role}/${orphan.thread} was left CLOSED BY NOTHING (${orphan.state}, attempt ${orphan.attempt})${orphan.overdue ? ", OVERDUE" : ""} — the supervisor was killed in a way that left it no time to record (SIGKILL/machine crash). Close it by hand: orchestrator record --kind lease-released --reason supervisor-gone`,
     );
   }
 
   for (;;) {
-    // Кандидаты — пары (роль, тред), где запускаемая роль ждёт по треду.
-    // РАДИ ЭТОГО МЕСТА и делалась изоляция: демон тикает без человека рядом, и
-    // до неё один кривой файл в одном треде убивал весь цикл — а выглядело бы
-    // это как «ночью ничего не пришло». Теперь сбойный тред выбывает из
-    // кандидатов, жалоба повторяется КАЖДЫЙ тик (не одна строка при старте,
-    // которую никто не увидит), демон продолжает работать.
+    // The candidates are (role, thread) pairs where a launchable role is being
+    // waited on in the thread.
+    // THE ISOLATION WAS BUILT FOR THIS PLACE: the daemon ticks with no human
+    // around, and before it one malformed file in one thread killed the whole
+    // loop — while from the outside it would look like "nothing arrived overnight".
+    // Now a broken thread drops out of the candidates, the complaint is repeated
+    // EVERY tick (not a single line at startup that nobody sees), and the daemon
+    // keeps working.
     const scan = loadThreads(mailRoot, ids);
     for (const line of renderThreadFailures(scan.failures)) err(`agent-protocol: ${line}`);
     const threads = scan.threads.map((loaded) => loaded.thread);
@@ -1455,17 +1515,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       threadsWaitingOn(threads, roleId).map((thread) => ({ role: roleId, thread })),
     );
     const events = existsSync(journalPath)
-      ? parseJournal(readFile(journalPath, "журнал оркестратора"))
+      ? parseJournal(readFile(journalPath, "orchestrator journal"))
       : [];
-    // Holdʼы читаются КАЖДЫЙ тик, а не раз при старте: ручную сессию берут и
-    // отпускают, пока демон уже крутится.
+    // The holds are read EVERY tick, not once at startup: a manual session is taken
+    // and released while the daemon is already spinning.
     const held = heldRoles(foldHolds(loadHolds(holdsDir), new Date()));
     const decision = planTick({
       enabled: existsSync(enableFlag),
       held,
-      // Force-флаг тоже останавливает демон (S4): его текущую сессию гасит
-      // наблюдатель, а нового брать нельзя — иначе следующий тик поднял бы роль
-      // прямо под force.
+      // The force flag stops the daemon as well (S4): its current session is put
+      // down by the observer, and taking a new one is not allowed — otherwise the
+      // next tick would raise a role right under the force.
       stopped: existsSync(stopFlag) || existsSync(forceFlag),
       events,
       candidates,
@@ -1474,14 +1534,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     });
 
     if (decision.kind === "halt") {
-      out(`agent-protocol: демон остановлен — ${existsSync(forceFlag) ? "force" : "стоп"}-флаг`);
+      out(
+        `agent-protocol: the daemon stopped — the ${existsSync(forceFlag) ? "force" : "stop"} flag`,
+      );
       return;
     }
     if (decision.kind === "held") {
-      // В журнал НЕ пишем: hold живёт часами, и запись каждый тик утопила бы
-      // журнал сессий в шуме. Но и молчать нельзя — забытый hold обязан быть
-      // слышен, поэтому строка в поток демона на каждом тике.
-      err(`agent-protocol: пропускаю — заняты ручными сессиями: ${decision.roles.join(", ")}`);
+      // NOT written into the journal: a hold lives for hours, and a record every
+      // tick would drown the session journal in noise. But staying silent is not
+      // allowed either — a forgotten hold has to be audible, hence a line into the
+      // daemon stream on every tick.
+      err(`agent-protocol: skipping — taken by manual sessions: ${decision.roles.join(", ")}`);
     } else if (decision.kind === "refused") {
       appendEvent(journalPath, {
         kind: "launch-refused",
@@ -1491,12 +1554,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         reason: decision.reason,
       });
       err(
-        `agent-protocol: запуск ${decision.role}/${decision.thread} отклонён (${decision.reason})`,
+        `agent-protocol: the launch of ${decision.role}/${decision.thread} was refused (${decision.reason})`,
       );
     } else if (decision.kind === "launch") {
       const role = registry.get(decision.role);
-      // Профиль прав есть по построению: `launchable` считался через
-      // `roleLaunchability`, а он без профиля роль не пропускает.
+      // The permission profile exists by construction: `launchable` was computed
+      // through `roleLaunchability`, which does not let a role without a profile
+      // through.
       if (role?.launch !== undefined) {
         const startedAt = new Date();
         const reason = await runOne({
@@ -1522,34 +1586,35 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           maxConsecutive,
           forceFlag,
         });
-        out(`agent-protocol: демон — ${decision.role}/${decision.thread}: ${reason}`);
+        out(`agent-protocol: daemon — ${decision.role}/${decision.thread}: ${reason}`);
       }
     }
-    // decision.kind === "disabled" | "idle" — ждём и тикаем заново.
+    // decision.kind === "disabled" | "idle" — we wait and tick again.
 
     if (once) return;
     await sleep(tickMs);
   }
 };
 
-/** Вывод журнала наружу для john (S4): история событий по порядку, читаемо. */
+/** The journal shown to john (S4): the history of events in order, readably. */
 const orchestratorLog = (argv: readonly string[]): void => {
   const path = flag(argv, "--journal") ?? pathsFrom(argv).journal;
-  const events = existsSync(path) ? parseJournal(readFile(path, "журнал оркестратора")) : [];
+  const events = existsSync(path) ? parseJournal(readFile(path, "orchestrator journal")) : [];
   out(renderLog(events));
 };
 
 /**
- * Принудительная остановка (S4). `graceful` — создаёт стоп-флаг: демон дочитывает
- * текущую сессию до естественного терминала и гаснет (через draining), нового не
- * берёт. `force` — создаёт force-флаг с `by`/`note` (его читает наблюдатель и
- * гасит сессию на безопасной точке, оставляя журнальный след) И постит СЛЕД В
- * ТРЕД (кто/почему), так что «кто/когда/почему» есть и в журнале, и в треде.
+ * A forced stop (S4). `graceful` creates the stop flag: the daemon lets the
+ * current session run to its natural terminal state and goes dark (through
+ * draining), taking nothing new. `force` creates the force flag with `by`/`note`
+ * (the observer reads it and puts the session down at a safe point, leaving a
+ * journal trace) AND posts a TRACE IN THE THREAD (who/why), so that
+ * "who/when/why" exists both in the journal and in the thread.
  */
 const orchestratorStop = (argv: readonly string[]): void => {
   const mode = required(argv, "--mode");
   if (mode !== "graceful" && mode !== "force") {
-    fail(`--mode '${mode}' — допустимо graceful | force`, 2);
+    fail(`--mode '${mode}' — allowed values are graceful | force`, 2);
     return;
   }
   const write = argv.includes("--write");
@@ -1558,17 +1623,17 @@ const orchestratorStop = (argv: readonly string[]): void => {
     const stopFlag = flag(argv, "--stop-flag") ?? pathsFrom(argv).stopFlag;
     if (!write) {
       out(
-        `agent-protocol: создаст стоп-флаг '${stopFlag}' (демон дочитает текущее и гаснет); --write выполнит`,
+        `agent-protocol: would create the stop flag '${stopFlag}' (the daemon finishes the current session and goes dark); --write performs it`,
       );
       return;
     }
     mkdirSync(dirname(stopFlag), { recursive: true });
     writeFileSync(stopFlag, "", "utf8");
-    out(`agent-protocol: graceful-стоп — стоп-флаг '${stopFlag}' создан`);
+    out(`agent-protocol: graceful stop — the stop flag '${stopFlag}' was created`);
     return;
   }
 
-  // force: флаг с кто/почему + объявление в тред.
+  // force: a flag with who/why plus an announcement in the thread.
   const paths = pathsFrom(argv);
   const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
   const by = required(argv, "--by");
@@ -1576,20 +1641,24 @@ const orchestratorStop = (argv: readonly string[]): void => {
   const root = flag(argv, "--root") ?? paths.mailRoot;
   const threadId = required(argv, "--thread");
   const registry = registryFrom(argv, repoOf(root));
-  // Объявление в тред подписывается ТЕМ, КТО ФОРСИТ (`--by`), решение curator:
-  // остановка — действие человека, оркестратор лишь исполняет; уведомитель о
-  // merge (`github`) её подписывать не должен — смешение идентичностей. Значит
-  // `--by` обязан быть известной ролью (john/curator), а не свободным текстом.
+  // The announcement in the thread is signed by WHOEVER IS FORCING (`--by`),
+  // curator's decision: a stop is a human action, the orchestrator merely executes
+  // it; the merge notifier (`github`) must not sign it — that would mix
+  // identities. Hence `--by` must be a known role (john/curator) rather than free
+  // text.
   if (!registry.isKnown(by)) {
-    fail(`--by '${by}' — форс подписывается ролью (кто останавливает), а её нет в конфиге`, 2);
+    fail(
+      `--by '${by}' — a force is signed by a role (who is stopping it), and that role is not in the config`,
+      2,
+    );
     return;
   }
   const flagBody = JSON.stringify({ by, note: why });
-  const text = `Сессия по треду ${threadId} принудительно остановлена (by ${by}): ${why}`;
+  const text = `The session on thread ${threadId} was force-stopped (by ${by}): ${why}`;
 
   if (!write) {
     out(
-      `agent-protocol: создаст force-флаг '${forceFlag}' и объявит в тред ${threadId} от ${by}; --write выполнит`,
+      `agent-protocol: would create the force flag '${forceFlag}' and announce it in thread ${threadId} from ${by}; --write performs it`,
     );
     return;
   }
@@ -1600,23 +1669,27 @@ const orchestratorStop = (argv: readonly string[]): void => {
     expects: "none",
     text,
   });
-  out(`agent-protocol: force-стоп — флаг '${forceFlag}' создан, след объявлен в тред ${threadId}`);
+  out(
+    `agent-protocol: force stop — the flag '${forceFlag}' was created, the trace was announced in thread ${threadId}`,
+  );
 };
 
 /**
- * Hold ручной сессии (S5): `take` — объявить роль занятой до срока, `release` —
- * снять. Срок пишется В ФАЙЛ (`expires`), а не берётся из настроек демона: так
- * держатель и демон не обязаны сходиться конфигами, а «до какого момента» видно
- * в самом файле.
+ * A hold on a manual session (S5): `take` declares the role taken until a
+ * deadline, `release` removes it. The deadline is written INTO THE FILE
+ * (`expires`) rather than taken from the daemon settings: that way the holder and
+ * the daemon need not agree on configs, and "until when" is visible in the file
+ * itself.
  *
- * `--role` и `--by` сверяются с конфигом протокола: hold — заявление о РОЛИ
- * контура, и роль, которой нет, значила бы hold, который демон никогда не
- * сопоставит с кандидатом (тихо не сработавшая защита — худший её вид).
+ * `--role` and `--by` are checked against the protocol config: a hold is a
+ * statement about a ROLE of the circuit, and a role that does not exist would mean
+ * a hold the daemon never matches to a candidate (a protection that quietly failed
+ * to fire is the worst kind).
  */
 const orchestratorHold = (argv: readonly string[]): void => {
   const mode = required(argv, "--mode");
   if (mode !== "take" && mode !== "release") {
-    fail(`--mode '${mode}' — допустимо take | release`, 2);
+    fail(`--mode '${mode}' — allowed values are take | release`, 2);
     return;
   }
   const holds = flag(argv, "--holds") ?? pathsFrom(argv).holds;
@@ -1626,26 +1699,32 @@ const orchestratorHold = (argv: readonly string[]): void => {
 
   if (mode === "release") {
     if (!existsSync(path)) {
-      out(`agent-protocol: holdʼа на '${roleId}' нет — снимать нечего`);
+      out(`agent-protocol: there is no hold on '${roleId}' — nothing to release`);
       return;
     }
     if (!write) {
-      out(`agent-protocol: снимет hold '${path}'; --write выполнит`);
+      out(`agent-protocol: would release the hold '${path}'; --write performs it`);
       return;
     }
     rmSync(path);
-    out(`agent-protocol: hold на '${roleId}' снят — демон может поднимать роль`);
+    out(`agent-protocol: the hold on '${roleId}' was released — the daemon may raise the role`);
     return;
   }
 
   const by = required(argv, "--by");
   const registry = registryFrom(argv, undefined);
   if (!registry.isKnown(roleId)) {
-    fail(`--role '${roleId}' — такой роли в конфиге нет, hold не с чем сопоставить`, 2);
+    fail(
+      `--role '${roleId}' — there is no such role in the config, a hold has nothing to match`,
+      2,
+    );
     return;
   }
   if (!registry.isKnown(by)) {
-    fail(`--by '${by}' — hold держит роль (кто занял сессию), а её нет в конфиге`, 2);
+    fail(
+      `--by '${by}' — a hold is held by a role (who took the session), and that role is not in the config`,
+      2,
+    );
     return;
   }
   const at = orchestratorNow(argv);
@@ -1660,14 +1739,18 @@ const orchestratorHold = (argv: readonly string[]): void => {
   };
 
   if (!write) {
-    out(`agent-protocol: займёт '${roleId}' до ${record.expires} (by ${by}); --write выполнит`);
+    out(
+      `agent-protocol: would take '${roleId}' until ${record.expires} (by ${by}); --write performs it`,
+    );
     return;
   }
   mkdirSync(holds, { recursive: true });
-  // Перезапись — это и есть продление: hold на роль один, второй держатель
-  // поверх первого виден в файле (`by`), а не прячется рядом.
+  // Overwriting IS the extension: there is one hold per role, and a second holder
+  // on top of the first is visible in the file (`by`) instead of hiding next to it.
   writeFileSync(path, renderHold(record), "utf8");
-  out(`agent-protocol: '${roleId}' занята до ${record.expires} — демон её не поднимает`);
+  out(
+    `agent-protocol: '${roleId}' is taken until ${record.expires} — the daemon does not raise it`,
+  );
 };
 
 const main = async (argv: readonly string[]): Promise<void> => {
@@ -1722,6 +1805,6 @@ const main = async (argv: readonly string[]): Promise<void> => {
 };
 
 main(process.argv.slice(2)).catch((error) => {
-  err(`agent-protocol: непойманная ошибка: ${(error as Error).message}`);
+  err(`agent-protocol: uncaught error: ${(error as Error).message}`);
   process.exit(1);
 });
