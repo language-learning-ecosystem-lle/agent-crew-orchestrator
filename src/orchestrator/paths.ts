@@ -86,6 +86,17 @@ export const sessionLogPath = (
 export const sessionStreamPath = (logPath: string): string => logPath.replace(/\.log$/, ".jsonl");
 
 /**
+ * WHERE THE SESSION READS ITS OWN ID (R7). The supervisor learns the id from the
+ * init line of the stream and writes it here; the session gets the PATH in its
+ * environment at spawn (`AGENT_PROTOCOL_SESSION_FILE`) — the id itself cannot travel
+ * that way, because it does not exist yet at the moment the process is created.
+ *
+ * A third file of the same triple, named like the other two: whoever looks into the
+ * sessions directory sees one run as one name with three extensions.
+ */
+export const sessionIdPath = (logPath: string): string => logPath.replace(/\.log$/, ".session");
+
+/**
  * For a human — where the package put its state. Printed by the enable commands
  * and by `status`: "where the flag lies" has to be visible from the output, not
  * from the README.

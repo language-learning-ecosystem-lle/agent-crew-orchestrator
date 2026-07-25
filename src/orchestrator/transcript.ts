@@ -153,6 +153,36 @@ export const renderStreamLine = (line: string): string[] => {
 };
 
 /**
+ * THE SESSION ID OUT OF ONE STREAM LINE — the answer to R7's open question, "how
+ * does a session learn its own id" (thread 016).
+ *
+ * It needs no channel of its own: `claude -p --output-format stream-json` opens with
+ * a `system`/`init` event carrying `session_id`, and the supervisor is already
+ * reading every line of that stream for the log. So the id is known to the
+ * supervisor a second after the spawn — and it is passed DOWN to the session through
+ * a file, because the environment of a process that is already running cannot be
+ * changed, and at spawn time the id does not exist yet.
+ *
+ * `undefined` for every other line, including a later event that happens to repeat
+ * the id: the first one wins, and the caller writes the file once.
+ */
+export const sessionIdOf = (line: string): string | undefined => {
+  const trimmed = line.trim();
+  if (trimmed === "") return undefined;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(trimmed);
+  } catch {
+    return undefined;
+  }
+  const parsed = streamEvent.safeParse(raw);
+  if (!parsed.success) return undefined;
+  const event = parsed.data;
+  if (event.type !== "system" || event.subtype !== "init") return undefined;
+  return event.session_id === undefined || event.session_id === "" ? undefined : event.session_id;
+};
+
+/**
  * A chunk of the stream (arriving in arbitrary pieces) → complete lines plus the
  * unfinished tail. A separate function because the split is where a naive reader
  * loses data: a chunk boundary falls in the middle of a JSON line far more often

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Message } from "./message.js";
+import { parseMessageFile } from "./message.js";
 import { migrateLegacyThread, verifyMigration } from "./migrate.js";
 import { renderThread, type ThreadMeta } from "./thread.js";
 
@@ -47,6 +48,27 @@ describe("migrateLegacyThread + verifyMigration (non-monotonic date)", () => {
 
   it("the guard accepts the migration: ordering by seq reproduces the original byte for byte", () => {
     const migration = migrateLegacyThread("012-x", original, roles);
+    expect(verifyMigration(migration, original)).toBeUndefined();
+  });
+});
+
+describe("provenance of a thread moved out of _thread.md", () => {
+  it("stamps every migrated message 'worker: unknown' — a section carries no provenance at all", () => {
+    // The threads still in the legacy form (009, 010) move AFTER version 2 lands, so
+    // a file written by that migration with no `worker` would be indistinguishable
+    // from one whose writer failed to record it. Silence must not mean two things.
+    const migration = migrateLegacyThread("012-x", original, roles);
+
+    const messages = migration.files.filter((file) => file.path.startsWith("messages/"));
+    expect(messages.length).toBeGreaterThan(0);
+    for (const file of messages) {
+      expect(parseMessageFile(file.content).fields.worker).toBe("unknown");
+    }
+  });
+
+  it("and the byte-exact guard still holds — the stamp does not reach the assembled feed", () => {
+    const migration = migrateLegacyThread("012-x", original, roles);
+
     expect(verifyMigration(migration, original)).toBeUndefined();
   });
 });

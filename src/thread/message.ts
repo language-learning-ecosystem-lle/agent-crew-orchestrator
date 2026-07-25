@@ -26,11 +26,52 @@
  * messages keep their historical number in the `msg` field — otherwise references
  * like "see msg-003 item 4" in already-written bodies would stop pointing at what
  * they pointed at.
+ *
+ * PROVENANCE (`worker`, `session` — R7, thread `016-protocol-roadmap`). `from` says
+ * WHICH ROLE spoke; it says nothing about WHAT WROTE the text, and the two are not
+ * the same question. A role is a long-lived participant of the conversation, while a
+ * session is a run with a beginning and an end — and the norm the fields make
+ * legible is this: ONE ROLE WRITES INTO ONE THREAD FROM MANY SESSIONS. Two adjacent
+ * messages from `dev-core` are as likely as not to have been written by two runs
+ * that share nothing but the role card: the second one knows what is IN THE THREAD
+ * and nothing else. Read without that, the feed looks like one continuous
+ * interlocutor, and "as I said above" starts to mean something it does not.
+ *
+ * `worker` is an OPEN vocabulary (`claude-code`, `claude-ai`, `gh-action`, `human`,
+ * `agent-protocol`, `unknown`, and whatever tool comes next), validated by SHAPE and
+ * not by a list. A closed enum would make every new tool in the ecosystem a schema
+ * migration of the protocol — and which tools exist is not the protocol's business.
  */
 
 /** `expects` — what the author awaits: a substantive answer, an acknowledgement or nothing. */
 export const EXPECTS = ["answer", "ack", "none"] as const;
 export type Expects = (typeof EXPECTS)[number];
+
+/**
+ * The worker values in use here. NOT a validation list (see the doc block) — it is
+ * what the CLI names in its refusals, so that whoever has to pass `--worker` is told
+ * what the neighbours use instead of being left to invent a spelling.
+ */
+export const KNOWN_WORKERS = [
+  /** A `claude-code` session — a raised one or a hand-run one. */
+  "claude-code",
+  /** The chat side (a role that lives inside a claude.ai conversation). */
+  "claude-ai",
+  /** A GitHub Actions job (the reviewer, the merge notifier). */
+  "gh-action",
+  /** A person, writing by hand. */
+  "human",
+  /** The package itself: a message composed by a command (the force-stop announcement). */
+  "agent-protocol",
+  /** Provenance WAS NOT RECORDED — the value the migration to version 2 stamps history with. */
+  "unknown",
+] as const;
+
+/** What the schema migration writes into messages that predate provenance. */
+export const WORKER_UNRECORDED = "unknown";
+
+/** What the package puts on a message it composed itself (the force-stop announcement). */
+export const PACKAGE_WORKER = "agent-protocol";
 
 export type MessageFields = {
   /** Historical number (migrated messages only): keeps references in old bodies working. */
@@ -48,6 +89,19 @@ export type MessageFields = {
    */
   readonly seq?: number;
   readonly from: string;
+  /**
+   * WHAT wrote the message (`claude-code`, `gh-action`, `human`, …) as opposed to
+   * WHO said it (`from`). Absent in messages written before provenance existed and
+   * in legacy threads assembled out of `_thread.md`; `unknown` where the migration
+   * stated that absence explicitly.
+   */
+  readonly worker?: string;
+  /**
+   * The id of the RUN that wrote it — the identity that tells two messages of one
+   * role apart when they came from two sessions. Absent wherever there is no such
+   * thing (a human, a chat) or where the run could not name itself.
+   */
+  readonly session?: string;
   /** New ones — a UTC stamp `2026-07-23T13:45:12Z`; migrated ones — a date only. */
   readonly date: string;
   readonly expects: Expects;
@@ -71,6 +125,23 @@ const FENCE = "---";
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const ROLE = /^[a-z][a-z0-9-]*$/;
+/** The shape of a worker id — the same one a role id has: an open vocabulary, a fixed spelling. */
+const WORKER = /^[a-z][a-z0-9-]*$/;
+/**
+ * The shape of a session id. Deliberately WIDE: the id is minted by somebody else's
+ * runtime (a uuid today, whatever `cursor` mints tomorrow), so all this checks is
+ * that it is one printable token which can be grepped for and pasted back — a value
+ * with a space or a newline in it would break both the header and the search.
+ */
+const SESSION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+
+/**
+ * The same two checks the parser applies, exported for the WRITING side: a value
+ * that would not parse must be refused at the door with the flag in hand, not
+ * discovered later by a reader who cannot fix it (the feed is append-only).
+ */
+export const isWorkerId = (value: string): boolean => WORKER.test(value);
+export const isSessionId = (value: string): boolean => SESSION.test(value);
 
 export class MessageFormatError extends Error {
   constructor(message: string) {
@@ -128,10 +199,29 @@ export const parseMessageFile = (raw: string): Message => {
   const waitingRaw = raws.get("waiting-on");
   const suffix = raws.get("suffix");
 
+  // Provenance is OPTIONAL on read and always will be: legacy threads carry none by
+  // construction (a `_thread.md` section has no header at all), and history predates
+  // the field. Present but malformed is a different matter — that is a defect of the
+  // writer, and it fails as loudly as a malformed `from` does.
+  const worker = raws.get("worker");
+  const session = raws.get("session");
+  if (worker !== undefined && !WORKER.test(worker)) {
+    throw new MessageFormatError(
+      `'worker: ${worker}' — a worker id looks like a role id (${KNOWN_WORKERS.join(" | ")}, or another tool)`,
+    );
+  }
+  if (session !== undefined && !SESSION.test(session)) {
+    throw new MessageFormatError(
+      `'session: ${session}' — a session id must be one printable token without spaces (up to 128 characters)`,
+    );
+  }
+
   const fields: MessageFields = {
     ...(msgRaw === undefined ? {} : { msg: Number(msgRaw) }),
     ...(seqRaw === undefined ? {} : { seq: Number(seqRaw) }),
     from,
+    ...(worker === undefined ? {} : { worker }),
+    ...(session === undefined ? {} : { session }),
     date,
     expects: expects as Expects,
     ...(waitingRaw === undefined ? {} : { waitingOn: parseList(waitingRaw) }),
@@ -160,6 +250,10 @@ export const renderMessageFile = (message: Message): string => {
     ...(fields.msg === undefined ? [] : [`msg: ${String(fields.msg).padStart(3, "0")}`]),
     ...(fields.seq === undefined ? [] : [`seq: ${String(fields.seq).padStart(3, "0")}`]),
     `from: ${fields.from}`,
+    // Provenance stands next to authorship, because that is what it qualifies: who
+    // said it, and what wrote it down.
+    ...(fields.worker === undefined ? [] : [`worker: ${fields.worker}`]),
+    ...(fields.session === undefined ? [] : [`session: ${fields.session}`]),
     `date: ${fields.date}`,
     `expects: ${fields.expects}`,
     ...(fields.waitingOn === undefined
@@ -218,7 +312,21 @@ export const compareMessageEntries = (
   return a.fileName < b.fileName ? -1 : a.fileName > b.fileName ? 1 : 0;
 };
 
-/** Section heading in the assembled thread. `number` is a display value: position or historical number. */
+/**
+ * Section heading in the assembled thread. `number` is a display value: position or
+ * historical number.
+ *
+ * PROVENANCE IS DELIBERATELY NOT HERE. The assembled `_thread.md` is the
+ * CONVERSATION — who said what, when, to whom; `worker`/`session` are facts about
+ * the RUN that typed it, and their reader is the analysis of runs, which reads the
+ * files. Putting them in would also cost what is not worth this: the heading is
+ * parsed BACK out of legacy `_thread.md` by a regex whose optional tail is a
+ * historical suffix, the assembly canon is byte-exact across the live threads, and
+ * every derived file in the repository would be rewritten to display a uuid nobody
+ * reads in prose. It would also be the one field of the new shape that reaches a
+ * DERIVED file — that is, the one that makes two package versions rewrite each
+ * other's output (README, "Compatibility and breaking changes").
+ */
 export const renderHeading = (fields: MessageFields, number: number): string => {
   const shown = fields.msg ?? number;
   const suffix = fields.suffix === undefined ? "" : ` · ${fields.suffix}`;

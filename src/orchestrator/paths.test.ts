@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { orchestratorPaths, renderPaths } from "./paths.js";
+import {
+  orchestratorPaths,
+  renderPaths,
+  sessionIdPath,
+  sessionLogPath,
+  sessionStreamPath,
+} from "./paths.js";
 
 const input = {
   repo: "/repo",
@@ -45,5 +51,14 @@ describe("renderPaths", () => {
     expect(rendered).toContain("/repo/.orchestrator/enabled");
     expect(rendered).toContain("/repo/.worktrees/comms/agent-comms");
     expect(rendered.split("\n")).toHaveLength(6);
+  });
+});
+
+describe("sessionIdPath", () => {
+  it("is the third file of one run's triple: log, raw stream, session id", () => {
+    const log = sessionLogPath("/s", "dev-core", "016-x", "2026-07-25T18:00:00Z");
+
+    expect(sessionIdPath(log)).toBe(log.replace(/\.log$/, ".session"));
+    expect(sessionStreamPath(log)).toBe(log.replace(/\.log$/, ".jsonl"));
   });
 });

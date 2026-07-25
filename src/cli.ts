@@ -75,7 +75,9 @@ import {
   buildLaunchPrompt,
   DEFAULT_MAX_TURNS,
   DEFAULT_WALL_CLOCK_SECONDS,
+  DEFAULT_WORKER,
   describeLaunch,
+  LAUNCH_ENV,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
   roleLaunchability,
@@ -87,6 +89,7 @@ import {
   type OrchestratorPaths,
   orchestratorPaths,
   renderPaths,
+  sessionIdPath,
   sessionLogPath,
   sessionStreamPath,
 } from "./orchestrator/paths.js";
@@ -102,7 +105,12 @@ import {
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
-import { renderStreamLine, splitStreamChunk, stampLine } from "./orchestrator/transcript.js";
+import {
+  renderStreamLine,
+  sessionIdOf,
+  splitStreamChunk,
+  stampLine,
+} from "./orchestrator/transcript.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import type { Launch, Role } from "./roles/schema.js";
 import {
@@ -120,7 +128,14 @@ import {
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 import type { Expects } from "./thread/message.js";
-import { EXPECTS, parseMessageFile } from "./thread/message.js";
+import {
+  EXPECTS,
+  isSessionId,
+  isWorkerId,
+  KNOWN_WORKERS,
+  PACKAGE_WORKER,
+  parseMessageFile,
+} from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { renderThread } from "./thread/thread.js";
 import {
@@ -143,8 +158,9 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --body-file <p> [--write]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] [--worker <w>] [--session <id>] --body-file <p> [--write]
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] [--worker <w>] [--session <id>] --body-file <p> [--write]
+                              # --worker/--session: what wrote it (a raised session gets both from its launch environment)
 
 ORCHESTRATOR: the paths (journal, flags, holds, mail root) are taken FROM THE
 CONFIG, section 'orchestrator'. The path flags below are an override for checks
@@ -154,8 +170,8 @@ and are not needed in operation; only --ref is required.
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write]
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--write]
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
@@ -664,6 +680,50 @@ const parseWaitingOn = (raw: string, registry: RoleRegistry): string[] => {
 };
 
 /**
+ * WHO IS WRITING THIS — resolved from the flag first, then from the launch channel
+ * (R7). A raised session needs to pass nothing: the supervisor put `worker` in its
+ * environment and the id of the run in a file beside its log. Everybody else says it
+ * out loud — `--worker human`, `--worker gh-action`.
+ *
+ * The session id is read from the FILE rather than from a variable because it is
+ * minted after the spawn (see `LAUNCH_ENV`); an absent or unreadable file is silence,
+ * not a failure: a run that could not name itself still has a turn to pass, and a
+ * message without provenance is worse than no message only in a report, never in a
+ * conversation.
+ */
+const provenanceFrom = (
+  argv: readonly string[],
+  env: NodeJS.ProcessEnv = process.env,
+): { worker?: string; session?: string } => {
+  const worker = flag(argv, "--worker") ?? env[LAUNCH_ENV.worker];
+  const sessionFile = env[LAUNCH_ENV.sessionFile];
+  let session = flag(argv, "--session");
+  if (session === undefined && sessionFile !== undefined && sessionFile !== "") {
+    try {
+      const raw = readFileSync(sessionFile, "utf8").trim();
+      if (raw !== "") session = raw;
+    } catch {
+      // the supervisor has not written it yet (or there is none) — no session, no complaint
+    }
+  }
+  // Validated HERE, at the door: an unparseable value written into a message file
+  // would only be discovered by a reader, and by then it is history nobody may edit.
+  if (worker !== undefined && worker !== "" && !isWorkerId(worker)) {
+    fail(
+      `--worker '${worker}' — a worker id looks like a role id; in use here: ${KNOWN_WORKERS.join(", ")}`,
+      2,
+    );
+  }
+  if (session !== undefined && session !== "" && !isSessionId(session)) {
+    fail(`--session '${session}' — one printable token without spaces is expected`, 2);
+  }
+  return {
+    ...(worker === undefined || worker === "" ? {} : { worker }),
+    ...(session === undefined || session === "" ? {} : { session }),
+  };
+};
+
+/**
  * Create a message file in an EXISTING thread. Refuses if the thread is in the
  * legacy form (no `messages/`): a file write would cut off its history.
  */
@@ -697,6 +757,7 @@ const newMessage = (argv: readonly string[]): void => {
   try {
     planned = planNewMessage({
       from,
+      ...provenanceFrom(argv),
       date: nextMessageTimestamp(new Date(), existingTs),
       expects: parseExpects(required(argv, "--expects")),
       ...(waitingRaw === undefined ? {} : { waitingOn: parseWaitingOn(waitingRaw, registry) }),
@@ -747,6 +808,7 @@ const newThread = (argv: readonly string[]): void => {
     title: required(argv, "--title"),
     participants,
     from,
+    ...provenanceFrom(argv),
     date: messageTimestamp(new Date()),
     expects: parseExpects(required(argv, "--expects")),
     ...(flag(argv, "--waiting-on") === undefined
@@ -1205,6 +1267,10 @@ const postThreadMessage = (
   try {
     planned = planNewMessage({
       from: input.from,
+      // The announcement is SIGNED by whoever forced the stop and WRITTEN by the
+      // package: `from` and `worker` answer two different questions, and this is the
+      // one message in the protocol where the difference is visible in one line.
+      worker: PACKAGE_WORKER,
       date: nextMessageTimestamp(new Date(), existingTs),
       expects: input.expects,
       ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
@@ -1249,8 +1315,12 @@ type RunParams = {
   readonly sessionLog: string;
   /** The raw stream beside it (`.jsonl`) — the primary source a rendering cannot replace. */
   readonly sessionStream: string;
+  /** Where the session reads its own id (R7): written when the init line arrives. */
+  readonly sessionIdFile: string;
   /** The child process environment: the inherited one + the project preamble (S8). */
   readonly env: NodeJS.ProcessEnv;
+  /** What is being raised, as the session will record it in its messages (R7). */
+  readonly worker: string;
 };
 
 /**
@@ -1455,19 +1525,46 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // relays the same lines to its own stdout, so the live view is not lost.
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
-      env: p.env,
+      // The session is told WHAT it is and WHERE it will find its own id (R7): both
+      // are set here, over the project preamble, because they describe THIS run and
+      // nothing in the config may claim to know them.
+      env: {
+        ...p.env,
+        [LAUNCH_ENV.worker]: p.worker,
+        [LAUNCH_ENV.sessionFile]: p.sessionIdFile,
+      },
     },
   );
 
   // A chunk boundary falls in the middle of a JSON line far more often than it
   // looks, so the tail is carried over rather than rendered as it is.
   let pending = "";
+  // THE SESSION LEARNS ITS OWN ID (R7) — from the init line of its own stream, which
+  // the supervisor is reading anyway, written into the file whose path the session
+  // was given in its environment. Once: the id does not change mid-run, and a
+  // rewrite would only add a window in which the file is empty while somebody reads
+  // it. A failure to write is NOT fatal — the run goes on and its messages simply
+  // carry no session; losing a run over a provenance field would be the wrong trade.
+  let sessionIdSeen = false;
+  const rememberSessionId = (line: string): void => {
+    if (sessionIdSeen) return;
+    const id = sessionIdOf(line);
+    if (id === undefined) return;
+    sessionIdSeen = true;
+    try {
+      writeFileSync(p.sessionIdFile, id, "utf8");
+      writeLog(`supervisor  session ${id} → ${p.sessionIdFile}`);
+    } catch (error) {
+      writeLog(`supervisor  could not write the session id: ${(error as Error).message}`);
+    }
+  };
   child.stdout?.on("data", (chunk: Buffer) => {
     if (!sinksOpen) return;
     writeSync(rawSink, chunk);
     const split = splitStreamChunk(pending, chunk.toString("utf8"));
     pending = split.rest;
     for (const line of split.lines) {
+      rememberSessionId(line);
       for (const rendered of renderStreamLine(line)) {
         writeLog(rendered);
         out(rendered);
@@ -1725,6 +1822,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     launch: role.launch,
     sessionLog,
     sessionStream: sessionStreamPath(sessionLog),
+    sessionIdFile: sessionIdPath(sessionLog),
+    worker: flag(argv, "--worker") ?? DEFAULT_WORKER,
     env: childEnvFrom(argv),
     wallClockMs,
     pollMs,
@@ -1789,6 +1888,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const exec = flag(argv, "--exec") ?? "claude";
+  // What the raised sessions call themselves in the messages they write (R7). It
+  // stands beside `--exec` on purpose: change the binary and you change the answer.
+  const worker = flag(argv, "--worker") ?? DEFAULT_WORKER;
   const maxTurns = String(positiveInt(argv, "--max-turns", DEFAULT_MAX_TURNS));
   const once = argv.includes("--once"); // a single tick — for checks
 
@@ -1899,6 +2001,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           env: childEnv,
           sessionLog,
           sessionStream: sessionStreamPath(sessionLog),
+          sessionIdFile: sessionIdPath(sessionLog),
+          worker,
           wallClockMs,
           pollMs,
           idleMs,

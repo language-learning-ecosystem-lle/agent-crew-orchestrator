@@ -10,12 +10,12 @@
  * command, and the question "which shape is this repository at" would still have
  * had no answer.
  *
- * DELIBERATELY A FRAME, NOT A LIBRARY. The registry below is EMPTY: the first real
- * step arrives with the change that needs it. A migration engine written ahead of
- * its first migration guesses at what migrations look like; this one only fixes
- * what is already known from the one we have performed — a step is planned before
- * it is applied, it must be verifiable, and it must not be able to forget to bump
- * the version.
+ * DELIBERATELY A FRAME, NOT A LIBRARY. The registry held nothing until the change
+ * that needed it arrived — a migration engine written ahead of its first migration
+ * guesses at what migrations look like. The first real step is `v2-provenance.ts`
+ * (R7), and it kept the frame honest rather than the other way round: it needed no
+ * new capability, and the one thing it did need — a REFUSAL from inside a step,
+ * aborting the whole chain — the frame already had.
  *
  * THE FOUR PROPERTIES THE FRAME ENFORCES:
  *
@@ -43,59 +43,24 @@
  * absolute paths, so the split is visible; the ordering rule is in the README
  * ("Compatibility and breaking changes").
  */
-
-/** A file the migration rewrites in full. Absolute path — the plan is read by a human. */
-export type MigrationFile = {
-  readonly path: string;
-  readonly content: string;
-};
+import type { MigrationContext, MigrationFile, MigrationStep } from "./step.js";
+import { MigrationRefusedError } from "./step.js";
+import { MESSAGE_PROVENANCE_STEP } from "./v2-provenance.js";
 
 /**
- * What a step is handed. The probes (reading a directory, reading a file) are
- * INJECTED rather than done here: the same split as everywhere in the package —
- * the probes live at the edge (`cli.ts`), the decisions live in the core, and the
- * core stays testable without a repository on disk.
+ * THE REGISTRY — one entry per version step, and the order of the array does not
+ * matter: the chain is assembled by looking up `from`, so a step cannot be applied
+ * out of turn by being listed out of turn.
  */
-export type MigrationContext = {
-  /** The config as raw JSON at the version this step starts from. */
-  readonly config: Record<string, unknown>;
-  /** Absolute path of the config file — the runner rewrites it after every step. */
-  readonly configPath: string;
-  /** Absolute path of the mail directory. May not exist: a repository can carry no mail. */
-  readonly mailRoot: string;
-  /** Contents by absolute path; the pending writes of earlier steps win over disk. */
-  readonly read: (path: string) => string;
-  /** Absolute paths of the files inside a directory (recursively), as the caller sees them. */
-  readonly list: (dir: string) => readonly string[];
-};
+export const MIGRATIONS: readonly MigrationStep[] = [MESSAGE_PROVENANCE_STEP];
 
-/**
- * What a step returns. Every field is optional on purpose: a step that only changes
- * the config touches no data files, and a step that only rewrites data returns no
- * config — the version bump is the runner's business either way.
- */
-export type MigrationEffect = {
-  /** The config after the step, WITHOUT the version — the runner sets that itself. */
-  readonly config?: Record<string, unknown>;
-  readonly files?: readonly MigrationFile[];
-  /** What a human still has to do by hand. Printed by the plan, never applied. */
-  readonly notes?: readonly string[];
-};
-
-export type MigrationStep = {
-  /** The version this step upgrades FROM; it always lands on `from + 1`. */
-  readonly from: number;
-  /** One line for the plan: what changes and why. Read by whoever approves the run. */
-  readonly summary: string;
-  readonly plan: (context: MigrationContext) => MigrationEffect;
-};
-
-/**
- * The registry — EMPTY until the first breaking change. That is the whole state of
- * affairs and not an omission: version 1 is the shape the protocol has always had,
- * and there is nothing before it to come from.
- */
-export const MIGRATIONS: readonly MigrationStep[] = [];
+export type {
+  MigrationContext,
+  MigrationEffect,
+  MigrationFile,
+  MigrationStep,
+} from "./step.js";
+export { MigrationRefusedError } from "./step.js";
 
 export type PlannedStep = {
   readonly from: number;
@@ -117,13 +82,6 @@ export type MigrationPlan = {
    */
   readonly writes: readonly MigrationFile[];
 };
-
-export class MigrationRefusedError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "MigrationRefusedError";
-  }
-}
 
 /** Two-space JSON with a trailing newline — the shape a config already has in the tree. */
 export const renderConfig = (config: Record<string, unknown>): string =>

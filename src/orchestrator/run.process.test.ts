@@ -376,3 +376,40 @@ describe("running a role as a process — the outcome is always recorded", () =>
     }
   }, 120_000);
 });
+
+describe("the session is told what it is and learns its own id (R7)", () => {
+  it("passes worker and the session-id file in the environment, and fills the file from the init line", () => {
+    // The two halves of the channel, checked where they actually live — in the
+    // wiring, not in a pure function. `worker` can travel as a VALUE (the
+    // supervisor knows what it raises); the session id cannot, because it does not
+    // exist until the agent says its first line.
+    const { repo } = contour();
+    const dump = join(repo, "env.txt");
+    const init = '{"type":"system","subtype":"init","session_id":"8f3a2b1c-0d4e","model":"m"}';
+    const exec = stub(
+      repo,
+      `printf '%s\\n' '${init}'\nprintf '%s|%s\\n' "$AGENT_PROTOCOL_WORKER" "$AGENT_PROTOCOL_SESSION_FILE" > ${dump}\nsleep 2`,
+    );
+
+    run(repo, exec);
+
+    const [worker, sessionFile] = readFileSync(dump, "utf8").trim().split("|");
+    expect(worker).toBe("claude-code");
+    expect(sessionFile).toMatch(/\.orchestrator\/sessions\/.*\.session$/);
+    expect(readFileSync(sessionFile as string, "utf8")).toBe("8f3a2b1c-0d4e");
+    // And the log says where it went — a break is analysed from the log alone.
+    expect(sessionLog(repo)).toContain("session 8f3a2b1c-0d4e");
+  }, 60_000);
+
+  it("writes no session file when the stream never names a session — silence, not an empty file", () => {
+    // An empty file would read as "the id is ''" to `new-message`; absence reads as
+    // "this run could not name itself", which is the truth.
+    const { repo } = contour();
+    const exec = stub(repo, "printf '%s\\n' 'not the stream format'\nsleep 1");
+
+    run(repo, exec);
+
+    const dir = join(repo, ".orchestrator", "sessions");
+    expect(readdirSync(dir).filter((name) => name.endsWith(".session"))).toEqual([]);
+  }, 60_000);
+});

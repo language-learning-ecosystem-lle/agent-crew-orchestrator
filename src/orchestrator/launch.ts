@@ -60,6 +60,34 @@ export const MAX_CONSECUTIVE_RUNS = 10;
 export const DEFAULT_WALL_CLOCK_SECONDS = 3600;
 export const DEFAULT_MAX_TURNS = 300;
 
+/**
+ * WHAT THE SESSION IS TOLD ABOUT ITSELF (R7, thread 016) — the launch contract's
+ * environment half. Two variables, and they are shaped differently on purpose:
+ *
+ *  - `AGENT_PROTOCOL_WORKER` carries a VALUE (`claude-code`): the supervisor knows
+ *    what it is about to raise before it raises it;
+ *  - `AGENT_PROTOCOL_SESSION_FILE` carries a PATH, because the value does not exist
+ *    yet. A session id is minted by the agent itself and first appears in the init
+ *    line of its stream, seconds after the spawn — and the environment of a running
+ *    process cannot be amended. So the supervisor promises a file and fills it in.
+ *
+ * `new-message` reads both, so a raised session records its provenance without being
+ * asked to remember anything. The same pair is where a lease deadline would go when
+ * graceful wind-down is taken up (curator, deferred out of R6).
+ */
+export const LAUNCH_ENV = {
+  worker: "AGENT_PROTOCOL_WORKER",
+  sessionFile: "AGENT_PROTOCOL_SESSION_FILE",
+} as const;
+
+/**
+ * What the orchestrator says it is raising. A DEFAULT rather than a config field:
+ * the shape of a per-role launch section is R12's question (curator, 15:25), and
+ * `--worker` is the same kind of override as `--exec` beside it — the one place
+ * where "which binary" and "what to call it" belong together.
+ */
+export const DEFAULT_WORKER = "claude-code";
+
 /** Why a role is NOT launched by the orchestrator — mechanically, not "claude.ai" by eye. */
 export type LaunchBlock =
   | "inactive"
