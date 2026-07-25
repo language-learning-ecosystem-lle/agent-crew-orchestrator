@@ -16,11 +16,19 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { CURRENT_PROTOCOL_VERSION } from "./version.js";
+
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
 
+/**
+ * The fixture sits at the version the package writes RIGHT NOW rather than at a
+ * literal: these cases are about "a repository that has nothing left to migrate",
+ * and a literal would make every future bump rewrite them into saying something
+ * else.
+ */
 const CONFIG = {
-  protocolVersion: 1,
+  protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   roles: [
     {
@@ -76,7 +84,7 @@ describe("schema migrate", () => {
 
     expect(result.out).toContain(path);
     expect(result.out).toContain("working tree");
-    expect(result.out).toContain("version 1");
+    expect(result.out).toContain(`version ${CURRENT_PROTOCOL_VERSION}`);
   });
 
   it("refuses a config that predates versioning and names the repair", () => {
@@ -99,16 +107,17 @@ describe("schema migrate", () => {
   });
 
   it("refuses a target it has no step for, and writes nothing on the way", () => {
-    // The registry now holds 1 → 2 (R7), so the gap is asked for one version
-    // further out: a chain whose middle is missing must not be started at all,
-    // rather than applied up to the hole.
+    // The registry holds 1 → 2 (R7) and nothing beyond, so the gap is asked for one
+    // version past the current one: a chain whose middle is missing must not be
+    // started at all, rather than applied up to the hole.
     const { repo, path } = repoWith(CONFIG);
     const before = readFileSync(path, "utf8");
+    const beyond = CURRENT_PROTOCOL_VERSION + 1;
 
-    const result = run(repo, "--to", "3", "--write");
+    const result = run(repo, "--to", String(beyond), "--write");
 
     expect(result.code).toBe(2);
-    expect(result.out).toContain("2 → 3");
+    expect(result.out).toContain(`${CURRENT_PROTOCOL_VERSION} → ${beyond}`);
     expect(readFileSync(path, "utf8")).toBe(before);
   });
 });

@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { parseJournal } from "./journal.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -39,7 +40,7 @@ const git = (repo: string, ...args: string[]): string =>
   });
 
 const CONFIG = {
-  protocolVersion: 1,
+  protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   orchestrator: { state: ".orchestrator", mailCheckout: "mailco", ref: "HEAD" },
   roles: [

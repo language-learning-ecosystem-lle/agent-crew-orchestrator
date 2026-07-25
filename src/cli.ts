@@ -158,9 +158,10 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] [--worker <w>] [--session <id>] --body-file <p> [--write]
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] [--worker <w>] [--session <id>] --body-file <p> [--write]
-                              # --worker/--session: what wrote it (a raised session gets both from its launch environment)
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
+                              # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
+                              # a raised session passes neither — the launch environment carries both
 
 ORCHESTRATOR: the paths (journal, flags, holds, mail root) are taken FROM THE
 CONFIG, section 'orchestrator'. The path flags below are an override for checks
@@ -687,14 +688,30 @@ const parseWaitingOn = (raw: string, registry: RoleRegistry): string[] => {
  *
  * The session id is read from the FILE rather than from a variable because it is
  * minted after the spawn (see `LAUNCH_ENV`); an absent or unreadable file is silence,
- * not a failure: a run that could not name itself still has a turn to pass, and a
- * message without provenance is worse than no message only in a report, never in a
- * conversation.
+ * not a failure: a run that could not name its RUN still has a turn to pass, and a
+ * missing session id is worse than nothing only in a report, never in a conversation.
+ *
+ * `worker` IS REQUIRED ON THE WRITING PATH and stays optional on the reading one
+ * (the contract half of R7). The asymmetry is the point:
+ *
+ *  - on the DOOR the value is always obtainable — a raised session gets it from its
+ *    environment, everybody else knows what they are; and a message written without
+ *    it can never be repaired afterwards, because the feed is append-only;
+ *  - on the READ there are messages nobody can fix by construction: legacy threads
+ *    carry no header at all, history predates the field, and the window between the
+ *    migration of the mail and the merge of this pair of numbers is one in which
+ *    somebody legitimately wrote with a package that did not know the field. A rule
+ *    that cannot be met turns `check` permanently red, and a red everyone has learned
+ *    to ignore is worse than no rule.
+ *
+ * `session`, by contrast, stays optional on BOTH sides: it is minted by a runtime
+ * that a human or a chat simply does not have.
  */
 const provenanceFrom = (
   argv: readonly string[],
-  env: NodeJS.ProcessEnv = process.env,
+  options: { readonly required?: boolean; readonly env?: NodeJS.ProcessEnv } = {},
 ): { worker?: string; session?: string } => {
+  const env = options.env ?? process.env;
   const worker = flag(argv, "--worker") ?? env[LAUNCH_ENV.worker];
   const sessionFile = env[LAUNCH_ENV.sessionFile];
   let session = flag(argv, "--session");
@@ -705,6 +722,12 @@ const provenanceFrom = (
     } catch {
       // the supervisor has not written it yet (or there is none) — no session, no complaint
     }
+  }
+  if (options.required === true && (worker === undefined || worker === "")) {
+    fail(
+      `--worker is required when writing a message: name what is writing it (${KNOWN_WORKERS.join(", ")}, or another tool). A raised session inherits it from ${LAUNCH_ENV.worker} and passes nothing`,
+      2,
+    );
   }
   // Validated HERE, at the door: an unparseable value written into a message file
   // would only be discovered by a reader, and by then it is history nobody may edit.
@@ -757,7 +780,9 @@ const newMessage = (argv: readonly string[]): void => {
   try {
     planned = planNewMessage({
       from,
-      ...provenanceFrom(argv),
+      // Required BEFORE `--write` is even looked at: a dry run is the preview of the
+      // write, and a preview that succeeds where the write refuses is a lie.
+      ...provenanceFrom(argv, { required: true }),
       date: nextMessageTimestamp(new Date(), existingTs),
       expects: parseExpects(required(argv, "--expects")),
       ...(waitingRaw === undefined ? {} : { waitingOn: parseWaitingOn(waitingRaw, registry) }),
@@ -808,7 +833,7 @@ const newThread = (argv: readonly string[]): void => {
     title: required(argv, "--title"),
     participants,
     from,
-    ...provenanceFrom(argv),
+    ...provenanceFrom(argv, { required: true }),
     date: messageTimestamp(new Date()),
     expects: parseExpects(required(argv, "--expects")),
     ...(flag(argv, "--waiting-on") === undefined

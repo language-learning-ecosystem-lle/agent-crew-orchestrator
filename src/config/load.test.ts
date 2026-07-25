@@ -5,10 +5,13 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { loadProtocolConfig } from "./load.js";
 
+// A VALID config is pinned to the version the package writes now, not to a
+// literal: a bump must not turn every fixture here into a stale one.
 const CONFIG = {
-  protocolVersion: 1,
+  protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   roles: [
     { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "PM" },
@@ -104,7 +107,10 @@ describe("loadProtocolConfig", () => {
     commit("malformed json");
     expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(/not JSON/);
 
-    writeFileSync(path, JSON.stringify({ protocolVersion: 1, roles: CONFIG.roles }));
+    writeFileSync(
+      path,
+      JSON.stringify({ protocolVersion: CURRENT_PROTOCOL_VERSION, roles: CONFIG.roles }),
+    );
     commit("no mail section");
     expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(/mail/);
   });
