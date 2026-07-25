@@ -6,9 +6,11 @@ import {
   buildLaunchArgv,
   buildLaunchPrompt,
   consecutiveLaunchesWithoutCompletion,
+  describeCeilings,
   describeLaunch,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
+  resolveCeilings,
   roleLaunchability,
 } from "./launch.js";
 
@@ -306,5 +308,79 @@ describe("the permission profile — part of the launch contract (S7)", () => {
   it("describeLaunch on a role without a profile names the REASON instead of staying silent", () => {
     const { launch: _dropped, ...without } = role({ instructions: undefined });
     expect(describeLaunch(without as Role)).toContain("no-instructions");
+  });
+});
+
+describe("resolveCeilings — the flag, then the role, then the default (R12)", () => {
+  const defaults = { idleSeconds: 600, wallClockSeconds: 3600, maxTurns: 300 };
+
+  it("nothing said anywhere → the package defaults, and they say so", () => {
+    const ceilings = resolveCeilings({ flags: {}, defaults });
+    expect(ceilings.idle).toEqual({ value: 600, source: "default" });
+    expect(ceilings.wallClock).toEqual({ value: 3600, source: "default" });
+    expect(ceilings.maxTurns).toEqual({ value: 300, source: "default" });
+  });
+
+  it("the role's launch.limits win over the defaults", () => {
+    const ceilings = resolveCeilings({
+      flags: {},
+      limits: { idleSeconds: 120, wallClockSeconds: 900, maxTurns: 60 },
+      defaults,
+    });
+    expect(ceilings.idle).toEqual({ value: 120, source: "role" });
+    expect(ceilings.wallClock).toEqual({ value: 900, source: "role" });
+    expect(ceilings.maxTurns).toEqual({ value: 60, source: "role" });
+  });
+
+  it("the flag wins over the role: a human typed it for THIS run", () => {
+    const ceilings = resolveCeilings({
+      flags: { wallClockSeconds: 30 },
+      limits: { wallClockSeconds: 900 },
+      defaults,
+    });
+    expect(ceilings.wallClock).toEqual({ value: 30, source: "flag" });
+  });
+
+  it("the three ceilings are resolved INDEPENDENTLY — one flag does not drop the other two", () => {
+    // The mistake this pins down: taking the role's limits as a block, so naming a
+    // single flag would quietly return the whole run to the defaults.
+    const ceilings = resolveCeilings({
+      flags: { maxTurns: 20 },
+      limits: { idleSeconds: 120, wallClockSeconds: 900, maxTurns: 60 },
+      defaults,
+    });
+    expect(ceilings.maxTurns).toEqual({ value: 20, source: "flag" });
+    expect(ceilings.idle).toEqual({ value: 120, source: "role" });
+    expect(ceilings.wallClock).toEqual({ value: 900, source: "role" });
+  });
+
+  it("ZERO SURVIVES: 'idle 0' is the detector switched off, not an absent value", () => {
+    expect(
+      resolveCeilings({ flags: { idleSeconds: 0 }, limits: { idleSeconds: 120 }, defaults }),
+    ).toMatchObject({ idle: { value: 0, source: "flag" } });
+    expect(resolveCeilings({ flags: {}, limits: { idleSeconds: 0 }, defaults })).toMatchObject({
+      idle: { value: 0, source: "role" },
+    });
+  });
+
+  it("a partial limits block falls through field by field, not as a whole", () => {
+    const ceilings = resolveCeilings({ flags: {}, limits: { maxTurns: 60 }, defaults });
+    expect(ceilings.maxTurns.source).toBe("role");
+    expect(ceilings.idle).toEqual({ value: 600, source: "default" });
+  });
+
+  it("describeCeilings names the number AND its source — a ceiling that fired must be attributable", () => {
+    const line = describeCeilings(
+      resolveCeilings({ flags: { wallClockSeconds: 30 }, limits: { idleSeconds: 120 }, defaults }),
+    );
+    expect(line).toContain("idle 120s (role)");
+    expect(line).toContain("wall-clock 30s (flag)");
+    expect(line).toContain("max-turns 300 (default)");
+  });
+
+  it("a switched-off idle detector reads as 'off', not as '0s'", () => {
+    expect(describeCeilings(resolveCeilings({ flags: { idleSeconds: 0 }, defaults }))).toContain(
+      "idle off (flag)",
+    );
   });
 });

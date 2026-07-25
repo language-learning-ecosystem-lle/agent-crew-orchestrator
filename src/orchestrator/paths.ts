@@ -97,6 +97,18 @@ export const sessionStreamPath = (logPath: string): string => logPath.replace(/\
 export const sessionIdPath = (logPath: string): string => logPath.replace(/\.log$/, ".session");
 
 /**
+ * WHERE A DETACHED SUPERVISOR SPEAKS (R12). An attached run says everything to the
+ * terminal of whoever started it; a detached one has no terminal at all, and its own
+ * words — the preflight, the refusals, the relayed session lines — would go to
+ * /dev/null. They are not the same thing as the session log: this is what the
+ * OBSERVER said, and the difference matters exactly when the observer is what broke.
+ *
+ * Same name, fourth extension: one run is one name in a directory listing.
+ */
+export const sessionSupervisorPath = (logPath: string): string =>
+  logPath.replace(/\.log$/, ".supervisor");
+
+/**
  * For a human — where the package put its state. Printed by the enable commands
  * and by `status`: "where the flag lies" has to be visible from the output, not
  * from the README.

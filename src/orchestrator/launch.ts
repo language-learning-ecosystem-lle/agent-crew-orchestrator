@@ -21,7 +21,8 @@
  *  - global: `consecutiveLaunchesWithoutCompletion` for the S3 auto loop — no more
  *    than `MAX_CONSECUTIVE_RUNS` launches in a row without a single `completed`.
  */
-import type { Launch, Role } from "../roles/schema.js";
+import type { Launch, LaunchLimits, Role } from "../roles/schema.js";
+import { DEFAULT_IDLE_MS } from "./activity.js";
 import { eventTimestamp, type OrchestratorEvent } from "./journal.js";
 import { foldLeases } from "./lease.js";
 
@@ -53,9 +54,8 @@ export const MAX_CONSECUTIVE_RUNS = 10;
  *    limit that protects nothing here. 300 is the value john ran the real packages
  *    at by hand.
  *
- * They are defaults, not policy: every one of them is a flag, and per-role ceilings
- * in the config are R12's question (curator, 15:25) — the shape of that section is
- * decided there, once, rather than twice.
+ * They are defaults, not policy: every one of them is a flag, and since R12 also a
+ * per-role field of the config (`launch.limits`) — see `resolveCeilings` below.
  */
 export const DEFAULT_WALL_CLOCK_SECONDS = 3600;
 export const DEFAULT_MAX_TURNS = 300;
@@ -87,6 +87,98 @@ export const LAUNCH_ENV = {
  * where "which binary" and "what to call it" belong together.
  */
 export const DEFAULT_WORKER = "claude-code";
+
+/**
+ * WHERE ONE CEILING CAME FROM. Printed beside the number, and that is the whole
+ * reason the source is carried at all: a run cut short at 15 minutes is a different
+ * fact depending on whether the project asked for that or the package did, and
+ * until R12 the output said only "timeout".
+ */
+export type CeilingSource = "flag" | "role" | "default";
+
+export type Ceiling = {
+  /** Seconds for the two clocks, a count of turns for the third — the unit belongs to the field, not here. */
+  readonly value: number;
+  readonly source: CeilingSource;
+};
+
+export type ResolvedCeilings = {
+  readonly idle: Ceiling;
+  readonly wallClock: Ceiling;
+  readonly maxTurns: Ceiling;
+};
+
+/**
+ * THE THREE CEILINGS OF A RUN, resolved once (R12, curator's statement of work,
+ * thread 016) — the flag of the operator, then the role's `launch.limits`, then the
+ * package default.
+ *
+ * WHY THAT ORDER. The flag is the most specific statement there is: a human typed
+ * it for THIS run, usually because this run is not like the others (a mechanically
+ * large package, a probe with a stub). The config is the project's standing
+ * calibration, and the default is what a project that has said nothing gets. The
+ * reverse order would make the config unoverridable and turn every exception into
+ * an edit of a committed file.
+ *
+ * WHY A PURE FUNCTION AND NOT THREE `??` IN THE CLI. The three ceilings are read in
+ * two places (`run` and the daemon's launch branch), and the daemon resolves them
+ * PER ROLE inside the loop — with the numbers inlined, the manual path and the
+ * autonomous one would drift the moment one of them gained a fourth source. It also
+ * makes the source printable, which the inline form cannot be.
+ *
+ * `idleSeconds: 0` survives on purpose: zero is a meaningful value (the detector
+ * off), so the fall-through tests for `undefined` rather than for falsiness.
+ */
+export const resolveCeilings = (input: {
+  readonly flags: {
+    readonly idleSeconds?: number;
+    readonly wallClockSeconds?: number;
+    readonly maxTurns?: number;
+  };
+  readonly limits?: LaunchLimits;
+  readonly defaults?: {
+    readonly idleSeconds: number;
+    readonly wallClockSeconds: number;
+    readonly maxTurns: number;
+  };
+}): ResolvedCeilings => {
+  const defaults = input.defaults ?? {
+    idleSeconds: DEFAULT_IDLE_MS / 1000,
+    wallClockSeconds: DEFAULT_WALL_CLOCK_SECONDS,
+    maxTurns: DEFAULT_MAX_TURNS,
+  };
+  const pick = (
+    flagValue: number | undefined,
+    roleValue: number | undefined,
+    fallback: number,
+  ): Ceiling => {
+    if (flagValue !== undefined) return { value: flagValue, source: "flag" };
+    if (roleValue !== undefined) return { value: roleValue, source: "role" };
+    return { value: fallback, source: "default" };
+  };
+  return {
+    idle: pick(input.flags.idleSeconds, input.limits?.idleSeconds, defaults.idleSeconds),
+    wallClock: pick(
+      input.flags.wallClockSeconds,
+      input.limits?.wallClockSeconds,
+      defaults.wallClockSeconds,
+    ),
+    maxTurns: pick(input.flags.maxTurns, input.limits?.maxTurns, defaults.maxTurns),
+  };
+};
+
+/**
+ * The ceilings in one line, for the operator and for the session log. It is printed
+ * on EVERY launch rather than only when something is unusual: "which window this
+ * run had" is the first question asked of a break, and the answer must be in the
+ * log of that run, not in whoever's shell history.
+ */
+export const describeCeilings = (ceilings: ResolvedCeilings): string =>
+  [
+    `idle ${ceilings.idle.value === 0 ? "off" : `${ceilings.idle.value}s`} (${ceilings.idle.source})`,
+    `wall-clock ${ceilings.wallClock.value}s (${ceilings.wallClock.source})`,
+    `max-turns ${ceilings.maxTurns.value} (${ceilings.maxTurns.source})`,
+  ].join(" · ");
 
 /** Why a role is NOT launched by the orchestrator — mechanically, not "claude.ai" by eye. */
 export type LaunchBlock =
