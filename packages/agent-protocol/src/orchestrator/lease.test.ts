@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { MAX_ATTEMPTS, type OrchestratorEvent } from "./journal.js";
-import { foldLeases, type LeaseView } from "./lease.js";
+import { foldLeases, type LeaseView, unclosedLeases } from "./lease.js";
 
 const NOW = new Date("2026-07-24T14:00:00Z");
 const PAST = "2026-07-24T13:30:00Z"; // раньше NOW
@@ -25,7 +25,13 @@ const acquire = (role: string, thread: string, deadline: string): OrchestratorEv
 const release = (
   role: string,
   thread: string,
-  reason: "completed" | "forced" | "exited-without-handoff" | "timeout" | "exhausted",
+  reason:
+    | "completed"
+    | "forced"
+    | "exited-without-handoff"
+    | "supervisor-gone"
+    | "timeout"
+    | "exhausted",
 ): OrchestratorEvent => ({ kind: "lease-released", ts: ts(), role, thread, reason });
 const handoff = (role: string, thread: string): OrchestratorEvent => ({
   kind: "handoff-detected",
@@ -191,5 +197,31 @@ describe("foldLeases — launch-refused не создаёт аренду", () =>
       refused("dev-core", "t"),
     ]);
     expect(v).toMatchObject({ state: "running", attempt: 1, lastEvent: "lease-acquired" });
+  });
+});
+
+describe("unclosedLeases — аренда, которую некому было закрыть", () => {
+  it("живая аренда попадает в список", () => {
+    const views = unclosedLeases([acquire("dev-core", "t", FUTURE)], NOW);
+    expect(views).toHaveLength(1);
+    expect(views[0]).toMatchObject({ role: "dev-core", state: "running" });
+  });
+
+  it("draining тоже считается живой: исход не записан", () => {
+    const views = unclosedLeases([acquire("dev-core", "t", FUTURE), handoff("dev-core", "t")], NOW);
+    expect(views[0]?.state).toBe("draining");
+  });
+
+  it("закрытая любой причиной — не живая, в том числе supervisor-gone", () => {
+    const closed = unclosedLeases(
+      [acquire("dev-core", "t", PAST), release("dev-core", "t", "supervisor-gone")],
+      NOW,
+    );
+    expect(closed).toEqual([]);
+  });
+
+  it("supervisor-gone — неуспешный финал: связку можно пробовать снова", () => {
+    const v = only([acquire("dev-core", "t", PAST), release("dev-core", "t", "supervisor-gone")]);
+    expect(v).toMatchObject({ launchable: true, exhausted: false });
   });
 });

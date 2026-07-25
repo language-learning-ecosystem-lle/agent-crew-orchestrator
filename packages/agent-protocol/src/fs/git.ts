@@ -124,3 +124,14 @@ export const mailCheckoutState = (
   const [behind = "0", ahead = "0"] = counts.split(/\s+/);
   return { branch: current, dirty, behind: Number(behind), ahead: Number(ahead) };
 };
+
+/**
+ * Состояние РАБОЧЕГО репозитория — того, куда приземляется поднятая сессия.
+ * Она наследует рабочую директорию как есть, и «начала работу с чужой ветки»
+ * снаружи не видно вовсе: в отличие от устаревшей почты, расхождения нет ни с
+ * чем. Поэтому факт добывается и печатается всегда.
+ */
+export const workdirState = (repo: string): { branch: string; dirty: boolean } => ({
+  branch: git(repo, ["rev-parse", "--abbrev-ref", "HEAD"]).trim(),
+  dirty: git(repo, ["status", "--porcelain"]).trim() !== "",
+});
