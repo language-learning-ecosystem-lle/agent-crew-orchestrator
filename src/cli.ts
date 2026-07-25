@@ -36,7 +36,7 @@ import { dirname, join } from "node:path";
 
 import { loadProtocolConfig } from "./config/load.js";
 import { loadThreads, renderThreadFailures } from "./fs/comms.js";
-import { fileExistsAtRef, messagesAtRef } from "./fs/git.js";
+import { fileExistsAtRef, mailCheckoutState, messagesAtRef } from "./fs/git.js";
 import {
   foldHolds,
   HOLD_TTL_SECONDS,
@@ -73,6 +73,14 @@ import {
   renderPaths,
   sessionLogPath,
 } from "./orchestrator/paths.js";
+import {
+  agentBinaryVerdict,
+  environmentVerdict,
+  mailCheckoutVerdict,
+  type PreflightCheck,
+  preflightPassed,
+  renderPreflight,
+} from "./orchestrator/preflight.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { planTick } from "./orchestrator/tick.js";
@@ -108,6 +116,7 @@ const USAGE = `usage (--ref обязателен всегда; --repo по ум�
 ОРКЕСТРАТОР: пути (журнал, флаги, holdʼы, корень почты) берутся ИЗ КОНФИГА,
 секция 'orchestrator'. Флаги-пути ниже — переопределение для проверок, в
 эксплуатации не нужны; обязателен только --ref.
+  agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>]
@@ -668,6 +677,88 @@ const pathsFrom = (argv: readonly string[]): OrchestratorPaths => {
 };
 
 /**
+ * Окружение ДОЧЕРНЕГО процесса: унаследованное плюс преамбула из конфига
+ * (`orchestrator.env`). Тулчейн-менеджмент пакету не отдан — проект объявляет,
+ * что нужно его агенту, в данных; пакет применяет и показывает результат.
+ */
+const childEnvFrom = (argv: readonly string[]): NodeJS.ProcessEnv => {
+  const section = configFrom(argv, undefined).config.orchestrator;
+  return { ...process.env, ...(section?.env ?? {}) };
+};
+
+/**
+ * PREFLIGHT — проверки ДО взятия аренды (S8). Правило curator после третьего
+ * случая одного класса: то, что человек обязан помнить перед прогоном, машина
+ * делает сама или громко отказывается. Зонды здесь, вердикты — в ядре.
+ */
+const runPreflight = (argv: readonly string[], exec: string): PreflightCheck[] => {
+  const loaded = configFrom(argv, undefined);
+  const paths = pathsFrom(argv);
+  const env = childEnvFrom(argv);
+  const preamble = Object.keys(loaded.config.orchestrator?.env ?? {});
+
+  // Бинарь ищем В ОКРУЖЕНИИ РЕБЁНКА, а не в своём: PATH демона и PATH сессии —
+  // разные вещи, и проверка «у меня есть» отвечала бы не на тот вопрос.
+  let resolved: string | null = null;
+  try {
+    // Имя бинаря уходит ПЕРЕМЕННОЙ ОКРУЖЕНИЯ, а не подстановкой в строку шелла:
+    // `--exec` задаёт оператор, и склейка команды из его значения была бы
+    // инъекцией на ровном месте. `shell: true` не используем — он и предупреждает
+    // ровно об этом.
+    resolved = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
+      encoding: "utf8",
+      env: { ...env, AGENT_PROTOCOL_EXEC: exec },
+    }).trim();
+    if (resolved === "") resolved = null;
+  } catch {
+    resolved = null;
+  }
+
+  let nodeVersion: string | null = null;
+  try {
+    nodeVersion = execFileSync("node", ["--version"], { encoding: "utf8", env }).trim();
+  } catch {
+    nodeVersion = null;
+  }
+
+  let checkout: PreflightCheck;
+  try {
+    const state = mailCheckoutState(dirname(paths.mailRoot), loaded.config.mail.branch);
+    checkout = mailCheckoutVerdict({ ...state, expectedBranch: loaded.config.mail.branch });
+  } catch (error) {
+    checkout = {
+      name: "почта: свежесть чекаута",
+      status: "fail",
+      detail: `не опросил чекаут '${dirname(paths.mailRoot)}': ${(error as Error).message}`,
+    };
+  }
+
+  return [
+    agentBinaryVerdict(exec, resolved),
+    checkout,
+    environmentVerdict({ nodeVersion, appliedKeys: preamble }),
+  ];
+};
+
+/** Команда `orchestrator preflight`: показать всё и вернуть код по итогу. */
+const orchestratorPreflight = (argv: readonly string[]): void => {
+  const checks = runPreflight(argv, flag(argv, "--exec") ?? "claude");
+  out(renderPreflight(checks));
+  if (!preflightPassed(checks)) fail("preflight не пройден — контур не стартует", 2);
+};
+
+/**
+ * Preflight перед стартом: `daemon` и `run` зовут его сами и НЕ стартуют при
+ * провале. Иначе он остаётся ещё одним пунктом «не забудь», то есть ровно тем,
+ * ради устранения чего сделан.
+ */
+const requirePreflight = (argv: readonly string[], exec: string): void => {
+  const checks = runPreflight(argv, exec);
+  err(renderPreflight(checks));
+  if (!preflightPassed(checks)) fail("preflight не пройден — не стартую", 2);
+};
+
+/**
  * Включение и выключение ЗАПУСКОВ — командой, а не `touch` по пути из чужой
  * памяти (решение john, 22:45). Команда владеет каталогом состояния и создаёт
  * его сама; печатает ГРОМКО: каким состояние было ДО, каким стало, где лежит
@@ -951,6 +1042,8 @@ type RunParams = {
   readonly launch: Launch;
   /** Куда сохранить вывод сессии: разбор молчания без свидетеля. */
   readonly sessionLog: string;
+  /** Окружение дочернего процесса: унаследованное + преамбула проекта (S8). */
+  readonly env: NodeJS.ProcessEnv;
 };
 
 /** Кто/почему из файла force-флага (JSON, писан `stop --mode force`). Лениво. */
@@ -1012,6 +1105,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // лог: молчание сессии перестаёт быть неотличимым от работы.
       stdio: ["ignore", "inherit", sink],
       detached: true,
+      env: p.env,
     },
   );
   let exited = false;
@@ -1171,6 +1265,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     fail(`у роли '${roleId}' нет профиля запуска — поднимать с неназначенными правами нельзя`, 2);
     return;
   }
+  requirePreflight(argv, exec);
   const reason = await runOne({
     journalPath,
     mailRoot,
@@ -1181,6 +1276,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     maxTurns,
     launch: role.launch,
     sessionLog: sessionLogPath(paths, roleId, thread, eventTimestamp(now)),
+    env: childEnvFrom(argv),
     wallClockMs,
     pollMs,
     ids: registry.ids(),
@@ -1224,6 +1320,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const holdsDir = flag(argv, "--holds") ?? paths.holds;
 
   const registry = registryFrom(argv, undefined);
+  const childEnv = childEnvFrom(argv);
   const ids = registry.ids();
   const launchable = registry
     .active()
@@ -1237,6 +1334,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const exec = flag(argv, "--exec") ?? "claude";
   const maxTurns = String(positiveInt(argv, "--max-turns", 60));
   const once = argv.includes("--once"); // один тик — для проверок
+
+  // Preflight ДО цикла: демон, стартовавший без бинаря агента или с протухшей
+  // почтой, «работает» — и делает не то. Отказ до первой аренды.
+  requirePreflight(argv, exec);
 
   out(
     `agent-protocol: демон поднят (ВЫКЛЮЧЕН, пока нет '${enableFlag}'); стоп '${stopFlag}', force '${forceFlag}'; роли ${launchable.join(", ") || "—"}`,
@@ -1309,6 +1410,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           exec,
           maxTurns,
           launch: role.launch,
+          env: childEnv,
           sessionLog: sessionLogPath(
             paths,
             decision.role,
@@ -1508,6 +1610,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     orchestratorStop(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "hold") {
     orchestratorHold(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "preflight") {
+    orchestratorPreflight(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "enable") {
     orchestratorEnable(argv.slice(2), true);
   } else if (command === "orchestrator" && subcommand === "disable") {
