@@ -75,6 +75,32 @@ export {
   wakeSchema,
 } from "./roles/schema.js";
 export {
+  MIGRATIONS,
+  type MigrationContext,
+  type MigrationEffect,
+  type MigrationFile,
+  type MigrationPlan,
+  MigrationRefusedError,
+  type MigrationStep,
+  type PlannedStep,
+  planMigration,
+  renderConfig,
+  renderMigrationPlan,
+} from "./schema/migrate.js";
+export {
+  CURRENT_PROTOCOL_VERSION,
+  compareProtocolVersion,
+  declaredProtocolVersion,
+  LEGACY_VERSION_FIELD,
+  legacyVersionHint,
+  PROTOCOL_VERSION_FIELD,
+  ProtocolVersionError,
+  renderVersionVerdict,
+  requireCurrentProtocolVersion,
+  type VersionState,
+  type VersionVerdict,
+} from "./schema/version.js";
+export {
   type CheckIssue,
   checkImmutable,
   checkThread,

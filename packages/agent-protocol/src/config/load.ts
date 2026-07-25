@@ -14,9 +14,14 @@
  * Freshness is part of the operation: `origin/*` without a `fetch` goes stale
  * silently, and a stale config is indistinguishable from a current one. Declining
  * to refresh is possible, but it must be LOUD at the caller (`onStale`).
+ *
+ * The door also carries the PROTOCOL VERSION GATE (R2): a repository whose data is
+ * at another version than the one this package writes stops the circuit here,
+ * with the repair named, instead of being read as if the shapes matched.
  */
 import { fetchRef, readFileAtRef } from "../fs/git.js";
 import { createRoleRegistry, RoleConfigError, type RoleRegistry } from "../roles/registry.js";
+import { legacyVersionHint, requireCurrentProtocolVersion } from "../schema/version.js";
 import { DEFAULT_CONFIG_PATH, type ProtocolConfig, protocolConfigSchema } from "./config.js";
 
 export type LoadOptions = {
@@ -53,10 +58,25 @@ export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
 
   const result = protocolConfigSchema.safeParse(parsed);
   if (!result.success) {
-    throw new RoleConfigError(
-      result.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`),
-    );
+    // A config that predates versioning fails on a strict-object complaint about an
+    // unknown field `version` — true, and useless. The repair is named instead
+    // (R2): the field was not removed, it was RENAMED, and only whoever knows the
+    // data can place it in the migration chain.
+    const hint = legacyVersionHint(parsed);
+    throw new RoleConfigError([
+      ...(hint === undefined ? [] : [hint]),
+      ...result.error.issues.map(
+        (issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`,
+      ),
+    ]);
   }
+
+  // THE VERSION GATE stands here, on the reading path, and not in the callers: a
+  // mismatch between the shape of the data and the shape the package writes is
+  // exactly what every command would otherwise have to remember about. The
+  // consequence is deliberate — the circuit halts, and the one command that keeps
+  // working is `schema migrate`, which reads the raw file rather than this door.
+  requireCurrentProtocolVersion(result.data.protocolVersion, { path, ref: options.ref });
 
   return {
     config: result.data,

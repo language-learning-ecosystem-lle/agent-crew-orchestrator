@@ -38,7 +38,7 @@ const git = (repo: string, ...args: string[]): string =>
   });
 
 const CONFIG = {
-  version: 1,
+  protocolVersion: 1,
   mail: { branch: "comms", dir: "agent-comms" },
   orchestrator: { state: ".orchestrator", mailCheckout: "mailco", ref: "HEAD" },
   roles: [

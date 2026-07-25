@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { loadProtocolConfig } from "./load.js";
 
 const CONFIG = {
-  version: 1,
+  protocolVersion: 1,
   mail: { branch: "comms", dir: "agent-comms" },
   roles: [
     { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "PM" },
@@ -104,7 +104,7 @@ describe("loadProtocolConfig", () => {
     commit("malformed json");
     expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(/not JSON/);
 
-    writeFileSync(path, JSON.stringify({ version: 1, roles: CONFIG.roles }));
+    writeFileSync(path, JSON.stringify({ protocolVersion: 1, roles: CONFIG.roles }));
     commit("no mail section");
     expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(/mail/);
   });
@@ -113,6 +113,40 @@ describe("loadProtocolConfig", () => {
     const { repo } = repoWithConfig();
 
     expect(() => loadProtocolConfig({ repo, ref: "no-such-ref", fetch: false })).toThrow();
+  });
+});
+
+describe("the protocol version gate", () => {
+  const commitConfig = (repo: string, path: string, config: unknown): void => {
+    writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+    execFileSync(
+      "git",
+      ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-qam", "config"],
+      { encoding: "utf8" },
+    );
+  };
+
+  it("stops the circuit when the repository is at another version than the package", () => {
+    // Deliberately a HALT and not a warning: reading data of one shape with the
+    // rules of another is the class of quiet defect this package is written for.
+    const { repo, path } = repoWithConfig();
+    commitConfig(repo, path, { ...CONFIG, protocolVersion: 99 });
+
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(
+      /protocol version 99/,
+    );
+  });
+
+  it("meets a config that predates versioning with the exact repair", () => {
+    // The field was RENAMED, not removed, and a strict-object complaint about an
+    // unknown 'version' is true and useless.
+    const { repo, path } = repoWithConfig();
+    const { protocolVersion: _dropped, ...withoutVersion } = CONFIG;
+    commitConfig(repo, path, { version: 1, ...withoutVersion });
+
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(
+      /rename it to 'protocolVersion'/,
+    );
   });
 });
 

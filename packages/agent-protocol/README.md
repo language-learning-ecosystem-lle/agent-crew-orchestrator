@@ -104,6 +104,104 @@ loud: the lesson of the P0 spike — a command that silently depends on the
 environment produces a result indistinguishable from a defect in the thing under
 test.
 
+## Compatibility and breaking changes (R2)
+
+The protocol keeps its data as files in a live repository, so a change of shape has
+to reach data somebody has already written. **One number covers the whole shape** —
+the config, the thread layout, the message header, the journal event:
+
+- the repository declares which shape its data is at — `protocolVersion` in
+  `agent-protocol.json`;
+- the package declares which shape it writes — `CURRENT_PROTOCOL_VERSION`
+  (`src/schema/version.ts`).
+
+The two live in different places on purpose: only the repository knows about its
+data, only the package knows about its code, and a mismatch between them is exactly
+what is worth catching. It is caught **on the reading path**: `loadProtocolConfig`
+compares the numbers and stops the circuit, naming the repair — a repository behind
+the package is migrated, a package behind the repository is updated, **and a
+downgrade is never performed** (the older shape cannot re-derive what the newer one
+wrote). The consequence is deliberate: once the numbers diverge, every command
+refuses, and the only one still working is `schema migrate` — it reads the raw file
+rather than going through that door.
+
+| version | shape |
+| ------- | ----- |
+| 1 | the initial one: `_meta.md` + `messages/` with `from`/`date`/`expects`/`waiting-on`, the config with `roles`/`mail`/`orchestrator`, the journal of `lease-*`/`launch`/`stop` events |
+
+```
+agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
+```
+
+**This is the one command with no `--ref`, and it prints the file it read every
+time.** All the others read the config at an explicit point in history, because an
+edit in one's own feature branch must not look effective to the circuit. This one
+is the reverse case: it exists to PRODUCE an edit of the working tree, and planning
+against a different version of the file than the one it is about to overwrite would
+mean writing a result that is not a function of its input. On top of that, the
+version has to be readable before validation — a config one version behind is a
+config the current schema may legitimately reject, and going through the loader
+would turn "run the migration" into "invalid config".
+
+**What counts as a breaking change here.** The schemas are strict by design, so the
+bar is lower than usual:
+
+- **the config** — any field added, renamed or removed. `strictObject` rejects
+  unknown fields (a typo must not become a silent default), which means an old
+  package refuses a new config and a new package refuses an old one. Both
+  directions, always;
+- **the message header** — an added field breaks nothing loudly, and that is worse.
+  Unknown keys are tolerated on read but DROPPED on render, so two versions disagree
+  about the derived `_thread.md`: each `derive` run rewrites what the other one
+  wrote. A silent rewrite war on an append-only feed;
+- **the file name of a message** — it is the identity of the message, not a display;
+- **the layout of a thread directory**, the journal event kinds and their fields,
+  the format of the hold and flag files.
+
+Not breaking: prose, help texts, a new command, a new optional flag, a new
+_optional_ config field the old package would nevertheless reject — that last one is
+the point of the list, it looks additive and is not.
+
+**What a PR that introduces one must attach.** All four, in the same PR:
+
+1. a migration step registered for `from` = the previous version, with a test on
+   REAL data (a fixture taken from the threads of this repository, not a synthetic
+   one — the live feed is where every surprise of the previous migration came from);
+2. the bump of both numbers — `CURRENT_PROTOCOL_VERSION` and `protocolVersion` in
+   the config. They are one statement ("the package writes this shape and the
+   repository is at it") and splitting them across PRs means a window where the
+   circuit refuses to start;
+3. a row in the table above;
+4. the landing order below, carried out and reported in the thread of the package.
+
+**The landing order — expand, migrate, contract.** The mail lives in one branch and
+the config in another, so a breaking change lands in at least two commits, and
+between them the circuit has to keep running:
+
+1. **expand** — teach the READER to accept both shapes and merge that first;
+2. **migrate** — run `schema migrate --write` and commit the data (the mail goes
+   straight into its branch, as all mail does);
+3. **contract** — merge the PR that bumps both numbers and starts WRITING the new
+   shape.
+
+`schema migrate` writes files and does NOT commit them: which commit goes to which
+branch is a decision of the protocol, not of the runner. The plan prints absolute
+paths, so the split between the two trees is visible before anything happens.
+
+**A step that rewrites already-committed messages must carry its own guard.** The
+feed is append-only without exceptions (john's rule, 2026-07-22), and a migration is
+the only admissible rewrite of it — admissible for exactly one reason, provability.
+The precedent is the thread migration: it is accepted only if gluing the result back
+together reproduces the original byte for byte, and refused otherwise. A step that
+touches somebody's committed message and cannot state a comparable proof is not a
+migration but an edit.
+
+**The thread migration (`migrate`) is deliberately outside this chain.** It moves
+ONE directory from `_thread.md` into `messages/`, thread by thread, and both forms
+are read at the same time — the gradualness is the design (009 and 010 move when
+their fronts wake up). A versioned migration is the opposite: repository-wide and in
+one go. One number over per-thread progress would have to lie about one of them.
+
 ## A thread as message files (P2)
 
 ```
@@ -180,6 +278,8 @@ binary name.
 ```
 agent-protocol config check --ref <ref> [--repo <p>]                       # the config is intact
 agent-protocol roles list   --ref <ref>                                    # the list of roles
+agent-protocol schema migrate [--repo <p>] [--root <comms>] [--to <n>] [--write]   # protocol version → version
+                                                                           # (no --ref: it plans against the tree it rewrites)
 agent-protocol role exists  --ref <ref> --role <id>                        # is the role known?
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
 agent-protocol index build  --root <comms> --ref <ref> [--write]
