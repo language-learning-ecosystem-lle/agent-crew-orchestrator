@@ -113,7 +113,13 @@ export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): Obse
 export const stepEvent = (
   step: Exclude<ObserveStep, null>,
   base: { readonly ts: string; readonly role: string; readonly thread: string },
-  detail?: { readonly exitCode?: number | null; readonly output?: string },
+  detail?: {
+    readonly exitCode?: number | null;
+    readonly output?: string;
+    /** The id of the session that ran and how much it burned (R18) — what a resume needs. */
+    readonly session?: string | undefined;
+    readonly steps?: number;
+  },
 ): OrchestratorEvent =>
   step.record === "handoff-detected"
     ? { kind: "handoff-detected", ...base }
@@ -125,4 +131,6 @@ export const stepEvent = (
           ? {}
           : { exitCode: detail.exitCode }),
         ...(detail?.output === undefined ? {} : { output: detail.output }),
+        ...(detail?.session === undefined ? {} : { session: detail.session }),
+        ...(detail?.steps === undefined ? {} : { steps: detail.steps }),
       };

@@ -115,6 +115,54 @@ describe("renderEventLine / parseEventLine", () => {
   });
 });
 
+describe("the continuation fields (R18)", () => {
+  const base = { ts: "2026-07-24T13:00:00Z", role: "dev-core", thread: "016-x" };
+
+  it("a launch carries the mode, the resumed session and the world — round-trip", () => {
+    const event: OrchestratorEvent = {
+      kind: "launch",
+      ...base,
+      mode: "resume",
+      resumes: "8f3a2b1c",
+      world: { thread: "7472b754", base: "7923ada0" },
+    };
+
+    expect(parseEventLine(renderEventLine(event))).toEqual(event);
+  });
+
+  it("a release carries the session id and the steps burned — round-trip", () => {
+    const event: OrchestratorEvent = {
+      kind: "lease-released",
+      ...base,
+      reason: "stalled",
+      session: "8f3a2b1c",
+      steps: 41,
+    };
+
+    expect(parseEventLine(renderEventLine(event))).toEqual(event);
+  });
+
+  it("A JOURNAL WRITTEN BEFORE R18 STILL PARSES — the fields are optional", () => {
+    // The whole reason no journal is rewritten by the migration: those runs simply
+    // carry no world, and the policy reads that as "start fresh".
+    const old = JSON.stringify({ kind: "launch", ...base });
+
+    expect(parseEventLine(old)).toEqual({ kind: "launch", ...base });
+  });
+
+  it("a half-written world does not parse: an id nobody can compare is worse than none", () => {
+    const line = JSON.stringify({ kind: "launch", ...base, world: { thread: "abc" } });
+
+    expect(() => parseEventLine(line)).toThrow();
+  });
+
+  it("a mode outside fresh/resume is rejected", () => {
+    const line = JSON.stringify({ kind: "launch", ...base, mode: "continue" });
+
+    expect(() => parseEventLine(line)).toThrow();
+  });
+});
+
 describe("parseJournal", () => {
   it("reads events in line order, skipping empty lines", () => {
     const released: OrchestratorEvent = {

@@ -78,15 +78,27 @@ export const orchestratorSchema = z.strictObject({
    */
   env: z.record(z.string().min(1), z.string()).optional(),
   /**
-   * EXPECTED STATE OF THE WORKING REPOSITORY the launched session lands in.
-   * Found by a launched session itself (acceptance 2026-07-25): it inherits the
-   * working directory as is and may start work from an arbitrary foreign branch —
-   * and, unlike stale mail, the mismatch is not visible from the outside.
+   * WHERE A RAISED SESSION WORKS, AND FROM WHICH POINT IN HISTORY.
    *
-   * Preflight will ALWAYS show the state (the fact is free), but REFUSAL is
-   * opt-in: "the right branch" is knowledge of the project, not of the package.
+   * `branch` began (before R17) as the EXPECTED branch of the checkout a session
+   * inherited — the mismatch found by a launched session itself during the
+   * 2026-07-25 acceptance, invisible from the outside. With `worktrees` declared it
+   * means something better: the BASE a role's workspace is put at before every fresh
+   * package. Same sentence, moved from a complaint to an instruction.
+   *
+   * `worktrees` is the directory the per-role worktrees live in, relative to the
+   * repository root; a role's workspace is `<worktrees>/<role id>` (R17). It is
+   * optional, and its absence is the pre-R17 behaviour verbatim: the session inherits
+   * the operator's checkout and `branch` is compared against it. The package cannot
+   * invent the directory — it would be creating git worktrees at a path nobody in the
+   * project chose.
    */
-  workdir: z.strictObject({ branch: z.string().min(1) }).optional(),
+  workdir: z
+    .strictObject({
+      branch: z.string().min(1),
+      worktrees: z.string().min(1).optional(),
+    })
+    .optional(),
 });
 
 /**

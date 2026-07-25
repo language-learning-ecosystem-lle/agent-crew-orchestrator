@@ -49,6 +49,7 @@ import { MESSAGE_PROVENANCE_STEP } from "./v2-provenance.js";
 import { LAUNCH_LIMITS_STEP } from "./v3-launch-limits.js";
 import { AGENT_PARAMS_STEP } from "./v4-agent-params.js";
 import { NOTIFICATIONS_STEP } from "./v5-notifications.js";
+import { WORKSPACES_STEP } from "./v6-workspaces.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -60,6 +61,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   LAUNCH_LIMITS_STEP,
   AGENT_PARAMS_STEP,
   NOTIFICATIONS_STEP,
+  WORKSPACES_STEP,
 ];
 
 export type {

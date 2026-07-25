@@ -101,6 +101,32 @@ const base = {
 };
 
 /**
+ * THE STATE OF THE WORLD A RUN STARTED FROM (R18, thread 016) — two object ids, and
+ * they are what john's second condition for a resume is checked against: a session
+ * may only be continued while the world it was reasoning about has not moved.
+ *
+ * `thread` is the TREE of the thread directory, not the head of the mail branch: a
+ * message written in some other conversation moves the branch and changes nothing
+ * about this run. `base` is the commit the workspace's base branch resolves to — a
+ * merge into `main` while the session was down means its work is now on top of
+ * something that no longer exists, and continuing would be reasoning from a stale
+ * premise.
+ *
+ * Recorded at LAUNCH, because that is the moment the session saw them; compared at
+ * the next launch, which is the moment the decision is taken. Optional, so journals
+ * written before R18 still parse: their runs simply cannot be resumed, which is the
+ * correct answer for a run whose world nobody wrote down.
+ */
+export const worldSchema = z.object({
+  /** `git rev-parse HEAD:<mail dir>/<thread>` in the mail checkout — the thread's tree. */
+  thread: z.string().min(1),
+  /** The commit the base branch of the role's workspace pointed at. */
+  base: z.string().min(1),
+});
+
+export type World = z.infer<typeof worldSchema>;
+
+/**
  * A journal event — a discriminated union on `kind`. Which fields are required is
  * set by the kind of event rather than checked by hand: a `lease-acquired` without
  * a `deadline` or a `lease-released` without a `reason` will not parse at all.
@@ -115,7 +141,19 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     deadline: base.ts,
   }),
   // The role's session has been launched as a process (populated from S1 on).
-  z.object({ kind: z.literal("launch"), ...base }),
+  // Since R18 the event also says HOW it was launched and WHAT IT SAW: `mode` is
+  // fresh/resume, `resumes` names the session being continued, and `world` pins the
+  // two object ids the decision for the NEXT run is taken against. All three are
+  // optional — a journal written before R18 parses unchanged, and its runs are simply
+  // never resumed, which is the only honest answer for a run whose world was never
+  // recorded.
+  z.object({
+    kind: z.literal("launch"),
+    ...base,
+    mode: z.enum(["fresh", "resume"]).optional(),
+    resumes: z.string().min(1).optional(),
+    world: worldSchema.optional(),
+  }),
   // The turn left the role — the completion signal (populated from S2 on). Lease → draining.
   z.object({ kind: z.literal("handoff-detected"), ...base }),
   // The lease is released — ALWAYS with a reason (with a trace). `exitCode` and
@@ -125,12 +163,20 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
   // terminal. The exit code and the path to the saved session output make the
   // investigation possible without a witness. The fields are optional: a manual
   // `record` does not set them, and old journals still parse.
+  // `session` and `steps` are the two facts R18 needs from a run that broke off, and
+  // they are written here because this is the last event a broken run produces: the
+  // id to hand to `--resume`, and how much of the run had been burned before the
+  // break (assistant steps seen in the stream — see `stepsSeen` in the transcript).
+  // Both optional: a run whose id never arrived, and every journal line older than
+  // R18, still parse and are simply never resumed.
   z.object({
     kind: z.literal("lease-released"),
     ...base,
     reason: z.enum(RELEASE_REASONS),
     exitCode: z.number().int().optional(),
     output: z.string().min(1).optional(),
+    session: z.string().min(1).optional(),
+    steps: z.number().int().min(0).optional(),
   }),
   // The session was stopped forcibly (S4). `by`/`note` are the "who" and the
   // "why", and together with `ts` (the "when") they make the force trace in the

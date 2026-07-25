@@ -5,7 +5,13 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { renderStreamLine, sessionIdOf, splitStreamChunk, stampLine } from "./transcript.js";
+import {
+  isAssistantStep,
+  renderStreamLine,
+  sessionIdOf,
+  splitStreamChunk,
+  stampLine,
+} from "./transcript.js";
 
 describe("rendering the stream of a session", () => {
   it("the init line carries the SESSION ID — the identity an analysis starts from", () => {
@@ -151,5 +157,23 @@ describe("sessionIdOf", () => {
     expect(sessionIdOf(JSON.stringify({ type: "system", subtype: "init" }))).toBeUndefined();
     expect(sessionIdOf("not json at all")).toBeUndefined();
     expect(sessionIdOf("")).toBeUndefined();
+  });
+});
+
+describe("counting how much of a run was burned (R18)", () => {
+  it("an assistant message is one step; a tool result and the system lines are not", () => {
+    expect(isAssistantStep(JSON.stringify({ type: "assistant", message: { content: "hi" } }))).toBe(
+      true,
+    );
+    expect(isAssistantStep(JSON.stringify({ type: "user", message: { content: [] } }))).toBe(false);
+    expect(isAssistantStep(JSON.stringify({ type: "system", subtype: "init" }))).toBe(false);
+    expect(isAssistantStep(JSON.stringify({ type: "result", num_turns: 152 }))).toBe(false);
+  });
+
+  it("a line that is not the stream format at all counts as nothing", () => {
+    // A launcher's complaint or a crash dump is not a step of the session, and
+    // counting it would inflate the very number the resume guard is judged on.
+    expect(isAssistantStep("Reached max turns (60)")).toBe(false);
+    expect(isAssistantStep("")).toBe(false);
   });
 });

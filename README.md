@@ -561,13 +561,16 @@ agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
                             [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] \
-                            [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--now <iso>] [--write] [-d|--detach]
+                            [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--now <iso>] \
+                            [--fresh] [--write] [-d|--detach]
                             # attached by default (you watch what you raised); -d backgrounds the supervisor properly
                             # the three ceilings: the flag beats roles[].launch.limits, which beats the package default
                             # the tool, its binary and its parameters: see "The machine config" above
+                            # the role works in its OWN worktree (orchestrator.workdir.worktrees), put back at the base
+                            # per fresh package; --fresh forbids resuming the previous session (S11, S12)
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] \
-                            [--local-config <p>] [--once]
+                            [--local-config <p>] [--fresh] [--once]
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
 agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
@@ -1015,12 +1018,15 @@ not forget" item.
   "ought to be". The check is soft: the package does not know which version is right
   for a foreign project, its job is to show the fact.
 
-- **The working repository the session lands in** is always shown (the branch, the
-  cleanliness), because the fact is free while "the session started working from
-  the wrong branch" is not visible from the outside AT ALL: unlike stale mail, there
-  is nothing for it to diverge from. The refusal is opt-in through
-  `orchestrator.workdir.branch`: which branch is "right" is knowledge of the
-  project, not of the package.
+- **Where the sessions will work.** With `orchestrator.workdir.worktrees` declared
+  (R17, S11) each launchable role's own worktree is reported — where it is, at which
+  commit, whether it is clean — and the operator's checkout is printed as a fact that
+  is compared with nothing: comparing it would resurrect the very refusal R17 removes.
+  Those lines never `fail`, because a workspace belongs to ONE role while preflight
+  stops the whole circuit; the refusal happens in that role's launch instead. Without
+  `worktrees` the pre-R17 line stands: the inherited checkout is shown always (the
+  fact is free, while "the session started from the wrong branch" is not visible from
+  the outside AT ALL), and the refusal is opt-in through `orchestrator.workdir.branch`.
 
 **A LINE THAT COMPARED NOTHING NO LONGER WEARS A TICK (R12).** A check has three
 outcomes, not two: `✓` is a passed COMPARISON, `·` is a fact nobody promised
@@ -1123,6 +1129,126 @@ calibrated for short packages killed a mechanically large one mid-work (`Reached
 turns (60)`). `--idle 0` switches the detector off. Per-role ceilings in the config
 are R12's question — the shape of that section is decided there, once, rather than
 twice.
+
+### S11 — the workspace of a role (R17)
+
+Until now a session worked wherever the daemon happened to be started: a spawned
+process inherits its parent's working directory, and **nobody had ever chosen one**.
+Three consequences, all observed rather than imagined — a package ended with the
+OPERATOR'S checkout on `agent-protocol/<something>` and the next preflight refused on
+`workdir.branch`; whatever the previous session left uncommitted was what the next one
+started from; and two roles could not run at once by construction, for a reason
+written down nowhere.
+
+**The orchestrator hands the role a workspace**: `<worktrees>/<role id>`, a git
+worktree of the same repository. The project says where those live
+(`orchestrator.workdir.worktrees`), the package says that one role gets one directory
+named after it. The operator's main checkout stops being anybody's workplace — which
+is also what makes it safe to keep using.
+
+```json
+"orchestrator": { "workdir": { "branch": "main", "worktrees": ".worktrees" } }
+```
+
+- **Detached at the base COMMIT, not "on the base branch".** Git refuses one branch in
+  two worktrees, and the base branch is normally checked out in the operator's own
+  tree. A detached head is the same starting point without the collision, and it is
+  honest about what a package start is: a point to branch from.
+- **The base is `origin/<branch>` when it exists**, the local branch only as a
+  fallback, and the ref used is printed beside every decision. A local `main` that
+  nobody pulled is exactly the stale premise the circuit exists to stop, and a session
+  will never notice it started from one.
+- **Before every FRESH package the workspace is put back at the base**; a clean tree
+  on the previous package's branch is simply moved, and nothing is lost — that branch
+  still exists and still points where it did.
+- **A DIRTY workspace is a refusal and never a repair.** Uncommitted changes are the
+  work of a session that broke off mid-edit, and `checkout --detach` over them would
+  destroy exactly the material needed to understand the break. The same rule the mail
+  checkout has followed since S8: we do not repair at somebody else's expense.
+- **The refusal belongs to ONE role, not to the circuit.** In the daemon it is a loud
+  line on every tick and that role stands still while the others keep going — the same
+  treatment a hold gets, and for the same reason: it lasts until a human looks at the
+  tree, and a journal entry per tick would drown the record of the runs. In the manual
+  `run` it is an exit code on the terminal of whoever typed it.
+- **`workdir.worktrees` is optional and its absence is the old behaviour verbatim**:
+  the session inherits the checkout, and `workdir.branch` is compared against it. The
+  package will not invent a directory for git worktrees inside somebody else's
+  repository.
+- **The workspace is LOCKED from before the tree is touched until the lease is
+  released** (`git worktree lock`, john's requirements of 2026-07-25, 21:10 and 22:20).
+  Two failures, one lock:
+  - *cleanup under a live session* — `prune`/`remove` refuse a locked worktree; this
+    part git enforces;
+  - *a second mutator* — a manual `run` racing the daemon, a second thread of the same
+    role, a human moving the tree. Git does not stop another process from writing into
+    a locked tree; **the package refuses to start a run in a workspace somebody else
+    locked**, exactly as it refuses a dirty one. The lease guards the pair
+    (role, thread); the lock guards the TREE, which they share.
+
+  The reason text names the pair, the supervisor's pid and the moment — so a lock left
+  behind by a killed run is identifiable rather than merely mysterious, and
+  `orchestrator status` says which of the two it is holding ("locked by a live run" vs
+  "the process that locked it is gone"). **Nothing clears a stale lock automatically:**
+  `git worktree unlock` is a human gesture, as with an expired hold. A SIGKILL leaving
+  the lock behind is the chosen direction — a stale lock costs one command, the
+  opposite failure costs a live session its working tree.
+
+  The background mode (`--detach`) settles the workspace in the CHILD, not in the
+  parent: the parent plans in report-only mode and prints it, the child prepares the
+  tree and holds the lock. Preparing it twice would mean the child refusing itself over
+  its own parent's lock.
+- **What the package does NOT do in a new workspace: install anything.** A fresh
+  worktree has no `node_modules`, and toolchain management has never been handed to
+  the package (S8). The project runs its own install there, once.
+
+### S12 — continuing a session instead of starting one (R18)
+
+The tool has been able to do it all along (`claude --resume <session id>`), and since
+R7 everything needed to ask for it is written down. What was missing was the RULE — a
+resume is not "cheaper", it is a different run, one that carries a session's reasoning
+into a world that may have changed underneath it.
+
+**Fresh is always correct; resume is correct only under conditions.** So the default is
+an automatic resume behind a guard, and every branch that cannot prove the conditions
+falls back to fresh:
+
+1. **The break was external, not exhaustion.** `supervisor-gone` (the observer died —
+   a lid, a SIGTERM, a machine going down) and `stalled` (no traces at all: hung IO, a
+   network that went away) say nothing about the session's own reasoning being stuck.
+   `timeout`, a run that walked into `--max-turns`, and a forced stop say exactly that,
+   or were somebody's decision.
+2. **The world has not moved** (john named this one as obligatory): the tree of the
+   thread directory and the base commit are compared against the two ids the previous
+   launch recorded. A message that arrived while the session was down, or a merge into
+   `main`, means the premise it was reasoning from is gone — and unlike a human, a
+   resumed session will not notice, because it does not re-read what it has read.
+3. **The previous run was young** — under `YOUNG_RUN_STEPS` (80) assistant steps of its
+   stream. The number comes from this repository's own journal: the six real packages
+   of 2026-07-25 took 183–302 steps, while the orientation phase of a run costs about
+   58. Below the ceiling the work worth saving exists and the context is still small;
+   above it, a resume brings back the very context that got tight.
+
+`--fresh` is the explicit handle, and **every decision is printed with its reason** —
+`resume <id>: the world has not moved and the break was external ('stalled', 12
+steps)` / `fresh: the base branch has moved on since the previous run`. A policy that
+decides how somebody else's money is spent may not be silent.
+
+- **The journal is what the decision is taken from**: `launch` carries `mode`,
+  `resumes` and `world`; `lease-released` carries the `session` id and the `steps`
+  burned. All optional — a journal written before R18 parses unchanged, and its runs
+  are simply never resumed, which is the only honest answer for a run whose world
+  nobody wrote down.
+- **`steps` is not the vendor's `num_turns`**, and is named differently on purpose:
+  `num_turns` exists only in the `result` event, which a run emits when it FINISHES —
+  precisely the runs that are never candidates for a resume. The supervisor counts the
+  assistant messages it is already reading.
+- **The continuation decides the workspace, not the other way round.** A resume must
+  find the tree exactly as its session left it, half-finished edits and all; a fresh
+  package must start at the base. That coupling is why R17 and R18 are one contract:
+  "where and with what a role wakes up".
+- **A stable workspace is what makes a resume findable at all**: the tool keeps its
+  conversations per working directory, so a role that works in a different directory
+  every time has nothing to resume.
 
 ## `spike/` — P0
 

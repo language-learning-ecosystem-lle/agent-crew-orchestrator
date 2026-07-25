@@ -183,6 +183,33 @@ export const sessionIdOf = (line: string): string | undefined => {
 };
 
 /**
+ * IS THIS LINE ONE STEP OF THE SESSION (R18) — how much of a run was burned before it
+ * broke, counted as the assistant messages its stream carried.
+ *
+ * WHY NOT THE VENDOR'S OWN `num_turns`. It exists only in the `result` event, which a
+ * run emits when it FINISHES — that is, precisely the runs that are never candidates
+ * for a resume. A broken run leaves no result line at all, so the only count that
+ * exists for it is the one the supervisor keeps while reading the stream anyway.
+ *
+ * The unit therefore differs from the vendor's and is named differently on purpose
+ * (`steps`, not `turns`): on this repository's own runs the two ran about 1.45 steps
+ * to a turn, and quietly calling one the other would make the ceiling in
+ * `continuation.ts` mean something other than what it was calibrated against.
+ */
+export const isAssistantStep = (line: string): boolean => {
+  const trimmed = line.trim();
+  if (trimmed === "") return false;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(trimmed);
+  } catch {
+    return false;
+  }
+  const parsed = streamEvent.safeParse(raw);
+  return parsed.success && parsed.data.type === "assistant";
+};
+
+/**
  * A chunk of the stream (arriving in arbitrary pieces) → complete lines plus the
  * unfinished tail. A separate function because the split is where a naive reader
  * loses data: a chunk boundary falls in the middle of a JSON line far more often
