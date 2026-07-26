@@ -484,9 +484,17 @@ export const buildLaunchPrompt = (input: {
  * The card is already in that session's context: that is the whole meaning of a
  * resume, and re-sending it would pay the tokens twice for the one thing continuing
  * was supposed to save. What the session cannot know by itself is the only thing said
- * here — that it was interrupted from outside, that the world it was reasoning about
- * has not moved (the guard in `continuation.ts` has just verified exactly that), and
- * that the finish line is unchanged.
+ * here — that it was interrupted from outside, what has and has not moved underneath
+ * it, and that the finish line is unchanged.
+ *
+ * THE THREAD MAY HAVE MOVED, AND THE PROMPT SAYS SO. Under john's narrowed rule
+ * (2026-07-25) an answer arriving while the session was down does NOT block a resume —
+ * it is the input the session was waiting for. Which means a resumed session can no
+ * longer be told "nothing has moved" (the first version of this prompt said exactly
+ * that, correctly for the rule it shipped with): it must go and read the tail of the
+ * thread, or it will carry on past the very message it was raised to act on. What the
+ * guard in `continuation.ts` HAS verified is narrower and is what is stated: nobody
+ * wrote in its place, and its base has not moved.
  *
  * The last sentence is a repetition of the fresh prompt's, deliberately: the
  * completion signal is the turn being passed on THIS thread, and a continued session
@@ -500,7 +508,7 @@ export const buildResumePrompt = (input: {
   [
     `Your previous session on thread \`${input.thread}\` was interrupted from the outside (${input.reason}) — this is that same session, resumed.`,
     "",
-    "Nothing has moved since: the thread and the base branch are at the same commits you saw. Carry on from where you stopped — do not start the work again, and do not take on the rest of your mail.",
+    "Your working directory is exactly as you left it, your base branch has not moved, and nobody has written in your place. THE THREAD MAY HAVE MOVED: read its tail before you carry on — a reply may have arrived while you were down, and acting on it is the work. Then carry on from where you stopped — do not start the work again, and do not take on the rest of your mail.",
     "",
     "The run is over once the reply is written at the end of the thread (`cli new-message`) and the turn is passed on.",
   ].join("\n");

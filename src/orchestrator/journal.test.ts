@@ -124,10 +124,36 @@ describe("the continuation fields (R18)", () => {
       ...base,
       mode: "resume",
       resumes: "8f3a2b1c",
-      world: { thread: "7472b754", base: "7923ada0" },
+      world: { base: "7923ada0", mine: "2026-07-24T12-00-00Z-dev-core.md" },
     };
 
     expect(parseEventLine(renderEventLine(event))).toEqual(event);
+  });
+
+  it("a role that had not spoken yet records an EMPTY mark, and it survives the round-trip", () => {
+    // `""` is a fact ("it had written nothing here"), and it has to be told apart from
+    // an absent mark ("nobody wrote down what it had said") — the second is never
+    // resumed, the first is resumable.
+    const event: OrchestratorEvent = {
+      kind: "launch",
+      ...base,
+      mode: "fresh",
+      world: { base: "7923ada0", mine: "" },
+    };
+
+    expect(parseEventLine(renderEventLine(event))).toEqual(event);
+  });
+
+  it("a world written by the FIRST version of R18 still parses — the tree id is simply dropped", () => {
+    // Journals are never rewritten. Those runs have no mark, and the policy reads that
+    // as "start fresh" rather than as a resumable world.
+    const old = JSON.stringify({
+      kind: "launch",
+      ...base,
+      world: { thread: "7472b754", base: "7923ada0" },
+    });
+
+    expect(parseEventLine(old)).toEqual({ kind: "launch", ...base, world: { base: "7923ada0" } });
   });
 
   it("a release carries the session id and the steps burned — round-trip", () => {
