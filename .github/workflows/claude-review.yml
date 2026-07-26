@@ -144,7 +144,7 @@ jobs:
                         --root "$GITHUB_WORKSPACE/.comms-mail/agent-comms" --repo . --ref origin/main \
                         --thread "$SLUG" --from reviewer-pr --expects answer --waiting-on "$WAIT" \
                         --worker gh-action \
-                        --body-file "$GITHUB_WORKSPACE/verdict.md" --write) \
+                        --body-file "$GITHUB_WORKSPACE/verdict.md" --write --no-push) \
                        || { echo "::error::new-message не записал вердикт"; exit 1; }
                    else
                      # legacy (нет messages/) — ИСПОЛНЯЕМО дописать секцию в конец _thread.md:

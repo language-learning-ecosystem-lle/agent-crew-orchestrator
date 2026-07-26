@@ -150,7 +150,7 @@ jobs:
                     --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
                     --thread "$THREAD" --from github --expects none ${WAIT_ARGS} \
                     --worker gh-action \
-                    --body-file "$BODY_TMP" --write); then
+                    --body-file "$BODY_TMP" --write --no-push); then
                 echo "::error::new-message отказал для мигрированного треда ${THREAD} — уведомление НЕ записано."
                 exit 1
               fi
