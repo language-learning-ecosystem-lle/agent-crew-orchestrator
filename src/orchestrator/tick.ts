@@ -20,16 +20,47 @@
  * out of the candidates, otherwise the daemon would raise a second session of the
  * same role on top of the working one (curator's statement of work, 20:25). The
  * mechanics of a hold are in `hold.ts`.
+ *
+ * NOTHING DROPS OUT SILENTLY (curator's defect report, 2026-07-26, requirement 1).
+ * Every candidate the tick refuses to raise comes back in `skipped` with its reason,
+ * and the daemon says each one out loud. Before that, a candidate filtered out here
+ * produced a bare `idle`, so a daemon whose only role was `exhausted` printed its
+ * banner and exited without a word — from the outside indistinguishable from "no
+ * mail". A silent non-start is the same class of failure as a silent death, only at
+ * the entrance.
  */
 
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
-import { consecutiveLaunchesWithoutCompletion, MAX_CONSECUTIVE_RUNS } from "./launch.js";
-import { foldLeases } from "./lease.js";
+import {
+  type Ceiling,
+  consecutiveLaunchesWithoutCompletion,
+  MAX_CONSECUTIVE_RUNS,
+} from "./launch.js";
+import { foldLeases, type LeaseView } from "./lease.js";
 
 /** A "role awaited on a thread" pair — a launch candidate (from `threadsWaitingOn`). */
 export type Candidate = { readonly role: string; readonly thread: string };
 
-export type TickDecision =
+/**
+ * Why a candidate was not raised on this tick. Three reasons, and they call for
+ * three different things from a human: `held` — wait for the manual session to end;
+ * `active` — nothing, the pair is being worked on right now; `exhausted` — look at
+ * the journal, the pair has been failing without delivering.
+ */
+export type SkipReason = "held" | "active" | "exhausted";
+
+export type TickSkip = {
+  readonly role: string;
+  readonly thread: string;
+  readonly reason: SkipReason;
+  /** Failed attempts since the pair's last delivery — only meaningful for `exhausted`. */
+  readonly attempt: number;
+};
+
+/** Everything the tick refused to raise, whatever it decided to do instead. */
+type Skipped = { readonly skipped: readonly TickSkip[] };
+
+export type TickDecisionKind =
   | { readonly kind: "halt" } // the stop flag — the emergency brake
   | { readonly kind: "disabled" } // switched off (no enable flag)
   | { readonly kind: "idle" } // nothing to launch
@@ -46,6 +77,8 @@ export type TickDecision =
       readonly reason: RefusalReason;
     };
 
+export type TickDecision = TickDecisionKind & Skipped;
+
 export const planTick = (input: {
   readonly enabled: boolean;
   readonly stopped: boolean;
@@ -53,6 +86,8 @@ export const planTick = (input: {
   readonly candidates: readonly Candidate[];
   readonly now: Date;
   readonly maxConsecutive?: number;
+  /** The per-pair attempt ceiling — an operator's flag since the 2026-07-26 defect. */
+  readonly maxAttempts?: number;
   /** Roles taken by manual sessions right now (S5, `heldRoles`). */
   readonly held?: readonly string[];
 }): TickDecision => {
@@ -61,36 +96,83 @@ export const planTick = (input: {
 
   // The brake and the switch-off come BEFORE any launch decision (requirements 2
   // and 3). Stop overrides enabled: an emergency stop does not argue with state.
-  if (input.stopped) return { kind: "halt" };
-  if (!input.enabled) return { kind: "disabled" };
+  // Neither looks at the candidates at all, so neither has anything to skip.
+  if (input.stopped) return { kind: "halt", skipped: [] };
+  if (!input.enabled) return { kind: "disabled", skipped: [] };
 
   // Roles taken by a human drop out ENTIRELY, not per pair: a hold holds the role,
   // not the thread — a manual dev-core session is busy with itself on any thread.
   // The other roles are launched as usual, hence a filter here rather than an exit.
-  const free = input.candidates.filter((candidate) => !held.includes(candidate.role));
-  const blocked = input.candidates.filter((candidate) => held.includes(candidate.role));
+  const views = foldLeases(input.events, input.now, input.maxAttempts);
+  const viewOf = (candidate: Candidate): LeaseView | undefined =>
+    views.find((v) => v.role === candidate.role && v.thread === candidate.thread);
 
-  // The first candidate that may be launched: the pair is neither active nor
-  // exhausted. (Exhaustion is already in the journal through its own releases — we
-  // do not spam a separate trace.)
-  const views = foldLeases(input.events, input.now);
-  const eligible = free.find((candidate) => {
-    const view = views.find((v) => v.role === candidate.role && v.thread === candidate.thread);
-    if (view && (view.state === "running" || view.state === "draining")) return false;
-    if (view?.exhausted) return false;
-    return true;
-  });
+  // ONE PASS over the candidates: every one of them either becomes THE eligible one
+  // or leaves a skip with its reason. Splitting "who is eligible" from "who was
+  // skipped and why" into two passes is how the reasons drifted from the decision in
+  // the first place.
+  const skipped: TickSkip[] = [];
+  let eligible: Candidate | undefined;
+  for (const candidate of input.candidates) {
+    const view = viewOf(candidate);
+    const attempt = view?.attempt ?? 0;
+    if (held.includes(candidate.role)) {
+      skipped.push({ ...candidate, reason: "held", attempt });
+      continue;
+    }
+    if (view && (view.state === "running" || view.state === "draining")) {
+      skipped.push({ ...candidate, reason: "active", attempt });
+      continue;
+    }
+    if (view?.exhausted) {
+      skipped.push({ ...candidate, reason: "exhausted", attempt });
+      continue;
+    }
+    // The FIRST suitable pair is launched and the rest of the tick is over — but the
+    // loop runs to the end anyway, so the pairs behind it are still accounted for
+    // rather than vanishing into "we stopped looking".
+    if (eligible === undefined) eligible = candidate;
+  }
+
   if (eligible === undefined) {
     // There is nothing to launch — but WHY depends on the holds: if there was work
     // and a human is holding it, the tick says so out loud.
-    const heldWithWork = [...new Set(blocked.map((candidate) => candidate.role))];
-    return heldWithWork.length === 0 ? { kind: "idle" } : { kind: "held", roles: heldWithWork };
+    const heldWithWork = [
+      ...new Set(skipped.filter((skip) => skip.reason === "held").map((skip) => skip.role)),
+    ];
+    return heldWithWork.length === 0
+      ? { kind: "idle", skipped }
+      : { kind: "held", roles: heldWithWork, skipped };
   }
 
   // The global ceiling — with a trace (requirement 1): used up → a refusal, not a
   // launch.
   if (consecutiveLaunchesWithoutCompletion(input.events) >= maxConsecutive) {
-    return { kind: "refused", role: eligible.role, thread: eligible.thread, reason: "run-budget" };
+    return {
+      kind: "refused",
+      role: eligible.role,
+      thread: eligible.thread,
+      reason: "run-budget",
+      skipped,
+    };
   }
-  return { kind: "launch", role: eligible.role, thread: eligible.thread };
+  return { kind: "launch", role: eligible.role, thread: eligible.thread, skipped };
+};
+
+/**
+ * A skip in one line, for the daemon's stream. The ceiling is passed WITH ITS SOURCE
+ * (R12): "exhausted, ceiling 3" leaves an operator guessing whether their
+ * `--max-attempts` arrived, which is precisely how `--max-runs` looked while it was
+ * being ignored.
+ */
+export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
+  const pair = `${skip.role}×${skip.thread}`;
+  switch (skip.reason) {
+    case "held":
+      return `candidate ${pair} skipped: held by a manual session of ${skip.role}`;
+    case "active":
+      return `candidate ${pair} skipped: the pair is running right now`;
+    case "exhausted":
+      return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal`;
+  }
 };

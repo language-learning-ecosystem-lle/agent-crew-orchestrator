@@ -11,12 +11,14 @@ import {
   DEFAULT_WORKER,
   describeAgent,
   describeCeilings,
+  describeGates,
   describeLaunch,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
   resolveAgentParams,
   resolveCeilings,
   resolveExec,
+  resolveGates,
   resolveWorker,
   roleLaunchability,
 } from "./launch.js";
@@ -210,6 +212,41 @@ describe("planLaunch", () => {
     });
   });
 
+  it("the attempt ceiling is calibrated by a parameter too — the manual run is not a special case", () => {
+    // The gate that dropped dev-core×016 was reachable by no flag at all. `run` and the
+    // daemon read the same resolution now, so an operator raising a pair by hand can
+    // say what ceiling they mean.
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      events.push(
+        {
+          kind: "lease-acquired",
+          ts: "2026-07-24T13:00:00Z",
+          role: "dev-core",
+          thread: "t",
+          deadline: "2026-07-24T13:30:00Z",
+        },
+        {
+          kind: "lease-released",
+          ts: "2026-07-24T13:31:00Z",
+          role: "dev-core",
+          thread: "t",
+          reason: "timeout",
+        },
+      );
+    }
+    expect(
+      planLaunch({
+        events,
+        role: "dev-core",
+        thread: "t",
+        now: NOW,
+        wallClockMs: 900_000,
+        maxAttempts: 5,
+      }).ok,
+    ).toBe(true);
+  });
+
   it("the global ceiling of runs without a completed → a run-budget refusal", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_CONSECUTIVE_RUNS; i += 1) events.push(launch("x", `t${i}`));
@@ -389,6 +426,36 @@ describe("resolveCeilings — the flag, then the role, then the default (R12)", 
     expect(describeCeilings(resolveCeilings({ flags: { idleSeconds: 0 }, defaults }))).toContain(
       "idle off (flag)",
     );
+  });
+});
+
+describe("resolveGates — the two launch gates and where their numbers came from", () => {
+  // The defect of 2026-07-26: `--max-runs 20` was passed at a pair that had been
+  // dropped by the OTHER gate, and nothing in the output could say so. Both gates are
+  // resolved in one place now, and both print their source.
+  const defaults = { maxAttempts: 3, maxRuns: 10 };
+
+  it("no flags → both come from the default", () => {
+    expect(resolveGates({ flags: {}, defaults })).toEqual({
+      maxAttempts: { value: 3, source: "default" },
+      maxConsecutive: { value: 10, source: "default" },
+    });
+  });
+
+  it("a flag overrides the default, per gate", () => {
+    const gates = resolveGates({ flags: { maxAttempts: 5 }, defaults });
+    expect(gates.maxAttempts).toEqual({ value: 5, source: "flag" });
+    expect(gates.maxConsecutive.source).toBe("default");
+  });
+
+  it("describeGates names both numbers and both sources", () => {
+    const line = describeGates(resolveGates({ flags: { maxRuns: 20 }, defaults }));
+    expect(line).toContain("attempts-per-pair ≤ 3 (default)");
+    expect(line).toContain("runs-without-completion ≤ 20 (flag)");
+  });
+
+  it("the package defaults are the fallback when none are given", () => {
+    expect(resolveGates({ flags: {} }).maxConsecutive.value).toBe(MAX_CONSECUTIVE_RUNS);
   });
 });
 

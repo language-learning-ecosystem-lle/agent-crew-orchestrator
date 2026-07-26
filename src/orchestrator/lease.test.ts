@@ -114,7 +114,7 @@ describe("foldLeases — gap 2: the attempt ceiling (exhausted / launchable)", (
     expect(v).toMatchObject({ launchable: false, exhausted: false });
   });
 
-  it("attempt grows with every taking; at the ceiling — exhausted, not launchable", () => {
+  it("attempt grows with every FAILED taking; at the ceiling — exhausted, not launchable", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
       events.push(acquire("dev-core", "t", PAST), release("dev-core", "t", "timeout"));
@@ -146,6 +146,75 @@ describe("foldLeases — gap 2: the attempt ceiling (exhausted / launchable)", (
       );
     }
     expect(only(events)).toMatchObject({ exhausted: true, launchable: false });
+  });
+});
+
+describe("foldLeases — the counter is consecutive, not cumulative", () => {
+  // The defect of 2026-07-26: dev-core×016 stood at `attempt 13` with eleven
+  // completions behind it and dropped out of the candidates for good. A ceiling that
+  // counts successes is not a protection, it is a bomb with a counter.
+  it("a completed run resets the count — failures BEFORE it do not accumulate", () => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(acquire("dev-core", "t", PAST), release("dev-core", "t", "timeout"));
+    }
+    events.push(acquire("dev-core", "t", FUTURE), release("dev-core", "t", "completed"));
+    events.push(acquire("dev-core", "t", PAST), release("dev-core", "t", "timeout"));
+    expect(only(events)).toMatchObject({ attempt: 1, exhausted: false, launchable: true });
+  });
+
+  it("a long-lived pair that keeps delivering never reaches the ceiling", () => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < 13; i += 1) {
+      events.push(
+        acquire("dev-core", "t", FUTURE),
+        handoff("dev-core", "t"),
+        release("dev-core", "t", "completed"),
+      );
+    }
+    events.push(acquire("dev-core", "t", PAST), release("dev-core", "t", "timeout"));
+    expect(only(events)).toMatchObject({ attempt: 1, exhausted: false, launchable: true });
+  });
+
+  it("failures WITHOUT a delivery still accumulate to the ceiling — the loop is caught", () => {
+    const events: OrchestratorEvent[] = [
+      acquire("dev-core", "t", FUTURE),
+      release("dev-core", "t", "completed"),
+    ];
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(acquire("dev-core", "t", PAST), release("dev-core", "t", "timeout"));
+    }
+    expect(only(events)).toMatchObject({ attempt: MAX_ATTEMPTS, exhausted: true });
+  });
+
+  it("a handoff resets it too: the turn was passed, whatever the supervisor managed to write", () => {
+    // supervisor-gone AFTER a handoff is a fault of the supervisor's, not of the run:
+    // the work arrived. Counting it as a failed attempt would walk a productive pair
+    // towards the ceiling for somebody else's death.
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(
+        acquire("dev-core", "t", PAST),
+        handoff("dev-core", "t"),
+        release("dev-core", "t", "supervisor-gone"),
+      );
+    }
+    expect(only(events)).toMatchObject({ attempt: 0, exhausted: false });
+  });
+
+  it("the ceiling is a parameter: the same journal, a different verdict", () => {
+    const events: OrchestratorEvent[] = [
+      acquire("dev-core", "t", PAST),
+      release("dev-core", "t", "timeout"),
+      acquire("dev-core", "t", PAST),
+      release("dev-core", "t", "timeout"),
+    ];
+    expect(foldLeases(events, NOW, 2)[0]).toMatchObject({ exhausted: true, ceiling: 2 });
+    expect(foldLeases(events, NOW, 5)[0]).toMatchObject({ exhausted: false, ceiling: 5 });
+  });
+
+  it("without a ceiling given, the package default is the one reported", () => {
+    expect(only([acquire("dev-core", "t", FUTURE)]).ceiling).toBe(MAX_ATTEMPTS);
   });
 });
 

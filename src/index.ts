@@ -93,6 +93,7 @@ export {
   DEFAULT_EXEC,
   DEFAULT_WORKER,
   describeAgent,
+  describeGates,
   type ExecSource,
   type InstructionDoc,
   type Launchability,
@@ -104,9 +105,11 @@ export {
   planLaunch,
   type Resolved,
   type ResolvedExec,
+  type ResolvedGates,
   type ResolvedWorker,
   resolveAgentParams,
   resolveExec,
+  resolveGates,
   resolveWorker,
   roleLaunchability,
   type WorkerSource,
@@ -127,7 +130,14 @@ export {
   renderSystemdUnit,
 } from "./orchestrator/reboot.js";
 export { renderStatus } from "./orchestrator/status.js";
-export { type Candidate, planTick, type TickDecision } from "./orchestrator/tick.js";
+export {
+  type Candidate,
+  describeSkip,
+  planTick,
+  type SkipReason,
+  type TickDecision,
+  type TickSkip,
+} from "./orchestrator/tick.js";
 export {
   createRoleRegistry,
   type NotificationTarget,

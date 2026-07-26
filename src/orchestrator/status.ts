@@ -10,7 +10,8 @@ import type { LeaseView } from "./lease.js";
 
 /** A mark on a problem state of the pair — what the operator must not miss. */
 const flag = (view: LeaseView): string => {
-  if (view.exhausted) return "  ⚠ EXHAUSTED — no more attempts, see the journal";
+  if (view.exhausted)
+    return "  ⚠ EXHAUSTED — no more attempts until the pair delivers again (a completed run or a handoff resets the count), see the journal";
   if (view.overdue) return "  ⚠ OVERDUE — the deadline has passed, the lease is still alive";
   return "";
 };
@@ -20,7 +21,9 @@ const line = (view: LeaseView): string => {
     view.role,
     view.thread,
     view.state,
-    `attempt ${view.attempt}`,
+    // The count AND what it is judged against: "attempt 13" left an operator to guess
+    // both the ceiling and whether their `--max-attempts` had arrived at all.
+    `attempt ${view.attempt}/${view.ceiling}`,
     view.deadline === null ? "deadline —" : `deadline ${view.deadline}`,
     view.reason === null ? "" : `(${view.reason})`,
   ]
