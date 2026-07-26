@@ -317,6 +317,7 @@ rather than going through that door.
 | 5 | + the texts and the delivery of notifications: `notifications` (a transport module with its options, the three notification templates) and `announcements` (the templates of what the package writes into a thread). NO data moves. The secrets FILE the machine config now points at is outside the number for the same reason the machine config itself is |
 | 6 | + the role workspace and the continuation policy (R17, R18): `orchestrator.workdir.worktrees` in the config, and on the journal `launch.mode`/`resumes`/`world` plus `lease-released.session`/`steps`. NO data moves — the journal is not backfilled, and a run recorded before this version is simply never resumed. *(The row was missed by the PR that shipped the version and is restored here.)* |
 | 7 | + the interactive turn (R19): `roles[].launch.limits.waitInputSeconds` in the config, and on the journal the `input-awaited`/`input-received` kinds. NO data moves, and the MAIL is untouched — a parked session's aliveness is a runtime file beside its log, not a field in a message header, so no thread needs migrating |
+| 8 | + the graceful deadline (R20): `roles[].launch.limits.windDownSeconds` in the config. NOTHING else on disk changes — the deadline reaches a session through the environment of its own process and through its prompt, and neither is stored; `timeout` keeps its name and changes its MEANING (a session that did not land), which is not a migration |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -566,17 +567,19 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
-                            [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] \
+                            [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] \
                             [--max-attempts <n>] \
                             [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--now <iso>] \
                             [--fresh] [--write] [-d|--detach]
                             # attached by default (you watch what you raised); -d backgrounds the supervisor properly
                             # the four ceilings: the flag beats roles[].launch.limits, which beats the package default
                             # --wait-input is the ceiling of a DECLARED wait (R19) and does not come out of the wall clock
+                            # --wind-down is the LANDING MARGIN (R20): how long before the deadline the session is asked to
+                            #   stop digging and commit; nothing fires at it — the default is 20% of the window (2–15 min)
                             # the tool, its binary and its parameters: see "The machine config" above
                             # the role works in its OWN worktree (orchestrator.workdir.worktrees), put back at the base
                             # per fresh package; --fresh forbids resuming the previous session (S11, S12)
-agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--poll <sec>] \
+agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] \
                             [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once]
                             # the two GATES: --max-attempts (failures of one pair since its last delivery)
@@ -1405,6 +1408,43 @@ cli await-input --root … --ref … --role dev-core --thread 016-x
   nothing unpushed. An unpushed question exists on one disk only, and the wait for it
   could end only in a ceiling an hour later — the likeliest deadlock of the whole
   mechanism, caught by one git command.
+
+### S14 — the graceful deadline: the session lands its own run (R20)
+
+Two "timeouts on the last mile" in two days (R1, R19): a session works productively to
+the last second and is cut off with a heap of uncommitted work, though minutes earlier
+it was already clear it should be landing. The wall clock stays — it is the backstop
+against a run that never converges and against an open cheque on the quota — but the
+NORMAL ending of a long run should be a session winding down, not a `SIGTERM`.
+
+- **The session is told its deadline.** `AGENT_PROTOCOL_LEASE_DEADLINE` (ISO) is set in
+  the child's environment at the spawn, and the same moment is stated in words in the
+  launch prompt. Until this existed a session had no channel to its own deadline at all
+  — the acceptance run of 012 found `--wall-clock` being read out of a leaked
+  `npm_lifecycle_script`, which is a coincidence, not a channel. A run that parks for
+  input gets time ADDED, so the value handed over is a floor: `await-input` says how
+  much the window moved when the answer comes back.
+- **The norm lives in the prompt, because no mechanism can land a run.** There is no
+  supervisor gesture that makes a session commit — a `SIGTERM` at the deadline is
+  exactly what produced the failure. Only the session knows what it is in the middle of.
+  So the prompt asks it, about the landing margin before the deadline, to stop digging,
+  **commit what it has AS IT IS** (a partial commit beats a perfect tree that dies with
+  the process), report in the thread what is done, what is not and what the next session
+  should pick up, and pass the turn.
+- **The margin is derived, not a constant.** `--wind-down`, a per-role
+  `launch.limits.windDownSeconds`, and by default **20% of the resolved window, between
+  2 and 15 minutes** — an hour lands on 12. A fixed quarter of an hour would be the
+  whole of a ten-minute probe; a share follows whatever window actually won, so
+  shortening a run with a flag shortens its landing with it.
+- **Landing is not parking** (and the two are deliberately kept apart): parking is a
+  PAUSE the same session continues, winding down is an ENDING with the turn passed on.
+  They are named separately in the prompt and are different states in the journal.
+- **What the wall clock means now.** It cuts off only those who ignored the norm, so
+  `timeout` stops being the routine ending of a long run and becomes the record of a
+  session that did NOT land — a reason to read the log rather than a statistic. The
+  supervisor says the landing point out loud when it passes (once per window, re-armed
+  if a park moves the deadline), so the log shows that the session was told, at which
+  minute, and kept digging.
 
 ## `spike/` — P0
 

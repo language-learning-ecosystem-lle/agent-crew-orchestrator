@@ -240,14 +240,15 @@ or --local-config <p>): the repository says WHAT is raised, the machine says WHE
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>] [--max-attempts <n>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--fresh] [--write] [-d|--detach]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
                               # ceilings: the flag wins over the role's launch.limits, which wins over the package default
                               # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
                               # the role works in its own worktree (orchestrator.workdir.worktrees), put at the base per package
                               # --fresh: never resume the previous session, whatever the continuation policy says
                               # --wait-input: the ceiling of a DECLARED wait for input (R19); waiting does not eat the wall clock
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+                              # --wind-down: how long before the deadline the session is asked to land its work (R20); default 20% of the window, 2-15 min
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
@@ -1132,6 +1133,12 @@ const awaitInput = async (argv: readonly string[]): Promise<void> => {
   out(
     `agent-protocol: waiting for input on ${threadId} (up to ${Math.round(timeoutMs / 1000)}s, polling every ${pollMs / 1000}s)`,
   );
+  // WHEN THE WAIT BEGAN, so that the session can be told what its window is worth
+  // afterwards (R20): the deadline it was handed at the spawn is a floor, and a park is
+  // the one thing that moves it. Measured HERE rather than read back from the journal —
+  // the session has no business reading the supervisor's state, and its own measurement
+  // errs on the safe side (it starts waiting before the supervisor notices).
+  const waitStartedMs = Date.now();
   for (;;) {
     const scan = loadThreads(root, registry.ids());
     const unreadable = scan.failures.some((failure) => failure.id === threadId);
@@ -1146,8 +1153,15 @@ const awaitInput = async (argv: readonly string[]): Promise<void> => {
       ).includes(threadId);
     if (awaited) {
       done();
+      const waitedSeconds = Math.round((Date.now() - waitStartedMs) / 1000);
       out(
         `agent-protocol: the answer arrived on ${threadId} — read the tail of the thread and carry on`,
+      );
+      // The other half of R20's floor: a run that parked for an hour is not due to land
+      // at the moment it was told at the spawn — the supervisor added that hour back to
+      // the window, and without this line the session would wind down an hour early.
+      out(
+        `agent-protocol: your window moved by about ${waitedSeconds}s — that is how long the wait took, and the work deadline was pushed back by it`,
       );
       return;
     }
@@ -2133,9 +2147,10 @@ const flagInt = (
 };
 
 /**
- * The four ceilings of a run: the flag, then the role's `launch.limits`, then the
- * package default (R12, plus the wait ceiling of R19). Resolved in ONE place for both
- * callers — the manual `run` and the daemon, which resolves per role inside its loop.
+ * The ceilings of a run: the flag, then the role's `launch.limits`, then the package
+ * default (R12, plus the wait ceiling of R19 and the landing margin of R20). Resolved
+ * in ONE place for both callers — the manual `run` and the daemon, which resolves per
+ * role inside its loop.
  */
 const ceilingsFrom = (argv: readonly string[], role: Role): ResolvedCeilings => {
   const flags: {
@@ -2143,15 +2158,18 @@ const ceilingsFrom = (argv: readonly string[], role: Role): ResolvedCeilings => 
     wallClockSeconds?: number;
     maxTurns?: number;
     waitInputSeconds?: number;
+    windDownSeconds?: number;
   } = {};
   const idle = flagInt(argv, "--idle", { allowZero: true });
   const wallClock = flagInt(argv, "--wall-clock");
   const maxTurns = flagInt(argv, "--max-turns");
   const waitInput = flagInt(argv, "--wait-input");
+  const windDown = flagInt(argv, "--wind-down");
   if (idle !== undefined) flags.idleSeconds = idle;
   if (wallClock !== undefined) flags.wallClockSeconds = wallClock;
   if (maxTurns !== undefined) flags.maxTurns = maxTurns;
   if (waitInput !== undefined) flags.waitInputSeconds = waitInput;
+  if (windDown !== undefined) flags.windDownSeconds = windDown;
   return resolveCeilings({
     flags,
     ...(role.launch?.limits === undefined ? {} : { limits: role.launch.limits }),
@@ -2179,17 +2197,6 @@ const appendEvent = (journalPath: string, event: OrchestratorEvent): void => {
   mkdirSync(dirname(journalPath), { recursive: true });
   appendFileSync(journalPath, `${renderEventLine(event)}\n`, "utf8");
 };
-
-/** The prompt for a role from its `instructions` (the texts are read off the working tree). */
-const buildPromptForRole = (role: Role, thread: string, repo: string): string =>
-  buildLaunchPrompt({
-    role: role.id,
-    thread,
-    instructions: (role.instructions ?? []).map((entry) => ({
-      path: entry.path,
-      text: readFile(join(repo, entry.path), `instructions of role ${role.id}`),
-    })),
-  });
 
 /**
  * Append a message file to a thread (the same path as `new-message`, but as a
@@ -2245,7 +2252,14 @@ type RunParams = {
   readonly mailRoot: string;
   readonly roleId: string;
   readonly thread: string;
-  readonly prompt: string;
+  /**
+   * The prompt, built FROM THE DEADLINE (R20) rather than handed over ready-made: the
+   * deadline is materialised by `planLaunch` inside this function, and the session is
+   * told it in words. Passing the text in would have meant computing the same moment a
+   * second time at the call site — two formulas for one number, drifting apart at the
+   * first change of the window.
+   */
+  readonly prompt: (context: { readonly deadline: string }) => string;
   readonly exec: string;
   readonly maxTurns: string;
   readonly wallClockMs: number;
@@ -2254,6 +2268,12 @@ type RunParams = {
   readonly idleMs: number;
   /** The ceiling of a DECLARED WAIT for input (R19) — its own clock, its own refusal. */
   readonly waitInputMs: number;
+  /**
+   * The landing margin (R20): this long before the deadline the session was asked to
+   * stop digging and land. Nothing fires here — the supervisor only says out loud that
+   * the point has passed, so that a `timeout` afterwards can be read for what it is.
+   */
+  readonly windDownMs: number;
   /**
    * THE TREE THE SESSION WORKS IN — its `cwd` and the tree whose traces are watched,
    * one field because they must be the same tree: watching one directory for signs of
@@ -2525,7 +2545,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   const child = spawn(
     p.exec,
     buildLaunchArgv({
-      prompt: p.prompt,
+      prompt: p.prompt({ deadline: plan.deadline }),
       maxTurns: p.maxTurns,
       launch: p.launch,
       params: p.params,
@@ -2553,6 +2573,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // The ceiling of its own wait (R19): the session defaults `await-input` to this
         // number, so its clock and the supervisor's cannot disagree.
         [LAUNCH_ENV.waitSeconds]: String(Math.round(p.waitInputMs / 1000)),
+        // WHEN THIS RUN'S WINDOW ENDS (R20). The same value the prompt states in words
+        // — this one is here for the shell: a session checking how much is left runs
+        // `date`, not a re-read of its own prompt.
+        [LAUNCH_ENV.leaseDeadline]: plan.deadline,
       },
     },
   );
@@ -2655,6 +2679,11 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   };
   let watch: IdleWatch = startWatch(sampleTrace(), Date.now());
   let quietMs = 0;
+  // THE LANDING POINT, SAID ONCE (R20). The supervisor does nothing at it — there is no
+  // gesture that makes a session commit — but a `timeout` half an hour later has to be
+  // readable as "it was told, in this log, at this minute, and kept digging". Said once
+  // per crossing rather than every poll, and re-armed when a park moves the deadline.
+  let windDownAnnounced = false;
 
   while (true) {
     await sleep(p.pollMs);
@@ -2752,6 +2781,22 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     watch = lifecycle === "waiting" ? startWatch(idle.watch.trace, Date.now()) : idle.watch;
     quietMs = idle.quietMs;
 
+    // The landing point of THIS window (R20), recomputed every poll because a park
+    // moves the deadline. Only a running session is told: a parked one is not spending
+    // its window, and a draining one has already passed the turn.
+    if (
+      !windDownAnnounced &&
+      lifecycle === "running" &&
+      !exited &&
+      Date.now() > deadlineMs - p.windDownMs &&
+      Date.now() <= deadlineMs
+    ) {
+      windDownAnnounced = true;
+      const line = `the wind-down point has passed — ${Math.round((deadlineMs - Date.now()) / 1000)}s of the window are left; the session was asked to land its work by ${eventTimestamp(new Date(deadlineMs))}`;
+      out(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
+      writeLog(`supervisor  ${line}`);
+    }
+
     const step = observeStep(lifecycle, {
       handedOff,
       processExited: exited,
@@ -2794,6 +2839,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     if (step.record === "input-received") {
       const waitedMs = Math.max(0, Date.now() - waitingSinceMs);
       deadlineMs += waitedMs;
+      // The window moved, so the landing point moved with it: a run that was announced
+      // before its park is due a second announcement against the new deadline (R20).
+      windDownAnnounced = false;
       appendEvent(p.journalPath, stepEvent(step, base));
       lifecycle = "running";
       waitingSinceMs = 0;
@@ -2842,9 +2890,17 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       );
     } else if (step.reason !== "completed") {
       const quiet = step.reason === "stalled" ? ` (${describeQuiet(quietMs)})` : "";
-      writeLog(`supervisor  the lease was released: ${step.reason}${quiet}`);
+      // A TIMEOUT IS NO LONGER A ROUTINE ENDING (R20): the session was told its deadline
+      // and given a margin to land in, so being cut off means it did not use them. The
+      // line says which of the two happened, because they call for different reading —
+      // one is a session to look at, the other a window to widen.
+      const why =
+        step.reason === "timeout"
+          ? " — the session did NOT wind down: it was given its deadline and a landing margin and kept working past both"
+          : "";
+      writeLog(`supervisor  the lease was released: ${step.reason}${quiet}${why}`);
       err(
-        `agent-protocol: the turn was not passed (${step.reason}${quiet}) — session output: ${p.sessionLog}`,
+        `agent-protocol: the turn was not passed (${step.reason}${quiet})${why} — session output: ${p.sessionLog}`,
       );
     }
     closeSinks();
@@ -3061,13 +3117,39 @@ const promptForRun = (input: {
   readonly role: Role;
   readonly thread: string;
   readonly setup: Extract<RunSetup, { ok: true }>;
-}): string =>
-  input.setup.continuation.mode === "resume"
-    ? buildResumePrompt({
-        thread: input.thread,
-        reason: input.setup.previousReason ?? "an external abort",
-      })
-    : buildPromptForRole(input.role, input.thread, input.setup.workdir);
+  /** The landing margin of this run (R20); the deadline arrives per run, from the plan. */
+  readonly windDownSeconds: number;
+}): ((context: { readonly deadline: string }) => string) => {
+  // THE CARDS ARE READ NOW, THE PROMPT IS ASSEMBLED LATER (R20). Only the deadline has
+  // to wait for the plan; an unreadable role card must still refuse HERE, before a
+  // lease is taken — a refusal that has moved past the `lease-acquired` write would
+  // turn a typo in a path into a failed attempt against the pair's ceiling.
+  const instructions =
+    input.setup.continuation.mode === "resume"
+      ? []
+      : (input.role.instructions ?? []).map((entry) => ({
+          path: entry.path,
+          text: readFile(
+            join(input.setup.workdir, entry.path),
+            `instructions of role ${input.role.id}`,
+          ),
+        }));
+  return ({ deadline }) =>
+    input.setup.continuation.mode === "resume"
+      ? buildResumePrompt({
+          thread: input.thread,
+          reason: input.setup.previousReason ?? "an external abort",
+          deadline,
+          windDownSeconds: input.windDownSeconds,
+        })
+      : buildLaunchPrompt({
+          role: input.role.id,
+          thread: input.thread,
+          instructions,
+          deadline,
+          windDownSeconds: input.windDownSeconds,
+        });
+};
 
 /**
  * The manual launch of ONE role on ONE thread (S1+S2). It resolves the role into a
@@ -3211,7 +3293,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     mailRoot,
     roleId,
     thread,
-    prompt: promptForRun({ role, thread, setup }),
+    prompt: promptForRun({ role, thread, setup, windDownSeconds: ceilings.windDown.value }),
     exec,
     maxTurns,
     launch: role.launch,
@@ -3226,6 +3308,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     pollMs,
     idleMs,
     waitInputMs,
+    windDownMs: ceilings.windDown.value * 1000,
     workdir: setup.workdir,
     continuation: setup.continuation,
     ...(setup.world === undefined ? {} : { world: setup.world }),
@@ -3442,7 +3525,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             mailRoot,
             roleId: decision.role,
             thread: decision.thread,
-            prompt: promptForRun({ role, thread: decision.thread, setup }),
+            prompt: promptForRun({
+              role,
+              thread: decision.thread,
+              setup,
+              windDownSeconds: ceilings.windDown.value,
+            }),
             exec: agent.exec.value,
             maxTurns: String(ceilings.maxTurns.value),
             launch: role.launch,
@@ -3457,6 +3545,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             pollMs,
             idleMs: ceilings.idle.value * 1000,
             waitInputMs: ceilings.waitInput.value * 1000,
+            windDownMs: ceilings.windDown.value * 1000,
             workdir: setup.workdir,
             continuation: setup.continuation,
             ...(setup.world === undefined ? {} : { world: setup.world }),
