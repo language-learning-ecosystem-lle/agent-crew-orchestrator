@@ -48,7 +48,7 @@ import {
   LocalConfigError,
   loadLocalConfig,
 } from "./config/local.js";
-import { loadThreads, renderThreadFailures } from "./fs/comms.js";
+import { type LoadedThread, loadThread, loadThreads, renderThreadFailures } from "./fs/comms.js";
 import { fileExistsAtRef, mailCheckoutState, messagesAtRef, workdirState } from "./fs/git.js";
 import {
   parseNotifyState,
@@ -70,6 +70,7 @@ import {
 import {
   type Continuation,
   describeContinuation,
+  type OwnMessage,
   planContinuation,
   previousRun,
 } from "./orchestrator/continuation.js";
@@ -1421,25 +1422,56 @@ const releaseWorkspaceLock = (): void => {
 process.on("exit", releaseWorkspaceLock);
 
 /**
- * THE WORLD A RUN STARTS FROM (R18): the tree of the thread directory and the base
- * commit. `undefined` when either cannot be read — a brand-new thread that is not
- * committed yet, a project with no `workdir` at all — and that absence is what makes
- * the continuation policy answer "fresh", which is the correct answer for a world
- * nobody can vouch for.
+ * WHAT THE ROLE ITSELF HAS SAID IN THE THREAD (R18, condition 2a) — its own messages,
+ * in thread order, each with the session that wrote it.
  *
- * The thread's TREE rather than the mail branch's head: a message in some other
- * conversation moves the branch and changes nothing about this run.
+ * Read from DISK rather than from a git ref, like every other read of the mail in the
+ * circuit (the checkout is fast-forwarded by preflight). `undefined` — the thread could
+ * not be read as files at all: it is missing, malformed, or a legacy `_thread.md`,
+ * which has neither file identity nor provenance. Every one of those means the same
+ * thing to the policy: nobody can be shown NOT to have worked in this role's place.
  */
-const worldOf = (input: {
+const ownMessagesOf = (input: {
   readonly mailRoot: string;
   readonly thread: string;
-  readonly base?: string;
-}): World | undefined => {
-  if (input.base === undefined) return undefined;
-  const tree = gitAsk(["-C", input.mailRoot, "rev-parse", `HEAD:./${input.thread}`]);
-  if (tree === undefined || tree === "") return undefined;
-  return { thread: tree, base: input.base };
+  readonly role: string;
+  readonly ids: readonly string[];
+}): readonly OwnMessage[] | undefined => {
+  let loaded: LoadedThread;
+  try {
+    loaded = loadThread(join(input.mailRoot, input.thread), input.thread, input.ids);
+  } catch {
+    return undefined;
+  }
+  if (loaded.input === undefined) return undefined;
+  return loaded.input.entries
+    .filter((entry) => entry.message.fields.from === input.role)
+    .map((entry) => ({
+      file: entry.fileName,
+      ...(entry.message.fields.session === undefined
+        ? {}
+        : { session: entry.message.fields.session }),
+    }));
 };
+
+/**
+ * THE WORLD A RUN STARTS FROM (R18): the base commit, and the mark of the role's own
+ * last message in the thread. `undefined` when either cannot be read — a thread that
+ * cannot be read as files, a project with no `workdir` at all — and that absence is
+ * what makes the continuation policy answer "fresh", which is the correct answer for a
+ * world nobody can vouch for.
+ *
+ * The mark is a FILE NAME and not a count: the next run compares by identity, and a
+ * count would be equal in the one case that matters least (nothing happened) and lie in
+ * the one that matters most.
+ */
+const worldOf = (input: {
+  readonly own?: readonly OwnMessage[];
+  readonly base?: string;
+}): World | undefined =>
+  input.base === undefined || input.own === undefined
+    ? undefined
+    : { base: input.base, mine: input.own.at(-1)?.file ?? "" };
 
 /**
  * PREFLIGHT — the checks made BEFORE the lease is taken (S8). curator's rule after
@@ -2580,6 +2612,8 @@ const settleRun = (input: {
   readonly repo: string;
   readonly mailRoot: string;
   readonly events: readonly OrchestratorEvent[];
+  /** The known role ids — the thread is parsed with them (legacy waiting-on). */
+  readonly ids: readonly string[];
   /**
    * Whether the workspace may actually be created or moved. A dry run says what it
    * WOULD do with somebody's tree and touches nothing — the same rule as everywhere
@@ -2591,12 +2625,19 @@ const settleRun = (input: {
   const { argv, role, thread, repo, mailRoot, events } = input;
   const workdirSection = configFrom(argv, undefined).config.orchestrator?.workdir;
   const base = workdirSection === undefined ? undefined : baseCommitOf(repo, workdirSection.branch);
-  const world = worldOf({ mailRoot, thread, ...(base === undefined ? {} : { base: base.commit }) });
+  // One read of the thread serves both halves of R18: the mark that goes ONTO this
+  // run's launch event, and the list the decision about the PREVIOUS run is taken from.
+  const own = ownMessagesOf({ mailRoot, thread, role: role.id, ids: input.ids });
+  const world = worldOf({
+    ...(own === undefined ? {} : { own }),
+    ...(base === undefined ? {} : { base: base.commit }),
+  });
 
   const previous = previousRun(events, role.id, thread);
   const continuation = planContinuation({
     ...(previous === undefined ? {} : { previous }),
     ...(world === undefined ? {} : { world }),
+    ...(own === undefined ? {} : { own }),
     forceFresh: argv.includes("--fresh"),
   });
   const lines = [`continuation — ${describeContinuation(continuation)}`];
@@ -2742,7 +2783,16 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   // itself. The parent plans in report-only mode: the lines still land on the terminal
   // of whoever typed the command, and the tree is touched exactly once, by the process
   // that will hold it.
-  const setup = settleRun({ argv, role, thread, repo, mailRoot, events, write: write && !detach });
+  const setup = settleRun({
+    argv,
+    role,
+    thread,
+    repo,
+    mailRoot,
+    events,
+    ids: registry.ids(),
+    write: write && !detach,
+  });
   for (const line of setup.lines) out(`agent-protocol: ${line}`);
   if (!setup.ok) {
     fail(`the workspace of '${roleId}' is not usable: ${setup.reason}`, 2);
@@ -3002,6 +3052,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           repo,
           mailRoot,
           events,
+          ids,
           write: true,
         });
         for (const line of setup.lines) out(`agent-protocol: daemon — ${line}`);

@@ -591,6 +591,19 @@ describe("continuing a session instead of starting one (R18)", () => {
     expect(prompt).toContain("new-message");
   });
 
+  it("the resume prompt SENDS IT BACK TO THE THREAD — under the narrowed rule an answer may have arrived", () => {
+    // The first version said "nothing has moved", which was true of the rule it
+    // shipped with. Since john's narrowing a reply no longer blocks a resume, so a
+    // session told "nothing has moved" would carry on straight past the message it
+    // was raised to act on.
+    const prompt = buildResumePrompt({ thread: "016-x", reason: "stalled" });
+
+    expect(prompt).toContain("read its tail");
+    expect(prompt).not.toContain("Nothing has moved");
+    // What the guard DID verify is what it is allowed to rely on.
+    expect(prompt).toContain("nobody has written in your place");
+  });
+
   it("the launch event carries the mode, the resumed session and the world it saw", () => {
     const plan = planLaunch({
       events: [],
@@ -599,7 +612,7 @@ describe("continuing a session instead of starting one (R18)", () => {
       now: NOW,
       wallClockMs: 900_000,
       continuation: { mode: "resume", session: "sid", why: "the world stood still" },
-      world: { thread: "tree", base: "commit" },
+      world: { base: "commit", mine: "2026-07-24T12-00-00Z-dev-core.md" },
     });
 
     expect(plan.ok).toBe(true);
@@ -612,7 +625,7 @@ describe("continuing a session instead of starting one (R18)", () => {
       thread: "t",
       mode: "resume",
       resumes: "sid",
-      world: { thread: "tree", base: "commit" },
+      world: { base: "commit", mine: "2026-07-24T12-00-00Z-dev-core.md" },
     });
   });
 
@@ -624,13 +637,16 @@ describe("continuing a session instead of starting one (R18)", () => {
       now: NOW,
       wallClockMs: 900_000,
       continuation: { mode: "fresh", why: "no previous run" },
-      world: { thread: "tree", base: "commit" },
+      world: { base: "commit", mine: "2026-07-24T12-00-00Z-dev-core.md" },
     });
 
     expect(plan.ok).toBe(true);
     if (!plan.ok) return;
     const launch = plan.events.find((event) => event.kind === "launch");
-    expect(launch).toMatchObject({ mode: "fresh", world: { thread: "tree", base: "commit" } });
+    expect(launch).toMatchObject({
+      mode: "fresh",
+      world: { base: "commit", mine: "2026-07-24T12-00-00Z-dev-core.md" },
+    });
     expect(launch).not.toHaveProperty("resumes");
   });
 });

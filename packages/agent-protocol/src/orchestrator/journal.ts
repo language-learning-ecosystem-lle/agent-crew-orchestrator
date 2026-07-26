@@ -101,27 +101,41 @@ const base = {
 };
 
 /**
- * THE STATE OF THE WORLD A RUN STARTED FROM (R18, thread 016) — two object ids, and
- * they are what john's second condition for a resume is checked against: a session
- * may only be continued while the world it was reasoning about has not moved.
+ * THE STATE OF THE WORLD A RUN STARTED FROM (R18, thread 016) — what john's second
+ * condition for a resume is checked against: a session may only be continued while
+ * the world it was reasoning about has not moved.
  *
- * `thread` is the TREE of the thread directory, not the head of the mail branch: a
- * message written in some other conversation moves the branch and changes nothing
- * about this run. `base` is the commit the workspace's base branch resolves to — a
- * merge into `main` while the session was down means its work is now on top of
- * something that no longer exists, and continuing would be reasoning from a stale
- * premise.
+ * WHAT "MOVED" MEANS WAS NARROWED BY john (2026-07-25, thread 016), and the narrowing
+ * is the reason this record no longer holds the thread's tree id. A tree id says "the
+ * conversation changed", and the most ordinary way for a conversation to change is the
+ * very event the session was waiting for: AN ANSWER. New messages from OTHER
+ * participants are INPUT, not a shift — a resumed session reads them exactly as a
+ * fresh one would. Two things are a shift, and only two:
  *
- * Recorded at LAUNCH, because that is the moment the session saw them; compared at
- * the next launch, which is the moment the decision is taken. Optional, so journals
- * written before R18 still parse: their runs simply cannot be resumed, which is the
- * correct answer for a run whose world nobody wrote down.
+ *  1. a message of the SAME ROLE from ANOTHER session — somebody worked in its place,
+ *     so its intentions may already have been carried out or overruled. That is what
+ *     `mine` marks: the role's own last message at launch, the point from which
+ *     "who has spoken since" is measured (the sessions themselves are read off the
+ *     message headers, R7);
+ *  2. `base` — the commit the workspace's base branch resolved to. A merge into `main`
+ *     while the session was down (including the merge of its own PR) means its work now
+ *     sits on top of something that no longer exists.
+ *
+ * Recorded at LAUNCH, because that is the moment the session saw them; compared at the
+ * next launch, which is the moment the decision is taken. Optional, so journals written
+ * before R18 still parse — and `mine` is optional inside it for the same reason one
+ * level down: a `world` written by the first version of R18 has no mark, and a run
+ * whose mark nobody wrote is never resumed.
  */
 export const worldSchema = z.object({
-  /** `git rev-parse HEAD:<mail dir>/<thread>` in the mail checkout — the thread's tree. */
-  thread: z.string().min(1),
   /** The commit the base branch of the role's workspace pointed at. */
   base: z.string().min(1),
+  /**
+   * The file name of the role's OWN last message in the thread at launch. `""` — it
+   * had not written in this thread yet (a legal value, and the reason this is not
+   * `min(1)`); absent — the run predates the narrowed rule and cannot be measured.
+   */
+  mine: z.string().optional(),
 });
 
 export type World = z.infer<typeof worldSchema>;

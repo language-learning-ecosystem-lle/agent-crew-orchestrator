@@ -217,10 +217,17 @@ describe("continuing the previous session (R18)", () => {
    * to follow, and recording the world AS IT IS RIGHT NOW — the second condition is
    * about equality with the present, so the fixture has to be built from it.
    */
-  const seedBrokenRun = (repo: string, mail: string, over: Record<string, unknown> = {}): void => {
+  const seedBrokenRun = (
+    repo: string,
+    over: Record<string, unknown> = {},
+    world0: Record<string, unknown> = {},
+  ): void => {
     const world = {
-      thread: git(join(mail, "agent-comms"), "rev-parse", "HEAD:./012-x").trim(),
       base: git(repo, "rev-parse", "origin/main").trim(),
+      // The role has said nothing in this thread yet — the empty mark, which is a
+      // fact and not an absence.
+      mine: "",
+      ...world0,
     };
     const base = { ts: "2026-07-25T10:00:00Z", role: "dev-core", thread: "012-x" };
     const lines = [
@@ -239,12 +246,22 @@ describe("continuing the previous session (R18)", () => {
     writeFileSync(journalPath(repo), `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
   };
 
+  /** A message file added to the live thread and pushed, the way a real one arrives. */
+  const arrives = (mail: string, name: string, body: string): void => {
+    writeFileSync(join(mail, "agent-comms", "012-x", "messages", name), body);
+    git(mail, "add", "agent-comms");
+    git(mail, "commit", "-qm", name);
+    // Pushed, or preflight refuses the run on an unpushed mail checkout long before
+    // the continuation decision has any effect — a true refusal, but not this test's.
+    git(mail, "push", "-q", "origin", "comms");
+  };
+
   it("external break + the world standing still + a young run → --resume, and the tree is kept", () => {
-    const { repo, mail } = contour();
+    const { repo } = contour();
     stub(repo);
     git(repo, "worktree", "add", "-q", "-b", "pkg/in-flight", workspace(repo));
     writeFileSync(join(workspace(repo), "half-done.txt"), "what the session was doing\n");
-    seedBrokenRun(repo, mail);
+    seedBrokenRun(repo);
 
     const result = run(repo);
 
@@ -264,40 +281,64 @@ describe("continuing the previous session (R18)", () => {
     });
   });
 
-  it("the thread moved since the break → fresh, and the workspace goes to the base", () => {
+  it("AN ANSWER ARRIVED while it was down → still a resume: that is the input it waited for", () => {
+    // john's narrowing of condition 2 (2026-07-25), end to end. The first version
+    // compared the thread's tree id and refused here — burning a whole run on the most
+    // ordinary event in the circuit.
     const { repo, mail } = contour();
     stub(repo);
-    seedBrokenRun(repo, mail);
-    // A message arrives while the session is down: the premise it was reasoning from
-    // is no longer the one on disk, and a resumed session would never re-read it.
-    writeFileSync(
-      join(mail, "agent-comms", "012-x", "messages", "2026-07-25T12-00-00Z-curator.md"),
-      WAITING,
-    );
-    git(mail, "add", "agent-comms");
-    git(mail, "commit", "-qm", "one more message");
-    // Pushed, or preflight refuses the run on an unpushed mail checkout long before
-    // the continuation decision has any effect — a true refusal, but not this test's.
-    git(mail, "push", "-q", "origin", "comms");
+    // The tree the broken session left behind: a resume continues it, so it has to be
+    // there (a resume into a workspace that no longer exists is refused, see R17).
+    git(repo, "worktree", "add", "-q", "-b", "pkg/in-flight", workspace(repo));
+    seedBrokenRun(repo);
+    arrives(mail, "2026-07-25T12-00-00Z-curator.md", WAITING);
 
     const result = run(repo);
 
-    expect(result.out).toContain("fresh: the thread has moved");
+    expect(result.out).toContain("resume 8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b");
+    expect(argvOf(repo).slice(0, 2)).toEqual(["--resume", "8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b"]);
+  });
+
+  it("ANOTHER SESSION WROTE FOR THIS ROLE → fresh: its intentions may already be spent", () => {
+    const { repo, mail } = contour();
+    stub(repo);
+    seedBrokenRun(repo);
+    arrives(
+      mail,
+      "2026-07-25T12-00-00Z-dev-core.md",
+      "---\nfrom: dev-core\nworker: claude-code\nsession: 11111111-2222-3333-4444-555555555555\ndate: 2026-07-25T12:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nDone by somebody else.\n",
+    );
+
+    const result = run(repo);
+
+    expect(result.out).toContain("fresh: another session wrote for this role");
+    expect(result.out).toContain("2026-07-25T12-00-00Z-dev-core.md");
+    expect(argvOf(repo)).not.toContain("--resume");
+  });
+
+  it("the base branch moved under it → fresh, and the workspace goes to the base", () => {
+    const { repo } = contour();
+    stub(repo);
+    seedBrokenRun(repo, {}, { base: "0000000000000000000000000000000000000000" });
+
+    const result = run(repo);
+
+    expect(result.out).toContain("fresh: the base branch has moved on");
     expect(argvOf(repo)).not.toContain("--resume");
   });
 
   it("a run that used up its window is not resumed — it would return to the same tightness", () => {
-    const { repo, mail } = contour();
+    const { repo } = contour();
     stub(repo);
-    seedBrokenRun(repo, mail, { reason: "timeout" });
+    seedBrokenRun(repo, { reason: "timeout" });
 
     expect(run(repo).out).toContain("fresh: the previous run ended as 'timeout'");
   });
 
   it("--fresh overrides a perfectly resumable break", () => {
-    const { repo, mail } = contour();
+    const { repo } = contour();
     stub(repo);
-    seedBrokenRun(repo, mail);
+    seedBrokenRun(repo);
 
     const result = run(repo, ["--fresh"]);
 

@@ -1217,11 +1217,26 @@ falls back to fresh:
    network that went away) say nothing about the session's own reasoning being stuck.
    `timeout`, a run that walked into `--max-turns`, and a forced stop say exactly that,
    or were somebody's decision.
-2. **The world has not moved** (john named this one as obligatory): the tree of the
-   thread directory and the base commit are compared against the two ids the previous
-   launch recorded. A message that arrived while the session was down, or a merge into
-   `main`, means the premise it was reasoning from is gone — and unlike a human, a
-   resumed session will not notice, because it does not re-read what it has read.
+2. **The world has not moved** (john named this one as obligatory, and NARROWED it on
+   2026-07-25, after the first version had shipped). The first version compared the
+   TREE of the thread directory — and that fired on the most ordinary event in the
+   circuit: an answer. A message from ANOTHER participant is the INPUT the session was
+   waiting for; a resumed session reads it exactly as a fresh one would. Two things are
+   a shift:
+   - **somebody spoke for it** — a message of the SAME ROLE from ANOTHER session
+     appeared in the thread since the launch (told apart by the `session` header, R7).
+     Then the work may already have been done, or redecided, by a run that shares
+     nothing with this one but the role card. The launch records `mine` — the role's
+     own last message at that moment — and that mark is what bounds the interval:
+     without it, the role's messages from earlier packages would refuse every resume
+     forever. An UNSIGNED message of the role (a human writing on its behalf) counts as
+     somebody else: unknown is not innocent.
+   - **the base moved** — a merge into `main` while the session was down, including the
+     merge of its own pull request, puts its work on top of something that is gone.
+
+   What this does NOT see, said plainly: a foreign push onto the feature branch the
+   broken session was working on. That branch has no name anybody but that session
+   knows; the local tree is defended by the workspace lock (R17), not by this policy.
 3. **The previous run was young** — under `YOUNG_RUN_STEPS` (80) assistant steps of its
    stream. The number comes from this repository's own journal: the six real packages
    of 2026-07-25 took 183–302 steps, while the orientation phase of a run costs about
@@ -1229,15 +1244,24 @@ falls back to fresh:
    above it, a resume brings back the very context that got tight.
 
 `--fresh` is the explicit handle, and **every decision is printed with its reason** —
-`resume <id>: the world has not moved and the break was external ('stalled', 12
-steps)` / `fresh: the base branch has moved on since the previous run`. A policy that
-decides how somebody else's money is spent may not be silent.
+`resume <id>: nobody worked in its place, the base has not moved, and the break was
+external ('stalled', 12 steps)` / `fresh: another session wrote for this role while it
+was down ('2026-07-25T12-00-00Z-dev-core.md')`. A policy that decides how somebody
+else's money is spent may not be silent.
 
+- **A resumed session is sent back to the thread.** Its prompt says what the guard
+  actually verified — the workspace is as it left it, the base has not moved, nobody
+  wrote in its place — and then tells it to READ THE TAIL OF THE THREAD. Under the
+  narrowed rule an answer may well have arrived while it was down, and a session told
+  "nothing has moved" (as the first version of the prompt said, correctly for the rule
+  it shipped with) would carry on straight past the message it was raised to act on.
 - **The journal is what the decision is taken from**: `launch` carries `mode`,
   `resumes` and `world`; `lease-released` carries the `session` id and the `steps`
   burned. All optional — a journal written before R18 parses unchanged, and its runs
   are simply never resumed, which is the only honest answer for a run whose world
-  nobody wrote down.
+  nobody wrote down. The same holds one level down: a `world` written by the first
+  version of R18 has no `mine`, so those runs are never resumed either. Journals are
+  not rewritten, here or anywhere.
 - **`steps` is not the vendor's `num_turns`**, and is named differently on purpose:
   `num_turns` exists only in the `result` event, which a run emits when it FINISHES —
   precisely the runs that are never candidates for a resume. The supervisor counts the
