@@ -41,6 +41,7 @@ import {
   type LaunchLimits,
   type Role,
 } from "../roles/schema.js";
+import type { LaunchDirective } from "../thread/message.js";
 import { DEFAULT_IDLE_MS } from "./activity.js";
 import type { Continuation } from "./continuation.js";
 import { DEFAULT_WAIT_INPUT_SECONDS } from "./interactive.js";
@@ -366,7 +367,19 @@ export const describeGates = (gates: ResolvedGates): string =>
 export type WorkerSource = "flag" | "role" | "default";
 /** Where the binary path came from. `machine` is the R14 layer — the only one of the three. */
 export type ExecSource = "flag" | "machine" | "default";
-export type ParamSource = "flag" | "role";
+/**
+ * The layers a launch parameter can come from, in the order they win (R21 adds the
+ * middle one). `thread` is a directive from the feed of the thread this run is bound
+ * to — an authorized role saying what the work from here on is to be raised with.
+ *
+ * WHY IT SITS UNDER THE FLAG AND OVER THE ROLE. The flag is still the most specific
+ * statement there is: a human typed it for THIS run, at the terminal, usually because
+ * this run is not like the others — and a directive written into a thread yesterday
+ * must not override a decision taken about the run being started right now. The role
+ * config is the opposite end: the project's standing calibration for every thread at
+ * once, which is exactly what a per-thread directive exists to specialize.
+ */
+export type ParamSource = "flag" | "thread" | "role";
 
 export type Resolved<T, S> = { readonly value: T; readonly source: S };
 export type ResolvedWorker = Resolved<string, WorkerSource>;
@@ -442,6 +455,13 @@ export const resolveAgentParams = (input: {
   readonly flags: { readonly model?: string; readonly effort?: string };
   readonly worker: ResolvedWorker;
   readonly launch?: Launch;
+  /**
+   * THE DIRECTIVE IN FORCE ON THIS THREAD (R21) — already filtered by permission
+   * (`resolveThreadDirective`), so what arrives here is a statement somebody was
+   * entitled to make. It is a MERGE LAYER and not a refusal path: see below for why
+   * this one is dropped with a word rather than refused when it makes no sense.
+   */
+  readonly directive?: LaunchDirective;
 }): AgentResolution => {
   const declared = input.launch?.agent;
   const worker = input.worker.value;
@@ -471,16 +491,32 @@ export const resolveAgentParams = (input: {
   }
 
   const fromRole = declared?.kind === "claude-code" ? declared : undefined;
+  // A DIRECTIVE ADDRESSED TO ANOTHER TOOL IS DROPPED, NOT REFUSED (R21) — the one
+  // asymmetry with the flag path above, and it is deliberate. A flag can be retyped;
+  // a message cannot be unwritten, so refusing here would wedge the thread for good:
+  // the role could never be raised on it again. The drop is announced by the caller
+  // (`ignoredDirective`), so it is never a silent fall-back to something else.
+  const fromThread = worker === "claude-code" ? input.directive : undefined;
   const pick = <T extends string>(
     flagValue: T | undefined,
+    threadValue: T | undefined,
     roleValue: T | undefined,
   ): Resolved<T, ParamSource> | undefined => {
     if (flagValue !== undefined) return { value: flagValue, source: "flag" };
+    if (threadValue !== undefined) return { value: threadValue, source: "thread" };
     if (roleValue !== undefined) return { value: roleValue, source: "role" };
     return undefined;
   };
-  const model = pick(input.flags.model, fromRole?.model);
-  const effort = pick(input.flags.effort, fromRole?.effort);
+  // An effort level from the feed that the tool does not know is dropped for the same
+  // reason and by the same rule as the whole directive: the door of the writer refuses
+  // it while it can still be retyped, and whatever got in earlier (a message written by
+  // hand, a value the vocabulary later lost) must not decide the run in silence.
+  const threadEffort =
+    fromThread?.effort !== undefined && claudeCodeEffortSchema.safeParse(fromThread.effort).success
+      ? fromThread.effort
+      : undefined;
+  const model = pick(input.flags.model, fromThread?.model, fromRole?.model);
+  const effort = pick(input.flags.effort, threadEffort, fromRole?.effort);
   return {
     ok: true,
     params: {
@@ -488,6 +524,36 @@ export const resolveAgentParams = (input: {
       ...(effort === undefined ? {} : { effort }),
     },
   };
+};
+
+/**
+ * WHY A DIRECTIVE THAT WAS FOUND DID NOT REACH THE RUN — the words that go beside the
+ * resolved parameters when the merge dropped one. Two cases, both of them the kind of
+ * thing an operator learns about from a post-mortem otherwise: the thread is being
+ * raised as a tool the parameters were not written for, and an effort level outside
+ * the tool's vocabulary.
+ */
+export const ignoredDirective = (input: {
+  readonly directive?: LaunchDirective;
+  readonly worker: ResolvedWorker;
+}): readonly string[] => {
+  const directive = input.directive;
+  if (directive === undefined) return [];
+  const worker = input.worker.value;
+  if (worker !== "claude-code") {
+    return [
+      `the thread's launch directive is NOT applied: the run is being raised as '${worker}' (${input.worker.source}), and the package knows how to pass model/effort to 'claude-code' only`,
+    ];
+  }
+  if (
+    directive.effort !== undefined &&
+    !claudeCodeEffortSchema.safeParse(directive.effort).success
+  ) {
+    return [
+      `the effort '${directive.effort}' from the thread's launch directive is NOT applied: the levels are ${claudeCodeEffortSchema.options.join(", ")}`,
+    ];
+  }
+  return [];
 };
 
 /**

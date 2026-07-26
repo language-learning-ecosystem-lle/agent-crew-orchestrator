@@ -53,6 +53,7 @@ const CONFIG = {
       status: "active",
       wake: { mode: "via-human", via: "john" },
       summary: "the keeper",
+      permissions: ["launch-params"],
     },
   ],
 };
@@ -549,5 +550,85 @@ describe("new-message --write delivers (R3)", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("uncommitted changes");
+  });
+});
+
+/**
+ * THE DOOR OF A LAUNCH DIRECTIVE (R21). Both refusals here are about the same fact:
+ * the feed is append-only, so everything knowable while the author still holds the
+ * flag has to be refused now — afterwards nothing may be fatal, and the resolution
+ * can only drop the directive with a line.
+ */
+const direct = (
+  contest: { repo: string; root: string; body: string },
+  from: string,
+  ...extra: string[]
+): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-message",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--thread",
+        "016-x",
+        "--from",
+        from,
+        "--expects",
+        "answer",
+        "--waiting-on",
+        "dev-core",
+        "--body-file",
+        contest.body,
+        "--worker",
+        "human",
+        "--write",
+        "--no-push",
+        ...extra,
+      ],
+      { encoding: "utf8", stdio: "pipe", env: { ...process.env } },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
+describe("new-message and the launch directive (R21)", () => {
+  it("an authorized role writes it into the header, where the reader finds it", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--model", "opus", "--effort", "high");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.launch).toEqual({ model: "opus", effort: "high" });
+  });
+
+  it("a role without 'launch-params' is refused at the door, not left with a void directive in the feed", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--model", "opus");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("launch-params");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("an effort outside the tool vocabulary is refused while the flag can still be retyped", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--effort", "ultra");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("allowed levels");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
 });
