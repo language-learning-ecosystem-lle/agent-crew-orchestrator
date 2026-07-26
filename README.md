@@ -542,6 +542,10 @@ agent-protocol role exists  --ref <ref> --role <id>                        # is 
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
 agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p>] [--write]
                                                                            # the turn has passed to a HUMAN (R4)
+agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>]
+                                                                           # THE READING HALF (R3): the conversation
+                                                                           # from the MESSAGES, not from the derived
+                                                                           # _thread.md, which lags a push behind
 agent-protocol index build  --root <comms> --ref <ref> [--write]
 agent-protocol thread build --root <comms> --ref <ref> --id <NNN-slug> [--write]
 agent-protocol derive       --root <comms> --ref <ref> [--write]           # all derived files
@@ -549,7 +553,11 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <r,r>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--write]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--write] [--no-push]
+                            # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
+                            # happen inside, with the replanning retry behind them; nothing is left to type
+                            # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
+                            # --no-push: the file only, for the ONE caller that owns its own git (CI)
                             # --await-input: this question PARKS the run instead of ending it (R19, S13)
 agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                             # blocks until the thread waits on the role again; needs a wait declared
@@ -591,15 +599,49 @@ agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <
 agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--write]   # the role is taken by a manual session
 ```
 
-**Writing a message is `new-message`** (the single source of truth on the form of a
-write): it creates the file `messages/<UTC-stamp>Z-<role>.md` and does NOT touch
-`_thread.md` or `INDEX.md` — those are rebuilt by the generator. The stamp is
-**monotonic along the feed** (`max(now, the last one + 1s)`): an answer does not
-land before the message it answers when the writers' clocks are skewed.
-`--waiting-on` is the FULL remaining set, not a delta. A rejected push (a
-concurrent write) means refreshing the mail (`reset --hard origin/comms`) and
-retrying on top of the fresh state; the feed is append-only and force-push is
-forbidden. `new-message` **REFUSES** to write into a non-migrated (legacy) thread:
+**The agent's whole legal contact with the mail is TWO commands** (R3): `thread show`
+to read and `new-message --write` to send. Everything below the two — the branch, the
+checkout, the directory layout, the file names, the commit and the push — is storage
+mechanics, and mechanics is the layer an agent must not have to carry (john's
+decomposition of "what an agent knows about comms" into content / protocol semantics /
+storage mechanics, 2026-07-25). It is INCAPSULATION, NOT CONCEALMENT: the agent keeps
+its shell, and the claim is only that the legal path needs nothing else.
+
+**Reading is `thread show`** — from the message FILES, never from `_thread.md`. The
+assembled file is derived and lags a push of the generator behind, so a reader who
+trusts it can miss precisely the message that passed it the turn. `--tail <n>` exists
+because a live thread outgrows a context window (016 passed 300 KB in two days), and
+the honest alternative to a bounded read is a reader who quietly reads nothing at all:
+how many messages are hidden is said out loud in the output. Folder attachments are
+NAMED rather than printed — the agent no longer needs a description of the layout to
+know what else is in the conversation.
+
+**Writing is `new-message`** (the single source of truth on the form of a write): it
+creates the file `messages/<UTC-stamp>Z-<role>.md` and does NOT touch `_thread.md` or
+`INDEX.md` — those are rebuilt by the generator, and staging them here would make every
+concurrent write a conflict in a file nobody authored. The stamp is **monotonic along
+the feed** (`max(now, the last one + 1s)`): an answer does not land before the message
+it answers when the writers' clocks are skewed. `--waiting-on` is the FULL remaining
+set, not a delta.
+
+**`--write` means SENT, not "a file on disk"** (R3): the commit and the push are inside
+the command. That tail is exactly where this circuit's real losses happened — a heredoc
+inside an `&&` chain silently lost the body while the chain reported success, and a
+rejected push left a message that existed on one disk only. A rejected push is retried
+by **REPLANNING, not rebasing**: the feed is append-only and the stamps are monotonic,
+so the loser of a race has to change its NAME as well as its place — a rebase would
+carry the old name across and leave two messages in an order their names deny. A dirty
+mail checkout is a **REFUSAL**, never a repair (the same rule as the workspace of a run,
+R17): the retry resets the checkout hard, and doing that over somebody's unfinished
+message destroys work to deliver ours. Hence the body file lives outside the checkout —
+an untracked draft beside the mail is dirt like any other. `--no-push` is the ONE named
+exception, for a caller that legitimately owns its git: the CI workflows write from a
+checkout the runner set up (where `origin/comms` does not exist at all — the mail is
+fetched without a refspec), batch the commit with their own work and push under the
+runner's token. A named flag is honester than a command that behaves differently
+depending on where it runs.
+
+`new-message` **REFUSES** to write into a non-migrated (legacy) thread:
 a file write would cut its history down to a single file — a legacy thread is
 appended to by hand as a section in `_thread.md` until it is migrated (right now
 that is only 009/010).
@@ -1351,9 +1393,9 @@ Two commands, and they are two on purpose:
 
 ```bash
 # 1. the question, with the declaration written in the same gesture
+#    --write delivers it (commit and push are inside the command since R3)
 cli new-message --root … --ref … --thread 016-x --from dev-core \
     --expects answer --waiting-on curator --body-file q.md --await-input --write
-git -C <mail checkout> add … && git commit && git push     # until R3, the push is the agent's
 # 2. block until the answer comes back
 cli await-input --root … --ref … --role dev-core --thread 016-x
 #    code 0 — the answer arrived, read the tail of the thread and carry on

@@ -183,6 +183,7 @@ import {
   PROTOCOL_VERSION_FIELD,
 } from "./schema/version.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
+import { DeliveryRefusedError, deliverMessage, deliverySubject } from "./thread/deliver.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 import type { Expects } from "./thread/message.js";
 import {
@@ -210,6 +211,9 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
                               # the ONE command with no --ref: it plans against the working tree it rewrites
   agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
   agent-protocol index build  --root <mail> --ref <ref> [--write]
+  agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]
+                              # THE READING HALF OF THE AGENT'S INTERFACE (R3): the conversation, in order,
+                              # from the MESSAGES (not from the derived _thread.md, which lags a push behind)
   agent-protocol thread build --root <mail> --ref <ref> --id <NNN-slug> [--write]
   agent-protocol check        --root <mail> --ref <ref> [--since <ref>]
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
@@ -223,9 +227,12 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
                               # the turn has passed to a HUMAN: whom is derived from wake.mode,
                               # the words come from notifications.templates, delivery from the transport plugin
                               # without --write: prints what it would send and leaves the state alone
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--write]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--write] [--no-push]
+                              # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
+                              # with a replanning retry when somebody wrote into the feed first
+                              # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
                               # --await-input: this question PARKS the run instead of ending it (R19) — the session
-                              # stays alive and reads the answer itself; block on 'await-input' after pushing
+                              # stays alive and reads the answer itself; block on 'await-input' after sending
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
                               # a raised session passes neither — the launch environment carries both
@@ -542,6 +549,65 @@ const threadBuild = (argv: readonly string[]): void => {
     return;
   }
   out(rendered);
+};
+
+/**
+ * READING A CONVERSATION IS A COMMAND (R3) — the other half of `new-message`.
+ *
+ * The agent used to be told "read the files of the conversation folder", and that
+ * sentence is the storage layer leaking into the prompt: the folder layout, the file
+ * naming, which files are derived and which are authored. `thread show` answers the
+ * only question the agent actually has — what was said here, in order.
+ *
+ * IT READS THE MESSAGES, NOT `_thread.md`. The assembled file is derived and may lag
+ * behind the messages that are already on disk (its generator runs on a push): a
+ * reader that trusted it would miss the newest message exactly when it matters — the
+ * one that passed it the turn.
+ *
+ * `--tail <n>` exists because a live thread outgrows a context window (this
+ * repository's 016 passed 300 KB in two days), and the alternative to a bounded read
+ * is a reader that quietly reads nothing. It prints how many messages it skipped, so
+ * a partial read is visible as one.
+ *
+ * ATTACHMENTS ARE NAMED, NOT PRINTED: anything in the folder that is neither a
+ * message nor a derived file gets listed with its path, so the agent knows what is
+ * there without the prompt having to describe the folder.
+ */
+const threadShow = (argv: readonly string[]): void => {
+  const root = required(argv, "--root");
+  const id = flag(argv, "--id") ?? required(argv, "--thread");
+  const registry = registryFrom(argv, repoOf(root));
+  const scan = loadThreads(root, registry.ids());
+  const broken = scan.failures.find((failure) => failure.id === id);
+  if (broken !== undefined) fail(`thread '${id}' was not read: ${broken.problem}`, 2);
+  const loaded = scan.threads.find((item) => item.thread.id === id);
+  if (loaded === undefined) fail(`thread '${id}' not found in '${root}'`, 2);
+
+  const { thread } = loaded as NonNullable<typeof loaded>;
+  const tail = flag(argv, "--tail") === undefined ? undefined : positiveInt(argv, "--tail", 0);
+  const shown =
+    tail === undefined || tail >= thread.messages.length
+      ? thread.messages
+      : thread.messages.slice(-tail);
+  const skipped = thread.messages.length - shown.length;
+
+  if (skipped > 0) {
+    out(
+      `<!-- agent-protocol: the last ${shown.length} of ${thread.messages.length} messages; ${skipped} earlier ones are NOT shown (--tail) -->`,
+    );
+  }
+  out(renderThread(thread.meta, shown));
+
+  const dir = join(root, id);
+  const attachments = readdirSync(dir).filter(
+    (name) => !name.startsWith("_") && name !== "messages" && name !== "INDEX.md",
+  );
+  if (attachments.length > 0) {
+    out("");
+    out(
+      `<!-- files in the conversation folder besides the messages: ${attachments.join(", ")} -->`,
+    );
+  }
 };
 
 const checkAll = (argv: readonly string[]): void => {
@@ -886,32 +952,33 @@ const declareWait = (input: {
 };
 
 /**
- * Create a message file in an EXISTING thread. Refuses if the thread is in the
- * legacy form (no `messages/`): a file write would cut off its history.
+ * Create a message file in an EXISTING thread and SEND IT (R3). Refuses if the
+ * thread is in the legacy form (no `messages/`): a file write would cut off its
+ * history.
+ *
+ * `--write` means DELIVERED, not "written to disk": the commit and the push happen
+ * inside, with the replanning retry of `deliver.ts` behind them. The tail the agent
+ * used to type by hand is the layer it must not have to know, and it is also the
+ * layer that failed in practice (a lost heredoc reported as success, a committed
+ * message living on one disk).
+ *
+ * `--no-push` keeps the old behaviour for the ONE caller that legitimately owns its
+ * own git: the CI workflows, which write from a checkout the runner set up, batch
+ * their commit with other work and push under the runner's token. Naming the
+ * exception is honester than a command that behaves differently depending on where
+ * it runs.
  */
 const newMessage = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const threadId = required(argv, "--thread");
   const from = required(argv, "--from");
-  const registry = registryFrom(argv, repoOf(root));
+  const loaded = configFrom(argv, repoOf(root));
+  const registry = loaded.registry;
   if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
 
   const threadDir = join(root, threadId);
   if (!existsSync(threadDir)) fail(`thread '${threadId}' not found in '${root}'`, 2);
   const messagesDir = join(threadDir, "messages");
-  const threadHasMessages = existsSync(messagesDir);
-
-  // The stamp is monotonic along the feed: we collect the stamps of the NEW
-  // messages already lying there (the ones with a time — migrated ones, dated
-  // without a time, are excluded) and clamp the new one strictly after the last.
-  // Without this, clock skew between writers puts an answer before its question (a
-  // real case in 012).
-  const existingTs = threadHasMessages
-    ? readdirSync(messagesDir)
-        .filter((name) => name.endsWith(".md"))
-        .map((name) => parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date)
-        .filter((date) => date.includes("T"))
-    : [];
 
   const text = readFile(required(argv, "--body-file"), "message body");
   const waitingRaw = flag(argv, "--waiting-on");
@@ -919,29 +986,47 @@ const newMessage = (argv: readonly string[]): void => {
   // Required BEFORE `--write` is even looked at: a dry run is the preview of the
   // write, and a preview that succeeds where the write refuses is a lie.
   const provenance = provenanceFrom(argv, { required: true });
-  const date = nextMessageTimestamp(new Date(), existingTs);
-  let planned: ReturnType<typeof planNewMessage>;
-  try {
-    planned = planNewMessage({
-      from,
-      ...provenance,
-      date,
-      expects: parseExpects(required(argv, "--expects")),
-      ...(waitingOn === undefined ? {} : { waitingOn }),
-      text,
-      threadHasMessages,
-    });
-  } catch (error) {
-    if (error instanceof WriteRefusedError) {
-      fail(error.message, 2);
+  const expects = parseExpects(required(argv, "--expects"));
+
+  // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
+  // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
+  // there — migrated ones, dated without a time, are excluded — and clamp the new one
+  // strictly after the last). Without this, clock skew between writers puts an answer
+  // before its question (a real case in 012); with a concurrent write it is also why a
+  // rejected push cannot simply be rebased — the file NAME has to move too.
+  const plan = (): { path: string; label: string; content: string; date: string } => {
+    const threadHasMessages = existsSync(messagesDir);
+    const existingTs = threadHasMessages
+      ? readdirSync(messagesDir)
+          .filter((name) => name.endsWith(".md"))
+          .map(
+            (name) => parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date,
+          )
+          .filter((date) => date.includes("T"))
+      : [];
+    const date = nextMessageTimestamp(new Date(), existingTs);
+    let planned: ReturnType<typeof planNewMessage>;
+    try {
+      planned = planNewMessage({
+        from,
+        ...provenance,
+        date,
+        expects,
+        ...(waitingOn === undefined ? {} : { waitingOn }),
+        text,
+        threadHasMessages,
+      });
+    } catch (error) {
+      if (error instanceof WriteRefusedError) return fail(error.message, 2);
+      throw error;
     }
-    throw error;
-  }
+    const path = join(threadDir, planned.path);
+    if (existsSync(path))
+      fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
+    return { path, label: `${threadId}/${planned.path}`, content: planned.content, date };
+  };
 
-  const path = join(threadDir, planned.path);
-  if (existsSync(path))
-    fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
-
+  const first = plan();
   const write = argv.includes("--write");
   // THE DECLARATION GOES FIRST (R19) — before the message file, not after it. The
   // supervisor sees the question as soon as the file is on disk, and a marker written
@@ -951,19 +1036,66 @@ const newMessage = (argv: readonly string[]): void => {
       thread: threadId,
       from,
       ...(waitingOn === undefined ? {} : { waitingOn }),
-      date,
+      date: first.date,
       ...(provenance.session === undefined ? {} : { session: provenance.session }),
       write,
     });
   }
 
-  if (write) {
-    writeOut(path, planned.content);
-    out(`agent-protocol: created ${threadId}/${planned.path}`);
+  if (!write) {
+    out(`agent-protocol: would create ${first.label} (--write writes it):`);
+    out(first.content);
     return;
   }
-  out(`agent-protocol: would create ${threadId}/${planned.path} (--write writes it):`);
-  out(planned.content);
+
+  if (argv.includes("--no-push")) {
+    writeOut(first.path, first.content);
+    out(
+      `agent-protocol: created ${first.label} — NOT committed (--no-push: the caller owns its git)`,
+    );
+    return;
+  }
+
+  const checkout = repoOf(root);
+  try {
+    const delivered = deliverMessage({
+      // EVERY GIT FAILURE BECOMES A NAMED REFUSAL CARRYING GIT'S OWN WORDS. Without
+      // this the command died on a raw `execFileSync` throw: code 1, a stack trace and
+      // not one word about the cause. The case that taught it is the runner, where the
+      // checkout has no `user.email` — locally the global config hides it, so the same
+      // delivery passed here and failed in CI saying nothing about identity.
+      git: (args) => {
+        try {
+          return execFileSync("git", ["-C", checkout, ...args], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+          });
+        } catch (error) {
+          const failure = error as { stderr?: string; status?: number };
+          const said = (failure.stderr ?? "").trim();
+          throw new DeliveryRefusedError(
+            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
+          );
+        }
+      },
+      write: writeOut,
+      branch: loaded.config.mail.branch,
+      subject: deliverySubject({ from, thread: threadId }),
+      stage: () => {
+        const next = plan();
+        return { path: next.path, content: next.content, label: next.label };
+      },
+      note: out,
+    });
+    out(
+      `agent-protocol: sent ${delivered.label} — committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the feed moved underneath)` : ""}`,
+    );
+  } catch (error) {
+    if (error instanceof DeliveryRefusedError) {
+      fail(error.message, 2);
+    }
+    throw error;
+  }
 };
 
 /** Create a NEW thread straight in the file form (`_meta.md` + the first message). */
@@ -1422,7 +1554,11 @@ const execTargets = (
   const targets = new Map<string, { worker: string; exec: ResolvedExec }>();
   for (const role of roles) {
     const { worker, exec } = agentFor(argv, local, role);
-    targets.set(`${worker.value} ${exec.value}`, { worker: worker.value, exec });
+    // The separator is written as an ESCAPE, never as a literal NUL byte: one literal
+    // byte here made `grep` treat the busiest module of the package as binary and print
+    // NOTHING for it — a blindness that reads like "the code is not there" and cost a
+    // session a wrong diagnosis before the byte was found.
+    targets.set(`${worker.value}\u0000${exec.value}`, { worker: worker.value, exec });
   }
   if (targets.size === 0) {
     const worker = resolveWorker({
@@ -3761,6 +3897,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     indexBuild(argv.slice(2));
   } else if (command === "thread" && subcommand === "build") {
     threadBuild(argv.slice(2));
+  } else if (command === "thread" && subcommand === "show") {
+    threadShow(argv.slice(2));
   } else if (command === "check") {
     checkAll(argv.slice(1));
   } else if (command === "migrate") {

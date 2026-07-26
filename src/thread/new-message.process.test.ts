@@ -118,11 +118,17 @@ const run = (
   }
 };
 
+/**
+ * The write these cases are about — the FILE, with its front matter and its wait
+ * marker. `--no-push` because since R3 `--write` alone means delivered: it would
+ * commit and push, and this contour has no remote to push to. Delivery itself has
+ * its own cases below, against a real bare remote.
+ */
 const write = (
   contest: { repo: string; root: string; body: string },
   env: NodeJS.ProcessEnv,
   ...extra: string[]
-): { code: number; out: string } => run(contest, env, ["--write", ...extra]);
+): { code: number; out: string } => run(contest, env, ["--write", "--no-push", ...extra]);
 
 const written = (root: string): ReturnType<typeof parseMessageFile> => {
   const dir = join(root, "016-x", "messages");
@@ -297,6 +303,7 @@ describe("new-message --await-input", () => {
         contest.body,
         "--await-input",
         "--write",
+        "--no-push",
         ...(value === undefined ? [] : ["--waiting-on", value]),
       ];
       try {
@@ -359,5 +366,188 @@ describe("new-message --await-input", () => {
 
     expect(write(contest, sessionEnv(contest.repo)).code).toBe(0);
     expect(existsSync(waitPath(contest.repo))).toBe(false);
+  });
+});
+
+/**
+ * DELIVERY (R3) — `--write` means SENT, and the only way to know it is a real remote.
+ *
+ * The contour is the smallest thing that can tell the truth here: a bare repository
+ * as `origin`, a clone as the mail checkout, and the branch the config names. What is
+ * checked is what the agent no longer has to do by hand — the commit exists, the
+ * remote has it, and a feed that moved underneath the writer is retried rather than
+ * reported as a failure.
+ */
+const delivery = (): { repo: string; root: string; body: string; remote: string } => {
+  const remote = mkdtempSync(join(tmpdir(), "agent-protocol-remote-"));
+  execFileSync("git", ["-C", remote, "init", "-q", "--bare", "-b", "comms"]);
+
+  const repo = mkdtempSync(join(tmpdir(), "agent-protocol-deliver-"));
+  execFileSync("git", ["-C", repo, "init", "-q", "-b", "comms"]);
+  execFileSync("git", ["-C", repo, "remote", "add", "origin", remote]);
+  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  const thread = join(repo, "agent-comms", "016-x");
+  mkdirSync(join(thread, "messages"), { recursive: true });
+  writeFileSync(join(thread, "_meta.md"), META);
+  const git = (...args: string[]): string =>
+    execFileSync("git", ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@e", ...args], {
+      encoding: "utf8",
+    });
+  git("add", ".");
+  git("commit", "-qm", "init");
+  git("push", "-q", "origin", "comms");
+
+  // The body lies OUTSIDE the checkout, because that is the only place a caller may
+  // put it: delivery refuses a dirty checkout, and an untracked draft in the mail
+  // checkout is dirt like any other. Writing it beside the mail was this test's own
+  // first mistake, and it failed exactly the way a real caller's would.
+  const body = join(mkdtempSync(join(tmpdir(), "agent-protocol-body-")), "body.md");
+  writeFileSync(body, "The answer.\n");
+  return { repo, root: join(repo, "agent-comms"), body, remote };
+};
+
+/**
+ * The identity goes in the ENVIRONMENT, not in flags: the commit is made by the CLI,
+ * several git calls deep, and a test cannot reach it with `-c user.email=…`. A real
+ * mail checkout has an identity of its own; a temporary one has none, and on the
+ * runner there is no global config to fall back on either — which is exactly why this
+ * suite passed on a developer's machine and failed in CI.
+ */
+const IDENTITY = {
+  GIT_AUTHOR_NAME: "t",
+  GIT_AUTHOR_EMAIL: "t@e",
+  GIT_COMMITTER_NAME: "t",
+  GIT_COMMITTER_EMAIL: "t@e",
+};
+
+const send = (
+  contest: { repo: string; root: string; body: string },
+  ...extra: string[]
+): { code: number; out: string } =>
+  run(
+    contest,
+    { AGENT_PROTOCOL_WORKER: "claude-code", AGENT_PROTOCOL_SESSION_FILE: "", ...IDENTITY },
+    ["--write", ...extra],
+  );
+
+describe("new-message --write delivers (R3)", () => {
+  it("one action: the file, the commit and the push — nothing is left for the agent to type", () => {
+    const contest = delivery();
+
+    const result = send(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("committed and pushed");
+    // The message is in the REMOTE, not merely on our disk: an unpushed message
+    // exists for nobody.
+    const remoteFiles = execFileSync(
+      "git",
+      ["-C", contest.remote, "ls-tree", "-r", "--name-only", "comms"],
+      { encoding: "utf8" },
+    );
+    expect(remoteFiles).toMatch(/agent-comms\/016-x\/messages\/.*-dev-core\.md/);
+    // And the checkout is clean afterwards — a delivered message is not a diff
+    // somebody has to notice.
+    expect(
+      execFileSync("git", ["-C", contest.repo, "status", "--porcelain"], { encoding: "utf8" }),
+    ).toBe("");
+  });
+
+  it("stages only the message: the derived files stay the generator's business", () => {
+    const contest = delivery();
+    send(contest);
+
+    const changed = execFileSync(
+      "git",
+      ["-C", contest.repo, "show", "--name-only", "--format=", "HEAD"],
+      { encoding: "utf8" },
+    ).trim();
+    expect(changed).toContain("messages/");
+    expect(changed).not.toContain("_thread.md");
+    expect(changed).not.toContain("INDEX.md");
+  });
+
+  it("a feed that moved underneath the writer is retried, not reported as a failure", () => {
+    const contest = delivery();
+    // Somebody else's message lands in the remote first — the push of our first
+    // attempt is rejected, and the retry replans on top of theirs.
+    const other = mkdtempSync(join(tmpdir(), "agent-protocol-other-"));
+    execFileSync("git", ["-C", other, "clone", "-q", "-b", "comms", contest.remote, "."]);
+    // git does not carry empty directories, so the clone has no `messages/` yet.
+    mkdirSync(join(other, "agent-comms", "016-x", "messages"), { recursive: true });
+    const theirs = join(
+      other,
+      "agent-comms",
+      "016-x",
+      "messages",
+      "2026-07-26T09-00-00Z-curator.md",
+    );
+    writeFileSync(
+      theirs,
+      "---\nfrom: curator\ndate: 2026-07-26T09:00:00Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nTheirs.\n",
+    );
+    execFileSync("git", ["-C", other, "-c", "user.name=t", "-c", "user.email=t@e", "add", "."]);
+    execFileSync("git", [
+      "-C",
+      other,
+      "-c",
+      "user.name=t",
+      "-c",
+      "user.email=t@e",
+      "commit",
+      "-qm",
+      "theirs",
+    ]);
+    execFileSync("git", ["-C", other, "push", "-q", "origin", "comms"]);
+
+    const result = send(contest);
+
+    expect(result.code).toBe(0);
+    // Both messages are in the feed: append-only means the loser of the race is
+    // replanned, never overwritten.
+    const remoteFiles = execFileSync(
+      "git",
+      ["-C", contest.remote, "ls-tree", "-r", "--name-only", "comms"],
+      { encoding: "utf8" },
+    );
+    expect(remoteFiles).toContain("2026-07-26T09-00-00Z-curator.md");
+    expect(remoteFiles).toMatch(/-dev-core\.md/);
+  });
+
+  it("a git that refuses says WHY: the failure carries git's own words, not a bare exit code", () => {
+    // The case from the runner, made deterministic: no identity anywhere (the global
+    // and system configs are taken away as well, or a developer's own would answer for
+    // the checkout). Before this the command died on an unhandled throw — code 1, a
+    // stack trace, and a CI log that named neither git nor identity.
+    const contest = delivery();
+
+    const result = run(
+      contest,
+      {
+        AGENT_PROTOCOL_WORKER: "claude-code",
+        AGENT_PROTOCOL_SESSION_FILE: "",
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_SYSTEM: "/dev/null",
+        GIT_AUTHOR_NAME: "",
+        GIT_AUTHOR_EMAIL: "",
+        GIT_COMMITTER_NAME: "",
+        GIT_COMMITTER_EMAIL: "",
+      },
+      ["--write"],
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("git commit");
+    expect(result.out.toLowerCase()).toContain("ident");
+  });
+
+  it("a dirty checkout is a refusal: delivery resets on a rejected push and will not do that over somebody's draft", () => {
+    const contest = delivery();
+    writeFileSync(join(contest.root, "016-x", "draft.md"), "half a thought\n");
+
+    const result = send(contest);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("uncommitted changes");
   });
 });
