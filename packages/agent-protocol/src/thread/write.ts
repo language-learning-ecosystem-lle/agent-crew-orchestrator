@@ -14,7 +14,7 @@
  * This module is the pure core (planning the files), "string → files". The actual
  * creation on disk and git live in the CLI above it.
  */
-import type { LaunchDirective, MessageFields } from "./message.js";
+import type { LaunchDirective, MessageFields, ThreadPriorityValue } from "./message.js";
 import { messageFileName, renderMessageFile } from "./message.js";
 import { renderMetaFile, type ThreadMeta } from "./thread.js";
 
@@ -66,6 +66,8 @@ export type NewMessageInput = {
   readonly waitingOn?: readonly string[];
   /** With what the runs of this thread are to be raised from here on (R21). */
   readonly launch?: LaunchDirective;
+  /** Which waiting thread is raised first from here on (R5). */
+  readonly priority?: ThreadPriorityValue;
   readonly text: string;
   /** true — the thread has `messages/` (migrated / file-based). false — legacy. */
   readonly threadHasMessages: boolean;
@@ -95,6 +97,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
     ...(input.launch === undefined ? {} : { launch: input.launch }),
+    ...(input.priority === undefined ? {} : { priority: input.priority }),
   };
   return {
     path: `messages/${messageFileName(fields)}`,

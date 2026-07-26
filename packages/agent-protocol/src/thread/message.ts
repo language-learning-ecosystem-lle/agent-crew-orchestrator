@@ -71,6 +71,24 @@ export type LaunchDirective = {
   readonly effort?: string;
 };
 
+/**
+ * THE PRIORITY OF A THREAD (R5, thread `016-protocol-roadmap`) — an authorized role
+ * saying which of the waiting threads the orchestrator raises first, from here on.
+ *
+ * It is a header field for the same reason the launch directive is (and the argument
+ * is stronger, see `orchestrator/priority.ts`): importance is a statement about the
+ * moment, the feed is append-only, and a later statement supersedes an earlier one
+ * without anybody editing a mutable file.
+ *
+ * UNLIKE `launch`, THE VALUES ARE VALIDATED HERE. The vocabulary of `effort` belongs
+ * to a foreign tool, so a strict parser would make a message written by a future
+ * writer unreadable; `high | normal | low` is the PROTOCOL's own vocabulary — the same
+ * class as `expects` — and there is no future writer who could legitimately widen it
+ * without a schema version.
+ */
+export const THREAD_PRIORITY_VALUES = ["high", "normal", "low"] as const;
+export type ThreadPriorityValue = (typeof THREAD_PRIORITY_VALUES)[number];
+
 /** `expects` — what the author awaits: a substantive answer, an acknowledgement or nothing. */
 export const EXPECTS = ["answer", "ack", "none"] as const;
 export type Expects = (typeof EXPECTS)[number];
@@ -145,6 +163,12 @@ export type MessageFields = {
    * at the moment a candidate is chosen, never silently.
    */
   readonly launch?: LaunchDirective;
+  /**
+   * WHICH WAITING THREAD IS RAISED FIRST from here on (R5). Effective only from a role
+   * holding `thread-priority`; from anyone else it is ignored OUT LOUD when the queue
+   * is built, never silently. Absent means the thread keeps the default (`normal`).
+   */
+  readonly priority?: ThreadPriorityValue;
   /** Heading tail from history (`· [СВЕРХПИСАНО msg-002]`, quoted verbatim from live data), so the assembly matches byte for byte. */
   readonly suffix?: string;
 };
@@ -309,6 +333,13 @@ export const parseMessageFile = (raw: string): Message => {
   const launchRaw = raws.get("launch");
   const launch = launchRaw === undefined ? undefined : parseLaunchDirective(launchRaw);
 
+  const priority = raws.get("priority");
+  if (priority !== undefined && !(THREAD_PRIORITY_VALUES as readonly string[]).includes(priority)) {
+    throw new MessageFormatError(
+      `'priority: ${priority}' — allowed values are ${THREAD_PRIORITY_VALUES.join(" | ")}`,
+    );
+  }
+
   const fields: MessageFields = {
     ...(msgRaw === undefined ? {} : { msg: Number(msgRaw) }),
     ...(seqRaw === undefined ? {} : { seq: Number(seqRaw) }),
@@ -319,6 +350,7 @@ export const parseMessageFile = (raw: string): Message => {
     expects: expects as Expects,
     ...(waitingRaw === undefined ? {} : { waitingOn: parseList(waitingRaw) }),
     ...(launch === undefined ? {} : { launch }),
+    ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
     ...(suffix === undefined ? {} : { suffix }),
   };
   if (fields.msg !== undefined && !Number.isInteger(fields.msg)) {
@@ -356,6 +388,9 @@ export const renderMessageFile = (message: Message): string => {
     // After `waiting-on` and before the historical `suffix`: the directive is about
     // the RUNS of this thread, so it reads next to the field that says whose turn it is.
     ...(fields.launch === undefined ? [] : [`launch: ${renderLaunchDirective(fields.launch)}`]),
+    // Next to `launch` and for the same reason: both are statements about the RUNS of
+    // this thread — with what it is raised, and how soon.
+    ...(fields.priority === undefined ? [] : [`priority: ${fields.priority}`]),
     ...(fields.suffix === undefined ? [] : [`suffix: ${fields.suffix}`]),
   ];
   return `${FENCE}\n${head.join("\n")}\n${FENCE}\n\n${text}\n`;

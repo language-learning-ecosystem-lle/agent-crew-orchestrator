@@ -263,3 +263,36 @@ describe("provenance in the header (R7)", () => {
     expect(isSessionId("has space")).toBe(false);
   });
 });
+
+describe("the priority of a thread in the header (R5)", () => {
+  const raw = (line: string): string =>
+    `---\nfrom: curator\ndate: 2026-07-26T18:00:00Z\nexpects: answer\nwaiting-on: dev-core\n${line}---\n\nbody\n`;
+
+  it("round-trips: parsed out of the header and rendered back into it", () => {
+    const parsed = parseMessageFile(raw("priority: high\n"));
+
+    expect(parsed.fields.priority).toBe("high");
+    expect(renderMessageFile(parsed)).toContain("priority: high");
+    expect(parseMessageFile(renderMessageFile(parsed)).fields.priority).toBe("high");
+  });
+
+  it("absent means absent — no default is invented by the parser", () => {
+    // The default (`normal`) belongs to the QUEUE, not to the message: a message that
+    // says nothing about priority must be distinguishable from one that says 'normal',
+    // otherwise "nobody has spoken" and "somebody chose the middle" collapse into one.
+    expect(parseMessageFile(raw("")).fields.priority).toBeUndefined();
+  });
+
+  it("a value outside the vocabulary fails the whole message, and the error lists the vocabulary", () => {
+    // Unlike `launch`, whose values belong to a foreign tool: this vocabulary is the
+    // protocol's own, so a wrong value is a defect and not a message from the future.
+    expect(() => parseMessageFile(raw("priority: urgent\n"))).toThrow(MessageFormatError);
+    expect(() => parseMessageFile(raw("priority: urgent\n"))).toThrow(/high \| normal \| low/);
+  });
+
+  it("stays out of the assembled heading, like the launch directive", () => {
+    expect(renderHeading(parseMessageFile(raw("priority: low\n")).fields, 3)).toBe(
+      "## msg-003 · from: curator · 2026-07-26 · expects: answer",
+    );
+  });
+});

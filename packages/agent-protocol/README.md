@@ -319,6 +319,7 @@ rather than going through that door.
 | 7 | + the interactive turn (R19): `roles[].launch.limits.waitInputSeconds` in the config, and on the journal the `input-awaited`/`input-received` kinds. NO data moves, and the MAIL is untouched — a parked session's aliveness is a runtime file beside its log, not a field in a message header, so no thread needs migrating |
 | 8 | + the graceful deadline (R20): `roles[].launch.limits.windDownSeconds` in the config. NOTHING else on disk changes — the deadline reaches a session through the environment of its own process and through its prompt, and neither is stored; `timeout` keeps its name and changes its MEANING (a session that did not land), which is not a migration |
 | 9 | + the launch directive in the feed (R21): the message header field `launch` (`model=…, effort=…`) and the role permission `launch-params`. NO data moves — no message carries the field yet, and its absence keeps meaning "raise the role on its standing calibration"; where a directive was applied is PRINTED on the launch line, not stored as an event |
+| 10 | + the priority of a thread in the feed (R5): the message header field `priority` (`high \| normal \| low`) and the role permission `thread-priority`. NO data moves — no message carries the field, and its absence means the thread sits at the default `normal`; the queue is recomputed every tick from the feed and PRINTED on the daemon's stream, not stored as an event |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -563,6 +564,9 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # --model <m> / --effort <e>: WITH WHAT the runs of this thread are raised from
                             # here on (R21, S15) — only from a role holding `launch-params`, and the value
                             # is checked against the tool's vocabulary at this door
+                            # --priority high|normal|low: WHICH waiting thread is raised FIRST from here on
+                            # (R5, S16) — only from a role holding `thread-priority`; the queue is priority,
+                            # then the age of the wait, then the thread number
 agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                             # blocks until the thread waits on the role again; needs a wait declared
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
@@ -1557,6 +1561,60 @@ launch: model=opus, effort=high
   opus, effort high — said by 'curator' (2026-07-26T…)`. The flag stays on top: it is
   a decision taken about THIS run, at the terminal, and a directive written into the
   thread days ago must not overrule it.
+
+### S16 — which thread is raised first: the queue of the tick (R5)
+
+A tick raises **at most one** pair, so whichever candidate comes first IS the
+scheduling policy of the circuit. Until R5 nobody had chosen it: candidates came out
+of `threadsWaitingOn`, that is out of the alphabet of the thread directories — an
+answer that is always right with one live thread and right by accident with two.
+
+**Three tiers, in this order, and nothing else:**
+
+1. **the explicit priority of the thread** — `high` before `normal` before `low`;
+2. **the age of the wait** — the oldest handoff first;
+3. **the thread number** — a stable tiebreaker, so an equal pair does not swap places
+   between ticks.
+
+No weights, no scores, no configurable strategies: the whole value of the rule is that
+a human can predict the queue without reading the code.
+
+- **The priority is said in the feed**, by the same form as the launch directive:
+
+  ```
+  priority: high
+  ```
+
+  Importance is a property of the MOMENT, not of the thread — the same conversation is
+  a background chore on Monday and the thing everything waits on by Thursday. A config
+  field would be a standing declaration in a mutable file that has to be remembered and
+  un-remembered by hand; a header field is append-only, its audit is free (who raised
+  the thread and when IS the message), and it expires the way statements expire — by a
+  later one. **The last priority of an authorized role wins.** Absence means the
+  default, `normal`.
+- **A permission of its own** — `thread-priority` (here: john and curator), separate
+  from `launch-params`: "with what a thread is raised" and "what is raised before what"
+  are different powers over somebody else's work, and a project may want to hand out
+  one without the other.
+- **Refused at the writer's door, ignored out loud at the reader's** — the same
+  asymmetry R21 established, and for the same reason (the feed is append-only, so
+  nothing read out of history may be fatal). `new-message --priority` refuses a value
+  outside the vocabulary and an author without the permission; a priority that still
+  got in is dropped with a line every tick it is read.
+- **The age of the wait is counted from the HANDOFF** — the message that put the role
+  into `waiting-on` and was never lifted since — not from the first unanswered message.
+  Counting from the first unanswered message would punish a thread for being talkative:
+  a conversation where three roles spoke while one was awaited would look older than
+  one where the same handoff happened yesterday in silence.
+- **One answer, in both places.** `mail` — the entry of a role — lists its threads in
+  the same order, so "which one do I take now" is not answered differently by the role's
+  own command and by the daemon. The FORM of that output is untouched (one thread id per
+  line, a script reads it); only the order changed.
+- **The queue is spoken, not inferred.** Before it decides, the daemon prints the whole
+  ordered queue with the reason for each place — `queue 1/2: dev-core×016-… — priority
+  high, waiting since 2026-07-24T…` — beside the skips it already announced. An
+  unexpected order is then answerable from the log alone, without a journal
+  archaeology run.
 
 ## `spike/` — P0
 
