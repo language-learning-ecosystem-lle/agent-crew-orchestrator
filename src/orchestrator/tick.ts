@@ -33,7 +33,7 @@
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
 import {
   type Ceiling,
-  consecutiveLaunchesWithoutCompletion,
+  consecutiveLaunchesWithoutDelivery,
   MAX_CONSECUTIVE_RUNS,
 } from "./launch.js";
 import { foldLeases, isLeaseAlive, type LeaseView } from "./lease.js";
@@ -160,7 +160,7 @@ export const planTick = (input: {
 
   // The global ceiling — with a trace (requirement 1): used up → a refusal, not a
   // launch.
-  if (consecutiveLaunchesWithoutCompletion(input.events) >= maxConsecutive) {
+  if (consecutiveLaunchesWithoutDelivery(input.events) >= maxConsecutive) {
     return {
       kind: "refused",
       role: eligible.role,

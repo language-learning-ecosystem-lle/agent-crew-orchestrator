@@ -749,9 +749,15 @@ hard-coded list) and spawns `claude -p` on ONE thread. Three rules keep it hones
 **The ceiling against "launch → break → launch ate the quota" comes in two
 layers:** per (role, thread) pair — `exhausted` from S0 (`--max-attempts` failures
 in a row WITHOUT a delivery, then a refusal); and global — `--max-runs` launches in a
-row without a single `completed` (aimed at the S3 auto loop). **Both are flags and
+row without a single delivery by ANY pair (aimed at the S3 auto loop). **A delivery
+means the same thing to both** (one predicate, `isDelivery`): a `completed` release
+**or a handoff** — the turn passing IS the delivery, the release is the observer
+writing it down. So a run of "handed off, then the supervisor died before it could
+write the release" resets both counters instead of walking them to their ceilings for
+someone else's crash; the global gate had that defect until 2026-07-26, one day longer
+than the per-pair one. **Both are flags and
 both print where their number came from** (`gates — attempts-per-pair ≤ 3 (default) ·
-runs-without-completion ≤ 10 (flag)`): before 2026-07-26 the first of them was a
+runs-without-delivery ≤ 10 (flag)`): before 2026-07-26 the first of them was a
 constant no flag could reach, so an operator raised `--max-runs` at a pair the OTHER
 gate had dropped and nothing in the output could tell them so. Neither gate has a
 per-role field in the config yet — the config's `launch.limits` describe a RUN, these
@@ -840,7 +846,7 @@ construction:
   and no `kill`. The simplest form of S4 is already here, so that there is no window
   between the steps.
 - **The global ceiling leaves a trace.** `MAX_CONSECUTIVE_RUNS` launches in a row
-  without a single `completed` → the daemon writes `launch-refused` (reason
+  without a single delivery → the daemon writes `launch-refused` (reason
   `run-budget`) and does NOT launch. The "launch → break → launch" loop hits the
   ceiling and leaves a record instead of burning the quota silently.
 

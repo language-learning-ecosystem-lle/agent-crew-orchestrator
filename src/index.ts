@@ -98,7 +98,7 @@ export {
   type AgentParams,
   type AgentResolution,
   buildLaunchPrompt,
-  consecutiveLaunchesWithoutCompletion,
+  consecutiveLaunchesWithoutDelivery,
   DEFAULT_EXEC,
   DEFAULT_WORKER,
   describeAgent,

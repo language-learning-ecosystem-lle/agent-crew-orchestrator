@@ -15,23 +15,20 @@
  *     `thread`.
  *
  * The ceiling comes in two layers (both against "launch → break → launch ate the
- * quota"), and both count runs in a row without a success — BUT THEY DO NOT AGREE ON
- * WHAT COUNTS AS ONE, and the difference is stated here rather than glossed over
- * (reviewer-pr, criterion 11, PR #22):
+ * quota"), and both count runs in a row since the last DELIVERY — the same word, from
+ * the same predicate (`isDelivery` in `lease.ts`): a `completed` release OR a handoff:
  *  - per (role, thread) pair: we reuse `exhausted` from S0 — `MAX_ATTEMPTS` failures
- *    since the pair last DELIVERED, where a delivery is a `completed` release OR a
- *    handoff (the turn passing is the delivery; see `lease.ts`);
- *  - global: `consecutiveLaunchesWithoutCompletion` for the S3 auto loop — no more
- *    than `MAX_CONSECUTIVE_RUNS` launches in a row without a single `completed`. A
- *    handoff does NOT reset this one.
+ *    since that pair last delivered;
+ *  - global: `consecutiveLaunchesWithoutDelivery` for the S3 auto loop — no more than
+ *    `MAX_CONSECUTIVE_RUNS` launches in a row since ANY pair delivered.
  *
- * The asymmetry is deliberate for now and its cost is known: a run of "handed off,
- * then the supervisor died" (`supervisor-gone` after a handoff, no `completed`) walks
- * the global counter towards its ceiling even though every one of those runs
- * delivered. It is the same class of defect the per-pair counter was just fixed for,
- * an order of magnitude slower (10 rather than 3) and behind a failure that is itself
- * a fault worth stopping for. Changing it is curator's call, not a silent widening of
- * a defect fix — it is raised in thread 016.
+ * They agree since 2026-07-26 (curator's decision, thread 016). Until then the global
+ * one reset on `completed` only, and its cost was known and stated here: a run of
+ * "handed off, then the supervisor died" (`supervisor-gone` after a handoff, no
+ * `completed`) walked the counter to its ceiling even though every one of those runs
+ * delivered — a whole auto loop stopped for someone else's crash, the same class of
+ * defect the per-pair counter had been fixed for a day earlier, and a global gate is
+ * not a different class from a per-pair one just because it is wider.
  *
  * Both are operator flags (`--max-attempts`, `--max-runs`) resolved with their source
  * by `resolveGates`: until 2026-07-26 the first was a constant no flag could reach,
@@ -48,14 +45,13 @@ import { DEFAULT_IDLE_MS } from "./activity.js";
 import type { Continuation } from "./continuation.js";
 import { DEFAULT_WAIT_INPUT_SECONDS } from "./interactive.js";
 import { eventTimestamp, MAX_ATTEMPTS, type OrchestratorEvent, type World } from "./journal.js";
-import { foldLeases, isLeaseAlive } from "./lease.js";
+import { foldLeases, isDelivery, isLeaseAlive } from "./lease.js";
 
 /**
- * The ceiling of the global auto loop: how many runs in a row WITHOUT a single
- * successful completion the orchestrator may launch before it stops and calls a
- * human (curator's requirement). A healthy system completes its runs; a batch of
- * launches without a `completed` is precisely the break loop burning quota.
- * Calibratable.
+ * The ceiling of the global auto loop: how many runs in a row WITHOUT A SINGLE
+ * DELIVERY the orchestrator may launch before it stops and calls a human (curator's
+ * requirement). A healthy system delivers its runs; a batch of launches with nothing
+ * handed over is precisely the break loop burning quota. Calibratable.
  */
 export const MAX_CONSECUTIVE_RUNS = 10;
 
@@ -233,7 +229,7 @@ export const describeCeilings = (ceilings: ResolvedCeilings): string =>
 /**
  * THE TWO GATES OF THE LOOP — how many failed attempts one pair gets
  * (`--max-attempts`) and how many launches in a row the circuit gets without a
- * single completion (`--max-runs`). They are ceilings on LAUNCHING, not on a run,
+ * single delivery (`--max-runs`). They are ceilings on LAUNCHING, not on a run,
  * which is why they are resolved apart from `ResolvedCeilings`; everything else about
  * them follows R12 — a flag beats the default, and the source is printed beside the
  * number.
@@ -283,7 +279,7 @@ export const resolveGates = (input: {
 export const describeGates = (gates: ResolvedGates): string =>
   [
     `attempts-per-pair ≤ ${gates.maxAttempts.value} (${gates.maxAttempts.source})`,
-    `runs-without-completion ≤ ${gates.maxConsecutive.value} (${gates.maxConsecutive.source})`,
+    `runs-without-delivery ≤ ${gates.maxConsecutive.value} (${gates.maxConsecutive.source})`,
   ].join(" · ");
 
 /**
@@ -623,18 +619,27 @@ export const buildResumePrompt = (input: {
   ].join("\n");
 
 /**
- * Launches in a row without a single `completed`. Every `launch` increments the
- * counter, a successful `lease-released reason=completed` resets it. A
- * "launch → break" loop (releases with timeout/forced but never completed)
+ * Launches in a row without a single DELIVERY. Every `launch` increments the counter,
+ * a delivery (`isDelivery` — a `completed` release or a handoff) resets it. A
+ * "launch → break" loop (releases with timeout/forced, nothing ever delivered)
  * accumulates — and that is what catches it.
+ *
+ * The reset used to hang on `completed` alone (curator's decision of 2026-07-26 brings
+ * it in line with the per-pair ceiling, which was fixed for this four days earlier).
+ * The turn passing IS the delivery, so a run of "the turn was passed, then the
+ * supervisor died before it could write the release" drove the global counter to its
+ * ceiling for someone else's crash — with the whole auto loop stopping, not one pair.
+ * The name says "delivery" and not "completion" for the same reason: it is the word
+ * `isDelivery` defines, and a counter whose name promises one rule while it applies
+ * another is exactly how the two ceilings drifted apart.
  */
-export const consecutiveLaunchesWithoutCompletion = (
+export const consecutiveLaunchesWithoutDelivery = (
   events: readonly OrchestratorEvent[],
 ): number => {
   let count = 0;
   for (const event of events) {
     if (event.kind === "launch") count += 1;
-    else if (event.kind === "lease-released" && event.reason === "completed") count = 0;
+    else if (isDelivery(event)) count = 0;
   }
   return count;
 };
@@ -683,7 +688,7 @@ export const planLaunch = (input: {
     return { ok: false, reason: "already-running" };
   }
   if (view?.exhausted) return { ok: false, reason: "exhausted" };
-  if (consecutiveLaunchesWithoutCompletion(events) >= maxConsecutive) {
+  if (consecutiveLaunchesWithoutDelivery(events) >= maxConsecutive) {
     return { ok: false, reason: "run-budget" };
   }
 

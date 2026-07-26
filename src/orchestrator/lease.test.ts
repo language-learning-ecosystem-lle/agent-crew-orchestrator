@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { MAX_ATTEMPTS, type OrchestratorEvent } from "./journal.js";
-import { foldLeases, type LeaseView, unclosedLeases } from "./lease.js";
+import { foldLeases, isDelivery, type LeaseView, unclosedLeases } from "./lease.js";
 
 const NOW = new Date("2026-07-24T14:00:00Z");
 const PAST = "2026-07-24T13:30:00Z"; // earlier than NOW
@@ -72,6 +72,18 @@ const only = (events: OrchestratorEvent[]): LeaseView => {
   expect(views).toHaveLength(1);
   return views[0] as LeaseView;
 };
+
+describe("isDelivery — the one word both ceilings reset on", () => {
+  it("a handoff and a completed release deliver; nothing else does", () => {
+    expect(isDelivery(handoff("dev-core", "t"))).toBe(true);
+    expect(isDelivery(release("dev-core", "t", "completed"))).toBe(true);
+    expect(isDelivery(release("dev-core", "t", "supervisor-gone"))).toBe(false);
+    expect(isDelivery(release("dev-core", "t", "timeout"))).toBe(false);
+    expect(isDelivery(release("dev-core", "t", "exited-without-handoff"))).toBe(false);
+    expect(isDelivery(launch("dev-core", "t"))).toBe(false);
+    expect(isDelivery(acquire("dev-core", "t", FUTURE))).toBe(false);
+  });
+});
 
 describe("foldLeases — the lifecycle", () => {
   it("taking a lease → running, deadline and attempt are set", () => {

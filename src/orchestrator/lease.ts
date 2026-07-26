@@ -97,6 +97,23 @@ export const isLeaseAlive = (state: LeaseLifecycle): boolean =>
 const isActive = isLeaseAlive;
 
 /**
+ * THE DELIVERY, in one place — because two different ceilings reset on it (the
+ * per-pair `attempt` folded here and the global run budget in `launch.ts`), and until
+ * 2026-07-26 they each carried their own idea of what a delivery is: this one counted
+ * the handoff, that one did not. Two definitions of the same word is how a rule drifts
+ * apart from itself, and the drift was not theoretical — the global counter walked
+ * towards its ceiling on a run of "the turn was passed, then the supervisor died",
+ * i.e. for runs that had all delivered.
+ *
+ * `handoff-detected` counts because the turn passing IS the delivery — the `completed`
+ * release is only the observer writing it down, and an observer that dies in between
+ * loses the record, not the work.
+ */
+export const isDelivery = (event: OrchestratorEvent): boolean =>
+  event.kind === "handoff-detected" ||
+  (event.kind === "lease-released" && event.reason === "completed");
+
+/**
  * A terminal FAILURE: the run was broken off rather than finished normally. Three
  * reasons — timeout, force and exiting on its own without passing the turn (the
  * last one separated from force, see `RELEASE_REASONS`); for the attempt ceiling
@@ -178,6 +195,11 @@ export const foldLeases = (
       order.push(k);
     }
     cur.lastEvent = event.kind;
+    // The counter goes back to zero on a DELIVERY, whichever of its two shapes this
+    // event is (`isDelivery`) — one predicate rather than a reset written into each
+    // branch, so the per-pair ceiling and the global one cannot come to mean different
+    // things again.
+    if (isDelivery(event)) cur.attempt = 0;
 
     switch (event.kind) {
       case "lease-acquired":
@@ -192,11 +214,9 @@ export const foldLeases = (
         // The process is up; the lease state stays running.
         break;
       case "handoff-detected":
-        // The turn left the role — the session is winding down. THE ATTEMPT COUNT
-        // GOES BACK TO ZERO HERE: the run delivered, whatever the supervisor manages
-        // to write about it afterwards.
+        // The turn left the role — the session is winding down. (The attempt count was
+        // already zeroed above: this event is a delivery.)
         if (isActive(cur.state)) cur.state = "draining";
-        cur.attempt = 0;
         break;
       case "input-awaited":
         // The run is parked (R19). The work deadline is left where it is and stops
@@ -222,7 +242,6 @@ export const foldLeases = (
       case "lease-released":
         cur.state = "released";
         cur.reason = event.reason;
-        if (event.reason === "completed") cur.attempt = 0;
         cur.waitDeadline = null;
         cur.waitingSince = null;
         break;
