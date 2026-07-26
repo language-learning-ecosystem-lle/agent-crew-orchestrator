@@ -51,6 +51,7 @@ import { AGENT_PARAMS_STEP } from "./v4-agent-params.js";
 import { NOTIFICATIONS_STEP } from "./v5-notifications.js";
 import { WORKSPACES_STEP } from "./v6-workspaces.js";
 import { INTERACTIVE_TURN_STEP } from "./v7-interactive-turn.js";
+import { GRACEFUL_DEADLINE_STEP } from "./v8-graceful-deadline.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -64,6 +65,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   NOTIFICATIONS_STEP,
   WORKSPACES_STEP,
   INTERACTIVE_TURN_STEP,
+  GRACEFUL_DEADLINE_STEP,
 ];
 
 export type {

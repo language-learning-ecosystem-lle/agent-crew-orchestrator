@@ -139,12 +139,19 @@ export const zonesSchema = z.strictObject({
  * have to mean "parking is not allowed here" — a different kind of statement, and one
  * nobody has asked for. A project that does not want its sessions parking says so in
  * their cards; the minimum here is one second.
+ *
+ * `windDownSeconds` (R20) has no zero either, and for a stronger reason: zero would say
+ * "this role need not land its work", which is the failure the norm exists against. Its
+ * fall-through is also the only one here that is not a package constant — it is a share
+ * of the RESOLVED window (`defaultWindDownSeconds`), so a role that shortens its runs
+ * gets a proportionate landing without restating anything.
  */
 export const launchLimitsSchema = z.strictObject({
   idleSeconds: z.number().int().min(0).optional(),
   wallClockSeconds: z.number().int().min(1).optional(),
   maxTurns: z.number().int().min(1).optional(),
   waitInputSeconds: z.number().int().min(1).optional(),
+  windDownSeconds: z.number().int().min(1).optional(),
 });
 
 /**

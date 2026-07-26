@@ -87,6 +87,42 @@ export const DEFAULT_WALL_CLOCK_SECONDS = 3600;
 export const DEFAULT_MAX_TURNS = 300;
 
 /**
+ * HOW LONG BEFORE THE DEADLINE A SESSION IS EXPECTED TO START WINDING DOWN (R20,
+ * john's decision) — the one ceiling of the four that is a NORM rather than a
+ * mechanism: nothing fires at this point, it is what the session was asked to do on
+ * its own, and the wall clock behind it only catches whoever ignored it.
+ *
+ * WHY IT IS DERIVED FROM THE WALL CLOCK AND NOT A CONSTANT. Winding down costs what it
+ * costs — commit, write the state into the thread, push, pass the turn — but a fixed
+ * fifteen minutes would be a quarter of an hour-long window and the WHOLE of a
+ * ten-minute probe. A share with two stops keeps it proportionate at both ends:
+ *  - 20% of the window, so a longer run gets a longer landing;
+ *  - never more than 15 minutes — beyond that it is not landing, it is idling;
+ *  - never less than 2 minutes — below that the norm cannot physically be met, and a
+ *    norm nobody can meet teaches sessions to ignore it.
+ * An hour (the default window) lands on 12 minutes, inside the 10–15 curator asked for.
+ *
+ * The number is calibratable from both sides: `--wind-down` for one run,
+ * `launch.limits.windDownSeconds` for a role that always needs longer (a role that
+ * finishes by pushing a branch and waiting for CI, say).
+ */
+export const WIND_DOWN_SHARE = 0.2;
+export const WIND_DOWN_MIN_SECONDS = 120;
+export const WIND_DOWN_MAX_SECONDS = 900;
+
+export const defaultWindDownSeconds = (wallClockSeconds: number): number =>
+  // The last `min` is for windows shorter than the floor (a two-minute probe): the
+  // margin can never exceed the window itself, or the arithmetic would put the landing
+  // point before the launch.
+  Math.min(
+    wallClockSeconds,
+    Math.min(
+      WIND_DOWN_MAX_SECONDS,
+      Math.max(WIND_DOWN_MIN_SECONDS, Math.round(wallClockSeconds * WIND_DOWN_SHARE)),
+    ),
+  );
+
+/**
  * WHAT THE SESSION IS TOLD ABOUT ITSELF (R7, thread 016) — the launch contract's
  * environment half. Two variables, and they are shaped differently on purpose:
  *
@@ -113,6 +149,20 @@ export const LAUNCH_ENV = {
    * that never returns at all.
    */
   waitSeconds: "AGENT_PROTOCOL_WAIT_SECONDS",
+  /**
+   * WHEN THIS RUN'S LEASE RUNS OUT (R20), ISO, as materialised by `planLaunch`. Until
+   * it existed a session had no way of knowing its own deadline — the acceptance run of
+   * 012 found `--wall-clock` being read out of a leaked `npm_lifecycle_script`, which is
+   * not a channel, it is a coincidence. A session that cannot see the end of its window
+   * cannot wind down before it, and every long run ended by being cut off.
+   *
+   * A VALUE, not a path, even though R19 can MOVE it: the deadline exists at the spawn,
+   * and a run that parks gets time ADDED (the fold shifts it by the wait). So the value
+   * handed over is a floor — never later than the truth — and a session that trusts it
+   * literally winds down early rather than late. `await-input` says how much the window
+   * moved when the answer comes back, which is the one moment it changes.
+   */
+  leaseDeadline: "AGENT_PROTOCOL_LEASE_DEADLINE",
 } as const;
 
 /**
@@ -143,6 +193,13 @@ export type ResolvedCeilings = {
   readonly maxTurns: Ceiling;
   /** The ceiling of a declared wait for input (R19). */
   readonly waitInput: Ceiling;
+  /**
+   * How long before the deadline the session is expected to start landing (R20). The
+   * odd one out: `source: "default"` here means DERIVED FROM THE RESOLVED WALL CLOCK,
+   * not a package constant — so overriding the window alone moves the landing point
+   * with it, and a role does not have to restate both.
+   */
+  readonly windDown: Ceiling;
 };
 
 /**
@@ -172,6 +229,7 @@ export const resolveCeilings = (input: {
     readonly wallClockSeconds?: number;
     readonly maxTurns?: number;
     readonly waitInputSeconds?: number;
+    readonly windDownSeconds?: number;
   };
   readonly limits?: LaunchLimits;
   readonly defaults?: {
@@ -196,18 +254,27 @@ export const resolveCeilings = (input: {
     if (roleValue !== undefined) return { value: roleValue, source: "role" };
     return { value: fallback, source: "default" };
   };
+  const wallClock = pick(
+    input.flags.wallClockSeconds,
+    input.limits?.wallClockSeconds,
+    defaults.wallClockSeconds,
+  );
   return {
     idle: pick(input.flags.idleSeconds, input.limits?.idleSeconds, defaults.idleSeconds),
-    wallClock: pick(
-      input.flags.wallClockSeconds,
-      input.limits?.wallClockSeconds,
-      defaults.wallClockSeconds,
-    ),
+    wallClock,
     maxTurns: pick(input.flags.maxTurns, input.limits?.maxTurns, defaults.maxTurns),
     waitInput: pick(
       input.flags.waitInputSeconds,
       input.limits?.waitInputSeconds,
       defaults.waitInputSeconds,
+    ),
+    // The fall-through is COMPUTED from the window resolved just above (R20): whoever
+    // shortens a run to ten minutes with a flag has not thereby asked for a landing
+    // longer than the run, and would not think to say so.
+    windDown: pick(
+      input.flags.windDownSeconds,
+      input.limits?.windDownSeconds,
+      defaultWindDownSeconds(wallClock.value),
     ),
   };
 };
@@ -224,6 +291,7 @@ export const describeCeilings = (ceilings: ResolvedCeilings): string =>
     `wall-clock ${ceilings.wallClock.value}s (${ceilings.wallClock.source})`,
     `max-turns ${ceilings.maxTurns.value} (${ceilings.maxTurns.source})`,
     `wait-input ${ceilings.waitInput.value}s (${ceilings.waitInput.source})`,
+    `wind-down ${ceilings.windDown.value}s before the deadline (${ceilings.windDown.source})`,
   ].join(" · ");
 
 /**
@@ -548,6 +616,39 @@ export const describeLaunch = (role: Role): string => {
 export type InstructionDoc = { readonly path: string; readonly text: string };
 
 /**
+ * THE NORM OF WINDING DOWN, in the session's own prompt (R20, john's decision) — the
+ * part of R20 that does the actual work, because the two others only make it possible:
+ * the deadline is in the environment and the wall clock stands behind it, but nobody
+ * lands a run except the session itself.
+ *
+ * WHY IT IS A NORM AND NOT A MECHANISM. There is no supervisor gesture that can make a
+ * session commit — a SIGTERM at the deadline is exactly what we have now, and what it
+ * produces is the failure being fixed: two runs in two days (R1, R19) worked
+ * productively to the last second and were cut off with a heap of uncommitted work.
+ * Only the session knows what it is in the middle of, so only the session can decide
+ * where to stop digging; what it lacked was the time and the instruction.
+ *
+ * WHY IT SAYS "COMMIT AS IT IS". The instinct at a deadline is to finish the thought
+ * first — and that is precisely how the whole thing is lost instead. Committed
+ * half-work with an honest report is worth more than a perfect uncommitted tree that
+ * dies with the process, and the wording has to say so, or the norm reads as advice.
+ *
+ * IT IS SAID IN THE SAME BREATH AS R19 AND KEPT DISTINCT FROM IT, per curator: parking
+ * for input is a PAUSE that the same session continues; winding down is an ENDING with
+ * the turn passed on. Sharing a paragraph would blur the one difference that matters.
+ */
+const windDownNorm = (input: {
+  readonly deadline: string;
+  readonly windDownSeconds: number;
+}): string =>
+  [
+    `YOUR RUN HAS A DEADLINE: ${input.deadline} (UTC; also in \`$${LAUNCH_ENV.leaseDeadline}\`, and \`date -u +%FT%TZ\` tells you the time now).`,
+    `WINDING DOWN IS PART OF THE WORK: about ${Math.round(input.windDownSeconds / 60)} minutes before it, stop digging and land what you have — commit it AS IT IS (a partial commit beats a perfect tree that dies with the process), say in the thread what is done, what is not and what the next session should pick up, and pass the turn.`,
+    "Being cut off at the deadline is a FAILURE, not a normal ending: everything uncommitted at that moment belongs to nobody. If your run parks for input, the window moves later by the time spent waiting — `await-input` tells you by how much when the answer arrives.",
+    "This is not the same thing as parking for input above: parking is a pause your own session continues, winding down ends the run and passes the turn.",
+  ].join(" ");
+
+/**
  * The prompt for `claude -p` — from the role card (its `instructions`) and ONE
  * thread. Pure: the instruction texts are already read outside. "This thread
  * only" is stated firmly in the prompt: the S2 completion signal is bound to the
@@ -566,6 +667,10 @@ export const buildLaunchPrompt = (input: {
   readonly role: string;
   readonly thread: string;
   readonly instructions: readonly InstructionDoc[];
+  /** The lease deadline of THIS run (R20), ISO — the same value `planLaunch` materialised. */
+  readonly deadline: string;
+  /** How long before it the session is expected to start landing (R20). */
+  readonly windDownSeconds: number;
 }): string => {
   const cards = input.instructions.map((doc) => `# ${doc.path}\n\n${doc.text}`).join("\n\n---\n\n");
   return [
@@ -576,6 +681,8 @@ export const buildLaunchPrompt = (input: {
     "Read the whole thread (including the files in the conversation folder), carry out the statement of work and reply with a message at the end of the thread following the protocol rules (`cli new-message`). Once the reply is written and the turn is passed on, the run is over.",
     "",
     "IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Write the question into the thread with `cli new-message --await-input` (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), push it, then block on `cli await-input`. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.",
+    "",
+    windDownNorm(input),
     "",
     "--- ROLE CARD ---",
     "",
@@ -609,11 +716,20 @@ export const buildResumePrompt = (input: {
   readonly thread: string;
   /** How the previous attempt ended, in the journal's own vocabulary. */
   readonly reason: string;
+  /** The deadline of THE NEW lease (R20) — a resumed run gets a fresh window, and its own landing. */
+  readonly deadline: string;
+  readonly windDownSeconds: number;
 }): string =>
   [
     `Your previous session on thread \`${input.thread}\` was interrupted from the outside (${input.reason}) — this is that same session, resumed.`,
     "",
     "Your working directory is exactly as you left it, your base branch has not moved, and nobody has written in your place. THE THREAD MAY HAVE MOVED: read its tail before you carry on — a reply may have arrived while you were down, and acting on it is the work. Then carry on from where you stopped — do not start the work again, and do not take on the rest of your mail.",
+    "",
+    // The norm is repeated in full rather than assumed to be in context (R20): the
+    // deadline is a NEW one — this lease is not the interrupted lease — and a resumed
+    // session that lands by the old number would either stop far too early or, worse,
+    // trust a moment that has already passed.
+    windDownNorm(input),
     "",
     "The run is over once the reply is written at the end of the thread (`cli new-message`) and the turn is passed on.",
   ].join("\n");

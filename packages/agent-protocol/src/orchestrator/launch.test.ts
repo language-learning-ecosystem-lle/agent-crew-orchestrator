@@ -9,6 +9,7 @@ import {
   consecutiveLaunchesWithoutDelivery,
   DEFAULT_EXEC,
   DEFAULT_WORKER,
+  defaultWindDownSeconds,
   describeAgent,
   describeCeilings,
   describeGates,
@@ -21,6 +22,8 @@ import {
   resolveGates,
   resolveWorker,
   roleLaunchability,
+  WIND_DOWN_MAX_SECONDS,
+  WIND_DOWN_MIN_SECONDS,
 } from "./launch.js";
 
 const role = (over: Partial<Role>): Role => ({
@@ -84,6 +87,8 @@ describe("buildLaunchPrompt", () => {
       { path: "CLAUDE.md", text: "the project rules" },
       { path: "apps/api/CLAUDE.md", text: "the api rules" },
     ],
+    deadline: "2026-07-26T15:00:00Z",
+    windDownSeconds: 720,
   });
 
   it("carries the role and the thread", () => {
@@ -99,6 +104,20 @@ describe("buildLaunchPrompt", () => {
     expect(prompt).toContain("the project rules");
     expect(prompt).toContain("the api rules");
     expect(prompt.indexOf("the project rules")).toBeLessThan(prompt.indexOf("the api rules"));
+  });
+
+  it("TELLS THE SESSION ITS DEADLINE AND THE NORM OF LANDING (R20)", () => {
+    // The whole of R20 rests on this paragraph: the environment variable and the wall
+    // clock only make it possible, but nobody lands a run except the session, and a
+    // session that has not been told its deadline cannot land before it.
+    expect(prompt).toContain("2026-07-26T15:00:00Z");
+    expect(prompt).toContain("AGENT_PROTOCOL_LEASE_DEADLINE");
+    expect(prompt).toContain("12 minutes");
+    expect(prompt).toContain("commit it AS IT IS");
+    expect(prompt).toContain("FAILURE");
+    // Landing is NOT parking (curator: do not glue the two into one state) — the
+    // difference is said in the same breath the two are mentioned together.
+    expect(prompt).toContain("parking is a pause your own session continues");
   });
 
   it("OFFERS THE INTERACTIVE TURN, with both commands and the threshold (R19)", () => {
@@ -493,6 +512,45 @@ describe("resolveCeilings — the flag, then the role, then the default (R12)", 
     });
   });
 
+  it("THE LANDING MARGIN IS DERIVED FROM THE RESOLVED WINDOW, not from a constant (R20)", () => {
+    // Whoever shortens a run with a flag has not asked for a landing longer than the
+    // run, and would not think to say so. The default therefore follows the window that
+    // actually won — flag, role or package.
+    expect(resolveCeilings({ flags: {}, defaults }).windDown).toEqual({
+      value: 720, // 20% of the hour
+      source: "default",
+    });
+    expect(resolveCeilings({ flags: { wallClockSeconds: 900 }, defaults }).windDown).toEqual({
+      value: 180, // 20% of the fifteen minutes the flag asked for
+      source: "default",
+    });
+    expect(
+      resolveCeilings({ flags: {}, limits: { wallClockSeconds: 1200 }, defaults }).windDown.value,
+    ).toBe(240);
+  });
+
+  it("the margin has its own flag and its own role field, and both beat the derivation", () => {
+    expect(
+      resolveCeilings({ flags: {}, limits: { windDownSeconds: 1500 }, defaults }).windDown,
+    ).toEqual({ value: 1500, source: "role" });
+    expect(
+      resolveCeilings({
+        flags: { windDownSeconds: 60 },
+        limits: { windDownSeconds: 1500 },
+        defaults,
+      }).windDown,
+    ).toEqual({ value: 60, source: "flag" });
+  });
+
+  it("the derivation is bounded at both ends and never exceeds the window itself", () => {
+    // A quarter of an hour is a landing; an hour of one is idling. And below the floor
+    // the margin cannot be longer than the run, or the landing point would fall before
+    // the launch.
+    expect(defaultWindDownSeconds(36_000)).toBe(WIND_DOWN_MAX_SECONDS);
+    expect(defaultWindDownSeconds(300)).toBe(WIND_DOWN_MIN_SECONDS);
+    expect(defaultWindDownSeconds(60)).toBe(60);
+  });
+
   it("a partial limits block falls through field by field, not as a whole", () => {
     const ceilings = resolveCeilings({ flags: {}, limits: { maxTurns: 60 }, defaults });
     expect(ceilings.maxTurns.source).toBe("role");
@@ -506,6 +564,13 @@ describe("resolveCeilings — the flag, then the role, then the default (R12)", 
     expect(line).toContain("idle 120s (role)");
     expect(line).toContain("wall-clock 30s (flag)");
     expect(line).toContain("max-turns 300 (default)");
+    // The landing point is printed with the rest (R20): "which window this run had" now
+    // includes "and when it was supposed to start landing" — the first thing anyone asks
+    // of a run that was cut off.
+    // 30s here, not the 120s floor: the window itself is 30 seconds (the flag above),
+    // and a landing margin longer than the run would put the landing point before the
+    // launch.
+    expect(line).toContain("wind-down 30s before the deadline (default)");
   });
 
   it("a switched-off idle detector reads as 'off', not as '0s'", () => {
@@ -734,7 +799,12 @@ describe("continuing a session instead of starting one (R18)", () => {
   });
 
   it("the resume prompt does NOT repeat the role card — that is what resuming saves", () => {
-    const prompt = buildResumePrompt({ thread: "016-x", reason: "supervisor-gone" });
+    const prompt = buildResumePrompt({
+      thread: "016-x",
+      reason: "supervisor-gone",
+      deadline: "2026-07-26T15:00:00Z",
+      windDownSeconds: 720,
+    });
 
     expect(prompt).toContain("016-x");
     expect(prompt).toContain("supervisor-gone");
@@ -744,12 +814,33 @@ describe("continuing a session instead of starting one (R18)", () => {
     expect(prompt).toContain("new-message");
   });
 
+  it("the resume prompt carries the NEW deadline and the same norm of landing (R20)", () => {
+    // A resumed session works under a FRESH lease with a fresh window, and the one thing
+    // it cannot know by itself is when that window ends: the deadline it saw before the
+    // break belonged to the lease that broke.
+    const prompt = buildResumePrompt({
+      thread: "016-x",
+      reason: "supervisor-gone",
+      deadline: "2026-07-26T16:30:00Z",
+      windDownSeconds: 300,
+    });
+
+    expect(prompt).toContain("2026-07-26T16:30:00Z");
+    expect(prompt).toContain("5 minutes");
+    expect(prompt).toContain("commit it AS IT IS");
+  });
+
   it("the resume prompt SENDS IT BACK TO THE THREAD — under the narrowed rule an answer may have arrived", () => {
     // The first version said "nothing has moved", which was true of the rule it
     // shipped with. Since john's narrowing a reply no longer blocks a resume, so a
     // session told "nothing has moved" would carry on straight past the message it
     // was raised to act on.
-    const prompt = buildResumePrompt({ thread: "016-x", reason: "stalled" });
+    const prompt = buildResumePrompt({
+      thread: "016-x",
+      reason: "stalled",
+      deadline: "2026-07-26T15:00:00Z",
+      windDownSeconds: 720,
+    });
 
     expect(prompt).toContain("read its tail");
     expect(prompt).not.toContain("Nothing has moved");

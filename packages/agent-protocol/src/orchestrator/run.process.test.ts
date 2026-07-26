@@ -961,4 +961,50 @@ describe("a session that asks and waits alive (R19)", () => {
 
     expect(readFileSync(dump, "utf8")).toBe("123");
   }, 60_000);
+
+  it("THE SESSION IS TOLD ITS OWN DEADLINE (R20) — in its environment and in its prompt", () => {
+    // Until this existed a session had no channel to its own deadline at all (the
+    // acceptance of 012 found `--wall-clock` being read out of a leaked
+    // `npm_lifecycle_script`), so it could not wind down before being cut off. The env
+    // value must be the SAME moment the journal leased, or the two would disagree by
+    // however long the spawn took.
+    const { repo } = contour();
+    const dump = join(repo, "deadline-env.txt");
+    const promptDump = join(repo, "prompt.txt");
+    const exec = stub(
+      repo,
+      `printf '%s' "$AGENT_PROTOCOL_LEASE_DEADLINE" > ${dump}\nprintf '%s' "$*" > ${promptDump}\nsleep 1`,
+    );
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "30", "--wind-down", "10"]);
+
+    const leased = journal(repo).find((event) => event.kind === "lease-acquired") as {
+      deadline: string;
+    };
+    expect(readFileSync(dump, "utf8")).toBe(leased.deadline);
+    // …and the same moment reaches the session as WORDS: the environment is for the
+    // shell, the prompt is what the session actually reads.
+    const prompt = readFileSync(promptDump, "utf8");
+    expect(prompt).toContain(leased.deadline);
+    expect(prompt).toContain("YOUR RUN HAS A DEADLINE");
+  }, 60_000);
+
+  it("the landing point is announced in the log, so a timeout can be read for what it is", () => {
+    // Nothing fires at the wind-down point — there is no gesture that makes a session
+    // commit. What the supervisor owes is the record: it said so, at this minute, and
+    // the run was cut off anyway.
+    const { repo } = contour();
+    const exec = stub(repo, "sleep 30");
+
+    // A window of 6 seconds with a 5-second margin: the point falls one second in, the
+    // wall clock ends the run four seconds later.
+    const result = runWith(repo, ["--exec", exec, "--wall-clock", "6", "--wind-down", "5"]);
+
+    expect(result.out).toContain("the wind-down point has passed");
+    expect(sessionLog(repo)).toContain("the wind-down point has passed");
+    // The timeout now says WHY it is worth looking at, instead of reading as the routine
+    // ending of a long run.
+    expect(journal(repo).at(-1)).toMatchObject({ reason: "timeout" });
+    expect(result.out).toContain("did NOT wind down");
+  }, 60_000);
 });
