@@ -204,7 +204,7 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
     const result = daemon(repo, ["--max-runs", "20"]);
 
     expect(result.out).toContain("attempts-per-pair ≤ 3 (default)");
-    expect(result.out).toContain("runs-without-completion ≤ 20 (flag)");
+    expect(result.out).toContain("runs-without-delivery ≤ 20 (flag)");
   });
 
   it("--max-attempts REACHES the gate that drops the pair: the same journal, a launch", () => {

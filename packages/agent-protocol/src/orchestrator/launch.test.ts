@@ -6,7 +6,7 @@ import {
   buildLaunchArgv,
   buildLaunchPrompt,
   buildResumePrompt,
-  consecutiveLaunchesWithoutCompletion,
+  consecutiveLaunchesWithoutDelivery,
   DEFAULT_EXEC,
   DEFAULT_WORKER,
   describeAgent,
@@ -133,11 +133,24 @@ const timedOut = (role: string, thread: string): OrchestratorEvent => ({
   thread,
   reason: "timeout",
 });
+const handedOff = (role: string, thread: string): OrchestratorEvent => ({
+  kind: "handoff-detected",
+  ts: "2026-07-24T12:00:00Z",
+  role,
+  thread,
+});
+const supervisorGone = (role: string, thread: string): OrchestratorEvent => ({
+  kind: "lease-released",
+  ts: "2026-07-24T12:00:00Z",
+  role,
+  thread,
+  reason: "supervisor-gone",
+});
 
-describe("consecutiveLaunchesWithoutCompletion", () => {
+describe("consecutiveLaunchesWithoutDelivery", () => {
   it("counts launches, completed resets", () => {
     expect(
-      consecutiveLaunchesWithoutCompletion([
+      consecutiveLaunchesWithoutDelivery([
         launch("a", "1"),
         completed("a", "1"),
         launch("a", "2"),
@@ -146,15 +159,33 @@ describe("consecutiveLaunchesWithoutCompletion", () => {
     ).toBe(2);
   });
 
-  it("a break loop (timeout, not completed) accumulates", () => {
+  it("a break loop (timeout, nothing delivered) accumulates", () => {
     expect(
-      consecutiveLaunchesWithoutCompletion([
+      consecutiveLaunchesWithoutDelivery([
         launch("a", "1"),
         timedOut("a", "1"),
         launch("a", "1"),
         timedOut("a", "1"),
       ]),
     ).toBe(2);
+  });
+
+  it("A HANDOFF RESETS IT TOO — the turn passing is the delivery", () => {
+    // The symmetry with the per-pair ceiling (curator's decision, 2026-07-26). Without
+    // it a run of "handed off, then the supervisor died before writing the release"
+    // walks the GLOBAL counter to its ceiling for someone else's crash, and the whole
+    // auto loop stops over runs that all delivered.
+    expect(
+      consecutiveLaunchesWithoutDelivery([
+        launch("a", "1"),
+        handedOff("a", "1"),
+        supervisorGone("a", "1"),
+        launch("b", "2"),
+        handedOff("b", "2"),
+        supervisorGone("b", "2"),
+        launch("c", "3"),
+      ]),
+    ).toBe(1);
   });
 });
 
@@ -506,7 +537,7 @@ describe("resolveGates — the two launch gates and where their numbers came fro
   it("describeGates names both numbers and both sources", () => {
     const line = describeGates(resolveGates({ flags: { maxRuns: 20 }, defaults }));
     expect(line).toContain("attempts-per-pair ≤ 3 (default)");
-    expect(line).toContain("runs-without-completion ≤ 20 (flag)");
+    expect(line).toContain("runs-without-delivery ≤ 20 (flag)");
   });
 
   it("the package defaults are the fallback when none are given", () => {
