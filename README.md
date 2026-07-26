@@ -912,6 +912,26 @@ construction:
   reported as "running right now" gets the operator to do nothing, and the wait then
   ends in its own ceiling.
 
+- **A dead network does not kill the watch** (R6-достройка, john's decision of
+  2026-07-26). The one thing that used to end the daemon before it started was the
+  cheapest failure there is: the mail fetch in preflight. A hiccup at the wrong
+  second, and the watch built to outlive a broken session did not outlive the
+  network — after which nobody was left to raise anyone once it came back. Now the
+  daemon judges preflight differently from `run`: **a failed mail probe leaves it
+  alive and launching nobody, everything else still refuses before the first lease.**
+  The split is by SELF-HEALING, not by severity — a stale checkout heals the moment
+  the remote answers, a missing agent binary does not, and a daemon spinning on the
+  latter would print the same line forever. While degraded it says so every tick, in
+  git's own words (`LAUNCHING NOBODY, the mail is not readable: …`), and re-runs THAT
+  PROBE ONLY — the checks that passed are not asked a second time. **The tick is the
+  retry**: no back-off, no counters. The stop and force flags are read BEFORE the
+  probe, so an outage can never block the off switch, and the enable gate works as
+  usual. Launching nobody is not a softening: acting on yesterday's mail is the wrong
+  work preflight exists against — the daemon is a watchman with a broken gate, and it
+  opens the moment the gate works (`the mail is readable again …, launches resume`).
+  **Freshness is NOT re-checked inside a healthy tick** — the guarantee stands where
+  S8 put it, at the start; only a probe that FAILED is re-run.
+
 One tick = at most one launch: the daemon waits for the terminal state of the pair
 it raised and ticks again on a fresh journal, with no races. **The machine-reboot
 role** (whether the daemon comes up by itself through systemd or by hand) is john's
@@ -943,6 +963,13 @@ installation).** The package does NOT register itself with the system:
 `systemd-unit` prints a ready unit, but `systemctl enable` is performed by a human
 — a daemon that makes itself permanent would be exactly the surprise that starting
 in `disabled` protects against.
+
+**`Restart=on-failure` in that unit is the SECOND echelon, not the first.** The
+daemon survives what heals by itself (the mail probe above) inside its own loop; the
+unit covers what it cannot survive — a crash, an OOM kill, a fatal check that was
+repaired while the process was down. The two do not overlap: a restart loop on a
+missing binary would be the same forever-line the in-loop split refuses, only louder,
+so the fatal path deliberately exits and stays exited until a human acts.
 
 - **The enable state survives a reboot by construction.** `--enable-flag` is a file
   on disk, read every tick; after a reboot it is in the position john left it in.

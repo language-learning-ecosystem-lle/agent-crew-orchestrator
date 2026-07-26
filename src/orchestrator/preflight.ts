@@ -69,8 +69,15 @@ export type CheckoutFacts = {
  * repairing would mean destroying someone else's work: a dirty tree may well be a
  * message a role is writing right now, and `reset --hard` would wipe it silently.
  */
+/**
+ * The name of the mail-freshness check — a CONSTANT because a second reader judges
+ * by it (`daemonPreflightVerdict` below), and a check told apart from the others by
+ * a string literal typed twice is a defect waiting for the first rewording.
+ */
+export const MAIL_CHECKOUT_CHECK = "mail: checkout freshness";
+
 export const mailCheckoutVerdict = (facts: CheckoutFacts): PreflightCheck => {
-  const name = "mail: checkout freshness";
+  const name = MAIL_CHECKOUT_CHECK;
   if (facts.branch !== facts.expectedBranch) {
     return {
       name,
@@ -163,6 +170,51 @@ export const environmentVerdict = (input: {
 /** Only `fail` stops the circuit: a fact that was never a verdict cannot refuse one. */
 export const preflightPassed = (checks: readonly PreflightCheck[]): boolean =>
   checks.every((check) => check.status !== "fail");
+
+/**
+ * WHAT A FAILED PREFLIGHT MEANS FOR A WATCH THAT IS SUPPOSED TO LIVE FOR DAYS
+ * (R6-достройка, john's decision of 2026-07-26, curator's wording of the same day).
+ *
+ * `run` is a one-shot on an operator's terminal: any failure there is an exit, and
+ * the operator sees it. The daemon is the opposite — it exists precisely so that
+ * nobody is watching, and until this split it died on the same code path. The
+ * failure that killed it in practice is the cheapest one there is: the mail fetch on
+ * the way up. A network hiccup at the wrong second, and the watch that was meant to
+ * survive a broken session does not survive the network — after which there is
+ * nobody left to raise anyone when the network comes back.
+ *
+ * THE SPLIT IS BY SELF-HEALING, NOT BY SEVERITY. A stale mail checkout heals on its
+ * own the moment the remote answers (or a human commits what they left in the tree);
+ * a missing agent binary does not — it will be missing on every tick until somebody
+ * installs it, and a daemon spinning on that is a loop that prints the same line
+ * forever. So the mail check keeps the daemon ALIVE but launches NOBODY, and
+ * everything else stays fatal.
+ *
+ * "Launches nobody" is not a softening: acting on yesterday's mail is WRONG WORK,
+ * the very outcome preflight was built against. Degraded means the daemon is a
+ * watchman with a broken gate — it stands there, says so out loud every tick, and
+ * opens as soon as the gate works.
+ */
+export type DaemonPreflightVerdict =
+  /** Everything passed — the loop starts and launches. */
+  | { readonly kind: "start" }
+  /** Only the mail probe failed — the loop starts, launching nobody until it passes. */
+  | { readonly kind: "degraded"; readonly mail: PreflightCheck }
+  /** Something that will not heal by itself failed — the process does not start. */
+  | { readonly kind: "refuse"; readonly failures: readonly PreflightCheck[] };
+
+export const daemonPreflightVerdict = (
+  checks: readonly PreflightCheck[],
+): DaemonPreflightVerdict => {
+  const failures = checks.filter((check) => check.status === "fail");
+  if (failures.length === 0) return { kind: "start" };
+  // A mail failure ALONGSIDE a fatal one is not degraded: the fatal one decides, and
+  // both are printed. Otherwise a daemon with no agent binary would spin forever on a
+  // probe whose success would change nothing.
+  const fatal = failures.filter((check) => check.name !== MAIL_CHECKOUT_CHECK);
+  if (fatal.length > 0) return { kind: "refuse", failures };
+  return { kind: "degraded", mail: failures[0] as PreflightCheck };
+};
 
 /** The marks: a tick is a passed COMPARISON, a dot is a fact, a cross stops the run. */
 const MARK: Record<CheckStatus, string> = { ok: "✓", info: "·", fail: "✗" };

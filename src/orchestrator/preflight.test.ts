@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   agentBinaryVerdict,
   type CheckoutFacts,
+  daemonPreflightVerdict,
   environmentVerdict,
+  MAIL_CHECKOUT_CHECK,
   machineConfigVerdict,
   mailCheckoutVerdict,
   type PreflightCheck,
@@ -189,5 +191,51 @@ describe("workdirVerdict — the session lands in the working repository as it i
     expect(workdirVerdict({ branch: "main", dirty: false, expectedBranch: "main" }).status).toBe(
       "ok",
     );
+  });
+});
+
+describe("daemonPreflightVerdict — a watch does not die of what heals by itself", () => {
+  const ok = (name: string): PreflightCheck => ({ name, status: "ok", detail: "fine" });
+  const failed = (name: string): PreflightCheck => ({ name, status: "fail", detail: "broken" });
+
+  it("everything passed → the loop starts and launches", () => {
+    expect(
+      daemonPreflightVerdict([ok("agent: binary (claude-code)"), ok(MAIL_CHECKOUT_CHECK)]),
+    ).toEqual({ kind: "start" });
+  });
+
+  it("ONLY the mail probe failed → degraded: the daemon lives, launching nobody", () => {
+    const verdict = daemonPreflightVerdict([
+      ok("agent: binary (claude-code)"),
+      failed(MAIL_CHECKOUT_CHECK),
+    ]);
+    expect(verdict.kind).toBe("degraded");
+    // The failed check itself is carried through: the line the operator reads is the
+    // verdict's own words, not a paraphrase invented at the call site.
+    expect(verdict.kind === "degraded" && verdict.mail.name).toBe(MAIL_CHECKOUT_CHECK);
+  });
+
+  it("a check that does NOT heal by itself → the process refuses to start", () => {
+    // A missing binary will be missing on every tick; a daemon spinning on it is a
+    // loop printing the same line forever.
+    const verdict = daemonPreflightVerdict([failed("agent: binary (claude-code)")]);
+    expect(verdict.kind).toBe("refuse");
+  });
+
+  it("mail AND something fatal → refuse, and BOTH failures are reported", () => {
+    const verdict = daemonPreflightVerdict([
+      failed("agent: binary (claude-code)"),
+      failed(MAIL_CHECKOUT_CHECK),
+    ]);
+    expect(verdict.kind).toBe("refuse");
+    expect(verdict.kind === "refuse" && verdict.failures).toHaveLength(2);
+  });
+
+  it("an `info` line never decides anything — a fact was never a verdict", () => {
+    expect(
+      daemonPreflightVerdict([
+        { name: "environment: through the child's eyes", status: "info", detail: "node v24" },
+      ]),
+    ).toEqual({ kind: "start" });
   });
 });

@@ -139,7 +139,9 @@ import {
 } from "./orchestrator/paths.js";
 import {
   agentBinaryVerdict,
+  daemonPreflightVerdict,
   environmentVerdict,
+  MAIL_CHECKOUT_CHECK,
   machineConfigVerdict,
   mailCheckoutVerdict,
   type PreflightCheck,
@@ -1850,6 +1852,40 @@ const worldOf = (input: {
     : { base: input.base, mine: input.own.at(-1)?.file ?? "" };
 
 /**
+ * The mail-freshness probe ON ITS OWN — a function rather than a few lines inside
+ * `runPreflight`, because the daemon re-runs THIS ONE and nothing else while it is
+ * degraded (R6-достройка). Re-running the whole preflight every tick would probe the
+ * binary and the worktrees again — checks that passed and that nobody asked about a
+ * second time; the one that failed is the only one whose answer can change the state.
+ *
+ * `mailCheckoutState` fetches and fast-forwards on its own, so calling this IS the
+ * retry: the tick is the natural interval, and no back-off is built on top of it.
+ */
+const probeMailCheckout = (argv: readonly string[]): PreflightCheck => {
+  const loaded = configFrom(argv, undefined);
+  const section = loaded.config.orchestrator;
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  if (section === undefined) {
+    return {
+      name: MAIL_CHECKOUT_CHECK,
+      status: "fail",
+      detail: "there is no 'orchestrator' section — there is no checkout to probe",
+    };
+  }
+  const path = join(repo, section.mailCheckout);
+  try {
+    const state = mailCheckoutState(path, loaded.config.mail.branch);
+    return mailCheckoutVerdict({ ...state, expectedBranch: loaded.config.mail.branch });
+  } catch (error) {
+    return {
+      name: MAIL_CHECKOUT_CHECK,
+      status: "fail",
+      detail: `could not probe the checkout '${path}': ${(error as Error).message}`,
+    };
+  }
+};
+
+/**
  * PREFLIGHT — the checks made BEFORE the lease is taken (S8). curator's rule after
  * the third case of one class: whatever a human is obliged to remember before a
  * run, the machine either does itself or loudly refuses. The probes live here, the
@@ -1903,17 +1939,7 @@ const runPreflight = (
     nodeVersion = null;
   }
 
-  let checkout: PreflightCheck;
-  try {
-    const state = mailCheckoutState(join(repo, section.mailCheckout), loaded.config.mail.branch);
-    checkout = mailCheckoutVerdict({ ...state, expectedBranch: loaded.config.mail.branch });
-  } catch (error) {
-    checkout = {
-      name: "mail: checkout freshness",
-      status: "fail",
-      detail: `could not probe the checkout '${join(repo, section.mailCheckout)}': ${(error as Error).message}`,
-    };
-  }
+  const checkout = probeMailCheckout(argv);
 
   // WHERE THE SESSIONS WORK. Two modes, and which one is in force is a statement of
   // the project: with `workdir.worktrees` declared each role has a worktree of its
@@ -3518,9 +3544,25 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // whichever one happened to be first.
 
   // Preflight BEFORE the loop: a daemon started without the agent binary or with
-  // stale mail "works" — and does the wrong thing. A refusal before the first
-  // lease. The binaries of EVERY launchable role are probed, not one of them.
-  requirePreflight(argv, execTargets(argv, local, launchableList), local, launchableList);
+  // stale mail "works" — and does the wrong thing. The binaries of EVERY launchable
+  // role are probed, not one of them.
+  //
+  // THE DAEMON JUDGES THE RESULT DIFFERENTLY FROM `run` (R6-достройка): a failed
+  // mail probe leaves it alive and launching nobody, everything else still refuses
+  // before the first lease. The reasoning is in `daemonPreflightVerdict`; the short
+  // version is that a watch killed by a network hiccup is not there when the network
+  // comes back, and that is the whole point of a watch.
+  const startupChecks = runPreflight(
+    argv,
+    execTargets(argv, local, launchableList),
+    local,
+    launchableList,
+  );
+  err(renderPreflight(startupChecks));
+  const startup = daemonPreflightVerdict(startupChecks);
+  if (startup.kind === "refuse") fail("preflight failed — not starting", 2);
+  /** Non-null while the mail probe is failing: the gate is shut and re-tried each tick. */
+  let mailStale: PreflightCheck | null = startup.kind === "degraded" ? startup.mail : null;
 
   // The banner states the FACT rather than always "DISABLED": help text that lies
   // about the state cost a separate hypothesis about the cause of a failure during
@@ -3544,6 +3586,32 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   }
 
   for (;;) {
+    // THE SHUT GATE, BEFORE ANYTHING ELSE (R6-достройка). While the mail probe is
+    // failing the daemon reads no mail and raises nobody — but it is not deaf: the
+    // stop and force flags are checked FIRST, because a network outage must never be
+    // able to block the off switch. Then the probe that failed is re-run, and only
+    // it: the tick IS the retry, with no back-off and no counter on top.
+    if (mailStale !== null) {
+      if (existsSync(stopFlag) || existsSync(forceFlag)) {
+        out(
+          `agent-protocol: the daemon stopped — the ${existsSync(forceFlag) ? "force" : "stop"} flag`,
+        );
+        return;
+      }
+      const probe = probeMailCheckout(argv);
+      if (probe.status === "fail") {
+        mailStale = probe;
+        err(
+          `agent-protocol: daemon — LAUNCHING NOBODY, the mail is not readable: ${probe.detail}; the daemon stays up and re-probes, ${once ? "exiting (--once)" : `next try in ${tickMs / 1000}s`}`,
+        );
+        if (once) return;
+        await sleep(tickMs);
+        continue;
+      }
+      mailStale = null;
+      out(`agent-protocol: daemon — the mail is readable again (${probe.detail}), launches resume`);
+    }
+
     // The candidates are (role, thread) pairs where a launchable role is being
     // waited on in the thread.
     // THE ISOLATION WAS BUILT FOR THIS PLACE: the daemon ticks with no human
