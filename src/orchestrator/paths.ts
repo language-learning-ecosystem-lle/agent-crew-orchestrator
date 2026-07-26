@@ -107,6 +107,30 @@ export const sessionStreamPath = (logPath: string): string => logPath.replace(/\
 export const sessionIdPath = (logPath: string): string => logPath.replace(/\.log$/, ".session");
 
 /**
+ * WHERE A RUN DECLARES A WAIT FOR INPUT (R19). Written by `new-message --await-input`
+ * together with the question, removed by `await-input` when the wait ends, read by the
+ * supervisor every poll — see `interactive.ts` for why the declaration is a runtime
+ * file and not a field in the message header.
+ *
+ * THE PATH IS DERIVED FROM THE SESSION-ID FILE, i.e. from the one path the session
+ * already has (`AGENT_PROTOCOL_SESSION_FILE` in its environment): the writer of the
+ * marker is the session, the reader is its supervisor, and neither has to be told a
+ * second path. Per-run by construction, so no run can ever meet somebody else's
+ * declaration.
+ */
+export const sessionWaitPath = (logPath: string): string => logPath.replace(/\.log$/, ".waiting");
+
+/**
+ * The same file reached from the other end — from the session-id path, which is the
+ * one path the SESSION itself is handed. `undefined` when the value is not of that
+ * shape, and the caller refuses out loud: a blind `replace` on an unexpected name
+ * would return the name unchanged, i.e. write the marker OVER the file it was derived
+ * from.
+ */
+export const waitPathFromSessionFile = (sessionFile: string): string | undefined =>
+  sessionFile.endsWith(".session") ? sessionFile.replace(/\.session$/, ".waiting") : undefined;
+
+/**
  * WHERE A DETACHED SUPERVISOR SPEAKS (R12). An attached run says everything to the
  * terminal of whoever started it; a detached one has no terminal at all, and its own
  * words — the preflight, the refusals, the relayed session lines — would go to

@@ -10,6 +10,7 @@ const view = (partial: Partial<LeaseView>): LeaseView => ({
   attempt: 1,
   ceiling: 3,
   deadline: "2026-07-24T13:30:00Z",
+  waitDeadline: null,
   reason: null,
   lastEvent: "lease-acquired",
   overdue: false,
@@ -52,6 +53,19 @@ describe("renderStatus", () => {
     const line = renderStatus([view({ exhausted: true, overdue: true })]);
     expect(line).toContain("EXHAUSTED");
     expect(line).not.toContain("OVERDUE");
+  });
+
+  it("a parked run shows the clock actually in force, and its overrun reads differently (R19)", () => {
+    // The two overruns mean opposite things: a work window that ran out is a session
+    // that did not fit, a wait that ran out is a human who has not answered. One mark
+    // for both would have sent the reader looking for the wrong failure.
+    const line = renderStatus([
+      view({ state: "waiting", waitDeadline: "2026-07-24T14:30:00Z", overdue: true }),
+    ]);
+    expect(line).toContain("waiting");
+    expect(line).toContain("awaiting input until 2026-07-24T14:30:00Z");
+    expect(line).toContain("THE WAIT EXPIRED");
+    expect(line).not.toContain("⚠ OVERDUE");
   });
 
   it("a null deadline is printed as a dash", () => {

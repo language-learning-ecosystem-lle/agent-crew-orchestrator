@@ -34,8 +34,17 @@
  */
 import { MAX_ATTEMPTS, type OrchestratorEvent, type ReleaseReason } from "./journal.js";
 
-/** The lease lifecycle. `released`/`stopped` are terminal (with `reason`/`mode`). */
-export type LeaseLifecycle = "running" | "draining" | "released" | "stopped";
+/**
+ * The lease lifecycle. `released`/`stopped` are terminal (with `reason`/`mode`).
+ *
+ * `waiting` is the interactive turn (R19): the session has passed the turn, asked for
+ * input and is deliberately still alive. It is ALIVE for every purpose that matters —
+ * nothing may be launched on the pair, `status` shows it, an unclosed one is an orphan
+ * — and it is a state of its own rather than a flag on `running` because the two are
+ * judged by different clocks and different failures: a `running` session that goes
+ * quiet is stalled, a `waiting` one is doing exactly what it was told to.
+ */
+export type LeaseLifecycle = "running" | "draining" | "waiting" | "released" | "stopped";
 
 export type LeaseView = {
   readonly role: string;
@@ -48,8 +57,14 @@ export type LeaseView = {
   readonly attempt: number;
   /** The ceiling `attempt` is judged against — printed beside it, never guessed at. */
   readonly ceiling: number;
-  /** Wall-clock limit of the current/last run; null if there has been no lease yet. */
+  /**
+   * Wall-clock limit of the current/last run; null if there has been no lease yet.
+   * SHIFTED by the time the run spent parked (R19): the window belongs to the work,
+   * and a wait for a human is not work the session was doing.
+   */
   readonly deadline: string | null;
+  /** While `waiting` — the limit of THE WAIT (R19); null in every other state. */
+  readonly waitDeadline: string | null;
   /** Reason for the terminal state (release/stop), otherwise null. */
   readonly reason: ReleaseReason | "graceful" | "forced" | null;
   /** Kind of the pair's last event — for the "last" column in status. */
@@ -67,8 +82,19 @@ export type LeaseView = {
 // parsed back out of the key.
 const key = (role: string, thread: string): string => JSON.stringify([role, thread]);
 
-/** The lease is active (held by the orchestrator right now). */
-const isActive = (state: LeaseLifecycle): boolean => state === "running" || state === "draining";
+/**
+ * The lease is active (held by the orchestrator right now) — EXPORTED because it is
+ * the guard two launch paths depend on (`planLaunch`, `planTick`), and the third state
+ * of R19 is exactly the kind of addition that used to be missed in one of them: a
+ * parked pair becomes a launch candidate the moment its answer lands, and at that
+ * moment its session is alive and about to resume. Two inline comparisons would have
+ * been two places to remember, one of which raises a second session on top of a live
+ * one.
+ */
+export const isLeaseAlive = (state: LeaseLifecycle): boolean =>
+  state === "running" || state === "draining" || state === "waiting";
+
+const isActive = isLeaseAlive;
 
 /**
  * A terminal FAILURE: the run was broken off rather than finished normally. Three
@@ -84,15 +110,34 @@ const isFailedTerminal = (state: LeaseLifecycle, reason: LeaseView["reason"]): b
     reason === "exited-without-handoff" ||
     reason === "supervisor-gone");
 
+/**
+ * THE TWO ENDINGS OF AN INTERACTIVE TURN ARE NOT FAILURES (R19), and that is a
+ * decision rather than an omission from the list above. `input-timeout` and
+ * `exited-while-waiting` both leave the mail CONSISTENT: the question is in the
+ * thread, the turn is with somebody else, nobody is blocked waiting for a role that
+ * will never answer. That is the opposite of the gap the attempt ceiling was built
+ * for ("it broke off, but the mail stayed"), so counting them would exhaust a pair
+ * for the one thing that is supposed to happen — a human taking their time. When the
+ * answer does land, the role is awaited again and the pair is raised as usual.
+ */
+
 type Acc = {
   role: string;
   thread: string;
   state: LeaseLifecycle;
   attempt: number;
   deadline: string | null;
+  /** The limit of the current wait (R19), while there is one. */
+  waitDeadline: string | null;
+  /** When the current wait began — the other end of the shift of the work deadline. */
+  waitingSince: string | null;
   reason: LeaseView["reason"];
   lastEvent: OrchestratorEvent["kind"];
 };
+
+/** ISO stamp + milliseconds → ISO stamp, in the journal's own second-precision shape. */
+const shifted = (stamp: string, byMs: number): string =>
+  `${new Date(new Date(stamp).getTime() + byMs).toISOString().slice(0, 19)}Z`;
 
 /**
  * Folding the journal into the lease state of each (role, thread) pair. Events go
@@ -124,6 +169,8 @@ export const foldLeases = (
         state: "released",
         attempt: 0,
         deadline: null,
+        waitDeadline: null,
+        waitingSince: null,
         reason: null,
         lastEvent: event.kind,
       };
@@ -137,6 +184,8 @@ export const foldLeases = (
         cur.state = "running";
         cur.attempt += 1;
         cur.deadline = event.deadline;
+        cur.waitDeadline = null;
+        cur.waitingSince = null;
         cur.reason = null;
         break;
       case "launch":
@@ -149,10 +198,33 @@ export const foldLeases = (
         if (isActive(cur.state)) cur.state = "draining";
         cur.attempt = 0;
         break;
+      case "input-awaited":
+        // The run is parked (R19). The work deadline is left where it is and stops
+        // being the clock in force: `overdue` below reads the wait's own limit while
+        // the state is `waiting`.
+        cur.state = "waiting";
+        cur.waitDeadline = event.deadline;
+        cur.waitingSince = event.ts;
+        break;
+      case "input-received":
+        // Back to work, and the work deadline moves by exactly the time the wait took
+        // — the window was given to the work, and a wait for a human is not it.
+        if (cur.waitingSince !== null && cur.deadline !== null) {
+          cur.deadline = shifted(
+            cur.deadline,
+            new Date(event.ts).getTime() - new Date(cur.waitingSince).getTime(),
+          );
+        }
+        cur.state = "running";
+        cur.waitDeadline = null;
+        cur.waitingSince = null;
+        break;
       case "lease-released":
         cur.state = "released";
         cur.reason = event.reason;
         if (event.reason === "completed") cur.attempt = 0;
+        cur.waitDeadline = null;
+        cur.waitingSince = null;
         break;
       case "stop":
         cur.state = "stopped";
@@ -164,7 +236,12 @@ export const foldLeases = (
   const nowIso = `${now.toISOString().slice(0, 19)}Z`;
   return order.map((k) => {
     const cur = acc.get(k) as Acc;
-    const overdue = isActive(cur.state) && cur.deadline !== null && nowIso > cur.deadline;
+    // WHICH CLOCK IS IN FORCE depends on the state: a parked lease is late when nobody
+    // answered in time, not when the work window ran out — the work window is frozen
+    // while it waits, and judging it by that one would report every long wait as a
+    // session that overran.
+    const clock = cur.state === "waiting" ? cur.waitDeadline : cur.deadline;
+    const overdue = isActive(cur.state) && clock !== null && nowIso > clock;
     const failed = isFailedTerminal(cur.state, cur.reason);
     const exhausted = cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts);
     const launchable = failed && !exhausted;
@@ -175,6 +252,7 @@ export const foldLeases = (
       attempt: cur.attempt,
       ceiling: maxAttempts,
       deadline: cur.deadline,
+      waitDeadline: cur.waitDeadline,
       reason: cur.reason,
       lastEvent: cur.lastEvent,
       overdue,
@@ -192,4 +270,4 @@ export const foldLeases = (
  * such leases instead of silently carrying on.
  */
 export const unclosedLeases = (events: readonly OrchestratorEvent[], now: Date): LeaseView[] =>
-  foldLeases(events, now).filter((view) => view.state === "running" || view.state === "draining");
+  foldLeases(events, now).filter((view) => isLeaseAlive(view.state));

@@ -46,8 +46,9 @@ import {
 } from "../roles/schema.js";
 import { DEFAULT_IDLE_MS } from "./activity.js";
 import type { Continuation } from "./continuation.js";
+import { DEFAULT_WAIT_INPUT_SECONDS } from "./interactive.js";
 import { eventTimestamp, MAX_ATTEMPTS, type OrchestratorEvent, type World } from "./journal.js";
-import { foldLeases } from "./lease.js";
+import { foldLeases, isLeaseAlive } from "./lease.js";
 
 /**
  * The ceiling of the global auto loop: how many runs in a row WITHOUT a single
@@ -59,9 +60,9 @@ import { foldLeases } from "./lease.js";
 export const MAX_CONSECUTIVE_RUNS = 10;
 
 /**
- * THE ROLES OF THE CEILINGS after idle detection arrived (R6 part 3, thread 016).
- * There are three of them and they catch different failures — before R6 the wall
- * clock was doing all three jobs badly at once:
+ * THE ROLES OF THE CEILINGS after idle detection arrived (R6 part 3, thread 016) and
+ * the interactive turn made a fourth of them (R19). Each catches a different failure
+ * — before R6 the wall clock was doing three jobs badly at once:
  *
  *  - `stalled` (the idle ceiling, `activity.ts`) — the MAIN catcher of a hang: a
  *    session that produces no traces at all;
@@ -76,6 +77,12 @@ export const MAX_CONSECUTIVE_RUNS = 10;
  *    (the R1 translation) hit it mid-work: `Reached max turns (60)`, a run lost to a
  *    limit that protects nothing here. 300 is the value john ran the real packages
  *    at by hand.
+ *  - `--wait-input` (R19) — the ceiling of a DECLARED WAIT for input, and the reason
+ *    it is a fourth clock rather than a share of the wall clock: the two measure
+ *    different things and must fail differently. Time spent waiting for a human is
+ *    not time the session was given to work, so it does not come out of the work
+ *    window (the fold shifts the deadline by it) and it has its own refusal,
+ *    `input-timeout`.
  *
  * They are defaults, not policy: every one of them is a flag, and since R12 also a
  * per-role field of the config (`launch.limits`) — see `resolveCeilings` below.
@@ -101,6 +108,15 @@ export const DEFAULT_MAX_TURNS = 300;
 export const LAUNCH_ENV = {
   worker: "AGENT_PROTOCOL_WORKER",
   sessionFile: "AGENT_PROTOCOL_SESSION_FILE",
+  /**
+   * THE CEILING OF ITS OWN WAIT (R19), so that the session's clock and the
+   * supervisor's cannot disagree: `await-input` defaults its timeout to this number.
+   * The session's clock starts FIRST (it begins waiting; the supervisor notices at the
+   * next poll), so with the same number the session always expires first and gets its
+   * turn back to wrap up — the supervisor's ceiling stays as the backstop for a wait
+   * that never returns at all.
+   */
+  waitSeconds: "AGENT_PROTOCOL_WAIT_SECONDS",
 } as const;
 
 /**
@@ -129,6 +145,8 @@ export type ResolvedCeilings = {
   readonly idle: Ceiling;
   readonly wallClock: Ceiling;
   readonly maxTurns: Ceiling;
+  /** The ceiling of a declared wait for input (R19). */
+  readonly waitInput: Ceiling;
 };
 
 /**
@@ -157,18 +175,21 @@ export const resolveCeilings = (input: {
     readonly idleSeconds?: number;
     readonly wallClockSeconds?: number;
     readonly maxTurns?: number;
+    readonly waitInputSeconds?: number;
   };
   readonly limits?: LaunchLimits;
   readonly defaults?: {
     readonly idleSeconds: number;
     readonly wallClockSeconds: number;
     readonly maxTurns: number;
+    readonly waitInputSeconds: number;
   };
 }): ResolvedCeilings => {
   const defaults = input.defaults ?? {
     idleSeconds: DEFAULT_IDLE_MS / 1000,
     wallClockSeconds: DEFAULT_WALL_CLOCK_SECONDS,
     maxTurns: DEFAULT_MAX_TURNS,
+    waitInputSeconds: DEFAULT_WAIT_INPUT_SECONDS,
   };
   const pick = (
     flagValue: number | undefined,
@@ -187,6 +208,11 @@ export const resolveCeilings = (input: {
       defaults.wallClockSeconds,
     ),
     maxTurns: pick(input.flags.maxTurns, input.limits?.maxTurns, defaults.maxTurns),
+    waitInput: pick(
+      input.flags.waitInputSeconds,
+      input.limits?.waitInputSeconds,
+      defaults.waitInputSeconds,
+    ),
   };
 };
 
@@ -201,6 +227,7 @@ export const describeCeilings = (ceilings: ResolvedCeilings): string =>
     `idle ${ceilings.idle.value === 0 ? "off" : `${ceilings.idle.value}s`} (${ceilings.idle.source})`,
     `wall-clock ${ceilings.wallClock.value}s (${ceilings.wallClock.source})`,
     `max-turns ${ceilings.maxTurns.value} (${ceilings.maxTurns.source})`,
+    `wait-input ${ceilings.waitInput.value}s (${ceilings.waitInput.source})`,
   ].join(" · ");
 
 /**
@@ -530,6 +557,14 @@ export type InstructionDoc = { readonly path: string; readonly text: string };
  * only" is stated firmly in the prompt: the S2 completion signal is bound to the
  * turn passing on that thread, and if a run handled the whole mailbox the
  * criterion would smear (curator's requirement 3).
+ *
+ * THE INTERACTIVE TURN IS STATED HERE, IN THE PROMPT (R19, requirement (а)): "need
+ * input — say so and wait", with the threshold said out loud in the same breath. It
+ * belongs in the package's own words rather than in a project's role card because the
+ * MECHANISM is the package's (two commands and a marker), and because a capability
+ * nobody was told about is a capability that does not exist — the session would go on
+ * dying with its question, which is the whole failure R19 removes. What stays with the
+ * project is when to use it, and its card may say more.
  */
 export const buildLaunchPrompt = (input: {
   readonly role: string;
@@ -543,6 +578,8 @@ export const buildLaunchPrompt = (input: {
     `The turn was passed to you on thread \`${input.thread}\` — AND ON THAT ONE ONLY. Do NOT handle the rest of your mail: this run is bound to exactly one thread.`,
     "",
     "Read the whole thread (including the files in the conversation folder), carry out the statement of work and reply with a message at the end of the thread following the protocol rules (`cli new-message`). Once the reply is written and the turn is passed on, the run is over.",
+    "",
+    "IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Write the question into the thread with `cli new-message --await-input` (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), push it, then block on `cli await-input`. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.",
     "",
     "--- ROLE CARD ---",
     "",
@@ -639,7 +676,10 @@ export const planLaunch = (input: {
   const view = foldLeases(events, now, input.maxAttempts).find(
     (v) => v.role === role && v.thread === thread,
   );
-  if (view && (view.state === "running" || view.state === "draining")) {
+  // `isLeaseAlive` and not two comparisons: since R19 a lease also lives while it is
+  // PARKED, and a parked pair is a launch candidate the moment its answer arrives —
+  // the one moment when raising a second session would land it on top of a live one.
+  if (view && isLeaseAlive(view.state)) {
     return { ok: false, reason: "already-running" };
   }
   if (view?.exhausted) return { ok: false, reason: "exhausted" };

@@ -12,6 +12,12 @@ import type { LeaseView } from "./lease.js";
 const flag = (view: LeaseView): string => {
   if (view.exhausted)
     return "  ⚠ EXHAUSTED — no more attempts until the pair delivers again (a completed run or a handoff resets the count), see the journal";
+  // WHICH deadline has passed is said out loud, because the two mean opposite things:
+  // an overrun of the work window is a session that did not fit, an overrun of a WAIT
+  // is a human who has not answered (R19) — and the second one is nobody's failure.
+  if (view.overdue && view.state === "waiting") {
+    return "  ⚠ THE WAIT EXPIRED — nobody answered within the ceiling, the session is still parked";
+  }
   if (view.overdue) return "  ⚠ OVERDUE — the deadline has passed, the lease is still alive";
   return "";
 };
@@ -25,6 +31,9 @@ const line = (view: LeaseView): string => {
     // both the ceiling and whether their `--max-attempts` had arrived at all.
     `attempt ${view.attempt}/${view.ceiling}`,
     view.deadline === null ? "deadline —" : `deadline ${view.deadline}`,
+    // The wait's own clock is shown only while it is the one in force: an empty column
+    // in every other state would read as "no wait ceiling exists".
+    view.waitDeadline === null ? "" : `awaiting input until ${view.waitDeadline}`,
     view.reason === null ? "" : `(${view.reason})`,
   ]
     .filter((c) => c !== "")

@@ -9,7 +9,14 @@
  * feed quietly unattributed instead of loudly broken.
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -220,5 +227,137 @@ describe("new-message and provenance", () => {
     expect(result.code).toBe(2);
     expect(result.out).toContain("--worker");
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+});
+
+/**
+ * DECLARING A WAIT FOR INPUT (R19) — the writing half of the interactive turn. It is
+ * tested here rather than beside the supervisor because it is a property of the DOOR:
+ * the declaration is written with the question, in one command, and every way of making
+ * a wait that could never end is refused before anything is on disk.
+ */
+describe("new-message --await-input", () => {
+  const waitPath = (repo: string): string => join(repo, "run.waiting");
+  const sessionEnv = (repo: string): NodeJS.ProcessEnv => ({
+    AGENT_PROTOCOL_WORKER: "claude-code",
+    AGENT_PROTOCOL_SESSION_FILE: join(repo, "run.session"),
+  });
+
+  it("writes the declaration beside the question, naming the thread and the session", () => {
+    const contest = contour();
+    writeFileSync(join(contest.repo, "run.session"), "8f3a2b1c-0d4e\n");
+
+    const result = write(contest, sessionEnv(contest.repo), "--await-input");
+
+    expect(result.code).toBe(0);
+    const marker = JSON.parse(readFileSync(waitPath(contest.repo), "utf8")) as Record<
+      string,
+      unknown
+    >;
+    expect(marker.thread).toBe("016-x");
+    expect(marker.session).toBe("8f3a2b1c-0d4e");
+    // The stamp of the declaration is the stamp of the question — one gesture, one moment.
+    expect(marker.at).toBe(written(contest.root).fields.date);
+    expect(result.out).toContain("parked, not finished");
+  });
+
+  it("a dry run declares NOTHING — the preview of a write touches no disk", () => {
+    const contest = contour();
+
+    const result = run(contest, sessionEnv(contest.repo), ["--await-input"]);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("would declare a wait");
+    expect(existsSync(waitPath(contest.repo))).toBe(false);
+  });
+
+  it("REFUSES when the message keeps the turn — nobody would be told to answer", () => {
+    // The notifier fires on the turn passing; a question that does not pass it would sit
+    // unread until the ceiling. Checked for both shapes of "not passing": no declaration
+    // at all, and a declaration that names the asker.
+    const contest = contour();
+    const withWaitingOn = (value: string | undefined): { code: number; out: string } => {
+      const argv = [
+        CLI,
+        "new-message",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--thread",
+        "016-x",
+        "--from",
+        "dev-core",
+        "--expects",
+        "answer",
+        "--body-file",
+        contest.body,
+        "--await-input",
+        "--write",
+        ...(value === undefined ? [] : ["--waiting-on", value]),
+      ];
+      try {
+        return {
+          code: 0,
+          out: execFileSync(TSX, argv, {
+            encoding: "utf8",
+            stdio: "pipe",
+            env: { ...process.env, ...sessionEnv(contest.repo) },
+          }),
+        };
+      } catch (error) {
+        const failure = error as { status?: number; stdout?: string; stderr?: string };
+        return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+      }
+    };
+
+    for (const value of [undefined, "dev-core"]) {
+      const result = withWaitingOn(value);
+      expect(result.code, `waiting-on: ${value}`).toBe(2);
+      expect(result.out).toContain("--await-input needs the message to pass the turn");
+    }
+    expect(existsSync(waitPath(contest.repo))).toBe(false);
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("REFUSES outside a raised run — a session nobody watches cannot be parked", () => {
+    // There is no supervisor to honour the declaration and no ceiling on the wait; a
+    // human at a terminal simply waits by hand.
+    const contest = contour();
+
+    const result = write(
+      contest,
+      { AGENT_PROTOCOL_WORKER: "human", AGENT_PROTOCOL_SESSION_FILE: "" },
+      "--await-input",
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("raised by the orchestrator");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("REFUSES a session-file path of the wrong shape instead of writing beside it", () => {
+    // A blind `.session` → `.waiting` swap on an unexpected name would return the name
+    // unchanged — that is, overwrite the file the path came from.
+    const contest = contour();
+
+    const result = write(
+      contest,
+      { AGENT_PROTOCOL_WORKER: "claude-code", AGENT_PROTOCOL_SESSION_FILE: "/tmp/run.log" },
+      "--await-input",
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("not a session-id path");
+  });
+
+  it("without the flag nothing is declared — the ordinary reply is unchanged", () => {
+    const contest = contour();
+
+    expect(write(contest, sessionEnv(contest.repo)).code).toBe(0);
+    expect(existsSync(waitPath(contest.repo))).toBe(false);
   });
 });

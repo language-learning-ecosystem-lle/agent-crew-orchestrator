@@ -315,6 +315,8 @@ rather than going through that door.
 | 3 | + per-role run ceilings: `roles[].launch.limits` (`idleSeconds`, `wallClockSeconds`, `maxTurns`), every field optional. NO data moves — a version-2 config is already a valid version-3 one; the number exists so an older build says "update the package" instead of "unrecognized key" |
 | 4 | + the per-role launch agent: `roles[].launch.agent` (`kind`, and for `claude-code` also `model` and `effort`). NO data moves either, for the same reason. The MACHINE config that arrived with it (R14) is deliberately outside this number — it does not travel |
 | 5 | + the texts and the delivery of notifications: `notifications` (a transport module with its options, the three notification templates) and `announcements` (the templates of what the package writes into a thread). NO data moves. The secrets FILE the machine config now points at is outside the number for the same reason the machine config itself is |
+| 6 | + the role workspace and the continuation policy (R17, R18): `orchestrator.workdir.worktrees` in the config, and on the journal `launch.mode`/`resumes`/`world` plus `lease-released.session`/`steps`. NO data moves — the journal is not backfilled, and a run recorded before this version is simply never resumed. *(The row was missed by the PR that shipped the version and is restored here.)* |
+| 7 | + the interactive turn (R19): `roles[].launch.limits.waitInputSeconds` in the config, and on the journal the `input-awaited`/`input-received` kinds. NO data moves, and the MAIL is untouched — a parked session's aliveness is a runtime file beside its log, not a field in a message header, so no thread needs migrating |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -546,7 +548,11 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <r,r>] \
-                            --worker <w> [--session <id>] --body-file <p> [--write]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--write]
+                            # --await-input: this question PARKS the run instead of ending it (R19, S13)
+agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
+                            # blocks until the thread waits on the role again; needs a wait declared
+                            # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
                             [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
@@ -560,16 +566,17 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
-                            [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] \
+                            [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] \
                             [--max-attempts <n>] \
                             [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--now <iso>] \
                             [--fresh] [--write] [-d|--detach]
                             # attached by default (you watch what you raised); -d backgrounds the supervisor properly
-                            # the three ceilings: the flag beats roles[].launch.limits, which beats the package default
+                            # the four ceilings: the flag beats roles[].launch.limits, which beats the package default
+                            # --wait-input is the ceiling of a DECLARED wait (R19) and does not come out of the wall clock
                             # the tool, its binary and its parameters: see "The machine config" above
                             # the role works in its OWN worktree (orchestrator.workdir.worktrees), put back at the base
                             # per fresh package; --fresh forbids resuming the previous session (S11, S12)
-agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] \
+agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] \
                             [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once]
                             # the two GATES: --max-attempts (failures of one pair since its last delivery)
@@ -846,7 +853,13 @@ construction:
   word, which from a terminal is indistinguishable from "no mail arrived". The skips
   are NOT written to the journal (a hold or an exhausted pair lasts until a human
   looks at it, and a line per tick would drown the journal of the runs); the stream
-  carries them, every tick.
+  carries them, every tick. **The four reasons ask for four different things**:
+  `held` — wait for the manual session; `active` — nothing, the pair is being worked
+  on; `waiting` — ANSWER, the session is parked on a question of its own (R19);
+  `exhausted` — read the journal. `waiting` is spelled out separately from `active`
+  for the sake of the only one of them that is blocked on a human: a parked session
+  reported as "running right now" gets the operator to do nothing, and the wait then
+  ends in its own ceiling.
 
 One tick = at most one launch: the daemon waits for the terminal state of the pair
 it raised and ticks again on a fresh journal, with no races. **The machine-reboot
@@ -1303,6 +1316,89 @@ else's money is spent may not be silent.
 - **A stable workspace is what makes a resume findable at all**: the tool keeps its
   conversations per working directory, so a role that works in a different directory
   every time has nothing to resume.
+- **A run on a LEGACY thread is never resumed** (reviewer-pr's observation on PR #21,
+  carried here at curator's request): condition 2a is read off message FILES, and a
+  legacy `_thread.md` has neither file identity nor sessions — so no `mine` is recorded
+  and the policy answers fresh. Today that is 009 and 010; migrating them removes the
+  case entirely.
+
+### S13 — the interactive turn: asking without dying (R19)
+
+A session that runs into an unclear point in the MIDDLE of a long task used to have one
+move: write the question, pass the turn, end. Everything on disk survived, but the
+reasoning did not — the next run started from the thread and rebuilt what the first one
+had already worked out. R19 gives that session a second move: **say you need input, and
+wait alive.** The context, the environment and the uncommitted work stay; the answer
+arrives the ordinary way (the thread plus the R4 notification), and THE SAME session
+reads it and carries on.
+
+**It is for the middle of a run, and that is a norm rather than a mechanism.** For a
+question at the END of a package the old way is cheaper: answer, pass the turn, let the
+run finish — the thread holds everything the next session needs, and a fresh context is
+worth more than a preserved one. No ceiling can tell "the middle of a long task" from
+"nearly done", so the threshold is stated in the launch prompt and in the role cards.
+
+Two commands, and they are two on purpose:
+
+```bash
+# 1. the question, with the declaration written in the same gesture
+cli new-message --root … --ref … --thread 016-x --from dev-core \
+    --expects answer --waiting-on curator --body-file q.md --await-input --write
+git -C <mail checkout> add … && git commit && git push     # until R3, the push is the agent's
+# 2. block until the answer comes back
+cli await-input --root … --ref … --role dev-core --thread 016-x
+#    code 0 — the answer arrived, read the tail of the thread and carry on
+#    code 3 — the wait ran out: wrap up what you have and pass the turn
+```
+
+- **The declaration goes with the QUESTION, not with the wait.** The supervisor reads
+  the mail off the disk of the checkout the session writes into, so the question becomes
+  visible to it the moment the file lands — a declaration made afterwards would race a
+  poll that has already concluded the run was over. Hence `--await-input` on the writing
+  command, and `await-input` refusing to run without a declaration: waiting undeclared
+  is impossible through the legal path rather than forbidden by a rule.
+- **The declaration is a runtime file, not a field in the message header.** Aliveness is
+  a fact about the RUN (the same line `worker`/`session` are drawn on, with the opposite
+  result — provenance stays true forever). "A session is waiting" is true for minutes;
+  frozen into an append-only feed it would be a claim that is false a minute later and
+  unfixable for good. It lives beside the session log, one file per run
+  (`…​.waiting` next to `.log`/`.jsonl`/`.session`/`.supervisor`), and R19 therefore
+  changes nothing in the shape of the mail — no thread needs migrating.
+- **What the THREAD carries instead is words** (john's norm): the question names what is
+  uncommitted and where exactly the session stopped, so the thread stands on its own
+  even if the session dies waiting. Uncommitted work is NOT forced into a commit here —
+  a commit in the middle of a thought is a lie in the history, and a diff is honester.
+- **`waiting` is a lease state of its own.** It is alive for every purpose that matters:
+  nothing may be launched on the pair (a parked pair becomes a candidate the instant its
+  answer lands — the one tick where a second session would land on top of a live one),
+  `status` shows it, an unclosed one is an orphan. The journal records `input-awaited`
+  (with the limit of the wait) and `input-received`.
+- **A wait is not a hang** (the concrete requirement to R6): while parked, the idle
+  detector is off and its watch is restarted, so the silence of an hour spent waiting
+  does not declare the session stalled in the first second after it gets back to work.
+- **The wait has its own clock and its own refusal** — `--wait-input`, a per-role
+  `launch.limits.waitInputSeconds`, default one hour (the answer latency of this circuit
+  is 20–40 minutes; a parked session burns no tokens, it holds a lease and a lock).
+  Waiting does NOT come out of the work window: the fold shifts the lease deadline by
+  the time spent parked. The session is handed the same number in
+  `AGENT_PROTOCOL_WAIT_SECONDS`, and since its clock starts first, its own wait always
+  expires first and it gets the turn back to wrap up; the supervisor's ceiling is the
+  backstop for a wait that never returns.
+- **Two endings, and both are named as themselves**: `input-timeout` (nobody answered
+  within the ceiling) and `exited-while-waiting` (the session died parked). `completed`
+  would have said a package finished when it had stopped in the middle. Neither counts
+  towards the attempt ceiling — both leave the mail CONSISTENT (the question is in the
+  thread, the turn is with somebody else), which is the opposite of the gap that ceiling
+  exists for; exhausting a pair there would punish a human for taking their time.
+- **The way out of a wait is the declaration going away, not the mail.** `await-input`
+  drops it on every exit, so both endings of a wait — an answer, or its own timeout —
+  bring the run back to work the same way. Reading the mail for the way out would get
+  the second case wrong: the turn had already passed before the wait began, so nothing
+  in the mail changes when the session gives up and wraps up instead.
+- **The one refusal worth having**: `await-input` checks that the mail checkout has
+  nothing unpushed. An unpushed question exists on one disk only, and the wait for it
+  could end only in a ceiling an hour later — the likeliest deadlock of the whole
+  mechanism, caught by one git command.
 
 ## `spike/` — P0
 

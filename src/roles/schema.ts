@@ -130,14 +130,21 @@ export const zonesSchema = z.strictObject({
  * WHERE each number came from (`resolveCeilings` in `orchestrator/launch.ts`) — a
  * ceiling that fired is worth nothing if one cannot tell who set it.
  *
- * The units are in the names: seconds for the two clocks, a plain count for the
- * turns. `idleSeconds: 0` switches the idle detector off, exactly as `--idle 0`
- * does — the honest way to say "watch by the wall clock only".
+ * The units are in the names: seconds for the clocks, a plain count for the turns.
+ * `idleSeconds: 0` switches the idle detector off, exactly as `--idle 0` does — the
+ * honest way to say "watch by the wall clock only".
+ *
+ * `waitInputSeconds` (R19) has NO such zero, deliberately: for the idle detector zero
+ * means "never fire", which is a coherent thing to want, while for a wait it would
+ * have to mean "parking is not allowed here" — a different kind of statement, and one
+ * nobody has asked for. A project that does not want its sessions parking says so in
+ * their cards; the minimum here is one second.
  */
 export const launchLimitsSchema = z.strictObject({
   idleSeconds: z.number().int().min(0).optional(),
   wallClockSeconds: z.number().int().min(1).optional(),
   maxTurns: z.number().int().min(1).optional(),
+  waitInputSeconds: z.number().int().min(1).optional(),
 });
 
 /**

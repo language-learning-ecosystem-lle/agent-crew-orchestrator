@@ -100,6 +100,17 @@ describe("buildLaunchPrompt", () => {
     expect(prompt).toContain("the api rules");
     expect(prompt.indexOf("the project rules")).toBeLessThan(prompt.indexOf("the api rules"));
   });
+
+  it("OFFERS THE INTERACTIVE TURN, with both commands and the threshold (R19)", () => {
+    // A capability nobody was told about does not exist: without these words the
+    // session goes on dying with its question, which is the whole failure R19 removes.
+    // The threshold is in the same paragraph on purpose — parking at the END of a task
+    // is more expensive than answering and letting the run finish.
+    expect(prompt).toContain("new-message --await-input");
+    expect(prompt).toContain("await-input");
+    expect(prompt).toContain("what is uncommitted");
+    expect(prompt).toContain("END of the task");
+  });
 });
 
 const launch = (role: string, thread: string): OrchestratorEvent => ({
@@ -180,6 +191,28 @@ describe("planLaunch", () => {
       ok: false,
       reason: "already-running",
     });
+  });
+
+  it("the pair is PARKED → the same refusal: a waiting session is a live one (R19)", () => {
+    const events: OrchestratorEvent[] = [
+      {
+        kind: "lease-acquired",
+        ts: "2026-07-24T13:00:00Z",
+        role: "dev-core",
+        thread: "t",
+        deadline: "2026-07-24T13:30:00Z", // already behind NOW: the work window is frozen
+      },
+      {
+        kind: "input-awaited",
+        ts: "2026-07-24T13:10:00Z",
+        role: "dev-core",
+        thread: "t",
+        deadline: "2026-07-24T15:10:00Z",
+      },
+    ];
+    expect(
+      planLaunch({ events, role: "dev-core", thread: "t", now: NOW, wallClockMs: 900_000 }),
+    ).toEqual({ ok: false, reason: "already-running" });
   });
 
   it("the pair is exhausted → an exhausted refusal (the attempt ceiling on the thread)", () => {
@@ -356,13 +389,35 @@ describe("the permission profile — part of the launch contract (S7)", () => {
 });
 
 describe("resolveCeilings — the flag, then the role, then the default (R12)", () => {
-  const defaults = { idleSeconds: 600, wallClockSeconds: 3600, maxTurns: 300 };
+  const defaults = {
+    idleSeconds: 600,
+    wallClockSeconds: 3600,
+    maxTurns: 300,
+    waitInputSeconds: 3600,
+  };
 
   it("nothing said anywhere → the package defaults, and they say so", () => {
     const ceilings = resolveCeilings({ flags: {}, defaults });
     expect(ceilings.idle).toEqual({ value: 600, source: "default" });
     expect(ceilings.wallClock).toEqual({ value: 3600, source: "default" });
     expect(ceilings.maxTurns).toEqual({ value: 300, source: "default" });
+    expect(ceilings.waitInput).toEqual({ value: 3600, source: "default" });
+  });
+
+  it("the wait ceiling resolves through the same three layers (R19)", () => {
+    // It is a fourth ceiling and not a special case: the same order, the same printed
+    // source. Pinned because the wait is the one clock a run does not spend working,
+    // and "who set it" is the first question of a park that ended too early.
+    expect(
+      resolveCeilings({ flags: {}, limits: { waitInputSeconds: 900 }, defaults }).waitInput,
+    ).toEqual({ value: 900, source: "role" });
+    expect(
+      resolveCeilings({
+        flags: { waitInputSeconds: 60 },
+        limits: { waitInputSeconds: 900 },
+        defaults,
+      }).waitInput,
+    ).toEqual({ value: 60, source: "flag" });
   });
 
   it("the role's launch.limits win over the defaults", () => {

@@ -7,6 +7,8 @@ import {
   sessionLogPath,
   sessionStreamPath,
   sessionSupervisorPath,
+  sessionWaitPath,
+  waitPathFromSessionFile,
 } from "./paths.js";
 
 const input = {
@@ -73,5 +75,25 @@ describe("sessionSupervisorPath", () => {
     // One run is one name in a directory listing, four extensions apart.
     const names = [log, sessionStreamPath(log), sessionIdPath(log), sessionSupervisorPath(log)];
     expect(new Set(names.map((name) => name.replace(/\.[^.]+$/, ""))).size).toBe(1);
+  });
+});
+
+describe("the wait marker of an interactive turn (R19)", () => {
+  const log = sessionLogPath("/s", "dev-core", "016-x", "2026-07-25T18:00:00Z");
+
+  it("is the fifth file of the family, and both ends derive the SAME path", () => {
+    // The writer is the session (which only knows the session-id path from its
+    // environment), the reader is its supervisor (which knows the log path). One file,
+    // reached from either side — otherwise a declaration would be written where nobody
+    // looks.
+    expect(sessionWaitPath(log)).toBe(log.replace(/\.log$/, ".waiting"));
+    expect(waitPathFromSessionFile(sessionIdPath(log))).toBe(sessionWaitPath(log));
+  });
+
+  it("a value that is not a session-id path yields NOTHING, never the value itself", () => {
+    // A blind `replace` would return the name unchanged — i.e. write the marker over
+    // the file it was derived from.
+    expect(waitPathFromSessionFile("/s/whatever.log")).toBeUndefined();
+    expect(waitPathFromSessionFile("")).toBeUndefined();
   });
 });

@@ -115,6 +115,52 @@ describe("renderEventLine / parseEventLine", () => {
   });
 });
 
+describe("the events of an interactive turn (R19)", () => {
+  it("input-awaited round-trips WITH the limit of the wait", () => {
+    const parked: OrchestratorEvent = {
+      kind: "input-awaited",
+      ts: "2026-07-26T10:00:00Z",
+      role: "dev-core",
+      thread: "016-x",
+      deadline: "2026-07-26T11:00:00Z",
+    };
+    expect(parseEventLine(renderEventLine(parked))).toEqual(parked);
+  });
+
+  it("input-awaited WITHOUT a deadline does not parse — a park with no limit is not a state", () => {
+    const line = JSON.stringify({
+      kind: "input-awaited",
+      ts: "2026-07-26T10:00:00Z",
+      role: "dev-core",
+      thread: "016-x",
+    });
+    expect(() => parseEventLine(line)).toThrow();
+  });
+
+  it("input-received round-trips as a bare event", () => {
+    const back: OrchestratorEvent = {
+      kind: "input-received",
+      ts: "2026-07-26T10:30:00Z",
+      role: "dev-core",
+      thread: "016-x",
+    };
+    expect(parseEventLine(renderEventLine(back))).toEqual(back);
+  });
+
+  it("the two endings of a park are release reasons of their own", () => {
+    for (const reason of ["input-timeout", "exited-while-waiting"] as const) {
+      const released: OrchestratorEvent = {
+        kind: "lease-released",
+        ts: "2026-07-26T11:00:00Z",
+        role: "dev-core",
+        thread: "016-x",
+        reason,
+      };
+      expect(parseEventLine(renderEventLine(released))).toEqual(released);
+    }
+  });
+});
+
 describe("the continuation fields (R18)", () => {
   const base = { ts: "2026-07-24T13:00:00Z", role: "dev-core", thread: "016-x" };
 
