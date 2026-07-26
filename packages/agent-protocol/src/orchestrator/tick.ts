@@ -36,18 +36,24 @@ import {
   consecutiveLaunchesWithoutCompletion,
   MAX_CONSECUTIVE_RUNS,
 } from "./launch.js";
-import { foldLeases, type LeaseView } from "./lease.js";
+import { foldLeases, isLeaseAlive, type LeaseView } from "./lease.js";
 
 /** A "role awaited on a thread" pair — a launch candidate (from `threadsWaitingOn`). */
 export type Candidate = { readonly role: string; readonly thread: string };
 
 /**
  * Why a candidate was not raised on this tick. Three reasons, and they call for
- * three different things from a human: `held` — wait for the manual session to end;
- * `active` — nothing, the pair is being worked on right now; `exhausted` — look at
- * the journal, the pair has been failing without delivering.
+ * four different things from a human: `held` — wait for the manual session to end;
+ * `active` — nothing, the pair is being worked on right now; `waiting` — ANSWER, the
+ * session is parked on a question of its own (R19); `exhausted` — look at the journal,
+ * the pair has been failing without delivering.
+ *
+ * `waiting` is told apart from `active` because those are the two ends of the same
+ * silence: an `active` pair needs nothing from anybody, a parked one is blocked on a
+ * human and will die on its wait ceiling if the line reads "running right now" and the
+ * operator does what that line implies — namely, nothing.
  */
-export type SkipReason = "held" | "active" | "exhausted";
+export type SkipReason = "held" | "active" | "waiting" | "exhausted";
 
 export type TickSkip = {
   readonly role: string;
@@ -120,8 +126,15 @@ export const planTick = (input: {
       skipped.push({ ...candidate, reason: "held", attempt });
       continue;
     }
-    if (view && (view.state === "running" || view.state === "draining")) {
-      skipped.push({ ...candidate, reason: "active", attempt });
+    // A live lease takes the pair out — including a PARKED one (R19): a session waiting
+    // for input becomes a candidate again the instant its answer lands, and that is the
+    // one tick where launching would put a second session on top of a live one. Hence
+    // `isLeaseAlive` and not two comparisons — a third live state added later would
+    // otherwise have to be remembered here as well. The REASON, though, is split: both
+    // states forbid a launch, and only one of them asks a human for something.
+    if (view && isLeaseAlive(view.state)) {
+      const reason = view.state === "waiting" ? "waiting" : "active";
+      skipped.push({ ...candidate, reason, attempt });
       continue;
     }
     if (view?.exhausted) {
@@ -172,6 +185,8 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       return `candidate ${pair} skipped: held by a manual session of ${skip.role}`;
     case "active":
       return `candidate ${pair} skipped: the pair is running right now`;
+    case "waiting":
+      return `candidate ${pair} skipped: the session is parked on a question of its own (R19) — it is waiting for an ANSWER, not for a launch; see 'orchestrator status' for the ceiling of that wait`;
     case "exhausted":
       return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal`;
   }

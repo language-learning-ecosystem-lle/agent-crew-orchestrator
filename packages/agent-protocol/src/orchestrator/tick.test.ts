@@ -95,6 +95,29 @@ describe("planTick — launching", () => {
     });
   });
 
+  it("A PARKED PAIR IS NOT A CANDIDATE (R19) — its session is alive and about to resume", () => {
+    // The dangerous tick: a session waiting for input becomes a candidate the moment
+    // the answer arrives (the thread waits on the role again), and its process is still
+    // up. Launching there would put a second session of one role on top of a live one.
+    const events: OrchestratorEvent[] = [
+      acquire("dev-core", "t1"),
+      {
+        kind: "input-awaited",
+        ts: "2026-07-24T13:10:00Z",
+        role: "dev-core",
+        thread: "t1",
+        deadline: "2026-07-24T15:10:00Z",
+      },
+    ];
+    // And it drops out AUDIBLY, with its OWN reason: not a silent disappearance into
+    // `idle`, and not `active` either — a parked pair is the only skip that asks a human
+    // for something, and the line it produces has to say so.
+    expect(planTick({ ...base, events, enabled: true, stopped: false })).toEqual({
+      kind: "idle",
+      skipped: [{ role: "dev-core", thread: "t1", reason: "waiting", attempt: 1 }],
+    });
+  });
+
   it("picks the FIRST suitable one, skipping the active pair", () => {
     const candidates: Candidate[] = [
       { role: "dev-core", thread: "busy" },
@@ -290,5 +313,13 @@ describe("describeSkip — the line an operator reads", () => {
     expect(describeSkip({ ...skip, reason: "active" }, { value: 3, source: "default" })).toContain(
       "running right now",
     );
+  });
+
+  it("a parked pair asks for an ANSWER, and does not read as a working session", () => {
+    // The one skip line that calls for an action: "running right now" would tell the
+    // operator to do nothing, and the parked session would then die on its wait ceiling.
+    const line = describeSkip({ ...skip, reason: "waiting" }, { value: 3, source: "default" });
+    expect(line).toContain("ANSWER");
+    expect(line).not.toContain("running right now");
   });
 });

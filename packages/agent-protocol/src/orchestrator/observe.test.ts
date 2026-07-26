@@ -177,3 +177,87 @@ describe("idle — a stalled session is not a timeout (R6)", () => {
     expect(observeStep("draining", { ...running, idle: true })).toBeNull();
   });
 });
+
+describe("the interactive turn — a passed turn that is not the end (R19)", () => {
+  const running = { handedOff: false, processExited: false, overdue: false };
+
+  it("a passed turn WITH a declared wait parks the run instead of draining it", () => {
+    expect(observeStep("running", { ...running, handedOff: true, awaitingInput: true })).toEqual({
+      record: "input-awaited",
+    });
+  });
+
+  it("the same mail state WITHOUT a declaration is the end of the run, as before", () => {
+    // The one-line difference between the two readings of one fact, and the reason the
+    // declaration has to exist at all: from the mail alone they are identical.
+    expect(observeStep("running", { ...running, handedOff: true })).toEqual({
+      record: "handoff-detected",
+    });
+  });
+
+  it("while parked, silence decides NOTHING — waiting is not a hang (requirement б)", () => {
+    expect(observeStep("waiting", { ...running, awaitingInput: true, idle: true })).toBeNull();
+  });
+
+  it("while parked, the WORK deadline decides nothing either — its window is frozen", () => {
+    expect(observeStep("waiting", { ...running, awaitingInput: true, overdue: true })).toBeNull();
+  });
+
+  it("the declaration going away brings the run back to work", () => {
+    // The way out is the marker and not the mail: an answer and the session's own
+    // timeout both end the wait, and from the mail's side they look the same.
+    expect(observeStep("waiting", { ...running, awaitingInput: false })).toEqual({
+      record: "input-received",
+    });
+  });
+
+  it("nobody answered within the wait's own ceiling → input-timeout, not timeout", () => {
+    expect(observeStep("waiting", { ...running, awaitingInput: true, waitOverdue: true })).toEqual({
+      record: "lease-released",
+      reason: "input-timeout",
+    });
+  });
+
+  it("the session died while parked → exited-while-waiting, checked BEFORE the answer", () => {
+    // A dead session cannot act on an answer, so "it died waiting" is the truer record
+    // even if the reply landed in the same second — and `completed` would have been the
+    // lie: the package stopped in the middle of its task.
+    expect(
+      observeStep("waiting", { ...running, processExited: true, awaitingInput: false }),
+    ).toEqual({ record: "lease-released", reason: "exited-while-waiting" });
+  });
+
+  it("an interactive turn is NOT recorded as completed by any path", () => {
+    for (const signals of [
+      { ...running, awaitingInput: true, waitOverdue: true },
+      { ...running, processExited: true, awaitingInput: true },
+    ]) {
+      expect(observeStep("waiting", signals)).not.toEqual({
+        record: "lease-released",
+        reason: "completed",
+      });
+    }
+  });
+
+  it("stepEvent: input-awaited carries the limit OF THE WAIT", () => {
+    const base = { ts: "2026-07-26T10:00:00Z", role: "dev-core", thread: "016-x" };
+    expect(
+      stepEvent({ record: "input-awaited" }, base, { waitDeadline: "2026-07-26T11:00:00Z" }),
+    ).toEqual({ kind: "input-awaited", ...base, deadline: "2026-07-26T11:00:00Z" });
+  });
+
+  it("stepEvent: a forgotten ceiling gives a wait that expires AT ONCE, never one without a limit", () => {
+    const base = { ts: "2026-07-26T10:00:00Z", role: "dev-core", thread: "016-x" };
+    expect(stepEvent({ record: "input-awaited" }, base)).toMatchObject({
+      deadline: "2026-07-26T10:00:00Z",
+    });
+  });
+
+  it("stepEvent: input-received is a bare event — what ended the wait is not claimed", () => {
+    const base = { ts: "2026-07-26T10:30:00Z", role: "dev-core", thread: "016-x" };
+    expect(stepEvent({ record: "input-received" }, base)).toEqual({
+      kind: "input-received",
+      ...base,
+    });
+  });
+});

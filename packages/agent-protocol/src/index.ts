@@ -71,6 +71,15 @@ export {
   transportFrom,
 } from "./notify/transport.js";
 export {
+  DEFAULT_WAIT_INPUT_SECONDS,
+  describeWait,
+  parseWaitMarker,
+  renderWaitMarker,
+  type WaitMarker,
+  waitAuthorised,
+  waitMarkerSchema,
+} from "./orchestrator/interactive.js";
+export {
   type EventKind,
   eventTimestamp,
   MAX_ATTEMPTS,
@@ -114,7 +123,12 @@ export {
   roleLaunchability,
   type WorkerSource,
 } from "./orchestrator/launch.js";
-export { foldLeases, type LeaseLifecycle, type LeaseView } from "./orchestrator/lease.js";
+export {
+  foldLeases,
+  isLeaseAlive,
+  type LeaseLifecycle,
+  type LeaseView,
+} from "./orchestrator/lease.js";
 export { renderLog } from "./orchestrator/log.js";
 export {
   type Lifecycle,
@@ -182,6 +196,7 @@ export {
   MESSAGE_PROVENANCE_STEP,
 } from "./schema/v2-provenance.js";
 export { NOTIFICATIONS_STEP } from "./schema/v5-notifications.js";
+export { INTERACTIVE_TURN_STEP } from "./schema/v7-interactive-turn.js";
 export {
   CURRENT_PROTOCOL_VERSION,
   compareProtocolVersion,

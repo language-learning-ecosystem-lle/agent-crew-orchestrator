@@ -20,7 +20,13 @@
  */
 import type { OrchestratorEvent } from "./journal.js";
 
-export type Lifecycle = "running" | "draining";
+/**
+ * `waiting` is the interactive turn (R19): the turn has passed, the session declared
+ * a wait for input and is deliberately alive. It is a THIRD lifecycle rather than a
+ * flag beside `running` because every judgement differs — the clock in force, what
+ * counts as a hang, and what the end of the state means.
+ */
+export type Lifecycle = "running" | "draining" | "waiting";
 
 export type ObserveSignals = {
   /** The thread no longer awaits the role — the turn has passed (from threadsWaitingOn). */
@@ -35,14 +41,30 @@ export type ObserveSignals = {
    * IO and lives in the CLI, the decision is here.
    */
   readonly idle?: boolean;
+  /**
+   * THE SESSION DECLARED A WAIT FOR INPUT (R19) and has not resumed — the marker of
+   * the declaration is on disk and authorises this thread (`interactive.ts`). A LEVEL,
+   * not an edge: it is what both enters and leaves the `waiting` state.
+   */
+  readonly awaitingInput?: boolean;
+  /** now > the limit OF THE WAIT — a clock of its own, separate from `overdue` (R19). */
+  readonly waitOverdue?: boolean;
 };
 
 /** What to record at the next step (or null — keep observing). */
 export type ObserveStep =
   | { readonly record: "handoff-detected" }
+  | { readonly record: "input-awaited" }
+  | { readonly record: "input-received" }
   | {
       readonly record: "lease-released";
-      readonly reason: "completed" | "timeout" | "stalled" | "exited-without-handoff";
+      readonly reason:
+        | "completed"
+        | "timeout"
+        | "stalled"
+        | "exited-without-handoff"
+        | "input-timeout"
+        | "exited-while-waiting";
     }
   | null;
 
@@ -71,10 +93,33 @@ export const handoffDetected = (input: {
 }): boolean => !input.threadUnreadable && !input.waitingThreads.includes(input.thread);
 
 export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): ObserveStep => {
+  // THE PARKED RUN (R19). Its own branch, first, because none of the three judgements
+  // below applies to it: the turn has already passed, silence is what it was told to
+  // produce, and the work window is frozen.
+  if (lifecycle === "waiting") {
+    // The session died while parked. Checked BEFORE the marker, and that order is the
+    // point: a dead session cannot act on an answer, so "it died waiting" is the truer
+    // record even if the answer landed in the same second. `completed` would have been
+    // the lie here — the package stopped in the middle.
+    if (signals.processExited) return { record: "lease-released", reason: "exited-while-waiting" };
+    // The declaration is gone — the session is working again, whatever ended its wait
+    // (an answer, or its own timeout). See `interactive.ts` on why the way out is the
+    // marker and not the mail.
+    if (signals.awaitingInput !== true) return { record: "input-received" };
+    // Nobody answered within the wait's own ceiling — its own refusal (requirement (в)).
+    if (signals.waitOverdue === true) return { record: "lease-released", reason: "input-timeout" };
+    return null;
+  }
+
   if (lifecycle === "running") {
-    // The turn has passed — move to draining, do NOT touch the process: it will
-    // finish by itself (requirement 3).
-    if (signals.handedOff) return { record: "handoff-detected" };
+    // The turn has passed. Normally that is the completion signal — unless the session
+    // declared a wait for input (R19), in which case the very same mail state means the
+    // opposite: the run continues and is expected to be alive.
+    if (signals.handedOff) {
+      return signals.awaitingInput === true
+        ? { record: "input-awaited" }
+        : { record: "handoff-detected" };
+    }
     // NO TRACES for longer than the idle ceiling — the session is stuck (R6). It is
     // checked BEFORE the deadline, and that order is the whole point: a stalled
     // session normally goes quiet long before its wall clock runs out, and if both
@@ -119,18 +164,29 @@ export const stepEvent = (
     /** The id of the session that ran and how much it burned (R18) — what a resume needs. */
     readonly session?: string | undefined;
     readonly steps?: number;
+    /**
+     * The limit of the wait, for an `input-awaited` (R19). Required in practice and
+     * optional in the type for one reason: the fallback is the event's own stamp, i.e.
+     * a wait that expires immediately — a caller that forgot the ceiling gets a run
+     * that closes at once and says so, not a run parked with no limit at all.
+     */
+    readonly waitDeadline?: string;
   },
-): OrchestratorEvent =>
-  step.record === "handoff-detected"
-    ? { kind: "handoff-detected", ...base }
-    : {
-        kind: "lease-released",
-        ...base,
-        reason: step.reason,
-        ...(detail?.exitCode === undefined || detail.exitCode === null
-          ? {}
-          : { exitCode: detail.exitCode }),
-        ...(detail?.output === undefined ? {} : { output: detail.output }),
-        ...(detail?.session === undefined ? {} : { session: detail.session }),
-        ...(detail?.steps === undefined ? {} : { steps: detail.steps }),
-      };
+): OrchestratorEvent => {
+  if (step.record === "handoff-detected") return { kind: "handoff-detected", ...base };
+  if (step.record === "input-awaited") {
+    return { kind: "input-awaited", ...base, deadline: detail?.waitDeadline ?? base.ts };
+  }
+  if (step.record === "input-received") return { kind: "input-received", ...base };
+  return {
+    kind: "lease-released",
+    ...base,
+    reason: step.reason,
+    ...(detail?.exitCode === undefined || detail.exitCode === null
+      ? {}
+      : { exitCode: detail.exitCode }),
+    ...(detail?.output === undefined ? {} : { output: detail.output }),
+    ...(detail?.session === undefined ? {} : { session: detail.session }),
+    ...(detail?.steps === undefined ? {} : { steps: detail.steps }),
+  };
+};

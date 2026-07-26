@@ -12,7 +12,7 @@
  * The invariant nailed down: **a run does not end without recording its outcome.**
  * Exactly how it ended is a second question; it never ends silently.
  */
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -31,6 +31,7 @@ import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { parseJournal } from "./journal.js";
+import { foldLeases } from "./lease.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -735,5 +736,229 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("cursor");
+  }, 60_000);
+});
+
+/**
+ * THE INTERACTIVE TURN, END TO END (R19). The pure core is tested next door; what can
+ * only be checked here is the WIRING, and it is the whole mechanism: a passed turn that
+ * does NOT close the run, an idle detector that does not fire on a wait, a work window
+ * that gets its time back, and two endings that are recorded as themselves.
+ *
+ * The stub plays both parts — the parked session and the human answering — because the
+ * way out of a wait is the marker rather than the mail, so nothing here needs a second
+ * process to be true.
+ */
+describe("a session that asks and waits alive (R19)", () => {
+  const messages = (mail: string): string => join(mail, "agent-comms", "012-x", "messages");
+  /** A message file, written the way a live session writes one — straight into the checkout. */
+  const message = (from: string, stamp: string, waitingOn: string): string =>
+    `printf '%s' '---\nfrom: ${from}\ndate: ${stamp}\nexpects: answer\nwaiting-on: ${waitingOn}\n---\n\nThe text.\n'`;
+  /** The declaration `new-message --await-input` writes, at the path the session is given. */
+  const declare = (thread: string): string =>
+    `WAIT="\${AGENT_PROTOCOL_SESSION_FILE%.session}.waiting"\nprintf '%s\\n' '{"thread":"${thread}","at":"2026-07-25T11:00:00Z"}' > "$WAIT"`;
+
+  /**
+   * `spawnSync` and not `execFileSync` here: several of the sentences below are the
+   * supervisor's COMPLAINTS, and they go to stderr. A run that ends well returns only
+   * its stdout through `execFileSync`, so half of what this mechanism says would be
+   * invisible to the test — and it is exactly the half that explains a run that stopped
+   * in the middle.
+   */
+  const runWith = (repo: string, extra: readonly string[]): { code: number; out: string } => {
+    const result = spawnSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--poll",
+        "1",
+        "--write",
+        ...extra,
+      ],
+      { cwd: repo, encoding: "utf8", env: sandbox(repo) },
+    );
+    return {
+      code: result.status ?? 1,
+      out: `${result.stdout ?? ""}${result.stderr ?? ""}`,
+    };
+  };
+
+  it("asks, waits through a silence longer than the idle ceiling, gets an answer and finishes", () => {
+    const { repo, mail } = contour();
+    const dir = messages(mail);
+    const exec = stub(
+      repo,
+      [
+        "sleep 1",
+        // The question and the declaration, in that one gesture: the marker first.
+        declare("012-x"),
+        `${message("dev-core", "2026-07-25T11:00:00Z", "curator")} > ${join(dir, "2026-07-25T11-00-00Z-dev-core.md")}`,
+        // EIGHT SECONDS OF PRODUCING NOTHING against an idle ceiling of three. Before
+        // R19 this exact silence was `stalled` — a session killed for doing what it was
+        // told to do.
+        "sleep 8",
+        `${message("curator", "2026-07-25T11:10:00Z", "dev-core")} > ${join(dir, "2026-07-25T11-10-00Z-curator.md")}`,
+        // `await-input` returns and drops the declaration — that is what un-parks the run.
+        'rm -f "$WAIT"',
+        "sleep 3",
+        `${message("dev-core", "2026-07-25T11:20:00Z", "curator")} > ${join(dir, "2026-07-25T11-20-00Z-dev-core.md")}`,
+        "sleep 2",
+      ].join("\n"),
+    );
+
+    const result = runWith(repo, [
+      "--exec",
+      exec,
+      "--wall-clock",
+      "90",
+      "--idle",
+      "3",
+      "--wait-input",
+      "60",
+    ]);
+    const events = journal(repo);
+
+    expect(events.map((event) => event.kind)).toEqual([
+      "lease-acquired",
+      "launch",
+      "input-awaited",
+      "input-received",
+      "handoff-detected",
+      "lease-released",
+    ]);
+    expect(events.at(-1)).toMatchObject({ reason: "completed" });
+    // The silence was NEVER read as a stall — requirement (б) in the wiring.
+    expect(result.out).not.toContain("stalled");
+    // …and the work window got the waited time back (requirement (в)): the deadline the
+    // fold arrives at is later than the one the lease was taken with.
+    const acquired = events[0] as { deadline: string };
+    const parked = events[2] as { ts: string };
+    const back = events[3] as { ts: string };
+    const waitedMs = new Date(back.ts).getTime() - new Date(parked.ts).getTime();
+    expect(waitedMs).toBeGreaterThan(0);
+    const shifted = foldLeases(events, new Date()).find((view) => view.thread === "012-x");
+    expect(new Date(shifted?.deadline as string).getTime()).toBe(
+      new Date(acquired.deadline).getTime() + waitedMs,
+    );
+  }, 90_000);
+
+  it("nobody answers within the wait ceiling → input-timeout, and never stalled or timeout", () => {
+    const { repo, mail } = contour();
+    const exec = stub(
+      repo,
+      [
+        "sleep 1",
+        declare("012-x"),
+        `${message("dev-core", "2026-07-25T11:00:00Z", "curator")} > ${join(messages(mail), "2026-07-25T11-00-00Z-dev-core.md")}`,
+        "sleep 120",
+      ].join("\n"),
+    );
+
+    const result = runWith(repo, [
+      "--exec",
+      exec,
+      "--wall-clock",
+      "90",
+      "--idle",
+      "3",
+      "--wait-input",
+      "5",
+    ]);
+    const events = journal(repo);
+
+    expect(events.map((event) => event.kind)).toEqual([
+      "lease-acquired",
+      "launch",
+      "input-awaited",
+      "lease-released",
+    ]);
+    expect(events.at(-1)).toMatchObject({ reason: "input-timeout" });
+    // The wait has its own refusal: neither of the two clocks it is NOT is allowed to
+    // claim this run (the wall clock was 90s and the idle ceiling 3s). The log of the
+    // run is where the sentence has to be — a break is analysed without a witness.
+    expect(sessionLog(repo)).toContain("nobody answered within the wait ceiling");
+    // And the line does not send anybody looking for a message that is already written.
+    expect(`${result.out}${sessionLog(repo)}`).not.toContain("the turn was not passed");
+    expect(result.out).toContain("finished: input-timeout");
+  }, 90_000);
+
+  it("the session dies while parked → exited-while-waiting, not completed", () => {
+    // `completed` would have said the package finished, when in fact it stopped in the
+    // middle with its question in the thread.
+    const { repo, mail } = contour();
+    const exec = stub(
+      repo,
+      [
+        "sleep 1",
+        declare("012-x"),
+        `${message("dev-core", "2026-07-25T11:00:00Z", "curator")} > ${join(messages(mail), "2026-07-25T11-00-00Z-dev-core.md")}`,
+        "sleep 3",
+      ].join("\n"),
+    );
+
+    const result = runWith(repo, ["--exec", exec, "--wall-clock", "60", "--wait-input", "60"]);
+    const events = journal(repo);
+
+    expect(events.map((event) => event.kind)).toEqual([
+      "lease-acquired",
+      "launch",
+      "input-awaited",
+      "lease-released",
+    ]);
+    expect(events.at(-1)).toMatchObject({ reason: "exited-while-waiting" });
+    expect(result.out).toContain("the session died while it was parked");
+    expect(result.out).toContain("finished: exited-while-waiting");
+  }, 60_000);
+
+  it("a declaration naming ANOTHER thread is not honoured, and says so", () => {
+    // A run is bound to one thread. Parking on somebody else's declaration would hold a
+    // lease for work this run is not doing — and staying silent about it would look like
+    // the flag did nothing.
+    const { repo, mail } = contour();
+    const exec = stub(
+      repo,
+      [
+        "sleep 1",
+        declare("009-somewhere-else"),
+        `${message("dev-core", "2026-07-25T11:00:00Z", "curator")} > ${join(messages(mail), "2026-07-25T11-00-00Z-dev-core.md")}`,
+        "sleep 2",
+      ].join("\n"),
+    );
+
+    const result = runWith(repo, ["--exec", exec, "--wall-clock", "60"]);
+    const events = journal(repo);
+
+    expect(events.map((event) => event.kind)).toEqual([
+      "lease-acquired",
+      "launch",
+      "handoff-detected",
+      "lease-released",
+    ]);
+    expect(events.at(-1)).toMatchObject({ reason: "completed" });
+    expect(result.out).toContain("the declared wait is not honoured");
+    expect(result.out).toContain("009-somewhere-else");
+    // …and in the log of the run too: the reason is analysed without a witness.
+    expect(sessionLog(repo)).toContain("the declared wait is not honoured");
+  }, 60_000);
+
+  it("the session is told the ceiling of its own wait, so the two clocks cannot disagree", () => {
+    const { repo } = contour();
+    const dump = join(repo, "wait-env.txt");
+    const exec = stub(repo, `printf '%s' "$AGENT_PROTOCOL_WAIT_SECONDS" > ${dump}\nsleep 1`);
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "30", "--wait-input", "123"]);
+
+    expect(readFileSync(dump, "utf8")).toBe("123");
   }, 60_000);
 });

@@ -35,6 +35,7 @@ import {
   realpathSync,
   rmSync,
   statSync,
+  unlinkSync,
   writeFileSync,
   writeSync,
 } from "node:fs";
@@ -86,6 +87,12 @@ import {
   renderHolds,
 } from "./orchestrator/hold.js";
 import {
+  DEFAULT_WAIT_INPUT_SECONDS,
+  describeWait,
+  renderWaitMarker,
+  waitAuthorised,
+} from "./orchestrator/interactive.js";
+import {
   eventTimestamp,
   type OrchestratorEvent,
   orchestratorEventSchema,
@@ -127,6 +134,8 @@ import {
   sessionLogPath,
   sessionStreamPath,
   sessionSupervisorPath,
+  sessionWaitPath,
+  waitPathFromSessionFile,
 } from "./orchestrator/paths.js";
 import {
   agentBinaryVerdict,
@@ -206,11 +215,17 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
+  agent-protocol await-input  --root <mail> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
+                              # THE INTERACTIVE TURN (R19): blocks until the thread waits on the role again
+                              # needs a wait declared beside the question ('new-message --await-input') — it does not declare one
+                              # code 0: the answer arrived · code 3: the wait ran out (wrap up and pass the turn)
   agent-protocol notify       --ref <ref> [--repo <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--local-config <p>] [--write]
                               # the turn has passed to a HUMAN: whom is derived from wake.mode,
                               # the words come from notifications.templates, delivery from the transport plugin
                               # without --write: prints what it would send and leaves the state alone
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--write]
+                              # --await-input: this question PARKS the run instead of ending it (R19) — the session
+                              # stays alive and reads the answer itself; block on 'await-input' after pushing
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
                               # a raised session passes neither — the launch environment carries both
@@ -225,13 +240,14 @@ or --local-config <p>): the repository says WHAT is raised, the machine says WHE
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>] [--max-attempts <n>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--fresh] [--write] [-d|--detach]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
                               # ceilings: the flag wins over the role's launch.limits, which wins over the package default
                               # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
                               # the role works in its own worktree (orchestrator.workdir.worktrees), put at the base per package
                               # --fresh: never resume the previous session, whatever the continuation policy says
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+                              # --wait-input: the ceiling of a DECLARED wait for input (R19); waiting does not eat the wall clock
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
@@ -806,6 +822,69 @@ const provenanceFrom = (
 };
 
 /**
+ * DECLARING A WAIT FOR INPUT (R19) — the marker that goes next to the question and
+ * turns the passing of the turn into a park instead of an ending.
+ *
+ * IT IS WRITTEN BY THE MESSAGE COMMAND, and that is the whole reason it is honoured:
+ * the supervisor reads the mail off the disk of the checkout the session writes into,
+ * so the question is visible to it the moment the file lands. A declaration made in a
+ * second command afterwards would race a poll that has already concluded the run was
+ * over — and lose that race often enough to make the mechanism untrustworthy.
+ *
+ * TWO REFUSALS, both about a wait that could never end:
+ *  - the message does not pass the turn away (no `waiting-on`, or the role is still in
+ *    it): then nobody is told to answer — the notifier (R4) triggers on the turn
+ *    passing — and the session would sit until its ceiling for a message nobody was
+ *    asked to read;
+ *  - the run was not raised by this circuit (no launch environment): there is no
+ *    supervisor to honour the declaration, so parking would mean a session waiting
+ *    while nothing watches its ceiling. A human at a terminal simply waits by hand.
+ */
+const declareWait = (input: {
+  readonly thread: string;
+  readonly from: string;
+  readonly waitingOn?: readonly string[];
+  readonly date: string;
+  readonly session?: string;
+  readonly write: boolean;
+}): void => {
+  const passesTurn =
+    input.waitingOn !== undefined &&
+    input.waitingOn.length > 0 &&
+    !input.waitingOn.includes(input.from);
+  if (!passesTurn) {
+    fail(
+      "--await-input needs the message to pass the turn: give --waiting-on with whoever is to answer (and not yourself), otherwise nobody is told to answer and the wait can only end in its ceiling",
+      2,
+    );
+  }
+  // An EMPTY variable is "not set", as everywhere else this environment is read: the
+  // launch contract sets it to a path or not at all.
+  const sessionFile = process.env[LAUNCH_ENV.sessionFile] || undefined;
+  const marker = sessionFile === undefined ? undefined : waitPathFromSessionFile(sessionFile);
+  if (marker === undefined) {
+    fail(
+      `--await-input only means something in a run raised by the orchestrator: ${LAUNCH_ENV.sessionFile} is ${sessionFile === undefined ? "not set" : `'${sessionFile}', which is not a session-id path`}. A session nobody is watching cannot be parked — write the question without the flag`,
+      2,
+    );
+    return;
+  }
+  const content = renderWaitMarker({
+    thread: input.thread,
+    at: input.date,
+    ...(input.session === undefined ? {} : { session: input.session }),
+  });
+  if (!input.write) {
+    out(`agent-protocol: would declare a wait for input in ${marker} (--write writes it)`);
+    return;
+  }
+  writeOut(marker, content);
+  out(
+    `agent-protocol: a wait for input is declared (${marker}) — the run is parked, not finished; block on 'await-input' next`,
+  );
+};
+
+/**
  * Create a message file in an EXISTING thread. Refuses if the thread is in the
  * legacy form (no `messages/`): a file write would cut off its history.
  */
@@ -835,16 +914,19 @@ const newMessage = (argv: readonly string[]): void => {
 
   const text = readFile(required(argv, "--body-file"), "message body");
   const waitingRaw = flag(argv, "--waiting-on");
+  const waitingOn = waitingRaw === undefined ? undefined : parseWaitingOn(waitingRaw, registry);
+  // Required BEFORE `--write` is even looked at: a dry run is the preview of the
+  // write, and a preview that succeeds where the write refuses is a lie.
+  const provenance = provenanceFrom(argv, { required: true });
+  const date = nextMessageTimestamp(new Date(), existingTs);
   let planned: ReturnType<typeof planNewMessage>;
   try {
     planned = planNewMessage({
       from,
-      // Required BEFORE `--write` is even looked at: a dry run is the preview of the
-      // write, and a preview that succeeds where the write refuses is a lie.
-      ...provenanceFrom(argv, { required: true }),
-      date: nextMessageTimestamp(new Date(), existingTs),
+      ...provenance,
+      date,
       expects: parseExpects(required(argv, "--expects")),
-      ...(waitingRaw === undefined ? {} : { waitingOn: parseWaitingOn(waitingRaw, registry) }),
+      ...(waitingOn === undefined ? {} : { waitingOn }),
       text,
       threadHasMessages,
     });
@@ -859,7 +941,22 @@ const newMessage = (argv: readonly string[]): void => {
   if (existsSync(path))
     fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
 
-  if (argv.includes("--write")) {
+  const write = argv.includes("--write");
+  // THE DECLARATION GOES FIRST (R19) — before the message file, not after it. The
+  // supervisor sees the question as soon as the file is on disk, and a marker written
+  // second would race the poll that reads it.
+  if (argv.includes("--await-input")) {
+    declareWait({
+      thread: threadId,
+      from,
+      ...(waitingOn === undefined ? {} : { waitingOn }),
+      date,
+      ...(provenance.session === undefined ? {} : { session: provenance.session }),
+      write,
+    });
+  }
+
+  if (write) {
     writeOut(path, planned.content);
     out(`agent-protocol: created ${threadId}/${planned.path}`);
     return;
@@ -940,6 +1037,133 @@ const mail = (argv: readonly string[]): void => {
       `mail is not confirmed: ${failures.length} unreadable threads, the readable ones are not waiting on you`,
       2,
     );
+  }
+};
+
+/**
+ * `await-input` — THE BLOCKING HALF OF THE INTERACTIVE TURN (R19). The session has
+ * written its question with `--await-input` and pushed it; here it sits until the
+ * answer comes back, and that is the whole point: one tool call, no context lost, the
+ * working tree exactly as it was.
+ *
+ * IT REFUSES WITHOUT A DECLARATION. Waiting undeclared is the failure the marker
+ * exists to prevent — the supervisor would read the passed turn as the end of the run
+ * and close it while the session sat here. So this command does not create the
+ * declaration; it insists on one that was made where it had to be made, beside the
+ * question.
+ *
+ * IT REFUSES WHEN THE QUESTION CANNOT BE ANSWERED. Unpushed commits in the mail
+ * checkout mean the question exists on this disk only: nobody will ever see it, and
+ * the wait could only end in a ceiling an hour later. That is the deadlock this
+ * mechanism is most likely to hit in practice, and it costs one git command to catch.
+ *
+ * THE UPDATE IS BEST-EFFORT, THE READ IS NOT. `fetch` + `merge --ff-only` may fail
+ * (no network, a diverged checkout) and that is not fatal — it is "not yet known", a
+ * reason to ask again. What is never allowed is concluding "the answer arrived" from a
+ * thread that could not be read; an unreadable thread keeps the wait going and says so
+ * out loud, exactly as it does in the supervisor's own loop.
+ */
+const awaitInput = async (argv: readonly string[]): Promise<void> => {
+  const root = required(argv, "--root");
+  const role = required(argv, "--role");
+  const threadId = required(argv, "--thread");
+  const loaded = configFrom(argv, root);
+  const registry = loaded.registry;
+  if (!registry.isKnown(role)) fail(`role '${role}' is not listed in the config`, 2);
+
+  const sessionFile = process.env[LAUNCH_ENV.sessionFile] || undefined;
+  const marker = sessionFile === undefined ? undefined : waitPathFromSessionFile(sessionFile);
+  if (marker === undefined || !existsSync(marker)) {
+    fail(
+      `no wait was declared for this run: write the question with 'new-message --await-input' (that is what tells the supervisor the run is parked rather than finished)${marker === undefined ? `; ${LAUNCH_ENV.sessionFile} names no session-id path either, so nothing is watching this session at all` : ""}`,
+      2,
+    );
+    return;
+  }
+
+  const checkout = repoOf(root);
+  const branch = loaded.config.mail.branch;
+  // The one-off verification of "can this question be answered at all". It goes through
+  // the same probe preflight uses (it fetches and fast-forwards on its own), and its
+  // failure is a WARNING rather than a refusal: a fetch that did not work says nothing
+  // about the checkout, and refusing a wait over a network blip would cost a run for
+  // no reason. The ceiling bounds the blind case.
+  let state: ReturnType<typeof mailCheckoutState> | undefined;
+  try {
+    state = mailCheckoutState(checkout, branch);
+  } catch (error) {
+    err(
+      `agent-protocol: WARNING — the state of the mail checkout '${checkout}' could not be read (${(error as Error).message}); waiting anyway, but a question that is not pushed will never be answered`,
+    );
+  }
+  if (state !== undefined && (state.ahead > 0 || state.dirty || state.branch !== branch)) {
+    // The marker is left alone: the session may still push and wait again, and
+    // removing somebody's declaration on the way out of a refusal would be the kind of
+    // repair this package does not do.
+    fail(
+      `the question cannot reach anybody from this checkout (${checkout}: on '${state.branch}'${state.dirty ? ", unsaved changes" : ""}${state.ahead > 0 ? `, ${state.ahead} unpushed commits` : ""}) — push it first, then wait`,
+      2,
+    );
+    return;
+  }
+  // In the loop the update is best-effort by construction: an unreachable origin is
+  // "not yet known", a reason to ask again rather than to end the wait.
+  const fetchMail = (): void => {
+    gitAsk(["-C", checkout, "fetch", "--quiet", "origin", branch]);
+    gitAsk(["-C", checkout, "merge", "--quiet", "--ff-only", `origin/${branch}`]);
+  };
+
+  const fromEnv = Number(process.env[LAUNCH_ENV.waitSeconds]);
+  const fallback = Number.isInteger(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_WAIT_INPUT_SECONDS;
+  const timeoutMs = positiveInt(argv, "--timeout", fallback) * 1000;
+  const pollMs = positiveInt(argv, "--poll", 30) * 1000;
+  const until = Date.now() + timeoutMs;
+  // The declaration is dropped on EVERY way out (an answer, the ceiling, a refusal
+  // after the wait began): the supervisor leaves the parked state when the marker
+  // goes, so a marker left behind would keep a working session recorded as parked.
+  const done = (): void => {
+    try {
+      unlinkSync(marker);
+    } catch {
+      // already gone — fine
+    }
+  };
+
+  out(
+    `agent-protocol: waiting for input on ${threadId} (up to ${Math.round(timeoutMs / 1000)}s, polling every ${pollMs / 1000}s)`,
+  );
+  for (;;) {
+    const scan = loadThreads(root, registry.ids());
+    const unreadable = scan.failures.some((failure) => failure.id === threadId);
+    if (unreadable) {
+      for (const line of renderThreadFailures(scan.failures)) err(`agent-protocol: ${line}`);
+    }
+    const awaited =
+      !unreadable &&
+      threadsWaitingOn(
+        scan.threads.map((entry) => entry.thread),
+        role,
+      ).includes(threadId);
+    if (awaited) {
+      done();
+      out(
+        `agent-protocol: the answer arrived on ${threadId} — read the tail of the thread and carry on`,
+      );
+      return;
+    }
+    if (Date.now() >= until) {
+      done();
+      // Code 3, not 2: this is not a refusal of a malformed command, it is the wait
+      // itself running out — and the session is expected to act on it (wrap up and
+      // pass the turn) rather than to fix its arguments.
+      fail(
+        `nobody answered on ${threadId} within ${Math.round(timeoutMs / 1000)}s — the wait is over; wrap up what you have and pass the turn (say in the thread where you stopped)`,
+        3,
+      );
+      return;
+    }
+    await sleep(Math.min(pollMs, Math.max(0, until - Date.now())));
+    fetchMail();
   }
 };
 
@@ -1909,18 +2133,25 @@ const flagInt = (
 };
 
 /**
- * The three ceilings of a run: the flag, then the role's `launch.limits`, then the
- * package default (R12). Resolved in ONE place for both callers — the manual `run`
- * and the daemon, which resolves per role inside its loop.
+ * The four ceilings of a run: the flag, then the role's `launch.limits`, then the
+ * package default (R12, plus the wait ceiling of R19). Resolved in ONE place for both
+ * callers — the manual `run` and the daemon, which resolves per role inside its loop.
  */
 const ceilingsFrom = (argv: readonly string[], role: Role): ResolvedCeilings => {
-  const flags: { idleSeconds?: number; wallClockSeconds?: number; maxTurns?: number } = {};
+  const flags: {
+    idleSeconds?: number;
+    wallClockSeconds?: number;
+    maxTurns?: number;
+    waitInputSeconds?: number;
+  } = {};
   const idle = flagInt(argv, "--idle", { allowZero: true });
   const wallClock = flagInt(argv, "--wall-clock");
   const maxTurns = flagInt(argv, "--max-turns");
+  const waitInput = flagInt(argv, "--wait-input");
   if (idle !== undefined) flags.idleSeconds = idle;
   if (wallClock !== undefined) flags.wallClockSeconds = wallClock;
   if (maxTurns !== undefined) flags.maxTurns = maxTurns;
+  if (waitInput !== undefined) flags.waitInputSeconds = waitInput;
   return resolveCeilings({
     flags,
     ...(role.launch?.limits === undefined ? {} : { limits: role.launch.limits }),
@@ -2021,6 +2252,8 @@ type RunParams = {
   readonly pollMs: number;
   /** The idle ceiling: no traces of activity for this long → `stalled` (R6). 0 — off. */
   readonly idleMs: number;
+  /** The ceiling of a DECLARED WAIT for input (R19) — its own clock, its own refusal. */
+  readonly waitInputMs: number;
   /**
    * THE TREE THE SESSION WORKS IN — its `cwd` and the tree whose traces are watched,
    * one field because they must be the same tree: watching one directory for signs of
@@ -2044,6 +2277,8 @@ type RunParams = {
   readonly sessionStream: string;
   /** Where the session reads its own id (R7): written when the init line arrives. */
   readonly sessionIdFile: string;
+  /** Where the session DECLARES a wait for input (R19) — written by `new-message --await-input`. */
+  readonly waitFlag: string;
   /** The child process environment: the inherited one + the project preamble (S8). */
   readonly env: NodeJS.ProcessEnv;
   /** What is being raised, as the session will record it in its messages (R7). */
@@ -2315,6 +2550,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         ...p.env,
         [LAUNCH_ENV.worker]: p.worker,
         [LAUNCH_ENV.sessionFile]: p.sessionIdFile,
+        // The ceiling of its own wait (R19): the session defaults `await-input` to this
+        // number, so its clock and the supervisor's cannot disagree.
+        [LAUNCH_ENV.waitSeconds]: String(Math.round(p.waitInputMs / 1000)),
       },
     },
   );
@@ -2387,8 +2625,15 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     spawnError = error;
   });
 
-  const deadlineMs = new Date(plan.deadline).getTime();
+  // NOT `const`: an interactive turn (R19) moves it. The window belongs to the work,
+  // and the time a run spends parked waiting for a human is added back on — the same
+  // shift the journal fold computes from the two events, kept in step here because this
+  // is the copy the live loop judges by.
+  let deadlineMs = new Date(plan.deadline).getTime();
   let lifecycle: Lifecycle = "running";
+  /** While parked: when the wait began and when it expires (R19). */
+  let waitingSinceMs = 0;
+  let waitUntilMs = 0;
 
   // THE IDLE WATCH (R6). The traces are sampled here, where the IO is; the verdict
   // is `activity.ts`. The first sample is taken before the first poll, so the
@@ -2469,16 +2714,42 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       ),
       thread: p.thread,
     });
+    // HAS THE SESSION DECLARED A WAIT FOR INPUT (R19)? A level signal, read every poll:
+    // it both parks the run and, by going away, brings it back.
+    const declared = ((): string | undefined => {
+      try {
+        return readFileSync(p.waitFlag, "utf8");
+      } catch {
+        // no declaration (or it disappeared between the two calls) — not a wait
+        return undefined;
+      }
+    })();
+    const declaration =
+      declared === undefined ? undefined : waitAuthorised({ raw: declared, thread: p.thread });
+    // A declaration that does not authorise THIS thread is not silently ignored: from
+    // the session's side it looks like a wait, and a run closed as finished under it
+    // would look like the flag did nothing.
+    if (declaration?.ok === false && lifecycle === "running" && handedOff) {
+      err(`agent-protocol: the declared wait is not honoured — ${declaration.why}`);
+      writeLog(`supervisor  the declared wait is not honoured — ${declaration.why}`);
+    }
+    const awaitingInput = declaration?.ok === true;
+
     // The traces of activity: has the session produced ANYTHING since the last poll
     // (R6). Sampled every tick, judged against the ceiling — a session that has gone
     // quiet is `stalled`, not `timeout`.
+    //
+    // A PARKED RUN IS EXEMPT, and that is john's requirement (б) in one line: conscious
+    // waiting is not a hang. The watch is RESTARTED rather than merely unjudged, so the
+    // silence of an hour spent waiting does not carry over and declare the session
+    // stalled in the first second after it gets back to work.
     const idle = idleStep({
       watch,
       trace: sampleTrace(),
       nowMs: Date.now(),
-      idleMs: p.idleMs,
+      idleMs: lifecycle === "waiting" ? 0 : p.idleMs,
     });
-    watch = idle.watch;
+    watch = lifecycle === "waiting" ? startWatch(idle.watch.trace, Date.now()) : idle.watch;
     quietMs = idle.quietMs;
 
     const step = observeStep(lifecycle, {
@@ -2488,6 +2759,8 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // A process that has already exited is closed by its own branch: "it produced
       // nothing" is a statement about a LIVE session.
       idle: !exited && idle.stalled,
+      awaitingInput,
+      waitOverdue: lifecycle === "waiting" && Date.now() > waitUntilMs,
     });
     if (step === null) continue;
 
@@ -2496,6 +2769,38 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       appendEvent(p.journalPath, stepEvent(step, base));
       lifecycle = "draining";
       out(`agent-protocol: the turn on ${p.thread} was passed — ${p.roleId} is draining`);
+      continue;
+    }
+
+    // THE RUN IS PARKED (R19): the turn has passed, the session declared a wait and
+    // stays alive. Nothing is killed, and the work deadline stops being the clock.
+    if (step.record === "input-awaited") {
+      waitingSinceMs = Date.now();
+      waitUntilMs = waitingSinceMs + p.waitInputMs;
+      const waitDeadline = eventTimestamp(new Date(waitUntilMs));
+      appendEvent(p.journalPath, stepEvent(step, base, { waitDeadline }));
+      lifecycle = "waiting";
+      const line =
+        declaration?.ok === true
+          ? describeWait({ marker: declaration.marker, until: waitDeadline })
+          : `awaiting input — the wait expires at ${waitDeadline}`;
+      out(`agent-protocol: ${p.roleId}/${p.thread} is ${line}`);
+      writeLog(`supervisor  ${line}`);
+      continue;
+    }
+
+    // The wait is over — the declaration is gone. The work window gets back exactly the
+    // time the wait took, so a run is not punished for a human's latency.
+    if (step.record === "input-received") {
+      const waitedMs = Math.max(0, Date.now() - waitingSinceMs);
+      deadlineMs += waitedMs;
+      appendEvent(p.journalPath, stepEvent(step, base));
+      lifecycle = "running";
+      waitingSinceMs = 0;
+      waitUntilMs = 0;
+      const line = `the wait ended after ${Math.round(waitedMs / 1000)}s — back to work, the deadline moves to ${eventTimestamp(new Date(deadlineMs))}`;
+      out(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
+      writeLog(`supervisor  ${line}`);
       continue;
     }
 
@@ -2521,7 +2826,21 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     }
     // A run that did not pass the turn MUST show where to look: five minutes of
     // silence must not look like work.
-    if (step.reason !== "completed") {
+    //
+    // THE TWO ENDINGS OF A PARK ARE REPORTED DIFFERENTLY (R19), because the turn DID
+    // pass in both: the thread holds a question and waits on somebody else. Saying "the
+    // turn was not passed" there would send whoever reads the line looking for a
+    // message that is in fact already written.
+    if (step.reason === "input-timeout" || step.reason === "exited-while-waiting") {
+      const what =
+        step.reason === "input-timeout"
+          ? "nobody answered within the wait ceiling"
+          : "the session died while it was parked";
+      writeLog(`supervisor  the lease was released: ${step.reason} (${what})`);
+      err(
+        `agent-protocol: the run stopped in the middle of its task — ${what} (${step.reason}). Its question is in ${p.thread}; session output: ${p.sessionLog}`,
+      );
+    } else if (step.reason !== "completed") {
       const quiet = step.reason === "stalled" ? ` (${describeQuiet(quietMs)})` : "";
       writeLog(`supervisor  the lease was released: ${step.reason}${quiet}`);
       err(
@@ -2780,6 +3099,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const ceilings = ceilingsFrom(argv, role);
   const wallClockMs = ceilings.wallClock.value * 1000;
   const idleMs = ceilings.idle.value * 1000;
+  const waitInputMs = ceilings.waitInput.value * 1000;
   // The two launch gates, with their sources — the same resolution the daemon uses.
   const gates = gatesFrom(argv);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
@@ -2898,12 +3218,14 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     sessionLog,
     sessionStream: sessionStreamPath(sessionLog),
     sessionIdFile: sessionIdPath(sessionLog),
+    waitFlag: sessionWaitPath(sessionLog),
     worker: agent.worker.value,
     params: agent.params,
     env: childEnvFrom(argv),
     wallClockMs,
     pollMs,
     idleMs,
+    waitInputMs,
     workdir: setup.workdir,
     continuation: setup.continuation,
     ...(setup.world === undefined ? {} : { world: setup.world }),
@@ -3128,11 +3450,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             sessionLog,
             sessionStream: sessionStreamPath(sessionLog),
             sessionIdFile: sessionIdPath(sessionLog),
+            waitFlag: sessionWaitPath(sessionLog),
             worker: agent.worker.value,
             params: agent.params,
             wallClockMs: ceilings.wallClock.value * 1000,
             pollMs,
             idleMs: ceilings.idle.value * 1000,
+            waitInputMs: ceilings.waitInput.value * 1000,
             workdir: setup.workdir,
             continuation: setup.continuation,
             ...(setup.world === undefined ? {} : { world: setup.world }),
@@ -3360,6 +3684,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     newThread(argv.slice(1));
   } else if (command === "mail") {
     mail(argv.slice(1));
+  } else if (command === "await-input") {
+    await awaitInput(argv.slice(1));
   } else if (command === "notify") {
     await notify(argv.slice(1));
   } else if (command === "orchestrator" && subcommand === "status") {

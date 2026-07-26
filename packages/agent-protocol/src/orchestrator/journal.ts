@@ -64,6 +64,15 @@ export const MAX_ATTEMPTS = 3;
  * first calls for a wider window, the second for an investigation. One name for
  * both made the journal an instrument that cannot tell them apart at all.
  *
+ * `input-timeout` and `exited-while-waiting` — the two ways an INTERACTIVE TURN (R19)
+ * ends without the session getting back to work: nobody answered within the wait
+ * ceiling, or the session died while parked. Both are separate names because both are
+ * separate facts, and the alternative was to record them as `completed`: the turn HAS
+ * passed in either case (the question is in the thread, the mail waits on somebody
+ * else), so the ordinary vocabulary would have called a package that stopped in the
+ * middle a package that finished. Neither of them counts towards the attempt ceiling
+ * — see `isFailedTerminal` in `lease.ts`.
+ *
  * `forced` has NOT been removed from the list even though the `lease-released`
  * path no longer writes it (a real force writes a `stop {mode: forced, by, note}`
  * event): journals are append-only files on disk, and removing a value would make
@@ -77,6 +86,8 @@ export const RELEASE_REASONS = [
   "supervisor-gone",
   "timeout",
   "stalled",
+  "input-timeout",
+  "exited-while-waiting",
   "exhausted",
 ] as const;
 export type ReleaseReason = (typeof RELEASE_REASONS)[number];
@@ -170,6 +181,19 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
   }),
   // The turn left the role — the completion signal (populated from S2 on). Lease → draining.
   z.object({ kind: z.literal("handoff-detected"), ...base }),
+  // THE RUN IS PARKED (R19): the session declared a wait for input, the turn has
+  // passed, and the process is deliberately left alive. `deadline` is the materialised
+  // limit OF THE WAIT — a second clock, written down for the same reason the lease's
+  // own deadline is: whoever asks "why was this closed" must not have to recompute it.
+  // The pair of this event and `input-received` is also what the fold reads to shift
+  // the WORK deadline by the time spent waiting, so waiting does not eat the window
+  // the work was given (john's requirement (в)).
+  z.object({ kind: z.literal("input-awaited"), ...base, deadline: base.ts }),
+  // The wait is over and the session is working again — the marker of the declaration
+  // is gone. It says nothing about WHAT ended it (an answer, or the session's own
+  // timeout): from here both look the same and both mean the same thing, the run
+  // continues and its completion signal is unchanged.
+  z.object({ kind: z.literal("input-received"), ...base }),
   // The lease is released — ALWAYS with a reason (with a trace). `exitCode` and
   // `output` are the WHY, not just the WHAT: the first production run showed that
   // "the session could not write" and "the session simply exited" produce the same

@@ -52,6 +52,20 @@ const stop = (role: string, thread: string, mode: "graceful" | "forced"): Orches
   thread,
   mode,
 });
+/** The two events of an interactive turn (R19). Their STAMPS matter here — the fold
+ * shifts the work deadline by the distance between them — so they are given by hand. */
+const awaited = (
+  role: string,
+  thread: string,
+  at: string,
+  deadline: string,
+): OrchestratorEvent => ({ kind: "input-awaited", ts: at, role, thread, deadline });
+const received = (role: string, thread: string, at: string): OrchestratorEvent => ({
+  kind: "input-received",
+  ts: at,
+  role,
+  thread,
+});
 
 const only = (events: OrchestratorEvent[]): LeaseView => {
   const views = foldLeases(events, NOW);
@@ -266,6 +280,99 @@ describe("foldLeases — launch-refused creates no lease", () => {
       refused("dev-core", "t"),
     ]);
     expect(v).toMatchObject({ state: "running", attempt: 1, lastEvent: "lease-acquired" });
+  });
+});
+
+describe("foldLeases — the interactive turn (R19)", () => {
+  // A work window of an hour from 12:00, a wait declared at 12:10 with a ceiling at
+  // 13:10. NOW is 14:00, so "which clock is in force" is decidable by the numbers.
+  const OPENED = "2026-07-24T13:00:00Z"; // the work deadline, before NOW
+  const AT = "2026-07-24T12:10:00Z";
+  const WAIT_UNTIL = "2026-07-24T15:10:00Z"; // after NOW
+  const BACK = "2026-07-24T12:40:00Z"; // 30 minutes later
+
+  it("input-awaited → waiting, with the wait's own deadline beside the work one", () => {
+    const v = only([acquire("dev-core", "t", OPENED), awaited("dev-core", "t", AT, WAIT_UNTIL)]);
+    expect(v).toMatchObject({ state: "waiting", deadline: OPENED, waitDeadline: WAIT_UNTIL });
+  });
+
+  it("a parked lease is ALIVE — nothing may be launched on the pair", () => {
+    // The guard both launch paths share: a parked pair becomes a candidate the moment
+    // its answer lands, which is exactly when a second session would land on a live one.
+    const views = unclosedLeases(
+      [acquire("dev-core", "t", OPENED), awaited("dev-core", "t", AT, WAIT_UNTIL)],
+      NOW,
+    );
+    expect(views).toHaveLength(1);
+    expect(views[0]?.state).toBe("waiting");
+  });
+
+  it("while parked, the WORK deadline does not make it overdue — the wait's does", () => {
+    // The work deadline (13:00) is already behind NOW (14:00) and decides nothing; the
+    // wait ceiling (15:10) is ahead, so nothing is late. Judging a park by the work
+    // window would report every long wait as a session that overran.
+    expect(
+      only([acquire("dev-core", "t", OPENED), awaited("dev-core", "t", AT, WAIT_UNTIL)]).overdue,
+    ).toBe(false);
+    expect(
+      only([acquire("dev-core", "t", OPENED), awaited("dev-core", "t", AT, PAST)]).overdue,
+    ).toBe(true);
+  });
+
+  it("input-received → running, and the work window gets back exactly the time waited", () => {
+    // 30 minutes parked → the deadline moves from 13:00 to 13:30. This is john's
+    // requirement (в) as arithmetic: waiting does not eat the window given to the work.
+    const v = only([
+      acquire("dev-core", "t", OPENED),
+      awaited("dev-core", "t", AT, WAIT_UNTIL),
+      received("dev-core", "t", BACK),
+    ]);
+    expect(v).toMatchObject({
+      state: "running",
+      deadline: "2026-07-24T13:30:00Z",
+      waitDeadline: null,
+    });
+  });
+
+  it("two waits in one run shift the deadline twice", () => {
+    const v = only([
+      acquire("dev-core", "t", OPENED),
+      awaited("dev-core", "t", AT, WAIT_UNTIL),
+      received("dev-core", "t", BACK),
+      awaited("dev-core", "t", "2026-07-24T12:50:00Z", WAIT_UNTIL),
+      received("dev-core", "t", "2026-07-24T13:00:00Z"),
+    ]);
+    expect(v.deadline).toBe("2026-07-24T13:40:00Z");
+  });
+
+  it("NEITHER ending of a park counts towards the attempt ceiling", () => {
+    // Both leave the mail consistent — the question is in the thread and the turn is
+    // with somebody else — which is the opposite of the gap the ceiling exists for.
+    // Exhausting a pair here would punish the one thing that is meant to happen: a
+    // human taking their time.
+    for (const reason of ["input-timeout", "exited-while-waiting"] as const) {
+      const events: OrchestratorEvent[] = [];
+      for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+        events.push(acquire("dev-core", "t", OPENED), awaited("dev-core", "t", AT, WAIT_UNTIL), {
+          kind: "lease-released",
+          ts: ts(),
+          role: "dev-core",
+          thread: "t",
+          reason,
+        });
+      }
+      expect(only(events), reason).toMatchObject({ exhausted: false, launchable: false });
+    }
+  });
+
+  it("a new lease on the pair forgets the previous run's wait", () => {
+    const v = only([
+      acquire("dev-core", "t", OPENED),
+      awaited("dev-core", "t", AT, WAIT_UNTIL),
+      { kind: "lease-released", ts: ts(), role: "dev-core", thread: "t", reason: "input-timeout" },
+      acquire("dev-core", "t", FUTURE),
+    ]);
+    expect(v).toMatchObject({ state: "running", waitDeadline: null, deadline: FUTURE });
   });
 });
 
