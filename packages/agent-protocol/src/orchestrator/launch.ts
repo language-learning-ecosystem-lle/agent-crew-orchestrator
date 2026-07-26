@@ -15,11 +15,27 @@
  *     `thread`.
  *
  * The ceiling comes in two layers (both against "launch → break → launch ate the
- * quota"):
- *  - per (role, thread) pair: we reuse `exhausted` from S0 — three breaks and we
- *    stop trying;
+ * quota"), and both count runs in a row without a success — BUT THEY DO NOT AGREE ON
+ * WHAT COUNTS AS ONE, and the difference is stated here rather than glossed over
+ * (reviewer-pr, criterion 11, PR #22):
+ *  - per (role, thread) pair: we reuse `exhausted` from S0 — `MAX_ATTEMPTS` failures
+ *    since the pair last DELIVERED, where a delivery is a `completed` release OR a
+ *    handoff (the turn passing is the delivery; see `lease.ts`);
  *  - global: `consecutiveLaunchesWithoutCompletion` for the S3 auto loop — no more
- *    than `MAX_CONSECUTIVE_RUNS` launches in a row without a single `completed`.
+ *    than `MAX_CONSECUTIVE_RUNS` launches in a row without a single `completed`. A
+ *    handoff does NOT reset this one.
+ *
+ * The asymmetry is deliberate for now and its cost is known: a run of "handed off,
+ * then the supervisor died" (`supervisor-gone` after a handoff, no `completed`) walks
+ * the global counter towards its ceiling even though every one of those runs
+ * delivered. It is the same class of defect the per-pair counter was just fixed for,
+ * an order of magnitude slower (10 rather than 3) and behind a failure that is itself
+ * a fault worth stopping for. Changing it is curator's call, not a silent widening of
+ * a defect fix — it is raised in thread 016.
+ *
+ * Both are operator flags (`--max-attempts`, `--max-runs`) resolved with their source
+ * by `resolveGates`: until 2026-07-26 the first was a constant no flag could reach,
+ * and a ceiling nobody can move or attribute is indistinguishable from a bug.
  */
 import type { LocalConfig } from "../config/local.js";
 import {
@@ -30,7 +46,7 @@ import {
 } from "../roles/schema.js";
 import { DEFAULT_IDLE_MS } from "./activity.js";
 import type { Continuation } from "./continuation.js";
-import { eventTimestamp, type OrchestratorEvent, type World } from "./journal.js";
+import { eventTimestamp, MAX_ATTEMPTS, type OrchestratorEvent, type World } from "./journal.js";
 import { foldLeases } from "./lease.js";
 
 /**
@@ -185,6 +201,62 @@ export const describeCeilings = (ceilings: ResolvedCeilings): string =>
     `idle ${ceilings.idle.value === 0 ? "off" : `${ceilings.idle.value}s`} (${ceilings.idle.source})`,
     `wall-clock ${ceilings.wallClock.value}s (${ceilings.wallClock.source})`,
     `max-turns ${ceilings.maxTurns.value} (${ceilings.maxTurns.source})`,
+  ].join(" · ");
+
+/**
+ * THE TWO GATES OF THE LOOP — how many failed attempts one pair gets
+ * (`--max-attempts`) and how many launches in a row the circuit gets without a
+ * single completion (`--max-runs`). They are ceilings on LAUNCHING, not on a run,
+ * which is why they are resolved apart from `ResolvedCeilings`; everything else about
+ * them follows R12 — a flag beats the default, and the source is printed beside the
+ * number.
+ *
+ * WHY `role` NEVER COMES OUT OF HERE YET. The gates have no field in `launch.limits`:
+ * the config's ceilings describe a RUN (its clocks and its turns), while these two
+ * describe how the orchestrator treats a PAIR and the circuit as a whole. Adding them
+ * to the role config costs a schema version, and nobody has asked for a per-role
+ * attempt ceiling — when someone does, it slots in here exactly like `resolveCeilings`
+ * does it, and `describeGates` starts printing `role` with no other change.
+ */
+export type ResolvedGates = {
+  readonly maxAttempts: Ceiling;
+  readonly maxConsecutive: Ceiling;
+};
+
+export const resolveGates = (input: {
+  readonly flags: {
+    readonly maxAttempts?: number;
+    readonly maxRuns?: number;
+  };
+  readonly defaults?: {
+    readonly maxAttempts: number;
+    readonly maxRuns: number;
+  };
+}): ResolvedGates => {
+  const defaults = input.defaults ?? {
+    maxAttempts: MAX_ATTEMPTS,
+    maxRuns: MAX_CONSECUTIVE_RUNS,
+  };
+  const pick = (flagValue: number | undefined, fallback: number): Ceiling =>
+    flagValue === undefined
+      ? { value: fallback, source: "default" }
+      : { value: flagValue, source: "flag" };
+  return {
+    maxAttempts: pick(input.flags.maxAttempts, defaults.maxAttempts),
+    maxConsecutive: pick(input.flags.maxRuns, defaults.maxRuns),
+  };
+};
+
+/**
+ * The gates in one line, printed by the daemon at start-up and by `run`. The defect of
+ * 2026-07-26 is the argument for printing them: an operator passed `--max-runs 20`
+ * against a gate that was never reading it, and nothing in the output could have told
+ * them so.
+ */
+export const describeGates = (gates: ResolvedGates): string =>
+  [
+    `attempts-per-pair ≤ ${gates.maxAttempts.value} (${gates.maxAttempts.source})`,
+    `runs-without-completion ≤ ${gates.maxConsecutive.value} (${gates.maxConsecutive.source})`,
   ].join(" · ");
 
 /**
@@ -550,6 +622,8 @@ export const planLaunch = (input: {
   readonly now: Date;
   readonly wallClockMs: number;
   readonly maxConsecutive?: number;
+  /** The per-pair attempt ceiling (`--max-attempts`); the package default when absent. */
+  readonly maxAttempts?: number;
   /**
    * How this run is being started and what it is starting from (R18). Recorded on the
    * `launch` event, which is written BEFORE the spawn — so the world a session saw is
@@ -562,7 +636,9 @@ export const planLaunch = (input: {
   const { events, role, thread, now, wallClockMs } = input;
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
 
-  const view = foldLeases(events, now).find((v) => v.role === role && v.thread === thread);
+  const view = foldLeases(events, now, input.maxAttempts).find(
+    (v) => v.role === role && v.thread === thread,
+  );
   if (view && (view.state === "running" || view.state === "draining")) {
     return { ok: false, reason: "already-running" };
   }

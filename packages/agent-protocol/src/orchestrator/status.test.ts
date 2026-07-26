@@ -8,6 +8,7 @@ const view = (partial: Partial<LeaseView>): LeaseView => ({
   thread: "014-reviewer-verdict-delivery",
   state: "running",
   attempt: 1,
+  ceiling: 3,
   deadline: "2026-07-24T13:30:00Z",
   reason: null,
   lastEvent: "lease-acquired",
@@ -27,7 +28,9 @@ describe("renderStatus", () => {
     expect(line).toContain("dev-core");
     expect(line).toContain("014-reviewer-verdict-delivery");
     expect(line).toContain("running");
-    expect(line).toContain("attempt 1");
+    // The ceiling travels with the count — the number alone said nothing about how
+    // close the pair was to dropping out.
+    expect(line).toContain("attempt 1/3");
     expect(line).toContain("deadline 2026-07-24T13:30:00Z");
   });
 

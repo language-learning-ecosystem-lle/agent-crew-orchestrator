@@ -556,11 +556,12 @@ agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <
 agent-protocol orchestrator preflight --ref <ref> [--exec <bin>] [--local-config <p>]   # the checks BEFORE the lease
 agent-protocol orchestrator enable  --ref <ref> [--write]                  # ENABLE launches
 agent-protocol orchestrator disable --ref <ref> [--write]                  # disable them
-agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>]   # the whole mode + the launch merge
+agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [--max-attempts <n>]  # the whole mode + the launch merge
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
                             [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] \
+                            [--max-attempts <n>] \
                             [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--now <iso>] \
                             [--fresh] [--write] [-d|--detach]
                             # attached by default (you watch what you raised); -d backgrounds the supervisor properly
@@ -569,8 +570,10 @@ agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
                             # the role works in its OWN worktree (orchestrator.workdir.worktrees), put back at the base
                             # per fresh package; --fresh forbids resuming the previous session (S11, S12)
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] \
-                            [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] \
-                            [--local-config <p>] [--fresh] [--once]
+                            [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] \
+                            [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once]
+                            # the two GATES: --max-attempts (failures of one pair since its last delivery)
+                            # and --max-runs (launches in a row without a completed); both print their source
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
 agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
@@ -698,9 +701,18 @@ risky action after — not a single spawn.
 - **`status` calls out the two broken states with explicit marks** instead of
   hiding them in a column: **`OVERDUE`** (`overdue` — the lease is alive, the
   `deadline` has passed: "stuck vs working") and **`EXHAUSTED`** (`exhausted` — the
-  `MAX_ATTEMPTS` ceiling of unsuccessful attempts on a (role, thread) pair is
-  reached, we launch no more). Both signs are in the data from S0 on; the behaviour
-  based on them (releasing on timeout, refusing to relaunch) arrives with S2/S3.
+  attempt ceiling on a (role, thread) pair is reached, we launch no more). Both signs
+  are in the data from S0 on; the behaviour based on them (releasing on timeout,
+  refusing to relaunch) arrives with S2/S3.
+- **THE ATTEMPT COUNTER IS CONSECUTIVE, AND IT IS PRINTED WITH ITS CEILING**
+  (`attempt 1/3`). It counts the failures of a pair SINCE ITS LAST DELIVERY — a
+  `completed` release or a handoff puts it back to zero. A cumulative count was the
+  defect of 2026-07-26: dev-core×016 stood at `attempt 13` with eleven completions
+  behind it and had dropped out of the candidates for good, which is not a protection
+  but a bomb with a counter — any long-lived thread reaches it eventually, no matter
+  how well it works. A handoff resets it as well as a `completed`, because the turn
+  passing IS the delivery: a supervisor that dies right after one leaves
+  `supervisor-gone` on a run that did its job.
 
 **Every outcome leaves a trace**: releasing a lease for any reason, timeout and
 exhaustion included, is a `lease-released` event with a `reason`. Hanging quietly
@@ -728,12 +740,19 @@ hard-coded list) and spawns `claude -p` on ONE thread. Three rules keep it hones
   thread.
 
 **The ceiling against "launch → break → launch ate the quota" comes in two
-layers:** per (role, thread) pair — `exhausted` from S0 (`MAX_ATTEMPTS` breaks,
-then a refusal); and global — `MAX_CONSECUTIVE_RUNS` launches in a row without a
-single `completed` (aimed at the S3 auto loop). `--exec` is injected: e2e and live
-acceptance aim at the real binary, the mechanics checks aim at a stub. Without the
-flag the binary comes from the machine config and, failing that, from `PATH` — see
-"The machine config" above.
+layers:** per (role, thread) pair — `exhausted` from S0 (`--max-attempts` failures
+in a row WITHOUT a delivery, then a refusal); and global — `--max-runs` launches in a
+row without a single `completed` (aimed at the S3 auto loop). **Both are flags and
+both print where their number came from** (`gates — attempts-per-pair ≤ 3 (default) ·
+runs-without-completion ≤ 10 (flag)`): before 2026-07-26 the first of them was a
+constant no flag could reach, so an operator raised `--max-runs` at a pair the OTHER
+gate had dropped and nothing in the output could tell them so. Neither gate has a
+per-role field in the config yet — the config's `launch.limits` describe a RUN, these
+two describe how the orchestrator treats a PAIR and the circuit; when a project asks
+for a per-role attempt ceiling it slots into the same resolution and starts printing
+`(role)`. `--exec` is injected: e2e and live acceptance aim at the real binary, the
+mechanics checks aim at a stub. Without the flag the binary comes from the machine
+config and, failing that, from `PATH` — see "The machine config" above.
 
 **ATTACHED BY DEFAULT, `-d`/`--detach` FOR THE BACKGROUND (R12).** Raising one
 agent by hand is something you watch, so `run` holds the terminal and relays the
@@ -817,6 +836,17 @@ construction:
   without a single `completed` → the daemon writes `launch-refused` (reason
   `run-budget`) and does NOT launch. The "launch → break → launch" loop hits the
   ceiling and leaves a record instead of burning the quota silently.
+
+- **Nothing drops out silently.** Every candidate the tick declines to raise is
+  named in the stream with its reason (`candidate dev-core×016-protocol-roadmap
+  skipped: exhausted — 13 failed attempts since its last delivery, ceiling 3
+  (default)`), and "nothing to launch" is a LINE, not an absence of lines: an empty
+  mailbox and an exhausted pair say so in different words. This was the other half of
+  the 2026-07-26 defect — `daemon --once` printed its banner and exited without a
+  word, which from a terminal is indistinguishable from "no mail arrived". The skips
+  are NOT written to the journal (a hold or an exhausted pair lasts until a human
+  looks at it, and a line per tick would drown the journal of the runs); the stream
+  carries them, every tick.
 
 One tick = at most one launch: the daemon waits for the terminal state of the pair
 it raised and ticks again on a fresh journal, with no races. **The machine-reboot

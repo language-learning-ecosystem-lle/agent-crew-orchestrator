@@ -101,16 +101,18 @@ import {
   buildResumePrompt,
   describeAgent,
   describeCeilings,
+  describeGates,
   describeLaunch,
   LAUNCH_ENV,
-  MAX_CONSECUTIVE_RUNS,
   planLaunch,
   type ResolvedCeilings,
   type ResolvedExec,
+  type ResolvedGates,
   type ResolvedWorker,
   resolveAgentParams,
   resolveCeilings,
   resolveExec,
+  resolveGates,
   resolveWorker,
   roleLaunchability,
 } from "./orchestrator/launch.js";
@@ -138,7 +140,7 @@ import {
 } from "./orchestrator/preflight.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
-import { planTick } from "./orchestrator/tick.js";
+import { describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
   renderStreamLine,
@@ -221,15 +223,15 @@ or --local-config <p>): the repository says WHAT is raised, the machine says WHE
   agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--local-config <p>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>]
+  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>] [--max-attempts <n>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--fresh] [--write] [-d|--detach]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
                               # ceilings: the flag wins over the role's launch.limits, which wins over the package default
                               # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
                               # the role works in its own worktree (orchestrator.workdir.worktrees), put at the base per package
                               # --fresh: never resume the previous session, whatever the continuation policy says
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
@@ -1725,7 +1727,9 @@ const orchestratorStatus = (argv: readonly string[]): void => {
 
   const events = existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
   const now = orchestratorNow(argv);
-  out(renderStatus(foldLeases(events, now)));
+  // The SAME attempt ceiling the daemon judges by (`--max-attempts`), or `status`
+  // would call a pair exhausted that the next tick raises without blinking.
+  out(renderStatus(foldLeases(events, now, gatesFrom(argv).maxAttempts.value)));
   out(renderHolds(foldHolds(loadHolds(holds), now)));
 
   const launchesEnabled = existsSync(enableFlag);
@@ -1923,6 +1927,21 @@ const ceilingsFrom = (argv: readonly string[], role: Role): ResolvedCeilings => 
   });
 };
 
+/**
+ * The two LAUNCH gates — the per-pair attempt ceiling and the global run budget
+ * (`--max-attempts`, `--max-runs`). Read in one place for the same reason the run
+ * ceilings are: `status`, `run` and the daemon must judge a pair by the same number,
+ * or `status` would call `exhausted` what the daemon happily raises.
+ */
+const gatesFrom = (argv: readonly string[]): ResolvedGates => {
+  const flags: { maxAttempts?: number; maxRuns?: number } = {};
+  const maxAttempts = flagInt(argv, "--max-attempts");
+  const maxRuns = flagInt(argv, "--max-runs");
+  if (maxAttempts !== undefined) flags.maxAttempts = maxAttempts;
+  if (maxRuns !== undefined) flags.maxRuns = maxRuns;
+  return resolveGates({ flags });
+};
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const appendEvent = (journalPath: string, event: OrchestratorEvent): void => {
@@ -2013,6 +2032,8 @@ type RunParams = {
   readonly ids: readonly string[];
   readonly now: Date;
   readonly maxConsecutive: number;
+  /** The per-pair attempt ceiling — resolved with its source by `gatesFrom` (R12). */
+  readonly maxAttempts: number;
   /** The force-stop flag file (S4). Present — we put the session down at a safe point. */
   readonly forceFlag?: string;
   /** The permission profile of the role being raised — part of the launch contract (S7). */
@@ -2133,6 +2154,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     now: p.now,
     wallClockMs: p.wallClockMs,
     maxConsecutive: p.maxConsecutive,
+    maxAttempts: p.maxAttempts,
     continuation: p.continuation,
     ...(p.world === undefined ? {} : { world: p.world }),
   });
@@ -2758,7 +2780,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const ceilings = ceilingsFrom(argv, role);
   const wallClockMs = ceilings.wallClock.value * 1000;
   const idleMs = ceilings.idle.value * 1000;
-  const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
+  // The two launch gates, with their sources — the same resolution the daemon uses.
+  const gates = gatesFrom(argv);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   // What is raised, where its binary lives and with which parameters (R14 + R15) —
   // one resolution, because all three key off the tool id.
@@ -2816,7 +2839,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       thread,
       now,
       wallClockMs,
-      maxConsecutive,
+      maxConsecutive: gates.maxConsecutive.value,
+      maxAttempts: gates.maxAttempts.value,
       continuation: setup.continuation,
       ...(setup.world === undefined ? {} : { world: setup.world }),
     });
@@ -2828,6 +2852,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       `agent-protocol: would run '${exec} -p' in ${setup.workdir} and watch for the turn to be passed on ${thread} (role ${roleId}, deadline ${plan.deadline}, poll ${pollMs / 1000}s); --write performs it. Pre-events:`,
     );
     out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
+    out(`agent-protocol: gates — ${describeGates(gates)}`);
     out(`agent-protocol: agent — ${describeAgent(agent)}`);
     for (const event of plan.events) out(renderEventLine(event));
     return;
@@ -2859,6 +2884,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     return;
   }
   out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
+  out(`agent-protocol: gates — ${describeGates(gates)}`);
   out(`agent-protocol: agent — ${describeAgent(agent)}`);
   const reason = await runOne({
     journalPath,
@@ -2883,7 +2909,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     ...(setup.world === undefined ? {} : { world: setup.world }),
     ids: registry.ids(),
     now,
-    maxConsecutive,
+    maxConsecutive: gates.maxConsecutive.value,
+    maxAttempts: gates.maxAttempts.value,
     ...(forceFlag === undefined ? {} : { forceFlag }),
   });
   if (reason !== "skip") out(`agent-protocol: the run of ${roleId}/${thread} finished: ${reason}`);
@@ -2936,7 +2963,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const local = localFrom(argv);
 
   const tickMs = positiveInt(argv, "--tick", 30) * 1000;
-  const maxConsecutive = positiveInt(argv, "--max-runs", MAX_CONSECUTIVE_RUNS);
+  // The two gates of the loop, WITH THEIR SOURCES — printed in the banner below (R12).
+  // Until the defect of 2026-07-26 the per-pair ceiling was a constant no flag could
+  // reach, so `--max-runs 20` against an exhausted pair changed nothing and said
+  // nothing about why.
+  const gates = gatesFrom(argv);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   const once = argv.includes("--once"); // a single tick — for checks
   // THE CEILINGS AND THE AGENT ARE RESOLVED PER ROLE, in the launch branch below —
@@ -2957,6 +2988,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   out(
     `agent-protocol: the daemon is up, launches are ${enabledAtStart ? "ENABLED" : `disabled (no '${enableFlag}')`}; stop '${stopFlag}', force '${forceFlag}'; roles ${launchable.join(", ") || "—"}`,
   );
+  out(`agent-protocol: daemon — gates: ${describeGates(gates)}`);
 
   // A lease nobody was left to close is indistinguishable from work from the
   // outside — a new supervisor must say so out loud instead of quietly carrying on.
@@ -3001,8 +3033,20 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       events,
       candidates,
       now: new Date(),
-      maxConsecutive,
+      maxConsecutive: gates.maxConsecutive.value,
+      maxAttempts: gates.maxAttempts.value,
     });
+
+    // EVERY CANDIDATE THAT WAS NOT RAISED IS NAMED, whatever the tick decided to do
+    // (curator's requirement 1). Not written to the journal — a hold or an exhausted
+    // pair lasts until a human looks at it, and a record every tick would drown the
+    // journal of the runs; but the daemon's stream must never be silent about work it
+    // is declining to do.
+    for (const skip of decision.skipped) {
+      err(`agent-protocol: ${describeSkip(skip, gates.maxAttempts)}`);
+    }
+    /** What happens after this tick — said in the same breath as what it decided. */
+    const next = once ? "exiting (--once)" : `waiting ${tickMs / 1000}s for the next tick`;
 
     if (decision.kind === "halt") {
       out(
@@ -3014,8 +3058,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // NOT written into the journal: a hold lives for hours, and a record every
       // tick would drown the session journal in noise. But staying silent is not
       // allowed either — a forgotten hold has to be audible, hence a line into the
-      // daemon stream on every tick.
-      err(`agent-protocol: skipping — taken by manual sessions: ${decision.roles.join(", ")}`);
+      // daemon stream on every tick. The pairs themselves were named above; this line
+      // is the state of the circuit: there IS work, and a human is holding it.
+      err(
+        `agent-protocol: daemon — nothing launchable: taken by manual sessions of ${decision.roles.join(", ")}, ${next}`,
+      );
     } else if (decision.kind === "refused") {
       appendEvent(journalPath, {
         kind: "launch-refused",
@@ -3091,14 +3138,27 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             ...(setup.world === undefined ? {} : { world: setup.world }),
             ids,
             now: startedAt,
-            maxConsecutive,
+            maxConsecutive: gates.maxConsecutive.value,
+            maxAttempts: gates.maxAttempts.value,
             forceFlag,
           });
           out(`agent-protocol: daemon — ${decision.role}/${decision.thread}: ${reason}`);
         }
       }
     }
-    // decision.kind === "disabled" | "idle" — we wait and tick again.
+    // "Nothing was launched" IS AN OUTCOME AND IS SPOKEN OUT LOUD. Before this, both
+    // of these branches were a bare comment: the daemon printed its banner and either
+    // exited (`--once`) or went quiet for hours, and "no mail" looked exactly like
+    // "the only candidate is exhausted".
+    if (decision.kind === "disabled") {
+      out(`agent-protocol: daemon — launches are disabled (no '${enableFlag}'), ${next}`);
+    } else if (decision.kind === "idle") {
+      out(
+        candidates.length === 0
+          ? `agent-protocol: daemon — no candidates: no thread is waiting on ${launchable.join(", ") || "any launchable role"}, ${next}`
+          : `agent-protocol: daemon — no candidate is launchable: all ${candidates.length} were skipped (see the lines above), ${next}`,
+      );
+    }
 
     if (once) return;
     await sleep(tickMs);

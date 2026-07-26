@@ -13,9 +13,24 @@
  *    has already passed. Visible in the data BEFORE any action; releasing on
  *    timeout is S2/S4 behaviour, but the sign exists from S0 on.
  *  - gap 2 "broke off, but the mail stayed": `attempt` (how many times a lease was
- *    taken) and `exhausted` (attempt ≥ MAX_ATTEMPTS after an unsuccessful finish).
- *    The S3 launch condition reads `launchable`, and endless relaunching is gone
- *    by construction.
+ *    taken SINCE THE LAST DELIVERY) and `exhausted` (attempt ≥ the ceiling after an
+ *    unsuccessful finish). The S3 launch condition reads `launchable`, and endless
+ *    relaunching is gone by construction.
+ *
+ * THE COUNTER IS CONSECUTIVE, NOT CUMULATIVE (curator's defect report, 2026-07-26,
+ * requirement 2). It used to count every lease the pair had ever taken, so a
+ * long-lived thread reached the ceiling no matter how many of its runs SUCCEEDED:
+ * dev-core×016 stood at `attempt 13` with eleven completions behind it and dropped
+ * out of the candidates for good — a bomb with a counter rather than a protection.
+ * What the ceiling exists to catch is a "launch → break → launch" loop, and that is
+ * a run of failures WITHOUT a delivery in between, so a delivery resets the count.
+ *
+ * A DELIVERY IS `completed` OR `handoff-detected`. The turn passing on the thread is
+ * the delivery itself; the `completed` release is the observer writing it down. If a
+ * session hands the turn over and the supervisor dies before it can record the
+ * release, the outcome is `supervisor-gone` — a failure — while the work did arrive.
+ * Counting that as a failed attempt would push a productive pair towards the ceiling
+ * for a fault of the supervisor's, so the reset hangs on the handoff as well.
  */
 import { MAX_ATTEMPTS, type OrchestratorEvent, type ReleaseReason } from "./journal.js";
 
@@ -26,8 +41,13 @@ export type LeaseView = {
   readonly role: string;
   readonly thread: string;
   readonly state: LeaseLifecycle;
-  /** How many times a lease was taken on this pair — the attempt-ceiling counter. */
+  /**
+   * How many times a lease was taken on this pair SINCE ITS LAST DELIVERY (a
+   * `completed` release or a handoff) — the attempt-ceiling counter.
+   */
   readonly attempt: number;
+  /** The ceiling `attempt` is judged against — printed beside it, never guessed at. */
+  readonly ceiling: number;
   /** Wall-clock limit of the current/last run; null if there has been no lease yet. */
   readonly deadline: string | null;
   /** Reason for the terminal state (release/stop), otherwise null. */
@@ -77,8 +97,17 @@ type Acc = {
 /**
  * Folding the journal into the lease state of each (role, thread) pair. Events go
  * in line order — a single writer, order by construction.
+ *
+ * `maxAttempts` is a PARAMETER rather than the constant read on the spot: since the
+ * defect of 2026-07-26 the ceiling is an operator's flag (`--max-attempts`), and a
+ * fold that reached for the constant behind the caller's back would make the flag
+ * unreachable exactly the way `--max-runs` was.
  */
-export const foldLeases = (events: readonly OrchestratorEvent[], now: Date): LeaseView[] => {
+export const foldLeases = (
+  events: readonly OrchestratorEvent[],
+  now: Date,
+  maxAttempts: number = MAX_ATTEMPTS,
+): LeaseView[] => {
   const acc = new Map<string, Acc>();
   const order: string[] = [];
 
@@ -114,12 +143,16 @@ export const foldLeases = (events: readonly OrchestratorEvent[], now: Date): Lea
         // The process is up; the lease state stays running.
         break;
       case "handoff-detected":
-        // The turn left the role — the session is winding down.
+        // The turn left the role — the session is winding down. THE ATTEMPT COUNT
+        // GOES BACK TO ZERO HERE: the run delivered, whatever the supervisor manages
+        // to write about it afterwards.
         if (isActive(cur.state)) cur.state = "draining";
+        cur.attempt = 0;
         break;
       case "lease-released":
         cur.state = "released";
         cur.reason = event.reason;
+        if (event.reason === "completed") cur.attempt = 0;
         break;
       case "stop":
         cur.state = "stopped";
@@ -133,13 +166,14 @@ export const foldLeases = (events: readonly OrchestratorEvent[], now: Date): Lea
     const cur = acc.get(k) as Acc;
     const overdue = isActive(cur.state) && cur.deadline !== null && nowIso > cur.deadline;
     const failed = isFailedTerminal(cur.state, cur.reason);
-    const exhausted = cur.reason === "exhausted" || (failed && cur.attempt >= MAX_ATTEMPTS);
+    const exhausted = cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts);
     const launchable = failed && !exhausted;
     return {
       role: cur.role,
       thread: cur.thread,
       state: cur.state,
       attempt: cur.attempt,
+      ceiling: maxAttempts,
       deadline: cur.deadline,
       reason: cur.reason,
       lastEvent: cur.lastEvent,

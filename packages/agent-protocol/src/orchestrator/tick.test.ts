@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { OrchestratorEvent } from "./journal.js";
 import { MAX_CONSECUTIVE_RUNS } from "./launch.js";
-import { type Candidate, planTick } from "./tick.js";
+import { type Candidate, describeSkip, planTick } from "./tick.js";
 
 const NOW = new Date("2026-07-24T14:00:00Z");
 const cand: Candidate[] = [{ role: "dev-core", thread: "t1" }];
@@ -35,11 +35,17 @@ const base = { events: [] as OrchestratorEvent[], candidates: cand, now: NOW };
 
 describe("planTick — the brake and the off switch (requirements 2, 3)", () => {
   it("the stop flag → halt, even when enabled and with candidates", () => {
-    expect(planTick({ ...base, enabled: true, stopped: true })).toEqual({ kind: "halt" });
+    expect(planTick({ ...base, enabled: true, stopped: true })).toEqual({
+      kind: "halt",
+      skipped: [],
+    });
   });
 
   it("not enabled → disabled (the starting state is off)", () => {
-    expect(planTick({ ...base, enabled: false, stopped: false })).toEqual({ kind: "disabled" });
+    expect(planTick({ ...base, enabled: false, stopped: false })).toEqual({
+      kind: "disabled",
+      skipped: [],
+    });
   });
 
   it("stop overrides enable", () => {
@@ -53,12 +59,14 @@ describe("planTick — launching", () => {
       kind: "launch",
       role: "dev-core",
       thread: "t1",
+      skipped: [],
     });
   });
 
   it("no candidates → idle", () => {
     expect(planTick({ ...base, candidates: [], enabled: true, stopped: false })).toEqual({
       kind: "idle",
+      skipped: [],
     });
   });
 
@@ -70,7 +78,10 @@ describe("planTick — launching", () => {
         enabled: true,
         stopped: false,
       }),
-    ).toEqual({ kind: "idle" });
+    ).toEqual({
+      kind: "idle",
+      skipped: [{ role: "dev-core", thread: "t1", reason: "active", attempt: 1 }],
+    });
   });
 
   it("an exhausted pair → skipped (the attempt ceiling on the thread)", () => {
@@ -78,7 +89,10 @@ describe("planTick — launching", () => {
     for (let i = 0; i < 3; i += 1) {
       events.push(acquire("dev-core", "t1"), released("dev-core", "t1", "timeout"));
     }
-    expect(planTick({ ...base, events, enabled: true, stopped: false })).toEqual({ kind: "idle" });
+    expect(planTick({ ...base, events, enabled: true, stopped: false })).toEqual({
+      kind: "idle",
+      skipped: [{ role: "dev-core", thread: "t1", reason: "exhausted", attempt: 3 }],
+    });
   });
 
   it("picks the FIRST suitable one, skipping the active pair", () => {
@@ -93,7 +107,12 @@ describe("planTick — launching", () => {
       enabled: true,
       stopped: false,
     });
-    expect(decision).toEqual({ kind: "launch", role: "dev-core", thread: "free" });
+    expect(decision).toEqual({
+      kind: "launch",
+      role: "dev-core",
+      thread: "free",
+      skipped: [{ role: "dev-core", thread: "busy", reason: "active", attempt: 1 }],
+    });
   });
 });
 
@@ -102,13 +121,14 @@ describe("planTick — a hold on a manual session (S5)", () => {
     expect(planTick({ ...base, enabled: true, stopped: false, held: ["dev-core"] })).toEqual({
       kind: "held",
       roles: ["dev-core"],
+      skipped: [{ role: "dev-core", thread: "t1", reason: "held", attempt: 0 }],
     });
   });
 
   it("no work at all → idle, not held: a hold without mail does not disturb the circuit", () => {
     expect(
       planTick({ ...base, candidates: [], enabled: true, stopped: false, held: ["dev-core"] }),
-    ).toEqual({ kind: "idle" });
+    ).toEqual({ kind: "idle", skipped: [] });
   });
 
   it("a hold holds the ROLE, not the pair — it is taken on all of its threads", () => {
@@ -118,7 +138,14 @@ describe("planTick — a hold on a manual session (S5)", () => {
     ];
     expect(
       planTick({ ...base, candidates, enabled: true, stopped: false, held: ["dev-core"] }),
-    ).toEqual({ kind: "held", roles: ["dev-core"] });
+    ).toEqual({
+      kind: "held",
+      roles: ["dev-core"],
+      skipped: [
+        { role: "dev-core", thread: "t1", reason: "held", attempt: 0 },
+        { role: "dev-core", thread: "t2", reason: "held", attempt: 0 },
+      ],
+    });
   });
 
   it("one role is taken — the others launch as usual", () => {
@@ -128,7 +155,12 @@ describe("planTick — a hold on a manual session (S5)", () => {
     ];
     expect(
       planTick({ ...base, candidates, enabled: true, stopped: false, held: ["dev-core"] }),
-    ).toEqual({ kind: "launch", role: "dev-speech", thread: "t2" });
+    ).toEqual({
+      kind: "launch",
+      role: "dev-speech",
+      thread: "t2",
+      skipped: [{ role: "dev-core", thread: "t1", reason: "held", attempt: 0 }],
+    });
   });
 
   it("the stop flag beats a hold — the emergency brake argues with nothing", () => {
@@ -151,6 +183,7 @@ describe("planTick — the global ceiling with a trace (requirement 1)", () => {
       role: "dev-core",
       thread: "t1",
       reason: "run-budget",
+      skipped: [],
     });
   });
 
@@ -169,5 +202,93 @@ describe("planTick — the global ceiling with a trace (requirement 1)", () => {
     expect(
       planTick({ ...base, events, enabled: true, stopped: false, maxConsecutive: 5 }).kind,
     ).toBe("launch");
+  });
+});
+
+describe("planTick — nothing drops out silently (the defect of 2026-07-26)", () => {
+  // The daemon printed its banner and exited without a word: the only candidate was
+  // exhausted, the tick said `idle`, and `idle` said nothing at all. From the outside
+  // that is indistinguishable from an empty mailbox.
+  const exhaustedEvents = (): OrchestratorEvent[] => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      events.push(acquire("dev-core", "t1"), released("dev-core", "t1", "timeout"));
+    }
+    return events;
+  };
+
+  it("an exhausted candidate comes back as a skip with its reason and its count", () => {
+    const decision = planTick({
+      ...base,
+      events: exhaustedEvents(),
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.skipped).toEqual([
+      { role: "dev-core", thread: "t1", reason: "exhausted", attempt: 3 },
+    ]);
+  });
+
+  it("the ceiling reaches the skip: the same journal, a laxer ceiling → a launch", () => {
+    const decision = planTick({
+      ...base,
+      events: exhaustedEvents(),
+      enabled: true,
+      stopped: false,
+      maxAttempts: 5,
+    });
+    expect(decision).toMatchObject({ kind: "launch", role: "dev-core", thread: "t1" });
+    expect(decision.skipped).toEqual([]);
+  });
+
+  it("a delivery in the middle un-exhausts the pair — it is launched, not skipped", () => {
+    const events = exhaustedEvents();
+    events.push(released("dev-core", "t1", "completed"));
+    expect(planTick({ ...base, events, enabled: true, stopped: false }).kind).toBe("launch");
+  });
+
+  it("candidates BEHIND the launched one are still accounted for", () => {
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "free" },
+      { role: "dev-speech", thread: "busy" },
+    ];
+    const decision = planTick({
+      ...base,
+      candidates,
+      events: [acquire("dev-speech", "busy")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision).toMatchObject({ kind: "launch", thread: "free" });
+    expect(decision.skipped).toEqual([
+      { role: "dev-speech", thread: "busy", reason: "active", attempt: 1 },
+    ]);
+  });
+});
+
+describe("describeSkip — the line an operator reads", () => {
+  const skip = { role: "dev-core", thread: "016", attempt: 13 } as const;
+
+  it("exhausted names the count, the ceiling AND where the ceiling came from", () => {
+    const line = describeSkip({ ...skip, reason: "exhausted" }, { value: 3, source: "default" });
+    expect(line).toContain("dev-core×016");
+    expect(line).toContain("exhausted");
+    expect(line).toContain("13 failed attempts");
+    expect(line).toContain("ceiling 3 (default)");
+  });
+
+  it("a flag is reported as a flag — an ignored flag was the whole defect", () => {
+    expect(describeSkip({ ...skip, reason: "exhausted" }, { value: 20, source: "flag" })).toContain(
+      "ceiling 20 (flag)",
+    );
+  });
+
+  it("held and active name themselves", () => {
+    expect(describeSkip({ ...skip, reason: "held" }, { value: 3, source: "default" })).toContain(
+      "manual session",
+    );
+    expect(describeSkip({ ...skip, reason: "active" }, { value: 3, source: "default" })).toContain(
+      "running right now",
+    );
   });
 });
