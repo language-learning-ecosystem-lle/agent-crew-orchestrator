@@ -64,8 +64,20 @@ export const wakeSchema = z.discriminatedUnion("mode", [
   z.strictObject({ mode: z.literal("event") }),
 ]);
 
-/** Permissions that something follows from. Today exactly one — see the doc block. */
-export const permissionSchema = z.enum(["thread-status"]);
+/**
+ * Permissions that something follows from.
+ *
+ * - `thread-status` — editing a thread's `status` (closing a thread = acceptance);
+ * - `launch-params` (R21) — saying in the feed which model and effort the runs of a
+ *   thread are raised with. It is a permission and not a norm because the directive
+ *   spends money and decides the quality of the work: a role able to write a message
+ *   would otherwise be able to raise the whole thread on the strongest model, or
+ *   quietly downgrade someone else's implementation run to the cheapest one. A
+ *   directive from a role without it is IGNORED OUT LOUD when the candidate is
+ *   chosen — not refused at the door, because the feed is append-only and a refusal
+ *   there would be a permanent wedge on the thread.
+ */
+export const permissionSchema = z.enum(["thread-status", "launch-params"]);
 
 /** Role lifecycle: planned → active → paused/retired (rows are never deleted). */
 export const roleStatusSchema = z.enum(["planned", "active", "paused", "retired"]);

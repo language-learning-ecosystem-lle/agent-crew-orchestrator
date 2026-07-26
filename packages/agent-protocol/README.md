@@ -318,6 +318,7 @@ rather than going through that door.
 | 6 | + the role workspace and the continuation policy (R17, R18): `orchestrator.workdir.worktrees` in the config, and on the journal `launch.mode`/`resumes`/`world` plus `lease-released.session`/`steps`. NO data moves — the journal is not backfilled, and a run recorded before this version is simply never resumed. *(The row was missed by the PR that shipped the version and is restored here.)* |
 | 7 | + the interactive turn (R19): `roles[].launch.limits.waitInputSeconds` in the config, and on the journal the `input-awaited`/`input-received` kinds. NO data moves, and the MAIL is untouched — a parked session's aliveness is a runtime file beside its log, not a field in a message header, so no thread needs migrating |
 | 8 | + the graceful deadline (R20): `roles[].launch.limits.windDownSeconds` in the config. NOTHING else on disk changes — the deadline reaches a session through the environment of its own process and through its prompt, and neither is stored; `timeout` keeps its name and changes its MEANING (a session that did not land), which is not a migration |
+| 9 | + the launch directive in the feed (R21): the message header field `launch` (`model=…, effort=…`) and the role permission `launch-params`. NO data moves — no message carries the field yet, and its absence keeps meaning "raise the role on its standing calibration"; where a directive was applied is PRINTED on the launch line, not stored as an event |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -559,6 +560,9 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
                             # --no-push: the file only, for the ONE caller that owns its own git (CI)
                             # --await-input: this question PARKS the run instead of ending it (R19, S13)
+                            # --model <m> / --effort <e>: WITH WHAT the runs of this thread are raised from
+                            # here on (R21, S15) — only from a role holding `launch-params`, and the value
+                            # is checked against the tool's vocabulary at this door
 agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                             # blocks until the thread waits on the role again; needs a wait declared
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
@@ -1514,6 +1518,45 @@ NORMAL ending of a long run should be a session winding down, not a `SIGTERM`.
   supervisor says the landing point out loud when it passes (once per window, re-armed
   if a park moves the deadline), so the log shows that the session was told, at which
   minute, and kept digging.
+
+### S15 — with what a thread is raised: the directive in the feed (R21)
+
+Different tasks want different models — reconnaissance on a cheap one, implementation
+on a strong one — and until R21 the only two ways to say so were an operator's flag
+(gone the moment the daemon raises the role by itself) and the role's standing
+calibration in the config (the same for every thread the role touches). The missing
+statement is per-THREAD and per-PHASE, and it is made **in the feed**:
+
+```
+launch: model=opus, effort=high
+```
+
+- **In a message, not in `_meta.md`** (john's decision). `_meta.md` would be a second
+  source of truth outside the feed and a mutable file with two writers; a header field
+  lives in the append-only feed, where the audit costs nothing — WHO changed it and
+  WHEN is the message itself. **The last directive of an authorized role wins**, which
+  covers both the steady case (one directive in the statement of work) and a change
+  mid-thread: it takes effect from the NEXT run, and the daemon re-reads the feed on
+  every launch precisely so that it does.
+- **A permission, not a norm** — `launch-params` (here: john and curator). The
+  directive spends money and decides the quality of the work; without a permission,
+  anyone able to write a message could raise the whole thread on the strongest model,
+  or quietly downgrade somebody else's implementation run to the cheapest one.
+- **Refused at the writer's door, ignored out loud at the reader's.** The asymmetry is
+  the point, and it follows from the feed being append-only: while the author still
+  holds the flag, `new-message` refuses an effort level outside the tool's vocabulary
+  and refuses an author without the permission (a directive written in the belief that
+  it decides something is worse than a refusal naming who does). Once a message is
+  history, nothing may be fatal — a refusal there would wedge the thread for good,
+  since the message cannot be edited and the role could never be raised on it again.
+  So a directive from an unauthorized role, one addressed to another tool, or one
+  carrying an unknown effort level is DROPPED WITH A LINE beside the launch.
+- **One more layer in the same merge** (R12/R15): `flag → thread → role → the tool's
+  own default`, and every resolved value prints where it came from (`model opus
+  (thread)`), with the directive itself printed in full — `thread directive — model
+  opus, effort high — said by 'curator' (2026-07-26T…)`. The flag stays on top: it is
+  a decision taken about THIS run, at the terminal, and a directive written into the
+  thread days ago must not overrule it.
 
 ## `spike/` — P0
 

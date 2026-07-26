@@ -43,6 +43,34 @@
  * migration of the protocol — and which tools exist is not the protocol's business.
  */
 
+/**
+ * THE LAUNCH DIRECTIVE (R21, john's decision, thread `016-protocol-roadmap`) — an
+ * authorized role saying which model and effort the RUNS OF THIS THREAD are to be
+ * raised with, from here on.
+ *
+ * WHY IN A MESSAGE AND NOT IN `_meta.md`. The fork was weighed by john and settled
+ * for the message: `_meta.md` would be a second source of truth outside the feed and
+ * a mutable file two writers edit, while a header field lives in the append-only
+ * feed, where the audit is free — WHO changed it and WHEN is the message itself. It
+ * also matches how a thread actually behaves: it lives for days across phases, so
+ * "the last directive of an authorized role wins" covers both the steady case (one
+ * directive in the statement of work) and a change mid-thread.
+ *
+ * WHY THE VALUES ARE NOT VALIDATED HERE, only their shape. The vocabulary of
+ * `effort` belongs to one tool (`claude-code`), and a parser that rejected an
+ * unknown level would make a message written by a future writer unreadable — that
+ * is, it would break the whole THREAD, not the one directive. So the door of the
+ * writer (`new-message`) validates against the agent config and refuses there, and
+ * the resolution (`orchestrator/directive.ts`) ignores-with-announcement whatever
+ * still got in. Both are recoverable; an unparseable feed is not.
+ */
+export type LaunchDirective = {
+  /** `--model` of the raised tool: an alias (`opus`, `sonnet`) or a full name. */
+  readonly model?: string;
+  /** `--effort`: the level, in the raised tool's own vocabulary. */
+  readonly effort?: string;
+};
+
 /** `expects` — what the author awaits: a substantive answer, an acknowledgement or nothing. */
 export const EXPECTS = ["answer", "ack", "none"] as const;
 export type Expects = (typeof EXPECTS)[number];
@@ -111,6 +139,12 @@ export type MessageFields = {
    * means the waiting is lifted.
    */
   readonly waitingOn?: readonly string[];
+  /**
+   * WITH WHAT THE RUNS OF THIS THREAD ARE TO BE RAISED from here on (R21). Effective
+   * only from a role holding `launch-params`; from anyone else it is ignored OUT LOUD
+   * at the moment a candidate is chosen, never silently.
+   */
+  readonly launch?: LaunchDirective;
   /** Heading tail from history (`· [СВЕРХПИСАНО msg-002]`, quoted verbatim from live data), so the assembly matches byte for byte. */
   readonly suffix?: string;
 };
@@ -142,6 +176,62 @@ const SESSION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
  */
 export const isWorkerId = (value: string): boolean => WORKER.test(value);
 export const isSessionId = (value: string): boolean => SESSION.test(value);
+
+/**
+ * The keys a launch directive may carry. A CLOSED list, unlike the worker vocabulary:
+ * an unknown key here is a typo whose only possible outcome is a run raised with
+ * settings nobody chose (`modell: opus` would resolve to "nothing was said"), and that
+ * is the exact failure R15 named and R21 inherits.
+ */
+export const LAUNCH_DIRECTIVE_KEYS = ["model", "effort"] as const;
+
+/** The shape of a directive value: one printable token, so `k=v, k=v` stays parseable. */
+const DIRECTIVE_VALUE = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
+
+/**
+ * `launch: model=sonnet, effort=high` → the directive. The pair form (rather than two
+ * header fields) keeps the directive ONE atom: it is written, read and superseded as
+ * a whole, and "who last said what to raise this thread with" has one answer per
+ * message rather than two that can disagree.
+ */
+export const parseLaunchDirective = (value: string): LaunchDirective => {
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+  if (parts.length === 0) {
+    throw new MessageFormatError(
+      `'launch:' is empty — say at least one of ${LAUNCH_DIRECTIVE_KEYS.join(", ")} (as 'model=sonnet, effort=high') or leave the field out`,
+    );
+  }
+  const directive: { model?: string; effort?: string } = {};
+  for (const part of parts) {
+    const at = part.indexOf("=");
+    const key = at === -1 ? part : part.slice(0, at).trim();
+    const raw = at === -1 ? "" : part.slice(at + 1).trim();
+    if (!(LAUNCH_DIRECTIVE_KEYS as readonly string[]).includes(key)) {
+      throw new MessageFormatError(
+        `'launch: … ${part}' — the known keys are ${LAUNCH_DIRECTIVE_KEYS.join(", ")} (written as 'key=value')`,
+      );
+    }
+    if (!DIRECTIVE_VALUE.test(raw)) {
+      throw new MessageFormatError(
+        `'launch: … ${part}' — the value must be one printable token without spaces`,
+      );
+    }
+    if (directive[key as "model" | "effort"] !== undefined) {
+      throw new MessageFormatError(`'launch: … ${key}' is given twice`);
+    }
+    directive[key as "model" | "effort"] = raw;
+  }
+  return directive;
+};
+
+export const renderLaunchDirective = (directive: LaunchDirective): string =>
+  LAUNCH_DIRECTIVE_KEYS.flatMap((key) => {
+    const value = directive[key];
+    return value === undefined ? [] : [`${key}=${value}`];
+  }).join(", ");
 
 export class MessageFormatError extends Error {
   constructor(message: string) {
@@ -216,6 +306,9 @@ export const parseMessageFile = (raw: string): Message => {
     );
   }
 
+  const launchRaw = raws.get("launch");
+  const launch = launchRaw === undefined ? undefined : parseLaunchDirective(launchRaw);
+
   const fields: MessageFields = {
     ...(msgRaw === undefined ? {} : { msg: Number(msgRaw) }),
     ...(seqRaw === undefined ? {} : { seq: Number(seqRaw) }),
@@ -225,6 +318,7 @@ export const parseMessageFile = (raw: string): Message => {
     date,
     expects: expects as Expects,
     ...(waitingRaw === undefined ? {} : { waitingOn: parseList(waitingRaw) }),
+    ...(launch === undefined ? {} : { launch }),
     ...(suffix === undefined ? {} : { suffix }),
   };
   if (fields.msg !== undefined && !Number.isInteger(fields.msg)) {
@@ -259,6 +353,9 @@ export const renderMessageFile = (message: Message): string => {
     ...(fields.waitingOn === undefined
       ? []
       : [`waiting-on: ${fields.waitingOn.length === 0 ? "—" : fields.waitingOn.join(", ")}`]),
+    // After `waiting-on` and before the historical `suffix`: the directive is about
+    // the RUNS of this thread, so it reads next to the field that says whose turn it is.
+    ...(fields.launch === undefined ? [] : [`launch: ${renderLaunchDirective(fields.launch)}`]),
     ...(fields.suffix === undefined ? [] : [`suffix: ${fields.suffix}`]),
   ];
   return `${FENCE}\n${head.join("\n")}\n${FENCE}\n\n${text}\n`;

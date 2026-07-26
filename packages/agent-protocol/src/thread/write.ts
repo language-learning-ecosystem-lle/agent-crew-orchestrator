@@ -14,7 +14,7 @@
  * This module is the pure core (planning the files), "string → files". The actual
  * creation on disk and git live in the CLI above it.
  */
-import type { MessageFields } from "./message.js";
+import type { LaunchDirective, MessageFields } from "./message.js";
 import { messageFileName, renderMessageFile } from "./message.js";
 import { renderMetaFile, type ThreadMeta } from "./thread.js";
 
@@ -64,6 +64,8 @@ export type NewMessageInput = {
   readonly date: string;
   readonly expects: MessageFields["expects"];
   readonly waitingOn?: readonly string[];
+  /** With what the runs of this thread are to be raised from here on (R21). */
+  readonly launch?: LaunchDirective;
   readonly text: string;
   /** true — the thread has `messages/` (migrated / file-based). false — legacy. */
   readonly threadHasMessages: boolean;
@@ -92,6 +94,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     date: input.date,
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
+    ...(input.launch === undefined ? {} : { launch: input.launch }),
   };
   return {
     path: `messages/${messageFileName(fields)}`,

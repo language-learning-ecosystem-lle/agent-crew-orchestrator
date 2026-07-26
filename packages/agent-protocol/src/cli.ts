@@ -76,6 +76,11 @@ import {
   previousRun,
 } from "./orchestrator/continuation.js";
 import {
+  type DirectiveVerdict,
+  describeDirective,
+  resolveThreadDirective,
+} from "./orchestrator/directive.js";
+import {
   foldHolds,
   HOLD_TTL_SECONDS,
   type HoldRecord,
@@ -110,6 +115,7 @@ import {
   describeCeilings,
   describeGates,
   describeLaunch,
+  ignoredDirective,
   LAUNCH_ENV,
   planLaunch,
   type ResolvedCeilings,
@@ -171,7 +177,7 @@ import {
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
-import type { Launch, Role } from "./roles/schema.js";
+import { claudeCodeEffortSchema, type Launch, type Role } from "./roles/schema.js";
 import {
   type MigrationContext,
   MigrationRefusedError,
@@ -187,13 +193,15 @@ import {
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { DeliveryRefusedError, deliverMessage, deliverySubject } from "./thread/deliver.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
-import type { Expects } from "./thread/message.js";
+import type { Expects, LaunchDirective } from "./thread/message.js";
 import {
   EXPECTS,
   isSessionId,
   isWorkerId,
   KNOWN_WORKERS,
+  MessageFormatError,
   PACKAGE_WORKER,
+  parseLaunchDirective,
   parseMessageFile,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
@@ -229,12 +237,14 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
                               # the turn has passed to a HUMAN: whom is derived from wake.mode,
                               # the words come from notifications.templates, delivery from the transport plugin
                               # without --write: prints what it would send and leaves the state alone
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
                               # --await-input: this question PARKS the run instead of ending it (R19) — the session
                               # stays alive and reads the answer itself; block on 'await-input' after sending
+                              # --model/--effort: WITH WHAT the runs of this thread are raised from here on (R21) —
+                              # only from a role holding 'launch-params'; the value is checked against the tool here
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
                               # a raised session passes neither — the launch environment carries both
@@ -954,6 +964,62 @@ const declareWait = (input: {
 };
 
 /**
+ * THE DOOR OF A LAUNCH DIRECTIVE (R21, requirements 2 and 3) — `--model` / `--effort`
+ * on `new-message`, checked here and not later.
+ *
+ * WHAT IS REFUSED AT THE DOOR AND WHY EXACTLY THESE. The feed is APPEND-ONLY: a
+ * directive nobody can act on cannot be taken back either, so everything that is
+ * knowable at the moment of writing must be refused while the author is still holding
+ * the flag —
+ *  - a value outside the tool's vocabulary (john's requirement 3: a crooked directive
+ *    must not lie in the feed as a mine), and
+ *  - an author without `launch-params`: the resolution would drop it out loud anyway,
+ *    and a message written in the belief that it decides something is worse than a
+ *    refusal that says who does.
+ *
+ * WHAT IS DELIBERATELY NOT REFUSED HERE: whether the addressed role is even raised as
+ * `claude-code`. That is a fact about a future run, not about this message — a role's
+ * tool can change after the directive is written — so it belongs to the merge, which
+ * drops it with a word (`ignoredDirective`).
+ */
+const directiveFrom = (
+  argv: readonly string[],
+  input: { readonly from: string; readonly registry: RoleRegistry },
+): LaunchDirective | undefined => {
+  const model = flag(argv, "--model");
+  const effort = flag(argv, "--effort");
+  if (model === undefined && effort === undefined) return undefined;
+  if (!input.registry.canSetLaunchParams(input.from)) {
+    return fail(
+      `role '${input.from}' does not hold 'launch-params': a launch directive from it would not be applied, so it is not written. Whoever holds the permission in this project says it instead`,
+      2,
+    );
+  }
+  if (effort !== undefined && !claudeCodeEffortSchema.safeParse(effort).success) {
+    return fail(
+      `--effort '${effort}' — allowed levels are ${claudeCodeEffortSchema.options.join(", ")}`,
+      2,
+    );
+  }
+  let directive: LaunchDirective;
+  try {
+    // Parsed through the SAME function that reads it back, rather than assembled from
+    // the flags: a value the reader would reject must not be writable, and the one way
+    // to guarantee that is to have one shape check, used from both sides.
+    directive = parseLaunchDirective(
+      [
+        ...(model === undefined ? [] : [`model=${model}`]),
+        ...(effort === undefined ? [] : [`effort=${effort}`]),
+      ].join(", "),
+    );
+  } catch (error) {
+    if (error instanceof MessageFormatError) return fail(error.message, 2);
+    throw error;
+  }
+  return directive;
+};
+
+/**
  * Create a message file in an EXISTING thread and SEND IT (R3). Refuses if the
  * thread is in the legacy form (no `messages/`): a file write would cut off its
  * history.
@@ -989,6 +1055,7 @@ const newMessage = (argv: readonly string[]): void => {
   // write, and a preview that succeeds where the write refuses is a lie.
   const provenance = provenanceFrom(argv, { required: true });
   const expects = parseExpects(required(argv, "--expects"));
+  const launchDirective = directiveFrom(argv, { from, registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
@@ -1015,6 +1082,7 @@ const newMessage = (argv: readonly string[]): void => {
         date,
         expects,
         ...(waitingOn === undefined ? {} : { waitingOn }),
+        ...(launchDirective === undefined ? {} : { launch: launchDirective }),
         text,
         threadHasMessages,
       });
@@ -1516,7 +1584,20 @@ const agentFor = (
   argv: readonly string[],
   local: LoadedLocalConfig,
   role: Role,
-): { worker: ResolvedWorker; exec: ResolvedExec; params: AgentParams } => {
+  /**
+   * WHAT THE THREAD SAID (R21) — already filtered by permission, and absent for every
+   * caller that has no thread in hand (`status`, `preflight`): those show what a role
+   * would be raised with IN GENERAL, and a per-thread directive is not part of that
+   * answer. The lines it caused to be dropped are printed by the caller beside the
+   * agent line, so a directive never disappears without a word.
+   */
+  directive?: LaunchDirective,
+): {
+  worker: ResolvedWorker;
+  exec: ResolvedExec;
+  params: AgentParams;
+  ignored: readonly string[];
+} => {
   const worker = resolveWorker({
     ...(flag(argv, "--worker") === undefined ? {} : { flag: flag(argv, "--worker") as string }),
     ...(role.launch === undefined ? {} : { launch: role.launch }),
@@ -1535,10 +1616,64 @@ const agentFor = (
     flags,
     worker,
     ...(role.launch === undefined ? {} : { launch: role.launch }),
+    ...(directive === undefined ? {} : { directive }),
   });
   if (!resolution.ok) return fail(`role '${role.id}': ${resolution.reason}`, 2);
-  return { worker, exec, params: resolution.params };
+  return {
+    worker,
+    exec,
+    params: resolution.params,
+    ignored: ignoredDirective({ ...(directive === undefined ? {} : { directive }), worker }),
+  };
 };
+
+/**
+ * THE DIRECTIVE IN FORCE ON A THREAD, read off the disk of the mail checkout (R21) —
+ * the same source every other read of the mail in the circuit uses.
+ *
+ * A THREAD THAT CANNOT BE READ IS NOT AN ERROR HERE. A legacy `_thread.md` has no
+ * message headers at all, so it can carry no directive by construction, and a
+ * malformed one is already loud everywhere it matters (`check`, `mail`). Falling back
+ * to "no directive" means the role is raised on its standing calibration — which is
+ * exactly what happened before R21 existed.
+ */
+const threadDirectiveFor = (input: {
+  readonly mailRoot: string;
+  readonly thread: string;
+  readonly registry: RoleRegistry;
+}): DirectiveVerdict => {
+  let loaded: LoadedThread;
+  try {
+    loaded = loadThread(join(input.mailRoot, input.thread), input.thread, input.registry.ids());
+  } catch {
+    return { ignored: [] };
+  }
+  if (loaded.input === undefined) return { ignored: [] };
+  return resolveThreadDirective({
+    messages: loaded.input.entries.map((entry) => entry.message),
+    authorized: (role) => input.registry.canSetLaunchParams(role),
+  });
+};
+
+/**
+ * WHAT IS SAID OUT LOUD ABOUT THE THREAD'S DIRECTIVE — the one in force, and every one
+ * that was found and dropped (by permission, by tool, by an unknown effort level).
+ *
+ * It is printed on EVERY launch that has a directive, not only when something went
+ * wrong, for the reason the whole package prints its sources: a run raised on a model
+ * somebody chose in a message three days ago is a different fact from a run on the
+ * role's standing calibration, and the difference must be in the log of that run.
+ */
+const directiveLines = (
+  verdict: DirectiveVerdict,
+  ignoredByMerge: readonly string[],
+): readonly string[] => [
+  ...(verdict.effective === undefined
+    ? []
+    : [`thread directive — ${describeDirective(verdict.effective)}`]),
+  ...verdict.ignored,
+  ...ignoredByMerge,
+];
 
 /**
  * The distinct binaries preflight has to probe. It is a SET over the launchable
@@ -3350,7 +3485,15 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   // What is raised, where its binary lives and with which parameters (R14 + R15) —
   // one resolution, because all three key off the tool id.
   const local = localFrom(argv);
-  const agent = agentFor(argv, local, role);
+  // WHAT THE THREAD SAID ABOUT ITS RUNS (R21) — read before the parameters are merged,
+  // because it is one of the layers they merge from.
+  const directed = threadDirectiveFor({ mailRoot, thread, registry });
+  const agent = agentFor(
+    argv,
+    local,
+    role,
+    ...(directed.effective === undefined ? [] : [directed.effective.directive]),
+  );
   const exec = agent.exec.value;
   const maxTurns = String(ceilings.maxTurns.value);
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
@@ -3418,6 +3561,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
     out(`agent-protocol: gates — ${describeGates(gates)}`);
     out(`agent-protocol: agent — ${describeAgent(agent)}`);
+    for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
     for (const event of plan.events) out(renderEventLine(event));
     return;
   }
@@ -3450,6 +3594,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
   out(`agent-protocol: gates — ${describeGates(gates)}`);
   out(`agent-protocol: agent — ${describeAgent(agent)}`);
+  for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
   const reason = await runOne({
     journalPath,
     mailRoot,
@@ -3697,7 +3842,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           eventTimestamp(startedAt),
         );
         const ceilings = ceilingsFrom(argv, role);
-        const agent = agentFor(argv, local, role);
+        // The directive is read PER LAUNCH, like the workspace below it and for the
+        // same reason: it is a property of this thread at this moment, and a daemon
+        // that read it once at start-up would keep raising yesterday's decision for
+        // days (R21 — a change mid-thread takes effect from the NEXT run).
+        const directed = threadDirectiveFor({ mailRoot, thread: decision.thread, registry });
+        const agent = agentFor(
+          argv,
+          local,
+          role,
+          ...(directed.effective === undefined ? [] : [directed.effective.directive]),
+        );
         // The workspace and the continuation are settled PER LAUNCH, inside the loop:
         // both are properties of this (role, thread) pair at this moment, and the
         // daemon lives for days.
@@ -3724,6 +3879,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         } else {
           out(`agent-protocol: daemon — ${decision.role} ceilings: ${describeCeilings(ceilings)}`);
           out(`agent-protocol: daemon — ${decision.role} agent: ${describeAgent(agent)}`);
+          for (const line of directiveLines(directed, agent.ignored)) {
+            out(`agent-protocol: daemon — ${decision.role} ${line}`);
+          }
           const reason = await runOne({
             journalPath,
             mailRoot,
