@@ -43,6 +43,8 @@ export type RoleRegistry = {
   canEditThreadStatus(id: RoleId): boolean;
   /** Whether the role's launch directives in a feed take effect (R21, `launch-params`). */
   canSetLaunchParams(id: RoleId): boolean;
+  /** Whether the role's thread priorities in a feed take effect (R5, `thread-priority`). */
+  canSetThreadPriority(id: RoleId): boolean;
   watchTargets(): readonly WatchTarget[];
   notificationTargets(): readonly NotificationTarget[];
 };
@@ -122,6 +124,10 @@ export const createRoleRegistry = (config: RolesSection): RoleRegistry => {
     canSetLaunchParams: (id) => {
       const role = byId.get(id);
       return role !== undefined && hasPermission(role, "launch-params");
+    },
+    canSetThreadPriority: (id) => {
+      const role = byId.get(id);
+      return role !== undefined && hasPermission(role, "thread-priority");
     },
     watchTargets: () =>
       active.flatMap((role) =>

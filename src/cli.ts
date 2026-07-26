@@ -155,6 +155,14 @@ import {
   renderPreflight,
   workdirVerdict,
 } from "./orchestrator/preflight.js";
+import {
+  DEFAULT_THREAD_PRIORITY,
+  describeOrder,
+  orderCandidates,
+  type RankedCandidate,
+  resolveThreadPriority,
+  waitingSince,
+} from "./orchestrator/priority.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { describeSkip, planTick } from "./orchestrator/tick.js";
@@ -193,7 +201,7 @@ import {
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { DeliveryRefusedError, deliverMessage, deliverySubject } from "./thread/deliver.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
-import type { Expects, LaunchDirective } from "./thread/message.js";
+import type { Expects, LaunchDirective, ThreadPriorityValue } from "./thread/message.js";
 import {
   EXPECTS,
   isSessionId,
@@ -203,6 +211,7 @@ import {
   PACKAGE_WORKER,
   parseLaunchDirective,
   parseMessageFile,
+  THREAD_PRIORITY_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { renderThread } from "./thread/thread.js";
@@ -237,7 +246,7 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
                               # the turn has passed to a HUMAN: whom is derived from wake.mode,
                               # the words come from notifications.templates, delivery from the transport plugin
                               # without --write: prints what it would send and leaves the state alone
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -245,6 +254,8 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
                               # stays alive and reads the answer itself; block on 'await-input' after sending
                               # --model/--effort: WITH WHAT the runs of this thread are raised from here on (R21) —
                               # only from a role holding 'launch-params'; the value is checked against the tool here
+                              # --priority high|normal|low: WHICH waiting thread is raised FIRST from here on (R5) —
+                              # only from a role holding 'thread-priority'; the queue is priority, then age of wait, then number
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
                               # a raised session passes neither — the launch environment carries both
@@ -1020,6 +1031,37 @@ const directiveFrom = (
 };
 
 /**
+ * THE DOOR OF A THREAD PRIORITY (R5) — `--priority` on `new-message`, refused here for
+ * the same two reasons the launch directive is (the feed is append-only, so a statement
+ * nobody can act on cannot be taken back either): a value outside the protocol's own
+ * vocabulary, and an author without `thread-priority`.
+ *
+ * The vocabulary check is done by the PARSER (`parseMessageFile` reads the same field
+ * back) rather than by a list retyped here: one shape check used from both sides is the
+ * only way a value that would not be read back cannot be written.
+ */
+const priorityFrom = (
+  argv: readonly string[],
+  input: { readonly from: string; readonly registry: RoleRegistry },
+): ThreadPriorityValue | undefined => {
+  const value = flag(argv, "--priority");
+  if (value === undefined) return undefined;
+  if (!input.registry.canSetThreadPriority(input.from)) {
+    return fail(
+      `role '${input.from}' does not hold 'thread-priority': a priority from it would not be applied, so it is not written. Whoever holds the permission in this project says it instead`,
+      2,
+    );
+  }
+  if (!(THREAD_PRIORITY_VALUES as readonly string[]).includes(value)) {
+    return fail(
+      `--priority '${value}' — allowed values are ${THREAD_PRIORITY_VALUES.join(", ")}`,
+      2,
+    );
+  }
+  return value as ThreadPriorityValue;
+};
+
+/**
  * Create a message file in an EXISTING thread and SEND IT (R3). Refuses if the
  * thread is in the legacy form (no `messages/`): a file write would cut off its
  * history.
@@ -1056,6 +1098,7 @@ const newMessage = (argv: readonly string[]): void => {
   const provenance = provenanceFrom(argv, { required: true });
   const expects = parseExpects(required(argv, "--expects"));
   const launchDirective = directiveFrom(argv, { from, registry });
+  const priority = priorityFrom(argv, { from, registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
@@ -1083,6 +1126,7 @@ const newMessage = (argv: readonly string[]): void => {
         expects,
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(launchDirective === undefined ? {} : { launch: launchDirective }),
+        ...(priority === undefined ? {} : { priority }),
         text,
         threadHasMessages,
       });
@@ -1220,10 +1264,27 @@ const mail = (argv: readonly string[]): void => {
   // failure of the index generator would blind the watch and the keeper (pain 5,
   // thread 008).
   const { threads, failures } = loadThreads(root, registry.ids());
-  const hits = threadsWaitingOn(
-    threads.map((loaded) => loaded.thread),
-    role,
-  );
+  const parsed = threads.map((loaded) => loaded.thread);
+  // IN QUEUE ORDER, not in the order of the directories (R5). The FORM of the output
+  // is untouched — one thread id per line, because it is read by scripts — but a role
+  // reading its own mail is told the same thing the daemon decides by: what to take
+  // first. Two answers to "which one now" would be worse than none.
+  const hits = orderCandidates(
+    threadsWaitingOn(parsed, role).map((thread): RankedCandidate => {
+      const messages = parsed.find((t) => t.id === thread)?.messages ?? [];
+      const since = waitingSince({ messages, role });
+      return {
+        role,
+        thread,
+        priority:
+          resolveThreadPriority({
+            messages,
+            authorized: (who) => registry.canSetThreadPriority(who),
+          }).effective?.priority ?? DEFAULT_THREAD_PRIORITY,
+        ...(since === undefined ? {} : { since }),
+      };
+    }),
+  ).map((candidate) => candidate.thread);
   for (const id of hits) out(id);
   for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
 
@@ -3768,9 +3829,34 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const scan = loadThreads(mailRoot, ids);
     for (const line of renderThreadFailures(scan.failures)) err(`agent-protocol: ${line}`);
     const threads = scan.threads.map((loaded) => loaded.thread);
-    const candidates = launchable.flatMap((roleId) =>
-      threadsWaitingOn(threads, roleId).map((thread) => ({ role: roleId, thread })),
+    // THE ORDER OF THE QUEUE IS A DECISION, not the order of the scan (R5). One tick
+    // raises at most one pair, so whichever candidate comes first IS the scheduling
+    // policy; before R5 it was the alphabet of the thread directories. The three tiers
+    // and their argument live in `priority.ts`; here we only read the facts they need
+    // out of the feed each tick — a priority written a minute ago must be in force on
+    // the next tick, exactly like the launch directive (R21).
+    const byId = new Map(threads.map((thread) => [thread.id, thread]));
+    const ranked = launchable.flatMap((roleId) =>
+      threadsWaitingOn(threads, roleId).map((thread): RankedCandidate => {
+        const messages = byId.get(thread)?.messages ?? [];
+        const verdict = resolveThreadPriority({
+          messages,
+          authorized: (role) => registry.canSetThreadPriority(role),
+        });
+        // An unauthorized priority is dropped OUT LOUD, every tick it is read: a queue
+        // ordered by a statement nobody honoured looks exactly like a queue that did.
+        for (const line of verdict.ignored) err(`agent-protocol: ${thread} — ${line}`);
+        const since = waitingSince({ messages, role: roleId });
+        return {
+          role: roleId,
+          thread,
+          priority: verdict.effective?.priority ?? DEFAULT_THREAD_PRIORITY,
+          ...(since === undefined ? {} : { since }),
+        };
+      }),
     );
+    const candidates = orderCandidates(ranked);
+    for (const line of describeOrder(candidates)) err(`agent-protocol: ${line}`);
     const events = existsSync(journalPath)
       ? parseJournal(readFile(journalPath, "orchestrator journal"))
       : [];

@@ -53,7 +53,7 @@ const CONFIG = {
       status: "active",
       wake: { mode: "via-human", via: "john" },
       summary: "the keeper",
-      permissions: ["launch-params"],
+      permissions: ["launch-params", "thread-priority"],
     },
   ],
 };
@@ -629,6 +629,39 @@ describe("new-message and the launch directive (R21)", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("allowed levels");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+});
+
+describe("new-message and the priority of a thread (R5)", () => {
+  it("an authorized role writes it into the header, where the queue finds it", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--priority", "high");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.priority).toBe("high");
+  });
+
+  it("a role without 'thread-priority' is refused at the door, not left with a void priority in the feed", () => {
+    // The feed is append-only: a statement nobody will honour cannot be taken back
+    // either, so it must not be writable in the first place.
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--priority", "high");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("thread-priority");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("a value outside the vocabulary is refused while the flag can still be retyped", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--priority", "urgent");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("high, normal, low");
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
 });

@@ -76,8 +76,14 @@ export const wakeSchema = z.discriminatedUnion("mode", [
  *   directive from a role without it is IGNORED OUT LOUD when the candidate is
  *   chosen — not refused at the door, because the feed is append-only and a refusal
  *   there would be a permanent wedge on the thread.
+ * - `thread-priority` (R5) — saying in the feed which of the waiting threads the
+ *   orchestrator raises first. Separate from `launch-params` on purpose: "with what a
+ *   thread is raised" and "what is raised before what" are different powers over
+ *   somebody else's work, and a project may well want to hand out one without the
+ *   other. Today both sit with the same two roles, so the split costs nothing and
+ *   buys the ability to change that without a schema version.
  */
-export const permissionSchema = z.enum(["thread-status", "launch-params"]);
+export const permissionSchema = z.enum(["thread-status", "launch-params", "thread-priority"]);
 
 /** Role lifecycle: planned → active → paused/retired (rows are never deleted). */
 export const roleStatusSchema = z.enum(["planned", "active", "paused", "retired"]);
