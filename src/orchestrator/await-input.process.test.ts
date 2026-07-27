@@ -15,8 +15,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
-
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { configHome, sandbox } from "../testing/process-sandbox.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -134,11 +134,11 @@ const argv = (contour: Contour, extra: readonly string[]): string[] => [
   ...extra,
 ];
 
-const env = (contour: Contour): NodeJS.ProcessEnv => ({
-  ...process.env,
-  AGENT_PROTOCOL_WORKER: "claude-code",
-  AGENT_PROTOCOL_SESSION_FILE: contour.session,
-});
+const env = (contour: Contour): NodeJS.ProcessEnv =>
+  sandbox(configHome(contour.repo), {
+    AGENT_PROTOCOL_WORKER: "claude-code",
+    AGENT_PROTOCOL_SESSION_FILE: contour.session,
+  });
 
 const wait = (contour: Contour, extra: readonly string[]): { code: number; out: string } => {
   const result = spawnSync(TSX, argv(contour, extra), {

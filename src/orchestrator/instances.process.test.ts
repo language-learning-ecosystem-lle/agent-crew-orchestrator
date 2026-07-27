@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { parseDigest } from "./instances.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -201,7 +202,12 @@ const cli = (contour: Contour, args: readonly string[]): { code: number; out: st
       "--local-config",
       contour.local,
     ],
-    { cwd: contour.repo, encoding: "utf8", stdio: "pipe", env: { ...process.env } },
+    {
+      cwd: contour.repo,
+      encoding: "utf8",
+      stdio: "pipe",
+      env: sandbox(configHome(contour.repo)),
+    },
   );
   return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
 };

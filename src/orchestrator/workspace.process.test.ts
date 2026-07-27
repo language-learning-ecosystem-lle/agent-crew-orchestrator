@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { parseJournal } from "./journal.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -132,7 +133,7 @@ const run = (repo: string, extra: readonly string[] = []): { code: number; out: 
         "--write",
         ...extra,
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe", env: { ...process.env } },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
     );
     return { code: 0, out };
   } catch (error) {
@@ -433,7 +434,7 @@ describe("the run lock (R17, john's requirement 1)", () => {
     const status = execFileSync(
       TSX,
       [CLI, "orchestrator", "status", "--ref", "HEAD", "--repo", repo],
-      { cwd: repo, encoding: "utf8", stdio: "pipe" },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
     );
 
     expect(refusal.out).toContain("git worktree unlock");

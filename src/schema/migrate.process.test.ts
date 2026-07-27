@@ -16,6 +16,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
+
 import { CURRENT_PROTOCOL_VERSION } from "./version.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -54,6 +56,7 @@ const run = (repo: string, ...args: string[]): { code: number; out: string } => 
     const out = execFileSync(TSX, [CLI, "schema", "migrate", "--repo", repo, ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      env: sandbox(configHomeInside(repo)),
     });
     return { code: 0, out };
   } catch (error) {

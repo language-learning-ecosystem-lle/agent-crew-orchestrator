@@ -14,8 +14,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
-
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -100,7 +100,7 @@ const mail = (contest: { repo: string; root: string }): string[] =>
       "--role",
       "dev-core",
     ],
-    { encoding: "utf8", stdio: "pipe" },
+    { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
   )
     .split("\n")
     .filter((line) => line.trim() !== "");

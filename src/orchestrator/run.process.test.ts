@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { parseJournal } from "./journal.js";
 import { foldLeases } from "./lease.js";
 
@@ -107,22 +108,9 @@ const stub = (repo: string, body: string): string => {
   return path;
 };
 
-/**
- * THE HOME DIRECTORY OF THE TEST (R14). The machine config is read from
- * `XDG_CONFIG_HOME`, so every run here gets its own — otherwise the outcome would
- * depend on whether the person running the suite happens to have one, which is the
- * class of defect the file was introduced to remove, reappearing in the tests.
- */
-const xdgOf = (repo: string): string => join(repo, "..", "xdg");
-
-const sandbox = (repo: string): NodeJS.ProcessEnv => ({
-  ...process.env,
-  XDG_CONFIG_HOME: xdgOf(repo),
-});
-
-/** Write a machine config into the test's own home directory. */
+/** Write a machine config into the test's own home directory (R14). */
 const machineConfig = (repo: string, agents: Record<string, { exec: string }>): void => {
-  const dir = join(xdgOf(repo), "agent-protocol");
+  const dir = join(configHome(repo), "agent-protocol");
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "local.json"), `${JSON.stringify({ agents }, null, 2)}\n`);
 };
@@ -152,7 +140,7 @@ const run = (repo: string, exec: string): { code: number; out: string } => {
         "1",
         "--write",
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
     );
     return { code: 0, out };
   } catch (error) {
@@ -269,7 +257,7 @@ describe("running a role as a process — the outcome is always recorded", () =>
         "1",
         "--write",
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
     );
 
     expect(journal(repo).at(-1)).toMatchObject({ reason: "timeout" });
@@ -332,7 +320,7 @@ describe("running a role as a process — the outcome is always recorded", () =>
       // door ("the machine calls itself 'main', the repository declares no instances")
       // and the test failed on a machine outside the repository. Exactly the defect
       // `sandbox` was written to remove, surviving in the one call that skipped it.
-      { cwd: repo, stdio: ["ignore", sink, sink], detached: true, env: sandbox(repo) },
+      { cwd: repo, stdio: ["ignore", sink, sink], detached: true, env: sandbox(configHome(repo)) },
     );
     // WAIT FOR THE STATE, NOT FOR A CLOCK. The fixed pause this replaced measured
     // the runner's mood: on a loaded CI machine the twelve seconds ran out while the
@@ -438,7 +426,7 @@ describe("running a role as a process — the outcome is always recorded", () =>
         "1",
         "--write",
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
     );
 
     const last = journal(repo).at(-1);
@@ -480,7 +468,7 @@ describe("running a role as a process — the outcome is always recorded", () =>
         "1",
         "--write",
       ],
-      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
     );
 
     expect(journal(repo).at(-1)).toMatchObject({ reason: "exited-without-handoff" });
@@ -561,7 +549,7 @@ describe("attached by default, detached on request (R12)", () => {
           "1",
           ...extra,
         ],
-        { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
+        { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
       );
       return { code: 0, out };
     } catch (error) {
@@ -666,7 +654,7 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
           "1",
           ...extra,
         ],
-        { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(repo) },
+        { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
       );
       return { code: 0, out };
     } catch (error) {
@@ -712,9 +700,9 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
     // The boundary is the whole point of the second file. A box quietly running with
     // ceilings nobody reviewed is exactly what keeping the config in `main` prevents.
     const { repo } = contour();
-    mkdirSync(join(xdgOf(repo), "agent-protocol"), { recursive: true });
+    mkdirSync(join(configHome(repo), "agent-protocol"), { recursive: true });
     writeFileSync(
-      join(xdgOf(repo), "agent-protocol", "local.json"),
+      join(configHome(repo), "agent-protocol", "local.json"),
       JSON.stringify({ agents: {}, limits: { maxTurns: 9000 } }),
     );
 
@@ -831,7 +819,7 @@ describe("a session that asks and waits alive (R19)", () => {
         "--write",
         ...extra,
       ],
-      { cwd: repo, encoding: "utf8", env: sandbox(repo) },
+      { cwd: repo, encoding: "utf8", env: sandbox(configHome(repo)) },
     );
     return {
       code: result.status ?? 1,
@@ -1067,7 +1055,7 @@ describe("a session that asks and waits alive (R19)", () => {
 describe("a manual run stops at the same scope door as the daemon (R13)", () => {
   /** A machine that knows its own name — the second half of the ownership join (R14). */
   const identity = (repo: string, instance: string): void => {
-    const dir = join(xdgOf(repo), "agent-protocol");
+    const dir = join(configHome(repo), "agent-protocol");
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "local.json"), `${JSON.stringify({ instance }, null, 2)}\n`);
   };
@@ -1095,7 +1083,7 @@ describe("a manual run stops at the same scope door as the daemon (R13)", () => 
         "--write",
         ...extra,
       ],
-      { cwd: repo, encoding: "utf8", env: sandbox(repo) },
+      { cwd: repo, encoding: "utf8", env: sandbox(configHome(repo)) },
     );
     return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
   };

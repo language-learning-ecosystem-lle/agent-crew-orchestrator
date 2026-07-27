@@ -22,8 +22,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
-
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
 import { parseMessageFile } from "./message.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -110,7 +110,7 @@ const run = (
         contest.body,
         ...extra,
       ],
-      { encoding: "utf8", stdio: "pipe", env: { ...process.env, ...env } },
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo), env) },
     );
     return { code: 0, out };
   } catch (error) {
@@ -313,7 +313,7 @@ describe("new-message --await-input", () => {
           out: execFileSync(TSX, argv, {
             encoding: "utf8",
             stdio: "pipe",
-            env: { ...process.env, ...sessionEnv(contest.repo) },
+            env: sandbox(configHomeInside(contest.repo), sessionEnv(contest.repo)),
           }),
         };
       } catch (error) {
@@ -593,7 +593,7 @@ const direct = (
         "--no-push",
         ...extra,
       ],
-      { encoding: "utf8", stdio: "pipe", env: { ...process.env } },
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
     );
     return { code: 0, out };
   } catch (error) {
