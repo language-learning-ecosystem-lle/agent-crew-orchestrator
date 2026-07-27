@@ -1786,3 +1786,61 @@ parse today, a stateful accumulator in the supervisor and its own tests. What th
 already carries for such a release — the exit code and the path to the full session log — is
 where a diagnosis starts; and with the norm in the prompt, the failure this evidence describes
 is the one being removed rather than instrumented.
+
+### S20 — the operator layer: `up`/`down`, the short parking, a typo at the door (thread 019)
+
+The package has two users and one interface. The strictness the CLI is built on — `--ref`
+everywhere, a refusal where anything else would guess — is the right property for an agent and
+for CI, and it stays exactly as it is. The operator pays for it in ceremony: raising the watch
+was three flags and an attached terminal, a hold was five. This section is the thin operator
+layer over that core; nothing under it is loosened.
+
+**`orchestrator up` / `orchestrator down`.** `up` composes what already existed and was never
+within reach of one gesture: it clears a stop flag left by the previous `down` (without that a
+fresh daemon halts on its first tick, for a reason invisible from the terminal), switches
+launches on, and sends the daemon to the background the way `run -d` does it — its own session,
+no controlling terminal, output to `daemon.log` in the state directory, pid in `daemon.pid`.
+Switching launches ON belongs to `up` because typing `up` IS the permission the enable gate
+exists to ask for; `down` does not switch it back off — that is a policy statement (`disable`),
+while `down` is "stop the watch". An `up` on top of a living daemon is REFUSED: two daemons on
+one journal would take the same pair twice, and the second banner would look like a healthy
+start. `up` accepts every flag `daemon` does — it is the same daemon with its start-up done.
+
+**`hold <role>` / `resume <role>`.** The same action as the strict `hold --mode take/release`
+with the two answers the operator was retyping filled in: the ref from the config, `--by` from
+`$USER` (checked against the roles of the config, like the strict form). They ACT rather than
+plan — `--write` guards a change nobody can see, while a hold is visible in one command
+(`status`) and undone in one word.
+
+**`--ref` may be omitted, and ONLY here.** For these four commands it is not a choice at all:
+the project declared it in `orchestrator.ref`. The bootstrap is the one thing to be honest
+about — the pointer is read from the WORKING TREE (the exception `schema migrate` already
+makes, for the same reason: there is no ref yet to read a ref at), everything after it is read
+at the ref it names, and the resolved ref is printed. The working tree chooses WHICH history
+governs, never WHAT is in it.
+
+**A typo is refused at the door** (`orchestrator/argv.ts`), on every orchestrator command. The
+defect that bought this: `orchestrator daemon -d` SWALLOWED the flag it does not know and
+started attached, so the operator walked away believing the watch was in the background and
+came back to a dead terminal. `flag()` reads argv by `indexOf`, which makes an unknown argument
+not an error but nothing at all — and "nothing" is indistinguishable from a silent default. The
+table of what each command accepts is THE USAGE TEXT ITSELF, parsed: a second table would
+diverge from the help by exactly one forgotten flag, and a checker that disagrees with the help
+refuses what the help offers. `--flag=value` is named rather than lumped in with typos — it is
+the spelling half the world uses, has never been supported here, and used to be ignored in
+silence.
+
+**What that promotion cost, and what pays for it from now on.** Making the help text the table
+changed its status: a usage line that has fallen behind its handler is no longer a
+documentation defect, it REFUSES a call that used to work. Two lines had fallen behind long
+before the guard existed — `orchestrator status` (which reads `--root`, the ceilings, the role
+scope and the agent resolution, because it SHOWS what the daemon would do) and `orchestrator
+preflight` (`--model`/`--effort`) — and switching the guard on turned that silence into a hard
+refusal of working invocations. Both lines are corrected, and the class is closed by
+`usage.test.ts`: a CORPUS of invocations, each checked against its handler by hand once, run
+against the SHIPPED `USAGE` (which is why the text lives in `usage.ts` — `cli.ts` starts the
+program when imported). The corpus is a regression, not a specification: a flag added to a
+handler and to its usage line together is invisible to it, and that is the intended shape —
+what it guards is drift in the one direction that refuses calls. Deriving the truth instead is
+not available: `flag(argv, "--x")` is scattered through 4600 lines and no static reading of it
+would be trustworthy.
