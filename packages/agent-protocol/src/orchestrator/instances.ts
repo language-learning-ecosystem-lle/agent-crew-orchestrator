@@ -111,6 +111,15 @@ export const renderDigest = (digest: InstanceDigest): string =>
  * long as neither moves. That is the right trade — the reader's tolerance is measured
  * in the length of a session, not of a tick — but it means a heartbeat, if one is ever
  * wanted, is a SEPARATE decision and not a smaller interval here.
+ *
+ * IT ONLY WORKS IF THE WRITER ASKS AT THE RIGHT MOMENTS, and that is where thread
+ * `025-stale-instance-digest` found it broken: the daemon asked once per tick, at the
+ * end, by which point the session raised in that tick had already released its lease.
+ * The answer was `leases: []` every time, so this function said "unchanged" every time,
+ * and a box that ran six sessions in four hours published nothing at all — a file whose
+ * whole purpose is to say what the box is doing, that had never once said it. The rule
+ * the writer owes this function: ask whenever the LEASE moves, not whenever the loop
+ * comes round.
  */
 export const digestChanged = (
   previous: InstanceDigest | undefined,
