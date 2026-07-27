@@ -236,7 +236,7 @@ export const roleSchema = z.strictObject({
   zones: zonesSchema.optional(),
   instructions: z.array(instructionsSchema).min(1).optional(),
   /**
-   * Launch profile. Optional: roles the circuit never launches (john, curator,
+   * Launch profile. Optional: roles the circuit never launches (john, the
    * gh-actions) must not have one. Its absence on a LAUNCHABLE role is a loud
    * refusal in `roleLaunchability`, not a silent default: a default here would
    * mean "launched with permissions nobody assigned".
