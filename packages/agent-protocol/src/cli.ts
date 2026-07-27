@@ -92,6 +92,7 @@ import {
   renderHold,
   renderHolds,
 } from "./orchestrator/hold.js";
+import { circuitHome } from "./orchestrator/home.js";
 import {
   DIGEST_DIR,
   digestChanged,
@@ -327,6 +328,13 @@ const configFrom = (
 const registryFrom = (argv: readonly string[], root?: string): RoleRegistry =>
   configFrom(argv, root).registry;
 
+/**
+ * THE REPOSITORY OF THE TREE THIS COMMAND WAS CALLED FROM — the sense in which a
+ * config is read BY REF, and in a linked worktree that is exactly right: `--ref HEAD`
+ * from a feature worktree must mean the HEAD of THAT tree. Not the base of the
+ * circuit's state: see `homeOf` below, and the doc block of `orchestrator/home.ts`
+ * for why the two senses had to be split (R26).
+ */
 const repoOf = (at: string): string => {
   try {
     return execFileSync("git", ["-C", at, "rev-parse", "--show-toplevel"], {
@@ -334,6 +342,20 @@ const repoOf = (at: string): string => {
     }).trim();
   } catch (error) {
     return fail(`'${at}' is not inside a git repository: ${(error as Error).message}`, 2);
+  }
+};
+
+/**
+ * WHERE THE STATE OF THE CIRCUIT LIVES ON THIS MACHINE (R26) — the base for
+ * `orchestrator.state` and `orchestrator.mailCheckout`, and for the worktrees root,
+ * which are facts about the box rather than about the caller's directory. `--repo`
+ * still overrides it: the runner and the checks do run against a copy.
+ */
+const homeOf = (at: string): string => {
+  try {
+    return circuitHome(at);
+  } catch (error) {
+    return fail((error as Error).message, 2);
   }
 };
 
@@ -1297,7 +1319,12 @@ const newThread = (argv: readonly string[]): void => {
 };
 
 const mail = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  // THE MAIL ROOT IS A FACT ABOUT THE MACHINE (R26), so `--root` stops being
+  // obligatory here: the reading half of the agent's interface, called from a role's
+  // workspace, now finds the real mail on its own. It used to be mandatory precisely
+  // because the fallback resolved against the caller's worktree, i.e. against a
+  // directory holding no mail — which is why the role cards carry the flag by hand.
+  const root = flag(argv, "--root") ?? pathsFrom(argv).mailRoot;
   const role = required(argv, "--role");
   const registry = registryFrom(argv, repoOf(root));
   if (!registry.isKnown(role)) fail(`role '${role}' is not listed in the config`, 2);
@@ -1517,7 +1544,7 @@ const notify = async (argv: readonly string[]): Promise<void> => {
   const write = argv.includes("--write");
   const loaded = configFrom(argv, undefined);
   const registry = loaded.registry;
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
   const section = loaded.config.orchestrator;
   const rootFlag = flag(argv, "--root");
   const stateFlag = flag(argv, "--state");
@@ -1641,7 +1668,7 @@ const pathsFrom = (argv: readonly string[]): OrchestratorPaths => {
     );
   }
   return orchestratorPaths({
-    repo: flag(argv, "--repo") ?? repoOf(process.cwd()),
+    repo: flag(argv, "--repo") ?? homeOf(process.cwd()),
     orchestrator: section,
     mail: loaded.config.mail,
   });
@@ -2102,7 +2129,7 @@ const worldOf = (input: {
 const probeMailCheckout = (argv: readonly string[]): PreflightCheck => {
   const loaded = configFrom(argv, undefined);
   const section = loaded.config.orchestrator;
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
   if (section === undefined) {
     return {
       name: MAIL_CHECKOUT_CHECK,
@@ -2147,7 +2174,7 @@ const runPreflight = (
       },
     ];
   }
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
   const env = childEnvFrom(argv);
   const preamble = Object.keys(section.env ?? {});
 
@@ -2539,7 +2566,7 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   // reason: it is a fact about the run that lives in no single file — the project
   // names the directory, git owns its state, and the base is whatever `origin` says
   // right now. `status` shows the state; it moves nothing.
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
   const workdirSection = configFrom(argv, undefined).config.orchestrator?.workdir;
   if (workdirSection?.worktrees === undefined) {
     out(`workspaces: not declared (orchestrator.workdir.worktrees) — the sessions inherit ${repo}`);
@@ -3689,7 +3716,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const roleId = required(argv, "--role");
   const thread = required(argv, "--thread");
   const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
 
   const registry = registryFrom(argv, undefined);
   const role = registry.get(roleId);
@@ -4009,7 +4036,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const paths = pathsFrom(argv);
   const journalPath = flag(argv, "--journal") ?? paths.journal;
   const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
   const enableFlag = flag(argv, "--enable-flag") ?? paths.enableFlag;
   const stopFlag = flag(argv, "--stop-flag") ?? paths.stopFlag;
   const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
