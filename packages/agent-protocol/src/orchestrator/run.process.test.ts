@@ -31,6 +31,7 @@ import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
+import { waitFor } from "../testing/wait-for.js";
 import { parseJournal } from "./journal.js";
 import { foldLeases } from "./lease.js";
 
@@ -158,26 +159,6 @@ const sessionLog = (repo: string): string => {
   const dir = join(repo, ".orchestrator", "sessions");
   const names = readdirSync(dir).filter((name) => name.endsWith(".log"));
   return readFileSync(join(dir, names[names.length - 1] as string), "utf8");
-};
-
-/**
- * WAIT FOR A STATE, WITH A CEILING FOR A REAL HANG — never a deadline that the
- * runner's mood can miss.
- *
- * The distinction the flake of 2026-07-27 was made of (the same test, the same
- * class, twice on different commits — msg-100 and msg-123 of `016-protocol-roadmap`):
- * the invariant under test is "the outcome IS recorded", not "it is recorded within
- * twenty seconds". A tight ceiling turns a slow machine into a red run, and a red run
- * people have learned to restart stops being a fact — which is what rule #14 rests on.
- * So the ceiling here is sized for a HANG (something that will never arrive), and the
- * wait returns the moment the state does.
- */
-const HANG_CEILING_MS = 120_000;
-const waitFor = async (state: () => boolean, ceilingMs = HANG_CEILING_MS): Promise<void> => {
-  const until = Date.now() + ceilingMs;
-  while (Date.now() < until && !state()) {
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
 };
 
 /** Is a process still there? `signal 0` asks without touching it. */
