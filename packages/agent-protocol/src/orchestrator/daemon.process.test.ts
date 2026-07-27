@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { parseJournal } from "./journal.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -170,7 +171,7 @@ const daemon = (repo: string, extra: readonly string[] = []): { code: number; ou
       "1",
       ...extra,
     ],
-    { cwd: repo, encoding: "utf8", stdio: "pipe", env: { ...process.env } },
+    { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
   );
   return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
 };
