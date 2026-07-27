@@ -49,6 +49,14 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
           MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+          # ЦЕЛЬ merge — не декорация (инцидент 2026-07-27, тред 016). PR #33 был
+          # смержен в ЖИВУЮ базовую ветку стека, а не в main: GitHub переадресует
+          # базу только при УДАЛЕНИИ базовой ветки. Уведомление сказало «PR #33
+          # merged» — и человек, и роль прочли это как «в main», а половина R13
+          # осталась лежать на боковой ветке. Уведомитель не соврал: цель merge
+          # просто не входила в то, что он произносит. Теперь входит.
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
 
@@ -109,7 +117,16 @@ jobs:
           # один раз: факт merge + либо передача хода, либо явное «не передан».
           BODY_TMP="$(mktemp)"
           {
-            printf 'PR #%s (%s) **merged** by %s.\n' "$PR_NUMBER" "$PR_TITLE" "${MERGED_BY:-неизвестно}"
+            printf 'PR #%s (%s) **merged** by %s → `%s`.\n' \
+              "$PR_NUMBER" "$PR_TITLE" "${MERGED_BY:-неизвестно}" "${BASE_REF:-?}"
+            # Случай «база — не дефолтная ветка» выделен ОТДЕЛЬНО, а не оставлен
+            # на внимательность читателя: именно он и был прочитан неверно, а
+            # разница между «доехало до main» и «доехало до ветки» решает, есть
+            # ли работа на месте или её надо восстанавливать.
+            if [ -n "${BASE_REF:-}" ] && [ -n "${DEFAULT_BRANCH:-}" ] && [ "$BASE_REF" != "$DEFAULT_BRANCH" ]; then
+              printf '\n⚠️ База merge — `%s`, а НЕ `%s`: содержимое PR в дефолтную ветку не попало.\n' \
+                "$BASE_REF" "$DEFAULT_BRANCH"
+            fi
             if [ -z "${ROLE:-}" ]; then
               printf '\n⚠️ Ход не передан: %s — объявите ожидание вручную.\n' "$ROLE_PROBLEM"
             fi
