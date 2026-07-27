@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { unlockedMail } from "./checkout-lock.js";
 import {
   DELIVERY_ATTEMPTS,
   DeliveryRefusedError,
@@ -40,6 +41,20 @@ const harness = (options: {
     };
   };
 
+  // The lock records when it is entered and left, so the tests can say WHERE the
+  // sequence sits relative to it — the dirty check included.
+  const held: string[] = [];
+  const lock = {
+    hold: <T>(body: () => T): T => {
+      held.push("taken");
+      try {
+        return body();
+      } finally {
+        held.push("released");
+      }
+    },
+  };
+
   const run = () =>
     deliverMessage({
       git,
@@ -48,9 +63,10 @@ const harness = (options: {
       subject: "docs(agent-comms): dev-core → 016",
       stage,
       note: (line) => notes.push(line),
+      lock,
     });
 
-  return { run, calls, written, notes, plans: () => plans };
+  return { run, calls, written, notes, held, plans: () => plans };
 };
 
 describe("deliverMessage", () => {
@@ -112,6 +128,28 @@ describe("deliverMessage", () => {
     const h = harness({ ffFails: true });
     expect(() => h.run()).toThrow(/diverged/);
     expect(h.written).toEqual([]);
+  });
+
+  // D-0: the checkout is dirty between the write and the commit, so the lock has to
+  // cover the WHOLE sequence — the dirty check first of all, otherwise a delivery
+  // reads another delivery's transient dirt as somebody's unfinished message.
+  it("runs the whole sequence under the lock on the checkout, dirty check included", () => {
+    const h = harness({});
+    h.run();
+
+    expect(h.held).toEqual(["taken", "released"]);
+    expect(h.calls[0]?.[0]).toBe("status");
+  });
+
+  it("releases the lock when the delivery refuses", () => {
+    const h = harness({ status: " M agent-comms/016/messages/draft.md" });
+    expect(() => h.run()).toThrow(/uncommitted changes/);
+    expect(h.held).toEqual(["taken", "released"]);
+  });
+
+  it("takes the lock the caller hands it — a caller alone in the checkout says so", () => {
+    // `unlockedMail` is a value, not a default: a new call site has to choose.
+    expect(unlockedMail.hold(() => 7)).toBe(7);
   });
 });
 

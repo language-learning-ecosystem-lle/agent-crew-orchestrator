@@ -28,7 +28,15 @@
  * A DIRTY CHECKOUT IS A REFUSAL, NEVER A REPAIR — the same rule as the workspace of
  * a run (R17). The retry path resets the checkout hard, and doing that over somebody
  * else's unfinished message is destroying work to deliver ours.
+ *
+ * AND BECAUSE OF THAT RULE, THE WHOLE SEQUENCE RUNS UNDER A LOCK ON THE CHECKOUT
+ * (`checkout-lock.ts`): between the write and the commit the directory is dirty by
+ * construction, so a second delivery arriving there either refuses on OUR dirt or gets
+ * its half-written message reset away by our retry. The lock is not the delivery's
+ * private business — it is a property of the place — so it comes IN, and `unlockedMail`
+ * is what a caller passes when it owns the directory outright.
  */
+import type { MailLock } from "./checkout-lock.js";
 
 export type GitRun = (args: readonly string[]) => string;
 
@@ -54,6 +62,21 @@ export const deliverMessage = (input: {
   /** Subject of the commit; Conventional Commits, because the checkout has the hook. */
   readonly subject: string;
   /** Replanned per attempt: the stamp and therefore the file name depend on what is already there. */
+  readonly stage: () => StagedMessage;
+  readonly note: (line: string) => void;
+  /** ONE writer inside the checkout at a time; `unlockedMail` when there is nobody to race. */
+  readonly lock: MailLock;
+  readonly attempts?: number;
+}): { readonly label: string; readonly attempts: number } =>
+  // The lock is taken BEFORE the dirty check, not after: our own transient dirt is
+  // precisely what another delivery would read as somebody's unfinished message.
+  input.lock.hold(() => deliverUnderLock(input));
+
+const deliverUnderLock = (input: {
+  readonly git: GitRun;
+  readonly write: (path: string, content: string) => void;
+  readonly branch: string;
+  readonly subject: string;
   readonly stage: () => StagedMessage;
   readonly note: (line: string) => void;
   readonly attempts?: number;

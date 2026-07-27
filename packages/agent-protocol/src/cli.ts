@@ -220,6 +220,7 @@ import {
   PROTOCOL_VERSION_FIELD,
 } from "./schema/version.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
+import { fileMailLock, MailCheckoutBusyError, type MailLock } from "./thread/checkout-lock.js";
 import { DeliveryRefusedError, deliverMessage, deliverySubject } from "./thread/deliver.js";
 import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 import type { Expects, LaunchDirective, ThreadPriorityValue } from "./thread/message.js";
@@ -334,6 +335,31 @@ const repoOf = (at: string): string => {
 const writeOut = (path: string, content: string): void => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content, "utf8");
+};
+
+/**
+ * THE LOCK ON THE MAIL CHECKOUT (D-0, thread `023-daemon-parallelism`) — every writer
+ * that goes into that directory takes it, and there are exactly two: a message and the
+ * instance digest. It lives in the GIT DIRECTORY of the checkout, which is per-checkout
+ * and invisible to `git status` — a lock inside the working tree would be untracked
+ * dirt, and delivery refuses on dirt. Why the granularity is the checkout and not the
+ * branch, and why a local mutex is enough: `thread/checkout-lock.ts`.
+ */
+const mailLockFor = (input: {
+  readonly checkout: string;
+  readonly holder: string;
+  readonly note: (line: string) => void;
+  readonly waitMs?: number;
+}): MailLock => {
+  const gitDir = execFileSync("git", ["-C", input.checkout, "rev-parse", "--absolute-git-dir"], {
+    encoding: "utf8",
+  }).trim();
+  return fileMailLock({
+    path: join(gitDir, "agent-protocol-mail.lock"),
+    holder: input.holder,
+    note: input.note,
+    ...(input.waitMs === undefined ? {} : { waitMs: input.waitMs }),
+  });
 };
 
 const configCheck = (argv: readonly string[]): void => {
@@ -1204,12 +1230,15 @@ const newMessage = (argv: readonly string[]): void => {
         return { path: next.path, content: next.content, label: next.label };
       },
       note: out,
+      lock: mailLockFor({ checkout, holder: `new-message ${from} → ${threadId}`, note: out }),
     });
     out(
       `agent-protocol: sent ${delivered.label} — committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the feed moved underneath)` : ""}`,
     );
   } catch (error) {
-    if (error instanceof DeliveryRefusedError) {
+    // A BUSY CHECKOUT IS A REFUSAL WITH A NAME, not a stack trace: the caller has to be
+    // able to tell "somebody else is delivering right now" from "the mail is broken".
+    if (error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError) {
       fail(error.message, 2);
     }
     throw error;
@@ -3857,6 +3886,9 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
  * Returns what was published, so the caller can tell the next state from this one and
  * not commit a heartbeat.
  */
+/** How long the digest waits for the mail checkout before saying it skipped a beat (ms). */
+const DIGEST_LOCK_WAIT_MS = 20_000;
+
 const publishDigest = (input: {
   readonly argv: readonly string[];
   readonly mailRoot: string;
@@ -3864,6 +3896,17 @@ const publishDigest = (input: {
   readonly digest: InstanceDigest;
 }): boolean => {
   const checkout = repoOf(input.mailRoot);
+  // THE DIGEST YIELDS TO THE MAIL. It is a courtesy line about this box, and a message
+  // from a role is the work itself — so the status line waits a short while and gives up
+  // loudly rather than holding the door on a busy tick. The same lock covers the cleanup
+  // below: `git reset -- <path>` beside somebody else's commit is a second writer in the
+  // index, which is what the lock exists to prevent.
+  const lock = mailLockFor({
+    checkout,
+    holder: `digest of instance ${input.digest.instance}`,
+    note: (line) => err(`agent-protocol: daemon — ${line}`),
+    waitMs: DIGEST_LOCK_WAIT_MS,
+  });
   try {
     deliverMessage({
       git: (args) => {
@@ -3893,6 +3936,7 @@ const publishDigest = (input: {
         label: digestPath(input.digest.instance),
       }),
       note: (line) => err(`agent-protocol: daemon — ${line}`),
+      lock,
     });
     return true;
   } catch (error) {
@@ -3911,14 +3955,16 @@ const publishDigest = (input: {
     // is not licence to destroy it.
     const own = relative(checkout, join(input.mailRoot, digestPath(input.digest.instance)));
     try {
-      execFileSync("git", ["-C", checkout, "reset", "--quiet", "--", own], { stdio: "ignore" });
-      if (spawnSync("git", ["-C", checkout, "cat-file", "-e", `HEAD:${own}`]).status === 0) {
-        execFileSync("git", ["-C", checkout, "checkout", "--quiet", "HEAD", "--", own], {
-          stdio: "ignore",
-        });
-      } else if (existsSync(join(checkout, own))) {
-        rmSync(join(checkout, own));
-      }
+      lock.hold(() => {
+        execFileSync("git", ["-C", checkout, "reset", "--quiet", "--", own], { stdio: "ignore" });
+        if (spawnSync("git", ["-C", checkout, "cat-file", "-e", `HEAD:${own}`]).status === 0) {
+          execFileSync("git", ["-C", checkout, "checkout", "--quiet", "HEAD", "--", own], {
+            stdio: "ignore",
+          });
+        } else if (existsSync(join(checkout, own))) {
+          rmSync(join(checkout, own));
+        }
+      });
     } catch (cleanup) {
       err(
         `agent-protocol: daemon — and the half-written digest could NOT be cleaned out of the mail checkout: ${(cleanup as Error).message}. Delivery refuses a dirty checkout, so mail from this box is blocked until '${own}' is dealt with by hand`,

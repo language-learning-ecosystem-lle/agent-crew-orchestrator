@@ -655,6 +655,21 @@ fetched without a refspec), batch the commit with their own work and push under 
 runner's token. A named flag is honester than a command that behaves differently
 depending on where it runs.
 
+**ONE WRITER AT A TIME INSIDE THE MAIL CHECKOUT** (D-0, thread `023-daemon-parallelism`).
+The checkout is one directory per instance, not one per role, and between the write and
+the commit it is DIRTY BY CONSTRUCTION — so two overlapping deliveries end either with
+the second refusing on the first's dirt, or with the first's retry resetting the second's
+half-written message away. Every writer therefore takes a lock on the checkout for the
+whole `write → commit → push`: the lock file sits in the checkout's **git directory**
+(per-checkout, and invisible to `git status`, since a lock inside the tree would be the
+very dirt delivery refuses). A **live** holder is waited for up to a ceiling (2 minutes
+for a message, 20 seconds for the instance digest — a status line yields to the mail) and
+then refused BY NAME, saying who is inside and for how long; a holder whose **process is
+gone** is taken over loudly, because a lock outliving its session would take the mail of
+the whole box down until a human noticed. A local mutex is enough by R13: the roles of a
+box are raised by one daemon on one machine. Two boxes with two clones are two locks —
+what they race over is the remote, and the push retry already settles that.
+
 `new-message` **REFUSES** to write into a non-migrated (legacy) thread:
 a file write would cut its history down to a single file — a legacy thread is
 appended to by hand as a section in `_thread.md` until it is migrated (right now
