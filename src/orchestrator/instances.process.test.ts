@@ -223,6 +223,20 @@ const digestOnDisk = (contour: Contour, id: string): string | undefined => {
 const commitsOnComms = (contour: Contour): number =>
   Number(git(contour.mail, "rev-list", "--count", "origin/comms").trim());
 
+/**
+ * EVERY VERSION OF ONE BOX'S DIGEST THAT EVER LANDED, oldest first — because the state
+ * this file is about is one the last version cannot show. A lease exists only while the
+ * session runs, and the session is over by the time the tick ends; the only place its
+ * publication can be seen is the history of the file.
+ */
+const digestHistory = (contour: Contour, id: string): readonly string[] => {
+  const path = `agent-comms/_instances/${id}.json`;
+  return git(contour.mail, "log", "--reverse", "--format=%H", "origin/comms", "--", path)
+    .split("\n")
+    .filter((line) => line !== "")
+    .map((sha) => git(contour.mail, "show", `${sha}:${path}`));
+};
+
 describe("a box publishes its own state into the mail branch (R13)", () => {
   it("the tick leaves a committed and pushed digest naming what this box was doing", () => {
     const bench = contour({ instance: "box-a" });
@@ -244,6 +258,35 @@ describe("a box publishes its own state into the mail branch (R13)", () => {
     // failure the delivery path exists to prevent.
     expect(git(bench.mail, "status", "--porcelain")).toBe("");
     expect(git(bench.mail, "show", "origin/comms:agent-comms/_instances/box-a.json")).toBe(raw);
+  });
+
+  it("the lease of a live session reaches the branch — a busy box never publishes itself as idle", () => {
+    // THE DEFECT OF THREAD 025, PINNED. The digest used to be published at ONE point,
+    // the end of the tick — after the run inside it had already released its lease. So
+    // every tick computed `leases: []`, the change check said "same as last time", and
+    // nothing was written at all: four hours and six sessions with a digest that read as
+    // current and said the box was idle. What the fix moves is not the content but the
+    // MOMENT, so what this test reads is the history of the file, not its last version.
+    const bench = contour({ instance: "box-a" });
+    enable(bench.repo);
+
+    daemon(bench);
+
+    const published = digestHistory(bench, "box-a").map((raw) => parseDigest(raw));
+    expect(published.every((read) => read.ok)).toBe(true);
+    const everSeen = published.flatMap((read) =>
+      read.ok
+        ? read.digest.leases.map((lease) => `${lease.role}/${lease.thread} ${lease.state}`)
+        : [],
+    );
+    expect(everSeen).toContain("dev-core/016-protocol-roadmap running");
+
+    // AND THE LAST WORD IS STILL THE TRUTH: the session ended inside the same tick, so
+    // the state left on the branch is an idle box. A digest that got stuck naming a lease
+    // nobody holds would be the same lie the other way round.
+    const last = parseDigest(digestOnDisk(bench, "box-a") ?? "");
+    expect(last.ok).toBe(true);
+    if (last.ok) expect(last.digest.leases).toEqual([]);
   });
 
   it("a second tick that changed nothing does NOT commit again — the branch is not a heartbeat log", () => {

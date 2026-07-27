@@ -2862,6 +2862,22 @@ type RunParams = {
   /** How this run was decided (R18) — it carries the world onto the `launch` event. */
   readonly continuation: Continuation;
   readonly world?: World;
+  /**
+   * THE LEASE OF THIS RUN JUST CHANGED — the hook the instance digest hangs on (R13,
+   * thread `025-stale-instance-digest`).
+   *
+   * It exists because a run is the ONLY part of a tick that outlives the tick's own
+   * timeline: the caller is blocked here for the whole session, so anything the caller
+   * publishes about itself either happens before the lease is taken or after it is
+   * released — never while it is held. Without this hook the digest of a busy box was
+   * `leases: []` for four hours across six sessions, which is the one thing the file
+   * exists not to say.
+   *
+   * It is called AFTER the journal is written, never before: the digest is a fold of the
+   * journal, so a hook that fired first would publish the state the run is leaving.
+   * Failures are the callee's business — the run does not depend on being announced.
+   */
+  readonly onLeaseChange?: () => void;
 };
 
 /**
@@ -3068,6 +3084,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     appendEvent(p.journalPath, event);
     leased = true;
   }
+  // THE ACQUISITION IS ANNOUNCED BEFORE THE SPAWN, for the same reason it is written
+  // before the spawn: from here on the box IS busy, and everything below this line can
+  // take an hour. A digest published after the spawn would be one whole session late.
+  p.onLeaseChange?.();
 
   // THE SESSION OUTPUT IS WRITTEN TO DISK, not only to the operator's screen — and
   // as of R6 it actually arrives there. Two files: the RAW stream as it came
@@ -3367,6 +3387,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     if (step.record === "handoff-detected") {
       appendEvent(p.journalPath, stepEvent(step, base));
       lifecycle = "draining";
+      p.onLeaseChange?.();
       out(`agent-protocol: the turn on ${p.thread} was passed — ${p.roleId} is draining`);
       continue;
     }
@@ -3379,6 +3400,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       const waitDeadline = eventTimestamp(new Date(waitUntilMs));
       appendEvent(p.journalPath, stepEvent(step, base, { waitDeadline }));
       lifecycle = "waiting";
+      p.onLeaseChange?.();
       const line =
         declaration?.ok === true
           ? describeWait({ marker: declaration.marker, until: waitDeadline })
@@ -3398,6 +3420,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       windDownAnnounced = false;
       appendEvent(p.journalPath, stepEvent(step, base));
       lifecycle = "running";
+      p.onLeaseChange?.();
       waitingSinceMs = 0;
       waitUntilMs = 0;
       const line = `the wait ended after ${Math.round(waitedMs / 1000)}s — back to work, the deadline moves to ${eventTimestamp(new Date(deadlineMs))}`;
@@ -3423,6 +3446,17 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       p.journalPath,
       stepEvent(step, base, { exitCode, output: p.sessionLog, session: sessionId, steps }),
     );
+    // THE RELEASE IS ANNOUNCED HERE TOO, although the daemon publishes at the end of its
+    // tick anyway: the hook is "every change of this lease", not "every change the caller
+    // does not already cover". A hook with one hole in it is a hole somebody has to
+    // remember, and the second publication costs nothing — `digestChanged` makes the
+    // tick's own call a no-op against a state already on the branch.
+    //
+    // The ONE release that is deliberately NOT announced is `recordSupervisorGone`: it
+    // runs from a process-exit handler, and a git push started there has no time to
+    // finish. That box's digest stays at its last known state, which is exactly what a
+    // reader's staleness judgement is for.
+    p.onLeaseChange?.();
     if (spawnError !== undefined) {
       err(`agent-protocol: the spawn of '${p.exec}' failed: ${spawnError.message}`);
     }
@@ -4131,6 +4165,36 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       : `agent-protocol: daemon — publishing state as instance '${selfInstance}' to ${digestPath(selfInstance)} on ${mailBranch}`,
   );
 
+  /**
+   * THE STATE OF THIS BOX, RE-READ AND PUBLISHED IF IT MOVED — one function, called from
+   * the two places the state can move (thread `025-stale-instance-digest`).
+   *
+   * It used to be inline at the end of the tick and NOWHERE ELSE, and that single call
+   * site was the whole defect: the lease of a run is taken and released INSIDE the
+   * `await` above it, so by the time the tick reached this code the box was idle again.
+   * Every tick therefore computed `leases: []`, `digestChanged` said "same as last time",
+   * and nothing was ever written — a digest that had never once in its life published a
+   * live lease, while reading as current because its `writtenAt` was a real moment.
+   *
+   * The journal is re-read on every call rather than passed in: a run appends to it while
+   * this process is blocked, so the copy the tick loaded is stale exactly when it matters.
+   */
+  const publishState = (): void => {
+    if (selfInstance === undefined) return;
+    const state = digestOf({
+      instance: selfInstance,
+      roles: launchable,
+      leases: foldLeases(
+        existsSync(journalPath) ? parseJournal(readFile(journalPath, "orchestrator journal")) : [],
+        new Date(),
+        gates.maxAttempts.value,
+      ),
+      now: new Date(),
+    });
+    if (!digestChanged(published, state)) return;
+    if (publishDigest({ argv, mailRoot, branch: mailBranch, digest: state })) published = state;
+  };
+
   // A lease nobody was left to close is indistinguishable from work from the
   // outside — a new supervisor must say so out loud instead of quietly carrying on.
   const orphans = unclosedLeases(
@@ -4358,6 +4422,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             windDownMs: ceilings.windDown.value * 1000,
             workdir: setup.workdir,
             continuation: setup.continuation,
+            // R13: the box says it is busy WHILE it is busy. The whole session happens
+            // inside this await, so without the hook the digest can only ever describe
+            // the gaps between sessions.
+            onLeaseChange: publishState,
             ...(setup.world === undefined ? {} : { world: setup.world }),
             ids,
             now: startedAt,
@@ -4383,28 +4451,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       );
     }
 
-    // R13, second half: THE STATE OF THIS BOX IS PUBLISHED AT THE END OF THE TICK, when
-    // the launch above has already finished and the journal holds its result. Publishing
-    // before the launch would announce a state that is one whole session out of date.
-    // Only on a CHANGE — `digestChanged` ignores the clock, so an idle box does not turn
+    // R13, second half: THE STATE OF THIS BOX AT THE END OF THE TICK. This call is no
+    // longer the only one — the run above announces its own lease as it takes and
+    // releases it (`onLeaseChange`) — but it stays, because a tick can change the state
+    // without a run: a lease released by hand, an orphan folded away by the clock, a
+    // ceiling that made a pair terminal. Only on a CHANGE, so an idle box does not turn
     // the mail branch into a heartbeat log.
-    if (selfInstance !== undefined) {
-      const state = digestOf({
-        instance: selfInstance,
-        roles: launchable,
-        leases: foldLeases(
-          existsSync(journalPath)
-            ? parseJournal(readFile(journalPath, "orchestrator journal"))
-            : [],
-          new Date(),
-          gates.maxAttempts.value,
-        ),
-        now: new Date(),
-      });
-      if (digestChanged(published, state)) {
-        if (publishDigest({ argv, mailRoot, branch: mailBranch, digest: state })) published = state;
-      }
-    }
+    publishState();
 
     if (once) return;
     await sleep(tickMs);
