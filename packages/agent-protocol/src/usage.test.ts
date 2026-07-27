@@ -66,6 +66,26 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
     ],
   ],
   ["orchestrator status", ["--ref", "origin/main", "--exclude-roles", "dev-core"]],
+  // T-0: the live frame reads the two flags, the pid file and the mail root, and
+  // `--watch` redraws it — every one of them a flag `status` did not take before.
+  [
+    "orchestrator status",
+    [
+      "--ref",
+      "origin/main",
+      "--stop-flag",
+      "/tmp/stop",
+      "--force-flag",
+      "/tmp/force",
+      "--pid-file",
+      "/tmp/daemon.pid",
+      "--watch",
+      "--interval",
+      "2",
+      "--frames",
+      "1",
+    ],
+  ],
   // `preflight` resolves the agent per role, and that resolution spans model and
   // effort as much as it spans the binary.
   [
