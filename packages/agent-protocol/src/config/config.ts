@@ -166,6 +166,33 @@ export const announcementsSchema = templateSlots<AnnouncementKind>(
   ANNOUNCEMENT_VARIABLES,
 );
 
+/**
+ * ONE BOX THAT RAISES ROLES (R13, thread `016-protocol-roadmap`).
+ *
+ * THE TOPOLOGY IS OPEN, IN THE REPOSITORY — it travels with `git pull`, so the boxes
+ * agree about each other for free and a change to who-raises-what goes through a PR
+ * like every other policy. What is machine-specific is the other half of the join:
+ * which of these the box IS (`instance` in the machine config, R14). Secrets live in
+ * neither — there are none here to keep.
+ *
+ * THERE IS NO ADDRESS FIELD, and its absence is a decision rather than an omission.
+ * Instances never ask each other anything: a box PUBLISHES a digest of its own state
+ * into the mail branch and reads the others' from there, so no address, no key and no
+ * reachability is needed by anybody. An address "for later" would be exactly the
+ * complexity-ahead-of-its-user this package refuses.
+ *
+ * `roles` IS THE LOAD-BEARING PART: a role belongs to exactly one instance
+ * (`config check` refuses a role with none or with two), and that is what makes the
+ * per-machine leases sufficient — two boxes cannot raise one role, by construction.
+ */
+export const instanceSchema = z.strictObject({
+  id: z.string().min(1),
+  /** The roles this box raises. Exactly one instance may claim a role. */
+  roles: z.array(z.string().min(1)),
+  /** A human's signature on the box: which machine this is. Not read by anything. */
+  note: z.string().min(1).optional(),
+});
+
 export const protocolConfigSchema = z.strictObject({
   /**
    * THE VERSION OF THE PROTOCOL SCHEMA the repository's data is at — see
@@ -184,9 +211,16 @@ export const protocolConfigSchema = z.strictObject({
   orchestrator: orchestratorSchema.optional(),
   notifications: notificationsSchema.optional(),
   announcements: announcementsSchema.optional(),
+  /**
+   * The boxes that raise roles (R13). OPTIONAL, and its absence is the pre-R13
+   * behaviour verbatim: one machine, every role — the package does not invent a
+   * topology for a project that has not described one.
+   */
+  instances: z.array(instanceSchema).optional(),
   roles: z.array(roleSchema).min(1),
 });
 
+export type Instance = z.infer<typeof instanceSchema>;
 export type Mail = z.infer<typeof mailSchema>;
 export type Orchestrator = z.infer<typeof orchestratorSchema>;
 export type Notifications = z.infer<typeof notificationsSchema>;

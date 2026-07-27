@@ -68,14 +68,17 @@ const WAITING =
  * exactly this, and faking it cheaply would mean testing something other than
  * what actually runs.
  */
-const contour = (): { repo: string; mail: string } => {
+const contour = (extra: Record<string, unknown> = {}): { repo: string; mail: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-run-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
 
   const repo = join(base, "work");
   execFileSync("git", ["clone", "-q", origin, repo]);
-  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  writeFileSync(
+    join(repo, "agent-protocol.json"),
+    `${JSON.stringify({ ...CONFIG, ...extra }, null, 2)}\n`,
+  );
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "config");
@@ -1006,5 +1009,147 @@ describe("a session that asks and waits alive (R19)", () => {
     // ending of a long run.
     expect(journal(repo).at(-1)).toMatchObject({ reason: "timeout" });
     expect(result.out).toContain("did NOT wind down");
+  }, 60_000);
+});
+
+/**
+ * THE SCOPE DOOR OF A MANUAL RUN (R13, curator's decision on the reviewer's finding on
+ * PR #32). The daemon refuses a role it does not own; `run` used to advertise the same
+ * flags in its help and check nothing, so the hand-typed launch was the way around the
+ * topology — and it is the launch a human types exactly when something is already wrong.
+ *
+ * The invariant nailed down here is that the refusal happens BEFORE the world is
+ * touched: no lease, no journal, no workspace. A run that refuses after leasing would
+ * leave the role held by nobody on a box that is not supposed to raise it at all.
+ */
+describe("a manual run stops at the same scope door as the daemon (R13)", () => {
+  /** A machine that knows its own name — the second half of the ownership join (R14). */
+  const identity = (repo: string, instance: string): void => {
+    const dir = join(xdgOf(repo), "agent-protocol");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "local.json"), `${JSON.stringify({ instance }, null, 2)}\n`);
+  };
+
+  const runWith = (repo: string, extra: readonly string[]): { code: number; out: string } => {
+    const result = spawnSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--exec",
+        "/bin/true",
+        "--poll",
+        "1",
+        "--write",
+        ...extra,
+      ],
+      { cwd: repo, encoding: "utf8", env: sandbox(repo) },
+    );
+    return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
+  };
+
+  const TOPOLOGY = {
+    instances: [
+      { id: "box-a", roles: ["dev-core"], note: "the box that owns the role" },
+      { id: "box-b", roles: [] },
+    ],
+  };
+
+  it("the role belongs to another instance → refused, and nothing was leased", () => {
+    const { repo } = contour(TOPOLOGY);
+    identity(repo, "box-b");
+
+    const result = runWith(repo, []);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("owned by instance 'box-a'");
+    expect(result.out).toContain("this box is 'box-b'");
+    // The door is BEFORE the world: the journal was never opened, so there is no lease
+    // for a supervisor on the wrong box to have to close.
+    expect(existsSync(journalPath(repo))).toBe(false);
+  }, 60_000);
+
+  it("the role is this box's → raised, the topology is not a blanket refusal", () => {
+    const { repo } = contour(TOPOLOGY);
+    identity(repo, "box-a");
+
+    const result = runWith(repo, ["--wall-clock", "20"]);
+
+    expect(result.code).toBe(0);
+    expect(journal(repo).map((event) => event.kind)).toContain("lease-acquired");
+  }, 60_000);
+
+  it("the operator excluded the very role they asked for → refused instead of raised", () => {
+    // `run --role X --exclude-roles X` is two statements that contradict each other, and
+    // the one that must not win is the silent one. Before this it was a successful launch.
+    const { repo } = contour();
+
+    const result = runWith(repo, ["--exclude-roles", "dev-core"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("excluded by the operator");
+    expect(existsSync(journalPath(repo))).toBe(false);
+  }, 60_000);
+
+  it("the operator named other roles → the one asked for is outside the scope of this run", () => {
+    const { repo } = contour({
+      roles: [
+        ...CONFIG.roles,
+        {
+          ...CONFIG.roles[0],
+          id: "curator",
+          summary: "the other one",
+          wake: { mode: "watch", session: "s2" },
+        },
+      ],
+    });
+
+    const result = runWith(repo, ["--roles", "curator"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("outside the scope of this run");
+    expect(existsSync(journalPath(repo))).toBe(false);
+  }, 60_000);
+
+  it("a name that is not a launchable role is a typo, not an empty scope", () => {
+    const { repo } = contour();
+
+    const result = runWith(repo, ["--roles", "dev-cor"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("is not a launchable role of this circuit");
+    expect(existsSync(journalPath(repo))).toBe(false);
+  }, 60_000);
+
+  it("both flags at once have two answers, so the run does not start", () => {
+    const { repo } = contour();
+
+    const result = runWith(repo, ["--roles", "dev-core", "--exclude-roles", "dev-core"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("mutually exclusive");
+    expect(existsSync(journalPath(repo))).toBe(false);
+  }, 60_000);
+
+  it("a box with no name under a declared topology does not guess — it refuses", () => {
+    // Guessing here would guess "raise it": the failure mode is a second box on a role
+    // whose lease is local to the first.
+    const { repo } = contour(TOPOLOGY);
+
+    const result = runWith(repo, []);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("does not know which instance it is");
+    expect(existsSync(journalPath(repo))).toBe(false);
   }, 60_000);
 });

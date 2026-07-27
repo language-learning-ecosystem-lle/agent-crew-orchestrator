@@ -320,6 +320,7 @@ rather than going through that door.
 | 8 | + the graceful deadline (R20): `roles[].launch.limits.windDownSeconds` in the config. NOTHING else on disk changes — the deadline reaches a session through the environment of its own process and through its prompt, and neither is stored; `timeout` keeps its name and changes its MEANING (a session that did not land), which is not a migration |
 | 9 | + the launch directive in the feed (R21): the message header field `launch` (`model=…, effort=…`) and the role permission `launch-params`. NO data moves — no message carries the field yet, and its absence keeps meaning "raise the role on its standing calibration"; where a directive was applied is PRINTED on the launch line, not stored as an event |
 | 10 | + the priority of a thread in the feed (R5): the message header field `priority` (`high \| normal \| low`) and the role permission `thread-priority`. NO data moves — no message carries the field, and its absence means the thread sits at the default `normal`; the queue is recomputed every tick from the feed and PRINTED on the daemon's stream, not stored as an event |
+| 11 | + the boxes that raise roles (R13): the optional config section `instances` (`id`, `roles`, `note`) — which machine raises which role. NO data moves; leave the section out and the circuit behaves exactly as before (one box, every role). The machine's half of the join (`instance` in `~/.config/agent-protocol/local.json`) is NOT versioned by this number: that file travels nowhere and has one writer |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -586,8 +587,10 @@ agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
                             [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] \
                             [--max-attempts <n>] \
                             [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--now <iso>] \
-                            [--fresh] [--write] [-d|--detach]
+                            [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
                             # attached by default (you watch what you raised); -d backgrounds the supervisor properly
+                            # --roles/--exclude-roles: the SCOPE DOOR of the daemon, on the manual launch too (R13, S17) —
+                            #   a --role owned by another instance or left out by these flags is REFUSED, not raised
                             # the four ceilings: the flag beats roles[].launch.limits, which beats the package default
                             # --wait-input is the ceiling of a DECLARED wait (R19) and does not come out of the wall clock
                             # --wind-down is the LANDING MARGIN (R20): how long before the deadline the session is asked to
@@ -597,7 +600,10 @@ agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
                             # per fresh package; --fresh forbids resuming the previous session (S11, S12)
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] \
-                            [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once]
+                            [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] \
+                            [--roles <a,b>] [--exclude-roles <a,b>]
+                            # --roles/--exclude-roles: WHICH roles this launch raises (R13, S17), mutually exclusive,
+                            #   on top of the instance filter — a role owned by another box is never raised here
                             # the two GATES: --max-attempts (failures of one pair since its last delivery)
                             # and --max-runs (launches in a row without a completed); both print their source
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
@@ -1623,3 +1629,45 @@ full protocol cycle on an isolated bench: it reads a thread, appends a section,
 regenerates the index, commits and pushes, and exits with a code. The result and
 the conclusions are in `spike/RESULT.md`. The spike works only in a `$TMPDIR`
 sandbox and does not touch the production circuit.
+### S17 — which box raises which role, and what one run raises (R13)
+
+**The topology is open, in the repository.** `instances` in `agent-protocol.json` says which
+machine raises which role (`id`, `roles`, `note`); it travels with `git pull`, so the boxes
+agree about each other for free and a change to it goes through a PR like every other policy.
+The other half of the join is the machine's and cannot be committed: `"instance": "<id>"` in
+`~/.config/agent-protocol/local.json` (R14 — the repository says WHAT exists, the machine says
+WHO it is). Note the singular: `instances` is POLICY and is refused by name in the machine
+config, `instance` is identity and lives nowhere else.
+
+**There is no address field, and its absence is a decision.** Instances never ask each other
+anything: a box publishes a digest of its own state into the mail branch and reads the others'
+from there, so no address, no key and no reachability is needed by anybody.
+
+**A role belongs to EXACTLY ONE instance, and that is load-bearing.** Leases are local to a
+machine, so a local lease protects against a second session only while no other box can raise
+the same role. Ownership is what MAKES the local lease sufficient — the overlap is gone by
+construction rather than by agreement. `config check` therefore refuses a launchable role that
+no instance claims and one that two claim; a box that does not know its own name refuses to
+start rather than falling back to "raise everything", because that fallback raises somebody
+else's role.
+
+**The scope of a run is the operator's** (`orchestrator daemon` / `run`): `--roles a,b` names
+what this launch raises, `--exclude-roles c` names what it leaves out, the two are mutually
+exclusive, and a name that is not a launchable role is refused at the door — otherwise a typo
+is a daemon that raises nobody while reporting that it works. Saying nothing means EVERY ROLE
+OF THIS INSTANCE: the safety of "nobody without being asked" is already given by the enable
+gate, and a second switch of the same meaning is the one that is always forgotten.
+
+Every role the scope removes is spoken in the daemon's banner and in `orchestrator status`,
+with its reason (owned by another box / not listed / excluded by the operator) — a role missing
+from the queue for an unspoken reason is indistinguishable from a role with no mail.
+
+**A manual `run` stops at the same door.** `orchestrator run --role X` refuses when X belongs to
+another instance, and when the operator's own flags leave X out (`--exclude-roles X`, or a
+`--roles` list without it) — with the same words and the same exit code as the daemon's filter,
+because it is the same code. A door in the daemon only would leave the hand-typed launch as the
+way around the topology, and that is the launch a human types exactly when something is already
+wrong: the workspace lock keeps a second session off a tree on THIS box, ownership is what keeps
+this box off a role another box holds the lease on. The refusal lands BEFORE the world is
+touched — no lease, no journal, no workspace — so there is nothing left held by nobody.
+
