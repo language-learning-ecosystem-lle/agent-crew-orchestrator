@@ -596,7 +596,13 @@ agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <
 agent-protocol orchestrator preflight --ref <ref> [--exec <bin>] [--local-config <p>]   # the checks BEFORE the lease
 agent-protocol orchestrator enable  --ref <ref> [--write]                  # ENABLE launches
 agent-protocol orchestrator disable --ref <ref> [--write]                  # disable them
-agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [--max-attempts <n>]  # the whole mode + the launch merge
+agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [--max-attempts <n>] \
+                            [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] \
+                            [--watch] [--interval <sec>] [--frames <n>]   # the LIVE FRAME + the whole mode
+                            # the frame: leases, holds, the circuit (gate, stop/force flags, whether a daemon
+                            # is alive), the queue with the reason for its order, the neighbours' digests, and
+                            # how old the mail on disk is; then the static half (paths, permissions, resolution)
+                            # --watch redraws THE SAME frame every --interval seconds and READS ONLY
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
@@ -1875,3 +1881,51 @@ handler and to its usage line together is invisible to it, and that is the inten
 what it guards is drift in the one direction that refuses calls. Deriving the truth instead is
 not available: `flag(argv, "--x")` is scattered through 4600 lines and no static reading of it
 would be trustworthy.
+
+### S21 — the live frame: one operator view, and a watch that only reads (thread 019, T-0)
+
+`status` printed a fold of the journal and the enable gate, and that left three questions an
+operator asks in front of a contour that raised nobody with no answer at all: is a daemon alive,
+is a stop flag lying there, and who would be raised next. All three were on disk; none was in the
+output, so answering them meant opening files by hand. They are in `status` now, and they arrive
+as part of something larger.
+
+**The frame.** The live half of the operator view is one thing with one name — `renderFrame` over
+an `OperatorFrame` (`orchestrator/snapshot.ts`): leases, holds, the circuit (the gate, the stop
+and force flags, whether the daemon's pid is alive), the queue with the reason for its order, the
+neighbours' digests with their age, and how old the mail on disk is. `status` prints the frame and
+then its static sections; `status --watch` prints the frame and nothing else; the TUI will draw
+the same frame. The point of the seam is that they have nowhere to differ: a watcher that computed
+the attempt ceiling slightly differently from the daemon would show a human a picture the circuit
+does not follow, and there would be nothing to argue with it. For the same reason the queue is
+built by `rankCandidates`, the very function the daemon's tick builds it with.
+
+**What stays out of the frame, and why one of them matters.** Paths, launch permissions, the
+machine config, the scope, the launch resolution and the workspaces are the config read back, not
+live facts. `workspaces` is more than static: it calls `git fetch` (through `baseCommitOf`), so a
+frame containing it would fetch once a second.
+
+**A reader never repairs the mail.** `mailCheckoutState` fetches AND fast-forwards — that is the
+daemon's work, once a tick. A `--watch` forgotten in a tmux pane must never do it: it would
+fast-forward the checkout under a live daemon, and two watchers would race for it. The observer's
+probe is `mailCheckoutFreshness`: no network, no writes. The age it reports is TWO facts, because
+one lies exactly where it matters — the mtime of `FETCH_HEAD` answers "when did anybody pull",
+while the queue is computed from the WORKING TREE, and the two come apart precisely in the failing
+case (the ff-merge runs under try/catch, and is not attempted at all when the checkout sits on
+another branch). Then `FETCH_HEAD` is fresh, the tree is arbitrarily old, and a panel marked fresh
+is lying. So the mark is "when it was pulled" plus "whether it landed" (`behind`).
+
+The consequence is worth stating so that nobody later "fixes" it: **with the daemon down the queue
+panel goes stale and nothing refreshes it — and that is the truth about the world, not a display
+defect.** The honest answer to "why was nobody raised" is "the checkout has not been pulled in N
+minutes, because nothing is alive to pull it", and it is more useful than a queue that merely
+looks fresh. No timer and no key of any reader calls `mailCheckoutState`.
+
+**The redraw.** On a TTY the frame is written in place — cursor home, each line clearing its own
+tail, the rest of the screen cleared once, all in ONE write, so nothing blinks and no half-frame is
+ever on screen; lines are truncated to the terminal width and `resize` redraws immediately, because
+wrapped lines drift an in-place redraw out of alignment. Without a TTY (a pipe, `tee`, a file)
+frames are appended with a separator. The terminal is restored from ONE place (`process.on("exit")`),
+which catches the normal end, SIGINT and an unhandled throw alike. `--frames <n>` stops after n
+frames, which is what makes the loop checkable at all. The redraw itself — the writes, the timer,
+`resize` — has no test: a declared gap, the same one `up`/`down` have.

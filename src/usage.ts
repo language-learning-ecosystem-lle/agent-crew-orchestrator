@@ -81,10 +81,18 @@ which ref was used is printed. The strict forms below keep every flag they had.
   agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>]
+  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--watch] [--interval <sec>] [--frames <n>]
                               # it SHOWS what the daemon would do, so it reads the same
                               # answers the daemon reads: the ceilings, the scope of roles,
                               # the mail root and the agent resolution ('launch resolution')
+                              # THE LIVE FRAME first (T-0): leases, holds, the circuit
+                              # (gate, stop/force flags, whether a daemon is alive), the queue
+                              # with the reason for its order, the neighbours' digests, and how
+                              # old the mail on disk is; then the static sections
+                              # --watch: THE SAME FRAME, redrawn every --interval seconds (2 by
+                              # default) — for a dumb terminal, a tmux pane or a pipe into tee;
+                              # it READS ONLY: no fetch, nothing repaired, the age is shown instead
+                              # --frames <n>: stop after n frames (for checks)
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
   agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background

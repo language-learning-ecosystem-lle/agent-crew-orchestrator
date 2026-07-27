@@ -15,8 +15,8 @@
  * i.e. the check would silently turn into its own opposite.
  */
 import { execFileSync } from "node:child_process";
-import { realpathSync } from "node:fs";
-import { relative } from "node:path";
+import { existsSync, realpathSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 
 const git = (root: string, args: readonly string[]): string => {
   try {
@@ -125,6 +125,72 @@ export const mailCheckoutState = (
   ]).trim();
   const [behind = "0", ahead = "0"] = counts.split(/\s+/);
   return { branch: current, dirty, behind: Number(behind), ahead: Number(ahead) };
+};
+
+/**
+ * HOW OLD THE MAIL ON DISK IS — for a READER (T-0, thread 019). The observer's
+ * counterpart of `mailCheckoutState` above, and the difference is the whole point:
+ * that one FETCHES and FAST-FORWARDS, i.e. it mutates the checkout, and it is the
+ * daemon's work, once a tick. A watcher forgotten in a tmux pane must never do it —
+ * it would fast-forward the mail under a live daemon, and two watchers would race
+ * for it. This one only reads: no network, no writes, no locks.
+ *
+ * TWO FACTS, BECAUSE ONE LIES EXACTLY WHERE IT MATTERS (curator's correction 5).
+ * `FETCH_HEAD`'s mtime answers "when did anybody last PULL"; the queue, however, is
+ * computed from the WORKING TREE, and the two come apart precisely in the failing
+ * case: the ff-merge in `mailCheckoutState` runs under try/catch (divergence, dirt),
+ * and it is not attempted at all when the checkout is not on the mail branch. Then
+ * `FETCH_HEAD` is fresh, the tree is arbitrarily old, and a panel marked fresh is
+ * lying. So: "when it was pulled" (mtime) PLUS "whether it landed" (behind).
+ */
+export type MailFreshness = {
+  /** When something was last fetched into this checkout; absent — never, or unreadable. */
+  readonly fetchedAt?: Date;
+  /** Commits on `origin/<branch>` that this tree does not have; absent — not countable. */
+  readonly behind?: number;
+  /** The branch the checkout is actually sitting on. */
+  readonly branch?: string;
+  /** Why the reading is incomplete — named rather than swallowed into "fresh". */
+  readonly problem?: string;
+};
+
+export const mailCheckoutFreshness = (checkout: string, branch: string): MailFreshness => {
+  let gitDir: string;
+  try {
+    gitDir = git(checkout, ["rev-parse", "--absolute-git-dir"]).trim();
+  } catch (error) {
+    return { problem: (error as Error).message };
+  }
+  const fetchHead = join(gitDir, "FETCH_HEAD");
+  const fetchedAt = existsSync(fetchHead) ? statSync(fetchHead).mtime : undefined;
+  let current: string | undefined;
+  let behind: number | undefined;
+  let problem: string | undefined;
+  try {
+    current = git(checkout, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+    const counts = git(checkout, [
+      "rev-list",
+      "--left-right",
+      "--count",
+      `origin/${branch}...HEAD`,
+    ]).trim();
+    behind = Number(counts.split(/\s+/)[0] ?? Number.NaN);
+    if (!Number.isInteger(behind)) {
+      behind = undefined;
+      problem = `the behind count did not read ('${counts}')`;
+    }
+  } catch (error) {
+    // A checkout without `origin/<branch>` (never fetched, or a different remote) is
+    // a legitimate state to REPORT, not to throw over: the frame says the age is
+    // unknown, which is the honest answer, and the watcher keeps drawing.
+    problem = (error as Error).message;
+  }
+  return {
+    ...(fetchedAt === undefined ? {} : { fetchedAt }),
+    ...(behind === undefined ? {} : { behind }),
+    ...(current === undefined ? {} : { branch: current }),
+    ...(problem === undefined ? {} : { problem }),
+  };
 };
 
 /**

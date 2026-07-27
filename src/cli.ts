@@ -50,7 +50,13 @@ import {
   loadLocalConfig,
 } from "./config/local.js";
 import { type LoadedThread, loadThread, loadThreads, renderThreadFailures } from "./fs/comms.js";
-import { fileExistsAtRef, mailCheckoutState, messagesAtRef, workdirState } from "./fs/git.js";
+import {
+  fileExistsAtRef,
+  mailCheckoutFreshness,
+  mailCheckoutState,
+  messagesAtRef,
+  workdirState,
+} from "./fs/git.js";
 import {
   parseNotifyState,
   planNotifications,
@@ -90,7 +96,6 @@ import {
   holdStamp,
   parseHold,
   renderHold,
-  renderHolds,
 } from "./orchestrator/hold.js";
 import { circuitHome } from "./orchestrator/home.js";
 import {
@@ -102,7 +107,6 @@ import {
   type InstanceDigest,
   parseDigest,
   renderDigest,
-  renderInstances,
 } from "./orchestrator/instances.js";
 import {
   DEFAULT_WAIT_INPUT_SECONDS,
@@ -173,10 +177,11 @@ import {
   describeOrder,
   orderCandidates,
   type RankedCandidate,
+  rankCandidates,
   resolveThreadPriority,
   waitingSince,
 } from "./orchestrator/priority.js";
-import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
+import { renderSystemdUnit } from "./orchestrator/reboot.js";
 import {
   describeResidentWait,
   renderResidentWaits,
@@ -191,7 +196,7 @@ import {
   resolveLaunchScope,
   scopeFlagIssues,
 } from "./orchestrator/scope.js";
-import { renderStatus } from "./orchestrator/status.js";
+import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
 import { describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
@@ -2505,31 +2510,169 @@ const loadDigests = (
  * someone who remembered the paths. The path flags remain an override for checks
  * on a copy.
  */
-const orchestratorStatus = (argv: readonly string[]): void => {
+/**
+ * `snapshot()` OF THE STATEMENT OF WORK — the whole live view collected in one call
+ * (T-0, thread 019). Everything it touches is DISK: the journal, the holds, the four
+ * flags, the pid file, the mail directory, the digests. Not one git command, and in
+ * particular never `mailCheckoutState`, which fetches and fast-forwards — a reader
+ * that repaired the checkout would race the daemon for it (see `mailCheckoutFreshness`
+ * for the whole argument). How old that disk state is comes back as a fact in the
+ * frame instead.
+ */
+const operatorFrame = (argv: readonly string[]): OperatorFrame => {
   const paths = pathsFrom(argv);
   const journal = flag(argv, "--journal") ?? paths.journal;
   const holds = flag(argv, "--holds") ?? paths.holds;
   const enableFlag = flag(argv, "--enable-flag") ?? paths.enableFlag;
+  const stopFlag = flag(argv, "--stop-flag") ?? paths.stopFlag;
+  const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
+  const pidFile = flag(argv, "--pid-file") ?? paths.daemonPid;
+  const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
 
   const events = existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
   const now = orchestratorNow(argv);
-  // The SAME attempt ceiling the daemon judges by (`--max-attempts`), or `status`
-  // would call a pair exhausted that the next tick raises without blinking.
-  out(renderStatus(foldLeases(events, now, gatesFrom(argv).maxAttempts.value)));
-  out(renderHolds(foldHolds(loadHolds(holds), now)));
-
-  const launchesEnabled = existsSync(enableFlag);
   const modeFile = flag(argv, "--mode-file");
-  if (modeFile === undefined) {
-    out(`launches: ${launchesEnabled ? "enabled" : "disabled"}`);
-  } else {
+  let reboot: "systemd" | "manual" | undefined;
+  if (modeFile !== undefined) {
     const mode = readFile(modeFile, "reboot mode").trim();
     if (mode !== "systemd" && mode !== "manual") {
-      fail(`reboot mode '${mode}' in '${modeFile}' — expected systemd | manual`, 2);
+      return fail(`reboot mode '${mode}' in '${modeFile}' — expected systemd | manual`, 2);
+    }
+    reboot = mode;
+  }
+
+  const local = localFrom(argv);
+  const roles = launchableRoles(argv);
+  const scope = launchScopeFrom(argv, local, roles, false);
+  const registry = registryFrom(argv, undefined);
+  const scan = loadThreads(mailRoot, registry.ids());
+  const threads = scan.threads.map((loaded) => loaded.thread);
+  // The queue is built by the SAME function the daemon builds it with, scoped to the
+  // same roles — see `rankCandidates`.
+  const { ranked, ignored } = rankCandidates({
+    threads,
+    roles: scope.roles,
+    waitingOn: (role) => threadsWaitingOn(threads, role),
+    authorized: (role) => registry.canSetThreadPriority(role),
+  });
+  const published = loadDigests(mailRoot);
+  const checkout = dirname(mailRoot);
+  const daemonPid = runningDaemon(pidFile);
+
+  return {
+    now,
+    // The SAME attempt ceiling the daemon judges by (`--max-attempts`), or the frame
+    // would call a pair exhausted that the next tick raises without blinking.
+    leases: foldLeases(events, now, gatesFrom(argv).maxAttempts.value),
+    holds: foldHolds(loadHolds(holds), now),
+    circuit: {
+      launchesEnabled: existsSync(enableFlag),
+      ...(reboot === undefined ? {} : { reboot }),
+      stopFlag: existsSync(stopFlag),
+      forceFlag: existsSync(forceFlag),
+      ...(daemonPid === undefined ? {} : { daemonPid }),
+      pidFilePresent: existsSync(pidFile),
+    },
+    queue: orderCandidates(ranked),
+    queueNotes: [...renderThreadFailures(scan.failures), ...ignored],
+    digests: published.digests,
+    unreadableDigests: published.unreadable,
+    ...(scope.instance === undefined ? {} : { self: scope.instance }),
+    mail: {
+      root: mailRoot,
+      ...mailCheckoutFreshness(checkout, configFrom(argv, undefined).config.mail.branch),
+    },
+  };
+};
+
+/**
+ * `status --watch` — THE FRAME, REDRAWN (T-0, thread 019). Deliberately built before
+ * the TUI and NOT as a cheap substitute for it: it covers cases the TUI cannot enter
+ * by construction — a dumb terminal over ssh, a tmux pane nobody looks at, output
+ * into `tee`, a screenshot for a thread. Raw mode needs a real TTY and takes the
+ * terminal for itself; this takes nothing.
+ *
+ * TWO OUTPUT SHAPES, one loop. On a TTY the frame is drawn in place: the cursor goes
+ * home, every line clears its own tail (`ESC[K`) and the rest of the screen is cleared
+ * once at the end — no clear-screen, so nothing blinks between frames, and the whole
+ * frame is written with ONE `write` call. Without a TTY (a pipe, `tee`, a file) there
+ * is nothing to move a cursor over: frames are appended with a separator, which is
+ * what makes `watch | tee` a usable log rather than a pile of escape codes.
+ *
+ * `resize` redraws immediately and re-truncates to the new width — a frame wider than
+ * the terminal wraps, and wrapped lines drift the in-place redraw out of alignment
+ * until the picture is unreadable.
+ *
+ * The terminal is restored from ONE place (`process.on("exit")`): it catches `q`,
+ * SIGINT and an unhandled throw alike, and a watcher that leaves a terminal without a
+ * cursor is worse than no watcher at all.
+ */
+/** The four sequences the redraw needs — named, so no escape byte is ever typed inline. */
+const HOME = "\u001b[H";
+const CLEAR_LINE = "\u001b[K";
+const CLEAR_BELOW = "\u001b[J";
+const HIDE_CURSOR = "\u001b[?25l";
+const SHOW_CURSOR = "\u001b[?25h";
+
+const watchFrame = (argv: readonly string[]): void => {
+  const seconds = positiveInt(argv, "--interval", 2);
+  // A ceiling on FRAMES exists for the checks: a loop that never ends cannot be
+  // asserted on, and a process test of the redraw is the only place the escape
+  // sequences are exercised at all.
+  const limit = flag(argv, "--frames") === undefined ? undefined : positiveInt(argv, "--frames", 1);
+  const tty = process.stdout.isTTY === true;
+  let restored = false;
+  const restore = (): void => {
+    if (restored || !tty) return;
+    restored = true;
+    process.stdout.write(`${SHOW_CURSOR}\n`);
+  };
+  process.on("exit", restore);
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.on(signal, () => process.exit(0));
+  }
+
+  const draw = (): void => {
+    const frame = renderFrame(operatorFrame(argv));
+    if (!tty) {
+      process.stdout.write(`${frame}\n\n`);
       return;
     }
-    out(describeReboot(mode, launchesEnabled));
+    const width = process.stdout.columns ?? 80;
+    const body = frame
+      .split("\n")
+      .map((line) => `${[...line].slice(0, width).join("")}${CLEAR_LINE}`)
+      .join("\n");
+    // Hide the cursor, home, the frame, then clear whatever the previous (longer)
+    // frame left below — one write, so a half-drawn frame is never on screen.
+    process.stdout.write(`${HIDE_CURSOR}${HOME}${body}\n${CLEAR_BELOW}`);
+  };
+
+  let drawn = 0;
+  const tick = (): void => {
+    draw();
+    drawn += 1;
+    if (limit !== undefined && drawn >= limit) {
+      restore();
+      return;
+    }
+    setTimeout(tick, seconds * 1000);
+  };
+  process.stdout.on("resize", () => {
+    if (limit === undefined || drawn < limit) draw();
+  });
+  tick();
+};
+
+const orchestratorStatus = (argv: readonly string[]): void => {
+  // `--watch` is THE SAME FRAME, repeated (T-0): not a second command with a view of
+  // its own, which is how the two would start to differ.
+  if (argv.includes("--watch")) {
+    watchFrame(argv);
+    return;
   }
+  const paths = pathsFrom(argv);
+  out(renderFrame(operatorFrame(argv)));
   out(renderPaths(paths));
 
   // S7: the PERMISSIONS the circuit will raise a role with. The same argument as
@@ -2556,20 +2699,9 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   const statusScope = launchScopeFrom(argv, local, roles, false);
   out(describeScope(statusScope));
   for (const exclusion of statusScope.excluded) out(`  ${describeExclusion(exclusion)}`);
-  // R13, second half: WHAT THE OTHER BOXES ARE DOING. `describeScope` above says which
-  // roles this box leaves to somebody else; without the digests that is where the trail
-  // ends, and "the other machine is running it" is indistinguishable from "the other
-  // machine has been down since Tuesday". Read out of the mail branch, never asked for.
-  const statusMail = flag(argv, "--root") ?? paths.mailRoot;
-  const published = loadDigests(statusMail);
-  out(
-    renderInstances({
-      digests: published.digests,
-      unreadable: published.unreadable,
-      ...(statusScope.instance === undefined ? {} : { self: statusScope.instance }),
-      now,
-    }),
-  );
+  // R13, second half — WHAT THE OTHER BOXES ARE DOING — is a LIVE fact and moved into
+  // the frame above (`renderInstances` inside `renderFrame`), together with the age of
+  // the checkout the digests were read from.
   // R23-1: THE ROLES NOBODY RAISES BECAUSE SOMEBODY ALREADY HOSTS THEM, and whether a
   // thread is waiting on one. `status` is read by the people who would otherwise wait
   // for a tick that is never coming: the daemon's stream is nobody's reading material.
@@ -2578,6 +2710,7 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   if (residentRoles.length > 0) {
     // The mail is read only when there is a question to answer: a project with no
     // resident role must not pay a thread scan for a section it never prints.
+    const statusMail = flag(argv, "--root") ?? paths.mailRoot;
     const statusThreads = loadThreads(statusMail, statusRegistry.ids()).threads.map(
       (loaded) => loaded.thread,
     );
@@ -4290,26 +4423,18 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // and their argument live in `priority.ts`; here we only read the facts they need
     // out of the feed each tick — a priority written a minute ago must be in force on
     // the next tick, exactly like the launch directive (R21).
-    const byId = new Map(threads.map((thread) => [thread.id, thread]));
-    const ranked = launchable.flatMap((roleId) =>
-      threadsWaitingOn(threads, roleId).map((thread): RankedCandidate => {
-        const messages = byId.get(thread)?.messages ?? [];
-        const verdict = resolveThreadPriority({
-          messages,
-          authorized: (role) => registry.canSetThreadPriority(role),
-        });
-        // An unauthorized priority is dropped OUT LOUD, every tick it is read: a queue
-        // ordered by a statement nobody honoured looks exactly like a queue that did.
-        for (const line of verdict.ignored) err(`agent-protocol: ${thread} — ${line}`);
-        const since = waitingSince({ messages, role: roleId });
-        return {
-          role: roleId,
-          thread,
-          priority: verdict.effective?.priority ?? DEFAULT_THREAD_PRIORITY,
-          ...(since === undefined ? {} : { since }),
-        };
-      }),
-    );
+    // THE SAME RANKER THE OPERATOR FRAME USES (`rankCandidates`): the queue a human
+    // reads in `status` and the queue this tick raises from are one computation, or
+    // they drift and there is nothing to argue with.
+    const { ranked, ignored } = rankCandidates({
+      threads,
+      roles: launchable,
+      waitingOn: (roleId) => threadsWaitingOn(threads, roleId),
+      authorized: (role) => registry.canSetThreadPriority(role),
+    });
+    // An unauthorized priority is dropped OUT LOUD, every tick it is read: a queue
+    // ordered by a statement nobody honoured looks exactly like a queue that did.
+    for (const line of ignored) err(`agent-protocol: ${line}`);
     const candidates = orderCandidates(ranked);
     for (const line of describeOrder(candidates)) err(`agent-protocol: ${line}`);
     // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.

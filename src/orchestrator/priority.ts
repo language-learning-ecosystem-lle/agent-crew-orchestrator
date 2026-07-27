@@ -167,6 +167,45 @@ export const orderCandidates = (candidates: readonly RankedCandidate[]): RankedC
   });
 
 /**
+ * THE QUEUE, BUILT ONCE FOR EVERYBODY (T-0, thread 019). The daemon composed this by
+ * hand inside its loop; the operator frame needs the same thing, and a second copy of
+ * "read the feed → resolve the priority → date the wait" is exactly where the queue a
+ * human is shown starts to differ from the queue the circuit follows. Both callers
+ * ask here now.
+ *
+ * `ignored` carries the priorities that were dropped for lack of the right — every
+ * caller says them out loud (the daemon into its stream, the frame into its queue
+ * panel): a queue ordered by a statement nobody honoured looks exactly like a queue
+ * that honoured it.
+ */
+export const rankCandidates = (input: {
+  readonly threads: readonly { readonly id: string; readonly messages: readonly Message[] }[];
+  /** The roles THIS box would raise — the queue is scoped to them, as the tick is. */
+  readonly roles: readonly string[];
+  /** Which threads await a role — passed in, so this module stays free of the feed's shape. */
+  readonly waitingOn: (role: string) => readonly string[];
+  readonly authorized: (role: string) => boolean;
+}): { readonly ranked: RankedCandidate[]; readonly ignored: string[] } => {
+  const byId = new Map(input.threads.map((thread) => [thread.id, thread]));
+  const ignored: string[] = [];
+  const ranked = input.roles.flatMap((roleId) =>
+    input.waitingOn(roleId).map((thread): RankedCandidate => {
+      const messages = byId.get(thread)?.messages ?? [];
+      const verdict = resolveThreadPriority({ messages, authorized: input.authorized });
+      for (const line of verdict.ignored) ignored.push(`${thread} — ${line}`);
+      const since = waitingSince({ messages, role: roleId });
+      return {
+        role: roleId,
+        thread,
+        priority: verdict.effective?.priority ?? DEFAULT_THREAD_PRIORITY,
+        ...(since === undefined ? {} : { since }),
+      };
+    }),
+  );
+  return { ranked, ignored };
+};
+
+/**
  * The queue in words, for the daemon's stream. Printed BEFORE the tick decides, so
  * that "why this pair and not that one" is answerable from the log alone — the same
  * reason every skip says its reason out loud (curator's requirement 1 of the 2026-07-26
