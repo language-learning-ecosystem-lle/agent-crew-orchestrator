@@ -130,6 +130,29 @@ describe("buildLaunchPrompt", () => {
     expect(prompt).toContain("what is uncommitted");
     expect(prompt).toContain("END of the task");
   });
+
+  it("SAYS THAT A FINISHED TURN ENDS THE SESSION, and forbids the third ending (thread 018)", () => {
+    // Two autonomous runs out of two ended `exited-without-handoff` by finishing the
+    // turn in the belief that a notification would wake them back up. The runtime never
+    // says otherwise, so the prompt has to — and it has to name the illegal ending
+    // itself: the sessions that invented it had already read both legal ones.
+    expect(prompt).toContain("ENDING YOUR TURN ENDS THIS SESSION");
+    expect(prompt).toContain("no resume happens");
+    expect(prompt).toContain("WAIT IN THE FOREGROUND");
+    expect(prompt).toContain("meaning to come back when something reports is never one of them");
+  });
+
+  it("keeps the no-resume fact and the landing norm as separate paragraphs (thread 018)", () => {
+    // They answer different questions — "a finished turn is final" vs "land before the
+    // deadline" — and the second already carries one distinction of its own (landing is
+    // not parking). Merged, the run out of ceiling and the run that walked away would
+    // read as one failure with one remedy.
+    const noResume = prompt.indexOf("ENDING YOUR TURN ENDS THIS SESSION");
+    const landing = prompt.indexOf("YOUR RUN HAS A DEADLINE");
+    expect(noResume).toBeGreaterThan(-1);
+    expect(noResume).toBeLessThan(landing);
+    expect(prompt.slice(noResume, landing)).toContain("\n\n");
+  });
 });
 
 const launch = (role: string, thread: string): OrchestratorEvent => ({
