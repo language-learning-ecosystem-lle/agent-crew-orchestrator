@@ -143,6 +143,12 @@ export {
   type RebootMode,
   renderSystemdUnit,
 } from "./orchestrator/reboot.js";
+export {
+  describeResidentWait,
+  type ResidentWait,
+  renderResidentWaits,
+  residentWaits,
+} from "./orchestrator/resident.js";
 export { renderStatus } from "./orchestrator/status.js";
 export {
   type Candidate,

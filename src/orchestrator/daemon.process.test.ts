@@ -63,15 +63,28 @@ const WAITING =
 const ANSWERED =
   "---\nfrom: curator\ndate: 2026-07-25T10:00:00Z\nexpects: none\nwaiting-on: curator\n---\n\nThe body.\n";
 
+/** A role hosted by a live process (R23-1): never raised, and still waited on. */
+const RESIDENT_ROLE = {
+  id: "curator",
+  kind: "resident",
+  status: "active",
+  wake: { mode: "resident" },
+  summary: "the one that is already reading",
+};
+const WAITING_ON_RESIDENT =
+  "---\nfrom: dev-core\ndate: 2026-07-25T10:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nThe body.\n";
+
 /** The full circuit on disk — a bare origin, a code checkout and a mail checkout. */
-const contour = (options?: { readonly waiting?: boolean }): string => {
+const contour = (options?: { readonly waiting?: boolean; readonly resident?: boolean }): string => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-daemon-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
 
   const repo = join(base, "work");
   execFileSync("git", ["clone", "-q", origin, repo]);
-  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  const config =
+    options?.resident === true ? { ...CONFIG, roles: [...CONFIG.roles, RESIDENT_ROLE] } : CONFIG;
+  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(config, null, 2)}\n`);
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "config");
@@ -85,7 +98,11 @@ const contour = (options?: { readonly waiting?: boolean }): string => {
   writeFileSync(join(thread, "_meta.md"), META);
   writeFileSync(
     join(thread, "messages", "2026-07-25T10-00-00Z-curator.md"),
-    options?.waiting === false ? ANSWERED : WAITING,
+    options?.resident === true
+      ? WAITING_ON_RESIDENT
+      : options?.waiting === false
+        ? ANSWERED
+        : WAITING,
   );
   git(mail, "add", "agent-comms");
   git(mail, "commit", "-qm", "mail");
@@ -244,6 +261,23 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
 
     expect(result.out).toContain("no candidates: no thread is waiting on dev-core");
     expect(journalKinds(repo)).toEqual([]);
+  });
+
+  it("a thread waiting on a RESIDENT role is spoken, though it is nobody's candidate (R23-1)", () => {
+    // The class of failure this closes is the same one as the exhausted candidate's,
+    // one step earlier: a resident role never enters the candidate list at all, so
+    // without a line of its own the daemon's silence about a thread waiting on it is
+    // indistinguishable from an empty mailbox — and a resident process that died looks
+    // exactly like a quiet night.
+    const repo = contour({ resident: true });
+    enable(repo);
+
+    const result = daemon(repo);
+
+    expect(result.out).toContain("thread 012-x waits on curator");
+    expect(result.out).toContain("RESIDENT");
+    // And it is genuinely not raised: the circuit says where to look, it does not act.
+    expect(journalKinds(repo)).not.toContain("launch");
   });
 
   it("launches disabled → the tick says so, rather than exiting without a word", () => {

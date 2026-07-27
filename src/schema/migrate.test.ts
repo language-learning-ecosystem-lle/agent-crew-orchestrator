@@ -8,6 +8,7 @@ import {
   planMigration,
   renderMigrationPlan,
 } from "./migrate.js";
+import { CURRENT_PROTOCOL_VERSION } from "./version.js";
 
 const CONFIG_PATH = "/repo/agent-protocol.json";
 const MAIL_ROOT = "/repo/.worktrees/comms/agent-comms";
@@ -50,6 +51,16 @@ describe("MIGRATIONS", () => {
 
   it("registers the step for 1 → 2 — the row the README's version table describes", () => {
     expect(MIGRATIONS.find((step) => step.from === 1)).toBeDefined();
+  });
+
+  it("the chain reaches the version the package writes — a bump without a step is a repository that cannot migrate", () => {
+    // The failure this pins is one keystroke wide and silent until somebody else's
+    // repository is one version behind: bump `CURRENT_PROTOCOL_VERSION`, forget the
+    // step, and `schema migrate` refuses the gap instead of migrating.
+    for (let from = 1; from < CURRENT_PROTOCOL_VERSION; from += 1) {
+      expect(MIGRATIONS.find((step) => step.from === from)).toBeDefined();
+    }
+    expect(MIGRATIONS.find((step) => step.from === CURRENT_PROTOCOL_VERSION)).toBeUndefined();
   });
 });
 

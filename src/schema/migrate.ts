@@ -55,6 +55,7 @@ import { GRACEFUL_DEADLINE_STEP } from "./v8-graceful-deadline.js";
 import { LAUNCH_DIRECTIVE_STEP } from "./v9-launch-directive.js";
 import { THREAD_PRIORITY_STEP } from "./v10-thread-priority.js";
 import { INSTANCES_STEP } from "./v11-instances.js";
+import { RESIDENT_WAKE_STEP } from "./v12-resident.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -72,6 +73,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   LAUNCH_DIRECTIVE_STEP,
   THREAD_PRIORITY_STEP,
   INSTANCES_STEP,
+  RESIDENT_WAKE_STEP,
 ];
 
 export type {

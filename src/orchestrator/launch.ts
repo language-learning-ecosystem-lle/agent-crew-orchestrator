@@ -581,6 +581,15 @@ export const describeAgent = (input: {
 /** Why a role is NOT launched by the orchestrator — mechanically, not "claude.ai" by eye. */
 export type LaunchBlock =
   | "inactive"
+  /**
+   * The role is hosted by a process that is already alive (R23-1). Told apart from
+   * `wake-not-watch` on purpose: the rest of that reason means "the circuit cannot
+   * raise this one", while a resident means "the circuit MUST NOT — somebody is
+   * already doing it". A human reading a thread that is going nowhere needs the
+   * difference: the first sends them to the config, the second to the resident's
+   * process.
+   */
+  | "resident"
   | "wake-not-watch"
   | "no-instructions"
   | "external-instructions"
@@ -594,8 +603,10 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  * from `role.kind`: that one is a free-form project label ("claude.ai",
  * "gh-action") and the package does not interpret it (see the role schema doc
  * block). Hence:
- *  - `wake.mode !== "watch"` — the role has no session of its own for us to raise:
- *    john (`self`, a human), reviewer-pr/github (`event`, woken by the platform)
+ *  - `wake.mode === "resident"` — the role is hosted by a live process (R23-1): not a
+ *    limitation of ours but somebody else's job, and the reason says so;
+ *  - `wake.mode !== "watch"` otherwise — the role has no session of its own for us to
+ *    raise: john (`self`, a human), reviewer-pr/github (`event`, woken by the platform)
  *    are not ours to spawn;
  *  - empty `instructions` — there is nothing to build a prompt from (that is
  *    dev-speech today): an honest refusal rather than a crash on a missing file;
@@ -608,6 +619,10 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  */
 export const roleLaunchability = (role: Role): Launchability => {
   if (role.status !== "active") return { launchable: false, reason: "inactive" };
+  // The resident check comes BEFORE the general one so that the reason a human reads is
+  // the specific one: "already hosted" and "has no session of its own" are answered by
+  // different people.
+  if (role.wake.mode === "resident") return { launchable: false, reason: "resident" };
   if (role.wake.mode !== "watch") return { launchable: false, reason: "wake-not-watch" };
   const instructions = role.instructions ?? [];
   if (instructions.length === 0) return { launchable: false, reason: "no-instructions" };
