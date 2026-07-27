@@ -31,7 +31,10 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # by name rather than met as a stray path
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
-  agent-protocol mail         --root <mail> --ref <ref> --role <id>
+  agent-protocol mail         --ref <ref> --role <id> [--root <mail>]
+                              # --root defaults to the mail of THIS MACHINE (R26): the state
+                              # directory and the mail root hang off the main checkout, so the
+                              # command finds them from a role's workspace as well
   agent-protocol await-input  --root <mail> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                               # THE INTERACTIVE TURN (R19): blocks until the thread waits on the role again
                               # needs a wait declared beside the question ('new-message --await-input') — it does not declare one
