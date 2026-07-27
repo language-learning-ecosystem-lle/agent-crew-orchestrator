@@ -177,6 +177,11 @@ import {
 } from "./orchestrator/priority.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
 import {
+  describeResidentWait,
+  renderResidentWaits,
+  residentWaits,
+} from "./orchestrator/resident.js";
+import {
   describeExclusion,
   describeScope,
   instanceIssues,
@@ -388,6 +393,10 @@ const configCheck = (argv: readonly string[]): void => {
     launchable: loaded.config.roles
       .filter((role) => roleLaunchability(role).launchable)
       .map((role) => role.id),
+    // R23-1: a resident role is owned as strictly as a launchable one. Ownership here
+    // is not about keeping two daemons off it — nobody raises it — but about "which box
+    // hosts that process" being declared rather than remembered.
+    resident: loaded.registry.residents(),
     isKnownRole: (id) => loaded.registry.isKnown(id),
   });
 
@@ -2501,6 +2510,26 @@ const orchestratorStatus = (argv: readonly string[]): void => {
       now,
     }),
   );
+  // R23-1: THE ROLES NOBODY RAISES BECAUSE SOMEBODY ALREADY HOSTS THEM, and whether a
+  // thread is waiting on one. `status` is read by the people who would otherwise wait
+  // for a tick that is never coming: the daemon's stream is nobody's reading material.
+  const statusRegistry = registryFrom(argv, undefined);
+  const residentRoles = statusRegistry.residents();
+  if (residentRoles.length > 0) {
+    // The mail is read only when there is a question to answer: a project with no
+    // resident role must not pay a thread scan for a section it never prints.
+    const statusThreads = loadThreads(statusMail, statusRegistry.ids()).threads.map(
+      (loaded) => loaded.thread,
+    );
+    const residents = renderResidentWaits({
+      residents: residentRoles,
+      waits: residentWaits({
+        residents: residentRoles,
+        waitingThreads: (role) => threadsWaitingOn(statusThreads, role),
+      }),
+    });
+    if (residents !== undefined) out(residents);
+  }
   out("launch resolution:");
   for (const role of roles) {
     out(`  ${role.id}: ${describeAgent(agentFor(argv, local, role))}`);
@@ -4153,6 +4182,16 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     );
     const candidates = orderCandidates(ranked);
     for (const line of describeOrder(candidates)) err(`agent-protocol: ${line}`);
+    // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.
+    // A resident is never a candidate — it is hosted, not raised — so without this line
+    // the daemon's silence about it is indistinguishable from an empty mailbox, and a
+    // dead resident process would look exactly like a quiet night.
+    for (const wait of residentWaits({
+      residents: registry.residents(),
+      waitingThreads: (role) => threadsWaitingOn(threads, role),
+    })) {
+      err(`agent-protocol: daemon — ${describeResidentWait(wait)}`);
+    }
     const events = existsSync(journalPath)
       ? parseJournal(readFile(journalPath, "orchestrator journal"))
       : [];

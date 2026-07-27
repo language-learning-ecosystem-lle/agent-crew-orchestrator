@@ -98,6 +98,15 @@ export const ownershipIssues = (input: {
   readonly instances?: readonly Instance[] | undefined;
   /** The roles the circuit is able to raise — the ones ownership has to answer for. */
   readonly launchable: readonly string[];
+  /**
+   * THE RESIDENT ROLES (R23-1) — owned exactly as strictly, for the reason R13 is about.
+   * They are not raised, so ownership does not keep two daemons off one role here; it
+   * keeps "which box hosts this process" a fact somebody declared instead of a thing
+   * everyone remembers. Leaving them out would have made `wake: resident` a way to slip
+   * a role out from under the topology — which is precisely the objection that made the
+   * mode a mode instead of an `event` plus a norm.
+   */
+  readonly resident?: readonly string[];
   /** Whether the id is a declared role at all — a typo in the topology is not a role. */
   readonly isKnownRole: (id: string) => boolean;
 }): readonly string[] => {
@@ -135,6 +144,13 @@ export const ownershipIssues = (input: {
     if (!claims.has(role)) {
       issues.push(
         `role '${role}' can be launched but no instance claims it — declare which box raises it, or nobody will (the daemon skips roles of other instances, and an unowned role is nobody's)`,
+      );
+    }
+  }
+  for (const role of input.resident ?? []) {
+    if (!claims.has(role)) {
+      issues.push(
+        `role '${role}' is resident but no instance claims it — declare which box HOSTS the process (a resident is not raised by anyone, so an unowned one is a role whose whereabouts nothing in the repository states)`,
       );
     }
   }

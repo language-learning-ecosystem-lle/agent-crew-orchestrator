@@ -55,13 +55,33 @@ export const roleIdSchema = z
  *   (previously a hardcoded "john" in the notifier's text);
  * - `watch` — an agent with its own session: the watch-keeper wakes it, and
  *   `session` is that very agreement about the name the keeper relies on;
- * - `event` — woken by a platform event (CI, webhook): nobody to wake or notify.
+ * - `event` — woken by a platform event (CI, webhook): nobody to wake or notify;
+ * - `resident` — a process that is ALREADY reading the feed: nothing brings it the
+ *   turn, because it never left. Added in R23-1 (thread `016-protocol-roadmap`) for
+ *   a role hosted by a long-lived process rather than raised per turn.
+ *
+ * WHY `resident` IS A MODE AND NOT `event` PLUS A NORM IN A CARD. Both would keep the
+ * circuit from raising the role, and there the resemblance ends. `wake` answers "what
+ * brings this role the turn", and "nothing does, it is already here" is an honest
+ * answer on THAT axis — whereas `event` says "a platform wakes it", which is false and
+ * unfalsifiable. The cost of the lie is not aesthetic: ownership (R13) answers only for
+ * roles the circuit can raise, so a resident dressed as `event` makes "which box hosts
+ * it" data nobody checks, while R13 stands on a role belonging to EXACTLY ONE instance
+ * and that being provable. The mode is what lets `ownershipIssues` keep asking.
+ *
+ * THE PRICE OF THE MODE, said here because it belongs beside the definition: A RESIDENT
+ * FAILS SILENTLY. A `watch` role whose session died is repaired by the next tick; a
+ * resident whose process died leaves the thread waiting with nobody saying so. The
+ * answer is VISIBILITY, not liveness (a heartbeat is refused for the reason written in
+ * `hold.ts`): a thread waiting on a resident role is spoken by the daemon every tick and
+ * shown by `status` (`orchestrator/resident.ts`).
  */
 export const wakeSchema = z.discriminatedUnion("mode", [
   z.strictObject({ mode: z.literal("self") }),
   z.strictObject({ mode: z.literal("via-human"), via: roleIdSchema }),
   z.strictObject({ mode: z.literal("watch"), session: z.string().min(1) }),
   z.strictObject({ mode: z.literal("event") }),
+  z.strictObject({ mode: z.literal("resident") }),
 ]);
 
 /**

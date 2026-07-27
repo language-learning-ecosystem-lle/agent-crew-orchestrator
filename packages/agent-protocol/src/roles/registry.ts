@@ -47,6 +47,13 @@ export type RoleRegistry = {
   canSetThreadPriority(id: RoleId): boolean;
   watchTargets(): readonly WatchTarget[];
   notificationTargets(): readonly NotificationTarget[];
+  /**
+   * The roles hosted by a process that is already alive (R23-1). Neither woken nor
+   * raised nor notified — but ownership answers for them (R13) and a thread waiting on
+   * one has to be VISIBLE, so the list is a query rather than a filter each caller
+   * writes for itself.
+   */
+  residents(): readonly RoleId[];
 };
 
 export class RoleConfigError extends Error {
@@ -133,6 +140,10 @@ export const createRoleRegistry = (config: RolesSection): RoleRegistry => {
       active.flatMap((role) =>
         role.wake.mode === "watch" ? [{ id: role.id, session: role.wake.session }] : [],
       ),
+    // A RESIDENT IS NOT A NOTIFICATION TARGET, and that is not an omission: the
+    // notifier exists to tell somebody who is not looking that the turn has passed,
+    // and a resident is the one participant who is looking by definition. It reads the
+    // turn out of the feed like any other reader of the mail.
     notificationTargets: () =>
       active.flatMap((role): NotificationTarget[] => {
         if (role.wake.mode === "self") return [{ id: role.id, style: "direct" }];
@@ -140,5 +151,6 @@ export const createRoleRegistry = (config: RolesSection): RoleRegistry => {
           return [{ id: role.id, style: "nudge", nudge: role.wake.via }];
         return [];
       }),
+    residents: () => active.flatMap((role) => (role.wake.mode === "resident" ? [role.id] : [])),
   };
 };
