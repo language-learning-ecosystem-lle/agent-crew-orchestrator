@@ -595,12 +595,16 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  * "gh-action") and the package does not interpret it (see the role schema doc
  * block). Hence:
  *  - `wake.mode !== "watch"` — the role has no session of its own for us to raise:
- *    john (`self`, a human), curator (`via-human`, comes alive through a human),
- *    reviewer-pr/github (`event`, woken by the platform) are not ours to spawn;
+ *    john (`self`, a human), reviewer-pr/github (`event`, woken by the platform)
+ *    are not ours to spawn;
  *  - empty `instructions` — there is nothing to build a prompt from (that is
  *    dev-speech today): an honest refusal rather than a crash on a missing file;
  *  - `instructions` with `external` — the card is executed OUTSIDE (a skill on the
- *    chat side) and a local `claude -p` must not drive it (that is curator).
+ *    chat side) and a local `claude -p` must not drive it. Note that this refusal
+ *    is about ANY entry, not about the whole array, and that is what makes a role
+ *    with two executors (a raised session AND a chat skill) impossible to express
+ *    in one row: curator was such a role until R22 and was made launchable by
+ *    moving the skill-only half OUT of the card, not by weakening this check.
  */
 export const roleLaunchability = (role: Role): Launchability => {
   if (role.status !== "active") return { launchable: false, reason: "inactive" };
