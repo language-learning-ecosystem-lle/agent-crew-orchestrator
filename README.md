@@ -1639,6 +1639,16 @@ The other half of the join is the machine's and cannot be committed: `"instance"
 WHO it is). Note the singular: `instances` is POLICY and is refused by name in the machine
 config, `instance` is identity and lives nowhere else.
 
+**The id names the INSTANCE, not the machine — which is what makes moving one a config change
+instead of a repository change.** A box that moves to other hardware (a VPS, a rebuild, a
+restored backup) keeps its id: the new machine's `local.json` gets the same
+`"instance": "<id>"` and `agent-protocol.json` is not touched at all. That is why an id like
+`main` is worth more than one naming the laptop it happens to run on today. **Two live daemons
+under one id at the same time are forbidden**, and the order of the move is what enforces it:
+stop the old daemon → write the machine config on the new box → start it there. The digest is
+ONE file per id (S18), so a pair of them would overwrite each other's state, and each would
+read the other's leases as its own — the exact overlap ownership exists to remove.
+
 **There is no address field, and its absence is a decision.** Instances never ask each other
 anything: a box publishes a digest of its own state into the mail branch and reads the others'
 from there, so no address, no key and no reachability is needed by anybody.
