@@ -682,6 +682,37 @@ export const describeLaunch = (role: Role): string => {
 export type InstructionDoc = { readonly path: string; readonly text: string };
 
 /**
+ * A TURN THAT ENDS, ENDS THE SESSION — the fact the runtime never tells the session,
+ * stated in its prompt (curator's statement of work, thread 018).
+ *
+ * THE DEFECT IT CLOSES IS ESTABLISHED, NOT HYPOTHETICAL. Two autonomous runs out of two
+ * on 2026-07-27 ended `exited-without-handoff` the same way: the session put the thing
+ * it was waiting for (a reviewer verdict, a CI job) into a BACKGROUND task, finished its
+ * turn with "I'll pick this back up when it reports" — and the notification arrived five
+ * seconds later at a dead process. The log of the second one is unambiguous: 59 turns of
+ * 300, 755s of 3600, exit 0. Ceilings had nothing to do with it; the session believed in
+ * a resume-by-notification that does not exist in this runtime.
+ *
+ * WHY IT GOES IN THE PROMPT AND NOT IN A ROLE CARD. It is a property of the RUNTIME
+ * every raised session lives in, not of any one project's way of working — the same
+ * reason R19 is stated here (see `buildLaunchPrompt`): a role with no card at all is
+ * still exposed to it. And it is the exact inverse of the line the prompt already
+ * carries, "passing the turn is what ends the run": true both ways round, and only one
+ * of the two directions was ever said out loud.
+ *
+ * WHY IT NAMES THE THIRD ENDING AS FORBIDDEN. "Block in the foreground" and "report and
+ * pass the turn" are both already in the prompt, and the failing sessions had read them;
+ * what they did was invent a third that reads like a reasonable blend of the two. A norm
+ * that only lists the legal endings leaves that invention untouched, so the illegal one
+ * is named in its own words.
+ *
+ * It is NOT repeated in `buildResumePrompt`: a resumed session already has this prompt
+ * in its context (unlike the wind-down norm, whose NUMBER changes with the new lease).
+ */
+const runEndsNorm =
+  "ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (`cli await-input` above, a watch, a command you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead.";
+
+/**
  * THE NORM OF WINDING DOWN, in the session's own prompt (R20, john's decision) — the
  * part of R20 that does the actual work, because the two others only make it possible:
  * the deadline is in the environment and the wall clock stands behind it, but nobody
@@ -751,6 +782,8 @@ export const buildLaunchPrompt = (input: {
     "Read the thread, carry out the statement of work and reply with a message at the end of it. `--waiting-on` is the FULL set of whoever is expected to act next, and passing the turn is what ends the run.",
     "",
     "IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Send the question with `cli new-message --await-input` (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), then block on `cli await-input`. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.",
+    "",
+    runEndsNorm,
     "",
     windDownNorm(input),
     "",

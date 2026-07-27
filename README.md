@@ -1738,3 +1738,51 @@ be the watch failing exactly when it is most needed.
 **Without a declared topology this box publishes nothing**, and says so once in the banner:
 there is no id to publish under and nobody to publish to. That is the pre-R13 contour verbatim
 (one box, every role), the same way an absent `workdir.worktrees` means the pre-R17 one.
+
+### S19 — a turn that ends, ends the session (thread 018)
+
+**THE SINGLE STATEMENT OF THIS NORM.** The operative form is one paragraph of the launch
+prompt (`runEndsNorm` in `orchestrator/launch.ts`, pinned by a test); everywhere else — the
+project's `PROTOCOL.md` among them — points here instead of restating it.
+
+A session in this runtime has no way back once its turn is over: a finished turn with an empty
+queue IS the end of the process, and `claude --resume` (S12) is something the SUPERVISOR does
+to a run it decided to continue, not something a notification does to a session that walked
+away. Nothing in the runtime ever tells a session this, and the shape of the mistake shows the
+session assumed the opposite.
+
+**The established defect, not a hypothesis.** On 2026-07-27 two autonomous runs out of two
+released with `exited-without-handoff` in the same way: the thing being waited for (a reviewer
+verdict, a CI job) was put into a BACKGROUND task, the session finished its turn saying it
+would pick this back up when the task reported — and the notification arrived five seconds
+later at a dead process. The tail of the second run's log settles the diagnosis on its own:
+59 turns of 300, 755s of 3600, exit code 0. No ceiling was near; the run ended because the
+session ended it.
+
+**Two endings, and the third is named as forbidden.** Legal: block IN THE FOREGROUND on a call
+that holds the turn open (`await-input` of S13, a watch, any command you run and wait out), or
+report in the thread and pass the turn on, leaving the waking-up to the daemon of S3. Illegal:
+finish the turn intending to come back when something reports. The prompt names the illegal one
+in its own words rather than only listing the legal two, because the failing sessions had read
+the legal two — what they invented reads like a blend of them.
+
+**Why the prompt and not a role card.** It is a property of the runtime every raised session
+lives in, not of one project's way of working (the same argument that put R19 in the package's
+words), and a role with no card at all is exposed to it just the same. It is also the exact
+inverse of a line the prompt already carried — "passing the turn is what ends the run" — true
+in both directions, with only one of them ever said out loud.
+
+**It is kept a separate paragraph from the landing norm of S14**, and a test pins that: "a
+finished turn is final" and "land before your deadline" are different failures with different
+remedies, and a session reading them as one would take the deadline to be the only way a run
+can end badly.
+
+**What is NOT in this section**: evidence at the moment of the break — an
+`exited-without-handoff` release naming the background tasks the session left running. Priced
+and declined for now (curator's item 2, "if it is cheap"): telling a background task that never
+finished from one that did means matching `tool_use` → `tool_result` → the vendor's later
+notification events across the stream, i.e. a schema for events the transcript reader does not
+parse today, a stateful accumulator in the supervisor and its own tests. What the journal
+already carries for such a release — the exit code and the path to the full session log — is
+where a diagnosis starts; and with the norm in the prompt, the failure this evidence describes
+is the one being removed rather than instrumented.
