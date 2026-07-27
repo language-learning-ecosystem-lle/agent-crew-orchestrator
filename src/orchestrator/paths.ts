@@ -34,6 +34,15 @@ export type OrchestratorPaths = {
   /** The directory of saved session outputs — silence can be examined without a witness. */
   readonly sessions: string;
   /**
+   * The backgrounded daemon's own output, and the pid it was last started under
+   * (`up`/`down`). A daemon sent to the background has no terminal to speak into, so
+   * the two questions an operator asks about it — "what is it saying" and "is it
+   * still there" — have to have answers on disk, or `up` becomes a command whose
+   * result nobody can see.
+   */
+  readonly daemonLog: string;
+  readonly daemonPid: string;
+  /**
    * What the notifier has already reported (R4). It lives in the state directory for
    * the same reason the journal does: it is operational state, written by the package,
    * disposable. Losing it costs ONE repeated message about waits that are still open —
@@ -53,6 +62,8 @@ const FORCE = "force";
 const HOLDS = "holds";
 const SESSIONS = "sessions";
 const NOTIFY_STATE = "notify.state";
+const DAEMON_LOG = "daemon.log";
+const DAEMON_PID = "daemon.pid";
 
 export const orchestratorPaths = (input: {
   /** The repository root: paths in the config are relative to it. */
@@ -70,6 +81,8 @@ export const orchestratorPaths = (input: {
     holds: join(state, HOLDS),
     sessions: join(state, SESSIONS),
     notifyState: join(state, NOTIFY_STATE),
+    daemonLog: join(state, DAEMON_LOG),
+    daemonPid: join(state, DAEMON_PID),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),
   };
 };

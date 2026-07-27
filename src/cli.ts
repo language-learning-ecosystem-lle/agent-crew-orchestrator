@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * The entry point for the operators of the circuit. The full syntax lives in the
- * `USAGE` constant below, and that is its ONLY source: the header and the help
+ * `USAGE` constant (`usage.ts`), and that is its ONLY source: the header and the help
  * text have drifted apart once already (the P1-era syntax stood here —
  * `roles check --config/--doc`, long gone), so the command list is not kept in
  * two places.
@@ -68,6 +68,7 @@ import {
   idleStep,
   startWatch,
 } from "./orchestrator/activity.js";
+import { parseUsage, strayArguments } from "./orchestrator/argv.js";
 import {
   type Continuation,
   describeContinuation,
@@ -242,76 +243,7 @@ import {
   planNewThread,
   WriteRefusedError,
 } from "./thread/write.js";
-
-const USAGE = `usage (--ref is always required; --repo defaults to the repository of the current directory):
-  agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
-  agent-protocol roles list   --ref <ref> [--repo <path>]
-  agent-protocol schema migrate [--repo <path>] [--config-path <p>] [--root <mail>] [--to <n>] [--write]
-                              # the ONE command with no --ref: it plans against the working tree it rewrites
-  agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
-  agent-protocol index build  --root <mail> --ref <ref> [--write]
-  agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]
-                              # THE READING HALF OF THE AGENT'S INTERFACE (R3): the conversation, in order,
-                              # from the MESSAGES (not from the derived _thread.md, which lags a push behind)
-  agent-protocol thread build --root <mail> --ref <ref> --id <NNN-slug> [--write]
-  agent-protocol check        --root <mail> --ref <ref> [--since <ref>]
-                              # also validates '_instances/' as a CLASS of derived state files (R13):
-                              # the one MUTABLE derived thing in an append-only branch, so it is known
-                              # by name rather than met as a stray path
-  agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
-  agent-protocol derive       --root <mail> --ref <ref> [--write]
-  agent-protocol mail         --root <mail> --ref <ref> --role <id>
-  agent-protocol await-input  --root <mail> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
-                              # THE INTERACTIVE TURN (R19): blocks until the thread waits on the role again
-                              # needs a wait declared beside the question ('new-message --await-input') — it does not declare one
-                              # code 0: the answer arrived · code 3: the wait ran out (wrap up and pass the turn)
-  agent-protocol notify       --ref <ref> [--repo <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--local-config <p>] [--write]
-                              # the turn has passed to a HUMAN: whom is derived from wake.mode,
-                              # the words come from notifications.templates, delivery from the transport plugin
-                              # without --write: prints what it would send and leaves the state alone
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--write] [--no-push]
-                              # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
-                              # with a replanning retry when somebody wrote into the feed first
-                              # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
-                              # --await-input: this question PARKS the run instead of ending it (R19) — the session
-                              # stays alive and reads the answer itself; block on 'await-input' after sending
-                              # --model/--effort: WITH WHAT the runs of this thread are raised from here on (R21) —
-                              # only from a role holding 'launch-params'; the value is checked against the tool here
-                              # --priority high|normal|low: WHICH waiting thread is raised FIRST from here on (R5) —
-                              # only from a role holding 'thread-priority'; the queue is priority, then age of wait, then number
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
-                              # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
-                              # a raised session passes neither — the launch environment carries both
-
-ORCHESTRATOR: the paths (journal, flags, holds, mail root) are taken FROM THE
-CONFIG, section 'orchestrator'. The path flags below are an override for checks
-and are not needed in operation; only --ref is required.
-The agent BINARIES come from the machine config (~/.config/agent-protocol/local.json,
-or --local-config <p>): the repository says WHAT is raised, the machine says WHERE it is.
-  agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--local-config <p>]
-  agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>] [--max-attempts <n>]
-  agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
-                              # attached by default: you watch what you raised. -d puts the supervisor in the background
-                              # ceilings: the flag wins over the role's launch.limits, which wins over the package default
-                              # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
-                              # the role works in its own worktree (orchestrator.workdir.worktrees), put at the base per package
-                              # --fresh: never resume the previous session, whatever the continuation policy says
-                              # --wait-input: the ceiling of a DECLARED wait for input (R19); waiting does not eat the wall clock
-                              # --wind-down: how long before the deadline the session is asked to land its work (R20); default 20% of the window, 2-15 min
-                              # --roles/--exclude-roles: the same scope door as the daemon's (R13) — a --role
-                              # owned by another instance, or left out by these flags, is REFUSED here, not raised
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>]
-                              # --roles/--exclude-roles: WHICH roles THIS run raises (R13), mutually exclusive;
-                              # on top of the instance filter — a role owned by another box is never raised here
-  agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
-  agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
-  agent-protocol orchestrator log    --ref <ref> [--journal <p>]
-  agent-protocol orchestrator stop   --mode graceful --ref <ref> [--stop-flag <p>] [--write]
-  agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--repo <p>] [--force-flag <p>] [--root <mail>] [--write]
-  agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]`;
+import { USAGE } from "./usage.js";
 
 const out = (line: string): void => {
   process.stdout.write(`${line}\n`);
@@ -4536,8 +4468,224 @@ const orchestratorHold = (argv: readonly string[]): void => {
   );
 };
 
+/**
+ * THE OPERATOR'S REF (thread 019). Every other command demands `--ref` because what
+ * it reads must never be a silent choice. For `up`/`down`/`hold`/`resume` the answer
+ * is not a choice at all: the project already declared it in `orchestrator.ref`, and
+ * making the operator retype it on every command was ceremony without a decision
+ * behind it.
+ *
+ * The bootstrap is the one thing to be honest about: the pointer is read FROM THE
+ * WORKING TREE (the same exception `schema migrate` makes, for the same reason —
+ * there is no ref yet to read a ref at), and everything after it is read at the ref
+ * it names. So the working tree chooses WHICH history governs, never WHAT is in it —
+ * and the choice is printed, because a bootstrap nobody sees is a default nobody
+ * knows about.
+ */
+const withOperatorRef = (argv: readonly string[]): readonly string[] => {
+  if (flag(argv, "--ref") !== undefined) return argv;
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const path = join(repo, flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFile(path, "protocol config"));
+  } catch (error) {
+    return fail(`'${path}' is not JSON: ${(error as Error).message}`, 2);
+  }
+  const ref = (parsed as { orchestrator?: { ref?: unknown } }).orchestrator?.ref;
+  if (typeof ref !== "string" || ref === "") {
+    return fail(
+      `--ref was not given and '${path}' declares no 'orchestrator.ref' to fall back on — pass --ref <ref>`,
+      2,
+    );
+  }
+  out(`agent-protocol: --ref ${ref} (orchestrator.ref of '${path}', read from the working tree)`);
+  return [...argv, "--ref", ref];
+};
+
+/** Is that pid a live process? `kill(pid, 0)` asks without sending anything. */
+const alive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** The pid the daemon was last started under, if the file is there and the process is. */
+const runningDaemon = (pidFile: string): number | undefined => {
+  if (!existsSync(pidFile)) return undefined;
+  const pid = Number(readFileSync(pidFile, "utf8").trim());
+  return Number.isInteger(pid) && pid > 0 && alive(pid) ? pid : undefined;
+};
+
+/**
+ * `orchestrator up` — THE WHOLE CIRCUIT WITH ONE COMMAND (thread 019, john's target
+ * scenario: arrive at the box once, type one thing, walk away).
+ *
+ * It is a composition of things that already existed and were never within reach of
+ * one gesture: clear a stop flag left by the previous `down` (without this the fresh
+ * daemon halts on its first tick, for a reason invisible from the terminal), switch
+ * launches on, and send the daemon to the background the way `run -d` does it — its
+ * own session, no controlling terminal, output to a file.
+ *
+ * Switching launches ON is part of `up` rather than a second command because typing
+ * `up` IS the permission: the enable gate exists so that nobody is raised without
+ * being asked for, and this is the asking. `down` does not switch it back off — that
+ * is a policy statement (`disable`), while `down` is "stop the watch".
+ *
+ * An `up` on top of a living daemon is REFUSED, not obeyed: two daemons on one
+ * journal would take the same pair twice, and the second one's banner would look
+ * exactly like a healthy start.
+ */
+const orchestratorUp = (argv: readonly string[]): void => {
+  const args = withOperatorRef(argv);
+  const paths = pathsFrom(args);
+  const pidFile = flag(args, "--pid-file") ?? paths.daemonPid;
+  const log = flag(args, "--daemon-log") ?? paths.daemonLog;
+
+  const already = runningDaemon(pidFile);
+  if (already !== undefined) {
+    fail(
+      `a daemon is already up, pid ${already} (${pidFile}) — 'orchestrator down' stops it; its output is ${log}`,
+      2,
+    );
+    return;
+  }
+
+  const stopFlag = flag(args, "--stop-flag") ?? paths.stopFlag;
+  if (existsSync(stopFlag)) {
+    rmSync(stopFlag);
+    out(`agent-protocol: the stop flag left by the last 'down' was cleared ('${stopFlag}')`);
+  }
+  mkdirSync(paths.state, { recursive: true });
+  if (!existsSync(paths.enableFlag)) {
+    writeFileSync(paths.enableFlag, "", "utf8");
+    out(`agent-protocol: launches are ENABLED ('${paths.enableFlag}')`);
+  }
+
+  // The daemon is started as itself — the flags are passed through as typed, plus the
+  // ref that was resolved above. `--pid-file`/`--daemon-log` are `up`'s own and are
+  // dropped: the daemon knows nothing about them.
+  const passthrough: string[] = [];
+  for (let at = 0; at < args.length; at += 1) {
+    const token = args[at] as string;
+    if (token === "--pid-file" || token === "--daemon-log") {
+      at += 1;
+      continue;
+    }
+    passthrough.push(token);
+  }
+  mkdirSync(dirname(log), { recursive: true });
+  const sink = openSync(log, "a");
+  const child = spawn(
+    process.execPath,
+    [...process.execArgv, process.argv[1] as string, "orchestrator", "daemon", ...passthrough],
+    { detached: true, stdio: ["ignore", sink, sink], cwd: process.cwd(), env: process.env },
+  );
+  child.unref();
+  closeSync(sink);
+  writeFileSync(pidFile, `${child.pid}\n`, "utf8");
+  out(`agent-protocol: the daemon is up in the background, pid ${child.pid} · its output ${log}`);
+  out(
+    "agent-protocol: 'orchestrator status' shows the circuit, 'orchestrator down' stops it after the current session",
+  );
+};
+
+/**
+ * `orchestrator down` — the graceful stop without the ritual (`stop --mode graceful
+ * --write` with the ref resolved). The daemon finishes the session it is running and
+ * exits at the next tick, so the answer an operator needs — "is it gone yet" — is
+ * printed as the pid to watch rather than implied.
+ */
+const orchestratorDown = (argv: readonly string[]): void => {
+  const args = withOperatorRef(argv);
+  const paths = pathsFrom(args);
+  const stopFlag = flag(args, "--stop-flag") ?? paths.stopFlag;
+  mkdirSync(dirname(stopFlag), { recursive: true });
+  writeFileSync(stopFlag, "", "utf8");
+  const pid = runningDaemon(flag(args, "--pid-file") ?? paths.daemonPid);
+  out(
+    pid === undefined
+      ? `agent-protocol: the stop flag is set ('${stopFlag}') — no backgrounded daemon of this box is running; an attached one exits at its next tick`
+      : `agent-protocol: the stop flag is set ('${stopFlag}') — pid ${pid} finishes the current session and exits at its next tick`,
+  );
+  out("agent-protocol: launches stay enabled — 'orchestrator disable' is the policy switch");
+};
+
+/**
+ * The SHORT PARKING FORMS: `hold <role>` / `resume <role>` (thread 019). The strict
+ * forms stay exactly as they were — this is the same action with the two answers the
+ * operator was retyping filled in: the ref from the config, `--by` from `$USER`.
+ *
+ * They ACT rather than plan. `--write` on the strict form guards a change nobody can
+ * see; a hold is visible in one command (`status`) and undone in one word, and a dry
+ * run that then has to be repeated with a flag is the ceremony this package was asked
+ * to take off the operator.
+ */
+const orchestratorHoldShort = (argv: readonly string[]): void => {
+  const args = withOperatorRef(argv.slice(1));
+  const role = argv[0] as string;
+  const by = flag(args, "--by") ?? process.env["USER"] ?? "";
+  const registry = registryFrom(args, undefined);
+  if (!registry.isKnown(by)) {
+    fail(
+      by === ""
+        ? "--by was not given and $USER is not set — a hold is signed by a role of the config"
+        : `--by '${by}' (from ${flag(args, "--by") === undefined ? "$USER" : "the flag"}) is not a role of the config — pass --by <role>`,
+      2,
+    );
+    return;
+  }
+  orchestratorHold([...args, "--mode", "take", "--role", role, "--by", by, "--write"]);
+};
+
+const orchestratorResumeShort = (argv: readonly string[]): void => {
+  const args = withOperatorRef(argv.slice(1));
+  orchestratorHold([...args, "--mode", "release", "--role", argv[0] as string, "--write"]);
+};
+
+/**
+ * A TYPO IS REFUSED AT THE DOOR (thread 019, item 3) — see `orchestrator/argv.ts`
+ * for why the table is the usage text itself.
+ *
+ * It is applied to the ORCHESTRATOR commands: that is where the defect was found
+ * (`daemon -d` swallowed and started attached) and where an unknown flag costs a
+ * whole session raised with the wrong settings. `up` accepts everything `daemon`
+ * does, because it is the same daemon with its start-up done for the operator.
+ */
+const USAGE_FLAGS = parseUsage(USAGE);
+
+const guardArguments = (key: string, argv: readonly string[]): void => {
+  const spec = USAGE_FLAGS.get(key);
+  // A command with no line in the usage block is a command the help text does not
+  // document — the guard says so instead of waving it through.
+  if (spec === undefined) {
+    fail(`'${key}' is not described in the usage block — the check has nothing to go by`, 2);
+    return;
+  }
+  const daemon = USAGE_FLAGS.get("orchestrator daemon");
+  const merged =
+    key === "orchestrator up" && daemon !== undefined
+      ? {
+          value: [...spec.value, ...daemon.value],
+          boolean: [...spec.boolean, ...daemon.boolean],
+          positionals: spec.positionals,
+        }
+      : spec;
+  const problems = strayArguments(argv, merged);
+  if (problems.length === 0) return;
+  err(`agent-protocol: '${key}' does not understand what it was given:`);
+  for (const problem of problems) err(`- ${problem}`);
+  fail(USAGE, 2);
+};
+
 const main = async (argv: readonly string[]): Promise<void> => {
   const [command, subcommand] = argv;
+  if (command === "orchestrator" && subcommand !== undefined) {
+    guardArguments(`orchestrator ${subcommand}`, argv.slice(2));
+  }
   if (command === "config" && subcommand === "check") {
     configCheck(argv.slice(2));
   } else if (command === "schema" && subcommand === "migrate") {
@@ -4580,8 +4728,19 @@ const main = async (argv: readonly string[]): Promise<void> => {
     orchestratorLog(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "stop") {
     orchestratorStop(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "up") {
+    orchestratorUp(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "down") {
+    orchestratorDown(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "resume") {
+    orchestratorResumeShort(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "hold") {
-    orchestratorHold(argv.slice(2));
+    // `hold <role>` (a bare word first) is the operator's form; anything else is the
+    // strict one, unchanged.
+    const rest = argv.slice(2);
+    const first = rest[0];
+    if (first !== undefined && !first.startsWith("-")) orchestratorHoldShort(rest);
+    else orchestratorHold(rest);
   } else if (command === "orchestrator" && subcommand === "preflight") {
     orchestratorPreflight(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "enable") {
