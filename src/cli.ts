@@ -22,7 +22,7 @@
  * WITHOUT `--write` NOTHING IS WRITTEN: the circuit is live, and "look at what
  * would happen" has to be cheaper and safer than "do it".
  */
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   appendFileSync,
@@ -39,7 +39,7 @@ import {
   writeFileSync,
   writeSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
 import { loadProtocolConfig } from "./config/load.js";
@@ -91,6 +91,17 @@ import {
   renderHold,
   renderHolds,
 } from "./orchestrator/hold.js";
+import {
+  DIGEST_DIR,
+  digestChanged,
+  digestIssues,
+  digestOf,
+  digestPath,
+  type InstanceDigest,
+  parseDigest,
+  renderDigest,
+  renderInstances,
+} from "./orchestrator/instances.js";
 import {
   DEFAULT_WAIT_INPUT_SECONDS,
   describeWait,
@@ -244,6 +255,9 @@ const USAGE = `usage (--ref is always required; --repo defaults to the repositor
                               # from the MESSAGES (not from the derived _thread.md, which lags a push behind)
   agent-protocol thread build --root <mail> --ref <ref> --id <NNN-slug> [--write]
   agent-protocol check        --root <mail> --ref <ref> [--since <ref>]
+                              # also validates '_instances/' as a CLASS of derived state files (R13):
+                              # the one MUTABLE derived thing in an append-only branch, so it is known
+                              # by name rather than met as a stray path
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
   agent-protocol mail         --root <mail> --ref <ref> --role <id>
@@ -673,6 +687,33 @@ const checkAll = (argv: readonly string[]): void => {
     loaded.input === undefined ? [] : checkThread(loaded.input, registry),
   );
   const legacy = threads.filter((loaded) => loaded.legacy).map((loaded) => loaded.thread.id);
+
+  // R13, second half: `_instances/` IS A CLASS, and the checker has to know it as one.
+  // It is the only MUTABLE derived thing in an append-only branch — each box rewrites
+  // its own state file — so an unrecognised path there is indistinguishable from the
+  // retroactive edit the immutability check exists to catch. (The immutability check
+  // itself never sees a digest: `messagesAtRef` matches `/messages/*.md` only.)
+  const digestDir = join(root, DIGEST_DIR);
+  if (existsSync(digestDir)) {
+    const contents = new Map<string, string>();
+    const files = readdirSync(digestDir);
+    for (const name of files) {
+      try {
+        contents.set(name, readFileSync(join(digestDir, name), "utf8"));
+      } catch {
+        // Absent from the map IS the unreadable case; `digestIssues` names it.
+      }
+    }
+    issues.push(
+      ...digestIssues({
+        files,
+        contents,
+        declared: (configFrom(argv, repoOf(root)).config.instances ?? []).map(
+          (instance) => instance.id,
+        ),
+      }).map((message) => ({ thread: DIGEST_DIR, message })),
+    );
+  }
   // An unreadable thread is a violation of the same order as a format violation:
   // `check` exists to say "something is wrong with the mail", and it must not stay
   // silent about a thread that did not parse at all.
@@ -2382,6 +2423,37 @@ const loadHolds = (dir: string): HoldRecord[] => {
 };
 
 /**
+ * The digests of every box, off the mail checkout (R13). A missing `_instances/` is
+ * simply nobody having published yet — not an error: the directory appears with the
+ * first daemon that writes its state. A file that does NOT read is kept and handed on
+ * with its reason, because the whole point of the class is that one broken box must not
+ * make the other five invisible.
+ */
+const loadDigests = (
+  mailRoot: string,
+): { digests: InstanceDigest[]; unreadable: Map<string, string>; files: string[] } => {
+  const dir = join(mailRoot, DIGEST_DIR);
+  const digests: InstanceDigest[] = [];
+  const unreadable = new Map<string, string>();
+  if (!existsSync(dir)) return { digests, unreadable, files: [] };
+  const files = readdirSync(dir).sort();
+  for (const name of files) {
+    if (!name.endsWith(".json")) continue;
+    let raw: string;
+    try {
+      raw = readFileSync(join(dir, name), "utf8");
+    } catch (error) {
+      unreadable.set(name, (error as Error).message);
+      continue;
+    }
+    const read = parseDigest(raw);
+    if (read.ok) digests.push(read.digest);
+    else unreadable.set(name, read.problem);
+  }
+  return { digests, unreadable, files };
+};
+
+/**
  * The orchestrator state display — a fold of the LOCAL journal. A missing journal
  * is an empty state (there have been no sessions yet), not an error: the file
  * appears with the first event. Unreadable for ANY OTHER reason is a loud refusal
@@ -2454,6 +2526,20 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   const statusScope = launchScopeFrom(argv, local, roles, false);
   out(describeScope(statusScope));
   for (const exclusion of statusScope.excluded) out(`  ${describeExclusion(exclusion)}`);
+  // R13, second half: WHAT THE OTHER BOXES ARE DOING. `describeScope` above says which
+  // roles this box leaves to somebody else; without the digests that is where the trail
+  // ends, and "the other machine is running it" is indistinguishable from "the other
+  // machine has been down since Tuesday". Read out of the mail branch, never asked for.
+  const statusMail = flag(argv, "--root") ?? paths.mailRoot;
+  const published = loadDigests(statusMail);
+  out(
+    renderInstances({
+      digests: published.digests,
+      unreadable: published.unreadable,
+      ...(statusScope.instance === undefined ? {} : { self: statusScope.instance }),
+      now,
+    }),
+  );
   out("launch resolution:");
   for (const role of roles) {
     out(`  ${role.id}: ${describeAgent(agentFor(argv, local, role))}`);
@@ -3823,6 +3909,93 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
  * john's fork and lies outside the daemon code: the daemon is the same, only the
  * way it is started differs.
  */
+/**
+ * PUBLISHING THIS BOX'S STATE into the mail branch (R13, second half) — the write half
+ * of the digest. It goes through the same delivery the mail uses, for the same reasons:
+ * a rejected push must not leave a commit on one disk, and a DIRTY CHECKOUT IS A
+ * REFUSAL, never a repair (delivery resets hard on a retry, and doing that over
+ * somebody's half-written message destroys work to publish a status line).
+ *
+ * A FAILURE HERE NEVER STOPS THE DAEMON. The digest is a courtesy to the other boxes
+ * and to a human; the work of this box does not depend on it. A daemon that died
+ * because it could not announce itself would be the watch failing at exactly the moment
+ * it is most needed — the same argument that keeps a failed mail probe from killing it.
+ * So: the reason is said out loud on the stream, every time, and the loop goes on.
+ *
+ * Returns what was published, so the caller can tell the next state from this one and
+ * not commit a heartbeat.
+ */
+const publishDigest = (input: {
+  readonly argv: readonly string[];
+  readonly mailRoot: string;
+  readonly branch: string;
+  readonly digest: InstanceDigest;
+}): boolean => {
+  const checkout = repoOf(input.mailRoot);
+  try {
+    deliverMessage({
+      git: (args) => {
+        try {
+          return execFileSync("git", ["-C", checkout, ...args], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+          });
+        } catch (error) {
+          const failure = error as { stderr?: string; status?: number };
+          const said = (failure.stderr ?? "").trim();
+          throw new DeliveryRefusedError(
+            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
+          );
+        }
+      },
+      write: writeOut,
+      branch: input.branch,
+      // Conventional Commits, because the mail checkout carries the commit-msg hook —
+      // and `chore` because this is machine bookkeeping, not a turn in a conversation.
+      subject: `chore(protocol): instance ${input.digest.instance} state`,
+      // The path does not depend on what else landed in the branch — one file per box —
+      // so a replan after a concurrent push restages the very same file.
+      stage: () => ({
+        path: join(input.mailRoot, digestPath(input.digest.instance)),
+        content: renderDigest(input.digest),
+        label: digestPath(input.digest.instance),
+      }),
+      note: (line) => err(`agent-protocol: daemon — ${line}`),
+    });
+    return true;
+  } catch (error) {
+    err(
+      `agent-protocol: daemon — the instance digest was NOT published: ${(error as Error).message}; the box keeps working, the other instances see its last known state`,
+    );
+    // A FAILED DELIVERY MUST NOT LEAVE THE CHECKOUT DIRTY. `deliverMessage` writes and
+    // stages before it commits, so a commit that fails (the runner's checkout has no
+    // `user.email` — this is not hypothetical, it is how this path first went red) ends
+    // with our file staged. Delivery REFUSES on a dirty checkout, so that leftover would
+    // block the next digest AND every message any role tries to send from this box: one
+    // failed status line would take the mail down for everybody.
+    //
+    // Only OUR OWN path is undone — never `reset --hard`. Whatever else is in the
+    // checkout belongs to somebody's unfinished message, and cleaning up after ourselves
+    // is not licence to destroy it.
+    const own = relative(checkout, join(input.mailRoot, digestPath(input.digest.instance)));
+    try {
+      execFileSync("git", ["-C", checkout, "reset", "--quiet", "--", own], { stdio: "ignore" });
+      if (spawnSync("git", ["-C", checkout, "cat-file", "-e", `HEAD:${own}`]).status === 0) {
+        execFileSync("git", ["-C", checkout, "checkout", "--quiet", "HEAD", "--", own], {
+          stdio: "ignore",
+        });
+      } else if (existsSync(join(checkout, own))) {
+        rmSync(join(checkout, own));
+      }
+    } catch (cleanup) {
+      err(
+        `agent-protocol: daemon — and the half-written digest could NOT be cleaned out of the mail checkout: ${(cleanup as Error).message}. Delivery refuses a dirty checkout, so mail from this box is blocked until '${own}' is dealt with by hand`,
+      );
+    }
+    return false;
+  }
+};
+
 const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // S6: not a single path in the operational command — everything comes from the
   // config; the flags remain an override for checks on a copy of the mail.
@@ -3899,6 +4072,30 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   out(`agent-protocol: daemon — ${describeScope(scope)}`);
   for (const exclusion of scope.excluded)
     out(`agent-protocol: daemon — ${describeExclusion(exclusion)}`);
+
+  // R13, second half: WHETHER THIS BOX PUBLISHES ITS STATE AT ALL. Without a declared
+  // topology there is no id to publish under and nobody to publish to — that is the
+  // pre-R13 contour verbatim (one box, every role), and it is said once rather than
+  // left to be inferred from a directory that never appears.
+  const selfInstance = scope.instance;
+  const mailBranch = configFrom(argv, undefined).config.mail.branch;
+  /**
+   * The last state actually pushed — what the next tick's state is judged against.
+   *
+   * SEEDED FROM THE BRANCH, not from nothing: a daemon is restarted (a reboot, a
+   * `--once` tick from cron, a config change), and a fresh process that remembered
+   * nothing would re-commit a digest identical to the one already there. That is the
+   * heartbeat `digestChanged` exists to prevent, arriving by the back door.
+   */
+  let published: InstanceDigest | undefined =
+    selfInstance === undefined
+      ? undefined
+      : loadDigests(mailRoot).digests.find((digest) => digest.instance === selfInstance);
+  out(
+    selfInstance === undefined
+      ? `agent-protocol: daemon — no instance declared, this box publishes no digest (${DIGEST_DIR}/ stays as it is)`
+      : `agent-protocol: daemon — publishing state as instance '${selfInstance}' to ${digestPath(selfInstance)} on ${mailBranch}`,
+  );
 
   // A lease nobody was left to close is indistinguishable from work from the
   // outside — a new supervisor must say so out loud instead of quietly carrying on.
@@ -4140,6 +4337,29 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           ? `agent-protocol: daemon — no candidates: no thread is waiting on ${launchable.join(", ") || "any launchable role"}, ${next}`
           : `agent-protocol: daemon — no candidate is launchable: all ${candidates.length} were skipped (see the lines above), ${next}`,
       );
+    }
+
+    // R13, second half: THE STATE OF THIS BOX IS PUBLISHED AT THE END OF THE TICK, when
+    // the launch above has already finished and the journal holds its result. Publishing
+    // before the launch would announce a state that is one whole session out of date.
+    // Only on a CHANGE — `digestChanged` ignores the clock, so an idle box does not turn
+    // the mail branch into a heartbeat log.
+    if (selfInstance !== undefined) {
+      const state = digestOf({
+        instance: selfInstance,
+        roles: launchable,
+        leases: foldLeases(
+          existsSync(journalPath)
+            ? parseJournal(readFile(journalPath, "orchestrator journal"))
+            : [],
+          new Date(),
+          gates.maxAttempts.value,
+        ),
+        now: new Date(),
+      });
+      if (digestChanged(published, state)) {
+        if (publishDigest({ argv, mailRoot, branch: mailBranch, digest: state })) published = state;
+      }
     }
 
     if (once) return;

@@ -1671,3 +1671,60 @@ wrong: the workspace lock keeps a second session off a tree on THIS box, ownersh
 this box off a role another box holds the lease on. The refusal lands BEFORE the world is
 touched — no lease, no journal, no workspace — so there is nothing left held by nobody.
 
+
+### S18 — what the other boxes are doing: the instance digest (R13)
+
+S17 makes the circuit correct across machines and BLIND. Each box knows its own leases from
+its own local journal, and about the others it knows only that they exist — so "the other
+machine is running dev-core right now" and "the other machine has been down since Tuesday"
+look like exactly the same silence, on both sides.
+
+**The answer is published, never asked for.** Every instance writes a small state file about
+itself into the mail branch — `_instances/<id>.json` — and everyone else reads it out of git.
+Nothing here opens a socket: the mail branch is the only shared surface the protocol has, it
+is free to audit, and an offline box degrades into a stale file instead of a hung request.
+This is why there is no address field in the topology (S17) and never needs to be.
+
+**One file per box, and the writer only ever touches its own.** Two instances never write the
+same path, so conflicts are gone by construction — the same argument that made a message one
+file. The `_` prefix keeps the directory outside `^\d{3}-`, so the thread walker never sees it.
+
+**The digest is a STATE, not history**: the instance id, when it was written, the roles this
+run raises (after the topology and the operator's flags) and the LIVE leases — role, thread,
+state, deadline. A released pair is history and is dropped; history stays in the local journal,
+because a growing file in a shared branch is paid for by every clone of the mail forever.
+
+**It is the one mutable derived thing in an append-only branch**, and `check` therefore knows
+`_instances/` as a CLASS rather than meeting it as a stray file: an unrecognised mutable path
+in an append-only branch is indistinguishable from the retroactive edit the immutability check
+exists to catch. (The immutability check itself never sees a digest — `messagesAtRef` matches
+`/messages/*.md` only.) What `check` says out loud: a file that is not `<instance>.json`, a
+digest whose file name and `instance` field disagree (the name is the identity, as it is for a
+message), and a digest belonging to an instance the repository no longer declares — a box
+dropped from the topology that keeps publishing reads as current state.
+
+**A tick that changed nothing is not a commit.** `writtenAt` moves every tick, so the write is
+gated on the STATE — roles and live leases — and the timestamp rides along with it. Otherwise
+the mail branch becomes a heartbeat log with hundreds of empty diffs a day. The cost is stated
+rather than hidden: an idle box also stops refreshing, so a busy idle box and a dead one look
+alike until one of them moves. A heartbeat, if it is ever wanted, is a separate decision and
+not a smaller interval here.
+
+**Staleness is the reader's judgement, not the writer's claim.** A box that died cannot update
+its own file to say so, so `orchestrator status` measures age against `writtenAt` with its own
+tolerance and marks what is older. `status` shows every digest including this box's, marked as
+such: its own digest is the only proof that this box is publishing at all, and a writer that
+has silently stopped is precisely the failure that makes everyone else's view wrong. A file
+that did not parse is shown beside the ones that did, with its reason — one broken box must
+not make the other five invisible.
+
+**Publishing never stops the daemon.** The digest is a courtesy to the other boxes and to a
+human; this box's work does not depend on it. A dirty mail checkout is a refusal (delivery
+resets hard on a retry, and doing that over somebody's half-written message destroys work to
+publish a status line), a rejected push is a refusal — and in both cases the reason is said on
+the stream and the loop goes on. A daemon that died because it could not announce itself would
+be the watch failing exactly when it is most needed.
+
+**Without a declared topology this box publishes nothing**, and says so once in the banner:
+there is no id to publish under and nobody to publish to. That is the pre-R13 contour verbatim
+(one box, every role), the same way an absent `workdir.worktrees` means the pre-R17 one.
