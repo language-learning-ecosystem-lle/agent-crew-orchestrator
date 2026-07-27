@@ -83,6 +83,20 @@ export const localSecretsSchema = z.strictObject({
 export const localConfigSchema = z.strictObject({
   agents: z.record(z.string().min(1), localAgentSchema).default({}),
   secrets: localSecretsSchema.optional(),
+  /**
+   * WHICH INSTANCE THIS BOX IS (R13) — the machine's half of the topology join.
+   *
+   * The repository declares WHICH instances exist and which roles each one raises
+   * (`instances`); only the box itself can say which of them it is, and it cannot be
+   * committed for exactly the R14 reason: the answer is different on every machine and
+   * belongs to none of them. Note the singular — `instances` (the topology) is POLICY
+   * and is refused here by name; `instance` (identity) is location, and this is the
+   * only place it can live.
+   *
+   * A box with no name while the repository declares instances does not fall back to
+   * "raise everything": it refuses, because the fallback would raise another box's role.
+   */
+  instance: z.string().min(1).optional(),
 });
 
 export type LocalAgent = z.infer<typeof localAgentSchema>;
@@ -112,6 +126,10 @@ const POLICY_KEYS = [
   // notifications is where the credentials file lies, and that is `secrets.envFile`.
   "notifications",
   "announcements",
+  // R13: WHO RAISES WHAT is policy — the topology is reviewed in a PR and travels with
+  // git, so every box agrees about every other. The machine may say only WHICH of the
+  // declared instances it is, and that field is `instance`, in the singular.
+  "instances",
 ] as const;
 
 export class LocalConfigError extends Error {

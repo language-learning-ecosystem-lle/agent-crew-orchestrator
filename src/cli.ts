@@ -164,6 +164,15 @@ import {
   waitingSince,
 } from "./orchestrator/priority.js";
 import { describeReboot, renderSystemdUnit } from "./orchestrator/reboot.js";
+import {
+  describeExclusion,
+  describeScope,
+  instanceIssues,
+  type LaunchScope,
+  ownershipIssues,
+  resolveLaunchScope,
+  scopeFlagIssues,
+} from "./orchestrator/scope.js";
 import { renderStatus } from "./orchestrator/status.js";
 import { describeSkip, planTick } from "./orchestrator/tick.js";
 import {
@@ -270,7 +279,7 @@ or --local-config <p>): the repository says WHAT is raised, the machine says WHE
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--local-config <p>] [--max-attempts <n>]
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--fresh] [--write] [-d|--detach]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
                               # ceilings: the flag wins over the role's launch.limits, which wins over the package default
                               # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
@@ -278,7 +287,11 @@ or --local-config <p>): the repository says WHAT is raised, the machine says WHE
                               # --fresh: never resume the previous session, whatever the continuation policy says
                               # --wait-input: the ceiling of a DECLARED wait for input (R19); waiting does not eat the wall clock
                               # --wind-down: how long before the deadline the session is asked to land its work (R20); default 20% of the window, 2-15 min
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>]
+                              # --roles/--exclude-roles: the same scope door as the daemon's (R13) — a --role
+                              # owned by another instance, or left out by these flags, is REFUSED here, not raised
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>]
+                              # --roles/--exclude-roles: WHICH roles THIS run raises (R13), mutually exclusive;
+                              # on top of the instance filter — a role owned by another box is never raised here
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
@@ -394,14 +407,32 @@ const configCheck = (argv: readonly string[]): void => {
     }
   }
 
-  if (missing.length === 0) {
+  // R13: WHO RAISES WHAT, checked where a human is looking — in the PR that writes it.
+  // A launchable role with no instance or with two is refused here precisely because at
+  // runtime neither case has an answer: the first is raised by nobody, the second by two
+  // boxes whose local leases know nothing of each other.
+  const ownership = ownershipIssues({
+    instances: loaded.config.instances,
+    launchable: loaded.config.roles
+      .filter((role) => roleLaunchability(role).launchable)
+      .map((role) => role.id),
+    isKnownRole: (id) => loaded.registry.isKnown(id),
+  });
+
+  const issues = [...missing, ...ownership];
+  if (issues.length === 0) {
+    const instances = loaded.config.instances ?? [];
+    const topology =
+      instances.length === 0
+        ? "no instances declared (one box, every role)"
+        : `${instances.length} instances (${instances.map((instance) => instance.id).join(", ")})`;
     out(
-      `agent-protocol: ok — config '${loaded.path}' at ${loaded.ref}: protocol version ${loaded.config.protocolVersion}, ${loaded.registry.ids().length} roles, mail in branch '${loaded.config.mail.branch}' (${loaded.config.mail.dir})`,
+      `agent-protocol: ok — config '${loaded.path}' at ${loaded.ref}: protocol version ${loaded.config.protocolVersion}, ${loaded.registry.ids().length} roles, ${topology}, mail in branch '${loaded.config.mail.branch}' (${loaded.config.mail.dir})`,
     );
     return;
   }
-  err("agent-protocol: the config points at missing files:");
-  for (const item of missing) err(`- ${item}`);
+  err("agent-protocol: the config does not hold together:");
+  for (const item of issues) err(`- ${item}`);
   process.exit(1);
 };
 
@@ -2200,6 +2231,63 @@ const launchableRoles = (argv: readonly string[]): Role[] =>
     .active()
     .filter((role) => roleLaunchability(role).launchable);
 
+/** A comma-separated flag: absent stays absent, because "not said" and "empty" differ here. */
+const roleList = (argv: readonly string[], name: string): readonly string[] | undefined => {
+  const raw = flag(argv, name);
+  if (raw === undefined) return undefined;
+  const items = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+  if (items.length === 0) fail(`${name} was given nothing to name`, 2);
+  return items;
+};
+
+/**
+ * WHICH ROLES THIS RUN RAISES (R13) — the instance's, narrowed by the operator's flags.
+ *
+ * Both refusals happen HERE, at the door, before a single tick: a box that does not know
+ * which instance it is, and a `--roles` naming something that is not a role. Either one
+ * discovered later would be a daemon that raises nobody while reporting that it works.
+ */
+const launchScopeFrom = (
+  argv: readonly string[],
+  local: LoadedLocalConfig,
+  launchable: readonly Role[],
+  fatal = true,
+): LaunchScope => {
+  const config = configFrom(argv, undefined).config;
+  const ids = launchable.map((role) => role.id);
+  const select = roleList(argv, "--roles");
+  const exclude = roleList(argv, "--exclude-roles");
+  const issues = [
+    ...instanceIssues({
+      instances: config.instances,
+      ...(local.config.instance === undefined ? {} : { instance: local.config.instance }),
+      localConfigPath: local.path,
+    }),
+    ...scopeFlagIssues({
+      ...(select === undefined ? {} : { select }),
+      ...(exclude === undefined ? {} : { exclude }),
+      launchable: ids,
+    }),
+  ];
+  if (issues.length > 0) {
+    for (const issue of issues) err(`agent-protocol: ${issue}`);
+    // `status` DIAGNOSES rather than launches: a box that cannot resolve its scope is
+    // exactly when its state has to stay readable, so there the issues are said and the
+    // scope is still rendered from what is known. Every launching path refuses.
+    if (fatal) fail("the scope of this run does not resolve — not starting", 2);
+  }
+  return resolveLaunchScope({
+    launchable: ids,
+    ...(config.instances === undefined ? {} : { instances: config.instances }),
+    ...(local.config.instance === undefined ? {} : { instance: local.config.instance }),
+    ...(select === undefined ? {} : { select }),
+    ...(exclude === undefined ? {} : { exclude }),
+  });
+};
+
 /** The `orchestrator preflight` command: show everything and return a code by the outcome. */
 const orchestratorPreflight = (argv: readonly string[]): void => {
   const local = localFrom(argv);
@@ -2360,8 +2448,13 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   // read off in one place.
   const local = localFrom(argv);
   out(`machine config: ${describeLocalConfig(local)}`);
-  out("launch resolution:");
   const roles = launchableRoles(argv);
+  // R13: WHICH ROLES THIS BOX RAISES — the answer spans the two configs as well, and it
+  // is the first thing to look at when a role is not raised and nobody says why.
+  const statusScope = launchScopeFrom(argv, local, roles, false);
+  out(describeScope(statusScope));
+  for (const exclusion of statusScope.excluded) out(`  ${describeExclusion(exclusion)}`);
+  out("launch resolution:");
   for (const role of roles) {
     out(`  ${role.id}: ${describeAgent(agentFor(argv, local, role))}`);
   }
@@ -3533,6 +3626,24 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     fail(`role '${roleId}' is not launched by the orchestrator: ${can.reason}`, 2);
     return;
   }
+  // WHOSE ROLE THIS IS (R13) — the same door as the daemon's, and deliberately the same
+  // code. A hand-typed `run` is the one mutator the workspace lock cannot see: the lock
+  // keeps a second session off a tree on THIS box, ownership is what keeps this box out
+  // of a role another box holds the lease on. Refusing in the daemon only would leave the
+  // manual launch as the way around the topology — and it is the launch a human types
+  // exactly when something is already wrong.
+  //
+  // The machine config is read HERE, before anything else touches the world, because the
+  // ownership answer is half of it (R14) — the same value serves the agent resolution
+  // below.
+  const local = localFrom(argv);
+  const leftOut = launchScopeFrom(argv, local, launchableRoles(argv)).excluded.find(
+    (exclusion) => exclusion.role === roleId,
+  );
+  if (leftOut !== undefined) {
+    fail(describeExclusion(leftOut), 2);
+    return;
+  }
   const now = orchestratorNow(argv);
   // The flag, then the role's `launch.limits`, then the package default (R12) —
   // and the line below says which of the three each number came from.
@@ -3544,8 +3655,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const gates = gatesFrom(argv);
   const pollMs = positiveInt(argv, "--poll", 10) * 1000;
   // What is raised, where its binary lives and with which parameters (R14 + R15) —
-  // one resolution, because all three key off the tool id.
-  const local = localFrom(argv);
+  // one resolution, because all three key off the tool id; `local` was already read at
+  // the ownership door above.
   // WHAT THE THREAD SAID ABOUT ITS RUNS (R21) — read before the parameters are merged,
   // because it is one of the layers they merge from.
   const directed = threadDirectiveFor({ mailRoot, thread, registry });
@@ -3728,12 +3839,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const childEnv = childEnvFrom(argv);
   const ids = registry.ids();
   const launchableList = launchableRoles(argv);
-  const launchable = launchableList.map((role) => role.id);
   // The machine config is read ONCE, at startup, like the rest of the launch mode: a
   // daemon whose binaries changed under it should be restarted, and re-reading a
   // home-directory file every tick would make "which binary this run used" depend on
   // the moment rather than on the mode.
   const local = localFrom(argv);
+  // R13: THE SCOPE OF THIS RUN — the roles of THIS instance, narrowed by the operator's
+  // flags. It is resolved once, at startup, for the same reason: the topology is read at
+  // a ref and the flags belong to the launch, so neither can change under a running
+  // daemon. What the scope removed is said out loud every tick, beside the queue.
+  const scope = launchScopeFrom(argv, local, launchableList);
+  const launchable = scope.roles;
 
   const tickMs = positiveInt(argv, "--tick", 30) * 1000;
   // The two gates of the loop, WITH THEIR SOURCES — printed in the banner below (R12).
@@ -3758,12 +3874,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // before the first lease. The reasoning is in `daemonPreflightVerdict`; the short
   // version is that a watch killed by a network hiccup is not there when the network
   // comes back, and that is the whole point of a watch.
-  const startupChecks = runPreflight(
-    argv,
-    execTargets(argv, local, launchableList),
-    local,
-    launchableList,
-  );
+  // Only the roles IN SCOPE are probed: a binary for a role this box does not raise is
+  // neither our problem nor our refusal, and probing it would let another instance's
+  // topology stop this daemon at the door.
+  const inScope = launchableList.filter((role) => scope.roles.includes(role.id));
+  const startupChecks = runPreflight(argv, execTargets(argv, local, inScope), local, inScope);
   err(renderPreflight(startupChecks));
   const startup = daemonPreflightVerdict(startupChecks);
   if (startup.kind === "refuse") fail("preflight failed — not starting", 2);
@@ -3778,6 +3893,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     `agent-protocol: the daemon is up, launches are ${enabledAtStart ? "ENABLED" : `disabled (no '${enableFlag}')`}; stop '${stopFlag}', force '${forceFlag}'; roles ${launchable.join(", ") || "—"}`,
   );
   out(`agent-protocol: daemon — gates: ${describeGates(gates)}`);
+  // R13: WHAT THIS RUN RAISES, and what it leaves to somebody else — in the banner,
+  // because a role missing from the queue for an unspoken reason is indistinguishable
+  // from a role with no mail.
+  out(`agent-protocol: daemon — ${describeScope(scope)}`);
+  for (const exclusion of scope.excluded)
+    out(`agent-protocol: daemon — ${describeExclusion(exclusion)}`);
 
   // A lease nobody was left to close is indistinguishable from work from the
   // outside — a new supervisor must say so out loud instead of quietly carrying on.

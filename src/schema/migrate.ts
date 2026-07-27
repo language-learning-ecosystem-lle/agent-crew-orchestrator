@@ -54,6 +54,7 @@ import { INTERACTIVE_TURN_STEP } from "./v7-interactive-turn.js";
 import { GRACEFUL_DEADLINE_STEP } from "./v8-graceful-deadline.js";
 import { LAUNCH_DIRECTIVE_STEP } from "./v9-launch-directive.js";
 import { THREAD_PRIORITY_STEP } from "./v10-thread-priority.js";
+import { INSTANCES_STEP } from "./v11-instances.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -70,6 +71,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   GRACEFUL_DEADLINE_STEP,
   LAUNCH_DIRECTIVE_STEP,
   THREAD_PRIORITY_STEP,
+  INSTANCES_STEP,
 ];
 
 export type {
