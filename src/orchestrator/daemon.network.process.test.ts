@@ -19,7 +19,15 @@
  * comes back — no restart, no human.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +36,8 @@ import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
+import { HANG_CEILING_MS, waitFor } from "../testing/wait-for.js";
+import { parseJournal } from "./journal.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -94,6 +104,32 @@ const stub = (repo: string): string => {
 };
 
 const stateDir = (repo: string): string => join(repo, ".orchestrator");
+
+/** The journal as it is on disk — empty string while nothing has been written yet. */
+const journal = (repo: string): string => {
+  const path = join(stateDir(repo), "journal.jsonl");
+  return existsSync(path) ? readFileSync(path, "utf8") : "";
+};
+
+/**
+ * HAS A LAUNCH ACTUALLY HAPPENED — the only first-hand evidence there is.
+ *
+ * The `launch` event is written by the supervisor BEFORE it spawns the session, so it
+ * appears the moment the daemon really goes back to work; nothing else in the circuit
+ * creates the journal at all, which is why "the journal exists" used to be asserted as
+ * a proxy — and why it failed on a daemon that was stopped before its first launch.
+ * A half-written last line during the append is not a verdict: the poll simply has not
+ * seen it yet.
+ */
+const launched = (repo: string): boolean => {
+  try {
+    return parseJournal(journal(repo)).some(
+      (event) => event.kind === "launch" && event.role === "dev-core" && event.thread === "012-x",
+    );
+  } catch {
+    return false;
+  }
+};
 
 const enable = (repo: string): void => {
   mkdirSync(stateDir(repo), { recursive: true });
@@ -199,59 +235,88 @@ describe("the watch survives a dead remote (R6-достройка)", () => {
     expect(result.status).toBe(0);
     expect(output).toContain("the daemon stopped — the stop flag");
     expect(output).not.toContain("LAUNCHING NOBODY");
+    // AND IT WROTE NO JOURNAL — the fact the flake of 022 rested on. A journal is
+    // created by a LAUNCH and by nothing else, so "the journal exists" is evidence
+    // about work done, never about a daemon being alive; the test below waits for the
+    // launch itself for exactly this reason.
+    expect(existsSync(join(stateDir(repo), "journal.jsonl"))).toBe(false);
   });
 
-  it("the remote comes back → the same daemon resumes launching, with no restart", async () => {
-    const { repo, origin } = contour();
-    enable(repo);
-    cutTheWire(origin);
+  // The test timeout is not a budget: it is bigger than the sum of the ceilings below,
+  // so that a run that goes wrong fails with OUR message — the daemon's output and its
+  // journal — instead of vitest's bare "timed out", which names nothing (the flake of
+  // 022 was read three times before its mechanism was known).
+  it(
+    "the remote comes back → the same daemon resumes launching, with no restart",
+    async () => {
+      const { repo, origin } = contour();
+      enable(repo);
+      cutTheWire(origin);
 
-    const child = spawn(TSX, args(repo, ["--tick", "1"]), {
-      cwd: repo,
-      stdio: ["ignore", "pipe", "pipe"],
-      env: sandbox(configHome(repo)),
-    });
-    let output = "";
-    child.stdout.on("data", (chunk: Buffer) => {
-      output += chunk.toString();
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      output += chunk.toString();
-    });
-    const exited = new Promise<number>((resolve) => {
-      child.on("exit", (code) => resolve(code ?? -1));
-    });
-    const until = async (predicate: () => boolean, what: string): Promise<void> => {
-      const deadline = Date.now() + 60_000;
-      while (Date.now() < deadline) {
-        if (predicate()) return;
-        await new Promise((resolve) => setTimeout(resolve, 200));
+      const child = spawn(TSX, args(repo, ["--tick", "1"]), {
+        cwd: repo,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: sandbox(configHome(repo)),
+      });
+      let output = "";
+      child.stdout.on("data", (chunk: Buffer) => {
+        output += chunk.toString();
+      });
+      child.stderr.on("data", (chunk: Buffer) => {
+        output += chunk.toString();
+      });
+      const exited = new Promise<number>((resolve) => {
+        child.on("exit", (code) => resolve(code ?? -1));
+      });
+      /** Wait for a state; a ceiling that runs out means a HANG, and it is said so. */
+      const until = async (state: () => boolean, what: string): Promise<void> => {
+        if (await waitFor(state)) return;
+        child.kill("SIGKILL");
+        throw new Error(
+          `waited ${HANG_CEILING_MS / 1000}s for ${what} and it never came; the journal:\n${journal(repo) || "(no journal — nothing was ever launched)"}\nthe output so far:\n${output}`,
+        );
+      };
+
+      // TWO refusals, not one: the second proves the loop is ticking rather than that
+      // the process merely failed to die yet.
+      await until(() => output.split("LAUNCHING NOBODY").length > 2, "two refused ticks");
+
+      restoreTheWire(origin);
+
+      await until(() => output.includes("the mail is readable again"), "the mail to come back");
+      // THE LAUNCH IS WAITED FOR AS A STATE — the journal event, not a word in the
+      // stream. This is where the flake of 022 lived: the old wait matched the
+      // substring "launch", which the PREVIOUS line ("…, launches resume") already
+      // contains, so it returned without waiting for anything. The stop flag was then
+      // written into a race with the very tick that had just found the mail readable:
+      // if the flag landed first the daemon halted having launched nothing, the journal
+      // was never created, and the final `existsSync` failed as "expected false to be
+      // true" — a red run about a daemon that behaved correctly.
+      await until(() => launched(repo), "the launch of dev-core/012-x in the journal");
+
+      // The off switch works through all of it — the flag was never blocked by the outage.
+      mkdirSync(dirname(join(stateDir(repo), "stop")), { recursive: true });
+      writeFileSync(join(stateDir(repo), "stop"), "", "utf8");
+      // A ceiling for a HANG here too: the daemon finishes the session it has already
+      // started before it reads the flag, and how long that takes is the runner's
+      // business, not the invariant's. The invariant is that it stops at all.
+      let ceiling: NodeJS.Timeout | undefined;
+      const code = await Promise.race([
+        exited,
+        new Promise<number>((resolve) => {
+          ceiling = setTimeout(() => resolve(-2), HANG_CEILING_MS);
+        }),
+      ]);
+      clearTimeout(ceiling);
+      if (code === -2) {
+        child.kill("SIGKILL");
+        throw new Error(`the daemon never exited after the stop flag; the output:\n${output}`);
       }
-      child.kill("SIGKILL");
-      throw new Error(`timed out waiting for ${what}; the output so far:\n${output}`);
-    };
-
-    // TWO refusals, not one: the second proves the loop is ticking rather than that
-    // the process merely failed to die yet.
-    await until(() => output.split("LAUNCHING NOBODY").length > 2, "two refused ticks");
-
-    restoreTheWire(origin);
-
-    await until(() => output.includes("the mail is readable again"), "the mail to come back");
-    await until(
-      () => output.includes("candidate dev-core") || output.includes("launch"),
-      "a launch",
-    );
-
-    // The off switch works through all of it — the flag was never blocked by the outage.
-    mkdirSync(dirname(join(stateDir(repo), "stop")), { recursive: true });
-    writeFileSync(join(stateDir(repo), "stop"), "", "utf8");
-    const code = await Promise.race([
-      exited,
-      new Promise<number>((resolve) => setTimeout(() => resolve(-2), 30_000)),
-    ]);
-    if (code === -2) child.kill("SIGKILL");
-    expect(code).toBe(0);
-    expect(existsSync(join(stateDir(repo), "journal.jsonl"))).toBe(true);
-  }, 120_000);
+      expect(code).toBe(0);
+      // Already true by the wait above — kept as the statement of the test: the daemon
+      // went back to WORK, not merely back to reading the mail.
+      expect(launched(repo)).toBe(true);
+    },
+    5 * HANG_CEILING_MS,
+  );
 });
