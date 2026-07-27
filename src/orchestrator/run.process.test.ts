@@ -165,17 +165,41 @@ const journalPath = (repo: string): string => join(repo, ".orchestrator", "journ
 const journal = (repo: string): ReturnType<typeof parseJournal> =>
   parseJournal(readFileSync(journalPath(repo), "utf8"));
 
-/** Has the run got as far as opening its session log — i.e. is there a session to kill? */
-const sessionLogExists = (repo: string): boolean => {
-  const dir = join(repo, ".orchestrator", "sessions");
-  return existsSync(dir) && readdirSync(dir).some((name) => name.endsWith(".log"));
-};
-
 /** The session log of a run — the file the journal points at. */
 const sessionLog = (repo: string): string => {
   const dir = join(repo, ".orchestrator", "sessions");
   const names = readdirSync(dir).filter((name) => name.endsWith(".log"));
   return readFileSync(join(dir, names[names.length - 1] as string), "utf8");
+};
+
+/**
+ * WAIT FOR A STATE, WITH A CEILING FOR A REAL HANG — never a deadline that the
+ * runner's mood can miss.
+ *
+ * The distinction the flake of 2026-07-27 was made of (the same test, the same
+ * class, twice on different commits — msg-100 and msg-123 of `016-protocol-roadmap`):
+ * the invariant under test is "the outcome IS recorded", not "it is recorded within
+ * twenty seconds". A tight ceiling turns a slow machine into a red run, and a red run
+ * people have learned to restart stops being a fact — which is what rule #14 rests on.
+ * So the ceiling here is sized for a HANG (something that will never arrive), and the
+ * wait returns the moment the state does.
+ */
+const HANG_CEILING_MS = 120_000;
+const waitFor = async (state: () => boolean, ceilingMs = HANG_CEILING_MS): Promise<void> => {
+  const until = Date.now() + ceilingMs;
+  while (Date.now() < until && !state()) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+};
+
+/** Is a process still there? `signal 0` asks without touching it. */
+const alive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 describe("running a role as a process — the outcome is always recorded", () => {
@@ -258,7 +282,14 @@ describe("running a role as a process — the outcome is always recorded", () =>
     // session on top of a live one.
     const { repo } = contour();
     const marker = join(repo, "alive.txt");
-    const exec = stub(repo, `sleep 30\ntouch ${marker}`);
+    // The session says WHICH PROCESS it is and then works for far longer than any
+    // release can take. Both halves matter: the pid makes "it was put down" a state
+    // the test can read instead of a stretch of clock it has to sit through, and the
+    // long sleep means the marker cannot appear while a slow machine is still writing
+    // the release — the old thirty seconds put a ceiling on the supervisor's speed and
+    // called a slow release an orphaned session.
+    const pidFile = join(repo, "session.pid");
+    const exec = stub(repo, `echo $$ > ${pidFile}\nsleep 300\ntouch ${marker}`);
 
     // THE SIGNAL MUST LAND ON THE PROCESS THAT INSTALLED THE HANDLER, and `tsx` is a
     // WRAPPER: it starts node as a grandchild and forwards signals to it. That
@@ -295,32 +326,36 @@ describe("running a role as a process — the outcome is always recorded", () =>
       ],
       // Its own words are kept: when this fails, "did the handler run at all" is the
       // first question, and `stdio: "ignore"` threw the answer away.
-      { cwd: repo, stdio: ["ignore", sink, sink], detached: true },
+      // AND THE TEST'S OWN HOME DIRECTORY (R14), like every other run here. This one
+      // spawn was missing it and inherited the developer's real machine config — so on
+      // the day `instance` was added to a live `local.json` the run refused at the S17
+      // door ("the machine calls itself 'main', the repository declares no instances")
+      // and the test failed on a machine outside the repository. Exactly the defect
+      // `sandbox` was written to remove, surviving in the one call that skipped it.
+      { cwd: repo, stdio: ["ignore", sink, sink], detached: true, env: sandbox(repo) },
     );
     // WAIT FOR THE STATE, NOT FOR A CLOCK. The fixed pause this replaced measured
     // the runner's mood: on a loaded CI machine the twelve seconds ran out while the
     // supervisor was still starting, the signal landed before it had a session to
     // watch, and the test failed for a reason that had nothing to do with the
     // invariant. The precondition it actually needs is "the session is up and
-    // producing" — the log of the run says so.
-    const started = Date.now();
-    while (Date.now() - started < 45_000 && !sessionLogExists(repo)) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-    const sessionUpAt = Date.now();
+    // producing" — and the session's own pid file says so first-hand: the log is
+    // opened by the SUPERVISOR before the spawn, so it can exist while there is still
+    // nothing to kill.
+    await waitFor(() => existsSync(pidFile) && readFileSync(pidFile, "utf8").trim() !== "");
+    const sessionPid = Number(readFileSync(pidFile, "utf8").trim());
+    expect(Number.isInteger(sessionPid) && sessionPid > 0).toBe(true);
     // A moment of real work after the spawn, so the kill hits a live session.
     await new Promise((resolve) => setTimeout(resolve, 2_000));
     process.kill(-(child.pid as number), "SIGTERM");
-    // AND HERE TOO, THE STATE RATHER THAN A CLOCK. The three-second pause this
-    // replaced was the last fixed wait in the test: the invariant is "the outcome IS
-    // recorded", not "it is recorded within three seconds", and a deadline of twenty
-    // still fails if it is never recorded at all.
-    const killedAt = Date.now();
+    // AND HERE TOO, THE STATE RATHER THAN A CLOCK — with the ceiling raised to the
+    // size of a HANG. The twenty seconds this replaced were the last deadline in the
+    // test, and they were the flake: twice on different commits the runner needed
+    // longer than that to get the release onto disk, the wait ran out, and the failure
+    // read as "the outcome was never recorded" about a run that recorded it.
     const lastKind = (): string | undefined =>
       existsSync(journalPath(repo)) ? journal(repo).at(-1)?.kind : undefined;
-    while (Date.now() - killedAt < 20_000 && lastKind() !== "lease-released") {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
+    await waitFor(() => lastKind() === "lease-released");
     // A journal that does not exist at all means the supervisor never started — a
     // different failure from "it started and said nothing", and the two must not be
     // reported as one (the runner produced both on the same day).
@@ -330,22 +365,29 @@ describe("running a role as a process — the outcome is always recorded", () =>
     ).toBe(true);
 
     const last = journal(repo).at(-1);
-    expect(last, `the supervisor said: ${readFileSync(supervisorOut, "utf8")}`).toMatchObject({
+    // The journal goes into the message beside the supervisor's words: "it hung" and
+    // "it stopped at `launch`" are different diagnoses, and the previous message named
+    // neither — it printed the supervisor's stdout and left the reader to guess.
+    expect(
+      last,
+      `the supervisor said: ${readFileSync(supervisorOut, "utf8")}\nthe journal reads: ${readFileSync(journalPath(repo), "utf8")}`,
+    ).toMatchObject({
       kind: "lease-released",
       reason: "supervisor-gone",
     });
 
-    // The session must be put down TOGETHER with the observer: had it lived out its
-    // full 30 seconds, the marker would have appeared. The wait is measured from the
-    // moment the session came up rather than from the kill — otherwise the length of
-    // the wait above would decide how long this one is, and a fast release would leave
-    // the check standing BEFORE the marker was due.
-    const dueAt = sessionUpAt + 35_000;
-    while (Date.now() < dueAt) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-    expect(existsSync(marker), "the orphaned session outlived the supervisor").toBe(false);
-  }, 120_000);
+    // The session must be put down TOGETHER with the observer, and THAT is a state
+    // too: the process is gone. The clock this replaced waited out the session's own
+    // sleep to see whether a marker appeared — which made the session's length a
+    // ceiling on how slow the release was allowed to be, so a slow-but-correct release
+    // was reported as an orphaned session.
+    await waitFor(() => !alive(sessionPid));
+    expect(alive(sessionPid), "the orphaned session outlived the supervisor").toBe(false);
+    // The belt to that brace: it was put down BEFORE finishing its work, not after.
+    expect(existsSync(marker), "the session ran to completion after the supervisor died").toBe(
+      false,
+    );
+  }, 300_000);
 
   it("THE SESSION OUTPUT REACHES THE FILE — every log used to be empty (R6)", () => {
     // The diagnosis of 2026-07-25: the supervisor collected stderr while the agent
