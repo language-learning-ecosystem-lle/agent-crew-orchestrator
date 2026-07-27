@@ -430,6 +430,77 @@ describe("the permission profile — part of the launch contract (S7)", () => {
     expect(argv[4]).toBe("--max-turns");
   });
 
+  it("the zone deny rules REACH argv as --settings — the carrying mechanism of door 1 (thread 020)", () => {
+    // The whole of door 1 is this join: zones.ts computes the rules, and argv is
+    // where they turn into something the raised session actually obeys. Without a
+    // test here the pure functions stay green while the flag quietly stops being
+    // passed — the same silent regression --allowedTools once had.
+    const argv = buildLaunchArgv({
+      prompt: "p",
+      maxTurns: "25",
+      launch: { allowedTools: ["Bash", "Edit"] },
+      denyRules: ["Edit(apps/pronunciation-service)", "Edit(apps/pronunciation-service/**)"],
+    });
+    expect(argv).toEqual([
+      "-p",
+      "p",
+      "--allowedTools",
+      "Bash,Edit",
+      "--settings",
+      JSON.stringify({
+        permissions: {
+          deny: ["Edit(apps/pronunciation-service)", "Edit(apps/pronunciation-service/**)"],
+        },
+      }),
+      "--max-turns",
+      "25",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+    ]);
+  });
+
+  it("the --settings JSON is the tool's shape, and the value follows the flag", () => {
+    const argv = buildLaunchArgv({
+      prompt: "p",
+      maxTurns: "1",
+      launch: { allowedTools: ["Bash"] },
+      denyRules: ["Edit(apps)"],
+    });
+    const at = argv.indexOf("--settings");
+    expect(at).toBeGreaterThan(-1);
+    expect(JSON.parse(argv[at + 1] as string)).toEqual({ permissions: { deny: ["Edit(apps)"] } });
+  });
+
+  it("no zones — no --settings at all: an empty deny list would still shadow the workspace settings", () => {
+    for (const denyRules of [undefined, []]) {
+      const argv = buildLaunchArgv({
+        prompt: "p",
+        maxTurns: "1",
+        launch: { allowedTools: ["Bash"] },
+        ...(denyRules === undefined ? {} : { denyRules }),
+      });
+      expect(argv).not.toContain("--settings");
+    }
+  });
+
+  it("--settings composes with --resume and the tool parameters, in the pinned order", () => {
+    const argv = buildLaunchArgv({
+      prompt: "p",
+      maxTurns: "1",
+      launch: { allowedTools: ["Bash"] },
+      denyRules: ["Edit(apps)"],
+      resume: "sess-1",
+      params: {
+        model: { value: "opus", source: "role" },
+        effort: { value: "high", source: "role" },
+      },
+    });
+    expect(argv.slice(0, 2)).toEqual(["--resume", "sess-1"]);
+    expect(argv.indexOf("--settings")).toBeLessThan(argv.indexOf("--max-turns"));
+    expect(argv.indexOf("--max-turns")).toBeLessThan(argv.indexOf("--model"));
+  });
+
   it("argv asks for the STREAMING format — otherwise a broken-off run leaves an empty log (R6)", () => {
     // With the default format the agent prints its answer once, at the end. A
     // session cut by a deadline or a turn ceiling never gets there — and those are

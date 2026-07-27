@@ -68,9 +68,14 @@ a real failure: a duplicated role, a `via` pointing nowhere or at a role that
 itself has nobody to wake it, two roles on one tmux session (the wake-up would go
 to the wrong place).
 
-`zones` is the only field with no code consumer at P1: it exists so that the config
-can in time become the source of the role card (P4). Noted deliberately, so that it
-does not look forgotten.
+`zones.forbidden` GOT AN ENFORCER in thread 020 (it was the one field with no code
+consumer until then): the deny rules a session is raised with, the pre-commit guard of
+the role workspace and the CI step all read `roles/zones.ts`, so no two of them can
+disagree about what is inside a zone. `zones.writes` is still prose with no consumer —
+it says where the role's work lives, and it is deliberately NOT read as a closed
+allow-list (`dev-core` declares `writes: []` and may write nearly everything), so the
+only field that bans anything is `forbidden`. A role with no `zones` is restricted by
+nothing, which is the stated default and not an oversight.
 
 ## The protocol config
 
@@ -543,6 +548,16 @@ agent-protocol roles list   --ref <ref>                                    # the
 agent-protocol schema migrate [--repo <p>] [--root <comms>] [--to <n>] [--write]   # protocol version → version
                                                                            # (no --ref: it plans against the tree it rewrites)
 agent-protocol role exists  --ref <ref> --role <id>                        # is the role known?
+agent-protocol zones check  --ref <ref> [--repo <p>] (--role <id> | --role-from-workspace) \
+                            (--staged | --base <ref> | --paths <a,b>)
+                            # THE CHANGED PATHS AGAINST THE ROLE'S ZONE (thread 020): doors 2 and 3 in ONE
+                            # command — they ask the same question and differ only in where the paths come
+                            # from (the index in a pre-commit hook, the PR range in CI)
+                            # --role-from-workspace: whose commit this is, read from the workspace name (R17)
+                            # --ref names the config the verdict is passed with, and door 3 must point it at
+                            # the BASE of the PR: a change that widens its own zone must not be judged by it
+                            # the paths are read with --no-renames, -z and no --diff-filter — a deletion, a
+                            # rename OUT of the zone and a non-ASCII name are each invisible without one of them
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
 agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p>] [--write]
                                                                            # the turn has passed to a HUMAN (R4)
