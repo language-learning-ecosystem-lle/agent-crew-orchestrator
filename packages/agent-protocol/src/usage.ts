@@ -20,6 +20,12 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
   agent-protocol schema migrate [--repo <path>] [--config-path <p>] [--root <mail>] [--to <n>] [--write]
                               # the ONE command with no --ref: it plans against the working tree it rewrites
   agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
+  agent-protocol zones check  --ref <ref> [--repo <path>] (--role <id> | --role-from-workspace)
+                              (--staged | --base <ref> | --paths <a,b>)
+                              # ZONES WITH AN ENFORCER (thread 020): the changed paths against the
+                              # role's 'zones.forbidden' — the pre-commit hook of a role workspace
+                              # (--staged --role-from-workspace) and the CI step of a PR (--base)
+                              # a checkout that is not a role workspace passes with a note, not a refusal
   agent-protocol index build  --root <mail> --ref <ref> [--write]
   agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]
                               # THE READING HALF OF THE AGENT'S INTERFACE (R3): the conversation, in order,

@@ -41,6 +41,7 @@ import {
   type LaunchLimits,
   type Role,
 } from "../roles/schema.js";
+import { denySettings } from "../roles/zones.js";
 import type { LaunchDirective } from "../thread/message.js";
 import { DEFAULT_IDLE_MS } from "./activity.js";
 import type { Continuation } from "./continuation.js";
@@ -671,20 +672,32 @@ export const buildLaunchArgv = (input: {
    * with the wrong prompt or the prompt without the flag.
    */
   readonly resume?: string;
-}): string[] => [
-  ...(input.resume === undefined ? [] : ["--resume", input.resume]),
-  "-p",
-  input.prompt,
-  "--allowedTools",
-  input.launch.allowedTools.join(","),
-  "--max-turns",
-  input.maxTurns,
-  ...(input.params?.model === undefined ? [] : ["--model", input.params.model.value]),
-  ...(input.params?.effort === undefined ? [] : ["--effort", input.params.effort.value]),
-  "--output-format",
-  "stream-json",
-  "--verbose",
-];
+  /**
+   * THE ZONE DENY RULES OF THE ROLE (door 1 of thread 020) — the session is raised
+   * with them, so an edit outside the zone is refused by the tool at the moment it is
+   * attempted rather than at the merge door. Empty (a role with no `zones`) means the
+   * flag is not passed at all: a settings source that says nothing is still a settings
+   * source, and it would shadow whatever the workspace configures on its own.
+   */
+  readonly denyRules?: readonly string[];
+}): string[] => {
+  const settings = denySettings(input.denyRules ?? []);
+  return [
+    ...(input.resume === undefined ? [] : ["--resume", input.resume]),
+    "-p",
+    input.prompt,
+    "--allowedTools",
+    input.launch.allowedTools.join(","),
+    ...(settings === undefined ? [] : ["--settings", JSON.stringify(settings)]),
+    "--max-turns",
+    input.maxTurns,
+    ...(input.params?.model === undefined ? [] : ["--model", input.params.model.value]),
+    ...(input.params?.effort === undefined ? [] : ["--effort", input.params.effort.value]),
+    "--output-format",
+    "stream-json",
+    "--verbose",
+  ];
+};
 
 /** A role's permissions in one line — for the `status` display and the launch output. */
 export const describeLaunch = (role: Role): string => {

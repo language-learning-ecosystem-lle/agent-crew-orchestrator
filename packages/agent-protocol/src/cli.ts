@@ -214,6 +214,14 @@ import {
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import { claudeCodeEffortSchema, type Launch, type Role } from "./roles/schema.js";
 import {
+  type ChangedPathsSource,
+  changedPathsGitArgs,
+  describeZones,
+  parseChangedPaths,
+  pathsOutsideZones,
+  zoneDenyRules,
+} from "./roles/zones.js";
+import {
   type MigrationContext,
   MigrationRefusedError,
   planMigration,
@@ -329,16 +337,40 @@ const registryFrom = (argv: readonly string[], root?: string): RoleRegistry =>
   configFrom(argv, root).registry;
 
 /**
+ * THE ENVIRONMENT WITHOUT THE VARIABLES A GIT HOOK EXPORTS. Every hook runs with
+ * `GIT_DIR` (and friends) set, and with `GIT_DIR` set `git rev-parse --show-toplevel`
+ * stops answering "the root of the repository" and answers "the current directory" —
+ * so a guard that resolves the repository from its cwd resolves it to whatever
+ * directory the hook's command happened to run in. That is not a hypothetical: the
+ * zones guard of thread 020 let a commit into `apps/pronunciation-service` through on
+ * its first live test, because `pnpm -F agent-protocol` runs in the package directory
+ * and the inherited `GIT_DIR` made that directory look like the repository root — the
+ * guard concluded "not a role workspace" and stood aside, silently, in exactly the
+ * situation it exists for.
+ */
+const gitEnvOutsideHook = (): NodeJS.ProcessEnv => {
+  const {
+    GIT_DIR: _dir,
+    GIT_INDEX_FILE: _index,
+    GIT_WORK_TREE: _tree,
+    GIT_PREFIX: _prefix,
+    ...rest
+  } = process.env;
+  return rest;
+};
+
+/**
  * THE REPOSITORY OF THE TREE THIS COMMAND WAS CALLED FROM — the sense in which a
  * config is read BY REF, and in a linked worktree that is exactly right: `--ref HEAD`
  * from a feature worktree must mean the HEAD of THAT tree. Not the base of the
  * circuit's state: see `homeOf` below, and the doc block of `orchestrator/home.ts`
  * for why the two senses had to be split (R26).
  */
-const repoOf = (at: string): string => {
+const repoOf = (at: string, env?: NodeJS.ProcessEnv): string => {
   try {
     return execFileSync("git", ["-C", at, "rev-parse", "--show-toplevel"], {
       encoding: "utf8",
+      ...(env === undefined ? {} : { env }),
     }).trim();
   } catch (error) {
     return fail(`'${at}' is not inside a git repository: ${(error as Error).message}`, 2);
@@ -1850,12 +1882,13 @@ const execTargets = (
  * exist", "this is not a worktree". Used only where the absence is a legitimate
  * state; everything that must be loud goes through `execFileSync` directly.
  */
-const gitAsk = (args: readonly string[]): string | undefined => {
+const gitAsk = (args: readonly string[], env?: NodeJS.ProcessEnv): string | undefined => {
   try {
     return execFileSync("git", args, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       maxBuffer: 16 * 1024 * 1024,
+      ...(env === undefined ? {} : { env }),
     }).trim();
   } catch {
     return undefined;
@@ -2845,6 +2878,8 @@ type RunParams = {
   readonly forceFlag?: string;
   /** The permission profile of the role being raised — part of the launch contract (S7). */
   readonly launch: Launch;
+  /** The zone deny rules of the role (thread 020) — the tool refuses the edit at the moment it happens. */
+  readonly denyRules: readonly string[];
   /** Where to save the session output: silence can be examined without a witness. */
   readonly sessionLog: string;
   /** The raw stream beside it (`.jsonl`) — the primary source a rendering cannot replace. */
@@ -3123,6 +3158,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       maxTurns: p.maxTurns,
       launch: p.launch,
       params: p.params,
+      denyRules: p.denyRules,
       ...(p.continuation.mode === "resume" ? { resume: p.continuation.session } : {}),
     }),
     {
@@ -3870,6 +3906,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
     out(`agent-protocol: gates — ${describeGates(gates)}`);
     out(`agent-protocol: agent — ${describeAgent(agent)}`);
+    out(`agent-protocol: ${describeZones(role)}`);
     for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
     for (const event of plan.events) out(renderEventLine(event));
     return;
@@ -3903,6 +3940,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
   out(`agent-protocol: gates — ${describeGates(gates)}`);
   out(`agent-protocol: agent — ${describeAgent(agent)}`);
+  out(`agent-protocol: ${describeZones(role)}`);
   for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
   const reason = await runOne({
     journalPath,
@@ -3913,6 +3951,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     exec,
     maxTurns,
     launch: role.launch,
+    denyRules: zoneDenyRules(role),
     sessionLog,
     sessionStream: sessionStreamPath(sessionLog),
     sessionIdFile: sessionIdPath(sessionLog),
@@ -4408,6 +4447,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             exec: agent.exec.value,
             maxTurns: String(ceilings.maxTurns.value),
             launch: role.launch,
+            denyRules: zoneDenyRules(role),
             env: childEnv,
             sessionLog,
             sessionStream: sessionStreamPath(sessionLog),
@@ -4846,6 +4886,111 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
   fail(USAGE, 2);
 };
 
+/**
+ * THE STAGED/CHANGED PATHS CHECKED AGAINST THE ROLE'S ZONES — doors 2 and 3 of thread
+ * 020 in ONE command, because they ask the same question of the same data and only
+ * differ in where the paths come from (`git diff --cached` in a pre-commit hook,
+ * `git diff <base>...HEAD` in CI).
+ *
+ * WHICH CONFIG THE VERDICT IS PASSED WITH — `--ref`, and door 3 must point it at the
+ * BASE of the pull request rather than at its head. A PR that widens its own zone in
+ * `agent-protocol.json` and immediately writes into the widened part would otherwise be
+ * green by its own permission: exactly the property door 2 protects by reading
+ * `origin/main`. Widening a zone is a PR of its own, like a workflow change.
+ *
+ * WHY THE ROLE MAY BE INFERRED FROM THE DIRECTORY (`--role-from-workspace`). A
+ * pre-commit hook has no idea whose commit it is guarding, and asking the operator to
+ * configure the role per checkout would put the answer in a place that drifts. R17
+ * already made "whose tree is this" answerable by reading the path — one role, one
+ * worktree named after it under `orchestrator.workdir.worktrees` — so the hook reads
+ * it there. A checkout that is NOT a role workspace (the operator's own, a CI
+ * checkout, the mail worktree) is passed with a note and never a refusal: the guard
+ * belongs to the raised sessions, and a human committing in their own tree is not
+ * what it is for.
+ */
+const zonesCheck = (argv: readonly string[]): void => {
+  const repo = repoOf(flag(argv, "--repo") ?? process.cwd(), gitEnvOutsideHook());
+  const loaded = configFrom(argv, undefined);
+  const registry = loaded.registry;
+  const explicit = flag(argv, "--role");
+  const fromWorkspace = argv.includes("--role-from-workspace");
+  if (explicit !== undefined && fromWorkspace) {
+    fail("--role and --role-from-workspace say the same thing two ways — pass one", 2);
+    return;
+  }
+
+  let roleId = explicit;
+  if (fromWorkspace) {
+    const worktrees = loaded.config.orchestrator?.workdir?.worktrees;
+    if (worktrees === undefined) {
+      out(
+        "agent-protocol: zones — no workspaces declared (orchestrator.workdir.worktrees), nothing to infer a role from",
+      );
+      return;
+    }
+    const here = repo.replace(/\/+$/, "");
+    const candidate = here.slice(here.lastIndexOf("/") + 1);
+    const expected = workspacePath({
+      repo: repoOf(`${here}/..`, gitEnvOutsideHook()),
+      worktrees,
+      role: candidate,
+    });
+    if (expected !== here || !registry.isKnown(candidate)) {
+      out(`agent-protocol: zones — '${here}' is not a role workspace, the guard does not apply`);
+      return;
+    }
+    roleId = candidate;
+  }
+  if (roleId === undefined) {
+    fail("--role <id> (or --role-from-workspace) — the zones being enforced are a role's", 2);
+    return;
+  }
+  const role = registry.get(roleId);
+  if (role === undefined) {
+    fail(
+      `--role '${roleId}' — there is no such role in the config, there are no zones to enforce`,
+      2,
+    );
+    return;
+  }
+
+  const base = flag(argv, "--base");
+  const listed = flag(argv, "--paths");
+  const staged = argv.includes("--staged");
+  const sources = [base !== undefined, listed !== undefined, staged].filter(Boolean).length;
+  if (sources !== 1) {
+    fail("exactly one source of paths is required: --staged, --base <ref> or --paths <a,b>", 2);
+    return;
+  }
+  const source: ChangedPathsSource | undefined = staged
+    ? { kind: "staged" }
+    : base === undefined
+      ? undefined
+      : { kind: "range", base };
+  const paths =
+    source === undefined
+      ? (listed ?? "")
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0)
+      : parseChangedPaths(
+          gitAsk(changedPathsGitArgs({ repo, source }), gitEnvOutsideHook()) ??
+            fail(`the changed paths were not read from git (${staged ? "--cached" : base})`, 2),
+        );
+
+  const outside = pathsOutsideZones({ role, paths });
+  if (outside.length === 0) {
+    out(`agent-protocol: zones — ${paths.length} path(s) of '${roleId}' are inside its zone`);
+    return;
+  }
+  err(`agent-protocol: '${roleId}' may not write these paths (${describeZones(role)}):`);
+  for (const path of outside) err(`  ${path}`);
+  fail(
+    "the zones of the role are its statement of work — take these files out of the change, or have the zone widened in agent-protocol.json through a PR",
+    1,
+  );
+};
+
 const main = async (argv: readonly string[]): Promise<void> => {
   const [command, subcommand] = argv;
   if (command === "orchestrator" && subcommand !== undefined) {
@@ -4855,6 +5000,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     configCheck(argv.slice(2));
   } else if (command === "schema" && subcommand === "migrate") {
     schemaMigrate(argv.slice(2));
+  } else if (command === "zones" && subcommand === "check") {
+    zonesCheck(argv.slice(2));
   } else if (command === "roles" && subcommand === "list") {
     rolesList(argv.slice(2));
   } else if (command === "role" && subcommand === "exists") {
