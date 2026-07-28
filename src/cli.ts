@@ -5520,6 +5520,10 @@ const orchestratorStop = (argv: readonly string[]): void => {
       write: writeOut,
       branch: loadedConfig.config.mail.branch,
       subject: deliverySubject({ from: by, thread: threadId }),
+      // The trace is a TURN in a thread, signed by whoever forced the stop (027) — the
+      // same identity `new-message` commits a role's message with, not the machinery's:
+      // a force stop is somebody's decision, and the commit says whose.
+      identity: roleIdentity(by),
       stage: trace,
       note: out,
       lock: mailLockFor({ checkout, holder: `force stop by ${by} → ${threadId}`, note: out }),
