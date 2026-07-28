@@ -10,7 +10,7 @@
  * of, since that is the whole claim of R4.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,7 +47,7 @@ const message = (from: string, waitingOn: string): string =>
   `---\nfrom: ${from}\nworker: human\ndate: 2026-07-25T20:00:00Z\nexpects: answer\nwaiting-on: ${waitingOn}\n---\n\nThe body.\n`;
 
 /** A repository with a committed config, a mail root and a stub transport module. */
-const contour = (options: { transport?: boolean; templates?: boolean }) => {
+const contour = (options: { transport?: boolean; templates?: boolean; stalledAfter?: number }) => {
   const repo = mkdtempSync(join(tmpdir(), "agent-protocol-notify-"));
   const delivered = join(repo, "delivered.txt");
   const transportPath = join(repo, "stub-transport.mjs");
@@ -74,6 +74,9 @@ const contour = (options: { transport?: boolean; templates?: boolean }) => {
       : {
           notifications: {
             transport: { module: transportPath, options: { kind: "stub" } },
+            ...(options.stalledAfter === undefined
+              ? {}
+              : { stalledAfterMinutes: options.stalledAfter }),
             ...(options.templates === false
               ? {}
               : {
@@ -206,7 +209,24 @@ describe("notify as a command", () => {
     expect(run(contest).out).toContain("🔔 тред 016-x ждёт curator");
   });
 
-  it("a thread waiting on an agent is not a notification at all", () => {
+  it("a thread waiting on an agent is not a notification at all — while it is moving", () => {
+    // The horizon is put out of reach on purpose: the property being tested here is
+    // the ORIGINAL one (a wait on an agent is the watch's business, not the phone's),
+    // and the fixture is dated, so without this it would be caught by the second
+    // question below rather than by the first.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.thread("016-x", "dev-core");
+    contest.commit();
+
+    const result = run(contest, ["--write"]);
+
+    expect(result.out).toContain("0 waits");
+    expect(existsSync(contest.delivered)).toBe(false);
+  });
+
+  it("...but the same thread standing still IS an event, with no human in waiting-on", () => {
+    // The v13 case end to end: nobody is awaited who could be phoned, and the ring
+    // happens anyway because the turn has not moved.
     const contest = contour({});
     contest.thread("016-x", "dev-core");
     contest.commit();
@@ -214,6 +234,21 @@ describe("notify as a command", () => {
     const result = run(contest, ["--write"]);
 
     expect(result.out).toContain("0 waits");
+    expect(result.out).toContain("stalled");
+    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain("has not moved for");
+    expect(readFileSync(contest.state, "utf8")).toContain("stalled\tdev-core\t016-x\t");
+  });
+
+  it("a stall already announced is not announced again", () => {
+    const contest = contour({});
+    contest.thread("016-x", "dev-core");
+    contest.commit();
+    run(contest, ["--write"]);
+    rmSync(contest.delivered);
+
+    const again = run(contest, ["--write"]);
+
+    expect(again.out).toContain("nothing to announce");
     expect(existsSync(contest.delivered)).toBe(false);
   });
 
