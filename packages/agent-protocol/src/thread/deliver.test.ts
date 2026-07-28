@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { roleIdentity } from "../roles/identity.js";
 import { unlockedMail } from "./checkout-lock.js";
 import {
   DELIVERY_ATTEMPTS,
@@ -8,21 +9,29 @@ import {
 } from "./deliver.js";
 
 type Call = readonly string[];
+type Invocation = {
+  readonly args: readonly string[];
+  readonly env?: Readonly<Record<string, string>>;
+};
 
 const harness = (options: {
   readonly status?: string;
   /** Attempts (1-based) whose push is rejected. */
   readonly rejectPushes?: readonly number[];
   readonly ffFails?: boolean;
+  /** Whose message this is — the role the commit has to be signed by (027). */
+  readonly from?: string;
 }) => {
   const calls: Call[] = [];
+  const invocations: Invocation[] = [];
   const written: { path: string; content: string }[] = [];
   const notes: string[] = [];
   let pushes = 0;
   let plans = 0;
 
-  const git = (args: readonly string[]): string => {
+  const git = (args: readonly string[], env?: Readonly<Record<string, string>>): string => {
     calls.push(args);
+    invocations.push({ args, ...(env === undefined ? {} : { env }) });
     if (args[0] === "status") return options.status ?? "";
     if (args[0] === "merge" && options.ffFails === true) throw new Error("not a fast-forward");
     if (args[0] === "push") {
@@ -64,9 +73,10 @@ const harness = (options: {
       stage,
       note: (line) => notes.push(line),
       lock,
+      identity: roleIdentity(options.from ?? "dev-core"),
     });
 
-  return { run, calls, written, notes, held, plans: () => plans };
+  return { run, calls, invocations, written, notes, held, plans: () => plans };
 };
 
 describe("deliverMessage", () => {
@@ -145,6 +155,44 @@ describe("deliverMessage", () => {
     const h = harness({ status: " M agent-comms/016/messages/draft.md" });
     expect(() => h.run()).toThrow(/uncommitted changes/);
     expect(h.held).toEqual(["taken", "released"]);
+  });
+
+  // 027: the mail checkout is shared by every role on the box, so its identity cannot
+  // be configured — whoever configured it last would sign the next role's message.
+  it("signs the COMMIT with the role, author and committer both", () => {
+    const h = harness({ from: "curator" });
+    h.run();
+
+    const commit = h.invocations.find((call) => call.args[0] === "commit");
+    expect(commit?.env).toEqual({
+      GIT_AUTHOR_NAME: "curator",
+      GIT_AUTHOR_EMAIL: "curator@agents.invalid",
+      GIT_COMMITTER_NAME: "curator",
+      GIT_COMMITTER_EMAIL: "curator@agents.invalid",
+    });
+  });
+
+  it("signs NOTHING but the commit — fetch, push and the rest run as they always did", () => {
+    const h = harness({});
+    h.run();
+
+    expect(
+      h.invocations
+        .filter((call) => call.args[0] !== "commit")
+        .every((call) => call.env === undefined),
+    ).toBe(true);
+  });
+
+  it("re-signs the replanned message: a retry is a new commit, not a rebase of the old one", () => {
+    const h = harness({ rejectPushes: [1], from: "dev-core" });
+    h.run();
+
+    const commits = h.invocations.filter((call) => call.args[0] === "commit");
+    expect(commits).toHaveLength(2);
+    expect(commits.map((call) => call.env?.GIT_AUTHOR_EMAIL)).toEqual([
+      "dev-core@agents.invalid",
+      "dev-core@agents.invalid",
+    ]);
   });
 
   it("takes the lock the caller hands it — a caller alone in the checkout says so", () => {
