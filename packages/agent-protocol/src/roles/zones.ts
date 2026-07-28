@@ -23,10 +23,15 @@
  *     `role:` line of the description) — red before the review.
  *
  * THE CHAIN IS ONLY AS HONEST AS ITS HOLES ARE NAMED. Door 1 does not see a `Bash`
- * write — door 2 catches it. Door 2 does not see `git commit --no-verify`, and
- * NOTHING catches that until door 3 exists: until the CI step is on `main`, the chain
- * is incomplete, and it is the threat model (a forgetful agent, not a malicious one)
- * that makes the gap acceptable rather than any property of the guard.
+ * write — door 2 catches it. Door 2 does not see `git commit --no-verify` — door 3
+ * catches it, and only door 3 can: the verdict is passed on the runner, over the diff
+ * of the PR, where there is no local hook to skip. What stays open with door 3 in
+ * place is said here rather than left to be discovered: the step judges by the
+ * `role:` line of the PR DESCRIPTION, which the author writes themselves. A MISSING
+ * line is therefore a refusal and never a skip (otherwise the guard is walked around
+ * by deleting one line), but a line naming SOMEBODY ELSE'S role is caught by a reader
+ * and not by the guard. The threat model — a forgetful agent, not a malicious one —
+ * is what makes that last gap acceptable.
  *
  * THE DEFAULT, ASKED FOR EXPLICITLY IN THE STATEMENT OF WORK: a role with no
  * `zones`, or with an empty `forbidden`, is restricted by NOTHING — the whole tree.

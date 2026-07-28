@@ -556,6 +556,10 @@ agent-protocol zones check  --ref <ref> [--repo <p>] (--role <id> | --role-from-
                             # --role-from-workspace: whose commit this is, read from the workspace name (R17)
                             # --ref names the config the verdict is passed with, and door 3 must point it at
                             # the BASE of the PR: a change that widens its own zone must not be judged by it
+                            # door 3 itself is the step 'Зоны роли не нарушены' of the job `checks`
+                            # (.github/workflows/ci.yml): the role comes from the `role:` line of the PR
+                            # description — on the runner there is no role workspace to read it from, and
+                            # every PR arrives from one GitHub account, so the author's login says nothing
                             # the paths are read with --no-renames, -z and no --diff-filter — a deletion, a
                             # rename OUT of the zone and a non-ASCII name are each invisible without one of them
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
