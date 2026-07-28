@@ -97,6 +97,27 @@ export const localConfigSchema = z.strictObject({
    * "raise everything": it refuses, because the fallback would raise another box's role.
    */
   instance: z.string().min(1).optional(),
+  /**
+   * WHO SITS AT THIS BOX (thread `019-operator-ux`) — the role a hold taken here is
+   * signed by when `--by` is not typed.
+   *
+   * The short forms were given `$USER` as their default, and `$USER` is an OS account
+   * name that coincides with a role of the config only by luck. On the box this was
+   * written on it is `cosysoft`, which is no role at all — so `hold <role>`, the form
+   * that exists to take the ceremony off the operator, refused every time until `--by`
+   * was typed anyway. That is the ceremony back, plus an error message.
+   *
+   * It is location in R14's sense, not policy: WHICH roles may sign a hold is stated in
+   * the repository (and still checked there — an unknown value is refused exactly as a
+   * bad `--by` is), while WHICH of them happens to be the human at this keyboard is
+   * true of one machine and of no other. Same shape as `instance`, one line below the
+   * same reasoning.
+   *
+   * `$USER` stays as the last resort: on a box where the account name IS a role it kept
+   * working, and taking it away would break that for nothing. The order is stated once,
+   * where it is read, and every refusal names which of the three it came from.
+   */
+  operator: z.string().min(1).optional(),
 });
 
 export type LocalAgent = z.infer<typeof localAgentSchema>;
@@ -236,8 +257,13 @@ export const describeLocalConfig = (loaded: LoadedLocalConfig): string => {
   const agents = Object.entries(loaded.config.agents);
   const secrets =
     loaded.config.secrets === undefined ? "" : `; secrets ← ${loaded.config.secrets.envFile}`;
-  if (agents.length === 0) return `${loaded.path} — no agents declared${secrets}`;
+  // The operator is named because it SIGNS things: a hold in `status` reads
+  // `held by <role>`, and "which answer did that come from" is a question about this
+  // file, asked at the moment the signature looks wrong.
+  const operator =
+    loaded.config.operator === undefined ? "" : `; operator ${loaded.config.operator}`;
+  if (agents.length === 0) return `${loaded.path} — no agents declared${secrets}${operator}`;
   return `${loaded.path} — ${agents
     .map(([id, agent]) => `${id} → ${agent.exec}`)
-    .join(", ")}${secrets}`;
+    .join(", ")}${secrets}${operator}`;
 };
