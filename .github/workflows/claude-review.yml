@@ -195,6 +195,119 @@ jobs:
             --max-turns ${{ github.event.inputs.max_turns || '250' }}
             --allowedTools "Read,Grep,Glob,Edit,Write,Bash,mcp__github_inline_comment__create_inline_comment"
 
+      # ОТСУТСТВИЕ ВЕРДИКТА ДОСТАВЛЯЕТСЯ ТАК ЖЕ, КАК ВЕРДИКТ (решение john, тред
+      # 029). Прогон ревьюера умеет закончиться `success`, не создав `verdict.md`:
+      # 2026-07-28 это случилось трижды за сутки (PR #47/#55/#57; на #57 —
+      # `"subtype": "success"`, `"num_turns": 30`, то есть модель СЧИТАЛА себя
+      # закончившей, инструкцию не выполнив). Все три доставки вердикта висят на
+      # одном файле, поэтому его отсутствие гасило разом все три.
+      #
+      # Цена молчания — не потерянный текст, а НЕОТЛИЧИМОСТЬ: со стороны почты
+      # «ревью не состоялось» и «ревью ещё идёт» выглядят одинаково, и PR зависает,
+      # пока кто-нибудь не откроет лог джобы глазами. Единственным сигналом была
+      # красная джоба — а она к тому дню уже стала шумом: на двух открытых PR висел
+      # красный `review` при живом вердикте в комментах.
+      #
+      # Сообщение НЕ вердикт и вердиктом не притворяется: это заявление об
+      # отсутствии суждения, с id прогона и головой PR, чтобы читающий тред знал,
+      # что именно перезапускать. Ретрая здесь намеренно НЕТ (решение john): автопов-
+      # тор — удвоение расхода на каждый сбой, и платить за него решают по цифрам,
+      # когда класс станет видимым и посчитается.
+      #
+      # Шаг ДЕТЕРМИНИРОВАННЫЙ (bash, без модели), по той же причине, что и шаг
+      # статуса ниже: сообщать о том, что модель не справилась, поручая это модели,
+      # значит строить тот же отказ вторым слоем.
+      - name: Отсутствие вердикта — сообщением в тред
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # Вердикт есть — доставлять нечего, дальше работает штатный шаг статуса.
+          if [ -f verdict.md ]; then
+            echo "verdict.md на месте — сообщать об отсутствии нечего."
+            exit 0
+          fi
+
+          PR_BODY=$(gh pr view "$PR" --json body -q .body)
+          HEAD_SHA=$(gh pr view "$PR" --json headRefOid -q .headRefOid)
+          # Те же терпимые к оформлению regex'ы, что в merge-notify.yml: строки в
+          # бэктиках уже один раз ослепили парсер (PR #16), и второй формат для
+          # одного и того же поля здесь заводить нельзя.
+          THREAD=$(printf '%s' "$PR_BODY" | grep -oiE '^[[:space:]`*]*thread`?:[[:space:]]*`?[0-9]{3}-[a-z0-9-]+' | head -1 | sed -E 's/^[^0-9]*//; s/[`*].*//') || true
+          ROLE=$(printf '%s' "$PR_BODY" | grep -oiE '^[[:space:]`*]*role`?:[[:space:]]*`?[a-z][a-z0-9-]*' | head -1 | sed -E 's/^[^a-z]*role`?:[[:space:]]*`?//i') || true
+          if [ -z "${THREAD:-}" ]; then
+            # Некуда писать. Это САМО ПО СЕБЕ находка ревьюера (критерий 3), но
+            # сказать о ней негде — остаётся лог и красный статус следующим шагом.
+            echo "::warning::В описании PR #${PR} нет строки 'thread: NNN-slug' — об отсутствии вердикта сообщить некуда."
+            exit 0
+          fi
+
+          # Чекаут почты — ВНУТРИ рабочей директории (файловые инструменты за её
+          # пределы не выходят); прогон агента мог его уже создать, мог и не дойти.
+          if [ ! -d .comms-mail ]; then
+            git fetch --no-tags origin comms
+            git worktree add .comms-mail FETCH_HEAD
+          fi
+          if [ ! -d ".comms-mail/agent-comms/${THREAD}/messages" ]; then
+            echo "::warning::Тред '${THREAD}' не найден или ещё legacy — об отсутствии вердикта не сообщено."
+            exit 0
+          fi
+
+          # Тело — ФАЙЛОМ ВНЕ чекаута почты: доставка делает reset --hard при
+          # отклонённом push и снесла бы файл, лежащий внутри.
+          BODY_TMP="$(mktemp)"
+          {
+            printf '**Ревью не состоялось: вердикт не сформирован.**\n\n'
+            printf 'Прогон [`%s`](%s) по PR #%s (голова `%s`) завершился, не создав `verdict.md`, — поэтому не сработала ни одна из трёх доставок: ни сообщение в тред, ни коммент в PR, ни формальный review-статус.\n\n' \
+              "$RUN_ID" "$RUN_URL" "$PR" "$HEAD_SHA"
+            printf 'Это НЕ суждение о PR, а его отсутствие: молчание ревьюера здесь ничего не значит.\n\n'
+            printf 'Ревью перезапускается вручную — коммент `@claude` в PR либо снять и повесить метку `review` заново. Автоповтора нет намеренно (решение john, тред 029): сначала класс считается, потом решается, платить ли за вторую попытку.\n'
+          } > "$BODY_TMP"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Роль сверяется С КОНФИГОМ И ЧЕРЕЗ ПАКЕТ (как в merge-notify): опечатка
+          # иначе завалила бы `new-message` на двери, и сообщение об отсутствии
+          # вердикта потерялось бы целиком. Лучше сказать без передачи хода, чем не
+          # сказать: ход можно объявить руками, а несказанное никто не заметит.
+          WAIT_ARGS=""
+          if [ -n "${ROLE:-}" ]; then
+            if (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref HEAD --role "$ROLE" >/dev/null 2>&1); then
+              WAIT_ARGS="--waiting-on ${ROLE}"
+            else
+              echo "::warning::В PR #${PR} указана роль '${ROLE}', которой нет в конфиге протокола — ход не передан."
+              printf '\n⚠️ Ход не передан: в описании PR указана роль `%s`, которой нет в конфиге протокола — объявите ожидание вручную.\n' "$ROLE" >> "$BODY_TMP"
+            fi
+          else
+            printf '\n⚠️ Ход не передан: в описании PR не было строки `role: <id>` — объявите ожидание вручную.\n' >> "$BODY_TMP"
+          fi
+          for attempt in 1 2 3 4 5; do
+            git -C .comms-mail fetch --no-tags origin comms
+            git -C .comms-mail reset --hard FETCH_HEAD
+            if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
+                  --root "${GITHUB_WORKSPACE}/.comms-mail/agent-comms" --repo . --ref origin/main \
+                  --thread "$THREAD" --from reviewer-pr --expects answer ${WAIT_ARGS} \
+                  --worker gh-action \
+                  --body-file "$BODY_TMP" --write --no-push); then
+              echo "::error::new-message отказал — об отсутствии вердикта НЕ сообщено в ${THREAD}."
+              exit 1
+            fi
+            git -C .comms-mail add -A
+            git -C .comms-mail commit -m "chore(comms): ревью PR #${PR} не состоялось — вердикт не сформирован"
+            if git -C .comms-mail push origin HEAD:comms; then
+              echo "Об отсутствии вердикта сообщено в тред ${THREAD}."
+              exit 0
+            fi
+            echo "Push отклонён (попытка ${attempt}) — в comms писали параллельно, пересобираю."
+          done
+          echo "::error::Не удалось сообщить об отсутствии вердикта в ${THREAD} за 5 попыток."
+          exit 1
+
       # ТРЕТЬЯ ДОСТАВКА одного вердикта — формальный review-статус GitHub (тред
       # 016, решение john). Повод: галка джобы и содержимое вердикта — разные
       # вещи, и человеческий глаз дважды за день прочитал зелёную джобу как «всё
