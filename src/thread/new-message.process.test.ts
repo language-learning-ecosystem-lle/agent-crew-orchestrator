@@ -431,6 +431,53 @@ const send = (
     ["--write", ...extra],
   );
 
+/** The same delivery from ANOTHER role — the second half of what a shared checkout is. */
+const sendFrom = (
+  contest: { repo: string; root: string; body: string },
+  from: string,
+): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-message",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--thread",
+        "016-x",
+        "--from",
+        from,
+        "--expects",
+        "answer",
+        "--waiting-on",
+        "dev-core",
+        "--body-file",
+        contest.body,
+        "--worker",
+        "human",
+        "--write",
+      ],
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo), IDENTITY) },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
+/** Who the last commit of the mail checkout is by — author and, where asked, committer. */
+const head = (repo: string, format = "%an <%ae>"): string =>
+  execFileSync("git", ["-C", repo, "log", "-1", `--format=${format}`], {
+    encoding: "utf8",
+  }).trim();
+
 describe("new-message --write delivers (R3)", () => {
   it("one action: the file, the commit and the push — nothing is left for the agent to type", () => {
     const contest = delivery();
@@ -516,10 +563,58 @@ describe("new-message --write delivers (R3)", () => {
   });
 
   it("a git that refuses says WHY: the failure carries git's own words, not a bare exit code", () => {
-    // The case from the runner, made deterministic: no identity anywhere (the global
-    // and system configs are taken away as well, or a developer's own would answer for
-    // the checkout). Before this the command died on an unhandled throw — code 1, a
-    // stack trace, and a CI log that named neither git nor identity.
+    // Before this the command died on an unhandled throw — code 1, a stack trace, and
+    // a CI log that named neither git nor the reason. The refusal is provoked at the
+    // fetch, which is the first git call that can fail on somebody else's setup.
+    const contest = delivery();
+    execFileSync("git", ["-C", contest.repo, "remote", "set-url", "origin", "/nowhere/at/all"]);
+
+    const result = send(contest);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("git fetch");
+    expect(result.out).toContain("/nowhere/at/all");
+  });
+
+  /**
+   * 027: the commit is signed BY THE ROLE, out of `--from`, through the environment of
+   * that one git call. The three cases below are the acceptance of the mail half —
+   * they are here rather than in the unit tests because the question is what the
+   * COMMIT OBJECT ends up saying, and only a real git writes one.
+   */
+  it("the commit is authored by the role, not by the owner of the machine", () => {
+    const contest = delivery();
+
+    // The environment says the machine owner ('t') — as a real one does, and as `send`
+    // has always done. The role has to outrank it.
+    send(contest);
+
+    expect(head(contest.repo)).toBe("dev-core <dev-core@agents.invalid>");
+  });
+
+  it("two roles writing into ONE checkout leave two different authors", () => {
+    const contest = delivery();
+
+    send(contest);
+    sendFrom(contest, "curator");
+
+    const authors = execFileSync("git", ["-C", contest.repo, "log", "-2", "--format=%an <%ae>"], {
+      encoding: "utf8",
+    })
+      .trim()
+      .split("\n");
+    // Newest first: curator's, then dev-core's. This is the pair a configured checkout
+    // could never produce — whoever set `user.name` last would sign both.
+    expect(authors).toEqual([
+      "curator <curator@agents.invalid>",
+      "dev-core <dev-core@agents.invalid>",
+    ]);
+  });
+
+  it("a checkout with no identity of its own delivers anyway — the role carries one", () => {
+    // The case from the runner: no `user.email` in the checkout and no global config to
+    // fall back on. It used to be a refusal at `git commit`; with the signature travelling
+    // with the message there is nothing left to configure.
     const contest = delivery();
 
     const result = run(
@@ -529,17 +624,12 @@ describe("new-message --write delivers (R3)", () => {
         AGENT_PROTOCOL_SESSION_FILE: "",
         GIT_CONFIG_GLOBAL: "/dev/null",
         GIT_CONFIG_SYSTEM: "/dev/null",
-        GIT_AUTHOR_NAME: "",
-        GIT_AUTHOR_EMAIL: "",
-        GIT_COMMITTER_NAME: "",
-        GIT_COMMITTER_EMAIL: "",
       },
       ["--write"],
     );
 
-    expect(result.code).toBe(2);
-    expect(result.out).toContain("git commit");
-    expect(result.out.toLowerCase()).toContain("ident");
+    expect(result.code).toBe(0);
+    expect(head(contest.repo)).toBe("dev-core <dev-core@agents.invalid>");
   });
 
   it("a dirty checkout is a refusal: delivery resets on a rejected push and will not do that over somebody's draft", () => {

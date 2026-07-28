@@ -207,16 +207,19 @@ import {
 } from "./orchestrator/transcript.js";
 import {
   createWorkspaceLocks,
+  describeWorkspaceIdentity,
   describeWorkspacePlan,
   lockHolderPid,
   lockReason,
   mainCheckoutVerdict,
   planWorkspace,
+  planWorkspaceIdentity,
   type WorkspaceFacts,
   type WorkspacePlan,
   workspacePath,
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
+import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import { claudeCodeEffortSchema, type Launch, type Role } from "./roles/schema.js";
 import {
@@ -1307,11 +1310,12 @@ const newMessage = (argv: readonly string[]): void => {
       // not one word about the cause. The case that taught it is the runner, where the
       // checkout has no `user.email` — locally the global config hides it, so the same
       // delivery passed here and failed in CI saying nothing about identity.
-      git: (args) => {
+      git: (args, env) => {
         try {
           return execFileSync("git", ["-C", checkout, ...args], {
             encoding: "utf8",
             stdio: ["ignore", "pipe", "pipe"],
+            ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
           });
         } catch (error) {
           const failure = error as { stderr?: string; status?: number };
@@ -1324,6 +1328,9 @@ const newMessage = (argv: readonly string[]): void => {
       write: writeOut,
       branch: loaded.config.mail.branch,
       subject: deliverySubject({ from, thread: threadId }),
+      // The commit is BY THE ROLE, not by the owner of the box (027): the mail checkout
+      // is shared by every role here, so the signature can only be per-commit.
+      identity: roleIdentity(from),
       stage: () => {
         const next = plan();
         return { path: next.path, content: next.content, label: next.label };
@@ -2070,6 +2077,50 @@ const applyWorkspacePlan = (input: {
     default:
       return; // ready / keep / refuse — nothing to do on disk
   }
+};
+
+/**
+ * SIGNING THE WORKSPACE (027) — the IO half of `planWorkspaceIdentity`: two settings in
+ * the tree's own config file, and the extension that makes git read that file at all.
+ *
+ * Idempotent by construction (`git config` overwrites), so it runs on every launch and
+ * a re-created or moved workspace picks the identity back up without anybody noticing
+ * it had lost it. Returns the line to print — the caller owns the output.
+ */
+const applyWorkspaceIdentity = (input: {
+  readonly repo: string;
+  readonly path: string;
+  readonly role: string;
+  readonly write: boolean;
+}): string => {
+  const asked = (key: string): string | undefined => {
+    const value = gitAsk(["-C", input.repo, "config", "--get", key]);
+    return value === undefined || value === "" ? undefined : value;
+  };
+  const plan = planWorkspaceIdentity({
+    role: input.role,
+    ...(asked("core.bare") === undefined ? {} : { bare: asked("core.bare") as string }),
+    ...(asked("core.worktree") === undefined
+      ? {}
+      : { coreWorktree: asked("core.worktree") as string }),
+  });
+  if (input.write && plan.action === "set") {
+    if (gitAsk(["-C", input.repo, "config", "--get", "extensions.worktreeConfig"]) !== "true") {
+      gitRun(
+        ["-C", input.repo, "config", "extensions.worktreeConfig", "true"],
+        "enabling per-worktree config so a role's workspace can be signed by the role",
+      );
+    }
+    gitRun(
+      ["-C", input.path, "config", "--worktree", "user.name", plan.identity.name],
+      `signing the workspace '${input.path}' as ${plan.identity.name}`,
+    );
+    gitRun(
+      ["-C", input.path, "config", "--worktree", "user.email", plan.identity.email],
+      `signing the workspace '${input.path}' as ${plan.identity.name}`,
+    );
+  }
+  return describeWorkspaceIdentity({ path: input.path, plan });
 };
 
 /**
@@ -3874,6 +3925,11 @@ const settleRun = (input: {
       applyWorkspacePlan({ repo, path, base: base.commit, plan });
     }
   }
+  // AFTER the tree exists and before the session is spawned (027): a `create` has just
+  // made the directory, and a `keep` finds a resumed session about to commit into it.
+  lines.push(
+    `identity — ${applyWorkspaceIdentity({ repo, path, role: role.id, write: input.write })}`,
+  );
   return {
     ok: true,
     workdir: path,
@@ -4190,11 +4246,12 @@ const publishDigest = (input: {
   });
   try {
     deliverMessage({
-      git: (args) => {
+      git: (args, env) => {
         try {
           return execFileSync("git", ["-C", checkout, ...args], {
             encoding: "utf8",
             stdio: ["ignore", "pipe", "pipe"],
+            ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
           });
         } catch (error) {
           const failure = error as { stderr?: string; status?: number };
@@ -4209,6 +4266,9 @@ const publishDigest = (input: {
       // Conventional Commits, because the mail checkout carries the commit-msg hook —
       // and `chore` because this is machine bookkeeping, not a turn in a conversation.
       subject: `chore(protocol): instance ${input.digest.instance} state`,
+      // Bookkeeping of the machinery, so it is signed by the machinery (027) — a role
+      // here would claim somebody made a turn when nobody did.
+      identity: ORCHESTRATOR_IDENTITY,
       // The path does not depend on what else landed in the branch — one file per box —
       // so a replan after a concurrent push restages the very same file.
       stage: () => ({

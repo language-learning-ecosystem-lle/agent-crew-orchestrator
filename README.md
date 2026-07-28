@@ -1959,3 +1959,51 @@ frames are appended with a separator. The terminal is restored from ONE place (`
 which catches the normal end, SIGINT and an unhandled throw alike. `--frames <n>` stops after n
 frames, which is what makes the loop checkable at all. The redraw itself — the writes, the timer,
 `resize` — has no test: a declared gap, the same one `up`/`down` have.
+
+### S22 — whose commits these are: per-role git identity (thread 027)
+
+Every commit an agent made used to be signed by the OWNER OF THE MACHINE, because that
+is whose name sits in `~/.gitconfig`. The history answered "whose box was this raised
+on" while the question asked of it is "who wrote this" — and in the mail the two halves
+of one act openly disagreed: a message whose header says `from: dev-core` arriving in a
+commit by `ivan.dettenborn`.
+
+An identity here is the role id as the name and `<role>@agents.invalid` as the address
+(`roles/identity.ts`). The domain is a constant of the PROTOCOL, not a field of the
+project: nothing about a repository changes what "an agent's address does not exist"
+means, and `.invalid` is reserved by RFC 2606, so the address can never resolve and
+nobody can be tempted to write to it. Promoting it to config is one line, the day a
+project wants its commits branded.
+
+**It is applied in two different ways, and the difference is the design.**
+
+*A role's workspace* has exactly one writer for its whole life, so the identity belongs
+to the DIRECTORY — `git config`, set at every launch, before the session is spawned.
+The trap is that linked worktrees SHARE `.git/config`: a plain `git config user.name`
+in `.worktrees/dev-core` renames the human on their own checkout and signs every other
+role's tree as well. So it is `git config --worktree`, which git only reads when
+`extensions.worktreeConfig` is enabled — enabling it is part of the gesture, and the one
+case where the package refuses to is git's own documented caveat: with the extension on,
+`core.bare` and `core.worktree` become per-worktree, so a repository that has them in
+the common config needs them moved BY HAND first. Then the launch says out loud that the
+commits stay with the owner of the machine, and goes on.
+
+*The mail checkout* is shared by every role on the box, so it has no identity to
+configure — whoever configured it last would sign the next role's message. There the
+signature travels with the one git call that makes the commit: `GIT_AUTHOR_*` and
+`GIT_COMMITTER_*` in the environment of `git commit`, out of `--from` (`thread/deliver.ts`,
+which is why `GitRun` takes an env). The environment rather than `git -c user.name=…`
+because environment variables OUTRANK config: an operator who happens to export those
+cannot silently take the signature back from the role.
+
+Two consequences worth naming. The instance digest (R13) is written by the daemon rather
+than by anybody's role, so it is signed by the machinery itself (`agent-protocol
+<orchestrator@agents.invalid>`) — a role there would claim a turn nobody took. And the
+old CI failure "the checkout has no `user.email`" is gone by construction: delivery no
+longer needs the checkout to be configured at all.
+
+**What is deliberately NOT fixed** (named in the statement of work): curator's writes
+through the GitHub API keep the owner of the token as their author — the Contents API
+has an `author` field, but the proxy in between does not pass it through. The executor's
+signature already lives in the `worker:` header of the message. History is not rewritten
+either: the feed is append-only, and `main` is not touched.

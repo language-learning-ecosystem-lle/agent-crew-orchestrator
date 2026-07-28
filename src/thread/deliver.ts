@@ -35,10 +35,21 @@
  * its half-written message reset away by our retry. The lock is not the delivery's
  * private business — it is a property of the place — so it comes IN, and `unlockedMail`
  * is what a caller passes when it owns the directory outright.
+ *
+ * AND FOR THE SAME REASON — ONE CHECKOUT, MANY WRITERS — THE AUTHOR OF THE COMMIT IS
+ * PER-COMMIT (thread 027). The identity of a shared directory cannot be configured:
+ * whoever configured it last would sign the next role's message. So the signature
+ * travels with the one git call that makes the commit, out of `--from`, and the commit
+ * finally says what the header of the message inside it says.
  */
+import { type GitIdentity, identityEnv } from "../roles/identity.js";
 import type { MailLock } from "./checkout-lock.js";
 
-export type GitRun = (args: readonly string[]) => string;
+/**
+ * A git invocation. `env` is added to the inherited environment for THAT call only —
+ * the identity of a commit lives there (see the note above), and nothing else does.
+ */
+export type GitRun = (args: readonly string[], env?: Readonly<Record<string, string>>) => string;
 
 /** The message of ONE attempt, planned against the state of the checkout as it is now. */
 export type StagedMessage = {
@@ -66,6 +77,8 @@ export const deliverMessage = (input: {
   readonly note: (line: string) => void;
   /** ONE writer inside the checkout at a time; `unlockedMail` when there is nobody to race. */
   readonly lock: MailLock;
+  /** Who this commit is BY — the role of `--from`, never the owner of the machine (027). */
+  readonly identity: GitIdentity;
   readonly attempts?: number;
 }): { readonly label: string; readonly attempts: number } =>
   // The lock is taken BEFORE the dirty check, not after: our own transient dirt is
@@ -79,6 +92,7 @@ const deliverUnderLock = (input: {
   readonly subject: string;
   readonly stage: () => StagedMessage;
   readonly note: (line: string) => void;
+  readonly identity: GitIdentity;
   readonly attempts?: number;
 }): { readonly label: string; readonly attempts: number } => {
   const limit = input.attempts ?? DELIVERY_ATTEMPTS;
@@ -105,7 +119,7 @@ const deliverUnderLock = (input: {
     const staged = input.stage();
     input.write(staged.path, staged.content);
     input.git(["add", "--", staged.path]);
-    input.git(["commit", "--quiet", "-m", input.subject]);
+    input.git(["commit", "--quiet", "-m", input.subject], identityEnv(input.identity));
 
     try {
       input.git(["push", "--quiet", "origin", `HEAD:${input.branch}`]);

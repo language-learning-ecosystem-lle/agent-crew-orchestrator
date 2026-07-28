@@ -7,11 +7,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   createWorkspaceLocks,
+  describeWorkspaceIdentity,
   describeWorkspacePlan,
   lockHolderPid,
   lockReason,
   mainCheckoutVerdict,
   planWorkspace,
+  planWorkspaceIdentity,
   workspacePath,
   workspaceVerdict,
 } from "./workspace.js";
@@ -337,5 +339,57 @@ describe("the registry of held locks", () => {
     locks.releaseAll();
     expect(unlocked).toEqual(["/repo:/repo/.worktrees/dev-core", "/repo:/repo/.worktrees/curator"]);
     expect(locks.held()).toEqual([]);
+  });
+});
+
+/**
+ * 027: the identity of a role's workspace. The load-bearing branch is the SKIP — it is
+ * the one that would otherwise have the package enable a git extension on a repository
+ * whose layout depends on the settings that extension moves.
+ */
+describe("planWorkspaceIdentity", () => {
+  it("signs the tree with the role — the id as the name, the protocol's domain as the address", () => {
+    expect(planWorkspaceIdentity({ role: "dev-core" })).toEqual({
+      action: "set",
+      identity: { name: "dev-core", email: "dev-core@agents.invalid" },
+    });
+  });
+
+  it("core.bare=false is not in the way — it is what every ordinary clone has", () => {
+    expect(planWorkspaceIdentity({ role: "dev-core", bare: "false" }).action).toBe("set");
+  });
+
+  it("a bare repository is left alone, with the manual repair named", () => {
+    const plan = planWorkspaceIdentity({ role: "dev-core", bare: "true" });
+    expect(plan.action).toBe("skip");
+    expect(plan.action === "skip" && plan.reason).toContain("core.bare");
+    expect(plan.action === "skip" && plan.reason).toContain("config.worktree");
+  });
+
+  it("core.worktree in the shared config stops it too, and both are named at once", () => {
+    const plan = planWorkspaceIdentity({
+      role: "dev-core",
+      bare: "true",
+      coreWorktree: "/elsewhere",
+    });
+    expect(plan.action === "skip" && plan.reason).toContain("core.bare and core.worktree");
+  });
+
+  it("the skipped line says the commits keep the machine owner — never a silent pass", () => {
+    expect(
+      describeWorkspaceIdentity({
+        path: "/repo/.worktrees/dev-core",
+        plan: planWorkspaceIdentity({ role: "dev-core", bare: "true" }),
+      }),
+    ).toContain("stay with the owner of the machine");
+  });
+
+  it("the set line names who the tree commits as", () => {
+    expect(
+      describeWorkspaceIdentity({
+        path: "/repo/.worktrees/dev-core",
+        plan: planWorkspaceIdentity({ role: "dev-core" }),
+      }),
+    ).toBe("/repo/.worktrees/dev-core — commits as dev-core <dev-core@agents.invalid>");
   });
 });

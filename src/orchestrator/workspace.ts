@@ -39,6 +39,7 @@
  * This module is the pure core: facts in, a plan and a verdict out. The git calls
  * live in the CLI, where the IO is.
  */
+import { type GitIdentity, roleIdentity } from "../roles/identity.js";
 import type { PreflightCheck } from "./preflight.js";
 
 /** What git can tell about a workspace directory before anything is done to it. */
@@ -230,6 +231,61 @@ export const workspaceVerdict = (input: {
     detail: `${input.path} — ${where} ${(input.facts.head ?? "?").slice(0, 8)}${dirt}; a fresh run moves it to ${input.baseRef}`,
   };
 };
+
+/**
+ * WHOSE COMMITS COME OUT OF THIS TREE (thread 027) — the identity is a property of the
+ * DIRECTORY here, because a workspace has exactly one writer for its whole life, and a
+ * setting on disk survives what an environment variable does not: a resumed session, a
+ * human who steps into the tree to look, a hook that commits on its own.
+ *
+ * IT IS SET WITH `--worktree`, AND THAT IS THE WHOLE DIFFICULTY. Linked worktrees SHARE
+ * `.git/config` — a plain `git config user.name` in `.worktrees/dev-core` would sign
+ * the operator's own checkout and every other role's tree as well, which is the exact
+ * opposite of what this is for. The per-worktree file exists, but git only reads it
+ * when `extensions.worktreeConfig` is enabled, so enabling it is part of the gesture.
+ *
+ * THE ONE CASE WHERE WE DO NOT ENABLE IT is the caveat git states itself: with the
+ * extension on, `core.bare` and `core.worktree` become per-worktree, so a repository
+ * that has them set in the common config needs them MOVED by hand first. Doing that
+ * move on somebody's repository is not a package's business — it steps aside and says
+ * so, and the launch goes on unsigned rather than half-configured.
+ *
+ * Applying it at EVERY launch and not once at creation is deliberate: a workspace that
+ * was moved, re-created, or cloned onto another machine would otherwise be silently
+ * back to the machine owner's name, and nothing would ever say so.
+ */
+export type WorkspaceIdentityPlan =
+  | { readonly action: "set"; readonly identity: GitIdentity }
+  | { readonly action: "skip"; readonly reason: string };
+
+export const planWorkspaceIdentity = (input: {
+  readonly role: string;
+  /** `core.bare` of the repository's common config, as git prints it; absent when unset. */
+  readonly bare?: string;
+  /** `core.worktree` of the common config; absent when unset. */
+  readonly coreWorktree?: string;
+}): WorkspaceIdentityPlan => {
+  const inTheWay = [
+    ...(input.bare === "true" ? ["core.bare"] : []),
+    ...(input.coreWorktree === undefined ? [] : ["core.worktree"]),
+  ];
+  if (inTheWay.length > 0) {
+    return {
+      action: "skip",
+      reason: `${inTheWay.join(" and ")} is set in the shared config, and per-worktree identity needs 'extensions.worktreeConfig', which would change where git reads ${inTheWay.length > 1 ? "those" : "that"} from — move ${inTheWay.length > 1 ? "them" : "it"} to the main worktree's config.worktree by hand, then the commits will be signed by the role`,
+    };
+  }
+  return { action: "set", identity: roleIdentity(input.role) };
+};
+
+/** The identity line printed beside the workspace plan — before the launch, never after. */
+export const describeWorkspaceIdentity = (input: {
+  readonly path: string;
+  readonly plan: WorkspaceIdentityPlan;
+}): string =>
+  input.plan.action === "set"
+    ? `${input.path} — commits as ${input.plan.identity.name} <${input.plan.identity.email}>`
+    : `${input.path} — commits stay with the owner of the machine: ${input.plan.reason}`;
 
 /**
  * THE LOCK HELD FOR THE DURATION OF A RUN (john's decisions of 2026-07-25, 21:10

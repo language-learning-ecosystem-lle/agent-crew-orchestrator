@@ -8,7 +8,7 @@
  * the CLI is started as a real process against a real git circuit, and what is
  * checked is the DISK and the STUB'S OWN RECORD of how it was called.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -209,6 +209,74 @@ describe("the role gets a workspace of its own (R17)", () => {
     // AND NO LEASE WAS TAKEN: a refusal before the journal, not an attempt that never happened.
     expect(existsSync(journalPath(repo))).toBe(false);
     expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+});
+
+/**
+ * WHO THE COMMITS OUT OF A WORKSPACE ARE BY (thread 027). Only a real git can answer
+ * this: the whole point is the file linked worktrees SHARE (`.git/config`) and the one
+ * they do not (`config.worktree`), and a stub cannot be wrong about that in the way
+ * that matters — a `--local` setting would have signed the operator's own checkout.
+ */
+describe("a role's workspace commits as the role (027)", () => {
+  /**
+   * `git config --get` EXITS 1 WHEN THE KEY IS UNSET, and that is a legitimate answer
+   * here rather than a failure: the runner has no global identity at all, while a
+   * developer's box does — the same trap that made this suite green locally and red in
+   * CI before (see `testing/process-sandbox.ts`). So: the value, or nothing.
+   */
+  const identityOf = (tree: string): string | undefined => {
+    const got = spawnSync("git", ["-C", tree, "config", "--get", "user.name"], {
+      encoding: "utf8",
+    });
+    return got.status === 0 ? got.stdout.trim() : undefined;
+  };
+
+  /** A commit made the way a session makes one: no overrides, whatever the tree says. */
+  const commitInside = (tree: string, file: string): string => {
+    writeFileSync(join(tree, file), "work\n");
+    execFileSync("git", ["-C", tree, "add", "."], { encoding: "utf8" });
+    execFileSync("git", ["-C", tree, "commit", "-qm", `feat: ${file}`], { encoding: "utf8" });
+    return execFileSync("git", ["-C", tree, "log", "-1", "--format=%an <%ae> | %cn <%ce>"], {
+      encoding: "utf8",
+    }).trim();
+  };
+
+  it("the launch signs the workspace, and a commit made there is authored by the role", () => {
+    const { repo } = contour();
+    stub(repo);
+
+    const result = run(repo);
+
+    expect(result.out).toContain("commits as dev-core <dev-core@agents.invalid>");
+    expect(identityOf(workspace(repo))).toBe("dev-core");
+    expect(commitInside(workspace(repo), "package.txt")).toBe(
+      "dev-core <dev-core@agents.invalid> | dev-core <dev-core@agents.invalid>",
+    );
+  });
+
+  it("and the operator's own checkout keeps its identity — the config file is shared", () => {
+    const { repo } = contour();
+    stub(repo);
+
+    run(repo);
+
+    // The trap this test exists for: `git config user.name` in a linked worktree writes
+    // to the COMMON config, which would rename the human on their own machine.
+    expect(identityOf(repo)).not.toBe("dev-core");
+  });
+
+  it("is re-applied at every launch — a workspace re-created elsewhere is signed again", () => {
+    const { repo } = contour();
+    stub(repo);
+    run(repo);
+    execFileSync("git", ["-C", workspace(repo), "config", "--worktree", "--unset", "user.name"], {
+      encoding: "utf8",
+    });
+
+    run(repo);
+
+    expect(identityOf(workspace(repo))).toBe("dev-core");
   });
 });
 
