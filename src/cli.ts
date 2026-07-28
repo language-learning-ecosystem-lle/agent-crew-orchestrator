@@ -270,7 +270,12 @@ import {
   sessionsThatWrote,
   threadsWaitingOn,
 } from "./thread/index-doc.js";
-import type { Expects, LaunchDirective, ThreadPriorityValue } from "./thread/message.js";
+import type {
+  Expects,
+  LaunchDirective,
+  TaskDeclaration,
+  ThreadPriorityValue,
+} from "./thread/message.js";
 import {
   EXPECTS,
   isSessionId,
@@ -280,9 +285,18 @@ import {
   PACKAGE_WORKER,
   parseLaunchDirective,
   parseMessageFile,
+  parseTaskDeclaration,
   THREAD_PRIORITY_VALUES,
+  taskThreadPrefix,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import {
+  checkTasks,
+  collectTaskEvents,
+  renderTasksBoard,
+  type TaskThreadInput,
+  tasksFrom,
+} from "./thread/tasks.js";
 import { renderThread, waitingOnOf } from "./thread/thread.js";
 import {
   messageTimestamp,
@@ -309,6 +323,18 @@ const fail = (message: string, code: number): never => {
 const flag = (argv: readonly string[], name: string): string | undefined => {
   const at = argv.indexOf(name);
   return at === -1 ? undefined : argv[at + 1];
+};
+
+/** Every occurrence of a repeatable flag (`--task` — one message moves several). */
+const flagAll = (argv: readonly string[], name: string): string[] => {
+  const values: string[] = [];
+  for (let at = 0; at < argv.length; at++) {
+    if (argv[at] !== name) continue;
+    const value = argv[at + 1];
+    if (value === undefined) fail(`${name} is given without a value`, 2);
+    values.push(value as string);
+  }
+  return values;
 };
 
 const required = (argv: readonly string[], name: string): string =>
@@ -741,7 +767,9 @@ const threadShow = (argv: readonly string[]): void => {
       `<!-- agent-protocol: the last ${shown.length} of ${thread.messages.length} messages; ${skipped} earlier ones are NOT shown (--tail) -->`,
     );
   }
-  out(renderThread(thread.meta, shown));
+  // The task declarations are printed HERE and nowhere else (thread 021): the reading
+  // agent has to see them, the committed `_thread.md` must not move a byte.
+  out(renderThread(thread.meta, shown, { tasks: true }));
 
   const dir = join(root, id);
   const attachments = readdirSync(dir).filter(
@@ -754,6 +782,20 @@ const threadShow = (argv: readonly string[]): void => {
     );
   }
 };
+
+/**
+ * The task layer's view of what `loadThreads` returned. Legacy threads carry no
+ * message files and therefore no declarations — the board starts from now (thread 021,
+ * §5), so their absence here is the decision, not a gap.
+ */
+const taskInputsOf = (
+  threads: readonly LoadedThread[],
+): { inputs: TaskThreadInput[]; status: Map<string, "open" | "closed"> } => ({
+  inputs: threads.flatMap((loaded) =>
+    loaded.input === undefined ? [] : [{ id: loaded.thread.id, entries: loaded.input.entries }],
+  ),
+  status: new Map(threads.map((loaded) => [loaded.thread.id, loaded.thread.meta.status])),
+});
 
 const checkAll = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
@@ -769,6 +811,13 @@ const checkAll = (argv: readonly string[]): void => {
   const notes = found.filter((issue) => issue.severity === "note");
   const issues = found.filter((issue) => issue.severity !== "note");
   const legacy = threads.filter((loaded) => loaded.legacy).map((loaded) => loaded.thread.id);
+
+  // THE CROSS-THREAD HALF OF THE TASK CHECKS (thread 021): a task is opened by one
+  // thread and moved from any, so "moved but never opened", "opened twice", "moved
+  // after being dropped" and "undone in a closed thread" are only visible with every
+  // thread in hand — which this command has anyway.
+  const taskInputs = taskInputsOf(threads);
+  issues.push(...checkTasks(collectTaskEvents(taskInputs.inputs), taskInputs.status));
 
   // R13, second half: `_instances/` IS A CLASS, and the checker has to know it as one.
   // It is the only MUTABLE derived thing in an append-only branch — each box rewrites
@@ -946,6 +995,19 @@ const derive = (argv: readonly string[]): void => {
     path: join(root, "INDEX.md"),
     rendered: renderIndex(threads.map((l) => l.thread)),
   });
+  // THE BOARD IS A DERIVED FILE OF THE SAME CLASS AS INDEX (thread 021): nobody edits
+  // it by hand, a drift is a red job. The workflow is not touched — it calls `derive
+  // --write` once, and the target list lives here.
+  {
+    const board = tasksFrom(
+      taskInputsOf(threads).inputs,
+      threads.map((l) => l.thread),
+    );
+    targets.push({
+      path: join(root, "TASKS.md"),
+      rendered: renderTasksBoard(board.states, board.waiting),
+    });
+  }
 
   const drifted: string[] = [];
   for (const target of targets) {
@@ -978,6 +1040,50 @@ const derive = (argv: readonly string[]): void => {
   err("agent-protocol: the derived files drifted from the source (--write will rebuild them):");
   for (const path of drifted) err(`- ${path}`);
   process.exit(1);
+};
+
+/**
+ * THE BOARD FOR MACHINES (thread 021, §2.4). `TASKS.md` is john's screen on GitHub;
+ * the TUI (019) and the resident (R23) read THIS, which computes the same model FROM
+ * THE THREADS. A consumer that parsed the derived file would reproduce pain 5 one to
+ * one: asked "what is being done right now" it would answer with yesterday's bytes, or
+ * with silence when the generator failed.
+ */
+const tasksList = (argv: readonly string[]): void => {
+  const root = required(argv, "--root");
+  const registry = registryFrom(argv, repoOf(root));
+  const { threads, failures } = loadThreads(root, registry.ids());
+  for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
+
+  const board = tasksFrom(
+    taskInputsOf(threads).inputs,
+    threads.map((l) => l.thread),
+  );
+  const only = flag(argv, "--status");
+  const states = board.states.filter((state) => only === undefined || state.status === only);
+
+  if (argv.includes("--json")) {
+    out(
+      JSON.stringify(
+        states.map((state) => ({
+          ...state,
+          who: state.owner ?? board.waiting.get(state.at.thread) ?? "",
+        })),
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (states.length === 0) {
+    out("agent-protocol: no tasks declared yet");
+    return;
+  }
+  for (const state of states) {
+    out(
+      `${state.id}  ${state.status.padEnd(11)}  ${state.at.thread}  ${state.since.slice(0, 10)}  ${state.title}`,
+    );
+  }
 };
 
 const parseExpects = (raw: string): Expects => {
@@ -1271,6 +1377,72 @@ const parkedOnFrom = (
 };
 
 /**
+ * THE DOOR OF A TASK DECLARATION (thread 021) — `--task '<NNN.k> <status>[ · tail]'`,
+ * repeatable, checked here and not only in CI.
+ *
+ * WHY THE WHOLE MAIL IS READ HERE. The other cross-thread facts of the protocol are
+ * caught by `check` on the branch, and that would be enough if a red branch were
+ * repairable — it is not: the feed is append-only, so an agent that pushed a crooked
+ * declaration with a normal command has nothing to fix it with but another message.
+ * The philosophy of the package is "crooked markup is refused at the door", and this
+ * is markup. The price is named as a number rather than left implied: a full
+ * `loadThreads` on the live branch is 29 threads, 543 messages, 37–50 ms (median ~44) —
+ * next to the `fetch` + `commit` + `push` this command always does, which are one or
+ * two orders more.
+ *
+ * IT RUNS INSIDE `plan()`, not before delivery: `plan()` is replanned on every attempt,
+ * AFTER `fetch` + `merge --ff-only`, so a task opened by a concurrent message that
+ * overtook us is seen rather than judged against a stale tree. That same placement is
+ * what makes the dry run honest — no `--write` calls the same `plan()`, so a preview
+ * refuses exactly where the write would.
+ */
+const tasksFor = (
+  argv: readonly string[],
+  input: { readonly from: string; readonly thread: string; readonly registry: RoleRegistry },
+): TaskDeclaration[] => {
+  const raws = flagAll(argv, "--task");
+  if (raws.length === 0) return [];
+  const prefix = input.thread.slice(0, input.thread.indexOf("-"));
+  const seen = new Set<string>();
+  const tasks: TaskDeclaration[] = [];
+  for (const raw of raws) {
+    let task: TaskDeclaration;
+    try {
+      // Parsed through the SAME function that reads it back: a value the reader would
+      // reject must not be writable, and one shape check used from both sides is the
+      // only way to guarantee that.
+      task = parseTaskDeclaration(raw);
+    } catch (error) {
+      if (error instanceof MessageFormatError) return fail(error.message, 2);
+      throw error;
+    }
+    if (seen.has(task.id)) {
+      return fail(`--task names '${task.id}' twice — one message says one thing about a task`, 2);
+    }
+    seen.add(task.id);
+    if (
+      (task.status === "open" || task.status === "dropped") &&
+      !input.registry.canDeclareTask(input.from)
+    ) {
+      return fail(
+        task.status === "open"
+          ? `role '${input.from}' does not hold 'task-declare': opening a task is an act of the statement of work. Whoever holds the permission in this project opens it instead`
+          : `role '${input.from}' does not hold 'task-declare': dropping a task is cancelling a statement of work, not executing one — otherwise the board could be made to lie in favour of whoever is writing. Say "this task should not be done" in a message; curator or john drops it`,
+        2,
+      );
+    }
+    if (task.status === "open" && taskThreadPrefix(task.id) !== prefix) {
+      return fail(
+        `--task '${raw}' opens a task under a foreign id: in thread '${input.thread}' a task is opened as '${prefix}.k'. A task of another thread may be MOVED from here, not opened`,
+        2,
+      );
+    }
+    tasks.push(task);
+  }
+  return tasks;
+};
+
+/**
  * Create a message file in an EXISTING thread and SEND IT (R3). Refuses if the
  * thread is in the legacy form (no `messages/`): a file write would cut off its
  * history.
@@ -1309,6 +1481,7 @@ const newMessage = (argv: readonly string[]): void => {
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
   const parkedOn = parkedOnFrom(argv, { registry });
+  const tasks = tasksFor(argv, { from, thread: threadId, registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
@@ -1327,6 +1500,35 @@ const newMessage = (argv: readonly string[]): void => {
           .filter((date) => date.includes("T"))
       : [];
     const date = nextMessageTimestamp(new Date(), existingTs);
+    // THE GLOBAL TASK CHECK, inside the plan and therefore replanned per attempt (see
+    // `tasksFor`): the declarations of this message are folded into the feed as it is
+    // AFTER the fetch, and anything `check` would redden the branch for is refused now.
+    if (tasks.length > 0) {
+      const scan = loadThreads(root, registry.ids());
+      const layer = taskInputsOf(scan.threads);
+      const pending: TaskThreadInput[] = [
+        ...layer.inputs,
+        {
+          id: threadId,
+          entries: [
+            {
+              fileName: "<this message>",
+              message: { fields: { from, date, expects, tasks }, text },
+            },
+          ],
+        },
+      ];
+      const issues = checkTasks(collectTaskEvents(pending), layer.status);
+      const mine = issues.filter((issue) => issue.file === "<this message>");
+      if (mine.length > 0) {
+        fail(
+          `the task declarations are refused (the feed is append-only — this is caught here, not after the push):\n- ${mine
+            .map((issue) => issue.message)
+            .join("\n- ")}`,
+          2,
+        );
+      }
+    }
     let planned: ReturnType<typeof planNewMessage>;
     try {
       planned = planNewMessage({
@@ -1338,6 +1540,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(launchDirective === undefined ? {} : { launch: launchDirective }),
         ...(priority === undefined ? {} : { priority }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
+        ...(tasks.length === 0 ? {} : { tasks }),
         text,
         threadHasMessages,
       });
@@ -5989,6 +6192,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
     migrate(argv.slice(1));
   } else if (command === "derive") {
     derive(argv.slice(1));
+  } else if (command === "tasks") {
+    if (argv[1] !== "list") fail(`unknown 'tasks' subcommand '${argv[1] ?? ""}'\n${USAGE}`, 2);
+    tasksList(argv.slice(2));
   } else if (command === "new-message") {
     newMessage(argv.slice(1));
   } else if (command === "new-thread") {

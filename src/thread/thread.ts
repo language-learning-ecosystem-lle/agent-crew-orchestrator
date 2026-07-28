@@ -107,13 +107,32 @@ export const parseMetaFile = (raw: string): ThreadMeta => {
 export const renderMetaFile = (meta: ThreadMeta): string =>
   `${FENCE}\ntitle: ${meta.title}\nparticipants: ${meta.participants.join(", ")}\nstatus: ${meta.status}\n${FENCE}\n`;
 
-/** Assembling `_thread.md`: the head from `_meta.md` + sections from the messages in file order. */
-export const renderThread = (meta: ThreadMeta, messages: readonly Message[]): string => {
+/**
+ * Assembling `_thread.md`: the head from `_meta.md` + sections from the messages in
+ * file order.
+ *
+ * `tasks: true` IS FOR THE READER, NEVER FOR THE FILE (thread 021). Task declarations
+ * are header fields, and the heading canon prints `from/date/expects` only — it is
+ * byte-exact across the live threads, so widening it would rewrite every derived file
+ * in the branch (the same argument that kept `worker`/`session` out). So `thread show`
+ * turns this on and prints the declarations as a comment under each heading, while
+ * `derive` never does and not one committed byte moves.
+ */
+export const renderThread = (
+  meta: ThreadMeta,
+  messages: readonly Message[],
+  options: { readonly tasks?: boolean } = {},
+): string => {
   const head = `# ${meta.title}\n\nparticipants: ${meta.participants.join(", ")} · status: ${meta.status}\n\n`;
   return messages.reduce((acc, message, at) => {
     const heading = renderHeading(message.fields, at + 1);
+    const declared = message.fields.tasks ?? [];
+    const tasks =
+      options.tasks === true && declared.length > 0
+        ? `\n\n<!-- tasks: ${declared.map((task) => `${task.id} → ${task.status}`).join(" · ")} -->`
+        : "";
     const tail = at + 1 < messages.length ? "\n\n" : "\n";
-    return `${acc}${heading}\n\n${message.text}${tail}`;
+    return `${acc}${heading}${tasks}\n\n${message.text}${tail}`;
   }, head);
 };
 
