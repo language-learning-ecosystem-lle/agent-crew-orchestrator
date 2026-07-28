@@ -7,7 +7,7 @@
  * after the banner, a fetch nobody asked for), and a stub is the thing that hides it.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -269,4 +269,73 @@ describe("the watcher survives what it watches", () => {
         .filter((block) => block.trim() !== "").length,
     ).toBeGreaterThanOrEqual(2);
   }, 30_000);
+});
+
+describe("who signs a hold when nobody typed --by", () => {
+  /** A machine config in the sandbox home the CLI will read. */
+  const machineConfig = (home: string, config: unknown): void => {
+    mkdirSync(join(home, "agent-protocol"), { recursive: true });
+    writeFileSync(join(home, "agent-protocol", "local.json"), JSON.stringify(config), "utf8");
+  };
+
+  it("takes the operator of THIS box, not the account name it happens to run under", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+    machineConfig(home, { operator: "john" });
+
+    // The account name is deliberately not a role — that is the live case: `$USER` on
+    // this box is `cosysoft`, and the short form refused every time until `--by` was
+    // typed, which is the ceremony back with an error message on top.
+    const done = spawnSync(TSX, [CLI, "orchestrator", "hold", "dev-core", "--ref", "HEAD"], {
+      cwd: repo,
+      encoding: "utf8",
+      env: sandbox(home, { USER: "cosysoft" }),
+    });
+
+    expect(done.status).toBe(0);
+    expect(
+      JSON.parse(readFileSync(join(repo, ".orchestrator", "holds", "dev-core"), "utf8")).by,
+    ).toBe("john");
+  });
+
+  it("the flag still wins — the machine says who usually sits here, not who is typing", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+    machineConfig(home, { operator: "john" });
+
+    const done = run(
+      repo,
+      home,
+      "orchestrator",
+      "hold",
+      "dev-core",
+      "--by",
+      "dev-core",
+      "--ref",
+      "HEAD",
+    );
+
+    expect(done.status).toBe(0);
+    expect(
+      JSON.parse(readFileSync(join(repo, ".orchestrator", "holds", "dev-core"), "utf8")).by,
+    ).toBe("dev-core");
+  });
+
+  it("with no operator and an account name that is no role, the refusal names the file to fix", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+
+    const done = spawnSync(TSX, [CLI, "orchestrator", "hold", "dev-core", "--ref", "HEAD"], {
+      cwd: repo,
+      encoding: "utf8",
+      env: sandbox(home, { USER: "cosysoft" }),
+    });
+
+    expect(done.status).toBe(2);
+    // Both halves: what was wrong (a value from $USER that is no role) and where the
+    // durable answer goes — a diagnosis that ends at "pass --by" gets retyped forever.
+    expect(done.stderr).toContain("$USER");
+    expect(done.stderr).toContain("local.json");
+    expect(existsSync(join(repo, ".orchestrator", "holds", "dev-core"))).toBe(false);
+  });
 });

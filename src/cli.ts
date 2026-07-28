@@ -5817,7 +5817,8 @@ const orchestratorDown = (argv: readonly string[]): void => {
 /**
  * The SHORT PARKING FORMS: `hold <role>` / `resume <role>` (thread 019). The strict
  * forms stay exactly as they were — this is the same action with the two answers the
- * operator was retyping filled in: the ref from the config, `--by` from `$USER`.
+ * operator was retyping filled in: the ref from the config, `--by` from the machine
+ * (`operator` of `local.json`, then `$USER`).
  *
  * They ACT rather than plan. `--write` on the strict form guards a change nobody can
  * see; a hold is visible in one command (`status`) and undone in one word, and a dry
@@ -5827,17 +5828,32 @@ const orchestratorDown = (argv: readonly string[]): void => {
 const orchestratorHoldShort = (argv: readonly string[]): void => {
   const args = withOperatorRef(argv.slice(1));
   const role = argv[0] as string;
-  const by = flag(args, "--by") ?? process.env["USER"] ?? "";
+  // THREE ANSWERS, IN THIS ORDER: the flag (this one hold), `operator` of the machine
+  // config (who sits at this box — R14), `$USER` (the box where the account name is a
+  // role by luck). The source is carried alongside the value because it is the whole of
+  // the diagnosis when the signature is refused.
+  const local = localFrom(args);
+  const typed = flag(args, "--by");
+  const account = process.env["USER"];
+  const signature: readonly [string, string] | undefined =
+    typed !== undefined
+      ? [typed, "the flag"]
+      : local.config.operator !== undefined
+        ? [local.config.operator, `'operator' of ${local.path}`]
+        : account !== undefined && account !== ""
+          ? [account, "$USER"]
+          : undefined;
   const registry = registryFrom(args, undefined);
-  if (!registry.isKnown(by)) {
+  if (signature === undefined || !registry.isKnown(signature[0])) {
     fail(
-      by === ""
-        ? "--by was not given and $USER is not set — a hold is signed by a role of the config"
-        : `--by '${by}' (from ${flag(args, "--by") === undefined ? "$USER" : "the flag"}) is not a role of the config — pass --by <role>`,
+      signature === undefined
+        ? `--by was not given, '${local.path}' declares no 'operator' and $USER is not set — a hold is signed by a role of the config`
+        : `--by '${signature[0]}' (from ${signature[1]}) is not a role of the config — pass --by <role>, or set 'operator' in '${local.path}'`,
       2,
     );
     return;
   }
+  const by = signature[0];
   orchestratorHold([...args, "--mode", "take", "--role", role, "--by", by, "--write"]);
 };
 

@@ -97,10 +97,11 @@ printed. The strict forms below keep every flag they had.
                               # reason: a daemon raised over it exits on its first tick and
                               # says so only in its log. --clear-force removes it deliberately
   agent-protocol orchestrator down   [--ref <ref>] [--repo <p>] [--stop-flag <p>] [--pid-file <p>]
-  agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>]
+  agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>] [--local-config <p>]
   agent-protocol orchestrator resume <role> [--ref <ref>] [--holds <d>]
                               # the short forms ACT (no --write): typing them IS the decision
-                              # --by defaults to $USER and must be a role of the config
+                              # --by: the flag, then 'operator' of the machine config (who sits
+                              # at this box), then $USER; the value must be a role of the config
   agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
