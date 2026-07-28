@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createWorkspaceLocks,
   describeWorkspacePlan,
   lockHolderPid,
   lockReason,
@@ -255,5 +256,86 @@ describe("the run lock", () => {
 
   it("a lock a human set by hand names no pid, and that is NOT evidence of staleness", () => {
     expect(lockHolderPid("john is bisecting in here, hands off")).toBeUndefined();
+  });
+});
+
+describe("the registry of held locks", () => {
+  const spyGit = (options?: { readonly refuse?: readonly string[] }) => {
+    const unlocked: string[] = [];
+    const locked: string[] = [];
+    return {
+      unlocked,
+      locked,
+      git: {
+        lock: (input: { repo: string; path: string; reason: string }) => {
+          if (options?.refuse?.includes(input.path)) return false;
+          locked.push(`${input.repo}:${input.path}:${input.reason}`);
+          return true;
+        },
+        unlock: (input: { repo: string; path: string }) => {
+          unlocked.push(`${input.repo}:${input.path}`);
+        },
+      },
+    };
+  };
+
+  it("holds several trees at once — the shape a daemon with N supervisors has", () => {
+    const { git } = spyGit();
+    const locks = createWorkspaceLocks(git);
+    expect(locks.take({ repo: "/repo", path: "/repo/.worktrees/dev-core", reason: "a" })).toBe(
+      true,
+    );
+    expect(locks.take({ repo: "/repo", path: "/repo/.worktrees/curator", reason: "b" })).toBe(true);
+    expect(locks.held()).toEqual(["/repo/.worktrees/dev-core", "/repo/.worktrees/curator"]);
+  });
+
+  // FINDING B of thread 023, in one assertion: with a single slot the second `take`
+  // overwrote the first, and dev-core's tree stayed locked after its supervisor
+  // released — R17 then refuses to start there, silently, forever.
+  it("each holder releases ITS OWN tree and nobody else's", () => {
+    const { git, unlocked } = spyGit();
+    const locks = createWorkspaceLocks(git);
+    locks.take({ repo: "/repo", path: "/repo/.worktrees/dev-core", reason: "a" });
+    locks.take({ repo: "/repo", path: "/repo/.worktrees/curator", reason: "b" });
+    locks.release("/repo/.worktrees/dev-core");
+    expect(unlocked).toEqual(["/repo:/repo/.worktrees/dev-core"]);
+    expect(locks.held()).toEqual(["/repo/.worktrees/curator"]);
+  });
+
+  it("releasing a path this process never took does nothing — a foreign tree is not ours to unlock", () => {
+    const { git, unlocked } = spyGit();
+    const locks = createWorkspaceLocks(git);
+    locks.release("/repo/.worktrees/dev-speech");
+    expect(unlocked).toEqual([]);
+  });
+
+  it("releasing twice unlocks once — the call sites are on several exit paths of one run", () => {
+    const { git, unlocked } = spyGit();
+    const locks = createWorkspaceLocks(git);
+    locks.take({ repo: "/repo", path: "/repo/.worktrees/dev-core", reason: "a" });
+    locks.release("/repo/.worktrees/dev-core");
+    locks.release("/repo/.worktrees/dev-core");
+    expect(unlocked).toEqual(["/repo:/repo/.worktrees/dev-core"]);
+  });
+
+  it("a refused lock records nothing — the caller refuses, and the tree stays its holder's", () => {
+    const { git, unlocked } = spyGit({ refuse: ["/repo/.worktrees/curator"] });
+    const locks = createWorkspaceLocks(git);
+    expect(locks.take({ repo: "/repo", path: "/repo/.worktrees/curator", reason: "b" })).toBe(
+      false,
+    );
+    expect(locks.held()).toEqual([]);
+    locks.release("/repo/.worktrees/curator");
+    expect(unlocked).toEqual([]);
+  });
+
+  it("the exit backstop releases EVERY tree still held, not the last one", () => {
+    const { git, unlocked } = spyGit();
+    const locks = createWorkspaceLocks(git);
+    locks.take({ repo: "/repo", path: "/repo/.worktrees/dev-core", reason: "a" });
+    locks.take({ repo: "/repo", path: "/repo/.worktrees/curator", reason: "b" });
+    locks.releaseAll();
+    expect(unlocked).toEqual(["/repo:/repo/.worktrees/dev-core", "/repo:/repo/.worktrees/curator"]);
+    expect(locks.held()).toEqual([]);
   });
 });

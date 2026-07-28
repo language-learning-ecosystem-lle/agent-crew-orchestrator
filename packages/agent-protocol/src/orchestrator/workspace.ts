@@ -275,6 +275,85 @@ export const lockHolderPid = (reason: string): number | undefined => {
 };
 
 /**
+ * THE LOCKS THIS PROCESS HOLDS — a registry keyed by workspace PATH, not a single
+ * slot (finding B of thread 023).
+ *
+ * It used to be one variable: "one per process by construction — the daemon raises
+ * sessions one at a time". That construction is exactly what D-2 removes. With N
+ * supervisors inside one daemon the second `take` overwrote the first one's entry,
+ * and the release — which has only ever been able to release what it remembers —
+ * then unlocked the LAST tree and left the earlier one locked forever. R17 reads a
+ * foreign lock as a refusal to start, so the failure mode was roles dropping out of
+ * the circuit one by one, silently, for a reason no journal names. Keyed by path,
+ * every holder releases its own and nobody else's.
+ *
+ * Why path and not role: the lock is a fact about a TREE (see `lockReason`), and the
+ * path is what `git worktree lock` is given. A role owns one workspace today, but the
+ * registry must agree with the thing it mirrors, not with the layout above it.
+ *
+ * The git calls are injected rather than imported so the registry is testable without
+ * a repository: `lock` returns whether git took it (it FAILS on an already-locked
+ * tree — that failure is the atomic check the caller relies on), `unlock` is
+ * best-effort.
+ */
+export type WorkspaceLockGit = {
+  readonly lock: (input: {
+    readonly repo: string;
+    readonly path: string;
+    readonly reason: string;
+  }) => boolean;
+  readonly unlock: (input: { readonly repo: string; readonly path: string }) => void;
+};
+
+export type WorkspaceLocks = {
+  /** `false` — somebody won the race; nothing was recorded and the caller refuses. */
+  readonly take: (input: {
+    readonly repo: string;
+    readonly path: string;
+    readonly reason: string;
+  }) => boolean;
+  /**
+   * Release ONE path — idempotent, and safe on a path that never took a lock (the
+   * pre-R17 mode runs in the supervisor's own tree and takes none). A path this
+   * process does not hold is left alone: unlocking somebody else's tree is the very
+   * failure the registry exists to prevent.
+   */
+  readonly release: (path: string) => void;
+  /**
+   * Release EVERYTHING still held — the process-exit backstop, and the only caller
+   * that is allowed not to name a path: at `exit` there is nobody left to ask which
+   * of the live supervisors this is.
+   */
+  readonly releaseAll: () => void;
+  /** What is held right now, for tests and for a status line. */
+  readonly held: () => readonly string[];
+};
+
+export const createWorkspaceLocks = (git: WorkspaceLockGit): WorkspaceLocks => {
+  const held = new Map<string, string>(); // path → repo
+  return {
+    take: (input) => {
+      if (!git.lock(input)) return false;
+      held.set(input.path, input.repo);
+      return true;
+    },
+    release: (path) => {
+      const repo = held.get(path);
+      if (repo === undefined) return;
+      held.delete(path);
+      git.unlock({ repo, path });
+    },
+    releaseAll: () => {
+      for (const [path, repo] of [...held]) {
+        held.delete(path);
+        git.unlock({ repo, path });
+      }
+    },
+    held: () => [...held.keys()],
+  };
+};
+
+/**
  * The line for the checkout NOBODY works in any more. It is printed for exactly as
  * long as it takes to notice that it changed meaning: with workspaces declared, the
  * branch of the operator's own tree stops deciding anything, and comparing it against
