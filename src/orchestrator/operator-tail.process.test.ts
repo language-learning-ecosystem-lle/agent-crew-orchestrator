@@ -86,12 +86,31 @@ const contour = (): Contour => {
   return { repo, origin, mail };
 };
 
+/**
+ * THE IDENTITY GOES IN THE ENVIRONMENT (the same reason as in
+ * `thread/new-message.process.test.ts`): the commit is made by the CLI, several git
+ * calls deep, so a test cannot reach it with `-c user.email=…`. A temporary checkout
+ * has no identity of its own, and the runner has no global config to fall back on —
+ * which is exactly how this file passed here and failed in CI, with the delivery
+ * dying inside `git commit` and leaving two message files behind.
+ */
+const IDENTITY = {
+  GIT_AUTHOR_NAME: "t",
+  GIT_AUTHOR_EMAIL: "t@e",
+  GIT_COMMITTER_NAME: "t",
+  GIT_COMMITTER_EMAIL: "t@e",
+};
+
 const run = (
   cwd: string,
   home: string,
   ...args: string[]
 ): { status: number | null; stdout: string; stderr: string } => {
-  const done = spawnSync(TSX, [CLI, ...args], { cwd, encoding: "utf8", env: sandbox(home) });
+  const done = spawnSync(TSX, [CLI, ...args], {
+    cwd,
+    encoding: "utf8",
+    env: sandbox(home, IDENTITY),
+  });
   return { status: done.status, stdout: done.stdout ?? "", stderr: done.stderr ?? "" };
 };
 
@@ -124,8 +143,14 @@ describe("a forced stop delivers its trace BEFORE it puts anything down", () => 
     // without trusting the checkout.
     const published = execFileSync("git", ["-C", origin, "ls-tree", "-r", "--name-only", "comms"], {
       encoding: "utf8",
-    });
-    expect(published).toMatch(/agent-comms\/016-x\/messages\/.*john\.md/);
+    })
+      .split("\n")
+      .filter((path) => /agent-comms\/016-x\/messages\/.*john\.md/.test(path));
+    // TWO, not "at least one": the thread was SEEDED with a message from john, so a
+    // pattern match alone is satisfied by the fixture and says nothing about delivery.
+    // That is not hypothetical — it is what hid a real failure on the runner, where
+    // the commit died on a missing identity and this assertion stayed green.
+    expect(published).toHaveLength(2);
     // ...and the checkout is clean: a delivered message leaves nothing behind, which is
     // what `✗ mail: unsaved changes` in the next preflight was telling john.
     expect(git(mail, "status", "--porcelain").trim()).toBe("");
