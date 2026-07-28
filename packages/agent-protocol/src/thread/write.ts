@@ -63,7 +63,7 @@ export type NewMessageInput = {
   readonly session?: string;
   readonly date: string;
   readonly expects: MessageFields["expects"];
-  readonly waitingOn?: readonly string[];
+  readonly waitingOn?: string | null;
   /** With what the runs of this thread are to be raised from here on (R21). */
   readonly launch?: LaunchDirective;
   /** Which waiting thread is raised first from here on (R5). */
@@ -113,7 +113,7 @@ export type NewThreadInput = {
   readonly session?: string;
   readonly date: string;
   readonly expects: MessageFields["expects"];
-  readonly waitingOn?: readonly string[];
+  readonly waitingOn?: string | null;
   readonly text: string;
 };
 

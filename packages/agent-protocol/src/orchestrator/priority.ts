@@ -99,10 +99,10 @@ export const resolveThreadPriority = (input: {
  * WHEN THE TURN WAS PASSED TO THE ROLE — the date of the message that put it into
  * `waiting-on` and was never lifted since.
  *
- * A missing `waiting-on` means "I am not passing the turn" (the previous set is
- * inherited), so the set is folded across the feed and only a TRANSITION out of
- * waiting into waiting counts as a handoff. `undefined` means the role is not awaited
- * at all — the caller has no candidate to rank in the first place.
+ * A missing `waiting-on` means "I am not passing the turn" (the previous holder is
+ * inherited), so the field is folded across the feed and only a TRANSITION into the
+ * turn counts as a handoff. `undefined` means the role is not awaited at all — the
+ * caller has no candidate to rank in the first place.
  */
 export const waitingSince = (input: {
   readonly messages: readonly Message[];
@@ -113,7 +113,7 @@ export const waitingSince = (input: {
   for (const message of input.messages) {
     const next = message.fields.waitingOn;
     if (next === undefined) continue;
-    const nowAwaited = next.includes(input.role);
+    const nowAwaited = next === input.role;
     if (nowAwaited && !awaited) since = message.fields.date;
     awaited = nowAwaited;
   }

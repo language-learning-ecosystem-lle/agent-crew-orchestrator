@@ -42,7 +42,7 @@ const message = (over: Partial<Message["fields"]> = {}, text = "Text."): Message
     from: "dev-core",
     date: "2026-07-23T13:45:12Z",
     expects: "answer",
-    waitingOn: ["curator"],
+    waitingOn: "curator",
     ...over,
   },
   text,
@@ -81,7 +81,7 @@ describe("checkThread", () => {
           from: "curator",
           date: "2026-07-23T13:45:13Z",
           worker: "unknown",
-          waitingOn: ["dev-core"],
+          waitingOn: "dev-core",
         }),
       },
     ];
@@ -102,7 +102,7 @@ describe("checkThread", () => {
         entries: [
           {
             fileName: "2026-07-23T13-45-12Z-github.md",
-            message: message({ from: "github", waitingOn: ["jonh"] }),
+            message: message({ from: "github", waitingOn: "jonh" }),
           },
         ],
       }),
@@ -113,6 +113,126 @@ describe("checkThread", () => {
       "'from: github' — no such role in the config",
       "'waiting-on' names role 'jonh', which is not in the config",
     ]);
+  });
+
+  it("flags a wait on john — a role nobody wakes holds no turn (R24)", () => {
+    // The second door of the same rule (the first is `--waiting-on` at the writing
+    // command): a file that got into the feed some other way is still read as wrong,
+    // and the diagnosis names what to do instead of the refused thing.
+    const issues = checkThread(
+      input({
+        entries: [
+          {
+            fileName: "2026-07-23T13-45-12Z-dev-core.md",
+            message: message({ waitingOn: "john" }),
+          },
+        ],
+      }),
+      registry,
+    );
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBeUndefined();
+    expect(issues[0]?.message).toMatch(/wakes itself.*outside the domain of the turn/);
+    expect(issues[0]?.message).toMatch(/whoever carries the question/);
+  });
+
+  // THE OTHER SIDE OF THE SAME RULE (decision curator, thread 024, msg-010): the feed
+  // is append-only, so the header of an older message quotes a state that really was.
+  // Condemning it would keep `check` red forever over history nobody may edit — and
+  // the landing procedure of v13 asks for a GREEN check over `comms`, where 48 such
+  // declarations already lie.
+  it("only NOTES a wait on john that is not the thread's current turn", () => {
+    const issues = checkThread(
+      input({
+        entries: [
+          {
+            fileName: "2026-07-23T13-45-12Z-dev-core.md",
+            message: message({ waitingOn: "john" }),
+          },
+          {
+            fileName: "2026-07-24T09-00-00Z-curator.md",
+            message: message({ from: "curator", date: "2026-07-24T09:00:00Z" }),
+          },
+        ],
+      }),
+      registry,
+    );
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBe("note");
+    expect(issues[0]?.file).toBe("2026-07-23T13-45-12Z-dev-core.md");
+    expect(issues[0]?.message).toMatch(/not the thread's current turn/);
+    expect(issues[0]?.message).toMatch(/written under an earlier version/);
+  });
+
+  // The turn of the thread is the LAST declaration, not the last message: a follow-up
+  // that hands nothing over leaves the turn where it was — and if it is on john, that
+  // is a live state and a violation, not history.
+  it("still flags john when a later message passes no turn at all", () => {
+    const issues = checkThread(
+      input({
+        entries: [
+          {
+            fileName: "2026-07-23T13-45-12Z-dev-core.md",
+            message: message({ waitingOn: "john" }),
+          },
+          {
+            fileName: "2026-07-24T09-00-00Z-curator.md",
+            message: {
+              fields: {
+                from: "curator",
+                date: "2026-07-24T09:00:00Z",
+                expects: "none",
+              },
+              text: "Text.",
+            },
+          },
+        ],
+      }),
+      registry,
+    );
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBeUndefined();
+    expect(issues[0]?.message).toMatch(/outside the domain of the turn/);
+  });
+
+  // A closed thread awaits nobody (the same precedence `waitingOnOf` gives `status`),
+  // so its last declaration is history like any other.
+  it("only notes a wait on john in a CLOSED thread", () => {
+    const issues = checkThread(
+      {
+        id: "012-x",
+        meta: { ...meta, status: "closed" },
+        entries: [
+          {
+            fileName: "2026-07-23T13-45-12Z-dev-core.md",
+            message: message({ waitingOn: "john" }),
+          },
+        ],
+      },
+      registry,
+    );
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBe("note");
+  });
+
+  it("says nothing about a wait on a role the circuit can move", () => {
+    expect(
+      checkThread(
+        input({
+          entries: [
+            {
+              fileName: "2026-07-23T13-45-12Z-dev-core.md",
+              message: message({ waitingOn: "curator" }),
+            },
+          ],
+        }),
+        registry,
+      ),
+    ).toEqual([]);
   });
 
   it("catches a file name that drifted from the header", () => {

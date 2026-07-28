@@ -152,11 +152,20 @@ export type MessageFields = {
   readonly date: string;
   readonly expects: Expects;
   /**
-   * The full REMAINING set of who is awaited, not a delta. A missing field means
-   * "I am not passing the turn" (the previous one is inherited), an empty list
+   * WHOSE TURN IT IS — EXACTLY ONE role or nobody (v13). A missing field means "I am
+   * not passing the turn" (the previous holder is inherited), `null` (`—` on the wire)
    * means the waiting is lifted.
+   *
+   * IT USED TO BE A SET, and the set was the defect: the field is written WHOLE, so
+   * whoever answered rewrote somebody else's waiting along with their own (a thread
+   * awaited `dev-core, john`; dev-core replied `waiting-on: curator` and john's
+   * unclosed turn silently evaporated). The cases that looked like two independent
+   * waits are not turns at all — they are tasks with owners; the feed's queue is
+   * strictly sequential (dev → reviewer → dev → … → curator). As a scalar it also
+   * closes the second defect by construction: the daemon has nobody to raise second
+   * on one thread.
    */
-  readonly waitingOn?: readonly string[];
+  readonly waitingOn?: string | null;
   /**
    * WITH WHAT THE RUNS OF THIS THREAD ARE TO BE RAISED from here on (R21). Effective
    * only from a role holding `launch-params`; from anyone else it is ignored OUT LOUD
@@ -264,13 +273,26 @@ export class MessageFormatError extends Error {
   }
 }
 
-const parseList = (value: string): string[] =>
-  value === "—" || value.trim() === ""
-    ? []
-    : value
-        .split(",")
-        .map((part) => part.trim())
-        .filter((part) => part !== "");
+/**
+ * `waiting-on` off the wire. ONE role, or `—` for nobody. A list is REFUSED rather
+ * than folded to its first element: a header that names two is either history that
+ * the v13 migration has not been run over, or a writer still thinking in sets — and
+ * both are answered by naming the migration, not by guessing whose turn it is.
+ */
+export const parseWaitingOnField = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (trimmed === "—" || trimmed === "") return null;
+  const parts = trimmed
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+  if (parts.length > 1) {
+    throw new MessageFormatError(
+      `'waiting-on: ${trimmed}' — the turn is held by exactly one role since schema v13; run 'agent-protocol schema migrate' over the mail if this is history`,
+    );
+  }
+  return (parts[0] as string) ?? null;
+};
 
 /** Parsing a message file: front matter inside `---` + body. */
 export const parseMessageFile = (raw: string): Message => {
@@ -348,7 +370,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(session === undefined ? {} : { session }),
     date,
     expects: expects as Expects,
-    ...(waitingRaw === undefined ? {} : { waitingOn: parseList(waitingRaw) }),
+    ...(waitingRaw === undefined ? {} : { waitingOn: parseWaitingOnField(waitingRaw) }),
     ...(launch === undefined ? {} : { launch }),
     ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
     ...(suffix === undefined ? {} : { suffix }),
@@ -382,9 +404,7 @@ export const renderMessageFile = (message: Message): string => {
     ...(fields.session === undefined ? [] : [`session: ${fields.session}`]),
     `date: ${fields.date}`,
     `expects: ${fields.expects}`,
-    ...(fields.waitingOn === undefined
-      ? []
-      : [`waiting-on: ${fields.waitingOn.length === 0 ? "—" : fields.waitingOn.join(", ")}`]),
+    ...(fields.waitingOn === undefined ? [] : [`waiting-on: ${fields.waitingOn ?? "—"}`]),
     // After `waiting-on` and before the historical `suffix`: the directive is about
     // the RUNS of this thread, so it reads next to the field that says whose turn it is.
     ...(fields.launch === undefined ? [] : [`launch: ${renderLaunchDirective(fields.launch)}`]),

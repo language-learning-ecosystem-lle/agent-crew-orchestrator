@@ -16,7 +16,7 @@ const FILE = `---
 from: dev-core
 date: 2026-07-23T13:45:12Z
 expects: answer
-waiting-on: john, curator
+waiting-on: curator
 ---
 
 Message text.
@@ -32,20 +32,33 @@ describe("parseMessageFile", () => {
       from: "dev-core",
       date: "2026-07-23T13:45:12Z",
       expects: "answer",
-      waitingOn: ["john", "curator"],
+      waitingOn: "curator",
     });
     expect(message.text.startsWith("Message text.")).toBe(true);
   });
 
   it("tells 'no field' apart from 'waiting lifted'", () => {
     // Three states (john's decision): no field — I am not passing the turn, the
-    // waiting is inherited; "—" — the waiting is lifted; a list — the full
-    // remaining set.
-    const noField = parseMessageFile(FILE.replace("waiting-on: john, curator\n", ""));
-    const cleared = parseMessageFile(FILE.replace("waiting-on: john, curator", "waiting-on: —"));
+    // waiting is inherited; "—" — the waiting is lifted; a role — the turn is theirs
+    // (one, since v13).
+    const noField = parseMessageFile(FILE.replace("waiting-on: curator\n", ""));
+    const cleared = parseMessageFile(FILE.replace("waiting-on: curator", "waiting-on: —"));
 
     expect(noField.fields.waitingOn).toBeUndefined();
-    expect(cleared.fields.waitingOn).toEqual([]);
+    expect(cleared.fields.waitingOn).toBeNull();
+  });
+
+  it("REFUSES a header naming two roles instead of folding it to the first", () => {
+    // The refusal is the point of v13, not a side effect of it: folding would
+    // reproduce pain 2 (somebody's unclosed turn evaporating) inside the reader,
+    // and quietly. The message names the way out — the migration — because the
+    // only files that legitimately carry two are history not yet migrated.
+    expect(() =>
+      parseMessageFile(FILE.replace("waiting-on: curator", "waiting-on: john, curator")),
+    ).toThrow(MessageFormatError);
+    expect(() =>
+      parseMessageFile(FILE.replace("waiting-on: curator", "waiting-on: john, curator")),
+    ).toThrow(/exactly one role since schema v13.*schema migrate/s);
   });
 
   it("rejects a file without a header, without required fields and with a foreign expects", () => {

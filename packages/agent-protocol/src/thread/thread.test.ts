@@ -45,7 +45,7 @@ describe("parseLegacyThread", () => {
     });
     expect(thread.messages).toHaveLength(2);
     expect(thread.messages[0]?.fields.suffix).toBe("[СВЕРХПИСАНО msg-002]");
-    expect(thread.messages[1]?.fields.waitingOn).toEqual(["john", "curator"]);
+    expect(thread.messages[1]?.fields.waitingOn).toBe("john");
   });
 
   it("fails on a non-standard header instead of guessing it", () => {
@@ -56,32 +56,29 @@ describe("parseLegacyThread", () => {
 describe("declaredWaitingOn", () => {
   it("counts only an arrow immediately after the word as a declaration", () => {
     expect(declaredWaitingOn("waiting-on stays with john", ROLES)).toBeUndefined();
-    expect(declaredWaitingOn("waiting-on → john", ROLES)).toEqual(["john"]);
+    expect(declaredWaitingOn("waiting-on → john", ROLES)).toBe("john");
   });
 
   it("takes the last declaration, not the first", () => {
     const text = "waiting-on → john\n\nthen we changed our minds\n\nwaiting-on → curator";
 
-    expect(declaredWaitingOn(text, ROLES)).toEqual(["curator"]);
+    expect(declaredWaitingOn(text, ROLES)).toBe("curator");
   });
 
   it("does not lose a role because of a parenthesised explanation", () => {
     // Thread 011: the hypothesis "parentheses eat the next role" was checked by fact.
-    expect(declaredWaitingOn("waiting-on → dev-speech (stage 1), john (VPS)", ROLES)).toEqual([
-      "dev-speech",
-      "john",
-    ]);
+    expect(declaredWaitingOn("waiting-on → dev-speech (stage 1), john", ROLES)).toBe("dev-speech");
   });
 
   it("cuts at the last waiting-on word, not at the first arrow in the line", () => {
     // The arrow is a common character in prose (@BotFather → chat_id → chmod 600).
     const text = "setup: @BotFather → token → chmod 600. waiting-on → john";
 
-    expect(declaredWaitingOn(text, ROLES)).toEqual(["john"]);
+    expect(declaredWaitingOn(text, ROLES)).toBe("john");
   });
 
   it("a declaration without known roles yields an empty set, not the absence of a declaration", () => {
-    expect(declaredWaitingOn("waiting-on → —", ROLES)).toEqual([]);
+    expect(declaredWaitingOn("waiting-on → —", ROLES)).toBeNull();
   });
 });
 
@@ -99,7 +96,7 @@ describe("waitingOnOf", () => {
       ],
     };
 
-    expect(waitingOnOf(withNote)).toEqual(["john", "curator"]);
+    expect(waitingOnOf(withNote)).toBe("john");
   });
 
   it("a closed thread awaits nobody, whatever the last section says", () => {
@@ -109,7 +106,7 @@ describe("waitingOnOf", () => {
       ROLES,
     );
 
-    expect(waitingOnOf(thread)).toEqual([]);
+    expect(waitingOnOf(thread)).toBeUndefined();
   });
 });
 
@@ -145,7 +142,7 @@ describe("renderIndex / threadsWaitingOn", () => {
 | id | participants | status | waiting-on | updated |
 |---|---|---|---|---|
 | 001-y | curator, dev-core, john | closed | — | 2026-07-23 |
-| 012-x | curator, dev-core, john | open | john, curator | 2026-07-23 |
+| 012-x | curator, dev-core, john | open | john | 2026-07-23 |
 `,
     );
   });

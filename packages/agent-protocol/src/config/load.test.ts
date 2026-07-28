@@ -154,6 +154,43 @@ describe("the protocol version gate", () => {
       /rename it to 'protocolVersion'/,
     );
   });
+
+  it("lets a reader through DOWNWARDS when it asks to (`tolerateOlder`), and says so in the verdict", () => {
+    // The one reader that needs this is `zones check`: it points at the BASE of a
+    // pull request on purpose, so a PR bumping the version reads a config that is
+    // behind BY CONSTRUCTION. The policy it asks for does not depend on the number.
+    const { repo, path } = repoWithConfig();
+    commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 });
+
+    const loaded = loadProtocolConfig({ repo, ref: "HEAD", fetch: false, tolerateOlder: true });
+
+    expect(loaded.version).toEqual({
+      state: "behind",
+      declared: CURRENT_PROTOCOL_VERSION - 1,
+      supported: CURRENT_PROTOCOL_VERSION,
+    });
+    expect(loaded.registry.ids()).toEqual(["john", "dev-core"]);
+  });
+
+  it("does NOT let the same reader through UPWARDS — a config newer than the package still halts", () => {
+    // Asymmetric on purpose: older data can be read by newer rules, data written by
+    // a shape this package has never seen cannot be guessed at.
+    const { repo, path } = repoWithConfig();
+    commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION + 1 });
+
+    expect(() =>
+      loadProtocolConfig({ repo, ref: "HEAD", fetch: false, tolerateOlder: true }),
+    ).toThrow(/supports only/);
+  });
+
+  it("keeps the halt for every other reader — tolerance is asked for, never assumed", () => {
+    const { repo, path } = repoWithConfig();
+    commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 });
+
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(
+      /run 'agent-protocol schema migrate'/,
+    );
+  });
 });
 
 describe("the orchestrator section", () => {

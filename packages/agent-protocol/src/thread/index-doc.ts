@@ -26,7 +26,7 @@ export const renderIndex = (threads: readonly Thread[]): string => {
   const rows = threads.map((thread) => {
     const waiting = waitingOnOf(thread);
     return `| ${thread.id} | ${thread.meta.participants.join(", ")} | ${thread.meta.status} | ${
-      waiting.length === 0 ? EMPTY : waiting.join(", ")
+      waiting ?? EMPTY
     } | ${updatedOf(thread)} |`;
   });
 
@@ -37,4 +37,4 @@ export const renderIndex = (threads: readonly Thread[]): string => {
 
 /** Threads awaiting a role. This is exactly "is there mail" — computed from the source, not from INDEX. */
 export const threadsWaitingOn = (threads: readonly Thread[], role: string): string[] =>
-  threads.filter((thread) => waitingOnOf(thread).includes(role)).map((thread) => thread.id);
+  threads.filter((thread) => waitingOnOf(thread) === role).map((thread) => thread.id);
