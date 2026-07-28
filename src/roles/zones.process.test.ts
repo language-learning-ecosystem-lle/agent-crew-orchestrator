@@ -130,6 +130,49 @@ describe("zones check — the staged paths of a change against the role's zone",
     expect(result.out).toContain("inside its zone");
   });
 
+  it("a BASE a version behind is still read — the door of a version-bumping PR is not red by construction", () => {
+    // Doors 2 and 3 point at a ref the change has not landed in yet, so on a PR that
+    // bumps `protocolVersion` the base declares the OLD number while the binary
+    // running the check writes the new one. Before this was tolerated the version
+    // gate refused before the zones were ever compared, and the guard was red on
+    // exactly the class of change that touches the protocol's own shape.
+    const repo = mkdtempSync(join(tmpdir(), "agent-protocol-zones-"));
+    git(repo, "init", "-q", "-b", "main");
+    writeFileSync(
+      join(repo, "agent-protocol.json"),
+      `${JSON.stringify({ ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 }, null, 2)}\n`,
+    );
+    git(repo, "add", "-A");
+    git(repo, "commit", "-qm", "base one version behind");
+    file(repo, `${FOREIGN}/main.py`, "print(1)\n");
+    git(repo, "add", "-A");
+
+    const result = check(repo);
+
+    // The verdict is the ZONES one, not a version complaint — and the skew is named.
+    expect(result.code).toBe(1);
+    expect(result.out).toContain(`${FOREIGN}/main.py`);
+    expect(result.out).toContain(`declares protocol version ${CURRENT_PROTOCOL_VERSION - 1}`);
+  });
+
+  it("a BASE NEWER than the binary still halts the door — an unknown shape is not guessed at", () => {
+    const repo = mkdtempSync(join(tmpdir(), "agent-protocol-zones-"));
+    git(repo, "init", "-q", "-b", "main");
+    writeFileSync(
+      join(repo, "agent-protocol.json"),
+      `${JSON.stringify({ ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION + 1 }, null, 2)}\n`,
+    );
+    git(repo, "add", "-A");
+    git(repo, "commit", "-qm", "base ahead");
+    file(repo, "packages/agent-protocol/src/own.ts", "export const a = 2;\n");
+    git(repo, "add", "-A");
+
+    const result = check(repo);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("update the package");
+  });
+
   it("a role whose zone bans nothing is refused nothing — the stated default", () => {
     const repo = mkdtempSync(join(tmpdir(), "agent-protocol-zones-"));
     git(repo, "init", "-q", "-b", "main");

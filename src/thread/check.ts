@@ -58,6 +58,28 @@ export type CheckIssue = {
   readonly thread: string;
   readonly file?: string;
   readonly message: string;
+  /**
+   * A NOTE IS NOT A VIOLATION — it is said out loud and does not fail the check.
+   * The class exists for exactly one situation: a fact about the feed's PAST that
+   * the current version has an opinion about and that nobody may edit (decision
+   * curator, thread 024, msg-010).
+   */
+  readonly severity?: "note";
+};
+
+/**
+ * WHICH declaration is the turn of the thread — the LAST one, and only while the
+ * thread is open. The same rule as `waitingOnOf`, and it is the same rule on
+ * purpose: what `check` judges must be what the index and `mail` show, otherwise
+ * the checker has an opinion about a state nobody acts on.
+ */
+const currentTurnFile = (input: ThreadInput): string | undefined => {
+  if (input.meta.status === "closed") return undefined;
+  for (let at = input.entries.length - 1; at >= 0; at--) {
+    const entry = input.entries[at];
+    if (entry !== undefined && entry.message.fields.waitingOn !== undefined) return entry.fileName;
+  }
+  return undefined;
 };
 
 export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIssue[] => {
@@ -65,6 +87,7 @@ export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIs
   const at = (file: string, message: string): void => {
     issues.push({ thread: input.id, file, message });
   };
+  const turnFile = currentTurnFile(input);
 
   for (const participant of input.meta.participants) {
     if (!registry.isKnown(participant)) {
@@ -82,9 +105,34 @@ export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIs
     if (!registry.isKnown(fields.from)) {
       at(entry.fileName, `'from: ${fields.from}' — no such role in the config`);
     }
-    for (const role of fields.waitingOn ?? []) {
-      if (!registry.isKnown(role)) {
-        at(entry.fileName, `'waiting-on' names role '${role}', which is not in the config`);
+    const awaited = fields.waitingOn ?? undefined;
+    if (awaited !== undefined) {
+      if (!registry.isKnown(awaited)) {
+        at(entry.fileName, `'waiting-on' names role '${awaited}', which is not in the config`);
+      } else if (!registry.canHoldTurn(awaited)) {
+        // R24: the turn is a tact of the FEED, and a role nobody wakes has no tact —
+        // a wait on it reads as a state of the thread while it is really a state of a
+        // human's day. What is meant is "somebody must get a decision out of them",
+        // and that is a turn for whoever carries the question.
+        //
+        // ONLY THE THREAD'S CURRENT TURN IS A VIOLATION (decision curator, thread 024,
+        // msg-010). The feed is append-only, so the header of an older message is a
+        // QUOTATION of a past state, not a claim about the present — and the turn
+        // there really did rest on that role, under a version that allowed it. A
+        // validator that condemns history makes `check` permanently red, and a
+        // permanently red check stops being read: the same defect ("stale is
+        // indistinguishable from fresh") the door exists to prevent, only louder.
+        // Rewriting those headers is not the way out either — that would be
+        // falsifying the journal to get a green tick.
+        const historical = entry.fileName !== turnFile;
+        issues.push({
+          thread: input.id,
+          file: entry.fileName,
+          message: historical
+            ? `'waiting-on: ${awaited}' — the role wakes itself (wake.mode='self') and holds no turn since schema v13; this declaration is not the thread's current turn, so it was written under an earlier version and stands as history (the feed is append-only)`
+            : `'waiting-on: ${awaited}' — the role wakes itself (wake.mode='self') and is outside the domain of the turn; the turn goes to whoever carries the question to them`,
+          ...(historical ? { severity: "note" as const } : {}),
+        });
       }
     }
 

@@ -74,8 +74,8 @@ describe("waitingSince (R5) — the age is counted from the HANDOFF", () => {
   it("the stamp of the message that put the role into waiting-on, not of the latest message", () => {
     const since = waitingSince({
       messages: [
-        message({ from: "curator", date: "2026-07-24T10:00:00Z", waitingOn: ["dev-core"] }),
-        message({ from: "john", date: "2026-07-26T10:00:00Z", waitingOn: ["dev-core"] }),
+        message({ from: "curator", date: "2026-07-24T10:00:00Z", waitingOn: "dev-core" }),
+        message({ from: "john", date: "2026-07-26T10:00:00Z", waitingOn: "dev-core" }),
       ],
       role: "dev-core",
     });
@@ -85,7 +85,7 @@ describe("waitingSince (R5) — the age is counted from the HANDOFF", () => {
   it("a talkative thread is not aged by talk: a message with no waiting-on inherits the wait", () => {
     const since = waitingSince({
       messages: [
-        message({ from: "curator", date: "2026-07-24T10:00:00Z", waitingOn: ["dev-core"] }),
+        message({ from: "curator", date: "2026-07-24T10:00:00Z", waitingOn: "dev-core" }),
         message({ from: "reviewer-pr", date: "2026-07-25T10:00:00Z" }),
       ],
       role: "dev-core",
@@ -96,9 +96,9 @@ describe("waitingSince (R5) — the age is counted from the HANDOFF", () => {
   it("a wait lifted and handed back again counts from the SECOND handoff", () => {
     const since = waitingSince({
       messages: [
-        message({ from: "curator", date: "2026-07-24T10:00:00Z", waitingOn: ["dev-core"] }),
-        message({ from: "dev-core", date: "2026-07-25T10:00:00Z", waitingOn: ["curator"] }),
-        message({ from: "curator", date: "2026-07-26T10:00:00Z", waitingOn: ["dev-core"] }),
+        message({ from: "curator", date: "2026-07-24T10:00:00Z", waitingOn: "dev-core" }),
+        message({ from: "dev-core", date: "2026-07-25T10:00:00Z", waitingOn: "curator" }),
+        message({ from: "curator", date: "2026-07-26T10:00:00Z", waitingOn: "dev-core" }),
       ],
       role: "dev-core",
     });
@@ -109,8 +109,8 @@ describe("waitingSince (R5) — the age is counted from the HANDOFF", () => {
     expect(
       waitingSince({
         messages: [
-          message({ from: "curator", date: "2026-07-24T10:00:00Z", waitingOn: ["dev-core"] }),
-          message({ from: "dev-core", date: "2026-07-25T10:00:00Z", waitingOn: ["curator"] }),
+          message({ from: "curator", date: "2026-07-24T10:00:00Z", waitingOn: "dev-core" }),
+          message({ from: "dev-core", date: "2026-07-25T10:00:00Z", waitingOn: "curator" }),
         ],
         role: "dev-core",
       }),

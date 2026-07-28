@@ -17,11 +17,19 @@
  *
  * The door also carries the PROTOCOL VERSION GATE (R2): a repository whose data is
  * at another version than the one this package writes stops the circuit here,
- * with the repair named, instead of being read as if the shapes matched.
+ * with the repair named, instead of being read as if the shapes matched. The one
+ * documented exception is `tolerateOlder` — a reader that asks the base of a pull
+ * request a POLICY question rather than reading data it is about to write; see the
+ * field's own note.
  */
 import { fetchRef, readFileAtRef } from "../fs/git.js";
 import { createRoleRegistry, RoleConfigError, type RoleRegistry } from "../roles/registry.js";
-import { legacyVersionHint, requireCurrentProtocolVersion } from "../schema/version.js";
+import {
+  compareProtocolVersion,
+  legacyVersionHint,
+  requireCurrentProtocolVersion,
+  type VersionVerdict,
+} from "../schema/version.js";
 import { DEFAULT_CONFIG_PATH, type ProtocolConfig, protocolConfigSchema } from "./config.js";
 
 export type LoadOptions = {
@@ -32,6 +40,22 @@ export type LoadOptions = {
   readonly path?: string;
   /** false — do not refresh the remote-tracking ref; the caller must say so out loud. */
   readonly fetch?: boolean;
+  /**
+   * READING A REF THAT IS OLDER THAN THIS PACKAGE ON PURPOSE. The version gate asks
+   * "is the repository at the shape this package writes" — the right question for
+   * every command that goes on to WRITE the protocol's data. One reader asks a
+   * different question: `zones check` reads the config OF THE BASE of a pull request
+   * (thread 020, door 3) and asks only "which paths does the base policy forbid this
+   * role". On a PR that bumps `protocolVersion` the base is behind BY CONSTRUCTION —
+   * that is what such a PR is — so the gate turns a correct state into a refusal and
+   * makes door 3 permanently red for exactly the changes that touch the protocol's
+   * own shape. This flag lets that ONE caller through, and only DOWNWARDS: a config
+   * NEWER than the package still stops everything, because then the package cannot
+   * know what it is reading. The caller is expected to say out loud that the skew
+   * exists (see `zonesCheck` in `cli.ts`) — tolerating it silently would be the
+   * stale-config defect this loader was built to prevent.
+   */
+  readonly tolerateOlder?: boolean;
 };
 
 export type LoadedConfig = {
@@ -39,6 +63,8 @@ export type LoadedConfig = {
   readonly registry: RoleRegistry;
   readonly path: string;
   readonly ref: string;
+  /** How the version at the ref stands against this package — `behind` only ever reaches a caller that asked to tolerate it. */
+  readonly version: VersionVerdict;
 };
 
 export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
@@ -76,12 +102,16 @@ export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
   // exactly what every command would otherwise have to remember about. The
   // consequence is deliberate — the circuit halts, and the one command that keeps
   // working is `schema migrate`, which reads the raw file rather than this door.
-  requireCurrentProtocolVersion(result.data.protocolVersion, { path, ref: options.ref });
+  const version = compareProtocolVersion(result.data.protocolVersion);
+  if (!(options.tolerateOlder === true && version.state === "behind")) {
+    requireCurrentProtocolVersion(result.data.protocolVersion, { path, ref: options.ref });
+  }
 
   return {
     config: result.data,
     registry: createRoleRegistry(result.data),
     path,
     ref: options.ref,
+    version,
   };
 };

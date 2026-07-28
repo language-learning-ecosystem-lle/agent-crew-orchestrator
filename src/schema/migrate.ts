@@ -56,6 +56,7 @@ import { LAUNCH_DIRECTIVE_STEP } from "./v9-launch-directive.js";
 import { THREAD_PRIORITY_STEP } from "./v10-thread-priority.js";
 import { INSTANCES_STEP } from "./v11-instances.js";
 import { RESIDENT_WAKE_STEP } from "./v12-resident.js";
+import { SCALAR_WAITING_ON_STEP } from "./v13-scalar-waiting-on.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -74,6 +75,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   THREAD_PRIORITY_STEP,
   INSTANCES_STEP,
   RESIDENT_WAKE_STEP,
+  SCALAR_WAITING_ON_STEP,
 ];
 
 export type {

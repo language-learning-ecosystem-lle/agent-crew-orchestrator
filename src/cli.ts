@@ -306,6 +306,7 @@ const readFile = (path: string, what: string): string => {
 const configFrom = (
   argv: readonly string[],
   root?: string,
+  options?: { readonly tolerateOlder?: boolean },
 ): ReturnType<typeof loadProtocolConfig> => {
   const ref = required(argv, "--ref");
   // Only `ref` has no default — it is precisely what decides WHAT we read, and a
@@ -329,6 +330,7 @@ const configFrom = (
       repo,
       ref,
       fetch: !noFetch,
+      ...(options?.tolerateOlder === true ? { tolerateOlder: true } : {}),
       ...(flag(argv, "--config-path") === undefined
         ? {}
         : { path: flag(argv, "--config-path") as string }),
@@ -710,9 +712,14 @@ const checkAll = (argv: readonly string[]): void => {
   const registry = registryFrom(argv, repoOf(root));
   const { threads, failures } = loadThreads(root, registry.ids());
 
-  const issues = threads.flatMap((loaded) =>
+  const found = threads.flatMap((loaded) =>
     loaded.input === undefined ? [] : checkThread(loaded.input, registry),
   );
+  // NOTES ARE SEPARATED HERE, not inside the checker: what a fact about the feed's
+  // past COSTS (a red exit code or a line to read) is a decision of the command,
+  // while whether it is a fact at all belongs to the checker.
+  const notes = found.filter((issue) => issue.severity === "note");
+  const issues = found.filter((issue) => issue.severity !== "note");
   const legacy = threads.filter((loaded) => loaded.legacy).map((loaded) => loaded.thread.id);
 
   // R13, second half: `_instances/` IS A CLASS, and the checker has to know it as one.
@@ -770,6 +777,12 @@ const checkAll = (argv: readonly string[]): void => {
 
   if (legacy.length > 0) {
     out(`agent-protocol: not migrated yet (read as they are): ${legacy.join(", ")}`);
+  }
+  if (notes.length > 0) {
+    out(`agent-protocol: notes (history, not a violation — the check does not fail on them):`);
+    for (const note of notes) {
+      out(`- ${note.thread}${note.file === undefined ? "" : `/${note.file}`}: ${note.message}`);
+    }
   }
   if (issues.length === 0 && failureIssues.length === 0) {
     out(`agent-protocol: ok — ${threads.length - legacy.length} threads passed the format check`);
@@ -926,22 +939,41 @@ const parseExpects = (raw: string): Expects => {
   return raw as Expects;
 };
 
-const parseWaitingOn = (raw: string, registry: RoleRegistry): string[] => {
-  const roles =
-    raw === "—"
-      ? []
-      : raw
-          .split(",")
-          .map((r) => r.trim())
-          .filter((r) => r !== "");
-  for (const role of roles) {
-    // An unknown role FAILS the command instead of being dropped silently —
-    // otherwise the loss of a role from the declaration (pain 2) would come back
-    // through the writing tool.
-    if (!registry.isKnown(role))
-      fail(`--waiting-on names role '${role}', which is not in the config`, 2);
+/**
+ * `--waiting-on` at the door. ONE role (or `—` for nobody) since v13, checked against
+ * the config twice over: it must exist, and it must be a role the circuit can move.
+ *
+ * A list is REFUSED here rather than trimmed. The whole reason the field became a
+ * scalar is that a set was rewritten whole by whoever answered, so somebody else's
+ * unclosed turn evaporated — accepting two and keeping one would reproduce the loss
+ * inside the tool that was supposed to end it (pain 2).
+ */
+const parseWaitingOn = (raw: string, registry: RoleRegistry): string | null => {
+  const trimmed = raw.trim();
+  if (trimmed === "—" || trimmed === "") return null;
+  const roles = trimmed
+    .split(",")
+    .map((r) => r.trim())
+    .filter((r) => r !== "");
+  if (roles.length > 1) {
+    fail(
+      `--waiting-on takes ONE role — the turn is held by exactly one (got '${roles.join(", ")}'); several waits at once are tasks with owners, not one turn`,
+      2,
+    );
   }
-  return roles;
+  const role = roles[0] as string;
+  // An unknown role FAILS the command instead of being dropped silently —
+  // otherwise the loss of a role from the declaration (pain 2) would come back
+  // through the writing tool.
+  if (!registry.isKnown(role))
+    fail(`--waiting-on names role '${role}', which is not in the config`, 2);
+  if (!registry.canHoldTurn(role)) {
+    fail(
+      `--waiting-on names '${role}', a role that wakes itself (wake.mode='self') and therefore holds no turn — "a decision from ${role} is needed" is a turn for whoever carries the question to them, with the question spelled out`,
+      2,
+    );
+  }
+  return role;
 };
 
 /**
@@ -1032,15 +1064,13 @@ const provenanceFrom = (
 const declareWait = (input: {
   readonly thread: string;
   readonly from: string;
-  readonly waitingOn?: readonly string[];
+  readonly waitingOn?: string | null;
   readonly date: string;
   readonly session?: string;
   readonly write: boolean;
 }): void => {
   const passesTurn =
-    input.waitingOn !== undefined &&
-    input.waitingOn.length > 0 &&
-    !input.waitingOn.includes(input.from);
+    input.waitingOn !== undefined && input.waitingOn !== null && input.waitingOn !== input.from;
   if (!passesTurn) {
     fail(
       "--await-input needs the message to pass the turn: give --waiting-on with whoever is to answer (and not yourself), otherwise nobody is told to answer and the wait can only end in its ceiling",
@@ -2916,7 +2946,7 @@ const postThreadMessage = (
   root: string,
   threadId: string,
   registry: RoleRegistry,
-  input: { from: string; expects: Expects; waitingOn?: readonly string[]; text: string },
+  input: { from: string; expects: Expects; waitingOn?: string | null; text: string },
 ): void => {
   if (!registry.isKnown(input.from)) fail(`role '${input.from}' is not listed in the config`, 2);
   const threadDir = join(root, threadId);
@@ -5012,6 +5042,18 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
  * green by its own permission: exactly the property door 2 protects by reading
  * `origin/main`. Widening a zone is a PR of its own, like a workflow change.
  *
+ * AND THEREFORE THIS COMMAND ALONE TOLERATES AN OLDER CONFIG (`tolerateOlder`). Both
+ * doors point at a ref that the change has not landed in yet, so on a PR bumping
+ * `protocolVersion` the config they read is behind the binary reading it BY
+ * CONSTRUCTION. The version gate then refuses before it ever gets to the zones, and
+ * both doors go red on exactly the class of change that touches the protocol's own
+ * shape — the class where a zone violation would matter most. The question asked here
+ * is not "is this repository migrated" but "which paths does the BASE policy forbid
+ * this role", and the answer does not depend on the version at all; so the skew is
+ * tolerated DOWNWARDS only (a config newer than the package still stops everything —
+ * then the package genuinely does not know what it is reading) and is always PRINTED,
+ * never assumed.
+ *
  * WHY THE ROLE MAY BE INFERRED FROM THE DIRECTORY (`--role-from-workspace`). A
  * pre-commit hook has no idea whose commit it is guarding, and asking the operator to
  * configure the role per checkout would put the answer in a place that drifts. R17
@@ -5024,8 +5066,16 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
  */
 const zonesCheck = (argv: readonly string[]): void => {
   const repo = repoOf(flag(argv, "--repo") ?? process.cwd(), gitEnvOutsideHook());
-  const loaded = configFrom(argv, undefined);
+  const loaded = configFrom(argv, undefined, { tolerateOlder: true });
   const registry = loaded.registry;
+  if (loaded.version.state === "behind") {
+    // SAID OUT LOUD, NEVER SILENT: the base is a version behind because this very
+    // change bumps it. The guard still runs — the zones it enforces are the base's —
+    // and the skew is printed so that "green" here never means "the versions match".
+    out(
+      `agent-protocol: zones — '${loaded.ref}' declares protocol version ${loaded.version.declared}, this package writes ${loaded.version.supported}; the zones of the base are read anyway (a version bump is exactly what makes the base older)`,
+    );
+  }
   const explicit = flag(argv, "--role");
   const fromWorkspace = argv.includes("--role-from-workspace");
   if (explicit !== undefined && fromWorkspace) {

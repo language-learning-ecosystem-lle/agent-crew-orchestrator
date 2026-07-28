@@ -45,6 +45,16 @@ export type RoleRegistry = {
   canSetLaunchParams(id: RoleId): boolean;
   /** Whether the role's thread priorities in a feed take effect (R5, `thread-priority`). */
   canSetThreadPriority(id: RoleId): boolean;
+  /**
+   * Whether the role may HOLD THE TURN — be the value of `waiting-on` (R24). Every role
+   * of the circuit may; a role that wakes itself (`wake.mode: 'self'` — a human) may not.
+   *
+   * IT IS DERIVED FROM `wake`, NOT DECLARED SEPARATELY, and that is the point: the turn
+   * exists to be acted upon, and the circuit's only means of making that happen is
+   * waking somebody. A role there is nobody to wake cannot be moved by the feed, so a
+   * wait on it is not a turn but an open question — carried by whoever asks it.
+   */
+  canHoldTurn(id: RoleId): boolean;
   watchTargets(): readonly WatchTarget[];
   notificationTargets(): readonly NotificationTarget[];
   /**
@@ -135,6 +145,10 @@ export const createRoleRegistry = (config: RolesSection): RoleRegistry => {
     canSetThreadPriority: (id) => {
       const role = byId.get(id);
       return role !== undefined && hasPermission(role, "thread-priority");
+    },
+    canHoldTurn: (id) => {
+      const role = byId.get(id);
+      return role !== undefined && role.wake.mode !== "self";
     },
     watchTargets: () =>
       active.flatMap((role) =>

@@ -174,13 +174,17 @@ export const parseLegacyThread = (
  * - roles are matched by known names rather than by splitting on commas: in live
  *   messages the separator can be a comma, a dash or a conjunction.
  *
- * `undefined` — there is no declaration (the turn was not passed). An empty array
- * — there is a declaration but no roles were found in it ("—").
+ * `undefined` — there is no declaration (the turn was not passed). `null` — there is
+ * a declaration but no role was found in it ("—").
+ *
+ * The legacy prose could name SEVERAL roles in one declaration; since v13 the turn is
+ * one role, and the FIRST named is it — in a sequential queue the one written first is
+ * the one asked to move. The threads this path reads (009/010) are frozen history.
  */
 export const declaredWaitingOn = (
   text: string,
   knownRoles: readonly string[],
-): string[] | undefined => {
+): string | null | undefined => {
   const lines = text.split("\n").filter((line) => /waiting-on[`*:\s0-9]*→/.test(line));
   const line = lines.at(-1);
   if (line === undefined) return undefined;
@@ -194,8 +198,9 @@ export const declaredWaitingOn = (
     const at = new RegExp(`(^|[^a-z-])${role}([^a-z-]|$)`).test(cleaned);
     if (at && !found.includes(role)) found.push(role);
   }
-  // Order follows the line, not the role registry: the set is read by a human.
-  return found.sort((a, b) => cleaned.indexOf(a) - cleaned.indexOf(b));
+  // Order follows the line, not the role registry: whoever the human wrote first.
+  found.sort((a, b) => cleaned.indexOf(a) - cleaned.indexOf(b));
+  return found[0] ?? null;
 };
 
 /**
@@ -205,14 +210,16 @@ export const declaredWaitingOn = (
  * literally means zeroing the waiting and leaving a role unwoken.
  *
  * `status: closed` outranks any declaration: a closed thread awaits nobody.
+ *
+ * `undefined` — nobody holds the turn.
  */
-export const waitingOnOf = (thread: Thread): readonly string[] => {
-  if (thread.meta.status === "closed") return [];
+export const waitingOnOf = (thread: Thread): string | undefined => {
+  if (thread.meta.status === "closed") return undefined;
   for (let at = thread.messages.length - 1; at >= 0; at--) {
     const declared = thread.messages[at]?.fields.waitingOn;
-    if (declared !== undefined) return declared;
+    if (declared !== undefined) return declared ?? undefined;
   }
-  return [];
+  return undefined;
 };
 
 /** Date of the last message — the `updated` column of the index. */

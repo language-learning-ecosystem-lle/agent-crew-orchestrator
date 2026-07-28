@@ -74,9 +74,9 @@ describe("planNewMessage", () => {
   });
 
   it("puts waiting-on in as a field when it is given", () => {
-    const parsed = parseMessageFile(planNewMessage({ ...base, waitingOn: ["curator"] }).content);
+    const parsed = parseMessageFile(planNewMessage({ ...base, waitingOn: "curator" }).content);
 
-    expect(parsed.fields.waitingOn).toEqual(["curator"]);
+    expect(parsed.fields.waitingOn).toBe("curator");
   });
 
   it("refuses on an empty body", () => {
@@ -126,7 +126,7 @@ describe("provenance on the write path (R7)", () => {
       session: "8f3a2b1c-0d4e",
       date: "2026-07-25T18:00:00Z",
       expects: "answer",
-      waitingOn: ["curator"],
+      waitingOn: "curator",
       text: "body",
       threadHasMessages: true,
     });

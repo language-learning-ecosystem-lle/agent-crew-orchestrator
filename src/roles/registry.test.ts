@@ -99,6 +99,19 @@ describe("RoleRegistry", () => {
     expect(registry.canEditThreadStatus("nobody")).toBe(false);
   });
 
+  it("keeps a role nobody wakes out of the domain of the turn (R24)", () => {
+    // Derived from `wake`, not declared: whatever else john is, he is the one role
+    // the circuit cannot make act, and holding the turn means being made to act.
+    // Everybody the circuit CAN raise — by watch, by event, through a human — holds it.
+    const registry = registryOf(john, curator, devCore, reviewer);
+
+    expect(registry.canHoldTurn("john")).toBe(false);
+    expect(registry.canHoldTurn("curator")).toBe(true);
+    expect(registry.canHoldTurn("dev-core")).toBe(true);
+    expect(registry.canHoldTurn("reviewer-pr")).toBe(true);
+    expect(registry.canHoldTurn("nobody")).toBe(false);
+  });
+
   it("hands the watch-keeper only roles with a session, and only active ones", () => {
     const paused = {
       ...devCore,

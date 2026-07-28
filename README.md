@@ -313,6 +313,18 @@ wrote). The consequence is deliberate: once the numbers diverge, every command
 refuses, and the only one still working is `schema migrate` — it reads the raw file
 rather than going through that door.
 
+**`zones check` is the second exception, and it is one for a stated reason.** Its two
+doors (the pre-commit hook of a role workspace, the CI step of a PR) read the config
+at the ref the change has NOT landed in yet — the base — so that a PR cannot widen
+its own zone and pass by its own permission. On a PR that bumps `protocolVersion`
+that base is behind the binary reading it **by construction**, and the gate used to
+refuse before the zones were ever compared: the guard went red on exactly the class
+of change that touches the protocol's own shape. The question this command asks —
+"which paths does the BASE policy forbid this role" — does not depend on the number
+at all, so it loads the config with `tolerateOlder` and **prints the skew** on every
+run. The tolerance is downwards only: a config NEWER than the package still stops
+the command, because there the package genuinely cannot know what it is reading.
+
 | version | shape |
 | ------- | ----- |
 | 1 | the initial one: `_meta.md` + `messages/` with `from`/`date`/`expects`/`waiting-on`, the config with `roles`/`mail`/`orchestrator`, the journal of `lease-*`/`launch`/`stop` events |
@@ -327,6 +339,7 @@ rather than going through that door.
 | 10 | + the priority of a thread in the feed (R5): the message header field `priority` (`high \| normal \| low`) and the role permission `thread-priority`. NO data moves — no message carries the field, and its absence means the thread sits at the default `normal`; the queue is recomputed every tick from the feed and PRINTED on the daemon's stream, not stored as an event |
 | 11 | + the boxes that raise roles (R13): the optional config section `instances` (`id`, `roles`, `note`) — which machine raises which role. NO data moves; leave the section out and the circuit behaves exactly as before (one box, every role). The machine's half of the join (`instance` in `~/.config/agent-protocol/local.json`) is NOT versioned by this number: that file travels nowhere and has one writer |
 | 12 | + the role hosted by a live process (R23-1): `wake.mode` gains `resident` — nothing brings such a role the turn, because its process never left the feed. NO data moves and no role becomes resident by migrating: the mode is a CAPABILITY, and moving a real role onto it is a separate one-line change made only once the hosting process exists. A resident is not raised, not woken and not notified, and is STILL owned — `config check` demands an instance claim it, as the box that HOSTS it |
+| 13 | + the turn as a SCALAR (thread 024): `waiting-on` in the message header holds EXACTLY ONE role (`—` — the wait is lifted, no field — "I am not passing the turn"), and a role outside the domain of the turn (`wake.mode: self`) may not hold it. DATA MOVES: the step rewrites every header naming several roles, keeping the first the circuit can WAKE — 153 headers in the live feed, 76 of which name `john` first, and the letter of the statement of work would have written the very header this version rejects at its own door. Messages already naming ONE unwakeable role are NOT rewritten (a lone declaration is the turn its author meant) but are listed by name in the plan |
 
 ```
 agent-protocol schema migrate [--repo <p>] [--root <mail>] [--to <n>] [--write]
@@ -490,11 +503,22 @@ the state of the feed out of git and fails on any edit of something committed
 earlier. Without `--since` the immutability check is not performed and **says so
 out loud** — silence would read as "checked and intact".
 
-`waiting-on` is a field of the message header, not a line in the prose: the full
-remaining set, an absent field means "I am not passing the turn", `—` means "the
-wait is lifted". An unknown role in the field **fails the check** instead of being
+`waiting-on` is a field of the message header, not a line in the prose: EXACTLY ONE
+role since v13, an absent field means "I am not passing the turn", `—` means "the
+wait is lifted". A header naming two is refused rather than folded — folding is how a
+role used to disappear from a declaration. An unknown role in the field **fails the check** instead of being
 dropped silently: a silent drop was precisely the mechanism by which a role was
 lost from a declaration.
+
+**A role outside the domain of the turn is judged only where the turn actually is.**
+`waiting-on: john` in the message that holds the thread's CURRENT turn (the last
+declaration of an open thread — the same rule the index and `mail` use) fails the
+check. The same value in an older message is a **note**: the feed is append-only, so
+that header quotes a state that really was, under a version that allowed it. A
+validator condemning history would keep `check` red forever over 48 declarations
+nobody may edit, and a permanently red check stops being read — the same defect
+("stale is indistinguishable from fresh") the door exists to prevent. Rewriting them
+is not the alternative: that is falsifying the journal to get a green tick.
 
 Both forms (the files and the old single `_thread.md`) are read at the same time,
 so threads move one by one and there is no "switch-over day".
@@ -575,7 +599,7 @@ agent-protocol derive       --root <comms> --ref <ref> [--write]           # all
 agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
-                            --expects answer|ack|none [--waiting-on <r,r>] \
+                            --expects answer|ack|none [--waiting-on <role>] \
                             --worker <w> [--session <id>] --body-file <p> [--await-input] [--write] [--no-push]
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
@@ -593,7 +617,7 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <r,r>] --worker <w> [--session <id>] --body-file <p> [--write]
+                            [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write]
 # the orchestrator: the paths come from the config (section `orchestrator`), operation needs only --ref;
 # the path flags below are omitted — they remain an override for checks on a copy of the mail
 # the agent binaries come from the MACHINE config (~/.config/agent-protocol/local.json, or --local-config <p>)
@@ -661,8 +685,10 @@ creates the file `messages/<UTC-stamp>Z-<role>.md` and does NOT touch `_thread.m
 `INDEX.md` — those are rebuilt by the generator, and staging them here would make every
 concurrent write a conflict in a file nobody authored. The stamp is **monotonic along
 the feed** (`max(now, the last one + 1s)`): an answer does not land before the message
-it answers when the writers' clocks are skewed. `--waiting-on` is the FULL remaining
-set, not a delta.
+it answers when the writers' clocks are skewed. `--waiting-on` takes ONE role — the turn is
+held by exactly one since v13 (a list is refused at the door, and so is a role the
+circuit cannot wake: `wake.mode: 'self'` holds no turn, and "a decision from them is
+needed" is a turn for whoever carries the question).
 
 **`--write` means SENT, not "a file on disk"** (R3): the commit and the push are inside
 the command. That tail is exactly where this circuit's real losses happened — a heredoc

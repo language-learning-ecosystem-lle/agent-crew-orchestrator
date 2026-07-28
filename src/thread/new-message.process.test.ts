@@ -665,3 +665,83 @@ describe("new-message and the priority of a thread (R5)", () => {
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
 });
+
+/** The command with `--waiting-on` as the only variable — the door under test here. */
+const waitingOn = (
+  contest: { repo: string; root: string; body: string },
+  value: string,
+): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-message",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--thread",
+        "016-x",
+        "--from",
+        "dev-core",
+        "--expects",
+        "answer",
+        "--waiting-on",
+        value,
+        "--body-file",
+        contest.body,
+        "--worker",
+        "human",
+        "--write",
+        "--no-push",
+      ],
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
+describe("new-message and the scalar turn (R24)", () => {
+  it("REFUSES two roles at the door instead of keeping one of them", () => {
+    // Keeping one would reproduce pain 2 — somebody's unclosed turn evaporating —
+    // inside the very tool that was written to end it, and silently. The feed is
+    // append-only, so a wrong declaration cannot be taken back: it must not be
+    // writable.
+    const contest = contour();
+
+    const result = waitingOn(contest, "curator, john");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--waiting-on takes ONE role");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("REFUSES a wait on a role nobody wakes, and says what to write instead", () => {
+    const contest = contour();
+
+    const result = waitingOn(contest, "john");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("wakes itself");
+    expect(result.out).toContain("whoever carries the question");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("writes ONE role as the scalar it now is, and '—' as the turn lifted", () => {
+    const contest = contour();
+
+    expect(waitingOn(contest, "curator").code).toBe(0);
+    expect(written(contest.root).fields.waitingOn).toBe("curator");
+
+    const lifted = contour();
+    expect(waitingOn(lifted, "—").code).toBe(0);
+    expect(written(lifted.root).fields.waitingOn).toBeNull();
+  });
+});
