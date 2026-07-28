@@ -149,6 +149,17 @@ export const notificationsSchema = z.strictObject({
     })
     .optional(),
   templates: templateSlots<NotificationKind>(NOTIFICATION_KINDS, NOTIFICATION_VARIABLES).optional(),
+  /**
+   * AFTER HOW LONG A TURN THAT HAS NOT MOVED IS ITSELF AN EVENT (thread 024).
+   *
+   * It has a default rather than being off when unset, and that is the same argument
+   * the English templates make: an unconfigured notifier that delivers nothing is
+   * indistinguishable from a working one. Since v13 this is the ONLY automatic way a
+   * question reaches a human — with the human outside the domain of the turn, "who is
+   * awaited" cannot produce a line for one — so a project that has not thought about
+   * N gets a loud default, not silence.
+   */
+  stalledAfterMinutes: z.number().int().min(1).default(180),
 });
 
 /**

@@ -58,6 +58,7 @@ import {
   workdirState,
 } from "./fs/git.js";
 import {
+  describeAge,
   parseNotifyState,
   planNotifications,
   renderAnnouncement,
@@ -259,7 +260,7 @@ import {
   THREAD_PRIORITY_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
-import { renderThread } from "./thread/thread.js";
+import { renderThread, waitingOnOf } from "./thread/thread.js";
 import {
   messageTimestamp,
   nextMessageTimestamp,
@@ -1660,18 +1661,40 @@ const notify = async (argv: readonly string[]): Promise<void> => {
   const waiting: WaitingPair[] = targets.flatMap((target) =>
     threadsWaitingOn(parsed, target.id).map((thread) => ({ role: target.id, thread })),
   );
-  const seen = existsSync(statePath) ? parseNotifyState(readFileSync(statePath, "utf8")) : [];
+  // THE SECOND QUESTION (thread 024): not "who is awaited" but "what has not moved".
+  // Since v13 the human never appears in `waiting-on`, so the first question cannot
+  // produce a line for one; the age of the handoff is what is left observable. It is
+  // asked of every open thread — a turn standing on an agent for hours is a stalled
+  // circuit, and nothing else in the package would say so.
+  const stalledAfter = loaded.config.notifications?.stalledAfterMinutes ?? 180;
+  const now = Date.now();
+  const stalled = parsed.flatMap((thread) => {
+    const holder = waitingOnOf(thread);
+    if (holder === undefined) return [];
+    const since = waitingSince({ messages: thread.messages, role: holder });
+    if (since === undefined) return [];
+    const minutes = (now - Date.parse(since)) / 60_000;
+    if (!Number.isFinite(minutes) || minutes < stalledAfter) return [];
+    return [{ thread: thread.id, role: holder, since, age: describeAge(minutes) }];
+  });
+
+  const seen = existsSync(statePath)
+    ? parseNotifyState(readFileSync(statePath, "utf8"))
+    : { waiting: [], stalled: [] };
   const plan = planNotifications({
     targets,
     waiting,
     seen,
+    stalled,
     ...(loaded.config.notifications?.templates === undefined
       ? {}
       : { templates: loaded.config.notifications.templates }),
   });
   const message = renderNotification(plan.lines);
 
-  const describeWaits = `${plan.waiting.length} waits, ${plan.fresh.length} of them new`;
+  const describeWaits =
+    `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
+    `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new`;
   if (!write) {
     out(`agent-protocol: ${describeWaits}; --write would update '${statePath}' and send:`);
     out(message === "" ? "(nothing — nobody is waiting)" : message);
@@ -1703,13 +1726,17 @@ const notify = async (argv: readonly string[]): Promise<void> => {
     }
   }
 
-  writeOut(statePath, renderNotifyState(plan.waiting));
+  writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
 
-  if (plan.fresh.length === 0) {
+  if (plan.fresh.length === 0 && plan.freshStalled.length === 0) {
     out(`agent-protocol: ${describeWaits} — nothing to announce`);
     return;
   }
-  out(`agent-protocol: ${describeWaits} — ${plan.fresh.map((pair) => pair.thread).join(", ")}`);
+  const announced = [
+    ...plan.fresh.map((pair) => pair.thread),
+    ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
+  ];
+  out(`agent-protocol: ${describeWaits} — ${announced.join(", ")}`);
   if (transport === undefined) {
     // A legitimate configuration: no transport means the message is printed and the
     // state still moves. That is the honest form of "notifications are optional" —

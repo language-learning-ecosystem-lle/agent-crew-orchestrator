@@ -32,6 +32,34 @@
  *
  * THE UNIT IS A THREAD, NOT A ROLE (thread 008): a new piece of work for john is a
  * new message even if john was already waiting on something else.
+ *
+ * THE SECOND CLASS OF EVENT — A TURN THAT HAS NOT MOVED (thread 024, after v13).
+ * Everything above answers "who is awaited"; since schema v13 a human is outside the
+ * domain of the turn by construction, so that question can no longer produce a line
+ * for one: `waiting-on` never names john again, the trigger "the target APPEARED in
+ * the field" never fires, and the only automatic courier to the human fell out with
+ * it (measured, not assumed: a dry run right after the migration showed two waits,
+ * both legacy prose, and the one thread that really did stand at john's door was not
+ * shown at all).
+ *
+ * What is left observable when the human is out of the field is the AGE OF THE TURN:
+ * a fork that stands still. So the notifier gains a second question — "has anything
+ * been waiting longer than N?" — and it is deliberately asked about EVERY open thread,
+ * not only about the ones somebody marked as a question for a human:
+ *
+ *  - a thread whose turn sits on an agent for hours is a stalled circuit (nobody
+ *    raised the role, or every raise ends without passing the turn on) — that is the
+ *    human's business too, and there is no second mechanism that would say it;
+ *  - a marker "this one is really for john" would be a second place to say what the
+ *    thread already says, and it would be written by exactly the sessions that are
+ *    stuck, i.e. the least reliable narrator available.
+ *
+ * The age is measured from the HANDOFF (`waitingSince`), not from the last message:
+ * a session that answers in the thread without passing the turn on has not moved the
+ * fork, and letting its message reset the clock is how a stuck thread stays quiet
+ * forever. Threads that already produce a `turn`/`nudge` line are excluded — the
+ * human is being told about them anyway, and two lines about one id make the reader
+ * ask which of them to act on (the same reason `turn-with-nudge` exists).
  */
 import type { NotificationTarget } from "../roles/registry.js";
 import type { RoleId } from "../roles/schema.js";
@@ -62,7 +90,7 @@ export type WaitingPair = {
  * the project learning a template language with branches, which is the road to a
  * dialect nobody can validate.
  */
-export const NOTIFICATION_KINDS = ["turn", "turn-with-nudge", "nudge"] as const;
+export const NOTIFICATION_KINDS = ["turn", "turn-with-nudge", "nudge", "stalled"] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
 /** What each slot is given. The door validates project templates against exactly this. */
@@ -70,6 +98,7 @@ export const NOTIFICATION_VARIABLES: Readonly<Record<NotificationKind, readonly 
   turn: ["thread", "role"],
   "turn-with-nudge": ["thread", "role", "nudged"],
   nudge: ["thread", "role", "via"],
+  stalled: ["thread", "role", "age"],
 };
 
 /**
@@ -83,6 +112,7 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Readonly<Record<NotificationKind, s
   turn: "your turn: {thread}",
   "turn-with-nudge": "your turn: {thread} (and {nudged} is waiting on it as well)",
   nudge: "{thread} is waiting on {role}, who comes alive only through {via} — open the chat",
+  stalled: "{thread} has not moved for {age} — the turn is with {role}",
 };
 
 /** The announcements the package writes INTO A THREAD; same mechanism, different reader. */
@@ -111,30 +141,78 @@ export type NotificationLine = {
   readonly text: string;
 };
 
+/**
+ * One thread whose turn has not moved for longer than the project's N.
+ *
+ * `since` is the HANDOFF stamp, and it is what the state is keyed by rather than the
+ * thread alone: a fork that moves and then stalls again is a NEW event, and keying by
+ * the id would swallow the second one silently.
+ */
+export type StalledTurn = {
+  readonly thread: string;
+  readonly role: RoleId;
+  readonly since: string;
+  /** How long, already rendered — the templates say it, nobody computes it twice. */
+  readonly age: string;
+};
+
+/** What was announced last run: the two classes of event in one file. */
+export type NotifyState = {
+  readonly waiting: readonly WaitingPair[];
+  readonly stalled: readonly StalledTurn[];
+};
+
 export type NotificationPlan = {
   /** The full current composition, ordered — this is what the state file becomes. */
   readonly waiting: readonly WaitingPair[];
-  /** What appeared since the previous run. Empty — nothing is sent. */
+  /** The stalled turns in force now, ordered; also part of the state. */
+  readonly stalled: readonly StalledTurn[];
+  /** What appeared since the previous run. Empty (with `freshStalled`) — nothing is sent. */
   readonly fresh: readonly WaitingPair[];
+  /** Stalls not announced before — a stall that was already reported is not repeated. */
+  readonly freshStalled: readonly StalledTurn[];
   /** The message, one line per thread-and-human. Rendered from the FULL composition. */
   readonly lines: readonly NotificationLine[];
 };
 
 const key = (pair: WaitingPair): string => `${pair.role}\t${pair.thread}`;
+const stalledKey = (turn: StalledTurn): string => `${turn.role}\t${turn.thread}\t${turn.since}`;
 
-/** The state as a file: one pair per line, ordered, so a diff of it is readable. */
-export const renderNotifyState = (pairs: readonly WaitingPair[]): string =>
-  pairs.length === 0 ? "" : `${pairs.map(key).join("\n")}\n`;
+/**
+ * The state as a file: one event per line, ordered, so a diff of it is readable.
+ *
+ * A waiting pair keeps the two-column form it has always had, and a stall is a line
+ * of four with the word in front — an old state file therefore still parses, and the
+ * first run after this change does not read as "everything is new".
+ */
+export const renderNotifyState = (state: NotifyState): string => {
+  const lines = [
+    ...state.waiting.map(key),
+    ...state.stalled.map((turn) => `stalled\t${stalledKey(turn)}`),
+  ];
+  return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
+};
 
-export const parseNotifyState = (raw: string): readonly WaitingPair[] =>
-  raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line !== "")
-    .flatMap((line) => {
-      const [role, thread] = line.split("\t");
-      return role === undefined || thread === undefined ? [] : [{ role, thread }];
-    });
+export const parseNotifyState = (raw: string): NotifyState => {
+  const waiting: WaitingPair[] = [];
+  const stalled: StalledTurn[] = [];
+  for (const line of raw.split("\n").map((entry) => entry.trim())) {
+    if (line === "") continue;
+    const columns = line.split("\t");
+    if (columns[0] === "stalled") {
+      const [, role, thread, since] = columns;
+      if (role !== undefined && thread !== undefined && since !== undefined) {
+        // The age is not stored: it changes every tick, and what identifies the event
+        // is the handoff it is counted from.
+        stalled.push({ role, thread, since, age: "" });
+      }
+      continue;
+    }
+    const [role, thread] = columns;
+    if (role !== undefined && thread !== undefined) waiting.push({ role, thread });
+  }
+  return { waiting, stalled };
+};
 
 const ordered = (pairs: readonly WaitingPair[]): readonly WaitingPair[] =>
   [...pairs].sort((a, b) => a.thread.localeCompare(b.thread) || a.role.localeCompare(b.role));
@@ -151,13 +229,22 @@ const ordered = (pairs: readonly WaitingPair[]): readonly WaitingPair[] =>
 export const planNotifications = (input: {
   readonly targets: readonly NotificationTarget[];
   readonly waiting: readonly WaitingPair[];
-  readonly seen: readonly WaitingPair[];
+  readonly seen: NotifyState;
+  /** Turns that have stood longer than the project's N — the caller measures, this picks. */
+  readonly stalled?: readonly StalledTurn[];
   readonly templates?: Partial<Record<NotificationKind, string>>;
 }): NotificationPlan => {
   const byRole = new Map(input.targets.map((target) => [target.id, target]));
   const waiting = ordered(input.waiting.filter((pair) => byRole.has(pair.role)));
-  const seen = new Set(input.seen.map(key));
+  const seen = new Set(input.seen.waiting.map(key));
   const fresh = waiting.filter((pair) => !seen.has(key(pair)));
+
+  const told = new Set(waiting.map((pair) => pair.thread));
+  const stalled = [...(input.stalled ?? [])]
+    .filter((turn) => !told.has(turn.thread))
+    .sort((a, b) => a.thread.localeCompare(b.thread));
+  const seenStalls = new Set(input.seen.stalled.map(stalledKey));
+  const freshStalled = stalled.filter((turn) => !seenStalls.has(stalledKey(turn)));
 
   const threads: string[] = [];
   for (const pair of waiting) if (!threads.includes(pair.thread)) threads.push(pair.thread);
@@ -199,7 +286,35 @@ export const planNotifications = (input: {
     }
   }
 
-  return { waiting, fresh, lines };
+  // The stalls come after the waits, and each is its own line: "nobody is moving this"
+  // is a different action from "your turn", and merging them would hide the first.
+  for (const turn of stalled) {
+    lines.push({
+      kind: "stalled",
+      thread: turn.thread,
+      role: turn.role,
+      text: renderTemplate(template("stalled"), {
+        thread: turn.thread,
+        role: turn.role,
+        age: turn.age,
+      }),
+    });
+  }
+
+  return { waiting, stalled, fresh, freshStalled, lines };
+};
+
+/**
+ * How long, in the words a human reads: "3h 20m", "2d 4h", "45m". Rounded down and
+ * two units deep on purpose — the number is a reason to look, not a measurement.
+ */
+export const describeAge = (minutes: number): string => {
+  const whole = Math.max(0, Math.floor(minutes));
+  if (whole < 60) return `${whole}m`;
+  const hours = Math.floor(whole / 60);
+  if (hours < 24) return whole % 60 === 0 ? `${hours}h` : `${hours}h ${whole % 60}m`;
+  const days = Math.floor(hours / 24);
+  return hours % 24 === 0 ? `${days}d` : `${days}d ${hours % 24}h`;
 };
 
 /** The message as it goes to the transport: one text, the lines in order. */

@@ -8,11 +8,14 @@ import { describe, expect, it } from "vitest";
 
 import type { NotificationTarget } from "../roles/registry.js";
 import {
+  describeAge,
+  type NotifyState,
   parseNotifyState,
   planNotifications,
   renderAnnouncement,
   renderNotification,
   renderNotifyState,
+  type StalledTurn,
   type WaitingPair,
 } from "./notify.js";
 
@@ -27,8 +30,15 @@ const TEMPLATES = {
   nudge: "🔔 тред {thread} ждёт {role} — дёрни его ({via})",
 } as const;
 
+const EMPTY: NotifyState = { waiting: [], stalled: [] };
+
 const plan = (waiting: readonly WaitingPair[], seen: readonly WaitingPair[] = []) =>
-  planNotifications({ targets: TARGETS, waiting, seen, templates: TEMPLATES });
+  planNotifications({
+    targets: TARGETS,
+    waiting,
+    seen: { waiting: seen, stalled: [] },
+    templates: TEMPLATES,
+  });
 
 describe("planNotifications — the trigger, the text and the unit", () => {
   it("the TRIGGER is a new pair: nothing new, nothing to send", () => {
@@ -108,7 +118,7 @@ describe("planNotifications — the trigger, the text and the unit", () => {
     const result = planNotifications({
       targets: TARGETS,
       waiting: [{ role: "john", thread: "016-x" }],
-      seen: [],
+      seen: EMPTY,
     });
 
     expect(result.lines[0]?.text).toBe("your turn: 016-x");
@@ -131,12 +141,87 @@ describe("the state file", () => {
       { role: "john", thread: "b" },
     ];
 
-    expect(parseNotifyState(renderNotifyState(pairs))).toEqual(pairs);
+    const state = { waiting: pairs, stalled: [] };
+
+    expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
   });
 
   it("an empty composition is an empty file, and a missing one parses as nothing", () => {
-    expect(renderNotifyState([])).toBe("");
-    expect(parseNotifyState("")).toEqual([]);
+    expect(renderNotifyState(EMPTY)).toBe("");
+    expect(parseNotifyState("")).toEqual(EMPTY);
+  });
+});
+
+describe("a turn that has not moved — the second class of event (thread 024)", () => {
+  const STALLED = { thread: "027-x", role: "curator", since: "2026-07-28T09:00:00Z", age: "5h" };
+
+  const withStall = (stalled: readonly StalledTurn[], seen: NotifyState = EMPTY) =>
+    planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen,
+      stalled,
+      templates: { ...TEMPLATES, stalled: "⌛ {thread} стоит {age} — ход у {role}" },
+    });
+
+  it("rings about a stall even though NO human is in waiting-on — the v13 case", () => {
+    // Since v13 john is never named in the field, so the first question ("who is
+    // awaited") produces nothing for him. This is the whole point of the second one.
+    const result = withStall([STALLED]);
+
+    expect(result.freshStalled).toEqual([STALLED]);
+    expect(renderNotification(result.lines)).toBe("⌛ 027-x стоит 5h — ход у curator");
+  });
+
+  it("does not repeat a stall it has already announced", () => {
+    const first = withStall([STALLED]);
+    const again = withStall([STALLED], { waiting: [], stalled: first.stalled });
+
+    expect(again.freshStalled).toEqual([]);
+    expect(again.lines).toHaveLength(1); // still SAID, only not counted as new
+  });
+
+  it("a fork that moves and stalls AGAIN is a new event — the key is the handoff", () => {
+    const first = withStall([STALLED]);
+    const later = withStall([{ ...STALLED, since: "2026-07-28T14:00:00Z", age: "3h" }], {
+      waiting: [],
+      stalled: first.stalled,
+    });
+
+    expect(later.freshStalled).toHaveLength(1);
+  });
+
+  it("a thread the human is already told about is not also reported as stalled", () => {
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [{ role: "john", thread: "027-x" }],
+      seen: EMPTY,
+      stalled: [{ ...STALLED, role: "john" }],
+      templates: TEMPLATES,
+    });
+
+    expect(result.stalled).toEqual([]);
+    expect(result.lines).toHaveLength(1);
+  });
+
+  it("the state file carries stalls beside waits, and an old two-column file still parses", () => {
+    const state = { waiting: [{ role: "john", thread: "b" }], stalled: [{ ...STALLED, age: "" }] };
+
+    expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
+    expect(parseNotifyState("john\tb\n")).toEqual({
+      waiting: [{ role: "john", thread: "b" }],
+      stalled: [],
+    });
+  });
+});
+
+describe("describeAge — a reason to look, not a measurement", () => {
+  it("counts down to the unit a human reads", () => {
+    expect(describeAge(45)).toBe("45m");
+    expect(describeAge(200)).toBe("3h 20m");
+    expect(describeAge(120)).toBe("2h");
+    expect(describeAge(60 * 52)).toBe("2d 4h");
+    expect(describeAge(60 * 48)).toBe("2d");
   });
 });
 

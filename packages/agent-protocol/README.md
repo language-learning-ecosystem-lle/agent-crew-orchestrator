@@ -246,6 +246,19 @@ apart along lines the package already had:
   on appearance, but list everything, since a list of one reads as "the rest is
   closed" and that would be a lie at the price of a forgotten thread.
 
+- **The second question: what has NOT MOVED** (thread 024). Since schema v13 the turn
+  is held by exactly one role and a human is outside its domain, so "who is awaited"
+  can no longer produce a line for a human — `waiting-on` never names them, and the
+  trigger "the target appeared in the field" never fires. What is left observable is
+  the AGE OF THE HANDOFF: a thread whose turn has stood longer than
+  `notifications.stalledAfterMinutes` (default 180) is itself the event. It is asked of
+  EVERY open thread, not only of the ones somebody marked as a question for a human: a
+  turn standing on an agent for hours is a stalled circuit, and nothing else in the
+  package would say so. The age is counted from the handoff rather than from the last
+  message — a session that writes into the thread without passing the turn on has not
+  moved the fork. A stall is announced once and keyed by the handoff stamp, so a fork
+  that moves and stalls again rings again.
+
 ```
 agent-protocol notify --ref origin/main --write
 ```
