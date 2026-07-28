@@ -206,6 +206,7 @@ import {
   stampLine,
 } from "./orchestrator/transcript.js";
 import {
+  createWorkspaceLocks,
   describeWorkspacePlan,
   lockHolderPid,
   lockReason,
@@ -2042,65 +2043,53 @@ const applyWorkspacePlan = (input: {
 };
 
 /**
- * THE LOCK THIS PROCESS HOLDS, if any. One per process by construction: a supervisor
- * raises one session, and the daemon raises them one at a time — a second entry would
- * mean a shape the circuit does not have.
+ * THE LOCKS THIS PROCESS HOLDS — keyed by workspace path (`createWorkspaceLocks`),
+ * because a daemon with N live supervisors holds N trees at once (finding B, thread
+ * 023). The registry itself, and why a single slot was wrong, are documented at its
+ * definition in `workspace.ts`.
  *
  * It is module state rather than something threaded through the call chain for one
  * reason that outweighs the tidiness: the release must also happen on the paths that
  * do not return — `fail()` exits, a signal exits, an unhandled error exits — and an
  * `exit` handler has nothing to be handed. A lock left behind by a refusal three
  * lines after it was taken would block the role until a human read the message.
- */
-let heldLock: { readonly repo: string; readonly path: string } | undefined;
-
-/**
- * TAKING IT — before the tree is mutated and before the spawn (john, 22:20). `git
+ *
+ * TAKING one — before the tree is mutated and before the spawn (john, 22:20). `git
  * worktree lock` FAILS when the tree is already locked, and that is the property this
  * relies on: the check in `planWorkspace` reads a fact that could be a moment old,
  * while this is the atomic one. `false` means somebody won the race, and the caller
  * refuses exactly as it would have on the fact.
+ *
+ * THE HONEST BOUNDARY of releasing: a SIGKILL leaves the lock behind, and that is the
+ * safe direction. A stale lock costs a human one `git worktree unlock`, and `status`
+ * names it as stale (the reason text carries the pid); the opposite failure costs the
+ * working tree of a live session.
  */
-const takeWorkspaceLock = (input: {
-  readonly repo: string;
-  readonly path: string;
-  readonly reason: string;
-}): boolean => {
-  const locked = gitAsk([
-    "-C",
-    input.repo,
-    "worktree",
-    "lock",
-    "--reason",
-    input.reason,
-    input.path,
-  ]);
-  if (locked === undefined) return false;
-  heldLock = { repo: input.repo, path: input.path };
-  return true;
-};
+const workspaceLocks = createWorkspaceLocks({
+  lock: (input) =>
+    gitAsk(["-C", input.repo, "worktree", "lock", "--reason", input.reason, input.path]) !==
+    undefined,
+  unlock: (input) => {
+    gitAsk(["-C", input.repo, "worktree", "unlock", input.path]);
+  },
+});
 
 /**
- * Releasing it — idempotent, and safe to call on a path that never took one.
- *
- * THE HONEST BOUNDARY: a SIGKILL leaves the lock behind, and that is the safe
- * direction. A stale lock costs a human one `git worktree unlock`, and `status` names
- * it as stale (the reason text carries the pid); the opposite failure costs the working
- * tree of a live session.
+ * A supervisor releases ITS OWN tree, by path. Every call site inside `runOne` names
+ * `p.workdir`: with several supervisors in one process, "release what I remember" no
+ * longer identifies anything.
  */
-const releaseWorkspaceLock = (): void => {
-  const held = heldLock;
-  if (held === undefined) return;
-  heldLock = undefined;
-  gitAsk(["-C", held.repo, "worktree", "unlock", held.path]);
-};
+const releaseWorkspaceLock = (path: string): void => workspaceLocks.release(path);
 
 // THE BACKSTOP for every exit this file takes without passing through a release: a
 // refused preflight, a ceiling that fires, an unhandled error, a signal (the run's own
 // handlers exit, and `exit` handlers run after them). The detached parent never takes
 // a lock at all — it plans in report-only mode and the child does the real work — so
 // this cannot fire while a child is holding the tree.
-process.on("exit", releaseWorkspaceLock);
+//
+// It releases EVERYTHING held: at `exit` the process is going away whole, so leaving
+// one live supervisor's tree locked would be the same stale lock, only harder to see.
+process.on("exit", () => workspaceLocks.releaseAll());
 
 /**
  * WHAT THE ROLE ITSELF HAS SAID IN THE THREAD (R18, condition 2a) — its own messages,
@@ -3157,7 +3146,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // read after the journal is), so a refusal here releases it. In the daemon this
     // matters most: it ticks on, and a lock left by one refused tick would take the
     // role out of the circuit until somebody noticed.
-    releaseWorkspaceLock();
+    releaseWorkspaceLock(p.workdir);
     return "skip";
   }
 
@@ -3213,7 +3202,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // the group is already gone — fine
       }
     }
-    releaseWorkspaceLock();
+    releaseWorkspaceLock(p.workdir);
     appendEvent(p.journalPath, {
       kind: "lease-released",
       ts: eventTimestamp(new Date()),
@@ -3446,7 +3435,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       }
       const { by, note } = readForceFlag(p.forceFlag);
       releaseGuards();
-      releaseWorkspaceLock();
+      releaseWorkspaceLock(p.workdir);
       appendEvent(p.journalPath, {
         kind: "stop",
         ts: eventTimestamp(new Date()),
@@ -3610,7 +3599,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       }
     }
     releaseGuards();
-    releaseWorkspaceLock();
+    releaseWorkspaceLock(p.workdir);
     appendEvent(
       p.journalPath,
       stepEvent(step, base, { exitCode, output: p.sessionLog, session: sessionId, steps }),
@@ -3841,11 +3830,11 @@ const settleRun = (input: {
     });
     if (plan.action === "create") {
       applyWorkspacePlan({ repo, path, base: base.commit, plan });
-      if (!takeWorkspaceLock({ repo, path, reason })) {
+      if (!workspaceLocks.take({ repo, path, reason })) {
         return { ok: false, reason: `the workspace '${path}' was locked as it was created`, lines };
       }
     } else {
-      if (!takeWorkspaceLock({ repo, path, reason })) {
+      if (!workspaceLocks.take({ repo, path, reason })) {
         return {
           ok: false,
           reason: `the workspace '${path}' was locked by another run a moment ago — it is not this run's tree`,
