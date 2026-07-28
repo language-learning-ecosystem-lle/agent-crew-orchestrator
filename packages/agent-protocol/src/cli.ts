@@ -263,7 +263,12 @@ import {
 } from "./schema/version.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { fileMailLock, MailCheckoutBusyError, type MailLock } from "./thread/checkout-lock.js";
-import { DeliveryRefusedError, deliverMessage, deliverySubject } from "./thread/deliver.js";
+import {
+  DeliveryRefusedError,
+  deliverMessage,
+  deliverySubject,
+  type StagedMessage,
+} from "./thread/deliver.js";
 import {
   parkedThreads,
   renderIndex,
@@ -301,7 +306,20 @@ const err = (line: string): void => {
   process.stderr.write(`${line}\n`);
 };
 
+/**
+ * WHILE A FRAME IS BEING COLLECTED, A REFUSAL IS AN OUTAGE, NOT AN EXIT (thread 019).
+ * The collection reaches for a dozen things that can each be missing for a second — a
+ * journal mid-rewrite, an unreadable holds file, a config that would not load — and
+ * every one of them says so through `fail`, which exits the process. In a one-shot
+ * command that is exactly right. In `--watch` it means the observer dies from a hiccup
+ * at the moment observation matters most, so inside the collection the same refusal
+ * becomes a throw the watcher catches and shows as an outage line.
+ */
+class FrameCollectionError extends Error {}
+let collectingFrame = false;
+
 const fail = (message: string, code: number): never => {
+  if (collectingFrame) throw new FrameCollectionError(message);
   err(`agent-protocol: ${message}`);
   process.exit(code);
 };
@@ -341,6 +359,24 @@ const standing = createStandingConfig();
  * the runner, where the mail checkout and the code checkout are different
  * directories.
  */
+/**
+ * THE OBSERVER DOES NOT GO TO THE NETWORK (thread 019, from john's live failure of
+ * 2026-07-28 ~09:57Z). `configFrom` fetches, `operatorFrame` reads the config, and
+ * `--watch` calls it once a second — so ssh to github.com going quiet killed the watcher
+ * inside `git fetch`. Freezing is not a cache for speed: a watcher looks at STATE, not
+ * at the schema, and a config that changes between two frames is not information it can
+ * act on. So the config is resolved ONCE, at the start of the watch, and every later
+ * frame reads that same answer from memory.
+ *
+ * It is opt-in rather than the default because the daemon is the other long-lived
+ * caller, and IT must see a config edited underneath it — freezing globally would turn
+ * a policy change into something that needs a restart to take effect.
+ */
+let frozenConfig: Map<string, ReturnType<typeof loadProtocolConfig>> | undefined;
+const freezeConfig = (): void => {
+  frozenConfig ??= new Map();
+};
+
 const configFrom = (
   argv: readonly string[],
   root?: string,
@@ -364,6 +400,16 @@ const configFrom = (
   }
 
   const path = flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH;
+  // THE FREEZE COMES FIRST, BEFORE THE STANDING READ, and the order is the point: the
+  // two mechanisms answer different questions. The freeze says "this caller must not go
+  // to the network at all" (the observer, opt-in); standing says "the network failed,
+  // keep going on the last answer" (the daemon, always on). A frozen caller falling
+  // through to standing would still attempt a fetch every frame — exactly the hang the
+  // freeze exists to prevent.
+  const key = `${repo} ${ref} ${path}`;
+  const frozen = frozenConfig?.get(key);
+  if (frozen !== undefined) return frozen;
+
   const outcome = standing.read(standingKey({ repo, ref, path }), () =>
     loadProtocolConfig({
       repo,
@@ -373,12 +419,16 @@ const configFrom = (
       ...(options?.tolerateOlder === true ? { tolerateOlder: true } : {}),
     }),
   );
-  if (outcome.kind === "read") return outcome.config;
+  if (outcome.kind === "read") {
+    frozenConfig?.set(key, outcome.config);
+    return outcome.config;
+  }
   if (outcome.kind === "stood") {
     // LOUD, EVERY TIME. The whole value of standing on the last config is that the
     // circuit keeps running; the whole danger of it is that it looks identical to a
     // circuit reading current data. The line is on stderr, i.e. in the daemon's tail.
     err(`agent-protocol: WARNING — the config at '${ref}' was NOT re-read: ${outcome.reason}`);
+    frozenConfig?.set(key, outcome.config);
     return outcome.config;
   }
   const { error } = outcome;
@@ -2922,7 +2972,13 @@ const CLEAR_BELOW = "\u001b[J";
 const HIDE_CURSOR = "\u001b[?25l";
 const SHOW_CURSOR = "\u001b[?25h";
 
+/** `HH:MM:SSZ` — the outage line says WHEN, and a whole timestamp is noise in a frame. */
+const clockOf = (at: Date): string => at.toISOString().slice(11, 19);
+
 const watchFrame = (argv: readonly string[]): void => {
+  // ONE resolution of the config for the whole watch — see `freezeConfig`. Taken before
+  // the first frame, so the network is touched once and never again.
+  freezeConfig();
   const seconds = positiveInt(argv, "--interval", 2);
   // A ceiling on FRAMES exists for the checks: a loop that never ends cannot be
   // asserted on, and a process test of the redraw is the only place the escape
@@ -2940,8 +2996,37 @@ const watchFrame = (argv: readonly string[]): void => {
     process.on(signal, () => process.exit(0));
   }
 
+  // THE LAST FRAME THAT COLLECTED, AND THE OUTAGE OVER IT. A watcher may die of Ctrl+C
+  // and of nothing else (thread 019): a failed collection draws the last known state
+  // with a line saying what has been unavailable and since when, and the loop goes on —
+  // when the cause passes, the next frame is live again with no intervention.
+  let lastGood: string | undefined;
+  let outage: { readonly since: Date; readonly reason: string } | undefined;
+
+  const collect = (): string => {
+    collectingFrame = true;
+    try {
+      const frame = renderFrame(operatorFrame(argv));
+      lastGood = frame;
+      outage = undefined;
+      return frame;
+    } catch (error) {
+      const reason = (error as Error).message;
+      // The moment is the FIRST failure of this outage, not of this frame: "unavailable
+      // since 09:57" is the fact; a stamp that ticks forward every second would say
+      // nothing at all.
+      outage ??= { since: new Date(), reason };
+      const head = `frame: unavailable since ${clockOf(outage.since)} (${outage.reason})`;
+      return lastGood === undefined
+        ? `${head}\nnothing has collected yet — the watch keeps trying every ${seconds}s`
+        : `${head}\nthe frame below is the last one that collected:\n\n${lastGood}`;
+    } finally {
+      collectingFrame = false;
+    }
+  };
+
   const draw = (): void => {
-    const frame = renderFrame(operatorFrame(argv));
+    const frame = collect();
     if (!tty) {
       process.stdout.write(`${frame}\n\n`);
       return;
@@ -2972,7 +3057,12 @@ const watchFrame = (argv: readonly string[]): void => {
   tick();
 };
 
-const orchestratorStatus = (argv: readonly string[]): void => {
+const orchestratorStatus = (rawArgv: readonly string[]): void => {
+  // `status` JOINS THE OPERATOR'S SHORT FORMS (thread 019): it is read between `up` and
+  // `down`, by the same person in the same minute, and being the one of the three that
+  // demanded `--ref` made it the one they got wrong — john walked into it on 2026-07-27.
+  // Same bootstrap, same printed line: the working tree says which history governs.
+  const argv = withOperatorRef(rawArgv);
   // `--watch` is THE SAME FRAME, repeated (T-0): not a second command with a view of
   // its own, which is how the two would start to differ.
   if (argv.includes("--watch")) {
@@ -3227,16 +3317,20 @@ const appendEvent = (journalPath: string, event: OrchestratorEvent): void => {
 };
 
 /**
- * Append a message file to a thread (the same path as `new-message`, but as a
- * subroutine — the force stop needs it for a trace IN THE THREAD). It writes the
- * file; committing and pushing is up to the caller, as with `new-message`.
+ * PLAN a message file for a thread (the same path as `new-message`, but as a
+ * subroutine — the force stop needs it for a trace IN THE THREAD).
+ *
+ * It PLANS rather than writes, because the caller hands it to `deliverMessage` as the
+ * `stage` callback: the stamp, and therefore the file name, depend on what is already
+ * in the feed, so every delivery attempt has to plan afresh on top of the state it
+ * just fetched.
  */
-const postThreadMessage = (
+const planThreadMessage = (
   root: string,
   threadId: string,
   registry: RoleRegistry,
   input: { from: string; expects: Expects; waitingOn?: string | null; text: string },
-): void => {
+): StagedMessage => {
   if (!registry.isKnown(input.from)) fail(`role '${input.from}' is not listed in the config`, 2);
   const threadDir = join(root, threadId);
   if (!existsSync(threadDir)) fail(`thread '${threadId}' not found in '${root}'`, 2);
@@ -3263,16 +3357,13 @@ const postThreadMessage = (
       threadHasMessages,
     });
   } catch (error) {
-    if (error instanceof WriteRefusedError) {
-      fail(error.message, 2);
-      return;
-    }
+    if (error instanceof WriteRefusedError) return fail(error.message, 2);
     throw error;
   }
   const path = join(threadDir, planned.path);
   if (existsSync(path))
     fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
-  writeOut(path, planned.content);
+  return { path, content: planned.content, label: planned.path };
 };
 
 type RunParams = {
@@ -5322,10 +5413,15 @@ const orchestratorLog = (argv: readonly string[]): void => {
 /**
  * A forced stop (S4). `graceful` creates the stop flag: the daemon lets the
  * current session run to its natural terminal state and goes dark (through
- * draining), taking nothing new. `force` creates the force flag with `by`/`note`
- * (the observer reads it and puts the session down at a safe point, leaving a
- * journal trace) AND posts a TRACE IN THE THREAD (who/why), so that
- * "who/when/why" exists both in the journal and in the thread.
+ * draining), taking nothing new. `force` posts a TRACE IN THE THREAD (who/why) and
+ * THEN creates the force flag with `by`/`note` (the observer reads it and puts the
+ * session down at a safe point, leaving a journal trace), so that "who/when/why"
+ * exists both in the journal and in the thread.
+ *
+ * THAT ORDER IS LOAD-BEARING, and it is the fix for the defect of 2026-07-27: with the
+ * flag first, the force killed the processes before the trace was committed and pushed,
+ * and the explanation stayed on one disk. Delivery first means the worst case is a stop
+ * that arrives a couple of seconds later, instead of a stop nobody can account for.
  */
 const orchestratorStop = (argv: readonly string[]): void => {
   const mode = required(argv, "--mode");
@@ -5386,19 +5482,79 @@ const orchestratorStop = (argv: readonly string[]): void => {
 
   if (!write) {
     out(
-      `agent-protocol: would create the force flag '${forceFlag}' and announce it in thread ${threadId} from ${by}; --write performs it`,
+      `agent-protocol: would announce the stop in thread ${threadId} from ${by} and THEN create the force flag '${forceFlag}'; --write performs it`,
     );
     return;
   }
+
+  // THE TRACE GOES FIRST, THE FLAG SECOND — the order IS the fix (curator, thread 019,
+  // from john's live force stop of 2026-07-27 ~23:35Z). The message file was written
+  // into the mail checkout and the commit+push never happened: the force put the
+  // processes down before delivery got that far, so the one explanation of a forced
+  // interruption did not travel — in the single case it exists for. It surfaced next
+  // morning as `✗ mail: unsaved changes` in a preflight, and was delivered by hand.
+  //
+  // Delivery is the same one the mail uses, under the same checkout lock (D-0): a
+  // forced stop writes beside a live session by construction, and that session may be
+  // inside the checkout at this very moment.
+  const checkout = repoOf(root);
+  const trace = (): StagedMessage =>
+    planThreadMessage(root, threadId, registry, { from: by, expects: "none", text });
+  let delivered = false;
+  try {
+    const sent = deliverMessage({
+      git: (args) => {
+        try {
+          return execFileSync("git", ["-C", checkout, ...args], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+          });
+        } catch (error) {
+          const failure = error as { stderr?: string; status?: number };
+          const said = (failure.stderr ?? "").trim();
+          throw new DeliveryRefusedError(
+            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
+          );
+        }
+      },
+      write: writeOut,
+      branch: loadedConfig.config.mail.branch,
+      subject: deliverySubject({ from: by, thread: threadId }),
+      stage: trace,
+      note: out,
+      lock: mailLockFor({ checkout, holder: `force stop by ${by} → ${threadId}`, note: out }),
+    });
+    delivered = true;
+    out(
+      `agent-protocol: the trace was announced in thread ${threadId} — ${sent.label}, committed and pushed to origin/${loadedConfig.config.mail.branch}`,
+    );
+  } catch (error) {
+    if (!(error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError))
+      throw error;
+    // A STOP THAT CANNOT BE ANNOUNCED STILL HAPPENS — the alternative is a circuit that
+    // cannot be stopped whenever the network is out. What must not happen is a trace
+    // that vanishes quietly: it is written into the checkout as it stands and said out
+    // loud, twice — the delivery is broken AND the mail of this box is now dirty, which
+    // blocks every other message until somebody deals with it.
+    err(`agent-protocol: the trace was NOT delivered: ${(error as Error).message}`);
+    try {
+      const staged = trace();
+      writeOut(staged.path, staged.content);
+      err(
+        `agent-protocol: the trace was written locally and NOT delivered — '${staged.label}' sits in the mail checkout '${checkout}'. Deliver it by hand (commit + push on the mail branch); until then delivery from this box refuses on a dirty checkout`,
+      );
+    } catch (write) {
+      err(
+        `agent-protocol: and the trace could not even be written down: ${(write as Error).message} — the forced stop below has no explanation anywhere but this terminal`,
+      );
+    }
+  }
+
+  // Only now: the flag, and with it the sessions going down.
   mkdirSync(dirname(forceFlag), { recursive: true });
   writeFileSync(forceFlag, flagBody, "utf8");
-  postThreadMessage(root, threadId, registry, {
-    from: by,
-    expects: "none",
-    text,
-  });
   out(
-    `agent-protocol: force stop — the flag '${forceFlag}' was created, the trace was announced in thread ${threadId}`,
+    `agent-protocol: force stop — the flag '${forceFlag}' was created${delivered ? "" : " AFTER a failed announcement (see above)"}`,
   );
 };
 
@@ -5551,6 +5707,17 @@ const runningDaemon = (pidFile: string): number | undefined => {
  * An `up` on top of a living daemon is REFUSED, not obeyed: two daemons on one
  * journal would take the same pair twice, and the second one's banner would look
  * exactly like a healthy start.
+ *
+ * A FORCE FLAG ON THE FLOOR IS ALSO A REFUSAL — AT THE DOOR, and this one was paid for
+ * live (john, 2026-07-27, twice in a row): `up` cleared the stop flag, reported "the
+ * daemon is up, pid …", and the daemon read the force flag on its first tick and left
+ * (`the daemon stopped — the force flag`). A successful banner over a process that is
+ * already gone is the "silent ≠ idle" class in its purest form — the only way to find
+ * out was reading `daemon.log`. Clearing it the way the stop flag is cleared would be
+ * WRONG: `down` is this command's own counterpart, while a force was put down by a
+ * human with a name and a reason, and taking that back has to be as deliberate as
+ * putting it there. Hence: named, with who and why, and `--clear-force` to say it out
+ * loud.
  */
 const orchestratorUp = (argv: readonly string[]): void => {
   const args = withOperatorRef(argv);
@@ -5565,6 +5732,23 @@ const orchestratorUp = (argv: readonly string[]): void => {
       2,
     );
     return;
+  }
+
+  const forceFlag = flag(args, "--force-flag") ?? paths.forceFlag;
+  if (existsSync(forceFlag)) {
+    const forced = readForceFlag(forceFlag);
+    const signature = `${forced.by === undefined ? "somebody unnamed" : forced.by}: ${forced.note ?? "no reason was recorded"}`;
+    if (!args.includes("--clear-force")) {
+      fail(
+        `the force flag is down ('${forceFlag}') — ${signature}. A daemon started now would read it on its first tick and exit, reporting nothing to this terminal. Clear it deliberately: 'up --clear-force', or remove the file`,
+        2,
+      );
+      return;
+    }
+    rmSync(forceFlag);
+    out(
+      `agent-protocol: the force flag was cleared on request ('${forceFlag}') — it said ${signature}`,
+    );
   }
 
   const stopFlag = flag(args, "--stop-flag") ?? paths.stopFlag;
@@ -5588,6 +5772,9 @@ const orchestratorUp = (argv: readonly string[]): void => {
       at += 1;
       continue;
     }
+    // `--clear-force` is a decision about the DOOR, taken above; the daemon behind it
+    // knows nothing of the flag and must not be told to clear anything.
+    if (token === "--clear-force") continue;
     passthrough.push(token);
   }
   mkdirSync(dirname(log), { recursive: true });
