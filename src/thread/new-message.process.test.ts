@@ -835,3 +835,69 @@ describe("new-message and the scalar turn (R24)", () => {
     expect(written(lifted.root).fields.waitingOn).toBeNull();
   });
 });
+
+/** `new-thread` with everything but the id filled in. */
+const newThread = (
+  contest: { repo: string; root: string; body: string },
+  id: string,
+): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-thread",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--id",
+        id,
+        "--title",
+        "T",
+        "--participants",
+        "dev-core, curator",
+        "--from",
+        "dev-core",
+        "--expects",
+        "answer",
+        "--waiting-on",
+        "curator",
+        "--worker",
+        "claude-code",
+        "--body-file",
+        contest.body,
+        "--write",
+      ],
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
+describe("new-thread and the uniqueness of a number (thread 029)", () => {
+  it("REFUSES a number already taken, and names who holds it", () => {
+    // The contour already carries `016-x`. Before this door, `016-y` was created
+    // without a word and "тред 016" stopped being an address.
+    const contest = contour();
+
+    const result = newThread(contest, "016-y");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("016-x");
+    expect(existsSync(join(contest.root, "016-y"))).toBe(false);
+  });
+
+  it("a free number is created as before", () => {
+    const contest = contour();
+
+    expect(newThread(contest, "017-y").code).toBe(0);
+    expect(existsSync(join(contest.root, "017-y", "_meta.md"))).toBe(true);
+  });
+});

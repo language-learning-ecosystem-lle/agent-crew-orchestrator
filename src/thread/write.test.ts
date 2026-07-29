@@ -7,6 +7,7 @@ import {
   nextMessageTimestamp,
   planNewMessage,
   planNewThread,
+  threadNumberTaker,
   WriteRefusedError,
 } from "./write.js";
 
@@ -163,5 +164,31 @@ describe("provenance on the write path (R7)", () => {
     });
 
     expect(files[1]?.content).toContain("worker: claude-code");
+  });
+});
+
+describe("threadNumberTaker", () => {
+  it("names the thread already holding the number", () => {
+    // The real collision (2026-07-28): `029` was handed out to a second thread the
+    // same day, and from then on "тред 029" needed a slug beside it to mean anything.
+    expect(threadNumberTaker("029-reviewer-verdict-absence", ["029-circuit-metrics"])).toBe(
+      "029-circuit-metrics",
+    );
+  });
+
+  it("a free number is free", () => {
+    expect(threadNumberTaker("030-x", ["029-circuit-metrics", "028-y"])).toBeUndefined();
+  });
+
+  it("compares numbers, not text — `29` and `029` are one address said two ways", () => {
+    expect(threadNumberTaker("29-x", ["029-circuit-metrics"])).toBe("029-circuit-metrics");
+  });
+
+  it("the thread itself is not its own taker", () => {
+    expect(threadNumberTaker("029-x", ["029-x"])).toBeUndefined();
+  });
+
+  it("an id without a number is not guarded — the door checks the id form elsewhere", () => {
+    expect(threadNumberTaker("no-number", ["029-x"])).toBeUndefined();
   });
 });

@@ -49,6 +49,8 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # the turn has passed to a HUMAN: whom is derived from wake.mode,
                               # the words come from notifications.templates, delivery from the transport plugin
                               # without --write: prints what it would send and leaves the state alone
+                              # only what the transport CONFIRMED is marked announced (029): a failed
+                              # delivery is a NON-ZERO exit with the state untouched, so it rings again
   agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
@@ -60,6 +62,8 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # --priority high|normal|low: WHICH waiting thread is raised FIRST from here on (R5) —
                               # only from a role holding 'thread-priority'; the queue is priority, then age of wait, then number
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write]
+                              # the NNN is REFUSED if a thread already holds it (029): the number is a
+                              # short address; nothing is renamed after the fact, the door is what changes
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
                               # a raised session passes neither — the launch environment carries both
 
