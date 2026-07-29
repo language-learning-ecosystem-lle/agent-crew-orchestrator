@@ -26,6 +26,7 @@ import { fetchRef, readFileAtRef } from "../fs/git.js";
 import { createRoleRegistry, RoleConfigError, type RoleRegistry } from "../roles/registry.js";
 import {
   compareProtocolVersion,
+  declaredProtocolVersion,
   legacyVersionHint,
   requireCurrentProtocolVersion,
   type VersionVerdict,
@@ -80,6 +81,21 @@ export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
     throw new RoleConfigError([
       `'${path}' at ${options.ref} is not JSON: ${(error as Error).message}`,
     ]);
+  }
+
+  // THE VERSION IS ASKED OF THE RAW FILE FIRST, and only in the one direction where
+  // the strict parse cannot be trusted to answer: a config written by a NEWER package
+  // carries fields this build has never heard of, so the strict object trips over
+  // `Unrecognized key: <whatever was added>` and the version gate below is never
+  // reached. The human then reads a complaint about a field name instead of the one
+  // sentence that fixes it — which is exactly what happened on 2026-07-28, when a
+  // daemon raised before the merge of #66 met the new `stalled` key and died on it,
+  // taking every command with it, `status` included (thread `023-daemon-parallelism`).
+  // Only `ahead` is gated here. `behind` keeps going through the parse: the config is
+  // one this package can still describe, and `tolerateOlder` needs its DATA.
+  const declared = declaredProtocolVersion(parsed);
+  if (declared !== undefined && compareProtocolVersion(declared).state === "ahead") {
+    requireCurrentProtocolVersion(declared, { path, ref: options.ref });
   }
 
   const result = protocolConfigSchema.safeParse(parsed);

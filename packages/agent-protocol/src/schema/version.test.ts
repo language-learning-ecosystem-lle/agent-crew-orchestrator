@@ -31,7 +31,10 @@ describe("renderVersionVerdict", () => {
     // would mean re-deriving data written by a shape this build has never seen.
     const text = renderVersionVerdict(compareProtocolVersion(3, 2));
 
-    expect(text).toContain("update the package");
+    // The REPAIR comes first, because in practice this verdict is met by a long-lived
+    // process running code older than the data it reads (thread `023-daemon-parallelism`).
+    expect(text).toContain("restart required");
+    expect(text).toContain("pull and restart what is running on it");
     expect(text).toContain("a downgrade is not performed");
     expect(text).not.toContain("schema migrate");
   });

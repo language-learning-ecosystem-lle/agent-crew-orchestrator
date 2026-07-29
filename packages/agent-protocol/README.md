@@ -2052,3 +2052,53 @@ through the GitHub API keep the owner of the token as their author — the Conte
 has an `author` field, but the proxy in between does not pass it through. The executor's
 signature already lives in the `worker:` header of the message. History is not rewritten
 either: the feed is append-only, and `main` is not touched.
+
+### S23 — the daemon degrades where it used to die (thread 023, part 2)
+
+A watch that dies of the outage it was watching over is not a watch. Two deaths of
+2026-07-28 say the same thing in two places, and both are shut here — the fix is on the
+DOOR of the config, not in the daemon, because both of them killed `status` as readily
+as they killed the loop.
+
+**(a) The wire.** Reading the config at a ref means fetching, and `fetch` fails the way
+the network fails. At ~23:03Z the daemon met `TLS handshake timeout` → `ssh: connect to
+host github.com port 22: Connection timed out` → `git fetch --quiet origin main` → «the
+protocol config at 'origin/main' was not read» → `exit(2)`, and the box stood 8.3 hours
+with eleven waiting pairs. The degradation of the mail probe (S3) could not help: the
+probe itself begins by reading the config, so the retry killed the process before it
+could retry anything.
+
+From here on a process that has ALREADY read the config once stands on it when the next
+read cannot reach the ref: the tick is skipped over a named cause, the next tick is the
+retry, no back-off is built on top (the same line as the mail probe). The memory is per
+`(repo, ref, path)` and per process — `config/standing.ts` — and the two limits are the
+point of it:
+
+- **the first read stays fatal**, and no flag says so: at startup nothing has been
+  remembered, so there is nothing to stand on. Without a single config ever read there
+  is nothing to work by;
+- **a config that was READ and then REJECTED is never stood over** — a schema complaint
+  or a version verdict is a statement about the repository's own data, made by whoever
+  pushed it. The wire is the only thing forgiven, and the fallback is LOUD every time it
+  happens (`WARNING — the config at '<ref>' was NOT re-read: … the config read at <when>
+  stays in force`). A silent fallback would be exactly the stale-config defect this
+  loader was built against.
+
+The off switch keeps its place ahead of everything (S3): stop and force are read before
+the probe, so an outage can never lock the daemon in.
+
+**(b) A config newer than the code.** The same evening a daemon raised before the merge
+that bumped the shape died on `Unrecognized key: stalled` — and took every command with
+it, `status` included. The order of the doors was the whole defect: the strict parse
+stood in front of the version gate, so a config written by a NEWER package tripped over
+a field name and never reached the verdict that names the repair. The version is now
+asked of the RAW file first, and only upwards: `ahead` refuses with **`restart required:
+the repository declares protocol version N, the package supports only M`**, `behind`
+still goes through the parse, because that shape is one this package can describe and
+`tolerateOlder` (door 3 of thread 020) needs its data.
+
+Both are process-tested against a remote that is unreachable for real
+(`daemon.config-outage.process.test.ts`): the daemon survives the wire dying mid-flight,
+says so on every tick, and goes back to reading by itself when it comes back. The control
+was run the way D-0's was — with the fallback disabled the test goes red on the historical
+message verbatim.

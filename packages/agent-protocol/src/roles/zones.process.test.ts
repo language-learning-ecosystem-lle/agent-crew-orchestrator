@@ -170,7 +170,9 @@ describe("zones check — the staged paths of a change against the role's zone",
     const result = check(repo);
 
     expect(result.code).toBe(2);
-    expect(result.out).toContain("update the package");
+    // The repair, in the words the verdict now leads with (thread 023): a build behind
+    // the data is restarted on the merged code, whoever is running it.
+    expect(result.out).toContain("restart required");
   });
 
   it("a role whose zone bans nothing is refused nothing — the stated default", () => {
