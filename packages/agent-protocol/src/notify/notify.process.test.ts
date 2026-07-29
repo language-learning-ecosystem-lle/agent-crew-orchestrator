@@ -47,7 +47,12 @@ const message = (from: string, waitingOn: string): string =>
   `---\nfrom: ${from}\nworker: human\ndate: 2026-07-25T20:00:00Z\nexpects: answer\nwaiting-on: ${waitingOn}\n---\n\nThe body.\n`;
 
 /** A repository with a committed config, a mail root and a stub transport module. */
-const contour = (options: { transport?: boolean; templates?: boolean; stalledAfter?: number }) => {
+const contour = (options: {
+  transport?: boolean;
+  templates?: boolean;
+  stalledAfter?: number;
+  outcome?: "sent" | "failed" | "unconfigured";
+}) => {
   const repo = mkdtempSync(join(tmpdir(), "agent-protocol-notify-"));
   const delivered = join(repo, "delivered.txt");
   const transportPath = join(repo, "stub-transport.mjs");
@@ -58,7 +63,7 @@ const contour = (options: { transport?: boolean; templates?: boolean; stalledAft
       "export const createTransport = ({ options, secrets }) => ({",
       "  send: async (text) => {",
       `    writeFileSync(${JSON.stringify(delivered)}, JSON.stringify({ text, options, token: secrets.TELEGRAM_BOT_TOKEN ?? null }));`,
-      "    return { state: 'sent', detail: 'stub: delivered' };",
+      `    return { state: '${options.outcome ?? "sent"}', detail: 'stub: ${options.outcome ?? "sent"}' };`,
       "  },",
       "});",
       "",
@@ -177,7 +182,7 @@ describe("notify as a command", () => {
     const result = run(contest, ["--write", "--env-file", envFile]);
 
     expect(result.code).toBe(0);
-    expect(result.out).toContain("stub: delivered");
+    expect(result.out).toContain("stub: sent");
     const payload = JSON.parse(readFileSync(contest.delivered, "utf8")) as {
       text: string;
       options: Record<string, string>;
@@ -263,6 +268,58 @@ describe("notify as a command", () => {
     expect(result.out).toContain("no transport configured");
     expect(result.out).toContain("your turn: 016-x");
     expect(existsSync(contest.state)).toBe(true);
+  });
+
+  it("a FAILED delivery is non-zero and leaves the state alone (thread 029)", () => {
+    // The defect this closes, in the words of the run that produced it: notify said
+    // "2 of them new", the transport said "fetch failed", the state was already on
+    // disk — and the next call said "nothing to announce". john was never told.
+    const contest = contour({ outcome: "failed" });
+    contest.thread("029-x", "john");
+    contest.commit();
+
+    const result = run(contest, ["--write"]);
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("the state is unchanged");
+    expect(existsSync(contest.state)).toBe(false);
+
+    // And the proof that the trigger was not consumed: the next call announces it.
+    const again = run(contest, ["--write"]);
+    expect(again.out).toContain("1 of them new");
+  });
+
+  it("an UNCONFIGURED transport is silence, not a fault — zero, and the state stays put", () => {
+    // No credentials on this box is a legitimate state (the rule inherited from
+    // bin/notify.sh) — but it is not a delivery either, so nothing is marked
+    // announced and credentials appearing later make it ring.
+    const contest = contour({ outcome: "unconfigured" });
+    contest.thread("029-x", "john");
+    contest.commit();
+
+    const result = run(contest, ["--write"]);
+
+    expect(result.code).toBe(0);
+    expect(existsSync(contest.state)).toBe(false);
+  });
+
+  it("a pair that stops waiting is forgotten even though nothing was announced", () => {
+    // "Nothing to announce" IS a confirmed outcome: the state moves, so a thread that
+    // comes back to waiting later rings again instead of being remembered for ever.
+    // The stalled horizon is put out of reach: the fixture is dated, and the second
+    // question ("what has not moved") would otherwise turn the quiet run into an event.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.thread("016-x", "john");
+    contest.commit();
+
+    run(contest, ["--write"]);
+    expect(readFileSync(contest.state, "utf8")).toContain("016-x");
+
+    contest.thread("016-x", "dev-core"); // the turn moved on: nobody human is waiting
+    const again = run(contest, ["--write"]);
+
+    expect(again.out).toContain("nothing to announce");
+    expect(readFileSync(contest.state, "utf8")).not.toContain("016-x");
   });
 
   it("a transport that does not load REFUSES before the state is touched", () => {

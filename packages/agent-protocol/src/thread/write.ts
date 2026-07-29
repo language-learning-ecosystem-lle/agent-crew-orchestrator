@@ -105,6 +105,33 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
   };
 };
 
+/**
+ * THE NUMBER OF A THREAD IS ITS SHORT ADDRESS — and an address that names two things
+ * is not an address (curator, thread 029). `029` was handed out twice in one day
+ * (`029-circuit-metrics` and `029-reviewer-verdict-absence`), and from then on "тред
+ * 029" in a feed needed a slug beside it to mean anything.
+ *
+ * Nothing is renamed after the fact: the FULL id stays unique, so every link ever
+ * written still resolves. The door is what changes — reading the directory names of
+ * the mail is cheap, and a number already in use is refused at creation instead of
+ * being discovered by a reader a week later.
+ *
+ * The comparison is NUMERIC, not textual: `29` and `029` are the same address said
+ * two ways, and a guard that let the second one through would be a guard against
+ * typing, not against collision.
+ */
+export const threadNumber = (id: string): number | undefined => {
+  const digits = /^(\d+)-/.exec(id)?.[1];
+  return digits === undefined ? undefined : Number(digits);
+};
+
+/** The existing thread whose number `id` would take, if any. */
+export const threadNumberTaker = (id: string, existing: readonly string[]): string | undefined => {
+  const number = threadNumber(id);
+  if (number === undefined) return undefined;
+  return existing.find((other) => other !== id && threadNumber(other) === number);
+};
+
 export type NewThreadInput = {
   readonly title: string;
   readonly participants: readonly string[];

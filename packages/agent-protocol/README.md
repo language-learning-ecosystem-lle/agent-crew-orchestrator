@@ -278,13 +278,23 @@ agent-protocol notify --ref origin/main --write
 ```
 
 The order of the side effects is the design: **resolve the transport and the secrets,
-then write the state, then send.** A setup defect (a module that does not load, a
-named secrets file that cannot be read) refuses while the state is still untouched —
-otherwise it would consume the trigger and the pair would never be announced again. A
-DELIVERY failure, by contrast, does not retry and does not fail the command:
-notifications are a superstructure, not a dependency, and a notification is about a
-moment that no retry brings back. Without `--write` the command prints the message it
-would send and leaves the state alone (this is what `NOTIFY_DRY_RUN=1` used to be).
+send, and only then write the state — for what the transport CONFIRMED.** A setup
+defect (a module that does not load, a named secrets file that cannot be read)
+refuses while the state is still untouched. So does a delivery that failed: the pairs
+it carried were never announced, so they are not marked announced, and the next call
+rings for them again. **A failed delivery is a non-zero exit** — a transport that
+tried and could not is something one goes and looks at, and a green line in a cron
+mailbox would hide it. `unconfigured` stays what it always was, a legitimate silence:
+zero, and the state likewise untouched. Without `--write` the command prints the
+message it would send and leaves the state alone (this is what `NOTIFY_DRY_RUN=1`
+used to be).
+
+The state used to be written BEFORE sending, on the reasoning that a notification is
+about a moment no retry brings back — and that reasoning cost a real notification
+(thread 029, 2026-07-28): the command printed "2 of them new", the transport answered
+"fetch failed", the state was already on disk, the next call said "nothing to
+announce", and the human it was for never learned two threads were waiting on him.
+Ringing twice is cheap. Not ringing at all is the one thing a notifier must not do.
 
 Freshness is reported and never refused, and that is the one place this command parts
 ways with preflight: the daemon refuses on stale mail because acting on yesterday's
@@ -645,6 +655,9 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
                             [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write]
+                            # the NUMBER is refused if a thread already holds it (029): `NNN` is a short
+                            # address, and `029` handed out twice made "тред 029" mean two things.
+                            # nothing is renamed after the fact — the full id stays unique, the door changes
 # the orchestrator: the paths come from the config (section `orchestrator`), operation needs only --ref;
 # the path flags below are omitted — they remain an override for checks on a copy of the mail
 # the agent binaries come from the MACHINE config (~/.config/agent-protocol/local.json, or --local-config <p>)

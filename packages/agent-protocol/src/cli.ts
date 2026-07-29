@@ -268,6 +268,7 @@ import {
   nextMessageTimestamp,
   planNewMessage,
   planNewThread,
+  threadNumberTaker,
   WriteRefusedError,
 } from "./thread/write.js";
 import { USAGE } from "./usage.js";
@@ -1393,6 +1394,24 @@ const newThread = (argv: readonly string[]): void => {
   const threadDir = join(root, id);
   if (existsSync(threadDir)) fail(`thread '${id}' already exists`, 2);
 
+  // THE NUMBER IS AN ADDRESS, AND ADDRESSES ARE UNIQUE (curator, thread 029): `029`
+  // was handed out twice in one day, and "тред 029" stopped meaning one thing. The
+  // directory names of the mail are the whole check — cheap, and it is the only place
+  // a number is handed out. Names starting with `_` are the derived state of the
+  // branch (`_instances/`), not threads.
+  const existingThreads = existsSync(root)
+    ? readdirSync(root, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_"))
+        .map((entry) => entry.name)
+    : [];
+  const taker = threadNumberTaker(id, existingThreads);
+  if (taker !== undefined) {
+    fail(
+      `the number of thread '${id}' is already taken by '${taker}' — a thread number is its short address, pick the next free one`,
+      2,
+    );
+  }
+
   const text = readFile(required(argv, "--body-file"), "body of the first message");
   const files = planNewThread({
     title: required(argv, "--title"),
@@ -1627,12 +1646,26 @@ const awaitInput = async (argv: readonly string[]): Promise<void> => {
  *     load, a named file that cannot be read) refuses HERE, while the state file is
  *     still untouched, so the trigger is not consumed by a run that could never have
  *     delivered anything;
- *  2. write the state — BEFORE sending, as in the predecessor: a notification is
- *     about a moment, and a moment does not come back because we retried it. A
- *     delivery failure must not turn into a message on every tick from now on;
- *  3. send, and report the outcome without failing. Notifications are a
- *     superstructure, not a dependency: an unreachable Telegram is a line in a log,
- *     not a non-zero exit that makes a cron mailbox look like a broken circuit.
+ *  2. send;
+ *  3. write the state ONLY FOR WHAT THE TRANSPORT CONFIRMED (john's decision, thread
+ *     029). It used to be written BEFORE sending, on the reasoning that "a
+ *     notification is about a moment, and a moment does not come back because we
+ *     retried it" — and that reasoning cost exactly what this thread is about: on
+ *     2026-07-28 `notify` printed "2 of them new" and then "telegram: the request did
+ *     not complete — fetch failed", the state was already on disk, the next call said
+ *     "nothing to announce", and john was never told about threads 028/029. An
+ *     undelivered announcement that the circuit believes it delivered is the same
+ *     class of defect as the missing reviewer verdict this thread was opened for:
+ *     NON-DELIVERY THAT LOOKS LIKE DELIVERY. Ringing twice is cheap; not ringing at
+ *     all is what a notifier exists to prevent.
+ *
+ * A FAILED DELIVERY IS A NON-ZERO EXIT, and that too is a reversal. "Notifications
+ * are a superstructure, not a dependency" survives where it belongs — an
+ * `unconfigured` transport (no credentials on this machine) is a legitimate silence
+ * and exits 0 — but a transport that TRIED AND COULD NOT is something one goes and
+ * investigates, so it must not be a green line in a cron mailbox. In both of those
+ * cases the state is left alone: nothing was announced, so nothing is marked
+ * announced, and the next call rings again.
  *
  * NOTHING HAPPENS WITHOUT `--write`, as everywhere in this package — and here that
  * subsumes what used to be `NOTIFY_DRY_RUN=1`: the plan prints the message it would
@@ -1656,10 +1689,12 @@ const awaitInput = async (argv: readonly string[]): Promise<void> => {
  * something was announced; `failed` — a SETUP defect (no config section, an
  * unreadable secrets file, a transport module that does not load) caught before the
  * state file was touched, so the trigger is not consumed by a run that could never
- * have delivered anything.
+ * have delivered anything; `undelivered` — the transport TRIED and could not (thread
+ * 029), which is not a setup defect and leaves the state untouched, so the same pairs
+ * ring again on the next call.
  */
 type NotifyRun = {
-  readonly kind: "planned" | "quiet" | "sent" | "failed";
+  readonly kind: "planned" | "quiet" | "sent" | "failed" | "undelivered";
   readonly summary: string;
   readonly lines: readonly string[];
 };
@@ -1785,9 +1820,12 @@ const runNotify = async (input: {
     }
   }
 
-  writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
-
+  // THE STATE MOVES ONLY ON A CONFIRMED OUTCOME (thread 029), so it is written in each
+  // branch below rather than once up here. NOTHING TO ANNOUNCE IS ITSELF a confirmed
+  // outcome: this is where a pair that has STOPPED waiting is forgotten, and forgetting
+  // it is what makes the same thread ring again if it comes back to waiting later.
   if (plan.fresh.length === 0 && plan.freshStalled.length === 0) {
+    writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
   }
   const announced = [
@@ -1796,14 +1834,35 @@ const runNotify = async (input: {
   ];
   const summary = `${describeWaits} — ${announced.join(", ")}`;
   if (transport === undefined) {
-    // A legitimate configuration: no transport means the message is printed and the
-    // state still moves. That is the honest form of "notifications are optional" —
-    // silence with a state that pretends something was delivered would not be.
+    // A legitimate configuration: no transport means stdout IS the channel — the
+    // message is printed, which is a delivery, so the state moves. That is the honest
+    // form of "notifications are optional"; silence with a state that pretends
+    // something was delivered would not be.
     say("no transport configured (notifications.transport) — the message follows:");
     say(message);
+    writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
     return { kind: "sent", summary, lines: said };
   }
   const outcome = await transport.send(message);
+  if (outcome.state === "failed") {
+    // The state is NOT written: these pairs were never announced, and the next call
+    // must ring for them again. Non-zero, because a transport that tried and could
+    // not is a thing to go and look at.
+    return {
+      kind: "undelivered",
+      // THE COUNTS STAY IN THE SUMMARY of a failed delivery: "what was not announced"
+      // is exactly the thing to look at, and the caller prints the summary alone.
+      summary: `${describeWaits} — ${outcome.detail}, nothing was announced, the state is unchanged`,
+      lines: said,
+    };
+  }
+  if (outcome.state === "unconfigured") {
+    // Deliberate silence on this machine, not a fault — but still not a delivery, so
+    // the state stays where it is and credentials appearing later make it ring.
+    say(`${outcome.detail} — nothing was announced, the state is unchanged`);
+    return { kind: "quiet", summary: `${describeWaits} — nothing was announced`, lines: said };
+  }
+  writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
   say(outcome.detail);
   return { kind: "sent", summary, lines: said };
 };
@@ -1816,6 +1875,10 @@ const notify = async (argv: readonly string[]): Promise<void> => {
   const run = await runNotify({ argv, write: argv.includes("--write") });
   for (const line of run.lines) out(`agent-protocol: ${line}`);
   if (run.kind === "failed") return fail(run.summary, 2);
+  // A DELIVERY THAT TRIED AND COULD NOT is not a setup defect: the code is 1, kept
+  // apart from 2 on purpose — one says "go and fix the configuration", the other says
+  // "the channel was down, nothing was announced, it will ring again".
+  if (run.kind === "undelivered") return fail(run.summary, 1);
   out(`agent-protocol: ${run.summary}`);
 };
 
@@ -4607,7 +4670,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       );
       return;
     }
-    if (run.kind === "failed") {
+    if (run.kind === "failed" || run.kind === "undelivered") {
       for (const line of run.lines) err(`agent-protocol: daemon — courier: ${line}`);
       err(
         `agent-protocol: daemon — the courier is NOT delivering: ${run.summary}; the box keeps working, nobody is being told that the turn has passed`,
