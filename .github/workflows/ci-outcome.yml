@@ -1,0 +1,184 @@
+name: CI Outcome
+
+# ИСХОД CHECKS ДОСТАВЛЯЕТСЯ СОБЫТИЕМ В ТРЕД (постановка curator по требованию
+# john, тред 035-ci-outcome-event). До сих пор исход прогона ждала САМА сессия
+# (`gh run watch`): на медиане 382 с прогона это 11% часового окна роли при
+# нулевой работе, а после D-2 ждущая сессия ещё и держит рабочее место роли —
+# ожидание CI становится простоем целой роли, а не одной задачи.
+#
+# Механизм не новый: канал «воркфлоу-событие → сообщение в тред → ход вернулся»
+# уже протоптан вердиктами ревьюера (#14/#67) и уведомлением о merge. Этот
+# воркфлоу — третий писатель по тому же образцу и намеренно БЕЗ LLM: задача
+# механическая (прочитать исход, назвать его в треде), недетерминизм модели
+# здесь ничем не оправдан — ровно тот же довод, что в merge-notify.yml.
+#
+# ПОЧЕМУ workflow_run, А НЕ ДЖОБА ВНУТРИ ci.yml:
+#   * воркфлоу-событие исполняется версией файла С ДЕФОЛТНОЙ ВЕТКИ — PR не может
+#     подправить своего же уведомителя (джоба внутри ci.yml на событии
+#     pull_request берётся из merge-ref, то есть из ветки PR);
+#   * ci.yml не трогается вовсе: правка уведомителя — правка ОДНОГО файла,
+#     а не файла, от которого зависит зелёность каждого PR;
+#   * исход виден целиком, вместе с падениями setup-шагов, которые джоба
+#     `needs: [...] if: always()` увидела бы как `skipped` без объяснения.
+# Цена решения названа: воркфлоу СОБСТВЕННОГО прогона себе не шлёт (workflow_run
+# не рекурсивен по построению) — за красным `CI Outcome` следят глазами в
+# Actions, как за любым уведомителем.
+#
+# ГРАНИЦА СКОУПА: прогон БЕЗ PR (push в main, workflow_dispatch) события не
+# порождает — `thread:`/`role:` берутся из описания PR, и для main их не
+# существует. Красный main — аварийный класс (тред 031), у него свой порядок:
+# тред заводится ДО PR. Доставка красного main отдельным адресатом — возможный
+# следующий пакет, здесь его нет намеренно.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # запись в ветку comms
+      pull-requests: read # описание PR: строки `thread:` и `role:`
+    steps:
+      # Ветка comms живёт отдельно от кода: чекаутим ЕЁ, а не голову прогона.
+      - uses: actions/checkout@v5
+        with:
+          ref: comms
+          fetch-depth: 0
+
+      # Второй чекаут — код: конфиг протокола и пакет живут в main. Копия дерева
+      # в comms СТАРАЯ, и исполнять протокол ею значило бы работать версией,
+      # отставшей на неизвестное число merge'ей (та же оговорка, что в
+      # merge-notify.yml).
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          path: .code
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .code/.nvmrc
+          cache: pnpm
+          cache-dependency-path: .code/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: .code
+
+      - name: Доставить исход прогона в тред пакета
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          WF_EVENT: ${{ github.event.workflow_run.event }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          # PR ищется ПО ГОЛОВЕ прогона через API, а не берётся из
+          # `workflow_run.pull_requests`: последнее пусто для форков и для
+          # прогонов, поднятых не событием pull_request, — то есть у поля было
+          # бы два читателя с разным поведением. Одно правило на все случаи.
+          PR=$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/pulls" \
+                 --jq 'map(select(.state == "open")) | .[0].number // empty') || true
+          if [ -z "${PR:-}" ]; then
+            echo "Прогон ${RUN_ID} (${WF_EVENT}) не привязан к открытому PR — адресата нет, событие не шлём."
+            exit 0
+          fi
+
+          PR_BODY=$(gh pr view "$PR" --json body -q .body)
+          PR_TITLE=$(gh pr view "$PR" --json title -q .title)
+          PR_HEAD=$(gh pr view "$PR" --json headRefOid -q .headRefOid)
+
+          # Те же терпимые к оформлению regex'ы, что в merge-notify.yml и
+          # claude-review.yml: строки в бэктиках однажды уже ослепили парсер
+          # (PR #16), и третий формат для одного поля здесь заводить нельзя.
+          THREAD=$(printf '%s' "$PR_BODY" | grep -oiE '^[[:space:]`*]*thread`?:[[:space:]]*`?[0-9]{3}-[a-z0-9-]+' | head -1 | sed -E 's/^[^0-9]*//; s/[`*].*//') || true
+          ROLE=$(printf '%s' "$PR_BODY" | grep -oiE '^[[:space:]`*]*role`?:[[:space:]]*`?[a-z][a-z0-9-]*' | head -1 | sed -E 's/^[^a-z]*role`?:[[:space:]]*`?//i') || true
+          if [ -z "${THREAD:-}" ]; then
+            echo "::warning::В описании PR #${PR} нет строки 'thread: NNN-slug' — исход прогона сообщить некуда."
+            exit 0
+          fi
+          if [ ! -d "agent-comms/${THREAD}/messages" ]; then
+            # Legacy-тред (009/010 до миграции): файловая запись там отказывает,
+            # а второй, дописывающий `_thread.md`, путь — это ветка кода, которая
+            # умрёт вместе с миграцией. Уведомитель о merge её держит, потому что
+            # он ЕДИНСТВЕННЫЙ писатель факта merge; исход прогона в legacy-треде
+            # по-прежнему виден на странице PR, поэтому здесь хватает warning'а.
+            echo "::warning::Тред '${THREAD}' не найден или ещё legacy — исход прогона не доставлен."
+            exit 0
+          fi
+
+          # Исход ПО-ДЖОБНО и именно ЭТОЙ попытки: у перезапущенного прогона
+          # общий эндпойнт отдал бы последнюю, и сообщение о попытке №1
+          # рассказывало бы про попытку №2.
+          JOBS=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}/jobs" --paginate \
+                   --jq '.jobs[] | "- `\(.name)` — **\(.conclusion // "?")**"')
+
+          # Тело — ФАЙЛОМ ВНЕ чекаута почты: доставка делает reset --hard при
+          # отклонённом push и снесла бы файл, лежащий внутри.
+          BODY_TMP="$(mktemp)"
+          {
+            case "$CONCLUSION" in
+              success) printf '✅ **%s по PR #%s: `success`.**\n\n' "$WF_NAME" "$PR" ;;
+              *)       printf '❌ **%s по PR #%s: `%s`.**\n\n' "$WF_NAME" "$PR" "$CONCLUSION" ;;
+            esac
+            printf '%s · голова `%s` · попытка %s · прогон [`%s`](%s)\n\n' \
+              "$PR_TITLE" "$HEAD_SHA" "$RUN_ATTEMPT" "$RUN_ID" "$RUN_URL"
+            printf '%s\n' "$JOBS"
+            # ГОЛОВА МОГЛА СДВИНУТЬСЯ, пока прогон шёл: зелёный исход прошлой
+            # головы читается как «пакет закрыт», хотя проверялось не то, что
+            # сейчас лежит в ветке. Расхождение называется, а не оставляется на
+            # внимательность читающего — тот же класс, что «база merge не main»
+            # в уведомителе о merge.
+            if [ -n "${PR_HEAD:-}" ] && [ "$PR_HEAD" != "$HEAD_SHA" ]; then
+              printf '\n⚠️ Голова PR уже сдвинулась (`%s`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.\n' "$PR_HEAD"
+            fi
+          } > "$BODY_TMP"
+
+          # Роль сверяется С КОНФИГОМ И ЧЕРЕЗ ПАКЕТ (как в merge-notify и
+          # claude-review): опечатка иначе завалила бы `new-message` на двери, и
+          # исход потерялся бы целиком. Лучше сказать без передачи хода, чем не
+          # сказать: ход объявляется руками, несказанное не замечает никто.
+          WAIT_ARGS=""
+          if [ -n "${ROLE:-}" ]; then
+            if (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref HEAD --role "$ROLE" >/dev/null 2>&1); then
+              WAIT_ARGS="--waiting-on ${ROLE}"
+            else
+              echo "::warning::В PR #${PR} указана роль '${ROLE}', которой нет в конфиге протокола — ход не передан."
+              printf '\n⚠️ Ход не передан: в описании PR указана роль `%s`, которой нет в конфиге протокола — объявите ожидание вручную.\n' "$ROLE" >> "$BODY_TMP"
+            fi
+          else
+            printf '\n⚠️ Ход не передан: в описании PR не было строки `role: <id>` — объявите ожидание вручную.\n' >> "$BODY_TMP"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # До пяти попыток: в comms пишут параллельно живые роли. Протокол
+          # append-only — свою запись каждый раз пересобираем ПОВЕРХ свежего
+          # origin/comms, а не переносим старый текст.
+          for attempt in 1 2 3 4 5; do
+            git fetch --no-tags origin comms
+            git reset --hard origin/comms
+            if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
+                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
+                  --thread "$THREAD" --from github --expects none ${WAIT_ARGS} \
+                  --worker gh-action \
+                  --body-file "$BODY_TMP" --write --no-push); then
+              echo "::error::new-message отказал — исход прогона ${RUN_ID} НЕ записан в ${THREAD}."
+              exit 1
+            fi
+            git add agent-comms
+            git commit -m "chore(comms): ${WF_NAME} по PR #${PR} — ${CONCLUSION}, событие в тред ${THREAD}"
+            if git push origin HEAD:comms; then
+              echo "Исход прогона ${RUN_ID} (${CONCLUSION}) доставлен в тред ${THREAD}."
+              exit 0
+            fi
+            echo "Push отклонён (попытка ${attempt}) — в comms писали параллельно, пересобираю."
+          done
+
+          echo "::error::Не удалось доставить исход прогона ${RUN_ID} в ${THREAD} за 5 попыток."
+          exit 1
