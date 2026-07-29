@@ -11,6 +11,7 @@ import {
   parseDigest,
   renderDigest,
   renderInstances,
+  rolesOfInstance,
 } from "./instances.js";
 import type { LeaseView } from "./lease.js";
 
@@ -42,6 +43,36 @@ describe("where a digest lives (R13)", () => {
     expect(isDigestPath("_instances")).toBe(true);
     expect(isDigestPath("016-protocol-roadmap/messages/x.md")).toBe(false);
     expect(isDigestPath("_instancesomething/x.json")).toBe(false);
+  });
+});
+
+describe("the roles a box answers for (R13, thread 025 part two)", () => {
+  const topology = [
+    { id: "box-a", roles: ["curator", "dev-core", "dev-speech"] },
+    { id: "box-b", roles: ["dev-web"] },
+  ];
+
+  it("is the topology of THIS box — not of the circuit, and not of this launch", () => {
+    expect(rolesOfInstance({ instances: topology, instance: "box-a" })).toEqual([
+      "curator",
+      "dev-core",
+      "dev-speech",
+    ]);
+    expect(rolesOfInstance({ instances: topology, instance: "box-b" })).toEqual(["dev-web"]);
+  });
+
+  it("does not depend on which command asks — that is the whole point of the change", () => {
+    // The old contract was "the roles THIS RUN raises", so `run --role dev-core` and the
+    // daemon published different lists into one file and the last writer won. There is no
+    // argument to pass here that could make the two disagree.
+    expect(rolesOfInstance({ instances: topology, instance: "box-a" })).toEqual(
+      rolesOfInstance({ instances: topology, instance: "box-a" }),
+    );
+  });
+
+  it("an undeclared topology, or a box outside it, answers for nobody", () => {
+    expect(rolesOfInstance({ instance: "box-a" })).toEqual([]);
+    expect(rolesOfInstance({ instances: topology, instance: "box-z" })).toEqual([]);
   });
 });
 
