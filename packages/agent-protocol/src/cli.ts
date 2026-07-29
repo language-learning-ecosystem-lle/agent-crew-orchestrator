@@ -3213,6 +3213,21 @@ type RunParams = {
    * Failures are the callee's business — the run does not depend on being announced.
    */
   readonly onLeaseChange?: () => void;
+  /**
+   * WHAT TO STAMP ON EVERY RELAYED LINE OF THE SESSION'S OWN STREAM (D-2, thread
+   * `023-daemon-parallelism`).
+   *
+   * The supervisor relays the session's words to its own stdout, and under a daemon with
+   * N live supervisors those relays interleave in one terminal. An unattributed line is
+   * then worse than no line: "the session exited, code 1" invites the operator to blame
+   * whichever role they were reading about a moment earlier.
+   *
+   * OPTIONAL, and it is not the same decision as the daemon's own lines. `orchestrator
+   * run` raises ONE pair and the operator typed which one — a prefix on every line there
+   * is noise stamped on the only conversation in the room. It is the FILE that has to be
+   * unambiguous unconditionally, and it already is: each run has its own log.
+   */
+  readonly streamPrefix?: string;
 };
 
 /**
@@ -3527,7 +3542,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       if (isAssistantStep(line)) steps += 1;
       for (const rendered of renderStreamLine(line)) {
         writeLog(rendered);
-        out(rendered);
+        out(p.streamPrefix === undefined ? rendered : `${p.streamPrefix} ${rendered}`);
       }
     }
   });
@@ -4605,6 +4620,185 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     out(`agent-protocol: daemon — courier: ${run.summary}`);
   };
 
+  /**
+   * THE REGISTRY OF LIVE SUPERVISORS — the whole of D-2 in one Map (thread
+   * `023-daemon-parallelism`).
+   *
+   * The tick used to `await runOne`, so the daemon was asleep for the entire length of
+   * the session it raised: "dev-core writes 016 while the curator workspace idles on a
+   * waiting 019" is that sleep, not a scheduling choice. Here the raise is started and
+   * NOT awaited, and what is kept instead is the promise — because three things need it
+   * and none of them can be derived from the journal:
+   *
+   *  - THE PLANNER needs the roles that are busy in THIS process (`running` above): the
+   *    lease is written by the supervisor, and a tick landing before that write would
+   *    plan a second session into a live workspace;
+   *  - BOTH STOPS AND `--once` need to WAIT FOR ALL OF THEM, not for the first and not
+   *    for the last. A lease closed by nothing is, from the outside, indistinguishable
+   *    from work (the daemon already says so about orphans at startup) — and with N
+   *    children the cost of getting that wrong is multiplied by N;
+   *  - A HUMAN needs to know what the box is doing, so the count is said out loud.
+   *
+   * Keyed by the pair and not by the role: the role ceiling is the planner's job, and a
+   * registry that could not hold two entries for one role would hide a planner defect
+   * instead of surviving it.
+   */
+  const live = new Map<string, { readonly candidate: Candidate; readonly done: Promise<void> }>();
+  const pairKey = (candidate: Candidate): string => `${candidate.role}×${candidate.thread}`;
+  /** The roles this process is running right now — what the planner is told (D-2). */
+  const runningRoles = (): readonly string[] => [
+    ...new Set([...live.values()].map((s) => s.candidate.role)),
+  ];
+
+  /**
+   * EVERY LINE OF A PARALLEL DAEMON CARRIES ITS PAIR (D-2, curator's point 3). With one
+   * session at a time the reader could attribute a line by position; with N interleaved
+   * they cannot, and an unattributed "the session exited, code 1" is worse than no line
+   * — it invites the operator to blame the wrong role.
+   */
+  const pairOut = (candidate: Candidate, line: string): void =>
+    out(`agent-protocol: daemon [${pairKey(candidate)}] ${line}`);
+  const pairErr = (candidate: Candidate, line: string): void =>
+    err(`agent-protocol: daemon [${pairKey(candidate)}] ${line}`);
+
+  /**
+   * Start one pair and return immediately. Everything that can throw is inside the
+   * promise: an unhandled rejection would take down the daemon, which is the very class
+   * of death the resilience half of D-2 has just removed from the config door.
+   */
+  const launch = (candidate: Candidate, events: readonly OrchestratorEvent[]): void => {
+    const role = registry.get(candidate.role);
+    // The permission profile exists by construction: `launchable` was computed
+    // through `roleLaunchability`, which does not let a role without a profile
+    // through.
+    const profile = role?.launch;
+    if (role === undefined || profile === undefined) return;
+    const key = pairKey(candidate);
+    if (live.has(key)) return;
+    const startedAt = new Date();
+    const sessionLog = sessionLogPath(
+      join(dirname(journalPath), "sessions"),
+      candidate.role,
+      candidate.thread,
+      eventTimestamp(startedAt),
+    );
+    const ceilings = ceilingsFrom(argv, role);
+    // The directive is read PER LAUNCH, like the workspace below it and for the
+    // same reason: it is a property of this thread at this moment, and a daemon
+    // that read it once at start-up would keep raising yesterday's decision for
+    // days (R21 — a change mid-thread takes effect from the NEXT run).
+    const directed = threadDirectiveFor({ mailRoot, thread: candidate.thread, registry });
+    const agent = agentFor(
+      argv,
+      local,
+      role,
+      ...(directed.effective === undefined ? [] : [directed.effective.directive]),
+    );
+    // The workspace and the continuation are settled PER LAUNCH: both are properties of
+    // this (role, thread) pair at this moment, and the daemon lives for days. This half
+    // is deliberately SYNCHRONOUS and happens before the registry entry exists — it is
+    // the door (a dirty or locked tree is a refusal), and a refusal must not leave a
+    // supervisor to wait for.
+    const setup = settleRun({
+      argv,
+      role,
+      thread: candidate.thread,
+      repo,
+      mailRoot,
+      events,
+      ids,
+      write: true,
+    });
+    for (const line of setup.lines) pairOut(candidate, line);
+    if (!setup.ok) {
+      // A REFUSAL OF ONE ROLE, NOT OF THE CIRCUIT — and it is not written to the
+      // journal, for the same reason a hold is not: it lasts until a human looks
+      // at the tree, which is hours, and a record every tick would drown the
+      // journal of the runs. Staying silent is not allowed either, hence a line on
+      // every tick.
+      pairErr(candidate, `skipped — its workspace is not usable: ${setup.reason}`);
+      return;
+    }
+    pairOut(candidate, `ceilings: ${describeCeilings(ceilings)}`);
+    pairOut(candidate, `agent: ${describeAgent(agent)}`);
+    for (const line of directiveLines(directed, agent.ignored)) pairOut(candidate, line);
+    const done = (async (): Promise<void> => {
+      try {
+        const reason = await runOne({
+          journalPath,
+          mailRoot,
+          roleId: candidate.role,
+          thread: candidate.thread,
+          prompt: promptForRun({
+            role,
+            thread: candidate.thread,
+            setup,
+            windDownSeconds: ceilings.windDown.value,
+          }),
+          exec: agent.exec.value,
+          maxTurns: String(ceilings.maxTurns.value),
+          launch: profile,
+          denyRules: zoneDenyRules(role),
+          env: childEnv,
+          sessionLog,
+          sessionStream: sessionStreamPath(sessionLog),
+          sessionIdFile: sessionIdPath(sessionLog),
+          waitFlag: sessionWaitPath(sessionLog),
+          worker: agent.worker.value,
+          params: agent.params,
+          wallClockMs: ceilings.wallClock.value * 1000,
+          pollMs,
+          idleMs: ceilings.idle.value * 1000,
+          waitInputMs: ceilings.waitInput.value * 1000,
+          windDownMs: ceilings.windDown.value * 1000,
+          workdir: setup.workdir,
+          continuation: setup.continuation,
+          // R13: the box says it is busy WHILE it is busy. The whole session happens
+          // inside this await, so without the hook the digest can only ever describe
+          // the gaps between sessions.
+          onLeaseChange: publishState,
+          ...(setup.world === undefined ? {} : { world: setup.world }),
+          ids,
+          now: startedAt,
+          maxConsecutive: gates.maxConsecutive.value,
+          maxAttempts: gates.maxAttempts.value,
+          forceFlag,
+          // THE PASS-THROUGH IS ATTRIBUTED (D-2, point 3): the session's own words go to
+          // the daemon's stdout, and with two sessions talking at once an unlabelled line
+          // belongs to nobody.
+          streamPrefix: `[${key}]`,
+        });
+        pairOut(candidate, `the run finished: ${reason}`);
+      } catch (error) {
+        // A supervisor that threw must not take the daemon with it, and must not vanish
+        // silently either: the lease it may have left is closed by the run's own guards,
+        // and what a human needs from here is the pair and the reason.
+        pairErr(candidate, `the supervisor FAILED: ${(error as Error).message}`);
+      } finally {
+        live.delete(key);
+      }
+    })();
+    live.set(key, { candidate, done });
+  };
+
+  /**
+   * WAIT FOR ALL THE CHILDREN — not the first and not the last (D-2, curator's point 2).
+   *
+   * Called on both stops and on `--once`. The loop re-reads the registry after each
+   * settle because a supervisor may still be finishing its journal write while another
+   * is being awaited, and `Promise.all` over one snapshot would return with the map
+   * non-empty. Nothing is raised while draining: the callers have already left the
+   * launch path.
+   */
+  const drain = async (what: string): Promise<void> => {
+    if (live.size === 0) return;
+    out(
+      `agent-protocol: daemon — ${what}: waiting for ${live.size} live session(s) — ${[...live.values()].map((s) => pairKey(s.candidate)).join(", ")}`,
+    );
+    while (live.size > 0) await Promise.all([...live.values()].map((s) => s.done));
+    out(`agent-protocol: daemon — ${what}: every session is finished, no lease was left open`);
+  };
+
   // A lease nobody was left to close is indistinguishable from work from the
   // outside — a new supervisor must say so out loud instead of quietly carrying on.
   const orphans = unclosedLeases(
@@ -4625,9 +4819,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // it: the tick IS the retry, with no back-off and no counter on top.
     if (mailStale !== null) {
       if (existsSync(stopFlag) || existsSync(forceFlag)) {
-        out(
-          `agent-protocol: the daemon stopped — the ${existsSync(forceFlag) ? "force" : "stop"} flag`,
-        );
+        const which = existsSync(forceFlag) ? "force" : "stop";
+        await drain(`the ${which} flag`);
+        out(`agent-protocol: the daemon stopped — the ${which} flag`);
         return;
       }
       const probe = probeMailCheckout(argv);
@@ -4636,7 +4830,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         err(
           `agent-protocol: daemon — LAUNCHING NOBODY, the mail is not readable: ${probe.detail}; the daemon stays up and re-probes, ${once ? "exiting (--once)" : `next try in ${tickMs / 1000}s`}`,
         );
-        if (once) return;
+        if (once) {
+          await drain("--once");
+          return;
+        }
         await sleep(tickMs);
         continue;
       }
@@ -4699,6 +4896,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const decision = planTick({
       enabled: existsSync(enableFlag),
       held,
+      // D-2: the roles this daemon is running RIGHT NOW. Before the tick stopped
+      // blocking there was nothing to tell it — a running role meant a sleeping daemon.
+      running: runningRoles(),
       // The force flag stops the daemon as well (S4): its current session is put
       // down by the observer, and taking a new one is not allowed — otherwise the
       // next tick would raise a role right under the force.
@@ -4722,9 +4922,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const next = once ? "exiting (--once)" : `waiting ${tickMs / 1000}s for the next tick`;
 
     if (decision.kind === "halt") {
-      out(
-        `agent-protocol: the daemon stopped — the ${existsSync(forceFlag) ? "force" : "stop"} flag`,
-      );
+      // THE STOP WAITS FOR EVERY CHILD (D-2, point 2). A daemon that returned here with
+      // supervisors still live would leave N leases with nobody to close them — the state
+      // it warns about at startup, produced by its own orderly shutdown. The force flag
+      // is not a contradiction: the observers read it and put their sessions down, so
+      // draining under force is short, and it is what makes the releases get written.
+      const which = existsSync(forceFlag) ? "force" : "stop";
+      await drain(`the ${which} flag`);
+      out(`agent-protocol: the daemon stopped — the ${which} flag`);
       return;
     }
     if (decision.kind === "held") {
@@ -4759,118 +4964,15 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       }
     }
 
-    // THE PLAN IS RAISED HEAD FIRST, AND ONLY THE HEAD — for now (D-1). The supervision
-    // is still blocking: `runOne` returns when the session ends, hours later. Raising the
-    // tail sequentially after it would be spending a plan computed before the mail, the
-    // holds and the stop flag were last read — staler than what the tick loop already
-    // does. So the tail waits for the next tick, and D-2 (N supervisors in one daemon) is
-    // what turns this list into simultaneous sessions. What D-1 buys today is that WHICH
-    // pair each free role gets is decided in one pass, against one reading of the journal.
+    // THE WHOLE PLAN IS RAISED, IN THE TICK THAT COMPUTED IT (D-2). Until now only the
+    // head went up and the tail waited for the next tick, because `runOne` returned when
+    // the session ended — hours later — and spending the tail after it would have been
+    // acting on a plan computed before the mail, the holds and the stop flag were last
+    // read. That argument was about a BLOCKING tick and it dies with it: the supervisors
+    // are non-blocking now, so the tail is raised beside the head against the same
+    // reading, and nothing is deferred to a tick that may be half an hour away.
     const plan: readonly Candidate[] = decision.kind === "plan" ? decision.launches : [];
-    const deferred = plan.slice(1);
-    if (deferred.length > 0) {
-      err(
-        `agent-protocol: daemon — ${deferred.length} planned launch(es) deferred to the next tick: ${deferred.map((c) => `${c.role}×${c.thread}`).join(", ")} — the supervision is still blocking (D-2 makes them simultaneous)`,
-      );
-    }
-    for (const candidate of plan.slice(0, 1)) {
-      const role = registry.get(candidate.role);
-      // The permission profile exists by construction: `launchable` was computed
-      // through `roleLaunchability`, which does not let a role without a profile
-      // through.
-      if (role?.launch !== undefined) {
-        const startedAt = new Date();
-        const sessionLog = sessionLogPath(
-          join(dirname(journalPath), "sessions"),
-          candidate.role,
-          candidate.thread,
-          eventTimestamp(startedAt),
-        );
-        const ceilings = ceilingsFrom(argv, role);
-        // The directive is read PER LAUNCH, like the workspace below it and for the
-        // same reason: it is a property of this thread at this moment, and a daemon
-        // that read it once at start-up would keep raising yesterday's decision for
-        // days (R21 — a change mid-thread takes effect from the NEXT run).
-        const directed = threadDirectiveFor({ mailRoot, thread: candidate.thread, registry });
-        const agent = agentFor(
-          argv,
-          local,
-          role,
-          ...(directed.effective === undefined ? [] : [directed.effective.directive]),
-        );
-        // The workspace and the continuation are settled PER LAUNCH, inside the loop:
-        // both are properties of this (role, thread) pair at this moment, and the
-        // daemon lives for days.
-        const setup = settleRun({
-          argv,
-          role,
-          thread: candidate.thread,
-          repo,
-          mailRoot,
-          events,
-          ids,
-          write: true,
-        });
-        for (const line of setup.lines) out(`agent-protocol: daemon — ${line}`);
-        if (!setup.ok) {
-          // A REFUSAL OF ONE ROLE, NOT OF THE CIRCUIT — and it is not written to the
-          // journal, for the same reason a hold is not: it lasts until a human looks
-          // at the tree, which is hours, and a record every tick would drown the
-          // journal of the runs. Staying silent is not allowed either, hence a line on
-          // every tick.
-          err(
-            `agent-protocol: skipping ${candidate.role}/${candidate.thread} — its workspace is not usable: ${setup.reason}`,
-          );
-        } else {
-          out(`agent-protocol: daemon — ${candidate.role} ceilings: ${describeCeilings(ceilings)}`);
-          out(`agent-protocol: daemon — ${candidate.role} agent: ${describeAgent(agent)}`);
-          for (const line of directiveLines(directed, agent.ignored)) {
-            out(`agent-protocol: daemon — ${candidate.role} ${line}`);
-          }
-          const reason = await runOne({
-            journalPath,
-            mailRoot,
-            roleId: candidate.role,
-            thread: candidate.thread,
-            prompt: promptForRun({
-              role,
-              thread: candidate.thread,
-              setup,
-              windDownSeconds: ceilings.windDown.value,
-            }),
-            exec: agent.exec.value,
-            maxTurns: String(ceilings.maxTurns.value),
-            launch: role.launch,
-            denyRules: zoneDenyRules(role),
-            env: childEnv,
-            sessionLog,
-            sessionStream: sessionStreamPath(sessionLog),
-            sessionIdFile: sessionIdPath(sessionLog),
-            waitFlag: sessionWaitPath(sessionLog),
-            worker: agent.worker.value,
-            params: agent.params,
-            wallClockMs: ceilings.wallClock.value * 1000,
-            pollMs,
-            idleMs: ceilings.idle.value * 1000,
-            waitInputMs: ceilings.waitInput.value * 1000,
-            windDownMs: ceilings.windDown.value * 1000,
-            workdir: setup.workdir,
-            continuation: setup.continuation,
-            // R13: the box says it is busy WHILE it is busy. The whole session happens
-            // inside this await, so without the hook the digest can only ever describe
-            // the gaps between sessions.
-            onLeaseChange: publishState,
-            ...(setup.world === undefined ? {} : { world: setup.world }),
-            ids,
-            now: startedAt,
-            maxConsecutive: gates.maxConsecutive.value,
-            maxAttempts: gates.maxAttempts.value,
-            forceFlag,
-          });
-          out(`agent-protocol: daemon — ${candidate.role}/${candidate.thread}: ${reason}`);
-        }
-      }
-    }
+    for (const candidate of plan) launch(candidate, events);
     // "Nothing was launched" IS AN OUTCOME AND IS SPOKEN OUT LOUD. Before this, both
     // of these branches were a bare comment: the daemon printed its banner and either
     // exited (`--once`) or went quiet for hours, and "no mail" looked exactly like
@@ -4893,8 +4995,19 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // the mail branch into a heartbeat log.
     publishState();
 
-    if (once) return;
+    if (once) {
+      // `--once` IS ONE TICK, AND A TICK NOW OUTLIVES ITSELF. It is the shape every check
+      // and every cron entry uses, so "one tick" has to mean the work of one tick — not
+      // "start N sessions and exit", which would orphan every one of them the moment the
+      // process left.
+      await drain("--once");
+      return;
+    }
     await sleep(tickMs);
+    // The state is published once more after the sleep for the same reason the tick
+    // publishes it at all: with non-blocking supervision a session both starts and
+    // finishes between two ticks, and the digest is what the other boxes read.
+    publishState();
   }
 };
 

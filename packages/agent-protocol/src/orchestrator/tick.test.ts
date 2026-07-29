@@ -359,6 +359,69 @@ describe("planTick — one launch per FREE ROLE, not one per box (D-1, thread 02
   });
 });
 
+describe("planTick — a role this process is ALREADY running (D-2, thread 023)", () => {
+  // The registry of live supervisors is what the non-blocking tick added, and this is the
+  // only place its knowledge enters a decision. It cannot be derived from the journal in
+  // time: the lease is written by the supervisor, and a tick landing between the plan and
+  // that write would put a second session into a live workspace.
+  it("a running role is not planned again, and its pair is named, not dropped", () => {
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "023" },
+      { role: "curator", thread: "019" },
+    ];
+    const decision = planTick({
+      ...base,
+      candidates,
+      running: ["dev-core"],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["curator×019"]);
+    expect(decision.skipped).toEqual([
+      { role: "dev-core", thread: "023", reason: "role-busy", attempt: 0 },
+    ]);
+  });
+
+  it("it holds ACROSS threads — a running role is busy for every thread waiting on it", () => {
+    // The pair the supervisor is running need not be the pair that comes up next: under a
+    // scalar `waiting-on` (024) the same role is routinely awaited by several threads, and
+    // the workspace it would need is the one already occupied.
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "016" },
+      { role: "dev-core", thread: "035" },
+    ];
+    const decision = planTick({
+      ...base,
+      candidates,
+      running: ["dev-core"],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind).toBe("idle");
+    expect(decision.skipped.map((s) => s.reason)).toEqual(["role-busy", "role-busy"]);
+  });
+
+  it("running roles cost nobody else their launch — the point of the exercise", () => {
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "023" },
+      { role: "curator", thread: "019" },
+      { role: "dev-speech", thread: "021" },
+    ];
+    expect(
+      raised(
+        planTick({ ...base, candidates, running: ["dev-core"], enabled: true, stopped: false }),
+      ),
+    ).toEqual(["curator×019", "dev-speech×021"]);
+  });
+
+  it("an empty registry changes nothing — the pre-D-2 plan, verbatim", () => {
+    const candidates: Candidate[] = [{ role: "dev-core", thread: "023" }];
+    expect(
+      raised(planTick({ ...base, candidates, running: [], enabled: true, stopped: false })),
+    ).toEqual(["dev-core×023"]);
+  });
+});
+
 describe("planTick — the global budget CUTS THE TAIL of the plan (D-1)", () => {
   const threeRoles: Candidate[] = [
     { role: "dev-core", thread: "016" },
@@ -496,7 +559,12 @@ describe("describeSkip — the line an operator reads", () => {
 
   it("role-busy says the pair is not lost — it is first in line next tick", () => {
     const line = describeSkip({ ...skip, reason: "role-busy" }, { value: 3, source: "default" });
-    expect(line).toContain("already being raised");
+    expect(line).toContain("already has a session");
+    // BOTH SOURCES OF BUSY-NESS ARE NAMED (D-2): an operator reading this line has to be
+    // able to tell "the plan of this tick took the role" from "a supervisor raised half
+    // an hour ago is still holding it" — the first resolves itself in seconds, the second
+    // lasts as long as a session.
+    expect(line).toContain("still running from an earlier one");
     expect(line).toContain("next tick");
   });
 
