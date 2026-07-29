@@ -1616,8 +1616,43 @@ const awaitInput = async (argv: readonly string[]): Promise<void> => {
  * subsumes what used to be `NOTIFY_DRY_RUN=1`: the plan prints the message it would
  * send and leaves the state alone.
  */
-const notify = async (argv: readonly string[]): Promise<void> => {
-  const write = argv.includes("--write");
+/**
+ * WHAT ONE COURIER RUN CAME TO — the return value that made the dialling automatic
+ * (thread 024, john's decision of 2026-07-28: the notifier is called by the daemon
+ * tick).
+ *
+ * Until then `notify` was a command and nothing else: it printed as it went and it
+ * ended in `fail()`, i.e. in `process.exit`. Neither is usable from inside the loop
+ * — a courier that cannot resolve its transport would have taken the whole watch
+ * down with it, and per-tick commentary about a mailbox where nothing changed is the
+ * "ping every five minutes" the notifier itself refuses to send. So the run says
+ * nothing itself and returns BOTH: the one line that is always safe to print, and
+ * everything it had to say on the way, for a caller that has a reason to print it.
+ *
+ * `kind` is what the caller branches on: `planned` — a dry run, nothing touched;
+ * `quiet` — the state moved but there was no new event, so nobody was told; `sent` —
+ * something was announced; `failed` — a SETUP defect (no config section, an
+ * unreadable secrets file, a transport module that does not load) caught before the
+ * state file was touched, so the trigger is not consumed by a run that could never
+ * have delivered anything.
+ */
+type NotifyRun = {
+  readonly kind: "planned" | "quiet" | "sent" | "failed";
+  readonly summary: string;
+  readonly lines: readonly string[];
+};
+
+const runNotify = async (input: {
+  readonly argv: readonly string[];
+  readonly write: boolean;
+}): Promise<NotifyRun> => {
+  const argv = input.argv;
+  const write = input.write;
+  const said: string[] = [];
+  const say = (line: string): void => {
+    said.push(line);
+  };
+  const failed = (summary: string): NotifyRun => ({ kind: "failed", summary, lines: said });
   const loaded = configFrom(argv, undefined);
   const registry = loaded.registry;
   const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
@@ -1626,9 +1661,8 @@ const notify = async (argv: readonly string[]): Promise<void> => {
   const stateFlag = flag(argv, "--state");
 
   if (section === undefined && (rootFlag === undefined || stateFlag === undefined)) {
-    return fail(
+    return failed(
       `the config at ${loaded.ref} has no 'orchestrator' section — either add it or pass both --root <mail> and --state <file>`,
-      2,
     );
   }
   const paths =
@@ -1647,14 +1681,14 @@ const notify = async (argv: readonly string[]): Promise<void> => {
     try {
       const state = mailCheckoutState(join(repo, section.mailCheckout), loaded.config.mail.branch);
       const verdict = mailCheckoutVerdict({ ...state, expectedBranch: loaded.config.mail.branch });
-      out(`agent-protocol: mail — ${verdict.detail}`);
+      say(`mail — ${verdict.detail}`);
     } catch (error) {
-      out(`agent-protocol: mail — the checkout was not refreshed: ${(error as Error).message}`);
+      say(`mail — the checkout was not refreshed: ${(error as Error).message}`);
     }
   }
 
   const { threads, failures } = loadThreads(root, registry.ids());
-  for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
+  for (const line of renderThreadFailures(failures)) say(line);
 
   const targets = registry.notificationTargets();
   const parsed = threads.map((entry) => entry.thread);
@@ -1696,9 +1730,12 @@ const notify = async (argv: readonly string[]): Promise<void> => {
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new`;
   if (!write) {
-    out(`agent-protocol: ${describeWaits}; --write would update '${statePath}' and send:`);
-    out(message === "" ? "(nothing — nobody is waiting)" : message);
-    return;
+    say(message === "" ? "(nothing — nobody is waiting)" : message);
+    return {
+      kind: "planned",
+      summary: `${describeWaits}; --write would update '${statePath}' and send the message above`,
+      lines: said,
+    };
   }
 
   // The transport is resolved even when there is nothing to send: a broken module or
@@ -1713,40 +1750,51 @@ const notify = async (argv: readonly string[]): Promise<void> => {
     try {
       secrets = loadSecrets({ path: envFile });
     } catch (error) {
-      return fail((error as Error).message, 2);
+      return failed((error as Error).message);
     }
-    out(`agent-protocol: secrets — ${describeSecrets(secrets)}`);
+    say(`secrets — ${describeSecrets(secrets)}`);
     try {
       transport = await loadTransport(transportSection.module, {
         options: transportSection.options,
         secrets: secrets.values,
       });
     } catch (error) {
-      return fail((error as Error).message, 2);
+      return failed((error as Error).message);
     }
   }
 
   writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
 
   if (plan.fresh.length === 0 && plan.freshStalled.length === 0) {
-    out(`agent-protocol: ${describeWaits} — nothing to announce`);
-    return;
+    return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
   }
   const announced = [
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
   ];
-  out(`agent-protocol: ${describeWaits} — ${announced.join(", ")}`);
+  const summary = `${describeWaits} — ${announced.join(", ")}`;
   if (transport === undefined) {
     // A legitimate configuration: no transport means the message is printed and the
     // state still moves. That is the honest form of "notifications are optional" —
     // silence with a state that pretends something was delivered would not be.
-    out("agent-protocol: no transport configured (notifications.transport) — the message follows:");
-    out(message);
-    return;
+    say("no transport configured (notifications.transport) — the message follows:");
+    say(message);
+    return { kind: "sent", summary, lines: said };
   }
   const outcome = await transport.send(message);
-  out(`agent-protocol: ${outcome.detail}`);
+  say(outcome.detail);
+  return { kind: "sent", summary, lines: said };
+};
+
+/**
+ * The command around the run — it prints everything the run had to say, in order,
+ * and turns a setup defect back into the exit code the door has always had.
+ */
+const notify = async (argv: readonly string[]): Promise<void> => {
+  const run = await runNotify({ argv, write: argv.includes("--write") });
+  for (const line of run.lines) out(`agent-protocol: ${line}`);
+  if (run.kind === "failed") return fail(run.summary, 2);
+  out(`agent-protocol: ${run.summary}`);
 };
 
 /**
@@ -4473,6 +4521,68 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     if (publishDigest({ argv, mailRoot, branch: mailBranch, digest: state })) published = state;
   };
 
+  /**
+   * THE COURIER IS DIALLED BY THE CIRCUIT, NOT BY A HAND (R4 + thread 024; john's
+   * decision, message `2026-07-28T19-37-00Z-curator`, taking curator's recommendation
+   * `2026-07-28T18-58-18Z-curator` item 2 unchanged). A message is named here by its
+   * STABLE FILE NAME, not by an `msg-NNN` ordinal: the ordinal is a position in one
+   * rendering — `--tail` renumbers from `msg-001` — so a long-lived text that cites
+   * one points somewhere else the moment the reader changes a flag.
+   *
+   * `notify` has existed since R4 and has never once been called by anything: the
+   * package could compose the message and deliver it, and the only way to make it
+   * happen was for somebody to type the command. A courier that rings only when it
+   * is dialled is not a courier — and it was measured, not assumed: the second class
+   * of event (a turn that has not moved) shipped the day before and still told
+   * nobody, because nothing was calling it.
+   *
+   * THE TICK, NOT THE END OF A RUN, and that is the load-bearing half of the
+   * decision. The most likely producer of a stalled turn is a session that died on
+   * its window — precisely the one that would never reach an end-of-run hook. The
+   * tick is where the circuit already lives and where the state is already written.
+   *
+   * AT THE TOP OF THE TICK, before the mail is read: one tick blocks for the whole
+   * length of the session it raises, so a courier at the bottom would fire only
+   * between sessions — hours apart, which is the very interval it is meant to
+   * measure. It also means the daemon now fetches the mail once a tick (the run does
+   * the same fetch-and-fast-forward `notify` has always done), which is what
+   * `mailCheckoutState` says the daemon is for; it is named here rather than left to
+   * be discovered.
+   *
+   * A FAILURE HERE NEVER STOPS THE DAEMON — the rule the digest already lives by, for
+   * the same reason: notifications are a superstructure, and a watch that died
+   * because it could not reach Telegram is not there when Telegram comes back. So
+   * every outcome is said out loud on the stream and the loop goes on.
+   *
+   * THE COMMENTARY IS KEPT FOR WHEN IT MATTERS. The routine tick is one line ("N
+   * waits … nothing to announce"); the mail verdict, the secrets and the message
+   * itself are printed only when something was actually announced or something
+   * failed. Repeating all of it every thirty seconds is the same "trains its reader
+   * to ignore it" the notifier refuses to do to a human.
+   */
+  const dialCourier = async (): Promise<void> => {
+    let run: NotifyRun;
+    try {
+      run = await runNotify({ argv, write: true });
+    } catch (error) {
+      err(
+        `agent-protocol: daemon — the courier THREW and told nobody: ${(error as Error).message}; the box keeps working, the turn stays where it is`,
+      );
+      return;
+    }
+    if (run.kind === "failed") {
+      for (const line of run.lines) err(`agent-protocol: daemon — courier: ${line}`);
+      err(
+        `agent-protocol: daemon — the courier is NOT delivering: ${run.summary}; the box keeps working, nobody is being told that the turn has passed`,
+      );
+      return;
+    }
+    if (run.kind === "sent") {
+      for (const line of run.lines) out(`agent-protocol: daemon — courier: ${line}`);
+    }
+    out(`agent-protocol: daemon — courier: ${run.summary}`);
+  };
+
   // A lease nobody was left to close is indistinguishable from work from the
   // outside — a new supervisor must say so out loud instead of quietly carrying on.
   const orphans = unclosedLeases(
@@ -4511,6 +4621,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       mailStale = null;
       out(`agent-protocol: daemon — the mail is readable again (${probe.detail}), launches resume`);
     }
+
+    // WHO IS TOLD THAT THE TURN HAS PASSED — before the queue is read, and by the
+    // circuit itself (see `dialCourier`). It reads the same mail this tick is about
+    // to work from, and it never decides anything the tick does.
+    await dialCourier();
 
     // The candidates are (role, thread) pairs where a launchable role is being
     // waited on in the thread.

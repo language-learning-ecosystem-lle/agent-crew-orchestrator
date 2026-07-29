@@ -259,6 +259,20 @@ apart along lines the package already had:
   moved the fork. A stall is announced once and keyed by the handoff stamp, so a fork
   that moves and stalls again rings again.
 
+- **The circuit dials it — on the daemon's tick** (thread 024). Until then nothing
+  called `notify` at all: it could compose the message and deliver it, and the only
+  way to make that happen was for somebody to type the command, so the bell rang
+  exactly as often as a human remembered it. The daemon now calls it at the TOP of
+  every tick — not at the end of a run, because the likeliest producer of a stalled
+  turn is a session that died on its window and would never reach an end-of-run hook;
+  and at the top rather than the bottom, because a tick blocks for the whole length of
+  the session it raises. A courier failure is a loud line and never the end of the
+  watch: notifications are a superstructure, and a watch that died of a broken
+  transport plugin is not there when the plugin is fixed. Typing the command by hand
+  still works — it is now the way to ring out of turn, not the only way to ring. Out
+  of turn is not the same as at once: the age filter has no manual branch, so a hand
+  dials only the forks that are already over the threshold, and gains one tick at most.
+
 ```
 agent-protocol notify --ref origin/main --write
 ```
