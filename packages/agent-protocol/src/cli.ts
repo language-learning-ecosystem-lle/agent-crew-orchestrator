@@ -198,7 +198,7 @@ import {
   scopeFlagIssues,
 } from "./orchestrator/scope.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
-import { describeSkip, planTick } from "./orchestrator/tick.js";
+import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
   renderStreamLine,
@@ -4599,19 +4599,45 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       err(
         `agent-protocol: daemon — nothing launchable: taken by manual sessions of ${decision.roles.join(", ")}, ${next}`,
       );
-    } else if (decision.kind === "refused") {
-      appendEvent(journalPath, {
-        kind: "launch-refused",
-        ts: eventTimestamp(new Date()),
-        role: decision.role,
-        thread: decision.thread,
-        reason: decision.reason,
-      });
+    } else if (decision.kind === "plan") {
+      // WHAT THIS TICK DECIDED, BEFORE ANY OF IT IS ACTED ON: the plan and the cut are
+      // said first, because the first launch below returns hours later and a line
+      // printed after it would describe a decision the operator watched happen blind.
+      for (const line of describePlan(decision)) err(`agent-protocol: ${line}`);
+      if (decision.cut !== undefined) {
+        // ONE record for the whole cut (D-1). The ceiling is global and it was read once,
+        // so it produces one `launch-refused` — against the head of the tail — while the
+        // line above names every pair it cut. N records of one ceiling would make the
+        // journal of runs unreadable exactly when it is being used to explain a stall.
+        appendEvent(journalPath, {
+          kind: "launch-refused",
+          ts: eventTimestamp(new Date()),
+          role: decision.cut.recorded.role,
+          thread: decision.cut.recorded.thread,
+          reason: decision.cut.reason,
+        });
+        err(
+          `agent-protocol: the launch of ${decision.cut.recorded.role}/${decision.cut.recorded.thread} was refused (${decision.cut.reason})`,
+        );
+      }
+    }
+
+    // THE PLAN IS RAISED HEAD FIRST, AND ONLY THE HEAD — for now (D-1). The supervision
+    // is still blocking: `runOne` returns when the session ends, hours later. Raising the
+    // tail sequentially after it would be spending a plan computed before the mail, the
+    // holds and the stop flag were last read — staler than what the tick loop already
+    // does. So the tail waits for the next tick, and D-2 (N supervisors in one daemon) is
+    // what turns this list into simultaneous sessions. What D-1 buys today is that WHICH
+    // pair each free role gets is decided in one pass, against one reading of the journal.
+    const plan: readonly Candidate[] = decision.kind === "plan" ? decision.launches : [];
+    const deferred = plan.slice(1);
+    if (deferred.length > 0) {
       err(
-        `agent-protocol: the launch of ${decision.role}/${decision.thread} was refused (${decision.reason})`,
+        `agent-protocol: daemon — ${deferred.length} planned launch(es) deferred to the next tick: ${deferred.map((c) => `${c.role}×${c.thread}`).join(", ")} — the supervision is still blocking (D-2 makes them simultaneous)`,
       );
-    } else if (decision.kind === "launch") {
-      const role = registry.get(decision.role);
+    }
+    for (const candidate of plan.slice(0, 1)) {
+      const role = registry.get(candidate.role);
       // The permission profile exists by construction: `launchable` was computed
       // through `roleLaunchability`, which does not let a role without a profile
       // through.
@@ -4619,8 +4645,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         const startedAt = new Date();
         const sessionLog = sessionLogPath(
           join(dirname(journalPath), "sessions"),
-          decision.role,
-          decision.thread,
+          candidate.role,
+          candidate.thread,
           eventTimestamp(startedAt),
         );
         const ceilings = ceilingsFrom(argv, role);
@@ -4628,7 +4654,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         // same reason: it is a property of this thread at this moment, and a daemon
         // that read it once at start-up would keep raising yesterday's decision for
         // days (R21 — a change mid-thread takes effect from the NEXT run).
-        const directed = threadDirectiveFor({ mailRoot, thread: decision.thread, registry });
+        const directed = threadDirectiveFor({ mailRoot, thread: candidate.thread, registry });
         const agent = agentFor(
           argv,
           local,
@@ -4641,7 +4667,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         const setup = settleRun({
           argv,
           role,
-          thread: decision.thread,
+          thread: candidate.thread,
           repo,
           mailRoot,
           events,
@@ -4656,22 +4682,22 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           // journal of the runs. Staying silent is not allowed either, hence a line on
           // every tick.
           err(
-            `agent-protocol: skipping ${decision.role}/${decision.thread} — its workspace is not usable: ${setup.reason}`,
+            `agent-protocol: skipping ${candidate.role}/${candidate.thread} — its workspace is not usable: ${setup.reason}`,
           );
         } else {
-          out(`agent-protocol: daemon — ${decision.role} ceilings: ${describeCeilings(ceilings)}`);
-          out(`agent-protocol: daemon — ${decision.role} agent: ${describeAgent(agent)}`);
+          out(`agent-protocol: daemon — ${candidate.role} ceilings: ${describeCeilings(ceilings)}`);
+          out(`agent-protocol: daemon — ${candidate.role} agent: ${describeAgent(agent)}`);
           for (const line of directiveLines(directed, agent.ignored)) {
-            out(`agent-protocol: daemon — ${decision.role} ${line}`);
+            out(`agent-protocol: daemon — ${candidate.role} ${line}`);
           }
           const reason = await runOne({
             journalPath,
             mailRoot,
-            roleId: decision.role,
-            thread: decision.thread,
+            roleId: candidate.role,
+            thread: candidate.thread,
             prompt: promptForRun({
               role,
-              thread: decision.thread,
+              thread: candidate.thread,
               setup,
               windDownSeconds: ceilings.windDown.value,
             }),
@@ -4704,7 +4730,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             maxAttempts: gates.maxAttempts.value,
             forceFlag,
           });
-          out(`agent-protocol: daemon — ${decision.role}/${decision.thread}: ${reason}`);
+          out(`agent-protocol: daemon — ${candidate.role}/${candidate.thread}: ${reason}`);
         }
       }
     }

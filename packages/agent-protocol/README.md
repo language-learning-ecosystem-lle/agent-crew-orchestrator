@@ -1026,8 +1026,24 @@ construction:
   **Freshness is NOT re-checked inside a healthy tick** — the guarantee stands where
   S8 put it, at the start; only a probe that FAILED is re-run.
 
-One tick = at most one launch: the daemon waits for the terminal state of the pair
-it raised and ticks again on a fresh journal, with no races. **The machine-reboot
+One tick = **a plan: at most one launch per free role** (D-1, thread
+`023-daemon-parallelism`). The natural ceiling is the WORKSPACE — one per role (R17) —
+so the degree of parallelism of a box is the number of its free roles, and `planTick`
+decides in one pass, against one reading of the journal, which pair each of them gets.
+A role already in the plan on an older thread comes back as the skip `role-busy`: not
+lost, first in line for that role next tick. **The global budget is read ONCE per tick
+and cuts the TAIL of the plan** — it counts launches, so a plan of N spends N of it —
+with ONE `launch-refused` recorded against the head of what was cut, and one line
+naming every pair in it. A record per cut pair would say the same sentence about one
+ceiling N times.
+
+**The plan is still RAISED head-first, one at a time** — the supervision is blocking
+until D-2 (N supervisors in one daemon). The tail is not spent sequentially inside the
+tick on purpose: `runOne` returns hours later, and acting on the rest of the plan then
+would be raising decisions taken before the mail, the holds and the stop flag were last
+read. So the daemon waits for the terminal state of the pair it raised and ticks again
+on a fresh journal, with no races, and says out loud which planned launches it deferred.
+**The machine-reboot
 role** (whether the daemon comes up by itself through systemd or by hand) is john's
 ownership fork and lies outside the daemon code: the daemon is the same, only the
 way it is STARTED differs. For now the start is manual; the daemon travels into
@@ -1650,8 +1666,10 @@ launch: model=opus, effort=high
 
 ### S16 — which thread is raised first: the queue of the tick (R5)
 
-A tick raises **at most one** pair, so whichever candidate comes first IS the
-scheduling policy of the circuit. Until R5 nobody had chosen it: candidates came out
+A tick raises **at most one pair per role** (D-1), so the order of the candidates IS
+the scheduling policy of the circuit — it decides which thread each free role gets, and
+which pairs the global budget cuts off the end of the plan. Until R5 nobody had chosen
+it: candidates came out
 of `threadsWaitingOn`, that is out of the alphabet of the thread directories — an
 answer that is always right with one live thread and right by accident with two.
 
