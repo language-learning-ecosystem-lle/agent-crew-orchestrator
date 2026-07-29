@@ -322,6 +322,19 @@ describe("running a role as a process — the outcome is always recorded", () =>
     // test, and they were the flake: twice on different commits the runner needed
     // longer than that to get the release onto disk, the wait ran out, and the failure
     // read as "the outcome was never recorded" about a run that recorded it.
+    //
+    // OPEN, UNDER OBSERVATION (red main of 2026-07-28, CI 30374788681, thread 032):
+    // the same test failed once here, and NOT as impatience — the raised ceiling above
+    // ran out with the journal still ending at `launch`, and the supervisor's own words
+    // ("the observer received SIGTERM — the lease was closed as supervisor-gone") were
+    // absent from its captured output. So the guard did not merely run late: it did not
+    // finish. Two candidates, neither confirmed: the signal did not reach the node under
+    // the `tsx` wrapper (the mode of 2026-07-25, which the process group above was meant
+    // to close for good), or `recordSupervisorGone` blocked before its write — it puts
+    // the group down and releases the workspace lock (a `git` call) BEFORE appending the
+    // event, so a git that stalls on a loaded runner eats the whole wait. It has since
+    // passed every run; the next occurrence is diagnosed rather than restarted, and this
+    // comment — not a retry or a skip — is where the observation lives.
     const lastKind = (): string | undefined =>
       existsSync(journalPath(repo)) ? journal(repo).at(-1)?.kind : undefined;
     await waitFor(() => lastKind() === "lease-released");
