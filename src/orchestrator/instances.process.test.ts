@@ -120,6 +120,12 @@ const contour = (
     readonly foreign?: string;
     /** Make `git commit` in the mail checkout fail — the runner's failure, deterministically. */
     readonly commitFails?: boolean;
+    /**
+     * A topology in place of the default two-boxes-one-role-each. Used where the point is
+     * a box that answers for MORE THAN ONE role — the case in which the operator's flags
+     * used to shrink the published `roles` (thread 025, second half).
+     */
+    readonly topology?: readonly { readonly id: string; readonly roles: readonly string[] }[];
   } = {},
 ): Contour => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-digest-"));
@@ -128,7 +134,14 @@ const contour = (
 
   const repo = join(base, "work");
   execFileSync("git", ["clone", "-q", origin, repo]);
-  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  writeFileSync(
+    join(repo, "agent-protocol.json"),
+    `${JSON.stringify(
+      options.topology === undefined ? CONFIG : { ...CONFIG, instances: options.topology },
+      null,
+      2,
+    )}\n`,
+  );
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "config");
@@ -214,6 +227,27 @@ const cli = (contour: Contour, args: readonly string[]): { code: number; out: st
 
 const daemon = (contour: Contour): { code: number; out: string } =>
   cli(contour, ["orchestrator", "daemon", "--once", "--exec", stub(contour.repo), "--poll", "1"]);
+
+/** THE MANUAL LAUNCH — the other holder of a lease on this box (thread 025, second half). */
+const run = (
+  contour: Contour,
+  extra: readonly string[] = ["--write"],
+): { code: number; out: string } =>
+  cli(contour, [
+    "orchestrator",
+    "run",
+    "--role",
+    "dev-core",
+    "--thread",
+    "016-protocol-roadmap",
+    "--exec",
+    stub(contour.repo),
+    "--wall-clock",
+    "20",
+    "--poll",
+    "1",
+    ...extra,
+  ]);
 
 const digestOnDisk = (contour: Contour, id: string): string | undefined => {
   const path = join(contour.mail, "agent-comms", "_instances", `${id}.json`);
@@ -321,6 +355,60 @@ describe("a box publishes its own state into the mail branch (R13)", () => {
 
     expect(digestOnDisk(bench, "box-b")).toBe(foreignDigest("2026-07-25T11:00:00.000Z"));
     expect(digestOnDisk(bench, "box-a")).toBeDefined();
+  });
+});
+
+describe("a MANUAL run publishes the state of its box too (R13, thread 025 part two)", () => {
+  it("the lease of a hand-typed run reaches the branch — not only the daemon's", () => {
+    // The second half of the defect: the only publisher lived inside the daemon, so a box
+    // busy with `orchestrator run` published a fresh `writtenAt` and `leases: []`. The
+    // reader who needs the file is the one who is NOT at this terminal, and to them that
+    // is indistinguishable from an idle box.
+    const bench = contour({ instance: "box-a" });
+
+    const result = run(bench);
+    expect(result.out).toContain("run — publishing state as instance 'box-a'");
+
+    const everSeen = digestHistory(bench, "box-a")
+      .map((raw) => parseDigest(raw))
+      .flatMap((read) =>
+        read.ok
+          ? read.digest.leases.map((lease) => `${lease.role}/${lease.thread} ${lease.state}`)
+          : [],
+      );
+    expect(everSeen).toContain("dev-core/016-protocol-roadmap running");
+
+    // And the last word is an idle box: the session is over by the time the run returns.
+    const last = parseDigest(digestOnDisk(bench, "box-a") ?? "");
+    expect(last.ok).toBe(true);
+    if (last.ok) expect(last.digest.leases).toEqual([]);
+  });
+
+  it("the operator's flags do not shrink the roles of the box — `roles` is the topology", () => {
+    // THE CONTRACT CHANGE, PINNED. `roles` used to mean "what THIS RUN raises", so a
+    // single-role launch on a two-role box overwrote the daemon's list and the box read as
+    // having shrunk. It now means "the roles this box answers for", identical for both
+    // writers; what this launch raises is carried by `leases`, as a fact.
+    const bench = contour({
+      instance: "box-a",
+      topology: [{ id: "box-a", roles: ["dev-core", "dev-speech"] }],
+    });
+
+    run(bench, ["--write", "--roles", "dev-core"]);
+
+    const published = digestHistory(bench, "box-a").map((raw) => parseDigest(raw));
+    expect(published.length).toBeGreaterThan(0);
+    for (const read of published) {
+      expect(read.ok).toBe(true);
+      if (read.ok) expect(read.digest.roles).toEqual(["dev-core", "dev-speech"]);
+    }
+  });
+
+  it("a dry run publishes nothing — it plans, it holds no lease", () => {
+    const bench = contour({ instance: "box-a" });
+    const result = run(bench, []);
+    expect(result.code).toBe(0);
+    expect(digestOnDisk(bench, "box-a")).toBeUndefined();
   });
 });
 

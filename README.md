@@ -2015,9 +2015,41 @@ same path, so conflicts are gone by construction — the same argument that made
 file. The `_` prefix keeps the directory outside `^\d{3}-`, so the thread walker never sees it.
 
 **The digest is a STATE, not history**: the instance id, when it was written, the roles this
-run raises (after the topology and the operator's flags) and the LIVE leases — role, thread,
+box ANSWERS FOR (the topology of this instance, verbatim) and the LIVE leases — role, thread,
 state, deadline. A released pair is history and is dropped; history stays in the local journal,
 because a growing file in a shared branch is paid for by every clone of the mail forever.
+
+**`roles` is a property of the BOX, not of a launch** (thread `025-stale-instance-digest`,
+second half — a deliberate change of contract). It used to mean "the roles this run raises,
+after the topology and the operator's flags", which made one file say different things
+depending on which command wrote it last: `run --roles dev-core` on a box that also answers
+for curator published `["dev-core"]` over the daemon's `["curator","dev-core"]`, and a reader
+on another machine saw the box shrink with no way to tell that from a topology change. It is
+now read off the topology by one function (`rolesOfInstance`) that both writers call, and it is
+NOT filtered by launchability: a role of this box that nothing can raise today (no
+instructions, no launch profile, a resident that is hosted rather than launched) is still this
+box's role, and hiding it would make "not ours" and "ours but quiet" the same silence. What a
+particular launch raises is not lost — `leases` carries it, and carries it as a fact rather
+than an intention. Why a listed role never appears among the leases is content the digest does
+not carry yet; it belongs to D-4 of thread 023, where the digest gains a live perspective.
+
+**Both holders of a lease publish, through ONE publisher.** The moment matters more than the
+content (that was the first half of thread 025: a publisher called once per tick, at the end,
+by which time the session raised in that tick had already released its lease — so every tick
+computed `leases: []`, the change gate said "unchanged", and a digest whose whole purpose is to
+say what the box is doing never once said it). The rule is: publish when the LEASE MOVES, not
+when the loop comes round — a hook on every lifecycle write (`onLeaseChange`), plus the
+end-of-tick call for state that changes without a run (a lease released by hand, an orphan
+folded away by the clock, a ceiling that made a pair terminal). And `orchestrator run` — the
+launch a human types, `-d` included — publishes on the same events, from the same factory
+(`digestPublisherFor`). "A human is watching that box anyway" is not an argument for leaving it
+out: that human is the one reader who does not need the file. It exists for the reader who is
+not there, and to them a fresh `writtenAt` with `leases: []` is indistinguishable from an idle
+box — a lie made worse than the original by being uneven, since its truthfulness would depend
+on which command raised the session. A second copy of the publisher in the `run` path was the
+wrong answer for the reason the first defect teaches: two publishers of one file drift, and the
+drift is invisible until somebody reads the file at the wrong moment. A dry run publishes
+nothing (it holds no lease), and neither does the parent of a `--detach` run — its child does.
 
 **It is the one mutable derived thing in an append-only branch**, and `check` therefore knows
 `_instances/` as a CLASS rather than meeting it as a stray file: an unrecognised mutable path
@@ -2256,9 +2288,10 @@ which is why `GitRun` takes an env). The environment rather than `git -c user.na
 because environment variables OUTRANK config: an operator who happens to export those
 cannot silently take the signature back from the role.
 
-Two consequences worth naming. The instance digest (R13) is written by the daemon rather
-than by anybody's role, so it is signed by the machinery itself (`agent-protocol
-<orchestrator@agents.invalid>`) — a role there would claim a turn nobody took. And the
+Two consequences worth naming. The instance digest (R13) is written by the machinery — the
+daemon, or a manual `run` — rather than by anybody's role, so it is signed by the
+machinery itself (`agent-protocol <orchestrator@agents.invalid>`) — a role there would
+claim a turn nobody took. And the
 old CI failure "the checkout has no `user.email`" is gone by construction: delivery no
 longer needs the checkout to be configured at all.
 
