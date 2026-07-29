@@ -81,16 +81,30 @@ jobs:
           # `workflow_run.pull_requests`: последнее пусто для форков и для
           # прогонов, поднятых не событием pull_request, — то есть у поля было
           # бы два читателя с разным поведением. Одно правило на все случаи.
-          PR=$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/pulls" \
-                 --jq 'map(select(.state == "open")) | .[0].number // empty') || true
+          #
+          # ОДИН REST-ВЫЗОВ НА ВСЁ, И ЭТО НЕ ЭКОНОМИЯ, А ИСПРАВЛЕНИЕ (первые
+          # живые прогоны 2026-07-29, CI Outcome 30440799126 и 30440882500):
+          # `gh pr view --json` ходит в GraphQL, и под `workflow_run` токен
+          # джобы получает на нём `Resource not accessible by integration`
+          # (HTTP 403) — при том, что REST-чтение PR тем же токеном проходит.
+          # Оба провала выглядели одинаково: шаг умирал ДО единой строки вывода,
+          # событие не доставлялось, а PR-у оставался зелёный `CI` и красный
+          # уведомитель рядом. Соседний claude-review.yml `gh pr view` держит и
+          # работает — но он поднимается событиями pull_request/issue_comment,
+          # где ограничения нет; повторять его форму здесь нельзя.
+          # Эндпойнт `/commits/{sha}/pulls` отдаёт PR ЦЕЛИКОМ (номер, заголовок,
+          # тело, текущая голова) — второму вызову взяться неоткуда.
+          PR_JSON=$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/pulls" \
+                      --jq 'map(select(.state == "open")) | .[0] // empty') || true
+          PR=$(printf '%s' "${PR_JSON:-}" | jq -r '.number // empty')
           if [ -z "${PR:-}" ]; then
             echo "Прогон ${RUN_ID} (${WF_EVENT}) не привязан к открытому PR — адресата нет, событие не шлём."
             exit 0
           fi
 
-          PR_BODY=$(gh pr view "$PR" --json body -q .body)
-          PR_TITLE=$(gh pr view "$PR" --json title -q .title)
-          PR_HEAD=$(gh pr view "$PR" --json headRefOid -q .headRefOid)
+          PR_BODY=$(printf '%s' "$PR_JSON" | jq -r '.body // ""')
+          PR_TITLE=$(printf '%s' "$PR_JSON" | jq -r '.title // ""')
+          PR_HEAD=$(printf '%s' "$PR_JSON" | jq -r '.head.sha // ""')
 
           # Те же терпимые к оформлению regex'ы, что в merge-notify.yml и
           # claude-review.yml: строки в бэктиках однажды уже ослепили парсер
