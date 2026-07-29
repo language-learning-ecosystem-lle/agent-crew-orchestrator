@@ -183,6 +183,40 @@ describe("the protocol version gate", () => {
     ).toThrow(/supports only/);
   });
 
+  it("a config AHEAD of the package is diagnosed by VERSION even when it carries fields this build never heard of", () => {
+    // The failure of 2026-07-28 verbatim (thread `023-daemon-parallelism`): a daemon
+    // raised before the merge that bumped the shape met the new key and died on
+    // `Unrecognized key`, taking every command with it — `status` included. The
+    // strict object is right and useless here; the version is the one fact that
+    // names the repair, so it is asked of the RAW file before the parse.
+    const { repo, path } = repoWithConfig();
+    commitConfig(repo, path, {
+      ...CONFIG,
+      protocolVersion: CURRENT_PROTOCOL_VERSION + 1,
+      whatTheNewerPackageAdded: { stalled: true },
+    });
+
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(
+      /restart required/,
+    );
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).not.toThrow(
+      /Unrecognized key/,
+    );
+  });
+
+  it("a config BEHIND the package still goes through the parse — `tolerateOlder` needs its data", () => {
+    // The pre-gate is deliberately one-directional: `behind` is a shape this package
+    // can still describe, and door 3 of thread 020 READS it (`zones check` on the base
+    // of a PR that bumps the version). Gating it early would take the data away from
+    // the one reader entitled to it.
+    const { repo, path } = repoWithConfig();
+    commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 });
+
+    expect(
+      loadProtocolConfig({ repo, ref: "HEAD", fetch: false, tolerateOlder: true }).registry.ids(),
+    ).toEqual(["john", "dev-core"]);
+  });
+
   it("keeps the halt for every other reader — tolerance is asked for, never assumed", () => {
     const { repo, path } = repoWithConfig();
     commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 });

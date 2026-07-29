@@ -27,6 +27,12 @@ export {
   localSecretsSchema,
   parseLocalConfig,
 } from "./config/local.js";
+export {
+  createStandingConfig,
+  type StandingConfig,
+  type StandingOutcome,
+  standingKey,
+} from "./config/standing.js";
 export { type LoadedThread, loadThread, loadThreads } from "./fs/comms.js";
 export { fetchRef, fileExistsAtRef, messagesAtRef, readFileAtRef } from "./fs/git.js";
 export {

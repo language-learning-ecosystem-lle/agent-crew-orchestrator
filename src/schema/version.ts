@@ -80,7 +80,12 @@ export const renderVersionVerdict = (verdict: VersionVerdict): string => {
   if (verdict.state === "behind") {
     return `the repository declares protocol version ${verdict.declared}, the package writes ${verdict.supported} — run 'agent-protocol schema migrate' (a dry run first, then --write)`;
   }
-  return `the repository declares protocol version ${verdict.declared}, the package supports only ${verdict.supported} — update the package; a downgrade is not performed`;
+  // "RESTART REQUIRED" is the first thing said, because in practice this verdict is
+  // met by a LONG-LIVED process running code older than the repository it reads: the
+  // daemon of 2026-07-28 was raised before the merge that bumped the shape, and every
+  // command it ran — `status` included — died on a field name instead of being told
+  // the one thing that fixes it (thread `023-daemon-parallelism`).
+  return `restart required: the repository declares protocol version ${verdict.declared}, the package supports only ${verdict.supported} — this build is behind the data (pull and restart what is running on it); a downgrade is not performed`;
 };
 
 export class ProtocolVersionError extends Error {

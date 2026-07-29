@@ -49,6 +49,7 @@ import {
   LocalConfigError,
   loadLocalConfig,
 } from "./config/local.js";
+import { createStandingConfig, standingKey } from "./config/standing.js";
 import { type LoadedThread, loadThread, loadThreads, renderThreadFailures } from "./fs/comms.js";
 import {
   fileExistsAtRef,
@@ -242,6 +243,7 @@ import {
   declaredProtocolVersion,
   legacyVersionHint,
   PROTOCOL_VERSION_FIELD,
+  ProtocolVersionError,
 } from "./schema/version.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { fileMailLock, MailCheckoutBusyError, type MailLock } from "./thread/checkout-lock.js";
@@ -299,6 +301,16 @@ const readFile = (path: string, what: string): string => {
 };
 
 /**
+ * WHAT THE PROCESS WORKS BY WHEN THE WIRE IS DOWN (thread `023-daemon-parallelism`).
+ *
+ * One memory per process, and that is exactly the scope it should have: "the config
+ * this run has already read". A one-shot command reads once and the memory is empty
+ * when it matters; a daemon reads every tick, and its second read is the one allowed
+ * to fall back. The rule and its limits live in `config/standing.ts`.
+ */
+const standing = createStandingConfig();
+
+/**
  * The config is read ONLY through the package and ONLY at an explicit ref.
  *
  * `--repo` defaults to the repository `--root` belongs to: mail and code live in
@@ -329,20 +341,30 @@ const configFrom = (
     err(`agent-protocol: WARNING — '${ref}' was not updated (--no-fetch), the config may be stale`);
   }
 
-  try {
-    return loadProtocolConfig({
+  const path = flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH;
+  const outcome = standing.read(standingKey({ repo, ref, path }), () =>
+    loadProtocolConfig({
       repo,
       ref,
       fetch: !noFetch,
+      path,
       ...(options?.tolerateOlder === true ? { tolerateOlder: true } : {}),
-      ...(flag(argv, "--config-path") === undefined
-        ? {}
-        : { path: flag(argv, "--config-path") as string }),
-    });
-  } catch (error) {
-    if (error instanceof RoleConfigError) return fail(error.message, 2);
-    return fail(`the protocol config at '${ref}' was not read: ${(error as Error).message}`, 2);
+    }),
+  );
+  if (outcome.kind === "read") return outcome.config;
+  if (outcome.kind === "stood") {
+    // LOUD, EVERY TIME. The whole value of standing on the last config is that the
+    // circuit keeps running; the whole danger of it is that it looks identical to a
+    // circuit reading current data. The line is on stderr, i.e. in the daemon's tail.
+    err(`agent-protocol: WARNING — the config at '${ref}' was NOT re-read: ${outcome.reason}`);
+    return outcome.config;
   }
+  const { error } = outcome;
+  if (error instanceof RoleConfigError) return fail(error.message, 2);
+  // A version verdict says its own repair — wrapping it in "was not read" would
+  // bury the one sentence that fixes it under a sentence that is not even true.
+  if (error instanceof ProtocolVersionError) return fail(error.message, 2);
+  return fail(`the protocol config at '${ref}' was not read: ${error.message}`, 2);
 };
 
 const registryFrom = (argv: readonly string[], root?: string): RoleRegistry =>
