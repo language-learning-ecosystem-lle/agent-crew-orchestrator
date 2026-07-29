@@ -49,6 +49,12 @@ export type ObserveSignals = {
   readonly awaitingInput?: boolean;
   /** now > the limit OF THE WAIT — a clock of its own, separate from `overdue` (R19). */
   readonly waitOverdue?: boolean;
+  /**
+   * THE WINDOW RAN OUT (finding C, thread 023) — the session's own stream said so
+   * (`quotaSignalOf`). Like `handedOff` and `idle`, the signal arrives ready-made: the
+   * reading of the stream is IO and lives in the CLI, the verdict is here.
+   */
+  readonly quotaExhausted?: boolean;
 };
 
 /** What to record at the next step (or null — keep observing). */
@@ -64,7 +70,8 @@ export type ObserveStep =
         | "stalled"
         | "exited-without-handoff"
         | "input-timeout"
-        | "exited-while-waiting";
+        | "exited-while-waiting"
+        | "quota-exhausted";
     }
   | null;
 
@@ -129,6 +136,18 @@ export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): Obse
     // The deadline without the turn passing — the session was alive and did not fit
     // in the window: the limit of draining/running (requirement 2).
     if (signals.overdue) return { record: "lease-released", reason: "timeout" };
+    // THE WINDOW RAN OUT (finding C). Checked BEFORE `processExited`, and the order is
+    // the entire fix: a session cut off by the rate limit DOES exit by itself without
+    // passing the turn, so the branch below would swallow it under
+    // `exited-without-handoff` — the name that counts towards the attempt ceiling and
+    // takes the role out of the circuit for a cause that was never its own. It is
+    // checked AFTER `handedOff`, `idle` and `overdue` for the same reason those are
+    // ordered as they are: a run that managed to pass the turn before the window shut
+    // succeeded, and a run that had already been stalled or overrun is diagnosed by the
+    // failure that came first.
+    if (signals.quotaExhausted === true) {
+      return { record: "lease-released", reason: "quota-exhausted" };
+    }
     // The process exited BY ITSELF, without passing the turn, before the deadline —
     // it left without doing the job. The reason is ITS OWN, not `forced`: a force is
     // an external human decision with a `by` trace, whereas here nobody decided
@@ -171,6 +190,8 @@ export const stepEvent = (
      * that closes at once and says so, not a run parked with no limit at all.
      */
     readonly waitDeadline?: string;
+    /** When the window reopens, for a `quota-exhausted` release — absent if unknown. */
+    readonly until?: string;
   },
 ): OrchestratorEvent => {
   if (step.record === "handoff-detected") return { kind: "handoff-detected", ...base };
@@ -188,5 +209,6 @@ export const stepEvent = (
     ...(detail?.output === undefined ? {} : { output: detail.output }),
     ...(detail?.session === undefined ? {} : { session: detail.session }),
     ...(detail?.steps === undefined ? {} : { steps: detail.steps }),
+    ...(detail?.until === undefined ? {} : { until: detail.until }),
   };
 };

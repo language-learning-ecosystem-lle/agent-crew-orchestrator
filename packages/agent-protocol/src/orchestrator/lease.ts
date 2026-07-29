@@ -136,6 +136,18 @@ const isFailedTerminal = (state: LeaseLifecycle, reason: LeaseView["reason"]): b
  * for ("it broke off, but the mail stayed"), so counting them would exhaust a pair
  * for the one thing that is supposed to happen — a human taking their time. When the
  * answer does land, the role is awaited again and the pair is raised as usual.
+ *
+ * `quota-exhausted` IS NOT A FAILURE EITHER, and this is the load-bearing half of
+ * finding C (thread 023). The mail here is NOT consistent — the turn did not pass, the
+ * thread still waits — so the pair must be retried, and it will be. What must not
+ * happen is the retry counting: the window is one shared resource of the whole box,
+ * so the same closure hits every role at once, and three closures would mark every
+ * pair `exhausted` within one afternoon. The ceiling exists to catch a pair that
+ * breaks on its OWN cause ("launch → break → launch"); a closed window is not that
+ * pair's cause and not any pair's cause. Excluding it keeps `attempt` meaning what it
+ * says. WHAT STOPS THE RETRY LOOP INSTEAD is the backoff on the reopening time — it
+ * is NOT in this part of D-3, and until it lands the tick will keep re-raising a role
+ * into a closed window, cheaply (the session dies at once) but loudly.
  */
 
 type Acc = {

@@ -183,6 +183,7 @@ import {
   resolveThreadPriority,
   waitingSince,
 } from "./orchestrator/priority.js";
+import { describeQuotaRelease, type QuotaSignal, quotaSignalOf } from "./orchestrator/quota.js";
 import { renderSystemdUnit } from "./orchestrator/reboot.js";
 import {
   describeResidentWait,
@@ -3574,6 +3575,8 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // A chunk boundary falls in the middle of a JSON line far more often than it
   // looks, so the tail is carried over rather than rendered as it is.
   let pending = "";
+  /** The quota signal, once seen (finding C) — the latch the poll loop reads. */
+  let quota: QuotaSignal | undefined;
   // THE SESSION LEARNS ITS OWN ID (R7) — from the init line of its own stream, which
   // the supervisor is reading anyway, written into the file whose path the session
   // was given in its environment. Once: the id does not change mid-run, and a
@@ -3592,6 +3595,25 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       writeLog(`supervisor  could not write the session id: ${(error as Error).message}`);
     }
   };
+  // THE WINDOW RAN OUT (finding C, thread 023). Recognised where the streams are
+  // already being read line by line, and LATCHED rather than acted on here: these
+  // handlers run on an IO event, while every lease decision belongs to the poll loop
+  // below, which is the one place that knows the lifecycle. The first signal wins — a
+  // session that repeats the message is still the same closed window.
+  //
+  // BOTH STREAMS GO THROUGH IT, and stderr is not a belt-and-braces addition: the
+  // refusal that arrives BEFORE a session exists is the launcher's own complaint, and
+  // the launcher complains on stderr (see the note on that handler). A refusal missed
+  // there comes back as `exited-without-handoff` — the very misattribution this
+  // finding exists to close, and the most likely one now that D-2 raises N sessions
+  // into one shared window.
+  const noteQuota = (line: string): void => {
+    if (quota !== undefined) return;
+    const signal = quotaSignalOf(line);
+    if (signal === undefined) return;
+    quota = signal;
+    writeLog(`supervisor  ${describeQuotaRelease(signal)}`);
+  };
   child.stdout?.on("data", (chunk: Buffer) => {
     if (!sinksOpen) return;
     writeSync(rawSink, chunk);
@@ -3603,6 +3625,12 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // run that breaks leaves no summary line at all, and those are the only runs
       // whose size the continuation policy ever has to judge.
       if (isAssistantStep(line)) steps += 1;
+      // THE WINDOW RAN OUT (finding C, thread 023). Recognised where the stream is
+      // already being read line by line, and LATCHED rather than acted on here: this
+      // handler runs on an IO event, while every lease decision belongs to the poll
+      // loop below, which is the one place that knows the lifecycle. The first signal
+      // wins — a session that repeats the message is still the same closed window.
+      noteQuota(line);
       for (const rendered of renderStreamLine(line)) {
         writeLog(rendered);
         out(p.streamPrefix === undefined ? rendered : `${p.streamPrefix} ${rendered}`);
@@ -3614,7 +3642,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // rendered — it is the answer itself.
   child.stderr?.on("data", (chunk: Buffer) => {
     for (const line of chunk.toString("utf8").split("\n")) {
-      if (line.trim() !== "") writeLog(`stderr  ${line}`);
+      if (line.trim() === "") continue;
+      writeLog(`stderr  ${line}`);
+      noteQuota(line);
     }
   });
 
@@ -3794,6 +3824,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       idle: !exited && idle.stalled,
       awaitingInput,
       waitOverdue: lifecycle === "waiting" && Date.now() > waitUntilMs,
+      quotaExhausted: quota !== undefined,
     });
     if (step === null) continue;
 
@@ -3858,7 +3889,13 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     releaseWorkspaceLock(p.workdir);
     appendEvent(
       p.journalPath,
-      stepEvent(step, base, { exitCode, output: p.sessionLog, session: sessionId, steps }),
+      stepEvent(step, base, {
+        exitCode,
+        output: p.sessionLog,
+        session: sessionId,
+        steps,
+        ...(quota?.resetsAt === undefined ? {} : { until: quota.resetsAt }),
+      }),
     );
     // THE RELEASE IS ANNOUNCED HERE TOO, although the daemon publishes at the end of its
     // tick anyway: the hook is "every change of this lease", not "every change the caller
@@ -3889,6 +3926,16 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       writeLog(`supervisor  the lease was released: ${step.reason} (${what})`);
       err(
         `agent-protocol: the run stopped in the middle of its task — ${what} (${step.reason}). Its question is in ${p.thread}; session output: ${p.sessionLog}`,
+      );
+    } else if (step.reason === "quota-exhausted") {
+      // ITS OWN SENTENCE, not the generic "the turn was not passed" (finding C): that
+      // line sends the reader looking for a session at fault, and there is none — the
+      // window closed. What the reader needs instead is when it reopens and the fact
+      // that the pair is not moving towards `exhausted`.
+      const line = describeQuotaRelease(quota as QuotaSignal);
+      writeLog(`supervisor  the lease was released: quota-exhausted — ${line}`);
+      err(
+        `agent-protocol: the run was cut off by the QUOTA, not by a fault of its own — ${line} Session output: ${p.sessionLog}`,
       );
     } else if (step.reason !== "completed") {
       const quiet = step.reason === "stalled" ? ` (${describeQuiet(quietMs)})` : "";

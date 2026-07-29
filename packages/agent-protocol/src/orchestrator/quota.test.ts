@@ -1,0 +1,244 @@
+import { describe, expect, it } from "vitest";
+import { type OrchestratorEvent, parseEventLine, renderEventLine } from "./journal.js";
+import { foldLeases } from "./lease.js";
+import { observeStep } from "./observe.js";
+import { describeQuotaRelease, quotaSignalOf } from "./quota.js";
+
+/**
+ * VERBATIM FROM THIS BOX — a `rate_limit_event` line as the stream actually writes it
+ * (`.orchestrator/sessions/*.log`), only the ids shortened. The two permitting shapes
+ * below are the CONTROL of this whole layer: they are not invented, they were counted
+ * (`allowed` 133, `allowed_warning` 13), and a recognition that refuses on either of
+ * them declares a closed window on an open one.
+ */
+const ALLOWED_LINE = JSON.stringify({
+  type: "system",
+  subtype: "rate_limit_event",
+  rate_limit_info: {
+    status: "allowed",
+    resetsAt: 1785340800,
+    rateLimitType: "five_hour",
+    overageStatus: "rejected",
+    isUsingOverage: false,
+  },
+  uuid: "078e586d",
+  session_id: "552493d5",
+});
+
+const ALLOWED_WARNING_LINE = JSON.stringify({
+  type: "system",
+  subtype: "rate_limit_event",
+  rate_limit_info: {
+    status: "allowed_warning",
+    resetsAt: 1785456000,
+    rateLimitType: "seven_day",
+    utilization: 0.76,
+    isUsingOverage: false,
+    surpassedThreshold: 0.75,
+  },
+  uuid: "078e586d",
+  session_id: "552493d5",
+});
+
+/** The same event with a status that does not permit — the shape we have never seen. */
+const closedLine = (info: Record<string, unknown>): string =>
+  JSON.stringify({ type: "system", subtype: "rate_limit_event", rate_limit_info: info });
+
+describe("quotaSignalOf — layer 1, the stream's own rate_limit_event", () => {
+  it("a permitting status is NOT a signal — `allowed`, the line as the box writes it", () => {
+    expect(quotaSignalOf(ALLOWED_LINE)).toBeUndefined();
+  });
+
+  it("`allowed_warning` is NOT a signal either — the case `status !== 'allowed'` gets wrong", () => {
+    // THE CONTROL OF THE PREFIX RULE. This exact shape occurs 13 times in the logs of
+    // this box, always with the window open; it is a warning that arrives long BEFORE
+    // the limit. An equality test against `allowed` would refuse here — and refusing a
+    // 76%-of-seven-days warning is the most expensive false positive this module has.
+    expect(quotaSignalOf(ALLOWED_WARNING_LINE)).toBeUndefined();
+  });
+
+  it("a non-permitting status is a signal, and carries the vendor's own reset time", () => {
+    const signal = quotaSignalOf(
+      closedLine({ status: "exhausted", resetsAt: 1785340800, rateLimitType: "five_hour" }),
+    );
+    expect(signal?.resetsAt).toBe("2026-07-29T16:00:00Z");
+    expect(signal?.evidence).toContain("status=exhausted");
+    expect(signal?.evidence).toContain("window=five_hour");
+  });
+
+  it("a closed SEVEN-DAY window is a signal too, and says which window it was", () => {
+    // The five-hour window is the one we hit; it is not the only one that closes, and a
+    // release that did not name the window would send the reader to the wrong clock.
+    const signal = quotaSignalOf(
+      closedLine({ status: "rejected", resetsAt: 1785456000, rateLimitType: "seven_day" }),
+    );
+    expect(signal?.evidence).toContain("window=seven_day");
+    expect(signal?.resetsAt).toBe("2026-07-31T00:00:00Z");
+  });
+
+  it("an event we cannot read the status of is a refusal, not permission", () => {
+    // The whitelist is "we READ permission". Silence is not permission — and it is the
+    // shape a vendor change would arrive in.
+    const signal = quotaSignalOf(closedLine({ resetsAt: 1785340800, rateLimitType: "five_hour" }));
+    expect(signal).toBeDefined();
+    expect(signal?.evidence).toContain("status=(none)");
+  });
+
+  it("a closed event without a reset time names no reopening time", () => {
+    const signal = quotaSignalOf(closedLine({ status: "exhausted" }));
+    expect(signal).toBeDefined();
+    expect(signal?.resetsAt).toBeUndefined();
+  });
+
+  it("a line mentioning the field but not parseable falls THROUGH to the prose layers", () => {
+    // Not a verdict, a miss: the refusal text wrapped inside a bigger payload is exactly
+    // the shape that fails to parse here, and it must still be caught below.
+    expect(quotaSignalOf('half a line "rate_limit_info":{"status":')).toBeUndefined();
+    expect(
+      quotaSignalOf("rate_limit_info, unparseable — Claude AI usage limit reached|1785340800")
+        ?.resetsAt,
+    ).toBe("2026-07-29T16:00:00Z");
+  });
+});
+
+describe("quotaSignalOf — the recognition", () => {
+  it("the exact form yields the reopening time, from an epoch in seconds", () => {
+    const signal = quotaSignalOf(
+      JSON.stringify({
+        type: "assistant",
+        message: { content: [{ type: "text", text: "Claude AI usage limit reached|1785340800" }] },
+      }),
+    );
+    expect(signal?.resetsAt).toBe("2026-07-29T16:00:00Z");
+  });
+
+  it("the same marker in milliseconds resolves to the same moment", () => {
+    expect(quotaSignalOf("Claude AI usage limit reached|1785340800000")?.resetsAt).toBe(
+      "2026-07-29T16:00:00Z",
+    );
+  });
+
+  it("the loose form is recognised but names NO reopening time", () => {
+    // The distinction the type carries: "closed, reopening unknown" must never be
+    // rounded up into "closed until <a number we made up>".
+    const signal = quotaSignalOf('{"type":"result","result":"API error: rate_limit_error"}');
+    expect(signal).toBeDefined();
+    expect(signal?.resetsAt).toBeUndefined();
+  });
+
+  it("a line that is not stream JSON at all is still recognised", () => {
+    // The launcher's own refusal never reaches the stream format — and it is exactly
+    // the case where the session never starts, so nothing else could name the cause.
+    expect(quotaSignalOf("Error: rate limit exceeded, try again later")).toBeDefined();
+  });
+
+  it("an ordinary line is not a quota signal", () => {
+    expect(quotaSignalOf('{"type":"assistant","message":{"content":"reading the thread"}}')).toBe(
+      undefined,
+    );
+    expect(quotaSignalOf("")).toBeUndefined();
+  });
+
+  it("the evidence is quoted and bounded", () => {
+    const signal = quotaSignalOf(`rate_limit_error ${"x".repeat(500)}`);
+    expect(signal?.evidence.length).toBeLessThanOrEqual(201);
+  });
+
+  it("the release line names the reopening time and the fact it is not an attempt", () => {
+    const line = describeQuotaRelease({ resetsAt: "2026-07-29T16:00:00Z", evidence: "…" });
+    expect(line).toContain("2026-07-29T16:00:00Z");
+    expect(line).toContain("does NOT count as a failed attempt");
+    expect(describeQuotaRelease({ evidence: "…" })).toContain("did not say when");
+  });
+});
+
+describe("observeStep — the quota is not an ordinary death", () => {
+  it("a running session cut off by the window releases as quota-exhausted", () => {
+    // THE ORDER IS THE FIX: the same signals without `quotaExhausted` produce
+    // `exited-without-handoff`, which is the name that counts towards the ceiling.
+    const signals = { handedOff: false, processExited: true, overdue: false };
+    expect(observeStep("running", { ...signals, quotaExhausted: true })).toEqual({
+      record: "lease-released",
+      reason: "quota-exhausted",
+    });
+    expect(observeStep("running", signals)).toEqual({
+      record: "lease-released",
+      reason: "exited-without-handoff",
+    });
+  });
+
+  it("a turn that was passed before the window shut is still a handoff", () => {
+    expect(
+      observeStep("running", {
+        handedOff: true,
+        processExited: true,
+        overdue: false,
+        quotaExhausted: true,
+      }),
+    ).toEqual({ record: "handoff-detected" });
+  });
+
+  it("a stall that came first keeps its own diagnosis", () => {
+    expect(
+      observeStep("running", {
+        handedOff: false,
+        processExited: false,
+        overdue: false,
+        idle: true,
+        quotaExhausted: true,
+      }),
+    ).toEqual({ record: "lease-released", reason: "stalled" });
+  });
+});
+
+const at = (ts: string, kind: "lease-acquired" | "lease-released", extra = {}): OrchestratorEvent =>
+  ({ kind, ts, role: "dev-core", thread: "023-x", ...extra }) as OrchestratorEvent;
+
+describe("the attempt ceiling — a closed window is nobody's failed attempt", () => {
+  const window = (n: number): OrchestratorEvent[] =>
+    Array.from({ length: n }, (_, i) => [
+      at(`2026-07-29T1${i}:00:00Z`, "lease-acquired", { deadline: `2026-07-29T1${i}:59:00Z` }),
+      at(`2026-07-29T1${i}:05:00Z`, "lease-released", { reason: "quota-exhausted" }),
+    ]).flat();
+
+  it("three quota releases do NOT exhaust the pair", () => {
+    // Three ordinary failures do — that is the ceiling working. The whole point of
+    // finding C is that these three are not that.
+    const view = foldLeases(window(3), new Date("2026-07-29T13:00:00Z"))[0];
+    expect(view?.attempt).toBe(3);
+    expect(view?.exhausted).toBe(false);
+  });
+
+  it("the same three shaped as ordinary deaths DO exhaust it — the control", () => {
+    const events = window(3).map((event) =>
+      event.kind === "lease-released"
+        ? ({ ...event, reason: "exited-without-handoff" } as OrchestratorEvent)
+        : event,
+    );
+    expect(foldLeases(events, new Date("2026-07-29T13:00:00Z"))[0]?.exhausted).toBe(true);
+  });
+
+  it("the pair is not held alive by the release — the next tick may raise it", () => {
+    // Nothing here should look like a live lease: the mail still waits on the role and
+    // the retry is the intended behaviour. What bounds the retry is the backoff, which
+    // is part 2 of D-3 and deliberately absent here.
+    const view = foldLeases(window(1), new Date("2026-07-29T13:00:00Z"))[0];
+    expect(view?.state).toBe("released");
+    expect(view?.reason).toBe("quota-exhausted");
+  });
+});
+
+describe("the journal carries the reopening time", () => {
+  it("a quota release with `until` round-trips through the JSONL", () => {
+    const event = at("2026-07-29T12:05:00Z", "lease-released", {
+      reason: "quota-exhausted",
+      until: "2026-07-29T16:00:00Z",
+    });
+    expect(parseEventLine(renderEventLine(event))).toEqual(event);
+  });
+
+  it("a quota release without `until` is legal — the signal did not always say", () => {
+    const event = at("2026-07-29T12:05:00Z", "lease-released", { reason: "quota-exhausted" });
+    expect(parseEventLine(renderEventLine(event))).toEqual(event);
+  });
+});
