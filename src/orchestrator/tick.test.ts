@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { OrchestratorEvent } from "./journal.js";
 import { MAX_CONSECUTIVE_RUNS } from "./launch.js";
-import { type Candidate, describeSkip, planTick } from "./tick.js";
+import { type Candidate, describePlan, describeSkip, planTick, type TickDecision } from "./tick.js";
 
 const NOW = new Date("2026-07-24T14:00:00Z");
 const cand: Candidate[] = [{ role: "dev-core", thread: "t1" }];
@@ -33,6 +33,10 @@ const launch = (role: string, thread: string): OrchestratorEvent => ({
 
 const base = { events: [] as OrchestratorEvent[], candidates: cand, now: NOW };
 
+/** What the tick would actually raise, as `role×thread` — the plan, not its wrapper. */
+const raised = (decision: TickDecision): readonly string[] =>
+  decision.kind === "plan" ? decision.launches.map((c) => `${c.role}×${c.thread}`) : [];
+
 describe("planTick — the brake and the off switch (requirements 2, 3)", () => {
   it("the stop flag → halt, even when enabled and with candidates", () => {
     expect(planTick({ ...base, enabled: true, stopped: true })).toEqual({
@@ -56,9 +60,8 @@ describe("planTick — the brake and the off switch (requirements 2, 3)", () => 
 describe("planTick — launching", () => {
   it("enabled, a fresh candidate → launch the first suitable one", () => {
     expect(planTick({ ...base, enabled: true, stopped: false })).toEqual({
-      kind: "launch",
-      role: "dev-core",
-      thread: "t1",
+      kind: "plan",
+      launches: [{ role: "dev-core", thread: "t1" }],
       skipped: [],
     });
   });
@@ -131,9 +134,8 @@ describe("planTick — launching", () => {
       stopped: false,
     });
     expect(decision).toEqual({
-      kind: "launch",
-      role: "dev-core",
-      thread: "free",
+      kind: "plan",
+      launches: [{ role: "dev-core", thread: "free" }],
       skipped: [{ role: "dev-core", thread: "busy", reason: "active", attempt: 1 }],
     });
   });
@@ -179,9 +181,8 @@ describe("planTick — a hold on a manual session (S5)", () => {
     expect(
       planTick({ ...base, candidates, enabled: true, stopped: false, held: ["dev-core"] }),
     ).toEqual({
-      kind: "launch",
-      role: "dev-speech",
-      thread: "t2",
+      kind: "plan",
+      launches: [{ role: "dev-speech", thread: "t2" }],
       skipped: [{ role: "dev-core", thread: "t1", reason: "held", attempt: 0 }],
     });
   });
@@ -193,7 +194,9 @@ describe("planTick — a hold on a manual session (S5)", () => {
   });
 
   it("without holds the behaviour is unchanged", () => {
-    expect(planTick({ ...base, enabled: true, stopped: false, held: [] }).kind).toBe("launch");
+    expect(raised(planTick({ ...base, enabled: true, stopped: false, held: [] }))).toEqual([
+      "dev-core×t1",
+    ]);
   });
 });
 
@@ -202,10 +205,13 @@ describe("planTick — the global ceiling with a trace (requirement 1)", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_CONSECUTIVE_RUNS; i += 1) events.push(launch("x", `t${i}`));
     expect(planTick({ ...base, events, enabled: true, stopped: false })).toEqual({
-      kind: "refused",
-      role: "dev-core",
-      thread: "t1",
-      reason: "run-budget",
+      kind: "plan",
+      launches: [],
+      cut: {
+        reason: "run-budget",
+        candidates: [{ role: "dev-core", thread: "t1" }],
+        recorded: { role: "dev-core", thread: "t1" },
+      },
       skipped: [],
     });
   });
@@ -214,17 +220,19 @@ describe("planTick — the global ceiling with a trace (requirement 1)", () => {
     const events: OrchestratorEvent[] = [];
     for (let i = 0; i < MAX_CONSECUTIVE_RUNS; i += 1) events.push(launch("x", `t${i}`));
     events.push(released("x", "t0", "completed"));
-    expect(planTick({ ...base, events, enabled: true, stopped: false }).kind).toBe("launch");
+    expect(raised(planTick({ ...base, events, enabled: true, stopped: false }))).toEqual([
+      "dev-core×t1",
+    ]);
   });
 
   it("the ceiling is calibratable", () => {
     const events = [launch("x", "1"), launch("x", "2")];
     expect(
-      planTick({ ...base, events, enabled: true, stopped: false, maxConsecutive: 2 }).kind,
-    ).toBe("refused");
+      raised(planTick({ ...base, events, enabled: true, stopped: false, maxConsecutive: 2 })),
+    ).toEqual([]);
     expect(
-      planTick({ ...base, events, enabled: true, stopped: false, maxConsecutive: 5 }).kind,
-    ).toBe("launch");
+      raised(planTick({ ...base, events, enabled: true, stopped: false, maxConsecutive: 5 })),
+    ).toEqual(["dev-core×t1"]);
   });
 });
 
@@ -260,14 +268,16 @@ describe("planTick — nothing drops out silently (the defect of 2026-07-26)", (
       stopped: false,
       maxAttempts: 5,
     });
-    expect(decision).toMatchObject({ kind: "launch", role: "dev-core", thread: "t1" });
+    expect(raised(decision)).toEqual(["dev-core×t1"]);
     expect(decision.skipped).toEqual([]);
   });
 
   it("a delivery in the middle un-exhausts the pair — it is launched, not skipped", () => {
     const events = exhaustedEvents();
     events.push(released("dev-core", "t1", "completed"));
-    expect(planTick({ ...base, events, enabled: true, stopped: false }).kind).toBe("launch");
+    expect(raised(planTick({ ...base, events, enabled: true, stopped: false }))).toEqual([
+      "dev-core×t1",
+    ]);
   });
 
   it("candidates BEHIND the launched one are still accounted for", () => {
@@ -282,10 +292,179 @@ describe("planTick — nothing drops out silently (the defect of 2026-07-26)", (
       enabled: true,
       stopped: false,
     });
-    expect(decision).toMatchObject({ kind: "launch", thread: "free" });
+    expect(raised(decision)).toEqual(["dev-core×free"]);
     expect(decision.skipped).toEqual([
       { role: "dev-speech", thread: "busy", reason: "active", attempt: 1 },
     ]);
+  });
+});
+
+describe("planTick — one launch per FREE ROLE, not one per box (D-1, thread 023)", () => {
+  // The picture john named as the thing to remove: dev-core works 016 while the curator
+  // workspace idles on a waiting 019. The degree of parallelism is the number of free
+  // roles, and that is decided HERE, in one pass over one reading of the journal.
+  it("every free role gets its own pair in one plan", () => {
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "016" },
+      { role: "curator", thread: "019" },
+      { role: "dev-speech", thread: "021" },
+    ];
+    const decision = planTick({ ...base, candidates, enabled: true, stopped: false });
+    expect(raised(decision)).toEqual(["dev-core×016", "curator×019", "dev-speech×021"]);
+    expect(decision.skipped).toEqual([]);
+  });
+
+  it("a role is planned ONCE — its second thread comes back as role-busy, not as silence", () => {
+    // Under a scalar `waiting-on` (024) one role is routinely awaited by several threads,
+    // so this is the ordinary shape of the queue. Before D-1 the pairs behind the chosen
+    // one left no line at all: the operator saw a queue of three and one launch.
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "016" },
+      { role: "dev-core", thread: "023" },
+      { role: "curator", thread: "019" },
+    ];
+    const decision = planTick({ ...base, candidates, enabled: true, stopped: false });
+    expect(raised(decision)).toEqual(["dev-core×016", "curator×019"]);
+    expect(decision.skipped).toEqual([
+      { role: "dev-core", thread: "023", reason: "role-busy", attempt: 0 },
+    ]);
+  });
+
+  it("the queue order decides WHICH thread a role gets — the head of its own tier", () => {
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "older" },
+      { role: "dev-core", thread: "newer" },
+    ];
+    expect(raised(planTick({ ...base, candidates, enabled: true, stopped: false }))).toEqual([
+      "dev-core×older",
+    ]);
+  });
+
+  it("a busy role does not cost the others their launch", () => {
+    const candidates: Candidate[] = [
+      { role: "dev-core", thread: "busy" },
+      { role: "curator", thread: "019" },
+    ];
+    const decision = planTick({
+      ...base,
+      candidates,
+      events: [acquire("dev-core", "busy")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["curator×019"]);
+    expect(decision.skipped).toEqual([
+      { role: "dev-core", thread: "busy", reason: "active", attempt: 1 },
+    ]);
+  });
+});
+
+describe("planTick — the global budget CUTS THE TAIL of the plan (D-1)", () => {
+  const threeRoles: Candidate[] = [
+    { role: "dev-core", thread: "016" },
+    { role: "curator", thread: "019" },
+    { role: "dev-speech", thread: "021" },
+  ];
+
+  it("a remainder of one lets the head through and cuts the rest — with ONE reason", () => {
+    // A budget is a count of launches, so a plan of three spends three of it. Read once
+    // per tick: the remainder takes the head, the rest is cut.
+    const events = [launch("x", "1"), launch("x", "2")];
+    const decision = planTick({
+      ...base,
+      candidates: threeRoles,
+      events,
+      enabled: true,
+      stopped: false,
+      maxConsecutive: 3,
+    });
+    expect(raised(decision)).toEqual(["dev-core×016"]);
+    expect(decision.kind === "plan" ? decision.cut : undefined).toEqual({
+      reason: "run-budget",
+      candidates: [
+        { role: "curator", thread: "019" },
+        { role: "dev-speech", thread: "021" },
+      ],
+      recorded: { role: "curator", thread: "019" },
+    });
+  });
+
+  it("ONE record for the whole cut: the pair it is written against is the head of the tail", () => {
+    // The alternative — a `launch-refused` per cut pair — says the same sentence about one
+    // ceiling N times, and buries the journal of the runs under the daemon's complaints.
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < MAX_CONSECUTIVE_RUNS; i += 1) events.push(launch("x", `t${i}`));
+    const decision = planTick({
+      ...base,
+      candidates: threeRoles,
+      events,
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual([]);
+    const cut = decision.kind === "plan" ? decision.cut : undefined;
+    expect(cut?.candidates).toHaveLength(3);
+    expect(cut?.recorded).toEqual({ role: "dev-core", thread: "016" });
+  });
+
+  it("a plan that fits leaves no cut at all", () => {
+    const decision = planTick({
+      ...base,
+      candidates: threeRoles,
+      enabled: true,
+      stopped: false,
+      maxConsecutive: 10,
+    });
+    expect(decision.kind === "plan" ? decision.cut : "not a plan").toBeUndefined();
+  });
+
+  it("nothing eligible → idle, and the budget is never consulted", () => {
+    // The budget refuses LAUNCHES. A tick with no eligible pair has none to refuse, and
+    // saying `run-budget` there would blame the ceiling for an empty mailbox.
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < MAX_CONSECUTIVE_RUNS; i += 1) events.push(launch("x", `t${i}`));
+    expect(planTick({ ...base, candidates: [], events, enabled: true, stopped: false })).toEqual({
+      kind: "idle",
+      skipped: [],
+    });
+  });
+});
+
+describe("describePlan — what the operator reads before the first session starts", () => {
+  it("names every pair being raised and how many", () => {
+    const lines = describePlan({
+      launches: [
+        { role: "dev-core", thread: "016" },
+        { role: "curator", thread: "019" },
+      ],
+    });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("2 launches");
+    expect(lines[0]).toContain("dev-core×016, curator×019");
+  });
+
+  it("the cut names EVERY pair it cut, and says which one the journal records", () => {
+    // The single journal record is the point of the cut; without this line an operator
+    // reading the journal would see one refusal and never learn the other two existed.
+    const lines = describePlan({
+      launches: [],
+      cut: {
+        reason: "run-budget",
+        candidates: [
+          { role: "curator", thread: "019" },
+          { role: "dev-speech", thread: "021" },
+        ],
+        recorded: { role: "curator", thread: "019" },
+      },
+    });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("run-budget");
+    expect(lines[0]).toContain("curator×019, dev-speech×021");
+    expect(lines[0]).toContain("curator/019");
+  });
+
+  it("an empty plan says nothing — a tick with no launches has its own lines", () => {
+    expect(describePlan({ launches: [] })).toEqual([]);
   });
 });
 
@@ -313,6 +492,12 @@ describe("describeSkip — the line an operator reads", () => {
     expect(describeSkip({ ...skip, reason: "active" }, { value: 3, source: "default" })).toContain(
       "running right now",
     );
+  });
+
+  it("role-busy says the pair is not lost — it is first in line next tick", () => {
+    const line = describeSkip({ ...skip, reason: "role-busy" }, { value: 3, source: "default" });
+    expect(line).toContain("already being raised");
+    expect(line).toContain("next tick");
   });
 
   it("a parked pair asks for an ANSWER, and does not read as a working session", () => {

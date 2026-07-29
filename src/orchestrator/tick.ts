@@ -12,9 +12,17 @@
  *  3. the emergency brake: `stopped=true` (the stop flag file) → `halt`, which
  *     overrides being enabled; checked BEFORE every launch.
  *
- * One tick = one decision = at most one launch: the daemon raises a pair, waits
- * for its terminal (the S2 observer) and ticks again. That way the ceiling and the
- * leases are computed from a fresh journal, without races inside a tick.
+ * ONE TICK = A PLAN, AT MOST ONE LAUNCH PER ROLE (D-1, thread `023-daemon-parallelism`).
+ * It used to be one tick = one launch for the whole box, and that was the shape john
+ * named as the thing to remove: "dev-core writes 016 while the curator workspace idles
+ * on a waiting 019". The natural ceiling is the WORKSPACE — one per role (R17) — so the
+ * degree of parallelism is the number of free roles, and the planner's job is to say
+ * which pair each free role gets, in one pass, from one reading of the journal.
+ *
+ * The pure half lives here and the raising is still sequential in the daemon (D-2 turns
+ * the supervision non-blocking). That split is deliberate: the queue policy, the ceilings
+ * and "who drops out and why" are decidable without a single child process, and they are
+ * the part that must not be re-derived inside an event loop.
  *
  * S5 added a fourth guard — `held`: a role taken by a LIVE MANUAL SESSION drops
  * out of the candidates, otherwise the daemon would raise a second session of the
@@ -52,8 +60,14 @@ export type Candidate = { readonly role: string; readonly thread: string };
  * silence: an `active` pair needs nothing from anybody, a parked one is blocked on a
  * human and will die on its wait ceiling if the line reads "running right now" and the
  * operator does what that line implies — namely, nothing.
+ *
+ * `role-busy` is the plural planner's own (D-1): the role is ALREADY being raised on an
+ * older thread of this same tick. It calls for nothing — the pair comes back on the next
+ * tick — but it is not silence either: under a scalar `waiting-on` (024) one role is
+ * routinely awaited by several threads, so this is the ordinary shape of a queue, and
+ * before D-1 those pairs vanished from the stream with no line at all.
  */
-export type SkipReason = "held" | "active" | "waiting" | "exhausted";
+export type SkipReason = "held" | "active" | "waiting" | "exhausted" | "role-busy";
 
 export type TickSkip = {
   readonly role: string;
@@ -66,6 +80,22 @@ export type TickSkip = {
 /** Everything the tick refused to raise, whatever it decided to do instead. */
 type Skipped = { readonly skipped: readonly TickSkip[] };
 
+/**
+ * The tail of the plan the GLOBAL budget refused, and the one reason all of it shares.
+ *
+ * A budget is a count of launches, so N parallel raises spend N of it: the remainder is
+ * read once per tick and takes the head of the plan, the rest is cut. ONE reason, ONE
+ * journal record (`recorded` names it) — a tick that wrote a `launch-refused` per cut
+ * pair would say the same sentence N times about a single ceiling, which is how a
+ * journal of runs turns into a journal of the daemon complaining.
+ */
+export type TickCut = {
+  readonly reason: RefusalReason;
+  readonly candidates: readonly Candidate[];
+  /** The pair the journal record is written against — the head of what was cut. */
+  readonly recorded: Candidate;
+};
+
 export type TickDecisionKind =
   | { readonly kind: "halt" } // the stop flag — the emergency brake
   | { readonly kind: "disabled" } // switched off (no enable flag)
@@ -75,12 +105,13 @@ export type TickDecisionKind =
   // human" are different states of the circuit, and the second one must be visible,
   // otherwise a forgotten hold looks like silence in the mailbox.
   | { readonly kind: "held"; readonly roles: readonly string[] }
-  | { readonly kind: "launch"; readonly role: string; readonly thread: string }
+  // THE PLAN OF THIS TICK: at most one pair per free role, in queue order, plus whatever
+  // the global budget cut off the end of it. `launches` may be empty while `cut` is not —
+  // that is the budget refusing the whole plan, and it is a different state from `idle`.
   | {
-      readonly kind: "refused";
-      readonly role: string;
-      readonly thread: string;
-      readonly reason: RefusalReason;
+      readonly kind: "plan";
+      readonly launches: readonly Candidate[];
+      readonly cut?: TickCut;
     };
 
 export type TickDecision = TickDecisionKind & Skipped;
@@ -113,12 +144,12 @@ export const planTick = (input: {
   const viewOf = (candidate: Candidate): LeaseView | undefined =>
     views.find((v) => v.role === candidate.role && v.thread === candidate.thread);
 
-  // ONE PASS over the candidates: every one of them either becomes THE eligible one
-  // or leaves a skip with its reason. Splitting "who is eligible" from "who was
-  // skipped and why" into two passes is how the reasons drifted from the decision in
-  // the first place.
+  // ONE PASS over the candidates: every one of them either enters the plan or leaves a
+  // skip with its reason. Splitting "who is eligible" from "who was skipped and why"
+  // into two passes is how the reasons drifted from the decision in the first place.
   const skipped: TickSkip[] = [];
-  let eligible: Candidate | undefined;
+  const eligible: Candidate[] = [];
+  const planned = new Set<string>();
   for (const candidate of input.candidates) {
     const view = viewOf(candidate);
     const attempt = view?.attempt ?? 0;
@@ -141,13 +172,19 @@ export const planTick = (input: {
       skipped.push({ ...candidate, reason: "exhausted", attempt });
       continue;
     }
-    // The FIRST suitable pair is launched and the rest of the tick is over — but the
-    // loop runs to the end anyway, so the pairs behind it are still accounted for
-    // rather than vanishing into "we stopped looking".
-    if (eligible === undefined) eligible = candidate;
+    // ONE PAIR PER ROLE, and the ceiling is not a policy choice: the role has one
+    // workspace (R17), and a second session in it is refused by the lock anyway. So the
+    // planner refuses it HERE, by name, instead of raising a pair that would die on the
+    // door. The pair is not lost — it is the next tick's head for that role.
+    if (planned.has(candidate.role)) {
+      skipped.push({ ...candidate, reason: "role-busy", attempt });
+      continue;
+    }
+    eligible.push(candidate);
+    planned.add(candidate.role);
   }
 
-  if (eligible === undefined) {
+  if (eligible.length === 0) {
     // There is nothing to launch — but WHY depends on the holds: if there was work
     // and a human is holding it, the tick says so out loud.
     const heldWithWork = [
@@ -158,18 +195,24 @@ export const planTick = (input: {
       : { kind: "held", roles: heldWithWork, skipped };
   }
 
-  // The global ceiling — with a trace (requirement 1): used up → a refusal, not a
-  // launch.
-  if (consecutiveLaunchesWithoutDelivery(input.events) >= maxConsecutive) {
-    return {
-      kind: "refused",
-      role: eligible.role,
-      thread: eligible.thread,
-      reason: "run-budget",
-      skipped,
-    };
-  }
-  return { kind: "launch", role: eligible.role, thread: eligible.thread, skipped };
+  // THE GLOBAL CEILING — READ ONCE PER TICK, AND IT CUTS THE TAIL (D-1). It is a budget
+  // of launches since anything last delivered, so a plan of N spends N of it: the
+  // remainder takes the head of the plan and everything past it is cut with a single
+  // reason. Computing it per pair instead would either let the whole plan through (each
+  // pair sees the same pre-tick count and thinks itself the first) or write the same
+  // refusal N times — the two ways a global ceiling stops being global.
+  const remaining = Math.max(0, maxConsecutive - consecutiveLaunchesWithoutDelivery(input.events));
+  const launches = eligible.slice(0, remaining);
+  const cutCandidates = eligible.slice(remaining);
+  const head = cutCandidates[0];
+  return {
+    kind: "plan",
+    launches,
+    ...(head === undefined
+      ? {}
+      : { cut: { reason: "run-budget" as const, candidates: cutCandidates, recorded: head } }),
+    skipped,
+  };
 };
 
 /**
@@ -189,5 +232,36 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       return `candidate ${pair} skipped: the session is parked on a question of its own (R19) — it is waiting for an ANSWER, not for a launch; see 'orchestrator status' for the ceiling of that wait`;
     case "exhausted":
       return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal`;
+    case "role-busy":
+      return `candidate ${pair} skipped: ${skip.role} is already being raised on an older thread this tick — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
   }
+};
+
+/**
+ * The plan of this tick in one line — what is being raised, and what the global budget
+ * cut off the end of it.
+ *
+ * The cut is spoken as ONE line naming every pair in it, next to the single journal
+ * record: an operator has to be able to tell "the box is busy" from "the box is refusing
+ * to spend", and a budget refusal that only showed up once per tick in the journal while
+ * three pairs quietly waited would read as the former.
+ */
+export const describePlan = (plan: {
+  readonly launches: readonly Candidate[];
+  readonly cut?: TickCut;
+}): readonly string[] => {
+  const pairs = (candidates: readonly Candidate[]): string =>
+    candidates.map((c) => `${c.role}×${c.thread}`).join(", ");
+  const lines: string[] = [];
+  if (plan.launches.length > 0) {
+    lines.push(
+      `daemon — the plan of this tick: ${plan.launches.length} launch${plan.launches.length === 1 ? "" : "es"}, one per free role — ${pairs(plan.launches)}`,
+    );
+  }
+  if (plan.cut !== undefined) {
+    lines.push(
+      `daemon — the global budget (${plan.cut.reason}) cut ${plan.cut.candidates.length} pair(s) off this plan: ${pairs(plan.cut.candidates)}; one refusal is recorded, against ${plan.cut.recorded.role}/${plan.cut.recorded.thread}`,
+    );
+  }
+  return lines;
 };

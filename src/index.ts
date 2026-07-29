@@ -155,9 +155,11 @@ export {
 export { renderStatus } from "./orchestrator/status.js";
 export {
   type Candidate,
+  describePlan,
   describeSkip,
   planTick,
   type SkipReason,
+  type TickCut,
   type TickDecision,
   type TickSkip,
 } from "./orchestrator/tick.js";
