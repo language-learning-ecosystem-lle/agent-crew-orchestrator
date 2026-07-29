@@ -263,6 +263,34 @@ describe("checkThread", () => {
     expect(issues[0]?.message).toMatch(/thread assembly would break/);
   });
 
+  it("passes a '## msg-' line inside a fenced block — a quotation is not a heading", () => {
+    const issues = checkThread(
+      input({
+        entries: [
+          {
+            fileName: "2026-07-23T13-45-12Z-dev-core.md",
+            message: message(
+              {},
+              [
+                "Quoting the tool output:",
+                "",
+                "```",
+                "$ cli thread show --thread 024-scalar-waiting-on --tail 7 | grep '^## msg-'",
+                "## msg-001 · from: reviewer-pr …   ← in full it is msg-021",
+                "```",
+                "",
+                "That is why the ordinal is not an identifier.",
+              ].join("\n"),
+            ),
+          },
+        ],
+      }),
+      registry,
+    );
+
+    expect(issues).toEqual([]);
+  });
+
   it("catches a derived file that drifted from the messages", () => {
     const issues = checkThread(input({ threadDoc: "# something of its own\n" }), registry);
 

@@ -44,6 +44,31 @@ const HEAD = /^# (?<title>.+)\n\nparticipants: (?<participants>.+) · status: (?
 const HEADING =
   /^## msg-(?<msg>\d+) · from: (?<from>[a-z][a-z0-9-]*) · (?<date>\d{4}-\d{2}-\d{2}) · expects: (?<expects>[a-z]+)(?<suffix> · .+)?$/;
 
+/**
+ * WHERE A SECTION REALLY STARTS. A '## msg-' line inside a fenced code block is a
+ * QUOTATION, not a heading: the feed quotes tool output verbatim, and the tool
+ * that prints headings prints them at the start of the line
+ * (`cli thread show | grep '^## msg-'` — 024-scalar-waiting-on/2026-07-29T08-31-53Z-curator.md).
+ * The naive `/^## msg-/gm` scan cut a section there and, on the check side, called
+ * the quoting message malformed — on an append-only feed that is a validator red by
+ * construction over a file nobody may fix (thread 016).
+ *
+ * The splitter and `check` read fences through THIS function, so the round-trip the
+ * check guards ('the assembly would break on it') stays a true statement rather than
+ * two independent opinions about the same text.
+ */
+export const headingOffsets = (raw: string): number[] => {
+  const offsets: number[] = [];
+  let fenced = false;
+  let offset = 0;
+  for (const line of raw.split("\n")) {
+    if (/^ {0,3}(?:```|~~~)/.test(line)) fenced = !fenced;
+    else if (!fenced && line.startsWith("## msg-")) offsets.push(offset);
+    offset += line.length + 1;
+  }
+  return offsets;
+};
+
 const parseParticipants = (value: string): string[] =>
   value
     .split(",")
@@ -122,9 +147,7 @@ export const parseLegacyThread = (
     status,
   };
 
-  const starts: number[] = [];
-  const re = /^## msg-/gm;
-  for (let m = re.exec(raw); m !== null; m = re.exec(raw)) starts.push(m.index);
+  const starts = headingOffsets(raw);
 
   const messages: Message[] = [];
   for (let k = 0; k < starts.length; k++) {
