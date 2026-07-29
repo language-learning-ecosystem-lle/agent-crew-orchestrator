@@ -211,6 +211,34 @@ describe("running a role as a process — the outcome is always recorded", () =>
     expect(events.at(-1)).toMatchObject({ reason: "exited-without-handoff" });
   }, 60_000);
 
+  it("THE LAUNCHER REFUSES ON STDERR → quota-exhausted, not a failed attempt", () => {
+    // The refusal that arrives BEFORE a session exists is the LAUNCHER's, and the
+    // launcher speaks on stderr — the stub reproduces exactly that: a complaint on
+    // stderr and an immediate exit, with nothing on stdout at all. Until the latch was
+    // put on that stream too, this run came back as `exited-without-handoff`, i.e. as a
+    // failed attempt against a pair that did nothing wrong: the very misattribution
+    // finding C exists to close, and the likeliest one now that D-2 raises N sessions
+    // into one shared window.
+    const { repo } = contour();
+    const exec = stub(repo, "echo 'Error: Claude AI usage limit reached|1785340800' >&2\nexit 1");
+
+    run(repo, exec);
+    const last = journal(repo).at(-1);
+
+    expect(last).toMatchObject({ reason: "quota-exhausted", until: "2026-07-29T16:00:00Z" });
+  }, 60_000);
+
+  it("an ORDINARY stderr complaint is still an ordinary death — the control", () => {
+    // The control that the branch above is the quota one and not "anything on stderr":
+    // a launcher that cannot find its binary is a real failure and must keep counting.
+    const { repo } = contour();
+    const exec = stub(repo, "echo 'Error: the binary is not found' >&2\nexit 1");
+
+    run(repo, exec);
+
+    expect(journal(repo).at(-1)).toMatchObject({ reason: "exited-without-handoff" });
+  }, 60_000);
+
   it("the deadline without an answer → timeout: the role does not hang forever", () => {
     const { repo } = contour();
     const exec = stub(repo, "sleep 120");

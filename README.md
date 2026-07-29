@@ -855,7 +855,8 @@ risky action after — not a single spawn.
   of the lines of a single writer, so the seq comparator of migrated messages is
   not needed here. Kinds of events: `lease-acquired` (with a `deadline`),
   `launch`, `handoff-detected`, `lease-released` (with a `reason`:
-  `completed|forced|exited-without-handoff|supervisor-gone|timeout|exhausted`),
+  `completed|forced|exited-without-handoff|supervisor-gone|timeout|stalled|input-timeout|exited-while-waiting|exhausted|quota-exhausted`;
+  a `quota-exhausted` also carries `until` when the signal named the reopening time),
   `launch-refused` (with `reason: run-budget`, S3) and `stop` (with a `mode`). The
   shape is held by the schema: `lease-acquired` without `--deadline` and
   `lease-released` without `--reason` are a loud refusal.
@@ -985,6 +986,30 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   The value `forced` has not been removed from the list of reasons even though the
   `lease-released` path no longer writes it: journals are append-only files on
   disk, and removing it would make old lines unreadable under a loud parse.
+- **A CLOSED WINDOW IS NOT A FAILED ATTEMPT** (finding C, thread 023). A session cut
+  off by the rate limit exits by itself without passing the turn, so until D-3 it was
+  recorded as `exited-without-handoff` — a failed attempt — and three of those marked
+  the pair `exhausted`, taking the role out of the circuit for a cause that was never
+  its own. The quota now has its own reason, `quota-exhausted`, recognised from the
+  session's own stream (`quota.ts`) and EXCLUDED from the attempt ceiling: the window
+  is one shared resource of the whole box, so the same closure hits every role at
+  once, and with parallel supervision (D-2) the misattribution arrives in a fan.
+  **The source of the recognition is the stream's structured `rate_limit_event`**
+  (`rate_limit_info: {status, resetsAt, rateLimitType}`) — present on every turn of
+  every captured stream of this box, so the reset time comes from the vendor rather
+  than out of prose. A status that PERMITS work is the whitelist (`allowed`,
+  `allowed_warning` — both observed, which is why the test is on the prefix and not on
+  equality: `allowed_warning` is a 76%-of-the-window warning, and refusing on it would
+  close an open window), anything else is a named refusal. The two prose forms stay as
+  the layer below, for the shapes the event cannot reach — a hard cut mid-run, and the
+  launcher's own refusal before a session exists, which arrives on STDERR: both streams
+  go through the same latch. The
+  reason is checked before "the process exited" and after `handedOff`/`idle`/`overdue`
+  — a run that passed the turn before the window shut succeeded, and a run that had
+  already stalled is diagnosed by whatever came first. **What bounds the retry is the
+  backoff on the reopening time, and it is NOT in this part**: until it lands, a tick
+  will re-raise a role into a closed window — cheaply (the session dies at once) and
+  loudly (each release says so by name).
 - **`draining` has a limit — the lease deadline (`overdue`).** The turn was passed →
   we wait for the process to exit naturally → `completed`. The deadline without a
   passed turn → `timeout`, and the role does not hang forever. `handedOff`

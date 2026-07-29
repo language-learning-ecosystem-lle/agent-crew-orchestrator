@@ -73,6 +73,15 @@ export const MAX_ATTEMPTS = 3;
  * middle a package that finished. Neither of them counts towards the attempt ceiling
  * — see `isFailedTerminal` in `lease.ts`.
  *
+ * `quota-exhausted` — THE WINDOW RAN OUT, not the session (finding C, thread 023).
+ * Before it, a run cut off by the rate limit came back as an ordinary death without a
+ * handoff and was counted as a failed attempt: three of those marked the pair
+ * `exhausted` and the role left the circuit for a cause that was never its own. With
+ * parallel supervision (D-2) the misattribution arrives in a fan — N sessions share
+ * one window and burn it N times faster — so the reason is separated here and
+ * excluded from the ceiling in `lease.ts`. `until` carries the reopening time when
+ * the signal named it.
+ *
  * `forced` has NOT been removed from the list even though the `lease-released`
  * path no longer writes it (a real force writes a `stop {mode: forced, by, note}`
  * event): journals are append-only files on disk, and removing a value would make
@@ -89,6 +98,7 @@ export const RELEASE_REASONS = [
   "input-timeout",
   "exited-while-waiting",
   "exhausted",
+  "quota-exhausted",
 ] as const;
 export type ReleaseReason = (typeof RELEASE_REASONS)[number];
 
@@ -215,6 +225,12 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     output: z.string().min(1).optional(),
     session: z.string().min(1).optional(),
     steps: z.number().int().min(0).optional(),
+    // WHEN THE WINDOW REOPENS, for a `quota-exhausted` release (finding C). Optional
+    // and DELIBERATELY not defaulted: a quota signal that did not name a reset time is
+    // a different fact from one that did ("closed, reopening unknown" vs "closed until
+    // 14:00"), and inventing the second out of the first is how a backoff comes to
+    // hammer a door it believes is open.
+    until: base.ts.optional(),
   }),
   // The session was stopped forcibly (S4). `by`/`note` are the "who" and the
   // "why", and together with `ts` (the "when") they make the force trace in the
