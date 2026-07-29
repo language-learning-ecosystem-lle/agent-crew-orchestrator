@@ -15,15 +15,25 @@
  *
  *  1. **The launch deny rules** (`zoneDenyRules`) — turned into the settings the
  *     session is raised with, so the tool itself refuses the edit as it happens and
- *     the session sees the refusal. Known hole: a `Bash` write (`echo > file`) is
- *     not a tool rule and slips through — door 2 exists for exactly that.
+ *     the session sees the refusal. Known hole: a `Bash` write is seen by this door
+ *     UNRELIABLY (measured, see below) — door 2 exists for exactly that.
  *  2. **The pre-commit guard** (`pathsOutsideZones` over the staged paths) — the
  *     file may be touched on disk, it does not get into history.
  *  3. **The CI step** (`pathsOutsideZones` over the PR diff, role taken from the
  *     `role:` line of the description) — red before the review.
  *
- * THE CHAIN IS ONLY AS HONEST AS ITS HOLES ARE NAMED. Door 1 does not see a `Bash`
- * write — door 2 catches it. Door 2 does not see `git commit --no-verify` — door 3
+ * THE CHAIN IS ONLY AS HONEST AS ITS HOLES ARE NAMED. Door 1 sees a `Bash` write
+ * UNRELIABLY, and "unreliably" is the whole statement — it is neither the guarantee
+ * nor the plain hole the first writing of this block assumed. Measured on a raised
+ * `dev-core` session (2026-07-28, current `main`): `printf x > apps/pronunciation-
+ * service/probe.md` on its own, and `rm` of a file under that prefix, were both
+ * REFUSED — the tool applies its file deny rules to bash commands as well, which this
+ * block did not know; the SAME write inside a longer compound command
+ * (`node -v; printf … > … && git add … && git rev-parse HEAD > …`) went through and
+ * created the file. So door 1 is best-effort for `Bash`, never something to lean on,
+ * and door 2 is what actually holds that class: the file the compound command wrote
+ * was refused at `git commit` with HEAD unmoved. Door 2 does not see
+ * `git commit --no-verify` — door 3
  * catches it, and only door 3 can: the verdict is passed on the runner, over the diff
  * of the PR, where there is no local hook to skip. What stays open with door 3 in
  * place is said here rather than left to be discovered: the step judges by the
