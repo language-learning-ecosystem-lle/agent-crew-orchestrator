@@ -81,6 +81,31 @@ describe("loadThreads — a failure of one thread does not blind the circuit", (
     rmSync(at, { recursive: true, force: true });
   });
 
+  it("a broken MESSAGE names the file that broke the thread", () => {
+    const at = root();
+    migrated(at, "012-ok");
+    migrated(at, "024-broken");
+    // `claude.ai` instead of `claude-ai` — the real incident of 2026-07-28: a message
+    // written past `new-message` (which refuses this value at the door) took three
+    // threads out of the mail at once.
+    writeFileSync(
+      join(at, "024-broken", "messages", "2026-07-28T19-51-10Z-curator.md"),
+      MESSAGE.replace("expects: answer", "expects: answer\nworker: claude.ai"),
+    );
+
+    const { threads, failures } = loadThreads(at, ROLES);
+
+    // The thread is still refused whole — a hole in the feed would make the turn
+    // stale-but-plausible, and the broken file is typically the last one.
+    expect(threads.map((loaded) => loaded.thread.id)).toEqual(["012-ok"]);
+    expect(failures.map((failure) => failure.id)).toEqual(["024-broken"]);
+    expect(failures[0]?.problem).toContain("messages/2026-07-28T19-51-10Z-curator.md");
+    // ...and the parser's own sentence survives inside it, not instead of it.
+    expect(failures[0]?.problem).toContain("worker: claude.ai");
+
+    rmSync(at, { recursive: true, force: true });
+  });
+
   it("everything intact — failures is empty, threads in id order", () => {
     const at = root();
     migrated(at, "013-b");

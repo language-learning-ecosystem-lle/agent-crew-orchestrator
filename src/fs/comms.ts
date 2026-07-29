@@ -86,10 +86,27 @@ export const loadThread = (
   // a flat `.sort()` of names would lie.
   const entries: MessageEntry[] = readdirSync(messagesDir)
     .filter((name) => name.endsWith(".md"))
-    .map((fileName) => ({
-      fileName,
-      message: parseMessageFile(readFileSync(join(messagesDir, fileName), "utf8")),
-    }))
+    .map((fileName) => {
+      try {
+        return {
+          fileName,
+          message: parseMessageFile(readFileSync(join(messagesDir, fileName), "utf8")),
+        };
+      } catch (error) {
+        // THE THREAD STILL DIES AS A WHOLE, AND ON PURPOSE — but it says WHICH file
+        // killed it. A hole in the feed cannot be tolerated per message: the broken
+        // header is as likely as any to be the LAST one, and then every reader that
+        // asks "whose turn is it" would answer from a stale message with no sign that
+        // it is stale (measured, thread 016: on 2026-07-28 three threads went
+        // unreadable at once — 024, 029, 034 — and in all three the offending file WAS
+        // the last one; in 034 it was the only one). Silent staleness is the defect
+        // this package exists to remove, so refusing the thread is the honest failure.
+        // What was NOT honest is refusing it without a name: `loadThreads` reported
+        // only the parser's sentence ("'worker: claude.ai' — ..."), and finding the
+        // one file behind it among dozens was the reader's problem.
+        throw new Error(`messages/${fileName}: ${(error as Error).message}`);
+      }
+    })
     .sort(compareMessageEntries);
 
   const input: ThreadInput = {
