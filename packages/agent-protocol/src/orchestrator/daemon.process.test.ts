@@ -280,6 +280,62 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
     expect(journalKinds(repo)).not.toContain("launch");
   });
 
+  it("the tick DIALS THE COURIER: a stalled turn is announced and the state file appears (thread 024)", () => {
+    // The whole point of the package's second class of event was that nothing called
+    // it: `notify` could compose the message and deliver it, and only a human hand
+    // ever made that happen. Here the daemon's own tick does — the thread has been
+    // waiting on dev-core since 2026-07-25, which is well past the 180m default, so
+    // one `--once` tick must both say it and write the state that keeps it from
+    // being said twice.
+    const repo = contour();
+    enable(repo);
+
+    const result = daemon(repo);
+
+    expect(result.out).toContain("courier:");
+    expect(result.out).toContain("012-x (stalled");
+    // Delivered as a message, not merely counted: no transport is configured in this
+    // contour, and the honest form of that is to print what would have been sent.
+    expect(result.out).toContain("has not moved for");
+    expect(readFileSync(join(stateDir(repo), "notify.state"), "utf8")).toContain(
+      "stalled\tdev-core\t012-x\t",
+    );
+  });
+
+  it("the second tick says nothing new — the courier does not ring twice about one stall", () => {
+    const repo = contour();
+    enable(repo);
+
+    daemon(repo);
+    const again = daemon(repo);
+
+    expect(again.out).toContain("nothing to announce");
+    expect(again.out).not.toContain("012-x (stalled");
+  });
+
+  it("a courier that cannot deliver leaves the daemon ALIVE and says so", () => {
+    // A notification is a superstructure, never a dependency: a transport module that
+    // does not load must cost a loud line, not the watch. Before the automatic dial
+    // this path ended in `process.exit(2)` — inside the loop that would have been the
+    // daemon dying of a broken plugin.
+    const repo = contour();
+    enable(repo);
+    const config = JSON.parse(readFileSync(join(repo, "agent-protocol.json"), "utf8"));
+    config.notifications = { transport: { module: join(repo, "no-such-transport.js") } };
+    writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(config, null, 2)}\n`);
+    git(repo, "add", ".");
+    git(repo, "commit", "-qm", "transport");
+
+    const result = daemon(repo);
+
+    expect(result.out).toContain("the courier is NOT delivering");
+    // The tick went on to do its work, and the state file was NOT touched: a trigger
+    // must not be consumed by a run that could never have delivered anything.
+    expect(result.code).toBe(0);
+    expect(journalKinds(repo)).toContain("launch");
+    expect(existsSync(join(stateDir(repo), "notify.state"))).toBe(false);
+  });
+
   it("launches disabled → the tick says so, rather than exiting without a word", () => {
     const repo = contour();
 
