@@ -19,10 +19,11 @@
  * degree of parallelism is the number of free roles, and the planner's job is to say
  * which pair each free role gets, in one pass, from one reading of the journal.
  *
- * The pure half lives here and the raising is still sequential in the daemon (D-2 turns
- * the supervision non-blocking). That split is deliberate: the queue policy, the ceilings
- * and "who drops out and why" are decidable without a single child process, and they are
- * the part that must not be re-derived inside an event loop.
+ * The pure half lives here and the raising is the daemon's; since D-2 the whole plan is
+ * raised in the tick that computed it, and the tick no longer waits for any of it. That
+ * split is deliberate: the queue policy, the ceilings and "who drops out and why" are
+ * decidable without a single child process, and they are the part that must not be
+ * re-derived inside an event loop.
  *
  * S5 added a fourth guard — `held`: a role taken by a LIVE MANUAL SESSION drops
  * out of the candidates, otherwise the daemon would raise a second session of the
@@ -61,11 +62,18 @@ export type Candidate = { readonly role: string; readonly thread: string };
  * human and will die on its wait ceiling if the line reads "running right now" and the
  * operator does what that line implies — namely, nothing.
  *
- * `role-busy` is the plural planner's own (D-1): the role is ALREADY being raised on an
- * older thread of this same tick. It calls for nothing — the pair comes back on the next
- * tick — but it is not silence either: under a scalar `waiting-on` (024) one role is
- * routinely awaited by several threads, so this is the ordinary shape of a queue, and
- * before D-1 those pairs vanished from the stream with no line at all.
+ * `role-busy` is the plural planner's own (D-1): the role ALREADY has a session — either
+ * one planned earlier in this same tick, or one a supervisor of this daemon is still
+ * running (D-2). It calls for nothing — the pair comes back on the next tick — but it is
+ * not silence either: under a scalar `waiting-on` (024) one role is routinely awaited by
+ * several threads, so this is the ordinary shape of a queue, and before D-1 those pairs
+ * vanished from the stream with no line at all.
+ *
+ * D-2 MADE THIS REASON LOAD-BEARING ACROSS TICKS, not only within one. While the tick
+ * blocked on its single launch, a role that was running could not be a candidate at all —
+ * the daemon was not ticking. Now it ticks WHILE its children live, so the only thing
+ * standing between a live session and a second one in the same workspace is that the
+ * planner is told which roles are busy in this process (`running`).
  */
 export type SkipReason = "held" | "active" | "waiting" | "exhausted" | "role-busy";
 
@@ -127,6 +135,18 @@ export const planTick = (input: {
   readonly maxAttempts?: number;
   /** Roles taken by manual sessions right now (S5, `heldRoles`). */
   readonly held?: readonly string[];
+  /**
+   * Roles whose session a supervisor of THIS process is still running (D-2).
+   *
+   * It is not derivable from `events` in time: the lease of a run is written by the
+   * supervisor, and between the decision to raise a pair and that write there is a whole
+   * `settleRun` of git work. A tick landing in that window would read a journal with no
+   * live lease and plan a second session into the same workspace — refused by the lock,
+   * but refused with a burnt launch and a scary line instead of an ordinary queue skip.
+   * The registry of live supervisors is the authority on this process; the journal
+   * remains the authority on every other one.
+   */
+  readonly running?: readonly string[];
 }): TickDecision => {
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
   const held = input.held ?? [];
@@ -149,7 +169,10 @@ export const planTick = (input: {
   // into two passes is how the reasons drifted from the decision in the first place.
   const skipped: TickSkip[] = [];
   const eligible: Candidate[] = [];
-  const planned = new Set<string>();
+  // Seeded with the roles this process is ALREADY running (D-2): "one session per role"
+  // is one rule, and a role busy since an earlier tick is busy in exactly the same sense
+  // as one taken by the head of this plan.
+  const planned = new Set<string>(input.running ?? []);
   for (const candidate of input.candidates) {
     const view = viewOf(candidate);
     const attempt = view?.attempt ?? 0;
@@ -233,7 +256,7 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
     case "exhausted":
       return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal`;
     case "role-busy":
-      return `candidate ${pair} skipped: ${skip.role} is already being raised on an older thread this tick — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
+      return `candidate ${pair} skipped: ${skip.role} already has a session (raised on an older thread of this tick, or still running from an earlier one) — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
   }
 };
 
