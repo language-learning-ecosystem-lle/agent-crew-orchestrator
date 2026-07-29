@@ -23,7 +23,9 @@
  * the contenders are local processes and a local mutex covers all of them. A checkout
  * per role would pay for the same property in worktrees, fast-forwards on every
  * preflight and a second place for the "inside the repo tree" requirement to bite.
- * (john's decision, thread `023-daemon-parallelism`, msg-003.)
+ * (john's decision, thread `023-daemon-parallelism`,
+ * `messages/2026-07-27T18-52-00Z-curator.md`: the ordinal is a position in a view and
+ * moves with `--tail` and with an unreadable file, so a doc-block cites the file name.)
  *
  * WHY THE LOCK FILE LIVES IN THE GIT DIR. It must not be visible to
  * `git status --porcelain` — a lock inside the working tree would be untracked dirt,

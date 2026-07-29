@@ -16,7 +16,10 @@
  * - **The file name matches the fields.** The name is the message identifier; once
  *   it drifts from the content it stops being one.
  * - **No `## msg-` lines in the body** — they would break the assembly: the
- *   assembler cuts a thread exactly at them.
+ *   assembler cuts a thread exactly at them. INSIDE A FENCED CODE BLOCK such a line
+ *   is a quotation and not a heading, and the assembler does not cut there either —
+ *   both sides ask `headingOffsets` (thread.ts), so this check states a fact about
+ *   the assembler rather than an opinion of its own.
  * - **The body is non-empty** — an empty message in the feed is silence that looks
  *   like a turn.
  * What is DELIBERATELY NOT here: a "dates do not decrease in thread order" check.
@@ -38,7 +41,7 @@
  */
 import type { RoleRegistry } from "../roles/registry.js";
 import { type Message, messageFileName } from "./message.js";
-import { renderThread, type ThreadMeta } from "./thread.js";
+import { headingOffsets, renderThread, type ThreadMeta } from "./thread.js";
 
 export type MessageEntry = {
   readonly fileName: string;
@@ -142,7 +145,7 @@ export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIs
     }
 
     if (text.trim() === "") at(entry.fileName, "the message body is empty");
-    if (/^## msg-/m.test(text)) {
+    if (headingOffsets(text).length > 0) {
       at(entry.fileName, "a '## msg-' line in the body — the thread assembly would break on it");
     }
   }

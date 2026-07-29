@@ -51,6 +51,26 @@ describe("parseLegacyThread", () => {
   it("fails on a non-standard header instead of guessing it", () => {
     expect(() => parseLegacyThread("012-x", "# title only\n", ROLES)).toThrow(/header/);
   });
+
+  it("does not cut a section at a '## msg-' line quoted inside a fenced block", () => {
+    const quoting = LEGACY.replace(
+      "Done, the PR is open.",
+      [
+        "Done, the PR is open. The ordinal is not an identifier:",
+        "",
+        "```",
+        "$ cli thread show --thread 024-scalar-waiting-on --tail 7 | grep '^## msg-'",
+        "## msg-001 · from: reviewer-pr · 2026-07-29 · expects: answer",
+        "```",
+      ].join("\n"),
+    );
+
+    const thread = parseLegacyThread("012-x", quoting, ROLES);
+
+    expect(thread.messages).toHaveLength(2);
+    expect(thread.messages[1]?.text).toContain("## msg-001 · from: reviewer-pr");
+    expect(thread.messages[1]?.fields.waitingOn).toBe("john");
+  });
 });
 
 describe("declaredWaitingOn", () => {
