@@ -114,6 +114,51 @@ export const isDelivery = (event: OrchestratorEvent): boolean =>
   (event.kind === "lease-released" && event.reason === "completed");
 
 /**
+ * THE THIRD SHAPE OF A DELIVERY: THE TURN THAT STAYED ON THE ROLE (thread 023, the
+ * night's analysis by curator; john's decision of 2026-07-30 puts it in the same class
+ * as finding C — a break whose cause is not the pair's own).
+ *
+ * `handoffDetected` asks one question — "does the thread still await the role?" — and
+ * for a message that PASSES the turn on that is the whole truth. But scalar
+ * `waiting-on` (v13) made `waiting-on: <the writer itself>` the ONLY legal shape for
+ * "this needs a human decision": `john` is not accepted in the field at all, so the
+ * one who carries the question keeps the turn. Such a run writes its message, checks
+ * it in `origin/comms` and exits — and the observer, seeing the thread still awaiting
+ * the role, records `exited-without-handoff`, the name that counts towards the attempt
+ * ceiling. Reproduced as a controlled comparison on ONE thread within nine minutes:
+ * two curator runs of the same class, `waiting-on: curator` → a failed attempt,
+ * `waiting-on: dev-core` → a delivery. The only difference was that field.
+ *
+ * The cost was not the quota: four pairs (curator×016/024/033/034) went `exhausted`
+ * for delivering by the norm, and an `exhausted` pair does not come back on its own —
+ * the reset hangs on a delivery, and an answer that leaves the turn where it is is not
+ * one. The more carefully the role followed the rule, the faster its thread died.
+ *
+ * THE DIFFERENTIATOR IS THE MAIL, NOT A NEW EVENT — and that is deliberate, because it
+ * is what makes the fix retroactive. The journal keeps its honest record ("the process
+ * exited with the turn still here"); the READING adds the fact the journal never had:
+ * a message of this very session is in the mail. Both halves of the judgement are
+ * needed and neither alone is enough — a session that died silently wrote nothing, and
+ * a message signed by ANOTHER session says nothing about this run. So the historical
+ * pairs are reclassified the moment the fold is given the mail, with nobody's hand
+ * fixing anything up.
+ *
+ * The set is of SESSIONS, not of roles or threads: a role writes into its thread from
+ * many runs over a day, and only the one that wrote during this lease delivered.
+ * `lease-released` carries `session`; `handoff-detected` does not (it does not need to
+ * — the turn passing is visible in the mail by itself), which is why this predicate is
+ * written against the release event alone.
+ */
+export const isSelfTurnDelivery = (
+  event: OrchestratorEvent,
+  deliveredSessions: ReadonlySet<string>,
+): boolean =>
+  event.kind === "lease-released" &&
+  event.reason === "exited-without-handoff" &&
+  event.session !== undefined &&
+  deliveredSessions.has(event.session);
+
+/**
  * A terminal FAILURE: the run was broken off rather than finished normally. Three
  * reasons — timeout, force and exiting on its own without passing the turn (the
  * last one separated from force, see `RELEASE_REASONS`); for the attempt ceiling
@@ -161,6 +206,8 @@ type Acc = {
   /** When the current wait began — the other end of the shift of the work deadline. */
   waitingSince: string | null;
   reason: LeaseView["reason"];
+  /** The last release delivered into its own turn (`isSelfTurnDelivery`). */
+  deliveredToSelf: boolean;
   lastEvent: OrchestratorEvent["kind"];
 };
 
@@ -181,6 +228,12 @@ export const foldLeases = (
   events: readonly OrchestratorEvent[],
   now: Date,
   maxAttempts: number = MAX_ATTEMPTS,
+  /**
+   * Sessions that wrote a message into the mail (`isSelfTurnDelivery`). Defaults to
+   * empty — a caller that has no mail at hand folds exactly as before, and nothing
+   * that only reads the journal has to learn about the circuit.
+   */
+  deliveredSessions: ReadonlySet<string> = new Set(),
 ): LeaseView[] => {
   const acc = new Map<string, Acc>();
   const order: string[] = [];
@@ -201,6 +254,7 @@ export const foldLeases = (
         waitDeadline: null,
         waitingSince: null,
         reason: null,
+        deliveredToSelf: false,
         lastEvent: event.kind,
       };
       acc.set(k, cur);
@@ -211,7 +265,8 @@ export const foldLeases = (
     // event is (`isDelivery`) — one predicate rather than a reset written into each
     // branch, so the per-pair ceiling and the global one cannot come to mean different
     // things again.
-    if (isDelivery(event)) cur.attempt = 0;
+    const selfTurn = isSelfTurnDelivery(event, deliveredSessions);
+    if (isDelivery(event) || selfTurn) cur.attempt = 0;
 
     switch (event.kind) {
       case "lease-acquired":
@@ -254,6 +309,10 @@ export const foldLeases = (
       case "lease-released":
         cur.state = "released";
         cur.reason = event.reason;
+        // The release that DELIVERED into its own turn is remembered as such: the
+        // reason stays what the journal says (the process did exit with the turn
+        // here), and the judgement below reads this flag instead of the name.
+        cur.deliveredToSelf = selfTurn;
         cur.waitDeadline = null;
         cur.waitingSince = null;
         break;
@@ -273,7 +332,12 @@ export const foldLeases = (
     // session that overran.
     const clock = cur.state === "waiting" ? cur.waitDeadline : cur.deadline;
     const overdue = isActive(cur.state) && clock !== null && nowIso > clock;
-    const failed = isFailedTerminal(cur.state, cur.reason);
+    // A run that delivered into its own turn is NOT a failed attempt, whatever the
+    // release is named: the mail it left is consistent (the question is in the thread,
+    // self-sufficient), and it broke on nobody's cause — the same reasoning by which
+    // R19's two endings and `quota-exhausted` were taken off this list, now a third
+    // case of it rather than a new policy (john, 2026-07-30).
+    const failed = isFailedTerminal(cur.state, cur.reason) && !cur.deliveredToSelf;
     const exhausted = cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts);
     const launchable = failed && !exhausted;
     return {

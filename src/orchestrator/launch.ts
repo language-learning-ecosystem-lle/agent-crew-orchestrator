@@ -47,7 +47,7 @@ import { DEFAULT_IDLE_MS } from "./activity.js";
 import type { Continuation } from "./continuation.js";
 import { DEFAULT_WAIT_INPUT_SECONDS } from "./interactive.js";
 import { eventTimestamp, MAX_ATTEMPTS, type OrchestratorEvent, type World } from "./journal.js";
-import { foldLeases, isDelivery, isLeaseAlive } from "./lease.js";
+import { foldLeases, isDelivery, isLeaseAlive, isSelfTurnDelivery } from "./lease.js";
 
 /**
  * The ceiling of the global auto loop: how many runs in a row WITHOUT A SINGLE
@@ -886,11 +886,13 @@ export const buildResumePrompt = (input: {
  */
 export const consecutiveLaunchesWithoutDelivery = (
   events: readonly OrchestratorEvent[],
+  /** Sessions that wrote into the mail (`isSelfTurnDelivery`, thread 023). */
+  deliveredSessions: ReadonlySet<string> = new Set(),
 ): number => {
   let count = 0;
   for (const event of events) {
     if (event.kind === "launch") count += 1;
-    else if (isDelivery(event)) count = 0;
+    else if (isDelivery(event) || isSelfTurnDelivery(event, deliveredSessions)) count = 0;
     // THE CLOSED WINDOW TAKES ITS OWN LAUNCH BACK — the same reasoning that already
     // keeps it out of the per-pair `attempt` (`lease.ts`), applied to the ceiling it
     // was still reaching: the cause is not the pair's and not any pair's. It is
@@ -936,11 +938,13 @@ export const planLaunch = (input: {
    */
   readonly continuation?: Continuation;
   readonly world?: World;
+  /** Sessions that wrote into the mail (`isSelfTurnDelivery`, thread 023). */
+  readonly deliveredSessions?: ReadonlySet<string>;
 }): LaunchPlan => {
   const { events, role, thread, now, wallClockMs } = input;
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
 
-  const view = foldLeases(events, now, input.maxAttempts).find(
+  const view = foldLeases(events, now, input.maxAttempts, input.deliveredSessions).find(
     (v) => v.role === role && v.thread === thread,
   );
   // `isLeaseAlive` and not two comparisons: since R19 a lease also lives while it is
@@ -950,7 +954,7 @@ export const planLaunch = (input: {
     return { ok: false, reason: "already-running" };
   }
   if (view?.exhausted) return { ok: false, reason: "exhausted" };
-  if (consecutiveLaunchesWithoutDelivery(events) >= maxConsecutive) {
+  if (consecutiveLaunchesWithoutDelivery(events, input.deliveredSessions) >= maxConsecutive) {
     return { ok: false, reason: "run-budget" };
   }
 

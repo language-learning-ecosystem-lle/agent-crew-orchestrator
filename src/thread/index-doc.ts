@@ -38,3 +38,29 @@ export const renderIndex = (threads: readonly Thread[]): string => {
 /** Threads awaiting a role. This is exactly "is there mail" — computed from the source, not from INDEX. */
 export const threadsWaitingOn = (threads: readonly Thread[], role: string): string[] =>
   threads.filter((thread) => waitingOnOf(thread) === role).map((thread) => thread.id);
+
+/**
+ * SESSIONS THAT WROTE INTO THE MAIL — the fact the journal does not have (thread 023).
+ *
+ * A run that carries a question to a human keeps the turn on itself: scalar
+ * `waiting-on` (v13) leaves it no other legal shape. Its release therefore reads
+ * `exited-without-handoff`, which the attempt ceiling counts as a failure — and the
+ * only thing that tells such a run apart from a session that died silently is whether
+ * a message signed by that session is in the mail. That is this set, and the fold
+ * (`isSelfTurnDelivery`) is the one that judges by it.
+ *
+ * Read from THE MAIL rather than the journal on purpose: it makes the correction
+ * retroactive. Pairs already `exhausted` for delivering by the norm come back the
+ * moment a reader hands the fold this set — no hand rewrites the journal, which is
+ * append-only and honest about what it saw.
+ */
+export const sessionsThatWrote = (threads: readonly Thread[]): ReadonlySet<string> => {
+  const sessions = new Set<string>();
+  for (const thread of threads) {
+    for (const message of thread.messages) {
+      const { session } = message.fields;
+      if (session !== undefined) sessions.add(session);
+    }
+  }
+  return sessions;
+};

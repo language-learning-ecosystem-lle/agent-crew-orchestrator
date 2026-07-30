@@ -147,6 +147,13 @@ export const planTick = (input: {
    * remains the authority on every other one.
    */
   readonly running?: readonly string[];
+  /**
+   * Sessions that wrote a message into the mail — the differentiator of a run that
+   * DELIVERED into its own turn (`isSelfTurnDelivery`, thread 023). The tick reads the
+   * threads anyway to build its candidates, so the set costs it nothing; without it the
+   * fold judges by the journal alone and counts such a run a failed attempt.
+   */
+  readonly deliveredSessions?: ReadonlySet<string>;
 }): TickDecision => {
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
   const held = input.held ?? [];
@@ -160,7 +167,7 @@ export const planTick = (input: {
   // Roles taken by a human drop out ENTIRELY, not per pair: a hold holds the role,
   // not the thread — a manual dev-core session is busy with itself on any thread.
   // The other roles are launched as usual, hence a filter here rather than an exit.
-  const views = foldLeases(input.events, input.now, input.maxAttempts);
+  const views = foldLeases(input.events, input.now, input.maxAttempts, input.deliveredSessions);
   const viewOf = (candidate: Candidate): LeaseView | undefined =>
     views.find((v) => v.role === candidate.role && v.thread === candidate.thread);
 
@@ -224,7 +231,10 @@ export const planTick = (input: {
   // reason. Computing it per pair instead would either let the whole plan through (each
   // pair sees the same pre-tick count and thinks itself the first) or write the same
   // refusal N times — the two ways a global ceiling stops being global.
-  const remaining = Math.max(0, maxConsecutive - consecutiveLaunchesWithoutDelivery(input.events));
+  const remaining = Math.max(
+    0,
+    maxConsecutive - consecutiveLaunchesWithoutDelivery(input.events, input.deliveredSessions),
+  );
   const launches = eligible.slice(0, remaining);
   const cutCandidates = eligible.slice(remaining);
   const head = cutCandidates[0];

@@ -249,7 +249,7 @@ import {
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { fileMailLock, MailCheckoutBusyError, type MailLock } from "./thread/checkout-lock.js";
 import { DeliveryRefusedError, deliverMessage, deliverySubject } from "./thread/deliver.js";
-import { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
+import { renderIndex, sessionsThatWrote, threadsWaitingOn } from "./thread/index-doc.js";
 import type { Expects, LaunchDirective, ThreadPriorityValue } from "./thread/message.js";
 import {
   EXPECTS,
@@ -2792,9 +2792,10 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
 
   return {
     now,
-    // The SAME attempt ceiling the daemon judges by (`--max-attempts`), or the frame
-    // would call a pair exhausted that the next tick raises without blinking.
-    leases: foldLeases(events, now, gatesFrom(argv).maxAttempts.value),
+    // The SAME attempt ceiling the daemon judges by (`--max-attempts`), and the SAME
+    // mail (thread 023) — either one missing here would make the frame call a pair
+    // exhausted that the next tick raises without blinking.
+    leases: foldLeases(events, now, gatesFrom(argv).maxAttempts.value, sessionsThatWrote(threads)),
     holds: foldHolds(loadHolds(holds), now),
     circuit: {
       launchesEnabled: existsSync(enableFlag),
@@ -3394,6 +3395,12 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     wallClockMs: p.wallClockMs,
     maxConsecutive: p.maxConsecutive,
     maxAttempts: p.maxAttempts,
+    // The gate of a single run judges by the SAME mail the daemon's tick does
+    // (thread 023): a pair that delivered into its own turn is not exhausted, and a
+    // `run` that refused where the daemon would have raised is the drift itself.
+    deliveredSessions: sessionsThatWrote(
+      loadThreads(p.mailRoot, p.ids).threads.map((loaded) => loaded.thread),
+    ),
     continuation: p.continuation,
     ...(p.world === undefined ? {} : { world: p.world }),
   });
@@ -4323,6 +4330,12 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       wallClockMs,
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
+      // The dry run answers the same question the real one does, so it reads the
+      // same mail (thread 023) — a plan that refuses where `--write` would go is
+      // worse than no plan.
+      deliveredSessions: sessionsThatWrote(
+        loadThreads(mailRoot, registry.ids()).threads.map((loaded) => loaded.thread),
+      ),
       continuation: setup.continuation,
       ...(setup.world === undefined ? {} : { world: setup.world }),
     });
@@ -5016,6 +5029,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       events,
       candidates,
       now: new Date(),
+      // The mail is already parsed for the queue above — the set of sessions that
+      // wrote is what keeps a run that delivered into its own turn out of the
+      // failed attempts (thread 023).
+      deliveredSessions: sessionsThatWrote(threads),
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
     });
