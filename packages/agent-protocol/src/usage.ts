@@ -26,6 +26,18 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # role's 'zones.forbidden' — the pre-commit hook of a role workspace
                               # (--staged --role-from-workspace) and the CI step of a PR (--base)
                               # a checkout that is not a role workspace passes with a note, not a refusal
+  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>]
+                              # THE MERGE DOOR OF 'curator' (thread 026): the three guards that are
+                              # FACTS — approve on the CURRENT head, green checks on it, and no
+                              # document of power in the diff (the role cards and the config are
+                              # DERIVED; --power-docs adds this project's own, e.g. PROTOCOL.md)
+                              # --working-cards: instruction paths that are NOT documents of power
+                              # (CLAUDE.md — a working card rides with the code, john 2026-07-28);
+                              # subtracted from the DERIVED side only, and always printed
+                              # guards 3 and 5 (a decision of john's behind the thread, a trace after
+                              # the merge) are judgements and are printed as obligations, never as a pass
+                              # guard 2 reads 'statusCheckRollup': the token needs the 'checks' scope
+                              # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
   agent-protocol index build  --root <mail> --ref <ref> [--write]
   agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]
                               # THE READING HALF OF THE AGENT'S INTERFACE (R3): the conversation, in order,

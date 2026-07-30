@@ -59,6 +59,13 @@ import {
   workdirState,
 } from "./fs/git.js";
 import {
+  describeMergeGate,
+  evaluateMergeGate,
+  powerDocuments,
+  unmatchedWorkingCards,
+} from "./merge/gate.js";
+import { ghPullRequestSchema } from "./merge/gh.js";
+import {
   describeAge,
   parseNotifyState,
   planNotifications,
@@ -5687,6 +5694,126 @@ const zonesCheck = (argv: readonly string[]): void => {
   );
 };
 
+/**
+ * THE MERGE DOOR OF `curator` (thread 026): the three guards that are facts, checked
+ * in one call instead of by eye over a `gh pr view` dump. Its answer is never "merge
+ * it" — guards 3 and 5 are judgements and are printed as obligations (see
+ * `merge/gate.ts` for why the tool refuses to speak for them).
+ *
+ * `gh` IS THE DEPENDENCY, deliberately and only here: it already is what a session
+ * runs to look at a PR, its authentication is the operator's, and reaching for the
+ * REST API instead would put a token in the package's hands for no gain.
+ *
+ * AND THAT TOKEN NEEDS THE `checks` SCOPE — say it out loud, because the refusal is
+ * observed and not hypothetical (the reviewer's finding on this very PR). Guard 2
+ * reads `statusCheckRollup`, which GraphQL serves only to a token holding `checks:
+ * read`. A personal token has it; a GitHub App installation token (`ghs_…`, what any
+ * `gh-action` executor of this protocol runs with) has ONLY what its job's
+ * `permissions:` block lists, and an unlisted scope is zeroed rather than defaulted.
+ * The whole call then fails — `Resource not accessible by integration` — instead of
+ * degrading, so a gate run from a job without `checks: read` answers nothing at all
+ * rather than answering wrongly. The failure path below names the scope, because the
+ * message GitHub sends does not.
+ *
+ * `--power-docs` IS A FLAG AND NOT A CONFIG SECTION, and the reason is worth writing
+ * down because it is not the shape one would choose: a new config field costs a
+ * protocol version by R2, and a version bump currently CANNOT be committed at all —
+ * the zones door (`zones check`, both the pre-commit hook and the CI step) reads the
+ * config at `origin/main`, which is still at the old number, with the package of the
+ * working tree, which writes the new one, so `loadProtocolConfig` halts it. That is a
+ * defect of the door and not of this command; until it is settled, the extra
+ * documents of power are named on the command line by whoever runs the gate, and the
+ * role card holds the invocation. The derived two — the role cards and the config —
+ * need no list either way.
+ */
+const mergeGate = (argv: readonly string[]): void => {
+  const number = required(argv, "--pr");
+  if (!/^\d+$/.test(number)) {
+    fail(`--pr '${number}' — the number of a pull request`, 2);
+    return;
+  }
+  const loaded = configFrom(argv, undefined);
+  const repo = flag(argv, "--repo") ?? process.cwd();
+
+  let raw: string;
+  try {
+    raw = execFileSync(
+      "gh",
+      ["pr", "view", number, "--json", "number,headRefOid,body,statusCheckRollup,reviews,files"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 16 * 1024 * 1024,
+      },
+    );
+  } catch (error) {
+    const message = (error as Error).message;
+    const scope = /not accessible by integration|statusCheckRollup/i.test(message)
+      ? " — `statusCheckRollup` needs a token with the `checks: read` scope; an installation token of a job that does not list it in `permissions:` has it zeroed"
+      : "";
+    fail(`PR #${number} was not read through gh: ${message}${scope}`, 2);
+    return;
+  }
+
+  const parsed = ghPullRequestSchema.safeParse(JSON.parse(raw));
+  if (!parsed.success) {
+    fail(
+      `the answer of gh about PR #${number} is not the shape this command reads: ${parsed.error.issues
+        .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+        .join("; ")}`,
+      2,
+    );
+    return;
+  }
+
+  const list = (name: string): readonly string[] =>
+    (flag(argv, name) ?? "")
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+
+  const workingCards = list("--working-cards");
+  const powerDocs = powerDocuments({
+    roles: loaded.config.roles,
+    configPath: loaded.path,
+    declared: list("--power-docs"),
+    workingCards,
+  });
+  // Never silent in either direction: what was subtracted, and what the subtraction
+  // did not find — a flag that matches no role's instructions is doing nothing.
+  if (workingCards.length > 0) {
+    out(`merge-gate: working cards, not documents of power: ${workingCards.join(", ")}`);
+    const stray = unmatchedWorkingCards({ roles: loaded.config.roles, workingCards });
+    if (stray.length > 0) {
+      out(`merge-gate: --working-cards matches no role's instructions: ${stray.join(", ")}`);
+    }
+  }
+  const verdict = evaluateMergeGate({
+    pr: {
+      number: parsed.data.number,
+      headSha: parsed.data.headRefOid,
+      body: parsed.data.body,
+      reviews: parsed.data.reviews.map((review) => ({
+        state: review.state,
+        commitSha: review.commit?.oid,
+        author: review.author?.login,
+      })),
+      checks: parsed.data.statusCheckRollup.map((check) => ({
+        name: check.name ?? check.context ?? "?",
+        status: check.status ?? undefined,
+        conclusion: check.conclusion ?? undefined,
+        state: check.state ?? undefined,
+      })),
+      changedPaths: parsed.data.files.map((file) => file.path),
+    },
+    powerDocs,
+  });
+
+  for (const line of describeMergeGate(verdict)) out(line);
+  if (!verdict.curatorMayMerge) process.exit(1);
+};
+
 const main = async (argv: readonly string[]): Promise<void> => {
   const [command, subcommand] = argv;
   if (command === "orchestrator" && subcommand !== undefined) {
@@ -5696,6 +5823,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     configCheck(argv.slice(2));
   } else if (command === "schema" && subcommand === "migrate") {
     schemaMigrate(argv.slice(2));
+  } else if (command === "merge-gate") {
+    mergeGate(argv.slice(1));
   } else if (command === "zones" && subcommand === "check") {
     zonesCheck(argv.slice(2));
   } else if (command === "roles" && subcommand === "list") {

@@ -1,0 +1,219 @@
+/**
+ * THE PROCESS TEST OF `merge-gate` — the command as a real process, with a real `gh`
+ * on the far side of the seam (a stub one, first on `PATH`).
+ *
+ * `gate.test.ts` proves the VERDICT; nothing proved the WIRING, and the reviewer's
+ * finding on this PR was made of exactly that gap: the mapping of `gh pr view --json`
+ * onto `PullRequestFacts` had never been run against a `gh` answer at all, and the one
+ * call the command makes turned out to fail outright on an installation token (the
+ * `checks` scope). A verdict that is right about a payload nobody ever handed it is
+ * not a checked verdict.
+ *
+ * So this file exercises the three things only the process has: the JSON mapping
+ * (a check RUN and a status CONTEXT arrive in the same array with different fields),
+ * the exit code (0 / 1 / 2 are the command's whole contract with a caller), and the
+ * refusal path when `gh` itself does not answer — including the scope hint, which the
+ * message GitHub sends does not contain.
+ */
+import { execFileSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
+import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
+import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
+
+const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
+const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
+
+const HEAD = "7ba1d22aa1b2c3d4e5f60718293a4b5c6d7e8f90";
+
+const CONFIG = {
+  protocolVersion: CURRENT_PROTOCOL_VERSION,
+  mail: { branch: "comms", dir: "agent-comms" },
+  roles: [
+    { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "the owner" },
+    {
+      id: "curator",
+      kind: "claude.ai",
+      status: "active",
+      wake: { mode: "via-human", via: "john" },
+      summary: "the keeper",
+      instructions: [{ kind: "in-repo", path: "docs/roles/curator.md" }],
+    },
+    {
+      id: "dev-core",
+      kind: "claude-code",
+      status: "active",
+      wake: { mode: "watch", session: "s" },
+      summary: "the stream",
+      instructions: [{ kind: "in-repo", path: "CLAUDE.md" }],
+    },
+  ],
+};
+
+const git = (repo: string, ...args: string[]): string =>
+  execFileSync("git", ["-C", repo, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: "t",
+      GIT_AUTHOR_EMAIL: "t@t",
+      GIT_COMMITTER_NAME: "t",
+      GIT_COMMITTER_EMAIL: "t@t",
+    },
+  });
+
+/** A `gh` that answers with the given payload, or fails with the given message. */
+const stubGh = (repo: string, answer: { json?: unknown; failWith?: string }): string => {
+  const bin = join(repo, "stub-bin");
+  mkdirSync(bin, { recursive: true });
+  const script =
+    answer.failWith === undefined
+      ? `#!/bin/sh\ncat <<'PAYLOAD'\n${JSON.stringify(answer.json)}\nPAYLOAD\n`
+      : `#!/bin/sh\necho ${JSON.stringify(answer.failWith)} >&2\nexit 1\n`;
+  const path = join(bin, "gh");
+  writeFileSync(path, script, "utf8");
+  chmodSync(path, 0o755);
+  return bin;
+};
+
+/** A repository with the config committed — `--ref HEAD` reads it from there. */
+const repoWithConfig = (): string => {
+  const repo = mkdtempSync(join(tmpdir(), "agent-protocol-merge-gate-"));
+  git(repo, "init", "-q", "-b", "main");
+  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  git(repo, "add", "-A");
+  git(repo, "commit", "-qm", "base");
+  return repo;
+};
+
+const run = (
+  repo: string,
+  bin: string,
+  extra: readonly string[] = [],
+): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [CLI, "merge-gate", "--ref", "HEAD", "--repo", repo, "--pr", "61", ...extra],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: sandbox(configHomeInside(repo), {
+          PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
+        }),
+      },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? -1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
+/** The payload of a PR that passes every guard that is a fact. */
+const mergeable = (over: Record<string, unknown> = {}): unknown => ({
+  number: 61,
+  headRefOid: HEAD,
+  body: "Some words.\n\nthread: 026-curator-merge-right\nrole: dev-core\n",
+  reviews: [{ state: "APPROVED", commit: { oid: HEAD }, author: { login: "reviewer-pr" } }],
+  statusCheckRollup: [
+    // A check RUN and a status CONTEXT in one array — two node types, different fields.
+    { name: "checks", status: "COMPLETED", conclusion: "SUCCESS" },
+    { context: "pronunciation", state: "SUCCESS" },
+  ],
+  files: [{ path: "packages/agent-protocol/src/merge/gate.ts" }],
+  ...over,
+});
+
+describe("merge-gate — the command, with a real gh on the other side of the seam", () => {
+  it("maps a gh answer onto the verdict and exits 0 when nothing in the facts forbids the merge", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGh(repo, { json: mergeable() }));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("ok   guard 1");
+    // The status CONTEXT half of the rollup arrives as a name, not as "?".
+    expect(result.out).toContain("pronunciation=SUCCESS");
+    expect(result.out).toContain("guards 3 and 5 are yours to answer");
+  });
+
+  it("exits 1 when a guard does not hold — a document of power in the diff", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, { json: mergeable({ files: [{ path: "docs/roles/curator.md" }] }) }),
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP guard 4");
+    expect(result.out).toContain("docs/roles/curator.md");
+    expect(result.out).toContain("REFUSED");
+  });
+
+  it("a WORKING card is not a document of power once it is named (john 2026-07-28)", () => {
+    const repo = repoWithConfig();
+    const gh = stubGh(repo, { json: mergeable({ files: [{ path: "CLAUDE.md" }] }) });
+
+    // Derived from `instructions` alone, CLAUDE.md stops the merge...
+    expect(run(repo, gh).code).toBe(1);
+
+    // ...and named as a working card, it does not — and the subtraction is printed.
+    const named = run(repo, gh, ["--working-cards", "CLAUDE.md"]);
+    expect(named.code).toBe(0);
+    expect(named.out).toContain("working cards, not documents of power: CLAUDE.md");
+  });
+
+  it("a --working-cards entry no role points at is named, not silently ignored", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGh(repo, { json: mergeable() }), [
+      "--working-cards",
+      "docs/notes.md",
+    ]);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("matches no role's instructions: docs/notes.md");
+  });
+
+  it("a path declared a document of power stays one even if it is also called a working card", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, { json: mergeable({ files: [{ path: "CLAUDE.md" }] }) }),
+      ["--power-docs", "CLAUDE.md", "--working-cards", "CLAUDE.md"],
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP guard 4");
+  });
+
+  it("gh refusing the call is exit 2 with no verdict — and the checks scope is named", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        failWith:
+          "GraphQL: Resource not accessible by integration (repository.pullRequest.statusCheckRollup.nodes.0.commit.statusCheckRollup)",
+      }),
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("checks: read");
+    expect(result.out).not.toContain("guard 1");
+  });
+
+  it("a gh answer missing a field the verdict is computed from is refused by name", () => {
+    const repo = repoWithConfig();
+    const payload = mergeable() as Record<string, unknown>;
+    delete payload.statusCheckRollup;
+    const result = run(repo, stubGh(repo, { json: payload }));
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("statusCheckRollup");
+    expect(result.out).not.toContain("guard 2");
+  });
+});
