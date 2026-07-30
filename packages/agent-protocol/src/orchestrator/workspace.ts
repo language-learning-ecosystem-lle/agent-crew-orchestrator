@@ -30,11 +30,29 @@
  * starting point without the collision — and it is honest about what a package
  * start is: a point in history to branch from, not a branch to work on.
  *
- * WHY A DIRTY WORKSPACE IS A REFUSAL AND NEVER A REPAIR. The same rule the mail
- * checkout has followed since S8: we do not repair at somebody else's expense.
- * Uncommitted changes in a role's workspace are the work of a session that broke off
- * mid-edit, and `checkout --detach` over them would destroy exactly the material a
- * human needs in order to understand the break. The circuit steps aside and says so.
+ * WHY A DIRTY WORKSPACE IS NEVER OVERWRITTEN. The same rule the mail checkout has
+ * followed since S8: we do not repair at somebody else's expense. Uncommitted changes
+ * in a role's workspace are somebody's work, and `checkout --detach` over them would
+ * destroy exactly the material a human needs in order to understand the break.
+ *
+ * WHAT THAT RULE COST, AND WHAT SPLITS IT IN TWO (thread 023, requirement 5). "Never
+ * overwritten" was implemented as "always refuse", and the refusal is paid for by the
+ * NEXT package: the role silently stands still until a human stashes the tree by hand
+ * — four such stashes in one morning, none of them a judgement call, because in every
+ * one of them the dirt belonged to a run the circuit itself had cut off. So the
+ * question the plan asks is no longer "is it dirty" but WHOSE DIRT IT IS, and the
+ * answer is already in hand — the reason the previous run of this pair was released:
+ *
+ *  - the circuit cut the run off (`quota-exhausted`, `timeout`, `supervisor-gone`,
+ *    `stalled`) — the leftovers are an interrupted session's, nobody chose to leave
+ *    them, and they are PARKED IN A STASH labelled with the run that made them. Nothing
+ *    is lost and nothing is decided: a stash is the one gesture that is both reversible
+ *    and complete;
+ *  - the run ended its own turn (`completed` and every other handoff) and left dirt
+ *    behind — that is an ERROR OF FINISHING, and the refusal names it as one. A session
+ *    that passes the turn on leaves a clean tree; anything else is a defect to read;
+ *  - there is no previous run to attribute the dirt to — it may be a human's, and the
+ *    package does not stash a human's work on a guess.
  *
  * This module is the pure core: facts in, a plan and a verdict out. The git calls
  * live in the CLI, where the IO is.
@@ -67,8 +85,8 @@ export type WorkspaceFacts = {
 };
 
 /**
- * WHAT THE ORCHESTRATOR IS ABOUT TO DO WITH THE WORKSPACE. Four outcomes, and the
- * split matters because two of them are actions on somebody's disk:
+ * WHAT THE ORCHESTRATOR IS ABOUT TO DO WITH THE WORKSPACE. Six outcomes, and the
+ * split matters because three of them are actions on somebody's disk:
  *
  *  - `ready` — it is already detached at the base commit; nothing to do;
  *  - `create` — there is no worktree yet (a new role, a fresh clone, a new machine);
@@ -78,16 +96,53 @@ export type WorkspaceFacts = {
  *  - `keep` — a RESUMED run (R18): the session is being continued, and its tree is
  *    the state it was continuing from. Moving it would be the one thing a resume must
  *    never do;
- *  - `refuse` — a dirty tree with nothing to resume. Named with the repair, because
- *    the repair is a judgement call (commit it, stash it, or read it and delete it)
- *    and the package must not make it.
+ *  - `stash` — dirt left by a run THE CIRCUIT CUT OFF: parked under a label that names
+ *    the run that made it, then the tree is moved to the base like any other. The one
+ *    branch here that touches work nobody committed, which is why it is decided by a
+ *    pure function and carried out by a single reversible git command;
+ *  - `refuse` — dirt with an owner the package will not overrule: a run that ended its
+ *    own turn, or no known run at all. Named with the repair, because there the repair
+ *    is a judgement call (commit it, stash it, or read it and delete it).
  */
 export type WorkspacePlan =
   | { readonly action: "ready" }
   | { readonly action: "create" }
   | { readonly action: "rebase" }
   | { readonly action: "keep" }
+  | { readonly action: "stash"; readonly label: string; readonly from: string }
   | { readonly action: "refuse"; readonly reason: string };
+
+/**
+ * THE RELEASE REASONS THAT MEAN "THE CIRCUIT CUT THE RUN OFF" — the whole list, and no
+ * more. Every other reason in `RELEASE_REASONS` is a turn that ENDED: `completed` and
+ * the two interactive endings (`input-timeout`, `exited-while-waiting`) pass the turn
+ * on, `exited-without-handoff` is a session that stopped talking of its own accord, and
+ * `forced` is a human's decision about that tree — none of the five is a break the
+ * package may tidy up after on its own.
+ *
+ * Kept as strings rather than as `ReleaseReason` so that a journal line from a future
+ * version does not have to be understood before it can be judged: an unknown reason is
+ * simply not in this set, and falls to the refusal.
+ */
+export const ABORTED_RUN_REASONS: readonly string[] = [
+  "quota-exhausted",
+  "timeout",
+  "supervisor-gone",
+  "stalled",
+];
+
+/**
+ * The label a parked tree is found by. It is an ADDRESS, not a note: thread, session
+ * and cause, in the order somebody looking for their work would ask for them
+ * (`git stash list` prints it whole). A run that never announced a session id still
+ * gets a label — `no-session` is a fact about that run, and a stash without a name
+ * would be worse than one with an incomplete one.
+ */
+export const stashLabel = (input: {
+  readonly thread?: string;
+  readonly session?: string;
+  readonly reason: string;
+}): string => `wip ${input.thread ?? "no-thread"} ${input.session ?? "no-session"} ${input.reason}`;
 
 /**
  * The path of a role's workspace. One role — one directory named after the role, and
@@ -111,8 +166,18 @@ export const planWorkspace = (input: {
   readonly base: string;
   /** The run is a resume — the tree must be left exactly as the previous session left it. */
   readonly resuming: boolean;
+  /**
+   * How the PREVIOUS run of this (role, thread) ended — the whole input the dirt
+   * question is answered from. Absent when the pair has no finished run behind it, and
+   * that absence is meaningful: unattributed dirt is never parked.
+   */
+  readonly previousReason?: string;
+  /** The session id of that run, when it announced one; it goes into the stash label. */
+  readonly previousSession?: string;
+  /** The thread this run is for — the other half of the label. */
+  readonly thread?: string;
 }): WorkspacePlan => {
-  const { facts, base, resuming } = input;
+  const { facts, base, resuming, previousReason } = input;
   if (facts.exists && facts.locked !== undefined) {
     // A LOCK IS CHECKED BEFORE EVERYTHING ELSE, including a resume. Whatever this run
     // wanted to do with the tree — move it, keep it, or merely put a session into it —
@@ -142,10 +207,23 @@ export const planWorkspace = (input: {
   }
   if (resuming) return { action: "keep" };
   if (facts.dirty === true) {
+    if (previousReason !== undefined && ABORTED_RUN_REASONS.includes(previousReason)) {
+      return {
+        action: "stash",
+        from: previousReason,
+        label: stashLabel({
+          ...(input.thread === undefined ? {} : { thread: input.thread }),
+          ...(input.previousSession === undefined ? {} : { session: input.previousSession }),
+          reason: previousReason,
+        }),
+      };
+    }
     return {
       action: "refuse",
       reason:
-        "the workspace has uncommitted changes — they are the leftovers of a session that broke off, and moving the tree to the base would destroy them. Commit, stash or discard them by hand",
+        previousReason === undefined
+          ? "the workspace has uncommitted changes and no finished run of this pair to attribute them to — they may be a human's, and the circuit does not park work whose owner it does not know. Commit, stash or discard them by hand"
+          : `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}') — that is a failure to finish, not the leftovers of a break: a session that passes the turn on leaves its tree clean. Read them before anything else, then commit or discard them by hand`,
     };
   }
   return facts.head === base ? { action: "ready" } : { action: "rebase" };
@@ -169,6 +247,8 @@ export const describeWorkspacePlan = (input: {
       return `${input.role}: ${input.path} — moving to ${at}`;
     case "keep":
       return `${input.role}: ${input.path} — kept as it is (the run is a resume)`;
+    case "stash":
+      return `${input.role}: ${input.path} — parking what the '${input.plan.from}' run left uncommitted as a stash ('${input.plan.label}'), then moving to ${at}`;
     case "refuse":
       return `${input.role}: ${input.path} — ${input.plan.reason}`;
   }

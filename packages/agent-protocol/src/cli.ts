@@ -2235,6 +2235,25 @@ const applyWorkspacePlan = (input: {
         `moving the workspace '${input.path}' to the base`,
       );
       return;
+    case "stash":
+      // THE ONE COMMAND IN THIS PACKAGE THAT TOUCHES WORK NOBODY COMMITTED (thread 023,
+      // requirement 5). It is `stash push` and not `checkout --`/`clean` on purpose:
+      // every one of those destroys, while a stash is complete (`-u` takes the untracked
+      // files too — a session's new file is the most common leftover of all) and
+      // reversible by one gesture (`git stash apply`) for as long as the reflog lives.
+      // The decision to run it at all was taken in `planWorkspace`, where a test holds
+      // it; here there is nothing left to judge.
+      gitRun(
+        ["-C", input.path, "stash", "push", "-u", "-m", input.plan.label],
+        `parking the leftovers in the workspace '${input.path}'`,
+      );
+      // And then the tree goes to the base like any other clean one — the stash left it
+      // clean, and a run that stopped half way would be a workspace parked but not moved.
+      gitRun(
+        ["-C", input.path, "checkout", "--detach", "--quiet", input.base],
+        `moving the workspace '${input.path}' to the base`,
+      );
+      return;
     default:
       return; // ready / keep / refuse — nothing to do on disk
   }
@@ -4127,10 +4146,17 @@ const settleRun = (input: {
   }
 
   const path = workspacePath({ repo, worktrees: workdirSection.worktrees, role: role.id });
+  // WHOSE DIRT IT IS, ANSWERED FROM WHAT WAS ALREADY READ (thread 023, requirement 5):
+  // the release reason of the previous run is two lines above, on its way to the resume
+  // prompt. No new event, no second read of the disk — the same move as the self-turn
+  // delivery: judge by what is already in hand.
   const plan = planWorkspace({
     facts: workspaceFacts(path),
     base: base.commit,
     resuming: continuation.mode === "resume",
+    thread,
+    ...(previousReason === undefined ? {} : { previousReason }),
+    ...(previous?.session === undefined ? {} : { previousSession: previous.session }),
   });
   lines.push(
     `workspace — ${describeWorkspacePlan({
