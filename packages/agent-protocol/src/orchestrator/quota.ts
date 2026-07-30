@@ -57,10 +57,30 @@
  * WHY THE PROSE LAYERS ARE A SUBSTRING SEARCH AND NOT A PARSE. Those two reach the
  * supervisor in shapes JSON parsing cannot cover: an assistant text block, a `result`
  * event's `result` field, and (when the launcher gives up before a session exists at
- * all) a line that is not stream JSON in the first place. The failure mode of a
- * substring search is a false positive on a session that DISCUSSES rate limits, which
- * costs one wrongly-named release; a missed signal costs a role dropping out of the
- * circuit. The asymmetry chooses the net.
+ * all) a line that is not stream JSON in the first place.
+ *
+ * WHERE THE SUBSTRING IS ALLOWED TO LOOK — the correction of 2026-07-30, and the
+ * load-bearing half of this module. A substring search over the WHOLE line reads the
+ * session's own payload as if it were the vendor speaking: a `tool_result` carrying
+ * the text of a file is a stream event like any other, and a file of THIS package
+ * quotes the refusal marker verbatim as a fixture. Three live sessions of 30.07 were
+ * cut off by their own test data that way, each with the epoch OF THE FIXTURE as the
+ * reopening time — and, because a quota release is not a delivery, the false releases
+ * then ate the global run budget down to a deadlock. So the prose layers no longer see
+ * a line, they see a SURFACE:
+ *
+ *  - a line that is NOT stream JSON — the launcher's own output, whole;
+ *  - a stream event of type `result` — its `result` field;
+ *  - a stream event of type `assistant` — its text blocks.
+ *
+ * Everything else a stream event carries is the SESSION's voice, not the tool's, and
+ * the difference between "the run hit the limit" and "the run was reading about the
+ * limit" is exactly the difference between those two. The price paid for it is one
+ * `JSON.parse` per line where a substring hint used to gate it: knowing whether a line
+ * is stream JSON at all is the question being asked, and there is no cheaper way to
+ * ask it. The remaining false positive — a session DISCUSSING a limit in its own
+ * assistant text — is left in on purpose: that surface is also the one the tool prints
+ * its own refusal on, and a missed signal costs a role dropping out of the circuit.
  */
 
 /**
@@ -75,12 +95,25 @@ export type QuotaSignal = {
 };
 
 /**
- * THE STRUCTURED LAYER (layer 1) — the stream's own `rate_limit_event`.
+ * ONE LINE → the stream event it is, or `undefined` when the line is not stream JSON
+ * at all (the launcher's refusal, a truncated line, a stray print).
  *
- * The cheap gate first: parsing every line of a stream that is mostly assistant text
- * would be paid on every line for a shape that appears on a handful of them.
+ * The `{` test is the cheap gate that the substring hint used to be, and it asks the
+ * right question: every line of the stream is a JSON object, and only the answer
+ * "this is not one" sends the line to the prose layers whole.
  */
-const STRUCTURED_HINT = "rate_limit_info";
+const streamEventOf = (line: string): Record<string, unknown> | undefined => {
+  if (!line.startsWith("{")) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>)
+    : undefined;
+};
 
 /**
  * A status that still lets work happen. The vendor prefixes those with `allowed`
@@ -97,28 +130,34 @@ type RateLimitInfo = {
 };
 
 /**
- * The structured verdict for one line, in three answers rather than two:
+ * A stream event that is not a `rate_limit_event` at all. A THIRD NAMED VERDICT rather
+ * than "no verdict": the two are different facts, and conflating them is what the
+ * incident of 30.07 was made of. "I could not read this as the quota event" used to
+ * mean "hand the whole line to the prose layers" — and every ordinary event of the
+ * stream, a `tool_result` with a file in it above all, went through that door. Named,
+ * it says the one true thing: this line is the stream speaking, the quota is not what
+ * it is speaking about, and its prose is looked for only where the TOOL writes prose
+ * (`proseSurfacesOf`), never in the payload the session itself produced.
+ */
+const NOT_QUOTA_EVENT = "not-quota-event";
+
+/**
+ * The structured verdict for one stream event, in three answers:
  *
  *  - a `QuotaSignal` — this event says the window is CLOSED;
  *  - `"open"` — this event was read and says work is permitted, which is CONCLUSIVE:
- *    the caller must not then hand the same line to the prose layers, where the event's
- *    own vocabulary would match it;
- *  - `undefined` — not this event, or not parseable as one. That is NOT a verdict:
- *    the line goes on to the prose layers, because the shape that carries the refusal
- *    text inside a bigger payload is exactly the shape that fails to parse here.
+ *    the caller must not then hand the same event to the prose layers, where the
+ *    event's own vocabulary would match it;
+ *  - `NOT_QUOTA_EVENT` — this is some other event of the stream (see above).
  *
  * A parsed event WITHOUT a readable status is a refusal on purpose: the whitelist is
  * "we could read permission", and a status we cannot read is not permission.
  */
-const structuredSignalOf = (line: string): QuotaSignal | "open" | undefined => {
-  let info: RateLimitInfo | undefined;
-  try {
-    const parsed = JSON.parse(line) as { readonly rate_limit_info?: RateLimitInfo };
-    info = parsed?.rate_limit_info;
-  } catch {
-    return undefined;
-  }
-  if (info === undefined || info === null || typeof info !== "object") return undefined;
+const structuredSignalOf = (
+  event: Record<string, unknown>,
+): QuotaSignal | "open" | typeof NOT_QUOTA_EVENT => {
+  const info = event["rate_limit_info"] as RateLimitInfo | undefined;
+  if (info === undefined || info === null || typeof info !== "object") return NOT_QUOTA_EVENT;
 
   const status = typeof info.status === "string" ? info.status : undefined;
   if (status !== undefined && permits(status)) return "open";
@@ -169,33 +208,74 @@ const evidenceOf = (line: string): string => {
 };
 
 /**
+ * WHERE THE TOOL WRITES PROSE inside a stream event — and nowhere else.
+ *
+ * Two surfaces, both named by the event's own `type`: the `result` field of the final
+ * `result` event, and the text blocks of an `assistant` message. A `user` event's
+ * blocks (`tool_result` — the output of a read, an edit, a grep) are the SESSION's
+ * material, not the tool's voice, and are deliberately not here: that is the door the
+ * three deaths of 30.07 came through.
+ */
+const proseSurfacesOf = (event: Record<string, unknown>): readonly string[] => {
+  const type = event["type"];
+  if (type === "result") {
+    const result = event["result"];
+    return typeof result === "string" ? [result] : [];
+  }
+  if (type !== "assistant") return [];
+  const message = event["message"];
+  if (typeof message !== "object" || message === null) return [];
+  const content = (message as { readonly content?: unknown }).content;
+  if (typeof content === "string") return [content];
+  if (!Array.isArray(content)) return [];
+  const texts: string[] = [];
+  for (const block of content) {
+    if (typeof block !== "object" || block === null) continue;
+    const { type: blockType, text } = block as { readonly type?: unknown; readonly text?: unknown };
+    if (blockType === "text" && typeof text === "string") texts.push(text);
+  }
+  return texts;
+};
+
+/** Layers 2 and 3 over ONE SURFACE of text — see `proseSurfacesOf` for what may be one. */
+const proseSignalOf = (text: string): QuotaSignal | undefined => {
+  const exact = EXACT.exec(text);
+  if (exact !== null) {
+    const resetsAt = stampOfEpoch(exact[1] as string);
+    return {
+      ...(resetsAt === undefined ? {} : { resetsAt }),
+      evidence: evidenceOf(text),
+    };
+  }
+  if (LOOSE.test(text)) return { evidence: evidenceOf(text) };
+  return undefined;
+};
+
+/**
  * ONE LINE OF THE SESSION STREAM → the quota verdict, or `undefined` for the
  * overwhelming majority of lines that say nothing about a limit.
  *
- * Pure and total: it never throws, and it does not care whether the line is stream
- * JSON — see the doc block on why that is the point rather than a shortcut.
+ * Pure and total: it never throws. Whether the line is stream JSON is the FIRST
+ * question it asks — see the doc block on why the prose layers may not be let loose on
+ * a line whose payload belongs to the session.
  */
 export const quotaSignalOf = (line: string): QuotaSignal | undefined => {
   const trimmed = line.trim();
   if (trimmed === "") return undefined;
 
-  // Layer 1 first — and when it READ the event, its answer is final in both
-  // directions. Only "I could not read this as that event" falls through.
-  if (trimmed.includes(STRUCTURED_HINT)) {
-    const structured = structuredSignalOf(trimmed);
-    if (structured === "open") return undefined;
-    if (structured !== undefined) return structured;
-  }
+  // Not stream JSON — the launcher's own refusal, whole. Nothing here belongs to a
+  // session, so there is no payload to mistake for the vendor's voice.
+  const event = streamEventOf(trimmed);
+  if (event === undefined) return proseSignalOf(trimmed);
 
-  const exact = EXACT.exec(trimmed);
-  if (exact !== null) {
-    const resetsAt = stampOfEpoch(exact[1] as string);
-    return {
-      ...(resetsAt === undefined ? {} : { resetsAt }),
-      evidence: evidenceOf(trimmed),
-    };
+  // Layer 1 — and when it READ the event, its answer is final in both directions.
+  const structured = structuredSignalOf(event);
+  if (structured !== NOT_QUOTA_EVENT) return structured === "open" ? undefined : structured;
+
+  for (const surface of proseSurfacesOf(event)) {
+    const signal = proseSignalOf(surface);
+    if (signal !== undefined) return signal;
   }
-  if (LOOSE.test(trimmed)) return { evidence: evidenceOf(trimmed) };
   return undefined;
 };
 
