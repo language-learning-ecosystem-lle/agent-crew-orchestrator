@@ -351,18 +351,20 @@ describe("running a role as a process — the outcome is always recorded", () =>
     // longer than that to get the release onto disk, the wait ran out, and the failure
     // read as "the outcome was never recorded" about a run that recorded it.
     //
-    // OPEN, UNDER OBSERVATION (red main of 2026-07-28, CI 30374788681, thread 032):
-    // the same test failed once here, and NOT as impatience — the raised ceiling above
-    // ran out with the journal still ending at `launch`, and the supervisor's own words
-    // ("the observer received SIGTERM — the lease was closed as supervisor-gone") were
-    // absent from its captured output. So the guard did not merely run late: it did not
-    // finish. Two candidates, neither confirmed: the signal did not reach the node under
-    // the `tsx` wrapper (the mode of 2026-07-25, which the process group above was meant
-    // to close for good), or `recordSupervisorGone` blocked before its write — it puts
-    // the group down and releases the workspace lock (a `git` call) BEFORE appending the
-    // event, so a git that stalls on a loaded runner eats the whole wait. It has since
-    // passed every run; the next occurrence is diagnosed rather than restarted, and this
-    // comment — not a retry or a skip — is where the observation lives.
+    // WHAT THE RED MAIN OF 2026-07-28 (CI 30374788681, thread 032) LEFT HERE. That run
+    // failed and NOT as impatience — the raised ceiling above ran out with the journal
+    // still ending at `launch`, and the supervisor's own words were absent from its
+    // captured output. So the guard did not merely run late: it did not finish. Two
+    // candidates stood, neither confirmed; ONE OF THEM IS NOW CLOSED BY CONSTRUCTION
+    // rather than by guessing — `recordSupervisorGone` appended its event BEHIND a `git
+    // worktree unlock` with no ceiling, and it now writes first (the test below installs
+    // that hang and pins the order). The other stands and is what this observation is
+    // now about: the signal not reaching the node under the `tsx` wrapper (the mode of
+    // 2026-07-25, which the process group above was meant to close for good). The next
+    // occurrence is diagnosed rather than restarted, and it can be: the guard announces
+    // its ARRIVAL before it does anything blocking, so silence in the captured output
+    // now means the signal, and only the signal. No retry, no skip — the behaviour of
+    // the test is untouched, and this comment is where the observation lives.
     const lastKind = (): string | undefined =>
       existsSync(journalPath(repo)) ? journal(repo).at(-1)?.kind : undefined;
     await waitFor(() => lastKind() === "lease-released");
@@ -397,6 +399,117 @@ describe("running a role as a process — the outcome is always recorded", () =>
     expect(existsSync(marker), "the session ran to completion after the supervisor died").toBe(
       false,
     );
+    // AND THE GUARD SAYS THAT IT ENTERED, not only that it finished. The two lines are
+    // the answer thread 032 did not have: the arrival is printed before anything that
+    // can block, so a future silence means the signal never reached this process —
+    // while an arrival line with no closing line means the guard entered and stalled.
+    const said = readFileSync(supervisorOut, "utf8");
+    expect(said, "the guard did not announce the arrival of the signal").toContain(
+      "the observer received SIGTERM",
+    );
+    expect(said, "the guard did not announce the outcome").toContain(
+      "the lease was closed as supervisor-gone",
+    );
+  }, 300_000);
+
+  it("a git that hangs on the unlock does not swallow the release (thread 032)", async () => {
+    // THE ORDER INSIDE THE DEATH GUARD, pinned by the failure it costs. Until the red
+    // main of 2026-07-28 (CI 30374788681) the guard released the workspace lock — `git
+    // worktree unlock`, an `execFileSync` with no ceiling — BEFORE appending its event.
+    // A git that hangs therefore took the release with it: the journal stayed at
+    // `launch` and the lease read `running` for ever, the one outcome indistinguishable
+    // from normal work. Here the hang is not waited for, it is INSTALLED: a `git` ahead
+    // of the real one on PATH that stalls on exactly that subcommand and delegates
+    // everything else. On the old order this test fails by timeout; on this one the
+    // release arrives while the unlock is still asleep, and the cost is a stale lock —
+    // the direction `workspaceLocks` already calls the honest one.
+    //
+    // THE WORKSPACE IS DECLARED (R17) and that is load-bearing here: without
+    // `workdir` no lock is ever taken, the release is a no-op, and the test would pass
+    // on both orders while touching neither — it must be the run that actually holds a
+    // `git worktree lock` for the unlock to be on the death path at all.
+    const { repo } = contour({
+      orchestrator: {
+        state: ".orchestrator",
+        mailCheckout: "mailco",
+        ref: "HEAD",
+        workdir: { branch: "main", worktrees: ".worktrees" },
+      },
+    });
+    const pidFile = join(repo, "session.pid");
+    const exec = stub(repo, `echo $$ > ${pidFile}\nsleep 300`);
+
+    const shimDir = join(repo, "gitshim");
+    mkdirSync(shimDir, { recursive: true });
+    const realGit = execFileSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).trim();
+    const shim = join(shimDir, "git");
+    writeFileSync(
+      shim,
+      `#!/bin/sh\ncase " $* " in *" worktree unlock "*) sleep 300 ;; esac\nexec ${realGit} "$@"\n`,
+    );
+    chmodSync(shim, 0o755);
+
+    const supervisorOut = join(repo, "supervisor.txt");
+    const sink = openSync(supervisorOut, "a");
+    const child = spawn(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--exec",
+        exec,
+        "--wall-clock",
+        "60",
+        "--poll",
+        "1",
+        "--write",
+      ],
+      {
+        cwd: repo,
+        stdio: ["ignore", sink, sink],
+        detached: true,
+        env: sandbox(configHome(repo), { PATH: `${shimDir}:${process.env.PATH ?? ""}` }),
+      },
+    );
+    try {
+      await waitFor(() => existsSync(pidFile) && readFileSync(pidFile, "utf8").trim() !== "");
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      process.kill(-(child.pid as number), "SIGTERM");
+
+      // A CEILING WELL UNDER THE STALL, and here that is not impatience but the whole
+      // assertion: the state must arrive DESPITE a git that will not return for five
+      // minutes. Sizing this one for a hang would make the test pass on the very order
+      // it exists to forbid.
+      const arrived = await waitFor(
+        () => existsSync(journalPath(repo)) && journal(repo).at(-1)?.kind === "lease-released",
+        30_000,
+      );
+      expect(
+        arrived,
+        `the release waited on the unlock; the supervisor said: ${readFileSync(supervisorOut, "utf8")}`,
+      ).toBe(true);
+      expect(journal(repo).at(-1)).toMatchObject({
+        kind: "lease-released",
+        reason: "supervisor-gone",
+      });
+    } finally {
+      // The supervisor is still inside the sleeping git — nothing here waits it out.
+      try {
+        process.kill(-(child.pid as number), "SIGKILL");
+      } catch {
+        // already gone — fine
+      }
+    }
   }, 300_000);
 
   it("THE SESSION OUTPUT REACHES THE FILE — every log used to be empty (R6)", () => {
