@@ -137,6 +137,17 @@ jobs:
             Карточка роли и КРИТЕРИИ — `REVIEWER.md` в корне репо (единственный список).
             `ROLES.md` упразднён — НЕ читай его.
 
+            ТВОЙ ХОД И ЕСТЬ ТВОЯ СЕССИЯ: завершил ход — процесс вышел, и разбудить
+            его нечем. Поэтому ЖДАТЬ МОЖНО ТОЛЬКО В ПЕРЕДНЕМ ПЛАНЕ: длинный прогон
+            (`pnpm turbo test`, `pnpm turbo typecheck`) запускается и ДОЖИДАЕТСЯ той
+            же командой, а фоновый запуск с намерением «вернусь, когда закончится» —
+            это выход без результата. Так теряется круг ревью целиком: действие
+            заканчивается `success`, `verdict.md` не создан, и гаснут разом все три
+            доставки (дефект H2, воспроизведён дважды на одной голове `e55b806`,
+            тред 023). Не помещаешься в ходы или прогон не успевает — вердикт всё
+            равно пишется по тому, что успел, а непрогнанное называется словами:
+            частичный вердикт доставлен, а полный, которого никто не получил, — нет.
+
             ПОРЯДОК ДОСТАВКИ ВАЖЕН: вердикт пишется СНАЧАЛА В ТРЕД, ПОТОМ комментом
             в PR. Тред для протокола первичен: если прогон оборвётся (лимит ходов,
             сбой) ПОСЛЕ записи в тред — вердикт уцелел; обратный порядок его терял
@@ -307,6 +318,14 @@ jobs:
       # который поставил `actions/checkout` из `GITHUB_TOKEN` джобы (живёт всю
       # джобу, отзыву app-токена не подвержен). Токен в URL не вписываем намеренно:
       # креденшл в конфиге переживает шаг, а заголовок чекаута — уже есть.
+      # ДОПОЛНЕНО 2026-07-30 (тред 023, решение john): этой починки хватило ровно на
+      # ГЛАВНЫЙ чекаут. Каталог почты шаг переиспользовал чужой — `.comms-mail`
+      # создаёт агент изнутри действия, — и туда канонический url не дотягивается:
+      # на ветке С ремонтом #87 фетч почты снова лёг с `could not read Username`
+      # (прогон 30500443878). Поэтому шаг завёл СВОЙ каталог `.comms-fallback` и
+      # ходит в сеть по URL с `GITHUB_TOKEN`, переданным аргументом команды, — в
+      # конфиг он не садится (осевший креденшл и был исходной болезнью). Подробности
+      # — комментарием на самом месте.
       #
       # (2) ПОРЯДОК ДОСТАВКИ ЗДЕСЬ ОБРАТНЫЙ норме 014: сначала КОММЕНТ В PR, потом
       # тред. Норма 014 («сначала тред») защищает от обрыва прогона и остаётся в
@@ -402,13 +421,25 @@ jobs:
           # после старта шага, прогоны 30472575530 и 30472571070).
           git remote set-url origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
 
-          # Чекаут почты — ВНУТРИ рабочей директории (файловые инструменты за её
-          # пределы не выходят); прогон агента мог его уже создать, мог и не дойти.
-          if [ ! -d .comms-mail ]; then
-            git fetch --no-tags origin comms
-            git worktree add .comms-mail FETCH_HEAD
-          fi
-          if [ ! -d ".comms-mail/agent-comms/${THREAD}/messages" ]; then
+          # ЧЕКАУТ ПОЧТЫ У ЭТОГО ШАГА — СВОЙ, и креденшл ему передаётся ЯВНО.
+          # Прежде шаг переиспользовал `.comms-mail`, если тот уже существовал, — а
+          # создаёт его САМ АГЕНТ, изнутри действия. Починка #87 (канонический url в
+          # главном чекауте, чтобы заработал `extraheader` от `actions/checkout`) до
+          # такого каталога не дотягивается: чей он worktree и какой конфиг делит —
+          # решает чужой прогон, а не мы. Отсюда `could not read Username for
+          # 'https://github.com'`, exit 128 — на ветке, которая ремонт #87 УЖЕ
+          # СОДЕРЖИТ (прогон 30500443878, 23:54:45Z; воспроизведено дважды, тред 023).
+          #
+          # Поэтому: (1) свой каталог `.comms-fallback` — что в нём, знаем только мы;
+          # (2) сеть ходит по URL с `GITHUB_TOKEN` джобы, а не через конфиг чекаута.
+          # URL передаётся АРГУМЕНТОМ каждой команды и в конфиг не садится: именно
+          # осевший креденшл (его вписало и отозвало действие) и был исходной
+          # болезнью. Токен — секрет джобы, Actions маскирует его в логе.
+          MAIL_REMOTE="https://x-access-token:${GH_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}"
+
+          git fetch --no-tags "$MAIL_REMOTE" comms
+          git worktree add .comms-fallback FETCH_HEAD
+          if [ ! -d ".comms-fallback/agent-comms/${THREAD}/messages" ]; then
             echo "::warning::Тред '${THREAD}' не найден или ещё legacy — в тред не сообщено (коммент в PR доставлен)."
             exit 0
           fi
@@ -417,19 +448,27 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           for attempt in 1 2 3 4 5; do
-            git -C .comms-mail fetch --no-tags origin comms
-            git -C .comms-mail reset --hard FETCH_HEAD
+            git -C .comms-fallback fetch --no-tags "$MAIL_REMOTE" comms
+            git -C .comms-fallback reset --hard FETCH_HEAD
             if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
-                  --root "${GITHUB_WORKSPACE}/.comms-mail/agent-comms" --repo . --ref origin/main \
+                  --root "${GITHUB_WORKSPACE}/.comms-fallback/agent-comms" --repo . --ref origin/main \
                   --thread "$THREAD" --from reviewer-pr --expects answer ${WAIT_ARGS} \
                   --worker gh-action \
                   --body-file "$BODY_TMP" --write --no-push); then
               echo "::error::new-message отказал — в тред ${THREAD} НЕ сообщено (коммент в PR доставлен)."
               exit 1
             fi
-            git -C .comms-mail add -A
-            git -C .comms-mail commit -m "chore(comms): ревью PR #${PR} не состоялось — вердикт не сформирован"
-            if git -C .comms-mail push origin HEAD:comms; then
+            git -C .comms-fallback add -A
+            # --no-verify НЕ послабление стиля: worktree'ы делят `.git`, а с ним и
+            # хуки, установленные `pnpm install` в главном чекауте. Коммит почты
+            # звал бы pre-commit главного репозитория — `turbo typecheck` там, где
+            # нет ни node_modules, ни кода: `Command "turbo" not found`, exit 1, и
+            # страховка умирала ровно на своём последнем шаге (прогон 30521214435,
+            # 06:57:59Z — коммент в PR доставлен, тред снова не узнал ничего).
+            # Проверять тут нечего: в дереве только файлы почты, а имя коммита
+            # фиксировано строкой ниже и conventional по построению.
+            git -C .comms-fallback commit --no-verify -m "chore(comms): ревью PR #${PR} не состоялось — вердикт не сформирован"
+            if git -C .comms-fallback push "$MAIL_REMOTE" HEAD:comms; then
               echo "Об отсутствии вердикта сообщено в тред ${THREAD}."
               exit 0
             fi
