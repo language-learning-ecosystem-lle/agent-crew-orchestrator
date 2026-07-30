@@ -1,7 +1,7 @@
 /**
- * The workspace decision (R17). The one branch here that can destroy work is
- * `rebase` — it moves somebody's tree — so the tests are mostly about the states in
- * which it must NOT be reached.
+ * The workspace decision (R17). Two branches here touch work nobody committed —
+ * `rebase` moves somebody's tree, `stash` parks what is standing in it — so the tests
+ * are mostly about the states in which each of them must NOT be reached.
  */
 import { describe, expect, it } from "vitest";
 
@@ -64,7 +64,7 @@ describe("the plan for a fresh package", () => {
     ).toEqual({ action: "rebase" });
   });
 
-  it("DIRTY → a refusal, never a move: those are the leftovers of a broken session", () => {
+  it("DIRTY with nobody to attribute it to → a refusal, never a move", () => {
     const plan = planWorkspace({
       facts: { exists: true, branch: "HEAD", head: BASE, dirty: true },
       base: BASE,
@@ -73,8 +73,140 @@ describe("the plan for a fresh package", () => {
 
     expect(plan.action).toBe("refuse");
     // The repair is a judgement call (commit, stash, or read and discard) and the
-    // package does not make it for the human.
+    // package does not make it for the human — there is no run to blame the dirt on,
+    // so it may be the human's own.
     expect(plan.action === "refuse" && plan.reason).toContain("by hand");
+    expect(plan.action === "refuse" && plan.reason).toContain("no finished run");
+  });
+});
+
+/**
+ * THE FORK THAT DESTROYS WORK IF IT IS WRONG (thread 023, requirement 5) — dirt after a
+ * break is PARKED, dirt after a finished turn is REFUSED. Every case is here rather
+ * than a representative one: the cost of the wrong branch is somebody's uncommitted
+ * afternoon, and the CLI is only allowed to run `git stash push -u` because this
+ * function decided it.
+ */
+describe("dirt in the workspace, by whose it is", () => {
+  const dirtyAfter = (previousReason: string) =>
+    planWorkspace({
+      facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true },
+      base: BASE,
+      resuming: false,
+      thread: "023-daemon-parallelism",
+      previousReason,
+      previousSession: "8f3a2b1c-0d4e",
+    });
+
+  it.each(["quota-exhausted", "timeout", "supervisor-gone", "stalled"])(
+    "the circuit cut the previous run off ('%s') → the leftovers are stashed, not refused",
+    (reason) => {
+      const plan = dirtyAfter(reason);
+
+      expect(plan.action).toBe("stash");
+      // The label is the address the work is found by: thread, session, cause.
+      expect(plan).toEqual({
+        action: "stash",
+        from: reason,
+        label: `wip 023-daemon-parallelism 8f3a2b1c-0d4e ${reason}`,
+      });
+    },
+  );
+
+  it.each([
+    "completed",
+    "exited-without-handoff",
+    "input-timeout",
+    "exited-while-waiting",
+    "forced",
+  ])(
+    "the previous run ENDED ITS OWN TURN ('%s') → a refusal that calls the dirt a failure to finish",
+    (reason) => {
+      const plan = dirtyAfter(reason);
+
+      expect(plan.action).toBe("refuse");
+      // The wording is half the requirement: a silent skip of the next launch is what
+      // cost four hand-made stashes in one morning, and "leftovers of a broken session"
+      // was the wrong name for a tree a session walked away from.
+      expect(plan.action === "refuse" && plan.reason).toContain("ENDED ITS OWN TURN");
+      expect(plan.action === "refuse" && plan.reason).toContain(reason);
+    },
+  );
+
+  it("a release reason this version does not know is NOT a break — it is refused", () => {
+    // The set is a whitelist on purpose: a journal line from a future version must not
+    // be able to talk this branch into stashing somebody's tree.
+    expect(dirtyAfter("something-invented-later").action).toBe("refuse");
+  });
+
+  it("a broken run that never announced a session still gets a labelled stash", () => {
+    const plan = planWorkspace({
+      facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true },
+      base: BASE,
+      resuming: false,
+      thread: "023-daemon-parallelism",
+      previousReason: "supervisor-gone",
+    });
+
+    expect(plan.action === "stash" && plan.label).toBe(
+      "wip 023-daemon-parallelism no-session supervisor-gone",
+    );
+  });
+
+  it("a RESUME still keeps the tree — the stash rule never reaches a continued session", () => {
+    // The state a resume continues from IS the dirt; parking it would be the same
+    // damage as moving it, arriving through a new door.
+    expect(
+      planWorkspace({
+        facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true },
+        base: BASE,
+        resuming: true,
+        thread: "023-daemon-parallelism",
+        previousReason: "supervisor-gone",
+        previousSession: "8f3a2b1c-0d4e",
+      }),
+    ).toEqual({ action: "keep" });
+  });
+
+  it("a LOCKED tree is refused before the dirt is even considered", () => {
+    // The lock says the tree is somebody's right now; a stash there would be taken out
+    // from under a live session.
+    const plan = planWorkspace({
+      facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true, locked: "dev-core pid 4" },
+      base: BASE,
+      resuming: false,
+      thread: "023-daemon-parallelism",
+      previousReason: "supervisor-gone",
+    });
+
+    expect(plan.action).toBe("refuse");
+    expect(plan.action === "refuse" && plan.reason).toContain("locked");
+  });
+
+  it("a CLEAN tree after a break is moved, not stashed — there is nothing to park", () => {
+    expect(
+      planWorkspace({
+        facts: { exists: true, branch: "HEAD", head: OTHER, dirty: false },
+        base: BASE,
+        resuming: false,
+        thread: "023-daemon-parallelism",
+        previousReason: "timeout",
+      }),
+    ).toEqual({ action: "rebase" });
+  });
+
+  it("the operator is told what is being parked BEFORE it happens, with the label", () => {
+    const line = describeWorkspacePlan({
+      role: "dev-core",
+      path: "/repo/.worktrees/dev-core",
+      plan: { action: "stash", from: "timeout", label: "wip 023-x s1 timeout" },
+      base: BASE,
+      baseRef: "origin/main",
+    });
+
+    expect(line).toContain("wip 023-x s1 timeout");
+    expect(line).toContain("timeout");
+    expect(line).toContain("origin/main 11111111");
   });
 });
 

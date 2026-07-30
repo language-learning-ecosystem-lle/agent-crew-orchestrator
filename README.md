@@ -737,8 +737,9 @@ rejected push left a message that existed on one disk only. A rejected push is r
 by **REPLANNING, not rebasing**: the feed is append-only and the stamps are monotonic,
 so the loser of a race has to change its NAME as well as its place — a rebase would
 carry the old name across and leave two messages in an order their names deny. A dirty
-mail checkout is a **REFUSAL**, never a repair (the same rule as the workspace of a run,
-R17): the retry resets the checkout hard, and doing that over somebody's unfinished
+mail checkout is a **REFUSAL**, never a repair (the same rule the workspace of a run
+follows, R17 — there a break of the circuit's own making is parked in a stash instead,
+but nothing is ever overwritten): the retry resets the checkout hard, and doing that over somebody's unfinished
 message destroys work to deliver ours. Hence the body file lives outside the checkout —
 an untracked draft beside the mail is dirt like any other. `--no-push` is the ONE named
 exception, for a caller that legitimately owns its git: the CI workflows write from a
@@ -1466,10 +1467,30 @@ is also what makes it safe to keep using.
 - **Before every FRESH package the workspace is put back at the base**; a clean tree
   on the previous package's branch is simply moved, and nothing is lost — that branch
   still exists and still points where it did.
-- **A DIRTY workspace is a refusal and never a repair.** Uncommitted changes are the
-  work of a session that broke off mid-edit, and `checkout --detach` over them would
-  destroy exactly the material needed to understand the break. The same rule the mail
-  checkout has followed since S8: we do not repair at somebody else's expense.
+- **A DIRTY workspace is never OVERWRITTEN, and what happens to it depends on WHOSE
+  dirt it is** (thread 023, requirement 5). `checkout --detach` over uncommitted changes
+  destroys exactly the material needed to understand a break, so it never happens; but
+  "always refuse" made the next package pay for the previous one's death — the role
+  stood still until a human stashed the tree by hand, four times in one morning, in
+  every case over dirt left by a run the circuit itself had cut off. The plan therefore
+  reads the release reason of the pair's previous run, which the launch is holding
+  anyway:
+  - the circuit **cut the run off** (`quota-exhausted`, `timeout`, `supervisor-gone`,
+    `stalled`) → the tree is **parked in a stash** labelled `wip <thread> <session>
+    <reason>` and then moved to the base like any other. `git stash push -u` — the
+    untracked files go in too, and it is the one gesture that is both complete and
+    reversible (`git stash apply`). Nothing is lost and nothing is judged;
+  - the run **ended its own turn** (`completed`, `exited-without-handoff`, the two
+    interactive endings, `forced`) → a **refusal that calls the dirt what it is: an
+    error of finishing.** A session that passes the turn on leaves a clean tree, so this
+    is a defect to read, not leftovers to tidy;
+  - **no finished run to attribute the dirt to** → a refusal as well: it may be a
+    human's, and the package does not park work whose owner it does not know. An
+    unknown reason from a future version falls here too — the break list is a whitelist.
+
+  The whole fork is decided by `planWorkspace`, a pure function, and only carried out by
+  the CLI: it is the one branch in the package that touches work nobody committed, so it
+  is held by a test rather than by a reading of the code.
 - **The refusal belongs to ONE role, not to the circuit.** In the daemon it is a loud
   line on every tick and that role stands still while the others keep going — the same
   treatment a hold gets, and for the same reason: it lasts until a human looks at the

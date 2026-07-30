@@ -192,7 +192,7 @@ describe("the role gets a workspace of its own (R17)", () => {
     );
   });
 
-  it("DIRTY → the run is refused and the leftovers are untouched", () => {
+  it("DIRTY with no run to attribute it to → refused, and the leftovers are untouched", () => {
     const { repo } = contour();
     stub(repo);
     git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
@@ -209,6 +209,117 @@ describe("the role gets a workspace of its own (R17)", () => {
     // AND NO LEASE WAS TAKEN: a refusal before the journal, not an attempt that never happened.
     expect(existsSync(journalPath(repo))).toBe(false);
     expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+});
+
+/**
+ * THE LEFTOVERS OF A RUN THE CIRCUIT CUT OFF (thread 023, requirement 5). The pure
+ * function decides WHETHER to park them; only a real git can show that the parking is
+ * complete and reversible — that the untracked file went in too, that the tree came out
+ * clean and at the base, and that the work is retrievable by the label. A stub cannot
+ * be wrong about that in the way that matters.
+ */
+describe("dirt left by a broken run is parked, not left standing", () => {
+  /** A finished run of this pair in the journal, released the given way. */
+  const seedRun = (repo: string, reason: string, over: Record<string, unknown> = {}): void => {
+    const base = { ts: "2026-07-25T10:00:00Z", role: "dev-core", thread: "012-x" };
+    const lines = [
+      { kind: "lease-acquired", ...base, deadline: "2026-07-25T11:00:00Z" },
+      { kind: "launch", ...base, mode: "fresh" },
+      {
+        kind: "lease-released",
+        ...base,
+        reason,
+        session: "8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b",
+        steps: 12,
+        ...over,
+      },
+    ];
+    mkdirSync(join(repo, ".orchestrator"), { recursive: true });
+    writeFileSync(journalPath(repo), `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
+  };
+
+  it("the previous run timed out → the tree is stashed under its name and the package starts", () => {
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "-b", "pkg/previous", workspace(repo));
+    // Both kinds of leftovers: a modified tracked file and an untracked new one. The
+    // second is the common one — a session's new module — and it is the one a stash
+    // without `-u` would silently leave behind for `checkout --detach` to trip over.
+    writeFileSync(join(workspace(repo), "CARD.md"), "the role card, half rewritten\n");
+    writeFileSync(join(workspace(repo), "new-module.ts"), "what the session was writing\n");
+    // `timeout` is a break the circuit made AND is not resumable (R18) — so this is a
+    // fresh package meeting somebody else's unfinished tree, which is the whole case.
+    seedRun(repo, "timeout");
+
+    const result = run(repo);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("parking what the 'timeout' run left uncommitted");
+    // THE TREE IS CLEAN AND AT THE BASE — the package actually started.
+    expect(git(workspace(repo), "status", "--porcelain")).toBe("");
+    expect(git(workspace(repo), "rev-parse", "HEAD").trim()).toBe(
+      git(repo, "rev-parse", "origin/main").trim(),
+    );
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(true);
+    // AND NOTHING WAS LOST: the label is the address, and both files come back.
+    const stash = git(workspace(repo), "stash", "list");
+    expect(stash).toContain("wip 012-x 8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b timeout");
+    git(workspace(repo), "stash", "apply", "-q", "stash@{0}");
+    expect(readFileSync(join(workspace(repo), "CARD.md"), "utf8")).toContain("half rewritten");
+    expect(readFileSync(join(workspace(repo), "new-module.ts"), "utf8")).toContain(
+      "what the session was writing",
+    );
+  });
+
+  it("the previous run FINISHED its turn and left dirt → refused, and the refusal names it", () => {
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+    writeFileSync(join(workspace(repo), "half-done.txt"), "left behind by a finished turn\n");
+    seedRun(repo, "completed");
+
+    const result = run(repo);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("ENDED ITS OWN TURN");
+    // Untouched, and NOT stashed: an error of finishing is read by a human first.
+    expect(readFileSync(join(workspace(repo), "half-done.txt"), "utf8")).toContain("finished turn");
+    expect(git(workspace(repo), "stash", "list")).toBe("");
+  });
+
+  it("a dry run says what it WOULD park and touches nothing", () => {
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+    writeFileSync(join(workspace(repo), "half-done.txt"), "the interrupted session's work\n");
+    seedRun(repo, "stalled");
+
+    const result = spawnSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--exec",
+        join(repo, "stub.sh"),
+        "--fresh",
+      ],
+      { cwd: repo, encoding: "utf8", env: sandbox(configHome(repo)) },
+    );
+
+    expect(`${result.stdout}${result.stderr}`).toContain("parking what the 'stalled' run left");
+    expect(readFileSync(join(workspace(repo), "half-done.txt"), "utf8")).toContain("interrupted");
+    expect(git(workspace(repo), "stash", "list")).toBe("");
   });
 });
 
