@@ -190,7 +190,13 @@ import {
   resolveThreadPriority,
   waitingSince,
 } from "./orchestrator/priority.js";
-import { describeQuotaRelease, type QuotaSignal, quotaSignalOf } from "./orchestrator/quota.js";
+import {
+  describeQuotaRelease,
+  describeQuotaShelf,
+  openQuotaShelves,
+  type QuotaSignal,
+  quotaSignalOf,
+} from "./orchestrator/quota.js";
 import { renderSystemdUnit } from "./orchestrator/reboot.js";
 import {
   describeResidentWait,
@@ -2831,6 +2837,9 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
       ...(daemonPid === undefined ? {} : { daemonPid }),
       pidFilePresent: existsSync(pidFile),
     },
+    // THE SAME FOLD THE DAEMON PLANS BY (`planTick`) — the frame and the tick cannot
+    // disagree about whether the box is standing down.
+    quota: openQuotaShelves(events, now),
     queue: orderCandidates(ranked),
     queueNotes: [...renderThreadFailures(scan.failures), ...ignored],
     digests: published.digests,
@@ -3944,6 +3953,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         session: sessionId,
         steps,
         ...(quota?.resetsAt === undefined ? {} : { until: quota.resetsAt }),
+        // WHICH window closed rides through to the journal (D-3 part 2) — the backoff has
+        // a shelf per window type, and this is the only place the type is known.
+        ...(quota?.window === undefined ? {} : { window: quota.window }),
       }),
     );
     // THE RELEASE IS ANNOUNCED HERE TOO, although the daemon publishes at the end of its
@@ -4716,15 +4728,18 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
    */
   const publishState = (): void => {
     if (selfInstance === undefined) return;
+    const events = existsSync(journalPath)
+      ? parseJournal(readFile(journalPath, "orchestrator journal"))
+      : [];
+    const at = new Date();
     const state = digestOf({
       instance: selfInstance,
       roles: launchable,
-      leases: foldLeases(
-        existsSync(journalPath) ? parseJournal(readFile(journalPath, "orchestrator journal")) : [],
-        new Date(),
-        gates.maxAttempts.value,
-      ),
-      now: new Date(),
+      leases: foldLeases(events, at, gates.maxAttempts.value),
+      // A box standing down on a closed window has NO live leases to publish, so without
+      // this the neighbours would read its silence as "nothing to do" (D-3 part 2).
+      quota: openQuotaShelves(events, at),
+      now: at,
     });
     if (!digestChanged(published, state)) return;
     if (publishDigest({ argv, mailRoot, branch: mailBranch, digest: state })) published = state;
@@ -5117,6 +5132,26 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       err(
         `agent-protocol: daemon — nothing launchable: taken by manual sessions of ${decision.roles.join(", ")}, ${next}`,
       );
+    } else if (decision.kind === "quota") {
+      // THE BOX IS STANDING DOWN, AND IT SAYS SO EVERY TICK. Not in the journal every
+      // tick — the record below is written once per shelf — but on the stream, where the
+      // operator's question is "is this thing alive". The pairs themselves were named
+      // above with their own reason; these lines are the state of the circuit.
+      for (const shelf of decision.shelves) {
+        err(`agent-protocol: daemon — ${describeQuotaShelf(shelf)}, ${next}`);
+      }
+      if (decision.cut !== undefined) {
+        appendEvent(journalPath, {
+          kind: "launch-refused",
+          ts: eventTimestamp(new Date()),
+          role: decision.cut.recorded.role,
+          thread: decision.cut.recorded.thread,
+          reason: decision.cut.reason,
+        });
+        err(
+          `agent-protocol: the launch of ${decision.cut.recorded.role}/${decision.cut.recorded.thread} was refused (quota) — one record per closed window, not one per tick`,
+        );
+      }
     } else if (decision.kind === "plan") {
       // WHAT THIS TICK DECIDED, BEFORE ANY OF IT IS ACTED ON: the plan and the cut are
       // said first, because the first launch below returns hours later and a line

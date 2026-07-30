@@ -90,6 +90,16 @@
 export type QuotaSignal = {
   /** When the window reopens, UTC ISO to the second; absent when the signal did not say. */
   readonly resetsAt?: string;
+  /**
+   * WHICH window closed, in the vendor's own word (`rateLimitType`: `five_hour`,
+   * `seven_day` — the two seen on this box). Absent when the signal did not name one,
+   * which is every prose form: only the structured event carries the type.
+   *
+   * It is carried as an OPAQUE STRING and never as an enum of ours (thread 029's rule,
+   * restated by curator for part 2): a word we have not seen must be able to arrive and
+   * be shelved under its own name rather than folded into one of the two we know.
+   */
+  readonly window?: string;
   /** The matched text, trimmed — what the log and the journal quote as evidence. */
   readonly evidence: string;
 };
@@ -166,9 +176,10 @@ const structuredSignalOf = (
     typeof info.resetsAt === "number" || typeof info.resetsAt === "string"
       ? stampOfEpoch(String(info.resetsAt))
       : undefined;
-  const window = typeof info.rateLimitType === "string" ? info.rateLimitType : "unknown";
+  const window = typeof info.rateLimitType === "string" ? info.rateLimitType : UNKNOWN_WINDOW;
   return {
     ...(resetsAt === undefined ? {} : { resetsAt }),
+    window,
     // The evidence is RENDERED, not quoted: the raw event carries a uuid and a session
     // id that say nothing about the window, and the three fields that do say something
     // are worth more in a log line than 200 characters of JSON.
@@ -293,3 +304,138 @@ export const describeQuotaRelease = (signal: QuotaSignal): string =>
   signal.resetsAt === undefined
     ? `the window ran out (the signal did not say when it reopens): ${signal.evidence}. This does NOT count as a failed attempt — the pair is not moving towards 'exhausted'.`
     : `the window ran out and reopens at ${signal.resetsAt}: ${signal.evidence}. This does NOT count as a failed attempt — the pair is not moving towards 'exhausted'.`;
+
+/* ── PART 2 (D-3): THE SHELF THE CIRCUIT WAITS ON ─────────────────────────────────
+ *
+ * Part 1 gave the closed window its own name so a role stopped being marked
+ * `exhausted` for something that was never its fault. What it deliberately left alone
+ * was the operational half, said out loud at the time: the tick goes on hammering a
+ * closed door every tick. This is that half — the backoff.
+ *
+ * THE WINDOW BELONGS TO THE ACCOUNT, NOT TO THE ROLE (curator's correction 1, and the
+ * load-bearing fact of all of D-2). N parallel sessions burn ONE five-hour window, so a
+ * per-role backoff, taken literally, would stand one role down and leave the other N−1
+ * walking into the same closed door — the very thing part 2 exists to remove, only in
+ * N−1 copies. The shelf is therefore per INSTANCE: a signal from any role closes it for
+ * every role of this box. That needs no new storage — the journal is already this box's
+ * own file, read whole on every tick, so "somebody here hit the wall" is a fold of it
+ * rather than a state file to be kept in sync with one.
+ *
+ * THERE ARE TWO WINDOWS AND THEY ARE NOT ONE SHELF (correction 2). Counted on this box:
+ * `five_hour` 140, `seven_day` 6. One shelf for both is wrong in both directions — a
+ * seven-day signal filed on the five-hour shelf opens the door six days early, and a
+ * five-hour one filed on the weekly shelf freezes the circuit for a week. The shelf is
+ * keyed by the vendor's own word, so a third window type we have never seen gets its own
+ * shelf under its own name instead of being folded into one of ours.
+ *
+ * A SIGNAL WITHOUT A TIME GETS A SHORT SHELF, AND THE NUMBER IS SAID HERE (correction 3).
+ * "Closed, reopening unknown" is a distinct fact of part 1 and must not be inflated into
+ * "closed for five hours": a made-up long shelf stands the whole box down for hours on a
+ * signal that never claimed as much. Five minutes, and a repeat signal simply extends it
+ * — the cost of being too short is one wasted launch that immediately re-signals and
+ * re-shelves; the cost of being too long is hours of a circuit that could have worked.
+ * The asymmetry picks the number, exactly as it picked the net in part 1.
+ */
+
+/** The shelf a signal that did not name a reset time gets — see the block above. */
+export const SHORT_SHELF_MINUTES = 5;
+
+/** The key of a shelf for a signal that did not name its window type. */
+export const UNKNOWN_WINDOW = "unknown";
+
+/** One closed window: which one, until when, and on whose evidence. */
+export type QuotaShelf = {
+  /** The vendor's word for the window (`five_hour`, `seven_day`, …) or `unknown`. */
+  readonly window: string;
+  /** When the door opens again, UTC ISO to the second. */
+  readonly until: string;
+  /** The stamp of the signal that closed it. */
+  readonly since: string;
+  /**
+   * Whether `until` is the VENDOR'S time or our short default. An operator reading
+   * "closed until 21:40" deserves to know which of the two they are looking at: the
+   * first is a fact, the second is a guess that expires quickly on purpose.
+   */
+  readonly stated: boolean;
+  /** The role whose session brought the signal in — evidence, not ownership. */
+  readonly role: string;
+};
+
+/** The journal shape this fold reads — kept structural so nothing here imports the daemon. */
+type QuotaEvent = {
+  readonly kind: string;
+  readonly ts: string;
+  readonly role: string;
+  readonly reason?: string | undefined;
+  readonly until?: string | undefined;
+  readonly window?: string | undefined;
+};
+
+const shelfEnd = (event: QuotaEvent): { until: string; stated: boolean } =>
+  event.until === undefined
+    ? {
+        until: `${new Date(new Date(event.ts).getTime() + SHORT_SHELF_MINUTES * 60_000)
+          .toISOString()
+          .slice(0, 19)}Z`,
+        stated: false,
+      }
+    : { until: event.until, stated: true };
+
+/**
+ * THE JOURNAL → THE SHELVES THAT ARE STILL CLOSED at `now`, newest signal per window.
+ *
+ * Derived rather than stored, and that is the whole reason there is no `quota` state
+ * file beside the holds: the journal is append-only, local to this box and already read
+ * whole on every tick, so the shelf cannot drift from the events that produced it. The
+ * fold takes the LAST signal per window key — a repeat signal extends (or corrects) the
+ * shelf, which is what makes the short default safe.
+ *
+ * A shelf whose `until` has passed is simply not returned: the backoff ends by the clock
+ * and by nothing else. A backoff that needed clearing by hand would be `exhausted` under
+ * another name, which is precisely the failure part 1 removed.
+ */
+export const openQuotaShelves = (
+  events: readonly QuotaEvent[],
+  now: Date,
+): readonly QuotaShelf[] => {
+  const latest = new Map<string, QuotaShelf>();
+  for (const event of events) {
+    if (event.kind !== "lease-released" || event.reason !== "quota-exhausted") continue;
+    const window = event.window ?? UNKNOWN_WINDOW;
+    latest.set(window, { window, since: event.ts, role: event.role, ...shelfEnd(event) });
+  }
+  return [...latest.values()]
+    .filter((shelf) => new Date(shelf.until).getTime() > now.getTime())
+    .sort((a, b) => (a.until < b.until ? -1 : a.until > b.until ? 1 : 0));
+};
+
+/**
+ * Whether the refusal of THIS shelf has already been written to the journal. Not once per
+ * tick: a closed five-hour window with a 60-second tick would otherwise leave three
+ * hundred identical `launch-refused` lines, and a journal of runs that has to be read to
+ * explain a stall would be unreadable exactly then. The daemon's stream still says it
+ * every tick — that is the channel where repetition is the point, and the journal is the
+ * one where it is noise.
+ *
+ * THE UNIT OF THE LINE IS THE DARK SPELL OF THE BOX, NOT THE WINDOW (the granularity
+ * curator asked to name, thread 023). `ts >= shelf.since` per shelf, folded with `every`
+ * by the caller, means two windows that close before the first line is written share ONE
+ * line, while a window that closes AFTER the last line opens a new one. That is the
+ * intent, not a rounding of it: what `launch-refused` records is that NOTHING WAS
+ * LAUNCHED, and nothing-was-launched is a property of the box — the candidates it names
+ * belong to no window in particular, so a per-window line would print the same refused
+ * pair twice with a label it cannot honestly carry. Which windows were closed at that
+ * moment is a question the shelves answer (`status`, the digest, the stream), and they
+ * answer it per window.
+ */
+export const quotaRefusalRecorded = (events: readonly QuotaEvent[], shelf: QuotaShelf): boolean =>
+  events.some(
+    (event) =>
+      event.kind === "launch-refused" && event.reason === "quota" && event.ts >= shelf.since,
+  );
+
+/** One shelf in a line — the window, when it opens, and whether that time is the vendor's. */
+export const describeQuotaShelf = (shelf: QuotaShelf): string =>
+  shelf.stated
+    ? `${shelf.window} window closed until ${shelf.until} (the signal named the time; seen at ${shelf.since} on ${shelf.role})`
+    : `${shelf.window} window closed until ${shelf.until} — the signal did NOT say when it reopens, so this is the short default shelf of ${SHORT_SHELF_MINUTES}m and the next signal extends it (seen at ${shelf.since} on ${shelf.role})`;

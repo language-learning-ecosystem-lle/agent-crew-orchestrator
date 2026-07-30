@@ -307,3 +307,61 @@ describe("the other boxes, in `status` (R13)", () => {
     expect(text).toContain("box-b.json was not read: not JSON");
   });
 });
+
+/** D-3 part 2: the neighbours must be able to tell "standing down" from "nothing to do". */
+describe("the digest publishes the closed windows", () => {
+  const shelf = {
+    window: "five_hour",
+    until: "2026-07-29T21:40:00Z",
+    since: "2026-07-29T16:40:00Z",
+    stated: true,
+    role: "dev-core",
+  };
+  const now = new Date("2026-07-29T16:41:00Z");
+
+  it("a box with NO live leases still publishes why it is raising nobody", () => {
+    const digest = digestOf({
+      instance: "box",
+      roles: ["dev-core"],
+      leases: [],
+      quota: [shelf],
+      now,
+    });
+    expect(digest.quota).toEqual([shelf]);
+    expect(renderInstances({ digests: [digest], now })).toContain("2026-07-29T21:40:00Z");
+  });
+
+  it("an empty shelf list is OMITTED — an ordinary digest is byte-identical to before", () => {
+    const digest = digestOf({ instance: "box", roles: [], leases: [], quota: [], now });
+    expect("quota" in digest).toBe(false);
+  });
+
+  it("the shelf MOVING is a change worth a commit — a stood-down box has no leases to move", () => {
+    const idle = digestOf({ instance: "box", roles: [], leases: [], now });
+    const shelved = digestOf({ instance: "box", roles: [], leases: [], quota: [shelf], now });
+    expect(digestChanged(idle, shelved)).toBe(true);
+  });
+
+  it("round-trips through the file, and a neighbour without the field still reads", () => {
+    const digest = digestOf({ instance: "box", roles: [], leases: [], quota: [shelf], now });
+    const read = parseDigest(renderDigest(digest));
+    expect(read.ok && read.digest.quota).toEqual([shelf]);
+    const older = parseDigest(
+      JSON.stringify({ instance: "box", writtenAt: now.toISOString(), roles: [], leases: [] }),
+    );
+    expect(older.ok).toBe(true);
+  });
+
+  it("a neighbour's malformed shelf is DROPPED, not a refusal to read its leases", () => {
+    const read = parseDigest(
+      JSON.stringify({
+        instance: "box",
+        writtenAt: now.toISOString(),
+        roles: [],
+        leases: [],
+        quota: [{ window: 7 }],
+      }),
+    );
+    expect(read.ok && read.digest.quota).toBeUndefined();
+  });
+});

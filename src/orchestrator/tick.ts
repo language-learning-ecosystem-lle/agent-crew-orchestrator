@@ -46,6 +46,7 @@ import {
   MAX_CONSECUTIVE_RUNS,
 } from "./launch.js";
 import { foldLeases, isLeaseAlive, type LeaseView } from "./lease.js";
+import { openQuotaShelves, type QuotaShelf, quotaRefusalRecorded } from "./quota.js";
 
 /** A "role awaited on a thread" pair — a launch candidate (from `threadsWaitingOn`). */
 export type Candidate = { readonly role: string; readonly thread: string };
@@ -74,8 +75,14 @@ export type Candidate = { readonly role: string; readonly thread: string };
  * the daemon was not ticking. Now it ticks WHILE its children live, so the only thing
  * standing between a live session and a second one in the same workspace is that the
  * planner is told which roles are busy in this process (`running`).
+ *
+ * `quota` is the ONLY reason here that belongs to the BOX rather than to the pair (D-3
+ * part 2): the rate-limit window is the account's, so a signal any role brought in
+ * closes the door for all of them. It calls for nothing from anybody — it ends by the
+ * clock — but it must be said, because a circuit standing down for hours with no line
+ * on the stream is indistinguishable from a circuit that died.
  */
-export type SkipReason = "held" | "active" | "waiting" | "exhausted" | "role-busy";
+export type SkipReason = "held" | "active" | "waiting" | "exhausted" | "role-busy" | "quota";
 
 export type TickSkip = {
   readonly role: string;
@@ -113,6 +120,16 @@ export type TickDecisionKind =
   // human" are different states of the circuit, and the second one must be visible,
   // otherwise a forgotten hold looks like silence in the mailbox.
   | { readonly kind: "held"; readonly roles: readonly string[] }
+  // THE WINDOW IS CLOSED (D-3 part 2) — nobody is raised, and the reason is neither
+  // "nothing to do" nor a fault of any pair. Its own kind for the same reason `held` has
+  // one: the operator's question in front of a silent contour is WHY, and "the five-hour
+  // window reopens at 21:40" is an answer with a clock on it. `cut` is present only on
+  // the FIRST tick of a shelf — one shelf, one journal record.
+  | {
+      readonly kind: "quota";
+      readonly shelves: readonly QuotaShelf[];
+      readonly cut?: TickCut;
+    }
   // THE PLAN OF THIS TICK: at most one pair per free role, in queue order, plus whatever
   // the global budget cut off the end of it. `launches` may be empty while `cut` is not —
   // that is the budget refusing the whole plan, and it is a different state from `idle`.
@@ -174,6 +191,11 @@ export const planTick = (input: {
   // ONE PASS over the candidates: every one of them either enters the plan or leaves a
   // skip with its reason. Splitting "who is eligible" from "who was skipped and why"
   // into two passes is how the reasons drifted from the decision in the first place.
+  // THE SHELF IS READ ONCE PER TICK, LIKE THE GLOBAL BUDGET, and for the same reason: it
+  // is one fact about the box, not a fact per pair. It is a fold of the very events the
+  // ceilings are folded from, so a closed window cannot be true for the planner and
+  // false for the operator's frame.
+  const shelves = openQuotaShelves(input.events, input.now);
   const skipped: TickSkip[] = [];
   const eligible: Candidate[] = [];
   // Seeded with the roles this process is ALREADY running (D-2): "one session per role"
@@ -202,6 +224,13 @@ export const planTick = (input: {
       skipped.push({ ...candidate, reason: "exhausted", attempt });
       continue;
     }
+    // THE CLOSED WINDOW COMES BEFORE `role-busy` and after everything that is about the
+    // PAIR: a candidate the box could not raise anyway is better named by the reason it
+    // could not be raised at all than by its place in a queue that is not moving.
+    if (shelves.length > 0) {
+      skipped.push({ ...candidate, reason: "quota", attempt });
+      continue;
+    }
     // ONE PAIR PER ROLE, and the ceiling is not a policy choice: the role has one
     // workspace (R17), and a second session in it is refused by the lock anyway. So the
     // planner refuses it HERE, by name, instead of raising a pair that would die on the
@@ -212,6 +241,32 @@ export const planTick = (input: {
     }
     eligible.push(candidate);
     planned.add(candidate.role);
+  }
+
+  // A CLOSED WINDOW WITH WORK BEHIND IT IS ITS OWN STATE, not `idle`. The journal record
+  // is written against the head of what the shelf refused, once per DARK SPELL of the box
+  // and not once per window: the ceiling is the box's and it was read once, so it produces
+  // one line, exactly as the global budget does — `every` here is what makes two windows
+  // closing before the first line share that line (see `quotaRefusalRecorded`) — while the
+  // daemon's stream repeats it every tick, which is where repetition belongs.
+  const refusedByQuota = skipped.filter((skip) => skip.reason === "quota");
+  const quotaHead = refusedByQuota[0];
+  if (shelves.length > 0 && quotaHead !== undefined) {
+    const announced = shelves.every((shelf) => quotaRefusalRecorded(input.events, shelf));
+    return {
+      kind: "quota",
+      shelves,
+      ...(announced
+        ? {}
+        : {
+            cut: {
+              reason: "quota" as const,
+              candidates: refusedByQuota.map((skip) => ({ role: skip.role, thread: skip.thread })),
+              recorded: { role: quotaHead.role, thread: quotaHead.thread },
+            },
+          }),
+      skipped,
+    };
   }
 
   if (eligible.length === 0) {
@@ -265,6 +320,8 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       return `candidate ${pair} skipped: the session is parked on a question of its own (R19) — it is waiting for an ANSWER, not for a launch; see 'orchestrator status' for the ceiling of that wait`;
     case "exhausted":
       return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal`;
+    case "quota":
+      return `candidate ${pair} skipped: the rate-limit window is closed — the window belongs to the ACCOUNT, so a signal from any role stands the whole box down; it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
     case "role-busy":
       return `candidate ${pair} skipped: ${skip.role} already has a session (raised on an older thread of this tick, or still running from an earlier one) — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
   }

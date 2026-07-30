@@ -21,6 +21,7 @@ import {
   renderFrame,
   renderFreshness,
   renderQueue,
+  renderQuota,
 } from "./snapshot.js";
 
 const NOW = new Date("2026-07-27T18:00:00Z");
@@ -172,5 +173,51 @@ describe("renderFrame", () => {
 
   it("says out loud that nobody has published, instead of showing an empty panel", () => {
     expect(renderFrame(frame)).toContain("no digests published");
+  });
+});
+
+/**
+ * D-3 PART 2, curator's acceptance (в): the closed window is visible where a human
+ * looks — not only on the stream of the tick that met it.
+ */
+describe("renderQuota — the shelf in the operator's frame", () => {
+  const shelf = {
+    window: "five_hour",
+    until: "2026-07-29T21:40:00Z",
+    since: "2026-07-29T16:40:00Z",
+    stated: true,
+    role: "dev-core",
+  };
+
+  it("says the window IS open when it is — an absent section teaches nothing", () => {
+    expect(renderQuota([])).toContain("no window is closed");
+  });
+
+  it("names the window type and when it opens", () => {
+    const text = renderQuota([shelf]);
+    expect(text).toContain("five_hour");
+    expect(text).toContain("2026-07-29T21:40:00Z");
+  });
+
+  it("marks a shelf whose time we invented, so it is not read as the vendor's", () => {
+    expect(renderQuota([{ ...shelf, stated: false }])).toContain("short default shelf");
+  });
+
+  it("is a panel of the frame, above the queue", () => {
+    const bare: OperatorFrame = {
+      now: NOW,
+      leases: [],
+      holds: [],
+      circuit: circuit({ pidFilePresent: false }),
+      queue: [],
+      queueNotes: [],
+      digests: [],
+      quota: [shelf],
+      mail: { root: "/mail", fetchedAt: NOW, behind: 0 },
+    };
+    const lines = renderFrame(bare).split("\n");
+    const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));
+    expect(at("circuit:")).toBeLessThan(at("quota:"));
+    expect(at("quota:")).toBeLessThan(at("queue:"));
   });
 });

@@ -3,7 +3,19 @@ import { type OrchestratorEvent, parseEventLine, renderEventLine } from "./journ
 import { consecutiveLaunchesWithoutDelivery, planLaunch } from "./launch.js";
 import { foldLeases } from "./lease.js";
 import { observeStep } from "./observe.js";
-import { describeQuotaRelease, quotaSignalOf } from "./quota.js";
+import {
+  describeQuotaRelease,
+  describeQuotaShelf,
+  openQuotaShelves,
+  type QuotaShelf,
+  quotaRefusalRecorded,
+  quotaSignalOf,
+  SHORT_SHELF_MINUTES,
+  UNKNOWN_WINDOW,
+} from "./quota.js";
+
+/** A moment after every signal the shelf tests build. */
+const LATER = new Date("2026-07-29T12:01:00Z");
 
 /**
  * VERBATIM FROM THIS BOX — a `rate_limit_event` line as the stream actually writes it
@@ -367,6 +379,136 @@ describe("the journal carries the reopening time", () => {
 
   it("a quota release without `until` is legal — the signal did not always say", () => {
     const event = at("2026-07-29T12:05:00Z", "lease-released", { reason: "quota-exhausted" });
+    expect(parseEventLine(renderEventLine(event))).toEqual(event);
+  });
+});
+
+/* ── PART 2: THE SHELF ────────────────────────────────────────────────────────────── */
+
+const closed = (extra: Record<string, unknown>, ts = "2026-07-29T12:00:00Z"): OrchestratorEvent =>
+  at(ts, "lease-released", { reason: "quota-exhausted", ...extra });
+
+describe("the window is recognised WITH ITS TYPE (correction 2 — there are two windows)", () => {
+  it("the structured layer carries the vendor's own word for the window", () => {
+    const signal = quotaSignalOf(
+      JSON.stringify({
+        type: "system",
+        subtype: "rate_limit_event",
+        // A status outside the `allowed` prefix — the closed shape, which we have never
+        // observed and therefore do not name: the whitelist is what says this is closed.
+        rate_limit_info: { status: "exceeded", resetsAt: 1785340800, rateLimitType: "five_hour" },
+      }),
+    );
+    expect(signal?.window).toBe("five_hour");
+  });
+
+  it("a prose signal names no window — it is shelved under 'unknown', not under a guess", () => {
+    const signal = quotaSignalOf("Claude AI usage limit reached|1785340800");
+    expect(signal?.window).toBeUndefined();
+    expect(openQuotaShelves([closed({ until: "2026-07-29T16:00:00Z" })], LATER)[0]?.window).toBe(
+      UNKNOWN_WINDOW,
+    );
+  });
+
+  it("the shelves are SEPARATE per window — a seven-day signal does not open the five-hour door", () => {
+    const shelves = openQuotaShelves(
+      [
+        closed({ window: "five_hour", until: "2026-07-29T17:00:00Z" }),
+        closed({ window: "seven_day", until: "2026-08-04T12:00:00Z" }),
+      ],
+      LATER,
+    );
+    expect(shelves.map((s) => s.window)).toEqual(["five_hour", "seven_day"]);
+    expect(shelves.map((s) => s.until)).toEqual(["2026-07-29T17:00:00Z", "2026-08-04T12:00:00Z"]);
+  });
+});
+
+describe("a signal without a time gets a SHORT shelf (correction 3)", () => {
+  it("no `until` → the short default, marked as ours and not the vendor's", () => {
+    const shelf = openQuotaShelves([closed({ window: "five_hour" })], LATER)[0];
+    expect(shelf?.until).toBe("2026-07-29T12:05:00Z");
+    expect(shelf?.stated).toBe(false);
+    expect(describeQuotaShelf(shelf as QuotaShelf)).toContain("did NOT say when it reopens");
+  });
+
+  it("the short shelf is MINUTES, never a made-up five hours", () => {
+    expect(SHORT_SHELF_MINUTES).toBeLessThanOrEqual(15);
+  });
+
+  it("a repeat signal EXTENDS the short shelf — the last one per window wins", () => {
+    const shelves = openQuotaShelves(
+      [closed({ window: "five_hour" }), closed({ window: "five_hour" }, "2026-07-29T12:04:00Z")],
+      LATER,
+    );
+    expect(shelves).toHaveLength(1);
+    expect(shelves[0]?.until).toBe("2026-07-29T12:09:00Z");
+  });
+
+  it("a stated time is kept as the vendor's, not shortened", () => {
+    const shelf = openQuotaShelves([closed({ until: "2026-07-29T16:00:00Z" })], LATER)[0];
+    expect(shelf).toMatchObject({ until: "2026-07-29T16:00:00Z", stated: true });
+  });
+});
+
+describe("the shelf ends BY THE CLOCK — a backoff is not 'exhausted' under another name", () => {
+  it("past its `until` the shelf is simply gone", () => {
+    const events = [closed({ window: "five_hour", until: "2026-07-29T16:00:00Z" })];
+    expect(openQuotaShelves(events, new Date("2026-07-29T15:59:59Z"))).toHaveLength(1);
+    expect(openQuotaShelves(events, new Date("2026-07-29T16:00:01Z"))).toHaveLength(0);
+  });
+});
+
+describe("the window belongs to the ACCOUNT (correction 1)", () => {
+  it("a signal from ONE role shelves the box — the fold does not filter by role", () => {
+    const shelves = openQuotaShelves(
+      [closed({ window: "five_hour", until: "2026-07-29T16:00:00Z" })],
+      LATER,
+    );
+    // The role rides along as EVIDENCE (whose session brought the signal in), and the
+    // shelf itself is not keyed by it: `openQuotaShelves` has no role parameter at all.
+    expect(shelves[0]?.role).toBe("dev-core");
+  });
+});
+
+describe("one shelf, one journal record", () => {
+  const shelf = {
+    window: "five_hour",
+    until: "x",
+    since: "2026-07-29T12:00:00Z",
+    stated: true,
+    role: "dev-core",
+  };
+
+  it("no refusal since the shelf opened → it has not been recorded", () => {
+    expect(quotaRefusalRecorded([closed({})], shelf)).toBe(false);
+  });
+
+  it("a `launch-refused` with reason quota after the signal → recorded", () => {
+    const refused = {
+      kind: "launch-refused",
+      ts: "2026-07-29T12:00:30Z",
+      role: "dev-core",
+      thread: "023",
+      reason: "quota",
+    } as const;
+    expect(quotaRefusalRecorded([closed({}), refused], shelf)).toBe(true);
+  });
+
+  it("a refusal from BEFORE this shelf does not count — a new window is a new record", () => {
+    const older = {
+      kind: "launch-refused",
+      ts: "2026-07-29T09:00:00Z",
+      role: "dev-core",
+      thread: "023",
+      reason: "quota",
+    } as const;
+    expect(quotaRefusalRecorded([older, closed({})], shelf)).toBe(false);
+  });
+});
+
+describe("the journal carries the window type", () => {
+  it("a quota release with `window` round-trips through the JSONL", () => {
+    const event = closed({ until: "2026-07-29T16:00:00Z", window: "seven_day" });
     expect(parseEventLine(renderEventLine(event))).toEqual(event);
   });
 });

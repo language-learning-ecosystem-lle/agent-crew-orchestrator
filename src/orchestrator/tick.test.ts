@@ -576,3 +576,174 @@ describe("describeSkip — the line an operator reads", () => {
     expect(line).not.toContain("running right now");
   });
 });
+
+/**
+ * D-3 PART 2 — THE BACKOFF, tested as a CONTROL PAIR rather than by construction
+ * (curator's acceptance (а)): the same tick, the same candidates, the only difference
+ * being the quota signal in the journal.
+ */
+describe("planTick — the closed window stands the box down (D-3 part 2)", () => {
+  const quotaSignal = (extra: Record<string, unknown>): OrchestratorEvent =>
+    ({
+      kind: "lease-released",
+      ts: "2026-07-24T13:50:00Z",
+      role: "dev-core",
+      thread: "t9",
+      reason: "quota-exhausted",
+      ...extra,
+    }) as OrchestratorEvent;
+
+  const two: Candidate[] = [
+    { role: "dev-core", thread: "t1" },
+    { role: "curator", thread: "t2" },
+  ];
+
+  it("WITHOUT the signal the pair is raised — the control", () => {
+    const decision = planTick({ ...base, candidates: two, enabled: true, stopped: false });
+    expect(raised(decision)).toEqual(["dev-core×t1", "curator×t2"]);
+  });
+
+  it("WITH it nobody is raised, and the state is not `idle`", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [quotaSignal({ until: "2026-07-24T16:00:00Z", window: "five_hour" })],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind).toBe("quota");
+    expect(raised(decision)).toEqual([]);
+    expect(decision.skipped.map((s) => s.reason)).toEqual(["quota", "quota"]);
+  });
+
+  it("AFTER `until` the pair is raised again — a backoff that never ends is `exhausted` renamed", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [quotaSignal({ until: "2026-07-24T13:59:00Z", window: "five_hour" })],
+      now: NOW,
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["dev-core×t1", "curator×t2"]);
+  });
+
+  it("THE WINDOW IS THE ACCOUNT'S: a signal on one role stands EVERY role down", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [quotaSignal({ until: "2026-07-24T16:00:00Z", window: "five_hour" })],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.skipped.map((s) => s.role)).toEqual(["dev-core", "curator"]);
+  });
+
+  it("one shelf, ONE journal record: the cut appears once and not on the next tick", () => {
+    const signal = quotaSignal({ until: "2026-07-24T16:00:00Z", window: "five_hour" });
+    const first = planTick({
+      ...base,
+      candidates: two,
+      events: [signal],
+      enabled: true,
+      stopped: false,
+    });
+    expect(first.kind === "quota" && first.cut?.reason).toBe("quota");
+    const refused: OrchestratorEvent = {
+      kind: "launch-refused",
+      ts: "2026-07-24T13:51:00Z",
+      role: "dev-core",
+      thread: "t1",
+      reason: "quota",
+    };
+    const second = planTick({
+      ...base,
+      candidates: two,
+      events: [signal, refused],
+      enabled: true,
+      stopped: false,
+    });
+    expect(second.kind).toBe("quota");
+    expect(second.kind === "quota" && second.cut).toBeUndefined();
+  });
+
+  /**
+   * THE UNIT OF THE JOURNAL LINE IS THE DARK SPELL OF THE BOX, NOT THE WINDOW — named
+   * out loud by curator's reading of `quotaRefusalRecorded` and pinned here so that it
+   * stays a decision instead of a side effect. The line says NOTHING WAS LAUNCHED, which
+   * belongs to the box; which windows were closed at that moment is what the shelves say.
+   */
+  const refusalAt = (ts: string): OrchestratorEvent => ({
+    kind: "launch-refused",
+    ts,
+    role: "dev-core",
+    thread: "t1",
+    reason: "quota",
+  });
+
+  it("two windows closing before the first line share ONE line — the box went dark once", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [
+        quotaSignal({ until: "2026-07-24T16:00:00Z", window: "five_hour" }),
+        quotaSignal({
+          ts: "2026-07-24T13:51:00Z",
+          until: "2026-08-04T00:00:00Z",
+          window: "seven_day",
+        }),
+        refusalAt("2026-07-24T13:52:00Z"),
+      ],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind === "quota" && decision.shelves.map((s) => s.window)).toEqual([
+      "five_hour",
+      "seven_day",
+    ]);
+    expect(decision.kind === "quota" && decision.cut).toBeUndefined();
+  });
+
+  it("a window closing AFTER the last line opens a new one — a second dark spell is not silent", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [
+        quotaSignal({ until: "2026-07-24T16:00:00Z", window: "five_hour" }),
+        refusalAt("2026-07-24T13:51:00Z"),
+        quotaSignal({
+          ts: "2026-07-24T13:52:00Z",
+          until: "2026-08-04T00:00:00Z",
+          window: "seven_day",
+        }),
+      ],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind === "quota" && decision.cut?.reason).toBe("quota");
+  });
+
+  it("the skip is SPOKEN, with the reason — silence is the failure this closes", () => {
+    const line = describeSkip(
+      { role: "dev-core", thread: "t1", reason: "quota", attempt: 0 },
+      { value: MAX_CONSECUTIVE_RUNS, source: "default" },
+    );
+    expect(line).toContain("rate-limit window is closed");
+    expect(line).toContain("ACCOUNT");
+  });
+
+  it("a HELD role keeps its own reason — quota does not swallow the pair-level ones", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      held: ["dev-core"],
+      events: [quotaSignal({ until: "2026-07-24T16:00:00Z", window: "five_hour" })],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.skipped.map((s) => [s.role, s.reason])).toEqual([
+      ["dev-core", "held"],
+      ["curator", "quota"],
+    ]);
+  });
+});

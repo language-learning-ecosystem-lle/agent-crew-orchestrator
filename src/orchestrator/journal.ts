@@ -106,10 +106,19 @@ export type ReleaseReason = (typeof RELEASE_REASONS)[number];
  * The reason a launch was REFUSED — a `launch-refused` event (S3). The
  * orchestrator wanted to raise a (role, thread) pair but did not, and the refusal
  * leaves a TRACE (otherwise a "launch → break → launch" loop would burn quota
- * silently — curator's requirement for S3). Today there is one reason: the global
- * ceiling of runs without completion.
+ * silently — curator's requirement for S3).
+ *
+ * `run-budget` — the global ceiling of runs without completion.
+ *
+ * `quota` — THE WINDOW IS STILL CLOSED (D-3 part 2, thread 023). Part 1 stopped a
+ * window-cut session from being counted as a failed attempt; it left the tick walking
+ * into the same closed door every tick. The backoff is a fold of this journal
+ * (`openQuotaShelves`), so the refusal is written ONCE per dark spell of the box and not
+ * once per tick — the line says NOTHING WAS LAUNCHED, which is the box's property and not
+ * any one window's; see `quotaRefusalRecorded` for why the journal and the daemon's stream
+ * differ here, and why the unit is the box rather than the window.
  */
-export const REFUSAL_REASONS = ["run-budget"] as const;
+export const REFUSAL_REASONS = ["run-budget", "quota"] as const;
 export type RefusalReason = (typeof REFUSAL_REASONS)[number];
 
 const base = {
@@ -231,6 +240,13 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     // 14:00"), and inventing the second out of the first is how a backoff comes to
     // hammer a door it believes is open.
     until: base.ts.optional(),
+    // WHICH window closed (D-3 part 2). The backoff has a shelf per window type because
+    // the two we see are five hours and seven days apart, and one shelf for both is
+    // wrong in both directions. A free string, not an enum: the vendor's own word rides
+    // through to the shelf key, so a type we have never seen gets its own shelf instead
+    // of being folded into one of ours. Optional — the prose layers never name a window,
+    // and journals written by part 1 parse unchanged.
+    window: z.string().min(1).optional(),
   }),
   // The session was stopped forcibly (S4). `by`/`note` are the "who" and the
   // "why", and together with `ts` (the "when") they make the force trace in the
