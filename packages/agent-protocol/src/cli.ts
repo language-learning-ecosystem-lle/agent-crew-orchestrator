@@ -3466,7 +3466,16 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // the group is already gone — fine
       }
     }
-    releaseWorkspaceLock(p.workdir);
+    // THE WRITE IS NOT HOSTAGE TO A GIT CALL (red main of 2026-07-28, CI 30374788681,
+    // thread 032). The kill above is a syscall and cannot stall; the unlock is `git
+    // worktree unlock`, an unbounded `execFileSync` — and it used to run BEFORE this
+    // write. A git that hangs on a loaded runner therefore cost the release itself:
+    // the journal stayed at `launch` and the lease read `running` for ever, which is
+    // the S9 lie this whole guard exists to prevent. Reversed, a hung unlock costs a
+    // STALE LOCK instead — the direction the module already calls the honest one
+    // (`workspaceLocks`: a SIGKILL leaves one, `status` names it, a human clears it
+    // with one command). The kill keeps its place ahead of both: releasing the pair
+    // while an orphaned session still writes is the failure of PR #9.
     appendEvent(p.journalPath, {
       kind: "lease-released",
       ts: eventTimestamp(new Date()),
@@ -3477,13 +3486,20 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       ...(sessionId === undefined ? {} : { session: sessionId }),
       steps,
     });
+    releaseWorkspaceLock(p.workdir);
   };
   process.on("exit", recordSupervisorGone);
   const onSignal = (signal: NodeJS.Signals) => (): void => {
+    // THE ARRIVAL IS ANNOUNCED BEFORE THE WORK, and the outcome after it — two lines,
+    // because one line printed after the fact could not tell the two candidates of
+    // thread 032 apart. When that run failed, the supervisor's captured output held no
+    // word at all, and that silence read equally as "the signal never reached node
+    // under the `tsx` wrapper" and as "the guard entered and never came back". From
+    // here on the first line alone answers that question, before anything that can
+    // block has been touched.
+    err(`agent-protocol: the observer received ${signal}`);
     recordSupervisorGone();
-    err(
-      `agent-protocol: the observer received ${signal} — the lease was closed as supervisor-gone`,
-    );
+    err(`agent-protocol: the lease was closed as supervisor-gone (${signal})`);
     process.exit(1);
   };
   const handlers: readonly [NodeJS.Signals, () => void][] = (
