@@ -768,6 +768,80 @@ a file write would cut its history down to a single file — a legacy thread is
 appended to by hand as a section in `_thread.md` until it is migrated (right now
 that is only 009/010).
 
+### `merge-gate` — the guards of a merge that are facts (thread 026)
+
+```
+agent-protocol merge-gate --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>]
+```
+
+The `curator` role merges pull requests itself, under five guards. Three of them are
+facts about the pull request and this command answers them in one call: an `approve`
+verdict **on the current head**, green checks **on that same head**, and no **document
+of power** in the diff. Exit 0 — nothing in the facts forbids the merge; exit 1 — a
+guard does not hold. The facts come from `gh pr view --json` (the tool a session
+already runs to look at a PR; its authentication is the operator's), and its answer is
+validated at the door — a renamed field is a refusal by name, never a silent "no
+reviews, no checks", which for a merge gate would fail open.
+
+**Two guards are never reported as passed, and that is the point.** Whether the feed
+really holds a decision of john's behind this PR (guard 3), and whether the merge gets
+written up with its guards afterwards (guard 5), are judgements no JSON answers. They
+are printed as OBLIGATIONS. A tool that said "all five green" would be lying about two
+of them, and the lie would be load-bearing: the whole purpose of guard 3 is to stop
+curator merging what curator set. The one mechanical half of guard 3 that IS checked —
+the `thread: NNN-slug` line of the description — is a refusal when missing, because
+without it there is nothing to ascend to.
+
+**The documents of power are derived, not listed in code:** the `instructions` paths of
+every role (a card is what defines a role's authority) and the protocol config itself
+(permissions and zones live there). Entries match as path prefixes, exactly as `zones`
+entries do. Hard-coding `PROTOCOL.md` in the package would turn one project's file
+layout into the protocol's knowledge — the line this package does not cross.
+
+The declared side is where a project puts everything its own norm sends to a human,
+whether or not the word "card" fits it: here that is `PROTOCOL.md` **and
+`.github/workflows`** — a workflow is nobody's role card, but a change to one goes to
+john by the same boundary, and until it was declared the gate answered a workflow PR
+with "none of them a document of power", which is silence exactly where the norm
+refuses.
+
+**But a role's instructions are not always a document of power** (john's decision of
+2026-07-28, on the reviewer's finding against the first version of this command): the
+boundary runs by the NATURE of the document, not by the fact that a role points at it.
+A role card says what a role MAY do; a WORKING card — `CLAUDE.md` in this repository —
+is the instruction a session works by, updated in the same commit as the code it
+describes, which under this project's rule 3 is almost every package. Derived from
+`instructions` alone, guard 4 stopped every one of those, and that would have eaten the
+autonomous merge as a class — the very thing the guard exists to make safe, not to
+prevent. So the caller names its working cards, `--working-cards CLAUDE.md`, and they
+are subtracted **from the derived side only**: a path also passed to `--power-docs`
+stays a document of power, because saying it outright is the stricter statement. Both
+the subtraction and any entry that matches no role's instructions are printed — a flag
+that quietly hits nothing is a flag its author believes in.
+
+What the subtraction leaves behind is a norm, not a hole, and it lives in curator's
+card: a change to `CLAUDE.md` that moves authority, borders, permissions or zones goes
+to john, and doubt reads as "it moves them".
+
+**The token needs the `checks` scope.** Guard 2 reads `statusCheckRollup`, which GitHub
+serves only to a token holding `checks: read`. A personal token has it; a GitHub App
+installation token (`ghs_…` — what any `gh-action` executor of this protocol runs with)
+has only the scopes its job's `permissions:` block lists, and an unlisted one is zeroed
+rather than defaulted. The whole `gh` call then fails with `Resource not accessible by
+integration` instead of degrading, so the gate answers nothing at all rather than
+answering wrongly — and the refusal names the scope, because GitHub's own message does
+not. This is observed, not hypothetical: it is how the reviewer of this very PR found
+that its "live run" had only ever been made from a session token.
+
+**Why the project's extra documents come in on `--power-docs` and not from a config
+section**, which is the shape one would otherwise pick: a new config field costs a
+protocol version by R2, and **a version bump cannot currently be committed at all**.
+The zones door reads the config at `origin/main` — still at the old number — with the
+package of the working tree, which writes the new one, so `loadProtocolConfig` halts
+`zones check` in the pre-commit hook and in the CI step alike. That is a defect of the
+door (it is the first bump since the door was built) and not of this command; when it
+is settled, moving the list into the config is a few lines.
+
 ### Who said it, and what wrote it down (R7)
 
 `from` names the ROLE. Two more header fields name the RUN:

@@ -1,0 +1,252 @@
+import { describe, expect, it } from "vitest";
+import {
+  describeMergeGate,
+  evaluateMergeGate,
+  type PullRequestFacts,
+  powerDocuments,
+  threadOfDescription,
+  touchedPowerDocuments,
+  unmatchedWorkingCards,
+} from "./gate.js";
+
+const HEAD = "6ab1bdf92d8d6b1689d3f25075c3e153f19be4f7";
+const OLD = "1111111111111111111111111111111111111111";
+
+const pr = (over: Partial<PullRequestFacts> = {}): PullRequestFacts => ({
+  number: 51,
+  headSha: HEAD,
+  body: "thread: 026-curator-merge-right\nrole: dev-core\n\nbody",
+  reviews: [{ state: "APPROVED", commitSha: HEAD, author: "github-actions" }],
+  checks: [{ name: "checks", status: "COMPLETED", conclusion: "SUCCESS", state: undefined }],
+  changedPaths: ["packages/agent-protocol/src/merge/gate.ts"],
+  ...over,
+});
+
+const guard = (
+  facts: PullRequestFacts,
+  n: number,
+  powerDocs: readonly string[] = ["PROTOCOL.md"],
+) => evaluateMergeGate({ pr: facts, powerDocs }).guards.find((entry) => entry.guard === n);
+
+describe("powerDocuments", () => {
+  it("derives the config and every role's instruction paths, plus what the project declares", () => {
+    expect(
+      powerDocuments({
+        configPath: "agent-protocol.json",
+        roles: [
+          { instructions: [{ path: "docs/roles/curator.md" }] },
+          { instructions: [{ path: "CLAUDE.md" }] },
+          {},
+        ],
+        declared: ["./PROTOCOL.md/"],
+      }),
+    ).toEqual(["agent-protocol.json", "docs/roles/curator.md", "CLAUDE.md", "PROTOCOL.md"]);
+  });
+
+  it("says each document once even when a role and the project name the same one", () => {
+    expect(
+      powerDocuments({
+        configPath: "agent-protocol.json",
+        roles: [{ instructions: [{ path: "REVIEWER.md" }] }],
+        declared: ["REVIEWER.md"],
+      }),
+    ).toEqual(["agent-protocol.json", "REVIEWER.md"]);
+  });
+
+  it("subtracts a WORKING card from the derived side (john 2026-07-28: power runs by nature)", () => {
+    expect(
+      powerDocuments({
+        configPath: "agent-protocol.json",
+        roles: [
+          { instructions: [{ path: "docs/roles/curator.md" }] },
+          { instructions: [{ path: "CLAUDE.md" }] },
+        ],
+        workingCards: ["./CLAUDE.md"],
+      }),
+    ).toEqual(["agent-protocol.json", "docs/roles/curator.md"]);
+  });
+
+  it("but never from the DECLARED side — naming a path outright outranks calling it a working card", () => {
+    expect(
+      powerDocuments({
+        configPath: "agent-protocol.json",
+        roles: [{ instructions: [{ path: "CLAUDE.md" }] }],
+        declared: ["CLAUDE.md"],
+        workingCards: ["CLAUDE.md"],
+      }),
+    ).toEqual(["agent-protocol.json", "CLAUDE.md"]);
+  });
+});
+
+describe("unmatchedWorkingCards", () => {
+  it("names a working card no role points at — a flag that hits nothing looks like it works", () => {
+    expect(
+      unmatchedWorkingCards({
+        roles: [{ instructions: [{ path: "CLAUDE.md" }] }, {}],
+        workingCards: ["CLAUDE.md", "docs/notes.md"],
+      }),
+    ).toEqual(["docs/notes.md"]);
+  });
+});
+
+describe("touchedPowerDocuments", () => {
+  it("matches an entry as a path prefix, at a separator only", () => {
+    expect(
+      touchedPowerDocuments({
+        changedPaths: ["docs/roles/curator.md", "docs/roles-old.md", "docs/roles"],
+        powerDocs: ["docs/roles"],
+      }),
+    ).toEqual(["docs/roles/curator.md", "docs/roles"]);
+  });
+});
+
+describe("threadOfDescription", () => {
+  it("reads the thread line of the description", () => {
+    expect(threadOfDescription("thread: 026-curator-merge-right\nrole: dev-core")).toBe(
+      "026-curator-merge-right",
+    );
+  });
+
+  it("is undefined when no line names a thread", () => {
+    expect(threadOfDescription("role: dev-core\n\nsomething about a thread")).toBeUndefined();
+  });
+});
+
+describe("guard 1 — approve on the current head", () => {
+  it("passes on an approve submitted against the head", () => {
+    expect(guard(pr(), 1)?.state).toBe("pass");
+  });
+
+  it("refuses when the head moved after the approve, and says where the approve sits", () => {
+    const outcome = guard(pr({ reviews: [{ state: "APPROVED", commitSha: OLD, author: "r" }] }), 1);
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("1111111");
+    expect(outcome?.detail).toContain("6ab1bdf");
+  });
+
+  it("refuses when changes were requested on the head, even beside an approve", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          { state: "APPROVED", commitSha: HEAD, author: "a" },
+          { state: "CHANGES_REQUESTED", commitSha: HEAD, author: "b" },
+        ],
+      }),
+      1,
+    );
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("b");
+  });
+
+  it("refuses when nobody has reviewed at all", () => {
+    expect(guard(pr({ reviews: [] }), 1)?.state).toBe("fail");
+  });
+});
+
+describe("guard 2 — green checks on the same head", () => {
+  it("counts a neutral and a skipped run as green", () => {
+    expect(
+      guard(
+        pr({
+          checks: [
+            { name: "checks", status: "COMPLETED", conclusion: "SUCCESS", state: undefined },
+            { name: "review", status: "COMPLETED", conclusion: "SKIPPED", state: undefined },
+            { name: "notify", status: "COMPLETED", conclusion: "NEUTRAL", state: undefined },
+          ],
+        }),
+        2,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("refuses a run that has not answered yet", () => {
+    const outcome = guard(
+      pr({
+        checks: [
+          { name: "checks", status: "IN_PROGRESS", conclusion: undefined, state: undefined },
+        ],
+      }),
+      2,
+    );
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("checks=");
+  });
+
+  it("refuses a failure", () => {
+    expect(
+      guard(
+        pr({
+          checks: [
+            { name: "checks", status: "COMPLETED", conclusion: "FAILURE", state: undefined },
+          ],
+        }),
+        2,
+      )?.state,
+    ).toBe("fail");
+  });
+
+  it("reads a status context by its state", () => {
+    expect(
+      guard(
+        pr({
+          checks: [{ name: "legacy", status: undefined, conclusion: undefined, state: "SUCCESS" }],
+        }),
+        2,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("refuses a head no check has reported on", () => {
+    expect(guard(pr({ checks: [] }), 2)?.state).toBe("fail");
+  });
+});
+
+describe("guard 3 — ascent to a decision of john's", () => {
+  it("stays with the human when the description names its thread", () => {
+    const outcome = guard(pr(), 3);
+    expect(outcome?.state).toBe("by-hand");
+    expect(outcome?.detail).toContain("026-curator-merge-right");
+  });
+
+  it("refuses when there is no thread to ascend to", () => {
+    expect(guard(pr({ body: "role: dev-core" }), 3)?.state).toBe("fail");
+  });
+});
+
+describe("guard 4 — no self-merge on the documents of power", () => {
+  it("passes when the change touches none of them", () => {
+    expect(guard(pr(), 4)?.state).toBe("pass");
+  });
+
+  it("refuses and names the documents when it does", () => {
+    const outcome = guard(pr({ changedPaths: ["PROTOCOL.md", "README.md"] }), 4);
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("PROTOCOL.md");
+    expect(outcome?.detail).not.toContain("README.md");
+  });
+});
+
+describe("the verdict", () => {
+  it("allows the merge when every fact holds — and still leaves guards 3 and 5 open", () => {
+    const verdict = evaluateMergeGate({ pr: pr(), powerDocs: ["PROTOCOL.md"] });
+    expect(verdict.curatorMayMerge).toBe(true);
+    expect(verdict.guards.filter((entry) => entry.state === "by-hand").map((e) => e.guard)).toEqual(
+      [3, 5],
+    );
+    expect(describeMergeGate(verdict).at(-1)).toContain("guards 3 and 5 are yours");
+  });
+
+  it("refuses as soon as one fact does not hold", () => {
+    const verdict = evaluateMergeGate({
+      pr: pr({ changedPaths: ["docs/roles/curator.md"] }),
+      powerDocs: ["docs/roles"],
+    });
+    expect(verdict.curatorMayMerge).toBe(false);
+    expect(describeMergeGate(verdict).at(-1)).toContain("REFUSED");
+  });
+
+  it("never reports guard 5 as passed — a trace cannot be observed before the merge", () => {
+    const verdict = evaluateMergeGate({ pr: pr(), powerDocs: [] });
+    expect(verdict.guards.find((entry) => entry.guard === 5)?.state).toBe("by-hand");
+  });
+});
