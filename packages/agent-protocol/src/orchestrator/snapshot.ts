@@ -46,6 +46,7 @@ import { renderInstances } from "./instances.js";
 import type { LeaseView } from "./lease.js";
 import type { RankedCandidate } from "./priority.js";
 import { describeOrder } from "./priority.js";
+import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
 import { renderStatus } from "./status.js";
 
 /** Is the circuit able to raise anybody at all, and is anybody watching it. */
@@ -75,6 +76,13 @@ export type OperatorFrame = {
    * look exactly like a queue that was.
    */
   readonly queueNotes: readonly string[];
+  /**
+   * The rate-limit windows that are closed right now (D-3 part 2). In the frame and not
+   * only in the daemon's stream because the two questions differ: the stream answers
+   * "why did this tick raise nobody", the frame answers "why has nothing happened for an
+   * hour" — and that second one is asked by somebody who was not watching the stream.
+   */
+  readonly quota?: readonly QuotaShelf[];
   readonly digests: readonly InstanceDigest[];
   readonly unreadableDigests?: ReadonlyMap<string, string>;
   /** This box's instance id, when the topology declares one. */
@@ -130,6 +138,16 @@ export const renderQueue = (
   return lines.join("\n");
 };
 
+/**
+ * THE CLOSED WINDOWS, one line each. The open case is spoken too — "the window is open"
+ * is the answer to "is the box standing down?", and a section that only appears when the
+ * news is bad teaches a reader to conclude nothing from its absence.
+ */
+export const renderQuota = (shelves: readonly QuotaShelf[] = []): string =>
+  shelves.length === 0
+    ? "quota:\n  no window is closed — the circuit raises on the ordinary rules"
+    : ["quota:", ...shelves.map((shelf) => `  ⏸ ${describeQuotaShelf(shelf)}`)].join("\n");
+
 /** Whole minutes, for an age a human reads rather than counts. */
 const ageWords = (seconds: number): string =>
   seconds < 90 ? `${seconds}s` : `${Math.round(seconds / 60)}m`;
@@ -179,6 +197,7 @@ export const renderFrame = (frame: OperatorFrame): string =>
     renderStatus(frame.leases),
     renderHolds(frame.holds),
     renderCircuit(frame.circuit),
+    renderQuota(frame.quota),
     renderQueue(frame.queue, frame.queueNotes),
     renderInstances({
       digests: frame.digests,

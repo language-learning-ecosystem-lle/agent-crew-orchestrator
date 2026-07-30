@@ -931,8 +931,10 @@ risky action after — not a single spawn.
   not needed here. Kinds of events: `lease-acquired` (with a `deadline`),
   `launch`, `handoff-detected`, `lease-released` (with a `reason`:
   `completed|forced|exited-without-handoff|supervisor-gone|timeout|stalled|input-timeout|exited-while-waiting|exhausted|quota-exhausted`;
-  a `quota-exhausted` also carries `until` when the signal named the reopening time),
-  `launch-refused` (with `reason: run-budget`, S3) and `stop` (with a `mode`). The
+  a `quota-exhausted` also carries `until` when the signal named the reopening time,
+  and `window` — the vendor's own word for WHICH window closed, which is the key of the
+  backoff shelf),
+  `launch-refused` (with a `reason`: `run-budget|quota`, S3) and `stop` (with a `mode`). The
   shape is held by the schema: `lease-acquired` without `--deadline` and
   `lease-released` without `--reason` are a loud refusal.
 - **`record`** is a manual write of an event by the same path the daemon writes
@@ -1081,10 +1083,34 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   go through the same latch. The
   reason is checked before "the process exited" and after `handedOff`/`idle`/`overdue`
   — a run that passed the turn before the window shut succeeded, and a run that had
-  already stalled is diagnosed by whatever came first. **What bounds the retry is the
-  backoff on the reopening time, and it is NOT in this part**: until it lands, a tick
-  will re-raise a role into a closed window — cheaply (the session dies at once) and
-  loudly (each release says so by name).
+  already stalled is diagnosed by whatever came first.
+- **THE BACKOFF: A CLOSED WINDOW STANDS THE BOX DOWN UNTIL IT REOPENS** (D-3 part 2).
+  The reason above stopped a window-cut session from being blamed for the closure; this
+  is what stops the tick from walking into the same closed door every tick. It is a FOLD
+  OF THE JOURNAL (`openQuotaShelves`), not a state file: the journal is this box's own
+  append-only file, read whole on every tick, so the shelf cannot drift from the events
+  that produced it. Three properties are load-bearing:
+  - **The shelf is per INSTANCE, not per role.** N parallel sessions burn ONE window, so
+    a signal from any role stands every role of the box down. A per-role backoff would
+    leave the other N−1 roles walking into the same door — the very thing this removes,
+    in N−1 copies.
+  - **One shelf per WINDOW TYPE.** `five_hour` and `seven_day` are both real here (140
+    and 6 observations); one shelf for both would open the door six days early in one
+    direction and freeze the circuit for a week in the other. The key is the vendor's own
+    word, so a type we have never seen gets its own shelf instead of being folded into
+    one of ours.
+  - **A signal without a time gets a SHORT shelf (`SHORT_SHELF_MINUTES`, 5m) and says so.**
+    "Closed, reopening unknown" must not be inflated into "closed for five hours": the
+    cost of too short is one launch that immediately re-signals and re-shelves, the cost
+    of too long is hours of a circuit that could have worked. A repeat signal extends it.
+  The tick returns its own decision kind (`quota`), every candidate it stands down comes
+  back as a skip with that reason, and the daemon says the shelf out loud EVERY tick —
+  while the journal gets ONE `launch-refused {reason: quota}` per shelf, not one per tick.
+  The shelf ends **by the clock and by nothing else**: a backoff that needed clearing by
+  hand would be `exhausted` under another name. It is visible in `orchestrator status`
+  (its own `quota:` panel, which also says when no window is closed) and in this box's
+  **instance digest** — a box standing down has no live leases to publish, so without it
+  the neighbours would read its silence as "nothing to do".
 - **A TURN THAT STAYED ON THE ROLE IS STILL A DELIVERY** (thread 023, john's decision
   of 2026-07-30 — the same class as finding C above). Scalar `waiting-on` (v13) does
   not accept `john`, so "this needs a human decision" has exactly ONE legal shape: the

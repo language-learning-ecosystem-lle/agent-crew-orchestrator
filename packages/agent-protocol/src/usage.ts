@@ -102,7 +102,8 @@ which ref was used is printed. The strict forms below keep every flag they had.
                               # answers the daemon reads: the ceilings, the scope of roles,
                               # the mail root and the agent resolution ('launch resolution')
                               # THE LIVE FRAME first (T-0): leases, holds, the circuit
-                              # (gate, stop/force flags, whether a daemon is alive), the queue
+                              # (gate, stop/force flags, whether a daemon is alive), the CLOSED
+                              # rate-limit windows with the time each reopens, the queue
                               # with the reason for its order, the neighbours' digests, and how
                               # old the mail on disk is; then the static sections
                               # --watch: THE SAME FRAME, redrawn every --interval seconds (2 by

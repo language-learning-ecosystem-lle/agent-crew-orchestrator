@@ -34,6 +34,7 @@
  */
 import type { LeaseView } from "./lease.js";
 import { isLeaseAlive } from "./lease.js";
+import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
 
 /** A (role, thread) pair this instance holds a live lease on — the working part of the state. */
 export type DigestLease = {
@@ -58,6 +59,15 @@ export type InstanceDigest = {
   readonly roles: readonly string[];
   /** Live leases at that moment, in a stable order. */
   readonly leases: readonly DigestLease[];
+  /**
+   * The rate-limit windows CLOSED on this box (D-3 part 2), when there are any. The
+   * window belongs to the account, and an account is not necessarily one box: a
+   * neighbour that has stood down for four hours would otherwise look, from here, exactly
+   * like a neighbour with nothing to do. Optional and omitted when empty, so a digest
+   * written before part 2 — and an ordinary digest of a working box — is byte-identical
+   * to what it was and `digestChanged` does not fire on the addition.
+   */
+  readonly quota?: readonly QuotaShelf[];
 };
 
 /** Where the digest of an instance lives, relative to the mail root. */
@@ -81,11 +91,13 @@ export const digestOf = (input: {
   readonly instance: string;
   readonly roles: readonly string[];
   readonly leases: readonly LeaseView[];
+  readonly quota?: readonly QuotaShelf[];
   readonly now: Date;
 }): InstanceDigest => ({
   instance: input.instance,
   writtenAt: input.now.toISOString(),
   roles: [...input.roles],
+  ...(input.quota === undefined || input.quota.length === 0 ? {} : { quota: [...input.quota] }),
   leases: input.leases
     .filter((view) => isLeaseAlive(view.state))
     .map((view) => ({
@@ -129,7 +141,12 @@ export const digestChanged = (
   return (
     previous.instance !== next.instance ||
     JSON.stringify(previous.roles) !== JSON.stringify(next.roles) ||
-    JSON.stringify(previous.leases) !== JSON.stringify(next.leases)
+    JSON.stringify(previous.leases) !== JSON.stringify(next.leases) ||
+    // The shelf is part of the state for the same reason a lease is: "this box is
+    // standing down until 21:40" is what the neighbours are reading the file for, and a
+    // digest that only moved when a lease moved would never publish it — a box that is
+    // raising nobody has no leases to move.
+    JSON.stringify(previous.quota ?? []) !== JSON.stringify(next.quota ?? [])
   );
 };
 
@@ -141,6 +158,19 @@ export const digestChanged = (
 export type DigestRead =
   | { readonly ok: true; readonly digest: InstanceDigest }
   | { readonly ok: false; readonly problem: string };
+
+/** A shelf as it comes off somebody else's disk — the four fields the reader prints. */
+const isShelf = (value: unknown): boolean => {
+  if (typeof value !== "object" || value === null) return false;
+  const shelf = value as Record<string, unknown>;
+  return (
+    typeof shelf.window === "string" &&
+    typeof shelf.until === "string" &&
+    typeof shelf.since === "string" &&
+    typeof shelf.role === "string" &&
+    typeof shelf.stated === "boolean"
+  );
+};
 
 export const parseDigest = (raw: string): DigestRead => {
   let value: unknown;
@@ -191,6 +221,13 @@ export const parseDigest = (raw: string): DigestRead => {
       writtenAt: record.writtenAt,
       roles: record.roles as string[],
       leases,
+      // Read PERMISSIVELY and dropped when it is not what we expect: a neighbour on an
+      // older version has no such field, and a neighbour on a newer one may have widened
+      // it. Neither is a reason to stop reading its leases — the isolation this parser
+      // exists for is exactly "one box's file must not blind the reader to the rest".
+      ...(Array.isArray(record.quota) && record.quota.every(isShelf)
+        ? { quota: record.quota as QuotaShelf[] }
+        : {}),
     },
   };
 };
@@ -294,6 +331,9 @@ export const renderInstances = (input: {
     lines.push(
       `  ${digest.instance}${mark}: ${digest.leases.length} live · roles ${digest.roles.join(", ") || "—"} · written ${digest.writtenAt} (${age}s ago)${staleMark}`,
     );
+    for (const shelf of digest.quota ?? []) {
+      lines.push(`    ⏸ ${describeQuotaShelf(shelf)}`);
+    }
     for (const lease of digest.leases) {
       lines.push(
         `    ${lease.role}/${lease.thread}  ·  ${lease.state}${lease.deadline === null ? "" : `  ·  deadline ${lease.deadline}`}`,
