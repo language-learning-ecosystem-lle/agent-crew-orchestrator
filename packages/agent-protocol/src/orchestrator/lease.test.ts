@@ -32,7 +32,15 @@ const release = (
     | "supervisor-gone"
     | "timeout"
     | "exhausted",
-): OrchestratorEvent => ({ kind: "lease-released", ts: ts(), role, thread, reason });
+  session?: string,
+): OrchestratorEvent => ({
+  kind: "lease-released",
+  ts: ts(),
+  role,
+  thread,
+  reason,
+  ...(session === undefined ? {} : { session }),
+});
 const handoff = (role: string, thread: string): OrchestratorEvent => ({
   kind: "handoff-detected",
   ts: ts(),
@@ -411,5 +419,64 @@ describe("unclosedLeases — a lease nobody was left to close", () => {
   it("supervisor-gone — an unsuccessful finish: the pair may be tried again", () => {
     const v = only([acquire("dev-core", "t", PAST), release("dev-core", "t", "supervisor-gone")]);
     expect(v).toMatchObject({ launchable: true, exhausted: false });
+  });
+});
+
+describe("the turn that stayed on the role (thread 023)", () => {
+  // Both halves of the judgement are pinned here, and that is the point of the pair:
+  // the run that DELIVERED and parked must not count, the one that died silently must.
+  const mine = new Set(["session-a"]);
+
+  it("a run whose session wrote into the mail delivers, though the turn stayed", () => {
+    const events = [
+      acquire("curator", "023", "2026-07-24T13:00:00Z"),
+      release("curator", "023", "exited-without-handoff", "session-a"),
+    ];
+    const view = foldLeases(events, NOW, 3, mine)[0] as LeaseView;
+    expect(view.attempt).toBe(0);
+    expect(view.exhausted).toBe(false);
+    expect(view.launchable).toBe(false);
+    // The journal is not rewritten: it says what the observer saw.
+    expect(view.reason).toBe("exited-without-handoff");
+  });
+
+  it("three such runs do NOT exhaust the pair — the historical shape of the defect", () => {
+    const events = [
+      acquire("curator", "016", "2026-07-24T13:00:00Z"),
+      release("curator", "016", "exited-without-handoff", "session-a"),
+      acquire("curator", "016", "2026-07-24T13:00:00Z"),
+      release("curator", "016", "exited-without-handoff", "session-a"),
+      acquire("curator", "016", "2026-07-24T13:00:00Z"),
+      release("curator", "016", "exited-without-handoff", "session-a"),
+    ];
+    expect((foldLeases(events, NOW, 3, mine)[0] as LeaseView).exhausted).toBe(false);
+    // ...and without the mail the same journal reads exactly as it did before.
+    expect((foldLeases(events, NOW, 3)[0] as LeaseView).exhausted).toBe(true);
+  });
+
+  it("a session that wrote NOTHING still counts — silence is the failure the ceiling is for", () => {
+    const events = [
+      acquire("dev-core", "023", "2026-07-24T13:00:00Z"),
+      release("dev-core", "023", "exited-without-handoff", "session-dead"),
+    ];
+    const view = foldLeases(events, NOW, 3, mine)[0] as LeaseView;
+    expect(view.attempt).toBe(1);
+    expect(view.launchable).toBe(true);
+  });
+
+  it("a release without a session id counts too — nothing ties it to a message", () => {
+    const events = [
+      acquire("dev-core", "023", "2026-07-24T13:00:00Z"),
+      release("dev-core", "023", "exited-without-handoff"),
+    ];
+    expect((foldLeases(events, NOW, 3, mine)[0] as LeaseView).launchable).toBe(true);
+  });
+
+  it("only THIS release is reclassified — a timeout of the same session still fails", () => {
+    const events = [
+      acquire("dev-core", "023", "2026-07-24T13:00:00Z"),
+      release("dev-core", "023", "timeout", "session-a"),
+    ];
+    expect((foldLeases(events, NOW, 3, mine)[0] as LeaseView).launchable).toBe(true);
   });
 });

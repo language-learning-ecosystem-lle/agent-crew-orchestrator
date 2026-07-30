@@ -1010,6 +1010,28 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   backoff on the reopening time, and it is NOT in this part**: until it lands, a tick
   will re-raise a role into a closed window — cheaply (the session dies at once) and
   loudly (each release says so by name).
+- **A TURN THAT STAYED ON THE ROLE IS STILL A DELIVERY** (thread 023, john's decision
+  of 2026-07-30 — the same class as finding C above). Scalar `waiting-on` (v13) does
+  not accept `john`, so "this needs a human decision" has exactly ONE legal shape: the
+  role that carries the question keeps the turn on itself. Such a run writes its
+  message, verifies it in `origin/comms` and exits — and `handoffDetected`, which asks
+  only "does the thread still await the role?", sees no handoff: `exited-without-handoff`,
+  a failed attempt. Reproduced as a controlled comparison on one thread within nine
+  minutes (two curator runs of the same class; the only difference was the value of
+  `waiting-on`), after five runs had already been misrecorded and four pairs had gone
+  `exhausted` for following the norm — and an `exhausted` pair does not come back on
+  an answer, because the reset hangs on a delivery and an answer that leaves the turn
+  where it is is not one.
+  **The differentiator is THE MAIL, not a new event** (`isSelfTurnDelivery` +
+  `sessionsThatWrote`): a `lease-released` carrying a `session` that also signs a
+  message in the mail delivered; a session that wrote nothing did not. Both halves are
+  load-bearing — silence is exactly the failure the ceiling exists for. Judging by the
+  mail rather than by a new outcome name is what makes the correction RETROACTIVE: the
+  journal keeps its honest record of what the observer saw, and pairs already
+  `exhausted` come back the moment a reader hands the fold the set — no hand rewrites
+  an append-only file. Every reader that judges launchability is given it (the daemon's
+  tick, `run` and its dry run, the operator frame); a caller with no mail at hand folds
+  exactly as before.
 - **`draining` has a limit — the lease deadline (`overdue`).** The turn was passed →
   we wait for the process to exit naturally → `completed`. The deadline without a
   passed turn → `timeout`, and the role does not hang forever. `handedOff`
