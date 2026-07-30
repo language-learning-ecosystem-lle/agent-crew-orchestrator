@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type OrchestratorEvent, parseEventLine, renderEventLine } from "./journal.js";
+import { consecutiveLaunchesWithoutDelivery, planLaunch } from "./launch.js";
 import { foldLeases } from "./lease.js";
 import { observeStep } from "./observe.js";
 import { describeQuotaRelease, quotaSignalOf } from "./quota.js";
@@ -152,6 +153,77 @@ describe("quotaSignalOf — the recognition", () => {
   });
 });
 
+/**
+ * THE MARKER, ASSEMBLED AT RUNTIME AND NEVER WRITTEN OUT WHOLE — the fixture that
+ * cost three sessions. Spelling it as one literal would put a live grenade in this
+ * file: a session reading or editing it echoes the file's text back through its own
+ * stream, and until the fix below that echo was read as the tool's own refusal. The
+ * pieces are inert; only the value is the marker, and only at runtime.
+ */
+const RESET_EPOCH = 1785340800;
+const MARKER = `Claude AI usage limit reached${"|"}${RESET_EPOCH}`;
+
+describe("the session's own payload is NOT the vendor's voice — the deaths of 30.07", () => {
+  it("the marker inside a `tool_result` is not a signal — the exact shape that killed them", () => {
+    // The line as the stream actually wrote it: a `user` event whose `tool_result`
+    // carries the text of `run.process.test.ts`, fixtures and all. Both doors are in
+    // this one line — the word the structured layer used to be gated on, and the
+    // marker the prose layer then matched inside the payload.
+    const line = JSON.stringify({
+      type: "user",
+      message: {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            content: `const QUOTA_LINE = '{"rate_limit_info":{"status":"exhausted"}}';\nconst REFUSAL = "${MARKER}";`,
+          },
+        ],
+      },
+      session_id: "b71101b5",
+    });
+    expect(quotaSignalOf(line)).toBeUndefined();
+  });
+
+  it("the same marker as a raw line IS a signal — the launcher half is untouched", () => {
+    // The other half of the pin: the launcher gives up before a session exists, its
+    // words never reach the stream format, and that is the one case where nothing
+    // else could name the cause.
+    expect(quotaSignalOf(MARKER)?.resetsAt).toBe("2026-07-29T16:00:00Z");
+  });
+
+  it("an ordinary stream event mentioning the field is not a verdict either", () => {
+    // The named third answer at work: this parsed, it is the stream speaking, and the
+    // quota is not what it is speaking about. Before the fix this line fell through to
+    // the prose layers whole.
+    const line = JSON.stringify({
+      type: "user",
+      message: { role: "user", content: [{ type: "tool_result", content: "rate_limit_info" }] },
+    });
+    expect(quotaSignalOf(line)).toBeUndefined();
+  });
+
+  it("the tool's own two surfaces still carry prose — `result` and an assistant text", () => {
+    expect(quotaSignalOf(JSON.stringify({ type: "result", result: MARKER }))?.resetsAt).toBe(
+      "2026-07-29T16:00:00Z",
+    );
+    expect(
+      quotaSignalOf(
+        JSON.stringify({
+          type: "assistant",
+          message: { content: [{ type: "text", text: MARKER }] },
+        }),
+      ),
+    ).toBeDefined();
+  });
+
+  it("a real closed window inside a stream event is still read — the control", () => {
+    // The fix must not have bought its silence by going blind: the FIRST-HAND source
+    // is the structured event, and it is judged on its own field, not on the line.
+    expect(quotaSignalOf(closedLine({ status: "exhausted", resetsAt: RESET_EPOCH }))).toBeDefined();
+  });
+});
+
 describe("observeStep — the quota is not an ordinary death", () => {
   it("a running session cut off by the window releases as quota-exhausted", () => {
     // THE ORDER IS THE FIX: the same signals without `quotaExhausted` produce
@@ -225,6 +297,62 @@ describe("the attempt ceiling — a closed window is nobody's failed attempt", (
     const view = foldLeases(window(1), new Date("2026-07-29T13:00:00Z"))[0];
     expect(view?.state).toBe("released");
     expect(view?.reason).toBe("quota-exhausted");
+  });
+});
+
+describe("the run budget — a closed window is nobody's spent run", () => {
+  const launch = (ts: string): OrchestratorEvent =>
+    ({ kind: "launch", ts, role: "dev-core", thread: "023-x" }) as OrchestratorEvent;
+
+  it("quota releases do not walk the global counter towards its ceiling", () => {
+    // THE DEADLOCK OF 30.07, as arithmetic: ten launches, every one of them cut off by
+    // the window. The budget is reset by a delivery, a delivery is made by a session,
+    // and no session is raised while the budget is spent — so without this the box
+    // stops for the one reason that is not its fault, and a hand has to raise the
+    // ceiling to break the circle.
+    const events = Array.from({ length: 10 }, (_, i) => [
+      launch(`2026-07-29T1${i}:00:00Z`),
+      at(`2026-07-29T1${i}:05:00Z`, "lease-released", { reason: "quota-exhausted" }),
+    ]).flat();
+    expect(consecutiveLaunchesWithoutDelivery(events)).toBe(0);
+    expect(
+      planLaunch({
+        events,
+        role: "dev-core",
+        thread: "023-x",
+        now: new Date("2026-07-29T20:00:00Z"),
+        wallClockMs: 60_000,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("the same ten as ordinary deaths DO spend it — the control", () => {
+    const events = Array.from({ length: 10 }, (_, i) => [
+      launch(`2026-07-29T1${i}:00:00Z`),
+      at(`2026-07-29T1${i}:05:00Z`, "lease-released", { reason: "exited-without-handoff" }),
+    ]).flat();
+    expect(consecutiveLaunchesWithoutDelivery(events)).toBe(10);
+    expect(
+      planLaunch({
+        events,
+        role: "dev-core",
+        thread: "023-y",
+        now: new Date("2026-07-29T20:00:00Z"),
+        wallClockMs: 60_000,
+      }),
+    ).toEqual({ ok: false, reason: "run-budget" });
+  });
+
+  it("it is UNDONE, not reset — another pair's break loop keeps its history", () => {
+    // A closed window is not a delivery. Zeroing on it would hand the break loop of
+    // every other pair a free absolution it never earned.
+    const events = [
+      launch("2026-07-29T10:00:00Z"),
+      at("2026-07-29T10:05:00Z", "lease-released", { reason: "exited-without-handoff" }),
+      launch("2026-07-29T11:00:00Z"),
+      at("2026-07-29T11:05:00Z", "lease-released", { reason: "quota-exhausted" }),
+    ];
+    expect(consecutiveLaunchesWithoutDelivery(events)).toBe(1);
   });
 });
 

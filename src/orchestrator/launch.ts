@@ -891,6 +891,17 @@ export const consecutiveLaunchesWithoutDelivery = (
   for (const event of events) {
     if (event.kind === "launch") count += 1;
     else if (isDelivery(event)) count = 0;
+    // THE CLOSED WINDOW TAKES ITS OWN LAUNCH BACK — the same reasoning that already
+    // keeps it out of the per-pair `attempt` (`lease.ts`), applied to the ceiling it
+    // was still reaching: the cause is not the pair's and not any pair's. It is
+    // UNDONE rather than reset to zero, because a closed window is not a delivery: it
+    // says nothing about the break loop of the other pairs, and erasing their history
+    // would be inventing good news. Not doing this is what deadlocked the box on
+    // 30.07 — the budget is reset by a delivery, a delivery is made by a session, and
+    // a session is not raised while the budget is spent; it took a hand to break.
+    else if (event.kind === "lease-released" && event.reason === "quota-exhausted") {
+      count = Math.max(0, count - 1);
+    }
   }
   return count;
 };
