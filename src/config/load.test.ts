@@ -155,32 +155,46 @@ describe("the protocol version gate", () => {
     );
   });
 
-  it("lets a reader through DOWNWARDS when it asks to (`tolerateOlder`), and says so in the verdict", () => {
-    // The one reader that needs this is `zones check`: it points at the BASE of a
-    // pull request on purpose, so a PR bumping the version reads a config that is
-    // behind BY CONSTRUCTION. The policy it asks for does not depend on the number.
+  it("a POLICY reader passes a config OLDER than the package and says so in the verdict", () => {
+    // The readers that need this are `zones check` and `merge-gate`: both point at the
+    // BASE of a pull request on purpose, so a PR that moves the shape reads a config
+    // behind BY CONSTRUCTION. The policy they ask for does not depend on the number.
     const { repo, path } = repoWithConfig();
     commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 });
 
-    const loaded = loadProtocolConfig({ repo, ref: "HEAD", fetch: false, tolerateOlder: true });
+    const loaded = loadProtocolConfig({ repo, ref: "HEAD", fetch: false, intent: "policy" });
 
     expect(loaded.version).toEqual({
       state: "behind",
       declared: CURRENT_PROTOCOL_VERSION - 1,
       supported: CURRENT_PROTOCOL_VERSION,
     });
-    expect(loaded.registry.ids()).toEqual(["john", "dev-core"]);
+    expect(loaded.config.roles.map((role) => role.id)).toEqual(["john", "dev-core"]);
   });
 
-  it("does NOT let the same reader through UPWARDS — a config newer than the package still halts", () => {
-    // Asymmetric on purpose: older data can be read by newer rules, data written by
-    // a shape this package has never seen cannot be guessed at.
+  it("a POLICY reader passes a config NEWER than the package too — the skew is the caller's to print", () => {
+    // The asymmetry `tolerateOlder` had (downwards only) belonged to a DATA reader: a
+    // shape it has never seen cannot be guessed at. A policy reader guesses at nothing
+    // — it takes three fields and leaves the rest of the file alone — and a branch that
+    // has not rebased sees its base as NEWER, which is the same fact from the other end.
+    const { repo, path } = repoWithConfig();
+    commitConfig(repo, path, {
+      ...CONFIG,
+      protocolVersion: CURRENT_PROTOCOL_VERSION + 1,
+      whatTheNewerPackageAdded: { stalled: true },
+    });
+
+    const loaded = loadProtocolConfig({ repo, ref: "HEAD", fetch: false, intent: "policy" });
+
+    expect(loaded.version.state).toBe("ahead");
+    expect(loaded.config.roles.map((role) => role.id)).toEqual(["john", "dev-core"]);
+  });
+
+  it("a DATA reader still halts UPWARDS — the asymmetry is the data reader's, and it stays", () => {
     const { repo, path } = repoWithConfig();
     commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION + 1 });
 
-    expect(() =>
-      loadProtocolConfig({ repo, ref: "HEAD", fetch: false, tolerateOlder: true }),
-    ).toThrow(/supports only/);
+    expect(() => loadProtocolConfig({ repo, ref: "HEAD", fetch: false })).toThrow(/supports only/);
   });
 
   it("a config AHEAD of the package is diagnosed by VERSION even when it carries fields this build never heard of", () => {
@@ -204,20 +218,7 @@ describe("the protocol version gate", () => {
     );
   });
 
-  it("a config BEHIND the package still goes through the parse — `tolerateOlder` needs its data", () => {
-    // The pre-gate is deliberately one-directional: `behind` is a shape this package
-    // can still describe, and door 3 of thread 020 READS it (`zones check` on the base
-    // of a PR that bumps the version). Gating it early would take the data away from
-    // the one reader entitled to it.
-    const { repo, path } = repoWithConfig();
-    commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 });
-
-    expect(
-      loadProtocolConfig({ repo, ref: "HEAD", fetch: false, tolerateOlder: true }).registry.ids(),
-    ).toEqual(["john", "dev-core"]);
-  });
-
-  it("keeps the halt for every other reader — tolerance is asked for, never assumed", () => {
+  it("keeps the halt for a DATA reader — the intent is asked for, never assumed", () => {
     const { repo, path } = repoWithConfig();
     commitConfig(repo, path, { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 });
 
