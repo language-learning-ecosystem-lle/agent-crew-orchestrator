@@ -224,7 +224,10 @@ import { foregroundRefusal, planSystemdUnit } from "./orchestrator/systemd.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
+  modelOf,
+  type RunUsage,
   renderStreamLine,
+  runUsageOf,
   sessionIdOf,
   splitStreamChunk,
   stampLine,
@@ -4170,6 +4173,12 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // can continue.
   let sessionId: string | undefined;
   let steps = 0;
+  // WHAT THE RUN BURNED (thread 029) — latched off the same stream, for the same reason
+  // `steps` is: the supervisor reads every line anyway, and this is the only moment the
+  // numbers exist anywhere but inside a 200-MB transcript. Both stay `undefined` for a run
+  // that broke off, and that is the honest answer rather than a gap to be filled in.
+  let runModel: string | undefined;
+  let runUsage: RunUsage | undefined;
 
   const recordSupervisorGone = (): void => {
     if (settled || !leased) return;
@@ -4359,6 +4368,21 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     quota = signal;
     writeLog(`supervisor  ${describeQuotaRelease(signal)}`);
   };
+  // WHAT THE RUN BURNED (thread 029) — latched off the same lines, and WRAPPED, which is
+  // the whole of curator's first acceptance condition (msg-004). Telemetry has no right to
+  // touch the fact that the lease is released: "every outcome leaves a trace" is the
+  // journal's load-bearing invariant, so a collector that threw here — on a stream shape the
+  // vendor changed, on a number that is suddenly a string — would eat the break event it
+  // exists to price. It fails OPEN: the line is written WITHOUT the block, never not written.
+  const noteUsage = (line: string): void => {
+    try {
+      if (runModel === undefined) runModel = modelOf(line);
+      // The ledger arrives once, on the `result` event. First one wins, like the id.
+      if (runUsage === undefined) runUsage = runUsageOf(line);
+    } catch (error) {
+      writeLog(`supervisor  could not read the run's usage: ${(error as Error).message}`);
+    }
+  };
   child.stdout?.on("data", (chunk: Buffer) => {
     if (!sinksOpen) return;
     writeSync(rawSink, chunk);
@@ -4370,6 +4394,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // run that breaks leaves no summary line at all, and those are the only runs
       // whose size the continuation policy ever has to judge.
       if (isAssistantStep(line)) steps += 1;
+      noteUsage(line);
       // THE WINDOW RAN OUT (finding C, thread 023). Recognised where the stream is
       // already being read line by line, and LATCHED rather than acted on here: this
       // handler runs on an IO event, while every lease decision belongs to the poll
@@ -4656,6 +4681,13 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // a shelf per window type, and this is the only place the type is known.
         ...(quota?.window === undefined ? {} : { window: quota.window }),
         ...(leftDirty ? { dirty: true as const } : {}),
+        // WHAT THE RUN BURNED rides to the journal (thread 029) — the last moment the
+        // numbers are in hand without re-parsing the transcript. Omitted entirely when the
+        // run left no ledger AND no model: an empty object would claim a measurement
+        // nobody made.
+        ...(runUsage === undefined && runModel === undefined
+          ? {}
+          : { usage: { ...(runModel === undefined ? {} : { model: runModel }), ...runUsage } }),
       }),
     );
     // THE RELEASE IS ANNOUNCED HERE TOO, although the daemon publishes at the end of its

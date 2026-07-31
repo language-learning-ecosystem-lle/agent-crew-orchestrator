@@ -255,6 +255,42 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     // It is on the RELEASE rather than a new event kind because it is a property of how
     // this run finished, and the release is the record of that.
     dirty: z.literal(true).optional(),
+    // WHAT THE RUN BURNED (thread 029). The economics of the circuit is not computed —
+    // it is simply STOPPED FROM BEING THROWN AWAY: the supervisor already reads every
+    // line of the session's stream, so by the time the lease is let go it knows the
+    // ledger, and until now it dropped it. Without this block the only source of $ and
+    // turns is `sessions/*.jsonl` — 215 MB of transcripts a bot resident would have to
+    // re-parse to answer "how much did we spend this week", and which a future rotation
+    // will delete.
+    //
+    // OPTIONAL, and the absence is a fact rather than a fault: the ledger rides on the
+    // stream's `result` event, which only a run that REACHED ITS END emits. Every break
+    // (`quota-exhausted`, `timeout`, `supervisor-gone`) has no ledger by construction,
+    // and per-message tokens do not reconstruct one (see `runUsageOf`). So a reader must
+    // never read "no block" as "free": the fold prints those runs as their own line.
+    //
+    // AND ABSENCE IS NOT JUDGED BY A TIMESTAMP EITHER (curator's eleventh condition,
+    // msg-017). A daemon runs the code it started with, so a box whose writer is older
+    // than this schema produces blockless lines long after the field exists — that window
+    // opens again at EVERY merge and closes only at a restart, unlike the historical
+    // boundaries which empty themselves out. Hence the fold PRINTS "no block after the
+    // era began" as a named row and does not call it a loss.
+    usage: z
+      .object({
+        model: z.string().min(1).optional(),
+        turns: z.number().int().min(0).optional(),
+        durationSec: z.number().int().min(0).optional(),
+        costUsd: z.number().min(0).optional(),
+        tokens: z
+          .object({
+            in: z.number().int().min(0),
+            out: z.number().int().min(0),
+            cacheWrite: z.number().int().min(0),
+            cacheRead: z.number().int().min(0),
+          })
+          .optional(),
+      })
+      .optional(),
   }),
   // The session was stopped forcibly (S4). `by`/`note` are the "who" and the
   // "why", and together with `ts` (the "when") they make the force trace in the
@@ -276,6 +312,14 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
 ]);
 
 export type OrchestratorEvent = z.infer<typeof orchestratorEventSchema>;
+/**
+ * The `usage` block of a `lease-released` (thread 029), named so that the two places a
+ * field of `detail` has to exist in (`observe.ts`) speak of ONE type instead of two
+ * copies of a shape — the copies are what 038 lost `window` in.
+ */
+export type LeaseUsage = NonNullable<
+  Extract<OrchestratorEvent, { kind: "lease-released" }>["usage"]
+>;
 export type EventKind = OrchestratorEvent["kind"];
 
 /** An event's UTC stamp from a point in time: `2026-07-24T13:45:12Z` (no milliseconds). */

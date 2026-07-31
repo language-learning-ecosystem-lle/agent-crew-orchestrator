@@ -63,6 +63,17 @@ const streamEvent = z.looseObject({
   total_cost_usd: z.number().optional(),
   is_error: z.boolean().optional(),
   result: z.string().optional(),
+  // THE LEDGER OF A FINISHED RUN (thread 029). It rides on the `result` event and
+  // NOWHERE ELSE — see `runUsageOf` on why the per-message `usage` is not a second
+  // source for the same numbers.
+  usage: z
+    .looseObject({
+      input_tokens: z.number().optional(),
+      output_tokens: z.number().optional(),
+      cache_creation_input_tokens: z.number().optional(),
+      cache_read_input_tokens: z.number().optional(),
+    })
+    .optional(),
   message: z
     .looseObject({
       content: z.union([z.string(), z.array(contentBlock)]).optional(),
@@ -180,6 +191,92 @@ export const sessionIdOf = (line: string): string | undefined => {
   const event = parsed.data;
   if (event.type !== "system" || event.subtype !== "init") return undefined;
   return event.session_id === undefined || event.session_id === "" ? undefined : event.session_id;
+};
+
+/**
+ * WHICH MODEL RAN — from the same `system`/`init` line the id comes from (thread 029).
+ * `undefined` everywhere else, first one wins, exactly like `sessionIdOf`: the model is
+ * a property of the run, not of a message, and a later line repeating it changes nothing.
+ */
+export const modelOf = (line: string): string | undefined => {
+  const trimmed = line.trim();
+  if (trimmed === "") return undefined;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(trimmed);
+  } catch {
+    return undefined;
+  }
+  const parsed = streamEvent.safeParse(raw);
+  if (!parsed.success) return undefined;
+  const event = parsed.data;
+  if (event.type !== "system" || event.subtype !== "init") return undefined;
+  return event.model === undefined || event.model === "" ? undefined : event.model;
+};
+
+/** What a finished run burned — the block that lands on `lease-released` (thread 029). */
+export type RunUsage = {
+  readonly turns?: number;
+  readonly durationSec?: number;
+  readonly costUsd?: number;
+  readonly tokens?: {
+    readonly in: number;
+    readonly out: number;
+    readonly cacheWrite: number;
+    readonly cacheRead: number;
+  };
+};
+
+/**
+ * THE ECONOMICS OF A RUN OUT OF ONE STREAM LINE (thread 029) — turns, wall time, dollars
+ * and tokens, read where the supervisor is already reading every line for the log.
+ *
+ * WHY ONLY THE `result` EVENT, when every assistant message carries a `usage` of its own
+ * and summing those would also cover the runs that never reach a result line. Because
+ * they do not add up to the same thing, and the error is not a rounding one: measured on
+ * three finished runs against their own result lines, per-message `output` came out 15 to
+ * 110 times LOW (the values are streaming partials) while `cache_read` came out about
+ * TWICE HIGH (the same read counted again on every message). Two fields, opposite signs,
+ * an order of magnitude of spread between runs — so there is no correction factor either.
+ * A broken run therefore has no honest token count at all, and this function returns
+ * `undefined` for it rather than a number that would look like one.
+ *
+ * That absence is a NAMED CLASS, not a scatter: on this box every run without a result
+ * line was a `quota-exhausted`, a `timeout` or a `supervisor-gone` — killed before the
+ * ledger was written. The command that folds the journal prints those runs by their count,
+ * their break class, their steps and their wall time, plus the plain sentence that their
+ * tokens are not counted (curator's fifth acceptance condition, msg-014).
+ */
+export const runUsageOf = (line: string): RunUsage | undefined => {
+  const trimmed = line.trim();
+  if (trimmed === "") return undefined;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(trimmed);
+  } catch {
+    return undefined;
+  }
+  const parsed = streamEvent.safeParse(raw);
+  if (!parsed.success || parsed.data.type !== "result") return undefined;
+  const event = parsed.data;
+  const usage = event.usage;
+  const tokens =
+    usage === undefined
+      ? undefined
+      : {
+          in: Math.max(0, Math.round(usage.input_tokens ?? 0)),
+          out: Math.max(0, Math.round(usage.output_tokens ?? 0)),
+          cacheWrite: Math.max(0, Math.round(usage.cache_creation_input_tokens ?? 0)),
+          cacheRead: Math.max(0, Math.round(usage.cache_read_input_tokens ?? 0)),
+        };
+  return {
+    ...(event.num_turns === undefined ? {} : { turns: Math.max(0, Math.round(event.num_turns)) }),
+    ...(event.duration_ms === undefined
+      ? {}
+      : { durationSec: Math.max(0, Math.round(event.duration_ms / 1000)) }),
+    ...(event.total_cost_usd === undefined ? {} : { costUsd: event.total_cost_usd }),
+    ...(tokens === undefined ? {} : { tokens }),
+  };
 };
 
 /**
