@@ -201,6 +201,15 @@ import {
 import { renderSystemdUnit } from "./orchestrator/reboot.js";
 import { describeResidentWait, residentWaits } from "./orchestrator/resident.js";
 import {
+  awaitDaemonExit,
+  DEFAULT_RESTART_POLL_SEC,
+  DEFAULT_RESTART_WAIT_SEC,
+  daemonArgvFor,
+  daemonArgvPath,
+  parseDaemonArgv,
+  renderDaemonArgv,
+} from "./orchestrator/restart.js";
+import {
   describeExclusion,
   describeScope,
   instanceIssues,
@@ -6288,6 +6297,10 @@ const orchestratorUp = (argv: readonly string[]): void => {
   child.unref();
   closeSync(sink);
   writeFileSync(pidFile, `${child.pid}\n`, "utf8");
+  // WITH WHAT IT WAS RAISED, beside the pid — the answer `restart` needs and the only
+  // one nobody has today: the flags of a backgrounded daemon live in the terminal that
+  // typed them, i.e. in somebody's memory an hour later (see `restart.ts`).
+  writeFileSync(daemonArgvPath(pidFile), renderDaemonArgv(passthrough), "utf8");
   out(`agent-protocol: the daemon is up in the background, pid ${child.pid} · its output ${log}`);
   out(
     "agent-protocol: 'orchestrator status' shows the circuit, 'orchestrator down' stops it after the current session",
@@ -6316,23 +6329,149 @@ const orchestratorDown = (argv: readonly string[]): void => {
 };
 
 /**
- * The SHORT PARKING FORMS: `hold <role>` / `resume <role>` (thread 019). The strict
- * forms stay exactly as they were — this is the same action with the two answers the
- * operator was retyping filled in: the ref from the config, `--by` from the machine
- * (`operator` of `local.json`, then `$USER`).
+ * `orchestrator restart` — DOWN, WAIT, (PULL), UP AS ONE GESTURE (thread 019, statement
+ * of 2026-07-31: picking up fresh code was a hand-run pipeline four times in two days,
+ * twice with a stumble). Why the argv of the new daemon comes from state rather than
+ * from the operator, and why this process does the waiting instead of a successor
+ * daemon — `orchestrator/restart.ts`.
  *
- * They ACT rather than plan. `--write` on the strict form guards a change nobody can
- * see; a hold is visible in one command (`status`) and undone in one word, and a dry
- * run that then has to be repeated with a flag is the ceremony this package was asked
- * to take off the operator.
+ * IT IS A COMPOSITION AND NOTHING ELSE: `down` (or `stop --mode force`, trace first),
+ * then the wait, then `up`. The three keep their semantics down to the letter — a
+ * restart that reimplemented any of them would be a second place where "stop" means
+ * something, and the first divergence would be found on a live circuit.
+ *
+ * A REFUSAL ANYWHERE LEAVES THE CIRCUIT DOWN, DELIBERATELY. If the wait runs out, or
+ * the pull or the install fails, nothing is raised: the operator asked for the NEW code
+ * to be running, and raising the old one instead would answer a question nobody asked
+ * while looking exactly like success. The stop flag stays down, the reason is printed
+ * and appended to the daemon log, and `up` by hand is one word away.
  */
-const orchestratorHoldShort = (argv: readonly string[]): void => {
-  const args = withOperatorRef(argv.slice(1));
-  const role = argv[0] as string;
-  // THREE ANSWERS, IN THIS ORDER: the flag (this one hold), `operator` of the machine
-  // config (who sits at this box — R14), `$USER` (the box where the account name is a
-  // role by luck). The source is carried alongside the value because it is the whole of
-  // the diagnosis when the signature is refused.
+const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
+  const args = withOperatorRef(argv);
+  const mode = flag(args, "--mode") ?? "graceful";
+  if (mode !== "graceful" && mode !== "force") {
+    fail(`--mode '${mode}' — allowed values are graceful | force`, 2);
+    return;
+  }
+  const paths = pathsFrom(args);
+  const pidFile = flag(args, "--pid-file") ?? paths.daemonPid;
+  const logPath = flag(args, "--daemon-log") ?? paths.daemonLog;
+  // The phases are said to the terminal AND written where a backgrounded daemon speaks:
+  // a restart that refused at 04:00 has to be readable at 09:00, and the terminal it
+  // spoke into is gone by then.
+  const say = (text: string): void => {
+    out(`agent-protocol: restart — ${text}`);
+    try {
+      mkdirSync(dirname(logPath), { recursive: true });
+      appendFileSync(logPath, `[restart ${new Date().toISOString().slice(0, 19)}Z] ${text}\n`);
+    } catch {
+      // The log is a courtesy here, not the channel: a restart must not fail because
+      // the file it wanted to annotate is unwritable.
+    }
+  };
+
+  const pid = runningDaemon(pidFile);
+  const saved = existsSync(daemonArgvPath(pidFile))
+    ? parseDaemonArgv(readFile(daemonArgvPath(pidFile), "the daemon's saved flags"))
+    : undefined;
+
+  // Phase 1 — the stop, in the form that was asked for.
+  if (mode === "force") {
+    const by = operatorSignature(args);
+    if (by === undefined) return;
+    say(`stopping by force, signed by ${by} — the trace goes to the thread before the flag`);
+    orchestratorStop([...args, "--mode", "force", "--by", by, "--write"]);
+  } else {
+    say(
+      pid === undefined
+        ? "no backgrounded daemon of this box is running — setting the stop flag anyway (an attached one exits at its next tick)"
+        : `stopping pid ${pid} gracefully — it finishes the sessions it is running`,
+    );
+    orchestratorDown(args);
+  }
+
+  // Phase 2 — the wait. This is the part john was doing by hand, with no idea how long.
+  const waitSec = Number(flag(args, "--wait") ?? DEFAULT_RESTART_WAIT_SEC);
+  if (!Number.isFinite(waitSec) || waitSec <= 0) {
+    fail(`--wait '${flag(args, "--wait")}' — seconds to wait for the daemon to leave`, 2);
+    return;
+  }
+  const outcome = await awaitDaemonExit({
+    pid,
+    alive,
+    sleep,
+    now: () => Math.round(Date.now() / 1000),
+    waitSec,
+    pollSec: DEFAULT_RESTART_POLL_SEC,
+    note: (waited) => say(`still waiting for pid ${pid} to leave — ${waited}s so far`),
+  });
+  if (outcome.kind === "timeout") {
+    say(
+      `the daemon (pid ${pid}) is STILL up after ${outcome.waitedSec}s — nothing was raised, the stop flag stays down. Its sessions are visible in 'orchestrator status'; 'restart --mode force' puts them down with a trace`,
+    );
+    fail(`the daemon did not leave within ${waitSec}s — nothing was restarted`, 1);
+    return;
+  }
+  say(
+    outcome.kind === "absent"
+      ? "no daemon had to be waited out"
+      : `the daemon left after ${outcome.waitedSec}s`,
+  );
+
+  // Phase 3 — the fresh code, when it was asked for.
+  if (args.includes("--pull")) {
+    const repo = flag(args, "--repo") ?? homeOf(process.cwd());
+    for (const step of [
+      { what: "git pull --ff-only", run: ["git", ["-C", repo, "pull", "--ff-only"]] as const },
+      { what: "pnpm install", run: ["pnpm", ["--dir", repo, "install"]] as const },
+    ]) {
+      say(`${step.what} in '${repo}'`);
+      try {
+        const said = execFileSync(step.run[0], [...step.run[1]], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        const tail = said.trim().split("\n").slice(-3).join(" · ");
+        say(`${step.what} — ok${tail === "" ? "" : `: ${tail}`}`);
+      } catch (error) {
+        const failure = error as { stderr?: string; stdout?: string; status?: number };
+        const why = (failure.stderr ?? failure.stdout ?? "").trim();
+        say(
+          `${step.what} FAILED (code ${failure.status ?? "?"})${why === "" ? "" : `: ${why}`} — nothing was raised, the circuit stays down until this is dealt with`,
+        );
+        fail(`${step.what} failed — the daemon was NOT raised`, 1);
+        return;
+      }
+    }
+  }
+
+  // Phase 4 — up, with the flags of the daemon that was stopped.
+  const chosen = daemonArgvFor({ saved, typed: args });
+  say(
+    chosen.source === "state"
+      ? `raising the daemon with the flags it was stopped with (${daemonArgvPath(pidFile)}): ${chosen.argv.join(" ") || "none"}`
+      : `the stopped daemon left no record of its flags (${daemonArgvPath(pidFile)}) — raising it with the flags typed here: ${chosen.argv.join(" ") || "none"}`,
+  );
+  const upFlags: string[] = [...chosen.argv];
+  // The two paths belong to THIS command, not to the daemon, so `up` never saved them.
+  for (const own of ["--pid-file", "--daemon-log"] as const) {
+    const value = flag(args, own);
+    if (value !== undefined && !upFlags.includes(own)) upFlags.push(own, value);
+  }
+  // A force stop put the force flag down a minute ago — clearing it here is not the
+  // silent clearing `up` refuses, it is the same operator saying so in the same breath.
+  if (mode === "force") upFlags.push("--clear-force");
+  orchestratorUp(upFlags);
+};
+
+/**
+ * WHO IS OPERATING THIS BOX — the flag, then `operator` of the machine config (R14),
+ * then `$USER`, checked against the config's roles. Shared by the short forms that sign
+ * something in somebody's name (`hold <role>`, `restart --mode force`): a signature is
+ * a role of the circuit, and free text in that place would be an identity nobody can
+ * check.
+ */
+const operatorSignature = (args: readonly string[]): string | undefined => {
   const local = localFrom(args);
   const typed = flag(args, "--by");
   const account = process.env["USER"];
@@ -6348,13 +6487,34 @@ const orchestratorHoldShort = (argv: readonly string[]): void => {
   if (signature === undefined || !registry.isKnown(signature[0])) {
     fail(
       signature === undefined
-        ? `--by was not given, '${local.path}' declares no 'operator' and $USER is not set — a hold is signed by a role of the config`
+        ? `--by was not given, '${local.path}' declares no 'operator' and $USER is not set — this action is signed by a role of the config`
         : `--by '${signature[0]}' (from ${signature[1]}) is not a role of the config — pass --by <role>, or set 'operator' in '${local.path}'`,
       2,
     );
-    return;
+    return undefined;
   }
-  const by = signature[0];
+  return signature[0];
+};
+
+/**
+ * The SHORT PARKING FORMS: `hold <role>` / `resume <role>` (thread 019). The strict
+ * forms stay exactly as they were — this is the same action with the two answers the
+ * operator was retyping filled in: the ref from the config, `--by` from the machine
+ * (`operator` of `local.json`, then `$USER`).
+ *
+ * They ACT rather than plan. `--write` on the strict form guards a change nobody can
+ * see; a hold is visible in one command (`status`) and undone in one word, and a dry
+ * run that then has to be repeated with a flag is the ceremony this package was asked
+ * to take off the operator.
+ */
+const orchestratorHoldShort = (argv: readonly string[]): void => {
+  const args = withOperatorRef(argv.slice(1));
+  const role = argv[0] as string;
+  // THREE ANSWERS, IN THIS ORDER: the flag (this one hold), `operator` of the machine
+  // config (who sits at this box — R14), `$USER` (the box where the account name is a
+  // role by luck) — `operatorSignature`, shared with `restart --mode force`.
+  const by = operatorSignature(args);
+  if (by === undefined) return;
   orchestratorHold([...args, "--mode", "take", "--role", role, "--by", by, "--write"]);
 };
 
@@ -6384,7 +6544,7 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
   }
   const daemon = USAGE_FLAGS.get("orchestrator daemon");
   const merged =
-    key === "orchestrator up" && daemon !== undefined
+    (key === "orchestrator up" || key === "orchestrator restart") && daemon !== undefined
       ? {
           value: [...spec.value, ...daemon.value],
           boolean: [...spec.boolean, ...daemon.boolean],
@@ -6737,6 +6897,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     orchestratorUp(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "down") {
     orchestratorDown(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "restart") {
+    await orchestratorRestart(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "resume") {
     orchestratorResumeShort(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "hold") {

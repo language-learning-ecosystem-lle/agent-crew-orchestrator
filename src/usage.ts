@@ -112,6 +112,16 @@ printed. The strict forms below keep every flag they had.
                               # reason: a daemon raised over it exits on its first tick and
                               # says so only in its log. --clear-force removes it deliberately
   agent-protocol orchestrator down   [--ref <ref>] [--repo <p>] [--stop-flag <p>] [--pid-file <p>]
+  agent-protocol orchestrator restart [--ref <ref>] [--repo <p>] [--pull] [--wait <sec>] [--pid-file <p>] [--daemon-log <p>] [--mode <m>] [--thread <slug>] [--reason <why>] [--by <who>]   # plus every 'daemon' flag
+                              # PICKING UP FRESH CODE AS ONE GESTURE: down, wait out the
+                              # live sessions, (--pull: git pull --ff-only + pnpm install),
+                              # up again WITH THE FLAGS OF THE DAEMON THAT WAS STOPPED —
+                              # read from beside its pid, never retyped from memory
+                              # --mode force: the force stop's own semantics (the trace to
+                              # --thread signed by --by goes FIRST), then both flags are
+                              # cleared without hands and the daemon comes back up
+                              # the process waits itself and prints the phases; a wait that
+                              # runs out, a failed pull or install raises NOTHING and says so
   agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>] [--local-config <p>]
   agent-protocol orchestrator resume <role> [--ref <ref>] [--holds <d>]
                               # the short forms ACT (no --write): typing them IS the decision
