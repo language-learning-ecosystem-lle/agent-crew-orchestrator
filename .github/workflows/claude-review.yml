@@ -335,15 +335,48 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           WF=.github/workflows/claude-review.yml
+          # СЕТЬ ПОСЛЕ ДЕЙСТВИЯ ХОДИТ ПО URL С ТОКЕНОМ ДЖОБЫ, а не через конфиг
+          # чекаута, и это не перестраховка: первая редакция шага (#133) звала
+          # `git fetch origin` и падала `Authentication failed`, exit 128 — оба
+          # живых прогона, 30647692648 (#134) и 30648959020 (#130). Причина та же,
+          # что у шага доставки ниже: `claude-code-action` вписывает в
+          # `remote.origin.url` свой app-токен и ОТЗЫВАЕТ его последним своим
+          # шагом, а наши шаги стартуют после отзыва и наследуют мёртвый креденшл
+          # в URL. Цена ошибки — обратная задуманной: шаг, который заводился, чтобы
+          # ложных тревог у смотрителя не было, сам красил КАЖДЫЙ прогон ревью и
+          # звонил в тред 042 при живом доставленном вердикте.
+          # URL передаётся АРГУМЕНТОМ и в конфиг не садится (осевший креденшл и был
+          # исходной болезнью); `git remote set-url` здесь намеренно не трогаем —
+          # починка главного чекаута принадлежит шагу доставки, а этот шаг
+          # диагностический и чужого состояния не меняет.
+          REMOTE="https://x-access-token:${GH_TOKEN}@${GITHUB_SERVER_URL#https://}/${GITHUB_REPOSITORY}"
           # Фетч БЕЗ `--depth`: чекаут джобы полный (`fetch-depth: 0`), а мелкий
           # фетч посадил бы на него `.git/shallow` — цена больше пользы. Версия
           # берётся свежая, а не `origin/<default>` из чекаута: гард действия
           # сверялся с дефолтной веткой на своём шаге, то есть уже после старта.
-          git fetch --no-tags origin "$DEFAULT_BRANCH"
-          if git diff --quiet FETCH_HEAD HEAD -- "$WF"; then
+          BASE=""
+          if git fetch --no-tags "$REMOTE" "$DEFAULT_BRANCH"; then
+            BASE=FETCH_HEAD
+          elif git rev-parse --verify -q "origin/${DEFAULT_BRANCH}^{commit}" >/dev/null; then
+            echo "::warning::fetch '${DEFAULT_BRANCH}' не удался — сравниваю с 'origin/${DEFAULT_BRANCH}' из чекаута джобы (снимок на её старте)."
+            BASE="origin/${DEFAULT_BRANCH}"
+          fi
+          # ЭТОТ ШАГ НЕ КРАСИТ ПРОГОН НИКОГДА, и это его конструкция, а не
+          # снисходительность: он лишь УСТАНАВЛИВАЕТ ФАКТ для двух шагов после
+          # себя. Не установили — говорим вслух и отдаём `self_skip=0`, то есть
+          # поведение до #133: нет вердикта → красный статус → письмо смотрителю.
+          # Диагностика, способная уронить прогон, который она описывает, — ровно
+          # та болезнь, которую здесь лечат.
+          if [ -z "$BASE" ]; then
+            echo "::warning::версию '${WF}' на '${DEFAULT_BRANCH}' получить не удалось — факт самопропуска не установлен, считаем self_skip=0."
+            echo "self_skip=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --quiet "$BASE" HEAD -- "$WF"; then
             echo "self_skip=0" >> "$GITHUB_OUTPUT"
             echo "Файл воркфлоу совпадает с '${DEFAULT_BRANCH}' — гард действия не срабатывал."
           else
