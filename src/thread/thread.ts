@@ -305,10 +305,40 @@ export const waitingOnOf = (thread: Thread): string | undefined => {
  *
  * `status: closed` outranks it, as it outranks the turn: a closed thread waits for nobody.
  */
-export const parkedOnOf = (thread: Thread): string | undefined => {
-  const parking = parkingOf(thread);
+export const parkedOnOf = (
+  thread: Thread,
+  mergedElsewhere?: ReadonlySet<number>,
+): string | undefined => {
+  const parking = parkingOf(thread, mergedElsewhere);
   if (parking === undefined) return undefined;
   return parking.kind === "person" ? parking.person : `pr:${parking.pr}`;
+};
+
+/**
+ * THE MERGES THE WHOLE MAIL HAS SEEN — the set an event park is judged against (thread 023).
+ *
+ * A park on `pr:N` lifts when the merge notifier says N has landed, and the notifier writes
+ * into the thread named in the DESCRIPTION OF THAT PR — never into the thread that happens to
+ * be parked on it. The two are different threads more often than not: 042 parked on `pr:133`
+ * while the announcement of 133 went to 046, and 042 stayed frozen with its answer already
+ * delivered. Reading the merges of one thread was therefore reading the wrong feed; the mail
+ * is one document, and this is the set of PRs it knows to be merged.
+ *
+ * NO DATE IS COMPARED, unlike the in-thread scan (which gets the ordering for free by walking
+ * backwards): a park naming a PR that landed BEFORE it was written is a mistake of the writer,
+ * and the two ways of failing are not equal — lifting it costs one raise into a thread whose
+ * business is done, holding it costs a thread frozen until a human notices. Same direction the
+ * author rule above chose, for the same reason.
+ */
+export const mergedPrs = (threads: readonly Thread[]): ReadonlySet<number> => {
+  const merged = new Set<number>();
+  for (const thread of threads) {
+    for (const message of thread.messages) {
+      const pr = message.fields.mergedPr;
+      if (pr !== undefined) merged.add(pr);
+    }
+  }
+  return merged;
 };
 
 /**
@@ -367,11 +397,21 @@ export type Parking = {
   readonly question: string;
 };
 
-export const parkingOf = (thread: Thread): Parking | undefined => {
+/**
+ * `mergedElsewhere` — the merges the REST of the mail has announced (`mergedPrs`), because the
+ * notifier writes into the PR's own thread and not into the one parked on it. A caller holding
+ * the whole scan passes it; one holding a single thread does not have it and does not pretend
+ * to — it then reads exactly what this thread saw, which is the old behaviour.
+ */
+export const parkingOf = (
+  thread: Thread,
+  mergedElsewhere?: ReadonlySet<number>,
+): Parking | undefined => {
   if (thread.meta.status === "closed") return undefined;
   // The merges announced AFTER the park would be — the scan runs backwards, so they are met
-  // first, and an event park is compared against the set the moment it is found.
-  const merged = new Set<number>();
+  // first, and an event park is compared against the set the moment it is found. The mail's
+  // own merges are in the set from the start: they are not ordered against this feed at all.
+  const merged = new Set<number>(mergedElsewhere);
   for (let at = thread.messages.length - 1; at >= 0; at--) {
     const message = thread.messages[at];
     if (message === undefined) continue;

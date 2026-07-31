@@ -5,6 +5,7 @@ import type { Message } from "./message.js";
 import { migrateLegacyThread, verifyMigration } from "./migrate.js";
 import {
   declaredWaitingOn,
+  mergedPrs,
   parkedOnKind,
   parkedOnOf,
   parkingOf,
@@ -349,6 +350,28 @@ describe("parkedThreads — what the planner is told (R27)", () => {
       ["025-b", "john"],
     ]);
   });
+
+  it("THE MERGE LIFTS THE PARK FROM ANOTHER THREAD — the planner reads the whole mail", () => {
+    // What the planner is told is computed over the mail, not thread by thread: the notifier
+    // announces a merge into the thread named in the PR's description (here 046), while the
+    // thread frozen on it is another one (042 ↔ `pr:133`, live, thread 023).
+    const announcement: Message = {
+      fields: {
+        from: "github",
+        date: "2026-07-31T16:31:00Z",
+        expects: "none",
+        worker: "gh-action",
+        mergedPr: 133,
+      } as Message["fields"],
+      text: "PR #133 merged",
+    };
+    const elsewhere: Thread = {
+      id: "046-b",
+      meta: { title: "046", participants: ["curator", "dev-core"], status: "open" },
+      messages: [announcement],
+    };
+    expect([...parkedThreads([thread("042-a", "pr:133"), elsewhere])]).toEqual([]);
+  });
 });
 
 describe("parkedOnKind — the one reading of the field (thread 023)", () => {
@@ -484,5 +507,61 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
 
   it("parkedOnOf keeps the raw value, so the skip line can tell the two apart", () => {
     expect(parkedOnOf(thread([message({ parkedOn: "pr:127" })]))).toBe("pr:127");
+  });
+
+  it("A MERGE ANNOUNCED IN ANOTHER THREAD lifts it — the notifier writes into the PR's own", () => {
+    // The live case (042 parked on `pr:133`, the announcement of 133 delivered to 046): the
+    // park would otherwise outlive the merge it waits for, in the one thread that cannot see it.
+    const parked = thread([message({ parkedOn: "pr:133" })]);
+    expect(parkingOf(parked, new Set([133]))).toBeUndefined();
+    expect(parkedOnOf(parked, new Set([133]))).toBeUndefined();
+  });
+
+  it("somebody else's merge elsewhere still lifts nothing", () => {
+    expect(parkingOf(thread([message({ parkedOn: "pr:133" })]), new Set([129]))?.pr).toBe(133);
+  });
+
+  it("a caller with one thread reads what that thread saw — the set is optional", () => {
+    expect(parkingOf(thread([message({ parkedOn: "pr:133" })]))?.pr).toBe(133);
+  });
+});
+
+describe("mergedPrs — the merges the whole mail has seen (thread 023)", () => {
+  const thread = (id: string, messages: readonly Message[]): Thread => ({
+    id,
+    meta: { title: id, participants: ["curator", "dev-core"], status: "open" },
+    messages,
+  });
+  const announcement = (pr: number): Message => ({
+    fields: {
+      from: "github",
+      date: "2026-07-31T12:30:00Z",
+      expects: "none",
+      worker: "gh-action",
+      mergedPr: pr,
+    } as Message["fields"],
+    text: `PR #${pr} merged`,
+  });
+  const plain: Message = {
+    fields: {
+      from: "curator",
+      date: "2026-07-31T12:00:00Z",
+      expects: "answer",
+      waitingOn: "dev-core",
+    } as Message["fields"],
+    text: "тело",
+  };
+
+  it("collects every announced merge, whichever thread it landed in", () => {
+    const merged = mergedPrs([
+      thread("023-a", [plain, announcement(133)]),
+      thread("046-b", [announcement(129)]),
+      thread("040-c", [plain]),
+    ]);
+    expect([...merged].sort((a, b) => a - b)).toEqual([129, 133]);
+  });
+
+  it("empty mail knows no merges — and lifts nothing", () => {
+    expect(mergedPrs([]).size).toBe(0);
   });
 });

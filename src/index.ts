@@ -273,6 +273,7 @@ export {
 } from "./thread/migrate.js";
 export {
   declaredWaitingOn,
+  mergedPrs,
   type ParkedOn,
   type Parking,
   parkedOnKind,

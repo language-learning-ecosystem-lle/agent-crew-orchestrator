@@ -141,6 +141,9 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # what is left is a button), and it lifts on the notifier's '--merged-pr'
                               # --merged-pr <n>: this message announces that PR as landed — every thread
                               # parked on 'pr:<n>' lifts on it, though the announcement is informational
+                              # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in
+                              # the PR's description, which is not the thread parked on it — the readers
+                              # judge a park against the merges of the WHOLE mail, not of its own feed
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                               # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
                               # first message go in ONE commit, pushed, with the same replanning retry
