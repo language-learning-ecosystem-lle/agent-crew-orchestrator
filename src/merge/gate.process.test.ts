@@ -67,14 +67,24 @@ const git = (repo: string, ...args: string[]): string =>
     },
   });
 
-/** A `gh` that answers with the given payload, or fails with the given message. */
-const stubGh = (repo: string, answer: { json?: unknown; failWith?: string }): string => {
+/**
+ * A `gh` that answers with the given payload, or fails with the given message. `then`
+ * is the answer to every ask AFTER the first — how the lazy `mergeable` of GitHub is
+ * reproduced (UNKNOWN first, the real value on the next ask).
+ */
+const stubGh = (
+  repo: string,
+  answer: { json?: unknown; nextAsk?: unknown; failWith?: string },
+): string => {
   const bin = join(repo, "stub-bin");
   mkdirSync(bin, { recursive: true });
+  const once = `cat <<'PAYLOAD'\n${JSON.stringify(answer.json)}\nPAYLOAD\n`;
   const script =
-    answer.failWith === undefined
-      ? `#!/bin/sh\ncat <<'PAYLOAD'\n${JSON.stringify(answer.json)}\nPAYLOAD\n`
-      : `#!/bin/sh\necho ${JSON.stringify(answer.failWith)} >&2\nexit 1\n`;
+    answer.failWith !== undefined
+      ? `#!/bin/sh\necho ${JSON.stringify(answer.failWith)} >&2\nexit 1\n`
+      : answer.nextAsk === undefined
+        ? `#!/bin/sh\n${once}`
+        : `#!/bin/sh\nif [ -f "$0.asked" ]; then\ncat <<'AGAIN'\n${JSON.stringify(answer.nextAsk)}\nAGAIN\nelse\ntouch "$0.asked"\n${once}fi\n`;
   const path = join(bin, "gh");
   writeFileSync(path, script, "utf8");
   chmodSync(path, 0o755);
@@ -123,10 +133,17 @@ const mergeable = (over: Record<string, unknown> = {}): unknown => ({
   reviews: [{ state: "APPROVED", commit: { oid: HEAD }, author: { login: "reviewer-pr" } }],
   statusCheckRollup: [
     // A check RUN and a status CONTEXT in one array — two node types, different fields.
-    { name: "checks", status: "COMPLETED", conclusion: "SUCCESS" },
+    {
+      name: "checks",
+      status: "COMPLETED",
+      conclusion: "SUCCESS",
+      completedAt: "2026-07-30T00:04:05Z",
+    },
     { context: "pronunciation", state: "SUCCESS" },
   ],
   files: [{ path: "packages/agent-protocol/src/merge/gate.ts" }],
+  mergeable: "MERGEABLE",
+  mergeStateStatus: "CLEAN",
   ...over,
 });
 
@@ -215,5 +232,138 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(result.code).toBe(2);
     expect(result.out).toContain("statusCheckRollup");
     expect(result.out).not.toContain("guard 2");
+  });
+
+  it("mergeable is pinned too — its absence is refused at the door, not read as a go-ahead", () => {
+    const repo = repoWithConfig();
+    const payload = mergeable() as Record<string, unknown>;
+    delete payload.mergeable;
+    const result = run(repo, stubGh(repo, { json: payload }));
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("mergeable");
+    expect(result.out).not.toContain("guard 1");
+  });
+
+  /**
+   * THE RECORDED ANSWER of `gh pr view 89 --json ...` at head `f7171a5` (curator's
+   * measurement of 2026-07-31T02:24Z). The live PR has since been rebased and no longer
+   * reproduces the defect — the payload is kept here instead, because the acceptance of
+   * D1 must not hang on a moving object.
+   */
+  it("judges the LAST attempt of a check name — the recorded #89 with a rerun on one head", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable({
+          number: 89,
+          statusCheckRollup: [
+            {
+              name: "review",
+              status: "COMPLETED",
+              conclusion: "FAILURE",
+              completedAt: "2026-07-30T00:05:30Z",
+            },
+            {
+              name: "checks",
+              status: "COMPLETED",
+              conclusion: "SUCCESS",
+              completedAt: "2026-07-30T00:04:05Z",
+            },
+            {
+              name: "review",
+              status: "COMPLETED",
+              conclusion: "SUCCESS",
+              completedAt: "2026-07-30T00:20:41Z",
+            },
+            {
+              name: "pronunciation",
+              status: "COMPLETED",
+              conclusion: "SUCCESS",
+              completedAt: "2026-07-29T23:58:09Z",
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("ok   guard 2");
+    expect(result.out).toContain("3 check(s) green");
+    expect(result.out).not.toContain("review=FAILURE");
+  });
+
+  /** The same recorded head, with the tree GitHub actually refused to merge (D2). */
+  it("refuses a conflicting tree with every guard holding, and says whose refusal it is", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, { json: mergeable({ mergeable: "CONFLICTING", mergeStateStatus: "DIRTY" }) }),
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP mergeability");
+    expect(result.out).toContain("CONFLICTING");
+    expect(result.out).toContain("GitHub itself would refuse");
+    expect(result.out).not.toContain("STOP guard");
+  });
+
+  /**
+   * GitHub computes `mergeable` lazily — the FIRST ask starts the job and answers
+   * UNKNOWN (observed on every open PR of this repository). A door that refused on that
+   * would refuse almost every first run, so the command asks again itself before it
+   * reports UNKNOWN as an answer.
+   */
+  it("asks again when GitHub has not computed mergeable yet, instead of refusing the first ask", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable({ mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" }),
+        nextAsk: mergeable(),
+      }),
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("mergeable=MERGEABLE");
+  });
+
+  it("but reports UNKNOWN as the answer when asking again does not change it", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable({ mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" }),
+        nextAsk: mergeable({ mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" }),
+      }),
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("has not finished computing");
+  });
+
+  /** D3: a flying run answers `conclusion: ""`, and the refusal used to print nothing. */
+  it("names a flying check by what gh returned instead of leaving it blank", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable({
+          statusCheckRollup: [
+            {
+              name: "review",
+              status: "IN_PROGRESS",
+              conclusion: "",
+              startedAt: "2026-07-31T02:26:00Z",
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("review=IN_PROGRESS");
+    expect(result.out).not.toContain("not green: review=\n");
   });
 });
