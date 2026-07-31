@@ -361,17 +361,30 @@ wrote). The consequence is deliberate: once the numbers diverge, every command
 refuses, and the only one still working is `schema migrate` — it reads the raw file
 rather than going through that door.
 
-**`zones check` is the second exception, and it is one for a stated reason.** Its two
-doors (the pre-commit hook of a role workspace, the CI step of a PR) read the config
-at the ref the change has NOT landed in yet — the base — so that a PR cannot widen
-its own zone and pass by its own permission. On a PR that bumps `protocolVersion`
-that base is behind the binary reading it **by construction**, and the gate used to
-refuse before the zones were ever compared: the guard went red on exactly the class
-of change that touches the protocol's own shape. The question this command asks —
-"which paths does the BASE policy forbid this role" — does not depend on the number
-at all, so it loads the config with `tolerateOlder` and **prints the skew** on every
-run. The tolerance is downwards only: a config NEWER than the package still stops
-the command, because there the package genuinely cannot know what it is reading.
+**The gate is a property of the QUESTION, not of the command** (thread 037, john's
+decision of 2026-07-31) — `loadProtocolConfig({ intent })`. `data` is the default and
+is the gate described above: it is asked by every command that reads or writes the
+protocol's own data, at its OWN ref. `policy` is asked by the two commands that read
+SOMEBODY ELSE'S ref — `zones check` (the pre-commit hook of a role workspace and the
+CI step of a PR, both pointed at the BASE so that a PR cannot widen its own zone and
+pass by its own permission) and `merge-gate` (the base again, for the documents of
+power). On a PR that moves the protocol's shape that base is at another shape than the
+binary reading it **by construction**, and the strict parse used to refuse before the
+zones were ever compared — the guard went red on exactly the class of change that
+touches the protocol's own shape. A policy reader asks for `roles[].id`,
+`roles[].zones`, `roles[].instructions[].path` and `orchestrator.workdir.worktrees`,
+none of which any version has ever moved (`grep -l zones src/schema/v*.ts` is empty
+across v2…v14), so it parses **only those fields** (`config/policy.ts`, built from the
+same field schemas) and **prints the skew** in either direction instead of refusing. It
+still refuses BY DATA: a base where the field it came for is missing is a refusal that
+names the field. `tolerateOlder`, which relaxed the NUMBER alone, was the special case
+of this and is gone — it could never survive a bump of the FORM, because a strict parse
+of another version's config fails before the version is ever compared.
+
+**What this does NOT promise** (curator's caveat, thread 037, accepted by john): if a
+future version moves `zones.forbidden`, `roles[].id` or `orchestrator.workdir`
+themselves, the narrow shape will not find them and the door refuses — honestly, by the
+data rather than by the number, but refuses. Such a move is a manual event.
 
 | version | shape |
 | ------- | ----- |
@@ -2672,7 +2685,7 @@ a field name and never reached the verdict that names the repair. The version is
 asked of the RAW file first, and only upwards: `ahead` refuses with **`restart required:
 the repository declares protocol version N, the package supports only M`**, `behind`
 still goes through the parse, because that shape is one this package can describe and
-`tolerateOlder` (door 3 of thread 020) needs its data.
+deserves the refusal that names the migration rather than a complaint about a field.
 
 Both are process-tested against a remote that is unreachable for real
 (`daemon.config-outage.process.test.ts`): the daemon survives the wire dying mid-flight,

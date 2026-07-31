@@ -62,8 +62,23 @@
 
 import type { Role } from "./schema.js";
 
+/**
+ * ALL A ZONE DOOR KNOWS ABOUT A ROLE — an id and the prefixes it may not write.
+ *
+ * It is a structural type and not `Role` because of WHERE the doors read from (thread
+ * 037): doors 2 and 3 read the config of the BASE of a pull request, and a base at
+ * another version is parsed by the policy shape (`config/policy.ts`), which carries
+ * exactly these two fields and nothing else. A full `Role` here would drag the launch
+ * contract, the wake mode and the permissions into a question that has never needed
+ * them — and would make the doors refuse a base whose OTHER fields moved.
+ */
+export type ZonedRole = {
+  readonly id: string;
+  readonly zones?: { readonly forbidden?: readonly string[] | undefined } | undefined;
+};
+
 /** The banned prefixes of a role, normalised: no leading `./`, no trailing slash, no duplicates. */
-export const forbiddenPrefixes = (role: Role): readonly string[] => {
+export const forbiddenPrefixes = (role: ZonedRole): readonly string[] => {
   const raw = role.zones?.forbidden ?? [];
   const seen = new Set<string>();
   for (const entry of raw) {
@@ -85,7 +100,7 @@ const underPrefix = (path: string, prefix: string): boolean =>
  * exactly that); a `./` prefix is tolerated because humans type it.
  */
 export const pathsOutsideZones = (input: {
-  readonly role: Role;
+  readonly role: ZonedRole;
   readonly paths: readonly string[];
 }): readonly string[] => {
   const prefixes = forbiddenPrefixes(input.role);
@@ -201,7 +216,7 @@ export const denySettings = (
   deny.length === 0 ? undefined : { permissions: { deny } };
 
 /** One line for the launch output: what the raised session is not allowed to write. */
-export const describeZones = (role: Role): string => {
+export const describeZones = (role: ZonedRole): string => {
   const prefixes = forbiddenPrefixes(role);
   return prefixes.length === 0
     ? `${role.id}: zones — no write ban (the whole tree)`

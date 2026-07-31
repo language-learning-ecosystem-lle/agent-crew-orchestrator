@@ -17,10 +17,18 @@
  *
  * The door also carries the PROTOCOL VERSION GATE (R2): a repository whose data is
  * at another version than the one this package writes stops the circuit here,
- * with the repair named, instead of being read as if the shapes matched. The one
- * documented exception is `tolerateOlder` — a reader that asks the base of a pull
- * request a POLICY question rather than reading data it is about to write; see the
- * field's own note.
+ * with the repair named, instead of being read as if the shapes matched.
+ *
+ * AND THE GATE IS A PROPERTY OF THE QUESTION, NOT OF THE COMMAND — `intent` (thread
+ * `037-zones-door-version-gate`, john's decision of 2026-07-31). `data` (the default,
+ * and everything the circuit does) is the door described above. `policy` is the reader
+ * that asks about SOMEBODY ELSE'S ref — the base of a pull request — and asks only
+ * about zones, role ids and instruction paths: it neither reads nor writes a byte of
+ * the protocol's data, so no version can make its answer wrong. It parses only the
+ * fields it came for (`config/policy.ts`) and prints the skew instead of refusing.
+ * `tolerateOlder`, which relaxed the NUMBER alone, was the special case of it and is
+ * gone: it could never close a bump of the FORM, because a strict parse of a config
+ * from another version fails BEFORE the version is ever compared.
  */
 import { fetchRef, readFileAtRef } from "../fs/git.js";
 import { createRoleRegistry, RoleConfigError, type RoleRegistry } from "../roles/registry.js";
@@ -32,6 +40,19 @@ import {
   type VersionVerdict,
 } from "../schema/version.js";
 import { DEFAULT_CONFIG_PATH, type ProtocolConfig, protocolConfigSchema } from "./config.js";
+import { type PolicyConfig, policyConfigSchema } from "./policy.js";
+
+/**
+ * WHAT THE CALLER IS ASKING THE CONFIG FOR — and therefore what a version mismatch
+ * means for it. There is no third value on purpose: the two named here are the two
+ * halves the 35 call sites split into (thread 037, msg-002 §2), and the split follows
+ * from the question rather than from the command's name.
+ */
+export type ConfigIntent =
+  /** Data of the protocol is about to be read or written; another shape stops the circuit. */
+  | "data"
+  /** Only policy fields of a FOREIGN ref are read; another shape is printed, not refused. */
+  | "policy";
 
 export type LoadOptions = {
   /** Working copy of the repository where the config lives (any branch — we read at a ref). */
@@ -41,22 +62,6 @@ export type LoadOptions = {
   readonly path?: string;
   /** false — do not refresh the remote-tracking ref; the caller must say so out loud. */
   readonly fetch?: boolean;
-  /**
-   * READING A REF THAT IS OLDER THAN THIS PACKAGE ON PURPOSE. The version gate asks
-   * "is the repository at the shape this package writes" — the right question for
-   * every command that goes on to WRITE the protocol's data. One reader asks a
-   * different question: `zones check` reads the config OF THE BASE of a pull request
-   * (thread 020, door 3) and asks only "which paths does the base policy forbid this
-   * role". On a PR that bumps `protocolVersion` the base is behind BY CONSTRUCTION —
-   * that is what such a PR is — so the gate turns a correct state into a refusal and
-   * makes door 3 permanently red for exactly the changes that touch the protocol's
-   * own shape. This flag lets that ONE caller through, and only DOWNWARDS: a config
-   * NEWER than the package still stops everything, because then the package cannot
-   * know what it is reading. The caller is expected to say out loud that the skew
-   * exists (see `zonesCheck` in `cli.ts`) — tolerating it silently would be the
-   * stale-config defect this loader was built to prevent.
-   */
-  readonly tolerateOlder?: boolean;
 };
 
 export type LoadedConfig = {
@@ -64,11 +69,30 @@ export type LoadedConfig = {
   readonly registry: RoleRegistry;
   readonly path: string;
   readonly ref: string;
-  /** How the version at the ref stands against this package — `behind` only ever reaches a caller that asked to tolerate it. */
+  /** How the version at the ref stands against this package — anything but `current` has already refused. */
   readonly version: VersionVerdict;
 };
 
-export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
+/**
+ * What a POLICY reader gets: the few fields it asked for, and the skew for it to say
+ * out loud. THERE IS NO REGISTRY HERE, and its absence is the point — the registry
+ * answers questions about wake chains, permissions and sessions, which is data of the
+ * protocol, not policy of a foreign ref. A door that had one would sooner or later ask
+ * it something it has no right to ask of another version.
+ */
+export type LoadedPolicy = {
+  readonly config: PolicyConfig;
+  readonly path: string;
+  readonly ref: string;
+  /** How the version at the ref stands against this package — printed by the caller, never fatal. */
+  readonly version: VersionVerdict;
+};
+
+export function loadProtocolConfig(options: LoadOptions & { intent?: "data" }): LoadedConfig;
+export function loadProtocolConfig(options: LoadOptions & { intent: "policy" }): LoadedPolicy;
+export function loadProtocolConfig(
+  options: LoadOptions & { readonly intent?: ConfigIntent },
+): LoadedConfig | LoadedPolicy {
   const path = options.path ?? DEFAULT_CONFIG_PATH;
   if (options.fetch !== false) fetchRef(options.repo, options.ref);
 
@@ -83,6 +107,30 @@ export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
     ]);
   }
 
+  // THE POLICY READER LEAVES HERE, before any gate and before the strict shape: it is
+  // reading a ref that is at another version BY CONSTRUCTION (the base of the very PR
+  // that changes the shape), and the fields it came for do not depend on the version.
+  // Its own refusals are refusals BY DATA — the field it needs is missing or is not a
+  // list of strings — which is the honest half of what the strict parse used to say.
+  if (options.intent === "policy") {
+    const result = policyConfigSchema.safeParse(parsed);
+    if (!result.success) {
+      const hint = legacyVersionHint(parsed);
+      throw new RoleConfigError([
+        ...(hint === undefined ? [] : [hint]),
+        ...result.error.issues.map(
+          (issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`,
+        ),
+      ]);
+    }
+    return {
+      config: result.data,
+      path,
+      ref: options.ref,
+      version: compareProtocolVersion(result.data.protocolVersion),
+    };
+  }
+
   // THE VERSION IS ASKED OF THE RAW FILE FIRST, and only in the one direction where
   // the strict parse cannot be trusted to answer: a config written by a NEWER package
   // carries fields this build has never heard of, so the strict object trips over
@@ -92,7 +140,8 @@ export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
   // daemon raised before the merge of #66 met the new `stalled` key and died on it,
   // taking every command with it, `status` included (thread `023-daemon-parallelism`).
   // Only `ahead` is gated here. `behind` keeps going through the parse: the config is
-  // one this package can still describe, and `tolerateOlder` needs its DATA.
+  // one this package can still describe, so it gets the refusal that names the migration
+  // rather than a complaint about a field.
   const declared = declaredProtocolVersion(parsed);
   if (declared !== undefined && compareProtocolVersion(declared).state === "ahead") {
     requireCurrentProtocolVersion(declared, { path, ref: options.ref });
@@ -119,9 +168,7 @@ export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
   // consequence is deliberate — the circuit halts, and the one command that keeps
   // working is `schema migrate`, which reads the raw file rather than this door.
   const version = compareProtocolVersion(result.data.protocolVersion);
-  if (!(options.tolerateOlder === true && version.state === "behind")) {
-    requireCurrentProtocolVersion(result.data.protocolVersion, { path, ref: options.ref });
-  }
+  requireCurrentProtocolVersion(result.data.protocolVersion, { path, ref: options.ref });
 
   return {
     config: result.data,
@@ -130,4 +177,4 @@ export const loadProtocolConfig = (options: LoadOptions): LoadedConfig => {
     ref: options.ref,
     version,
   };
-};
+}

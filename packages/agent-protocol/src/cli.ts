@@ -42,13 +42,14 @@ import {
 import { dirname, join, relative } from "node:path";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
-import { loadProtocolConfig } from "./config/load.js";
+import { type LoadedConfig, type LoadedPolicy, loadProtocolConfig } from "./config/load.js";
 import {
   describeLocalConfig,
   type LoadedLocalConfig,
   LocalConfigError,
   loadLocalConfig,
 } from "./config/local.js";
+import { describePolicySkew, policyRole } from "./config/policy.js";
 import { createStandingConfig, standingKey } from "./config/standing.js";
 import { type LoadedThread, loadThread, loadThreads, renderThreadFailures } from "./fs/comms.js";
 import {
@@ -434,16 +435,12 @@ const standing = createStandingConfig();
  * caller, and IT must see a config edited underneath it — freezing globally would turn
  * a policy change into something that needs a restart to take effect.
  */
-let frozenConfig: Map<string, ReturnType<typeof loadProtocolConfig>> | undefined;
+let frozenConfig: Map<string, LoadedConfig> | undefined;
 const freezeConfig = (): void => {
   frozenConfig ??= new Map();
 };
 
-const configFrom = (
-  argv: readonly string[],
-  root?: string,
-  options?: { readonly tolerateOlder?: boolean },
-): ReturnType<typeof loadProtocolConfig> => {
+const configFrom = (argv: readonly string[], root?: string): LoadedConfig => {
   const ref = required(argv, "--ref");
   // Only `ref` has no default — it is precisely what decides WHAT we read, and a
   // silent choice of version would be the defect. The directory, by contrast, is
@@ -478,7 +475,6 @@ const configFrom = (
       ref,
       fetch: !noFetch,
       path,
-      ...(options?.tolerateOlder === true ? { tolerateOlder: true } : {}),
     }),
   );
   if (outcome.kind === "read") {
@@ -503,6 +499,36 @@ const configFrom = (
 
 const registryFrom = (argv: readonly string[], root?: string): RoleRegistry =>
   configFrom(argv, root).registry;
+
+/**
+ * THE SAME DOOR, ASKED A POLICY QUESTION (thread 037) — for the two commands that read
+ * SOMEBODY ELSE'S ref: `zones check` (the base of the PR, doors 2 and 3) and
+ * `merge-gate` (the base again, for the documents of power). What they get back is
+ * `roles[].id`, `zones`, `instructions[].path` and `workdir.worktrees` — parsed from
+ * whatever shape that ref is at, with the skew printed rather than refused.
+ *
+ * THERE IS NO STANDING AND NO FREEZING HERE, and that is not an oversight: both of
+ * those exist for the long-lived callers (the daemon's tick, the watch frame), and both
+ * of these commands are one-shot guards that run once and exit. A cache shared with
+ * `configFrom` would be worse than none — it is keyed by (repo, ref, path), which says
+ * nothing about the INTENT, so a policy read could be handed to a data caller as if the
+ * version had been checked.
+ */
+const policyFrom = (argv: readonly string[], root?: string): LoadedPolicy => {
+  const ref = required(argv, "--ref");
+  const repo = flag(argv, "--repo") ?? repoOf(root ?? process.cwd());
+  const noFetch = argv.includes("--no-fetch");
+  if (noFetch && ref.startsWith("origin/")) {
+    err(`agent-protocol: WARNING — '${ref}' was not updated (--no-fetch), the config may be stale`);
+  }
+  const path = flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH;
+  try {
+    return loadProtocolConfig({ repo, ref, fetch: !noFetch, path, intent: "policy" });
+  } catch (error) {
+    if (error instanceof RoleConfigError) return fail(error.message, 2);
+    return fail(`the protocol config at '${ref}' was not read: ${(error as Error).message}`, 2);
+  }
+};
 
 /**
  * THE ENVIRONMENT WITHOUT THE VARIABLES A GIT HOOK EXPORTS. Every hook runs with
@@ -7175,17 +7201,18 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
  * green by its own permission: exactly the property door 2 protects by reading
  * `origin/main`. Widening a zone is a PR of its own, like a workflow change.
  *
- * AND THEREFORE THIS COMMAND ALONE TOLERATES AN OLDER CONFIG (`tolerateOlder`). Both
- * doors point at a ref that the change has not landed in yet, so on a PR bumping
- * `protocolVersion` the config they read is behind the binary reading it BY
- * CONSTRUCTION. The version gate then refuses before it ever gets to the zones, and
- * both doors go red on exactly the class of change that touches the protocol's own
- * shape — the class where a zone violation would matter most. The question asked here
- * is not "is this repository migrated" but "which paths does the BASE policy forbid
- * this role", and the answer does not depend on the version at all; so the skew is
- * tolerated DOWNWARDS only (a config newer than the package still stops everything —
- * then the package genuinely does not know what it is reading) and is always PRINTED,
- * never assumed.
+ * AND THEREFORE THIS COMMAND ASKS A POLICY QUESTION, NOT A DATA ONE (`intent: policy`,
+ * thread 037). Both doors point at a ref the change has not landed in yet, so on a PR
+ * that touches the protocol's own shape the config they read is at ANOTHER SHAPE than
+ * the binary reading it BY CONSTRUCTION — that is what such a PR is. Parsed strictly,
+ * it refuses before it ever gets to the zones, and both doors go red on exactly the
+ * class of change where a zone violation would matter most. The question asked here is
+ * not "is this repository migrated" but "which paths does the BASE policy forbid this
+ * role", and the answer depends on three fields that no version has ever moved
+ * (`grep -l zones src/schema/v*.ts` is empty across v2…v14). So the shape is read
+ * NARROWLY — only those fields, from whatever version the base is at — and the skew is
+ * always PRINTED, never assumed. The predecessor of this, `tolerateOlder`, relaxed the
+ * NUMBER alone and could not survive a bump of the FORM: see `config/policy.ts`.
  *
  * WHY THE ROLE MAY BE INFERRED FROM THE DIRECTORY (`--role-from-workspace`). A
  * pre-commit hook has no idea whose commit it is guarding, and asking the operator to
@@ -7199,16 +7226,12 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
  */
 const zonesCheck = (argv: readonly string[]): void => {
   const repo = repoOf(flag(argv, "--repo") ?? process.cwd(), gitEnvOutsideHook());
-  const loaded = configFrom(argv, undefined, { tolerateOlder: true });
-  const registry = loaded.registry;
-  if (loaded.version.state === "behind") {
-    // SAID OUT LOUD, NEVER SILENT: the base is a version behind because this very
-    // change bumps it. The guard still runs — the zones it enforces are the base's —
-    // and the skew is printed so that "green" here never means "the versions match".
-    out(
-      `agent-protocol: zones — '${loaded.ref}' declares protocol version ${loaded.version.declared}, this package writes ${loaded.version.supported}; the zones of the base are read anyway (a version bump is exactly what makes the base older)`,
-    );
-  }
+  const loaded = policyFrom(argv);
+  // SAID OUT LOUD, NEVER SILENT: the base is at another version because this very
+  // change moves it. The guard still runs — the zones it enforces are the base's —
+  // and the skew is printed so that "green" here never means "the shapes match".
+  const skew = describePolicySkew(loaded);
+  if (skew !== undefined) out(`agent-protocol: zones — ${skew}`);
   const explicit = flag(argv, "--role");
   const fromWorkspace = argv.includes("--role-from-workspace");
   if (explicit !== undefined && fromWorkspace) {
@@ -7232,7 +7255,7 @@ const zonesCheck = (argv: readonly string[]): void => {
       worktrees,
       role: candidate,
     });
-    if (expected !== here || !registry.isKnown(candidate)) {
+    if (expected !== here || policyRole(loaded.config, candidate) === undefined) {
       out(`agent-protocol: zones — '${here}' is not a role workspace, the guard does not apply`);
       return;
     }
@@ -7242,7 +7265,7 @@ const zonesCheck = (argv: readonly string[]): void => {
     fail("--role <id> (or --role-from-workspace) — the zones being enforced are a role's", 2);
     return;
   }
-  const role = registry.get(roleId);
+  const role = policyRole(loaded.config, roleId);
   if (role === undefined) {
     fail(
       `--role '${roleId}' — there is no such role in the config, there are no zones to enforce`,
@@ -7319,16 +7342,21 @@ const zonesCheck = (argv: readonly string[]): void => {
  * "ask again" — so the command asks again ITSELF, once, and only then reports `UNKNOWN`
  * as the answer it is.
  *
- * `--power-docs` IS A FLAG AND NOT A CONFIG SECTION, and the reason is worth writing
- * down because it is not the shape one would choose: a new config field costs a
- * protocol version by R2, and a version bump currently CANNOT be committed at all —
- * the zones door (`zones check`, both the pre-commit hook and the CI step) reads the
- * config at `origin/main`, which is still at the old number, with the package of the
- * working tree, which writes the new one, so `loadProtocolConfig` halts it. That is a
- * defect of the door and not of this command; until it is settled, the extra
- * documents of power are named on the command line by whoever runs the gate, and the
- * role card holds the invocation. The derived two — the role cards and the config —
+ * `--power-docs` IS A FLAG AND NOT A CONFIG SECTION, and the reason it stayed one is
+ * now HISTORY rather than a constraint: a new config field costs a protocol version by
+ * R2, and a version bump used to be uncommittable — the zones door read the config of
+ * the base with the package of the working tree and halted on the mismatch. That door
+ * asks a policy question since thread 037 and no longer halts, so moving the list into
+ * the config is a decision about shape, not a blocked one; until somebody takes it, the
+ * extra documents of power are named on the command line by whoever runs the gate, and
+ * the role card holds the invocation. The derived two — the role cards and the config —
  * need no list either way.
+ *
+ * AND THIS COMMAND READS ITS CONFIG AS POLICY (thread 037, the same PR): it is the
+ * SECOND copy of the zones door — a foreign ref (the base of the PR) asked which
+ * documents are documents of power. It stayed green until now only because the curator
+ * runs it from a checkout of `main` with `--ref origin/main`, where the two sides
+ * coincide; from a branch that moves the shape it would fail exactly like door 3 did.
  */
 const mergeGate = (argv: readonly string[]): void => {
   const number = required(argv, "--pr");
@@ -7336,7 +7364,9 @@ const mergeGate = (argv: readonly string[]): void => {
     fail(`--pr '${number}' — the number of a pull request`, 2);
     return;
   }
-  const loaded = configFrom(argv, undefined);
+  const loaded = policyFrom(argv);
+  const skew = describePolicySkew(loaded);
+  if (skew !== undefined) out(`merge-gate: ${skew}`);
   const repo = flag(argv, "--repo") ?? process.cwd();
 
   const ask = (): string =>
