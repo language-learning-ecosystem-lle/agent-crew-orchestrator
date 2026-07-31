@@ -198,11 +198,7 @@ import {
   quotaSignalOf,
 } from "./orchestrator/quota.js";
 import { renderSystemdUnit } from "./orchestrator/reboot.js";
-import {
-  describeResidentWait,
-  renderResidentWaits,
-  residentWaits,
-} from "./orchestrator/resident.js";
+import { describeResidentWait, residentWaits } from "./orchestrator/resident.js";
 import {
   describeExclusion,
   describeScope,
@@ -221,6 +217,14 @@ import {
   splitStreamChunk,
   stampLine,
 } from "./orchestrator/transcript.js";
+import {
+  decodeTuiInput,
+  initialTuiState,
+  PASTE_OFF,
+  PASTE_ON,
+  reduceTui,
+  renderTui,
+} from "./orchestrator/tui.js";
 import {
   createWorkspaceLocks,
   describeFinishDirt,
@@ -3112,6 +3116,7 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
     waitingOn: (role) => threadsWaitingOn(threads, role),
     authorized: (role) => registry.canSetThreadPriority(role),
   });
+  const residentRoles = registry.residents();
   const published = loadDigests(mailRoot);
   const checkout = dirname(mailRoot);
   const daemonPid = runningDaemon(pidFile);
@@ -3123,6 +3128,10 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
     now,
     gatesFrom(argv).maxAttempts.value,
     sessionsThatWrote(threads),
+    // T-1: every pair names its own transcript. The directory is derived from the journal
+    // exactly as the launchers derive it (`join(dirname(journalPath), "sessions")`), so an
+    // operator pointing `--journal` at a copy gets that copy's sessions and not this box's.
+    join(dirname(journal), "sessions"),
   );
   const heldViews = foldHolds(loadHolds(holds), now);
 
@@ -3151,6 +3160,20 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
     // THE SAME FOLD THE DAEMON PLANS BY (`planTick`) — the frame and the tick cannot
     // disagree about whether the box is standing down.
     quota: openQuotaShelves(events, now),
+    // R23-1 in the FRAME (T-1): from the SAME threads the queue above is built from, so
+    // a resident wait and a launch candidate can never disagree about who is waiting.
+    // The section exists only where the project has resident roles at all.
+    ...(residentRoles.length === 0
+      ? {}
+      : {
+          residents: {
+            roles: residentRoles,
+            waits: residentWaits({
+              residents: residentRoles,
+              waitingThreads: (role) => threadsWaitingOn(threads, role),
+            }),
+          },
+        }),
     queue: orderCandidates(ranked),
     queueNotes: [...renderThreadFailures(scan.failures), ...ignored],
     digests: published.digests,
@@ -3277,6 +3300,170 @@ const watchFrame = (argv: readonly string[]): void => {
   tick();
 };
 
+/**
+ * `orchestrator tui` — THE OBSERVER (T-1, thread 019). The sixth operator short form,
+ * with the same `--ref` bootstrap as `up`/`down`/`hold`/`resume`/`status`.
+ *
+ * EVERYTHING DECIDED LIVES IN `tui.ts`; this is the shell around it — the door, the
+ * terminal, the timer and the two files the bottom panel reads. It draws `renderTui`
+ * over the very frame `status` prints and touches no other source of truth.
+ *
+ * THE DOOR. Raw mode needs a real TTY. Without one the command REFUSES IN WORDS and
+ * names the thing that does work in a pipe, a tmux pane nobody looks at and a dumb
+ * terminal — `status --watch`, which was deliberately built first for exactly those.
+ * Drawing escape sequences into a pipe would be the failure mode of a tool that is only
+ * ever reached when something else has already gone wrong.
+ *
+ * THE TERMINAL IS RESTORED FROM ONE PLACE (`process.on("exit")`), like `watchFrame`'s:
+ * `q`, Ctrl+C and an unhandled throw must leave the same way. What is put back is
+ * everything that was taken — cooked mode, the cursor, bracketed paste, and the
+ * alt-screen, which is why the operator's scrollback comes back untouched.
+ *
+ * THE TRANSCRIPT IS READ FORWARD, NOT RE-READ. The file grows while it is being looked
+ * at; each poll reads from the offset the last one stopped at, and a file that was
+ * replaced (a new run, a smaller size) starts over rather than seeking past its end.
+ */
+const ALT_SCREEN_ON = "\u001b[?1049h";
+const ALT_SCREEN_OFF = "\u001b[?1049l";
+
+/** How much of the transcript is kept in memory — a panel shows a screenful at most. */
+const TRANSCRIPT_LINES = 200;
+
+const orchestratorTui = (rawArgv: readonly string[]): void => {
+  const argv = withOperatorRef(rawArgv);
+  const stdin = process.stdin;
+  if (process.stdout.isTTY !== true || stdin.isTTY !== true || stdin.setRawMode === undefined) {
+    fail(
+      "'orchestrator tui' needs a terminal: it takes the screen and reads single keys, and neither works through a pipe. For a dumb terminal, a tmux pane or 'tee' — 'orchestrator status --watch', which draws the same frame and takes nothing",
+      2,
+    );
+    return;
+  }
+  // ONE resolution of the config for the whole session, as in `--watch`: the observer
+  // does not touch the network again, whatever happens to the ref while it is up.
+  freezeConfig();
+  const seconds = positiveInt(argv, "--interval", 2);
+
+  let restored = false;
+  const restore = (): void => {
+    if (restored) return;
+    restored = true;
+    stdin.setRawMode?.(false);
+    process.stdout.write(`${PASTE_OFF}${SHOW_CURSOR}${ALT_SCREEN_OFF}`);
+  };
+  process.on("exit", restore);
+  for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => process.exit(0));
+
+  let state = initialTuiState;
+  let frame: OperatorFrame | undefined;
+  let trouble: string | undefined;
+  let transcript: string[] = [];
+  let openFile: string | undefined;
+  let offset = 0;
+
+  const collect = (): void => {
+    collectingFrame = true;
+    try {
+      frame = operatorFrame(argv);
+      trouble = undefined;
+    } catch (error) {
+      // The observer dies of `q` and of nothing else — the same rule the watch lives by.
+      trouble = (error as Error).message;
+    } finally {
+      collectingFrame = false;
+    }
+  };
+
+  /** The tail of the selected pair's file, read FORWARD from where the last poll ended. */
+  const readTranscript = (): void => {
+    const view = frame?.leases[state.selected];
+    const path =
+      view?.sessionLog === undefined
+        ? undefined
+        : state.panel === "log"
+          ? view.sessionLog
+          : sessionSupervisorPath(view.sessionLog);
+    if (path !== openFile) {
+      openFile = path;
+      transcript = [];
+      offset = 0;
+    }
+    if (path === undefined || !existsSync(path)) return;
+    const size = statSync(path).size;
+    // A file that SHRANK is a different file (a new run under the same name, a rotation):
+    // seeking past its end would show nothing for as long as the panel stayed open.
+    if (size < offset) {
+      transcript = [];
+      offset = 0;
+    }
+    if (size === offset) return;
+    const text = readFileSync(path, "utf8").slice(offset);
+    offset = size;
+    transcript = [...transcript, ...text.split("\n").filter((line) => line !== "")].slice(
+      -TRANSCRIPT_LINES,
+    );
+  };
+
+  const draw = (): void => {
+    const rows = process.stdout.rows ?? 24;
+    const cols = process.stdout.columns ?? 80;
+    if (frame === undefined) {
+      const why = trouble ?? "the frame has not collected yet";
+      process.stdout.write(`${HOME}${CLEAR_BELOW}frame: unavailable (${why})\n`);
+      return;
+    }
+    readTranscript();
+    const lines = renderTui({
+      frame,
+      state,
+      rows: rows - 1,
+      cols,
+      transcript,
+      ...(state.overlay ? { overlayLines: renderLog(journalEventsFor(argv)).split("\n") } : {}),
+    });
+    const foot = trouble === undefined ? "" : `  ⚠ last collection failed: ${trouble}`;
+    // One write, so a half-drawn screen is never on display; every line clears its own
+    // tail, exactly as the watch does.
+    process.stdout.write(
+      `${HIDE_CURSOR}${HOME}${lines.map((line) => `${line}${CLEAR_LINE}`).join("\n")}\n↑↓ pair · tab log/supervisor · l history · r now · q quit${foot}${CLEAR_LINE}${CLEAR_BELOW}`,
+    );
+  };
+
+  let pasting = false;
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding("utf8");
+  process.stdout.write(`${ALT_SCREEN_ON}${PASTE_ON}${HIDE_CURSOR}`);
+  stdin.on("data", (chunk: string) => {
+    const decoded = decodeTuiInput(chunk, pasting);
+    pasting = decoded.pasting;
+    for (const key of decoded.keys) {
+      const step = reduceTui(state, key, frame?.leases.length ?? 0);
+      state = step.state;
+      if (step.effect === "quit") {
+        restore();
+        process.exit(0);
+      }
+      if (step.effect === "collect") collect();
+    }
+    draw();
+  });
+  process.stdout.on("resize", draw);
+
+  const tick = (): void => {
+    collect();
+    draw();
+    setTimeout(tick, seconds * 1000);
+  };
+  tick();
+};
+
+/** The journal the `l` overlay shows — read on demand, never held between frames. */
+const journalEventsFor = (argv: readonly string[]): readonly OrchestratorEvent[] => {
+  const journal = flag(argv, "--journal") ?? pathsFrom(argv).journal;
+  return existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
+};
+
 const orchestratorStatus = (rawArgv: readonly string[]): void => {
   // `status` JOINS THE OPERATOR'S SHORT FORMS (thread 019): it is read between `up` and
   // `down`, by the same person in the same minute, and being the one of the three that
@@ -3320,27 +3507,11 @@ const orchestratorStatus = (rawArgv: readonly string[]): void => {
   // R13, second half — WHAT THE OTHER BOXES ARE DOING — is a LIVE fact and moved into
   // the frame above (`renderInstances` inside `renderFrame`), together with the age of
   // the checkout the digests were read from.
-  // R23-1: THE ROLES NOBODY RAISES BECAUSE SOMEBODY ALREADY HOSTS THEM, and whether a
-  // thread is waiting on one. `status` is read by the people who would otherwise wait
-  // for a tick that is never coming: the daemon's stream is nobody's reading material.
-  const statusRegistry = registryFrom(argv, undefined);
-  const residentRoles = statusRegistry.residents();
-  if (residentRoles.length > 0) {
-    // The mail is read only when there is a question to answer: a project with no
-    // resident role must not pay a thread scan for a section it never prints.
-    const statusMail = flag(argv, "--root") ?? paths.mailRoot;
-    const statusThreads = loadThreads(statusMail, statusRegistry.ids()).threads.map(
-      (loaded) => loaded.thread,
-    );
-    const residents = renderResidentWaits({
-      residents: residentRoles,
-      waits: residentWaits({
-        residents: residentRoles,
-        waitingThreads: (role) => threadsWaitingOn(statusThreads, role),
-      }),
-    });
-    if (residents !== undefined) out(residents);
-  }
+  // R23-1 — THE ROLES NOBODY RAISES BECAUSE SOMEBODY ALREADY HOSTS THEM — moved into the
+  // frame as well (T-1, thread 019): it used to be printed HERE, after `renderFrame`, so
+  // the observer that draws the frame would not have shown it at all. The one visible
+  // consequence, named in the statement of work before the code: the resident section
+  // now stands one position higher in the output of `status`, beside the queue.
   out("launch resolution:");
   for (const role of roles) {
     out(`  ${role.id}: ${describeAgent(agentFor(argv, local, role))}`);
@@ -6447,6 +6618,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
     await notify(argv.slice(1));
   } else if (command === "orchestrator" && subcommand === "status") {
     orchestratorStatus(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "tui") {
+    guardArguments("orchestrator tui", argv.slice(2));
+    orchestratorTui(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "record") {
     orchestratorRecord(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "run") {

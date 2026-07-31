@@ -689,6 +689,20 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # the neighbours' digests, and how old the mail on disk is; then the static half
                             # (paths, permissions, resolution)
                             # --watch redraws THE SAME frame every --interval seconds and READS ONLY
+agent-protocol orchestrator tui    [--ref <ref>] [--interval <sec>]        # THE OBSERVER (T-1)
+                            # the same frame as a SCREEN: pairs on top, the circuit in the middle,
+                            # the selected session's transcript below (tab: .log / .supervisor)
+                            # five keys and all five READ — arrows pick the pair, 'l' overlays the
+                            # journal, 'r' collects a frame now, 'q' leaves. The mutating three
+                            # ('h'/'s'/'u') belong to T-2, together with their confirmation press
+                            # A PASTE EXECUTES NOTHING: bracketed paste is on for the whole session
+                            # and everything between its markers is dropped, so a pasted block
+                            # holding a 'q' does not close the window (this thread exists because
+                            # an accidental paste killed a watch)
+                            # it needs a REAL TERMINAL and refuses in words without one — for a dumb
+                            # terminal, a tmux pane or 'tee' the answer is 'status --watch', which is
+                            # why that was built first and is not a poor substitute for this
+                            # the alt-screen is taken and given back: the scrollback is untouched
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
@@ -2235,8 +2249,16 @@ a launch, a thread frozen behind a person will not get one until that person ans
 state used to be visible only as a skip line on the daemon's stream — which the person reading
 `status` is by definition not watching. The mark rides in `describeOrder`, so the stream carries it
 too. `status` prints the frame and
-then its static sections; `status --watch` prints the frame and nothing else; the TUI will draw
-the same frame. The point of the seam is that they have nowhere to differ: a watcher that computed
+then its static sections; `status --watch` prints the frame and nothing else; `orchestrator tui`
+lays out the same frame as three panels (T-1). The observer computes nothing and reads no file of
+its own: it draws `renderLeaseLine` for the pairs and slices `renderFrame` for the middle, which is
+why two facts had to move INTO the frame before it could exist — the **resident waits** (a thread
+waiting on a role the circuit never raises, R23-1, printed until then BESIDE the frame by `status`
+alone, and therefore invisible to any other reader) and the **path of each pair's transcript**
+(derived in the lease fold from the acquire moment by the same `sessionLogPath` the supervisor
+writes by, rather than by scanning `sessions/` — a second answer to a question that already has
+one). The single visible consequence, named before the code: the resident section of `status` now
+stands one position higher, beside the queue. The point of the seam is that they have nowhere to differ: a watcher that computed
 the attempt ceiling slightly differently from the daemon would show a human a picture the circuit
 does not follow, and there would be nothing to argue with it. For the same reason the queue is
 built by `rankCandidates`, the very function the daemon's tick builds it with.

@@ -480,3 +480,47 @@ describe("the turn that stayed on the role (thread 023)", () => {
     expect((foldLeases(events, NOW, 3, mine)[0] as LeaseView).launchable).toBe(true);
   });
 });
+
+describe("the transcript of the pair (T-1, thread 019)", () => {
+  // The observer's bottom panel is the session's own file. Where it lies is derived
+  // here, from the acquire moment the journal already carries, by the very function
+  // the supervisor writes by — a reader scanning `sessions/` for a matching prefix
+  // would be a second answer to a question that has one.
+  const SESSIONS = "/state/.orchestrator/sessions";
+
+  it("names the file of the pair's LAST run", () => {
+    const started = acquire("dev-core", "019", FUTURE);
+    const [view] = foldLeases([started], NOW, 3, new Set(), SESSIONS);
+    // The name is the acquire's own stamp, colons swapped — the same composition the
+    // supervisor uses, asserted against the event rather than against a copy of it.
+    expect((view as LeaseView).sessionLog).toBe(
+      `${SESSIONS}/${started.ts.replaceAll(":", "-")}-dev-core-019.log`,
+    );
+  });
+
+  it("a new acquire moves the panel onto the new run, not the one the break left behind", () => {
+    const first = acquire("dev-core", "019", PAST);
+    const second = acquire("dev-core", "019", FUTURE);
+    const events = [first, release("dev-core", "019", "timeout"), second];
+    const [view] = foldLeases(events, NOW, 3, new Set(), SESSIONS);
+    expect((view as LeaseView).sessionLog).toBe(
+      `${SESSIONS}/${second.ts.replaceAll(":", "-")}-dev-core-019.log`,
+    );
+    expect((view as LeaseView).sessionLog).not.toContain(first.ts.replaceAll(":", "-"));
+  });
+
+  it("a caller that did not say where the sessions lie gets no path at all", () => {
+    const [view] = foldLeases([acquire("dev-core", "019", FUTURE)], NOW, 3);
+    expect((view as LeaseView).sessionLog).toBeUndefined();
+  });
+
+  it("a pair with no acquire behind it names nothing — there is no run to point at", () => {
+    // A journal can hold a pair that was only ever refused or stopped; inventing a
+    // name from the moment of THAT event would point at a file nobody ever wrote.
+    const events: OrchestratorEvent[] = [
+      { kind: "stop", ts: ts(), role: "dev-core", thread: "019", mode: "graceful" },
+    ];
+    const [view] = foldLeases(events, NOW, 3, new Set(), SESSIONS);
+    expect((view as LeaseView).sessionLog).toBeUndefined();
+  });
+});

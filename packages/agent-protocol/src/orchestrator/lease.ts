@@ -33,6 +33,7 @@
  * for a fault of the supervisor's, so the reset hangs on the handoff as well.
  */
 import { MAX_ATTEMPTS, type OrchestratorEvent, type ReleaseReason } from "./journal.js";
+import { sessionLogPath } from "./paths.js";
 
 /**
  * The lease lifecycle. `released`/`stopped` are terminal (with `reason`/`mode`).
@@ -75,6 +76,23 @@ export type LeaseView = {
   readonly exhausted: boolean;
   /** The pair CAN be launched again (unsuccessful finish and the ceiling not reached). */
   readonly launchable: boolean;
+  /**
+   * WHERE THIS PAIR'S TRANSCRIPT LIES (T-1, thread 019) — the `.log` of its LAST run,
+   * present only when the caller said where the sessions directory is and the journal
+   * has an acquire to derive the name from.
+   *
+   * It is derived HERE, by `sessionLogPath`, and not looked up in `sessions/` by a
+   * reader: the name is composed from the pair and the moment of the acquire, and the
+   * supervisor writes by that very function from that very moment (`planLaunch` stamps
+   * the `lease-acquired` with the same `now` the path is built from). A second way of
+   * answering "which file belongs to this pair" — a directory scan with a prefix match
+   * — would be a second source of truth for a question that already has one, and it
+   * would silently pick the wrong run the first time two acquires shared a second.
+   *
+   * The `.supervisor` beside it is `sessionSupervisorPath` of this — one path in the
+   * model, the rest of the quadruple derived from it by name.
+   */
+  readonly sessionLog?: string;
 };
 
 // The (role, thread) key goes through JSON so that no separator has to be
@@ -208,6 +226,8 @@ type Acc = {
   reason: LeaseView["reason"];
   /** The last release delivered into its own turn (`isSelfTurnDelivery`). */
   deliveredToSelf: boolean;
+  /** The stamp of the LAST acquire — the moment the session's file names (T-1). */
+  acquiredAt: string | null;
   lastEvent: OrchestratorEvent["kind"];
 };
 
@@ -234,6 +254,13 @@ export const foldLeases = (
    * that only reads the journal has to learn about the circuit.
    */
   deliveredSessions: ReadonlySet<string> = new Set(),
+  /**
+   * WHERE THE SESSION FILES LIE, when the caller knows (T-1). Omitted — the views carry
+   * no `sessionLog` and nothing changes for a caller that only reads the journal; given
+   * — every pair with an acquire behind it names its own transcript, derived by the same
+   * `sessionLogPath` the supervisor writes by.
+   */
+  sessions?: string,
 ): LeaseView[] => {
   const acc = new Map<string, Acc>();
   const order: string[] = [];
@@ -255,6 +282,7 @@ export const foldLeases = (
         waitingSince: null,
         reason: null,
         deliveredToSelf: false,
+        acquiredAt: null,
         lastEvent: event.kind,
       };
       acc.set(k, cur);
@@ -273,6 +301,10 @@ export const foldLeases = (
         cur.state = "running";
         cur.attempt += 1;
         cur.deadline = event.deadline;
+        // The transcript of the run that starts here supersedes the previous one's: the
+        // panel showing "the session of this pair" must follow the pair, not stay on the
+        // file the last break left behind.
+        cur.acquiredAt = event.ts;
         cur.waitDeadline = null;
         cur.waitingSince = null;
         cur.reason = null;
@@ -353,6 +385,9 @@ export const foldLeases = (
       overdue,
       exhausted,
       launchable,
+      ...(sessions === undefined || cur.acquiredAt === null
+        ? {}
+        : { sessionLog: sessionLogPath(sessions, cur.role, cur.thread, cur.acquiredAt) }),
     };
   });
 };

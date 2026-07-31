@@ -364,3 +364,48 @@ describe("who signs a hold when nobody typed --by", () => {
     expect(existsSync(join(repo, ".orchestrator", "holds", "dev-core"))).toBe(false);
   });
 });
+
+/**
+ * THE OBSERVER'S DOOR (T-1). The rest of `orchestrator tui` — the reducer, the input
+ * decoder, the layout — is pure and unit-tested in `tui.test.ts`; the shell around it
+ * (raw mode, the alt-screen, the timers) is the named gap, and this is the one property
+ * of it that can be asserted without dragging a pty into the package: WITHOUT A REAL
+ * TERMINAL THE COMMAND REFUSES IN WORDS. A tool reached only when something else has
+ * already gone wrong must not answer a pipe with escape sequences.
+ */
+describe("orchestrator tui — the door", () => {
+  const ESC = "\u001b";
+
+  it("refuses without a TTY and names the thing that does work in a pipe", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+    // spawnSync gives the child pipes, never a tty — which is exactly the case tested.
+    const done = run(repo, home, "orchestrator", "tui");
+
+    expect(done.status).toBe(2);
+    expect(done.stderr).toContain("needs a terminal");
+    expect(done.stderr).toContain("status --watch");
+    // Not one escape byte reached the pipe: the refusal is TEXT.
+    expect(done.stdout).not.toContain(ESC);
+    expect(done.stderr).not.toContain(ESC);
+  });
+
+  it("takes its ref from the working tree, like the other operator forms", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+    const done = run(repo, home, "orchestrator", "tui");
+
+    // The bootstrap line is printed BEFORE the door refuses — which ref governs is a
+    // fact the operator gets even on a refusal.
+    expect(done.stdout).toContain("--ref");
+  });
+
+  it("an unknown flag is refused by name, not swallowed", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+    const done = run(repo, home, "orchestrator", "tui", "--nope");
+
+    expect(done.status).toBe(2);
+    expect(done.stderr).toContain("--nope");
+  });
+});
