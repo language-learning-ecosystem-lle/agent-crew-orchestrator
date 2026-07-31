@@ -234,7 +234,7 @@ export {
   type MessageEntry,
   type ThreadInput,
 } from "./thread/check.js";
-export { renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
+export { parkedThreads, renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 export {
   compareMessageEntries,
   EXPECTS,
@@ -260,6 +260,7 @@ export {
 } from "./thread/migrate.js";
 export {
   declaredWaitingOn,
+  parkedOnOf,
   parseLegacyThread,
   parseMetaFile,
   renderMetaFile,

@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { renderIndex, threadsWaitingOn } from "./index-doc.js";
+import { parkedThreads, renderIndex, threadsWaitingOn } from "./index-doc.js";
+import type { Message } from "./message.js";
 import { migrateLegacyThread, verifyMigration } from "./migrate.js";
 import {
   declaredWaitingOn,
+  parkedOnOf,
   parseLegacyThread,
   parseMetaFile,
   renderMetaFile,
   renderThread,
+  type Thread,
   updatedOf,
   waitingOnOf,
 } from "./thread.js";
@@ -236,5 +239,81 @@ Third, the same number.
     const tampered = LEGACY.replace("Done, the PR is open.", "Done, the PR is open!");
 
     expect(verifyMigration(migration, tampered)).toMatch(/divergence at byte \d+/);
+  });
+});
+
+describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
+  const parked = (fields: Partial<Message["fields"]>): Thread => ({
+    id: "023-x",
+    meta: { title: "t", participants: ["curator", "john"], status: "open" },
+    messages: [
+      {
+        fields: {
+          from: "curator",
+          date: "2026-07-30T01:00:00Z",
+          expects: "answer",
+          parkedOn: "john",
+        },
+        text: "The question is john's.",
+      },
+      {
+        fields: { from: "curator", date: "2026-07-30T02:00:00Z", expects: "answer", ...fields },
+        text: "later",
+      },
+    ],
+  });
+
+  it("stands while the last substantive message repeats it", () => {
+    expect(parkedOnOf(parked({ parkedOn: "john" }))).toBe("john");
+  });
+
+  it("lifts by itself on the next substantive message — nobody has to unpark it", () => {
+    // The session that parked the thread is dead by the time the answer lands, so the
+    // state cannot depend on it coming back to clear the flag.
+    expect(parkedOnOf(parked({}))).toBeUndefined();
+  });
+
+  it("an informational message does NOT lift it — a green CI run is not a decision", () => {
+    const thread = parked({ from: "github", expects: "none" });
+    expect(parkedOnOf(thread)).toBe("john");
+  });
+
+  it("a closed thread is parked behind nobody", () => {
+    const thread = parked({ parkedOn: "john" });
+    expect(parkedOnOf({ ...thread, meta: { ...thread.meta, status: "closed" } })).toBeUndefined();
+  });
+
+  it("an unparked thread is the ordinary case — no field, no freeze", () => {
+    const thread = parked({});
+    expect(parkedOnOf({ ...thread, messages: [thread.messages[1] as Message] })).toBeUndefined();
+  });
+});
+
+describe("parkedThreads — what the planner is told (R27)", () => {
+  const thread = (id: string, parkedOn?: string): Thread => ({
+    id,
+    meta: { title: id, participants: ["curator", "john"], status: "open" },
+    messages: [
+      {
+        fields: {
+          from: "curator",
+          date: "2026-07-30T01:00:00Z",
+          expects: "answer",
+          waitingOn: "curator",
+          ...(parkedOn === undefined ? {} : { parkedOn }),
+        },
+        text: "x",
+      },
+    ],
+  });
+
+  it("names the person, thread by thread, and leaves the unparked ones out", () => {
+    const map = parkedThreads([thread("023-a", "john"), thread("025-b")]);
+    expect([...map]).toEqual([["023-a", "john"]]);
+  });
+
+  it("a parked thread is STILL mail — the mailbox and the notifier must keep seeing it", () => {
+    const threads = [thread("023-a", "john")];
+    expect(threadsWaitingOn(threads, "curator")).toEqual(["023-a"]);
   });
 });

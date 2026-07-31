@@ -68,6 +68,8 @@ export type NewMessageInput = {
   readonly launch?: LaunchDirective;
   /** Which waiting thread is raised first from here on (R5). */
   readonly priority?: ThreadPriorityValue;
+  /** Whose decision the turn is frozen behind — a person, and only a person (R27). */
+  readonly parkedOn?: string;
   readonly text: string;
   /** true — the thread has `messages/` (migrated / file-based). false — legacy. */
   readonly threadHasMessages: boolean;
@@ -98,6 +100,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
     ...(input.launch === undefined ? {} : { launch: input.launch }),
     ...(input.priority === undefined ? {} : { priority: input.priority }),
+    ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
   };
   return {
     path: `messages/${messageFileName(fields)}`,

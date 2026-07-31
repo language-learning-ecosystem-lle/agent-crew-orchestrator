@@ -309,3 +309,27 @@ describe("the priority of a thread in the header (R5)", () => {
     );
   });
 });
+
+describe("the park of a turn in the header (R27)", () => {
+  const raw = (line: string): string =>
+    `---\nfrom: curator\ndate: 2026-07-30T02:00:00Z\nexpects: answer\nwaiting-on: curator\n${line}---\n\nbody\n`;
+
+  it("round-trips beside the turn it qualifies, not instead of it", () => {
+    const parsed = parseMessageFile(raw("parked-on: john\n"));
+
+    expect(parsed.fields.parkedOn).toBe("john");
+    // The turn does NOT move: this is the one form v13 left unsayable — the role holds
+    // the turn AND can do nothing until a person decides.
+    expect(parsed.fields.waitingOn).toBe("curator");
+    expect(renderMessageFile(parsed)).toContain("parked-on: john");
+    expect(parseMessageFile(renderMessageFile(parsed)).fields.parkedOn).toBe("john");
+  });
+
+  it("absent is the ordinary case — no field, no freeze", () => {
+    expect(parseMessageFile(raw("")).fields.parkedOn).toBeUndefined();
+  });
+
+  it("a value that is not a role id is refused as loudly as a malformed 'from'", () => {
+    expect(() => parseMessageFile(raw("parked-on: John Smith\n"))).toThrow(MessageFormatError);
+  });
+});
