@@ -115,6 +115,10 @@ each for a stated reason:
   · 'orchestrator record/enable/disable/hold/stop' and the state of 'notify' — machine-local
     operational state under 'orchestrator.state', outside git by construction: there is
     nothing to deliver, and 'notify' delivers through its transport, not through a commit;
+  · 'orchestrator systemd install' — the unit FILE of this box, written under the
+    operator's systemd directory: there is nothing to deliver and nothing to enable
+    either. The two commands that would ('systemctl --user enable', 'loginctl
+    enable-linger') are PRINTED for a human to run, because they are the human's;
   · 'orchestrator run' — machine-local by the same reason, but the word means something else
     there: '--write' is not 'write the file', it is 'do it'. Without it the command prints
     the plan and touches nothing (not the workdir, not its lock, not the journal); with it
