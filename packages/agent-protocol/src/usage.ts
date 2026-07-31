@@ -14,8 +14,19 @@
  * program. Hence this module: the text is importable without the entry point coming
  * along with it (`usage.test.ts` is what reads it).
  */
-export const USAGE = `usage (--ref is required everywhere except the four operator commands below; --repo defaults to the repository of the current directory):
+export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor' and the operator's five below; --repo defaults to the repository of the current directory):
   agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
+  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
+                              # IS THIS BOX COMMISSIONED (thread 019, the operator tail): the
+                              # checklist of a machine that is supposed to raise roles unattended —
+                              # both configs, which instance it is, the agent binary AND A LIVE
+                              # HEADLESS RUN of it, git (origin, fetch, write access by a dry-run
+                              # push of a ref the remote has never seen), the mail checkout and
+                              # its freshness. Ends in one line: green, or the rows that failed
+                              # it REACHES THE NETWORK and SPENDS ONE AGENT CALL, which is the
+                              # point — those facts are in no file. --offline leaves them unasked
+                              # and says so in the rows, never passes them
+                              # --ref may be left out (the operator's set): 'orchestrator.ref'
   agent-protocol roles list   --ref <ref> [--repo <path>]
   agent-protocol schema migrate [--repo <path>] [--config-path <p>] [--root <mail>] [--to <n>] [--write]
                               # the ONE command with no --ref: it plans against the working tree it rewrites
@@ -145,9 +156,10 @@ The agent BINARIES come from the machine config (~/.config/agent-protocol/local.
 or --local-config <p>): the repository says WHAT is raised, the machine says WHERE it is.
 THE OPERATOR'S FIVE (thread 019): the same circuit without the ceremony — the daemon
 in the background with one command, the parking with one word, the picture without a
-ref. --ref may be left out HERE ONLY (up/down/hold/resume/status): it is taken from
-'orchestrator.ref' of the config in the working tree, and which ref was used is
-printed. The strict forms below keep every flag they had.
+ref. --ref may be left out in these five (up/down/hold/resume/status) and in 'doctor'
+above, and nowhere else: it is taken from 'orchestrator.ref' of the config in the
+working tree, and which ref was used is printed. The strict forms below keep every
+flag they had.
   agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--log-max-bytes <n>] [--pid-file <p>] [--foreground] [--clear-force]   # plus every 'daemon' flag
                               # THE LOG IS BOUNDED AND ITS EPOCHS ARE LEGIBLE: every start puts
                               # a banner line into the daemon log, and a log over --log-max-bytes
