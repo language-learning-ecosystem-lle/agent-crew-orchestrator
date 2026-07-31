@@ -1477,8 +1477,17 @@ const parkedOnFrom = (
       2,
     );
   }
+  // AN EVENT PARK GOES NO FURTHER THAN ITS SHAPE (thread 023): `pr:127` names a merge, not a
+  // participant, so there is no config to check it against — the number is either in the
+  // repository or it is not, and the door has no business asking GitHub. It lifts by itself
+  // when the merge notifier says the number back (`merged-pr`), which is the whole point of
+  // the form: nobody has to remember to unpark it, and nobody is called about it meanwhile.
+  if (/^pr:\d+$/.test(value)) return value;
   if (!input.registry.isKnown(value)) {
-    return fail(`--parked-on '${value}' is not listed in the config`, 2);
+    return fail(
+      `--parked-on '${value}' is not listed in the config, and is not an event ('pr:<number>')`,
+      2,
+    );
   }
   if (input.registry.canHoldTurn(value)) {
     return fail(
@@ -1594,6 +1603,14 @@ const newMessage = (argv: readonly string[]): void => {
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
   const parkedOn = parkedOnFrom(argv, { registry, expects });
+  // THE COUNTERPART OF AN EVENT PARK (thread 023): the merge notifier says which PR landed,
+  // and every thread parked on that number lifts. It is written by a workflow rather than by
+  // an agent, so the door only checks the shape — the notifier knows the number it merged.
+  const mergedPrRaw = flag(argv, "--merged-pr");
+  if (mergedPrRaw !== undefined && !/^\d+$/.test(mergedPrRaw)) {
+    fail(`--merged-pr '${mergedPrRaw}' — expected the number of a PR`, 2);
+  }
+  const mergedPr = mergedPrRaw === undefined ? undefined : Number(mergedPrRaw);
   const tasks = tasksFor(argv, { from, thread: threadId, registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
@@ -1653,6 +1670,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(launchDirective === undefined ? {} : { launch: launchDirective }),
         ...(priority === undefined ? {} : { priority }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
+        ...(mergedPr === undefined ? {} : { mergedPr }),
         ...(tasks.length === 0 ? {} : { tasks }),
         text,
         threadHasMessages,
@@ -2193,18 +2211,27 @@ const runNotify = async (input: {
   // THE THIRD QUESTION, and the one with no threshold at all (thread 023): "what is frozen
   // behind a person, and what is being asked". The age answers neither — a park is a
   // declaration that the turn CANNOT move, so waiting it out only postpones the call.
-  const parked = parsed.flatMap((thread) => {
+  const parkings = parsed.flatMap((thread) => {
     const parking = parkingOf(thread);
-    if (parking === undefined) return [];
-    return [
-      {
-        thread: thread.id,
-        person: parking.person,
-        since: parking.since,
-        question: parking.question,
-      },
-    ];
+    return parking === undefined ? [] : [{ id: thread.id, parking }];
   });
+  const parked = parkings.flatMap(({ id, parking }) =>
+    parking.kind === "person" && parking.person !== undefined
+      ? [
+          {
+            thread: id,
+            person: parking.person,
+            since: parking.since,
+            question: parking.question,
+          },
+        ]
+      : [],
+  );
+  // A park on an EVENT is not a call and not a stall: the decision behind it has been made,
+  // and what is left is somebody's hand on a merge button. It is passed to the plan by name
+  // so that the age pass stays silent about it — otherwise the safety call ("nothing is
+  // moving this") would fire on the one class of thread that is moving exactly as intended.
+  const frozen = parkings.flatMap(({ id, parking }) => (parking.kind === "event" ? [id] : []));
   const stalled = parsed.flatMap((thread) => {
     const holder = waitingOnOf(thread);
     if (holder === undefined) return [];
@@ -2224,6 +2251,7 @@ const runNotify = async (input: {
     seen,
     stalled,
     parked,
+    frozen,
     ...(loaded.config.notifications?.templates === undefined
       ? {}
       : { templates: loaded.config.notifications.templates }),

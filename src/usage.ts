@@ -86,7 +86,7 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N>] [--merged-pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -105,6 +105,11 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # substantive message. Only a role the circuit cannot wake ('wake.mode: self')
                               # REFUSED together with '--expects none' (034): an informational message
                               # asks nobody for anything, and a park says the thread waits for a person
+                              # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (023) — a
+                              # MERGE, not a person. Nobody is called about it (the decision is made,
+                              # what is left is a button), and it lifts on the notifier's '--merged-pr'
+                              # --merged-pr <n>: this message announces that PR as landed — every thread
+                              # parked on 'pr:<n>' lifts on it, though the announcement is informational
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                               # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
                               # first message go in ONE commit, pushed, with the same replanning retry

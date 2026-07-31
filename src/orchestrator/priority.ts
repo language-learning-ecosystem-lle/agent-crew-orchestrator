@@ -36,6 +36,7 @@
  * would look older than one where the same handoff happened yesterday in silence.
  */
 import type { Message, ThreadPriorityValue } from "../thread/message.js";
+import { type ParkedOn, parkedOnKind } from "../thread/thread.js";
 import type { Candidate } from "./tick.js";
 
 /**
@@ -214,21 +215,28 @@ export const rankCandidates = (input: {
 export const describeOrder = (
   ordered: readonly RankedCandidate[],
   /**
-   * The threads FROZEN BEHIND A PERSON (R27), thread id → whom. A parked candidate keeps
-   * its place in the queue — it is a real candidate and lifts by itself with the next
-   * substantive message — but a line that only said "queue 1/4" would promise a launch
-   * that no tick is going to make, and the operator's frame (D-4) is exactly where that
-   * promise is read as a fact.
+   * The threads FROZEN (R27), thread id → the raw `parked-on`: a person, or `pr:N` for the
+   * merge that lifts it. A parked candidate keeps its place in the queue — it is a real
+   * candidate and lifts by itself — but a line that only said "queue 1/4" would promise a
+   * launch that no tick is going to make, and the operator's frame (D-4) is exactly where
+   * that promise is read as a fact.
+   *
+   * The two parks are told apart by the one parser (`parkedOnKind`) rather than by a regex of
+   * this file's own: what lifts them is the whole difference between them, and it is the only
+   * thing this line has room to say.
    */
   parked: ReadonlyMap<string, string> = new Map(),
 ): string[] =>
   ordered.map((candidate, at) => {
     const waited =
       candidate.since === undefined ? "no dated handoff" : `waiting since ${candidate.since}`;
-    const person = parked.get(candidate.thread);
-    const freeze =
-      person === undefined
-        ? ""
-        : ` · ⏸ PARKED behind a decision of ${person} (R27) — not raised until the next substantive message`;
+    const on = parked.get(candidate.thread);
+    const freeze = on === undefined ? "" : ` · ⏸ ${describeFreeze(parkedOnKind(on))}`;
     return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${freeze}`;
   });
+
+/** The frozen half of a queue row: what holds the turn, and what will let it go. */
+const describeFreeze = (on: ParkedOn): string =>
+  on.kind === "event"
+    ? `PARKED behind the merge of PR #${on.pr} (R27) — not raised until the merge notifier reports that PR`
+    : `PARKED behind a decision of ${on.person} (R27) — not raised until the next substantive message`;

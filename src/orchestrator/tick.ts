@@ -39,6 +39,7 @@
  * the entrance.
  */
 
+import { parkedOnKind } from "../thread/thread.js";
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
 import {
   type Ceiling,
@@ -353,8 +354,16 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       return `candidate ${pair} skipped: the session is parked on a question of its own (R19) — it is waiting for an ANSWER, not for a launch; see 'orchestrator status' for the ceiling of that wait`;
     case "exhausted":
       return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal`;
-    case "parked":
+    case "parked": {
+      // The two parks read differently on purpose (thread 023): one is waiting for a person
+      // to decide and lifts with their answer, the other is waiting for a merge and lifts on
+      // the notifier's message. A line that called a merge "a decision of pr:127" would send
+      // the reader looking for a participant by that name.
+      const on = parkedOnKind(skip.parkedOn ?? "");
+      if (on.kind === "event")
+        return `candidate ${pair} skipped: the turn is parked behind the merge of PR #${on.pr} (R27, 'parked-on: ${skip.parkedOn}' in the feed) — it is waiting for an EVENT, not for a launch; it lifts by itself when the merge notifier reports that PR in the thread`;
       return `candidate ${pair} skipped: the turn is parked behind a decision of ${skip.parkedOn ?? "a person"} (R27, 'parked-on' in the feed) — it is waiting for a PERSON, not for a launch; it lifts by itself with the next substantive message in the thread`;
+    }
     case "quota":
       return `candidate ${pair} skipped: the rate-limit window is closed — the window belongs to the ACCOUNT, so a signal from any role stands the whole box down; it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
     case "role-busy":

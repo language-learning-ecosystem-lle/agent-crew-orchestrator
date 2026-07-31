@@ -75,6 +75,8 @@ export type NewMessageInput = {
   readonly priority?: ThreadPriorityValue;
   /** Whose decision the turn is frozen behind — a person, and only a person (R27). */
   readonly parkedOn?: string;
+  /** The PR this message announces as merged — it lifts the parks that wait on it (thread 023). */
+  readonly mergedPr?: number;
   /** Tasks this message declares or moves (thread 021) — the source the board derives from. */
   readonly tasks?: readonly TaskDeclaration[];
   readonly text: string;
@@ -108,6 +110,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.launch === undefined ? {} : { launch: input.launch }),
     ...(input.priority === undefined ? {} : { priority: input.priority }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
+    ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
     ...(input.tasks === undefined ? {} : { tasks: input.tasks }),
   };
   return {

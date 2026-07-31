@@ -786,6 +786,35 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
 
+  it("an EVENT is a legal park too: 'pr:127' names a merge, and no config knows it", () => {
+    // Thread 023, variant A: the two parks are one state and differ in what lifts them, so
+    // they share the field. The door checks the shape and stops — asking GitHub whether the
+    // number exists is not the door's business, and the park lifts on the notifier's word.
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:127");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkedOn).toBe("pr:127");
+  });
+
+  it("the refusal of an unknown name names the event form — it is the other legal value", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--parked-on", "pr-127");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("pr:<number>");
+  });
+
+  it("--merged-pr is the fact that lifts an event park, and only a number is one", () => {
+    const contest = contour();
+
+    expect(direct(contest, "curator", "--merged-pr", "127").code).toBe(0);
+    expect(written(contest.root).fields.mergedPr).toBe(127);
+    expect(direct(contour(), "curator", "--merged-pr", "#127").code).toBe(2);
+  });
+
   it("a park on an INFORMATIONAL message is refused — the two words point opposite ways", () => {
     // Thread 034: written together they read as a park that a merge notifier may lift.
     // The reader honours such a park (`parkingOf`), so nothing in the feed is lost — the

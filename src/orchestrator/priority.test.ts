@@ -223,4 +223,26 @@ describe("describeOrder (R5) — the queue is readable without the code", () => 
     expect(lines[1]).toContain("queue 2/2");
     expect(lines[1]).toContain("no dated handoff");
   });
+
+  it("a park behind a PERSON says whose decision is missing (R27)", () => {
+    const lines = describeOrder(
+      orderCandidates([{ role: "curator", thread: "023-a", priority: "normal" }]),
+      new Map([["023-a", "john"]]),
+    );
+    expect(lines[0]).toContain("⏸ PARKED behind a decision of john (R27)");
+    expect(lines[0]).toContain("not raised until the next substantive message");
+  });
+
+  it("a park behind a MERGE calls it a merge, not a decision of 'pr:127' (thread 023)", () => {
+    // The same map feeds this line, the operator's frame (D-4) and the tick's skip line. When
+    // only the skip line learned to tell the two apart, the queue announced "a decision of
+    // pr:127" — and a reader of the daemon's log went looking for a participant by that name.
+    const lines = describeOrder(
+      orderCandidates([{ role: "dev-core", thread: "023-a", priority: "normal" }]),
+      new Map([["023-a", "pr:127"]]),
+    );
+    expect(lines[0]).toContain("⏸ PARKED behind the merge of PR #127 (R27)");
+    expect(lines[0]).toContain("not raised until the merge notifier reports that PR");
+    expect(lines[0]).not.toContain("decision of pr:127");
+  });
 });

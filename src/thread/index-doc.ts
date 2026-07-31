@@ -40,7 +40,12 @@ export const threadsWaitingOn = (threads: readonly Thread[], role: string): stri
   threads.filter((thread) => waitingOnOf(thread) === role).map((thread) => thread.id);
 
 /**
- * Threads FROZEN BEHIND A PERSON (R27), thread id → whom — for whoever decides about raising.
+ * Threads FROZEN (R27), thread id → what freezes them — for whoever decides about raising.
+ *
+ * The value is the RAW `parked-on`: a person's role id, or `pr:N` for the merge that lifts it
+ * (thread 023). Raw rather than already worded, because the readers of this map word it
+ * differently — a queue row and a skip line have different room — and they tell the two apart
+ * with the one parser (`parkedOnKind`), never with a regex of their own.
  *
  * Deliberately NOT subtracted from `threadsWaitingOn`: a parked thread still holds a turn and
  * is still mail. Hiding it from the mailbox would make the role's own `cli mail` lie about
@@ -51,8 +56,8 @@ export const threadsWaitingOn = (threads: readonly Thread[], role: string): stri
 export const parkedThreads = (threads: readonly Thread[]): ReadonlyMap<string, string> => {
   const parked = new Map<string, string>();
   for (const thread of threads) {
-    const person = parkedOnOf(thread);
-    if (person !== undefined) parked.set(thread.id, person);
+    const on = parkedOnOf(thread);
+    if (on !== undefined) parked.set(thread.id, on);
   }
   return parked;
 };
