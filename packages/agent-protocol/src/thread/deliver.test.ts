@@ -21,6 +21,8 @@ const harness = (options: {
   readonly ffFails?: boolean;
   /** Whose message this is — the role the commit has to be signed by (027). */
   readonly from?: string;
+  /** A second file in the same attempt — what a new thread is (`_meta.md` + first message). */
+  readonly extraFile?: boolean;
 }) => {
   const calls: Call[] = [];
   const invocations: Invocation[] = [];
@@ -44,8 +46,10 @@ const harness = (options: {
   const stage = () => {
     plans += 1;
     return {
-      path: `/mail/016/messages/stamp-${plans}Z-dev-core.md`,
-      content: `body ${plans}`,
+      files: [
+        { path: `/mail/016/messages/stamp-${plans}Z-dev-core.md`, content: `body ${plans}` },
+        ...(options.extraFile === true ? [{ path: "/mail/016/_meta.md", content: "meta" }] : []),
+      ],
       label: `016/messages/stamp-${plans}Z-dev-core.md`,
     };
   };
@@ -193,6 +197,24 @@ describe("deliverMessage", () => {
       "dev-core@agents.invalid",
       "dev-core@agents.invalid",
     ]);
+  });
+
+  // 033: a NEW THREAD is two files born together (`_meta.md` and its first message) and
+  // they are ONE delivery — a meta pushed without its message is a conversation nobody
+  // can read, and the retry would replan the message beside a meta already in the feed.
+  it("stages every file of the attempt into ONE commit", () => {
+    const h = harness({ extraFile: true });
+    h.run();
+
+    const add = h.calls.find((c) => c[0] === "add") as readonly string[];
+    expect(add).toEqual([
+      "add",
+      "--",
+      "/mail/016/messages/stamp-1Z-dev-core.md",
+      "/mail/016/_meta.md",
+    ]);
+    expect(h.written).toHaveLength(2);
+    expect(h.calls.filter((c) => c[0] === "commit")).toHaveLength(1);
   });
 
   it("takes the lock the caller hands it — a caller alone in the checkout says so", () => {

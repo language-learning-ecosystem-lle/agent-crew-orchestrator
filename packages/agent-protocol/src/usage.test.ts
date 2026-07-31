@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { parseUsage, strayArguments } from "./orchestrator/argv.js";
@@ -351,6 +353,59 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     ];
     const table = parseUsage(USAGE);
     expect(routed.filter((name) => !table.has(`orchestrator ${name}`))).toEqual([]);
+  });
+
+  it("names every handler that reads `--write` in the list of what `--write` does", () => {
+    // THE LIST IS A FACT, NOT AN IMPRESSION (thread 033, the second verdict of
+    // reviewer-pr): the list shipped in `USAGE` missed `orchestrator run`, and its
+    // own wording — "everything else writes and stops" — reads as exhaustive. A
+    // reader who trusts it types `--write` on the one command where the word means
+    // "raise a session", not "write a file".
+    //
+    // Derived from the SOURCE, unlike the corpus above, because here it can be: the
+    // handlers are top-level `const <name> = (argv` declarations and `--write` is
+    // read by its literal name. An unknown handler fails the map, which is the point
+    // — a new `--write` cannot be added without a line saying what it costs.
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8").split("\n");
+    let declaration = "";
+    const reading = new Set<string>();
+    for (const line of source) {
+      const declared = /^const ([a-zA-Z]+) = /.exec(line);
+      if (declared?.[1] !== undefined) declaration = declared[1];
+      if (line.includes('"--write"') && declaration !== "") reading.add(declaration);
+    }
+    // handler → what the list must say its name in. `enable`/`disable` and the two
+    // modes of `hold`/`stop` share a handler and a line, so the token is the shared
+    // half of the name.
+    const named: Readonly<Record<string, string>> = {
+      schemaMigrate: "'schema migrate'",
+      indexBuild: "'index build'",
+      threadBuild: "'thread build'",
+      migrate: "'migrate'",
+      derive: "'derive'",
+      newMessage: "'new-message'",
+      newThread: "'new-thread'",
+      notify: "'notify'",
+      orchestratorEnable: "enable/disable",
+      orchestratorRecord: "record",
+      orchestratorRun: "'orchestrator run'",
+      orchestratorStop: "stop",
+      orchestratorHold: "hold",
+      // The operator's short forms do not READ the word, they supply it: typing
+      // `hold <role>` IS the decision (thread 019). Same command, same line.
+      orchestratorHoldShort: "hold",
+      orchestratorResumeShort: "hold",
+      // `restart --mode force` supplies the word to the force stop it performs
+      // (thread 019, #113) — the same relationship the short forms have, and the
+      // same line: what it costs is what 'stop' costs.
+      orchestratorRestart: "stop",
+    };
+    expect([...reading].filter((name) => named[name] === undefined)).toEqual([]);
+    // Bounded at the next section: past it, tokens like "record" or "hold" match the
+    // command lines themselves and the check would pass on any text at all.
+    const from = USAGE.indexOf("WHICH '--write' DELIVERS");
+    const list = USAGE.slice(from, USAGE.indexOf("\nORCHESTRATOR:", from));
+    expect([...reading].filter((name) => !list.includes(named[name] as string))).toEqual([]);
   });
 
   it("lets `up` pass its own flags through to the daemon it starts", () => {

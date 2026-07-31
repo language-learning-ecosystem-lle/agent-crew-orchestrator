@@ -91,11 +91,29 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # --parked-on <person>: the turn STAYS here and is FROZEN until that person decides
                               # (R27) — the pair is not raised and spends nothing; it lifts by itself with the next
                               # substantive message. Only a role the circuit cannot wake ('wake.mode: self')
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write]
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                              # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
+                              # first message go in ONE commit, pushed, with the same replanning retry
                               # the NNN is REFUSED if a thread already holds it (029): the number is a
                               # short address; nothing is renamed after the fact, the door is what changes
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
                               # a raised session passes neither — the launch environment carries both
+                              # --no-push: write the files only (for a caller that owns its own git, e.g. CI)
+
+WHICH '--write' DELIVERS (thread 033). Two commands SEND — 'new-message' and 'new-thread':
+the file, the commit and the push are one action. Everything else writes and stops, and
+each for a stated reason:
+  · 'index build', 'thread build', 'derive' — DERIVED files, committed by the generator
+    workflow ('chore(comms): rebuild derived') on the push that produced them;
+  · 'migrate', 'schema migrate' — bulk rewrites read by a human before they are committed
+    (the config half goes through a PR by rule);
+  · 'orchestrator record/enable/disable/hold/stop' and the state of 'notify' — machine-local
+    operational state under 'orchestrator.state', outside git by construction: there is
+    nothing to deliver, and 'notify' delivers through its transport, not through a commit;
+  · 'orchestrator run' — machine-local by the same reason, but the word means something else
+    there: '--write' is not 'write the file', it is 'do it'. Without it the command prints
+    the plan and touches nothing (not the workdir, not its lock, not the journal); with it
+    the workdir is put on the base and locked, the events are appended, the agent is raised.
 
 ORCHESTRATOR: the paths (journal, flags, holds, mail root) are taken FROM THE
 CONFIG, section 'orchestrator'. The path flags below are an override for checks

@@ -669,7 +669,11 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write]
+                            [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            # THE OTHER WRITING DOOR (R3, thread 033): --write means SENT here too —
+                            # `_meta.md` and the first message go in ONE commit, pushed, with the same
+                            # replanning retry and the same refusal on a dirty checkout
+                            # --no-push: the files only, for the caller that owns its own git (CI)
                             # the NUMBER is refused if a thread already holds it (029): `NNN` is a short
                             # address, and `029` handed out twice made "тред 029" mean two things.
                             # nothing is renamed after the fact — the full id stays unique, the door changes
@@ -779,6 +783,79 @@ checkout the runner set up (where `origin/comms` does not exist at all — the m
 fetched without a refspec), batch the commit with their own work and push under the
 runner's token. A named flag is honester than a command that behaves differently
 depending on where it runs.
+
+**AND `new-thread` IS THE SAME DOOR** (thread 033). It was not: it wrote `_meta.md` and
+the first message, printed "thread created" and returned — no `add`, no commit, no push —
+while the README, CLAUDE.md and every role card promised that `--write` delivers. The
+promise was true for one command of the two, so the tool reported success on a delivery it
+had never made: exactly the class of "the tool's answer is not the fact" that a role is
+supposed to be insured against, and here the insurance (control-reading the feed after a
+write) was load-bearing instead of a safety net. A NEW THREAD IS ONE DELIVERY, NOT TWO:
+the meta and the first message land in a single commit, because a meta pushed without its
+message is a conversation nobody can read or answer, and the retry would then be replanning
+the message beside a meta already in the feed. The thread id is re-checked AFTER the
+refresh, inside the attempt: the pre-flight check only knows this disk, and if somebody
+took the number in between, writing it again would overwrite their meta.
+
+#### Which `--write` delivers, and which only writes (thread 033)
+
+`--write` is one word for two different things across this CLI, so here is the whole list
+as a fact rather than as an impression. **Two commands SEND** — the file, the commit and
+the push are one action:
+
+| command | `--write` does |
+| --- | --- |
+| `new-message` | **delivers** — writes, commits, pushes (retry, `--no-push` for CI) |
+| `new-thread` | **delivers** — both files in one commit, pushes (retry, `--no-push` for CI) |
+| `index build` | writes `INDEX.md` — **not committed**: derived |
+| `thread build` | writes `_thread.md` — **not committed**: derived |
+| `derive` | writes all derived files — **not committed**: derived |
+| `migrate` | rewrites threads into the file form — **not committed**: read before it is |
+| `schema migrate` | rewrites config and mail to the next version — **not committed**: says so in its own output |
+| `orchestrator record` | appends to the journal — **no git**: machine-local state |
+| `orchestrator enable`/`disable` | the gate flag — **no git**: machine-local state |
+| `orchestrator hold` (take/release) | the hold file — **no git**: machine-local state |
+| `orchestrator stop` (graceful/force) | the stop/force flag — **no git**: machine-local state |
+| `orchestrator run` | **acts** — prepares and locks the workdir, appends the launch events, raises the agent; **no git**: all of it machine-local |
+| `notify` | the notify state + the message — **no git**: delivery is the transport (R4) |
+
+The three reasons behind the "not committed" column, in full:
+
+- **the derived files are the generator's** (`index build`, `thread build`, `derive`).
+  They are rebuilt by `comms-derived.yml` on the push that produced them and committed
+  there as `chore(comms): rebuild derived`. A command that committed them itself would
+  race that workflow and make every concurrent write a conflict in a file nobody authored
+  — which is also why delivery never stages them;
+- **a bulk rewrite is read before it is committed** (`migrate`, `schema migrate`). These
+  touch many files at once and the config half goes through a PR by rule, so the commit is
+  the human's decision, not the tool's. `schema migrate` says this in its own output;
+- **the operational state is not in git at all** (`orchestrator record/enable/disable/
+  hold/stop/run`, the state file of `notify`). It lives under `orchestrator.state`
+  (`.orchestrator/` here, gitignored) because it is a fact about THIS machine — there is
+  nothing to deliver. `notify` does deliver, through its transport plugin; a commit is not
+  its channel.
+
+`orchestrator run` is in that last class by its state, and it is the one entry where the
+word means something else: **`--write` there is not "write the file", it is "do it"**.
+Without it nothing at all happens — the command prints the plan it would execute and
+touches neither the role's worktree, nor its lock, nor the journal; with it the worktree is
+put on the base and locked, the launch events are appended and the agent is raised. It is
+listed here because the question this list answers is "what does typing `--write` cost me",
+and for `run` the answer is the largest of the lot. What the raised session then delivers
+is the session's own doing, through the two writing doors above.
+
+#### The type of a hand-made commit into the mail
+
+Sending by hand is no longer a step of the normal path — both writing doors deliver. It
+survives as an EMERGENCY path (a legacy thread that `new-message` refuses, a delivery
+interrupted midway), and when it is taken the commit is written as
+**`docs(agent-comms): <role> → <thread>`** — the exact subject `deliverySubject` produces.
+Two reasons: `comms(...)` is not in the `@commitlint/config-conventional` enum and the
+commit-msg hook of the mail checkout rejects it (this is how the question arose — curator's
+first hand-made commit was bounced), and the feed's history should not record HOW a
+message got in. Machine bookkeeping in the same branch keeps `chore(...)`
+(`chore(comms): rebuild derived`, `chore(protocol): instance <id> state`): it is not a turn
+in a conversation.
 
 **ONE WRITER AT A TIME INSIDE THE MAIL CHECKOUT** (D-0, thread `023-daemon-parallelism`).
 The checkout is one directory per instance, not one per role, and between the write and
