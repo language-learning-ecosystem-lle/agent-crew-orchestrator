@@ -192,6 +192,12 @@ export const stepEvent = (
     readonly waitDeadline?: string;
     /** When the window reopens, for a `quota-exhausted` release — absent if unknown. */
     readonly until?: string;
+    /**
+     * The run ended its own turn and left its workspace dirty (thread 023, requirement 5).
+     * `true` or absent, like the field it lands in: the flag is a positive observation,
+     * and a caller with no workspace to look at makes none.
+     */
+    readonly dirty?: true;
   },
 ): OrchestratorEvent => {
   if (step.record === "handoff-detected") return { kind: "handoff-detected", ...base };
@@ -210,5 +216,6 @@ export const stepEvent = (
     ...(detail?.session === undefined ? {} : { session: detail.session }),
     ...(detail?.steps === undefined ? {} : { steps: detail.steps }),
     ...(detail?.until === undefined ? {} : { until: detail.until }),
+    ...(detail?.dirty === undefined ? {} : { dirty: detail.dirty }),
   };
 };

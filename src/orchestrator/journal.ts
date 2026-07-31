@@ -247,6 +247,14 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     // of being folded into one of ours. Optional — the prose layers never name a window,
     // and journals written by part 1 parse unchanged.
     window: z.string().min(1).optional(),
+    // THE RUN ENDED ITS OWN TURN AND LEFT ITS WORKSPACE DIRTY (thread 023, requirement 5,
+    // second half). `true` or absent, never `false`, and the asymmetry is the meaning: the
+    // flag is written only where the tree was actually looked at — a run raised without
+    // workspaces declared (pre-R17) works in the operator's own checkout, whose state is
+    // none of the circuit's business, and a `false` there would be a claim nobody made.
+    // It is on the RELEASE rather than a new event kind because it is a property of how
+    // this run finished, and the release is the record of that.
+    dirty: z.literal(true).optional(),
   }),
   // The session was stopped forcibly (S4). `by`/`note` are the "who" and the
   // "why", and together with `ts` (the "when") they make the force trace in the

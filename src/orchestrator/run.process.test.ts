@@ -1318,3 +1318,98 @@ describe("a manual run stops at the same scope door as the daemon (R13)", () => 
     expect(existsSync(journalPath(repo))).toBe(false);
   }, 60_000);
 });
+
+/**
+ * REQUIREMENT 5, SECOND HALF (thread 023) — the observer NAMES the dirt at the moment of
+ * the release, live: a session that passes the turn on and leaves uncommitted changes in
+ * its workspace is a failure to finish, and until this landed the failure surfaced one
+ * package later, as a role skipped with "the workspace is not usable" and a human reading
+ * a tree to work out which run had made it. Four such repairs in one morning.
+ *
+ * The workspace is DECLARED here and that is load-bearing (as in the unlock test above):
+ * without `workdir.worktrees` the session works in the operator's own checkout, whose
+ * state the circuit never judges — and the test would pass while asserting nothing.
+ */
+describe("the tree a finished run leaves behind (thread 023, requirement 5)", () => {
+  const WORKSPACES = {
+    orchestrator: {
+      state: ".orchestrator",
+      mailCheckout: "mailco",
+      ref: "HEAD",
+      workdir: { branch: "main", worktrees: ".worktrees" },
+    },
+  };
+
+  /**
+   * THE RUN WITH BOTH STREAMS MERGED. `execFileSync` hands back stderr only when the
+   * command FAILED, and the case under test exits 0 — so a run captured the ordinary way
+   * cannot see the line at all. The merge happens in the shell, where the two streams
+   * are, rather than by moving the line onto stdout: a defect report belongs on stderr.
+   */
+  const runSeen = (repo: string, exec: string): string =>
+    execFileSync(
+      "sh",
+      [
+        "-c",
+        `"${TSX}" "${CLI}" orchestrator run --ref HEAD --no-fetch --repo "${repo}" --role dev-core --thread 012-x --exec "${exec}" --wall-clock 20 --poll 1 --write 2>&1`,
+      ],
+      { cwd: repo, encoding: "utf8", env: sandbox(configHome(repo)) },
+    );
+
+  const answerIn = (mail: string): string =>
+    join(mail, "agent-comms", "012-x", "messages", "2026-07-25T11-00-00Z-dev-core.md");
+
+  const ANSWER =
+    "---\nfrom: dev-core\ndate: 2026-07-25T11:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nThe answer.\n";
+
+  it("a run that passed the turn and left uncommitted work is named in the release AND on the journal", () => {
+    const { repo, mail } = contour(WORKSPACES);
+    // The dirt is an UNTRACKED file, because that is the commonest shape of it in the
+    // live circuit: a session's own scratch file, the one `git stash push -u` was needed
+    // for in the first half of this requirement.
+    const exec = stub(
+      repo,
+      `printf 'half a refactor\\n' > wip.txt\nsleep 1\nprintf '%s' '${ANSWER}' > ${answerIn(mail)}`,
+    );
+
+    const seen = runSeen(repo, exec);
+    const last = journal(repo).at(-1);
+
+    expect(last).toMatchObject({ reason: "completed", dirty: true });
+    // THE LIVE CHANNEL, asserted on the merged output: the release says it where a human
+    // or the daemon's stream sees it. The session log gets the same sentence when its
+    // sinks are still open, and for an ending of this class they usually are not — the
+    // session has exited, which is what closed them. Claiming both channels here would be
+    // claiming a line that is sometimes not written.
+    expect(seen).toContain("LEFT ITS WORKSPACE DIRTY");
+    expect(seen).toContain("uncommitted changes");
+  }, 60_000);
+
+  it("a run that left its tree clean says nothing — the flag is an observation, not a field", () => {
+    const { repo, mail } = contour(WORKSPACES);
+    const exec = stub(repo, `sleep 1\nprintf '%s' '${ANSWER}' > ${answerIn(mail)}`);
+
+    const seen = runSeen(repo, exec);
+    const last = journal(repo).at(-1);
+
+    expect(last).toMatchObject({ reason: "completed" });
+    expect(last).not.toHaveProperty("dirty");
+    expect(seen).not.toContain("LEFT ITS WORKSPACE DIRTY");
+  }, 60_000);
+
+  it("dirt after a break the circuit made is NOT this failure — it belongs to the stash", () => {
+    // The control that separates the two halves of the requirement on live git: the same
+    // dirty tree, but the run is cut off by its own wall clock. Nothing is named at the
+    // release, and the next launch parks it in a stash instead (workspace.process.test).
+    const { repo } = contour(WORKSPACES);
+    const exec = stub(repo, "printf 'half a refactor\\n' > wip.txt\nsleep 300");
+
+    run(repo, exec);
+    const last = journal(repo).at(-1);
+
+    expect(last).toMatchObject({ reason: "timeout" });
+    expect(last).not.toHaveProperty("dirty");
+    expect(sessionLog(repo)).not.toContain("LEFT ITS WORKSPACE DIRTY");
+    expect(sessionLog(repo)).toContain("the lease was released: timeout");
+  }, 60_000);
+});

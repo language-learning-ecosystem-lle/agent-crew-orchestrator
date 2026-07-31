@@ -15,7 +15,12 @@ const detail = (event: OrchestratorEvent): string => {
       // run that simply finished.
       const code = event.exitCode === undefined ? "" : `, code ${event.exitCode}`;
       const log = event.output === undefined ? "" : `, output ${event.output}`;
-      return ` (${event.reason}${code}${log})`;
+      // The dirt left by a run that ended its own turn is named IN THE HISTORY too
+      // (thread 023, requirement 5): the release said it once, on a terminal or in a
+      // supervisor log nobody keeps open, and the question "which run left this tree" is
+      // asked afterwards — of the journal.
+      const dirty = event.dirty === true ? ", LEFT THE WORKSPACE DIRTY" : "";
+      return ` (${event.reason}${code}${log}${dirty})`;
     }
     case "launch-refused":
       return ` (${event.reason})`;
