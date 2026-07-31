@@ -89,6 +89,112 @@ export type LaunchDirective = {
 export const THREAD_PRIORITY_VALUES = ["high", "normal", "low"] as const;
 export type ThreadPriorityValue = (typeof THREAD_PRIORITY_VALUES)[number];
 
+/**
+ * A TASK DECLARATION (thread `021-native-tasks`) — the one markup by which work is
+ * announced and moved. The board (`TASKS.md`) is DERIVED from these; there is no
+ * editable registry, because a second editable source drifts from the feed by
+ * construction — the same argument that made INDEX derived in thread 006.
+ *
+ * WHY A HEADER FIELD AND NOT A MARKED-UP SECTION OF THE BODY. The precedent is
+ * `waiting-on` (pain 2: a declaration lost in prose is a silent drop), but the
+ * carrying argument is stronger and checks itself on the statements of work in this
+ * very thread: the BODY IS FREE TEXT BY CONTRACT, and a statement of work QUOTES the
+ * markup while proposing it. Were the markup a body block, the proposal itself would
+ * have opened half a dozen tasks that do not exist — and an append-only feed has
+ * nothing to repair that with. In the header a quote is inert by construction.
+ *
+ * THE PRICE, named rather than discovered: the field is not visible in the assembled
+ * `_thread.md`, because `renderHeading` prints `from/date/expects` only and the
+ * assembly canon is byte-exact across the live threads (the same reason `worker` and
+ * `session` deliberately never reached a derived file). `thread show` prints the
+ * declarations under the heading of each message for the reading agent; `derive` never
+ * does, so not one byte of a committed derived file moves.
+ *
+ * `NNN.k`, NOT A RUNNING NUMBER. A running counter needs an allocator, and an
+ * append-only file feed has none: two threads in one minute would mint the same id —
+ * which is exactly why the message number stopped being an identifier (`msg-005`
+ * collided twice in 012 as a matter of fact). `NNN.k` is minted LOCALLY by the owning
+ * thread, is conflict-free by construction, and localises itself: `021.2` pasted into a
+ * chat says where to look.
+ */
+export const TASK_STATUS_VALUES = ["open", "in-progress", "done", "dropped"] as const;
+export type TaskStatus = (typeof TASK_STATUS_VALUES)[number];
+
+/**
+ * The statuses from which nothing moves on by itself. `done` is NOT one of them:
+ * `done → in-progress` is allowed, because a PR gets reverted and a review hands work
+ * back — forbidding it would only force a fake new id. `dropped` IS terminal: a task
+ * taken off the board comes back as a new id, not as a resurrection.
+ */
+export const TERMINAL_TASK_STATUSES: readonly TaskStatus[] = ["done", "dropped"];
+
+export type TaskDeclaration = {
+  /** `NNN.k` — the thread that minted it, and the ordinal inside that thread. */
+  readonly id: string;
+  readonly status: TaskStatus;
+  /**
+   * The tail after ` · `: the TITLE on `open`, the FACT on `done`/`dropped` (a PR, a
+   * commit, a decision), a free note on `in-progress`. Required everywhere except
+   * `in-progress` — "done in the normal case comes with a fact" is made checkable
+   * rather than left as a wish, so an empty `done` stops slipping through by inertia.
+   */
+  readonly tail?: string;
+};
+
+const TASK_ID = /^\d{3,}\.\d+$/;
+/** The separator of the tail. A space-dot-space, not a comma: a title contains commas. */
+const TASK_TAIL = " · ";
+
+/** The thread a task id belongs to — the `NNN` of `NNN.k`, matched against a thread id `NNN-slug`. */
+export const taskThreadPrefix = (id: string): string => id.slice(0, id.indexOf("."));
+
+export const parseTaskDeclaration = (value: string): TaskDeclaration => {
+  const at = value.indexOf(TASK_TAIL);
+  const head = (at === -1 ? value : value.slice(0, at)).trim();
+  const tailRaw = at === -1 ? undefined : value.slice(at + TASK_TAIL.length).trim();
+  const tokens = head.split(/\s+/).filter((token) => token !== "");
+  if (tokens.length !== 2) {
+    throw new MessageFormatError(
+      `'task: ${value}' — the form is 'task: <NNN.k> <${TASK_STATUS_VALUES.join("|")}>[ · tail]'`,
+    );
+  }
+  const [id, status] = tokens as [string, string];
+  if (!TASK_ID.test(id)) {
+    throw new MessageFormatError(
+      `'task: ${value}' — the id is 'NNN.k' (the owning thread and an ordinal inside it), for example '021.2'`,
+    );
+  }
+  if (!(TASK_STATUS_VALUES as readonly string[]).includes(status)) {
+    throw new MessageFormatError(
+      `'task: ${value}' — allowed statuses are ${TASK_STATUS_VALUES.join(" | ")}`,
+    );
+  }
+  if (tailRaw === "") {
+    throw new MessageFormatError(`'task: ${value}' — the tail after ' · ' is empty`);
+  }
+  if (tailRaw === undefined && status !== "in-progress") {
+    throw new MessageFormatError(
+      status === "open"
+        ? `'task: ${value}' — an opened task needs a title: 'task: ${id} open · what it is'`
+        : `'task: ${value}' — a '${status}' needs the FACT that closes it: 'task: ${id} ${status} · PR #48' (a PR, a commit or a message of a thread)`,
+    );
+  }
+  return { id, status: status as TaskStatus, ...(tailRaw === undefined ? {} : { tail: tailRaw }) };
+};
+
+export const renderTaskDeclaration = (task: TaskDeclaration): string =>
+  `${task.id} ${task.status}${task.tail === undefined ? "" : `${TASK_TAIL}${task.tail}`}`;
+
+/**
+ * The header keys that may appear MORE THAN ONCE — an explicit list, because the
+ * parser folded the header into a map and a duplicate key overwrote its predecessor
+ * SILENTLY. One message declares and moves several tasks, so `task` has to repeat; and
+ * the moment it may, the silence around every other key stops being tolerable — a
+ * second `from` would have quietly won over the first. Proven not to break anything
+ * that exists: 511 message files on the live branch, zero duplicate keys.
+ */
+export const REPEATABLE_HEADER_KEYS: readonly string[] = ["task"];
+
 /** `expects` — what the author awaits: a substantive answer, an acknowledgement or nothing. */
 export const EXPECTS = ["answer", "ack", "none"] as const;
 export type Expects = (typeof EXPECTS)[number];
@@ -197,6 +303,11 @@ export type MessageFields = {
    * can raise is not something to park behind — that is `waiting-on`.
    */
   readonly parkedOn?: string;
+  /**
+   * TASKS DECLARED OR MOVED by this message (thread 021) — the one source the board is
+   * derived from. Repeatable: one message opens and moves several at once.
+   */
+  readonly tasks?: readonly TaskDeclaration[];
   /** Heading tail from history (`· [СВЕРХПИСАНО msg-002]`, quoted verbatim from live data), so the assembly matches byte for byte. */
   readonly suffix?: string;
 };
@@ -323,11 +434,25 @@ export const parseMessageFile = (raw: string): Message => {
   if (close === -1) throw new MessageFormatError("the message header is not closed ('---')");
 
   const raws = new Map<string, string>();
+  const repeated = new Map<string, string[]>();
   for (const line of lines.slice(1, close)) {
     if (line.trim() === "") continue;
     const at = line.indexOf(":");
     if (at === -1) throw new MessageFormatError(`header line without 'key: value': '${line}'`);
-    raws.set(line.slice(0, at).trim(), line.slice(at + 1).trim());
+    const key = line.slice(0, at).trim();
+    const value = line.slice(at + 1).trim();
+    if (REPEATABLE_HEADER_KEYS.includes(key)) {
+      repeated.set(key, [...(repeated.get(key) ?? []), value]);
+      continue;
+    }
+    // A duplicate of any other key USED TO WIN SILENTLY. Now it fails: see
+    // REPEATABLE_HEADER_KEYS for why the silence stopped being tolerable.
+    if (raws.has(key)) {
+      throw new MessageFormatError(
+        `header key '${key}' is given twice — only ${REPEATABLE_HEADER_KEYS.join(", ")} may repeat`,
+      );
+    }
+    raws.set(key, value);
   }
 
   const from = raws.get("from");
@@ -390,6 +515,8 @@ export const parseMessageFile = (raw: string): Message => {
     throw new MessageFormatError(`'parked-on: ${parkedOn}' — expected the id of a role`);
   }
 
+  const tasks = (repeated.get("task") ?? []).map(parseTaskDeclaration);
+
   const fields: MessageFields = {
     ...(msgRaw === undefined ? {} : { msg: Number(msgRaw) }),
     ...(seqRaw === undefined ? {} : { seq: Number(seqRaw) }),
@@ -402,6 +529,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(launch === undefined ? {} : { launch }),
     ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
     ...(parkedOn === undefined ? {} : { parkedOn }),
+    ...(tasks.length === 0 ? {} : { tasks }),
     ...(suffix === undefined ? {} : { suffix }),
   };
   if (fields.msg !== undefined && !Number.isInteger(fields.msg)) {
@@ -443,6 +571,9 @@ export const renderMessageFile = (message: Message): string => {
     // Right after `waiting-on`'s neighbours, because it qualifies the turn itself: whose it
     // is, and whether it can move at all before a person says something.
     ...(fields.parkedOn === undefined ? [] : [`parked-on: ${fields.parkedOn}`]),
+    // Last of the meaningful fields and repeatable: the declarations read as a block,
+    // and a block that grows downwards leaves every field above it where it was.
+    ...(fields.tasks ?? []).map((task) => `task: ${renderTaskDeclaration(task)}`),
     ...(fields.suffix === undefined ? [] : [`suffix: ${fields.suffix}`]),
   ];
   return `${FENCE}\n${head.join("\n")}\n${FENCE}\n\n${text}\n`;

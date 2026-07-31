@@ -102,8 +102,22 @@ export const wakeSchema = z.discriminatedUnion("mode", [
  *   somebody else's work, and a project may well want to hand out one without the
  *   other. Today both sit with the same two roles, so the split costs nothing and
  *   buys the ability to change that without a schema version.
+ * - `task-declare` (thread 021) — OPENING a task in the feed and DROPPING one. Passing
+ *   a task through (`in-progress`, `done`) needs no permission: that is execution, and
+ *   whoever does the work reports it. Opening and dropping are acts of the STATEMENT OF
+ *   WORK, and dropping is under the permission for one concrete reason — otherwise an
+ *   agent could quietly take its own task off the board, which is the single way the
+ *   board could lie in favour of whoever is writing. Unlike the two above, this one IS
+ *   refused at the door: a task declaration is the protocol's own vocabulary and a
+ *   crooked one would be a permanent row on a derived board, not a directive that some
+ *   later resolution can ignore out loud.
  */
-export const permissionSchema = z.enum(["thread-status", "launch-params", "thread-priority"]);
+export const permissionSchema = z.enum([
+  "thread-status",
+  "launch-params",
+  "thread-priority",
+  "task-declare",
+]);
 
 /** Role lifecycle: planned → active → paused/retired (rows are never deleted). */
 export const roleStatusSchema = z.enum(["planned", "active", "paused", "retired"]);

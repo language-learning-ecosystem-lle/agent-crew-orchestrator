@@ -56,6 +56,10 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # by name rather than met as a stray path
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
+  agent-protocol tasks list   --root <mail> --ref <ref> [--status <s>] [--json]
+                              # THE BOARD FOR MACHINES (thread 021): the same model as
+                              # 'TASKS.md', computed FROM THE THREADS — a consumer parsing the
+                              # derived file would answer "what is being done now" with yesterday
   agent-protocol mail         --ref <ref> --role <id> [--root <mail>]
                               # --root defaults to the mail of THIS MACHINE (R26): the state
                               # directory and the mail root hang off the main checkout, so the
@@ -70,7 +74,7 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person>] [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -78,6 +82,10 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # stays alive and reads the answer itself; block on 'await-input' after sending
                               # --model/--effort: WITH WHAT the runs of this thread are raised from here on (R21) —
                               # only from a role holding 'launch-params'; the value is checked against the tool here
+                              # --task '<NNN.k> <open|in-progress|done|dropped>[ · tail]': REPEATABLE —
+                              # declares or moves a task (thread 021); the board 'TASKS.md' is derived from these.
+                              # a title is required on 'open', a FACT on 'done'/'dropped'; opening and dropping
+                              # need 'task-declare', passing one through does not; opening only under this thread's id
                               # --priority high|normal|low: WHICH waiting thread is raised FIRST from here on (R5) —
                               # only from a role holding 'thread-priority'; the queue is priority, then age of wait, then number
                               # --parked-on <person>: the turn STAYS here and is FROZEN until that person decides

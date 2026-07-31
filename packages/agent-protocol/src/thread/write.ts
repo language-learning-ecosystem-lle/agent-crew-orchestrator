@@ -14,7 +14,12 @@
  * This module is the pure core (planning the files), "string → files". The actual
  * creation on disk and git live in the CLI above it.
  */
-import type { LaunchDirective, MessageFields, ThreadPriorityValue } from "./message.js";
+import type {
+  LaunchDirective,
+  MessageFields,
+  TaskDeclaration,
+  ThreadPriorityValue,
+} from "./message.js";
 import { messageFileName, renderMessageFile } from "./message.js";
 import { renderMetaFile, type ThreadMeta } from "./thread.js";
 
@@ -70,6 +75,8 @@ export type NewMessageInput = {
   readonly priority?: ThreadPriorityValue;
   /** Whose decision the turn is frozen behind — a person, and only a person (R27). */
   readonly parkedOn?: string;
+  /** Tasks this message declares or moves (thread 021) — the source the board derives from. */
+  readonly tasks?: readonly TaskDeclaration[];
   readonly text: string;
   /** true — the thread has `messages/` (migrated / file-based). false — legacy. */
   readonly threadHasMessages: boolean;
@@ -101,6 +108,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.launch === undefined ? {} : { launch: input.launch }),
     ...(input.priority === undefined ? {} : { priority: input.priority }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
+    ...(input.tasks === undefined ? {} : { tasks: input.tasks }),
   };
   return {
     path: `messages/${messageFileName(fields)}`,
