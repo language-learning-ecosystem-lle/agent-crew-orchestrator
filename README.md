@@ -958,6 +958,15 @@ never enter the count (that is the guard's whole point), a group whose stamps ca
 tell its verdicts apart is judged whole and refuses, and states that are not a verdict —
 `COMMENTED`, `DISMISSED` — do not overtake one: a comment is not an answer.
 
+**A verdict with no author is its own group**, for the same fail-closed reason and not as
+a detail of keying. Grouping the unnamed ones together would let the later verdict of one
+anonymous reviewer silently overtake the earlier verdict of a DIFFERENT one — a
+`CHANGES_REQUESTED` swallowed by somebody else's `APPROVED`, which is precisely what the
+grouping-by-reviewer exists to prevent. It does not reproduce against today's GitHub (the
+one reviewer is `github-actions` and always carries a login), and that is the argument for
+pinning it rather than against: the payload without an author arrives when nobody is
+watching for it.
+
 **And a verdict can have no commit at all, which `reviews[].commit` hides.** A review
 submitted without a `commit_id` — what the reviewer's action produces when it is
 re-triggered by `workflow_dispatch`, because that run hangs on the head of `main` and
@@ -1017,15 +1026,27 @@ answers `UNKNOWN`, the next one answers for real — on every open PR here, not 
 then. A single ask would therefore refuse almost every first run, so the command asks
 again itself, once, and only then reports `UNKNOWN` as an answer.
 
-**The token needs the `checks` scope.** Guard 2 reads `statusCheckRollup`, which GitHub
-serves only to a token holding `checks: read`. A personal token has it; a GitHub App
-installation token (`ghs_…` — what any `gh-action` executor of this protocol runs with)
-has only the scopes its job's `permissions:` block lists, and an unlisted one is zeroed
-rather than defaulted. The whole `gh` call then fails with `Resource not accessible by
-integration` instead of degrading, so the gate answers nothing at all rather than
-answering wrongly — and the refusal names the scope, because GitHub's own message does
-not. This is observed, not hypothetical: it is how the reviewer of this very PR found
-that its "live run" had only ever been made from a session token.
+**The token needs scopes, and the gate does not say WHICH.** Guard 2 reads
+`statusCheckRollup`, which GitHub serves only to a token holding `checks: read` — and
+`gh` asks inside it for `checkSuite.workflowRun`, which is Actions and wants
+`actions: read`. A personal token has both; a GitHub App installation token (`ghs_…` —
+what any `gh-action` executor of this protocol runs with) has only the scopes its job's
+`permissions:` block lists and, through `claude-code-action`, only what the token
+exchange asked for in `additional_permissions`; an unlisted one is zeroed rather than
+defaulted. The whole `gh` call then fails with `Resource not accessible by integration`
+instead of degrading, so the gate answers nothing at all rather than answering wrongly.
+
+That much is observed, not hypothetical — it is how the reviewer of this very PR found
+that its "live run" had only ever been made from a session token. What the refusal path
+does NOT do any more is **declare the cause**. It used to answer "`statusCheckRollup`
+needs a token with the `checks: read` scope" to every failure, and it was wrong twice
+over: `checks` was already granted through three rounds of diagnosis (#108, #109, #112 —
+the field actually refused was the Actions one), and the test that fired the note matched
+the word `statusCheckRollup` in the ECHOED COMMAND LINE, so a plain 404 from a `gh`
+account without access to the repository was explained by a missing scope too — six of
+them in one round. Now the reason `gh` returned is printed whole as the fact, and a hint
+is added only on a refusal that is scope-shaped, naming the path GitHub itself refused and
+offering a candidate as a guess (`merge/gh.ts` → `ghRefusalHint`).
 
 **Why the project's extra documents come in on `--power-docs` and not from a config
 section**, which is the shape one would otherwise pick: a new config field costs a

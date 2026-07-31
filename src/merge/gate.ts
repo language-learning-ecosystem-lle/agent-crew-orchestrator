@@ -393,11 +393,23 @@ const asVerdict = (review: PullRequestFacts["reviews"][number]): Verdict => {
  * classification is subtracted by. Same shape as {@link latestAttemptPerName} and for the
  * same reason: a group whose stamps cannot tell its items apart is kept whole, so an
  * unreadable payload refuses instead of picking a winner by luck.
+ *
+ * AN UNNAMED ITEM IS ITS OWN GROUP, and that is the same fail-closed rather than a
+ * detail of keying: grouping them all under one `"?"` would let the later verdict of one
+ * anonymous reviewer silently overtake the earlier verdict of a DIFFERENT one — a
+ * `CHANGES_REQUESTED` swallowed by somebody else's `APPROVED` is exactly what guard 1
+ * exists to prevent for named reviewers. Not reproducible today (the one reviewer is
+ * `github-actions`, always with a login); it is the boundary that answers wrongly if a
+ * payload ever arrives without one, which is when nobody would be looking.
  */
 const latestPerAuthor = <T>(items: readonly T[], read: (item: T) => Verdict): readonly T[] => {
   const byAuthor = new Map<string, T[]>();
+  let unnamed = 0;
   for (const item of items) {
-    const key = read(item).author ?? "?";
+    const author = read(item).author;
+    // Prefixed, so a login that reads like a generated key cannot land in someone
+    // else's group: the two halves of the key space never meet.
+    const key = author === undefined ? `unnamed:${unnamed++}` : `named:${author}`;
     const group = byAuthor.get(key);
     if (group === undefined) byAuthor.set(key, [item]);
     else group.push(item);

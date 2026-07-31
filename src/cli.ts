@@ -64,7 +64,7 @@ import {
   powerDocuments,
   unmatchedWorkingCards,
 } from "./merge/gate.js";
-import { ghPullRequestSchema } from "./merge/gh.js";
+import { ghPullRequestSchema, ghRefusalHint } from "./merge/gh.js";
 import {
   describeAge,
   parseNotifyState,
@@ -6999,16 +6999,19 @@ const zonesCheck = (argv: readonly string[]): void => {
  * runs to look at a PR, its authentication is the operator's, and reaching for the
  * REST API instead would put a token in the package's hands for no gain.
  *
- * AND THAT TOKEN NEEDS THE `checks` SCOPE — say it out loud, because the refusal is
- * observed and not hypothetical (the reviewer's finding on this very PR). Guard 2
- * reads `statusCheckRollup`, which GraphQL serves only to a token holding `checks:
- * read`. A personal token has it; a GitHub App installation token (`ghs_…`, what any
- * `gh-action` executor of this protocol runs with) has ONLY what its job's
- * `permissions:` block lists, and an unlisted scope is zeroed rather than defaulted.
- * The whole call then fails — `Resource not accessible by integration` — instead of
- * degrading, so a gate run from a job without `checks: read` answers nothing at all
- * rather than answering wrongly. The failure path below names the scope, because the
- * message GitHub sends does not.
+ * AND THAT TOKEN NEEDS SCOPES IT MAY NOT HAVE — the refusal is observed and not
+ * hypothetical (the reviewer's finding on this very PR). Guard 2 reads
+ * `statusCheckRollup`, which GraphQL serves only to a token holding `checks: read`, and
+ * `gh` asks inside it for `checkSuite.workflowRun`, which is ACTIONS and wants
+ * `actions: read`. A personal token has both; a GitHub App installation token (`ghs_…`,
+ * what any `gh-action` executor of this protocol runs with) has ONLY what its job's
+ * `permissions:` block lists — and, through `claude-code-action`, only what the token
+ * exchange asked for in `additional_permissions`; unlisted is zeroed, not defaulted. The
+ * whole call then fails — `Resource not accessible by integration` — instead of
+ * degrading, so a gate run from such a job answers nothing at all rather than answering
+ * wrongly. WHICH scope is missing the command does NOT declare: it prints the reason
+ * `gh` returned and reads the path GitHub named (`merge/gh.ts` → `ghRefusalHint`, where
+ * the cost of the declaring version is written down).
  *
  * AND `mergeable` IS COMPUTED LAZILY BY GITHUB: the first ask about a pull request
  * starts the job and answers `UNKNOWN`, the next one answers for real — on every open
@@ -7071,10 +7074,9 @@ const mergeGate = (argv: readonly string[]): void => {
     }
   } catch (error) {
     const message = (error as Error).message;
-    const scope = /not accessible by integration|statusCheckRollup/i.test(message)
-      ? " — `statusCheckRollup` needs a token with the `checks: read` scope; an installation token of a job that does not list it in `permissions:` has it zeroed"
-      : "";
-    fail(`PR #${number} was not read through gh: ${message}${scope}`, 2);
+    // The reason `gh` returned is the fact and is printed whole; the hint is a reading
+    // of it and says so (`ghRefusalHint` — why it stopped asserting a scope).
+    fail(`PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`, 2);
     return;
   }
 

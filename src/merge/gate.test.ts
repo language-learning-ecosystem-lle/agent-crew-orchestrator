@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   describeMergeGate,
   evaluateMergeGate,
+  latestVerdictPerAuthor,
   type PullRequestFacts,
   powerDocuments,
   threadOfDescription,
@@ -292,6 +293,101 @@ describe("guard 1 — one head answers more than once per reviewer (D4)", () => 
     expect(guard(pr({ reviews: [said("DISMISSED", "2026-07-31T03:33:07Z")] }), 1)?.state).toBe(
       "fail",
     );
+  });
+
+  /**
+   * THE ANONYMOUS BOUNDARY. Not reproducible against today's GitHub — the one reviewer
+   * is `github-actions` and always carries a login — which is exactly why it is pinned
+   * here: a payload without an author is the case nobody would be watching when it
+   * arrives (a deleted account, a system verdict), and grouping them together made the
+   * door fail OPEN.
+   */
+  it("an unnamed changes-requested is not overtaken by a LATER unnamed approve", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          {
+            state: "CHANGES_REQUESTED",
+            commitSha: HEAD,
+            author: undefined,
+            submittedAt: "2026-07-31T03:11:30Z",
+          },
+          {
+            state: "APPROVED",
+            commitSha: HEAD,
+            author: undefined,
+            submittedAt: "2026-07-31T03:33:07Z",
+          },
+        ],
+      }),
+      1,
+    );
+    expect(outcome?.state).toBe("fail");
+  });
+
+  it("but two rounds of the SAME named reviewer still resolve to the last one", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            said("CHANGES_REQUESTED", "2026-07-31T03:11:30Z"),
+            said("APPROVED", "2026-07-31T03:33:07Z"),
+          ],
+        }),
+        1,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("an unnamed verdict never joins a named reviewer's group either", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          {
+            state: "CHANGES_REQUESTED",
+            commitSha: HEAD,
+            author: undefined,
+            submittedAt: "2026-07-31T03:11:30Z",
+          },
+          said("APPROVED", "2026-07-31T03:33:07Z"),
+        ],
+      }),
+      1,
+    );
+    expect(outcome?.state).toBe("fail");
+  });
+});
+
+describe("latestVerdictPerAuthor — the grouping itself", () => {
+  const at = (state: string, author: string | undefined, submittedAt: string) => ({
+    state,
+    author,
+    at: Date.parse(submittedAt),
+  });
+
+  it("keeps every unnamed verdict — each is its own group, none overtakes another", () => {
+    const kept = latestVerdictPerAuthor([
+      at("CHANGES_REQUESTED", undefined, "2026-07-31T03:11:30Z"),
+      at("APPROVED", undefined, "2026-07-31T03:33:07Z"),
+    ]);
+    expect(kept).toHaveLength(2);
+  });
+
+  it("still collapses the rounds of one named reviewer to the last", () => {
+    const kept = latestVerdictPerAuthor([
+      at("CHANGES_REQUESTED", "github-actions", "2026-07-31T03:11:30Z"),
+      at("APPROVED", "github-actions", "2026-07-31T03:33:07Z"),
+    ]);
+    expect(kept.map((verdict) => verdict.state)).toEqual(["APPROVED"]);
+  });
+
+  /** The two halves of the key space are prefixed, so a login cannot land in the other. */
+  it("does not let a login that reads like a generated key join an unnamed group", () => {
+    const kept = latestVerdictPerAuthor([
+      at("CHANGES_REQUESTED", undefined, "2026-07-31T03:11:30Z"),
+      at("APPROVED", "unnamed:0", "2026-07-31T03:33:07Z"),
+    ]);
+    expect(kept).toHaveLength(2);
   });
 });
 
