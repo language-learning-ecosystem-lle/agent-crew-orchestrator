@@ -36,12 +36,15 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # subtracted from the DERIVED side only, and always printed
                               # guards 3 and 5 (a decision of john's behind the thread, a trace after
                               # the merge) are judgements and are printed as obligations, never as a pass
-                              # guard 2 reads 'statusCheckRollup': the token needs the 'checks' scope
+                              # guard 2 reads 'statusCheckRollup' — a token without 'checks: read'
+                              # (and 'actions: read', asked for inside it) is refused the whole call;
+                              # the command PRINTS what gh answered and only guesses at the scope
                               # and it judges the LAST attempt of each check name, by time — a rerun
                               # replaces the run it reran, both of which hang on the same head
                               # guard 1 judges the LAST verdict of each reviewer on that head, by
                               # 'submittedAt': a second round ending in approve is an approve, and an
-                              # approve overtaken by a later changes-requested still STOPS
+                              # approve overtaken by a later changes-requested still STOPS; a verdict
+                              # with NO author is its own group — anonymous ones never overtake
                               # a verdict OLDER THAN THE HEAD COMMIT is not an answer about it: a
                               # review submitted with no commit of its own (a 'workflow_dispatch' run
                               # of the review) is shown against the CURRENT head, so such an approve

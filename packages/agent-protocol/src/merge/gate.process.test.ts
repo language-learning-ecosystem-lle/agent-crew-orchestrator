@@ -218,7 +218,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(result.out).toContain("STOP guard 4");
   });
 
-  it("gh refusing the call is exit 2 with no verdict — and the checks scope is named", () => {
+  it("gh refusing the call is exit 2 with no verdict — and a scope is offered for it", () => {
     const repo = repoWithConfig();
     const result = run(
       repo,
@@ -231,6 +231,27 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(result.code).toBe(2);
     expect(result.out).toContain("checks: read");
     expect(result.out).not.toContain("guard 1");
+  });
+
+  /**
+   * THE WIRING OF THE HINT, not its reading (that is `gh.test.ts`): what the command
+   * hands `ghRefusalHint` is the message of `execFileSync`, which CARRIES THE ECHOED
+   * COMMAND LINE — and the command line contains the word `statusCheckRollup`. That is
+   * how the old test matched a refusal that had no scope in it at all, which is only
+   * visible with the real process on both ends.
+   */
+  it("a refusal that is not about a scope gets no scope hint — the reason gh gave is the answer", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        failWith: "GraphQL: Could not resolve to a Repository with the name 'lle/lle'.",
+      }),
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("Could not resolve to a Repository");
+    expect(result.out).not.toContain("scope");
   });
 
   it("a gh answer missing a field the verdict is computed from is refused by name", () => {

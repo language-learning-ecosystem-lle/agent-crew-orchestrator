@@ -1,5 +1,6 @@
 /**
- * THE EXTERNAL BOUNDARY OF THE MERGE GATE: what `gh pr view --json` answers.
+ * THE EXTERNAL BOUNDARY OF THE MERGE GATE: what `gh pr view --json` answers — and, at
+ * the foot of the file, how its REFUSAL is read when it answers nothing.
  *
  * Not strict, on purpose — this is somebody else's payload and it grows: a new field
  * in `gh` must not turn into a refusal here. What IS pinned is every field the
@@ -70,3 +71,39 @@ export const ghPullRequestSchema = z.looseObject({
 });
 
 export type GhPullRequest = z.infer<typeof ghPullRequestSchema>;
+
+/**
+ * WHAT A REFUSAL OF `gh` PROBABLY MEANS — printed as a guess, never as the cause.
+ *
+ * The note this replaces asserted one: "`statusCheckRollup` needs a token with the
+ * `checks: read` scope". It was wrong in both directions, measured, and both cost real
+ * rounds (thread 026).
+ *
+ * WRONG SCOPE: three rounds in a row (#108, #109, #112) the diagnosis went to `checks`,
+ * which the token already had — the field GraphQL actually refused was
+ * `checkSuite.workflowRun`, an ACTIONS resource. The path GitHub names in its own
+ * message said so every time; our text talked over it.
+ *
+ * WRONG REFUSAL: the old test also matched the word `statusCheckRollup`, which appears in
+ * the ECHOED COMMAND LINE of every failure — so a `Could not resolve to a Repository`
+ * (the wrong `gh` account being active, a 404 with no scope in it at all) was explained by
+ * a missing scope too. Six refusals in one round of curator's, all diagnosed wrongly.
+ *
+ * So the hint fires only on the refusal that IS scope-shaped, it reads the path GitHub
+ * named instead of assuming one, and where the path does not decide it offers both
+ * candidates. The reason `gh` returned is printed by the caller either way: that is the
+ * fact, and this is only a reading of it.
+ */
+export const ghRefusalHint = (message: string): string => {
+  if (!/not accessible by integration/i.test(message)) return "";
+  const path = /not accessible by integration\s*\(([^)]*)\)/i.exec(message)?.[1]?.trim();
+  const named = path === undefined || path.length === 0 ? undefined : path;
+  const scope =
+    named !== undefined && /workflowRun|checkSuite/i.test(named)
+      ? "an Actions resource — `actions: read`"
+      : named !== undefined && /statusCheckRollup|commit/i.test(named)
+        ? "a Checks resource — `checks: read`"
+        : "likely `checks: read` or `actions: read`";
+  const where = named === undefined ? "the path it refused" : `\`${named}\``;
+  return ` — GitHub refuses a resource by name, not a token by scope: ${where} is ${scope}. A guess and not the cause: an installation token carries only what its job's \`permissions:\` lists, and \`claude-code-action\` exchanges only what \`additional_permissions\` asks for — unlisted is zeroed, not defaulted. Read the path above before adding a scope`;
+};
