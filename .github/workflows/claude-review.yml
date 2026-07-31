@@ -127,8 +127,25 @@ jobs:
           # состоится вовсе. Если у установки приложения нет `checks`, обмен
           # откажет и джоба упадёт громко на первом же круге ревью после merge —
           # тогда откат этих строк возвращает прежнее поведение целиком.
+          #
+          # ЧТО ИЗ ЭТОГО СБЫЛОСЬ, ИЗМЕРЕНО ФАКТОМ (тред 026, 4.4; прогон 30617709963,
+          # артефакт `reviewer-execution-112-30617709963`): обмен НЕ отказал и джоба НЕ
+          # упала — `checks: read` до app-токена доехал. В том же прогоне рукой ревьюера:
+          #   • `GET /commits/{sha}/check-runs` → 200, `total_count: 3` (репозиторий
+          #     ПРИВАТНЫЙ, значит скоуп `checks` у токена есть, иначе был бы 403);
+          #   • `GET /commits/{sha}/status` → 403 (это `statuses`, отдельный скоуп);
+          #   • `gh pr view --json statusCheckRollup` → GraphQL-отказ РОВНО на подполе
+          #     `...statusCheckRollup.contexts.nodes.N.checkSuite.workflowRun` — это
+          #     ресурс Actions, а не Checks.
+          # Отсюда `actions: read` ниже: у ДЖОБЫ он есть (`permissions:` выше), но
+          # app-токен наследует не права джобы, а РОВНО запрошенное здесь — обмен шлёт
+          # этот блок как есть (`claude-code-action/src/github/token.ts`,
+          # `parseAdditionalPermissions` → тело обмена). Одного `checks: read` не хватало
+          # не потому, что его не выдали, а потому, что `gh` в этом запросе трогает ещё и
+          # Actions.
           additional_permissions: |
             checks: read
+            actions: read
           prompt: |
             REPO: ${{ github.repository }}
             PR: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
