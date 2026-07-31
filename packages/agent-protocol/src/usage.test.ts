@@ -308,6 +308,21 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
   ["orchestrator down", ["--stop-flag", "/tmp/stop", "--pid-file", "/tmp/daemon.pid"]],
   ["orchestrator hold", ["curator", "--by", "john", "--ttl", "3600", "--note", "acceptance"]],
   ["orchestrator resume", ["curator", "--holds", "/tmp/holds"]],
+  // `config set` takes TWO bare words (the key and its value) — the shape `agent <kind>`
+  // needs, and the one thing about this line the guard could get wrong silently.
+  [
+    "config set",
+    [
+      "instance",
+      "lle-agents",
+      "--ref",
+      "origin/main",
+      "--local-config",
+      "/tmp/local.json",
+      "--write",
+    ],
+  ],
+  ["config set", ["agent", "claude-code", "--exec", "/usr/local/bin/claude"]],
 ];
 
 /**
@@ -437,6 +452,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       // `init --write` commissions THIS BOX: the machine config and the mail worktree,
       // both machine-local — the word means "do it", as it does for 'orchestrator run'.
       boxInit: "'init'",
+      // `config set --write` writes ONE key of the same machine-local file `init`
+      // writes; without it the change is decided, judged and printed and the file is
+      // not opened for writing at all.
+      configSet: "'config set'",
     };
     expect([...reading].filter((name) => named[name] === undefined)).toEqual([]);
     // Bounded at the next section: past it, tokens like "record" or "hold" match the

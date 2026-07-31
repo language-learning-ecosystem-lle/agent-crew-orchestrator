@@ -14,8 +14,25 @@
  * program. Hence this module: the text is importable without the entry point coming
  * along with it (`usage.test.ts` is what reads it).
  */
-export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor', 'init' and the operator's five below; --repo defaults to the repository of the current directory):
+export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor', 'init', 'config set' and the operator's five below; --repo defaults to the repository of the current directory):
   agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
+  agent-protocol config set   <key> <value> [--exec <path>] [--ref <ref>] [--local-config <p>] [--write]
+                              # ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019): the
+                              # commissioned box whose agent binary moved, whose operator is
+                              # somebody else now, whose secrets file was moved off /root —
+                              # without opening the JSON by hand
+                              # <key>: 'instance <id>', 'operator <role>', 'secrets <path>',
+                              # 'agent <kind> --exec <path>'. A POLICY key ('roles', 'limits',
+                              # 'instances', …) is refused BY THE RULE, not as a typo: it lives
+                              # in the repository config, behind a PR
+                              # THE CHECK RUNS BEFORE THE WRITE, which is the whole of it: the
+                              # value is judged in the words 'init' uses (an undeclared instance
+                              # is a bench, an operator that is no role signs no hold), and the
+                              # RESULT is re-parsed by the strict schema — a file this command
+                              # writes cannot be one this package refuses to read afterwards
+                              # WITHOUT --write it decides and prints and touches nothing; a
+                              # value already there is a 'keep' and is not rewritten even with it
+                              # --ref may be left out (the operator's set): 'orchestrator.ref'
   agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
                               # IS THIS BOX COMMISSIONED (thread 019, the operator tail): the
                               # checklist of a machine that is supposed to raise roles unattended —
@@ -181,6 +198,9 @@ each for a stated reason:
     above names: on a box with no mail checkout yet, asking whether the instance id is
     already published FETCHES the mail branch ('origin/<branch>' moves on this disk,
     nothing else does), and the summary line says so; '--offline' declines the read;
+  · 'config set' — the same file as 'init', one key of it, and the word means the same
+    thing: without it the change is decided, judged against the repository config and
+    printed, and the file keeps every byte it had;
   · 'orchestrator systemd install' — the unit FILE of this box, written under the
     operator's systemd directory: there is nothing to deliver and nothing to enable
     either. The two commands that would ('systemctl --user enable', 'loginctl

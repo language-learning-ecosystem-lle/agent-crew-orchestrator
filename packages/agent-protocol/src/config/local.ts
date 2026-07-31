@@ -132,7 +132,7 @@ export type LocalConfig = z.infer<typeof localConfigSchema>;
  * a machine would mean a box quietly running with permissions or ceilings nobody
  * reviewed, which is the exact thing the config was moved into `main` to prevent.
  */
-const POLICY_KEYS = [
+export const POLICY_KEYS = [
   "roles",
   "mail",
   "orchestrator",
