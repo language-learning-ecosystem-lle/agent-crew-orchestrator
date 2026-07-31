@@ -29,6 +29,11 @@
  * with a migration step registered for the previous version (see `schema/migrate.ts`)
  * and with the `protocolVersion` of the config in the same PR — otherwise the
  * circuit halts on its own repository.
+ *
+ * AND IT IS BUMPED WHENEVER A FIELD OF THE CONFIG APPEARS — the half that used to be a
+ * habit and is now a check (`schema/shape.ts`): a field added at an unchanged number is
+ * met by an older build as `Unrecognized key` instead of "restart required", which is how
+ * a live daemon died on 2026-07-31.
  */
 export const CURRENT_PROTOCOL_VERSION = 14;
 
