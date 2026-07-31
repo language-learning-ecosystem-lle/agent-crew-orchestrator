@@ -272,7 +272,9 @@ export {
 } from "./thread/migrate.js";
 export {
   declaredWaitingOn,
+  type ParkedOn,
   type Parking,
+  parkedOnKind,
   parkedOnOf,
   parkingOf,
   parseLegacyThread,

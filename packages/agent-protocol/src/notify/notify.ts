@@ -280,6 +280,16 @@ export const planNotifications = (input: {
   readonly stalled?: readonly StalledTurn[];
   /** Threads frozen behind a person (R27) — no threshold: the caller reads the feed, this picks. */
   readonly parked?: readonly ParkedThread[];
+  /**
+   * Threads frozen behind an EVENT rather than a person (R27, variant A of thread 023):
+   * parked on the merge of a PR. They produce NO LINE AT ALL — neither a call ("your
+   * decision is wanted" is false: the decision was made, the merge is somebody's hand on a
+   * button) nor a stall ("nobody is moving this" is false too: it moves the moment the merge
+   * lands and the notifier's message lifts the park). The one thing the courier owes such a
+   * thread is silence, and it has to be said here, because on the age alone it looks exactly
+   * like a dead turn.
+   */
+  readonly frozen?: readonly string[];
   readonly templates?: Partial<Record<NotificationKind, string>>;
 }): NotificationPlan => {
   const byRole = new Map(input.targets.map((target) => [target.id, target]));
@@ -299,7 +309,11 @@ export const planNotifications = (input: {
   // the turn is not moving, by construction — but "your decision is wanted, here is the
   // question" and "nobody is moving this" are opposite instructions, and it was the second
   // one, printed about threads the circuit was chewing, that made the digest unreadable.
-  const told = new Set([...waiting.map((pair) => pair.thread), ...parked.map((p) => p.thread)]);
+  const told = new Set([
+    ...waiting.map((pair) => pair.thread),
+    ...parked.map((p) => p.thread),
+    ...(input.frozen ?? []),
+  ]);
   const stalled = [...(input.stalled ?? [])]
     .filter((turn) => !told.has(turn.thread))
     .sort((a, b) => a.thread.localeCompare(b.thread));

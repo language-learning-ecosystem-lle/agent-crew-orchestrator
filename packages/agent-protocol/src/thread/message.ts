@@ -304,6 +304,17 @@ export type MessageFields = {
    */
   readonly parkedOn?: string;
   /**
+   * THE MERGE THIS MESSAGE ANNOUNCES (thread 023) — the number of a PR that has just landed
+   * in the default branch. Written by the merge notifier, read by `parkingOf`: a thread
+   * parked on `pr:<n>` lifts on the message that says this number, and on nothing else.
+   *
+   * A field rather than a phrase in the body, because the body of that notification is prose
+   * for a human and a park that lifts by pattern-matching prose is a park that one day does
+   * not lift. It is the only fact of the message that the reader of an append-only feed has
+   * to be able to trust.
+   */
+  readonly mergedPr?: number;
+  /**
    * TASKS DECLARED OR MOVED by this message (thread 021) — the one source the board is
    * derived from. Repeatable: one message opens and moves several at once.
    */
@@ -322,6 +333,19 @@ const FENCE = "---";
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const ROLE = /^[a-z][a-z0-9-]*$/;
+
+/**
+ * THE OTHER THING A TURN CAN BE FROZEN BEHIND: an EVENT (thread 023, variant A of john's
+ * decision) — today exactly one, the merge of a pull request, written `pr:127`.
+ *
+ * A namespaced token rather than a bare number, and rather than a second field beside
+ * `parked-on`: the two parks are the same state (the turn is here and cannot move) and differ
+ * only in what releases them, so they belong in one field a reader can answer "what is this
+ * waiting for?" from. The prefix is what keeps the door open for a second kind of event
+ * without promising one — a role id can never collide with it, and nothing has to be renamed
+ * the day something else becomes observable to the circuit.
+ */
+const PARK_EVENT = /^pr:\d+$/;
 /** The shape of a worker id — the same one a role id has: an open vocabulary, a fixed spelling. */
 const WORKER = /^[a-z][a-z0-9-]*$/;
 /**
@@ -506,14 +530,24 @@ export const parseMessageFile = (raw: string): Message => {
     );
   }
 
-  // `parked-on` is a ROLE NAME and nothing else — the check that it names a human
-  // (`wake.mode: 'self'`) needs the config and lives at the writing door, where the config is
-  // in hand and a refusal can still be acted on. A reader of an append-only feed cannot fix
-  // what is already written, so here the demand is only that the value be a role-shaped token.
+  // `parked-on` is a ROLE NAME or an EVENT and nothing else — the check that a role here
+  // names a human (`wake.mode: 'self'`) needs the config and lives at the writing door, where
+  // the config is in hand and a refusal can still be acted on. A reader of an append-only feed
+  // cannot fix what is already written, so here the demand is only on the SHAPE of the value.
   const parkedOn = raws.get("parked-on");
-  if (parkedOn !== undefined && !ROLE.test(parkedOn)) {
-    throw new MessageFormatError(`'parked-on: ${parkedOn}' — expected the id of a role`);
+  if (parkedOn !== undefined && !ROLE.test(parkedOn) && !PARK_EVENT.test(parkedOn)) {
+    throw new MessageFormatError(
+      `'parked-on: ${parkedOn}' — expected the id of a role or an event ('pr:<number>')`,
+    );
   }
+
+  // The fact that LIFTS an event park, and the only one the courier of merges can state:
+  // "PR N is in the default branch now". A number, because that is what the notifier has.
+  const mergedPrRaw = raws.get("merged-pr");
+  if (mergedPrRaw !== undefined && !/^\d+$/.test(mergedPrRaw)) {
+    throw new MessageFormatError(`'merged-pr: ${mergedPrRaw}' — expected the number of a PR`);
+  }
+  const mergedPr = mergedPrRaw === undefined ? undefined : Number(mergedPrRaw);
 
   const tasks = (repeated.get("task") ?? []).map(parseTaskDeclaration);
 
@@ -529,6 +563,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(launch === undefined ? {} : { launch }),
     ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
     ...(parkedOn === undefined ? {} : { parkedOn }),
+    ...(mergedPr === undefined ? {} : { mergedPr }),
     ...(tasks.length === 0 ? {} : { tasks }),
     ...(suffix === undefined ? {} : { suffix }),
   };
@@ -571,6 +606,9 @@ export const renderMessageFile = (message: Message): string => {
     // Right after `waiting-on`'s neighbours, because it qualifies the turn itself: whose it
     // is, and whether it can move at all before a person says something.
     ...(fields.parkedOn === undefined ? [] : [`parked-on: ${fields.parkedOn}`]),
+    // Beside `parked-on` because it is its counterpart: one freezes a turn behind an event,
+    // this one says the event happened.
+    ...(fields.mergedPr === undefined ? [] : [`merged-pr: ${fields.mergedPr}`]),
     // Last of the meaningful fields and repeatable: the declarations read as a block,
     // and a block that grows downwards leaves every field above it where it was.
     ...(fields.tasks ?? []).map((task) => `task: ${renderTaskDeclaration(task)}`),

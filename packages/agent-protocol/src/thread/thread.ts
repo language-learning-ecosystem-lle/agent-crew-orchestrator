@@ -291,7 +291,33 @@ export const waitingOnOf = (thread: Thread): string | undefined => {
  *
  * `status: closed` outranks it, as it outranks the turn: a closed thread waits for nobody.
  */
-export const parkedOnOf = (thread: Thread): string | undefined => parkingOf(thread)?.person;
+export const parkedOnOf = (thread: Thread): string | undefined => {
+  const parking = parkingOf(thread);
+  if (parking === undefined) return undefined;
+  return parking.kind === "person" ? parking.person : `pr:${parking.pr}`;
+};
+
+/** WHAT a raw `parked-on` value names — a person, or the merge of a PR. */
+export type ParkedOn =
+  | { readonly kind: "person"; readonly person: string }
+  | { readonly kind: "event"; readonly pr: number };
+
+/**
+ * THE ONE PARSER OF THE FIELD, for every reader that prints a park.
+ *
+ * The value has two legal forms and they must not be said in the same words: a line calling a
+ * merge "a decision of pr:127" sends the reader looking for a participant by that name. Which
+ * is a small thing until the phrase is built in more than one place — the first round of this
+ * change taught it (reviewer, thread 023): the tick's skip line learned to tell a merge from a
+ * person by a regex of its own, and the queue line of the very same state, drawn from the very
+ * same map, kept announcing "a decision of pr:127" in the operator's frame and in the daemon's
+ * log. The wording of the two lines differs by design — one is a queue row, the other explains
+ * a skip — the READING of the field does not, and lives here.
+ */
+export const parkedOnKind = (raw: string): ParkedOn => {
+  const event = /^pr:(\d+)$/.exec(raw);
+  return event === null ? { kind: "person", person: raw } : { kind: "event", pr: Number(event[1]) };
+};
 
 /**
  * The park with the facts around it: WHO it waits for, SINCE when, and WHAT is being asked.
@@ -301,7 +327,18 @@ export const parkedOnOf = (thread: Thread): string | undefined => parkingOf(thre
  * digest unreadable — 8 lines of 10 were threads nobody had to touch.
  */
 export type Parking = {
-  readonly person: string;
+  /**
+   * WHAT the turn is frozen behind: a PERSON whose decision is wanted, or an EVENT the
+   * circuit will see happen (thread 023, variant A of john's decision). The two are one
+   * state and differ in exactly one thing — who lifts them — which is why they share the
+   * field, and in exactly one more — whether the courier calls a human, which is why the
+   * reader has to be able to tell them apart without parsing the value again.
+   */
+  readonly kind: "person" | "event";
+  /** The person of a `kind: "person"` park — the role named in the field. */
+  readonly person?: string;
+  /** The PR of a `kind: "event"` park: the merge that lifts it. */
+  readonly pr?: number;
   /** The stamp of the message that declared it — the identity of the event, not of the thread. */
   readonly since: string;
   /** The first line of the parking message: the question, in the words it was asked in. */
@@ -310,12 +347,28 @@ export type Parking = {
 
 export const parkingOf = (thread: Thread): Parking | undefined => {
   if (thread.meta.status === "closed") return undefined;
+  // The merges announced AFTER the park would be — the scan runs backwards, so they are met
+  // first, and an event park is compared against the set the moment it is found.
+  const merged = new Set<number>();
   for (let at = thread.messages.length - 1; at >= 0; at--) {
     const message = thread.messages[at];
     if (message === undefined) continue;
-    const person = message.fields.parkedOn;
-    if (person !== undefined) {
-      return { person, since: message.fields.date, question: questionOf(message.text) };
+    const mergedPr = message.fields.mergedPr;
+    if (mergedPr !== undefined) merged.add(mergedPr);
+    const on = message.fields.parkedOn;
+    if (on !== undefined) {
+      const since = message.fields.date;
+      const question = questionOf(message.text);
+      const named = parkedOnKind(on);
+      if (named.kind === "person") return { kind: "person", person: on, since, question };
+      const { pr } = named;
+      // THE ONE PARK THAT LIFTS WITHOUT A PERSON (thread 023): the merge notifier's message
+      // names the PR (`merged-pr`), and that is the answer arriving. It has `expects: none`
+      // like every other announcement, so the rule above ("informational does not lift")
+      // would hold it frozen forever — the thread would wait for a human to relay a fact the
+      // circuit already delivered, which is the whole cost this park exists to avoid.
+      if (merged.has(pr)) return undefined;
+      return { kind: "event", pr, since, question };
     }
     if (message.fields.expects === "none") continue;
     return undefined;

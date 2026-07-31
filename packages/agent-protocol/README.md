@@ -648,7 +648,7 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person>] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N>] [--merged-pr <n>] [--write] [--no-push]
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
@@ -664,6 +664,13 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # person decides (R27) — the pair is not raised and spends nothing; it lifts by
                             # itself with the next substantive message in the thread. Only a role the circuit
                             # cannot wake (`wake.mode: 'self'`) may be named
+                            # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (thread 023) — the
+                            # MERGE of a pull request rather than a person's decision. The courier says
+                            # NOTHING about such a thread (neither a call nor a stall: the decision has been
+                            # made, what is left is somebody's hand on a button), and it lifts on the merge
+                            # notifier's message rather than on a human relaying the fact
+                            # --merged-pr <n>: this message announces that PR as landed — every thread parked
+                            # on `pr:<n>` lifts on it, though the announcement is `expects: none`
 agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                             # blocks until the thread waits on the role again; needs a wait declared
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out

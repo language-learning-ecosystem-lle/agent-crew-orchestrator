@@ -5,6 +5,7 @@ import type { Message } from "./message.js";
 import { migrateLegacyThread, verifyMigration } from "./migrate.js";
 import {
   declaredWaitingOn,
+  parkedOnKind,
   parkedOnOf,
   parkingOf,
   parseLegacyThread,
@@ -327,6 +328,32 @@ describe("parkedThreads — what the planner is told (R27)", () => {
     const threads = [thread("023-a", "john")];
     expect(threadsWaitingOn(threads, "curator")).toEqual(["023-a"]);
   });
+
+  it("carries an EVENT park raw, so the readers can word it as a merge (thread 023)", () => {
+    const map = parkedThreads([thread("023-a", "pr:127"), thread("025-b", "john")]);
+    expect([...map]).toEqual([
+      ["023-a", "pr:127"],
+      ["025-b", "john"],
+    ]);
+  });
+});
+
+describe("parkedOnKind — the one reading of the field (thread 023)", () => {
+  it("a role id is a person", () => {
+    expect(parkedOnKind("john")).toEqual({ kind: "person", person: "john" });
+  });
+
+  it("'pr:N' is the merge that lifts the park", () => {
+    expect(parkedOnKind("pr:127")).toEqual({ kind: "event", pr: 127 });
+  });
+
+  it("only the exact form is an event — a person is never guessed away", () => {
+    // The namespace is a prefix of a WHOLE value: 'pr:12x' and 'pr-reviewer' are names, and a
+    // reader that half-matched them would announce a merge of a PR that does not exist.
+    expect(parkedOnKind("pr:12x").kind).toBe("person");
+    expect(parkedOnKind("pr-reviewer").kind).toBe("person");
+    expect(parkedOnKind("pr:").kind).toBe("person");
+  });
 });
 
 describe("parkingOf — the facts the courier to the human needs (thread 023)", () => {
@@ -349,6 +376,7 @@ describe("parkingOf — the facts the courier to the human needs (thread 023)", 
 
   it("names the person, the stamp of the parking message and its first line", () => {
     expect(parkingOf(thread("**Перезапустить демон?**\n\nПодробности ниже."))).toEqual({
+      kind: "person",
       person: "john",
       since: "2026-07-31T11:08:20Z",
       question: "Перезапустить демон?",
@@ -365,5 +393,65 @@ describe("parkingOf — the facts the courier to the human needs (thread 023)", 
     const long = questionOf("ы".repeat(400));
     expect(long.length).toBeLessThanOrEqual(140);
     expect(long.endsWith("…")).toBe(true);
+  });
+});
+
+describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
+  const message = (fields: Partial<Message["fields"]>, text = "тело"): Message => ({
+    fields: {
+      from: "dev-core",
+      date: "2026-07-31T12:00:00Z",
+      expects: "answer",
+      waitingOn: "dev-core",
+      ...fields,
+    } as Message["fields"],
+    text,
+  });
+  const thread = (messages: readonly Message[]): Thread => ({
+    id: "023-x",
+    meta: { title: "t", participants: ["curator", "dev-core"], status: "open" },
+    messages,
+  });
+
+  it("names the PR the turn waits for, not a person", () => {
+    expect(
+      parkingOf(thread([message({ parkedOn: "pr:127" }, "Жду merge #127.\n\nдалее")])),
+    ).toEqual({
+      kind: "event",
+      pr: 127,
+      since: "2026-07-31T12:00:00Z",
+      question: "Жду merge #127.",
+    });
+  });
+
+  it("the merge notifier lifts it, though the announcement is informational", () => {
+    const parked = message({ parkedOn: "pr:127" });
+    const merged = message(
+      { from: "github", expects: "none", date: "2026-07-31T12:30:00Z", mergedPr: 127 },
+      "PR #127 merged",
+    );
+    expect(parkingOf(thread([parked, merged]))).toBeUndefined();
+  });
+
+  it("somebody else's merge lifts nothing", () => {
+    const parked = message({ parkedOn: "pr:127" });
+    const merged = message(
+      { from: "github", expects: "none", date: "2026-07-31T12:30:00Z", mergedPr: 129 },
+      "PR #129 merged",
+    );
+    expect(parkingOf(thread([parked, merged]))?.pr).toBe(127);
+  });
+
+  it("an announcement BEFORE the park does not lift it — a park is a later statement", () => {
+    const merged = message(
+      { from: "github", expects: "none", date: "2026-07-31T11:00:00Z", mergedPr: 127 },
+      "PR #127 merged",
+    );
+    const parked = message({ parkedOn: "pr:127" });
+    expect(parkingOf(thread([merged, parked]))?.kind).toBe("event");
+  });
+
+  it("parkedOnOf keeps the raw value, so the skip line can tell the two apart", () => {
+    expect(parkedOnOf(thread([message({ parkedOn: "pr:127" })]))).toBe("pr:127");
   });
 });

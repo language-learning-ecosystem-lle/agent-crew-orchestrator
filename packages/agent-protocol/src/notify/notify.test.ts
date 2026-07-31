@@ -338,3 +338,34 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
   });
 });
+
+describe("a thread frozen behind an EVENT — the class that gets no line at all (thread 023)", () => {
+  it("a merge the thread waits for is neither a call to john nor a stall", () => {
+    // The one instruction the courier owes such a thread is silence: the decision behind it
+    // has been made, and "nothing is moving this" would be false the moment the merge lands.
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: EMPTY,
+      stalled: [{ thread: "023-x", role: "dev-core", since: "2026-07-31T09:00:00Z", age: "5 h" }],
+      frozen: ["023-x"],
+      templates: TEMPLATES,
+    });
+
+    expect(result.stalled).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("a thread NOT frozen still stalls — the silence is about the park, not about the pass", () => {
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: EMPTY,
+      stalled: [{ thread: "025-y", role: "dev-core", since: "2026-07-31T09:00:00Z", age: "5 h" }],
+      frozen: ["023-x"],
+      templates: TEMPLATES,
+    });
+
+    expect(result.stalled.map((turn) => turn.thread)).toEqual(["025-y"]);
+  });
+});
