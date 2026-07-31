@@ -325,7 +325,7 @@ import {
   type TaskThreadInput,
   tasksFrom,
 } from "./thread/tasks.js";
-import { renderThread, waitingOnOf } from "./thread/thread.js";
+import { parkingOf, renderThread, waitingOnOf } from "./thread/thread.js";
 import {
   messageTimestamp,
   nextMessageTimestamp,
@@ -1462,10 +1462,21 @@ const priorityFrom = (
  */
 const parkedOnFrom = (
   argv: readonly string[],
-  input: { readonly registry: RoleRegistry },
+  input: { readonly registry: RoleRegistry; readonly expects: Expects },
 ): string | undefined => {
   const value = flag(argv, "--parked-on");
   if (value === undefined) return undefined;
+  if (input.expects === "none") {
+    // The reader honours a park declared this way (`parkingOf`), so nothing already in
+    // the feed is lost — but the two words point opposite ways: `expects: none` says "this
+    // message asks nobody for anything", and a park says "this thread is waiting for a
+    // person". Written together they read as a park that informational traffic may lift,
+    // which is precisely the shape that cost two empty sessions in thread 034.
+    return fail(
+      `--parked-on '${value}' with --expects none — an informational message asks nobody for anything, and a park says the thread is waiting for a person. Park with the message that carries the question ('--expects answer')`,
+      2,
+    );
+  }
   if (!input.registry.isKnown(value)) {
     return fail(`--parked-on '${value}' is not listed in the config`, 2);
   }
@@ -1582,7 +1593,7 @@ const newMessage = (argv: readonly string[]): void => {
   const expects = parseExpects(required(argv, "--expects"));
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
-  const parkedOn = parkedOnFrom(argv, { registry });
+  const parkedOn = parkedOnFrom(argv, { registry, expects });
   const tasks = tasksFor(argv, { from, thread: threadId, registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
@@ -2179,6 +2190,21 @@ const runNotify = async (input: {
   // circuit, and nothing else in the package would say so.
   const stalledAfter = loaded.config.notifications?.stalledAfterMinutes ?? 180;
   const now = Date.now();
+  // THE THIRD QUESTION, and the one with no threshold at all (thread 023): "what is frozen
+  // behind a person, and what is being asked". The age answers neither — a park is a
+  // declaration that the turn CANNOT move, so waiting it out only postpones the call.
+  const parked = parsed.flatMap((thread) => {
+    const parking = parkingOf(thread);
+    if (parking === undefined) return [];
+    return [
+      {
+        thread: thread.id,
+        person: parking.person,
+        since: parking.since,
+        question: parking.question,
+      },
+    ];
+  });
   const stalled = parsed.flatMap((thread) => {
     const holder = waitingOnOf(thread);
     if (holder === undefined) return [];
@@ -2191,12 +2217,13 @@ const runNotify = async (input: {
 
   const seen = existsSync(statePath)
     ? parseNotifyState(readFileSync(statePath, "utf8"))
-    : { waiting: [], stalled: [] };
+    : { waiting: [], stalled: [], parked: [] };
   const plan = planNotifications({
     targets,
     waiting,
     seen,
     stalled,
+    parked,
     ...(loaded.config.notifications?.templates === undefined
       ? {}
       : { templates: loaded.config.notifications.templates }),
@@ -2204,6 +2231,7 @@ const runNotify = async (input: {
   const message = renderNotification(plan.lines);
 
   const describeWaits =
+    `${plan.parked.length} parked, ${plan.freshParked.length} of them new; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new`;
   if (!write) {
@@ -2244,11 +2272,15 @@ const runNotify = async (input: {
   // branch below rather than once up here. NOTHING TO ANNOUNCE IS ITSELF a confirmed
   // outcome: this is where a pair that has STOPPED waiting is forgotten, and forgetting
   // it is what makes the same thread ring again if it comes back to waiting later.
-  if (plan.fresh.length === 0 && plan.freshStalled.length === 0) {
-    writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
+  if (plan.fresh.length === 0 && plan.freshStalled.length === 0 && plan.freshParked.length === 0) {
+    writeOut(
+      statePath,
+      renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+    );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
   }
   const announced = [
+    ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
   ];
@@ -2260,7 +2292,10 @@ const runNotify = async (input: {
     // something was delivered would not be.
     say("no transport configured (notifications.transport) — the message follows:");
     say(message);
-    writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
+    writeOut(
+      statePath,
+      renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+    );
     return { kind: "sent", summary, lines: said };
   }
   const outcome = await transport.send(message);
@@ -2282,7 +2317,10 @@ const runNotify = async (input: {
     say(`${outcome.detail} — nothing was announced, the state is unchanged`);
     return { kind: "quiet", summary: `${describeWaits} — nothing was announced`, lines: said };
   }
-  writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
+  writeOut(
+    statePath,
+    renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+  );
   say(outcome.detail);
   return { kind: "sent", summary, lines: said };
 };

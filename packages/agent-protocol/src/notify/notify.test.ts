@@ -10,6 +10,7 @@ import type { NotificationTarget } from "../roles/registry.js";
 import {
   describeAge,
   type NotifyState,
+  type ParkedThread,
   parseNotifyState,
   planNotifications,
   renderAnnouncement,
@@ -30,13 +31,13 @@ const TEMPLATES = {
   nudge: "🔔 тред {thread} ждёт {role} — дёрни его ({via})",
 } as const;
 
-const EMPTY: NotifyState = { waiting: [], stalled: [] };
+const EMPTY: NotifyState = { waiting: [], stalled: [], parked: [] };
 
 const plan = (waiting: readonly WaitingPair[], seen: readonly WaitingPair[] = []) =>
   planNotifications({
     targets: TARGETS,
     waiting,
-    seen: { waiting: seen, stalled: [] },
+    seen: { waiting: seen, stalled: [], parked: [] },
     templates: TEMPLATES,
   });
 
@@ -141,7 +142,7 @@ describe("the state file", () => {
       { role: "john", thread: "b" },
     ];
 
-    const state = { waiting: pairs, stalled: [] };
+    const state = { waiting: pairs, stalled: [], parked: [] };
 
     expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
   });
@@ -175,7 +176,7 @@ describe("a turn that has not moved — the second class of event (thread 024)",
 
   it("does not repeat a stall it has already announced", () => {
     const first = withStall([STALLED]);
-    const again = withStall([STALLED], { waiting: [], stalled: first.stalled });
+    const again = withStall([STALLED], { waiting: [], stalled: first.stalled, parked: [] });
 
     expect(again.freshStalled).toEqual([]);
     expect(again.lines).toHaveLength(1); // still SAID, only not counted as new
@@ -186,6 +187,7 @@ describe("a turn that has not moved — the second class of event (thread 024)",
     const later = withStall([{ ...STALLED, since: "2026-07-28T14:00:00Z", age: "3h" }], {
       waiting: [],
       stalled: first.stalled,
+      parked: [],
     });
 
     expect(later.freshStalled).toHaveLength(1);
@@ -205,12 +207,17 @@ describe("a turn that has not moved — the second class of event (thread 024)",
   });
 
   it("the state file carries stalls beside waits, and an old two-column file still parses", () => {
-    const state = { waiting: [{ role: "john", thread: "b" }], stalled: [{ ...STALLED, age: "" }] };
+    const state = {
+      waiting: [{ role: "john", thread: "b" }],
+      stalled: [{ ...STALLED, age: "" }],
+      parked: [],
+    };
 
     expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
     expect(parseNotifyState("john\tb\n")).toEqual({
       waiting: [{ role: "john", thread: "b" }],
       stalled: [],
+      parked: [],
     });
   });
 });
@@ -243,5 +250,91 @@ describe("announcements — the same mechanism, a thread as the reader", () => {
         variables: { thread: "016-x", by: "john", reason: "quota" },
       }),
     ).toBe("The session on thread 016-x was force-stopped (by john): quota");
+  });
+});
+
+describe("a thread frozen behind a person — the third class of event (thread 023)", () => {
+  const PARKED = {
+    thread: "023-x",
+    person: "john",
+    since: "2026-07-31T11:08:20Z",
+    question: "Перезапустить демон и посмотреть, встал ли скип parked?",
+  };
+  const PARK_TEMPLATE = { ...TEMPLATES, parked: "❓ {thread} ждёт твоего решения: {question}" };
+
+  const withPark = (parked: readonly ParkedThread[], seen: NotifyState = EMPTY, rest = {}) =>
+    planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen,
+      parked,
+      templates: PARK_TEMPLATE,
+      ...rest,
+    });
+
+  it("rings with NO age threshold, and the line carries the question", () => {
+    // The live case behind the requirement: a park written at 11:08 would have stayed
+    // silent until 14:08 under the age rule — the watchdog read nothing but the age.
+    const result = withPark([PARKED]);
+
+    expect(result.freshParked).toEqual([PARKED]);
+    expect(renderNotification(result.lines)).toBe(
+      "❓ 023-x ждёт твоего решения: Перезапустить демон и посмотреть, встал ли скип parked?",
+    );
+  });
+
+  it("does not repeat a park it has already announced", () => {
+    const first = withPark([PARKED]);
+    const again = withPark([PARKED], { waiting: [], stalled: [], parked: first.parked });
+
+    expect(again.freshParked).toEqual([]);
+    expect(again.lines).toHaveLength(1); // still SAID, only not counted as new
+  });
+
+  it("a thread answered and parked AGAIN is a new question — the key is the parking message", () => {
+    const first = withPark([PARKED]);
+    const later = withPark([{ ...PARKED, since: "2026-07-31T15:00:00Z", question: "И ещё?" }], {
+      waiting: [],
+      stalled: [],
+      parked: first.parked,
+    });
+
+    expect(later.freshParked).toHaveLength(1);
+  });
+
+  it("a parked thread is NOT also reported as stalled — the two say opposite things", () => {
+    const result = withPark([PARKED], EMPTY, {
+      stalled: [{ thread: "023-x", role: "curator", since: "2026-07-31T11:08:20Z", age: "5h" }],
+    });
+
+    expect(result.stalled).toEqual([]);
+    expect(result.lines).toHaveLength(1);
+  });
+
+  it("and it is not also a 'poke the curator' line — the turn is frozen behind the reader", () => {
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [{ role: "curator", thread: "023-x" }],
+      seen: EMPTY,
+      parked: [PARKED],
+      templates: PARK_TEMPLATE,
+    });
+
+    expect(result.lines.map((line) => line.kind)).toEqual(["parked"]);
+    // The wait itself stays in the composition: the state remembers who holds the turn.
+    expect(result.waiting).toEqual([{ role: "curator", thread: "023-x" }]);
+  });
+
+  it("a park on somebody the notifier does not write to is not a call", () => {
+    const result = withPark([{ ...PARKED, person: "curator" }]);
+
+    expect(result.parked).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("the state file carries parks beside waits and stalls", () => {
+    const state = { waiting: [], stalled: [], parked: [{ ...PARKED, question: "" }] };
+
+    expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
   });
 });

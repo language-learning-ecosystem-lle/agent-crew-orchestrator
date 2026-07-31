@@ -6,8 +6,10 @@ import { migrateLegacyThread, verifyMigration } from "./migrate.js";
 import {
   declaredWaitingOn,
   parkedOnOf,
+  parkingOf,
   parseLegacyThread,
   parseMetaFile,
+  questionOf,
   renderMetaFile,
   renderThread,
   type Thread,
@@ -278,6 +280,15 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
     expect(parkedOnOf(thread)).toBe("john");
   });
 
+  it("a park DECLARED ON an informational message acts — the field is read before the skip", () => {
+    // Thread 034, paid for twice with empty sessions: 'expects: none' used to be skipped
+    // before the field was looked at, so this park was invisible and the pair was raised
+    // into a thread waiting for a human. The door refuses the combination now; the ones
+    // already lying in the feed act.
+    const thread = parked({ from: "curator", expects: "none", parkedOn: "john" });
+    expect(parkedOnOf(thread)).toBe("john");
+  });
+
   it("a closed thread is parked behind nobody", () => {
     const thread = parked({ parkedOn: "john" });
     expect(parkedOnOf({ ...thread, meta: { ...thread.meta, status: "closed" } })).toBeUndefined();
@@ -315,5 +326,44 @@ describe("parkedThreads — what the planner is told (R27)", () => {
   it("a parked thread is STILL mail — the mailbox and the notifier must keep seeing it", () => {
     const threads = [thread("023-a", "john")];
     expect(threadsWaitingOn(threads, "curator")).toEqual(["023-a"]);
+  });
+});
+
+describe("parkingOf — the facts the courier to the human needs (thread 023)", () => {
+  const thread = (text: string): Thread => ({
+    id: "023-x",
+    meta: { title: "t", participants: ["curator", "john"], status: "open" },
+    messages: [
+      {
+        fields: {
+          from: "curator",
+          date: "2026-07-31T11:08:20Z",
+          expects: "answer",
+          waitingOn: "curator",
+          parkedOn: "john",
+        },
+        text,
+      },
+    ],
+  });
+
+  it("names the person, the stamp of the parking message and its first line", () => {
+    expect(parkingOf(thread("**Перезапустить демон?**\n\nПодробности ниже."))).toEqual({
+      person: "john",
+      since: "2026-07-31T11:08:20Z",
+      question: "Перезапустить демон?",
+    });
+  });
+
+  it("the question is the first line WITHOUT its markup — a heading is still a question", () => {
+    expect(questionOf("## Вопрос: чинить ли гард 2?\n\nтело")).toBe("Вопрос: чинить ли гард 2?");
+    expect(questionOf("\n\n- первый пункт\nвторой")).toBe("первый пункт");
+    expect(questionOf("   \n")).toBe("");
+  });
+
+  it("a long first line is cut to one line — a notification is read on a phone", () => {
+    const long = questionOf("ы".repeat(400));
+    expect(long.length).toBeLessThanOrEqual(140);
+    expect(long.endsWith("…")).toBe(true);
   });
 });
