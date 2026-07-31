@@ -275,11 +275,25 @@ export const waitingOnOf = (thread: Thread): string | undefined => {
  *   unpark anything. This matters more here than for the turn — the session that parked the
  *   thread is dead by then, and a state only a dead session could clear would need a human's
  *   hand every time;
- * - `expects: none` DOES NOT LIFT IT. Those are the informational messages (the merge
- *   notifier, the CI announcement, a follow-up that hands over nothing), and a green run of
- *   somebody's checks is not a person's decision. Reading them literally would unpark the
+ * - AN ANNOUNCEMENT OF THE CIRCUIT DOES NOT LIFT IT: an `expects: none` message written by a
+ *   WORKFLOW (`worker: gh-action` — the merge notifier, the CI announcement). A green run of
+ *   somebody's checks is not a person's decision, and reading those literally would unpark the
  *   thread the moment CI reported, which is exactly the wasted raise the state exists to
  *   prevent.
+ *
+ *   THE AUTHOR IS THE DISCRIMINATOR, and `expects` alone is not (thread 023, three live
+ *   repros: 040, 044, 016). The three threads froze on messages that WERE the decision
+ *   arriving — curator relaying john's "merge it, done" and passing the turn on — written
+ *   with `expects: none` because they asked nobody for anything. Under "informational does
+ *   not lift" the answer landed, the turn moved to another role, and the thread stayed
+ *   invisible to the planner until a human's hand. A participant speaking is the answer
+ *   arriving whatever it expects back; only the circuit's own traffic is noise.
+ *
+ *   The vocabulary of `worker` is open, so this is a POSITIVE identification of the
+ *   workflows we write ourselves, not a classification of everything else — and the
+ *   direction it fails in is the cheap one: an announcement written under some other worker
+ *   lifts a park and costs one raise, where mistaking a person for the circuit costs a
+ *   thread frozen until somebody notices.
  *
  * THE FIELD IS READ BEFORE THAT SKIP, and the order is the whole of the fix (thread 034,
  * paid for twice with empty sessions): a park DECLARED ON an informational message is still a
@@ -296,6 +310,14 @@ export const parkedOnOf = (thread: Thread): string | undefined => {
   if (parking === undefined) return undefined;
   return parking.kind === "person" ? parking.person : `pr:${parking.pr}`;
 };
+
+/**
+ * The worker of the circuit's own writers — the workflows that announce facts into a thread
+ * (the merge notifier, the CI outcome). Their traffic is the one kind of message that does not
+ * lift a park; see the doc block above `parkedOnOf` for why the author, and not `expects`, is
+ * what separates it from a participant speaking.
+ */
+const CIRCUIT_WORKER = "gh-action";
 
 /** WHAT a raw `parked-on` value names — a person, or the merge of a PR. */
 export type ParkedOn =
@@ -370,7 +392,7 @@ export const parkingOf = (thread: Thread): Parking | undefined => {
       if (merged.has(pr)) return undefined;
       return { kind: "event", pr, since, question };
     }
-    if (message.fields.expects === "none") continue;
+    if (message.fields.expects === "none" && message.fields.worker === CIRCUIT_WORKER) continue;
     return undefined;
   }
   return undefined;

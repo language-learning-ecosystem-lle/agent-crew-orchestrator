@@ -276,9 +276,22 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
     expect(parkedOnOf(parked({}))).toBeUndefined();
   });
 
-  it("an informational message does NOT lift it — a green CI run is not a decision", () => {
-    const thread = parked({ from: "github", expects: "none" });
+  it("an announcement of the circuit does NOT lift it — a green CI run is not a decision", () => {
+    const thread = parked({ from: "github", worker: "gh-action", expects: "none" });
     expect(parkedOnOf(thread)).toBe("john");
+  });
+
+  it("a participant speaking lifts it even with 'expects: none' — the decision relayed", () => {
+    // Thread 023, three live repros (040, 044, 016): curator relaying john's decision and
+    // handing the turn on writes 'expects: none' — it asks nobody for anything — and the
+    // thread stayed frozen with the answer already in it. The author is what separates the
+    // circuit's noise from a person: only 'worker: gh-action' is skipped.
+    const thread = parked({ from: "curator", worker: "claude-ai", expects: "none" });
+    expect(parkedOnOf(thread)).toBeUndefined();
+  });
+
+  it("a message with no worker at all is a participant — the skip is positive identification", () => {
+    expect(parkedOnOf(parked({ from: "curator", expects: "none" }))).toBeUndefined();
   });
 
   it("a park DECLARED ON an informational message acts — the field is read before the skip", () => {
@@ -427,7 +440,13 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
   it("the merge notifier lifts it, though the announcement is informational", () => {
     const parked = message({ parkedOn: "pr:127" });
     const merged = message(
-      { from: "github", expects: "none", date: "2026-07-31T12:30:00Z", mergedPr: 127 },
+      {
+        from: "github",
+        worker: "gh-action",
+        expects: "none",
+        date: "2026-07-31T12:30:00Z",
+        mergedPr: 127,
+      },
       "PR #127 merged",
     );
     expect(parkingOf(thread([parked, merged]))).toBeUndefined();
@@ -436,7 +455,13 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
   it("somebody else's merge lifts nothing", () => {
     const parked = message({ parkedOn: "pr:127" });
     const merged = message(
-      { from: "github", expects: "none", date: "2026-07-31T12:30:00Z", mergedPr: 129 },
+      {
+        from: "github",
+        worker: "gh-action",
+        expects: "none",
+        date: "2026-07-31T12:30:00Z",
+        mergedPr: 129,
+      },
       "PR #129 merged",
     );
     expect(parkingOf(thread([parked, merged]))?.pr).toBe(127);
@@ -444,7 +469,13 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
 
   it("an announcement BEFORE the park does not lift it — a park is a later statement", () => {
     const merged = message(
-      { from: "github", expects: "none", date: "2026-07-31T11:00:00Z", mergedPr: 127 },
+      {
+        from: "github",
+        worker: "gh-action",
+        expects: "none",
+        date: "2026-07-31T11:00:00Z",
+        mergedPr: 127,
+      },
       "PR #127 merged",
     );
     const parked = message({ parkedOn: "pr:127" });
