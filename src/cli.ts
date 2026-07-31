@@ -50,6 +50,7 @@ import {
   loadLocalConfig,
 } from "./config/local.js";
 import { describePolicySkew, policyRole } from "./config/policy.js";
+import { configSetSummary, planConfigSet } from "./config/set.js";
 import { createStandingConfig, standingKey } from "./config/standing.js";
 import { type LoadedThread, loadThread, loadThreads, renderThreadFailures } from "./fs/comms.js";
 import {
@@ -3540,6 +3541,65 @@ const boxInit = (argv: readonly string[]): void => {
       : ["--local-config", flag(withRef, "--local-config") as string]),
     ...(withRef.includes("--offline") ? ["--offline"] : []),
   ]);
+};
+
+/**
+ * `config set <key> <value>` — ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019, п.3).
+ *
+ * The decision is `config/set.ts` and every effect is here, the same split `init` makes.
+ * Two of those effects are worth naming, because both are facts about THIS box that no
+ * pure function can be given for free: whether the secrets file named is on disk, and
+ * whether the binary named resolves — as a path, or on the PATH of the child that would
+ * spawn it (which is not this process's PATH, and that difference has cost an evening).
+ */
+const configSet = (argv: readonly string[]): void => {
+  const withRef = withOperatorRef(argv);
+  const loaded = configFrom(withRef, undefined);
+  // The same reading `init` makes of `--local-config`, for the same reason: this is a
+  // command that may bring the file into being, so a named path that is not there yet is
+  // where it WILL be, not a refusal.
+  const named = flag(withRef, "--local-config");
+  const local: LoadedLocalConfig =
+    named !== undefined && !existsSync(named)
+      ? { config: { agents: {} }, path: named, found: false, explicit: true }
+      : localFrom(withRef);
+  const write = withRef.includes("--write");
+  const key = withRef[0]?.startsWith("-") === false ? withRef[0] : undefined;
+  const value = withRef[1]?.startsWith("-") === false ? withRef[1] : undefined;
+  const exec = flag(withRef, "--exec");
+
+  const outcome = planConfigSet({
+    current: local.config,
+    path: local.path,
+    ...(key === undefined ? {} : { key }),
+    ...(value === undefined ? {} : { value }),
+    ...(exec === undefined ? {} : { exec }),
+    declaredInstances: (loaded.config.instances ?? []).map((one) => one.id),
+    knownRoles: loaded.registry.ids(),
+    ...(key === "secrets" && value !== undefined ? { secretsExists: existsSync(value) } : {}),
+    ...(key === "agent" && exec !== undefined
+      ? {
+          execFound: exec.includes("/")
+            ? existsSync(exec)
+            : resolveOnPath(exec, childEnvFrom(withRef)) !== undefined,
+        }
+      : {}),
+  });
+  if (!outcome.ok) {
+    fail(`config set: ${outcome.refusal}`, 2);
+    return;
+  }
+
+  out(renderInitSteps([outcome.step]));
+  out(configSetSummary({ step: outcome.step, write, path: local.path }));
+  // A `keep` writes nothing even under --write: rewriting a file to the bytes it already
+  // holds would change its mtime, and mtime is what an operator reads when they ask when
+  // this box was last touched.
+  if (!write || outcome.step.action === "keep") return;
+  writeOut(local.path, `${JSON.stringify(outcome.next, null, 2)}\n`);
+  out(
+    "config set: 'doctor' is what says whether the box still holds together — this command changed one line",
+  );
 };
 
 /** What the tool says about itself, when it says anything. A version is a fact, not a gate. */
@@ -7923,6 +7983,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
   }
   if (command === "config" && subcommand === "check") {
     configCheck(argv.slice(2));
+  } else if (command === "config" && subcommand === "set") {
+    guardArguments("config set", argv.slice(2));
+    configSet(argv.slice(2));
   } else if (command === "doctor") {
     doctor(argv.slice(1));
   } else if (command === "init") {
