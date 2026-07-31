@@ -19,7 +19,21 @@ const pr = (over: Partial<PullRequestFacts> = {}): PullRequestFacts => ({
   reviews: [{ state: "APPROVED", commitSha: HEAD, author: "github-actions" }],
   checks: [{ name: "checks", status: "COMPLETED", conclusion: "SUCCESS", state: undefined }],
   changedPaths: ["packages/agent-protocol/src/merge/gate.ts"],
+  mergeable: "MERGEABLE",
   ...over,
+});
+
+/** A finished attempt of a check, stamped — the shape a rerun argument is made of. */
+const attempt = (
+  name: string,
+  conclusion: string,
+  completedAt: string,
+): PullRequestFacts["checks"][number] => ({
+  name,
+  status: "COMPLETED",
+  conclusion,
+  state: undefined,
+  completedAt,
 });
 
 const guard = (
@@ -198,6 +212,151 @@ describe("guard 2 — green checks on the same head", () => {
 
   it("refuses a head no check has reported on", () => {
     expect(guard(pr({ checks: [] }), 2)?.state).toBe("fail");
+  });
+});
+
+/**
+ * D1 — the four cases of the statement of work of 2026-07-31. The live payload behind
+ * them is #89 at `f7171a5`: `review` FAILURE at 00:05:30Z and `review` SUCCESS at
+ * 00:20:41Z on ONE head, which made the door refuse a merge for an outcome a rerun had
+ * already replaced.
+ */
+describe("guard 2 — one head answers once per check name", () => {
+  it("takes the rerun, not the failure it replaced (#89 at f7171a5)", () => {
+    const outcome = guard(
+      pr({
+        checks: [
+          attempt("review", "FAILURE", "2026-07-30T00:05:30Z"),
+          attempt("checks", "SUCCESS", "2026-07-30T00:04:05Z"),
+          attempt("review", "SUCCESS", "2026-07-30T00:20:41Z"),
+          attempt("pronunciation", "SUCCESS", "2026-07-29T23:58:09Z"),
+        ],
+      }),
+      2,
+    );
+    expect(outcome?.state).toBe("pass");
+    expect(outcome?.detail).toContain("3 check(s) green");
+    expect(outcome?.detail).toContain("review=SUCCESS");
+    expect(outcome?.detail).not.toContain("FAILURE");
+  });
+
+  it("takes the rerun the other way round too — a later failure buries an earlier success", () => {
+    const outcome = guard(
+      pr({
+        checks: [
+          attempt("review", "SUCCESS", "2026-07-30T00:05:30Z"),
+          attempt("review", "FAILURE", "2026-07-30T00:20:41Z"),
+        ],
+      }),
+      2,
+    );
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("review=FAILURE");
+  });
+
+  it("does not let an older success swallow a rerun that is still flying", () => {
+    const outcome = guard(
+      pr({
+        checks: [
+          attempt("review", "SUCCESS", "2026-07-30T00:05:30Z"),
+          {
+            name: "review",
+            status: "IN_PROGRESS",
+            conclusion: "",
+            state: undefined,
+            startedAt: "2026-07-30T00:20:41Z",
+          },
+        ],
+      }),
+      2,
+    );
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("review=IN_PROGRESS");
+  });
+
+  it("judges the whole group when no stamp tells the attempts apart — a door does not guess", () => {
+    expect(
+      guard(
+        pr({
+          checks: [
+            { name: "review", status: "COMPLETED", conclusion: "FAILURE", state: undefined },
+            { name: "review", status: "COMPLETED", conclusion: "SUCCESS", state: undefined },
+          ],
+        }),
+        2,
+      )?.state,
+    ).toBe("fail");
+  });
+
+  it("leaves a single set without reruns exactly as it was", () => {
+    const outcome = guard(
+      pr({
+        checks: [
+          attempt("checks", "SUCCESS", "2026-07-30T00:04:05Z"),
+          attempt("review", "SUCCESS", "2026-07-30T00:20:41Z"),
+        ],
+      }),
+      2,
+    );
+    expect(outcome?.state).toBe("pass");
+    expect(outcome?.detail).toContain("2 check(s) green");
+  });
+});
+
+/** D3 — `gh` says "no conclusion yet" with an empty string, and `??` reads it as one. */
+describe("guard 2 — a flying check is named, not printed blank", () => {
+  it("names what gh actually returned instead of 'review='", () => {
+    const outcome = guard(
+      pr({
+        checks: [{ name: "review", status: "IN_PROGRESS", conclusion: "", state: undefined }],
+      }),
+      2,
+    );
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("review=IN_PROGRESS");
+    expect(outcome?.detail).not.toContain("review=,");
+    expect(outcome?.detail.endsWith("review=")).toBe(false);
+  });
+});
+
+/** D2 — what GitHub itself would refuse, said beside the guards and never as one. */
+describe("mergeability — a fact beside the guards", () => {
+  const answer = (facts: PullRequestFacts) =>
+    evaluateMergeGate({ pr: facts, powerDocs: ["PROTOCOL.md"] });
+
+  it("says nothing that stops the merge when the tree applies", () => {
+    const verdict = answer(pr({ mergeable: "MERGEABLE", mergeStateStatus: "CLEAN" }));
+    expect(verdict.mergeability.state).toBe("clear");
+    expect(verdict.curatorMayMerge).toBe(true);
+  });
+
+  it("refuses a conflicting tree even when every guard holds", () => {
+    const verdict = answer(pr({ mergeable: "CONFLICTING", mergeStateStatus: "DIRTY" }));
+    expect(verdict.guards.some((entry) => entry.state === "fail")).toBe(false);
+    expect(verdict.curatorMayMerge).toBe(false);
+    expect(verdict.mergeability.detail).toContain("CONFLICTING");
+    expect(verdict.mergeability.detail).toContain("DIRTY");
+    const lines = describeMergeGate(verdict);
+    expect(lines.some((line) => line.includes("mergeability · not a guard"))).toBe(true);
+    expect(lines.at(-1)).toContain("GitHub itself would refuse");
+  });
+
+  it("refuses UNKNOWN by name — 'not computed yet' is not a permission", () => {
+    const verdict = answer(pr({ mergeable: "UNKNOWN" }));
+    expect(verdict.curatorMayMerge).toBe(false);
+    expect(verdict.mergeability.detail).toContain("has not finished computing");
+  });
+
+  it("refuses a payload that reports no mergeable at all", () => {
+    const verdict = answer(pr({ mergeable: undefined }));
+    expect(verdict.curatorMayMerge).toBe(false);
+    expect(verdict.mergeability.detail).toContain("no 'mergeable' field");
+  });
+
+  it("is still not a sixth guard — the five are the five", () => {
+    expect(answer(pr({ mergeable: "CONFLICTING" })).guards.map((entry) => entry.guard)).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
   });
 });
 

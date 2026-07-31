@@ -10,7 +10,13 @@
  * `statusCheckRollup` is a union of two node types and is flattened into one loose
  * shape: a check run answers with `name`/`status`/`conclusion`, a status context
  * with `context`/`state`. Both halves are optional here and the gate reads whichever
- * arrived.
+ * arrived. The STAMPS (`completedAt`, `startedAt`) are optional for the same reason —
+ * a status context has neither — but they are what tells a rerun from the attempt it
+ * replaced, so they are asked for (thread 026, D1).
+ *
+ * `mergeable` IS PINNED like the rest of the computed-from fields (D2): the door
+ * refuses on anything that is not `MERGEABLE`, so its silent absence would be the very
+ * fail-open this schema exists to prevent.
  */
 
 import { z } from "zod";
@@ -35,9 +41,13 @@ export const ghPullRequestSchema = z.looseObject({
       status: nullableText,
       conclusion: nullableText,
       state: nullableText,
+      completedAt: nullableText,
+      startedAt: nullableText,
     }),
   ),
   files: z.array(z.looseObject({ path: z.string() })),
+  mergeable: z.string(),
+  mergeStateStatus: nullableText,
 });
 
 export type GhPullRequest = z.infer<typeof ghPullRequestSchema>;
