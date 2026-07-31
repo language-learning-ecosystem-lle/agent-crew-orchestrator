@@ -107,13 +107,32 @@ export const parseMetaFile = (raw: string): ThreadMeta => {
 export const renderMetaFile = (meta: ThreadMeta): string =>
   `${FENCE}\ntitle: ${meta.title}\nparticipants: ${meta.participants.join(", ")}\nstatus: ${meta.status}\n${FENCE}\n`;
 
-/** Assembling `_thread.md`: the head from `_meta.md` + sections from the messages in file order. */
-export const renderThread = (meta: ThreadMeta, messages: readonly Message[]): string => {
+/**
+ * Assembling `_thread.md`: the head from `_meta.md` + sections from the messages in
+ * file order.
+ *
+ * `tasks: true` IS FOR THE READER, NEVER FOR THE FILE (thread 021). Task declarations
+ * are header fields, and the heading canon prints `from/date/expects` only — it is
+ * byte-exact across the live threads, so widening it would rewrite every derived file
+ * in the branch (the same argument that kept `worker`/`session` out). So `thread show`
+ * turns this on and prints the declarations as a comment under each heading, while
+ * `derive` never does and not one committed byte moves.
+ */
+export const renderThread = (
+  meta: ThreadMeta,
+  messages: readonly Message[],
+  options: { readonly tasks?: boolean } = {},
+): string => {
   const head = `# ${meta.title}\n\nparticipants: ${meta.participants.join(", ")} · status: ${meta.status}\n\n`;
   return messages.reduce((acc, message, at) => {
     const heading = renderHeading(message.fields, at + 1);
+    const declared = message.fields.tasks ?? [];
+    const tasks =
+      options.tasks === true && declared.length > 0
+        ? `\n\n<!-- tasks: ${declared.map((task) => `${task.id} → ${task.status}`).join(" · ")} -->`
+        : "";
     const tail = at + 1 < messages.length ? "\n\n" : "\n";
-    return `${acc}${heading}\n\n${message.text}${tail}`;
+    return `${acc}${heading}${tasks}\n\n${message.text}${tail}`;
   }, head);
 };
 
@@ -262,16 +281,72 @@ export const waitingOnOf = (thread: Thread): string | undefined => {
  *   thread the moment CI reported, which is exactly the wasted raise the state exists to
  *   prevent.
  *
+ * THE FIELD IS READ BEFORE THAT SKIP, and the order is the whole of the fix (thread 034,
+ * paid for twice with empty sessions): a park DECLARED ON an informational message is still a
+ * park. "Informational does not lift" is a statement about a message that says nothing about
+ * parking — reading it as "an informational message cannot park either" makes the door's own
+ * `--parked-on` silently do nothing, and the pair is raised into a thread that is waiting for
+ * a human. The door refuses that combination outright (`--parked-on` with `expects: none`);
+ * this order is what makes the ones already lying in the feed act.
+ *
  * `status: closed` outranks it, as it outranks the turn: a closed thread waits for nobody.
  */
-export const parkedOnOf = (thread: Thread): string | undefined => {
+export const parkedOnOf = (thread: Thread): string | undefined => parkingOf(thread)?.person;
+
+/**
+ * The park with the facts around it: WHO it waits for, SINCE when, and WHAT is being asked.
+ *
+ * The courier to the human needs all three (thread 023): a notification that names a thread
+ * but not the question reads exactly like "the circuit is working", which is what made the
+ * digest unreadable — 8 lines of 10 were threads nobody had to touch.
+ */
+export type Parking = {
+  readonly person: string;
+  /** The stamp of the message that declared it — the identity of the event, not of the thread. */
+  readonly since: string;
+  /** The first line of the parking message: the question, in the words it was asked in. */
+  readonly question: string;
+};
+
+export const parkingOf = (thread: Thread): Parking | undefined => {
   if (thread.meta.status === "closed") return undefined;
   for (let at = thread.messages.length - 1; at >= 0; at--) {
     const message = thread.messages[at];
-    if (message === undefined || message.fields.expects === "none") continue;
-    return message.fields.parkedOn;
+    if (message === undefined) continue;
+    const person = message.fields.parkedOn;
+    if (person !== undefined) {
+      return { person, since: message.fields.date, question: questionOf(message.text) };
+    }
+    if (message.fields.expects === "none") continue;
+    return undefined;
   }
   return undefined;
+};
+
+/** How wide a question may be before it stops being one line in a phone notification. */
+const QUESTION_WIDTH = 140;
+
+/**
+ * The one-line question of a parking message: its FIRST non-empty line, stripped of the
+ * markup it was written with.
+ *
+ * No new header field for it, and that is a decision (thread 023): a `question:` beside the
+ * body would be a second place to say the same thing, written by the session that is about to
+ * die, and the first line of a message asking a person for a decision IS the question in
+ * every message that has ever been written here.
+ */
+export const questionOf = (text: string): string => {
+  for (const line of text.split("\n")) {
+    const stripped = line
+      .replace(/^\s*(?:[#>*+-]+|\d+[.)])\s*/, "")
+      .replaceAll(/[*_`]/g, "")
+      .trim();
+    if (stripped === "") continue;
+    return stripped.length > QUESTION_WIDTH
+      ? `${stripped.slice(0, QUESTION_WIDTH - 1).trimEnd()}…`
+      : stripped;
+  }
+  return "";
 };
 
 /** Date of the last message — the `updated` column of the index. */

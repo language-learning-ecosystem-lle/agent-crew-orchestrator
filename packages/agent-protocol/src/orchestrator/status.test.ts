@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { LeaseView } from "./lease.js";
-import { renderStatus } from "./status.js";
+import { renderLeaseLine, renderStatus } from "./status.js";
 
 const view = (partial: Partial<LeaseView>): LeaseView => ({
   role: "dev-core",
@@ -75,5 +75,19 @@ describe("renderStatus", () => {
   it("several pairs — one line each", () => {
     const out = renderStatus([view({ thread: "a" }), view({ thread: "b" })]);
     expect(out.split("\n")).toHaveLength(2);
+  });
+});
+
+describe("renderLeaseLine (T-1)", () => {
+  // The observer highlights the SELECTED pair, so it needs the lines one at a time.
+  // Exporting the formatter is the whole of that change: a second renderer for the
+  // same columns is how the top panel and `status` would begin to differ.
+  it("is the very line renderStatus assembles", () => {
+    const one = view({ thread: "019-operator-ux" });
+    expect(renderStatus([one])).toBe(renderLeaseLine(one));
+  });
+
+  it("carries the marks, not just the columns", () => {
+    expect(renderLeaseLine(view({ exhausted: true }))).toContain("EXHAUSTED");
   });
 });

@@ -55,6 +55,8 @@ export type RoleRegistry = {
    * wait on it is not a turn but an open question — carried by whoever asks it.
    */
   canHoldTurn(id: RoleId): boolean;
+  /** Whether the role may OPEN and DROP tasks in the feed (thread 021, `task-declare`). */
+  canDeclareTask(id: RoleId): boolean;
   watchTargets(): readonly WatchTarget[];
   notificationTargets(): readonly NotificationTarget[];
   /**
@@ -149,6 +151,10 @@ export const createRoleRegistry = (config: RolesSection): RoleRegistry => {
     canHoldTurn: (id) => {
       const role = byId.get(id);
       return role !== undefined && role.wake.mode !== "self";
+    },
+    canDeclareTask: (id) => {
+      const role = byId.get(id);
+      return role !== undefined && hasPermission(role, "task-declare");
     },
     watchTargets: () =>
       active.flatMap((role) =>

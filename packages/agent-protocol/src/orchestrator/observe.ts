@@ -18,7 +18,7 @@
  * the limit of `draining` (requirement 2): "it will stop on completion" does not
  * turn into "it will never stop".
  */
-import type { OrchestratorEvent } from "./journal.js";
+import type { LeaseUsage, OrchestratorEvent } from "./journal.js";
 
 /**
  * `waiting` is the interactive turn (R19): the turn has passed, the session declared
@@ -173,6 +173,16 @@ export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): Obse
  * on a lease release also the `detail`: the session's exit code and the path to
  * its saved output. Without them "could not write" and "simply exited" are the
  * same record.
+ *
+ * A FIELD OF `detail` EXISTS IN TWO PLACES — the type here and the copy into the
+ * `return` — AND THE COMPILER GUARDS NEITHER (thread 038). The call site builds the
+ * detail out of spreads (`...(x === undefined ? {} : { x })`), and a spread turns off
+ * the excess-property check: a field the type does not know is passed in silence, and
+ * a field the type knows but the `return` forgets is dropped in silence. `window` was
+ * lost that way for a whole release cycle, on the road between the run that knew it and
+ * the shelf that is keyed by it. So: adding a field means BOTH places, and the test that
+ * proves it is the one that walks the road end to end (`run.process.test.ts`), never a
+ * unit on this function alone — that one checks the very shape it was written from.
  */
 export const stepEvent = (
   step: Exclude<ObserveStep, null>,
@@ -193,11 +203,29 @@ export const stepEvent = (
     /** When the window reopens, for a `quota-exhausted` release — absent if unknown. */
     readonly until?: string;
     /**
+     * WHICH window closed, for a `quota-exhausted` release (D-3 part 2) — the vendor's
+     * own word (`five_hour`, `seven_day`, …), a free string and never an enum of ours.
+     * Absent when the signal did not name one: only the structured event carries the
+     * type, the prose layers never do.
+     *
+     * It rides beside `until` because the shelf the backoff waits on is keyed BY IT
+     * (`openQuotaShelves`): a release that arrives without the word lands on the shared
+     * `unknown` shelf, where a five-hour and a seven-day closure overwrite each other.
+     */
+    readonly window?: string;
+    /**
      * The run ended its own turn and left its workspace dirty (thread 023, requirement 5).
      * `true` or absent, like the field it lands in: the flag is a positive observation,
      * and a caller with no workspace to look at makes none.
      */
     readonly dirty?: true;
+    /**
+     * WHAT THE RUN BURNED (thread 029) — turns, wall time, dollars, tokens, model. Absent
+     * for every run that broke off before its stream emitted a ledger, and that absence is
+     * legal: see the field on the journal schema. It is copied through the list below like
+     * every other field, which is the whole point of the note above this function.
+     */
+    readonly usage?: LeaseUsage;
   },
 ): OrchestratorEvent => {
   if (step.record === "handoff-detected") return { kind: "handoff-detected", ...base };
@@ -216,6 +244,8 @@ export const stepEvent = (
     ...(detail?.session === undefined ? {} : { session: detail.session }),
     ...(detail?.steps === undefined ? {} : { steps: detail.steps }),
     ...(detail?.until === undefined ? {} : { until: detail.until }),
+    ...(detail?.window === undefined ? {} : { window: detail.window }),
     ...(detail?.dirty === undefined ? {} : { dirty: detail.dirty }),
+    ...(detail?.usage === undefined ? {} : { usage: detail.usage }),
   };
 };

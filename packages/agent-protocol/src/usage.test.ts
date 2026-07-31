@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { parseUsage, strayArguments } from "./orchestrator/argv.js";
+import { argvOf, type TuiAction } from "./orchestrator/tui.js";
 import { USAGE } from "./usage.js";
 
 /**
@@ -353,6 +356,98 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     expect(routed.filter((name) => !table.has(`orchestrator ${name}`))).toEqual([]);
   });
 
+  it("names every handler that reads `--write` in the list of what `--write` does", () => {
+    // THE LIST IS A FACT, NOT AN IMPRESSION (thread 033, the second verdict of
+    // reviewer-pr): the list shipped in `USAGE` missed `orchestrator run`, and its
+    // own wording — "everything else writes and stops" — reads as exhaustive. A
+    // reader who trusts it types `--write` on the one command where the word means
+    // "raise a session", not "write a file".
+    //
+    // Derived from the SOURCE, unlike the corpus above, because here it can be: the
+    // handlers are top-level `const <name> = (argv` declarations and `--write` is
+    // read by its literal name. An unknown handler fails the map, which is the point
+    // — a new `--write` cannot be added without a line saying what it costs.
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8").split("\n");
+    let declaration = "";
+    const reading = new Set<string>();
+    for (const line of source) {
+      const declared = /^const ([a-zA-Z]+) = /.exec(line);
+      if (declared?.[1] !== undefined) declaration = declared[1];
+      if (line.includes('"--write"') && declaration !== "") reading.add(declaration);
+    }
+    // handler → what the list must say its name in. `enable`/`disable` and the two
+    // modes of `hold`/`stop` share a handler and a line, so the token is the shared
+    // half of the name.
+    const named: Readonly<Record<string, string>> = {
+      schemaMigrate: "'schema migrate'",
+      indexBuild: "'index build'",
+      threadBuild: "'thread build'",
+      migrate: "'migrate'",
+      derive: "'derive'",
+      newMessage: "'new-message'",
+      newThread: "'new-thread'",
+      notify: "'notify'",
+      orchestratorEnable: "enable/disable",
+      orchestratorRecord: "record",
+      orchestratorRun: "'orchestrator run'",
+      orchestratorStop: "stop",
+      orchestratorHold: "hold",
+      // The operator's short forms do not READ the word, they supply it: typing
+      // `hold <role>` IS the decision (thread 019). Same command, same line.
+      orchestratorHoldShort: "hold",
+      orchestratorResumeShort: "hold",
+      // `restart --mode force` supplies the word to the force stop it performs
+      // (thread 019, #113) — the same relationship the short forms have, and the
+      // same line: what it costs is what 'stop' costs.
+      orchestratorRestart: "stop",
+      // `systemd install --write` writes the unit FILE of this box and stops — the
+      // enabling is printed for a human. Its own line in the list, because its reason
+      // is its own: not "nothing to deliver yet" but "the delivery is somebody else's".
+      orchestratorSystemdInstall: "'orchestrator systemd install'",
+    };
+    expect([...reading].filter((name) => named[name] === undefined)).toEqual([]);
+    // Bounded at the next section: past it, tokens like "record" or "hold" match the
+    // command lines themselves and the check would pass on any text at all.
+    const from = USAGE.indexOf("WHICH '--write' DELIVERS");
+    const list = USAGE.slice(from, USAGE.indexOf("\nORCHESTRATOR:", from));
+    expect([...reading].filter((name) => !list.includes(named[name] as string))).toEqual([]);
+  });
+
+  it("accepts every command the TUI's mutating keys can produce (T-2)", () => {
+    // The keys run their command as a CHILD of this CLI, so the child meets the same
+    // door as a typed call — and a flag the observer inherits but the target's usage
+    // line does not declare would be refused in a window the operator is watching, with
+    // the refusal blamed on the key. This is the corpus above, computed rather than
+    // listed: the inheritance lists live in `tui.ts` and drift from here otherwise.
+    const observing = [
+      "--ref",
+      "origin/main",
+      "--now",
+      "2026-07-31T09:00:00Z",
+      "--holds",
+      "/tmp/holds",
+      "--local-config",
+      "/tmp/local.json",
+      "--stop-flag",
+      "/tmp/stop",
+      "--pid-file",
+      "/tmp/daemon.pid",
+      "--interval",
+      "2",
+    ];
+    const actions: readonly TuiAction[] = [
+      { kind: "hold", role: "curator" },
+      { kind: "resume", role: "curator" },
+      { kind: "down" },
+      { kind: "up" },
+    ];
+    for (const action of actions) {
+      const words = argvOf(action, observing);
+      const key = `${words[0]} ${words[1]}`;
+      expect([key, strayArguments(words.slice(2), specFor(key))]).toEqual([key, []]);
+    }
+  });
+
   it("lets `up` pass its own flags through to the daemon it starts", () => {
     // `up` re-executes itself as `orchestrator daemon <everything typed, minus its
     // own two flags>`. If the daemon refused a flag `up` accepts, the refusal would
@@ -360,7 +455,12 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     const up = parseUsage(USAGE).get("orchestrator up");
     const daemon = parseUsage(USAGE).get("orchestrator daemon");
     if (up === undefined || daemon === undefined) throw new Error("no line for up/daemon");
-    const own = ["--daemon-log", "--pid-file"];
+    // `--clear-force` is `up`'s own in the same sense: it is a decision taken at the
+    // door, and the daemon behind it knows nothing of the flag (see the passthrough
+    // filter in `orchestratorUp`).
+    // `--log-max-bytes` is `up`'s own for the same reason as `--daemon-log`: the bound
+    // belongs to the file the command opens, and the daemon knows nothing about it.
+    const own = ["--daemon-log", "--log-max-bytes", "--pid-file", "--clear-force", "--foreground"];
     const passed = up.value.filter((name) => !own.includes(name));
     expect(passed.filter((name) => !daemon.value.includes(name))).toEqual([]);
   });

@@ -34,6 +34,7 @@ import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { waitFor } from "../testing/wait-for.js";
 import { parseJournal } from "./journal.js";
 import { foldLeases } from "./lease.js";
+import { openQuotaShelves } from "./quota.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -226,6 +227,140 @@ describe("running a role as a process — the outcome is always recorded", () =>
     const last = journal(repo).at(-1);
 
     expect(last).toMatchObject({ reason: "quota-exhausted", until: "2026-07-29T16:00:00Z" });
+  }, 60_000);
+
+  it("WHICH WINDOW CLOSED REACHES THE JOURNAL — two runs, two shelves, neither of them 'unknown'", () => {
+    // THE DEFECT THIS EXISTS TO CATCH (thread 038): `runOne` put `window` into the
+    // detail of `stepEvent`, `stepEvent` copied every field of that detail into the
+    // release EXCEPT this one, and the property was dropped in silence — a field that
+    // arrives through a spread is not an excess property the compiler can see. The
+    // consumer downstream (`openQuotaShelves`) reads `event.window ?? UNKNOWN_WINDOW`,
+    // so every closed window in production landed on ONE shelf and the two overwrote
+    // each other: a five-hour signal after a seven-day one reopens the weekly door six
+    // days early.
+    //
+    // WHY THE RUN AND NOT A UNIT ON `stepEvent`. The unit would check the very function
+    // that was fixed, against the very shape that was forgotten. The class of defect is
+    // "the field does not survive the road from the run to the shelf", so the test walks
+    // that whole road: a real session raised by the real supervisor, the JOURNAL FILE it
+    // wrote, and the fold the backoff actually calls on it.
+    const { repo } = contour();
+    // The reopening times are computed from the clock rather than pinned, because the
+    // second half of the check is that BOTH SHELVES ARE STILL OPEN — a hard-coded epoch
+    // would make this test pass until that date and then quietly stop checking anything.
+    const window = (hours: number): { epoch: number; stamp: string } => {
+      const epoch = Math.floor(Date.now() / 1000) + hours * 3600;
+      return { epoch, stamp: `${new Date(epoch * 1000).toISOString().slice(0, 19)}Z` };
+    };
+    const five = window(5);
+    const seven = window(7 * 24);
+    // The structured signal — the ONLY layer that names the window (the prose forms
+    // never do), in the shape the stream delivers it: one JSON line on stdout.
+    const signal = (type: string, epoch: number): string =>
+      `printf '%s\\n' '${JSON.stringify({
+        type: "system",
+        subtype: "rate_limit_event",
+        rate_limit_info: { status: "rejected", resetsAt: epoch, rateLimitType: type },
+      })}'\nexit 1`;
+
+    run(repo, stub(repo, signal("five_hour", five.epoch)));
+    run(repo, stub(repo, signal("seven_day", seven.epoch)));
+
+    const events = journal(repo);
+    const closures = events.filter(
+      (event) => event.kind === "lease-released" && event.reason === "quota-exhausted",
+    );
+    // ACCEPTANCE 1 — the line of the journal itself, both fields on it.
+    expect(closures).toMatchObject([
+      { window: "five_hour", until: five.stamp },
+      { window: "seven_day", until: seven.stamp },
+    ]);
+
+    // ACCEPTANCE 2 — the two shelves live side by side on that journal instead of
+    // overwriting each other on the shared `unknown` key.
+    const shelves = openQuotaShelves(events, new Date());
+    expect(shelves.map((shelf) => shelf.window)).toEqual(["five_hour", "seven_day"]);
+    expect(shelves.map((shelf) => shelf.until)).toEqual([five.stamp, seven.stamp]);
+    expect(shelves.every((shelf) => shelf.stated)).toBe(true);
+  }, 60_000);
+
+  it("WHAT THE RUN BURNED REACHES THE JOURNAL — and its absence is told apart from its loss", () => {
+    // TWO ACCEPTANCE CONDITIONS OF THREAD 029 IN ONE TEST, because they are two halves of
+    // one question and checking either alone proves nothing.
+    //
+    // (а) THE BLOCK IS READ FROM THE JOURNAL FILE ON DISK, never from what `stepEvent`
+    // returned. A unit on that function would check the very shape it was written from —
+    // the class of defect here is 038's, "the field does not survive the road from the run
+    // to the shelf", and only the road catches it.
+    //
+    // (б) FAIL-OPEN IS TOLD APART FROM A LOSS ON THAT ROAD. curator's first condition says
+    // a collector that fails must leave the line WITHOUT the block rather than leave no
+    // line — but "the collector legally had nothing" and "the collector had it and the seam
+    // dropped it" write the same bytes. So the discriminator has to be two runs: one whose
+    // stream carries a ledger (the block must be there) and one whose session never started
+    // (the block must be absent AND the release must still stand, with its reason).
+    const { repo, mail } = contour();
+    const answer = join(
+      mail,
+      "agent-comms",
+      "012-x",
+      "messages",
+      "2026-07-25T11-00-00Z-dev-core.md",
+    );
+    const line = (event: unknown): string => `printf '%s\\n' '${JSON.stringify(event)}'`;
+    // A session that runs to its end speaks the real shape: an init line naming the model,
+    // assistant steps, and the `result` event that carries the ledger.
+    const withLedger = stub(
+      repo,
+      [
+        line({ type: "system", subtype: "init", session_id: "s-029", model: "claude-opus-5" }),
+        line({ type: "assistant", message: { content: "working" } }),
+        line({
+          type: "result",
+          subtype: "success",
+          num_turns: 25,
+          duration_ms: 387_882,
+          total_cost_usd: 2.442_584,
+          usage: {
+            input_tokens: 48,
+            output_tokens: 19_917,
+            cache_creation_input_tokens: 86_698,
+            cache_read_input_tokens: 2_124_312,
+          },
+        }),
+        `printf '%s' '---\nfrom: dev-core\ndate: 2026-07-25T11:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nThe answer.\n' > ${answer}`,
+      ].join("\n"),
+    );
+    run(repo, withLedger);
+
+    const priced = journal(repo).at(-1);
+    expect(priced).toMatchObject({
+      kind: "lease-released",
+      reason: "completed",
+      usage: {
+        model: "claude-opus-5",
+        turns: 25,
+        durationSec: 388,
+        costUsd: 2.442_584,
+        // THE TOKENS COME FROM THE `result` LEDGER AND FROM NOWHERE ELSE. Summing the
+        // per-message `usage` would also produce four numbers, and measured against three
+        // finished runs they came out 15-110× low on output and ~2× high on cache reads —
+        // opposite signs, so not even a correction factor exists. See `runUsageOf`.
+        tokens: { in: 48, out: 19_917, cacheWrite: 86_698, cacheRead: 2_124_312 },
+      },
+    });
+
+    // The second run: the launcher refuses before a session exists, so the stream never
+    // happens and there is nothing to collect. The line is still written, still carries its
+    // reason — and carries no `usage` at all. Its own circuit, because the first run passed
+    // the turn: on that mail the same stub would be read as a run that arrived to a thread
+    // already answered.
+    const { repo: broke } = contour();
+    run(broke, stub(broke, "echo 'Error: Claude AI usage limit reached|1785340800' >&2\nexit 1"));
+
+    const broken = journal(broke).at(-1);
+    expect(broken).toMatchObject({ kind: "lease-released", reason: "quota-exhausted" });
+    expect(broken).not.toHaveProperty("usage");
   }, 60_000);
 
   it("an ORDINARY stderr complaint is still an ordinary death — the control", () => {

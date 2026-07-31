@@ -90,11 +90,18 @@ export type WaitingPair = {
  * the project learning a template language with branches, which is the road to a
  * dialect nobody can validate.
  */
-export const NOTIFICATION_KINDS = ["turn", "turn-with-nudge", "nudge", "stalled"] as const;
+export const NOTIFICATION_KINDS = [
+  "parked",
+  "turn",
+  "turn-with-nudge",
+  "nudge",
+  "stalled",
+] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
 /** What each slot is given. The door validates project templates against exactly this. */
 export const NOTIFICATION_VARIABLES: Readonly<Record<NotificationKind, readonly string[]>> = {
+  parked: ["thread", "question"],
   turn: ["thread", "role"],
   "turn-with-nudge": ["thread", "role", "nudged"],
   nudge: ["thread", "role", "via"],
@@ -109,6 +116,7 @@ export const NOTIFICATION_VARIABLES: Readonly<Record<NotificationKind, readonly 
  * nothing is indistinguishable from a working one.
  */
 export const DEFAULT_NOTIFICATION_TEMPLATES: Readonly<Record<NotificationKind, string>> = {
+  parked: "your decision: {thread} — {question}",
   turn: "your turn: {thread}",
   "turn-with-nudge": "your turn: {thread} (and {nudged} is waiting on it as well)",
   nudge: "{thread} is waiting on {role}, who comes alive only through {via} — open the chat",
@@ -156,10 +164,32 @@ export type StalledTurn = {
   readonly age: string;
 };
 
-/** What was announced last run: the two classes of event in one file. */
+/**
+ * ONE THREAD FROZEN BEHIND A PERSON (R27), with the question it is frozen on.
+ *
+ * THE THIRD CLASS OF EVENT, and the one the human actually has to act on (thread 023,
+ * john's own criterion: "having got the call, the person understands what is wanted of them
+ * without opening the feed"). It has NO AGE THRESHOLD, and that is the point of it: a park
+ * is a declaration that the turn cannot move until a person decides, so there is nothing to
+ * wait out — measured live, a question parked at 11:08 would have lain silent until 14:08
+ * under the age rule, because the watchdog read nothing but the age of the turn.
+ *
+ * `since` is the stamp of the message that parked it: a thread answered and parked again is
+ * a NEW question, and keying by the id alone would swallow the second one.
+ */
+export type ParkedThread = {
+  readonly thread: string;
+  readonly person: RoleId;
+  readonly since: string;
+  /** The first line of the parking message — the question, in the words it was asked in. */
+  readonly question: string;
+};
+
+/** What was announced last run: the three classes of event in one file. */
 export type NotifyState = {
   readonly waiting: readonly WaitingPair[];
   readonly stalled: readonly StalledTurn[];
+  readonly parked: readonly ParkedThread[];
 };
 
 export type NotificationPlan = {
@@ -167,16 +197,21 @@ export type NotificationPlan = {
   readonly waiting: readonly WaitingPair[];
   /** The stalled turns in force now, ordered; also part of the state. */
   readonly stalled: readonly StalledTurn[];
-  /** What appeared since the previous run. Empty (with `freshStalled`) — nothing is sent. */
+  /** The parks in force now, ordered; also part of the state. */
+  readonly parked: readonly ParkedThread[];
+  /** What appeared since the previous run. Empty (with the two below) — nothing is sent. */
   readonly fresh: readonly WaitingPair[];
   /** Stalls not announced before — a stall that was already reported is not repeated. */
   readonly freshStalled: readonly StalledTurn[];
+  /** Parks not announced before — the same rule, keyed by the message that parked. */
+  readonly freshParked: readonly ParkedThread[];
   /** The message, one line per thread-and-human. Rendered from the FULL composition. */
   readonly lines: readonly NotificationLine[];
 };
 
 const key = (pair: WaitingPair): string => `${pair.role}\t${pair.thread}`;
 const stalledKey = (turn: StalledTurn): string => `${turn.role}\t${turn.thread}\t${turn.since}`;
+const parkedKey = (park: ParkedThread): string => `${park.person}\t${park.thread}\t${park.since}`;
 
 /**
  * The state as a file: one event per line, ordered, so a diff of it is readable.
@@ -189,6 +224,7 @@ export const renderNotifyState = (state: NotifyState): string => {
   const lines = [
     ...state.waiting.map(key),
     ...state.stalled.map((turn) => `stalled\t${stalledKey(turn)}`),
+    ...state.parked.map((park) => `parked\t${parkedKey(park)}`),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -196,6 +232,7 @@ export const renderNotifyState = (state: NotifyState): string => {
 export const parseNotifyState = (raw: string): NotifyState => {
   const waiting: WaitingPair[] = [];
   const stalled: StalledTurn[] = [];
+  const parked: ParkedThread[] = [];
   for (const line of raw.split("\n").map((entry) => entry.trim())) {
     if (line === "") continue;
     const columns = line.split("\t");
@@ -208,10 +245,19 @@ export const parseNotifyState = (raw: string): NotifyState => {
       }
       continue;
     }
+    if (columns[0] === "parked") {
+      const [, person, thread, since] = columns;
+      // The question is not stored either, for the same reason the age is not: what
+      // identifies the event is the message that parked, and the text is re-read from it.
+      if (person !== undefined && thread !== undefined && since !== undefined) {
+        parked.push({ person, thread, since, question: "" });
+      }
+      continue;
+    }
     const [role, thread] = columns;
     if (role !== undefined && thread !== undefined) waiting.push({ role, thread });
   }
-  return { waiting, stalled };
+  return { waiting, stalled, parked };
 };
 
 const ordered = (pairs: readonly WaitingPair[]): readonly WaitingPair[] =>
@@ -232,6 +278,8 @@ export const planNotifications = (input: {
   readonly seen: NotifyState;
   /** Turns that have stood longer than the project's N — the caller measures, this picks. */
   readonly stalled?: readonly StalledTurn[];
+  /** Threads frozen behind a person (R27) — no threshold: the caller reads the feed, this picks. */
+  readonly parked?: readonly ParkedThread[];
   readonly templates?: Partial<Record<NotificationKind, string>>;
 }): NotificationPlan => {
   const byRole = new Map(input.targets.map((target) => [target.id, target]));
@@ -239,20 +287,53 @@ export const planNotifications = (input: {
   const seen = new Set(input.seen.waiting.map(key));
   const fresh = waiting.filter((pair) => !seen.has(key(pair)));
 
-  const told = new Set(waiting.map((pair) => pair.thread));
+  // A park is only an event for the person it names, and only if that person is one of
+  // the targets: "parked on somebody the notifier does not write to" is not a call.
+  const parked = [...(input.parked ?? [])]
+    .filter((park) => byRole.get(park.person)?.style === "direct")
+    .sort((a, b) => a.thread.localeCompare(b.thread));
+  const seenParks = new Set(input.seen.parked.map(parkedKey));
+  const freshParked = parked.filter((park) => !seenParks.has(parkedKey(park)));
+
+  // A PARKED THREAD IS NEVER ALSO A STALLED ONE (thread 023). Both would be true of it —
+  // the turn is not moving, by construction — but "your decision is wanted, here is the
+  // question" and "nobody is moving this" are opposite instructions, and it was the second
+  // one, printed about threads the circuit was chewing, that made the digest unreadable.
+  const told = new Set([...waiting.map((pair) => pair.thread), ...parked.map((p) => p.thread)]);
   const stalled = [...(input.stalled ?? [])]
     .filter((turn) => !told.has(turn.thread))
     .sort((a, b) => a.thread.localeCompare(b.thread));
   const seenStalls = new Set(input.seen.stalled.map(stalledKey));
   const freshStalled = stalled.filter((turn) => !seenStalls.has(stalledKey(turn)));
 
+  const parkedIds = new Set(parked.map((park) => park.thread));
   const threads: string[] = [];
-  for (const pair of waiting) if (!threads.includes(pair.thread)) threads.push(pair.thread);
+  for (const pair of waiting) {
+    // A parked thread is announced by its own line above, and by that one only: "poke the
+    // curator about it" is the wrong instruction for a thread whose turn is frozen behind
+    // the reader of the notification.
+    if (parkedIds.has(pair.thread) || threads.includes(pair.thread)) continue;
+    threads.push(pair.thread);
+  }
 
   const template = (kind: NotificationKind): string =>
     input.templates?.[kind] ?? DEFAULT_NOTIFICATION_TEMPLATES[kind];
 
   const lines: NotificationLine[] = [];
+  // THE PARKS COME FIRST, and they are the only lines that name a question: this is the
+  // section "waiting on your decision", and it is at the top because it is the only part of
+  // the message that is an instruction to the reader rather than a report about the circuit.
+  for (const park of parked) {
+    lines.push({
+      kind: "parked",
+      thread: park.thread,
+      role: park.person,
+      text: renderTemplate(template("parked"), {
+        thread: park.thread,
+        question: park.question,
+      }),
+    });
+  }
   for (const thread of threads) {
     const here = waiting.filter((pair) => pair.thread === thread);
     const directs = here.filter((pair) => byRole.get(pair.role)?.style === "direct");
@@ -301,7 +382,7 @@ export const planNotifications = (input: {
     });
   }
 
-  return { waiting, stalled, fresh, freshStalled, lines };
+  return { waiting, stalled, parked, fresh, freshStalled, freshParked, lines };
 };
 
 /**

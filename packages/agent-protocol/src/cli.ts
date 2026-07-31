@@ -64,7 +64,7 @@ import {
   powerDocuments,
   unmatchedWorkingCards,
 } from "./merge/gate.js";
-import { ghPullRequestSchema } from "./merge/gh.js";
+import { ghPullRequestSchema, ghRefusalHint } from "./merge/gh.js";
 import {
   describeAge,
   parseNotifyState,
@@ -116,6 +116,7 @@ import {
   type InstanceDigest,
   parseDigest,
   renderDigest,
+  rolesOfInstance,
 } from "./orchestrator/instances.js";
 import {
   DEFAULT_WAIT_INPUT_SECONDS,
@@ -157,6 +158,7 @@ import {
 } from "./orchestrator/launch.js";
 import { foldLeases, isLeaseAlive, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
+import { rotateDaemonLog, writeEpochBanner } from "./orchestrator/logsize.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
 import {
   type OrchestratorPaths,
@@ -198,11 +200,16 @@ import {
   quotaSignalOf,
 } from "./orchestrator/quota.js";
 import { renderSystemdUnit } from "./orchestrator/reboot.js";
+import { describeResidentWait, residentWaits } from "./orchestrator/resident.js";
 import {
-  describeResidentWait,
-  renderResidentWaits,
-  residentWaits,
-} from "./orchestrator/resident.js";
+  awaitDaemonExit,
+  DEFAULT_RESTART_POLL_SEC,
+  DEFAULT_RESTART_WAIT_SEC,
+  daemonArgvFor,
+  daemonArgvPath,
+  parseDaemonArgv,
+  renderDaemonArgv,
+} from "./orchestrator/restart.js";
 import {
   describeExclusion,
   describeScope,
@@ -213,14 +220,29 @@ import {
   scopeFlagIssues,
 } from "./orchestrator/scope.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
+import { foregroundRefusal, planSystemdUnit } from "./orchestrator/systemd.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
+  modelOf,
+  type RunUsage,
   renderStreamLine,
+  runUsageOf,
   sessionIdOf,
   splitStreamChunk,
   stampLine,
 } from "./orchestrator/transcript.js";
+import {
+  decodeTuiInput,
+  initialTuiState,
+  invocationOf,
+  PASTE_OFF,
+  PASTE_ON,
+  reduceTui,
+  renderTui,
+  subjectOf,
+  type TuiAction,
+} from "./orchestrator/tui.js";
 import {
   createWorkspaceLocks,
   describeFinishDirt,
@@ -263,14 +285,25 @@ import {
 } from "./schema/version.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { fileMailLock, MailCheckoutBusyError, type MailLock } from "./thread/checkout-lock.js";
-import { DeliveryRefusedError, deliverMessage, deliverySubject } from "./thread/deliver.js";
+import {
+  DeliveryRefusedError,
+  deliverMessage,
+  deliverySubject,
+  type GitRun,
+  type StagedMessage,
+} from "./thread/deliver.js";
 import {
   parkedThreads,
   renderIndex,
   sessionsThatWrote,
   threadsWaitingOn,
 } from "./thread/index-doc.js";
-import type { Expects, LaunchDirective, ThreadPriorityValue } from "./thread/message.js";
+import type {
+  Expects,
+  LaunchDirective,
+  TaskDeclaration,
+  ThreadPriorityValue,
+} from "./thread/message.js";
 import {
   EXPECTS,
   isSessionId,
@@ -280,13 +313,23 @@ import {
   PACKAGE_WORKER,
   parseLaunchDirective,
   parseMessageFile,
+  parseTaskDeclaration,
   THREAD_PRIORITY_VALUES,
+  taskThreadPrefix,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
-import { renderThread, waitingOnOf } from "./thread/thread.js";
+import {
+  checkTasks,
+  collectTaskEvents,
+  renderTasksBoard,
+  type TaskThreadInput,
+  tasksFrom,
+} from "./thread/tasks.js";
+import { parkingOf, renderThread, waitingOnOf } from "./thread/thread.js";
 import {
   messageTimestamp,
   nextMessageTimestamp,
+  type PlannedFile,
   planNewMessage,
   planNewThread,
   threadNumberTaker,
@@ -301,7 +344,20 @@ const err = (line: string): void => {
   process.stderr.write(`${line}\n`);
 };
 
+/**
+ * WHILE A FRAME IS BEING COLLECTED, A REFUSAL IS AN OUTAGE, NOT AN EXIT (thread 019).
+ * The collection reaches for a dozen things that can each be missing for a second — a
+ * journal mid-rewrite, an unreadable holds file, a config that would not load — and
+ * every one of them says so through `fail`, which exits the process. In a one-shot
+ * command that is exactly right. In `--watch` it means the observer dies from a hiccup
+ * at the moment observation matters most, so inside the collection the same refusal
+ * becomes a throw the watcher catches and shows as an outage line.
+ */
+class FrameCollectionError extends Error {}
+let collectingFrame = false;
+
 const fail = (message: string, code: number): never => {
+  if (collectingFrame) throw new FrameCollectionError(message);
   err(`agent-protocol: ${message}`);
   process.exit(code);
 };
@@ -309,6 +365,18 @@ const fail = (message: string, code: number): never => {
 const flag = (argv: readonly string[], name: string): string | undefined => {
   const at = argv.indexOf(name);
   return at === -1 ? undefined : argv[at + 1];
+};
+
+/** Every occurrence of a repeatable flag (`--task` — one message moves several). */
+const flagAll = (argv: readonly string[], name: string): string[] => {
+  const values: string[] = [];
+  for (let at = 0; at < argv.length; at++) {
+    if (argv[at] !== name) continue;
+    const value = argv[at + 1];
+    if (value === undefined) fail(`${name} is given without a value`, 2);
+    values.push(value as string);
+  }
+  return values;
 };
 
 const required = (argv: readonly string[], name: string): string =>
@@ -341,6 +409,24 @@ const standing = createStandingConfig();
  * the runner, where the mail checkout and the code checkout are different
  * directories.
  */
+/**
+ * THE OBSERVER DOES NOT GO TO THE NETWORK (thread 019, from john's live failure of
+ * 2026-07-28 ~09:57Z). `configFrom` fetches, `operatorFrame` reads the config, and
+ * `--watch` calls it once a second — so ssh to github.com going quiet killed the watcher
+ * inside `git fetch`. Freezing is not a cache for speed: a watcher looks at STATE, not
+ * at the schema, and a config that changes between two frames is not information it can
+ * act on. So the config is resolved ONCE, at the start of the watch, and every later
+ * frame reads that same answer from memory.
+ *
+ * It is opt-in rather than the default because the daemon is the other long-lived
+ * caller, and IT must see a config edited underneath it — freezing globally would turn
+ * a policy change into something that needs a restart to take effect.
+ */
+let frozenConfig: Map<string, ReturnType<typeof loadProtocolConfig>> | undefined;
+const freezeConfig = (): void => {
+  frozenConfig ??= new Map();
+};
+
 const configFrom = (
   argv: readonly string[],
   root?: string,
@@ -364,6 +450,16 @@ const configFrom = (
   }
 
   const path = flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH;
+  // THE FREEZE COMES FIRST, BEFORE THE STANDING READ, and the order is the point: the
+  // two mechanisms answer different questions. The freeze says "this caller must not go
+  // to the network at all" (the observer, opt-in); standing says "the network failed,
+  // keep going on the last answer" (the daemon, always on). A frozen caller falling
+  // through to standing would still attempt a fetch every frame — exactly the hang the
+  // freeze exists to prevent.
+  const key = `${repo} ${ref} ${path}`;
+  const frozen = frozenConfig?.get(key);
+  if (frozen !== undefined) return frozen;
+
   const outcome = standing.read(standingKey({ repo, ref, path }), () =>
     loadProtocolConfig({
       repo,
@@ -373,12 +469,16 @@ const configFrom = (
       ...(options?.tolerateOlder === true ? { tolerateOlder: true } : {}),
     }),
   );
-  if (outcome.kind === "read") return outcome.config;
+  if (outcome.kind === "read") {
+    frozenConfig?.set(key, outcome.config);
+    return outcome.config;
+  }
   if (outcome.kind === "stood") {
     // LOUD, EVERY TIME. The whole value of standing on the last config is that the
     // circuit keeps running; the whole danger of it is that it looks identical to a
     // circuit reading current data. The line is on stderr, i.e. in the daemon's tail.
     err(`agent-protocol: WARNING — the config at '${ref}' was NOT re-read: ${outcome.reason}`);
+    frozenConfig?.set(key, outcome.config);
     return outcome.config;
   }
   const { error } = outcome;
@@ -460,6 +560,34 @@ const writeOut = (path: string, content: string): void => {
  * dirt, and delivery refuses on dirt. Why the granularity is the checkout and not the
  * branch, and why a local mutex is enough: `thread/checkout-lock.ts`.
  */
+/**
+ * The git of a delivery, in ONE place for all three of its call sites (a message, a new
+ * thread, an instance digest).
+ *
+ * EVERY GIT FAILURE BECOMES A NAMED REFUSAL CARRYING GIT'S OWN WORDS. Without this the
+ * command died on a raw `execFileSync` throw: code 1, a stack trace and not one word
+ * about the cause. The case that taught it is the runner, where the checkout has no
+ * `user.email` — locally the global config hides it, so the same delivery passed here and
+ * failed in CI saying nothing about identity.
+ */
+const gitIn =
+  (checkout: string): GitRun =>
+  (args, env) => {
+    try {
+      return execFileSync("git", ["-C", checkout, ...args], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
+      });
+    } catch (error) {
+      const failure = error as { stderr?: string; status?: number };
+      const said = (failure.stderr ?? "").trim();
+      throw new DeliveryRefusedError(
+        `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
+      );
+    }
+  };
+
 const mailLockFor = (input: {
   readonly checkout: string;
   readonly holder: string;
@@ -741,7 +869,9 @@ const threadShow = (argv: readonly string[]): void => {
       `<!-- agent-protocol: the last ${shown.length} of ${thread.messages.length} messages; ${skipped} earlier ones are NOT shown (--tail) -->`,
     );
   }
-  out(renderThread(thread.meta, shown));
+  // The task declarations are printed HERE and nowhere else (thread 021): the reading
+  // agent has to see them, the committed `_thread.md` must not move a byte.
+  out(renderThread(thread.meta, shown, { tasks: true }));
 
   const dir = join(root, id);
   const attachments = readdirSync(dir).filter(
@@ -754,6 +884,20 @@ const threadShow = (argv: readonly string[]): void => {
     );
   }
 };
+
+/**
+ * The task layer's view of what `loadThreads` returned. Legacy threads carry no
+ * message files and therefore no declarations — the board starts from now (thread 021,
+ * §5), so their absence here is the decision, not a gap.
+ */
+const taskInputsOf = (
+  threads: readonly LoadedThread[],
+): { inputs: TaskThreadInput[]; status: Map<string, "open" | "closed"> } => ({
+  inputs: threads.flatMap((loaded) =>
+    loaded.input === undefined ? [] : [{ id: loaded.thread.id, entries: loaded.input.entries }],
+  ),
+  status: new Map(threads.map((loaded) => [loaded.thread.id, loaded.thread.meta.status])),
+});
 
 const checkAll = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
@@ -769,6 +913,13 @@ const checkAll = (argv: readonly string[]): void => {
   const notes = found.filter((issue) => issue.severity === "note");
   const issues = found.filter((issue) => issue.severity !== "note");
   const legacy = threads.filter((loaded) => loaded.legacy).map((loaded) => loaded.thread.id);
+
+  // THE CROSS-THREAD HALF OF THE TASK CHECKS (thread 021): a task is opened by one
+  // thread and moved from any, so "moved but never opened", "opened twice", "moved
+  // after being dropped" and "undone in a closed thread" are only visible with every
+  // thread in hand — which this command has anyway.
+  const taskInputs = taskInputsOf(threads);
+  issues.push(...checkTasks(collectTaskEvents(taskInputs.inputs), taskInputs.status));
 
   // R13, second half: `_instances/` IS A CLASS, and the checker has to know it as one.
   // It is the only MUTABLE derived thing in an append-only branch — each box rewrites
@@ -946,6 +1097,19 @@ const derive = (argv: readonly string[]): void => {
     path: join(root, "INDEX.md"),
     rendered: renderIndex(threads.map((l) => l.thread)),
   });
+  // THE BOARD IS A DERIVED FILE OF THE SAME CLASS AS INDEX (thread 021): nobody edits
+  // it by hand, a drift is a red job. The workflow is not touched — it calls `derive
+  // --write` once, and the target list lives here.
+  {
+    const board = tasksFrom(
+      taskInputsOf(threads).inputs,
+      threads.map((l) => l.thread),
+    );
+    targets.push({
+      path: join(root, "TASKS.md"),
+      rendered: renderTasksBoard(board.states, board.waiting),
+    });
+  }
 
   const drifted: string[] = [];
   for (const target of targets) {
@@ -978,6 +1142,50 @@ const derive = (argv: readonly string[]): void => {
   err("agent-protocol: the derived files drifted from the source (--write will rebuild them):");
   for (const path of drifted) err(`- ${path}`);
   process.exit(1);
+};
+
+/**
+ * THE BOARD FOR MACHINES (thread 021, §2.4). `TASKS.md` is john's screen on GitHub;
+ * the TUI (019) and the resident (R23) read THIS, which computes the same model FROM
+ * THE THREADS. A consumer that parsed the derived file would reproduce pain 5 one to
+ * one: asked "what is being done right now" it would answer with yesterday's bytes, or
+ * with silence when the generator failed.
+ */
+const tasksList = (argv: readonly string[]): void => {
+  const root = required(argv, "--root");
+  const registry = registryFrom(argv, repoOf(root));
+  const { threads, failures } = loadThreads(root, registry.ids());
+  for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
+
+  const board = tasksFrom(
+    taskInputsOf(threads).inputs,
+    threads.map((l) => l.thread),
+  );
+  const only = flag(argv, "--status");
+  const states = board.states.filter((state) => only === undefined || state.status === only);
+
+  if (argv.includes("--json")) {
+    out(
+      JSON.stringify(
+        states.map((state) => ({
+          ...state,
+          who: state.owner ?? board.waiting.get(state.at.thread) ?? "",
+        })),
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+  if (states.length === 0) {
+    out("agent-protocol: no tasks declared yet");
+    return;
+  }
+  for (const state of states) {
+    out(
+      `${state.id}  ${state.status.padEnd(11)}  ${state.at.thread}  ${state.since.slice(0, 10)}  ${state.title}`,
+    );
+  }
 };
 
 const parseExpects = (raw: string): Expects => {
@@ -1254,10 +1462,21 @@ const priorityFrom = (
  */
 const parkedOnFrom = (
   argv: readonly string[],
-  input: { readonly registry: RoleRegistry },
+  input: { readonly registry: RoleRegistry; readonly expects: Expects },
 ): string | undefined => {
   const value = flag(argv, "--parked-on");
   if (value === undefined) return undefined;
+  if (input.expects === "none") {
+    // The reader honours a park declared this way (`parkingOf`), so nothing already in
+    // the feed is lost — but the two words point opposite ways: `expects: none` says "this
+    // message asks nobody for anything", and a park says "this thread is waiting for a
+    // person". Written together they read as a park that informational traffic may lift,
+    // which is precisely the shape that cost two empty sessions in thread 034.
+    return fail(
+      `--parked-on '${value}' with --expects none — an informational message asks nobody for anything, and a park says the thread is waiting for a person. Park with the message that carries the question ('--expects answer')`,
+      2,
+    );
+  }
   if (!input.registry.isKnown(value)) {
     return fail(`--parked-on '${value}' is not listed in the config`, 2);
   }
@@ -1268,6 +1487,72 @@ const parkedOnFrom = (
     );
   }
   return value;
+};
+
+/**
+ * THE DOOR OF A TASK DECLARATION (thread 021) — `--task '<NNN.k> <status>[ · tail]'`,
+ * repeatable, checked here and not only in CI.
+ *
+ * WHY THE WHOLE MAIL IS READ HERE. The other cross-thread facts of the protocol are
+ * caught by `check` on the branch, and that would be enough if a red branch were
+ * repairable — it is not: the feed is append-only, so an agent that pushed a crooked
+ * declaration with a normal command has nothing to fix it with but another message.
+ * The philosophy of the package is "crooked markup is refused at the door", and this
+ * is markup. The price is named as a number rather than left implied: a full
+ * `loadThreads` on the live branch is 29 threads, 543 messages, 37–50 ms (median ~44) —
+ * next to the `fetch` + `commit` + `push` this command always does, which are one or
+ * two orders more.
+ *
+ * IT RUNS INSIDE `plan()`, not before delivery: `plan()` is replanned on every attempt,
+ * AFTER `fetch` + `merge --ff-only`, so a task opened by a concurrent message that
+ * overtook us is seen rather than judged against a stale tree. That same placement is
+ * what makes the dry run honest — no `--write` calls the same `plan()`, so a preview
+ * refuses exactly where the write would.
+ */
+const tasksFor = (
+  argv: readonly string[],
+  input: { readonly from: string; readonly thread: string; readonly registry: RoleRegistry },
+): TaskDeclaration[] => {
+  const raws = flagAll(argv, "--task");
+  if (raws.length === 0) return [];
+  const prefix = input.thread.slice(0, input.thread.indexOf("-"));
+  const seen = new Set<string>();
+  const tasks: TaskDeclaration[] = [];
+  for (const raw of raws) {
+    let task: TaskDeclaration;
+    try {
+      // Parsed through the SAME function that reads it back: a value the reader would
+      // reject must not be writable, and one shape check used from both sides is the
+      // only way to guarantee that.
+      task = parseTaskDeclaration(raw);
+    } catch (error) {
+      if (error instanceof MessageFormatError) return fail(error.message, 2);
+      throw error;
+    }
+    if (seen.has(task.id)) {
+      return fail(`--task names '${task.id}' twice — one message says one thing about a task`, 2);
+    }
+    seen.add(task.id);
+    if (
+      (task.status === "open" || task.status === "dropped") &&
+      !input.registry.canDeclareTask(input.from)
+    ) {
+      return fail(
+        task.status === "open"
+          ? `role '${input.from}' does not hold 'task-declare': opening a task is an act of the statement of work. Whoever holds the permission in this project opens it instead`
+          : `role '${input.from}' does not hold 'task-declare': dropping a task is cancelling a statement of work, not executing one — otherwise the board could be made to lie in favour of whoever is writing. Say "this task should not be done" in a message; curator or john drops it`,
+        2,
+      );
+    }
+    if (task.status === "open" && taskThreadPrefix(task.id) !== prefix) {
+      return fail(
+        `--task '${raw}' opens a task under a foreign id: in thread '${input.thread}' a task is opened as '${prefix}.k'. A task of another thread may be MOVED from here, not opened`,
+        2,
+      );
+    }
+    tasks.push(task);
+  }
+  return tasks;
 };
 
 /**
@@ -1308,7 +1593,8 @@ const newMessage = (argv: readonly string[]): void => {
   const expects = parseExpects(required(argv, "--expects"));
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
-  const parkedOn = parkedOnFrom(argv, { registry });
+  const parkedOn = parkedOnFrom(argv, { registry, expects });
+  const tasks = tasksFor(argv, { from, thread: threadId, registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
@@ -1327,6 +1613,35 @@ const newMessage = (argv: readonly string[]): void => {
           .filter((date) => date.includes("T"))
       : [];
     const date = nextMessageTimestamp(new Date(), existingTs);
+    // THE GLOBAL TASK CHECK, inside the plan and therefore replanned per attempt (see
+    // `tasksFor`): the declarations of this message are folded into the feed as it is
+    // AFTER the fetch, and anything `check` would redden the branch for is refused now.
+    if (tasks.length > 0) {
+      const scan = loadThreads(root, registry.ids());
+      const layer = taskInputsOf(scan.threads);
+      const pending: TaskThreadInput[] = [
+        ...layer.inputs,
+        {
+          id: threadId,
+          entries: [
+            {
+              fileName: "<this message>",
+              message: { fields: { from, date, expects, tasks }, text },
+            },
+          ],
+        },
+      ];
+      const issues = checkTasks(collectTaskEvents(pending), layer.status);
+      const mine = issues.filter((issue) => issue.file === "<this message>");
+      if (mine.length > 0) {
+        fail(
+          `the task declarations are refused (the feed is append-only — this is caught here, not after the push):\n- ${mine
+            .map((issue) => issue.message)
+            .join("\n- ")}`,
+          2,
+        );
+      }
+    }
     let planned: ReturnType<typeof planNewMessage>;
     try {
       planned = planNewMessage({
@@ -1338,6 +1653,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(launchDirective === undefined ? {} : { launch: launchDirective }),
         ...(priority === undefined ? {} : { priority }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
+        ...(tasks.length === 0 ? {} : { tasks }),
         text,
         threadHasMessages,
       });
@@ -1384,26 +1700,7 @@ const newMessage = (argv: readonly string[]): void => {
   const checkout = repoOf(root);
   try {
     const delivered = deliverMessage({
-      // EVERY GIT FAILURE BECOMES A NAMED REFUSAL CARRYING GIT'S OWN WORDS. Without
-      // this the command died on a raw `execFileSync` throw: code 1, a stack trace and
-      // not one word about the cause. The case that taught it is the runner, where the
-      // checkout has no `user.email` — locally the global config hides it, so the same
-      // delivery passed here and failed in CI saying nothing about identity.
-      git: (args, env) => {
-        try {
-          return execFileSync("git", ["-C", checkout, ...args], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-            ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
-          });
-        } catch (error) {
-          const failure = error as { stderr?: string; status?: number };
-          const said = (failure.stderr ?? "").trim();
-          throw new DeliveryRefusedError(
-            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
-          );
-        }
-      },
+      git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
       subject: deliverySubject({ from, thread: threadId }),
@@ -1412,7 +1709,7 @@ const newMessage = (argv: readonly string[]): void => {
       identity: roleIdentity(from),
       stage: () => {
         const next = plan();
-        return { path: next.path, content: next.content, label: next.label };
+        return { files: [{ path: next.path, content: next.content }], label: next.label };
       },
       note: out,
       lock: mailLockFor({ checkout, holder: `new-message ${from} → ${threadId}`, note: out }),
@@ -1430,11 +1727,34 @@ const newMessage = (argv: readonly string[]): void => {
   }
 };
 
-/** Create a NEW thread straight in the file form (`_meta.md` + the first message). */
+/**
+ * Create a NEW thread straight in the file form (`_meta.md` + the first message) and
+ * SEND IT (R3, thread 033).
+ *
+ * `--write` MEANS DELIVERED HERE TOO. It did not, and that was the defect: the command
+ * wrote two files, printed "thread created" and returned, while `git ls-tree
+ * origin/comms` knew nothing about the thread. The promise "the file, the commit and the
+ * push are one action" is given in the README, in CLAUDE.md and in every role card — it
+ * was true for `new-message` and false for its twin, so the tool reported success on a
+ * delivery it had not made. Control-reading after a write is a habit a role keeps; a tool
+ * that lies about the write turns that habit from a safety net into the mechanism.
+ *
+ * A THREAD IS ONE DELIVERY, NOT TWO. `_meta.md` and the first message go into a single
+ * commit: a meta pushed without its message is a conversation nobody can read or answer,
+ * and the retry that replans the message would be replanning it against a meta already in
+ * the feed.
+ *
+ * THE THREAD ID IS RE-CHECKED AFTER THE REFRESH. The pre-flight `existsSync` only knows
+ * this disk; delivery fetches, and if somebody took the id in between, creating it a
+ * second time would silently overwrite their meta and leave their first message beside
+ * ours. So the check is repeated where it can actually be true — inside the attempt,
+ * after the fast-forward.
+ */
 const newThread = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const id = required(argv, "--id");
-  const registry = registryFrom(argv, repoOf(root));
+  const loaded = configFrom(argv, repoOf(root));
+  const registry = loaded.registry;
 
   const from = required(argv, "--from");
   if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
@@ -1468,26 +1788,82 @@ const newThread = (argv: readonly string[]): void => {
   }
 
   const text = readFile(required(argv, "--body-file"), "body of the first message");
-  const files = planNewThread({
-    title: required(argv, "--title"),
-    participants,
-    from,
-    ...provenanceFrom(argv, { required: true }),
-    date: messageTimestamp(new Date()),
-    expects: parseExpects(required(argv, "--expects")),
-    ...(flag(argv, "--waiting-on") === undefined
-      ? {}
-      : { waitingOn: parseWaitingOn(flag(argv, "--waiting-on") as string, registry) }),
-    text,
-  });
+  const title = required(argv, "--title");
+  const provenance = provenanceFrom(argv, { required: true });
+  const expects = parseExpects(required(argv, "--expects"));
+  const waitingRaw = flag(argv, "--waiting-on");
+  const waitingOn = waitingRaw === undefined ? undefined : parseWaitingOn(waitingRaw, registry);
 
-  if (argv.includes("--write")) {
-    for (const file of files) writeOut(join(threadDir, file.path), file.content);
-    out(`agent-protocol: thread ${id} created (${files.length} files)`);
+  // Replanned per attempt like a message's: the stamp is taken at the moment of the
+  // attempt, so a retry after somebody else's push does not carry a stale one.
+  const plan = (): readonly PlannedFile[] => {
+    try {
+      return planNewThread({
+        title,
+        participants,
+        from,
+        ...provenance,
+        date: messageTimestamp(new Date()),
+        expects,
+        ...(waitingOn === undefined ? {} : { waitingOn }),
+        text,
+      });
+    } catch (error) {
+      if (error instanceof WriteRefusedError) return fail(error.message, 2);
+      throw error;
+    }
+  };
+
+  const files = plan();
+  if (!argv.includes("--write")) {
+    out(`agent-protocol: would create thread ${id} (--write writes it):`);
+    for (const file of files) out(`- ${id}/${file.path}`);
     return;
   }
-  out(`agent-protocol: would create thread ${id} (--write writes it):`);
-  for (const file of files) out(`- ${id}/${file.path}`);
+
+  if (argv.includes("--no-push")) {
+    for (const file of files) writeOut(join(threadDir, file.path), file.content);
+    out(
+      `agent-protocol: created thread ${id} (${files.length} files) — NOT committed (--no-push: the caller owns its git)`,
+    );
+    return;
+  }
+
+  const checkout = repoOf(root);
+  try {
+    const delivered = deliverMessage({
+      git: gitIn(checkout),
+      write: writeOut,
+      branch: loaded.config.mail.branch,
+      subject: deliverySubject({ from, thread: id }),
+      // By the role that opened the conversation, not by the owner of the box (027).
+      identity: roleIdentity(from),
+      stage: () => {
+        if (existsSync(threadDir)) {
+          throw new DeliveryRefusedError(
+            `thread '${id}' appeared in the feed while we were delivering — somebody took the id first. Nothing was written; pick the next free number`,
+          );
+        }
+        return {
+          files: plan().map((file) => ({
+            path: join(threadDir, file.path),
+            content: file.content,
+          })),
+          label: `${id} (${files.length} files)`,
+        };
+      },
+      note: out,
+      lock: mailLockFor({ checkout, holder: `new-thread ${from} → ${id}`, note: out }),
+    });
+    out(
+      `agent-protocol: opened ${delivered.label} — committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the feed moved underneath)` : ""}`,
+    );
+  } catch (error) {
+    if (error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError) {
+      fail(error.message, 2);
+    }
+    throw error;
+  }
 };
 
 const mail = (argv: readonly string[]): void => {
@@ -1814,6 +2190,21 @@ const runNotify = async (input: {
   // circuit, and nothing else in the package would say so.
   const stalledAfter = loaded.config.notifications?.stalledAfterMinutes ?? 180;
   const now = Date.now();
+  // THE THIRD QUESTION, and the one with no threshold at all (thread 023): "what is frozen
+  // behind a person, and what is being asked". The age answers neither — a park is a
+  // declaration that the turn CANNOT move, so waiting it out only postpones the call.
+  const parked = parsed.flatMap((thread) => {
+    const parking = parkingOf(thread);
+    if (parking === undefined) return [];
+    return [
+      {
+        thread: thread.id,
+        person: parking.person,
+        since: parking.since,
+        question: parking.question,
+      },
+    ];
+  });
   const stalled = parsed.flatMap((thread) => {
     const holder = waitingOnOf(thread);
     if (holder === undefined) return [];
@@ -1826,12 +2217,13 @@ const runNotify = async (input: {
 
   const seen = existsSync(statePath)
     ? parseNotifyState(readFileSync(statePath, "utf8"))
-    : { waiting: [], stalled: [] };
+    : { waiting: [], stalled: [], parked: [] };
   const plan = planNotifications({
     targets,
     waiting,
     seen,
     stalled,
+    parked,
     ...(loaded.config.notifications?.templates === undefined
       ? {}
       : { templates: loaded.config.notifications.templates }),
@@ -1839,6 +2231,7 @@ const runNotify = async (input: {
   const message = renderNotification(plan.lines);
 
   const describeWaits =
+    `${plan.parked.length} parked, ${plan.freshParked.length} of them new; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new`;
   if (!write) {
@@ -1879,11 +2272,15 @@ const runNotify = async (input: {
   // branch below rather than once up here. NOTHING TO ANNOUNCE IS ITSELF a confirmed
   // outcome: this is where a pair that has STOPPED waiting is forgotten, and forgetting
   // it is what makes the same thread ring again if it comes back to waiting later.
-  if (plan.fresh.length === 0 && plan.freshStalled.length === 0) {
-    writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
+  if (plan.fresh.length === 0 && plan.freshStalled.length === 0 && plan.freshParked.length === 0) {
+    writeOut(
+      statePath,
+      renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+    );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
   }
   const announced = [
+    ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
   ];
@@ -1895,7 +2292,10 @@ const runNotify = async (input: {
     // something was delivered would not be.
     say("no transport configured (notifications.transport) — the message follows:");
     say(message);
-    writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
+    writeOut(
+      statePath,
+      renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+    );
     return { kind: "sent", summary, lines: said };
   }
   const outcome = await transport.send(message);
@@ -1917,7 +2317,10 @@ const runNotify = async (input: {
     say(`${outcome.detail} — nothing was announced, the state is unchanged`);
     return { kind: "quiet", summary: `${describeWaits} — nothing was announced`, lines: said };
   }
-  writeOut(statePath, renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled }));
+  writeOut(
+    statePath,
+    renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+  );
   say(outcome.detail);
   return { kind: "sent", summary, lines: said };
 };
@@ -2859,6 +3262,7 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
     waitingOn: (role) => threadsWaitingOn(threads, role),
     authorized: (role) => registry.canSetThreadPriority(role),
   });
+  const residentRoles = registry.residents();
   const published = loadDigests(mailRoot);
   const checkout = dirname(mailRoot);
   const daemonPid = runningDaemon(pidFile);
@@ -2870,6 +3274,10 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
     now,
     gatesFrom(argv).maxAttempts.value,
     sessionsThatWrote(threads),
+    // T-1: every pair names its own transcript. The directory is derived from the journal
+    // exactly as the launchers derive it (`join(dirname(journalPath), "sessions")`), so an
+    // operator pointing `--journal` at a copy gets that copy's sessions and not this box's.
+    join(dirname(journal), "sessions"),
   );
   const heldViews = foldHolds(loadHolds(holds), now);
 
@@ -2898,6 +3306,20 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
     // THE SAME FOLD THE DAEMON PLANS BY (`planTick`) — the frame and the tick cannot
     // disagree about whether the box is standing down.
     quota: openQuotaShelves(events, now),
+    // R23-1 in the FRAME (T-1): from the SAME threads the queue above is built from, so
+    // a resident wait and a launch candidate can never disagree about who is waiting.
+    // The section exists only where the project has resident roles at all.
+    ...(residentRoles.length === 0
+      ? {}
+      : {
+          residents: {
+            roles: residentRoles,
+            waits: residentWaits({
+              residents: residentRoles,
+              waitingThreads: (role) => threadsWaitingOn(threads, role),
+            }),
+          },
+        }),
     queue: orderCandidates(ranked),
     queueNotes: [...renderThreadFailures(scan.failures), ...ignored],
     digests: published.digests,
@@ -2939,7 +3361,13 @@ const CLEAR_BELOW = "\u001b[J";
 const HIDE_CURSOR = "\u001b[?25l";
 const SHOW_CURSOR = "\u001b[?25h";
 
+/** `HH:MM:SSZ` — the outage line says WHEN, and a whole timestamp is noise in a frame. */
+const clockOf = (at: Date): string => at.toISOString().slice(11, 19);
+
 const watchFrame = (argv: readonly string[]): void => {
+  // ONE resolution of the config for the whole watch — see `freezeConfig`. Taken before
+  // the first frame, so the network is touched once and never again.
+  freezeConfig();
   const seconds = positiveInt(argv, "--interval", 2);
   // A ceiling on FRAMES exists for the checks: a loop that never ends cannot be
   // asserted on, and a process test of the redraw is the only place the escape
@@ -2957,8 +3385,37 @@ const watchFrame = (argv: readonly string[]): void => {
     process.on(signal, () => process.exit(0));
   }
 
+  // THE LAST FRAME THAT COLLECTED, AND THE OUTAGE OVER IT. A watcher may die of Ctrl+C
+  // and of nothing else (thread 019): a failed collection draws the last known state
+  // with a line saying what has been unavailable and since when, and the loop goes on —
+  // when the cause passes, the next frame is live again with no intervention.
+  let lastGood: string | undefined;
+  let outage: { readonly since: Date; readonly reason: string } | undefined;
+
+  const collect = (): string => {
+    collectingFrame = true;
+    try {
+      const frame = renderFrame(operatorFrame(argv));
+      lastGood = frame;
+      outage = undefined;
+      return frame;
+    } catch (error) {
+      const reason = (error as Error).message;
+      // The moment is the FIRST failure of this outage, not of this frame: "unavailable
+      // since 09:57" is the fact; a stamp that ticks forward every second would say
+      // nothing at all.
+      outage ??= { since: new Date(), reason };
+      const head = `frame: unavailable since ${clockOf(outage.since)} (${outage.reason})`;
+      return lastGood === undefined
+        ? `${head}\nnothing has collected yet — the watch keeps trying every ${seconds}s`
+        : `${head}\nthe frame below is the last one that collected:\n\n${lastGood}`;
+    } finally {
+      collectingFrame = false;
+    }
+  };
+
   const draw = (): void => {
-    const frame = renderFrame(operatorFrame(argv));
+    const frame = collect();
     if (!tty) {
       process.stdout.write(`${frame}\n\n`);
       return;
@@ -2989,7 +3446,239 @@ const watchFrame = (argv: readonly string[]): void => {
   tick();
 };
 
-const orchestratorStatus = (argv: readonly string[]): void => {
+/**
+ * `orchestrator tui` — THE OBSERVER (T-1, thread 019). The sixth operator short form,
+ * with the same `--ref` bootstrap as `up`/`down`/`hold`/`resume`/`status`.
+ *
+ * EVERYTHING DECIDED LIVES IN `tui.ts`; this is the shell around it — the door, the
+ * terminal, the timer and the two files the bottom panel reads. It draws `renderTui`
+ * over the very frame `status` prints and touches no other source of truth.
+ *
+ * THE DOOR. Raw mode needs a real TTY. Without one the command REFUSES IN WORDS and
+ * names the thing that does work in a pipe, a tmux pane nobody looks at and a dumb
+ * terminal — `status --watch`, which was deliberately built first for exactly those.
+ * Drawing escape sequences into a pipe would be the failure mode of a tool that is only
+ * ever reached when something else has already gone wrong.
+ *
+ * THE TERMINAL IS RESTORED FROM ONE PLACE (`process.on("exit")`), like `watchFrame`'s:
+ * `q`, Ctrl+C and an unhandled throw must leave the same way. What is put back is
+ * everything that was taken — cooked mode, the cursor, bracketed paste, and the
+ * alt-screen, which is why the operator's scrollback comes back untouched.
+ *
+ * THE TRANSCRIPT IS READ FORWARD, NOT RE-READ. The file grows while it is being looked
+ * at; each poll reads from the offset the last one stopped at, and a file that was
+ * replaced (a new run, a smaller size) starts over rather than seeking past its end.
+ */
+const ALT_SCREEN_ON = "\u001b[?1049h";
+const ALT_SCREEN_OFF = "\u001b[?1049l";
+
+/** How much of the transcript is kept in memory — a panel shows a screenful at most. */
+const TRANSCRIPT_LINES = 200;
+
+const orchestratorTui = (rawArgv: readonly string[]): void => {
+  const argv = withOperatorRef(rawArgv);
+  const stdin = process.stdin;
+  if (process.stdout.isTTY !== true || stdin.isTTY !== true || stdin.setRawMode === undefined) {
+    fail(
+      "'orchestrator tui' needs a terminal: it takes the screen and reads single keys, and neither works through a pipe. For a dumb terminal, a tmux pane or 'tee' — 'orchestrator status --watch', which draws the same frame and takes nothing",
+      2,
+    );
+    return;
+  }
+  // ONE resolution of the config for the whole session, as in `--watch`: the observer
+  // does not touch the network again, whatever happens to the ref while it is up.
+  freezeConfig();
+  const seconds = positiveInt(argv, "--interval", 2);
+
+  let restored = false;
+  const restore = (): void => {
+    if (restored) return;
+    restored = true;
+    stdin.setRawMode?.(false);
+    process.stdout.write(`${PASTE_OFF}${SHOW_CURSOR}${ALT_SCREEN_OFF}`);
+  };
+  process.on("exit", restore);
+  for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => process.exit(0));
+
+  let state = initialTuiState;
+  let frame: OperatorFrame | undefined;
+  let trouble: string | undefined;
+  /** The last command run from here, with its outcome — cleared by the next keystroke. */
+  let echo: string | undefined;
+  let transcript: string[] = [];
+  let openFile: string | undefined;
+  let offset = 0;
+
+  const collect = (): void => {
+    collectingFrame = true;
+    try {
+      frame = operatorFrame(argv);
+      trouble = undefined;
+    } catch (error) {
+      // The observer dies of `q` and of nothing else — the same rule the watch lives by.
+      trouble = (error as Error).message;
+    } finally {
+      collectingFrame = false;
+    }
+  };
+
+  /** The tail of the selected pair's file, read FORWARD from where the last poll ended. */
+  const readTranscript = (): void => {
+    const view = frame?.leases[state.selected];
+    const path =
+      view?.sessionLog === undefined
+        ? undefined
+        : state.panel === "log"
+          ? view.sessionLog
+          : sessionSupervisorPath(view.sessionLog);
+    if (path !== openFile) {
+      openFile = path;
+      transcript = [];
+      offset = 0;
+    }
+    if (path === undefined || !existsSync(path)) return;
+    const size = statSync(path).size;
+    // A file that SHRANK is a different file (a new run under the same name, a rotation):
+    // seeking past its end would show nothing for as long as the panel stayed open.
+    if (size < offset) {
+      transcript = [];
+      offset = 0;
+    }
+    if (size === offset) return;
+    const text = readFileSync(path, "utf8").slice(offset);
+    offset = size;
+    transcript = [...transcript, ...text.split("\n").filter((line) => line !== "")].slice(
+      -TRANSCRIPT_LINES,
+    );
+  };
+
+  const draw = (): void => {
+    const rows = process.stdout.rows ?? 24;
+    const cols = process.stdout.columns ?? 80;
+    if (frame === undefined) {
+      const why = trouble ?? "the frame has not collected yet";
+      process.stdout.write(`${HOME}${CLEAR_BELOW}frame: unavailable (${why})\n`);
+      return;
+    }
+    readTranscript();
+    const lines = renderTui({
+      frame,
+      state,
+      rows: rows - 1,
+      cols,
+      transcript,
+      ...(state.overlay ? { overlayLines: renderLog(journalEventsFor(argv)).split("\n") } : {}),
+    });
+    const foot = trouble === undefined ? "" : `  ⚠ last collection failed: ${trouble}`;
+    // THE STATUS LINE IS THE ONE PLACE T-2 SPEAKS FROM: the keys while nothing has been
+    // said, and otherwise the last thing that happened — a confirmation prompt, a refused
+    // key, or the command that was run with its outcome. The keys come back on the next
+    // keystroke, so the echo cannot be missed by a redraw a second later.
+    const said = state.notice ?? echo;
+    const status =
+      said ?? "↑↓ pair · tab log/supervisor · l history · r now · h park · s stop · u up · q quit";
+    process.stdout.write(
+      // One write, so a half-drawn screen is never on display; every line clears its own
+      // tail, exactly as the watch does.
+      `${HIDE_CURSOR}${HOME}${lines.map((line) => `${line}${CLEAR_LINE}`).join("\n")}\n${status}${foot}${CLEAR_LINE}${CLEAR_BELOW}`,
+    );
+  };
+
+  /**
+   * THE MUTATING KEYS RUN THE COMMAND, THEY DO NOT REIMPLEMENT IT (T-2). The action is
+   * spawned as a CHILD of this very CLI — `process.execPath` + `process.argv[1]`, the
+   * same derivation `up` uses for the daemon — for three reasons, in order of weight:
+   *
+   *  1. the doors stay where they are. `hold` checks the signature against the config,
+   *     `up` refuses over a force flag, `down` writes the stop flag: an in-process call
+   *     would have to reproduce every one of those refusals or silently skip them;
+   *  2. `fail()` exits the process. Called from inside the observer it would take the
+   *     terminal down with it, in raw mode, on a typo in a role name;
+   *  3. what is echoed is what ran. The status line shows a command the operator can
+   *     retype into the next shell, character for character.
+   *
+   * stdout and stderr are CAPTURED rather than inherited — the alt-screen belongs to the
+   * frame, and a child writing into it would leave the screen looking corrupted until
+   * the next redraw. The first line of what it said becomes the outcome in the echo.
+   */
+  const perform = (action: TuiAction): void => {
+    // ONE ARRAY BECOMES BOTH: the argv of the child and the line the operator reads. Built
+    // apart, the echo lost every inherited flag — the observer pointed at a holds
+    // directory of its own ran `hold --holds …` and printed `hold` (found in review).
+    const { words, typed } = invocationOf(action, argv);
+    const child = spawnSync(
+      process.execPath,
+      [...process.execArgv, process.argv[1] as string, ...words],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    const said = `${child.stdout ?? ""}${child.stderr ?? ""}`
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+    const outcome =
+      child.error !== undefined
+        ? `could not be run: ${child.error.message}`
+        : child.status === 0
+          ? (said[said.length - 1] ?? "done")
+          : `REFUSED (exit ${child.status ?? "?"}): ${said[said.length - 1] ?? "it said nothing"}`;
+    echo = `${typed} → ${outcome}`;
+    // The frame is collected immediately rather than at the next interval: the operator
+    // pressed a key and is looking at the screen for its consequence right now.
+    collect();
+  };
+
+  let pasting = false;
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding("utf8");
+  process.stdout.write(`${ALT_SCREEN_ON}${PASTE_ON}${HIDE_CURSOR}`);
+  stdin.on("data", (chunk: string) => {
+    const decoded = decodeTuiInput(chunk, pasting);
+    pasting = decoded.pasting;
+    for (const key of decoded.keys) {
+      // A keystroke wipes the last echo: it belongs to the key that produced it, and an
+      // outcome left standing under an unrelated key reads as that key's answer.
+      echo = undefined;
+      const step = reduceTui(
+        state,
+        key,
+        frame === undefined ? { pairs: [], daemonAlive: false } : subjectOf(frame),
+      );
+      state = step.state;
+      if (step.effect === "quit") {
+        restore();
+        process.exit(0);
+      }
+      if (step.effect === "collect") collect();
+      if (step.effect === "act" && step.action !== undefined) perform(step.action);
+    }
+    draw();
+  });
+  process.stdout.on("resize", draw);
+
+  const tick = (): void => {
+    collect();
+    draw();
+    setTimeout(tick, seconds * 1000);
+  };
+  tick();
+};
+
+/** The journal the `l` overlay shows — read on demand, never held between frames. */
+const journalEventsFor = (argv: readonly string[]): readonly OrchestratorEvent[] => {
+  const journal = flag(argv, "--journal") ?? pathsFrom(argv).journal;
+  return existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
+};
+
+const orchestratorStatus = (rawArgv: readonly string[]): void => {
+  // `status` JOINS THE OPERATOR'S SHORT FORMS (thread 019): it is read between `up` and
+  // `down`, by the same person in the same minute, and being the one of the three that
+  // demanded `--ref` made it the one they got wrong — john walked into it on 2026-07-27.
+  // Same bootstrap, same printed line: the working tree says which history governs.
+  const argv = withOperatorRef(rawArgv);
   // `--watch` is THE SAME FRAME, repeated (T-0): not a second command with a view of
   // its own, which is how the two would start to differ.
   if (argv.includes("--watch")) {
@@ -3027,27 +3716,11 @@ const orchestratorStatus = (argv: readonly string[]): void => {
   // R13, second half — WHAT THE OTHER BOXES ARE DOING — is a LIVE fact and moved into
   // the frame above (`renderInstances` inside `renderFrame`), together with the age of
   // the checkout the digests were read from.
-  // R23-1: THE ROLES NOBODY RAISES BECAUSE SOMEBODY ALREADY HOSTS THEM, and whether a
-  // thread is waiting on one. `status` is read by the people who would otherwise wait
-  // for a tick that is never coming: the daemon's stream is nobody's reading material.
-  const statusRegistry = registryFrom(argv, undefined);
-  const residentRoles = statusRegistry.residents();
-  if (residentRoles.length > 0) {
-    // The mail is read only when there is a question to answer: a project with no
-    // resident role must not pay a thread scan for a section it never prints.
-    const statusMail = flag(argv, "--root") ?? paths.mailRoot;
-    const statusThreads = loadThreads(statusMail, statusRegistry.ids()).threads.map(
-      (loaded) => loaded.thread,
-    );
-    const residents = renderResidentWaits({
-      residents: residentRoles,
-      waits: residentWaits({
-        residents: residentRoles,
-        waitingThreads: (role) => threadsWaitingOn(statusThreads, role),
-      }),
-    });
-    if (residents !== undefined) out(residents);
-  }
+  // R23-1 — THE ROLES NOBODY RAISES BECAUSE SOMEBODY ALREADY HOSTS THEM — moved into the
+  // frame as well (T-1, thread 019): it used to be printed HERE, after `renderFrame`, so
+  // the observer that draws the frame would not have shown it at all. The one visible
+  // consequence, named in the statement of work before the code: the resident section
+  // now stands one position higher in the output of `status`, beside the queue.
   out("launch resolution:");
   for (const role of roles) {
     out(`  ${role.id}: ${describeAgent(agentFor(argv, local, role))}`);
@@ -3098,6 +3771,59 @@ const orchestratorSystemdUnit = (argv: readonly string[]): void => {
   );
   err(
     "agent-protocol: `systemctl enable` is a human action; keep the flags on persistent storage (not tmpfs)",
+  );
+};
+
+/**
+ * `orchestrator systemd install` — THE UNIT, GENERATED FROM THIS BOX (thread 019,
+ * statement of 2026-07-31 09:43Z). Why user-level, why the restart policy does not
+ * fight the flags and why the file is generated rather than typed: `orchestrator/systemd.ts`.
+ *
+ * WHAT IT DOES NOT DO: `systemctl --user enable --now` and `loginctl enable-linger`.
+ * That line is old and it is deliberate (`reboot.ts`): a daemon that makes itself
+ * permanent is exactly the surprise the enable gate exists to prevent, and "the box
+ * raises agents by itself from now on" is a decision with a human's name on it. The
+ * command prints the three commands in order; typing them is the decision.
+ */
+const orchestratorSystemdInstall = (argv: readonly string[]): void => {
+  // The ref of the daemon's own argv comes from the working tree, like the operator's
+  // five — a unit is written once and must not carry a ref somebody typed by hand.
+  const args = withOperatorRef(argv);
+  const repo = flag(args, "--repo") ?? homeOf(process.cwd());
+  const typed = flag(args, "--daemon-args");
+  const daemonArgs =
+    typed === undefined
+      ? ["--ref", flag(args, "--ref") as string]
+      : typed.split(/\s+/).filter((token) => token !== "");
+  const unitName = flag(args, "--unit-name");
+  const unitDir = flag(args, "--unit-dir");
+  const description = flag(args, "--description");
+  const user = process.env.USER;
+  const plan = planSystemdUnit({
+    repo,
+    node: process.execPath,
+    cli: process.argv[1] as string,
+    daemonArgs,
+    ...(unitName === undefined ? {} : { unitName }),
+    ...(unitDir === undefined ? {} : { unitDir }),
+    ...(description === undefined ? {} : { description }),
+    ...(user === undefined ? {} : { user }),
+  });
+  if (!args.includes("--write")) {
+    out(`agent-protocol: would write ${plan.path}`);
+    out(plan.unit);
+    out("agent-protocol: --write puts it there; then, by hand:");
+    for (const step of plan.steps) out(`  ${step}`);
+    return;
+  }
+  const existed = existsSync(plan.path);
+  mkdirSync(dirname(plan.path), { recursive: true });
+  writeFileSync(plan.path, plan.unit, "utf8");
+  out(`agent-protocol: ${existed ? "replaced" : "wrote"} ${plan.path}`);
+  out("agent-protocol: the rest is yours to type — none of it happens by itself:");
+  for (const step of plan.steps) out(`  ${step}`);
+  out(
+    "agent-protocol: the unit runs 'up --foreground' — launches are still gated by the enable flag, and a stop/force flag still keeps the circuit down (the daemon exits cleanly, so 'Restart=on-failure' does not re-raise it)",
   );
 };
 
@@ -3244,16 +3970,20 @@ const appendEvent = (journalPath: string, event: OrchestratorEvent): void => {
 };
 
 /**
- * Append a message file to a thread (the same path as `new-message`, but as a
- * subroutine — the force stop needs it for a trace IN THE THREAD). It writes the
- * file; committing and pushing is up to the caller, as with `new-message`.
+ * PLAN a message file for a thread (the same path as `new-message`, but as a
+ * subroutine — the force stop needs it for a trace IN THE THREAD).
+ *
+ * It PLANS rather than writes, because the caller hands it to `deliverMessage` as the
+ * `stage` callback: the stamp, and therefore the file name, depend on what is already
+ * in the feed, so every delivery attempt has to plan afresh on top of the state it
+ * just fetched.
  */
-const postThreadMessage = (
+const planThreadMessage = (
   root: string,
   threadId: string,
   registry: RoleRegistry,
   input: { from: string; expects: Expects; waitingOn?: string | null; text: string },
-): void => {
+): StagedMessage => {
   if (!registry.isKnown(input.from)) fail(`role '${input.from}' is not listed in the config`, 2);
   const threadDir = join(root, threadId);
   if (!existsSync(threadDir)) fail(`thread '${threadId}' not found in '${root}'`, 2);
@@ -3280,16 +4010,13 @@ const postThreadMessage = (
       threadHasMessages,
     });
   } catch (error) {
-    if (error instanceof WriteRefusedError) {
-      fail(error.message, 2);
-      return;
-    }
+    if (error instanceof WriteRefusedError) return fail(error.message, 2);
     throw error;
   }
   const path = join(threadDir, planned.path);
   if (existsSync(path))
     fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
-  writeOut(path, planned.content);
+  return { files: [{ path, content: planned.content }], label: planned.path };
 };
 
 type RunParams = {
@@ -3550,6 +4277,12 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // can continue.
   let sessionId: string | undefined;
   let steps = 0;
+  // WHAT THE RUN BURNED (thread 029) — latched off the same stream, for the same reason
+  // `steps` is: the supervisor reads every line anyway, and this is the only moment the
+  // numbers exist anywhere but inside a 200-MB transcript. Both stay `undefined` for a run
+  // that broke off, and that is the honest answer rather than a gap to be filled in.
+  let runModel: string | undefined;
+  let runUsage: RunUsage | undefined;
 
   const recordSupervisorGone = (): void => {
     if (settled || !leased) return;
@@ -3739,6 +4472,21 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     quota = signal;
     writeLog(`supervisor  ${describeQuotaRelease(signal)}`);
   };
+  // WHAT THE RUN BURNED (thread 029) — latched off the same lines, and WRAPPED, which is
+  // the whole of curator's first acceptance condition (msg-004). Telemetry has no right to
+  // touch the fact that the lease is released: "every outcome leaves a trace" is the
+  // journal's load-bearing invariant, so a collector that threw here — on a stream shape the
+  // vendor changed, on a number that is suddenly a string — would eat the break event it
+  // exists to price. It fails OPEN: the line is written WITHOUT the block, never not written.
+  const noteUsage = (line: string): void => {
+    try {
+      if (runModel === undefined) runModel = modelOf(line);
+      // The ledger arrives once, on the `result` event. First one wins, like the id.
+      if (runUsage === undefined) runUsage = runUsageOf(line);
+    } catch (error) {
+      writeLog(`supervisor  could not read the run's usage: ${(error as Error).message}`);
+    }
+  };
   child.stdout?.on("data", (chunk: Buffer) => {
     if (!sinksOpen) return;
     writeSync(rawSink, chunk);
@@ -3750,6 +4498,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // run that breaks leaves no summary line at all, and those are the only runs
       // whose size the continuation policy ever has to judge.
       if (isAssistantStep(line)) steps += 1;
+      noteUsage(line);
       // THE WINDOW RAN OUT (finding C, thread 023). Recognised where the stream is
       // already being read line by line, and LATCHED rather than acted on here: this
       // handler runs on an IO event, while every lease decision belongs to the poll
@@ -4036,6 +4785,13 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // a shelf per window type, and this is the only place the type is known.
         ...(quota?.window === undefined ? {} : { window: quota.window }),
         ...(leftDirty ? { dirty: true as const } : {}),
+        // WHAT THE RUN BURNED rides to the journal (thread 029) — the last moment the
+        // numbers are in hand without re-parsing the transcript. Omitted entirely when the
+        // run left no ledger AND no model: an empty object would claim a measurement
+        // nobody made.
+        ...(runUsage === undefined && runModel === undefined
+          ? {}
+          : { usage: { ...(runModel === undefined ? {} : { model: runModel }), ...runUsage } }),
       }),
     );
     // THE RELEASE IS ANNOUNCED HERE TOO, although the daemon publishes at the end of its
@@ -4409,9 +5165,11 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   // ownership answer is half of it (R14) — the same value serves the agent resolution
   // below.
   const local = localFrom(argv);
-  const leftOut = launchScopeFrom(argv, local, launchableRoles(argv)).excluded.find(
-    (exclusion) => exclusion.role === roleId,
-  );
+  // The scope is KEPT, not just consulted: besides the ownership door below it carries
+  // the answer to "which box is this" (`scope.instance`), and the digest published by
+  // this run needs it — resolved once, behind the same refusals (R13 + R14).
+  const scope = launchScopeFrom(argv, local, launchableRoles(argv));
+  const leftOut = scope.excluded.find((exclusion) => exclusion.role === roleId);
   if (leftOut !== undefined) {
     fail(describeExclusion(leftOut), 2);
     return;
@@ -4547,6 +5305,26 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   out(`agent-protocol: agent — ${describeAgent(agent)}`);
   out(`agent-protocol: ${describeZones(role)}`);
   for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
+  // R13, second half: A MANUAL RUN PUBLISHES ITS STATE TOO (thread
+  // `025-stale-instance-digest`, second half). The publisher is created HERE — after the
+  // dry run has returned and after the `--detach` fork, so it belongs to the process that
+  // actually holds the lease: a plan publishes nothing, and the parent of a background
+  // run has no lease to publish, its child does.
+  //
+  // "A human is watching this box anyway" is not an argument for leaving it out: that
+  // human is the one reader who does not need the file. It exists for the reader who is
+  // NOT here — another instance, or a `status` read from elsewhere — and to them a fresh
+  // digest with no leases is indistinguishable from an idle box (curator, 2026-07-28).
+  // `-d` removes even the local watcher, with the lease and the journal unchanged.
+  const digest = digestPublisherFor({
+    argv,
+    mailRoot,
+    journalPath,
+    maxAttempts: gates.maxAttempts.value,
+    instance: scope.instance,
+    label: "run",
+  });
+  out(digest.announce);
   const reason = await runOne({
     journalPath,
     mailRoot,
@@ -4577,8 +5355,16 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     now,
     maxConsecutive: gates.maxConsecutive.value,
     maxAttempts: gates.maxAttempts.value,
+    onLeaseChange: digest.publish,
     ...(forceFlag === undefined ? {} : { forceFlag }),
   });
+  // ONE LAST PUBLICATION, the counterpart of the daemon's end-of-tick call. The terminal
+  // release is already hooked, so on a good day this is a no-op that `digestChanged`
+  // costs nothing — it is here for the bad one: a publication from the hook can FAIL (the
+  // mail checkout was busy, the push was rejected), and a failure leaves `published`
+  // untouched precisely so the next call retries it. This is the last moment this process
+  // has, and by now the contention that lost the first attempt is over.
+  digest.publish();
   if (reason !== "skip") out(`agent-protocol: the run of ${roleId}/${thread} finished: ${reason}`);
 };
 
@@ -4629,7 +5415,14 @@ const publishDigest = (input: {
   readonly mailRoot: string;
   readonly branch: string;
   readonly digest: InstanceDigest;
+  /**
+   * WHICH COMMAND IS SPEAKING — `daemon` or `run`. The lines below are read on a
+   * terminal beside the rest of one command's output, and a `run` that announced itself
+   * as the daemon would send a reader looking for a watch that is not there.
+   */
+  readonly label: string;
 }): boolean => {
+  const say = (line: string): void => err(`agent-protocol: ${input.label} — ${line}`);
   const checkout = repoOf(input.mailRoot);
   // THE DIGEST YIELDS TO THE MAIL. It is a courtesy line about this box, and a message
   // from a role is the work itself — so the status line waits a short while and gives up
@@ -4639,26 +5432,12 @@ const publishDigest = (input: {
   const lock = mailLockFor({
     checkout,
     holder: `digest of instance ${input.digest.instance}`,
-    note: (line) => err(`agent-protocol: daemon — ${line}`),
+    note: (line) => say(line),
     waitMs: DIGEST_LOCK_WAIT_MS,
   });
   try {
     deliverMessage({
-      git: (args, env) => {
-        try {
-          return execFileSync("git", ["-C", checkout, ...args], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-            ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
-          });
-        } catch (error) {
-          const failure = error as { stderr?: string; status?: number };
-          const said = (failure.stderr ?? "").trim();
-          throw new DeliveryRefusedError(
-            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
-          );
-        }
-      },
+      git: gitIn(checkout),
       write: writeOut,
       branch: input.branch,
       // Conventional Commits, because the mail checkout carries the commit-msg hook —
@@ -4670,17 +5449,21 @@ const publishDigest = (input: {
       // The path does not depend on what else landed in the branch — one file per box —
       // so a replan after a concurrent push restages the very same file.
       stage: () => ({
-        path: join(input.mailRoot, digestPath(input.digest.instance)),
-        content: renderDigest(input.digest),
+        files: [
+          {
+            path: join(input.mailRoot, digestPath(input.digest.instance)),
+            content: renderDigest(input.digest),
+          },
+        ],
         label: digestPath(input.digest.instance),
       }),
-      note: (line) => err(`agent-protocol: daemon — ${line}`),
+      note: (line) => say(line),
       lock,
     });
     return true;
   } catch (error) {
-    err(
-      `agent-protocol: daemon — the instance digest was NOT published: ${(error as Error).message}; the box keeps working, the other instances see its last known state`,
+    say(
+      `the instance digest was NOT published: ${(error as Error).message}; the box keeps working, the other instances see its last known state`,
     );
     // A FAILED DELIVERY MUST NOT LEAVE THE CHECKOUT DIRTY. `deliverMessage` writes and
     // stages before it commits, so a commit that fails (the runner's checkout has no
@@ -4705,12 +5488,112 @@ const publishDigest = (input: {
         }
       });
     } catch (cleanup) {
-      err(
-        `agent-protocol: daemon — and the half-written digest could NOT be cleaned out of the mail checkout: ${(cleanup as Error).message}. Delivery refuses a dirty checkout, so mail from this box is blocked until '${own}' is dealt with by hand`,
+      say(
+        `and the half-written digest could NOT be cleaned out of the mail checkout: ${(cleanup as Error).message}. Delivery refuses a dirty checkout, so mail from this box is blocked until '${own}' is dealt with by hand`,
       );
     }
     return false;
   }
+};
+
+/**
+ * THE STATE OF THIS BOX, RE-READ AND PUBLISHED IF IT MOVED — ONE publisher, handed to
+ * both commands that hold a lease (`daemon` and `run`; thread `025-stale-instance-digest`).
+ *
+ * It lived inside the daemon at first, and that was the second half of the same defect:
+ * `orchestrator run` — the launch a human types, `-d` included — could not publish at
+ * all, because the only publisher was closed over the daemon's state. A box busy with a
+ * manual run therefore published a fresh `writtenAt` with `leases: []`. That is worse
+ * than the original lie rather than a smaller version of it: the truthfulness of one
+ * derived file came to depend on WHICH COMMAND raised the session, and a reader on
+ * another machine cannot know that — they see current-looking bytes saying nobody is
+ * working (curator, 2026-07-28).
+ *
+ * A SECOND COPY IN THE `run` PATH WAS THE WRONG ANSWER for the reason the first defect
+ * teaches: two publishers of one file drift, and the drift is invisible until somebody
+ * reads the file at the wrong moment. Hence a factory, called once per command, holding
+ * the only piece of state a publisher needs — the last version it actually pushed.
+ *
+ * SEEDED FROM THE BRANCH, not from nothing: a process is restarted (a reboot, a `--once`
+ * tick from cron, a `run` after a `run`), and a fresh one that remembered nothing would
+ * re-commit a digest identical to the one already there. That is the heartbeat
+ * `digestChanged` exists to prevent, arriving by the back door.
+ *
+ * The journal is re-read on every call rather than passed in: a run appends to it while
+ * the caller is blocked, so the copy the caller loaded is stale exactly when it matters.
+ *
+ * A BOX WITH NO DECLARED INSTANCE PUBLISHES NOTHING, and says so once — the pre-R13
+ * contour verbatim (one box, every role), with no id to publish under and nobody to
+ * publish to.
+ */
+type DigestPublisher = {
+  /** Publish if the state moved. Called wherever a lease of this box changes. */
+  readonly publish: () => void;
+  /** The one line the command prints about whether it publishes at all, and where. */
+  readonly announce: string;
+};
+
+const digestPublisherFor = (input: {
+  readonly argv: readonly string[];
+  readonly mailRoot: string;
+  readonly journalPath: string;
+  readonly maxAttempts: number;
+  /**
+   * WHICH BOX THIS IS — taken from the scope both commands have already resolved
+   * (`LaunchScope.instance`), never read again here: the join of the topology and the
+   * machine config has a door that refuses a nameless box or an unknown name, and a
+   * second reading of the same two files would be a second answer to a settled question.
+   */
+  readonly instance: string | undefined;
+  /** Which command is publishing — it ends up in front of every line about the digest. */
+  readonly label: string;
+}): DigestPublisher => {
+  const loaded = configFrom(input.argv, undefined).config;
+  const branch = loaded.mail.branch;
+  const instance = input.instance;
+  if (instance === undefined) {
+    return {
+      publish: () => {},
+      announce: `agent-protocol: ${input.label} — no instance declared, this box publishes no digest (${DIGEST_DIR}/ stays as it is)`,
+    };
+  }
+  // THE ROLES OF THE BOX, NOT OF THIS LAUNCH (see `InstanceDigest.roles`): read from the
+  // topology, so `daemon` and `run --role x` publish the same list and the operator's
+  // flags reach `leases` only.
+  const roles = rolesOfInstance({ instances: loaded.instances, instance });
+  let published: InstanceDigest | undefined = loadDigests(input.mailRoot).digests.find(
+    (digest) => digest.instance === instance,
+  );
+  return {
+    publish: () => {
+      const events = existsSync(input.journalPath)
+        ? parseJournal(readFile(input.journalPath, "orchestrator journal"))
+        : [];
+      const at = new Date();
+      const state = digestOf({
+        instance,
+        roles,
+        leases: foldLeases(events, at, input.maxAttempts),
+        // A box standing down on a closed window has NO live leases to publish, so without
+        // this the neighbours would read its silence as "nothing to do" (D-3 part 2).
+        quota: openQuotaShelves(events, at),
+        now: at,
+      });
+      if (!digestChanged(published, state)) return;
+      if (
+        publishDigest({
+          argv: input.argv,
+          mailRoot: input.mailRoot,
+          branch,
+          digest: state,
+          label: input.label,
+        })
+      ) {
+        published = state;
+      }
+    },
+    announce: `agent-protocol: ${input.label} — publishing state as instance '${instance}' to ${digestPath(instance)} on ${branch}`,
+  };
 };
 
 const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
@@ -4794,58 +5677,22 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // topology there is no id to publish under and nobody to publish to — that is the
   // pre-R13 contour verbatim (one box, every role), and it is said once rather than
   // left to be inferred from a directory that never appears.
-  const selfInstance = scope.instance;
-  const mailBranch = configFrom(argv, undefined).config.mail.branch;
   /**
-   * The last state actually pushed — what the next tick's state is judged against.
-   *
-   * SEEDED FROM THE BRANCH, not from nothing: a daemon is restarted (a reboot, a
-   * `--once` tick from cron, a config change), and a fresh process that remembered
-   * nothing would re-commit a digest identical to the one already there. That is the
-   * heartbeat `digestChanged` exists to prevent, arriving by the back door.
+   * R13, second half: WHETHER THIS BOX PUBLISHES ITS STATE AT ALL, and the publisher
+   * itself — the SAME one `orchestrator run` uses (`digestPublisherFor`). It used to be
+   * an inline closure here, which is what made the manual launch unable to publish at
+   * all; the reasoning of the move is in the factory.
    */
-  let published: InstanceDigest | undefined =
-    selfInstance === undefined
-      ? undefined
-      : loadDigests(mailRoot).digests.find((digest) => digest.instance === selfInstance);
-  out(
-    selfInstance === undefined
-      ? `agent-protocol: daemon — no instance declared, this box publishes no digest (${DIGEST_DIR}/ stays as it is)`
-      : `agent-protocol: daemon — publishing state as instance '${selfInstance}' to ${digestPath(selfInstance)} on ${mailBranch}`,
-  );
-
-  /**
-   * THE STATE OF THIS BOX, RE-READ AND PUBLISHED IF IT MOVED — one function, called from
-   * the two places the state can move (thread `025-stale-instance-digest`).
-   *
-   * It used to be inline at the end of the tick and NOWHERE ELSE, and that single call
-   * site was the whole defect: the lease of a run is taken and released INSIDE the
-   * `await` above it, so by the time the tick reached this code the box was idle again.
-   * Every tick therefore computed `leases: []`, `digestChanged` said "same as last time",
-   * and nothing was ever written — a digest that had never once in its life published a
-   * live lease, while reading as current because its `writtenAt` was a real moment.
-   *
-   * The journal is re-read on every call rather than passed in: a run appends to it while
-   * this process is blocked, so the copy the tick loaded is stale exactly when it matters.
-   */
-  const publishState = (): void => {
-    if (selfInstance === undefined) return;
-    const events = existsSync(journalPath)
-      ? parseJournal(readFile(journalPath, "orchestrator journal"))
-      : [];
-    const at = new Date();
-    const state = digestOf({
-      instance: selfInstance,
-      roles: launchable,
-      leases: foldLeases(events, at, gates.maxAttempts.value),
-      // A box standing down on a closed window has NO live leases to publish, so without
-      // this the neighbours would read its silence as "nothing to do" (D-3 part 2).
-      quota: openQuotaShelves(events, at),
-      now: at,
-    });
-    if (!digestChanged(published, state)) return;
-    if (publishDigest({ argv, mailRoot, branch: mailBranch, digest: state })) published = state;
-  };
+  const digest = digestPublisherFor({
+    argv,
+    mailRoot,
+    journalPath,
+    maxAttempts: gates.maxAttempts.value,
+    instance: scope.instance,
+    label: "daemon",
+  });
+  out(digest.announce);
+  const publishState = digest.publish;
 
   /**
    * THE COURIER IS DIALLED BY THE CIRCUIT, NOT BY A HAND (R4 + thread 024; john's
@@ -5343,10 +6190,15 @@ const orchestratorLog = (argv: readonly string[]): void => {
 /**
  * A forced stop (S4). `graceful` creates the stop flag: the daemon lets the
  * current session run to its natural terminal state and goes dark (through
- * draining), taking nothing new. `force` creates the force flag with `by`/`note`
- * (the observer reads it and puts the session down at a safe point, leaving a
- * journal trace) AND posts a TRACE IN THE THREAD (who/why), so that
- * "who/when/why" exists both in the journal and in the thread.
+ * draining), taking nothing new. `force` posts a TRACE IN THE THREAD (who/why) and
+ * THEN creates the force flag with `by`/`note` (the observer reads it and puts the
+ * session down at a safe point, leaving a journal trace), so that "who/when/why"
+ * exists both in the journal and in the thread.
+ *
+ * THAT ORDER IS LOAD-BEARING, and it is the fix for the defect of 2026-07-27: with the
+ * flag first, the force killed the processes before the trace was committed and pushed,
+ * and the explanation stayed on one disk. Delivery first means the worst case is a stop
+ * that arrives a couple of seconds later, instead of a stop nobody can account for.
  */
 const orchestratorStop = (argv: readonly string[]): void => {
   const mode = required(argv, "--mode");
@@ -5407,19 +6259,86 @@ const orchestratorStop = (argv: readonly string[]): void => {
 
   if (!write) {
     out(
-      `agent-protocol: would create the force flag '${forceFlag}' and announce it in thread ${threadId} from ${by}; --write performs it`,
+      `agent-protocol: would announce the stop in thread ${threadId} from ${by} and THEN create the force flag '${forceFlag}'; --write performs it`,
     );
     return;
   }
+
+  // THE TRACE GOES FIRST, THE FLAG SECOND — the order IS the fix (curator, thread 019,
+  // from john's live force stop of 2026-07-27 ~23:35Z). The message file was written
+  // into the mail checkout and the commit+push never happened: the force put the
+  // processes down before delivery got that far, so the one explanation of a forced
+  // interruption did not travel — in the single case it exists for. It surfaced next
+  // morning as `✗ mail: unsaved changes` in a preflight, and was delivered by hand.
+  //
+  // Delivery is the same one the mail uses, under the same checkout lock (D-0): a
+  // forced stop writes beside a live session by construction, and that session may be
+  // inside the checkout at this very moment.
+  const checkout = repoOf(root);
+  const trace = (): StagedMessage =>
+    planThreadMessage(root, threadId, registry, { from: by, expects: "none", text });
+  let delivered = false;
+  try {
+    const sent = deliverMessage({
+      git: (args) => {
+        try {
+          return execFileSync("git", ["-C", checkout, ...args], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+          });
+        } catch (error) {
+          const failure = error as { stderr?: string; status?: number };
+          const said = (failure.stderr ?? "").trim();
+          throw new DeliveryRefusedError(
+            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
+          );
+        }
+      },
+      write: writeOut,
+      branch: loadedConfig.config.mail.branch,
+      subject: deliverySubject({ from: by, thread: threadId }),
+      // The trace is a TURN in a thread, signed by whoever forced the stop (027) — the
+      // same identity `new-message` commits a role's message with, not the machinery's:
+      // a force stop is somebody's decision, and the commit says whose.
+      identity: roleIdentity(by),
+      stage: trace,
+      note: out,
+      lock: mailLockFor({ checkout, holder: `force stop by ${by} → ${threadId}`, note: out }),
+    });
+    delivered = true;
+    out(
+      `agent-protocol: the trace was announced in thread ${threadId} — ${sent.label}, committed and pushed to origin/${loadedConfig.config.mail.branch}`,
+    );
+  } catch (error) {
+    if (!(error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError))
+      throw error;
+    // A STOP THAT CANNOT BE ANNOUNCED STILL HAPPENS — the alternative is a circuit that
+    // cannot be stopped whenever the network is out. What must not happen is a trace
+    // that vanishes quietly: it is written into the checkout as it stands and said out
+    // loud, twice — the delivery is broken AND the mail of this box is now dirty, which
+    // blocks every other message until somebody deals with it.
+    err(`agent-protocol: the trace was NOT delivered: ${(error as Error).message}`);
+    try {
+      const staged = trace();
+      // A staged write is a LIST since a new thread is born as two files (thread 033):
+      // the trace is one of them, but the undelivered fallback writes whatever was
+      // planned, not the first element of it.
+      for (const file of staged.files) writeOut(file.path, file.content);
+      err(
+        `agent-protocol: the trace was written locally and NOT delivered — '${staged.label}' sits in the mail checkout '${checkout}'. Deliver it by hand (commit + push on the mail branch); until then delivery from this box refuses on a dirty checkout`,
+      );
+    } catch (write) {
+      err(
+        `agent-protocol: and the trace could not even be written down: ${(write as Error).message} — the forced stop below has no explanation anywhere but this terminal`,
+      );
+    }
+  }
+
+  // Only now: the flag, and with it the sessions going down.
   mkdirSync(dirname(forceFlag), { recursive: true });
   writeFileSync(forceFlag, flagBody, "utf8");
-  postThreadMessage(root, threadId, registry, {
-    from: by,
-    expects: "none",
-    text,
-  });
   out(
-    `agent-protocol: force stop — the flag '${forceFlag}' was created, the trace was announced in thread ${threadId}`,
+    `agent-protocol: force stop — the flag '${forceFlag}' was created${delivered ? "" : " AFTER a failed announcement (see above)"}`,
   );
 };
 
@@ -5572,12 +6491,28 @@ const runningDaemon = (pidFile: string): number | undefined => {
  * An `up` on top of a living daemon is REFUSED, not obeyed: two daemons on one
  * journal would take the same pair twice, and the second one's banner would look
  * exactly like a healthy start.
+ *
+ * A FORCE FLAG ON THE FLOOR IS ALSO A REFUSAL — AT THE DOOR, and this one was paid for
+ * live (john, 2026-07-27, twice in a row): `up` cleared the stop flag, reported "the
+ * daemon is up, pid …", and the daemon read the force flag on its first tick and left
+ * (`the daemon stopped — the force flag`). A successful banner over a process that is
+ * already gone is the "silent ≠ idle" class in its purest form — the only way to find
+ * out was reading `daemon.log`. Clearing it the way the stop flag is cleared would be
+ * WRONG: `down` is this command's own counterpart, while a force was put down by a
+ * human with a name and a reason, and taking that back has to be as deliberate as
+ * putting it there. Hence: named, with who and why, and `--clear-force` to say it out
+ * loud.
  */
-const orchestratorUp = (argv: readonly string[]): void => {
+const orchestratorUp = async (argv: readonly string[]): Promise<void> => {
   const args = withOperatorRef(argv);
   const paths = pathsFrom(args);
   const pidFile = flag(args, "--pid-file") ?? paths.daemonPid;
   const log = flag(args, "--daemon-log") ?? paths.daemonLog;
+  // THE MODE A UNIT NEEDS (thread 019, systemd): the daemon runs as THIS process, so
+  // systemd supervises the thing it started rather than a pid that forked away from it.
+  // Everything before the spawn — the doors, the flags, the enable gate — is shared:
+  // `up` is one command with one meaning, and the foreground is where its output goes.
+  const foreground = args.includes("--foreground");
 
   const already = runningDaemon(pidFile);
   if (already !== undefined) {
@@ -5586,6 +6521,31 @@ const orchestratorUp = (argv: readonly string[]): void => {
       2,
     );
     return;
+  }
+
+  const forceFlag = flag(args, "--force-flag") ?? paths.forceFlag;
+  if (existsSync(forceFlag)) {
+    const forced = readForceFlag(forceFlag);
+    const signature = `${forced.by === undefined ? "somebody unnamed" : forced.by}: ${forced.note ?? "no reason was recorded"}`;
+    if (!args.includes("--clear-force") && foreground) {
+      // THE SAME REFUSAL, A CLEAN EXIT — the design risk the statement named, decided in
+      // `orchestrator/systemd.ts`: under `Restart=on-failure` a refusal with code 2 would
+      // be re-raised every RestartSec until the start limit, i.e. an off switch that does
+      // not switch off. Nothing is raised either way; only the code differs.
+      out(`agent-protocol: ${foregroundRefusal({ flagPath: forceFlag, signature })}`);
+      return;
+    }
+    if (!args.includes("--clear-force")) {
+      fail(
+        `the force flag is down ('${forceFlag}') — ${signature}. A daemon started now would read it on its first tick and exit, reporting nothing to this terminal. Clear it deliberately: 'up --clear-force', or remove the file`,
+        2,
+      );
+      return;
+    }
+    rmSync(forceFlag);
+    out(
+      `agent-protocol: the force flag was cleared on request ('${forceFlag}') — it said ${signature}`,
+    );
   }
 
   const stopFlag = flag(args, "--stop-flag") ?? paths.stopFlag;
@@ -5605,13 +6565,65 @@ const orchestratorUp = (argv: readonly string[]): void => {
   const passthrough: string[] = [];
   for (let at = 0; at < args.length; at += 1) {
     const token = args[at] as string;
-    if (token === "--pid-file" || token === "--daemon-log") {
+    if (token === "--pid-file" || token === "--daemon-log" || token === "--log-max-bytes") {
       at += 1;
       continue;
     }
+    // `--clear-force` is a decision about the DOOR, taken above; the daemon behind it
+    // knows nothing of the flag and must not be told to clear anything.
+    if (token === "--clear-force") continue;
+    // `--foreground` is a decision about WHO RUNS the daemon, not a daemon flag.
+    if (token === "--foreground") continue;
     passthrough.push(token);
   }
   mkdirSync(dirname(log), { recursive: true });
+  // THE LOG DOES NOT GROW WITHOUT END, AND ITS EPOCHS ARE LEGIBLE (thread 019, addendum
+  // of 10:50Z: 18 MB in a week, every daemon's lines in one undivided stream). The
+  // decision — rotate at the start, keep one generation, banner every epoch — and why
+  // it is not `daemon-<start>.log`: `orchestrator/logsize.ts`.
+  const capTyped = flag(args, "--log-max-bytes");
+  const cap = capTyped === undefined ? undefined : Number(capTyped);
+  if (cap !== undefined && (!Number.isFinite(cap) || cap <= 0)) {
+    fail(`--log-max-bytes '${capTyped}' — expected a positive number of bytes`, 2);
+    return;
+  }
+  const rotated = rotateDaemonLog({ path: log, ...(cap === undefined ? {} : { cap }) });
+  if (rotated !== undefined) out(`agent-protocol: ${rotated}`);
+  if (foreground) {
+    // The pid and the argv are written exactly as the backgrounded path writes them:
+    // `status`, `down` and `restart` know a daemon as "the pid in `daemon.pid`", and a
+    // daemon under a unit must be the same daemon to all three.
+    writeFileSync(pidFile, `${process.pid}\n`, "utf8");
+    writeFileSync(daemonArgvPath(pidFile), renderDaemonArgv(passthrough), "utf8");
+    writeEpochBanner({
+      path: log,
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+      mode: "foreground",
+    });
+    // BOTH SINKS, ONE STREAM (the statement: journalctl AND the usual daemon.log).
+    // systemd captures the standard streams, `orchestrator log` reads the file — a
+    // mirror keeps them the same text instead of asking the operator which one is real.
+    const mirror = openSync(log, "a");
+    for (const stream of [process.stdout, process.stderr]) {
+      const original = stream.write.bind(stream);
+      stream.write = ((chunk: string | Uint8Array, ...rest: unknown[]): boolean => {
+        try {
+          if (typeof chunk === "string") writeSync(mirror, chunk);
+          else writeSync(mirror, Buffer.from(chunk));
+        } catch {
+          // A full or unwritable log must never take the daemon down: the stream systemd
+          // reads is the one that matters, the file is the convenience.
+        }
+        return (original as (...a: unknown[]) => boolean)(chunk, ...rest);
+      }) as typeof stream.write;
+    }
+    out(
+      `agent-protocol: the daemon runs in the FOREGROUND, pid ${process.pid} · its output is this stream and ${log}`,
+    );
+    await orchestratorDaemon(passthrough);
+    return;
+  }
   const sink = openSync(log, "a");
   const child = spawn(
     process.execPath,
@@ -5621,6 +6633,18 @@ const orchestratorUp = (argv: readonly string[]): void => {
   child.unref();
   closeSync(sink);
   writeFileSync(pidFile, `${child.pid}\n`, "utf8");
+  // The seam between this daemon's lines and the previous one's — the same banner the
+  // foreground path writes, so the file reads the same whoever raised the daemon.
+  writeEpochBanner({
+    path: log,
+    pid: child.pid as number,
+    startedAt: new Date().toISOString(),
+    mode: "background",
+  });
+  // WITH WHAT IT WAS RAISED, beside the pid — the answer `restart` needs and the only
+  // one nobody has today: the flags of a backgrounded daemon live in the terminal that
+  // typed them, i.e. in somebody's memory an hour later (see `restart.ts`).
+  writeFileSync(daemonArgvPath(pidFile), renderDaemonArgv(passthrough), "utf8");
   out(`agent-protocol: the daemon is up in the background, pid ${child.pid} · its output ${log}`);
   out(
     "agent-protocol: 'orchestrator status' shows the circuit, 'orchestrator down' stops it after the current session",
@@ -5649,9 +6673,178 @@ const orchestratorDown = (argv: readonly string[]): void => {
 };
 
 /**
+ * `orchestrator restart` — DOWN, WAIT, (PULL), UP AS ONE GESTURE (thread 019, statement
+ * of 2026-07-31: picking up fresh code was a hand-run pipeline four times in two days,
+ * twice with a stumble). Why the argv of the new daemon comes from state rather than
+ * from the operator, and why this process does the waiting instead of a successor
+ * daemon — `orchestrator/restart.ts`.
+ *
+ * IT IS A COMPOSITION AND NOTHING ELSE: `down` (or `stop --mode force`, trace first),
+ * then the wait, then `up`. The three keep their semantics down to the letter — a
+ * restart that reimplemented any of them would be a second place where "stop" means
+ * something, and the first divergence would be found on a live circuit.
+ *
+ * A REFUSAL ANYWHERE LEAVES THE CIRCUIT DOWN, DELIBERATELY. If the wait runs out, or
+ * the pull or the install fails, nothing is raised: the operator asked for the NEW code
+ * to be running, and raising the old one instead would answer a question nobody asked
+ * while looking exactly like success. The stop flag stays down, the reason is printed
+ * and appended to the daemon log, and `up` by hand is one word away.
+ */
+const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
+  const args = withOperatorRef(argv);
+  const mode = flag(args, "--mode") ?? "graceful";
+  if (mode !== "graceful" && mode !== "force") {
+    fail(`--mode '${mode}' — allowed values are graceful | force`, 2);
+    return;
+  }
+  const paths = pathsFrom(args);
+  const pidFile = flag(args, "--pid-file") ?? paths.daemonPid;
+  const logPath = flag(args, "--daemon-log") ?? paths.daemonLog;
+  // The phases are said to the terminal AND written where a backgrounded daemon speaks:
+  // a restart that refused at 04:00 has to be readable at 09:00, and the terminal it
+  // spoke into is gone by then.
+  const say = (text: string): void => {
+    out(`agent-protocol: restart — ${text}`);
+    try {
+      mkdirSync(dirname(logPath), { recursive: true });
+      appendFileSync(logPath, `[restart ${new Date().toISOString().slice(0, 19)}Z] ${text}\n`);
+    } catch {
+      // The log is a courtesy here, not the channel: a restart must not fail because
+      // the file it wanted to annotate is unwritable.
+    }
+  };
+
+  const pid = runningDaemon(pidFile);
+  const saved = existsSync(daemonArgvPath(pidFile))
+    ? parseDaemonArgv(readFile(daemonArgvPath(pidFile), "the daemon's saved flags"))
+    : undefined;
+
+  // Phase 1 — the stop, in the form that was asked for.
+  if (mode === "force") {
+    const by = operatorSignature(args);
+    if (by === undefined) return;
+    say(`stopping by force, signed by ${by} — the trace goes to the thread before the flag`);
+    orchestratorStop([...args, "--mode", "force", "--by", by, "--write"]);
+  } else {
+    say(
+      pid === undefined
+        ? "no backgrounded daemon of this box is running — setting the stop flag anyway (an attached one exits at its next tick)"
+        : `stopping pid ${pid} gracefully — it finishes the sessions it is running`,
+    );
+    orchestratorDown(args);
+  }
+
+  // Phase 2 — the wait. This is the part john was doing by hand, with no idea how long.
+  const waitSec = Number(flag(args, "--wait") ?? DEFAULT_RESTART_WAIT_SEC);
+  if (!Number.isFinite(waitSec) || waitSec <= 0) {
+    fail(`--wait '${flag(args, "--wait")}' — seconds to wait for the daemon to leave`, 2);
+    return;
+  }
+  const outcome = await awaitDaemonExit({
+    pid,
+    alive,
+    sleep,
+    now: () => Math.round(Date.now() / 1000),
+    waitSec,
+    pollSec: DEFAULT_RESTART_POLL_SEC,
+    note: (waited) => say(`still waiting for pid ${pid} to leave — ${waited}s so far`),
+  });
+  if (outcome.kind === "timeout") {
+    say(
+      `the daemon (pid ${pid}) is STILL up after ${outcome.waitedSec}s — nothing was raised, the stop flag stays down. Its sessions are visible in 'orchestrator status'; 'restart --mode force' puts them down with a trace`,
+    );
+    fail(`the daemon did not leave within ${waitSec}s — nothing was restarted`, 1);
+    return;
+  }
+  say(
+    outcome.kind === "absent"
+      ? "no daemon had to be waited out"
+      : `the daemon left after ${outcome.waitedSec}s`,
+  );
+
+  // Phase 3 — the fresh code, when it was asked for.
+  if (args.includes("--pull")) {
+    const repo = flag(args, "--repo") ?? homeOf(process.cwd());
+    for (const step of [
+      { what: "git pull --ff-only", run: ["git", ["-C", repo, "pull", "--ff-only"]] as const },
+      { what: "pnpm install", run: ["pnpm", ["--dir", repo, "install"]] as const },
+    ]) {
+      say(`${step.what} in '${repo}'`);
+      try {
+        const said = execFileSync(step.run[0], [...step.run[1]], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        const tail = said.trim().split("\n").slice(-3).join(" · ");
+        say(`${step.what} — ok${tail === "" ? "" : `: ${tail}`}`);
+      } catch (error) {
+        const failure = error as { stderr?: string; stdout?: string; status?: number };
+        const why = (failure.stderr ?? failure.stdout ?? "").trim();
+        say(
+          `${step.what} FAILED (code ${failure.status ?? "?"})${why === "" ? "" : `: ${why}`} — nothing was raised, the circuit stays down until this is dealt with`,
+        );
+        fail(`${step.what} failed — the daemon was NOT raised`, 1);
+        return;
+      }
+    }
+  }
+
+  // Phase 4 — up, with the flags of the daemon that was stopped.
+  const chosen = daemonArgvFor({ saved, typed: args });
+  say(
+    chosen.source === "state"
+      ? `raising the daemon with the flags it was stopped with (${daemonArgvPath(pidFile)}): ${chosen.argv.join(" ") || "none"}`
+      : `the stopped daemon left no record of its flags (${daemonArgvPath(pidFile)}) — raising it with the flags typed here: ${chosen.argv.join(" ") || "none"}`,
+  );
+  const upFlags: string[] = [...chosen.argv];
+  // The two paths belong to THIS command, not to the daemon, so `up` never saved them.
+  for (const own of ["--pid-file", "--daemon-log"] as const) {
+    const value = flag(args, own);
+    if (value !== undefined && !upFlags.includes(own)) upFlags.push(own, value);
+  }
+  // A force stop put the force flag down a minute ago — clearing it here is not the
+  // silent clearing `up` refuses, it is the same operator saying so in the same breath.
+  if (mode === "force") upFlags.push("--clear-force");
+  await orchestratorUp(upFlags);
+};
+
+/**
+ * WHO IS OPERATING THIS BOX — the flag, then `operator` of the machine config (R14),
+ * then `$USER`, checked against the config's roles. Shared by the short forms that sign
+ * something in somebody's name (`hold <role>`, `restart --mode force`): a signature is
+ * a role of the circuit, and free text in that place would be an identity nobody can
+ * check.
+ */
+const operatorSignature = (args: readonly string[]): string | undefined => {
+  const local = localFrom(args);
+  const typed = flag(args, "--by");
+  const account = process.env["USER"];
+  const signature: readonly [string, string] | undefined =
+    typed !== undefined
+      ? [typed, "the flag"]
+      : local.config.operator !== undefined
+        ? [local.config.operator, `'operator' of ${local.path}`]
+        : account !== undefined && account !== ""
+          ? [account, "$USER"]
+          : undefined;
+  const registry = registryFrom(args, undefined);
+  if (signature === undefined || !registry.isKnown(signature[0])) {
+    fail(
+      signature === undefined
+        ? `--by was not given, '${local.path}' declares no 'operator' and $USER is not set — this action is signed by a role of the config`
+        : `--by '${signature[0]}' (from ${signature[1]}) is not a role of the config — pass --by <role>, or set 'operator' in '${local.path}'`,
+      2,
+    );
+    return undefined;
+  }
+  return signature[0];
+};
+
+/**
  * The SHORT PARKING FORMS: `hold <role>` / `resume <role>` (thread 019). The strict
  * forms stay exactly as they were — this is the same action with the two answers the
- * operator was retyping filled in: the ref from the config, `--by` from `$USER`.
+ * operator was retyping filled in: the ref from the config, `--by` from the machine
+ * (`operator` of `local.json`, then `$USER`).
  *
  * They ACT rather than plan. `--write` on the strict form guards a change nobody can
  * see; a hold is visible in one command (`status`) and undone in one word, and a dry
@@ -5661,17 +6854,11 @@ const orchestratorDown = (argv: readonly string[]): void => {
 const orchestratorHoldShort = (argv: readonly string[]): void => {
   const args = withOperatorRef(argv.slice(1));
   const role = argv[0] as string;
-  const by = flag(args, "--by") ?? process.env["USER"] ?? "";
-  const registry = registryFrom(args, undefined);
-  if (!registry.isKnown(by)) {
-    fail(
-      by === ""
-        ? "--by was not given and $USER is not set — a hold is signed by a role of the config"
-        : `--by '${by}' (from ${flag(args, "--by") === undefined ? "$USER" : "the flag"}) is not a role of the config — pass --by <role>`,
-      2,
-    );
-    return;
-  }
+  // THREE ANSWERS, IN THIS ORDER: the flag (this one hold), `operator` of the machine
+  // config (who sits at this box — R14), `$USER` (the box where the account name is a
+  // role by luck) — `operatorSignature`, shared with `restart --mode force`.
+  const by = operatorSignature(args);
+  if (by === undefined) return;
   orchestratorHold([...args, "--mode", "take", "--role", role, "--by", by, "--write"]);
 };
 
@@ -5701,7 +6888,7 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
   }
   const daemon = USAGE_FLAGS.get("orchestrator daemon");
   const merged =
-    key === "orchestrator up" && daemon !== undefined
+    (key === "orchestrator up" || key === "orchestrator restart") && daemon !== undefined
       ? {
           value: [...spec.value, ...daemon.value],
           boolean: [...spec.boolean, ...daemon.boolean],
@@ -5850,16 +7037,26 @@ const zonesCheck = (argv: readonly string[]): void => {
  * runs to look at a PR, its authentication is the operator's, and reaching for the
  * REST API instead would put a token in the package's hands for no gain.
  *
- * AND THAT TOKEN NEEDS THE `checks` SCOPE — say it out loud, because the refusal is
- * observed and not hypothetical (the reviewer's finding on this very PR). Guard 2
- * reads `statusCheckRollup`, which GraphQL serves only to a token holding `checks:
- * read`. A personal token has it; a GitHub App installation token (`ghs_…`, what any
- * `gh-action` executor of this protocol runs with) has ONLY what its job's
- * `permissions:` block lists, and an unlisted scope is zeroed rather than defaulted.
- * The whole call then fails — `Resource not accessible by integration` — instead of
- * degrading, so a gate run from a job without `checks: read` answers nothing at all
- * rather than answering wrongly. The failure path below names the scope, because the
- * message GitHub sends does not.
+ * AND THAT TOKEN NEEDS SCOPES IT MAY NOT HAVE — the refusal is observed and not
+ * hypothetical (the reviewer's finding on this very PR). Guard 2 reads
+ * `statusCheckRollup`, which GraphQL serves only to a token holding `checks: read`, and
+ * `gh` asks inside it for `checkSuite.workflowRun`, which is ACTIONS and wants
+ * `actions: read`. A personal token has both; a GitHub App installation token (`ghs_…`,
+ * what any `gh-action` executor of this protocol runs with) has ONLY what its job's
+ * `permissions:` block lists — and, through `claude-code-action`, only what the token
+ * exchange asked for in `additional_permissions`; unlisted is zeroed, not defaulted. The
+ * whole call then fails — `Resource not accessible by integration` — instead of
+ * degrading, so a gate run from such a job answers nothing at all rather than answering
+ * wrongly. WHICH scope is missing the command does NOT declare: it prints the reason
+ * `gh` returned and reads the path GitHub named (`merge/gh.ts` → `ghRefusalHint`, where
+ * the cost of the declaring version is written down).
+ *
+ * AND `mergeable` IS COMPUTED LAZILY BY GITHUB: the first ask about a pull request
+ * starts the job and answers `UNKNOWN`, the next one answers for real — on every open
+ * PR of this repository, not now and then. Since the door refuses on anything that is
+ * not `MERGEABLE` (D2), a single ask would make it refuse almost every first run with
+ * "ask again" — so the command asks again ITSELF, once, and only then reports `UNKNOWN`
+ * as the answer it is.
  *
  * `--power-docs` IS A FLAG AND NOT A CONFIG SECTION, and the reason is worth writing
  * down because it is not the shape one would choose: a new config field costs a
@@ -5881,11 +7078,19 @@ const mergeGate = (argv: readonly string[]): void => {
   const loaded = configFrom(argv, undefined);
   const repo = flag(argv, "--repo") ?? process.cwd();
 
-  let raw: string;
-  try {
-    raw = execFileSync(
+  const ask = (): string =>
+    execFileSync(
       "gh",
-      ["pr", "view", number, "--json", "number,headRefOid,body,statusCheckRollup,reviews,files"],
+      [
+        "pr",
+        "view",
+        number,
+        "--json",
+        // `mergeable`/`mergeStateStatus`: what GitHub itself would refuse (D2).
+        // `commits` beside `reviews`: the date of the head commit, the one fact a
+        // substituted review anchor cannot fake (thread 043).
+        "number,headRefOid,body,statusCheckRollup,reviews,commits,files,mergeable,mergeStateStatus",
+      ],
       {
         cwd: repo,
         encoding: "utf8",
@@ -5893,12 +7098,23 @@ const mergeGate = (argv: readonly string[]): void => {
         maxBuffer: 16 * 1024 * 1024,
       },
     );
+
+  let raw: string;
+  try {
+    raw = ask();
+    // GitHub computes `mergeable` LAZILY: the first ask starts the job and answers
+    // UNKNOWN, the next one answers for real (observed on every open PR of this repo).
+    // Asking again is what the refusal would tell a human to do, so the command does it
+    // once itself — and only then reports UNKNOWN as the answer it is.
+    if (/"mergeable"\s*:\s*"UNKNOWN"/.test(raw)) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
+      raw = ask();
+    }
   } catch (error) {
     const message = (error as Error).message;
-    const scope = /not accessible by integration|statusCheckRollup/i.test(message)
-      ? " — `statusCheckRollup` needs a token with the `checks: read` scope; an installation token of a job that does not list it in `permissions:` has it zeroed"
-      : "";
-    fail(`PR #${number} was not read through gh: ${message}${scope}`, 2);
+    // The reason `gh` returned is the fact and is printed whole; the hint is a reading
+    // of it and says so (`ghRefusalHint` — why it stopped asserting a scope).
+    fail(`PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`, 2);
     return;
   }
 
@@ -5944,14 +7160,27 @@ const mergeGate = (argv: readonly string[]): void => {
         state: review.state,
         commitSha: review.commit?.oid,
         author: review.author?.login,
+        // The stamp guard 1 tells a second round of review by (D4).
+        submittedAt: review.submittedAt ?? undefined,
       })),
+      // When the head commit was made — a verdict older than it answered about code that
+      // did not exist yet (thread 043). Only the head's own entry counts.
+      headCommittedAt:
+        parsed.data.commits.find((commit) => commit.oid === parsed.data.headRefOid)
+          ?.committedDate ?? undefined,
       checks: parsed.data.statusCheckRollup.map((check) => ({
+        // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
+        // absence itself (D3), so the mapping stays a mapping.
         name: check.name ?? check.context ?? "?",
         status: check.status ?? undefined,
         conclusion: check.conclusion ?? undefined,
         state: check.state ?? undefined,
+        completedAt: check.completedAt ?? undefined,
+        startedAt: check.startedAt ?? undefined,
       })),
       changedPaths: parsed.data.files.map((file) => file.path),
+      mergeable: parsed.data.mergeable,
+      mergeStateStatus: parsed.data.mergeStateStatus ?? undefined,
     },
     powerDocs,
   });
@@ -5963,7 +7192,14 @@ const mergeGate = (argv: readonly string[]): void => {
 const main = async (argv: readonly string[]): Promise<void> => {
   const [command, subcommand] = argv;
   if (command === "orchestrator" && subcommand !== undefined) {
-    guardArguments(`orchestrator ${subcommand}`, argv.slice(2));
+    // `systemd` is the one orchestrator command with a TWO-WORD name, so both the key of
+    // the table and the argv the guard reads shift by a token: keyed on the first word
+    // alone it would look up a usage line that does not exist and refuse everything.
+    const two = subcommand === "systemd" && argv[2] !== undefined;
+    guardArguments(
+      two ? `orchestrator systemd ${argv[2]}` : `orchestrator ${subcommand}`,
+      argv.slice(two ? 3 : 2),
+    );
   }
   if (command === "config" && subcommand === "check") {
     configCheck(argv.slice(2));
@@ -5989,6 +7225,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
     migrate(argv.slice(1));
   } else if (command === "derive") {
     derive(argv.slice(1));
+  } else if (command === "tasks") {
+    if (argv[1] !== "list") fail(`unknown 'tasks' subcommand '${argv[1] ?? ""}'\n${USAGE}`, 2);
+    tasksList(argv.slice(2));
   } else if (command === "new-message") {
     newMessage(argv.slice(1));
   } else if (command === "new-thread") {
@@ -6001,6 +7240,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
     await notify(argv.slice(1));
   } else if (command === "orchestrator" && subcommand === "status") {
     orchestratorStatus(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "tui") {
+    guardArguments("orchestrator tui", argv.slice(2));
+    orchestratorTui(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "record") {
     orchestratorRecord(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "run") {
@@ -6012,9 +7254,11 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "orchestrator" && subcommand === "stop") {
     orchestratorStop(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "up") {
-    orchestratorUp(argv.slice(2));
+    await orchestratorUp(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "down") {
     orchestratorDown(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "restart") {
+    await orchestratorRestart(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "resume") {
     orchestratorResumeShort(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "hold") {
@@ -6032,6 +7276,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     orchestratorEnable(argv.slice(2), false);
   } else if (command === "orchestrator" && subcommand === "systemd-unit") {
     orchestratorSystemdUnit(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "systemd" && argv[2] === "install") {
+    orchestratorSystemdInstall(argv.slice(3));
   } else {
     fail(USAGE, 2);
   }

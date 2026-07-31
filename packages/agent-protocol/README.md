@@ -139,13 +139,24 @@ every machine and belongs to none of them.
 // ~/.config/agent-protocol/local.json  (or --local-config <path>)
 {
   "agents": { "claude-code": { "exec": "/home/j/.nvm/versions/node/v18.20.3/bin/claude" } },
-  "secrets": { "envFile": "/home/j/.config/lle/telegram.env" }
+  "secrets": { "envFile": "/home/j/.config/lle/telegram.env" },
+  "operator": "john"
 }
 ```
 
 `secrets.envFile` (R4) is a PATH and only a path: the values live in that file, which
 is read and never printed, while this one is printed on every preflight. Both fields
 say the same kind of thing — where something on this box happens to sit.
+
+`operator` is WHO SITS AT THIS BOX — the role a short-form hold is signed by when
+`--by` is not typed. It was `$USER` alone, and an OS account name coincides with a
+role of the config only by luck: on the box this was written on it is `cosysoft`,
+which is no role, so `hold <role>` — the form that exists to take the ceremony off
+the operator — refused every time until `--by` was typed anyway. WHICH roles may sign
+is still stated in the repository and still checked there; which of them is at this
+keyboard is true of one machine and of no other. The order is: the flag, then
+`operator`, then `$USER` (kept for the box where the account name IS a role), and
+every refusal names which of the three the value came from.
 
 The hole this closes was visible in every command typed by hand:
 `--exec /home/…/versions/node/v18.20.3/bin/claude`. That path is not knowledge of the
@@ -658,7 +669,11 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write]
+                            [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            # THE OTHER WRITING DOOR (R3, thread 033): --write means SENT here too —
+                            # `_meta.md` and the first message go in ONE commit, pushed, with the same
+                            # replanning retry and the same refusal on a dirty checkout
+                            # --no-push: the files only, for the caller that owns its own git (CI)
                             # the NUMBER is refused if a thread already holds it (029): `NNN` is a short
                             # address, and `029` handed out twice made "тред 029" mean two things.
                             # nothing is renamed after the fact — the full id stays unique, the door changes
@@ -678,6 +693,20 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # the neighbours' digests, and how old the mail on disk is; then the static half
                             # (paths, permissions, resolution)
                             # --watch redraws THE SAME frame every --interval seconds and READS ONLY
+agent-protocol orchestrator tui    [--ref <ref>] [--interval <sec>]        # THE OBSERVER (T-1)
+                            # the same frame as a SCREEN: pairs on top, the circuit in the middle,
+                            # the selected session's transcript below (tab: .log / .supervisor)
+                            # five keys and all five READ — arrows pick the pair, 'l' overlays the
+                            # journal, 'r' collects a frame now, 'q' leaves. The mutating three
+                            # ('h'/'s'/'u') belong to T-2, together with their confirmation press
+                            # A PASTE EXECUTES NOTHING: bracketed paste is on for the whole session
+                            # and everything between its markers is dropped, so a pasted block
+                            # holding a 'q' does not close the window (this thread exists because
+                            # an accidental paste killed a watch)
+                            # it needs a REAL TERMINAL and refuses in words without one — for a dumb
+                            # terminal, a tmux pane or 'tee' the answer is 'status --watch', which is
+                            # why that was built first and is not a poor substitute for this
+                            # the alt-screen is taken and given back: the scrollback is untouched
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
 agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
@@ -755,6 +784,79 @@ fetched without a refspec), batch the commit with their own work and push under 
 runner's token. A named flag is honester than a command that behaves differently
 depending on where it runs.
 
+**AND `new-thread` IS THE SAME DOOR** (thread 033). It was not: it wrote `_meta.md` and
+the first message, printed "thread created" and returned — no `add`, no commit, no push —
+while the README, CLAUDE.md and every role card promised that `--write` delivers. The
+promise was true for one command of the two, so the tool reported success on a delivery it
+had never made: exactly the class of "the tool's answer is not the fact" that a role is
+supposed to be insured against, and here the insurance (control-reading the feed after a
+write) was load-bearing instead of a safety net. A NEW THREAD IS ONE DELIVERY, NOT TWO:
+the meta and the first message land in a single commit, because a meta pushed without its
+message is a conversation nobody can read or answer, and the retry would then be replanning
+the message beside a meta already in the feed. The thread id is re-checked AFTER the
+refresh, inside the attempt: the pre-flight check only knows this disk, and if somebody
+took the number in between, writing it again would overwrite their meta.
+
+#### Which `--write` delivers, and which only writes (thread 033)
+
+`--write` is one word for two different things across this CLI, so here is the whole list
+as a fact rather than as an impression. **Two commands SEND** — the file, the commit and
+the push are one action:
+
+| command | `--write` does |
+| --- | --- |
+| `new-message` | **delivers** — writes, commits, pushes (retry, `--no-push` for CI) |
+| `new-thread` | **delivers** — both files in one commit, pushes (retry, `--no-push` for CI) |
+| `index build` | writes `INDEX.md` — **not committed**: derived |
+| `thread build` | writes `_thread.md` — **not committed**: derived |
+| `derive` | writes all derived files — **not committed**: derived |
+| `migrate` | rewrites threads into the file form — **not committed**: read before it is |
+| `schema migrate` | rewrites config and mail to the next version — **not committed**: says so in its own output |
+| `orchestrator record` | appends to the journal — **no git**: machine-local state |
+| `orchestrator enable`/`disable` | the gate flag — **no git**: machine-local state |
+| `orchestrator hold` (take/release) | the hold file — **no git**: machine-local state |
+| `orchestrator stop` (graceful/force) | the stop/force flag — **no git**: machine-local state |
+| `orchestrator run` | **acts** — prepares and locks the workdir, appends the launch events, raises the agent; **no git**: all of it machine-local |
+| `notify` | the notify state + the message — **no git**: delivery is the transport (R4) |
+
+The three reasons behind the "not committed" column, in full:
+
+- **the derived files are the generator's** (`index build`, `thread build`, `derive`).
+  They are rebuilt by `comms-derived.yml` on the push that produced them and committed
+  there as `chore(comms): rebuild derived`. A command that committed them itself would
+  race that workflow and make every concurrent write a conflict in a file nobody authored
+  — which is also why delivery never stages them;
+- **a bulk rewrite is read before it is committed** (`migrate`, `schema migrate`). These
+  touch many files at once and the config half goes through a PR by rule, so the commit is
+  the human's decision, not the tool's. `schema migrate` says this in its own output;
+- **the operational state is not in git at all** (`orchestrator record/enable/disable/
+  hold/stop/run`, the state file of `notify`). It lives under `orchestrator.state`
+  (`.orchestrator/` here, gitignored) because it is a fact about THIS machine — there is
+  nothing to deliver. `notify` does deliver, through its transport plugin; a commit is not
+  its channel.
+
+`orchestrator run` is in that last class by its state, and it is the one entry where the
+word means something else: **`--write` there is not "write the file", it is "do it"**.
+Without it nothing at all happens — the command prints the plan it would execute and
+touches neither the role's worktree, nor its lock, nor the journal; with it the worktree is
+put on the base and locked, the launch events are appended and the agent is raised. It is
+listed here because the question this list answers is "what does typing `--write` cost me",
+and for `run` the answer is the largest of the lot. What the raised session then delivers
+is the session's own doing, through the two writing doors above.
+
+#### The type of a hand-made commit into the mail
+
+Sending by hand is no longer a step of the normal path — both writing doors deliver. It
+survives as an EMERGENCY path (a legacy thread that `new-message` refuses, a delivery
+interrupted midway), and when it is taken the commit is written as
+**`docs(agent-comms): <role> → <thread>`** — the exact subject `deliverySubject` produces.
+Two reasons: `comms(...)` is not in the `@commitlint/config-conventional` enum and the
+commit-msg hook of the mail checkout rejects it (this is how the question arose — curator's
+first hand-made commit was bounced), and the feed's history should not record HOW a
+message got in. Machine bookkeeping in the same branch keeps `chore(...)`
+(`chore(comms): rebuild derived`, `chore(protocol): instance <id> state`): it is not a turn
+in a conversation.
+
 **ONE WRITER AT A TIME INSIDE THE MAIL CHECKOUT** (D-0, thread `023-daemon-parallelism`).
 The checkout is one directory per instance, not one per role, and between the write and
 the commit it is DIRTY BY CONSTRUCTION — so two overlapping deliveries end either with
@@ -830,15 +932,121 @@ What the subtraction leaves behind is a norm, not a hole, and it lives in curato
 card: a change to `CLAUDE.md` that moves authority, borders, permissions or zones goes
 to john, and doubt reads as "it moves them".
 
-**The token needs the `checks` scope.** Guard 2 reads `statusCheckRollup`, which GitHub
-serves only to a token holding `checks: read`. A personal token has it; a GitHub App
-installation token (`ghs_…` — what any `gh-action` executor of this protocol runs with)
-has only the scopes its job's `permissions:` block lists, and an unlisted one is zeroed
-rather than defaulted. The whole `gh` call then fails with `Resource not accessible by
-integration` instead of degrading, so the gate answers nothing at all rather than
-answering wrongly — and the refusal names the scope, because GitHub's own message does
-not. This is observed, not hypothetical: it is how the reviewer of this very PR found
-that its "live run" had only ever been made from a session token.
+**One head answers once per check name.** A rerun does not replace the attempt it
+reran: both hang on the same head in `statusCheckRollup`, and read flat, the door
+refused #89 for a `review=FAILURE` a rerun had overwritten fifteen minutes later. So
+the runs are grouped by name and only the **last attempt** of each is judged — last by
+TIME (`completedAt`, else `startedAt`), never by position in the array, which `gh` does
+not promise to order. The border in the other direction is as load-bearing: a rerun
+still in flight is not swallowed by an older success — the latest attempt wins, and a
+latest attempt that has not finished has not ANSWERED, which is what guard 2 asks. When
+no stamp tells the attempts apart, the whole group is judged: an unreadable payload
+refuses rather than passes. And a flying run comes back with `conclusion: ""`, not
+null — every field of a check is read as "empty text is no text", so the refusal says
+`review=IN_PROGRESS` instead of the blank `review=` it used to print, blind exactly
+where the reader decides whether to wait or to fix.
+
+**One head also answers more than once per reviewer.** The same defect sat in guard 1,
+one step earlier in the door: it read the PRESENCE of a `CHANGES_REQUESTED` on the head
+instead of the LAST verdict on it, so a second round of review that ended in `approve`
+on the very same head still refused, and two approved PRs (#74, #64) stood blocked by
+it. Verdicts are therefore grouped **by reviewer** and only the last one of each is
+judged, by `submittedAt`. The symmetry is what keeps this from becoming a hole: an
+`approve` overtaken by a later `changes-requested` on the same head STOPS — otherwise
+the fix would turn a fail-closed door into a fail-open one. Verdicts on other heads
+never enter the count (that is the guard's whole point), a group whose stamps cannot
+tell its verdicts apart is judged whole and refuses, and states that are not a verdict —
+`COMMENTED`, `DISMISSED` — do not overtake one: a comment is not an answer.
+
+**A verdict with no author is its own group**, for the same fail-closed reason and not as
+a detail of keying. Grouping the unnamed ones together would let the later verdict of one
+anonymous reviewer silently overtake the earlier verdict of a DIFFERENT one — a
+`CHANGES_REQUESTED` swallowed by somebody else's `APPROVED`, which is precisely what the
+grouping-by-reviewer exists to prevent. It does not reproduce against today's GitHub (the
+one reviewer is `github-actions` and always carries a login), and that is the argument for
+pinning it rather than against: the payload without an author arrives when nobody is
+watching for it.
+
+**And a verdict can have no commit at all, which `reviews[].commit` hides.** A review
+submitted without a `commit_id` — what the reviewer's action produces when it is
+re-triggered by `workflow_dispatch`, because that run hangs on the head of `main` and
+not on the head of the PR — comes back from `gh` carrying whatever head the pull request
+has **at the moment of reading**. One and the same approve on #64 (`submittedAt`
+03:46:02Z, untouched) read as "approved on `c1dc1a3`" and then, after a
+`gh pr update-branch`, as "approved on `ea8572a`" — an approve granted once outliving
+every later push, which is precisely what guard 1 exists to forbid.
+
+**The field that would admit it does not exist, and this cost a round.** The first
+repair read the anchor out of `latestReviews`, on the belief that `commit.oid` is empty
+there only for a verdict submitted without one. Measured across #62/#64/#108/#109/#110
+and #111, `latestReviews[].commit.oid` is empty for **every** review, anchored ones
+included — `gh` does not resolve that field in this array at all, and a door built on it
+refuses every PR there is. Neither answer of `gh`, nor `commit_id` of the REST reviews
+endpoint, tells an anchored verdict from a substituted one in a single read.
+
+**So the door asks time, which cannot be substituted:** a verdict cannot be an answer
+about a commit that did not exist when it was submitted. The `committedDate` of the head
+commit is read beside the reviews, and a verdict older than it STOPS the door in its own
+words — what is missing is a review run on the `pull_request` event (re-label, or
+`gh pr update-branch`), which is a different repair from "no approve" (a new round) and
+from "the approve is on an older head" (a rebase). A `CHANGES_REQUESTED` in that state
+stops it too: a verdict whose target is unknown opens no door, whichever way it points,
+and a verdict with no stamp at all that claims the head is refused for the same reason —
+"judge the group whole when time cannot tell it apart", as above. What this closes is
+the PERMANENCE, which is the whole point of guard 1: every push makes a commit younger
+than the verdict, so an approve stops travelling to code nobody answered about. What it
+does not do is tell a `workflow_dispatch` verdict from a `pull_request` one while the
+head has not moved — and there it need not, since such a run read the tree the head
+carries now; the other half of that story is guard 2, which a dispatch run never
+satisfies, its check hanging on the head of `main`. A head commit gh did not date leaves
+the reading exactly as it was before this thread.
+
+**The age is asked of the last verdict of each author, not of the history** — and this
+was the second round of the same thread. Asked of the whole `reviews` array, the age test
+locked the door FOREVER on any PR a `workflow_dispatch` run had ever reviewed: that
+record never leaves the array, `gh` keeps showing it against the current head, and the
+repair the refusal itself names — a run on the `pull_request` event — only adds a verdict
+beside it. The refusal outlived its own remedy, which is the one thing a refusal must not
+do. So D4 runs first: the verdicts on the head are grouped by author, and only what
+survives the grouping is asked its age. An author whose LAST word is anchorless still
+stops the door, and another author's approve does not clear it — being overtaken by the
+same reviewer is what clears a verdict, and nothing else is.
+
+**`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
+card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
+mergeability of the branch altogether — a PR with a conflicting tree, one clean set of
+checks and an approve would have passed guards 1, 2 and 4 "by the facts" and been
+refused by GitHub itself at the merge. So `mergeable`/`mergeStateStatus` are printed as
+a FACT beside the guards, on their own line, and anything that is not a plain
+`MERGEABLE` refuses with exit 1 like a failed guard: `CONFLICTING` names the rebase,
+`UNKNOWN` says GitHub has not finished computing and to ask again, and a `gh` that did
+not report the field at all is a refusal at the door — never folded into "go ahead".
+GitHub computes the field lazily, though: the FIRST ask about a PR starts the job and
+answers `UNKNOWN`, the next one answers for real — on every open PR here, not now and
+then. A single ask would therefore refuse almost every first run, so the command asks
+again itself, once, and only then reports `UNKNOWN` as an answer.
+
+**The token needs scopes, and the gate does not say WHICH.** Guard 2 reads
+`statusCheckRollup`, which GitHub serves only to a token holding `checks: read` — and
+`gh` asks inside it for `checkSuite.workflowRun`, which is Actions and wants
+`actions: read`. A personal token has both; a GitHub App installation token (`ghs_…` —
+what any `gh-action` executor of this protocol runs with) has only the scopes its job's
+`permissions:` block lists and, through `claude-code-action`, only what the token
+exchange asked for in `additional_permissions`; an unlisted one is zeroed rather than
+defaulted. The whole `gh` call then fails with `Resource not accessible by integration`
+instead of degrading, so the gate answers nothing at all rather than answering wrongly.
+
+That much is observed, not hypothetical — it is how the reviewer of this very PR found
+that its "live run" had only ever been made from a session token. What the refusal path
+does NOT do any more is **declare the cause**. It used to answer "`statusCheckRollup`
+needs a token with the `checks: read` scope" to every failure, and it was wrong twice
+over: `checks` was already granted through three rounds of diagnosis (#108, #109, #112 —
+the field actually refused was the Actions one), and the test that fired the note matched
+the word `statusCheckRollup` in the ECHOED COMMAND LINE, so a plain 404 from a `gh`
+account without access to the repository was explained by a missing scope too — six of
+them in one round. Now the reason `gh` returned is printed whole as the fact, and a hint
+is added only on a refusal that is scope-shaped, naming the path GitHub itself refused and
+offering a candidate as a guess (`merge/gh.ts` → `ghRefusalHint`).
 
 **Why the project's extra documents come in on `--power-docs` and not from a config
 section**, which is the shape one would otherwise pick: a new config field costs a
@@ -2015,9 +2223,41 @@ same path, so conflicts are gone by construction — the same argument that made
 file. The `_` prefix keeps the directory outside `^\d{3}-`, so the thread walker never sees it.
 
 **The digest is a STATE, not history**: the instance id, when it was written, the roles this
-run raises (after the topology and the operator's flags) and the LIVE leases — role, thread,
+box ANSWERS FOR (the topology of this instance, verbatim) and the LIVE leases — role, thread,
 state, deadline. A released pair is history and is dropped; history stays in the local journal,
 because a growing file in a shared branch is paid for by every clone of the mail forever.
+
+**`roles` is a property of the BOX, not of a launch** (thread `025-stale-instance-digest`,
+second half — a deliberate change of contract). It used to mean "the roles this run raises,
+after the topology and the operator's flags", which made one file say different things
+depending on which command wrote it last: `run --roles dev-core` on a box that also answers
+for curator published `["dev-core"]` over the daemon's `["curator","dev-core"]`, and a reader
+on another machine saw the box shrink with no way to tell that from a topology change. It is
+now read off the topology by one function (`rolesOfInstance`) that both writers call, and it is
+NOT filtered by launchability: a role of this box that nothing can raise today (no
+instructions, no launch profile, a resident that is hosted rather than launched) is still this
+box's role, and hiding it would make "not ours" and "ours but quiet" the same silence. What a
+particular launch raises is not lost — `leases` carries it, and carries it as a fact rather
+than an intention. Why a listed role never appears among the leases is content the digest does
+not carry yet; it belongs to D-4 of thread 023, where the digest gains a live perspective.
+
+**Both holders of a lease publish, through ONE publisher.** The moment matters more than the
+content (that was the first half of thread 025: a publisher called once per tick, at the end,
+by which time the session raised in that tick had already released its lease — so every tick
+computed `leases: []`, the change gate said "unchanged", and a digest whose whole purpose is to
+say what the box is doing never once said it). The rule is: publish when the LEASE MOVES, not
+when the loop comes round — a hook on every lifecycle write (`onLeaseChange`), plus the
+end-of-tick call for state that changes without a run (a lease released by hand, an orphan
+folded away by the clock, a ceiling that made a pair terminal). And `orchestrator run` — the
+launch a human types, `-d` included — publishes on the same events, from the same factory
+(`digestPublisherFor`). "A human is watching that box anyway" is not an argument for leaving it
+out: that human is the one reader who does not need the file. It exists for the reader who is
+not there, and to them a fresh `writtenAt` with `leases: []` is indistinguishable from an idle
+box — a lie made worse than the original by being uneven, since its truthfulness would depend
+on which command raised the session. A second copy of the publisher in the `run` path was the
+wrong answer for the reason the first defect teaches: two publishers of one file drift, and the
+drift is invisible until somebody reads the file at the wrong moment. A dry run publishes
+nothing (it holds no lease), and neither does the parent of a `--detach` run — its child does.
 
 **It is the one mutable derived thing in an append-only branch**, and `check` therefore knows
 `_instances/` as a CLASS rather than meeting it as a stray file: an unrecognised mutable path
@@ -2121,6 +2361,36 @@ while `down` is "stop the watch". An `up` on top of a living daemon is REFUSED: 
 one journal would take the same pair twice, and the second banner would look like a healthy
 start. `up` accepts every flag `daemon` does — it is the same daemon with its start-up done.
 
+**`orchestrator restart`.** Picking up fresh code as ONE gesture, because until now it was a
+hand-run pipeline: `down`, then waiting out the live sessions (unpredictably long — once it
+ended in a force stop), then `git pull --ff-only`, then `pnpm install`, then `up` with the
+stopped daemon's flags reconstructed from memory. Four runs of that in two days, two with a
+stumble. `restart` is a COMPOSITION of the three commands, whose semantics it leaves untouched:
+the stop (`down`, or `stop --mode force` with `--thread`/`--reason` — the trace still goes to
+the thread BEFORE the flag), the wait, `--pull` when asked, then `up`.
+
+Three things it decides, and each is a promise:
+
+- **The new daemon is raised with the flags of the one that was stopped**, read from
+  `daemon.pid.args` — written by `up` beside the pid. Flags retyped from memory are exactly the
+  stumble the command removes, and one silently dropped produces a circuit that looks restarted
+  and behaves differently. A daemon raised before this existed leaves nothing to read: then the
+  flags typed here are used and the SOURCE IS PRINTED — "the same flags" and "the flags you just
+  typed" are different promises. Changing the settings is `down` plus `up <flags>`, deliberately
+  not this command.
+- **This process does the waiting** (the design fork the statement left open — process or
+  successor daemon). A successor would have to be raised while the predecessor is still draining,
+  i.e. two daemons on one journal, which is the state `up` refuses at its door. It prints its
+  phases and says once a minute that it is still waiting, because a silent wait reads as a hang.
+- **A refusal anywhere raises nothing.** Wait ran out, `pull` failed, `install` failed — the
+  circuit stays down, the reason goes to the terminal AND to `daemon.log` (a restart that refused
+  at 04:00 has to be readable at 09:00), and `up` by hand is one word away. Raising the OLD code
+  instead would answer a question nobody asked while looking exactly like success.
+
+`--mode force` also clears both flags on the way up, so `rm` on a flag file leaves the operator's
+cycle; `up --clear-force` is passed by the same command that put the force there a minute ago,
+which is why that is not the silent clearing `up` refuses.
+
 **`hold <role>` / `resume <role>`.** The same action as the strict `hold --mode take/release`
 with the two answers the operator was retyping filled in: the ref from the config, `--by` from
 `$USER` (checked against the roles of the config, like the strict form). They ACT rather than
@@ -2184,8 +2454,16 @@ a launch, a thread frozen behind a person will not get one until that person ans
 state used to be visible only as a skip line on the daemon's stream — which the person reading
 `status` is by definition not watching. The mark rides in `describeOrder`, so the stream carries it
 too. `status` prints the frame and
-then its static sections; `status --watch` prints the frame and nothing else; the TUI will draw
-the same frame. The point of the seam is that they have nowhere to differ: a watcher that computed
+then its static sections; `status --watch` prints the frame and nothing else; `orchestrator tui`
+lays out the same frame as three panels (T-1). The observer computes nothing and reads no file of
+its own: it draws `renderLeaseLine` for the pairs and slices `renderFrame` for the middle, which is
+why two facts had to move INTO the frame before it could exist — the **resident waits** (a thread
+waiting on a role the circuit never raises, R23-1, printed until then BESIDE the frame by `status`
+alone, and therefore invisible to any other reader) and the **path of each pair's transcript**
+(derived in the lease fold from the acquire moment by the same `sessionLogPath` the supervisor
+writes by, rather than by scanning `sessions/` — a second answer to a question that already has
+one). The single visible consequence, named before the code: the resident section of `status` now
+stands one position higher, beside the queue. The point of the seam is that they have nowhere to differ: a watcher that computed
 the attempt ceiling slightly differently from the daemon would show a human a picture the circuit
 does not follow, and there would be nothing to argue with it. For the same reason the queue is
 built by `rankCandidates`, the very function the daemon's tick builds it with.
@@ -2256,9 +2534,10 @@ which is why `GitRun` takes an env). The environment rather than `git -c user.na
 because environment variables OUTRANK config: an operator who happens to export those
 cannot silently take the signature back from the role.
 
-Two consequences worth naming. The instance digest (R13) is written by the daemon rather
-than by anybody's role, so it is signed by the machinery itself (`agent-protocol
-<orchestrator@agents.invalid>`) — a role there would claim a turn nobody took. And the
+Two consequences worth naming. The instance digest (R13) is written by the machinery — the
+daemon, or a manual `run` — rather than by anybody's role, so it is signed by the
+machinery itself (`agent-protocol <orchestrator@agents.invalid>`) — a role there would
+claim a turn nobody took. And the
 old CI failure "the checkout has no `user.email`" is gone by construction: delivery no
 longer needs the checkout to be configured at all.
 

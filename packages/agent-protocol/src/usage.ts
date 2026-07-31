@@ -36,7 +36,22 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # subtracted from the DERIVED side only, and always printed
                               # guards 3 and 5 (a decision of john's behind the thread, a trace after
                               # the merge) are judgements and are printed as obligations, never as a pass
-                              # guard 2 reads 'statusCheckRollup': the token needs the 'checks' scope
+                              # guard 2 reads 'statusCheckRollup' — a token without 'checks: read'
+                              # (and 'actions: read', asked for inside it) is refused the whole call;
+                              # the command PRINTS what gh answered and only guesses at the scope
+                              # and it judges the LAST attempt of each check name, by time — a rerun
+                              # replaces the run it reran, both of which hang on the same head
+                              # guard 1 judges the LAST verdict of each reviewer on that head, by
+                              # 'submittedAt': a second round ending in approve is an approve, and an
+                              # approve overtaken by a later changes-requested still STOPS; a verdict
+                              # with NO author is its own group — anonymous ones never overtake
+                              # a verdict OLDER THAN THE HEAD COMMIT is not an answer about it: a
+                              # review submitted with no commit of its own (a 'workflow_dispatch' run
+                              # of the review) is shown against the CURRENT head, so such an approve
+                              # would follow the branch forever; it STOPS, and says so in its own
+                              # words: what is missing is a run on the 'pull_request' event
+                              # 'mergeable' is read too and printed BESIDE the guards, not as a sixth:
+                              # the door refuses what GitHub itself would refuse, UNKNOWN included
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
   agent-protocol index build  --root <mail> --ref <ref> [--write]
   agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]
@@ -49,6 +64,10 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # by name rather than met as a stray path
   agent-protocol migrate      --root <mail> --ref <ref> [--id <NNN-slug>] [--write]
   agent-protocol derive       --root <mail> --ref <ref> [--write]
+  agent-protocol tasks list   --root <mail> --ref <ref> [--status <s>] [--json]
+                              # THE BOARD FOR MACHINES (thread 021): the same model as
+                              # 'TASKS.md', computed FROM THE THREADS — a consumer parsing the
+                              # derived file would answer "what is being done now" with yesterday
   agent-protocol mail         --ref <ref> --role <id> [--root <mail>]
                               # --root defaults to the mail of THIS MACHINE (R26): the state
                               # directory and the mail root hang off the main checkout, so the
@@ -58,12 +77,16 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # needs a wait declared beside the question ('new-message --await-input') — it does not declare one
                               # code 0: the answer arrived · code 3: the wait ran out (wrap up and pass the turn)
   agent-protocol notify       --ref <ref> [--repo <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--local-config <p>] [--write]
+                              # a thread PARKED on a human rings with NO age threshold and carries
+                              # its question — the first line of the parking message (023): the age
+                              # answers nothing about a turn that cannot move, and a call that names
+                              # a thread but not the question reads as 'the circuit is working'
                               # the turn has passed to a HUMAN: whom is derived from wake.mode,
                               # the words come from notifications.templates, delivery from the transport plugin
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person>] [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -71,36 +94,90 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # stays alive and reads the answer itself; block on 'await-input' after sending
                               # --model/--effort: WITH WHAT the runs of this thread are raised from here on (R21) —
                               # only from a role holding 'launch-params'; the value is checked against the tool here
+                              # --task '<NNN.k> <open|in-progress|done|dropped>[ · tail]': REPEATABLE —
+                              # declares or moves a task (thread 021); the board 'TASKS.md' is derived from these.
+                              # a title is required on 'open', a FACT on 'done'/'dropped'; opening and dropping
+                              # need 'task-declare', passing one through does not; opening only under this thread's id
                               # --priority high|normal|low: WHICH waiting thread is raised FIRST from here on (R5) —
                               # only from a role holding 'thread-priority'; the queue is priority, then age of wait, then number
                               # --parked-on <person>: the turn STAYS here and is FROZEN until that person decides
                               # (R27) — the pair is not raised and spends nothing; it lifts by itself with the next
                               # substantive message. Only a role the circuit cannot wake ('wake.mode: self')
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write]
+                              # REFUSED together with '--expects none' (034): an informational message
+                              # asks nobody for anything, and a park says the thread waits for a person
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                              # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
+                              # first message go in ONE commit, pushed, with the same replanning retry
                               # the NNN is REFUSED if a thread already holds it (029): the number is a
                               # short address; nothing is renamed after the fact, the door is what changes
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
                               # a raised session passes neither — the launch environment carries both
+                              # --no-push: write the files only (for a caller that owns its own git, e.g. CI)
+
+WHICH '--write' DELIVERS (thread 033). Two commands SEND — 'new-message' and 'new-thread':
+the file, the commit and the push are one action. Everything else writes and stops, and
+each for a stated reason:
+  · 'index build', 'thread build', 'derive' — DERIVED files, committed by the generator
+    workflow ('chore(comms): rebuild derived') on the push that produced them;
+  · 'migrate', 'schema migrate' — bulk rewrites read by a human before they are committed
+    (the config half goes through a PR by rule);
+  · 'orchestrator record/enable/disable/hold/stop' and the state of 'notify' — machine-local
+    operational state under 'orchestrator.state', outside git by construction: there is
+    nothing to deliver, and 'notify' delivers through its transport, not through a commit;
+  · 'orchestrator systemd install' — the unit FILE of this box, written under the
+    operator's systemd directory: there is nothing to deliver and nothing to enable
+    either. The two commands that would ('systemctl --user enable', 'loginctl
+    enable-linger') are PRINTED for a human to run, because they are the human's;
+  · 'orchestrator run' — machine-local by the same reason, but the word means something else
+    there: '--write' is not 'write the file', it is 'do it'. Without it the command prints
+    the plan and touches nothing (not the workdir, not its lock, not the journal); with it
+    the workdir is put on the base and locked, the events are appended, the agent is raised.
 
 ORCHESTRATOR: the paths (journal, flags, holds, mail root) are taken FROM THE
 CONFIG, section 'orchestrator'. The path flags below are an override for checks
 and are not needed in operation; only --ref is required.
 The agent BINARIES come from the machine config (~/.config/agent-protocol/local.json,
 or --local-config <p>): the repository says WHAT is raised, the machine says WHERE it is.
-THE OPERATOR'S FOUR (thread 019): the same circuit without the ceremony — the daemon
-in the background with one command, the parking with one word. --ref may be left out
-HERE ONLY: it is taken from 'orchestrator.ref' of the config in the working tree, and
-which ref was used is printed. The strict forms below keep every flag they had.
-  agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--pid-file <p>]   # plus every 'daemon' flag
+THE OPERATOR'S FIVE (thread 019): the same circuit without the ceremony — the daemon
+in the background with one command, the parking with one word, the picture without a
+ref. --ref may be left out HERE ONLY (up/down/hold/resume/status): it is taken from
+'orchestrator.ref' of the config in the working tree, and which ref was used is
+printed. The strict forms below keep every flag they had.
+  agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--log-max-bytes <n>] [--pid-file <p>] [--foreground] [--clear-force]   # plus every 'daemon' flag
+                              # THE LOG IS BOUNDED AND ITS EPOCHS ARE LEGIBLE: every start puts
+                              # a banner line into the daemon log, and a log over --log-max-bytes
+                              # (8 MB by default) is rotated to '<log>.1' — one generation, so the
+                              # footprint is bounded by construction rather than by a cron job
+                              # --foreground: the daemon runs AS THIS PROCESS instead of being
+                              # backgrounded — what a systemd unit has to be given (it supervises
+                              # the process it started). The stream goes to stdout/stderr AND to
+                              # the daemon log, so 'journalctl' and 'orchestrator log' agree
+                              # under a unit a force flag on the floor is refused CLEANLY (exit
+                              # 0): the flag is doing its job, and 'Restart=on-failure' must not
+                              # fight it — in a terminal the same refusal keeps its code 2
+                              # a force flag on the floor REFUSES the start, by name and
+                              # reason: a daemon raised over it exits on its first tick and
+                              # says so only in its log. --clear-force removes it deliberately
   agent-protocol orchestrator down   [--ref <ref>] [--repo <p>] [--stop-flag <p>] [--pid-file <p>]
-  agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>]
+  agent-protocol orchestrator restart [--ref <ref>] [--repo <p>] [--pull] [--wait <sec>] [--pid-file <p>] [--daemon-log <p>] [--mode <m>] [--thread <slug>] [--reason <why>] [--by <who>]   # plus every 'daemon' flag
+                              # PICKING UP FRESH CODE AS ONE GESTURE: down, wait out the
+                              # live sessions, (--pull: git pull --ff-only + pnpm install),
+                              # up again WITH THE FLAGS OF THE DAEMON THAT WAS STOPPED —
+                              # read from beside its pid, never retyped from memory
+                              # --mode force: the force stop's own semantics (the trace to
+                              # --thread signed by --by goes FIRST), then both flags are
+                              # cleared without hands and the daemon comes back up
+                              # the process waits itself and prints the phases; a wait that
+                              # runs out, a failed pull or install raises NOTHING and says so
+  agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>] [--local-config <p>]
   agent-protocol orchestrator resume <role> [--ref <ref>] [--holds <d>]
                               # the short forms ACT (no --write): typing them IS the decision
-                              # --by defaults to $USER and must be a role of the config
+                              # --by: the flag, then 'operator' of the machine config (who sits
+                              # at this box), then $USER; the value must be a role of the config
   agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--watch] [--interval <sec>] [--frames <n>]
+  agent-protocol orchestrator status [--ref <ref>] [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--watch] [--interval <sec>] [--frames <n>]
                               # it SHOWS what the daemon would do, so it reads the same
                               # answers the daemon reads: the ceilings, the scope of roles,
                               # the mail root and the agent resolution ('launch resolution')
@@ -112,7 +189,28 @@ which ref was used is printed. The strict forms below keep every flag they had.
                               # --watch: THE SAME FRAME, redrawn every --interval seconds (2 by
                               # default) — for a dumb terminal, a tmux pane or a pipe into tee;
                               # it READS ONLY: no fetch, nothing repaired, the age is shown instead
+                              # the config is resolved ONCE at the start (the network is not
+                              # touched again), and a failed collection draws the LAST KNOWN
+                              # frame under 'frame: unavailable since HH:MM (why)' — the watch
+                              # dies of Ctrl+C and of nothing else
                               # --frames <n>: stop after n frames (for checks)
+  agent-protocol orchestrator tui    [--ref <ref>] [--interval <sec>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--now <iso>] [--mode-file <path>]
+                              # THE OBSERVER (T-1): the SAME frame as a screen — pairs on top,
+                              # the circuit in the middle, the selected session's transcript below
+                              # five keys READ: arrows pick the pair, tab switches .log/.supervisor,
+                              # 'l' overlays the journal, 'r' collects now, 'q' leaves
+                              # THREE ACT (T-2), and each is an existing command, run as a child of
+                              # this CLI and ECHOED into the status line as the words you would type:
+                              # 'h' parks/unparks the selected pair's role ('hold'/'resume'), 's'
+                              # stops the daemon ('down'), 'u' raises it ('up'). 's' and 'u' need a
+                              # SECOND press — any other key cancels; 'h' acts at once, being cheap
+                              # and undone in one word. A key with nothing to do (no daemon for 's',
+                              # a live one for 'u') refuses in the status line and names the other key
+                              # a PASTE EXECUTES NOTHING: everything between the bracketed-paste
+                              # markers is dropped, so a pasted block holding a 'q' does not close it
+                              # it needs a real terminal and REFUSES in words without one — for a
+                              # dumb terminal, a tmux pane or 'tee' the answer is 'status --watch'
+                              # it takes the alt-screen and gives it back: the scrollback is untouched
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
   agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
@@ -132,4 +230,18 @@ which ref was used is printed. The strict forms below keep every flag they had.
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
   agent-protocol orchestrator stop   --mode graceful --ref <ref> [--stop-flag <p>] [--write]
   agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--repo <p>] [--force-flag <p>] [--root <mail>] [--write]
-  agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]`;
+                              # THE TRACE IS DELIVERED FIRST (committed and pushed), the flag
+                              # second: with the flag first the force killed the delivery and
+                              # the only explanation of the interruption stayed on one disk.
+                              # An undeliverable trace is written into the checkout and said
+                              # out loud — the stop still happens, silently it does not
+  agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]
+  agent-protocol orchestrator systemd install [--ref <ref>] [--repo <p>] [--unit-name <n>] [--unit-dir <d>] [--description <t>] [--daemon-args <a>] [--write]
+                              # THE DAEMON AS A RESIDENT UNIT: the file is GENERATED from this
+                              # box (the repo, this interpreter, the CLI path) — a unit typed
+                              # per box is the first path to go stale. Without --write it prints
+                              # the unit and the path it would write and touches nothing
+                              # user-level + linger, NOT root: the sessions read the operator's
+                              # machine config (R14) and credentials — 'systemctl --user enable'
+                              # and 'loginctl enable-linger' stay HUMAN actions, as they were
+                              # --daemon-args '<a b c>': the daemon's own flags, baked into ExecStart`;

@@ -785,7 +785,63 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(result.out).toContain("not listed in the config");
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
+
+  it("a park on an INFORMATIONAL message is refused — the two words point opposite ways", () => {
+    // Thread 034: written together they read as a park that a merge notifier may lift.
+    // The reader honours such a park (`parkingOf`), so nothing in the feed is lost — the
+    // door is what stops new ones being written.
+    const contest = contour();
+
+    const result = parkedWithExpects(contest, "none");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--expects none");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
 });
+
+/** `--parked-on` with an `--expects` of the caller's choosing — the door under test here. */
+const parkedWithExpects = (
+  contest: { repo: string; root: string; body: string },
+  expects: string,
+): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-message",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--thread",
+        "016-x",
+        "--from",
+        "curator",
+        "--expects",
+        expects,
+        "--waiting-on",
+        "dev-core",
+        "--parked-on",
+        "john",
+        "--body-file",
+        contest.body,
+        "--worker",
+        "human",
+        "--write",
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status: number; stdout: string; stderr: string };
+    return { code: failure.status, out: `${failure.stdout}${failure.stderr}` };
+  }
+};
 
 /** The command with `--waiting-on` as the only variable — the door under test here. */
 const waitingOn = (
@@ -902,6 +958,10 @@ const newThread = (
         "--body-file",
         contest.body,
         "--write",
+        // Since thread 033 `--write` DELIVERS here too, and the contour has no remote:
+        // without this flag a green door would fail on the push and the number test
+        // would be measuring the transport instead of the number.
+        "--no-push",
       ],
       { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
     );

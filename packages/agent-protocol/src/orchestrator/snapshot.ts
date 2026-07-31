@@ -47,6 +47,7 @@ import type { LeaseView } from "./lease.js";
 import type { RankedCandidate } from "./priority.js";
 import { describeOrder } from "./priority.js";
 import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
+import { type ResidentWait, renderResidentWaits } from "./resident.js";
 import { renderStatus } from "./status.js";
 
 /** Is the circuit able to raise anybody at all, and is anybody watching it. */
@@ -114,6 +115,21 @@ export type OperatorFrame = {
    * hour" — and that second one is asked by somebody who was not watching the stream.
    */
   readonly quota?: readonly QuotaShelf[];
+  /**
+   * THE ROLES THIS CIRCUIT NEVER RAISES, and the threads waiting on one (R23-1) — in
+   * the FRAME since T-1 (thread 019), where until now it was printed beside the frame
+   * by `status` alone. "A thread waits on a role nobody will pick up" is a live fact of
+   * exactly the class the frame exists for ("silent ≠ idle"), and a fact visible in
+   * `status` but not in the observer is the divergence the shared frame was built to
+   * make impossible. The residents are MARKED, never filtered (R23-1).
+   *
+   * Absent when the project declares no resident roles — there is no question to answer,
+   * and the mail is not scanned for a section that would not be printed.
+   */
+  readonly residents?: {
+    readonly roles: readonly string[];
+    readonly waits: readonly ResidentWait[];
+  };
   readonly digests: readonly InstanceDigest[];
   readonly unreadableDigests?: ReadonlyMap<string, string>;
   /** This box's instance id, when the topology declares one. */
@@ -279,6 +295,12 @@ export const renderFrame = (frame: OperatorFrame): string =>
     renderCircuit(frame.circuit),
     renderQuota(frame.quota),
     renderQueue(frame.queue, frame.queueNotes, frame.parked),
+    // Beside the queue, because it is the same question answered for the pairs that are
+    // NOT in it: `renderResidentWaits` returns nothing when the project has no resident
+    // roles, and that undefined is dropped rather than printed as a blank section.
+    frame.residents === undefined
+      ? undefined
+      : renderResidentWaits({ residents: frame.residents.roles, waits: frame.residents.waits }),
     renderInstances({
       digests: frame.digests,
       ...(frame.unreadableDigests === undefined ? {} : { unreadable: frame.unreadableDigests }),
@@ -286,4 +308,6 @@ export const renderFrame = (frame: OperatorFrame): string =>
       now: frame.now,
     }),
     renderFreshness(frame.mail, frame.now),
-  ].join("\n");
+  ]
+    .filter((section): section is string => section !== undefined)
+    .join("\n");

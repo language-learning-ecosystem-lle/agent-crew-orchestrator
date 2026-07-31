@@ -41,6 +41,7 @@
  */
 import type { RoleRegistry } from "../roles/registry.js";
 import { type Message, messageFileName } from "./message.js";
+import { checkThreadTasks } from "./tasks.js";
 import { headingOffsets, renderThread, type ThreadMeta } from "./thread.js";
 
 export type MessageEntry = {
@@ -149,6 +150,11 @@ export const checkThread = (input: ThreadInput, registry: RoleRegistry): CheckIs
       at(entry.fileName, "a '## msg-' line in the body — the thread assembly would break on it");
     }
   }
+
+  // The half of the task checks that one thread can judge on its own (thread 021): a
+  // task opened under a foreign prefix, and one id said twice in one message. The
+  // cross-thread half (`checkTasks`) needs every thread at once and lives in the caller.
+  issues.push(...checkThreadTasks(input));
 
   if (input.threadDoc !== undefined) {
     const rendered = renderThread(
