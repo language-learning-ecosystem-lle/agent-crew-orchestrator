@@ -890,6 +890,17 @@ carries now; the other half of that story is guard 2, which a dispatch run never
 satisfies, its check hanging on the head of `main`. A head commit gh did not date leaves
 the reading exactly as it was before this thread.
 
+**The age is asked of the last verdict of each author, not of the history** — and this
+was the second round of the same thread. Asked of the whole `reviews` array, the age test
+locked the door FOREVER on any PR a `workflow_dispatch` run had ever reviewed: that
+record never leaves the array, `gh` keeps showing it against the current head, and the
+repair the refusal itself names — a run on the `pull_request` event — only adds a verdict
+beside it. The refusal outlived its own remedy, which is the one thing a refusal must not
+do. So D4 runs first: the verdicts on the head are grouped by author, and only what
+survives the grouping is asked its age. An author whose LAST word is anchorless still
+stops the door, and another author's approve does not clear it — being overtaken by the
+same reviewer is what clears a verdict, and nothing else is.
+
 **`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
 card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
 mergeability of the branch altogether — a PR with a conflicting tree, one clean set of
