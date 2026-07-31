@@ -1,0 +1,127 @@
+name: Notifier Watch
+
+# ЗА УВЕДОМИТЕЛЕМ ТЕПЕРЬ СЛЕДЯТ (постановка curator, тред 040, пункт C-3.2).
+# Двадцать отказов `CI Outcome` подряд провисели незамеченными и нашлись только
+# потому, что в них пришли за живым подтверждением: в шапке уведомителя было
+# написано «за красным уведомителем следят глазами в Actions», а глазами не
+# следил никто. Норма «ожидание чужого прогона — не действие» (016) поставила на
+# этот канал ВСЁ — сессии больше не поллят прогоны, — и молчащий уведомитель
+# стал молчащим арбитром.
+#
+# КУДА ВЫХОДИТ СИГНАЛ. Из контура — в почту: отказ перестаёт быть строкой в
+# Actions, которую никто не читает, и становится письмом с ходом на роли, то
+# есть попадает туда, куда контур смотрит по построению (тред поднимает пару
+# сам). Второй разрешённый выход — транспорт протокола (Telegram) — здесь не
+# взят: у джобы нет его секретов, а заводить их — расход и внешний сервис, то
+# есть решение john, а не форма, оставленная исполнителю.
+#
+# ПОСЛЕДНЕЕ ЗВЕНО НАЗВАНО, А НЕ ЗАКРЫТО. `workflow_run` не рекурсивен по
+# построению: отказ САМОГО смотрителя ему же не приедет. Лестницу смотрителей
+# строить незачем (curator сказал это прямо) — вместо неё смотритель нарочно
+# тонкий: чекаут, установка, одно сообщение. Ни поиска PR, ни вывода роли, ни
+# разбора легаси-тредов — вся сложность оставлена тем, за кем он следит, и
+# поэтому его собственная поверхность отказа кратно меньше их.
+#
+# ЦИКЛА НЕТ: push этой джобы сделан GITHUB_TOKEN'ом, а события от него новых
+# прогонов не поднимают — иначе отказ `Comms Derived` (он на push в comms)
+# крутил бы смотрителя по кругу.
+
+on:
+  workflow_run:
+    workflows: [CI Outcome, Merge Notify, Comms Derived, Claude PR Review]
+    types: [completed]
+
+jobs:
+  alarm:
+    # ТОЛЬКО настоящий отказ. `skipped`/`neutral` — это штатная тишина (джоба с
+    # ложным `if`, самопропуск claude-code-action на изменённом воркфлоу), и
+    # звонить на неё значило бы приучить читателя к ложным тревогам.
+    if: contains(fromJSON('["failure","cancelled","timed_out","startup_failure","action_required","stale"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # запись в ветку comms
+      actions: read # разбор прогона по джобам (обнулённый scope отвечает тем же 403, что запрет)
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: comms
+          fetch-depth: 0
+
+      # Второй чекаут — код: конфиг протокола и пакет живут в main (копия дерева
+      # в comms отстаёт на неизвестное число merge'ей).
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          path: .code
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .code/.nvmrc
+          cache: pnpm
+          cache-dependency-path: .code/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: .code
+
+      - name: Позвонить в тред-приёмник
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          WF_EVENT: ${{ github.event.workflow_run.event }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          # Стоячий тред-приёмник и роль, которой уходит ход: воркфлоу контура —
+          # зона dev-core. Оба назначены, а не выведены: у отказа уведомителя
+          # нет описания PR, из которого что-то выводится.
+          THREAD: 042-notifier-down
+          ROLE: dev-core
+        run: |
+          set -euo pipefail
+
+          echo "1/2 · разбор по джобам прогона ${RUN_ID}, попытка ${RUN_ATTEMPT}"
+          JOBS=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}/jobs" --paginate \
+                   --jq '.jobs[] | "- `\(.name)` — **\(.conclusion // "?")**"') || JOBS="- (разбор по джобам не прочитан)"
+
+          # Тело — ФАЙЛОМ ВНЕ чекаута почты: доставка делает reset --hard при
+          # отклонённом push и снесла бы файл, лежащий внутри.
+          BODY_TMP="$(mktemp)"
+          {
+            printf '🔕 **Уведомитель `%s` отказал: `%s`.**\n\n' "$WF_NAME" "$CONCLUSION"
+            printf 'событие `%s` · ветка `%s` · голова `%s` · попытка %s · прогон [`%s`](%s)\n\n' \
+              "$WF_EVENT" "${HEAD_BRANCH:-?}" "$HEAD_SHA" "$RUN_ATTEMPT" "$RUN_ID" "$RUN_URL"
+            printf '%s\n' "$JOBS"
+            printf '\nЧто именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.\n'
+          } > "$BODY_TMP"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # До пяти попыток: в comms пишут параллельно живые роли. Протокол
+          # append-only — свою запись каждый раз пересобираем ПОВЕРХ свежего
+          # origin/comms, а не переносим старый текст.
+          echo "2/2 · запись в тред ${THREAD} (${WF_NAME}, исход ${CONCLUSION})"
+          for attempt in 1 2 3 4 5; do
+            git fetch --no-tags origin comms
+            git reset --hard origin/comms
+            if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
+                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
+                  --thread "$THREAD" --from github --expects none --waiting-on "$ROLE" \
+                  --worker gh-action \
+                  --body-file "$BODY_TMP" --write --no-push); then
+              echo "::error::new-message отказал — отказ уведомителя ${WF_NAME} (${RUN_ID}) НЕ записан в ${THREAD}."
+              exit 1
+            fi
+            git add agent-comms
+            git commit -m "chore(comms): уведомитель ${WF_NAME} отказал (${CONCLUSION}) — звонок в тред ${THREAD}"
+            if git push origin HEAD:comms; then
+              echo "Отказ уведомителя ${WF_NAME} (${RUN_ID}) доставлен в тред ${THREAD}."
+              exit 0
+            fi
+            echo "Push отклонён (попытка ${attempt}) — в comms писали параллельно, пересобираю."
+          done
+
+          echo "::error::Не удалось доставить отказ уведомителя ${WF_NAME} (${RUN_ID}) в ${THREAD} за 5 попыток."
+          exit 1

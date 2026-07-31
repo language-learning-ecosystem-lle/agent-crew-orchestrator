@@ -21,17 +21,25 @@ name: CI Outcome
 #   * исход виден целиком, вместе с падениями setup-шагов, которые джоба
 #     `needs: [...] if: always()` увидела бы как `skipped` без объяснения.
 # Цена решения названа: воркфлоу СОБСТВЕННОГО прогона себе не шлёт (workflow_run
-# не рекурсивен по построению) — за красным `CI Outcome` следят глазами в
-# Actions, как за любым уведомителем.
+# не рекурсивен по построению). За отказом ЭТОГО уведомителя следит отдельный
+# смотритель — `notifier-watch.yml`, пишущий в тред 042 (C-3.2, тред 040);
+# «следят глазами в Actions» стояло здесь раньше и было неправдой: двадцать
+# отказов подряд провисели незамеченными.
 #
-# ГРАНИЦА СКОУПА: прогон БЕЗ PR (push в main, workflow_dispatch) события не
-# порождает — `thread:`/`role:` берутся из описания PR, и для main их не
-# существует. Красный main — аварийный класс (тред 031), у него свой порядок:
-# тред заводится ДО PR. Доставка красного main отдельным адресатом — возможный
-# следующий пакет, здесь его нет намеренно.
+# ПРОГОН БЕЗ PR — ЕСТЬ АДРЕСАТ (C-3.1, тред 040). `thread:`/`role:` берутся из
+# описания PR, а у push в main описания нет — раньше такое событие молча
+# уходило, и красный `48ee0929` нашёлся случайным взглядом. Теперь у него
+# стоячий адрес: тред 041 (`agent-comms/041-main-red-alarm`). Доставляется
+# ТОЛЬКО красный и ТОЛЬКО по дефолтной ветке — молчание на зелёном здесь и есть
+# правильный ответ (решение curator, 040). Порядок аварийного класса (тред 031)
+# не меняется: 041 — звонок, а разбор заводит СВОЙ тред ДО PR.
+#
+# СМОТРИМ И ЗА `E2E`: смоки гоняются только по push в main и по dispatch, то
+# есть на PR-цикл они не шумят вовсе, а красный main дают наравне с `checks`
+# (тред 032 ровно об этом). Уведомитель у обоих один — второй копии не нужно.
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, E2E]
     types: [completed]
 
 jobs:
@@ -82,6 +90,13 @@ jobs:
           WF_EVENT: ${{ github.event.workflow_run.event }}
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          # Стоячий тред-приёмник красного main: у события без PR адресата не
+          # выводится, поэтому он назначен, а не найден. Заведён руками
+          # (dev-core, 040) — воркфлоу, выбирающий следующий свободный номер,
+          # гонялся бы за цифру с живыми ролями.
+          MAIN_RED_THREAD: 041-main-red-alarm
         run: |
           set -euo pipefail
 
@@ -104,10 +119,38 @@ jobs:
           PR_JSON=$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/pulls" \
                       --jq 'map(select(.state == "open")) | .[0] // empty') || true
           PR=$(printf '%s' "${PR_JSON:-}" | jq -r '.number // empty')
+
+          # ПРОГОН БЕЗ PR (C-3.1, тред 040). Раньше здесь был безусловный
+          # молчаливый выход — и красный main обнаруживался случайным взглядом.
+          # Теперь выход остаётся ровно там, где адресата действительно нет:
+          # зелёный (доставлять нечего) и чужая ветка (dispatch по фиче — дело
+          # того, кто его нажал). Красный по дефолтной ветке едет в стоячий
+          # приёмник MAIN_RED_THREAD.
+          MAIN_RED=""
           if [ -z "${PR:-}" ]; then
-            echo "Прогон ${RUN_ID} (${WF_EVENT}) не привязан к открытому PR — адресата нет, событие не шлём."
-            exit 0
+            if [ "$CONCLUSION" = "success" ]; then
+              echo "Прогон ${RUN_ID} (${WF_EVENT}) не привязан к открытому PR и зелёный — доставлять нечего."
+              exit 0
+            fi
+            if [ "${HEAD_BRANCH:-}" != "${DEFAULT_BRANCH:-}" ]; then
+              echo "Прогон ${RUN_ID} (${WF_EVENT}) не привязан к открытому PR и не по '${DEFAULT_BRANCH:-?}' (ветка '${HEAD_BRANCH:-?}') — адресата нет."
+              exit 0
+            fi
+            MAIN_RED=1
+
+            # PR-ПРЕДОК КОММИТА: merge у нас только squash, а squash дописывает
+            # `(#N)` в конец заголовка. Это не адресат — адрес уже назначен, —
+            # а СЛЕД: чей пакет покрасил main и какой роли отдавать ход. Не
+            # вывелся (прямой push, ручной коммит) — событие едет всё равно,
+            # молчание дороже неполного письма.
+            echo "1b/3 · PR-предок по заголовку коммита ${HEAD_SHA} (/commits/{sha})"
+            SUBJECT=$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}" --jq '.commit.message' | head -1) || true
+            SRC_PR=$(printf '%s' "${SUBJECT:-}" | grep -oE '\(#[0-9]+\)$' | tr -cd '0-9') || true
+            if [ -n "${SRC_PR:-}" ]; then
+              PR_JSON=$(gh api "/repos/${GITHUB_REPOSITORY}/pulls/${SRC_PR}") || true
+            fi
           fi
+          [ -n "${PR_JSON:-}" ] || PR_JSON='{}'
 
           PR_BODY=$(printf '%s' "$PR_JSON" | jq -r '.body // ""')
           PR_TITLE=$(printf '%s' "$PR_JSON" | jq -r '.title // ""')
@@ -118,6 +161,17 @@ jobs:
           # (PR #16), и третий формат для одного поля здесь заводить нельзя.
           THREAD=$(printf '%s' "$PR_BODY" | grep -oiE '^[[:space:]`*]*thread`?:[[:space:]]*`?[0-9]{3}-[a-z0-9-]+' | head -1 | sed -E 's/^[^0-9]*//; s/[`*].*//') || true
           ROLE=$(printf '%s' "$PR_BODY" | grep -oiE '^[[:space:]`*]*role`?:[[:space:]]*`?[a-z][a-z0-9-]*' | head -1 | sed -E 's/^[^a-z]*role`?:[[:space:]]*`?//i') || true
+
+          if [ -n "${MAIN_RED:-}" ]; then
+            # У красного main адрес НАЗНАЧЕН, а не найден: `thread:` предка —
+            # это тред уже закрытого пакета, и авария ему не тема. Роль же
+            # берётся именно оттуда: покрасил main тот, чей пакет въехал. Не
+            # вывелась — curator: аварийный класс красного main в его карточке.
+            SRC_THREAD="${THREAD:-}"
+            THREAD="$MAIN_RED_THREAD"
+            ROLE="${ROLE:-curator}"
+          fi
+
           if [ -z "${THREAD:-}" ]; then
             echo "::warning::В описании PR #${PR} нет строки 'thread: NNN-slug' — исход прогона сообщить некуда."
             exit 0
@@ -143,19 +197,38 @@ jobs:
           # отклонённом push и снесла бы файл, лежащий внутри.
           BODY_TMP="$(mktemp)"
           {
-            case "$CONCLUSION" in
-              success) printf '✅ **%s по PR #%s: `success`.**\n\n' "$WF_NAME" "$PR" ;;
-              *)       printf '❌ **%s по PR #%s: `%s`.**\n\n' "$WF_NAME" "$PR" "$CONCLUSION" ;;
-            esac
-            printf '%s · голова `%s` · попытка %s · прогон [`%s`](%s)\n\n' \
-              "$PR_TITLE" "$HEAD_SHA" "$RUN_ATTEMPT" "$RUN_ID" "$RUN_URL"
+            if [ -n "${MAIN_RED:-}" ]; then
+              printf '❌ **%s по `%s`: `%s`.** Открытого PR у прогона нет — авария на ветке, а не в пакете.\n\n' \
+                "$WF_NAME" "$HEAD_BRANCH" "$CONCLUSION"
+              printf '%s\n\n' "${SUBJECT:-(заголовок коммита не прочитан)}"
+              printf 'коммит `%s` · попытка %s · прогон [`%s`](%s)\n\n' \
+                "$HEAD_SHA" "$RUN_ATTEMPT" "$RUN_ID" "$RUN_URL"
+            else
+              case "$CONCLUSION" in
+                success) printf '✅ **%s по PR #%s: `success`.**\n\n' "$WF_NAME" "$PR" ;;
+                *)       printf '❌ **%s по PR #%s: `%s`.**\n\n' "$WF_NAME" "$PR" "$CONCLUSION" ;;
+              esac
+              printf '%s · голова `%s` · попытка %s · прогон [`%s`](%s)\n\n' \
+                "$PR_TITLE" "$HEAD_SHA" "$RUN_ATTEMPT" "$RUN_ID" "$RUN_URL"
+            fi
             printf '%s\n' "$JOBS"
+            if [ -n "${MAIN_RED:-}" ]; then
+              if [ -n "${SRC_PR:-}" ]; then
+                printf '\nКоммит из PR #%s (`%s`)%s.\n' "$SRC_PR" "$PR_TITLE" \
+                  "${SRC_THREAD:+, тред пакета \`${SRC_THREAD}\`}"
+              else
+                printf '\nPR-предок по заголовку коммита не вывелся — чей это пакет, смотреть по `git log`.\n'
+              fi
+              # Приёмник — ЗВОНОК, а не место разбора: порядок аварийного класса
+              # (тред 031) не меняется, и напоминание стоит в каждом письме,
+              # потому что читать его будут по одному, а не подряд.
+              printf '\nПорядок аварийного класса не меняется: чинится БЕЗ постановки, но **тред заводится ДО PR** — первым действием, с id этого прогона в постановочном сообщении, и PR несёт `thread:` ТОГО треда. Здесь достаточно ответить, куда авария уехала.\n'
             # ГОЛОВА МОГЛА СДВИНУТЬСЯ, пока прогон шёл: зелёный исход прошлой
             # головы читается как «пакет закрыт», хотя проверялось не то, что
             # сейчас лежит в ветке. Расхождение называется, а не оставляется на
             # внимательность читающего — тот же класс, что «база merge не main»
             # в уведомителе о merge.
-            if [ -n "${PR_HEAD:-}" ] && [ "$PR_HEAD" != "$HEAD_SHA" ]; then
+            elif [ -n "${PR_HEAD:-}" ] && [ "$PR_HEAD" != "$HEAD_SHA" ]; then
               printf '\n⚠️ Голова PR уже сдвинулась (`%s`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.\n' "$PR_HEAD"
             fi
           } > "$BODY_TMP"
@@ -168,6 +241,13 @@ jobs:
           if [ -n "${ROLE:-}" ]; then
             if (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref HEAD --role "$ROLE" >/dev/null 2>&1); then
               WAIT_ARGS="--waiting-on ${ROLE}"
+            elif [ -n "${MAIN_RED:-}" ]; then
+              # Красный main без хода — звонок без адресата, то есть та же
+              # тишина, ради устранения которой всё это писалось. Опечатка в
+              # `role:` предка не должна её вернуть: ход уходит curator.
+              echo "::warning::В PR-предке #${SRC_PR:-?} указана роль '${ROLE}', которой нет в конфиге — ход по красному main передан curator."
+              printf '\n⚠️ Роль `%s` из PR-предка в конфиге не найдена — ход передан curator.\n' "$ROLE" >> "$BODY_TMP"
+              WAIT_ARGS="--waiting-on curator"
             else
               echo "::warning::В PR #${PR} указана роль '${ROLE}', которой нет в конфиге протокола — ход не передан."
               printf '\n⚠️ Ход не передан: в описании PR указана роль `%s`, которой нет в конфиге протокола — объявите ожидание вручную.\n' "$ROLE" >> "$BODY_TMP"
@@ -182,7 +262,12 @@ jobs:
           # До пяти попыток: в comms пишут параллельно живые роли. Протокол
           # append-only — свою запись каждый раз пересобираем ПОВЕРХ свежего
           # origin/comms, а не переносим старый текст.
-          echo "3/3 · запись события в тред ${THREAD} (PR #${PR}, исход ${CONCLUSION})"
+          if [ -n "${MAIN_RED:-}" ]; then
+            WHAT="по ${HEAD_BRANCH} (${HEAD_SHA:0:7})"
+          else
+            WHAT="по PR #${PR}"
+          fi
+          echo "3/3 · запись события в тред ${THREAD} (${WHAT}, исход ${CONCLUSION})"
           for attempt in 1 2 3 4 5; do
             git fetch --no-tags origin comms
             git reset --hard origin/comms
@@ -195,7 +280,7 @@ jobs:
               exit 1
             fi
             git add agent-comms
-            git commit -m "chore(comms): ${WF_NAME} по PR #${PR} — ${CONCLUSION}, событие в тред ${THREAD}"
+            git commit -m "chore(comms): ${WF_NAME} ${WHAT} — ${CONCLUSION}, событие в тред ${THREAD}"
             if git push origin HEAD:comms; then
               echo "Исход прогона ${RUN_ID} (${CONCLUSION}) доставлен в тред ${THREAD}."
               exit 0
