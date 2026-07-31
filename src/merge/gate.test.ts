@@ -7,6 +7,7 @@ import {
   threadOfDescription,
   touchedPowerDocuments,
   unmatchedWorkingCards,
+  withoutAnchor,
 } from "./gate.js";
 
 const HEAD = "6ab1bdf92d8d6b1689d3f25075c3e153f19be4f7";
@@ -291,6 +292,240 @@ describe("guard 1 — one head answers more than once per reviewer (D4)", () => 
     expect(guard(pr({ reviews: [said("DISMISSED", "2026-07-31T03:33:07Z")] }), 1)?.state).toBe(
       "fail",
     );
+  });
+});
+
+/**
+ * THE CLASS: the door reads the array of verdicts the wrong way — the same class as D1
+ * and D4, one field deeper. `reviews[].commit.oid` of a verdict submitted without one is
+ * not a fact but a substitution: it holds whatever head the PR carries at the moment of
+ * the read, and the only thing that outs it is TIME — a verdict cannot answer about a
+ * commit that did not exist yet.
+ */
+describe("guard 1 — a verdict older than the head commit (thread 043)", () => {
+  const HEAD_MADE = "2026-07-31T06:55:57Z";
+  /** How gh answers about a verdict submitted with no commit: the current head, whatever it is now. */
+  const substituted = (
+    state: string,
+    submittedAt: string | undefined = "2026-07-31T03:46:02Z",
+  ): PullRequestFacts["reviews"][number] => ({
+    state,
+    commitSha: HEAD,
+    author: "github-actions",
+    submittedAt,
+  });
+
+  it("refuses an approve submitted before the head commit existed — it answered about other code", () => {
+    const outcome = guard(
+      pr({ reviews: [substituted("APPROVED")], headCommittedAt: HEAD_MADE }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("older than the head commit");
+    // The repair it names is a run of the review, not another round of review.
+    expect(outcome?.detail).toContain("pull_request");
+  });
+
+  it("says something different from 'no approve' — the two are different repairs", () => {
+    const detail = guard(
+      pr({ reviews: [substituted("APPROVED")], headCommittedAt: HEAD_MADE }),
+      1,
+    )?.detail;
+
+    expect(guard(pr({ reviews: [], headCommittedAt: HEAD_MADE }), 1)?.detail).toContain(
+      "no approve verdict",
+    );
+    expect(detail).not.toContain("no approve verdict");
+  });
+
+  it("passes an approve submitted AFTER the head commit — the head has not moved under it", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [substituted("APPROVED", "2026-07-31T08:59:35Z")],
+          headCommittedAt: HEAD_MADE,
+        }),
+        1,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("still refuses an approve on another head, and still passes one on this head", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            {
+              state: "APPROVED",
+              commitSha: OLD,
+              author: "github-actions",
+              submittedAt: "2026-07-31T08:59:35Z",
+            },
+          ],
+          headCommittedAt: HEAD_MADE,
+        }),
+        1,
+      )?.state,
+    ).toBe("fail");
+    expect(
+      guard(
+        pr({
+          reviews: [
+            {
+              state: "APPROVED",
+              commitSha: HEAD,
+              author: "github-actions",
+              submittedAt: "2026-07-31T08:59:35Z",
+            },
+          ],
+          headCommittedAt: HEAD_MADE,
+        }),
+        1,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("does not read a verdict that predates the head as the stale one either", () => {
+    expect(
+      guard(pr({ reviews: [substituted("APPROVED")], headCommittedAt: HEAD_MADE }), 1)?.detail,
+    ).not.toContain("the head has moved");
+  });
+
+  it("refuses a CHANGES_REQUESTED older than the head too — an unknown target opens no door", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            substituted("CHANGES_REQUESTED"),
+            {
+              state: "APPROVED",
+              commitSha: HEAD,
+              author: "john",
+              submittedAt: "2026-07-31T08:00:00Z",
+            },
+          ],
+          headCommittedAt: HEAD_MADE,
+        }),
+        1,
+      )?.state,
+    ).toBe("fail");
+  });
+
+  it("refuses a verdict on the head that carries no stamp — its age cannot be shown", () => {
+    expect(
+      guard(pr({ reviews: [substituted("APPROVED", undefined)], headCommittedAt: HEAD_MADE }), 1)
+        ?.state,
+    ).toBe("fail");
+  });
+
+  it("reads exactly as before when gh did not date the head — nothing known, nothing invented", () => {
+    expect(guard(pr({ reviews: [substituted("APPROVED")] }), 1)?.state).toBe("pass");
+  });
+
+  /**
+   * THE REFUSAL MUST NOT OUTLIVE ITS OWN REPAIR. The dispatch record never leaves
+   * `reviews`, and `gh` keeps showing it against the current head — so asking the age of
+   * the HISTORY instead of the last verdict of each author locked the door forever on
+   * every PR a dispatch run had ever touched, the `pull_request` round the refusal itself
+   * names included.
+   */
+  it("lets a fresh pull_request approve overtake the same author's dispatch verdict on this head", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          // The old workflow_dispatch verdict: shown against the head, submitted before it.
+          substituted("APPROVED"),
+          // The repair the refusal names — the same author, a run on the 'pull_request' event.
+          substituted("APPROVED", "2026-07-31T09:00:00Z"),
+        ],
+        headCommittedAt: HEAD_MADE,
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("pass");
+    expect(outcome?.detail).toContain("approved on");
+  });
+
+  it("keeps refusing when the author's LAST word is the anchorless one — being overtaken is what clears a verdict", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            substituted("APPROVED", "2026-07-31T09:00:00Z"),
+            // Submitted later than the valid approve, but still before the head existed:
+            // impossible in life, and the door does not reward an unreadable payload.
+            substituted("APPROVED", "2026-07-31T03:46:02Z"),
+          ],
+          headCommittedAt: "2026-07-31T09:30:00Z",
+        }),
+        1,
+      )?.state,
+    ).toBe("fail");
+  });
+
+  it("does not let one author's dispatch verdict be cleared by ANOTHER author's approve", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          substituted("APPROVED"),
+          {
+            state: "APPROVED",
+            commitSha: HEAD,
+            author: "curator",
+            submittedAt: "2026-07-31T09:00:00Z",
+          },
+        ],
+        headCommittedAt: HEAD_MADE,
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("older than the head commit");
+  });
+});
+
+describe("withoutAnchor", () => {
+  const HEAD_MADE = "2026-07-31T06:55:57Z";
+
+  it("takes only the verdicts ON THE HEAD that predate it — one on another commit is not its business", () => {
+    const old = {
+      state: "APPROVED",
+      commitSha: OLD,
+      author: "john",
+      submittedAt: "2026-07-30T00:00:00Z",
+    };
+    const predating = {
+      state: "APPROVED",
+      commitSha: HEAD,
+      author: "github-actions",
+      submittedAt: "2026-07-31T03:46:02Z",
+    };
+    const after = {
+      state: "APPROVED",
+      commitSha: HEAD,
+      author: "curator",
+      submittedAt: "2026-07-31T08:59:35Z",
+    };
+
+    expect(
+      withoutAnchor({
+        reviews: [old, predating, after],
+        headSha: HEAD,
+        headCommittedAt: HEAD_MADE,
+      }),
+    ).toEqual([predating]);
+  });
+
+  it("is empty when gh did not date the head — the old reading, unchanged", () => {
+    expect(
+      withoutAnchor({
+        reviews: [{ state: "APPROVED", commitSha: HEAD, author: "r" }],
+        headSha: HEAD,
+      }),
+    ).toEqual([]);
   });
 });
 
