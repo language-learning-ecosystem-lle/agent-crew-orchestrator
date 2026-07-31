@@ -32,6 +32,7 @@
  * `writtenAt` by whoever is reading, with their own tolerance. A digest never says "I
  * am alive"; it says "at this moment I was doing this", and the reader does the rest.
  */
+import type { Instance } from "../config/config.js";
 import type { LeaseView } from "./lease.js";
 import { isLeaseAlive } from "./lease.js";
 import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
@@ -55,7 +56,23 @@ export type InstanceDigest = {
   readonly instance: string;
   /** When the writer produced this state — the ONLY basis a reader has for staleness. */
   readonly writtenAt: string;
-  /** The roles this run raises, after the topology and the operator's flags. */
+  /**
+   * THE ROLES THIS BOX ANSWERS FOR — the topology, and nothing about this particular
+   * run (thread `025-stale-instance-digest`, second half; the contract was changed on
+   * purpose and curator's recommendation of 2026-07-28 named the change).
+   *
+   * It used to mean "the roles THIS RUN raises, after the topology and the operator's
+   * flags" — a property of a launch in a file that describes a BOX. Under that reading
+   * `run --role dev-core` on a box that also answers for curator publishes
+   * `roles: ["dev-core"]` and overwrites what the daemon left, so a reader on another
+   * machine sees the box shrink to one role and has no way to tell that from a topology
+   * change. The same file would say something different depending on which command
+   * happened to write it last, which is the class of defect this whole thread is about.
+   *
+   * "What this run raises" is not lost by the change — `leases` carries it, and carries
+   * it as a fact (a pair actually held) rather than as an intention. What the reader
+   * gains is a field that two writers cannot disagree about.
+   */
   readonly roles: readonly string[];
   /** Live leases at that moment, in a stable order. */
   readonly leases: readonly DigestLease[];
@@ -107,6 +124,29 @@ export const digestOf = (input: {
       deadline: view.deadline,
     })),
 });
+
+/**
+ * THE ROLES A BOX ANSWERS FOR, off the topology — the one source both writers of a
+ * digest read (`daemon` and `run`), so the field cannot depend on which of them wrote
+ * last. See `InstanceDigest.roles` for why that is the contract.
+ *
+ * Deliberately UNFILTERED by launchability: a role of this box that nothing can raise
+ * today (no instructions, no launch profile, a resident that is hosted rather than
+ * launched) is still this box's role, and hiding it would make "not ours" and "ours but
+ * quiet" the same silence. WHY a role of the list never appears among the leases is
+ * content the digest does not carry yet — it belongs to D-4 of thread 023, where the
+ * digest gains a live perspective.
+ *
+ * An undeclared topology yields an empty list, the same way it yields no scope: with no
+ * `instances` section there is nothing to publish under either.
+ */
+export const rolesOfInstance = (input: {
+  readonly instances?: readonly Instance[] | undefined;
+  readonly instance: string;
+}): readonly string[] =>
+  (input.instances ?? [])
+    .filter((instance) => instance.id === input.instance)
+    .flatMap((instance) => [...instance.roles]);
 
 /** The file body. Trailing newline: it is a text file in a branch humans read in diffs. */
 export const renderDigest = (digest: InstanceDigest): string =>
