@@ -112,4 +112,30 @@ describe("what a human is shown", () => {
     });
     expect(line).toContain("claude-code → /opt/claude");
   });
+
+  it("names the operator — a hold carries that signature, so it is shown where it comes from", () => {
+    const line = describeLocalConfig({
+      config: { agents: {}, operator: "john" },
+      path: "/x/local.json",
+      found: true,
+      explicit: false,
+    });
+    expect(line).toContain("operator john");
+  });
+});
+
+describe("who sits at this box (thread 019)", () => {
+  it("'operator' is accepted — WHICH of the roles is here is a fact about the machine", () => {
+    expect(parseLocalConfig({ operator: "john" }, "p").operator).toBe("john");
+  });
+
+  it("is optional — a box that never parks anything says nothing", () => {
+    expect(parseLocalConfig({ agents: {} }, "p").operator).toBeUndefined();
+  });
+
+  it("the PLURAL is still policy — 'roles' names the rule, not the typo", () => {
+    // The symmetry with `instance`/`instances`: identity may live here, the register
+    // of who exists may not.
+    expect(() => parseLocalConfig({ operator: "john", roles: [] }, "p")).toThrow(/POLICY/);
+  });
 });

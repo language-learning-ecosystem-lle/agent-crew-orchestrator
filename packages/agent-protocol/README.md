@@ -139,13 +139,24 @@ every machine and belongs to none of them.
 // ~/.config/agent-protocol/local.json  (or --local-config <path>)
 {
   "agents": { "claude-code": { "exec": "/home/j/.nvm/versions/node/v18.20.3/bin/claude" } },
-  "secrets": { "envFile": "/home/j/.config/lle/telegram.env" }
+  "secrets": { "envFile": "/home/j/.config/lle/telegram.env" },
+  "operator": "john"
 }
 ```
 
 `secrets.envFile` (R4) is a PATH and only a path: the values live in that file, which
 is read and never printed, while this one is printed on every preflight. Both fields
 say the same kind of thing — where something on this box happens to sit.
+
+`operator` is WHO SITS AT THIS BOX — the role a short-form hold is signed by when
+`--by` is not typed. It was `$USER` alone, and an OS account name coincides with a
+role of the config only by luck: on the box this was written on it is `cosysoft`,
+which is no role, so `hold <role>` — the form that exists to take the ceremony off
+the operator — refused every time until `--by` was typed anyway. WHICH roles may sign
+is still stated in the repository and still checked there; which of them is at this
+keyboard is true of one machine and of no other. The order is: the flag, then
+`operator`, then `$USER` (kept for the box where the account name IS a role), and
+every refusal names which of the three the value came from.
 
 The hole this closes was visible in every command typed by hand:
 `--exec /home/…/versions/node/v18.20.3/bin/claude`. That path is not knowledge of the

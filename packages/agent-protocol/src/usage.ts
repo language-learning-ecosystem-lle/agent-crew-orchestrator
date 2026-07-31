@@ -102,20 +102,25 @@ CONFIG, section 'orchestrator'. The path flags below are an override for checks
 and are not needed in operation; only --ref is required.
 The agent BINARIES come from the machine config (~/.config/agent-protocol/local.json,
 or --local-config <p>): the repository says WHAT is raised, the machine says WHERE it is.
-THE OPERATOR'S FOUR (thread 019): the same circuit without the ceremony — the daemon
-in the background with one command, the parking with one word. --ref may be left out
-HERE ONLY: it is taken from 'orchestrator.ref' of the config in the working tree, and
-which ref was used is printed. The strict forms below keep every flag they had.
-  agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--pid-file <p>]   # plus every 'daemon' flag
+THE OPERATOR'S FIVE (thread 019): the same circuit without the ceremony — the daemon
+in the background with one command, the parking with one word, the picture without a
+ref. --ref may be left out HERE ONLY (up/down/hold/resume/status): it is taken from
+'orchestrator.ref' of the config in the working tree, and which ref was used is
+printed. The strict forms below keep every flag they had.
+  agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--pid-file <p>] [--clear-force]   # plus every 'daemon' flag
+                              # a force flag on the floor REFUSES the start, by name and
+                              # reason: a daemon raised over it exits on its first tick and
+                              # says so only in its log. --clear-force removes it deliberately
   agent-protocol orchestrator down   [--ref <ref>] [--repo <p>] [--stop-flag <p>] [--pid-file <p>]
-  agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>]
+  agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>] [--local-config <p>]
   agent-protocol orchestrator resume <role> [--ref <ref>] [--holds <d>]
                               # the short forms ACT (no --write): typing them IS the decision
-                              # --by defaults to $USER and must be a role of the config
+                              # --by: the flag, then 'operator' of the machine config (who sits
+                              # at this box), then $USER; the value must be a role of the config
   agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--watch] [--interval <sec>] [--frames <n>]
+  agent-protocol orchestrator status [--ref <ref>] [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--watch] [--interval <sec>] [--frames <n>]
                               # it SHOWS what the daemon would do, so it reads the same
                               # answers the daemon reads: the ceilings, the scope of roles,
                               # the mail root and the agent resolution ('launch resolution')
@@ -127,6 +132,10 @@ which ref was used is printed. The strict forms below keep every flag they had.
                               # --watch: THE SAME FRAME, redrawn every --interval seconds (2 by
                               # default) — for a dumb terminal, a tmux pane or a pipe into tee;
                               # it READS ONLY: no fetch, nothing repaired, the age is shown instead
+                              # the config is resolved ONCE at the start (the network is not
+                              # touched again), and a failed collection draws the LAST KNOWN
+                              # frame under 'frame: unavailable since HH:MM (why)' — the watch
+                              # dies of Ctrl+C and of nothing else
                               # --frames <n>: stop after n frames (for checks)
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
   agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
@@ -147,4 +156,9 @@ which ref was used is printed. The strict forms below keep every flag they had.
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
   agent-protocol orchestrator stop   --mode graceful --ref <ref> [--stop-flag <p>] [--write]
   agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--repo <p>] [--force-flag <p>] [--root <mail>] [--write]
+                              # THE TRACE IS DELIVERED FIRST (committed and pushed), the flag
+                              # second: with the flag first the force killed the delivery and
+                              # the only explanation of the interruption stayed on one disk.
+                              # An undeliverable trace is written into the checkout and said
+                              # out loud — the stop still happens, silently it does not
   agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]`;

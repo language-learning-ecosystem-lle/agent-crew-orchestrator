@@ -360,7 +360,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     const up = parseUsage(USAGE).get("orchestrator up");
     const daemon = parseUsage(USAGE).get("orchestrator daemon");
     if (up === undefined || daemon === undefined) throw new Error("no line for up/daemon");
-    const own = ["--daemon-log", "--pid-file"];
+    // `--clear-force` is `up`'s own in the same sense: it is a decision taken at the
+    // door, and the daemon behind it knows nothing of the flag (see the passthrough
+    // filter in `orchestratorUp`).
+    const own = ["--daemon-log", "--pid-file", "--clear-force"];
     const passed = up.value.filter((name) => !own.includes(name));
     expect(passed.filter((name) => !daemon.value.includes(name))).toEqual([]);
   });
