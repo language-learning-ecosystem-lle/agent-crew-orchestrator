@@ -158,6 +158,7 @@ import {
 } from "./orchestrator/launch.js";
 import { foldLeases, isLeaseAlive, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
+import { rotateDaemonLog, writeEpochBanner } from "./orchestrator/logsize.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
 import {
   type OrchestratorPaths,
@@ -219,6 +220,7 @@ import {
   scopeFlagIssues,
 } from "./orchestrator/scope.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
+import { foregroundRefusal, planSystemdUnit } from "./orchestrator/systemd.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
@@ -3666,6 +3668,59 @@ const orchestratorSystemdUnit = (argv: readonly string[]): void => {
 };
 
 /**
+ * `orchestrator systemd install` — THE UNIT, GENERATED FROM THIS BOX (thread 019,
+ * statement of 2026-07-31 09:43Z). Why user-level, why the restart policy does not
+ * fight the flags and why the file is generated rather than typed: `orchestrator/systemd.ts`.
+ *
+ * WHAT IT DOES NOT DO: `systemctl --user enable --now` and `loginctl enable-linger`.
+ * That line is old and it is deliberate (`reboot.ts`): a daemon that makes itself
+ * permanent is exactly the surprise the enable gate exists to prevent, and "the box
+ * raises agents by itself from now on" is a decision with a human's name on it. The
+ * command prints the three commands in order; typing them is the decision.
+ */
+const orchestratorSystemdInstall = (argv: readonly string[]): void => {
+  // The ref of the daemon's own argv comes from the working tree, like the operator's
+  // five — a unit is written once and must not carry a ref somebody typed by hand.
+  const args = withOperatorRef(argv);
+  const repo = flag(args, "--repo") ?? homeOf(process.cwd());
+  const typed = flag(args, "--daemon-args");
+  const daemonArgs =
+    typed === undefined
+      ? ["--ref", flag(args, "--ref") as string]
+      : typed.split(/\s+/).filter((token) => token !== "");
+  const unitName = flag(args, "--unit-name");
+  const unitDir = flag(args, "--unit-dir");
+  const description = flag(args, "--description");
+  const user = process.env.USER;
+  const plan = planSystemdUnit({
+    repo,
+    node: process.execPath,
+    cli: process.argv[1] as string,
+    daemonArgs,
+    ...(unitName === undefined ? {} : { unitName }),
+    ...(unitDir === undefined ? {} : { unitDir }),
+    ...(description === undefined ? {} : { description }),
+    ...(user === undefined ? {} : { user }),
+  });
+  if (!args.includes("--write")) {
+    out(`agent-protocol: would write ${plan.path}`);
+    out(plan.unit);
+    out("agent-protocol: --write puts it there; then, by hand:");
+    for (const step of plan.steps) out(`  ${step}`);
+    return;
+  }
+  const existed = existsSync(plan.path);
+  mkdirSync(dirname(plan.path), { recursive: true });
+  writeFileSync(plan.path, plan.unit, "utf8");
+  out(`agent-protocol: ${existed ? "replaced" : "wrote"} ${plan.path}`);
+  out("agent-protocol: the rest is yours to type — none of it happens by itself:");
+  for (const step of plan.steps) out(`  ${step}`);
+  out(
+    "agent-protocol: the unit runs 'up --foreground' — launches are still gated by the enable flag, and a stop/force flag still keeps the circuit down (the daemon exits cleanly, so 'Restart=on-failure' does not re-raise it)",
+  );
+};
+
+/**
  * Append ONE event to the journal. This is the write primitive the daemon uses
  * from S1 on; in S0 it also makes the step reproducible by hand. The shape of the
  * event is validated by the schema (fields required per kind — `lease-acquired`
@@ -6312,11 +6367,16 @@ const runningDaemon = (pidFile: string): number | undefined => {
  * putting it there. Hence: named, with who and why, and `--clear-force` to say it out
  * loud.
  */
-const orchestratorUp = (argv: readonly string[]): void => {
+const orchestratorUp = async (argv: readonly string[]): Promise<void> => {
   const args = withOperatorRef(argv);
   const paths = pathsFrom(args);
   const pidFile = flag(args, "--pid-file") ?? paths.daemonPid;
   const log = flag(args, "--daemon-log") ?? paths.daemonLog;
+  // THE MODE A UNIT NEEDS (thread 019, systemd): the daemon runs as THIS process, so
+  // systemd supervises the thing it started rather than a pid that forked away from it.
+  // Everything before the spawn — the doors, the flags, the enable gate — is shared:
+  // `up` is one command with one meaning, and the foreground is where its output goes.
+  const foreground = args.includes("--foreground");
 
   const already = runningDaemon(pidFile);
   if (already !== undefined) {
@@ -6331,6 +6391,14 @@ const orchestratorUp = (argv: readonly string[]): void => {
   if (existsSync(forceFlag)) {
     const forced = readForceFlag(forceFlag);
     const signature = `${forced.by === undefined ? "somebody unnamed" : forced.by}: ${forced.note ?? "no reason was recorded"}`;
+    if (!args.includes("--clear-force") && foreground) {
+      // THE SAME REFUSAL, A CLEAN EXIT — the design risk the statement named, decided in
+      // `orchestrator/systemd.ts`: under `Restart=on-failure` a refusal with code 2 would
+      // be re-raised every RestartSec until the start limit, i.e. an off switch that does
+      // not switch off. Nothing is raised either way; only the code differs.
+      out(`agent-protocol: ${foregroundRefusal({ flagPath: forceFlag, signature })}`);
+      return;
+    }
     if (!args.includes("--clear-force")) {
       fail(
         `the force flag is down ('${forceFlag}') — ${signature}. A daemon started now would read it on its first tick and exit, reporting nothing to this terminal. Clear it deliberately: 'up --clear-force', or remove the file`,
@@ -6361,16 +6429,65 @@ const orchestratorUp = (argv: readonly string[]): void => {
   const passthrough: string[] = [];
   for (let at = 0; at < args.length; at += 1) {
     const token = args[at] as string;
-    if (token === "--pid-file" || token === "--daemon-log") {
+    if (token === "--pid-file" || token === "--daemon-log" || token === "--log-max-bytes") {
       at += 1;
       continue;
     }
     // `--clear-force` is a decision about the DOOR, taken above; the daemon behind it
     // knows nothing of the flag and must not be told to clear anything.
     if (token === "--clear-force") continue;
+    // `--foreground` is a decision about WHO RUNS the daemon, not a daemon flag.
+    if (token === "--foreground") continue;
     passthrough.push(token);
   }
   mkdirSync(dirname(log), { recursive: true });
+  // THE LOG DOES NOT GROW WITHOUT END, AND ITS EPOCHS ARE LEGIBLE (thread 019, addendum
+  // of 10:50Z: 18 MB in a week, every daemon's lines in one undivided stream). The
+  // decision — rotate at the start, keep one generation, banner every epoch — and why
+  // it is not `daemon-<start>.log`: `orchestrator/logsize.ts`.
+  const capTyped = flag(args, "--log-max-bytes");
+  const cap = capTyped === undefined ? undefined : Number(capTyped);
+  if (cap !== undefined && (!Number.isFinite(cap) || cap <= 0)) {
+    fail(`--log-max-bytes '${capTyped}' — expected a positive number of bytes`, 2);
+    return;
+  }
+  const rotated = rotateDaemonLog({ path: log, ...(cap === undefined ? {} : { cap }) });
+  if (rotated !== undefined) out(`agent-protocol: ${rotated}`);
+  if (foreground) {
+    // The pid and the argv are written exactly as the backgrounded path writes them:
+    // `status`, `down` and `restart` know a daemon as "the pid in `daemon.pid`", and a
+    // daemon under a unit must be the same daemon to all three.
+    writeFileSync(pidFile, `${process.pid}\n`, "utf8");
+    writeFileSync(daemonArgvPath(pidFile), renderDaemonArgv(passthrough), "utf8");
+    writeEpochBanner({
+      path: log,
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+      mode: "foreground",
+    });
+    // BOTH SINKS, ONE STREAM (the statement: journalctl AND the usual daemon.log).
+    // systemd captures the standard streams, `orchestrator log` reads the file — a
+    // mirror keeps them the same text instead of asking the operator which one is real.
+    const mirror = openSync(log, "a");
+    for (const stream of [process.stdout, process.stderr]) {
+      const original = stream.write.bind(stream);
+      stream.write = ((chunk: string | Uint8Array, ...rest: unknown[]): boolean => {
+        try {
+          if (typeof chunk === "string") writeSync(mirror, chunk);
+          else writeSync(mirror, Buffer.from(chunk));
+        } catch {
+          // A full or unwritable log must never take the daemon down: the stream systemd
+          // reads is the one that matters, the file is the convenience.
+        }
+        return (original as (...a: unknown[]) => boolean)(chunk, ...rest);
+      }) as typeof stream.write;
+    }
+    out(
+      `agent-protocol: the daemon runs in the FOREGROUND, pid ${process.pid} · its output is this stream and ${log}`,
+    );
+    await orchestratorDaemon(passthrough);
+    return;
+  }
   const sink = openSync(log, "a");
   const child = spawn(
     process.execPath,
@@ -6380,6 +6497,14 @@ const orchestratorUp = (argv: readonly string[]): void => {
   child.unref();
   closeSync(sink);
   writeFileSync(pidFile, `${child.pid}\n`, "utf8");
+  // The seam between this daemon's lines and the previous one's — the same banner the
+  // foreground path writes, so the file reads the same whoever raised the daemon.
+  writeEpochBanner({
+    path: log,
+    pid: child.pid as number,
+    startedAt: new Date().toISOString(),
+    mode: "background",
+  });
   // WITH WHAT IT WAS RAISED, beside the pid — the answer `restart` needs and the only
   // one nobody has today: the flags of a backgrounded daemon live in the terminal that
   // typed them, i.e. in somebody's memory an hour later (see `restart.ts`).
@@ -6544,7 +6669,7 @@ const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
   // A force stop put the force flag down a minute ago — clearing it here is not the
   // silent clearing `up` refuses, it is the same operator saying so in the same breath.
   if (mode === "force") upFlags.push("--clear-force");
-  orchestratorUp(upFlags);
+  await orchestratorUp(upFlags);
 };
 
 /**
@@ -6922,7 +7047,14 @@ const mergeGate = (argv: readonly string[]): void => {
 const main = async (argv: readonly string[]): Promise<void> => {
   const [command, subcommand] = argv;
   if (command === "orchestrator" && subcommand !== undefined) {
-    guardArguments(`orchestrator ${subcommand}`, argv.slice(2));
+    // `systemd` is the one orchestrator command with a TWO-WORD name, so both the key of
+    // the table and the argv the guard reads shift by a token: keyed on the first word
+    // alone it would look up a usage line that does not exist and refuse everything.
+    const two = subcommand === "systemd" && argv[2] !== undefined;
+    guardArguments(
+      two ? `orchestrator systemd ${argv[2]}` : `orchestrator ${subcommand}`,
+      argv.slice(two ? 3 : 2),
+    );
   }
   if (command === "config" && subcommand === "check") {
     configCheck(argv.slice(2));
@@ -6977,7 +7109,7 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "orchestrator" && subcommand === "stop") {
     orchestratorStop(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "up") {
-    orchestratorUp(argv.slice(2));
+    await orchestratorUp(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "down") {
     orchestratorDown(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "restart") {
@@ -6999,6 +7131,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     orchestratorEnable(argv.slice(2), false);
   } else if (command === "orchestrator" && subcommand === "systemd-unit") {
     orchestratorSystemdUnit(argv.slice(2));
+  } else if (command === "orchestrator" && subcommand === "systemd" && argv[2] === "install") {
+    orchestratorSystemdInstall(argv.slice(3));
   } else {
     fail(USAGE, 2);
   }
