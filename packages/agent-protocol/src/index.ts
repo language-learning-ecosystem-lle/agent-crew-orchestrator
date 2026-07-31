@@ -219,6 +219,7 @@ export {
   renderConfig,
   renderMigrationPlan,
 } from "./schema/migrate.js";
+export { CONFIG_SHAPES, configShapeKeys, SHAPE_REPAIR } from "./schema/shape.js";
 export {
   insertWorkerLine,
   isMessagePath,
