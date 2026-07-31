@@ -297,104 +297,77 @@ describe("guard 1 — one head answers more than once per reviewer (D4)", () => 
 
 /**
  * THE CLASS: the door reads the array of verdicts the wrong way — the same class as D1
- * and D4, one field deeper. `reviews[].commit.oid` of an anchorless verdict is not a
- * fact but a substitution: it holds whatever head the PR carries at the moment of the
- * read, so these fixtures spell the two answers of `gh` out separately.
+ * and D4, one field deeper. `reviews[].commit.oid` of a verdict submitted without one is
+ * not a fact but a substitution: it holds whatever head the PR carries at the moment of
+ * the read, and the only thing that outs it is TIME — a verdict cannot answer about a
+ * commit that did not exist yet.
  */
-describe("guard 1 — a verdict with no commit anchor (thread 043)", () => {
-  /** How gh answers about a verdict submitted with no commit: empty in one array, the head in the other. */
-  const anchorless = (
+describe("guard 1 — a verdict older than the head commit (thread 043)", () => {
+  const HEAD_MADE = "2026-07-31T06:55:57Z";
+  /** How gh answers about a verdict submitted with no commit: the current head, whatever it is now. */
+  const substituted = (
     state: string,
-    submittedAt = "2026-07-31T03:46:02Z",
-  ): {
-    latest: PullRequestFacts["reviews"][number];
-    asReviews: PullRequestFacts["reviews"][number];
-  } => ({
-    latest: { state, commitSha: "", author: "github-actions", submittedAt },
-    asReviews: { state, commitSha: HEAD, author: "github-actions", submittedAt },
+    submittedAt: string | undefined = "2026-07-31T03:46:02Z",
+  ): PullRequestFacts["reviews"][number] => ({
+    state,
+    commitSha: HEAD,
+    author: "github-actions",
+    submittedAt,
   });
 
-  it("refuses an approve whose commit is empty in latestReviews — it belongs to no head", () => {
-    const said = anchorless("APPROVED");
-    const outcome = guard(pr({ reviews: [said.asReviews], latestReviews: [said.latest] }), 1);
+  it("refuses an approve submitted before the head commit existed — it answered about other code", () => {
+    const outcome = guard(
+      pr({ reviews: [substituted("APPROVED")], headCommittedAt: HEAD_MADE }),
+      1,
+    );
 
     expect(outcome?.state).toBe("fail");
-    expect(outcome?.detail).toContain("no commit anchor");
+    expect(outcome?.detail).toContain("older than the head commit");
     // The repair it names is a run of the review, not another round of review.
     expect(outcome?.detail).toContain("pull_request");
   });
 
   it("says something different from 'no approve' — the two are different repairs", () => {
-    const said = anchorless("APPROVED");
-    const anchorlessDetail = guard(
-      pr({ reviews: [said.asReviews], latestReviews: [said.latest] }),
+    const detail = guard(
+      pr({ reviews: [substituted("APPROVED")], headCommittedAt: HEAD_MADE }),
       1,
     )?.detail;
 
-    expect(guard(pr({ reviews: [], latestReviews: [] }), 1)?.detail).toContain(
+    expect(guard(pr({ reviews: [], headCommittedAt: HEAD_MADE }), 1)?.detail).toContain(
       "no approve verdict",
     );
-    expect(anchorlessDetail).not.toContain("no approve verdict");
+    expect(detail).not.toContain("no approve verdict");
   });
 
-  it("still refuses an approve on another head, and still passes one on this head", () => {
+  it("passes an approve submitted AFTER the head commit — the head has not moved under it", () => {
     expect(
       guard(
         pr({
-          reviews: [{ state: "APPROVED", commitSha: OLD, author: "github-actions" }],
-          latestReviews: [{ state: "APPROVED", commitSha: OLD, author: "github-actions" }],
-        }),
-        1,
-      )?.state,
-    ).toBe("fail");
-    expect(
-      guard(
-        pr({
-          reviews: [{ state: "APPROVED", commitSha: HEAD, author: "github-actions" }],
-          latestReviews: [{ state: "APPROVED", commitSha: HEAD, author: "github-actions" }],
+          reviews: [substituted("APPROVED", "2026-07-31T08:59:35Z")],
+          headCommittedAt: HEAD_MADE,
         }),
         1,
       )?.state,
     ).toBe("pass");
   });
 
-  it("does not read an anchorless approve as the stale one either — it sits on no commit", () => {
-    const said = anchorless("APPROVED");
-    expect(
-      guard(pr({ reviews: [said.asReviews], latestReviews: [said.latest] }), 1)?.detail,
-    ).not.toContain("the head has moved");
-  });
-
-  it("refuses an anchorless CHANGES_REQUESTED too — an unknown target opens no door", () => {
-    const said = anchorless("CHANGES_REQUESTED");
+  it("still refuses an approve on another head, and still passes one on this head", () => {
     expect(
       guard(
         pr({
           reviews: [
-            said.asReviews,
             {
               state: "APPROVED",
-              commitSha: HEAD,
-              author: "john",
-              submittedAt: "2026-07-31T04:00:00Z",
+              commitSha: OLD,
+              author: "github-actions",
+              submittedAt: "2026-07-31T08:59:35Z",
             },
           ],
-          latestReviews: [
-            said.latest,
-            {
-              state: "APPROVED",
-              commitSha: HEAD,
-              author: "john",
-              submittedAt: "2026-07-31T04:00:00Z",
-            },
-          ],
+          headCommittedAt: HEAD_MADE,
         }),
         1,
       )?.state,
     ).toBe("fail");
-  });
-
-  it("answers for the whole author when the anchorless entry carries no stamp", () => {
     expect(
       guard(
         pr({
@@ -403,53 +376,92 @@ describe("guard 1 — a verdict with no commit anchor (thread 043)", () => {
               state: "APPROVED",
               commitSha: HEAD,
               author: "github-actions",
-              submittedAt: "2026-07-31T03:46:02Z",
+              submittedAt: "2026-07-31T08:59:35Z",
             },
           ],
-          latestReviews: [{ state: "APPROVED", commitSha: "", author: "github-actions" }],
+          headCommittedAt: HEAD_MADE,
+        }),
+        1,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("does not read a verdict that predates the head as the stale one either", () => {
+    expect(
+      guard(pr({ reviews: [substituted("APPROVED")], headCommittedAt: HEAD_MADE }), 1)?.detail,
+    ).not.toContain("the head has moved");
+  });
+
+  it("refuses a CHANGES_REQUESTED older than the head too — an unknown target opens no door", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            substituted("CHANGES_REQUESTED"),
+            {
+              state: "APPROVED",
+              commitSha: HEAD,
+              author: "john",
+              submittedAt: "2026-07-31T08:00:00Z",
+            },
+          ],
+          headCommittedAt: HEAD_MADE,
         }),
         1,
       )?.state,
     ).toBe("fail");
   });
 
-  it("touches nothing when every latest verdict is anchored — the anchored one still passes", () => {
-    const anchored = {
-      state: "APPROVED",
-      commitSha: HEAD,
-      author: "github-actions",
-      submittedAt: "2026-07-31T03:46:02Z",
-    };
-    expect(guard(pr({ reviews: [anchored], latestReviews: [anchored] }), 1)?.state).toBe("pass");
+  it("refuses a verdict on the head that carries no stamp — its age cannot be shown", () => {
+    expect(
+      guard(pr({ reviews: [substituted("APPROVED", undefined)], headCommittedAt: HEAD_MADE }), 1)
+        ?.state,
+    ).toBe("fail");
+  });
+
+  it("reads exactly as before when gh did not date the head — nothing known, nothing invented", () => {
+    expect(guard(pr({ reviews: [substituted("APPROVED")] }), 1)?.state).toBe("pass");
   });
 });
 
 describe("withoutAnchor", () => {
-  it("matches by author and stamp — another reviewer's verdict of the same minute stays anchored", () => {
-    const mine = {
+  const HEAD_MADE = "2026-07-31T06:55:57Z";
+
+  it("takes only the verdicts ON THE HEAD that predate it — one on another commit is not its business", () => {
+    const old = {
+      state: "APPROVED",
+      commitSha: OLD,
+      author: "john",
+      submittedAt: "2026-07-30T00:00:00Z",
+    };
+    const predating = {
       state: "APPROVED",
       commitSha: HEAD,
       author: "github-actions",
       submittedAt: "2026-07-31T03:46:02Z",
     };
-    const theirs = {
+    const after = {
       state: "APPROVED",
       commitSha: HEAD,
-      author: "john",
-      submittedAt: "2026-07-31T03:46:02Z",
+      author: "curator",
+      submittedAt: "2026-07-31T08:59:35Z",
     };
 
     expect(
       withoutAnchor({
-        reviews: [mine, theirs],
-        latestReviews: [{ ...mine, commitSha: "" }, theirs],
+        reviews: [old, predating, after],
+        headSha: HEAD,
+        headCommittedAt: HEAD_MADE,
       }),
-    ).toEqual([mine]);
+    ).toEqual([predating]);
   });
 
-  it("is empty when gh was not asked for latestReviews — the old reading, unchanged", () => {
+  it("is empty when gh did not date the head — the old reading, unchanged", () => {
     expect(
-      withoutAnchor({ reviews: [{ state: "APPROVED", commitSha: HEAD, author: "r" }] }),
+      withoutAnchor({
+        reviews: [{ state: "APPROVED", commitSha: HEAD, author: "r" }],
+        headSha: HEAD,
+      }),
     ).toEqual([]);
   });
 });

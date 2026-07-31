@@ -13,9 +13,10 @@
  * arrived. The STAMPS (`completedAt`, `startedAt`) are optional for the same reason —
  * a status context has neither — but they are what tells a rerun from the attempt it
  * replaced, so they are asked for (thread 026, D1). `reviews[].submittedAt` is there for
- * the same reason on the verdict side (D4). `latestReviews` is asked for BESIDE `reviews`
- * — not instead of it: the two answers about the same reviews disagree about the commit,
- * and it is the disagreement that guard 1 needs (thread 043).
+ * the same reason on the verdict side (D4). `commits` is asked for BESIDE `reviews`:
+ * the head commit's `committedDate` is what tells a verdict about this head from one
+ * merely SHOWN against it, and it is the one fact a substituted anchor cannot fake
+ * (thread 043).
  *
  * `mergeable` IS PINNED like the rest of the computed-from fields (D2): the door
  * refuses on anything that is not `MERGEABLE`, so its silent absence would be the very
@@ -40,17 +41,16 @@ export const ghPullRequestSchema = z.looseObject({
       submittedAt: nullableText,
     }),
   ),
-  // THE SAME REVIEWS, ANSWERED TWICE (thread 043): here the last one of each author, and
-  // here alone a verdict with no `commit_id` says so — `commit.oid` comes back empty
-  // instead of being filled with whatever head the PR has at the moment of reading. It is
-  // PINNED like the rest: guard 1 now refuses on the emptiness, so losing the field
-  // silently would put the fail-open back exactly where it was.
-  latestReviews: z.array(
+  // THE AGE OF THE HEAD COMMIT (thread 043): the one fact about the head that a
+  // substituted review anchor cannot fake — a verdict older than this commit answered
+  // about code that did not exist yet. PINNED like the rest of the computed-from fields:
+  // guard 1 refuses on it, so losing the field silently would put the fail-open back
+  // exactly where it was. `committedDate` per entry is optional — the gate takes the one
+  // whose `oid` is the head and reads nothing into a commit gh did not date.
+  commits: z.array(
     z.looseObject({
-      state: z.string(),
-      commit: z.looseObject({ oid: z.string() }).nullish(),
-      author: z.looseObject({ login: z.string() }).nullish(),
-      submittedAt: nullableText,
+      oid: z.string(),
+      committedDate: nullableText,
     }),
   ),
   statusCheckRollup: z.array(

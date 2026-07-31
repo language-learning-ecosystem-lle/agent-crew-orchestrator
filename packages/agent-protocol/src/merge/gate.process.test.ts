@@ -138,15 +138,9 @@ const mergeable = (over: Record<string, unknown> = {}): unknown => ({
       submittedAt: "2026-07-30T00:10:00Z",
     },
   ],
-  // The same verdict as gh groups it per author — with its anchor intact (thread 043).
-  latestReviews: [
-    {
-      state: "APPROVED",
-      commit: { oid: HEAD },
-      author: { login: "reviewer-pr" },
-      submittedAt: "2026-07-30T00:10:00Z",
-    },
-  ],
+  // The head commit, made BEFORE the verdict above — so the verdict is an answer about
+  // it and not one merely shown against it (thread 043).
+  commits: [{ oid: HEAD, committedDate: "2026-07-30T00:00:00Z" }],
   statusCheckRollup: [
     // A check RUN and a status CONTEXT in one array — two node types, different fields.
     {
@@ -250,14 +244,14 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(result.out).not.toContain("guard 2");
   });
 
-  it("latestReviews is pinned too — losing it would put the anchorless approve back (043)", () => {
+  it("commits is pinned too — losing it would put the substituted anchor back (043)", () => {
     const repo = repoWithConfig();
     const payload = mergeable() as Record<string, unknown>;
-    delete payload.latestReviews;
+    delete payload.commits;
     const result = run(repo, stubGh(repo, { json: payload }));
 
     expect(result.code).toBe(2);
-    expect(result.out).toContain("latestReviews");
+    expect(result.out).toContain("commits");
     expect(result.out).not.toContain("guard 1");
   });
 
@@ -349,15 +343,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
               submittedAt: "2026-07-31T03:33:07Z",
             },
           ],
-          // As the recorded answer had it: the last verdict of the one reviewer, anchored.
-          latestReviews: [
-            {
-              state: "APPROVED",
-              commit: { oid: HEAD },
-              author: { login: "github-actions" },
-              submittedAt: "2026-07-31T03:33:07Z",
-            },
-          ],
+
           statusCheckRollup: [
             {
               name: "review",
@@ -416,14 +402,6 @@ describe("merge-gate — the command, with a real gh on the other side of the se
               submittedAt: "2026-07-31T03:33:07Z",
             },
           ],
-          latestReviews: [
-            {
-              state: "CHANGES_REQUESTED",
-              commit: { oid: HEAD },
-              author: { login: "github-actions" },
-              submittedAt: "2026-07-31T03:33:07Z",
-            },
-          ],
         }),
       }),
     );
@@ -434,13 +412,14 @@ describe("merge-gate — the command, with a real gh on the other side of the se
   });
 
   /**
-   * THE RECORDED ANSWER of `gh pr view 64 --json headRefOid,reviews,latestReviews` at head
-   * `ea8572a` (curator's measurement of 2026-07-31T07:00Z), cut down to the four verdicts
-   * that matter. The defect is in the payload itself and needs no live PR: the SAME approve
-   * (`submittedAt` 03:46:02Z) is `commit.oid: ""` in `latestReviews` and the CURRENT head in
-   * `reviews` — which is why the door read it as an approve of every head in turn.
+   * THE RECORDED ANSWER of `gh pr view 64 --json headRefOid,reviews,commits` at head
+   * `ea8572a` (curator's measurement of 2026-07-31T07:00Z, the commit dates read back on
+   * the same PR), cut down to the verdicts that matter. The defect is in the payload
+   * itself and needs no live PR: the approve of 03:46:02Z is shown against the CURRENT
+   * head — a commit `gh pr update-branch` made at 06:55:57Z, three hours after the verdict
+   * — which is why the door read it as an approve of every head in turn.
    */
-  it("refuses the recorded #64 — the approve of a workflow_dispatch run has no commit", () => {
+  it("refuses the recorded #64 — the approve predates the head gh pr update-branch made", () => {
     const repo = repoWithConfig();
     const OLDER = "c1dc1a385e0c9ab232cf66f5f21eca112ed20f44";
     const dispatched = {
@@ -463,15 +442,18 @@ describe("merge-gate — the command, with a real gh on the other side of the se
             // gh fills this one in with whatever head the PR carries right now.
             { ...dispatched, commit: { oid: HEAD } },
           ],
-          // And here it admits the verdict hangs on no commit at all.
-          latestReviews: [{ ...dispatched, commit: { oid: "" } }],
+          // And here is what it cannot fake: the head is younger than the verdict.
+          commits: [
+            { oid: OLDER, committedDate: "2026-07-31T01:40:00Z" },
+            { oid: HEAD, committedDate: "2026-07-31T06:55:57Z" },
+          ],
         }),
       }),
     );
 
     expect(result.code).toBe(1);
     expect(result.out).toContain("STOP guard 1");
-    expect(result.out).toContain("no commit anchor");
+    expect(result.out).toContain("older than the head commit");
     expect(result.out).toContain("pull_request");
   });
 
