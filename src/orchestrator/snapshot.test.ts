@@ -178,6 +178,40 @@ describe("renderFrame", () => {
   it("says out loud that nobody has published, instead of showing an empty panel", () => {
     expect(renderFrame(frame)).toContain("no digests published");
   });
+
+  // T-1 (thread 019): a thread waiting on a role the circuit never raises used to be
+  // printed by `status` BESIDE the frame — so the observer, which draws the frame and
+  // nothing else, would not have shown it at all. It is a fact of the very class the
+  // frame exists for, and the frame is the one place both readers share.
+  it("a resident wait stands in the frame, beside the queue it is deliberately not in", () => {
+    const lines = renderFrame({
+      ...frame,
+      residents: {
+        roles: ["dev-speech"],
+        waits: [{ role: "dev-speech", thread: "030-tts" }],
+      },
+    }).split("\n");
+    const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));
+    expect(at("resident roles")).toBeGreaterThan(at("queue:"));
+    expect(at("resident roles")).toBeLessThan(at("instances:"));
+    // MARKED, not filtered (R23-1): the pair is named, with whose process answers for it.
+    expect(lines.some((line) => line.includes("030-tts") && line.includes("dev-speech"))).toBe(
+      true,
+    );
+  });
+
+  it("a project with resident roles and nobody waiting still gets the answer, not silence", () => {
+    expect(renderFrame({ ...frame, residents: { roles: ["dev-speech"], waits: [] } })).toContain(
+      "no thread is waiting on any of them",
+    );
+  });
+
+  it("a project with no resident roles gets no section and no blank line for one", () => {
+    // There is no question to answer here, and an empty section would teach a reader to
+    // conclude something from its absence. The frame must also not grow a stray newline.
+    expect(renderFrame(frame)).not.toContain("resident roles");
+    expect(renderFrame(frame)).not.toContain("\n\n");
+  });
 });
 
 /**

@@ -137,6 +137,16 @@ printed. The strict forms below keep every flag they had.
                               # frame under 'frame: unavailable since HH:MM (why)' — the watch
                               # dies of Ctrl+C and of nothing else
                               # --frames <n>: stop after n frames (for checks)
+  agent-protocol orchestrator tui    [--ref <ref>] [--interval <sec>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--now <iso>] [--mode-file <path>]
+                              # THE OBSERVER (T-1): the SAME frame as a screen — pairs on top,
+                              # the circuit in the middle, the selected session's transcript below
+                              # five keys and all five READ: arrows pick the pair, tab switches
+                              # .log/.supervisor, 'l' overlays the journal, 'r' collects now, 'q' leaves
+                              # a PASTE EXECUTES NOTHING: everything between the bracketed-paste
+                              # markers is dropped, so a pasted block holding a 'q' does not close it
+                              # it needs a real terminal and REFUSES in words without one — for a
+                              # dumb terminal, a tmux pane or 'tee' the answer is 'status --watch'
+                              # it takes the alt-screen and gives it back: the scrollback is untouched
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
   agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background

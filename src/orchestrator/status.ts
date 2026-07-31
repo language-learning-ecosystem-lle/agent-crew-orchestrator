@@ -22,7 +22,14 @@ const flag = (view: LeaseView): string => {
   return "";
 };
 
-const line = (view: LeaseView): string => {
+/**
+ * ONE PAIR, ONE LINE — exported because the TUI highlights the SELECTED line and so
+ * needs the lines one at a time, while `renderStatus` below stays their assembly
+ * (T-1, thread 019). A second formatter for the same columns is refused on principle:
+ * the top panel of the observer and the first section of `status` are the same fact,
+ * and two renderers is how they would quietly start to differ.
+ */
+export const renderLeaseLine = (view: LeaseView): string => {
   const cols = [
     view.role,
     view.thread,
@@ -49,5 +56,5 @@ const line = (view: LeaseView): string => {
  */
 export const renderStatus = (views: readonly LeaseView[]): string => {
   if (views.length === 0) return "orchestrator: no sessions in the journal";
-  return views.map(line).join("\n");
+  return views.map(renderLeaseLine).join("\n");
 };

@@ -158,7 +158,7 @@ export {
   renderResidentWaits,
   residentWaits,
 } from "./orchestrator/resident.js";
-export { renderStatus } from "./orchestrator/status.js";
+export { renderLeaseLine, renderStatus } from "./orchestrator/status.js";
 export {
   type Candidate,
   describePlan,
@@ -169,6 +169,18 @@ export {
   type TickDecision,
   type TickSkip,
 } from "./orchestrator/tick.js";
+export {
+  decodeTuiInput,
+  initialTuiState,
+  PASTE_OFF,
+  PASTE_ON,
+  reduceTui,
+  renderTui,
+  type TranscriptPanel,
+  type TuiEffect,
+  type TuiKey,
+  type TuiState,
+} from "./orchestrator/tui.js";
 export {
   createRoleRegistry,
   type NotificationTarget,
