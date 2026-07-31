@@ -77,6 +77,10 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # needs a wait declared beside the question ('new-message --await-input') — it does not declare one
                               # code 0: the answer arrived · code 3: the wait ran out (wrap up and pass the turn)
   agent-protocol notify       --ref <ref> [--repo <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--local-config <p>] [--write]
+                              # a thread PARKED on a human rings with NO age threshold and carries
+                              # its question — the first line of the parking message (023): the age
+                              # answers nothing about a turn that cannot move, and a call that names
+                              # a thread but not the question reads as 'the circuit is working'
                               # the turn has passed to a HUMAN: whom is derived from wake.mode,
                               # the words come from notifications.templates, delivery from the transport plugin
                               # without --write: prints what it would send and leaves the state alone
@@ -99,6 +103,8 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # --parked-on <person>: the turn STAYS here and is FROZEN until that person decides
                               # (R27) — the pair is not raised and spends nothing; it lifts by itself with the next
                               # substantive message. Only a role the circuit cannot wake ('wake.mode: self')
+                              # REFUSED together with '--expects none' (034): an informational message
+                              # asks nobody for anything, and a park says the thread waits for a person
   agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                               # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
                               # first message go in ONE commit, pushed, with the same replanning retry
