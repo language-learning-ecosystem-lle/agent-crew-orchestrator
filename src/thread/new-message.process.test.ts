@@ -902,6 +902,10 @@ const newThread = (
         "--body-file",
         contest.body,
         "--write",
+        // Since thread 033 `--write` DELIVERS here too, and the contour has no remote:
+        // without this flag a green door would fail on the push and the number test
+        // would be measuring the transport instead of the number.
+        "--no-push",
       ],
       { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
     );

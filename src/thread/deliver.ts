@@ -51,11 +51,16 @@ import type { MailLock } from "./checkout-lock.js";
  */
 export type GitRun = (args: readonly string[], env?: Readonly<Record<string, string>>) => string;
 
-/** The message of ONE attempt, planned against the state of the checkout as it is now. */
+/** The write of ONE attempt, planned against the state of the checkout as it is now. */
 export type StagedMessage = {
-  /** Absolute path of the message file. */
-  readonly path: string;
-  readonly content: string;
+  /**
+   * The files this attempt writes and stages, by absolute path. USUALLY ONE — a message
+   * — but a NEW THREAD is born as two (`_meta.md` and its first message) and they are
+   * one delivery, not two: a thread whose meta landed without its first message is a
+   * half-created conversation, and the retry that replans the message would then be
+   * replanning it beside a meta that is already pushed.
+   */
+  readonly files: readonly { readonly path: string; readonly content: string }[];
   /** What is said about the write in the output — the thread-relative path. */
   readonly label: string;
 };
@@ -117,8 +122,8 @@ const deliverUnderLock = (input: {
     }
 
     const staged = input.stage();
-    input.write(staged.path, staged.content);
-    input.git(["add", "--", staged.path]);
+    for (const file of staged.files) input.write(file.path, file.content);
+    input.git(["add", "--", ...staged.files.map((file) => file.path)]);
     input.git(["commit", "--quiet", "-m", input.subject], identityEnv(input.identity));
 
     try {

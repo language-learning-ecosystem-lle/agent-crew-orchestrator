@@ -281,6 +281,7 @@ import {
   DeliveryRefusedError,
   deliverMessage,
   deliverySubject,
+  type GitRun,
   type StagedMessage,
 } from "./thread/deliver.js";
 import {
@@ -320,6 +321,7 @@ import { renderThread, waitingOnOf } from "./thread/thread.js";
 import {
   messageTimestamp,
   nextMessageTimestamp,
+  type PlannedFile,
   planNewMessage,
   planNewThread,
   threadNumberTaker,
@@ -550,6 +552,34 @@ const writeOut = (path: string, content: string): void => {
  * dirt, and delivery refuses on dirt. Why the granularity is the checkout and not the
  * branch, and why a local mutex is enough: `thread/checkout-lock.ts`.
  */
+/**
+ * The git of a delivery, in ONE place for all three of its call sites (a message, a new
+ * thread, an instance digest).
+ *
+ * EVERY GIT FAILURE BECOMES A NAMED REFUSAL CARRYING GIT'S OWN WORDS. Without this the
+ * command died on a raw `execFileSync` throw: code 1, a stack trace and not one word
+ * about the cause. The case that taught it is the runner, where the checkout has no
+ * `user.email` — locally the global config hides it, so the same delivery passed here and
+ * failed in CI saying nothing about identity.
+ */
+const gitIn =
+  (checkout: string): GitRun =>
+  (args, env) => {
+    try {
+      return execFileSync("git", ["-C", checkout, ...args], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
+      });
+    } catch (error) {
+      const failure = error as { stderr?: string; status?: number };
+      const said = (failure.stderr ?? "").trim();
+      throw new DeliveryRefusedError(
+        `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
+      );
+    }
+  };
+
 const mailLockFor = (input: {
   readonly checkout: string;
   readonly holder: string;
@@ -1651,26 +1681,7 @@ const newMessage = (argv: readonly string[]): void => {
   const checkout = repoOf(root);
   try {
     const delivered = deliverMessage({
-      // EVERY GIT FAILURE BECOMES A NAMED REFUSAL CARRYING GIT'S OWN WORDS. Without
-      // this the command died on a raw `execFileSync` throw: code 1, a stack trace and
-      // not one word about the cause. The case that taught it is the runner, where the
-      // checkout has no `user.email` — locally the global config hides it, so the same
-      // delivery passed here and failed in CI saying nothing about identity.
-      git: (args, env) => {
-        try {
-          return execFileSync("git", ["-C", checkout, ...args], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-            ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
-          });
-        } catch (error) {
-          const failure = error as { stderr?: string; status?: number };
-          const said = (failure.stderr ?? "").trim();
-          throw new DeliveryRefusedError(
-            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
-          );
-        }
-      },
+      git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
       subject: deliverySubject({ from, thread: threadId }),
@@ -1679,7 +1690,7 @@ const newMessage = (argv: readonly string[]): void => {
       identity: roleIdentity(from),
       stage: () => {
         const next = plan();
-        return { path: next.path, content: next.content, label: next.label };
+        return { files: [{ path: next.path, content: next.content }], label: next.label };
       },
       note: out,
       lock: mailLockFor({ checkout, holder: `new-message ${from} → ${threadId}`, note: out }),
@@ -1697,11 +1708,34 @@ const newMessage = (argv: readonly string[]): void => {
   }
 };
 
-/** Create a NEW thread straight in the file form (`_meta.md` + the first message). */
+/**
+ * Create a NEW thread straight in the file form (`_meta.md` + the first message) and
+ * SEND IT (R3, thread 033).
+ *
+ * `--write` MEANS DELIVERED HERE TOO. It did not, and that was the defect: the command
+ * wrote two files, printed "thread created" and returned, while `git ls-tree
+ * origin/comms` knew nothing about the thread. The promise "the file, the commit and the
+ * push are one action" is given in the README, in CLAUDE.md and in every role card — it
+ * was true for `new-message` and false for its twin, so the tool reported success on a
+ * delivery it had not made. Control-reading after a write is a habit a role keeps; a tool
+ * that lies about the write turns that habit from a safety net into the mechanism.
+ *
+ * A THREAD IS ONE DELIVERY, NOT TWO. `_meta.md` and the first message go into a single
+ * commit: a meta pushed without its message is a conversation nobody can read or answer,
+ * and the retry that replans the message would be replanning it against a meta already in
+ * the feed.
+ *
+ * THE THREAD ID IS RE-CHECKED AFTER THE REFRESH. The pre-flight `existsSync` only knows
+ * this disk; delivery fetches, and if somebody took the id in between, creating it a
+ * second time would silently overwrite their meta and leave their first message beside
+ * ours. So the check is repeated where it can actually be true — inside the attempt,
+ * after the fast-forward.
+ */
 const newThread = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const id = required(argv, "--id");
-  const registry = registryFrom(argv, repoOf(root));
+  const loaded = configFrom(argv, repoOf(root));
+  const registry = loaded.registry;
 
   const from = required(argv, "--from");
   if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
@@ -1735,26 +1769,82 @@ const newThread = (argv: readonly string[]): void => {
   }
 
   const text = readFile(required(argv, "--body-file"), "body of the first message");
-  const files = planNewThread({
-    title: required(argv, "--title"),
-    participants,
-    from,
-    ...provenanceFrom(argv, { required: true }),
-    date: messageTimestamp(new Date()),
-    expects: parseExpects(required(argv, "--expects")),
-    ...(flag(argv, "--waiting-on") === undefined
-      ? {}
-      : { waitingOn: parseWaitingOn(flag(argv, "--waiting-on") as string, registry) }),
-    text,
-  });
+  const title = required(argv, "--title");
+  const provenance = provenanceFrom(argv, { required: true });
+  const expects = parseExpects(required(argv, "--expects"));
+  const waitingRaw = flag(argv, "--waiting-on");
+  const waitingOn = waitingRaw === undefined ? undefined : parseWaitingOn(waitingRaw, registry);
 
-  if (argv.includes("--write")) {
-    for (const file of files) writeOut(join(threadDir, file.path), file.content);
-    out(`agent-protocol: thread ${id} created (${files.length} files)`);
+  // Replanned per attempt like a message's: the stamp is taken at the moment of the
+  // attempt, so a retry after somebody else's push does not carry a stale one.
+  const plan = (): readonly PlannedFile[] => {
+    try {
+      return planNewThread({
+        title,
+        participants,
+        from,
+        ...provenance,
+        date: messageTimestamp(new Date()),
+        expects,
+        ...(waitingOn === undefined ? {} : { waitingOn }),
+        text,
+      });
+    } catch (error) {
+      if (error instanceof WriteRefusedError) return fail(error.message, 2);
+      throw error;
+    }
+  };
+
+  const files = plan();
+  if (!argv.includes("--write")) {
+    out(`agent-protocol: would create thread ${id} (--write writes it):`);
+    for (const file of files) out(`- ${id}/${file.path}`);
     return;
   }
-  out(`agent-protocol: would create thread ${id} (--write writes it):`);
-  for (const file of files) out(`- ${id}/${file.path}`);
+
+  if (argv.includes("--no-push")) {
+    for (const file of files) writeOut(join(threadDir, file.path), file.content);
+    out(
+      `agent-protocol: created thread ${id} (${files.length} files) — NOT committed (--no-push: the caller owns its git)`,
+    );
+    return;
+  }
+
+  const checkout = repoOf(root);
+  try {
+    const delivered = deliverMessage({
+      git: gitIn(checkout),
+      write: writeOut,
+      branch: loaded.config.mail.branch,
+      subject: deliverySubject({ from, thread: id }),
+      // By the role that opened the conversation, not by the owner of the box (027).
+      identity: roleIdentity(from),
+      stage: () => {
+        if (existsSync(threadDir)) {
+          throw new DeliveryRefusedError(
+            `thread '${id}' appeared in the feed while we were delivering — somebody took the id first. Nothing was written; pick the next free number`,
+          );
+        }
+        return {
+          files: plan().map((file) => ({
+            path: join(threadDir, file.path),
+            content: file.content,
+          })),
+          label: `${id} (${files.length} files)`,
+        };
+      },
+      note: out,
+      lock: mailLockFor({ checkout, holder: `new-thread ${from} → ${id}`, note: out }),
+    });
+    out(
+      `agent-protocol: opened ${delivered.label} — committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the feed moved underneath)` : ""}`,
+    );
+  } catch (error) {
+    if (error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError) {
+      fail(error.message, 2);
+    }
+    throw error;
+  }
 };
 
 const mail = (argv: readonly string[]): void => {
@@ -3764,7 +3854,7 @@ const planThreadMessage = (
   const path = join(threadDir, planned.path);
   if (existsSync(path))
     fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
-  return { path, content: planned.content, label: planned.path };
+  return { files: [{ path, content: planned.content }], label: planned.path };
 };
 
 type RunParams = {
@@ -5156,21 +5246,7 @@ const publishDigest = (input: {
   });
   try {
     deliverMessage({
-      git: (args, env) => {
-        try {
-          return execFileSync("git", ["-C", checkout, ...args], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-            ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
-          });
-        } catch (error) {
-          const failure = error as { stderr?: string; status?: number };
-          const said = (failure.stderr ?? "").trim();
-          throw new DeliveryRefusedError(
-            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
-          );
-        }
-      },
+      git: gitIn(checkout),
       write: writeOut,
       branch: input.branch,
       // Conventional Commits, because the mail checkout carries the commit-msg hook —
@@ -5182,8 +5258,12 @@ const publishDigest = (input: {
       // The path does not depend on what else landed in the branch — one file per box —
       // so a replan after a concurrent push restages the very same file.
       stage: () => ({
-        path: join(input.mailRoot, digestPath(input.digest.instance)),
-        content: renderDigest(input.digest),
+        files: [
+          {
+            path: join(input.mailRoot, digestPath(input.digest.instance)),
+            content: renderDigest(input.digest),
+          },
+        ],
         label: digestPath(input.digest.instance),
       }),
       note: (line) => say(line),
@@ -6049,7 +6129,10 @@ const orchestratorStop = (argv: readonly string[]): void => {
     err(`agent-protocol: the trace was NOT delivered: ${(error as Error).message}`);
     try {
       const staged = trace();
-      writeOut(staged.path, staged.content);
+      // A staged write is a LIST since a new thread is born as two files (thread 033):
+      // the trace is one of them, but the undelivered fallback writes whatever was
+      // planned, not the first element of it.
+      for (const file of staged.files) writeOut(file.path, file.content);
       err(
         `agent-protocol: the trace was written locally and NOT delivered — '${staged.label}' sits in the mail checkout '${checkout}'. Deliver it by hand (commit + push on the mail branch); until then delivery from this box refuses on a dirty checkout`,
       );
