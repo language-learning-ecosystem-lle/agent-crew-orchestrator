@@ -856,6 +856,29 @@ never enter the count (that is the guard's whole point), a group whose stamps ca
 tell its verdicts apart is judged whole and refuses, and states that are not a verdict —
 `COMMENTED`, `DISMISSED` — do not overtake one: a comment is not an answer.
 
+**And a verdict can have no commit at all, which `reviews[].commit` hides.** A review
+submitted without a `commit_id` — what the reviewer's action produces when it is
+re-triggered by `workflow_dispatch`, because that run hangs on the head of `main` and
+not on the head of the PR — is answered by `gh` in two ways at once:
+`latestReviews[].commit.oid` is EMPTY, honestly, while `reviews[].commit.oid` carries
+whatever head the pull request has **at the moment of reading**. One and the same
+approve on #64 (`submittedAt` 03:46:02Z, untouched) read as "approved on `c1dc1a3`" and
+then, after a `gh pr update-branch`, as "approved on `ea8572a`" — an approve granted
+once outliving every later push, which is precisely what guard 1 exists to forbid. So
+the ANCHOR of a verdict is taken from `latestReviews` and `reviews[].commit` is believed
+only about the reviews `latestReviews` does not speak of; an anchorless verdict STOPS
+the door in its own words — what is missing is a review run on the `pull_request` event
+(re-label, or `gh pr update-branch`), which is a different repair from "no approve" (a
+new round) and from "the approve is on an older head" (a rebase). A `CHANGES_REQUESTED`
+without an anchor stops it too: a verdict whose target is unknown opens no door,
+whichever way it points. The two arrays are matched by `author` + `submittedAt` (the
+`id` is empty on the anchorless one, so it cannot be the key), and an anchorless entry
+with no stamp answers for its whole author — the same "judge the group whole when time
+cannot tell it apart" as above. What this does not reach, said plainly: `latestReviews`
+holds one entry per author, so an OLDER review's anchor is not re-checkable — it does
+not matter, since the guard judges the last verdict of each reviewer, except where an
+author's last review is a non-verdict (`COMMENTED`) and hides the verdict beneath it.
+
 **`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
 card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
 mergeability of the branch altogether — a PR with a conflicting tree, one clean set of
