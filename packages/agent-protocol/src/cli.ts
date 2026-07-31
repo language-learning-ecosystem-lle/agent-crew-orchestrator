@@ -262,7 +262,12 @@ import {
 import { checkImmutable, checkThread } from "./thread/check.js";
 import { fileMailLock, MailCheckoutBusyError, type MailLock } from "./thread/checkout-lock.js";
 import { DeliveryRefusedError, deliverMessage, deliverySubject } from "./thread/deliver.js";
-import { renderIndex, sessionsThatWrote, threadsWaitingOn } from "./thread/index-doc.js";
+import {
+  parkedThreads,
+  renderIndex,
+  sessionsThatWrote,
+  threadsWaitingOn,
+} from "./thread/index-doc.js";
 import type { Expects, LaunchDirective, ThreadPriorityValue } from "./thread/message.js";
 import {
   EXPECTS,
@@ -1232,6 +1237,38 @@ const priorityFrom = (
 };
 
 /**
+ * THE DOOR OF A PARK (R27) — `--parked-on` on `new-message`: the turn stays where it is and
+ * is declared FROZEN until a person decides.
+ *
+ * The one check is the exact mirror of v13's rule for `waiting-on`, and it is the same
+ * predicate (`canHoldTurn`), read the other way round: a role the circuit can move is
+ * something to hand the turn TO, not something to park behind — that is `--waiting-on`, and
+ * naming it here would freeze a thread nobody is waiting for. A role that wakes itself is the
+ * only thing this field can mean, because it names the one participant the feed cannot move.
+ *
+ * No permission gates it. Parking costs nothing and asks for nothing: it does not raise a
+ * session, does not reorder the queue and does not spend quota — it says that the role's own
+ * turn cannot move yet, and the only role that could ever know this is the one holding it.
+ */
+const parkedOnFrom = (
+  argv: readonly string[],
+  input: { readonly registry: RoleRegistry },
+): string | undefined => {
+  const value = flag(argv, "--parked-on");
+  if (value === undefined) return undefined;
+  if (!input.registry.isKnown(value)) {
+    return fail(`--parked-on '${value}' is not listed in the config`, 2);
+  }
+  if (input.registry.canHoldTurn(value)) {
+    return fail(
+      `--parked-on '${value}' — that role CAN be woken, so the turn is passed to it ('--waiting-on ${value}'), not parked behind it. This field names a person the circuit cannot move (wake.mode='self')`,
+      2,
+    );
+  }
+  return value;
+};
+
+/**
  * Create a message file in an EXISTING thread and SEND IT (R3). Refuses if the
  * thread is in the legacy form (no `messages/`): a file write would cut off its
  * history.
@@ -1269,6 +1306,7 @@ const newMessage = (argv: readonly string[]): void => {
   const expects = parseExpects(required(argv, "--expects"));
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
+  const parkedOn = parkedOnFrom(argv, { registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
@@ -1297,6 +1335,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(launchDirective === undefined ? {} : { launch: launchDirective }),
         ...(priority === undefined ? {} : { priority }),
+        ...(parkedOn === undefined ? {} : { parkedOn }),
         text,
         threadHasMessages,
       });
@@ -5099,6 +5138,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       deliveredSessions: sessionsThatWrote(threads),
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
+      // R27: the threads frozen behind a person, read from the SAME scan the queue is
+      // built from. Every tick, like the priorities and for the same reason — the state
+      // lifts with a message, so a park read once at startup would outlive its answer.
+      parked: parkedThreads(threads),
     });
 
     // EVERY CANDIDATE THAT WAS NOT RAISED IS NAMED, whatever the tick decided to do

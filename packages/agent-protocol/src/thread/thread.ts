@@ -245,6 +245,35 @@ export const waitingOnOf = (thread: Thread): string | undefined => {
   return undefined;
 };
 
+/**
+ * IS THE TURN FROZEN BEHIND A PERSON, and behind whom (R27) — the `parked-on` of the last
+ * message that says anything to anybody.
+ *
+ * Two rules, and both are the same rule `waitingOnOf` follows, for the same reasons:
+ *
+ * - the state is carried by the LAST declaration, so it LIFTS BY ITSELF: the next message
+ *   that does not repeat `parked-on` is the answer arriving, and nobody has to remember to
+ *   unpark anything. This matters more here than for the turn — the session that parked the
+ *   thread is dead by then, and a state only a dead session could clear would need a human's
+ *   hand every time;
+ * - `expects: none` DOES NOT LIFT IT. Those are the informational messages (the merge
+ *   notifier, the CI announcement, a follow-up that hands over nothing), and a green run of
+ *   somebody's checks is not a person's decision. Reading them literally would unpark the
+ *   thread the moment CI reported, which is exactly the wasted raise the state exists to
+ *   prevent.
+ *
+ * `status: closed` outranks it, as it outranks the turn: a closed thread waits for nobody.
+ */
+export const parkedOnOf = (thread: Thread): string | undefined => {
+  if (thread.meta.status === "closed") return undefined;
+  for (let at = thread.messages.length - 1; at >= 0; at--) {
+    const message = thread.messages[at];
+    if (message === undefined || message.fields.expects === "none") continue;
+    return message.fields.parkedOn;
+  }
+  return undefined;
+};
+
 /** Date of the last message — the `updated` column of the index. */
 export const updatedOf = (thread: Thread): string =>
   thread.messages.at(-1)?.fields.date.slice(0, 10) ?? "—";

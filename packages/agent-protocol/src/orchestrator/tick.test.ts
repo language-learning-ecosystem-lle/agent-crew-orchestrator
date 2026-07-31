@@ -577,6 +577,73 @@ describe("describeSkip — the line an operator reads", () => {
   });
 });
 
+describe("planTick — the turn parked behind a person (R27)", () => {
+  const parked = new Map([["t1", "john"]]);
+
+  it("a parked pair is not raised, and the skip names whose decision it waits for", () => {
+    const decision = planTick({ ...base, enabled: true, stopped: false, parked });
+    expect(raised(decision)).toEqual([]);
+    expect(decision.skipped).toEqual([
+      { role: "dev-core", thread: "t1", reason: "parked", attempt: 0, parkedOn: "john" },
+    ]);
+    expect(
+      describeSkip(
+        { role: "dev-core", thread: "t1", reason: "parked", attempt: 0, parkedOn: "john" },
+        { value: 3, source: "default" },
+      ),
+    ).toContain("john");
+  });
+
+  it("the freeze costs NOTHING: no launch, so the attempt counter stands still", () => {
+    // The whole point of the state — three raises against an unanswered question used to
+    // exhaust the pair for obeying the norm.
+    const events = [acquire("dev-core", "t1"), released("dev-core", "t1", "timeout")];
+    const before = planTick({ ...base, events, enabled: true, stopped: false });
+    const after = planTick({ ...base, events, enabled: true, stopped: false, parked });
+    expect(raised(before)).toEqual(["dev-core×t1"]);
+    expect(raised(after)).toEqual([]);
+    expect(after.skipped[0]?.attempt).toBe(1);
+  });
+
+  it("it outranks 'exhausted' — the pair is described by what blocks it, not by the damage", () => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      events.push(acquire("dev-core", "t1"), released("dev-core", "t1", "timeout"));
+    }
+    expect(planTick({ ...base, events, enabled: true, stopped: false }).skipped[0]?.reason).toBe(
+      "exhausted",
+    );
+    expect(
+      planTick({ ...base, events, enabled: true, stopped: false, parked }).skipped[0]?.reason,
+    ).toBe("parked");
+  });
+
+  it("a LIVE session outranks the park — a running pair is a fact about now", () => {
+    const decision = planTick({
+      ...base,
+      events: [acquire("dev-core", "t1")],
+      enabled: true,
+      stopped: false,
+      parked,
+    });
+    expect(decision.skipped[0]?.reason).toBe("active");
+  });
+
+  it("only the parked thread drops out: another thread of the same role is raised", () => {
+    const decision = planTick({
+      ...base,
+      candidates: [
+        { role: "dev-core", thread: "t1" },
+        { role: "dev-core", thread: "t2" },
+      ],
+      enabled: true,
+      stopped: false,
+      parked,
+    });
+    expect(raised(decision)).toEqual(["dev-core×t2"]);
+  });
+});
+
 /**
  * D-3 PART 2 — THE BACKOFF, tested as a CONTROL PAIR rather than by construction
  * (curator's acceptance (а)): the same tick, the same candidates, the only difference

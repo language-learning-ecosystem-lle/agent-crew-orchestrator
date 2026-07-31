@@ -178,6 +178,25 @@ export type MessageFields = {
    * is built, never silently. Absent means the thread keeps the default (`normal`).
    */
   readonly priority?: ThreadPriorityValue;
+  /**
+   * WHOSE DECISION THE TURN IS PARKED BEHIND — a person, and only a person (R27).
+   *
+   * v13 made `waiting-on` scalar and refused `john` in it for a good reason: the turn is
+   * held by somebody who can be RAISED, and a human is not raised by the daemon. What that
+   * left unsayable is the other half of the same situation: the role holds the turn and can
+   * do nothing at all until a human decides. Said in no field, it was read by the orchestrator
+   * as ordinary mail — the pair was raised, the session found the question still unanswered,
+   * wrote nothing new and died, and three of those exhausted the pair for doing exactly what
+   * the norm prescribes.
+   *
+   * So this is not a second `waiting-on`: the turn stays where it is (a scalar, one holder),
+   * and this field says that it is FROZEN. The state lifts by itself — the first substantive
+   * message after it (see `parkedOnOf`) is the answer arriving, whoever relays it.
+   *
+   * Only a role that wakes ITSELF (`wake.mode: 'self'`) may be named here; a role the daemon
+   * can raise is not something to park behind — that is `waiting-on`.
+   */
+  readonly parkedOn?: string;
   /** Heading tail from history (`· [СВЕРХПИСАНО msg-002]`, quoted verbatim from live data), so the assembly matches byte for byte. */
   readonly suffix?: string;
 };
@@ -362,6 +381,15 @@ export const parseMessageFile = (raw: string): Message => {
     );
   }
 
+  // `parked-on` is a ROLE NAME and nothing else — the check that it names a human
+  // (`wake.mode: 'self'`) needs the config and lives at the writing door, where the config is
+  // in hand and a refusal can still be acted on. A reader of an append-only feed cannot fix
+  // what is already written, so here the demand is only that the value be a role-shaped token.
+  const parkedOn = raws.get("parked-on");
+  if (parkedOn !== undefined && !ROLE.test(parkedOn)) {
+    throw new MessageFormatError(`'parked-on: ${parkedOn}' — expected the id of a role`);
+  }
+
   const fields: MessageFields = {
     ...(msgRaw === undefined ? {} : { msg: Number(msgRaw) }),
     ...(seqRaw === undefined ? {} : { seq: Number(seqRaw) }),
@@ -373,6 +401,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(waitingRaw === undefined ? {} : { waitingOn: parseWaitingOnField(waitingRaw) }),
     ...(launch === undefined ? {} : { launch }),
     ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
+    ...(parkedOn === undefined ? {} : { parkedOn }),
     ...(suffix === undefined ? {} : { suffix }),
   };
   if (fields.msg !== undefined && !Number.isInteger(fields.msg)) {
@@ -411,6 +440,9 @@ export const renderMessageFile = (message: Message): string => {
     // Next to `launch` and for the same reason: both are statements about the RUNS of
     // this thread — with what it is raised, and how soon.
     ...(fields.priority === undefined ? [] : [`priority: ${fields.priority}`]),
+    // Right after `waiting-on`'s neighbours, because it qualifies the turn itself: whose it
+    // is, and whether it can move at all before a person says something.
+    ...(fields.parkedOn === undefined ? [] : [`parked-on: ${fields.parkedOn}`]),
     ...(fields.suffix === undefined ? [] : [`suffix: ${fields.suffix}`]),
   ];
   return `${FENCE}\n${head.join("\n")}\n${FENCE}\n\n${text}\n`;

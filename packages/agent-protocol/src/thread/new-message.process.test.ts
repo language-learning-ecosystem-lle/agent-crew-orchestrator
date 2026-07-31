@@ -756,6 +756,37 @@ describe("new-message and the priority of a thread (R5)", () => {
   });
 });
 
+describe("new-message and the turn parked behind a person (R27)", () => {
+  it("writes the person into the header while the turn stays where it is", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--parked-on", "john");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkedOn).toBe("john");
+  });
+
+  it("a role the circuit CAN wake is refused — that is a turn to pass, not a person to wait for", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--parked-on", "dev-core");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--waiting-on dev-core");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("a name that is in no config is refused while the flag can still be retyped", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--parked-on", "jonh");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("not listed in the config");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+});
+
 /** The command with `--waiting-on` as the only variable — the door under test here. */
 const waitingOn = (
   contest: { repo: string; root: string; body: string },

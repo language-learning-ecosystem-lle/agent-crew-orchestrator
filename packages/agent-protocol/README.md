@@ -637,7 +637,7 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person>] [--write] [--no-push]
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
@@ -649,6 +649,10 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # --priority high|normal|low: WHICH waiting thread is raised FIRST from here on
                             # (R5, S16) — only from a role holding `thread-priority`; the queue is priority,
                             # then the age of the wait, then the thread number
+                            # --parked-on <person>: the turn STAYS on its holder and is FROZEN until that
+                            # person decides (R27) — the pair is not raised and spends nothing; it lifts by
+                            # itself with the next substantive message in the thread. Only a role the circuit
+                            # cannot wake (`wake.mode: 'self'`) may be named
 agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                             # blocks until the thread waits on the role again; needs a wait declared
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out

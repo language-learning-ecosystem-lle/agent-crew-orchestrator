@@ -70,6 +70,12 @@ export type Candidate = { readonly role: string; readonly thread: string };
  * several threads, so this is the ordinary shape of a queue, and before D-1 those pairs
  * vanished from the stream with no line at all.
  *
+ * `parked` is the same silence as `waiting`, with the session gone (R27): the turn is on the
+ * role, but the role's question is with a PERSON, said in the feed (`parked-on`). It calls for
+ * the same thing `waiting` calls for — an answer — and for the same reason must not read as
+ * `idle`: raising the pair would spend a session on re-reading a question nobody has answered
+ * yet, and three of those used to exhaust the pair for obeying the norm.
+ *
  * D-2 MADE THIS REASON LOAD-BEARING ACROSS TICKS, not only within one. While the tick
  * blocked on its single launch, a role that was running could not be a candidate at all —
  * the daemon was not ticking. Now it ticks WHILE its children live, so the only thing
@@ -82,7 +88,14 @@ export type Candidate = { readonly role: string; readonly thread: string };
  * clock — but it must be said, because a circuit standing down for hours with no line
  * on the stream is indistinguishable from a circuit that died.
  */
-export type SkipReason = "held" | "active" | "waiting" | "exhausted" | "role-busy" | "quota";
+export type SkipReason =
+  | "held"
+  | "active"
+  | "waiting"
+  | "exhausted"
+  | "role-busy"
+  | "parked"
+  | "quota";
 
 export type TickSkip = {
   readonly role: string;
@@ -90,6 +103,8 @@ export type TickSkip = {
   readonly reason: SkipReason;
   /** Failed attempts since the pair's last delivery — only meaningful for `exhausted`. */
   readonly attempt: number;
+  /** Whose decision the thread is frozen behind — only meaningful for `parked` (R27). */
+  readonly parkedOn?: string;
 };
 
 /** Everything the tick refused to raise, whatever it decided to do instead. */
@@ -165,6 +180,15 @@ export const planTick = (input: {
    */
   readonly running?: readonly string[];
   /**
+   * Threads FROZEN BEHIND A PERSON right now (R27) — thread id → whom it waits for, from
+   * `parkedOnOf` over the same mail the candidates come from.
+   *
+   * A map rather than a set because the reason is worth saying by name: "parked behind john"
+   * tells an operator whose hand the queue is in, and that is the whole point of the state
+   * being visible instead of the pair quietly failing three times.
+   */
+  readonly parked?: ReadonlyMap<string, string>;
+  /**
    * Sessions that wrote a message into the mail — the differentiator of a run that
    * DELIVERED into its own turn (`isSelfTurnDelivery`, thread 023). The tick reads the
    * threads anyway to build its candidates, so the set costs it nothing; without it the
@@ -218,6 +242,15 @@ export const planTick = (input: {
     if (view && isLeaseAlive(view.state)) {
       const reason = view.state === "waiting" ? "waiting" : "active";
       skipped.push({ ...candidate, reason, attempt });
+      continue;
+    }
+    // FROZEN BEHIND A PERSON (R27) — and this is checked BEFORE `exhausted` on purpose: a pair
+    // that already burnt its attempts on this very freeze is better described by the thing that
+    // is actually blocking it than by the damage that did. The freeze also costs nothing: no
+    // launch, so no attempt, so the counter stands still while the person thinks.
+    const parkedOn = input.parked?.get(candidate.thread);
+    if (parkedOn !== undefined) {
+      skipped.push({ ...candidate, reason: "parked", attempt, parkedOn });
       continue;
     }
     if (view?.exhausted) {
@@ -320,6 +353,8 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       return `candidate ${pair} skipped: the session is parked on a question of its own (R19) — it is waiting for an ANSWER, not for a launch; see 'orchestrator status' for the ceiling of that wait`;
     case "exhausted":
       return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal`;
+    case "parked":
+      return `candidate ${pair} skipped: the turn is parked behind a decision of ${skip.parkedOn ?? "a person"} (R27, 'parked-on' in the feed) — it is waiting for a PERSON, not for a launch; it lifts by itself with the next substantive message in the thread`;
     case "quota":
       return `candidate ${pair} skipped: the rate-limit window is closed — the window belongs to the ACCOUNT, so a signal from any role stands the whole box down; it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
     case "role-busy":

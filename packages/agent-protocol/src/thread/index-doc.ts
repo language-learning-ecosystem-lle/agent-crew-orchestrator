@@ -12,7 +12,7 @@
  * one to one. Hence "is there mail" is computed from the THREADS (`waitingOnOf`),
  * and INDEX stays a display for humans: its drift costs cosmetics.
  */
-import { type Thread, updatedOf, waitingOnOf } from "./thread.js";
+import { parkedOnOf, type Thread, updatedOf, waitingOnOf } from "./thread.js";
 
 const EMPTY = "—";
 
@@ -38,6 +38,24 @@ export const renderIndex = (threads: readonly Thread[]): string => {
 /** Threads awaiting a role. This is exactly "is there mail" — computed from the source, not from INDEX. */
 export const threadsWaitingOn = (threads: readonly Thread[], role: string): string[] =>
   threads.filter((thread) => waitingOnOf(thread) === role).map((thread) => thread.id);
+
+/**
+ * Threads FROZEN BEHIND A PERSON (R27), thread id → whom — for whoever decides about raising.
+ *
+ * Deliberately NOT subtracted from `threadsWaitingOn`: a parked thread still holds a turn and
+ * is still mail. Hiding it from the mailbox would make the role's own `cli mail` lie about
+ * what is on its plate, and would hide the park from the notifier that has to ring the person
+ * it is parked on. Only the decision to RAISE is affected, and that decision has its own
+ * reader (`planTick`).
+ */
+export const parkedThreads = (threads: readonly Thread[]): ReadonlyMap<string, string> => {
+  const parked = new Map<string, string>();
+  for (const thread of threads) {
+    const person = parkedOnOf(thread);
+    if (person !== undefined) parked.set(thread.id, person);
+  }
+  return parked;
+};
 
 /**
  * SESSIONS THAT WROTE INTO THE MAIL — the fact the journal does not have (thread 023).
