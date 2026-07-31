@@ -1595,6 +1595,21 @@ is also what makes it safe to keep using.
   The whole fork is decided by `planWorkspace`, a pure function, and only carried out by
   the CLI: it is the one branch in the package that touches work nobody committed, so it
   is held by a test rather than by a reading of the code.
+- **A run that ends its own turn and leaves the tree dirty is NAMED IN ITS OWN RELEASE**
+  (the second half of requirement 5, `dirtLeftByFinish`). The bullet above decides what to
+  do with such a tree at the NEXT launch, which is the wrong end of the run to learn it
+  from: the failure then surfaced as a role silently skipped an hour later, and a human
+  read the tree to work out which run had made it — four times in one morning. So the
+  supervisor asks the question at the release, of the workspace it handed out, and the
+  answer goes to two places: `dirty: true` on the `lease-released` event (rendered by
+  `log` as `LEFT THE WORKSPACE DIRTY`, so the question "which run left this" is asked of
+  the journal) and a sentence on stderr that names the tree and what it costs the next
+  package. The condition is the COMPLEMENT of the break list, so the two halves cannot
+  drift apart: dirt after `quota-exhausted`/`timeout`/`supervisor-gone`/`stalled` is the
+  stash's business, everything else is an error of finishing. The flag is `true` or
+  absent, never `false` — a run raised without workspaces declared works in the operator's
+  own checkout, whose state the circuit never judges, and a `false` there would be a claim
+  nobody made.
 - **The refusal belongs to ONE role, not to the circuit.** In the daemon it is a loud
   line on every tick and that role stands still while the others keep going — the same
   treatment a hold gets, and for the same reason: it lasts until a human looks at the

@@ -7,8 +7,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   createWorkspaceLocks,
+  describeFinishDirt,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
+  dirtLeftByFinish,
   lockHolderPid,
   lockReason,
   mainCheckoutVerdict,
@@ -523,5 +525,48 @@ describe("planWorkspaceIdentity", () => {
         plan: planWorkspaceIdentity({ role: "dev-core" }),
       }),
     ).toBe("/repo/.worktrees/dev-core — commits as dev-core <dev-core@agents.invalid>");
+  });
+});
+
+/**
+ * REQUIREMENT 5, SECOND HALF (thread 023): the run's OWN ending is judged, not the next
+ * launch's inheritance. The fork is held here on the whole release vocabulary rather
+ * than on a representative of each side, because the two sides mean opposite things and
+ * the list they are cut by lives in the module under test.
+ */
+describe("the dirt a run leaves at its own ending", () => {
+  it("a turn that ENDED and left uncommitted changes is a failure to finish", () => {
+    for (const reason of [
+      "completed",
+      "exited-without-handoff",
+      "input-timeout",
+      "exited-while-waiting",
+      "forced",
+    ]) {
+      expect(dirtLeftByFinish({ reason, dirty: true })).toBe(true);
+    }
+  });
+
+  it("dirt after a break the CIRCUIT made is not this failure — it is the stash of the first half", () => {
+    for (const reason of ["quota-exhausted", "timeout", "supervisor-gone", "stalled"]) {
+      expect(dirtLeftByFinish({ reason, dirty: true })).toBe(false);
+    }
+  });
+
+  it("a clean tree says nothing, whatever the run was released as", () => {
+    for (const reason of ["completed", "timeout", "exited-without-handoff"]) {
+      expect(dirtLeftByFinish({ reason, dirty: false })).toBe(false);
+    }
+  });
+
+  it("an unknown reason from a future version falls on the LOUD side, never on the disk side", () => {
+    expect(dirtLeftByFinish({ reason: "something-new", dirty: true })).toBe(true);
+  });
+
+  it("the sentence names the run, the tree and what it costs the NEXT package", () => {
+    const line = describeFinishDirt({ reason: "completed", path: "/repo/.worktrees/dev-core" });
+    expect(line).toContain("completed");
+    expect(line).toContain("/repo/.worktrees/dev-core");
+    expect(line).toContain("next package");
   });
 });

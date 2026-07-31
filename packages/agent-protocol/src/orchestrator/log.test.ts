@@ -96,3 +96,32 @@ describe("lease-released: the why, not only the what", () => {
     expect(line).not.toContain("code");
   });
 });
+
+describe("the tree a finished run left behind (thread 023)", () => {
+  it("a release marked dirty says so in the history — the question is asked of the journal", () => {
+    const events: OrchestratorEvent[] = [
+      {
+        kind: "lease-released",
+        ts: "2026-07-30T10:15:00Z",
+        role: "dev-core",
+        thread: "t",
+        reason: "completed",
+        dirty: true,
+      },
+    ];
+    expect(renderLog(events)).toContain("LEFT THE WORKSPACE DIRTY");
+  });
+
+  it("a release without the flag is rendered exactly as before — silence is not a claim", () => {
+    const events: OrchestratorEvent[] = [
+      {
+        kind: "lease-released",
+        ts: "2026-07-30T10:15:00Z",
+        role: "dev-core",
+        thread: "t",
+        reason: "completed",
+      },
+    ];
+    expect(renderLog(events)).toBe("2026-07-30T10:15:00Z  dev-core/t  lease-released (completed)");
+  });
+});

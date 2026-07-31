@@ -223,8 +223,10 @@ import {
 } from "./orchestrator/transcript.js";
 import {
   createWorkspaceLocks,
+  describeFinishDirt,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
+  dirtLeftByFinish,
   lockHolderPid,
   lockReason,
   mainCheckoutVerdict,
@@ -3308,6 +3310,15 @@ type RunParams = {
    * the supervisor was started from, as before.
    */
   readonly workdir: string;
+  /**
+   * THE SAME DIRECTORY, WHEN IT IS A WORKSPACE THE ORCHESTRATOR HANDED OUT (R17) —
+   * absent in the pre-R17 mode, where `workdir` is the checkout the supervisor was
+   * started in. Two fields for one path because the release asks a question only the
+   * second one may be asked: whether the run left the tree dirty is a judgement about a
+   * tree the circuit owns, and the operator's own checkout is not that tree (they keep
+   * working in it while a session runs).
+   */
+  readonly workspace?: string;
   readonly ids: readonly string[];
   readonly now: Date;
   readonly maxConsecutive: number;
@@ -3983,6 +3994,18 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       }
     }
     releaseGuards();
+    // WHAT THIS RUN LEAVES BEHIND ON DISK, ASKED BEFORE THE LEASE IS LET GO (thread 023,
+    // requirement 5, second half). Read HERE and not at the next launch, because this is
+    // the only moment at which the answer can still be attributed to the run that made
+    // it: the first half of the requirement decides what to DO with such a tree, this
+    // half makes sure the release itself says who left it.
+    //
+    // AFTER the group was put down, so the tree is the one the session finished with, and
+    // only for a workspace the orchestrator handed out — the operator's own checkout is
+    // never judged (see `workspace` on `RunParams`).
+    const leftDirty =
+      p.workspace !== undefined &&
+      dirtLeftByFinish({ reason: step.reason, dirty: workspaceFacts(p.workspace).dirty === true });
     releaseWorkspaceLock(p.workdir);
     appendEvent(
       p.journalPath,
@@ -3995,6 +4018,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // WHICH window closed rides through to the journal (D-3 part 2) — the backoff has
         // a shelf per window type, and this is the only place the type is known.
         ...(quota?.window === undefined ? {} : { window: quota.window }),
+        ...(leftDirty ? { dirty: true as const } : {}),
       }),
     );
     // THE RELEASE IS ANNOUNCED HERE TOO, although the daemon publishes at the end of its
@@ -4051,6 +4075,19 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       err(
         `agent-protocol: the turn was not passed (${step.reason}${quiet})${why} — session output: ${p.sessionLog}`,
       );
+    }
+    // THE DIRT IS SAID OUT LOUD IN THE SAME BREATH AS THE RELEASE, whatever the reason
+    // was — including `completed`, which is the case the requirement was written for: a
+    // package that "finished" and left a tree behind used to be a success on every
+    // channel, and the failure surfaced as the NEXT package silently skipping. On stderr
+    // for whoever is watching, and in the session log for whoever reads it afterwards.
+    if (leftDirty) {
+      const line = describeFinishDirt({
+        reason: step.reason,
+        path: p.workspace as string,
+      });
+      writeLog(`supervisor  ${line}`);
+      err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
     }
     closeSinks();
     return step.reason;
@@ -4143,6 +4180,13 @@ type RunSetup =
   | {
       readonly ok: true;
       readonly workdir: string;
+      /**
+       * The workdir, when it is a workspace this package handed out (R17) — absent in the
+       * pre-R17 mode. It travels separately from `workdir` because the release judges the
+       * tree it left behind (requirement 5, second half), and that judgement may only be
+       * made about a tree the circuit owns.
+       */
+      readonly workspace?: string;
       readonly continuation: Continuation;
       readonly world?: World;
       /** How the previous run ended — the one thing a resumed session is told about itself. */
@@ -4262,6 +4306,7 @@ const settleRun = (input: {
   return {
     ok: true,
     workdir: path,
+    workspace: path,
     continuation,
     ...(world === undefined ? {} : { world }),
     ...(previousReason === undefined ? {} : { previousReason }),
@@ -4508,6 +4553,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     waitInputMs,
     windDownMs: ceilings.windDown.value * 1000,
     workdir: setup.workdir,
+    ...(setup.workspace === undefined ? {} : { workspace: setup.workspace }),
     continuation: setup.continuation,
     ...(setup.world === undefined ? {} : { world: setup.world }),
     ids: registry.ids(),
@@ -4978,6 +5024,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           waitInputMs: ceilings.waitInput.value * 1000,
           windDownMs: ceilings.windDown.value * 1000,
           workdir: setup.workdir,
+          ...(setup.workspace === undefined ? {} : { workspace: setup.workspace }),
           continuation: setup.continuation,
           // R13: the box says it is busy WHILE it is busy. The whole session happens
           // inside this await, so without the hook the digest can only ever describe

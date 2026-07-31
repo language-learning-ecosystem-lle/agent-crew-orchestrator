@@ -145,6 +145,43 @@ export const stashLabel = (input: {
 }): string => `wip ${input.thread ?? "no-thread"} ${input.session ?? "no-session"} ${input.reason}`;
 
 /**
+ * THE SAME FORK READ FROM THE OTHER END OF THE RUN (thread 023, requirement 5, second
+ * half) — not "whose dirt is this" at the next launch, but "did THIS run leave any" at
+ * its own release.
+ *
+ * Why both halves exist. The first one decides what to DO with a dirty tree; it runs at
+ * the next launch, which may be an hour later, and it can only ever speak about the run
+ * before it in the past tense. The requirement's second sentence is about the run
+ * itself: a session that passes the turn on and leaves uncommitted changes has failed to
+ * finish, and that failure must be NAMED IN THE RELEASE — not met later as a silent skip
+ * of the next package. Four such skips in one morning were diagnosed by hand, each time
+ * by a human reading a tree to find out which run made it; the release event is where
+ * that answer already exists.
+ *
+ * The condition is the complement of `ABORTED_RUN_REASONS`, deliberately reusing that
+ * one list rather than spelling out the endings: a reason the circuit did not cut off is
+ * a turn the run ENDED — `completed`, `exited-without-handoff`, and both interactive
+ * endings (R19), where the question is in the thread and the tree still should have been
+ * clean. A future reason nobody here knows about falls on this side too, which is the
+ * safe side: it is a line in a log, not a gesture on a disk.
+ */
+export const dirtLeftByFinish = (input: {
+  readonly reason: string;
+  readonly dirty: boolean;
+}): boolean => input.dirty && !ABORTED_RUN_REASONS.includes(input.reason);
+
+/**
+ * What the release says about it — one sentence, and it names the NEXT consequence
+ * rather than only the fact: the cost of this dirt is paid by the following package, and
+ * whoever reads the line an hour later has to be told that without having to know R17.
+ */
+export const describeFinishDirt = (input: {
+  readonly reason: string;
+  readonly path: string;
+}): string =>
+  `the run ended its own turn ('${input.reason}') and LEFT ITS WORKSPACE DIRTY — ${input.path} has uncommitted changes. A session that passes the turn on commits or discards its work; the next package of this role will refuse to start until somebody reads that tree`;
+
+/**
  * The path of a role's workspace. One role — one directory named after the role, and
  * the name is not configurable: the whole value of the layout is that "whose tree is
  * this" is answerable by reading the path.
