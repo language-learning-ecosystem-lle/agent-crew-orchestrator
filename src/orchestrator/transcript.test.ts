@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   isAssistantStep,
+  modelOf,
   renderStreamLine,
+  runUsageOf,
   sessionIdOf,
   splitStreamChunk,
   stampLine,
@@ -175,5 +177,63 @@ describe("counting how much of a run was burned (R18)", () => {
     // counting it would inflate the very number the resume guard is judged on.
     expect(isAssistantStep("Reached max turns (60)")).toBe(false);
     expect(isAssistantStep("")).toBe(false);
+  });
+});
+
+describe("what the run burned (thread 029)", () => {
+  const RESULT = {
+    type: "result",
+    subtype: "success",
+    num_turns: 25,
+    duration_ms: 387_882,
+    total_cost_usd: 2.442_584,
+    usage: {
+      input_tokens: 48,
+      output_tokens: 19_917,
+      cache_creation_input_tokens: 86_698,
+      cache_read_input_tokens: 2_124_312,
+    },
+  };
+
+  it("the ledger comes off the result event — turns, wall time, dollars, tokens", () => {
+    expect(runUsageOf(JSON.stringify(RESULT))).toEqual({
+      turns: 25,
+      durationSec: 388,
+      costUsd: 2.442_584,
+      tokens: { in: 48, out: 19_917, cacheWrite: 86_698, cacheRead: 2_124_312 },
+    });
+  });
+
+  it("NO OTHER LINE IS A LEDGER — least of all an assistant message carrying `usage`", () => {
+    // The whole reason this reads one event and not the stream: an assistant message
+    // carries a `usage` of its own, and summing those was measured 15-110× LOW on output
+    // and ~2× HIGH on cache reads against the very same runs' result lines. Two fields,
+    // opposite signs — so a run without a result line has no honest token count, and
+    // `undefined` is the answer rather than a plausible number.
+    const assistant = {
+      type: "assistant",
+      message: { content: "…" },
+      usage: { output_tokens: 638, cache_read_input_tokens: 2_890_000 },
+    };
+    expect(runUsageOf(JSON.stringify(assistant))).toBeUndefined();
+    expect(runUsageOf(JSON.stringify({ type: "system", subtype: "init" }))).toBeUndefined();
+    expect(runUsageOf("Reached max turns (60)")).toBeUndefined();
+    expect(runUsageOf("")).toBeUndefined();
+  });
+
+  it("a result line without a ledger yields what it has, and never throws", () => {
+    // The collector must fail OPEN (curator's first acceptance condition): a shape the
+    // vendor changed leaves the block thinner, never the release unwritten.
+    expect(runUsageOf(JSON.stringify({ type: "result", num_turns: 3 }))).toEqual({ turns: 3 });
+    expect(runUsageOf(JSON.stringify({ type: "result" }))).toEqual({});
+  });
+
+  it("the model is named by the init line and by nothing else", () => {
+    expect(
+      modelOf(JSON.stringify({ type: "system", subtype: "init", model: "claude-opus-5" })),
+    ).toBe("claude-opus-5");
+    expect(modelOf(JSON.stringify({ type: "assistant", model: "claude-opus-5" }))).toBeUndefined();
+    expect(modelOf(JSON.stringify({ type: "system", subtype: "init" }))).toBeUndefined();
+    expect(modelOf("not json")).toBeUndefined();
   });
 });

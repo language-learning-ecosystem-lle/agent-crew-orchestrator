@@ -18,7 +18,7 @@
  * the limit of `draining` (requirement 2): "it will stop on completion" does not
  * turn into "it will never stop".
  */
-import type { OrchestratorEvent } from "./journal.js";
+import type { LeaseUsage, OrchestratorEvent } from "./journal.js";
 
 /**
  * `waiting` is the interactive turn (R19): the turn has passed, the session declared
@@ -219,6 +219,13 @@ export const stepEvent = (
      * and a caller with no workspace to look at makes none.
      */
     readonly dirty?: true;
+    /**
+     * WHAT THE RUN BURNED (thread 029) — turns, wall time, dollars, tokens, model. Absent
+     * for every run that broke off before its stream emitted a ledger, and that absence is
+     * legal: see the field on the journal schema. It is copied through the list below like
+     * every other field, which is the whole point of the note above this function.
+     */
+    readonly usage?: LeaseUsage;
   },
 ): OrchestratorEvent => {
   if (step.record === "handoff-detected") return { kind: "handoff-detected", ...base };
@@ -239,5 +246,6 @@ export const stepEvent = (
     ...(detail?.until === undefined ? {} : { until: detail.until }),
     ...(detail?.window === undefined ? {} : { window: detail.window }),
     ...(detail?.dirty === undefined ? {} : { dirty: detail.dirty }),
+    ...(detail?.usage === undefined ? {} : { usage: detail.usage }),
   };
 };
