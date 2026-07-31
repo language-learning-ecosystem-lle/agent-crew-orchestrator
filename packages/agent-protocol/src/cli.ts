@@ -116,6 +116,7 @@ import {
   type InstanceDigest,
   parseDigest,
   renderDigest,
+  rolesOfInstance,
 } from "./orchestrator/instances.js";
 import {
   DEFAULT_WAIT_INPUT_SECONDS,
@@ -4874,9 +4875,11 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   // ownership answer is half of it (R14) — the same value serves the agent resolution
   // below.
   const local = localFrom(argv);
-  const leftOut = launchScopeFrom(argv, local, launchableRoles(argv)).excluded.find(
-    (exclusion) => exclusion.role === roleId,
-  );
+  // The scope is KEPT, not just consulted: besides the ownership door below it carries
+  // the answer to "which box is this" (`scope.instance`), and the digest published by
+  // this run needs it — resolved once, behind the same refusals (R13 + R14).
+  const scope = launchScopeFrom(argv, local, launchableRoles(argv));
+  const leftOut = scope.excluded.find((exclusion) => exclusion.role === roleId);
   if (leftOut !== undefined) {
     fail(describeExclusion(leftOut), 2);
     return;
@@ -5012,6 +5015,26 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   out(`agent-protocol: agent — ${describeAgent(agent)}`);
   out(`agent-protocol: ${describeZones(role)}`);
   for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
+  // R13, second half: A MANUAL RUN PUBLISHES ITS STATE TOO (thread
+  // `025-stale-instance-digest`, second half). The publisher is created HERE — after the
+  // dry run has returned and after the `--detach` fork, so it belongs to the process that
+  // actually holds the lease: a plan publishes nothing, and the parent of a background
+  // run has no lease to publish, its child does.
+  //
+  // "A human is watching this box anyway" is not an argument for leaving it out: that
+  // human is the one reader who does not need the file. It exists for the reader who is
+  // NOT here — another instance, or a `status` read from elsewhere — and to them a fresh
+  // digest with no leases is indistinguishable from an idle box (curator, 2026-07-28).
+  // `-d` removes even the local watcher, with the lease and the journal unchanged.
+  const digest = digestPublisherFor({
+    argv,
+    mailRoot,
+    journalPath,
+    maxAttempts: gates.maxAttempts.value,
+    instance: scope.instance,
+    label: "run",
+  });
+  out(digest.announce);
   const reason = await runOne({
     journalPath,
     mailRoot,
@@ -5042,8 +5065,16 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     now,
     maxConsecutive: gates.maxConsecutive.value,
     maxAttempts: gates.maxAttempts.value,
+    onLeaseChange: digest.publish,
     ...(forceFlag === undefined ? {} : { forceFlag }),
   });
+  // ONE LAST PUBLICATION, the counterpart of the daemon's end-of-tick call. The terminal
+  // release is already hooked, so on a good day this is a no-op that `digestChanged`
+  // costs nothing — it is here for the bad one: a publication from the hook can FAIL (the
+  // mail checkout was busy, the push was rejected), and a failure leaves `published`
+  // untouched precisely so the next call retries it. This is the last moment this process
+  // has, and by now the contention that lost the first attempt is over.
+  digest.publish();
   if (reason !== "skip") out(`agent-protocol: the run of ${roleId}/${thread} finished: ${reason}`);
 };
 
@@ -5094,7 +5125,14 @@ const publishDigest = (input: {
   readonly mailRoot: string;
   readonly branch: string;
   readonly digest: InstanceDigest;
+  /**
+   * WHICH COMMAND IS SPEAKING — `daemon` or `run`. The lines below are read on a
+   * terminal beside the rest of one command's output, and a `run` that announced itself
+   * as the daemon would send a reader looking for a watch that is not there.
+   */
+  readonly label: string;
 }): boolean => {
+  const say = (line: string): void => err(`agent-protocol: ${input.label} — ${line}`);
   const checkout = repoOf(input.mailRoot);
   // THE DIGEST YIELDS TO THE MAIL. It is a courtesy line about this box, and a message
   // from a role is the work itself — so the status line waits a short while and gives up
@@ -5104,7 +5142,7 @@ const publishDigest = (input: {
   const lock = mailLockFor({
     checkout,
     holder: `digest of instance ${input.digest.instance}`,
-    note: (line) => err(`agent-protocol: daemon — ${line}`),
+    note: (line) => say(line),
     waitMs: DIGEST_LOCK_WAIT_MS,
   });
   try {
@@ -5139,13 +5177,13 @@ const publishDigest = (input: {
         content: renderDigest(input.digest),
         label: digestPath(input.digest.instance),
       }),
-      note: (line) => err(`agent-protocol: daemon — ${line}`),
+      note: (line) => say(line),
       lock,
     });
     return true;
   } catch (error) {
-    err(
-      `agent-protocol: daemon — the instance digest was NOT published: ${(error as Error).message}; the box keeps working, the other instances see its last known state`,
+    say(
+      `the instance digest was NOT published: ${(error as Error).message}; the box keeps working, the other instances see its last known state`,
     );
     // A FAILED DELIVERY MUST NOT LEAVE THE CHECKOUT DIRTY. `deliverMessage` writes and
     // stages before it commits, so a commit that fails (the runner's checkout has no
@@ -5170,12 +5208,112 @@ const publishDigest = (input: {
         }
       });
     } catch (cleanup) {
-      err(
-        `agent-protocol: daemon — and the half-written digest could NOT be cleaned out of the mail checkout: ${(cleanup as Error).message}. Delivery refuses a dirty checkout, so mail from this box is blocked until '${own}' is dealt with by hand`,
+      say(
+        `and the half-written digest could NOT be cleaned out of the mail checkout: ${(cleanup as Error).message}. Delivery refuses a dirty checkout, so mail from this box is blocked until '${own}' is dealt with by hand`,
       );
     }
     return false;
   }
+};
+
+/**
+ * THE STATE OF THIS BOX, RE-READ AND PUBLISHED IF IT MOVED — ONE publisher, handed to
+ * both commands that hold a lease (`daemon` and `run`; thread `025-stale-instance-digest`).
+ *
+ * It lived inside the daemon at first, and that was the second half of the same defect:
+ * `orchestrator run` — the launch a human types, `-d` included — could not publish at
+ * all, because the only publisher was closed over the daemon's state. A box busy with a
+ * manual run therefore published a fresh `writtenAt` with `leases: []`. That is worse
+ * than the original lie rather than a smaller version of it: the truthfulness of one
+ * derived file came to depend on WHICH COMMAND raised the session, and a reader on
+ * another machine cannot know that — they see current-looking bytes saying nobody is
+ * working (curator, 2026-07-28).
+ *
+ * A SECOND COPY IN THE `run` PATH WAS THE WRONG ANSWER for the reason the first defect
+ * teaches: two publishers of one file drift, and the drift is invisible until somebody
+ * reads the file at the wrong moment. Hence a factory, called once per command, holding
+ * the only piece of state a publisher needs — the last version it actually pushed.
+ *
+ * SEEDED FROM THE BRANCH, not from nothing: a process is restarted (a reboot, a `--once`
+ * tick from cron, a `run` after a `run`), and a fresh one that remembered nothing would
+ * re-commit a digest identical to the one already there. That is the heartbeat
+ * `digestChanged` exists to prevent, arriving by the back door.
+ *
+ * The journal is re-read on every call rather than passed in: a run appends to it while
+ * the caller is blocked, so the copy the caller loaded is stale exactly when it matters.
+ *
+ * A BOX WITH NO DECLARED INSTANCE PUBLISHES NOTHING, and says so once — the pre-R13
+ * contour verbatim (one box, every role), with no id to publish under and nobody to
+ * publish to.
+ */
+type DigestPublisher = {
+  /** Publish if the state moved. Called wherever a lease of this box changes. */
+  readonly publish: () => void;
+  /** The one line the command prints about whether it publishes at all, and where. */
+  readonly announce: string;
+};
+
+const digestPublisherFor = (input: {
+  readonly argv: readonly string[];
+  readonly mailRoot: string;
+  readonly journalPath: string;
+  readonly maxAttempts: number;
+  /**
+   * WHICH BOX THIS IS — taken from the scope both commands have already resolved
+   * (`LaunchScope.instance`), never read again here: the join of the topology and the
+   * machine config has a door that refuses a nameless box or an unknown name, and a
+   * second reading of the same two files would be a second answer to a settled question.
+   */
+  readonly instance: string | undefined;
+  /** Which command is publishing — it ends up in front of every line about the digest. */
+  readonly label: string;
+}): DigestPublisher => {
+  const loaded = configFrom(input.argv, undefined).config;
+  const branch = loaded.mail.branch;
+  const instance = input.instance;
+  if (instance === undefined) {
+    return {
+      publish: () => {},
+      announce: `agent-protocol: ${input.label} — no instance declared, this box publishes no digest (${DIGEST_DIR}/ stays as it is)`,
+    };
+  }
+  // THE ROLES OF THE BOX, NOT OF THIS LAUNCH (see `InstanceDigest.roles`): read from the
+  // topology, so `daemon` and `run --role x` publish the same list and the operator's
+  // flags reach `leases` only.
+  const roles = rolesOfInstance({ instances: loaded.instances, instance });
+  let published: InstanceDigest | undefined = loadDigests(input.mailRoot).digests.find(
+    (digest) => digest.instance === instance,
+  );
+  return {
+    publish: () => {
+      const events = existsSync(input.journalPath)
+        ? parseJournal(readFile(input.journalPath, "orchestrator journal"))
+        : [];
+      const at = new Date();
+      const state = digestOf({
+        instance,
+        roles,
+        leases: foldLeases(events, at, input.maxAttempts),
+        // A box standing down on a closed window has NO live leases to publish, so without
+        // this the neighbours would read its silence as "nothing to do" (D-3 part 2).
+        quota: openQuotaShelves(events, at),
+        now: at,
+      });
+      if (!digestChanged(published, state)) return;
+      if (
+        publishDigest({
+          argv: input.argv,
+          mailRoot: input.mailRoot,
+          branch,
+          digest: state,
+          label: input.label,
+        })
+      ) {
+        published = state;
+      }
+    },
+    announce: `agent-protocol: ${input.label} — publishing state as instance '${instance}' to ${digestPath(instance)} on ${branch}`,
+  };
 };
 
 const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
@@ -5259,58 +5397,22 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // topology there is no id to publish under and nobody to publish to — that is the
   // pre-R13 contour verbatim (one box, every role), and it is said once rather than
   // left to be inferred from a directory that never appears.
-  const selfInstance = scope.instance;
-  const mailBranch = configFrom(argv, undefined).config.mail.branch;
   /**
-   * The last state actually pushed — what the next tick's state is judged against.
-   *
-   * SEEDED FROM THE BRANCH, not from nothing: a daemon is restarted (a reboot, a
-   * `--once` tick from cron, a config change), and a fresh process that remembered
-   * nothing would re-commit a digest identical to the one already there. That is the
-   * heartbeat `digestChanged` exists to prevent, arriving by the back door.
+   * R13, second half: WHETHER THIS BOX PUBLISHES ITS STATE AT ALL, and the publisher
+   * itself — the SAME one `orchestrator run` uses (`digestPublisherFor`). It used to be
+   * an inline closure here, which is what made the manual launch unable to publish at
+   * all; the reasoning of the move is in the factory.
    */
-  let published: InstanceDigest | undefined =
-    selfInstance === undefined
-      ? undefined
-      : loadDigests(mailRoot).digests.find((digest) => digest.instance === selfInstance);
-  out(
-    selfInstance === undefined
-      ? `agent-protocol: daemon — no instance declared, this box publishes no digest (${DIGEST_DIR}/ stays as it is)`
-      : `agent-protocol: daemon — publishing state as instance '${selfInstance}' to ${digestPath(selfInstance)} on ${mailBranch}`,
-  );
-
-  /**
-   * THE STATE OF THIS BOX, RE-READ AND PUBLISHED IF IT MOVED — one function, called from
-   * the two places the state can move (thread `025-stale-instance-digest`).
-   *
-   * It used to be inline at the end of the tick and NOWHERE ELSE, and that single call
-   * site was the whole defect: the lease of a run is taken and released INSIDE the
-   * `await` above it, so by the time the tick reached this code the box was idle again.
-   * Every tick therefore computed `leases: []`, `digestChanged` said "same as last time",
-   * and nothing was ever written — a digest that had never once in its life published a
-   * live lease, while reading as current because its `writtenAt` was a real moment.
-   *
-   * The journal is re-read on every call rather than passed in: a run appends to it while
-   * this process is blocked, so the copy the tick loaded is stale exactly when it matters.
-   */
-  const publishState = (): void => {
-    if (selfInstance === undefined) return;
-    const events = existsSync(journalPath)
-      ? parseJournal(readFile(journalPath, "orchestrator journal"))
-      : [];
-    const at = new Date();
-    const state = digestOf({
-      instance: selfInstance,
-      roles: launchable,
-      leases: foldLeases(events, at, gates.maxAttempts.value),
-      // A box standing down on a closed window has NO live leases to publish, so without
-      // this the neighbours would read its silence as "nothing to do" (D-3 part 2).
-      quota: openQuotaShelves(events, at),
-      now: at,
-    });
-    if (!digestChanged(published, state)) return;
-    if (publishDigest({ argv, mailRoot, branch: mailBranch, digest: state })) published = state;
-  };
+  const digest = digestPublisherFor({
+    argv,
+    mailRoot,
+    journalPath,
+    maxAttempts: gates.maxAttempts.value,
+    instance: scope.instance,
+    label: "daemon",
+  });
+  out(digest.announce);
+  const publishState = digest.publish;
 
   /**
    * THE COURIER IS DIALLED BY THE CIRCUIT, NOT BY A HAND (R4 + thread 024; john's
