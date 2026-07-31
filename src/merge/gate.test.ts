@@ -422,6 +422,69 @@ describe("guard 1 — a verdict older than the head commit (thread 043)", () => 
   it("reads exactly as before when gh did not date the head — nothing known, nothing invented", () => {
     expect(guard(pr({ reviews: [substituted("APPROVED")] }), 1)?.state).toBe("pass");
   });
+
+  /**
+   * THE REFUSAL MUST NOT OUTLIVE ITS OWN REPAIR. The dispatch record never leaves
+   * `reviews`, and `gh` keeps showing it against the current head — so asking the age of
+   * the HISTORY instead of the last verdict of each author locked the door forever on
+   * every PR a dispatch run had ever touched, the `pull_request` round the refusal itself
+   * names included.
+   */
+  it("lets a fresh pull_request approve overtake the same author's dispatch verdict on this head", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          // The old workflow_dispatch verdict: shown against the head, submitted before it.
+          substituted("APPROVED"),
+          // The repair the refusal names — the same author, a run on the 'pull_request' event.
+          substituted("APPROVED", "2026-07-31T09:00:00Z"),
+        ],
+        headCommittedAt: HEAD_MADE,
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("pass");
+    expect(outcome?.detail).toContain("approved on");
+  });
+
+  it("keeps refusing when the author's LAST word is the anchorless one — being overtaken is what clears a verdict", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            substituted("APPROVED", "2026-07-31T09:00:00Z"),
+            // Submitted later than the valid approve, but still before the head existed:
+            // impossible in life, and the door does not reward an unreadable payload.
+            substituted("APPROVED", "2026-07-31T03:46:02Z"),
+          ],
+          headCommittedAt: "2026-07-31T09:30:00Z",
+        }),
+        1,
+      )?.state,
+    ).toBe("fail");
+  });
+
+  it("does not let one author's dispatch verdict be cleared by ANOTHER author's approve", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          substituted("APPROVED"),
+          {
+            state: "APPROVED",
+            commitSha: HEAD,
+            author: "curator",
+            submittedAt: "2026-07-31T09:00:00Z",
+          },
+        ],
+        headCommittedAt: HEAD_MADE,
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("older than the head commit");
+  });
 });
 
 describe("withoutAnchor", () => {

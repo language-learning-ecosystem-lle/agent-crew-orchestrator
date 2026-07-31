@@ -127,6 +127,17 @@
  * leaves the reading exactly as it was before this thread — nothing is known, nothing is
  * invented.
  *
+ * AND THE AGE IS ASKED OF THE LAST VERDICT OF EACH AUTHOR, NOT OF THE HISTORY (the second
+ * round of this thread, reviewer's finding on #110). Read over the whole `reviews` array,
+ * the age test locked the door FOREVER on any PR where a `workflow_dispatch` run had ever
+ * left a verdict: that record stays in the array, `gh` keeps showing it against the
+ * current head, and the repair the refusal itself names — a run on the `pull_request`
+ * event — only ADDS a verdict beside it, never removes the old one. The refusal outlived
+ * its own remedy, which is the one thing a refusal must not do. So D4 comes FIRST: the
+ * verdicts on the head are grouped by author, and only what survives that grouping is
+ * asked its age. An author whose LAST word is anchorless still stops the door — being
+ * overtaken is what clears a verdict, and nothing else does.
+ *
  * AND `gh` SAYS "ABSENT" WITH AN EMPTY STRING (D3): a flying run comes back with
  * `conclusion: ""`, not `null`, so `??` reads it as a value and the refusal printed
  * `review=` — blind exactly where the reader decides whether to wait or to fix. Every
@@ -376,27 +387,37 @@ const asVerdict = (review: PullRequestFacts["reviews"][number]): Verdict => {
 };
 
 /**
- * The last verdict of each reviewer (D4). Same shape as {@link latestAttemptPerName} and
- * for the same reason: a group whose stamps cannot tell its verdicts apart is kept whole,
- * so an unreadable payload refuses instead of picking a winner by luck.
+ * The last of each author's items, by the {@link Verdict} `read` off them (D4). Kept
+ * generic over the item so the SAME rule serves the two shapes guard 1 needs — the
+ * reduced {@link Verdict} and the {@link ReviewFact} itself, whose identity the anchor
+ * classification is subtracted by. Same shape as {@link latestAttemptPerName} and for the
+ * same reason: a group whose stamps cannot tell its items apart is kept whole, so an
+ * unreadable payload refuses instead of picking a winner by luck.
  */
-export const latestVerdictPerAuthor = (verdicts: readonly Verdict[]): readonly Verdict[] => {
-  const byAuthor = new Map<string, Verdict[]>();
-  for (const verdict of verdicts) {
-    const key = verdict.author ?? "?";
+const latestPerAuthor = <T>(items: readonly T[], read: (item: T) => Verdict): readonly T[] => {
+  const byAuthor = new Map<string, T[]>();
+  for (const item of items) {
+    const key = read(item).author ?? "?";
     const group = byAuthor.get(key);
-    if (group === undefined) byAuthor.set(key, [verdict]);
-    else group.push(verdict);
+    if (group === undefined) byAuthor.set(key, [item]);
+    else group.push(item);
   }
   return [...byAuthor.values()].flatMap((group) => {
     if (group.length === 1) return group;
-    const known = group.map((verdict) => verdict.at).filter((at) => at !== undefined);
+    const known = group.map((item) => read(item).at).filter((at) => at !== undefined);
     if (known.length === 0) return group;
     const last = Math.max(...known);
-    // A verdict with no stamp cannot be shown to be older, so it stays in the answer.
-    return group.filter((verdict) => verdict.at === undefined || verdict.at === last);
+    // An item with no stamp cannot be shown to be older, so it stays in the answer.
+    return group.filter((item) => read(item).at === undefined || read(item).at === last);
   });
 };
+
+/**
+ * The last verdict of each reviewer (D4) — {@link latestPerAuthor} over verdicts that are
+ * already reduced.
+ */
+export const latestVerdictPerAuthor = (verdicts: readonly Verdict[]): readonly Verdict[] =>
+  latestPerAuthor(verdicts, (verdict) => verdict);
 
 /**
  * The reviews shown against the head that CANNOT be answers about it (thread 043): the
@@ -479,7 +500,10 @@ export const evaluateMergeGate = (input: {
   const head = pr.headSha;
 
   // A verdict older than the head commit is not a verdict on this head, whatever
-  // `reviews[].commit` substitutes for it (thread 043).
+  // `reviews[].commit` substitutes for it (thread 043). The classification is applied to
+  // what SURVIVES the grouping by author (D4), never to the whole history: an anchorless
+  // verdict already overtaken by a later, valid one of the same author has been answered,
+  // and judging it would make the door's own repair unable to lift its refusal.
   const anchorless = new Set(
     withoutAnchor({
       reviews: pr.reviews,
@@ -487,18 +511,16 @@ export const evaluateMergeGate = (input: {
       headCommittedAt: pr.headCommittedAt,
     }),
   );
-  const anchored = pr.reviews.filter((review) => !anchorless.has(review));
-  const unanchoredVerdicts = [...anchorless].filter((review) => verdictStates.has(review.state));
-
-  const onHead = latestVerdictPerAuthor(
-    anchored
-      .filter((review) => review.commitSha === head)
-      .map(asVerdict)
-      .filter((verdict) => verdictStates.has(verdict.state)),
+  const lastOnHead = latestPerAuthor(
+    pr.reviews.filter((review) => review.commitSha === head && verdictStates.has(review.state)),
+    asVerdict,
   );
+  const unanchoredVerdicts = lastOnHead.filter((review) => anchorless.has(review));
+
+  const onHead = lastOnHead.filter((review) => !anchorless.has(review)).map(asVerdict);
   const approvals = onHead.filter((review) => review.state === "APPROVED");
   const changesRequested = onHead.filter((review) => review.state === "CHANGES_REQUESTED");
-  const staleApprovals = anchored.filter(
+  const staleApprovals = pr.reviews.filter(
     (review) => review.state === "APPROVED" && review.commitSha !== head,
   );
 
