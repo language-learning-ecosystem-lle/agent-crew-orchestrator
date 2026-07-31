@@ -36,7 +36,22 @@ jobs:
     # ТОЛЬКО настоящий отказ. `skipped`/`neutral` — это штатная тишина (джоба с
     # ложным `if`, самопропуск claude-code-action на изменённом воркфлоу), и
     # звонить на неё значило бы приучить читателя к ложным тревогам.
-    if: contains(fromJSON('["failure","cancelled","timed_out","startup_failure","action_required","stale"]'), github.event.workflow_run.conclusion)
+    #
+    # `cancelled` НЕ в списке, и это замер, а не вкус (curator, тред 040): у
+    # `Comms Derived` стоит `concurrency: cancel-in-progress: false`, при котором
+    # GitHub держит в группе ровно один ОЖИДАЮЩИЙ прогон — следующий push в
+    # `comms` отменяет предыдущего ожидающего, и производные пересобирает более
+    # свежий. Это штатная работа очереди и происходит постоянно: 12 `cancelled`
+    # из 100 прогонов за 1 ч 42 мин, каждый — звонок с ходом на роль, то есть
+    # поднятая сессия. Второй источник того же класса — `claude-review.yml`
+    # (`cancel-in-progress: true`): снятая и повешенная заново метка `review`
+    # отменяет прогон, который ещё в воздухе.
+    # Разделять список по имени воркфлоу не стали: он знал бы про ЧУЖИЕ конфиги
+    # concurrency, а они меняются без него. `cancelled` на GitHub двузначен по
+    # построению — «вытеснен очередью» и «отменён руками» неразличимы полем, а в
+    # обоих случаях адресат либо ничего не потерял (работу делает более свежий
+    # прогон), либо уже знает (отменял он сам).
+    if: contains(fromJSON('["failure","timed_out","startup_failure","action_required","stale"]'), github.event.workflow_run.conclusion)
     runs-on: ubuntu-latest
     permissions:
       contents: write # запись в ветку comms
