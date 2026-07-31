@@ -121,6 +121,19 @@ import {
 } from "./orchestrator/hold.js";
 import { circuitHome } from "./orchestrator/home.js";
 import {
+  agentStep,
+  type InitStep,
+  type InstanceOccupant,
+  initBlockers,
+  initSummary,
+  instanceStep,
+  mailStep,
+  nextLocalConfig,
+  operatorStep,
+  renderInitSteps,
+  secretsStep,
+} from "./orchestrator/init.js";
+import {
   DIGEST_DIR,
   digestChanged,
   digestIssues,
@@ -151,6 +164,8 @@ import {
   buildLaunchArgv,
   buildLaunchPrompt,
   buildResumePrompt,
+  DEFAULT_EXEC,
+  DEFAULT_WORKER,
   describeAgent,
   describeCeilings,
   describeGates,
@@ -2627,13 +2642,23 @@ const execTargets = (
  * A git call whose failure is an ANSWER rather than a crash: "the ref does not
  * exist", "this is not a worktree". Used only where the absence is a legitimate
  * state; everything that must be loud goes through `execFileSync` directly.
+ *
+ * `timeoutMs` is for the calls that REACH THE NETWORK: a local git call ends, a fetch
+ * against a degraded (not absent) network does not, and a command whose whole job is to
+ * print a plan must not hang on one. Where it is given, the timeout is a failure like
+ * any other here — the caller renders it as "could not be read", never as a fact.
  */
-const gitAsk = (args: readonly string[], env?: NodeJS.ProcessEnv): string | undefined => {
+const gitAsk = (
+  args: readonly string[],
+  env?: NodeJS.ProcessEnv,
+  timeoutMs?: number,
+): string | undefined => {
   try {
     return execFileSync("git", args, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       maxBuffer: 16 * 1024 * 1024,
+      ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
       ...(env === undefined ? {} : { env }),
     }).trim();
   } catch {
@@ -3217,6 +3242,313 @@ const probeGit = (args: readonly string[]): DoctorOutcome => {
           .join(" · ") || (error as Error).message,
     };
   }
+};
+
+/**
+ * WHAT THE BINARY OF A TOOL IS CALLED. Known for the one tool the package raises
+ * (`claude-code` → `claude`); for anything else the id is the best guess there is, and
+ * a wrong guess costs nothing — it is looked up on PATH, and a miss is a row asking for
+ * `--exec`, not a failure.
+ */
+const execNameOf = (kind: string): string => (kind === DEFAULT_WORKER ? DEFAULT_EXEC : kind);
+
+/** Where a binary actually is, asked of the CHILD's PATH — the daemon's is not the shell's. */
+const resolveOnPath = (name: string, env: NodeJS.ProcessEnv): string | undefined => {
+  try {
+    const found = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
+      encoding: "utf8",
+      env: { ...env, AGENT_PROTOCOL_EXEC: name },
+    }).trim();
+    return found === "" ? undefined : found;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * `init` — COMMISSIONING THIS BOX (thread 019, the operator tail, point 1).
+ *
+ * The reasoning for what it may and may not do lives in `orchestrator/init.ts`; here
+ * are the effects, and three of them are worth naming at the place they happen:
+ *
+ *  - THE MAIL WORKTREE IS CREATED WITH A FETCH FIRST, and that ordering is the defect
+ *    this command was written around: the checkout on `lle-agents` was made by hand
+ *    without one, and every frame afterwards said `mail: never pulled`.
+ *  - THE MACHINE CONFIG IS WRITTEN WHOLE, from `nextLocalConfig`, and then re-read by
+ *    `doctor` through the ordinary loader. Nothing here reports on its own work.
+ *  - IT ENDS IN `doctor`, whose exit code becomes this command's. "The box is
+ *    commissioned" is a checklist, never a belief about what was typed.
+ */
+const boxInit = (argv: readonly string[]): void => {
+  const withRef = withOperatorRef(argv);
+  const loaded = configFrom(withRef, undefined);
+  // The same split doctor makes (R26): the config is judged at the ref of the tree the
+  // command was typed in, the FACTS ABOUT THE BOX hang off the main checkout.
+  const repo = flag(withRef, "--repo") ?? homeOf(process.cwd());
+  // A NAMED MACHINE CONFIG THAT IS NOT THERE IS THE ORDINARY CASE *HERE*, and only
+  // here. Everywhere else it is a refusal — the operator pointed at a file, and
+  // answering that with defaults is how a run uses settings nobody chose. This is the
+  // command that brings the file into being, so `--local-config` on a fresh box names
+  // where it WILL be. One that exists and does not parse is still a refusal: somebody
+  // wrote it, and init would be overwriting a statement it could not read.
+  const named = flag(withRef, "--local-config");
+  const local: LoadedLocalConfig =
+    named !== undefined && !existsSync(named)
+      ? { config: { agents: {} }, path: named, found: false, explicit: true }
+      : localFrom(withRef);
+  const write = withRef.includes("--write");
+  const env = childEnvFrom(withRef);
+
+  const kind = flag(withRef, "--agent") ?? DEFAULT_WORKER;
+  const declaredExec = local.config.agents[kind]?.exec;
+  const namedExec = flag(withRef, "--exec");
+  const found = namedExec === undefined ? resolveOnPath(execNameOf(kind), env) : undefined;
+  const version = found === undefined ? undefined : (gitFreeVersion(found, env) ?? undefined);
+
+  const instance = flag(withRef, "--instance");
+  const declaredInstances = (loaded.config.instances ?? []).map((one) => one.id);
+  const section = loaded.config.orchestrator;
+  const mailCheckout = section === undefined ? undefined : join(repo, section.mailCheckout);
+  const mailRoot =
+    mailCheckout === undefined ? undefined : join(mailCheckout, loaded.config.mail.dir);
+  const claimed = instance ?? local.config.instance;
+  const occupancy =
+    mailRoot === undefined || claimed === undefined
+      ? {}
+      : occupancyOf({
+          repo,
+          branch: loaded.config.mail.branch,
+          checkout: mailCheckout as string,
+          inRoot: join(mailRoot, digestPath(claimed)),
+          onBranch: `${loaded.config.mail.dir}/${digestPath(claimed)}`,
+          offline: withRef.includes("--offline"),
+        });
+
+  const steps: InitStep[] = [
+    instanceStep({
+      ...(instance === undefined ? {} : { requested: instance }),
+      ...(local.config.instance === undefined ? {} : { current: local.config.instance }),
+      declared: declaredInstances,
+      ...(occupancy.occupant === undefined ? {} : { occupant: occupancy.occupant }),
+      ...(occupancy.unchecked === undefined ? {} : { unchecked: occupancy.unchecked }),
+    }),
+    agentStep({
+      kind,
+      ...(namedExec === undefined ? {} : { requested: namedExec }),
+      ...(declaredExec === undefined ? {} : { current: declaredExec }),
+      ...(found === undefined ? {} : { resolved: found }),
+      ...(version === undefined ? {} : { version }),
+    }),
+    operatorStep({
+      ...(flag(withRef, "--operator") === undefined
+        ? {}
+        : { requested: flag(withRef, "--operator") as string }),
+      ...(local.config.operator === undefined ? {} : { current: local.config.operator }),
+      known: loaded.registry.ids(),
+    }),
+    secretsStep({
+      ...(flag(withRef, "--secrets") === undefined
+        ? {}
+        : { requested: flag(withRef, "--secrets") as string }),
+      ...(local.config.secrets === undefined ? {} : { current: local.config.secrets.envFile }),
+      ...((flag(withRef, "--secrets") ?? local.config.secrets?.envFile) === undefined
+        ? {}
+        : {
+            exists: existsSync(
+              (flag(withRef, "--secrets") ?? local.config.secrets?.envFile) as string,
+            ),
+          }),
+    }),
+  ];
+  if (mailCheckout === undefined) {
+    steps.push({
+      name: "mail: checkout",
+      action: "missing",
+      detail: `the config at ${loaded.ref} has no 'orchestrator' section — there is no checkout to create`,
+    });
+  } else {
+    steps.push(
+      mailStep({
+        path: mailCheckout,
+        present: existsSync(mailCheckout),
+        branch: loaded.config.mail.branch,
+      }),
+    );
+  }
+
+  out(renderInitSteps(steps));
+  // The summary is built in one place because it carries an EFFECT (the occupancy read
+  // that moved a ref, when there was one), and an effect reported on one exit and not on
+  // another is the same lie in smaller print.
+  const summary = (): string =>
+    initSummary({
+      steps,
+      write,
+      ...(occupancy.fetched === undefined ? {} : { fetched: occupancy.fetched }),
+    });
+  const blockers = initBlockers(steps);
+  if (blockers.length > 0) {
+    out(summary());
+    fail("init: the crosses above are facts this box cannot be commissioned without", 2);
+    return;
+  }
+  if (!write) {
+    out(summary());
+    return;
+  }
+
+  // THE MAIL FIRST, THE CONFIG SECOND. A half-commissioned box is unavoidable (the two
+  // live in different places and neither is transactional), so the order picks WHICH
+  // half survives a failure: a worktree without a config is inert, a config naming a
+  // checkout that was never created is a box that looks configured and reads no mail.
+  if (mailCheckout !== undefined && !existsSync(mailCheckout)) {
+    const branch = loaded.config.mail.branch;
+    gitRun(["-C", repo, "fetch", "origin", branch], "creating the mail checkout");
+    const localBranch = gitAsk(["-C", repo, "rev-parse", "--verify", "--quiet", branch]);
+    gitRun(
+      localBranch === undefined || localBranch === ""
+        ? ["-C", repo, "worktree", "add", "--track", "-b", branch, mailCheckout, `origin/${branch}`]
+        : ["-C", repo, "worktree", "add", mailCheckout, branch],
+      "creating the mail checkout",
+    );
+  }
+
+  const decisions = {
+    ...(instance === undefined ? {} : { instance }),
+    ...(flag(withRef, "--operator") === undefined
+      ? {}
+      : { operator: flag(withRef, "--operator") as string }),
+    ...((namedExec ?? found) === undefined
+      ? {}
+      : { agent: { kind, exec: (namedExec ?? found) as string } }),
+    ...(flag(withRef, "--secrets") === undefined
+      ? {}
+      : { secretsEnvFile: flag(withRef, "--secrets") as string }),
+  };
+  writeOut(local.path, `${JSON.stringify(nextLocalConfig(local.config, decisions), null, 2)}\n`);
+  out(`init: machine config written — ${local.path}`);
+  out(summary());
+
+  if (withRef.includes("--no-doctor")) {
+    out("init: doctor was not run (--no-doctor) — the box is configured, not yet checked");
+    return;
+  }
+  // The checklist is re-read from disk, through the ordinary loaders: init does not get
+  // to report on its own work. Its exit code becomes this command's.
+  doctor([
+    ...(flag(withRef, "--ref") === undefined ? [] : ["--ref", flag(withRef, "--ref") as string]),
+    ...(flag(withRef, "--repo") === undefined ? [] : ["--repo", flag(withRef, "--repo") as string]),
+    ...(flag(withRef, "--local-config") === undefined
+      ? []
+      : ["--local-config", flag(withRef, "--local-config") as string]),
+    ...(withRef.includes("--offline") ? ["--offline"] : []),
+  ]);
+};
+
+/** What the tool says about itself, when it says anything. A version is a fact, not a gate. */
+const gitFreeVersion = (exec: string, env: NodeJS.ProcessEnv): string | undefined => {
+  try {
+    const said = execFileSync(exec, ["--version"], {
+      encoding: "utf8",
+      env,
+      timeout: 15_000,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return said === "" ? undefined : (said.split("\n")[0] as string);
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * WHO ELSE PUBLISHES UNDER THIS ID — asked of the BRANCH, not of a checkout (round 6 of
+ * thread 019, a defect this command shipped with).
+ *
+ * The warning exists for one situation above all: a box being commissioned from nothing,
+ * which is the acceptance scenario of the statement itself. On such a box the mail
+ * worktree does not exist yet at the moment these steps are drawn — `init` creates it
+ * LOWER DOWN — so a digest looked up as a FILE inside it was always absent, and absence
+ * was rendered as 'free'. The one answer this check must never give by accident.
+ *
+ * So: the local checkout when it is there (free, and it is the freshest thing on the
+ * box), otherwise a read-only `fetch` of the mail branch and the digest out of the git
+ * object. And when neither can be had — `--offline`, no remote, a branch nobody pushed —
+ * the answer is UNCHECKED and says so: 'no data' and 'nobody is there' are different
+ * facts, and only one of them lets an operator take the id calmly.
+ *
+ * THE FETCH HAPPENS IN THE PLAN TOO, and that is deliberate — the warning is worth
+ * nothing arriving together with the deed, it has to reach the operator BEFORE the id is
+ * taken, and `init` without `--write` is where the operator looks. What that costs is
+ * said out loud instead of being hidden (round 7 of thread 019, where the summary line
+ * and USAGE still promised a plan that touched nothing): the branch this fetch moved is
+ * REPORTED back to the caller, `--offline` leaves the network unasked, and the call is
+ * bounded in time so a half-dead network cannot hang a command that only prints.
+ */
+const OCCUPANCY_FETCH_TIMEOUT_MS = 20_000;
+
+const occupancyOf = (input: {
+  readonly repo: string;
+  readonly branch: string;
+  readonly checkout: string;
+  readonly inRoot: string;
+  readonly onBranch: string;
+  readonly offline: boolean;
+}): { occupant?: InstanceOccupant; unchecked?: string; fetched?: string } => {
+  if (existsSync(input.checkout)) {
+    const local = digestOccupant(input.inRoot);
+    return local === undefined ? {} : { occupant: local };
+  }
+  if (input.offline) {
+    return {
+      unchecked: `--offline and no mail checkout yet — '${input.branch}' was not read`,
+    };
+  }
+  gitAsk(
+    ["-C", input.repo, "fetch", "--quiet", "--no-tags", "origin", input.branch],
+    undefined,
+    OCCUPANCY_FETCH_TIMEOUT_MS,
+  );
+  const head = gitAsk([
+    "-C",
+    input.repo,
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `origin/${input.branch}`,
+  ]);
+  // The fetch is reported from here on WHATEVER the answer turns out to be: what the
+  // summary line owes the operator is the effect, not the verdict it produced.
+  const fetched = input.branch;
+  if (head === undefined || head === "") {
+    return {
+      fetched,
+      unchecked: `'origin/${input.branch}' could not be read from ${input.repo}`,
+    };
+  }
+  const raw = gitAsk(["-C", input.repo, "show", `origin/${input.branch}:${input.onBranch}`]);
+  // A path that is not on the branch is git's own error, indistinguishable here from a
+  // failed call — and it is also the ordinary case: nobody has published this id. The
+  // branch itself was read (the rev-parse above), so 'free' is a fact, not silence.
+  if (raw === undefined || raw === "") return { fetched };
+  const read = parseDigest(raw);
+  return read.ok
+    ? { fetched, occupant: { writtenAt: read.digest.writtenAt, roles: read.digest.roles } }
+    : { fetched, unchecked: `${input.onBranch} on '${input.branch}' does not parse as a digest` };
+};
+
+/** The digest another box published under an id (R13), when there is one and it reads. */
+const digestOccupant = (
+  path: string,
+): { writtenAt: string; roles: readonly string[] } | undefined => {
+  if (!existsSync(path)) return undefined;
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return undefined;
+  }
+  const read = parseDigest(raw);
+  return read.ok ? { writtenAt: read.digest.writtenAt, roles: read.digest.roles } : undefined;
 };
 
 /**
@@ -7496,6 +7828,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
     configCheck(argv.slice(2));
   } else if (command === "doctor") {
     doctor(argv.slice(1));
+  } else if (command === "init") {
+    guardArguments("init", argv.slice(1));
+    boxInit(argv.slice(1));
   } else if (command === "schema" && subcommand === "migrate") {
     schemaMigrate(argv.slice(2));
   } else if (command === "merge-gate") {
