@@ -671,9 +671,12 @@ agent-protocol orchestrator disable --ref <ref> [--write]                  # dis
 agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [--max-attempts <n>] \
                             [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] \
                             [--watch] [--interval <sec>] [--frames <n>]   # the LIVE FRAME + the whole mode
-                            # the frame: leases, holds, the circuit (gate, stop/force flags, whether a daemon
-                            # is alive), the queue with the reason for its order, the neighbours' digests, and
-                            # how old the mail on disk is; then the static half (paths, permissions, resolution)
+                            # the frame: leases, the PARALLELISM line (how many of this box's roles are live,
+                            # which pairs they are, which roles are left free — D-4), holds, the circuit
+                            # (gate, stop/force flags, whether a daemon is alive), the queue with the reason
+                            # for its order AND the mark on a thread frozen behind a person ('parked-on', R27),
+                            # the neighbours' digests, and how old the mail on disk is; then the static half
+                            # (paths, permissions, resolution)
                             # --watch redraws THE SAME frame every --interval seconds and READS ONLY
 agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> \
                             [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--write]
@@ -2166,9 +2169,21 @@ output, so answering them meant opening files by hand. They are in `status` now,
 as part of something larger.
 
 **The frame.** The live half of the operator view is one thing with one name — `renderFrame` over
-an `OperatorFrame` (`orchestrator/snapshot.ts`): leases, holds, the circuit (the gate, the stop
-and force flags, whether the daemon's pid is alive), the queue with the reason for its order, the
-neighbours' digests with their age, and how old the mail on disk is. `status` prints the frame and
+an `OperatorFrame` (`orchestrator/snapshot.ts`): leases, the parallelism of the box, holds, the
+circuit (the gate, the stop and force flags, whether the daemon's pid is alive), the queue with the
+reason for its order, the neighbours' digests with their age, and how old the mail on disk is.
+
+**Two of those are D-4's** (thread 023), and both answer a question the frame used to leave to the
+reader. The **parallelism line** — `2 of 5 role(s) live`, the pairs behind it, and the roles left
+free by name — because the degree of parallelism was never a parameter: it is the number of roles
+this box raises (a role has one workspace, R17, and a second session in it is refused at the door),
+so the capacity is a fact about the config and the only live question is how much of it is spent.
+Until then the frame printed every pair the journal knew, released ones included, and left the
+counting to a human at 2am. And the **`parked` mark on a queue line** (R27): a queue line promises
+a launch, a thread frozen behind a person will not get one until that person answers, and that
+state used to be visible only as a skip line on the daemon's stream — which the person reading
+`status` is by definition not watching. The mark rides in `describeOrder`, so the stream carries it
+too. `status` prints the frame and
 then its static sections; `status --watch` prints the frame and nothing else; the TUI will draw
 the same frame. The point of the seam is that they have nowhere to differ: a watcher that computed
 the attempt ceiling slightly differently from the daemon would show a human a picture the circuit

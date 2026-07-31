@@ -63,12 +63,43 @@ export type CircuitState = {
   readonly pidFilePresent: boolean;
 };
 
+/**
+ * HOW MANY SESSIONS THIS BOX CAN HOLD AT ONCE, AND WHAT IT IS HOLDING (D-4, thread 023).
+ *
+ * The degree of parallelism was never a parameter: it is the number of roles this box
+ * raises, because a role has one workspace (R17) and a second session in it is refused
+ * at the door. So the capacity is a FACT about the config, and the only question an
+ * operator has in front of a running circuit is which part of it is spent — which is why
+ * the three numbers are one line and not three sections.
+ *
+ * Until D-4 the frame printed every pair the journal knew, released ones included, and
+ * left counting the LIVE ones to the reader. That is the number that decides whether the
+ * box is saturated or idle, and a reader who has to derive it derives it wrong at 2am.
+ */
+export type Parallelism = {
+  /** The roles this box may raise — the instance's, narrowed by the operator's flags (R13). */
+  readonly raisable: readonly string[];
+  /** The pairs with a LIVE lease right now, in the order the leases were folded. */
+  readonly live: readonly LeaseView[];
+  /** Roles taken by a human (S5) — capacity that exists but is not the circuit's. */
+  readonly held: readonly string[];
+};
+
 export type OperatorFrame = {
   readonly now: Date;
   readonly leases: readonly LeaseView[];
   readonly holds: readonly HoldView[];
+  /** The live count, the pairs behind it and what is left free (D-4). */
+  readonly parallelism: Parallelism;
   readonly circuit: CircuitState;
   readonly queue: readonly RankedCandidate[];
+  /**
+   * The threads frozen behind a person (R27), thread id → whom — the SAME map the tick
+   * plans by. Before D-4 this state was visible only as a skip line in the daemon's
+   * stream: an operator reading `status` saw a parked pair at the head of the queue and
+   * no reason it was not being raised.
+   */
+  readonly parked?: ReadonlyMap<string, string>;
   /**
    * What was dropped while the queue was being built — unreadable threads, priorities
    * written by roles that may not set them. The daemon says these every tick; a frame
@@ -127,14 +158,62 @@ export const renderCircuit = (circuit: CircuitState): string => {
 export const renderQueue = (
   queue: readonly RankedCandidate[],
   notes: readonly string[] = [],
+  parked: ReadonlyMap<string, string> = new Map(),
 ): string => {
   const lines = ["queue:"];
   if (queue.length === 0) {
     lines.push("  nobody is waiting on a role this box raises");
   } else {
-    for (const line of describeOrder(queue)) lines.push(`  ${line}`);
+    for (const line of describeOrder(queue, parked)) lines.push(`  ${line}`);
   }
   for (const note of notes) lines.push(`  ⚠ ${note}`);
+  return lines.join("\n");
+};
+
+/**
+ * THE LIVE COUNT AND WHAT IT IS SPENT ON (D-4). Three facts in a fixed order, and the
+ * zero case is spoken as loudly as the busy one: "nobody is live" in front of a queue
+ * with work in it is the shape of a circuit that has stopped raising, and an operator
+ * must be able to read it without counting lease lines.
+ *
+ * The FREE roles are named, not just counted. A number answers "is there room"; the
+ * names answer the question actually asked in front of a stalled contour — "room for
+ * WHOM" — and that is the one that gets acted on.
+ */
+export const renderParallelism = (p: Parallelism): string => {
+  const capacity = p.raisable.length;
+  const busy = new Set(p.live.map((view) => view.role));
+  const heldHere = p.raisable.filter((role) => p.held.includes(role));
+  const free = p.raisable.filter((role) => !busy.has(role) && !heldHere.includes(role));
+  // FREE IS ONE SUBTRACTION, NOT TWO WORDINGS (reviewer, PR #100): a hold is capacity
+  // spent whether or not anything is live, so the zero case says "all free" only when
+  // nothing is held — otherwise the head counted the held role as room and the very
+  // next line called it taken.
+  const head =
+    p.live.length > 0
+      ? `parallelism: ${busy.size} of ${capacity} role(s) live`
+      : heldHere.length === 0
+        ? `parallelism: nobody is live — ${capacity} role(s) this box raises, all free`
+        : `parallelism: nobody is live — ${capacity} role(s) this box raises, ${free.length} free, ${heldHere.length} held by a human`;
+  const lines = [head];
+  for (const view of p.live) {
+    lines.push(`  ▶ ${view.role}×${view.thread} — ${view.state}`);
+  }
+  if (p.live.length > 0 || heldHere.length > 0) {
+    // Where the room went is named, not implied: busy, held, or both.
+    const spent = [
+      busy.size > 0 ? "busy" : undefined,
+      heldHere.length > 0 ? "held by a human" : undefined,
+    ]
+      .filter((word) => word !== undefined)
+      .join(" or ");
+    lines.push(
+      `  free: ${free.length === 0 ? `none — every role this box raises is ${spent}` : free.join(", ")}`,
+    );
+  }
+  if (heldHere.length > 0) {
+    lines.push(`  held by a human: ${heldHere.join(", ")} — not the circuit's to raise (S5)`);
+  }
   return lines.join("\n");
 };
 
@@ -186,19 +265,20 @@ export const renderFreshness = (
 };
 
 /**
- * THE FRAME — the whole live view, in the order a watch is read: who is running, who
- * is parked, what the circuit is able to do, who is next, what the neighbours say,
- * and how old all of that is. `status` prints exactly this and then adds its static
+ * THE FRAME — the whole live view, in the order a watch is read: who is running, how
+ * much of the box that spends (D-4), who is parked, what the circuit is able to do, who
+ * is next, what the neighbours say, and how old all of that is. `status` prints exactly this and then adds its static
  * sections; `--watch` prints exactly this and nothing else. That is what makes "the
  * frame never differs from `status` by a line" a construction and not a promise.
  */
 export const renderFrame = (frame: OperatorFrame): string =>
   [
     renderStatus(frame.leases),
+    renderParallelism(frame.parallelism),
     renderHolds(frame.holds),
     renderCircuit(frame.circuit),
     renderQuota(frame.quota),
-    renderQueue(frame.queue, frame.queueNotes),
+    renderQueue(frame.queue, frame.queueNotes, frame.parked),
     renderInstances({
       digests: frame.digests,
       ...(frame.unreadableDigests === undefined ? {} : { unreadable: frame.unreadableDigests }),

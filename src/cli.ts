@@ -155,7 +155,7 @@ import {
   resolveWorker,
   roleLaunchability,
 } from "./orchestrator/launch.js";
-import { foldLeases, unclosedLeases } from "./orchestrator/lease.js";
+import { foldLeases, isLeaseAlive, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
 import {
@@ -2862,14 +2862,31 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
   const published = loadDigests(mailRoot);
   const checkout = dirname(mailRoot);
   const daemonPid = runningDaemon(pidFile);
+  // The SAME attempt ceiling the daemon judges by (`--max-attempts`), and the SAME
+  // mail (thread 023) — either one missing here would make the frame call a pair
+  // exhausted that the next tick raises without blinking.
+  const leases = foldLeases(
+    events,
+    now,
+    gatesFrom(argv).maxAttempts.value,
+    sessionsThatWrote(threads),
+  );
+  const heldViews = foldHolds(loadHolds(holds), now);
 
   return {
     now,
-    // The SAME attempt ceiling the daemon judges by (`--max-attempts`), and the SAME
-    // mail (thread 023) — either one missing here would make the frame call a pair
-    // exhausted that the next tick raises without blinking.
-    leases: foldLeases(events, now, gatesFrom(argv).maxAttempts.value, sessionsThatWrote(threads)),
-    holds: foldHolds(loadHolds(holds), now),
+    leases,
+    holds: heldViews,
+    // D-4: the capacity of the box and what it is spent on. `scope.roles` and not
+    // `roles` — the count must be what THIS run would raise (R13, the instance filter
+    // and the operator's flags), or the frame reports room that does not exist here.
+    parallelism: {
+      raisable: scope.roles,
+      live: leases.filter((view) => isLeaseAlive(view.state)),
+      held: heldRoles(heldViews),
+    },
+    // R27, from the SAME scan the queue above is built from — the map the tick plans by.
+    parked: parkedThreads(threads),
     circuit: {
       launchesEnabled: existsSync(enableFlag),
       ...(reboot === undefined ? {} : { reboot }),
@@ -5149,7 +5166,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // ordered by a statement nobody honoured looks exactly like a queue that did.
     for (const line of ignored) err(`agent-protocol: ${line}`);
     const candidates = orderCandidates(ranked);
-    for (const line of describeOrder(candidates)) err(`agent-protocol: ${line}`);
+    // R27: the threads frozen behind a person, read from the SAME scan the queue is
+    // built from. Every tick, like the priorities and for the same reason — the state
+    // lifts with a message, so a park read once at startup would outlive its answer.
+    // The QUEUE carries the mark too, not only the skip line below it: the two are read
+    // apart (a queue line promises a launch, a skip explains one that did not happen),
+    // and the operator's frame prints the queue without the stream around it (D-4).
+    const parked = parkedThreads(threads);
+    for (const line of describeOrder(candidates, parked)) err(`agent-protocol: ${line}`);
     // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.
     // A resident is never a candidate — it is hosted, not raised — so without this line
     // the daemon's silence about it is indistinguishable from an empty mailbox, and a
@@ -5185,10 +5209,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       deliveredSessions: sessionsThatWrote(threads),
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
-      // R27: the threads frozen behind a person, read from the SAME scan the queue is
-      // built from. Every tick, like the priorities and for the same reason — the state
-      // lifts with a message, so a park read once at startup would outlive its answer.
-      parked: parkedThreads(threads),
+      parked,
     });
 
     // EVERY CANDIDATE THAT WAS NOT RAISED IS NAMED, whatever the tick decided to do

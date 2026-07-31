@@ -17,9 +17,11 @@ import type { RankedCandidate } from "./priority.js";
 import {
   type CircuitState,
   type OperatorFrame,
+  type Parallelism,
   renderCircuit,
   renderFrame,
   renderFreshness,
+  renderParallelism,
   renderQueue,
   renderQuota,
 } from "./snapshot.js";
@@ -154,6 +156,7 @@ describe("renderFrame", () => {
     now: NOW,
     leases: [lease],
     holds: [hold],
+    parallelism: { raisable: ["dev-core", "curator"], live: [lease], held: ["curator"] },
     circuit: circuit({ daemonPid: 7, pidFilePresent: true }),
     queue: [{ role: "dev-core", thread: "019-operator-ux", priority: "normal" }],
     queueNotes: [],
@@ -164,7 +167,8 @@ describe("renderFrame", () => {
   it("is the five panels in the order a watch is read", () => {
     const lines = renderFrame(frame).split("\n");
     const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));
-    expect(at("dev-core")).toBeLessThan(at("held by john"));
+    expect(at("dev-core")).toBeLessThan(at("parallelism:"));
+    expect(at("parallelism:")).toBeLessThan(at("held by john"));
     expect(at("held by john")).toBeLessThan(at("circuit:"));
     expect(at("circuit:")).toBeLessThan(at("queue:"));
     expect(at("queue:")).toBeLessThan(at("instances:"));
@@ -173,6 +177,134 @@ describe("renderFrame", () => {
 
   it("says out loud that nobody has published, instead of showing an empty panel", () => {
     expect(renderFrame(frame)).toContain("no digests published");
+  });
+});
+
+/**
+ * D-4 (thread 023): the live count, its list, and what is left free. What is checked is
+ * the thing the reader used to have to derive by hand — how much of the box is spent —
+ * and the zero case, which is the state a stalled circuit is actually in.
+ */
+describe("renderParallelism — the live count and the room left", () => {
+  const running = (role: string, thread: string): LeaseView => ({
+    role,
+    thread,
+    state: "running",
+    attempt: 1,
+    ceiling: 3,
+    deadline: "2026-07-27T18:18:32Z",
+    waitDeadline: null,
+    reason: null,
+    lastEvent: "lease-acquired",
+    overdue: false,
+    exhausted: false,
+    launchable: false,
+  });
+  const p = (over: Partial<Parallelism> = {}): Parallelism => ({
+    raisable: ["dev-core", "curator", "dev-speech"],
+    live: [],
+    held: [],
+    ...over,
+  });
+
+  it("counts the LIVE roles against the capacity of the box", () => {
+    const text = renderParallelism(
+      p({ live: [running("dev-core", "023-daemon-parallelism"), running("curator", "026-merge")] }),
+    );
+    expect(text).toContain("parallelism: 2 of 3 role(s) live");
+  });
+
+  it("lists the live pairs with their state, not just a number", () => {
+    const text = renderParallelism(p({ live: [running("dev-core", "023-daemon-parallelism")] }));
+    expect(text).toContain("▶ dev-core×023-daemon-parallelism — running");
+  });
+
+  it("names the roles that are FREE — 'room for whom' is the question actually asked", () => {
+    const text = renderParallelism(p({ live: [running("dev-core", "023-daemon-parallelism")] }));
+    expect(text).toContain("free: curator, dev-speech");
+  });
+
+  it("says saturation out loud instead of printing an empty list", () => {
+    const text = renderParallelism(
+      p({
+        raisable: ["dev-core"],
+        live: [running("dev-core", "023-daemon-parallelism")],
+      }),
+    );
+    expect(text).toContain("free: none — every role this box raises is busy");
+  });
+
+  it("nobody live is a SPOKEN state — that is what a stalled circuit looks like", () => {
+    const text = renderParallelism(p());
+    expect(text).toContain("parallelism: nobody is live — 3 role(s) this box raises, all free");
+  });
+
+  it("a role held by a human is capacity that is not the circuit's, and is said apart", () => {
+    const text = renderParallelism(
+      p({ live: [running("dev-core", "023-daemon-parallelism")], held: ["curator"] }),
+    );
+    expect(text).toContain("held by a human: curator");
+    // ...and it is NOT counted as room the circuit can use.
+    expect(text).toContain("free: dev-speech");
+  });
+
+  // The combination the two branches used to disagree on (reviewer, PR #100): a hold is
+  // the ordinary reason for live=0 on that role — S5 forbids the circuit to raise it —
+  // so this is the frame an operator meets, and it must not call the held role free.
+  it("nobody live WITH a hold does not claim 'all free' — the hold is capacity spent", () => {
+    const text = renderParallelism(p({ held: ["curator"] }));
+    expect(text).not.toContain("all free");
+    expect(text).toContain(
+      "parallelism: nobody is live — 3 role(s) this box raises, 2 free, 1 held",
+    );
+    expect(text).toContain("free: dev-core, dev-speech");
+    expect(text).toContain("held by a human: curator");
+  });
+
+  it("nobody live and every role held is saturation by the human, and says so", () => {
+    const text = renderParallelism(p({ raisable: ["dev-core"], held: ["dev-core"] }));
+    expect(text).toContain("0 free, 1 held");
+    expect(text).toContain("free: none — every role this box raises is held by a human");
+  });
+
+  it("busy AND held together name both reasons the room is gone", () => {
+    const text = renderParallelism(
+      p({
+        raisable: ["dev-core", "curator"],
+        live: [running("dev-core", "023-daemon-parallelism")],
+        held: ["curator"],
+      }),
+    );
+    expect(text).toContain("free: none — every role this box raises is busy or held by a human");
+  });
+});
+
+/**
+ * D-4 (thread 023): the freeze behind a person (R27) used to live only on the daemon's
+ * stream. A queue line promises a launch; the mark is what keeps that promise honest for
+ * a reader who never sees the stream.
+ */
+describe("renderQueue — the parked candidate is marked where the queue is read", () => {
+  const queue: RankedCandidate[] = [
+    { role: "curator", thread: "030-consult-lane", priority: "normal" },
+    { role: "dev-core", thread: "023-daemon-parallelism", priority: "normal" },
+  ];
+
+  it("names WHOSE decision the head of the queue is frozen behind", () => {
+    const text = renderQueue(queue, [], new Map([["030-consult-lane", "john"]]));
+    expect(text).toContain("PARKED behind a decision of john");
+    expect(text).toContain("R27");
+  });
+
+  it("marks only the parked thread, and leaves the rest of the queue alone", () => {
+    const text = renderQueue(queue, [], new Map([["030-consult-lane", "john"]]));
+    const marked = text.split("\n").filter((line) => line.includes("PARKED"));
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toContain("030-consult-lane");
+  });
+
+  it("without a park nothing is added — the ordinary queue reads as before", () => {
+    expect(renderQueue(queue)).not.toContain("PARKED");
   });
 });
 
@@ -208,6 +340,7 @@ describe("renderQuota — the shelf in the operator's frame", () => {
       now: NOW,
       leases: [],
       holds: [],
+      parallelism: { raisable: [], live: [], held: [] },
       circuit: circuit({ pidFilePresent: false }),
       queue: [],
       queueNotes: [],
