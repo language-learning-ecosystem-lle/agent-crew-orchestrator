@@ -211,9 +211,24 @@ export const rankCandidates = (input: {
  * reason every skip says its reason out loud (curator's requirement 1 of the 2026-07-26
  * defect report).
  */
-export const describeOrder = (ordered: readonly RankedCandidate[]): string[] =>
+export const describeOrder = (
+  ordered: readonly RankedCandidate[],
+  /**
+   * The threads FROZEN BEHIND A PERSON (R27), thread id → whom. A parked candidate keeps
+   * its place in the queue — it is a real candidate and lifts by itself with the next
+   * substantive message — but a line that only said "queue 1/4" would promise a launch
+   * that no tick is going to make, and the operator's frame (D-4) is exactly where that
+   * promise is read as a fact.
+   */
+  parked: ReadonlyMap<string, string> = new Map(),
+): string[] =>
   ordered.map((candidate, at) => {
     const waited =
       candidate.since === undefined ? "no dated handoff" : `waiting since ${candidate.since}`;
-    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}`;
+    const person = parked.get(candidate.thread);
+    const freeze =
+      person === undefined
+        ? ""
+        : ` · ⏸ PARKED behind a decision of ${person} (R27) — not raised until the next substantive message`;
+    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${freeze}`;
   });

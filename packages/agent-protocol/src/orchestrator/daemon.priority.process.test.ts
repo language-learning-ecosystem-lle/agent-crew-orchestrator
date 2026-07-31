@@ -80,10 +80,11 @@ const handoff = (options: {
   readonly from: string;
   readonly date: string;
   readonly priority?: string;
+  readonly parkedOn?: string;
 }): string =>
   `---\nfrom: ${options.from}\ndate: ${options.date}\nexpects: answer\nwaiting-on: dev-core\n${
     options.priority === undefined ? "" : `priority: ${options.priority}\n`
-  }---\n\nThe body.\n`;
+  }${options.parkedOn === undefined ? "" : `parked-on: ${options.parkedOn}\n`}---\n\nThe body.\n`;
 
 type ThreadSpec = { readonly id: string; readonly message: string };
 
@@ -230,5 +231,54 @@ describe("the daemon raises the thread the queue puts first (R5)", () => {
 
     expect(launched(repo)).toBe("dev-core×016-ordinary");
     expect(result.out).toContain("queue 2/2: dev-core×003-parked — priority low");
+  });
+});
+
+/**
+ * D-4 (thread 023) — THE OPERATOR'S FRAME, through the command rather than the renderer.
+ *
+ * The unit tests own the words; what only a process can show is the WIRING in `cli.ts`:
+ * that the capacity is counted off the roles THIS box raises, that the live set is the
+ * folded journal and not the whole of it, and that the freeze behind a person is read
+ * from the same mail the queue is. Every one of those three is a line that would render
+ * perfectly while reporting about the wrong thing.
+ */
+describe("`status` — the live count and the freeze, where an operator reads them (D-4)", () => {
+  const status = (repo: string): { code: number; out: string } => {
+    const result = spawnSync(
+      TSX,
+      [CLI, "orchestrator", "status", "--ref", "HEAD", "--no-fetch", "--repo", repo],
+      { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
+    );
+    return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
+  };
+
+  it("an idle box says so with a number — 'nobody is live' out of the config, not out of silence", () => {
+    const repo = contour([
+      { id: "016-ordinary", message: handoff({ from: "curator", date: "2026-07-25T10:00:00Z" }) },
+    ]);
+
+    const result = status(repo);
+
+    // One launchable role in this contour: `curator` is `claude.ai`, `john` is a human.
+    expect(result.out).toContain(
+      "parallelism: nobody is live — 1 role(s) this box raises, all free",
+    );
+  });
+
+  it("a thread frozen behind a person is marked IN THE QUEUE, not only on the daemon's stream", () => {
+    const repo = contour([
+      {
+        id: "030-consult",
+        message: handoff({ from: "curator", date: "2026-07-25T10:00:00Z", parkedOn: "john" }),
+      },
+    ]);
+
+    const result = status(repo);
+
+    // The pair keeps its place — it IS a candidate, and it lifts by itself with the next
+    // substantive message. What changes is that the line no longer promises a launch.
+    expect(result.out).toContain("queue 1/1: dev-core×030-consult");
+    expect(result.out).toContain("PARKED behind a decision of john");
   });
 });
