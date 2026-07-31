@@ -2218,6 +2218,36 @@ while `down` is "stop the watch". An `up` on top of a living daemon is REFUSED: 
 one journal would take the same pair twice, and the second banner would look like a healthy
 start. `up` accepts every flag `daemon` does — it is the same daemon with its start-up done.
 
+**`orchestrator restart`.** Picking up fresh code as ONE gesture, because until now it was a
+hand-run pipeline: `down`, then waiting out the live sessions (unpredictably long — once it
+ended in a force stop), then `git pull --ff-only`, then `pnpm install`, then `up` with the
+stopped daemon's flags reconstructed from memory. Four runs of that in two days, two with a
+stumble. `restart` is a COMPOSITION of the three commands, whose semantics it leaves untouched:
+the stop (`down`, or `stop --mode force` with `--thread`/`--reason` — the trace still goes to
+the thread BEFORE the flag), the wait, `--pull` when asked, then `up`.
+
+Three things it decides, and each is a promise:
+
+- **The new daemon is raised with the flags of the one that was stopped**, read from
+  `daemon.pid.args` — written by `up` beside the pid. Flags retyped from memory are exactly the
+  stumble the command removes, and one silently dropped produces a circuit that looks restarted
+  and behaves differently. A daemon raised before this existed leaves nothing to read: then the
+  flags typed here are used and the SOURCE IS PRINTED — "the same flags" and "the flags you just
+  typed" are different promises. Changing the settings is `down` plus `up <flags>`, deliberately
+  not this command.
+- **This process does the waiting** (the design fork the statement left open — process or
+  successor daemon). A successor would have to be raised while the predecessor is still draining,
+  i.e. two daemons on one journal, which is the state `up` refuses at its door. It prints its
+  phases and says once a minute that it is still waiting, because a silent wait reads as a hang.
+- **A refusal anywhere raises nothing.** Wait ran out, `pull` failed, `install` failed — the
+  circuit stays down, the reason goes to the terminal AND to `daemon.log` (a restart that refused
+  at 04:00 has to be readable at 09:00), and `up` by hand is one word away. Raising the OLD code
+  instead would answer a question nobody asked while looking exactly like success.
+
+`--mode force` also clears both flags on the way up, so `rm` on a flag file leaves the operator's
+cycle; `up --clear-force` is passed by the same command that put the force there a minute ago,
+which is why that is not the silent clearing `up` refuses.
+
 **`hold <role>` / `resume <role>`.** The same action as the strict `hold --mode take/release`
 with the two answers the operator was retyping filled in: the ref from the config, `--by` from
 `$USER` (checked against the roles of the config, like the strict form). They ACT rather than
