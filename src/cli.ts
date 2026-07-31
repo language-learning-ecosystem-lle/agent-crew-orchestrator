@@ -97,6 +97,18 @@ import {
   resolveThreadDirective,
 } from "./orchestrator/directive.js";
 import {
+  agentLiveCheck,
+  type DoctorOutcome,
+  type DoctorSkipped,
+  doctorPassed,
+  doctorSummary,
+  gitChecks,
+  instanceCheck,
+  machineConfigCheck,
+  mailPresenceCheck,
+  repositoryConfigCheck,
+} from "./orchestrator/doctor.js";
+import {
   foldHolds,
   HOLD_TTL_SECONDS,
   type HoldRecord,
@@ -605,10 +617,19 @@ const mailLockFor = (input: {
   });
 };
 
-const configCheck = (argv: readonly string[]): void => {
-  const loaded = configFrom(argv, undefined);
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
-
+/**
+ * EVERYTHING THAT CAN BE WRONG WITH THE REPOSITORY CONFIG, as a list of sentences.
+ *
+ * It is a function rather than the body of `config check` because `doctor` asks the
+ * same question as one row of its checklist (thread 019, the operator tail): a box is
+ * ready only if the config it is going to obey holds together. Copying the judgement
+ * would mean a rule added to one door and not the other — which is the same drift the
+ * package refuses everywhere else.
+ */
+const configIssues = (
+  loaded: ReturnType<typeof loadProtocolConfig>,
+  repo: string,
+): readonly string[] => {
   // The declared instructions are checked AT THE SAME ref as the config: checking
   // for the file on disk would mean looking at a different version of the tree.
   const missing: string[] = [];
@@ -638,7 +659,13 @@ const configCheck = (argv: readonly string[]): void => {
     isKnownRole: (id) => loaded.registry.isKnown(id),
   });
 
-  const issues = [...missing, ...ownership];
+  return [...missing, ...ownership];
+};
+
+const configCheck = (argv: readonly string[]): void => {
+  const loaded = configFrom(argv, undefined);
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const issues = configIssues(loaded, repo);
   if (issues.length === 0) {
     const instances = loaded.config.instances ?? [];
     const topology =
@@ -3097,6 +3124,208 @@ const launchScopeFrom = (
     ...(select === undefined ? {} : { select }),
     ...(exclude === undefined ? {} : { exclude }),
   });
+};
+
+/**
+ * THE HEADLESS PROBE (`doctor`): the agent, spawned the way the circuit spawns it,
+ * answering a throwaway prompt. The one fact about a box that no file can carry.
+ *
+ * The prompt is the cheapest thing that still exercises the whole path — credentials,
+ * network, model access — and its ANSWER IS DISCARDED: what doctor takes from the run
+ * is that there was one. The tool's own words are carried out on failure, unedited: a
+ * dead token, a model this account may not use and a proxy in the way all fail here,
+ * and only the tool can tell them apart.
+ */
+const probeHeadless = (input: {
+  readonly exec: string;
+  readonly env: NodeJS.ProcessEnv;
+  readonly timeoutMs: number;
+}): DoctorOutcome => {
+  const started = Date.now();
+  try {
+    execFileSync(input.exec, ["-p", "Answer with the single word: ok"], {
+      encoding: "utf8",
+      env: input.env,
+      timeout: input.timeoutMs,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { ok: true, detail: `answered in ${((Date.now() - started) / 1000).toFixed(1)}s` };
+  } catch (error) {
+    const failure = error as { stderr?: string; stdout?: string; signal?: string };
+    if (failure.signal === "SIGTERM") {
+      return {
+        ok: false,
+        detail: `no answer within ${Math.round(input.timeoutMs / 1000)}s — the circuit would raise sessions that die on their first call`,
+      };
+    }
+    const said = `${failure.stderr ?? ""}${failure.stdout ?? ""}`.trim();
+    return {
+      ok: false,
+      detail: said === "" ? (error as Error).message : (said.split("\n")[0] ?? ""),
+    };
+  }
+};
+
+/** A git probe whose failure is an ANSWER: the remote's own words, first line kept. */
+const probeGit = (args: readonly string[]): DoctorOutcome => {
+  try {
+    const said = execFileSync("git", args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    return { ok: true, detail: said === "" ? "ok" : (said.split("\n")[0] as string) };
+  } catch (error) {
+    const failure = error as { stderr?: string };
+    const said = (failure.stderr ?? (error as Error).message).trim();
+    return {
+      ok: false,
+      detail:
+        said
+          .split("\n")
+          .filter((line) => line.trim() !== "")
+          .slice(0, 2)
+          .join(" · ") || (error as Error).message,
+    };
+  }
+};
+
+/**
+ * `doctor` — IS THIS BOX COMMISSIONED, in one command (thread 019, the operator tail).
+ *
+ * The reasoning for the command and for what is a cross and what is a dot lives in
+ * `orchestrator/doctor.ts`; here are the probes. Two things are worth saying at the
+ * place where the effects are:
+ *
+ *  - IT REACHES THE NETWORK AND SPENDS AN AGENT CALL, unlike everything else in this
+ *    CLI that looks like it. That is the point: the checks it makes are exactly the
+ *    ones that cannot be inferred from a file, and they are asked by a human twice in
+ *    the life of a machine. `--offline` leaves them unasked and SAYS SO in the rows,
+ *    rather than passing them.
+ *  - THE WRITE ACCESS IS PROBED AGAINST A REF THAT DOES NOT EXIST, with `--dry-run`.
+ *    A dry-run push of an up-to-date branch is answered locally ("Everything
+ *    up-to-date") and proves nothing about credentials; a ref the remote has never
+ *    seen forces the negotiation that a read-only box fails. Nothing is created —
+ *    that is what `--dry-run` means.
+ */
+const doctor = (argv: readonly string[]): void => {
+  const withRef = withOperatorRef(argv);
+  const loaded = configFrom(withRef, undefined);
+  // TWO REPOSITORIES, AND THEY ARE DIFFERENT QUESTIONS (R26, the split `orchestrator/home.ts`
+  // states). The config was read at a ref OF THE TREE THIS WAS CALLED FROM (`configFrom` →
+  // `repoOf`), so everything judged AT THAT REF — the declared instruction files — has to be
+  // looked for in the same tree, or `doctor --ref HEAD` from a role's worktree would judge the
+  // HEAD of one tree by the contents of another. Everything that is a fact ABOUT THE BOX — the
+  // remote it pushes through, the mail checkout, the state — hangs off the main checkout
+  // (`homeOf`), whatever directory the operator typed the command in.
+  const configRepo = flag(withRef, "--repo") ?? repoOf(process.cwd());
+  const repo = flag(withRef, "--repo") ?? homeOf(process.cwd());
+  const local = localFrom(withRef);
+  const offline = withRef.includes("--offline");
+  const skipped: DoctorSkipped = { skipped: "--offline" };
+
+  const checks: PreflightCheck[] = [
+    repositoryConfigCheck({
+      path: loaded.path,
+      ref: loaded.ref,
+      roles: loaded.registry.ids().length,
+      issues: configIssues(loaded, configRepo),
+    }),
+    machineConfigCheck({
+      path: local.path,
+      found: local.found,
+      summary: describeLocalConfig(local),
+    }),
+    instanceCheck({
+      ...(local.config.instance === undefined ? {} : { instance: local.config.instance }),
+      declared: (loaded.config.instances ?? []).map((instance) => instance.id),
+      ...(local.config.instance === undefined
+        ? {}
+        : {
+            roles: rolesOfInstance({
+              ...(loaded.config.instances === undefined
+                ? {}
+                : { instances: loaded.config.instances }),
+              instance: local.config.instance,
+            }),
+          }),
+      localConfigPath: local.path,
+    }),
+  ];
+
+  // The agent: WHERE it is (the same verdict preflight makes, so the two commands
+  // cannot disagree) and then WHETHER IT ANSWERS, which only doctor asks.
+  const env = childEnvFrom(withRef);
+  const roles = launchableRoles(withRef);
+  for (const target of execTargets(withRef, local, roles)) {
+    // The binary is looked up IN THE CHILD'S ENVIRONMENT, for preflight's reason: the
+    // daemon's PATH and the session's PATH are different things.
+    let found: string | null = null;
+    try {
+      found = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
+        encoding: "utf8",
+        env: { ...env, AGENT_PROTOCOL_EXEC: target.exec.value },
+      }).trim();
+      if (found === "") found = null;
+    } catch {
+      found = null;
+    }
+    checks.push(
+      agentBinaryVerdict({
+        worker: target.worker,
+        exec: target.exec.value,
+        source: target.exec.source,
+        resolved: found,
+      }),
+    );
+    checks.push(
+      agentLiveCheck({
+        worker: target.worker,
+        outcome:
+          offline || found === null
+            ? offline
+              ? skipped
+              : { skipped: "the binary was not found — there is nothing to run" }
+            : probeHeadless({
+                exec: found,
+                env,
+                timeoutMs: positiveInt(withRef, "--probe-timeout", 120) * 1000,
+              }),
+      }),
+    );
+  }
+
+  // Git: the remote the circuit reads and writes through. The write probe names the
+  // instance, so two boxes probing the same remote are told apart in its logs.
+  const origin = gitAsk(["-C", repo, "remote", "get-url", "origin"]);
+  const probeRef = `refs/heads/agent-protocol-doctor-probe/${local.config.instance ?? "unnamed"}`;
+  checks.push(
+    ...gitChecks({
+      origin: origin === undefined || origin === "" ? null : origin,
+      fetch: offline ? skipped : probeGit(["-C", repo, "fetch", "--dry-run", "origin"]),
+      push: offline
+        ? skipped
+        : probeGit(["-C", repo, "push", "--dry-run", "origin", `HEAD:${probeRef}`]),
+    }),
+  );
+
+  // The mail: it is there, and it is fresh — the second judgement is the daemon's own
+  // (`mailCheckoutVerdict`), passed through rather than restated.
+  const section = loaded.config.orchestrator;
+  if (section === undefined) {
+    checks.push({
+      name: "mail: checkout",
+      status: "fail",
+      detail: "there is no 'orchestrator' section — there is no checkout to probe",
+    });
+  } else {
+    const path = join(repo, section.mailCheckout);
+    checks.push(mailPresenceCheck({ path, present: existsSync(path) }));
+    if (existsSync(path)) checks.push(probeMailCheckout(withRef));
+  }
+
+  out(renderPreflight(checks));
+  out(doctorSummary(checks));
+  if (!doctorPassed(checks)) fail("doctor: this box is not ready — the crosses above say why", 1);
 };
 
 /** The `orchestrator preflight` command: show everything and return a code by the outcome. */
@@ -7231,6 +7460,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
   }
   if (command === "config" && subcommand === "check") {
     configCheck(argv.slice(2));
+  } else if (command === "doctor") {
+    doctor(argv.slice(1));
   } else if (command === "schema" && subcommand === "migrate") {
     schemaMigrate(argv.slice(2));
   } else if (command === "merge-gate") {

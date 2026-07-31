@@ -616,6 +616,14 @@ binary name.
 
 ```
 agent-protocol config check --ref <ref> [--repo <p>]                       # the config is intact
+agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
+                            # IS THIS BOX COMMISSIONED (thread 019): the checklist of a machine that is
+                            # supposed to raise roles unattended — both configs, which instance it is, the
+                            # agent binary AND A LIVE HEADLESS RUN of it, git (origin, fetch, write access),
+                            # the mail checkout and its freshness; then one line: green, or what failed
+                            # it REACHES THE NETWORK and SPENDS ONE AGENT CALL — those facts are in no file
+                            # --offline leaves them unasked and SAYS so in the rows, never passes them
+                            # --ref may be left out (the operator's set): `orchestrator.ref` of the tree
 agent-protocol roles list   --ref <ref>                                    # the list of roles
 agent-protocol schema migrate [--repo <p>] [--root <comms>] [--to <n>] [--write]   # protocol version → version
                                                                            # (no --ref: it plans against the tree it rewrites)
@@ -883,6 +891,73 @@ what they race over is the remote, and the push retry already settles that.
 a file write would cut its history down to a single file — a legacy thread is
 appended to by hand as a section in `_thread.md` until it is migrated (right now
 that is only 009/010).
+
+### `doctor` — is this box commissioned (thread 019, the operator tail)
+
+```
+agent-protocol doctor [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
+```
+
+The measurement behind the command: bringing one VPS into service took an evening and
+about a dozen hand steps typed out of a chat. Each of them was a yes/no question — is
+the binary there, does the headless token still work, can this box push, has the mail
+checkout ever been fetched — and none of them was asked by anything but a human's
+memory. `preflight` made that argument for a RUN; this is the same argument for a BOX.
+
+It is not `preflight` under another name, and the difference is what each may do.
+Preflight is on the way into every launch, so everything it asks has to be cheap,
+local and safe on every tick. Doctor is asked by a human twice in the life of a
+machine — the day it is set up, and the day something stopped working — so it may
+reach the network, spend one agent call, and ask the remote for permission to write.
+
+```
+✓ config: repository: 'agent-protocol.json' at origin/main — 6 roles, holds together
+✓ config: machine: ~/.config/agent-protocol/local.json — claude-code → …/bin/claude; secrets ← …
+✓ config: instance: 'main' — raises curator, dev-core, dev-speech
+✓ agent: binary (claude-code): …/bin/claude (machine)
+✓ agent: headless run (claude-code): answered in 3.7s
+· git: origin: git@github.com:org/repo.git
+✓ git: fetch: ok
+✓ git: write access (dry-run push): ok
+✓ mail: checkout: …/.worktrees/comms
+✓ mail: checkout freshness: on 'comms', matches origin
+doctor: green — 9 checks passed, 1 facts, nothing failed
+```
+
+The marks are preflight's, deliberately (R12): a tick is a comparison that MATCHED, a
+dot is a fact nobody promised anything about, a cross is what stops the box being
+ready. **What is a cross and what is a dot** is the whole judgement of the module: a
+cross is a state in which the circuit of this project would do something wrong or
+nothing at all on this box (no binary, a dead token, a mail checkout the daemon
+refuses to read); a dot is a state that is merely not the commissioned one — a laptop
+that raises nobody is a legitimate machine, and telling its operator that their box is
+broken teaches them to read past the crosses. Hence the split curator named in the
+statement: an instance name the repository does not declare is **a bench**, not an
+error, while a box with no name at all while instances ARE declared is a cross — the
+daemon there raises nobody and says so only when somebody starts it.
+
+Three probes are worth the words they cost:
+
+- **the headless run** is the fact no file can carry. Path and version are readable
+  from disk; whether the credentials in this operator's home directory are still good
+  for a `-p` run is readable from nothing, and it is the failure that looks most like
+  success from outside — the daemon raises sessions, each dies on its first call, the
+  journal fills with attempts. The answer is discarded; what doctor takes from the run
+  is that there was one, and on a failure the tool's own words, unedited;
+- **write access** is probed with a `--dry-run` push of a ref the remote has never
+  seen. A dry-run push of an up-to-date branch is answered locally ("Everything
+  up-to-date") and proves nothing about credentials. Nothing is created — that is what
+  `--dry-run` means;
+- **mail freshness** is not restated here: the row is `mailCheckoutVerdict`, the
+  daemon's own judgement, passed through. A green doctor beside a daemon that refuses
+  to read its mail would be worse than no doctor.
+
+`--offline` leaves the three network probes unasked and says so in the rows (`· not
+asked — --offline`). It never passes them: a flag that turned rows green would report
+a live token on a box nobody asked.
+
+`--ref` may be left out — doctor joins the operator's set (`orchestrator.ref` of the
+working tree, printed when it is used).
 
 ### `merge-gate` — the guards of a merge that are facts (thread 026)
 
