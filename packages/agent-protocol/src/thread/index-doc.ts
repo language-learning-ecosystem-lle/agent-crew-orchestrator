@@ -12,7 +12,7 @@
  * one to one. Hence "is there mail" is computed from the THREADS (`waitingOnOf`),
  * and INDEX stays a display for humans: its drift costs cosmetics.
  */
-import { parkedOnOf, type Thread, updatedOf, waitingOnOf } from "./thread.js";
+import { mergedPrs, parkedOnOf, type Thread, updatedOf, waitingOnOf } from "./thread.js";
 
 const EMPTY = "—";
 
@@ -54,9 +54,12 @@ export const threadsWaitingOn = (threads: readonly Thread[], role: string): stri
  * reader (`planTick`).
  */
 export const parkedThreads = (threads: readonly Thread[]): ReadonlyMap<string, string> => {
+  // The merges of the WHOLE mail, computed once: a park on `pr:N` is lifted by an announcement
+  // that lands in N's own thread, which is almost never this one (`mergedPrs`, thread 023).
+  const merged = mergedPrs(threads);
   const parked = new Map<string, string>();
   for (const thread of threads) {
-    const on = parkedOnOf(thread);
+    const on = parkedOnOf(thread, merged);
     if (on !== undefined) parked.set(thread.id, on);
   }
   return parked;

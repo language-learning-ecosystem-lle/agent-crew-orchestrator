@@ -353,7 +353,7 @@ import {
   type TaskThreadInput,
   tasksFrom,
 } from "./thread/tasks.js";
-import { parkingOf, renderThread, waitingOnOf } from "./thread/thread.js";
+import { mergedPrs, parkingOf, renderThread, waitingOnOf } from "./thread/thread.js";
 import {
   messageTimestamp,
   nextMessageTimestamp,
@@ -2283,8 +2283,11 @@ const runNotify = async (input: {
   // THE THIRD QUESTION, and the one with no threshold at all (thread 023): "what is frozen
   // behind a person, and what is being asked". The age answers neither — a park is a
   // declaration that the turn CANNOT move, so waiting it out only postpones the call.
+  // The merges of the whole mail, once: the notifier announces a merge into the PR's own
+  // thread, so a park on `pr:N` is lifted from OUTSIDE the parked thread (thread 023).
+  const merged = mergedPrs(parsed);
   const parkings = parsed.flatMap((thread) => {
-    const parking = parkingOf(thread);
+    const parking = parkingOf(thread, merged);
     return parking === undefined ? [] : [{ id: thread.id, parking }];
   });
   const parked = parkings.flatMap(({ id, parking }) =>

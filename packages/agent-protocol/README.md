@@ -693,6 +693,10 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # notifier's message rather than on a human relaying the fact
                             # --merged-pr <n>: this message announces that PR as landed — every thread parked
                             # on `pr:<n>` lifts on it, though the announcement is `expects: none`
+                            # ANYWHERE IN THE MAIL (thread 023): the notifier writes into the thread named
+                            # in the PR's description, and the thread parked on that PR is another one —
+                            # so a park is judged against the merges of the WHOLE mail (`mergedPrs`), not
+                            # against the feed it happens to lie in
 agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                             # blocks until the thread waits on the role again; needs a wait declared
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
