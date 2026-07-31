@@ -294,6 +294,101 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(result.out).not.toContain("review=FAILURE");
   });
 
+  /**
+   * THE RECORDED ANSWER of `gh pr view 74 --json reviews,statusCheckRollup` at head
+   * `042a116` (measured 2026-07-31T06:05Z): a second round of review on ONE head, ending
+   * in `approve`, beside the rerun of the `review` check that D1 is about. The live PR is
+   * the object curator asked D4 to be shown on; the payload is recorded so the acceptance
+   * does not hang on it moving.
+   */
+  it("judges the LAST verdict of a reviewer — the recorded #74 with two rounds on one head", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable({
+          number: 74,
+          reviews: [
+            {
+              state: "CHANGES_REQUESTED",
+              commit: { oid: HEAD },
+              author: { login: "github-actions" },
+              submittedAt: "2026-07-31T03:11:30Z",
+            },
+            {
+              state: "APPROVED",
+              commit: { oid: HEAD },
+              author: { login: "github-actions" },
+              submittedAt: "2026-07-31T03:33:07Z",
+            },
+          ],
+          statusCheckRollup: [
+            {
+              name: "review",
+              status: "COMPLETED",
+              conclusion: "FAILURE",
+              completedAt: "2026-07-31T02:52:13Z",
+            },
+            {
+              name: "checks",
+              status: "COMPLETED",
+              conclusion: "SUCCESS",
+              completedAt: "2026-07-31T02:53:02Z",
+            },
+            {
+              name: "review",
+              status: "COMPLETED",
+              conclusion: "SUCCESS",
+              completedAt: "2026-07-31T03:33:11Z",
+            },
+            {
+              name: "pronunciation",
+              status: "COMPLETED",
+              conclusion: "SUCCESS",
+              completedAt: "2026-07-31T02:46:03Z",
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("ok   guard 1");
+    expect(result.out).toContain("ok   guard 2");
+    expect(result.out).not.toContain("a new round, not a merge");
+  });
+
+  /** The same head read the other way round: D4 must not open the door it was closing. */
+  it("refuses the recorded #74 shape when the later verdict is the changes-requested", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable({
+          number: 74,
+          reviews: [
+            {
+              state: "APPROVED",
+              commit: { oid: HEAD },
+              author: { login: "github-actions" },
+              submittedAt: "2026-07-31T03:11:30Z",
+            },
+            {
+              state: "CHANGES_REQUESTED",
+              commit: { oid: HEAD },
+              author: { login: "github-actions" },
+              submittedAt: "2026-07-31T03:33:07Z",
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP guard 1");
+    expect(result.out).toContain("a new round, not a merge");
+  });
+
   /** The same recorded head, with the tree GitHub actually refused to merge (D2). */
   it("refuses a conflicting tree with every guard holding, and says whose refusal it is", () => {
     const repo = repoWithConfig();
