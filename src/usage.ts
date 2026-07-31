@@ -42,11 +42,11 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # guard 1 judges the LAST verdict of each reviewer on that head, by
                               # 'submittedAt': a second round ending in approve is an approve, and an
                               # approve overtaken by a later changes-requested still STOPS
-                              # the ANCHOR of a verdict is read from 'latestReviews', where an approve
-                              # submitted with no commit (a 'workflow_dispatch' run of the review) is
-                              # empty honestly — 'reviews[].commit' fills it with the CURRENT head, so
-                              # such an approve would follow the branch forever; it STOPS, and says so
-                              # in its own words: what is missing is a run on the 'pull_request' event
+                              # a verdict OLDER THAN THE HEAD COMMIT is not an answer about it: a
+                              # review submitted with no commit of its own (a 'workflow_dispatch' run
+                              # of the review) is shown against the CURRENT head, so such an approve
+                              # would follow the branch forever; it STOPS, and says so in its own
+                              # words: what is missing is a run on the 'pull_request' event
                               # 'mergeable' is read too and printed BESIDE the guards, not as a sixth:
                               # the door refuses what GitHub itself would refuse, UNKNOWN included
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
