@@ -14,18 +14,37 @@
  * construction rather than a promise — and it is why the resident waits had to move
  * INTO the frame before this file could exist (2.1).
  *
- * READ-ONLY BY CONSTRUCTION, AND THE INPUT IS ALREADY CLOSED. T-1 has five keys and all
- * five read; the mutating three (`h`/`s`/`u`) belong to T-2 together with their
- * second-press confirmation. The bracketed-paste guard is nevertheless written HERE,
- * where there is nothing to execute: this thread exists because a watch was killed by
- * an accidental paste, and T-2 must pour mutating keys into an input that is ALREADY
- * closed rather than reopen that question beside `s` and `u`.
+ * THE THREE MUTATING KEYS (T-2) POUR INTO AN INPUT THAT WAS ALREADY CLOSED. The
+ * bracketed-paste guard below was written for T-1, where there was nothing to execute,
+ * precisely so that `h`/`s`/`u` would not reopen that question beside themselves: a
+ * pasted block containing an `s` reaches no reducer, and that is a property of the
+ * decoder rather than of a check somebody remembered to add here.
+ *
+ * WHAT THE KEYS DO IS NOT DONE HERE, AND NOT IN-PROCESS EITHER. A key decides ONE thing:
+ * which existing operator command it is short for (`TuiAction` → `commandOf`). The shell
+ * runs that command as a CHILD of this CLI and echoes it into the status line, so the
+ * TUI owns no second implementation of parking or of the daemon's door — the same
+ * refusals (a role the config does not know, a force flag on the floor, a daemon already
+ * up) come back in the same words, and "every action performed is printed as the command
+ * in the status line" (the acceptance fact of T-2) is what the operator can retype.
+ *
+ * THE CONFIRMATION IS ASYMMETRIC ON PURPOSE (§4 of the statement of work): `s` and `u`
+ * take a second press, `h` does not. A key is cheaper than a typed command, and the two
+ * that spend money — stopping the circuit and raising it — must not be one twitch away;
+ * a hold is visible in one command and undone in one word.
  */
+import { USAGE } from "../usage.js";
+import { parseUsage } from "./argv.js";
+import type { HoldView } from "./hold.js";
 import { type OperatorFrame, renderFrame } from "./snapshot.js";
 import { renderLeaseLine } from "./status.js";
 
-/** The five reading keys of T-1 — the whole vocabulary of the observer. */
-export type TuiKey = "up" | "down" | "tab" | "log" | "refresh" | "quit";
+/**
+ * The eight keys of the observer: five that read (T-1) and three that act (T-2).
+ * `park`/`stop`/`raise` are named by what they mean rather than by the letter typed —
+ * the letters live in `typedKeys` and nowhere else.
+ */
+export type TuiKey = "up" | "down" | "tab" | "log" | "refresh" | "quit" | "park" | "stop" | "raise";
 
 /** Which half of the session's transcript the bottom panel is showing. */
 export type TranscriptPanel = "log" | "supervisor";
@@ -36,54 +55,243 @@ export type TuiState = {
   readonly panel: TranscriptPanel;
   /** The `l` overlay is up, covering the three panels. */
   readonly overlay: boolean;
+  /**
+   * The key that asked for a confirmation and is waiting for its second press. ANY other
+   * key clears it — a confirmation that survives an unrelated keystroke is a trap, and
+   * the operator who pressed `s` then thought better of it must not have to know which
+   * key is safe to press next.
+   */
+  readonly pending?: "stop" | "raise";
+  /** What the status line says about the LAST key — the confirmation prompt, a refusal. */
+  readonly notice?: string;
 };
 
 export const initialTuiState: TuiState = { selected: 0, panel: "log", overlay: false };
 
 /**
- * What the shell must DO after a key, beyond redrawing: leave, or collect a frame right
- * now instead of waiting out the interval. Selection and panel changes need neither —
- * they redraw from the frame already in hand.
+ * What the shell must DO after a key, beyond redrawing: leave, collect a frame right now
+ * instead of waiting out the interval, or run a command. Selection and panel changes
+ * need none of the three — they redraw from the frame already in hand.
  */
-export type TuiEffect = "none" | "quit" | "collect";
+export type TuiEffect = "none" | "quit" | "collect" | "act";
 
 /**
- * KEY + STATE → STATE + EFFECT. The pure half of the observer, and the half worth
- * testing: everything a key can mean is decided here, and the shell only obeys.
+ * WHICH OPERATOR COMMAND A KEY IS SHORT FOR. Four, and each of them exists already as a
+ * short form the operator types by hand (thread 019): the TUI adds a way to invoke them,
+ * never a second meaning for them.
+ */
+export type TuiAction =
+  | { readonly kind: "hold"; readonly role: string }
+  | { readonly kind: "resume"; readonly role: string }
+  | { readonly kind: "down" }
+  | { readonly kind: "up" };
+
+/**
+ * WHAT THE REDUCER NEEDS TO KNOW ABOUT THE WORLD — the pairs' roles with their parking,
+ * and whether a daemon is alive. Derived from the frame by `subjectOf`, so the keys
+ * judge exactly the state that is on the screen: a `h` decided against a fact the
+ * operator cannot see is the divergence this whole layer was built to prevent.
+ */
+export type TuiSubject = {
+  readonly pairs: readonly { readonly role: string; readonly held: boolean }[];
+  readonly daemonAlive: boolean;
+};
+
+/** The frame's own answer to the three questions above — one derivation, no second one. */
+export const subjectOf = (frame: OperatorFrame): TuiSubject => ({
+  pairs: frame.leases.map((view) => ({
+    role: view.role,
+    held: frame.holds.some((hold: HoldView) => hold.active && hold.role === view.role),
+  })),
+  daemonAlive: frame.circuit.daemonPid !== undefined,
+});
+
+/**
+ * KEY + STATE → STATE + EFFECT (+ the action to run). The pure half of the observer, and
+ * the half worth testing: everything a key can mean is decided here, and the shell only
+ * obeys.
  *
  * The selection is clamped against the CURRENT number of pairs rather than remembered
  * as an offset: leases appear and vanish between frames, and a selection that survived
  * as a raw index would highlight a different pair than the one the operator was looking
  * at — the worst possible outcome for a panel whose whole job is "this pair's log".
+ *
+ * A REFUSED KEY SAYS WHY. `s` with no daemon alive and `u` with one already up do
+ * nothing and put a sentence in the status line naming the other key: silence there
+ * reads as a broken keyboard, and the operator's next move is to press it harder.
  */
 export const reduceTui = (
   state: TuiState,
   key: TuiKey,
-  /** How many pairs the frame currently holds — the selection's bound. */
-  pairs: number,
-): { readonly state: TuiState; readonly effect: TuiEffect } => {
-  const last = Math.max(0, pairs - 1);
+  subject: TuiSubject,
+): { readonly state: TuiState; readonly effect: TuiEffect; readonly action?: TuiAction } => {
+  const last = Math.max(0, subject.pairs.length - 1);
   const clamped = Math.min(state.selected, last);
+  // Every key arrives at a state with no confirmation and no notice pending: the three
+  // that set one set it below, and the other five cancel by simply not doing so.
+  const base: TuiState = { selected: clamped, panel: state.panel, overlay: state.overlay };
   switch (key) {
     case "up":
-      return { state: { ...state, selected: Math.max(0, clamped - 1) }, effect: "none" };
+      return { state: { ...base, selected: Math.max(0, clamped - 1) }, effect: "none" };
     case "down":
-      return { state: { ...state, selected: Math.min(last, clamped + 1) }, effect: "none" };
+      return { state: { ...base, selected: Math.min(last, clamped + 1) }, effect: "none" };
     case "tab":
       return {
-        state: { ...state, selected: clamped, panel: state.panel === "log" ? "supervisor" : "log" },
+        state: { ...base, panel: state.panel === "log" ? "supervisor" : "log" },
         effect: "none",
       };
     case "log":
-      return { state: { ...state, selected: clamped, overlay: !state.overlay }, effect: "none" };
+      return { state: { ...base, overlay: !state.overlay }, effect: "none" };
     // `r` is the one key that reaches past the interval. It looks redundant at one tempo
     // and is not: it is the only way to see the effect of a command typed in the next
     // terminal without waiting the interval out.
     case "refresh":
-      return { state: { ...state, selected: clamped }, effect: "collect" };
+      return { state: base, effect: "collect" };
     case "quit":
-      return { state: { ...state, selected: clamped }, effect: "quit" };
+      return { state: base, effect: "quit" };
+    // `h` acts on the FIRST press (§4): a hold is visible in `status` and undone in one
+    // word, and asking twice for it would make the cheap half of the pair expensive.
+    case "park": {
+      const pair = subject.pairs[clamped];
+      if (pair === undefined) {
+        return {
+          state: { ...base, notice: "no pair is selected — 'h' parks the role of a pair" },
+          effect: "none",
+        };
+      }
+      return {
+        state: base,
+        effect: "act",
+        action: { kind: pair.held ? "resume" : "hold", role: pair.role },
+      };
+    }
+    case "stop":
+      if (!subject.daemonAlive) {
+        return {
+          state: { ...base, notice: "no daemon is alive on this box — 'u' raises one" },
+          effect: "none",
+        };
+      }
+      if (state.pending !== "stop") {
+        return {
+          state: {
+            ...base,
+            pending: "stop",
+            notice: "stop the daemon gracefully? press 's' again — any other key cancels",
+          },
+          effect: "none",
+        };
+      }
+      return { state: base, effect: "act", action: { kind: "down" } };
+    case "raise":
+      if (subject.daemonAlive) {
+        return {
+          state: { ...base, notice: "a daemon is already alive here — 's' stops it" },
+          effect: "none",
+        };
+      }
+      if (state.pending !== "raise") {
+        return {
+          state: {
+            ...base,
+            pending: "raise",
+            notice: "raise the daemon? press 'u' again — any other key cancels",
+          },
+          effect: "none",
+        };
+      }
+      return { state: base, effect: "act", action: { kind: "up" } };
   }
+};
+
+/**
+ * THE COMMAND WORDS OF AN ACTION, WITHOUT THE INHERITED FLAGS. This is the naked verb —
+ * what is RUN and what is ECHOED are both built from `invocationOf` below, never from
+ * here: the acceptance fact of T-2 ("every action performed is printed as the command")
+ * is only worth anything if the printed command is the executed one rather than a
+ * description of it, and two call sites reading two different functions is exactly how
+ * the description drifts from the deed.
+ */
+export const commandOf = (action: TuiAction): readonly string[] => {
+  switch (action.kind) {
+    case "hold":
+      return ["orchestrator", "hold", action.role];
+    case "resume":
+      return ["orchestrator", "resume", action.role];
+    case "down":
+      return ["orchestrator", "down"];
+    case "up":
+      return ["orchestrator", "up"];
+  }
+};
+
+/**
+ * WHICH OF THE OBSERVER'S OWN FLAGS THE ACTION INHERITS — READ OFF THE USAGE BLOCK, NOT
+ * LISTED BY HAND. The TUI may be pointed at a journal, a holds directory, a mail root or
+ * a pid file that are not the config's, and an action that ignored them would mutate a
+ * different circuit than the one being watched — while the screen went on showing the
+ * untouched one.
+ *
+ * A hand-written list is the wrong shape for that answer twice over: a flag added to the
+ * observer later is silently NOT inherited (the exact defect found in review — `up`
+ * inherited two of its thirteen and would have been raised on the config's default paths
+ * while the screen showed others), and a flag the target does not declare would meet its
+ * own door (`guardArguments`) as a stray. So the table is the INTERSECTION of the two
+ * usage lines, computed from the same text the checker reads.
+ *
+ * `up` is merged with `daemon` here for the same reason its door merges them: `up`
+ * re-executes itself as `orchestrator daemon <what was typed>`, so the daemon's flags are
+ * `up`'s too — see `guardArguments` in `cli.ts`.
+ *
+ * The assumption this makes explicit: within this CLI a flag NAME is one answer. Where two
+ * commands mean different things they are already spelled differently (the observer's
+ * redraw is `--interval`, the daemon's cadence is `--tick`), so nothing crosses over by
+ * accident of naming.
+ */
+const USAGE_FLAGS = parseUsage(USAGE);
+const valueFlagsOf = (key: string): readonly string[] => [
+  ...(USAGE_FLAGS.get(key)?.value ?? []),
+  ...(key === "orchestrator up" ? (USAGE_FLAGS.get("orchestrator daemon")?.value ?? []) : []),
+];
+const OBSERVER_FLAGS = valueFlagsOf("orchestrator tui");
+const inheritedFor = (kind: TuiAction["kind"]): readonly string[] => {
+  // The kind IS the command word — `hold`, `resume`, `down`, `up` are the names the usage
+  // block spells, and a mapping table beside them would be one more thing to fall behind.
+  const target = valueFlagsOf(`orchestrator ${kind}`);
+  return OBSERVER_FLAGS.filter((name) => target.includes(name));
+};
+export const INHERITED: Readonly<Record<TuiAction["kind"], readonly string[]>> = {
+  hold: inheritedFor("hold"),
+  resume: inheritedFor("resume"),
+  down: inheritedFor("down"),
+  up: inheritedFor("up"),
+};
+
+/** The full argv of the child: the command, then the inherited flags with their values. */
+export const argvOf = (action: TuiAction, argv: readonly string[]): readonly string[] => {
+  const inherited: string[] = [];
+  for (const name of INHERITED[action.kind]) {
+    const at = argv.indexOf(name);
+    const value = at === -1 ? undefined : argv[at + 1];
+    if (value !== undefined && !value.startsWith("--")) inherited.push(name, value);
+  }
+  return [...commandOf(action), ...inherited];
+};
+
+/**
+ * THE ONE PLACE THE ACTION BECOMES WORDS — what is run and what is printed, from a single
+ * array. The status line of T-2 promises the operator a command they can retype, and a
+ * line built from `commandOf` beside a child spawned from `argvOf` breaks that promise the
+ * moment the observer carries any flag of its own: the child would go to `--holds
+ * /tmp/holds`, the screen would say `orchestrator hold curator`, and the difference — the
+ * whole point of inheriting the flag — would be the invisible part.
+ */
+export const invocationOf = (
+  action: TuiAction,
+  argv: readonly string[],
+): { readonly words: readonly string[]; readonly typed: string } => {
+  const words = argvOf(action, argv);
+  return { words, typed: `$ agent-protocol ${words.join(" ")}` };
 };
 
 /** The sequences the input decoder knows BY NAME — no escape byte is ever typed inline. */
@@ -159,6 +367,9 @@ const typedKeys = (text: string): readonly TuiKey[] => {
     else if (ch === "j") keys.push("down");
     else if (ch === "l") keys.push("log");
     else if (ch === "r") keys.push("refresh");
+    else if (ch === "h") keys.push("park");
+    else if (ch === "s") keys.push("stop");
+    else if (ch === "u") keys.push("raise");
   }
   return keys;
 };

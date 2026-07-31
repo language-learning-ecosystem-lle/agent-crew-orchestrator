@@ -235,10 +235,13 @@ import {
 import {
   decodeTuiInput,
   initialTuiState,
+  invocationOf,
   PASTE_OFF,
   PASTE_ON,
   reduceTui,
   renderTui,
+  subjectOf,
+  type TuiAction,
 } from "./orchestrator/tui.js";
 import {
   createWorkspaceLocks,
@@ -3462,6 +3465,8 @@ const orchestratorTui = (rawArgv: readonly string[]): void => {
   let state = initialTuiState;
   let frame: OperatorFrame | undefined;
   let trouble: string | undefined;
+  /** The last command run from here, with its outcome — cleared by the next keystroke. */
+  let echo: string | undefined;
   let transcript: string[] = [];
   let openFile: string | undefined;
   let offset = 0;
@@ -3527,11 +3532,64 @@ const orchestratorTui = (rawArgv: readonly string[]): void => {
       ...(state.overlay ? { overlayLines: renderLog(journalEventsFor(argv)).split("\n") } : {}),
     });
     const foot = trouble === undefined ? "" : `  ⚠ last collection failed: ${trouble}`;
-    // One write, so a half-drawn screen is never on display; every line clears its own
-    // tail, exactly as the watch does.
+    // THE STATUS LINE IS THE ONE PLACE T-2 SPEAKS FROM: the keys while nothing has been
+    // said, and otherwise the last thing that happened — a confirmation prompt, a refused
+    // key, or the command that was run with its outcome. The keys come back on the next
+    // keystroke, so the echo cannot be missed by a redraw a second later.
+    const said = state.notice ?? echo;
+    const status =
+      said ?? "↑↓ pair · tab log/supervisor · l history · r now · h park · s stop · u up · q quit";
     process.stdout.write(
-      `${HIDE_CURSOR}${HOME}${lines.map((line) => `${line}${CLEAR_LINE}`).join("\n")}\n↑↓ pair · tab log/supervisor · l history · r now · q quit${foot}${CLEAR_LINE}${CLEAR_BELOW}`,
+      // One write, so a half-drawn screen is never on display; every line clears its own
+      // tail, exactly as the watch does.
+      `${HIDE_CURSOR}${HOME}${lines.map((line) => `${line}${CLEAR_LINE}`).join("\n")}\n${status}${foot}${CLEAR_LINE}${CLEAR_BELOW}`,
     );
+  };
+
+  /**
+   * THE MUTATING KEYS RUN THE COMMAND, THEY DO NOT REIMPLEMENT IT (T-2). The action is
+   * spawned as a CHILD of this very CLI — `process.execPath` + `process.argv[1]`, the
+   * same derivation `up` uses for the daemon — for three reasons, in order of weight:
+   *
+   *  1. the doors stay where they are. `hold` checks the signature against the config,
+   *     `up` refuses over a force flag, `down` writes the stop flag: an in-process call
+   *     would have to reproduce every one of those refusals or silently skip them;
+   *  2. `fail()` exits the process. Called from inside the observer it would take the
+   *     terminal down with it, in raw mode, on a typo in a role name;
+   *  3. what is echoed is what ran. The status line shows a command the operator can
+   *     retype into the next shell, character for character.
+   *
+   * stdout and stderr are CAPTURED rather than inherited — the alt-screen belongs to the
+   * frame, and a child writing into it would leave the screen looking corrupted until
+   * the next redraw. The first line of what it said becomes the outcome in the echo.
+   */
+  const perform = (action: TuiAction): void => {
+    // ONE ARRAY BECOMES BOTH: the argv of the child and the line the operator reads. Built
+    // apart, the echo lost every inherited flag — the observer pointed at a holds
+    // directory of its own ran `hold --holds …` and printed `hold` (found in review).
+    const { words, typed } = invocationOf(action, argv);
+    const child = spawnSync(
+      process.execPath,
+      [...process.execArgv, process.argv[1] as string, ...words],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    const said = `${child.stdout ?? ""}${child.stderr ?? ""}`
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+    const outcome =
+      child.error !== undefined
+        ? `could not be run: ${child.error.message}`
+        : child.status === 0
+          ? (said[said.length - 1] ?? "done")
+          : `REFUSED (exit ${child.status ?? "?"}): ${said[said.length - 1] ?? "it said nothing"}`;
+    echo = `${typed} → ${outcome}`;
+    // The frame is collected immediately rather than at the next interval: the operator
+    // pressed a key and is looking at the screen for its consequence right now.
+    collect();
   };
 
   let pasting = false;
@@ -3543,13 +3601,21 @@ const orchestratorTui = (rawArgv: readonly string[]): void => {
     const decoded = decodeTuiInput(chunk, pasting);
     pasting = decoded.pasting;
     for (const key of decoded.keys) {
-      const step = reduceTui(state, key, frame?.leases.length ?? 0);
+      // A keystroke wipes the last echo: it belongs to the key that produced it, and an
+      // outcome left standing under an unrelated key reads as that key's answer.
+      echo = undefined;
+      const step = reduceTui(
+        state,
+        key,
+        frame === undefined ? { pairs: [], daemonAlive: false } : subjectOf(frame),
+      );
       state = step.state;
       if (step.effect === "quit") {
         restore();
         process.exit(0);
       }
       if (step.effect === "collect") collect();
+      if (step.effect === "act" && step.action !== undefined) perform(step.action);
     }
     draw();
   });
