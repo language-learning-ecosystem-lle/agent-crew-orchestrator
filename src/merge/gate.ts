@@ -59,6 +59,43 @@
  * ENTRIES MATCH AS PATH PREFIXES, exactly as `zones` do (`docs/roles` covers
  * `docs/roles/curator.md`, never `docs/roles-old.md`) — one rule for "is this path
  * inside that entry", said the same way in both places.
+ *
+ * A HEAD ANSWERS ONCE PER CHECK NAME (curator's statement of work of 2026-07-31, D1).
+ * A rerun does not replace the failed attempt in `statusCheckRollup`: both hang on the
+ * same head, and reading the array flat made the door refuse #89 for a `review=FAILURE`
+ * that a rerun had overwritten fifteen minutes later. So the runs are grouped by name
+ * and only the LAST ATTEMPT of each name is judged — last BY TIME (`completedAt`, else
+ * `startedAt`), never by position in the array, which `gh` does not promise to order.
+ * The border that is easy to break in the other direction: a still-flying rerun is not
+ * swallowed by an older success. The latest attempt wins, and a latest attempt that has
+ * not finished has NOT ANSWERED — guard 2 is about the checks having answered on this
+ * head. And when time cannot tell them apart (no stamps at all), the whole group is
+ * judged, so an unreadable payload refuses rather than passes: this is a merge door.
+ *
+ * A HEAD ALSO ANSWERS MORE THAN ONCE PER REVIEWER (D4, the same statement of work).
+ * Guard 1 read the PRESENCE of a `CHANGES_REQUESTED` on the head instead of the LAST
+ * verdict on it: a second round of review that ends in `approve` on the very same head
+ * left the door refusing, and #74 and #64 stood approved-and-blocked. So the verdicts
+ * are grouped BY REVIEWER and only the last one of each is judged, by `submittedAt` —
+ * the mirror of D1, with its symmetry kept in both directions: an `approve` overtaken
+ * by a later `changes-requested` on the same head STOPS, or D4 would turn a fail-closed
+ * door into a fail-open one. When the stamps cannot tell a reviewer's verdicts apart,
+ * the group is judged whole, so an unreadable payload refuses; verdicts on other heads
+ * are not verdicts on this one and never enter the count. States that are not a verdict
+ * (`COMMENTED`, `DISMISSED`) do not overtake one — a comment is not an answer.
+ *
+ * AND `gh` SAYS "ABSENT" WITH AN EMPTY STRING (D3): a flying run comes back with
+ * `conclusion: ""`, not `null`, so `??` reads it as a value and the refusal printed
+ * `review=` — blind exactly where the reader decides whether to wait or to fix. Every
+ * field of a check is read through `present()`: empty text is no text.
+ *
+ * MERGEABILITY IS NOT A SIXTH GUARD (D2). The five are a norm of the role card and of
+ * `PROTOCOL.md`, and code does not add to them. But the door was blind to `mergeable`
+ * altogether: a PR with a conflicting tree, one clean set of checks and an approve
+ * would have passed guards 1, 2 and 4 "by the facts" and been refused by GitHub itself
+ * at the merge. So it is read and printed as a FACT beside the guards — a refusal in
+ * what GitHub would refuse anyway — and `UNKNOWN` (or a `gh` that did not report it at
+ * all) is named for what it is rather than folded into "go ahead".
  */
 
 /** The facts about a pull request the gate judges — the shape `gh pr view --json` gives. */
@@ -73,6 +110,8 @@ export type PullRequestFacts = {
     readonly state: string;
     readonly commitSha: string | undefined;
     readonly author: string | undefined;
+    /** When it was submitted — how a second round is told from the verdict it replaced (D4). */
+    readonly submittedAt?: string | undefined;
   }[];
   /** `statusCheckRollup`: check runs (status/conclusion) and status contexts (state) alike. */
   readonly checks: readonly {
@@ -80,9 +119,17 @@ export type PullRequestFacts = {
     readonly status: string | undefined;
     readonly conclusion: string | undefined;
     readonly state: string | undefined;
+    /** When this attempt finished — how a rerun is told from the run it replaced. */
+    readonly completedAt?: string | undefined;
+    /** When it started — the only stamp a still-flying attempt has. */
+    readonly startedAt?: string | undefined;
   }[];
   /** `files[].path`, repository-relative. */
   readonly changedPaths: readonly string[];
+  /** `mergeable`: `MERGEABLE` / `CONFLICTING` / `UNKNOWN` — absent means gh did not say. */
+  readonly mergeable?: string | undefined;
+  /** `mergeStateStatus`: `CLEAN` / `DIRTY` / `BLOCKED` …, printed beside the verdict. */
+  readonly mergeStateStatus?: string | undefined;
 };
 
 export type GateState =
@@ -100,12 +147,22 @@ export type GateOutcome = {
   readonly detail: string;
 };
 
+/**
+ * What GitHub itself says about applying the branch — a fact beside the guards, not one
+ * of them (see the header). `blocked` refuses the merge exactly as a failed guard does.
+ */
+export type Mergeability = {
+  readonly state: "clear" | "blocked";
+  readonly detail: string;
+};
+
 export type MergeGateVerdict = {
   readonly number: number;
   readonly headSha: string;
   /** No guard failed AND no document of power is touched: curator may merge, guards 3 and 5 permitting. */
   readonly curatorMayMerge: boolean;
   readonly guards: readonly GateOutcome[];
+  readonly mergeability: Mergeability;
 };
 
 /** Normalised prefix: no leading `./`, no trailing slash. Same normalisation as `zones`. */
@@ -192,15 +249,138 @@ export const threadOfDescription = (body: string): string | undefined => {
 const greenConclusions = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
 const greenStates = new Set(["SUCCESS", "EXPECTED"]);
 
-const checkIsGreen = (check: PullRequestFacts["checks"][number]): boolean =>
+/** `gh` says "no value" with an empty string as readily as with null — both are absent. */
+const present = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
+};
+
+/** A check with every field read through `present()` — the shape the guard reasons about. */
+type Attempt = {
+  readonly name: string;
+  readonly status: string | undefined;
+  readonly conclusion: string | undefined;
+  readonly state: string | undefined;
+  /** The moment this attempt last spoke; `undefined` when the payload carries no stamp. */
+  readonly at: number | undefined;
+};
+
+const momentOf = (check: PullRequestFacts["checks"][number]): number | undefined => {
+  const stamps = [present(check.completedAt), present(check.startedAt)]
+    .map((value) => (value === undefined ? Number.NaN : Date.parse(value)))
+    .filter((value) => !Number.isNaN(value));
+  return stamps.length === 0 ? undefined : Math.max(...stamps);
+};
+
+const asAttempt = (check: PullRequestFacts["checks"][number]): Attempt => ({
+  name: present(check.name) ?? "?",
+  status: present(check.status),
+  conclusion: present(check.conclusion),
+  state: present(check.state),
+  at: momentOf(check),
+});
+
+/**
+ * The last attempt of each check name (D1). A group without any usable stamp is kept
+ * whole — the door refuses what it cannot read rather than picking a winner by luck.
+ */
+export const latestAttemptPerName = (attempts: readonly Attempt[]): readonly Attempt[] => {
+  const byName = new Map<string, Attempt[]>();
+  for (const attempt of attempts) {
+    const group = byName.get(attempt.name);
+    if (group === undefined) byName.set(attempt.name, [attempt]);
+    else group.push(attempt);
+  }
+  return [...byName.values()].flatMap((group) => {
+    if (group.length === 1) return group;
+    const known = group.map((attempt) => attempt.at).filter((at) => at !== undefined);
+    if (known.length === 0) return group;
+    const last = Math.max(...known);
+    // An attempt with no stamp cannot be shown to be older, so it stays in the answer.
+    return group.filter((attempt) => attempt.at === undefined || attempt.at === last);
+  });
+};
+
+/** A review reduced to what guard 1 judges: who said what, and when (D4). */
+export type Verdict = {
+  readonly state: string;
+  readonly author: string | undefined;
+  /** The moment it was submitted; `undefined` when the payload carries no stamp. */
+  readonly at: number | undefined;
+};
+
+/** The two states that ANSWER. `COMMENTED`/`DISMISSED` are not verdicts and never overtake one. */
+const verdictStates = new Set(["APPROVED", "CHANGES_REQUESTED"]);
+
+const asVerdict = (review: PullRequestFacts["reviews"][number]): Verdict => {
+  const stamp = present(review.submittedAt);
+  const at = stamp === undefined ? Number.NaN : Date.parse(stamp);
+  return {
+    state: review.state,
+    author: review.author,
+    at: Number.isNaN(at) ? undefined : at,
+  };
+};
+
+/**
+ * The last verdict of each reviewer (D4). Same shape as {@link latestAttemptPerName} and
+ * for the same reason: a group whose stamps cannot tell its verdicts apart is kept whole,
+ * so an unreadable payload refuses instead of picking a winner by luck.
+ */
+export const latestVerdictPerAuthor = (verdicts: readonly Verdict[]): readonly Verdict[] => {
+  const byAuthor = new Map<string, Verdict[]>();
+  for (const verdict of verdicts) {
+    const key = verdict.author ?? "?";
+    const group = byAuthor.get(key);
+    if (group === undefined) byAuthor.set(key, [verdict]);
+    else group.push(verdict);
+  }
+  return [...byAuthor.values()].flatMap((group) => {
+    if (group.length === 1) return group;
+    const known = group.map((verdict) => verdict.at).filter((at) => at !== undefined);
+    if (known.length === 0) return group;
+    const last = Math.max(...known);
+    // A verdict with no stamp cannot be shown to be older, so it stays in the answer.
+    return group.filter((verdict) => verdict.at === undefined || verdict.at === last);
+  });
+};
+
+const checkIsGreen = (check: Attempt): boolean =>
   check.conclusion === undefined && check.status === undefined
     ? check.state !== undefined && greenStates.has(check.state)
     : check.status === "COMPLETED" &&
       check.conclusion !== undefined &&
       greenConclusions.has(check.conclusion);
 
-const describeCheck = (check: PullRequestFacts["checks"][number]): string =>
+const describeCheck = (check: Attempt): string =>
   `${check.name}=${check.conclusion ?? check.state ?? check.status ?? "?"}`;
+
+/**
+ * What GitHub says about applying the branch (D2). Not a guard: printed as a fact and
+ * refusing on anything that is not a plain `MERGEABLE`, `UNKNOWN` included — "not
+ * computed yet" is an answer to come back for, never a permission.
+ */
+export const mergeabilityOf = (pr: PullRequestFacts): Mergeability => {
+  const mergeable = present(pr.mergeable)?.toUpperCase();
+  const stateStatus = present(pr.mergeStateStatus);
+  const beside = stateStatus === undefined ? "" : ` (mergeStateStatus ${stateStatus})`;
+  if (mergeable === "MERGEABLE") return { state: "clear", detail: `mergeable=MERGEABLE${beside}` };
+  if (mergeable === undefined)
+    return {
+      state: "blocked",
+      detail:
+        "gh reported no 'mergeable' field — the door does not guess at what GitHub did not say",
+    };
+  if (mergeable === "UNKNOWN")
+    return {
+      state: "blocked",
+      detail: `mergeable=UNKNOWN${beside} — GitHub has not finished computing the merge; ask again`,
+    };
+  return {
+    state: "blocked",
+    detail: `mergeable=${mergeable}${beside} — the branch does not apply to its base: a rebase and a new round, not a merge`,
+  };
+};
 
 /**
  * The verdict. `curatorMayMerge` answers ONE question — "is there anything in the
@@ -214,7 +394,12 @@ export const evaluateMergeGate = (input: {
   const { pr } = input;
   const head = pr.headSha;
 
-  const onHead = pr.reviews.filter((review) => review.commitSha === head);
+  const onHead = latestVerdictPerAuthor(
+    pr.reviews
+      .filter((review) => review.commitSha === head)
+      .map(asVerdict)
+      .filter((verdict) => verdictStates.has(verdict.state)),
+  );
   const approvals = onHead.filter((review) => review.state === "APPROVED");
   const changesRequested = onHead.filter((review) => review.state === "CHANGES_REQUESTED");
   const staleApprovals = pr.reviews.filter(
@@ -252,9 +437,10 @@ export const evaluateMergeGate = (input: {
                     .join(", ")}, the head has moved to ${head.slice(0, 7)} — a new round is due`,
           };
 
-  const notGreen = pr.checks.filter((check) => !checkIsGreen(check));
+  const attempts = latestAttemptPerName(pr.checks.map(asAttempt));
+  const notGreen = attempts.filter((check) => !checkIsGreen(check));
   const checks: GateOutcome =
-    pr.checks.length === 0
+    attempts.length === 0
       ? {
           guard: 2,
           title: "green checks on the same head",
@@ -266,7 +452,7 @@ export const evaluateMergeGate = (input: {
             guard: 2,
             title: "green checks on the same head",
             state: "pass",
-            detail: `${pr.checks.length} check(s) green: ${pr.checks.map(describeCheck).join(", ")}`,
+            detail: `${attempts.length} check(s) green: ${attempts.map(describeCheck).join(", ")}`,
           }
         : {
             guard: 2,
@@ -320,11 +506,14 @@ export const evaluateMergeGate = (input: {
   };
 
   const guards = [verdict, checks, ascent, power, trace];
+  const mergeability = mergeabilityOf(pr);
   return {
     number: pr.number,
     headSha: head,
-    curatorMayMerge: guards.every((guard) => guard.state !== "fail"),
+    curatorMayMerge:
+      guards.every((guard) => guard.state !== "fail") && mergeability.state === "clear",
     guards,
+    mergeability,
   };
 };
 
@@ -335,7 +524,13 @@ export const describeMergeGate = (verdict: MergeGateVerdict): readonly string[] 
     (guard) =>
       `  ${guard.state === "pass" ? "ok  " : guard.state === "fail" ? "STOP" : "you "} guard ${guard.guard} · ${guard.title}: ${guard.detail}`,
   ),
+  // Beside the guards and before the answer — a fact, said in its own words so nobody
+  // reads it as a sixth guard (D2).
+  `  ${verdict.mergeability.state === "clear" ? "ok  " : "STOP"} mergeability · not a guard, a fact GitHub answers: ${verdict.mergeability.detail}`,
   verdict.curatorMayMerge
     ? "nothing in the facts forbids this merge — guards 3 and 5 are yours to answer"
-    : "REFUSED: a guard does not hold",
+    : verdict.mergeability.state === "blocked" &&
+        verdict.guards.every((guard) => guard.state !== "fail")
+      ? "REFUSED: GitHub itself would refuse this merge"
+      : "REFUSED: a guard does not hold",
 ];

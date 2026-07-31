@@ -6064,6 +6064,13 @@ const zonesCheck = (argv: readonly string[]): void => {
  * rather than answering wrongly. The failure path below names the scope, because the
  * message GitHub sends does not.
  *
+ * AND `mergeable` IS COMPUTED LAZILY BY GITHUB: the first ask about a pull request
+ * starts the job and answers `UNKNOWN`, the next one answers for real — on every open
+ * PR of this repository, not now and then. Since the door refuses on anything that is
+ * not `MERGEABLE` (D2), a single ask would make it refuse almost every first run with
+ * "ask again" — so the command asks again ITSELF, once, and only then reports `UNKNOWN`
+ * as the answer it is.
+ *
  * `--power-docs` IS A FLAG AND NOT A CONFIG SECTION, and the reason is worth writing
  * down because it is not the shape one would choose: a new config field costs a
  * protocol version by R2, and a version bump currently CANNOT be committed at all —
@@ -6084,11 +6091,17 @@ const mergeGate = (argv: readonly string[]): void => {
   const loaded = configFrom(argv, undefined);
   const repo = flag(argv, "--repo") ?? process.cwd();
 
-  let raw: string;
-  try {
-    raw = execFileSync(
+  const ask = (): string =>
+    execFileSync(
       "gh",
-      ["pr", "view", number, "--json", "number,headRefOid,body,statusCheckRollup,reviews,files"],
+      [
+        "pr",
+        "view",
+        number,
+        "--json",
+        // `mergeable`/`mergeStateStatus`: what GitHub itself would refuse (D2).
+        "number,headRefOid,body,statusCheckRollup,reviews,files,mergeable,mergeStateStatus",
+      ],
       {
         cwd: repo,
         encoding: "utf8",
@@ -6096,6 +6109,18 @@ const mergeGate = (argv: readonly string[]): void => {
         maxBuffer: 16 * 1024 * 1024,
       },
     );
+
+  let raw: string;
+  try {
+    raw = ask();
+    // GitHub computes `mergeable` LAZILY: the first ask starts the job and answers
+    // UNKNOWN, the next one answers for real (observed on every open PR of this repo).
+    // Asking again is what the refusal would tell a human to do, so the command does it
+    // once itself — and only then reports UNKNOWN as the answer it is.
+    if (/"mergeable"\s*:\s*"UNKNOWN"/.test(raw)) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
+      raw = ask();
+    }
   } catch (error) {
     const message = (error as Error).message;
     const scope = /not accessible by integration|statusCheckRollup/i.test(message)
@@ -6147,14 +6172,22 @@ const mergeGate = (argv: readonly string[]): void => {
         state: review.state,
         commitSha: review.commit?.oid,
         author: review.author?.login,
+        // The stamp guard 1 tells a second round of review by (D4).
+        submittedAt: review.submittedAt ?? undefined,
       })),
       checks: parsed.data.statusCheckRollup.map((check) => ({
+        // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
+        // absence itself (D3), so the mapping stays a mapping.
         name: check.name ?? check.context ?? "?",
         status: check.status ?? undefined,
         conclusion: check.conclusion ?? undefined,
         state: check.state ?? undefined,
+        completedAt: check.completedAt ?? undefined,
+        startedAt: check.startedAt ?? undefined,
       })),
       changedPaths: parsed.data.files.map((file) => file.path),
+      mergeable: parsed.data.mergeable,
+      mergeStateStatus: parsed.data.mergeStateStatus ?? undefined,
     },
     powerDocs,
   });

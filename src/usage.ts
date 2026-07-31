@@ -37,6 +37,13 @@ export const USAGE = `usage (--ref is required everywhere except the four operat
                               # guards 3 and 5 (a decision of john's behind the thread, a trace after
                               # the merge) are judgements and are printed as obligations, never as a pass
                               # guard 2 reads 'statusCheckRollup': the token needs the 'checks' scope
+                              # and it judges the LAST attempt of each check name, by time — a rerun
+                              # replaces the run it reran, both of which hang on the same head
+                              # guard 1 judges the LAST verdict of each reviewer on that head, by
+                              # 'submittedAt': a second round ending in approve is an approve, and an
+                              # approve overtaken by a later changes-requested still STOPS
+                              # 'mergeable' is read too and printed BESIDE the guards, not as a sixth:
+                              # the door refuses what GitHub itself would refuse, UNKNOWN included
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
   agent-protocol index build  --root <mail> --ref <ref> [--write]
   agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]

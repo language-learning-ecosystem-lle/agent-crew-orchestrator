@@ -830,6 +830,46 @@ What the subtraction leaves behind is a norm, not a hole, and it lives in curato
 card: a change to `CLAUDE.md` that moves authority, borders, permissions or zones goes
 to john, and doubt reads as "it moves them".
 
+**One head answers once per check name.** A rerun does not replace the attempt it
+reran: both hang on the same head in `statusCheckRollup`, and read flat, the door
+refused #89 for a `review=FAILURE` a rerun had overwritten fifteen minutes later. So
+the runs are grouped by name and only the **last attempt** of each is judged — last by
+TIME (`completedAt`, else `startedAt`), never by position in the array, which `gh` does
+not promise to order. The border in the other direction is as load-bearing: a rerun
+still in flight is not swallowed by an older success — the latest attempt wins, and a
+latest attempt that has not finished has not ANSWERED, which is what guard 2 asks. When
+no stamp tells the attempts apart, the whole group is judged: an unreadable payload
+refuses rather than passes. And a flying run comes back with `conclusion: ""`, not
+null — every field of a check is read as "empty text is no text", so the refusal says
+`review=IN_PROGRESS` instead of the blank `review=` it used to print, blind exactly
+where the reader decides whether to wait or to fix.
+
+**One head also answers more than once per reviewer.** The same defect sat in guard 1,
+one step earlier in the door: it read the PRESENCE of a `CHANGES_REQUESTED` on the head
+instead of the LAST verdict on it, so a second round of review that ended in `approve`
+on the very same head still refused, and two approved PRs (#74, #64) stood blocked by
+it. Verdicts are therefore grouped **by reviewer** and only the last one of each is
+judged, by `submittedAt`. The symmetry is what keeps this from becoming a hole: an
+`approve` overtaken by a later `changes-requested` on the same head STOPS — otherwise
+the fix would turn a fail-closed door into a fail-open one. Verdicts on other heads
+never enter the count (that is the guard's whole point), a group whose stamps cannot
+tell its verdicts apart is judged whole and refuses, and states that are not a verdict —
+`COMMENTED`, `DISMISSED` — do not overtake one: a comment is not an answer.
+
+**`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
+card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
+mergeability of the branch altogether — a PR with a conflicting tree, one clean set of
+checks and an approve would have passed guards 1, 2 and 4 "by the facts" and been
+refused by GitHub itself at the merge. So `mergeable`/`mergeStateStatus` are printed as
+a FACT beside the guards, on their own line, and anything that is not a plain
+`MERGEABLE` refuses with exit 1 like a failed guard: `CONFLICTING` names the rebase,
+`UNKNOWN` says GitHub has not finished computing and to ask again, and a `gh` that did
+not report the field at all is a refusal at the door — never folded into "go ahead".
+GitHub computes the field lazily, though: the FIRST ask about a PR starts the job and
+answers `UNKNOWN`, the next one answers for real — on every open PR here, not now and
+then. A single ask would therefore refuse almost every first run, so the command asks
+again itself, once, and only then reports `UNKNOWN` as an answer.
+
 **The token needs the `checks` scope.** Guard 2 reads `statusCheckRollup`, which GitHub
 serves only to a token holding `checks: read`. A personal token has it; a GitHub App
 installation token (`ghs_…` — what any `gh-action` executor of this protocol runs with)
