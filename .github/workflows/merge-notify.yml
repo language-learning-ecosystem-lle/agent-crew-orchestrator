@@ -104,7 +104,11 @@ jobs:
           ROLE_PROBLEM=""
           if [ -z "${ROLE:-}" ]; then
             ROLE_PROBLEM='в описании PR не было строки `role: <id>`'
-          elif ! (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref HEAD --role "$ROLE" >/dev/null 2>&1); then
+          # `origin/main`, а не `HEAD` — тот же ref, которым ниже пишет
+          # `new-message`: роль сверяется с ДЕЙСТВУЮЩИМ конфигом дефолтной
+          # ветки, а не с тем, что оказалось головой чекаута `.code`
+          # (в claude-review.yml это уже стоило переданного хода — там же причина).
+          elif ! (cd .code && pnpm -F agent-protocol --silent cli role exists --repo . --ref origin/main --role "$ROLE" >/dev/null 2>&1); then
             echo "::warning::В PR #${PR_NUMBER} указана роль '${ROLE}', которой нет в конфиге протокола."
             ROLE_PROBLEM="в описании PR указана роль \`${ROLE}\`, которой нет в конфиге протокола"
             ROLE=""
