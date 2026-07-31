@@ -399,6 +399,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       // (thread 019, #113) — the same relationship the short forms have, and the
       // same line: what it costs is what 'stop' costs.
       orchestratorRestart: "stop",
+      // `systemd install --write` writes the unit FILE of this box and stops — the
+      // enabling is printed for a human. Its own line in the list, because its reason
+      // is its own: not "nothing to deliver yet" but "the delivery is somebody else's".
+      orchestratorSystemdInstall: "'orchestrator systemd install'",
     };
     expect([...reading].filter((name) => named[name] === undefined)).toEqual([]);
     // Bounded at the next section: past it, tokens like "record" or "hold" match the
