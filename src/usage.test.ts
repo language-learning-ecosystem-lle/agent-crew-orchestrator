@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { parseUsage, strayArguments } from "./orchestrator/argv.js";
+import { argvOf, type TuiAction } from "./orchestrator/tui.js";
 import { USAGE } from "./usage.js";
 
 /**
@@ -410,6 +411,41 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     const from = USAGE.indexOf("WHICH '--write' DELIVERS");
     const list = USAGE.slice(from, USAGE.indexOf("\nORCHESTRATOR:", from));
     expect([...reading].filter((name) => !list.includes(named[name] as string))).toEqual([]);
+  });
+
+  it("accepts every command the TUI's mutating keys can produce (T-2)", () => {
+    // The keys run their command as a CHILD of this CLI, so the child meets the same
+    // door as a typed call — and a flag the observer inherits but the target's usage
+    // line does not declare would be refused in a window the operator is watching, with
+    // the refusal blamed on the key. This is the corpus above, computed rather than
+    // listed: the inheritance lists live in `tui.ts` and drift from here otherwise.
+    const observing = [
+      "--ref",
+      "origin/main",
+      "--now",
+      "2026-07-31T09:00:00Z",
+      "--holds",
+      "/tmp/holds",
+      "--local-config",
+      "/tmp/local.json",
+      "--stop-flag",
+      "/tmp/stop",
+      "--pid-file",
+      "/tmp/daemon.pid",
+      "--interval",
+      "2",
+    ];
+    const actions: readonly TuiAction[] = [
+      { kind: "hold", role: "curator" },
+      { kind: "resume", role: "curator" },
+      { kind: "down" },
+      { kind: "up" },
+    ];
+    for (const action of actions) {
+      const words = argvOf(action, observing);
+      const key = `${words[0]} ${words[1]}`;
+      expect([key, strayArguments(words.slice(2), specFor(key))]).toEqual([key, []]);
+    }
   });
 
   it("lets `up` pass its own flags through to the daemon it starts", () => {

@@ -188,8 +188,15 @@ printed. The strict forms below keep every flag they had.
   agent-protocol orchestrator tui    [--ref <ref>] [--interval <sec>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--now <iso>] [--mode-file <path>]
                               # THE OBSERVER (T-1): the SAME frame as a screen — pairs on top,
                               # the circuit in the middle, the selected session's transcript below
-                              # five keys and all five READ: arrows pick the pair, tab switches
-                              # .log/.supervisor, 'l' overlays the journal, 'r' collects now, 'q' leaves
+                              # five keys READ: arrows pick the pair, tab switches .log/.supervisor,
+                              # 'l' overlays the journal, 'r' collects now, 'q' leaves
+                              # THREE ACT (T-2), and each is an existing command, run as a child of
+                              # this CLI and ECHOED into the status line as the words you would type:
+                              # 'h' parks/unparks the selected pair's role ('hold'/'resume'), 's'
+                              # stops the daemon ('down'), 'u' raises it ('up'). 's' and 'u' need a
+                              # SECOND press — any other key cancels; 'h' acts at once, being cheap
+                              # and undone in one word. A key with nothing to do (no daemon for 's',
+                              # a live one for 'u') refuses in the status line and names the other key
                               # a PASTE EXECUTES NOTHING: everything between the bracketed-paste
                               # markers is dropped, so a pasted block holding a 'q' does not close it
                               # it needs a real terminal and REFUSES in words without one — for a
