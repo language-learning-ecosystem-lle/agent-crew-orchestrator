@@ -418,7 +418,9 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     // `--clear-force` is `up`'s own in the same sense: it is a decision taken at the
     // door, and the daemon behind it knows nothing of the flag (see the passthrough
     // filter in `orchestratorUp`).
-    const own = ["--daemon-log", "--pid-file", "--clear-force"];
+    // `--log-max-bytes` is `up`'s own for the same reason as `--daemon-log`: the bound
+    // belongs to the file the command opens, and the daemon knows nothing about it.
+    const own = ["--daemon-log", "--log-max-bytes", "--pid-file", "--clear-force", "--foreground"];
     const passed = up.value.filter((name) => !own.includes(name));
     expect(passed.filter((name) => !daemon.value.includes(name))).toEqual([]);
   });

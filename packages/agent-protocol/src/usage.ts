@@ -125,7 +125,18 @@ in the background with one command, the parking with one word, the picture witho
 ref. --ref may be left out HERE ONLY (up/down/hold/resume/status): it is taken from
 'orchestrator.ref' of the config in the working tree, and which ref was used is
 printed. The strict forms below keep every flag they had.
-  agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--pid-file <p>] [--clear-force]   # plus every 'daemon' flag
+  agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--log-max-bytes <n>] [--pid-file <p>] [--foreground] [--clear-force]   # plus every 'daemon' flag
+                              # THE LOG IS BOUNDED AND ITS EPOCHS ARE LEGIBLE: every start puts
+                              # a banner line into the daemon log, and a log over --log-max-bytes
+                              # (8 MB by default) is rotated to '<log>.1' — one generation, so the
+                              # footprint is bounded by construction rather than by a cron job
+                              # --foreground: the daemon runs AS THIS PROCESS instead of being
+                              # backgrounded — what a systemd unit has to be given (it supervises
+                              # the process it started). The stream goes to stdout/stderr AND to
+                              # the daemon log, so 'journalctl' and 'orchestrator log' agree
+                              # under a unit a force flag on the floor is refused CLEANLY (exit
+                              # 0): the flag is doing its job, and 'Restart=on-failure' must not
+                              # fight it — in a terminal the same refusal keeps its code 2
                               # a force flag on the floor REFUSES the start, by name and
                               # reason: a daemon raised over it exits on its first tick and
                               # says so only in its log. --clear-force removes it deliberately
@@ -199,4 +210,13 @@ printed. The strict forms below keep every flag they had.
                               # the only explanation of the interruption stayed on one disk.
                               # An undeliverable trace is written into the checkout and said
                               # out loud — the stop still happens, silently it does not
-  agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]`;
+  agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]
+  agent-protocol orchestrator systemd install [--ref <ref>] [--repo <p>] [--unit-name <n>] [--unit-dir <d>] [--description <t>] [--daemon-args <a>] [--write]
+                              # THE DAEMON AS A RESIDENT UNIT: the file is GENERATED from this
+                              # box (the repo, this interpreter, the CLI path) — a unit typed
+                              # per box is the first path to go stale. Without --write it prints
+                              # the unit and the path it would write and touches nothing
+                              # user-level + linger, NOT root: the sessions read the operator's
+                              # machine config (R14) and credentials — 'systemctl --user enable'
+                              # and 'loginctl enable-linger' stay HUMAN actions, as they were
+                              # --daemon-args '<a b c>': the daemon's own flags, baked into ExecStart`;
