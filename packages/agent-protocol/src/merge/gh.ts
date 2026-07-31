@@ -13,7 +13,9 @@
  * arrived. The STAMPS (`completedAt`, `startedAt`) are optional for the same reason —
  * a status context has neither — but they are what tells a rerun from the attempt it
  * replaced, so they are asked for (thread 026, D1). `reviews[].submittedAt` is there for
- * the same reason on the verdict side (D4).
+ * the same reason on the verdict side (D4). `latestReviews` is asked for BESIDE `reviews`
+ * — not instead of it: the two answers about the same reviews disagree about the commit,
+ * and it is the disagreement that guard 1 needs (thread 043).
  *
  * `mergeable` IS PINNED like the rest of the computed-from fields (D2): the door
  * refuses on anything that is not `MERGEABLE`, so its silent absence would be the very
@@ -35,6 +37,19 @@ export const ghPullRequestSchema = z.looseObject({
       author: z.looseObject({ login: z.string() }).nullish(),
       // The stamp that tells a second round from the verdict it replaced (D4); optional
       // for the same reason the check stamps are — a payload without it is judged whole.
+      submittedAt: nullableText,
+    }),
+  ),
+  // THE SAME REVIEWS, ANSWERED TWICE (thread 043): here the last one of each author, and
+  // here alone a verdict with no `commit_id` says so — `commit.oid` comes back empty
+  // instead of being filled with whatever head the PR has at the moment of reading. It is
+  // PINNED like the rest: guard 1 now refuses on the emptiness, so losing the field
+  // silently would put the fail-open back exactly where it was.
+  latestReviews: z.array(
+    z.looseObject({
+      state: z.string(),
+      commit: z.looseObject({ oid: z.string() }).nullish(),
+      author: z.looseObject({ login: z.string() }).nullish(),
       submittedAt: nullableText,
     }),
   ),

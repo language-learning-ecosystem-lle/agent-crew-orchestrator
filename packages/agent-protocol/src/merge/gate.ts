@@ -84,6 +84,43 @@
  * are not verdicts on this one and never enter the count. States that are not a verdict
  * (`COMMENTED`, `DISMISSED`) do not overtake one — a comment is not an answer.
  *
+ * A VERDICT CAN HAVE NO COMMIT AT ALL, AND `reviews[].commit` HIDES IT (thread
+ * `043-merge-gate-unanchored-approve`, curator's measurement on #64 of 2026-07-31). A
+ * review submitted with no `commit_id` — which is what the reviewer's action produces
+ * when it is re-triggered by `workflow_dispatch`, because that run hangs on the head of
+ * `main` and not on the head of the PR — is answered by `gh` in two different ways at
+ * once: `latestReviews[].commit.oid` is EMPTY, honestly, while `reviews[].commit.oid`
+ * carries WHATEVER HEAD THE PULL REQUEST HAS AT THE MOMENT OF READING. Curator read one
+ * and the same approve (`submittedAt` 03:46:02Z, untouched) as "approved on c1dc1a3"
+ * and then, after `gh pr update-branch`, as "approved on ea8572a". Read that way, an
+ * approve granted once survives every later push — the exact thing guard 1 exists to
+ * forbid.
+ *
+ * So the ANCHOR of a verdict is taken from `latestReviews`, and `reviews[].commit` is
+ * believed only about verdicts `latestReviews` does not speak of. A verdict with no
+ * anchor is NOT a verdict on this head: it is refused, and refused in ITS OWN WORDS —
+ * "an approve with no commit anchor" says "a review run on the `pull_request` event is
+ * missing", which is a different repair from "no approve" (a new round of review) and
+ * from "the approve is on an older head" (a rebase). The refusal covers a
+ * `CHANGES_REQUESTED` without an anchor too: a verdict whose target is unknown does not
+ * open a merge door, whichever way it points.
+ *
+ * WHY MATCH BY `author` + `submittedAt` and not by identity: the two arrays are two
+ * answers of `gh` about the same reviews, and this pair is what they agree on (`id` is
+ * empty on the anchorless one, so it cannot be the key). When an anchorless entry of
+ * `latestReviews` carries no stamp, its whole AUTHOR is treated as anchorless — the
+ * same "judge the group whole when time cannot tell it apart" that D1 and D4 use, for
+ * the same reason: this is a merge door and an unreadable payload refuses.
+ *
+ * WHAT THIS DOES NOT REACH, said plainly: `latestReviews` holds one entry per author,
+ * so the anchor of an OLDER review is not re-checkable at all. It does not matter for
+ * the answer — guard 1 judges the LAST verdict of each reviewer (D4) and `latestReviews`
+ * is exactly the last review of each — except in one corner: an author whose last review
+ * is a non-verdict (`COMMENTED`) hides the anchor of the verdict beneath it, and there
+ * the door is left with what `reviews[].commit` says. Closing that corner would mean
+ * refusing every approve `latestReviews` cannot confirm, which would refuse a perfectly
+ * anchored approve for the sole reason that its author commented afterwards.
+ *
  * AND `gh` SAYS "ABSENT" WITH AN EMPTY STRING (D3): a flying run comes back with
  * `conclusion: ""`, not `null`, so `??` reads it as a value and the refusal printed
  * `review=` — blind exactly where the reader decides whether to wait or to fix. Every
@@ -98,6 +135,15 @@
  * all) is named for what it is rather than folded into "go ahead".
  */
 
+/** One review as the gate reads it — who said what, against which commit, when. */
+export type ReviewFact = {
+  readonly state: string;
+  readonly commitSha: string | undefined;
+  readonly author: string | undefined;
+  /** When it was submitted — how a second round is told from the verdict it replaced (D4). */
+  readonly submittedAt?: string | undefined;
+};
+
 /** The facts about a pull request the gate judges — the shape `gh pr view --json` gives. */
 export type PullRequestFacts = {
   readonly number: number;
@@ -105,14 +151,15 @@ export type PullRequestFacts = {
   readonly headSha: string;
   /** The PR description, where the `thread:` line lives (rule 14). */
   readonly body: string;
-  /** `reviews`: state plus the commit it was submitted against. */
-  readonly reviews: readonly {
-    readonly state: string;
-    readonly commitSha: string | undefined;
-    readonly author: string | undefined;
-    /** When it was submitted — how a second round is told from the verdict it replaced (D4). */
-    readonly submittedAt?: string | undefined;
-  }[];
+  /** `reviews`: state plus the commit it was submitted against — the commit BEING SUBSTITUTED with the current head when the verdict has none (thread 043). */
+  readonly reviews: readonly ReviewFact[];
+  /**
+   * `latestReviews`: the last review of each author, as GitHub itself groups them — and
+   * the only answer in which a verdict submitted without a `commit_id` admits it, with an
+   * empty `commit.oid` (thread 043). Absent means gh was not asked: then the anchors of
+   * `reviews` are taken as given, which is the behaviour that let the defect through.
+   */
+  readonly latestReviews?: readonly ReviewFact[] | undefined;
   /** `statusCheckRollup`: check runs (status/conclusion) and status contexts (state) alike. */
   readonly checks: readonly {
     readonly name: string;
@@ -345,6 +392,40 @@ export const latestVerdictPerAuthor = (verdicts: readonly Verdict[]): readonly V
   });
 };
 
+/** What the two answers of `gh` about one review agree on — `id` is empty on the anchorless one. */
+const reviewKey = (review: ReviewFact): string =>
+  `${review.author ?? "?"} ${present(review.submittedAt) ?? ""}`;
+
+/**
+ * The reviews that carry NO commit anchor, judged by `latestReviews` (thread 043) — the
+ * one place `gh` says so instead of substituting the current head. An anchorless entry
+ * without a stamp cannot be matched to a single review, so its whole author is answered
+ * for: a payload that cannot be read refuses, it does not pick a winner by luck.
+ *
+ * Returns the elements of `reviews` themselves, so the caller can subtract them by
+ * identity from the array it is judging.
+ */
+export const withoutAnchor = (input: {
+  readonly reviews: readonly ReviewFact[];
+  readonly latestReviews?: readonly ReviewFact[] | undefined;
+}): readonly ReviewFact[] => {
+  // `latestReviews` absent means gh was not asked — nothing is known to be anchorless,
+  // and the anchors of `reviews` are taken as given (the reading before thread 043).
+  const anchorless = (input.latestReviews ?? []).filter(
+    (review) => present(review.commitSha) === undefined,
+  );
+  if (anchorless.length === 0) return [];
+  const keys = new Set<string>();
+  const authors = new Set<string>();
+  for (const review of anchorless) {
+    if (present(review.submittedAt) === undefined) authors.add(review.author ?? "?");
+    else keys.add(reviewKey(review));
+  }
+  return input.reviews.filter(
+    (review) => authors.has(review.author ?? "?") || keys.has(reviewKey(review)),
+  );
+};
+
 const checkIsGreen = (check: Attempt): boolean =>
   check.conclusion === undefined && check.status === undefined
     ? check.state !== undefined && greenStates.has(check.state)
@@ -394,15 +475,23 @@ export const evaluateMergeGate = (input: {
   const { pr } = input;
   const head = pr.headSha;
 
+  // A verdict `latestReviews` shows without a commit is not a verdict on this head,
+  // whatever `reviews[].commit` substitutes for it (thread 043).
+  const anchorless = new Set(
+    withoutAnchor({ reviews: pr.reviews, latestReviews: pr.latestReviews }),
+  );
+  const anchored = pr.reviews.filter((review) => !anchorless.has(review));
+  const unanchoredVerdicts = [...anchorless].filter((review) => verdictStates.has(review.state));
+
   const onHead = latestVerdictPerAuthor(
-    pr.reviews
+    anchored
       .filter((review) => review.commitSha === head)
       .map(asVerdict)
       .filter((verdict) => verdictStates.has(verdict.state)),
   );
   const approvals = onHead.filter((review) => review.state === "APPROVED");
   const changesRequested = onHead.filter((review) => review.state === "CHANGES_REQUESTED");
-  const staleApprovals = pr.reviews.filter(
+  const staleApprovals = anchored.filter(
     (review) => review.state === "APPROVED" && review.commitSha !== head,
   );
 
@@ -416,26 +505,40 @@ export const evaluateMergeGate = (input: {
             .map((review) => review.author ?? "?")
             .join(", ")}) — a new round, not a merge`,
         }
-      : approvals.length > 0
+      : unanchoredVerdicts.length > 0
         ? {
             guard: 1,
             title: "approve on the current head",
-            state: "pass",
-            detail: `approved on ${head.slice(0, 7)} by ${approvals
-              .map((review) => review.author ?? "?")
-              .join(", ")}`,
-          }
-        : {
-            guard: 1,
-            title: "approve on the current head",
             state: "fail",
-            detail:
-              staleApprovals.length === 0
-                ? `no approve verdict on ${head.slice(0, 7)}`
-                : `the approve is on ${staleApprovals
-                    .map((review) => (review.commitSha ?? "?").slice(0, 7))
-                    .join(", ")}, the head has moved to ${head.slice(0, 7)} — a new round is due`,
-          };
+            detail: `a verdict with no commit anchor (${unanchoredVerdicts
+              .map(
+                (review) =>
+                  `${review.state === "APPROVED" ? "approve" : review.state} by ${review.author ?? "?"}`,
+              )
+              .join(
+                ", ",
+              )}): a run of the review on 'workflow_dispatch' submits no commit and belongs to no head — it is not an answer about ${head.slice(0, 7)}. What is missing is a review run on the 'pull_request' event (re-label, or 'gh pr update-branch'), not a new round of review`,
+          }
+        : approvals.length > 0
+          ? {
+              guard: 1,
+              title: "approve on the current head",
+              state: "pass",
+              detail: `approved on ${head.slice(0, 7)} by ${approvals
+                .map((review) => review.author ?? "?")
+                .join(", ")}`,
+            }
+          : {
+              guard: 1,
+              title: "approve on the current head",
+              state: "fail",
+              detail:
+                staleApprovals.length === 0
+                  ? `no approve verdict on ${head.slice(0, 7)}`
+                  : `the approve is on ${staleApprovals
+                      .map((review) => (review.commitSha ?? "?").slice(0, 7))
+                      .join(", ")}, the head has moved to ${head.slice(0, 7)} — a new round is due`,
+            };
 
   const attempts = latestAttemptPerName(pr.checks.map(asAttempt));
   const notGreen = attempts.filter((check) => !checkIsGreen(check));

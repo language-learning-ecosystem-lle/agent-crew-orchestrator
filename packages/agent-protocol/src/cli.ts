@@ -6100,7 +6100,9 @@ const mergeGate = (argv: readonly string[]): void => {
         number,
         "--json",
         // `mergeable`/`mergeStateStatus`: what GitHub itself would refuse (D2).
-        "number,headRefOid,body,statusCheckRollup,reviews,files,mergeable,mergeStateStatus",
+        // `latestReviews` beside `reviews`: the only answer where a verdict with no
+        // commit anchor admits it (thread 043).
+        "number,headRefOid,body,statusCheckRollup,reviews,latestReviews,files,mergeable,mergeStateStatus",
       ],
       {
         cwd: repo,
@@ -6173,6 +6175,14 @@ const mergeGate = (argv: readonly string[]): void => {
         commitSha: review.commit?.oid,
         author: review.author?.login,
         // The stamp guard 1 tells a second round of review by (D4).
+        submittedAt: review.submittedAt ?? undefined,
+      })),
+      // The same reviews as gh groups them per author — where an anchorless verdict is
+      // honest about having no commit (thread 043).
+      latestReviews: parsed.data.latestReviews.map((review) => ({
+        state: review.state,
+        commitSha: review.commit?.oid,
+        author: review.author?.login,
         submittedAt: review.submittedAt ?? undefined,
       })),
       checks: parsed.data.statusCheckRollup.map((check) => ({
