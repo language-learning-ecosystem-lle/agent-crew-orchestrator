@@ -112,8 +112,9 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # --priority high|normal|low: WHICH waiting thread is raised FIRST from here on (R5) —
                               # only from a role holding 'thread-priority'; the queue is priority, then age of wait, then number
                               # --parked-on <person>: the turn STAYS here and is FROZEN until that person decides
-                              # (R27) — the pair is not raised and spends nothing; it lifts by itself with the next
-                              # substantive message. Only a role the circuit cannot wake ('wake.mode: self')
+                              # (R27) — the pair is not raised and spends nothing; it lifts by itself on the
+                              # next message from a PARTICIPANT (the circuit's own announcements,
+                              # 'worker: gh-action', are not one — 023). Only a role the circuit cannot wake ('wake.mode: self')
                               # REFUSED together with '--expects none' (034): an informational message
                               # asks nobody for anything, and a park says the thread waits for a person
                               # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (023) — a
