@@ -627,7 +627,11 @@ const mailLockFor = (input: {
  * package refuses everywhere else.
  */
 const configIssues = (
-  loaded: ReturnType<typeof loadProtocolConfig>,
+  // NOT 'ReturnType<typeof loadProtocolConfig>': the loader is about to be OVERLOADED by
+  // intent (#134, 'data' | 'policy'), and 'ReturnType' resolves to the LAST signature —
+  // the policy one, which by construction carries neither the registry nor a whole role.
+  // Naming the type the door actually returns is what keeps this reader honest.
+  loaded: import("./config/load.js").LoadedConfig,
   repo: string,
 ): readonly string[] => {
   // The declared instructions are checked AT THE SAME ref as the config: checking
