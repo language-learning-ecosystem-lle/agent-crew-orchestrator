@@ -34,6 +34,7 @@ import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { waitFor } from "../testing/wait-for.js";
 import { parseJournal } from "./journal.js";
 import { foldLeases } from "./lease.js";
+import { openQuotaShelves } from "./quota.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -226,6 +227,61 @@ describe("running a role as a process — the outcome is always recorded", () =>
     const last = journal(repo).at(-1);
 
     expect(last).toMatchObject({ reason: "quota-exhausted", until: "2026-07-29T16:00:00Z" });
+  }, 60_000);
+
+  it("WHICH WINDOW CLOSED REACHES THE JOURNAL — two runs, two shelves, neither of them 'unknown'", () => {
+    // THE DEFECT THIS EXISTS TO CATCH (thread 038): `runOne` put `window` into the
+    // detail of `stepEvent`, `stepEvent` copied every field of that detail into the
+    // release EXCEPT this one, and the property was dropped in silence — a field that
+    // arrives through a spread is not an excess property the compiler can see. The
+    // consumer downstream (`openQuotaShelves`) reads `event.window ?? UNKNOWN_WINDOW`,
+    // so every closed window in production landed on ONE shelf and the two overwrote
+    // each other: a five-hour signal after a seven-day one reopens the weekly door six
+    // days early.
+    //
+    // WHY THE RUN AND NOT A UNIT ON `stepEvent`. The unit would check the very function
+    // that was fixed, against the very shape that was forgotten. The class of defect is
+    // "the field does not survive the road from the run to the shelf", so the test walks
+    // that whole road: a real session raised by the real supervisor, the JOURNAL FILE it
+    // wrote, and the fold the backoff actually calls on it.
+    const { repo } = contour();
+    // The reopening times are computed from the clock rather than pinned, because the
+    // second half of the check is that BOTH SHELVES ARE STILL OPEN — a hard-coded epoch
+    // would make this test pass until that date and then quietly stop checking anything.
+    const window = (hours: number): { epoch: number; stamp: string } => {
+      const epoch = Math.floor(Date.now() / 1000) + hours * 3600;
+      return { epoch, stamp: `${new Date(epoch * 1000).toISOString().slice(0, 19)}Z` };
+    };
+    const five = window(5);
+    const seven = window(7 * 24);
+    // The structured signal — the ONLY layer that names the window (the prose forms
+    // never do), in the shape the stream delivers it: one JSON line on stdout.
+    const signal = (type: string, epoch: number): string =>
+      `printf '%s\\n' '${JSON.stringify({
+        type: "system",
+        subtype: "rate_limit_event",
+        rate_limit_info: { status: "rejected", resetsAt: epoch, rateLimitType: type },
+      })}'\nexit 1`;
+
+    run(repo, stub(repo, signal("five_hour", five.epoch)));
+    run(repo, stub(repo, signal("seven_day", seven.epoch)));
+
+    const events = journal(repo);
+    const closures = events.filter(
+      (event) => event.kind === "lease-released" && event.reason === "quota-exhausted",
+    );
+    // ACCEPTANCE 1 — the line of the journal itself, both fields on it.
+    expect(closures).toMatchObject([
+      { window: "five_hour", until: five.stamp },
+      { window: "seven_day", until: seven.stamp },
+    ]);
+
+    // ACCEPTANCE 2 — the two shelves live side by side on that journal instead of
+    // overwriting each other on the shared `unknown` key.
+    const shelves = openQuotaShelves(events, new Date());
+    expect(shelves.map((shelf) => shelf.window)).toEqual(["five_hour", "seven_day"]);
+    expect(shelves.map((shelf) => shelf.until)).toEqual([five.stamp, seven.stamp]);
+    expect(shelves.every((shelf) => shelf.stated)).toBe(true);
   }, 60_000);
 
   it("an ORDINARY stderr complaint is still an ordinary death — the control", () => {
