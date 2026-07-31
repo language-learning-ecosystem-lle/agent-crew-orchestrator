@@ -14,7 +14,7 @@
  * program. Hence this module: the text is importable without the entry point coming
  * along with it (`usage.test.ts` is what reads it).
  */
-export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor' and the operator's five below; --repo defaults to the repository of the current directory):
+export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor', 'init' and the operator's five below; --repo defaults to the repository of the current directory):
   agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
   agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
                               # IS THIS BOX COMMISSIONED (thread 019, the operator tail): the
@@ -26,6 +26,25 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # it REACHES THE NETWORK and SPENDS ONE AGENT CALL, which is the
                               # point — those facts are in no file. --offline leaves them unasked
                               # and says so in the rows, never passes them
+                              # --ref may be left out (the operator's set): 'orchestrator.ref'
+  agent-protocol init         [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <id>] [--agent <kind>] [--exec <path>] [--operator <role>] [--secrets <path>] [--no-doctor] [--offline] [--write]
+                              # COMMISSIONING A BOX, the other half of 'doctor' (thread 019): the
+                              # machine config (R14) assembled from flags and from what this box
+                              # already knows — the agent binary is FOUND on PATH, not typed — the
+                              # mail worktree created WITH A FETCH (one made without it reads as
+                              # 'never pulled' in every frame afterwards), and then 'doctor' is run:
+                              # the commissioning ends in the checklist, not in a belief
+                              # WITHOUT --write it decides and prints and DOES none of it; with it,
+                              # it does it. One effect survives the plan and the summary line names
+                              # it: on a box with no mail checkout yet, reading whether the instance
+                              # id is already published FETCHES the mail branch ('origin/<branch>'
+                              # moves, nothing else) — that read is why the warning about a taken id
+                              # reaches you BEFORE you take it. --offline declines it and says so
+                              # It never guesses an identity (--instance is refused, not
+                              # invented: a guess raises another box's role), never writes the
+                              # secrets file (only where it lies), never overwrites silently — a
+                              # declared value and a new one are printed as a change, both sides
+                              # --no-doctor: stop after writing (for a box with no network yet)
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
   agent-protocol roles list   --ref <ref> [--repo <path>]
   agent-protocol schema migrate [--repo <path>] [--config-path <p>] [--root <mail>] [--to <n>] [--write]
@@ -141,6 +160,13 @@ each for a stated reason:
   · 'orchestrator record/enable/disable/hold/stop' and the state of 'notify' — machine-local
     operational state under 'orchestrator.state', outside git by construction: there is
     nothing to deliver, and 'notify' delivers through its transport, not through a commit;
+  · 'init' — the machine config of THIS BOX and its mail worktree: machine-local by
+    the same reason as the state above, and the word means what it means for
+    'orchestrator run' — not "write the file" but "do it". Without it the command
+    decides, prints the plan and DOES none of it — except the one read its own block
+    above names: on a box with no mail checkout yet, asking whether the instance id is
+    already published FETCHES the mail branch ('origin/<branch>' moves on this disk,
+    nothing else does), and the summary line says so; '--offline' declines the read;
   · 'orchestrator systemd install' — the unit FILE of this box, written under the
     operator's systemd directory: there is nothing to deliver and nothing to enable
     either. The two commands that would ('systemctl --user enable', 'loginctl
@@ -157,10 +183,10 @@ The agent BINARIES come from the machine config (~/.config/agent-protocol/local.
 or --local-config <p>): the repository says WHAT is raised, the machine says WHERE it is.
 THE OPERATOR'S FIVE (thread 019): the same circuit without the ceremony — the daemon
 in the background with one command, the parking with one word, the picture without a
-ref. --ref may be left out in these five (up/down/hold/resume/status) and in 'doctor'
-above, and nowhere else: it is taken from 'orchestrator.ref' of the config in the
-working tree, and which ref was used is printed. The strict forms below keep every
-flag they had.
+ref. --ref may be left out in these five (up/down/hold/resume/status) and in the two
+commissioning commands above ('doctor' and 'init'), and nowhere else: it is taken from
+'orchestrator.ref' of the config in the working tree, and which ref was used is printed.
+The strict forms below keep every flag they had.
   agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--log-max-bytes <n>] [--pid-file <p>] [--foreground] [--clear-force]   # plus every 'daemon' flag
                               # THE LOG IS BOUNDED AND ITS EPOCHS ARE LEGIBLE: every start puts
                               # a banner line into the daemon log, and a log over --log-max-bytes

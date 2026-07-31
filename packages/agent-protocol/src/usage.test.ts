@@ -310,6 +310,36 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
   ["orchestrator resume", ["curator", "--holds", "/tmp/holds"]],
 ];
 
+/**
+ * USAGE cut into the passages a reader actually reads: one per command block of the
+ * table (the line plus its `#` continuation), one per bullet of the `--write` list.
+ *
+ * A claim about a command is repeated in as many passages as name it, and a fix
+ * applied to one of them is exactly how the other goes stale — which is what happened
+ * to `init` (rounds 7 and 8 of thread 019). Holding the passages instead of grepping
+ * the whole text lets a guard say WHICH place lies, and makes a fourth mention inherit
+ * the check instead of escaping it.
+ */
+const passagesOf = (
+  usage: string,
+): readonly { readonly where: string; readonly text: string }[] => {
+  const passages: { where: string; text: string }[] = [];
+  let current: { where: string; text: string } | undefined;
+  for (const line of usage.split("\n")) {
+    const command = /^ {2}agent-protocol (\S+(?: [a-z-]+)?)/.exec(line);
+    const bullet = /^ {2}· '([^']+)'/.exec(line);
+    if (command?.[1] !== undefined) {
+      current = { where: `command '${command[1]}'`, text: line };
+      passages.push(current);
+    } else if (bullet?.[1] !== undefined) {
+      current = { where: `--write list: '${bullet[1]}'`, text: line };
+      passages.push(current);
+    } else if (line.trim() === "") current = undefined;
+    else if (current !== undefined) current.text += `\n${line}`;
+  }
+  return passages;
+};
+
 /** The same merge `guardArguments` performs: `up` is the daemon with its start-up done. */
 const specFor = (key: string) => {
   const table = parseUsage(USAGE);
@@ -404,6 +434,9 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       // enabling is printed for a human. Its own line in the list, because its reason
       // is its own: not "nothing to deliver yet" but "the delivery is somebody else's".
       orchestratorSystemdInstall: "'orchestrator systemd install'",
+      // `init --write` commissions THIS BOX: the machine config and the mail worktree,
+      // both machine-local — the word means "do it", as it does for 'orchestrator run'.
+      boxInit: "'init'",
     };
     expect([...reading].filter((name) => named[name] === undefined)).toEqual([]);
     // Bounded at the next section: past it, tokens like "record" or "hold" match the
@@ -411,6 +444,53 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     const from = USAGE.indexOf("WHICH '--write' DELIVERS");
     const list = USAGE.slice(from, USAGE.indexOf("\nORCHESTRATOR:", from));
     expect([...reading].filter((name) => !list.includes(named[name] as string))).toEqual([]);
+  });
+
+  it("says the fetch, and never 'touches nothing', in EVERY passage about `init`", () => {
+    // THE SAME SENTENCE IN A THIRD PLACE (thread 019, the verdicts of rounds 7 and 8).
+    // `init` without --write does one real thing on a box with no mail checkout yet: it
+    // fetches the mail branch to read whether the instance id is already taken, moving
+    // `origin/<branch>` on disk. Round 7 corrected the summary line and the command's
+    // own block; the bullet of the `--write` list — same file, same constant, same
+    // printed help — kept promising a plan that "touches nothing", and it took another
+    // round of review to see it. A claim living in three passages drifts in the two
+    // nobody is looking at; here the machine holds all of them at once.
+    //
+    // Both halves are asserted, because the negative one alone is satisfied by silence:
+    // a passage that says nothing about the read is not honest, it is merely quiet.
+    const naming = passagesOf(USAGE).filter((passage) => passage.where.includes("'init'"));
+    // The passages themselves are pinned: a renamed block must fail here loudly rather
+    // than shrink the guard to nothing while staying green.
+    expect(naming.map((passage) => passage.where).sort()).toEqual([
+      "--write list: 'init'",
+      "command 'init'",
+    ]);
+    for (const passage of naming) {
+      expect([
+        passage.where,
+        /touch(es|ed) nothing|nothing was touched/.test(passage.text),
+      ]).toEqual([passage.where, false]);
+      expect([passage.where, /FETCHES|fetch/.test(passage.text)]).toEqual([passage.where, true]);
+    }
+  });
+
+  it("names in the header every top-level command whose --ref is optional", () => {
+    // THE SENTENCE IS A CLAIM ABOUT THE TABLE UNDER IT, and it went false twice by the
+    // same move: a command was given the operator's ref resolution and the sentence that
+    // enumerates such commands was left alone ('init', round 6 of thread 019). The list
+    // is derived from the table — a bracketed `[--ref <ref>]` IS the optionality.
+    //
+    // TOP-LEVEL ONLY. The `orchestrator …` lines are covered by the prose paragraph
+    // ("the operator's five"), which already understates its own table (`restart`, `tui`
+    // and `systemd install` resolve the ref too) — that is a pre-existing inaccuracy of
+    // the prose and not this guard's business; widening the guard would turn it into a
+    // red test about text nobody is editing.
+    const optional = [...USAGE.matchAll(/^ {2}agent-protocol (\S+) +\[--ref <ref>\]/gm)]
+      .map((one) => one[1] as string)
+      .filter((name) => name !== "orchestrator");
+    expect(optional.length).toBeGreaterThan(1);
+    const header = USAGE.slice(0, USAGE.indexOf("\n"));
+    expect(optional.filter((name) => !header.includes(`'${name}'`))).toEqual([]);
   });
 
   it("accepts every command the TUI's mutating keys can produce (T-2)", () => {
