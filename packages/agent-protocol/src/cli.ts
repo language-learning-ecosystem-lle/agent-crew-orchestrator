@@ -6980,7 +6980,9 @@ const mergeGate = (argv: readonly string[]): void => {
         number,
         "--json",
         // `mergeable`/`mergeStateStatus`: what GitHub itself would refuse (D2).
-        "number,headRefOid,body,statusCheckRollup,reviews,files,mergeable,mergeStateStatus",
+        // `commits` beside `reviews`: the date of the head commit, the one fact a
+        // substituted review anchor cannot fake (thread 043).
+        "number,headRefOid,body,statusCheckRollup,reviews,commits,files,mergeable,mergeStateStatus",
       ],
       {
         cwd: repo,
@@ -7055,6 +7057,11 @@ const mergeGate = (argv: readonly string[]): void => {
         // The stamp guard 1 tells a second round of review by (D4).
         submittedAt: review.submittedAt ?? undefined,
       })),
+      // When the head commit was made — a verdict older than it answered about code that
+      // did not exist yet (thread 043). Only the head's own entry counts.
+      headCommittedAt:
+        parsed.data.commits.find((commit) => commit.oid === parsed.data.headRefOid)
+          ?.committedDate ?? undefined,
       checks: parsed.data.statusCheckRollup.map((check) => ({
         // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
         // absence itself (D3), so the mapping stays a mapping.

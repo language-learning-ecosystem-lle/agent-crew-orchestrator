@@ -958,6 +958,51 @@ never enter the count (that is the guard's whole point), a group whose stamps ca
 tell its verdicts apart is judged whole and refuses, and states that are not a verdict —
 `COMMENTED`, `DISMISSED` — do not overtake one: a comment is not an answer.
 
+**And a verdict can have no commit at all, which `reviews[].commit` hides.** A review
+submitted without a `commit_id` — what the reviewer's action produces when it is
+re-triggered by `workflow_dispatch`, because that run hangs on the head of `main` and
+not on the head of the PR — comes back from `gh` carrying whatever head the pull request
+has **at the moment of reading**. One and the same approve on #64 (`submittedAt`
+03:46:02Z, untouched) read as "approved on `c1dc1a3`" and then, after a
+`gh pr update-branch`, as "approved on `ea8572a`" — an approve granted once outliving
+every later push, which is precisely what guard 1 exists to forbid.
+
+**The field that would admit it does not exist, and this cost a round.** The first
+repair read the anchor out of `latestReviews`, on the belief that `commit.oid` is empty
+there only for a verdict submitted without one. Measured across #62/#64/#108/#109/#110
+and #111, `latestReviews[].commit.oid` is empty for **every** review, anchored ones
+included — `gh` does not resolve that field in this array at all, and a door built on it
+refuses every PR there is. Neither answer of `gh`, nor `commit_id` of the REST reviews
+endpoint, tells an anchored verdict from a substituted one in a single read.
+
+**So the door asks time, which cannot be substituted:** a verdict cannot be an answer
+about a commit that did not exist when it was submitted. The `committedDate` of the head
+commit is read beside the reviews, and a verdict older than it STOPS the door in its own
+words — what is missing is a review run on the `pull_request` event (re-label, or
+`gh pr update-branch`), which is a different repair from "no approve" (a new round) and
+from "the approve is on an older head" (a rebase). A `CHANGES_REQUESTED` in that state
+stops it too: a verdict whose target is unknown opens no door, whichever way it points,
+and a verdict with no stamp at all that claims the head is refused for the same reason —
+"judge the group whole when time cannot tell it apart", as above. What this closes is
+the PERMANENCE, which is the whole point of guard 1: every push makes a commit younger
+than the verdict, so an approve stops travelling to code nobody answered about. What it
+does not do is tell a `workflow_dispatch` verdict from a `pull_request` one while the
+head has not moved — and there it need not, since such a run read the tree the head
+carries now; the other half of that story is guard 2, which a dispatch run never
+satisfies, its check hanging on the head of `main`. A head commit gh did not date leaves
+the reading exactly as it was before this thread.
+
+**The age is asked of the last verdict of each author, not of the history** — and this
+was the second round of the same thread. Asked of the whole `reviews` array, the age test
+locked the door FOREVER on any PR a `workflow_dispatch` run had ever reviewed: that
+record never leaves the array, `gh` keeps showing it against the current head, and the
+repair the refusal itself names — a run on the `pull_request` event — only adds a verdict
+beside it. The refusal outlived its own remedy, which is the one thing a refusal must not
+do. So D4 runs first: the verdicts on the head are grouped by author, and only what
+survives the grouping is asked its age. An author whose LAST word is anchorless still
+stops the door, and another author's approve does not clear it — being overtaken by the
+same reviewer is what clears a verdict, and nothing else is.
+
 **`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
 card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
 mergeability of the branch altogether — a PR with a conflicting tree, one clean set of
