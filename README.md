@@ -844,6 +844,18 @@ null — every field of a check is read as "empty text is no text", so the refus
 `review=IN_PROGRESS` instead of the blank `review=` it used to print, blind exactly
 where the reader decides whether to wait or to fix.
 
+**One head also answers more than once per reviewer.** The same defect sat in guard 1,
+one step earlier in the door: it read the PRESENCE of a `CHANGES_REQUESTED` on the head
+instead of the LAST verdict on it, so a second round of review that ended in `approve`
+on the very same head still refused, and two approved PRs (#74, #64) stood blocked by
+it. Verdicts are therefore grouped **by reviewer** and only the last one of each is
+judged, by `submittedAt`. The symmetry is what keeps this from becoming a hole: an
+`approve` overtaken by a later `changes-requested` on the same head STOPS — otherwise
+the fix would turn a fail-closed door into a fail-open one. Verdicts on other heads
+never enter the count (that is the guard's whole point), a group whose stamps cannot
+tell its verdicts apart is judged whole and refuses, and states that are not a verdict —
+`COMMENTED`, `DISMISSED` — do not overtake one: a comment is not an answer.
+
 **`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
 card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
 mergeability of the branch altogether — a PR with a conflicting tree, one clean set of

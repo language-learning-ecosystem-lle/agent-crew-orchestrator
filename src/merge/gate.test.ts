@@ -157,6 +157,143 @@ describe("guard 1 — approve on the current head", () => {
   });
 });
 
+describe("guard 1 — one head answers more than once per reviewer (D4)", () => {
+  /** A verdict of the one reviewer this project has, stamped. */
+  const said = (
+    state: string,
+    submittedAt: string,
+    commitSha: string = HEAD,
+  ): PullRequestFacts["reviews"][number] => ({
+    state,
+    commitSha,
+    author: "github-actions",
+    submittedAt,
+  });
+
+  it("passes when a second round on the same head ended in approve", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          said("CHANGES_REQUESTED", "2026-07-31T03:11:30Z"),
+          said("APPROVED", "2026-07-31T03:33:07Z"),
+        ],
+      }),
+      1,
+    );
+    expect(outcome?.state).toBe("pass");
+    expect(outcome?.detail).toContain("github-actions");
+  });
+
+  it("refuses when the approve was overtaken by a later changes-requested", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          said("APPROVED", "2026-07-31T03:11:30Z"),
+          said("CHANGES_REQUESTED", "2026-07-31T03:33:07Z"),
+        ],
+      }),
+      1,
+    );
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("a new round");
+  });
+
+  it("does not read the order of the array — the stamps decide, not the position", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            said("APPROVED", "2026-07-31T03:33:07Z"),
+            said("CHANGES_REQUESTED", "2026-07-31T03:11:30Z"),
+          ],
+        }),
+        1,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("judges the group whole when no stamp tells the verdicts apart — it refuses", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            { state: "APPROVED", commitSha: HEAD, author: "github-actions" },
+            { state: "CHANGES_REQUESTED", commitSha: HEAD, author: "github-actions" },
+          ],
+        }),
+        1,
+      )?.state,
+    ).toBe("fail");
+  });
+
+  it("keeps an unstamped verdict in the answer — it cannot be shown to be the older one", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            said("APPROVED", "2026-07-31T03:33:07Z"),
+            { state: "CHANGES_REQUESTED", commitSha: HEAD, author: "github-actions" },
+          ],
+        }),
+        1,
+      )?.state,
+    ).toBe("fail");
+  });
+
+  it("counts verdicts of the current head only — an old changes-requested is not a round", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            said("CHANGES_REQUESTED", "2026-07-30T20:00:00Z", OLD),
+            said("APPROVED", "2026-07-31T03:33:07Z"),
+          ],
+        }),
+        1,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("holds the last verdict of EACH reviewer — one open changes-requested still stops it", () => {
+    const outcome = guard(
+      pr({
+        reviews: [
+          said("APPROVED", "2026-07-31T03:33:07Z"),
+          {
+            state: "CHANGES_REQUESTED",
+            commitSha: HEAD,
+            author: "john",
+            submittedAt: "2026-07-31T02:00:00Z",
+          },
+        ],
+      }),
+      1,
+    );
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("john");
+  });
+
+  it("does not let a comment overtake a verdict", () => {
+    expect(
+      guard(
+        pr({
+          reviews: [
+            said("APPROVED", "2026-07-31T03:33:07Z"),
+            said("COMMENTED", "2026-07-31T04:00:00Z"),
+          ],
+        }),
+        1,
+      )?.state,
+    ).toBe("pass");
+  });
+
+  it("a dismissed verdict is not one either — a head with only that has not been answered", () => {
+    expect(guard(pr({ reviews: [said("DISMISSED", "2026-07-31T03:33:07Z")] }), 1)?.state).toBe(
+      "fail",
+    );
+  });
+});
+
 describe("guard 2 — green checks on the same head", () => {
   it("counts a neutral and a skipped run as green", () => {
     expect(

@@ -72,6 +72,18 @@
  * head. And when time cannot tell them apart (no stamps at all), the whole group is
  * judged, so an unreadable payload refuses rather than passes: this is a merge door.
  *
+ * A HEAD ALSO ANSWERS MORE THAN ONCE PER REVIEWER (D4, the same statement of work).
+ * Guard 1 read the PRESENCE of a `CHANGES_REQUESTED` on the head instead of the LAST
+ * verdict on it: a second round of review that ends in `approve` on the very same head
+ * left the door refusing, and #74 and #64 stood approved-and-blocked. So the verdicts
+ * are grouped BY REVIEWER and only the last one of each is judged, by `submittedAt` —
+ * the mirror of D1, with its symmetry kept in both directions: an `approve` overtaken
+ * by a later `changes-requested` on the same head STOPS, or D4 would turn a fail-closed
+ * door into a fail-open one. When the stamps cannot tell a reviewer's verdicts apart,
+ * the group is judged whole, so an unreadable payload refuses; verdicts on other heads
+ * are not verdicts on this one and never enter the count. States that are not a verdict
+ * (`COMMENTED`, `DISMISSED`) do not overtake one — a comment is not an answer.
+ *
  * AND `gh` SAYS "ABSENT" WITH AN EMPTY STRING (D3): a flying run comes back with
  * `conclusion: ""`, not `null`, so `??` reads it as a value and the refusal printed
  * `review=` — blind exactly where the reader decides whether to wait or to fix. Every
@@ -98,6 +110,8 @@ export type PullRequestFacts = {
     readonly state: string;
     readonly commitSha: string | undefined;
     readonly author: string | undefined;
+    /** When it was submitted — how a second round is told from the verdict it replaced (D4). */
+    readonly submittedAt?: string | undefined;
   }[];
   /** `statusCheckRollup`: check runs (status/conclusion) and status contexts (state) alike. */
   readonly checks: readonly {
@@ -287,6 +301,50 @@ export const latestAttemptPerName = (attempts: readonly Attempt[]): readonly Att
   });
 };
 
+/** A review reduced to what guard 1 judges: who said what, and when (D4). */
+export type Verdict = {
+  readonly state: string;
+  readonly author: string | undefined;
+  /** The moment it was submitted; `undefined` when the payload carries no stamp. */
+  readonly at: number | undefined;
+};
+
+/** The two states that ANSWER. `COMMENTED`/`DISMISSED` are not verdicts and never overtake one. */
+const verdictStates = new Set(["APPROVED", "CHANGES_REQUESTED"]);
+
+const asVerdict = (review: PullRequestFacts["reviews"][number]): Verdict => {
+  const stamp = present(review.submittedAt);
+  const at = stamp === undefined ? Number.NaN : Date.parse(stamp);
+  return {
+    state: review.state,
+    author: review.author,
+    at: Number.isNaN(at) ? undefined : at,
+  };
+};
+
+/**
+ * The last verdict of each reviewer (D4). Same shape as {@link latestAttemptPerName} and
+ * for the same reason: a group whose stamps cannot tell its verdicts apart is kept whole,
+ * so an unreadable payload refuses instead of picking a winner by luck.
+ */
+export const latestVerdictPerAuthor = (verdicts: readonly Verdict[]): readonly Verdict[] => {
+  const byAuthor = new Map<string, Verdict[]>();
+  for (const verdict of verdicts) {
+    const key = verdict.author ?? "?";
+    const group = byAuthor.get(key);
+    if (group === undefined) byAuthor.set(key, [verdict]);
+    else group.push(verdict);
+  }
+  return [...byAuthor.values()].flatMap((group) => {
+    if (group.length === 1) return group;
+    const known = group.map((verdict) => verdict.at).filter((at) => at !== undefined);
+    if (known.length === 0) return group;
+    const last = Math.max(...known);
+    // A verdict with no stamp cannot be shown to be older, so it stays in the answer.
+    return group.filter((verdict) => verdict.at === undefined || verdict.at === last);
+  });
+};
+
 const checkIsGreen = (check: Attempt): boolean =>
   check.conclusion === undefined && check.status === undefined
     ? check.state !== undefined && greenStates.has(check.state)
@@ -336,7 +394,12 @@ export const evaluateMergeGate = (input: {
   const { pr } = input;
   const head = pr.headSha;
 
-  const onHead = pr.reviews.filter((review) => review.commitSha === head);
+  const onHead = latestVerdictPerAuthor(
+    pr.reviews
+      .filter((review) => review.commitSha === head)
+      .map(asVerdict)
+      .filter((verdict) => verdictStates.has(verdict.state)),
+  );
   const approvals = onHead.filter((review) => review.state === "APPROVED");
   const changesRequested = onHead.filter((review) => review.state === "CHANGES_REQUESTED");
   const staleApprovals = pr.reviews.filter(

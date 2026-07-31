@@ -5969,6 +5969,8 @@ const mergeGate = (argv: readonly string[]): void => {
         state: review.state,
         commitSha: review.commit?.oid,
         author: review.author?.login,
+        // The stamp guard 1 tells a second round of review by (D4).
+        submittedAt: review.submittedAt ?? undefined,
       })),
       checks: parsed.data.statusCheckRollup.map((check) => ({
         // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
