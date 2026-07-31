@@ -187,6 +187,12 @@ import {
 import { foldLeases, isLeaseAlive, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
 import { rotateDaemonLog, writeEpochBanner } from "./orchestrator/logsize.js";
+import {
+  foldMetrics,
+  type MergeRecord,
+  renderMetrics,
+  type VerdictRecord,
+} from "./orchestrator/metrics.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
 import {
   type OrchestratorPaths,
@@ -1258,6 +1264,94 @@ const tasksList = (argv: readonly string[]): void => {
       `${state.id}  ${state.status.padEnd(11)}  ${state.at.thread}  ${state.since.slice(0, 10)}  ${state.title}`,
     );
   }
+};
+
+/**
+ * WHAT THE CIRCUIT BURNED (thread 029) — the reading half. Everything it needs is
+ * already on this box: the journal carries the ledger since the writing half, the mail
+ * checkout carries the reviewer's verdicts, and `sessions/` is consulted for ONE fact
+ * only — the moment its era begins, which is a boundary of the data rather than a source.
+ *
+ * The verdict and the merge are recognised out of the message BODY on purpose (john's
+ * decision, msg-005, variant A): the writer there is CI by a fixed template, not a human,
+ * and the alternative — a header field — costs a schema step for one number.
+ */
+const VERDICT_LINE = /^verdict:\s*(approve|needs-fixes)\s*$/m;
+const PR_ANCHOR = /^pr:\s*#?(\d+)\s*$/m;
+const MERGED_LINE = /PR #(\d+)\b[\s\S]{0,200}?\bmerged\b/;
+/** `2026-07-25T16-29-42Z-dev-core-016-....jsonl` — the name carries the moment. */
+const STREAM_NAME = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z-/;
+
+const metricsSources = (
+  argv: readonly string[],
+  paths: OrchestratorPaths,
+): { verdicts: VerdictRecord[]; merges: MergeRecord[]; streamEraStart?: string } => {
+  const root = flag(argv, "--root") ?? paths.mailRoot;
+  const verdicts: VerdictRecord[] = [];
+  const merges: MergeRecord[] = [];
+  if (existsSync(root)) {
+    const registry = registryFrom(argv, repoOf(root));
+    const { threads } = loadThreads(root, registry.ids());
+    for (const loaded of threads) {
+      for (const message of loaded.thread.messages) {
+        const ts = message.fields.date;
+        if (message.fields.from === "reviewer-pr") {
+          const said = VERDICT_LINE.exec(message.text);
+          if (said === null) continue;
+          const anchor = PR_ANCHOR.exec(message.text);
+          verdicts.push({
+            ts,
+            pr: anchor === null ? null : Number(anchor[1]),
+            verdict: said[1] as "approve" | "needs-fixes",
+          });
+          continue;
+        }
+        if (message.fields.from !== "github") continue;
+        const closed = MERGED_LINE.exec(message.text);
+        if (closed !== null) merges.push({ ts, pr: Number(closed[1]) });
+      }
+    }
+  }
+
+  // The era of the streams: the earliest one still on disk. A run older than it has no
+  // stream to have lost a block from, and a box with no streams at all cannot draw the
+  // boundary — so it is left absent rather than invented.
+  const sessions = flag(argv, "--sessions") ?? paths.sessions;
+  const stamps = existsSync(sessions)
+    ? readdirSync(sessions)
+        .filter((name) => name.endsWith(".jsonl"))
+        .map((name) => STREAM_NAME.exec(name))
+        .filter((m): m is RegExpExecArray => m !== null)
+        .map((m) => `${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`)
+        .sort()
+    : [];
+  return {
+    verdicts,
+    merges,
+    ...(stamps.length === 0 ? {} : { streamEraStart: stamps[0] as string }),
+  };
+};
+
+const metrics = (argv: readonly string[]): void => {
+  const paths = pathsFrom(argv);
+  const journal = flag(argv, "--journal") ?? paths.journal;
+  const events = existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
+  const sources = metricsSources(argv, paths);
+  const since = flag(argv, "--since");
+  const role = flag(argv, "--role");
+  const thread = flag(argv, "--thread");
+  const folded = foldMetrics({
+    events,
+    ...sources,
+    ...(since === undefined ? {} : { since }),
+    ...(role === undefined ? {} : { role }),
+    ...(thread === undefined ? {} : { thread }),
+  });
+  if (argv.includes("--json")) {
+    out(JSON.stringify(folded, null, 2));
+    return;
+  }
+  for (const line of renderMetrics(folded)) out(line);
 };
 
 const parseExpects = (raw: string): Expects => {
@@ -7856,6 +7950,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     migrate(argv.slice(1));
   } else if (command === "derive") {
     derive(argv.slice(1));
+  } else if (command === "metrics") {
+    metrics(argv.slice(1));
   } else if (command === "tasks") {
     if (argv[1] !== "list") fail(`unknown 'tasks' subcommand '${argv[1] ?? ""}'\n${USAGE}`, 2);
     tasksList(argv.slice(2));
