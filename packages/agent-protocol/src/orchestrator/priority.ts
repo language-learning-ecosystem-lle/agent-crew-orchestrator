@@ -8,11 +8,22 @@
  * so the order of the candidates is the whole scheduling policy of the circuit —
  * and a policy that nobody chose is the one that is hardest to argue with later.
  *
- * THREE TIERS, IN THIS ORDER, AND NOTHING ELSE (curator's boundary):
+ * FOUR TIERS, IN THIS ORDER, AND NOTHING ELSE (curator's boundary, widened by john's
+ * decision of 2026-08-01 in thread `019-operator-ux`):
  *  1. the explicit priority of the thread — `high` before `normal` before `low`;
- *  2. the age of the wait — whoever has been waiting longest goes first;
- *  3. the thread number — a stable tiebreaker, so that an equal pair does not swap
+ *  2. a merge held by the thread — a PR whose guards 1-2 hold (an approve on the current
+ *     head, green checks on it) is waiting for a button and nothing else;
+ *  3. the age of the wait — whoever has been waiting longest goes first;
+ *  4. the thread number — a stable tiebreaker, so that an equal pair does not swap
  *     places between ticks and make the queue unreadable.
+ *
+ * WHY THE MEASURED FACT SITS BELOW THE SPOKEN ONE. The explicit priority is a person
+ * saying which thread matters; merge-readiness is the circuit noticing that one of them
+ * cannot move without a click. A computed fact that overtook a human's word would make
+ * `priority: high` unreliable exactly when it is used — and the whole value of tier 1 is
+ * that a human can predict it. What "guards 1-2 hold" MEANS is not restated here: it is
+ * read by `merge-ready.ts` through the door's own function, so the queue and the door
+ * cannot disagree about the word "ready".
  *
  * No weights, no scores, no configurable strategies: the ordering is a total order
  * computable from data already in the feed, and its whole value is that a human can
@@ -137,6 +148,13 @@ export type RankedCandidate = Candidate & {
   readonly priority: ThreadPriority;
   /** The handoff stamp; `undefined` sorts as "no known wait" — behind every dated one. */
   readonly since?: string;
+  /**
+   * The pull request of this thread whose guards 1-2 hold, when one was MEASURED this
+   * tick (tier 2). Absent means "not measured or not holding", and those two are
+   * deliberately one case: the reader degrades to silence, and silence must order the
+   * queue exactly as a circuit without merge-ready would.
+   */
+  readonly mergeReadyPr?: number;
 };
 
 const RANK: Record<ThreadPriority, number> = { high: 0, normal: 1, low: 2 };
@@ -155,6 +173,9 @@ export const orderCandidates = (candidates: readonly RankedCandidate[]): RankedC
   [...candidates].sort((a, b) => {
     const byPriority = RANK[a.priority] - RANK[b.priority];
     if (byPriority !== 0) return byPriority;
+    // A thread holding a merge goes first among equals of tier 1 — and never above one.
+    const mergeReady = Number(b.mergeReadyPr !== undefined) - Number(a.mergeReadyPr !== undefined);
+    if (mergeReady !== 0) return mergeReady;
     // Oldest wait first. A candidate whose handoff cannot be dated is not given the
     // benefit of looking ancient: it goes behind the dated ones.
     if (a.since !== b.since) {
@@ -186,6 +207,13 @@ export const rankCandidates = (input: {
   /** Which threads await a role — passed in, so this module stays free of the feed's shape. */
   readonly waitingOn: (role: string) => readonly string[];
   readonly authorized: (role: string) => boolean;
+  /**
+   * thread id → the PR whose guards 1-2 were MEASURED to hold this tick (tier 2). Passed
+   * in, never read here: the measurement is a network call and belongs to the caller that
+   * owns one. Absent map = a circuit without merge-ready, which is also what every
+   * failure degrades to.
+   */
+  readonly mergeReady?: ReadonlyMap<string, number>;
 }): { readonly ranked: RankedCandidate[]; readonly ignored: string[] } => {
   const byId = new Map(input.threads.map((thread) => [thread.id, thread]));
   const ignored: string[] = [];
@@ -195,11 +223,13 @@ export const rankCandidates = (input: {
       const verdict = resolveThreadPriority({ messages, authorized: input.authorized });
       for (const line of verdict.ignored) ignored.push(`${thread} — ${line}`);
       const since = waitingSince({ messages, role: roleId });
+      const mergeReadyPr = input.mergeReady?.get(thread);
       return {
         role: roleId,
         thread,
         priority: verdict.effective?.priority ?? DEFAULT_THREAD_PRIORITY,
         ...(since === undefined ? {} : { since }),
+        ...(mergeReadyPr === undefined ? {} : { mergeReadyPr }),
       };
     }),
   );
@@ -232,7 +262,15 @@ export const describeOrder = (
       candidate.since === undefined ? "no dated handoff" : `waiting since ${candidate.since}`;
     const on = parked.get(candidate.thread);
     const freeze = on === undefined ? "" : ` · ⏸ ${describeFreeze(parkedOnKind(on))}`;
-    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${freeze}`;
+    // THE TIER IS NAMED BY WHAT WAS MEASURED, not by what one hopes it means (statement
+    // of work of 2026-08-01, point 2). "merge-ready" would read as "all five guards are
+    // green", and guards 3 and 5 are judgements this circuit never computes — the line is
+    // read by a human who then presses merge.
+    const held =
+      candidate.mergeReadyPr === undefined
+        ? ""
+        : ` · guards 1-2 hold on PR #${candidate.mergeReadyPr}`;
+    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}`;
   });
 
 /** The frozen half of a queue row: what holds the turn, and what will let it go. */

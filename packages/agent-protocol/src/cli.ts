@@ -73,7 +73,12 @@ import {
   powerDocuments,
   unmatchedWorkingCards,
 } from "./merge/gate.js";
-import { ghPullRequestSchema, ghRefusalHint } from "./merge/gh.js";
+import {
+  ghOpenPullRequestsSchema,
+  ghPullRequestSchema,
+  ghRefusalHint,
+  pullRequestFacts,
+} from "./merge/gh.js";
 import {
   describeAge,
   parseNotifyState,
@@ -205,6 +210,11 @@ import {
 import { foldLeases, isLeaseAlive, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
 import { rotateDaemonLog, writeEpochBanner } from "./orchestrator/logsize.js";
+import {
+  createMergeReadyCache,
+  type MergeReadySource,
+  readMergeReady,
+} from "./orchestrator/merge-ready.js";
 import {
   foldMetrics,
   type MergeRecord,
@@ -6540,6 +6550,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // daemon. What the scope removed is said out loud every tick, beside the queue.
   const scope = launchScopeFrom(argv, local, launchableList);
   const launchable = scope.roles;
+  // Remembered for the WHOLE LIFE of the daemon, keyed by (PR, head): a head that has
+  // not moved is not asked about twice (thread 019, point 5, the price limits).
+  const mergeReadyCache = createMergeReadyCache();
 
   const tickMs = positiveInt(argv, "--tick", 30) * 1000;
   // The two gates of the loop, WITH THEIR SOURCES — printed in the banner below (R12).
@@ -6920,11 +6933,24 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // THE SAME RANKER THE OPERATOR FRAME USES (`rankCandidates`): the queue a human
     // reads in `status` and the queue this tick raises from are one computation, or
     // they drift and there is nothing to argue with.
+    // TIER 2 — THE THREAD THAT IS HOLDING A MERGE (thread 019, point 5). The only
+    // network read of the tick, and the only one that is allowed to fail without any
+    // consequence: `readMergeReady` degrades to an empty map, which orders the queue
+    // exactly as a circuit without merge-ready. Asked ONLY about the threads that are
+    // already candidates, and remembered per head SHA across ticks.
+    const waiting = [...new Set(launchable.flatMap((roleId) => threadsWaitingOn(threads, roleId)))];
+    const mergeReady = await readMergeReady({
+      source: ghMergeReadySource(repo),
+      threads: waiting,
+      cache: mergeReadyCache,
+    });
+    for (const line of mergeReady.notes) err(`agent-protocol: ${line}`);
     const { ranked, ignored } = rankCandidates({
       threads,
       roles: launchable,
       waitingOn: (roleId) => threadsWaitingOn(threads, roleId),
       authorized: (role) => registry.canSetThreadPriority(role),
+      mergeReady: mergeReady.ready,
     });
     // An unauthorized priority is dropped OUT LOUD, every tick it is read: a queue
     // ordered by a statement nobody honoured looks exactly like a queue that did.
@@ -7988,6 +8014,57 @@ const zonesCheck = (argv: readonly string[]): void => {
  * runs it from a checkout of `main` with `--ref origin/main`, where the two sides
  * coincide; from a branch that moves the shape it would fail exactly like door 3 did.
  */
+/**
+ * THE ONE PLACE THE SCHEDULER TOUCHES GITHUB (thread 019, point 5) — `gh` as a
+ * {@link MergeReadySource}, and nothing else in the tick goes near the network.
+ *
+ * Two calls, deliberately of different weight: the cheap one asks every open PR for its
+ * number, its head and its description (that is what tells a moved head from a still one
+ * and which thread the PR belongs to), the expensive one asks for everything guards 1-2
+ * judge, and only for a head that has not been judged yet.
+ *
+ * Nothing here catches anything: a refusal of `gh`, a missing token, an unparseable
+ * payload all throw, and `readMergeReady` turns every one of them into "no acceleration"
+ * — one place to reason about the degradation instead of three.
+ *
+ * THE READS ARE SYNCHRONOUS ON PURPOSE, `async` notwithstanding: `execFileSync` blocks
+ * the tick for as long as `gh` takes. The shape is the source's contract (the ordering is
+ * tested without a network), but the tick has nothing else to do meanwhile and everything
+ * else it runs is synchronous too; with a tick of tens of seconds and single digits of
+ * queued pull requests, one `gh pr view` each buys nothing worth a second machinery.
+ */
+const ghMergeReadySource = (repo: string): MergeReadySource => {
+  const ask = (args: readonly string[]): string =>
+    execFileSync("gh", [...args], {
+      cwd: repo,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 16 * 1024 * 1024,
+    });
+  return {
+    open: async () =>
+      ghOpenPullRequestsSchema
+        .parse(
+          JSON.parse(ask(["pr", "list", "--state", "open", "--json", "number,headRefOid,body"])),
+        )
+        .map((pr) => ({ number: pr.number, headSha: pr.headRefOid, body: pr.body })),
+    facts: async (number: number) =>
+      pullRequestFacts(
+        ghPullRequestSchema.parse(
+          JSON.parse(
+            ask([
+              "pr",
+              "view",
+              String(number),
+              "--json",
+              "number,headRefOid,body,statusCheckRollup,reviews,commits,files,mergeable,mergeStateStatus",
+            ]),
+          ),
+        ),
+      ),
+  };
+};
+
 const mergeGate = (argv: readonly string[]): void => {
   const number = required(argv, "--pr");
   if (!/^\d+$/.test(number)) {
@@ -8072,39 +8149,8 @@ const mergeGate = (argv: readonly string[]): void => {
       out(`merge-gate: --working-cards matches no role's instructions: ${stray.join(", ")}`);
     }
   }
-  const verdict = evaluateMergeGate({
-    pr: {
-      number: parsed.data.number,
-      headSha: parsed.data.headRefOid,
-      body: parsed.data.body,
-      reviews: parsed.data.reviews.map((review) => ({
-        state: review.state,
-        commitSha: review.commit?.oid,
-        author: review.author?.login,
-        // The stamp guard 1 tells a second round of review by (D4).
-        submittedAt: review.submittedAt ?? undefined,
-      })),
-      // When the head commit was made — a verdict older than it answered about code that
-      // did not exist yet (thread 043). Only the head's own entry counts.
-      headCommittedAt:
-        parsed.data.commits.find((commit) => commit.oid === parsed.data.headRefOid)
-          ?.committedDate ?? undefined,
-      checks: parsed.data.statusCheckRollup.map((check) => ({
-        // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
-        // absence itself (D3), so the mapping stays a mapping.
-        name: check.name ?? check.context ?? "?",
-        status: check.status ?? undefined,
-        conclusion: check.conclusion ?? undefined,
-        state: check.state ?? undefined,
-        completedAt: check.completedAt ?? undefined,
-        startedAt: check.startedAt ?? undefined,
-      })),
-      changedPaths: parsed.data.files.map((file) => file.path),
-      mergeable: parsed.data.mergeable,
-      mergeStateStatus: parsed.data.mergeStateStatus ?? undefined,
-    },
-    powerDocs,
-  });
+  // The SAME reading of the payload the scheduler's merge-ready uses (`pullRequestFacts`).
+  const verdict = evaluateMergeGate({ pr: pullRequestFacts(parsed.data), powerDocs });
 
   for (const line of describeMergeGate(verdict)) out(line);
   if (!verdict.curatorMayMerge) process.exit(1);

@@ -25,6 +25,7 @@
  */
 
 import { z } from "zod";
+import type { PullRequestFacts } from "./gate.js";
 
 const nullableText = z.string().nullish();
 
@@ -71,6 +72,54 @@ export const ghPullRequestSchema = z.looseObject({
 });
 
 export type GhPullRequest = z.infer<typeof ghPullRequestSchema>;
+
+/**
+ * THE CHEAP HALF OF THE SCHEDULER'S READ (thread 019, point 5): what `gh pr list` says
+ * about every open pull request. Three fields, and each earns its place — the number to
+ * ask about, the head that tells a moved PR from a still one (the cache key), and the
+ * description whose `thread:` line says whose PR it is. Loose for the same reason the
+ * full schema is: this payload grows on somebody else's schedule.
+ */
+export const ghOpenPullRequestsSchema = z.array(
+  z.looseObject({ number: z.number().int(), headRefOid: z.string().min(1), body: z.string() }),
+);
+
+/**
+ * THE PAYLOAD OF `gh` READ AS THE FACTS THE GUARDS JUDGE — one mapping, because there
+ * are now two callers (thread 019, point 5): the merge door and the scheduler's
+ * merge-ready reader. A second copy of it would be a second reading of `commits`, of the
+ * empty-string absences and of `name ?? context`, which is exactly the drift the shared
+ * guard function exists to prevent.
+ */
+export const pullRequestFacts = (pr: GhPullRequest): PullRequestFacts => ({
+  number: pr.number,
+  headSha: pr.headRefOid,
+  body: pr.body,
+  reviews: pr.reviews.map((review) => ({
+    state: review.state,
+    commitSha: review.commit?.oid,
+    author: review.author?.login,
+    // The stamp guard 1 tells a second round of review by (D4).
+    submittedAt: review.submittedAt ?? undefined,
+  })),
+  // When the head commit was made — a verdict older than it answered about code that
+  // did not exist yet (thread 043). Only the head's own entry counts.
+  headCommittedAt:
+    pr.commits.find((commit) => commit.oid === pr.headRefOid)?.committedDate ?? undefined,
+  checks: pr.statusCheckRollup.map((check) => ({
+    // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
+    // absence itself (D3), so the mapping stays a mapping.
+    name: check.name ?? check.context ?? "?",
+    status: check.status ?? undefined,
+    conclusion: check.conclusion ?? undefined,
+    state: check.state ?? undefined,
+    completedAt: check.completedAt ?? undefined,
+    startedAt: check.startedAt ?? undefined,
+  })),
+  changedPaths: pr.files.map((file) => file.path),
+  mergeable: pr.mergeable,
+  mergeStateStatus: pr.mergeStateStatus ?? undefined,
+});
 
 /**
  * WHAT A REFUSAL OF `gh` PROBABLY MEANS — printed as a guess, never as the cause.

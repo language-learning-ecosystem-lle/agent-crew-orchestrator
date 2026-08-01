@@ -504,11 +504,25 @@ export const mergeabilityOf = (pr: PullRequestFacts): Mergeability => {
  * facts that forbids it" — and the two by-hand guards travel with the answer so the
  * caller cannot print the first without the second.
  */
-export const evaluateMergeGate = (input: {
-  readonly pr: PullRequestFacts;
-  readonly powerDocs: readonly string[];
-}): MergeGateVerdict => {
-  const { pr } = input;
+/**
+ * GUARDS 1 AND 2 — THE HALF A MACHINE ANSWERS ABOUT A PR ON ITS OWN, AS ONE FUNCTION
+ * (thread `019-operator-ux`, statement of work of 2026-08-01, point 5).
+ *
+ * The scheduler asks the very same question the door asks — "is there an approve on THIS
+ * head, and did the checks on that same head answer green" — in order to raise the pair
+ * of a merge-ready PR ahead of the queue. It asks it HERE. A second implementation of
+ * "approved on the head" would be a second definition of the word, and the two would
+ * drift in silence: the queue would promise ready and the door would refuse. The age test
+ * of thread 043 is the part any re-implementation forgets first, and it is the part that
+ * decides whether an approve granted once travels forever.
+ *
+ * Guards 3-5 are deliberately NOT here: two of them are judgements (see the header), and
+ * the fourth needs the caller's list of power documents. What a machine may say about a
+ * pull request with no project knowledge at all is exactly these two.
+ */
+export const verdictAndChecks = (
+  pr: PullRequestFacts,
+): { readonly verdict: GateOutcome; readonly checks: GateOutcome } => {
   const head = pr.headSha;
 
   // A verdict older than the head commit is not a verdict on this head, whatever
@@ -604,6 +618,28 @@ export const evaluateMergeGate = (input: {
             state: "fail",
             detail: `not green: ${notGreen.map(describeCheck).join(", ")}`,
           };
+
+  return { verdict, checks };
+};
+
+/**
+ * Whether the two mechanical guards HOLD — the one fact the scheduler reads off a pull
+ * request (thread 019, point 5). Deliberately a boolean over {@link verdictAndChecks} and
+ * not a reading of its own: "ready" means precisely "neither of the two guards the door
+ * computes would refuse", and the words that explain WHY stay with the outcomes.
+ */
+export const guardsOneAndTwoHold = (pr: PullRequestFacts): boolean => {
+  const { verdict, checks } = verdictAndChecks(pr);
+  return verdict.state === "pass" && checks.state === "pass";
+};
+
+export const evaluateMergeGate = (input: {
+  readonly pr: PullRequestFacts;
+  readonly powerDocs: readonly string[];
+}): MergeGateVerdict => {
+  const { pr } = input;
+  const head = pr.headSha;
+  const { verdict, checks } = verdictAndChecks(pr);
 
   const thread = threadOfDescription(pr.body);
   const ascent: GateOutcome =
