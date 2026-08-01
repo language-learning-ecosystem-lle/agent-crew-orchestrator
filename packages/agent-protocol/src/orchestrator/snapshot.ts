@@ -45,6 +45,7 @@ import { renderHolds } from "./hold.js";
 import type { InstanceDigest } from "./instances.js";
 import { renderInstances } from "./instances.js";
 import type { LeaseView } from "./lease.js";
+import { describeGhOutage, type GhOutage, ghAlarmDue } from "./outage.js";
 import type { RankedCandidate } from "./priority.js";
 import { describeOrder } from "./priority.js";
 import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
@@ -122,6 +123,11 @@ export type OperatorFrame = {
    * of them ends by itself.
    */
   readonly auth?: AuthShelf | undefined;
+  /**
+   * The run of `gh` refusals in the merge-ready tier (thread 051), read from the file the
+   * daemon writes. Undefined means the tier answered on the last tick that asked it.
+   */
+  readonly ghOutage?: GhOutage | undefined;
   /**
    * THE ROLES THIS CIRCUIT NEVER RAISES, and the threads waiting on one (R23-1) — in
    * the FRAME since T-1 (thread 019), where until now it was printed beside the frame
@@ -260,6 +266,27 @@ export const renderAuth = (shelf?: AuthShelf): string =>
     ? "auth:\n  the box authenticates — no run has died on the vendor's credentials since its last delivery"
     : `auth:\n  ⏸ ${describeAuthShelf(shelf)}`;
 
+/**
+ * THE MERGE-READY TIER, and the ONE section of the frame that is silent when the news is
+ * good — the opposite of the rule the two above follow, decided by the test that came
+ * before it ("a frame that grew a line because GitHub was quiet would be worse than no
+ * tier at all"): the tier fails OPEN, so its healthy state is INDISTINGUISHABLE from a
+ * circuit that has no tier at all, and printing a line about it every frame would be
+ * printing a line about nothing. A refusal that has RUN — that is news, and it says the
+ * threshold BESIDE THE COUNT (`describeGhOutage`), because a bare "6 ticks" is a number
+ * the reader would have to go and look up the meaning of.
+ *
+ * "A REFUSAL THAT HAS RUN" IS THE SAME PREDICATE THE ALARM RINGS ON — `ghAlarmDue`, and
+ * not "an outage object exists" (reviewer's finding 1 on #161). One flaky call put a line
+ * into the frame under the earlier reading, which is precisely the line this section
+ * exists NOT to grow; the frame and the phone now say the same thing at the same moment,
+ * and the state below the threshold lives in the state file the daemon writes.
+ */
+export const renderMergeReady = (outage?: GhOutage): string =>
+  outage === undefined || !ghAlarmDue(outage)
+    ? ""
+    : `merge-ready:\n  ⚠ ${describeGhOutage(outage)}`;
+
 /** Whole minutes, for an age a human reads rather than counts. */
 const ageWords = (seconds: number): string =>
   seconds < 90 ? `${seconds}s` : `${Math.round(seconds / 60)}m`;
@@ -312,6 +339,10 @@ export const renderFrame = (frame: OperatorFrame): string =>
     renderCircuit(frame.circuit),
     renderQuota(frame.quota),
     renderAuth(frame.auth),
+    // The empty string a quiet tier renders is dropped here rather than joined as a
+    // blank line: the gate is `renderMergeReady`'s alone, so the frame and the section
+    // cannot disagree about when the tier is news.
+    frame.ghOutage === undefined ? undefined : renderMergeReady(frame.ghOutage) || undefined,
     renderQueue(frame.queue, frame.queueNotes, frame.parked),
     // Beside the queue, because it is the same question answered for the pairs that are
     // NOT in it: `renderResidentWaits` returns nothing when the project has no resident

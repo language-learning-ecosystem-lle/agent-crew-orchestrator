@@ -80,7 +80,9 @@ import {
   pullRequestFacts,
 } from "./merge/gh.js";
 import {
+  type AuthAlarm,
   describeAge,
+  type GhAlarm,
   parseNotifyState,
   planNotifications,
   renderAnnouncement,
@@ -100,6 +102,7 @@ import {
 import { parseUsage, strayArguments } from "./orchestrator/argv.js";
 import {
   type AuthSignal,
+  authAlarmDue,
   authSignalOf,
   describeAuthRelease,
   describeAuthShelf,
@@ -230,6 +233,15 @@ import {
 } from "./orchestrator/metrics.js";
 import { hydrateFromStreams } from "./orchestrator/metrics-cache.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
+import {
+  describeGhOutage,
+  foldGhOutage,
+  GH_OUTAGE_TICKS,
+  type GhOutage,
+  ghAlarmDue,
+  parseGhOutage,
+  renderGhOutage,
+} from "./orchestrator/outage.js";
 import {
   type OrchestratorPaths,
   orchestratorPaths,
@@ -2470,6 +2482,43 @@ const runNotify = async (input: {
     return [{ thread: thread.id, role: holder, since, age: describeAge(minutes) }];
   });
 
+  // THE FOURTH AND FIFTH QUESTIONS ARE NOT ABOUT THE MAIL AT ALL (thread 051): "can this
+  // box still authenticate" and "is the merge-ready tier being refused". Both are read from
+  // the orchestrator's own state, both are silent when there is no orchestrator section to
+  // read it from (`--root`/`--state` alone is a mail-only invocation), and NEITHER can
+  // refuse this command: a courier that threw on an unreadable journal would take the
+  // daemon's tick with it, and the whole point of these two is that somebody gets told.
+  let authAlarm: AuthAlarm | undefined;
+  let ghAlarm: GhAlarm | undefined;
+  if (paths !== undefined) {
+    try {
+      const events = existsSync(paths.journal)
+        ? parseJournal(readFileSync(paths.journal, "utf8"))
+        : [];
+      const shelf = openAuthShelf(events, new Date(now));
+      // THE SHELF ALONE DOES NOT RING — `authAlarmDue` is the predicate, and it is the one
+      // written in `auth.ts` for this purpose (#160). It is not re-decided here.
+      if (shelf !== undefined && authAlarmDue(shelf))
+        authAlarm = { since: shelf.since, deaths: shelf.deaths, until: shelf.until };
+    } catch (error) {
+      say(`auth — the shelf could not be read: ${(error as Error).message}`);
+    }
+    try {
+      const outage = existsSync(paths.mergeReadyOutage)
+        ? parseGhOutage(readFileSync(paths.mergeReadyOutage, "utf8"))
+        : undefined;
+      if (outage !== undefined && ghAlarmDue(outage))
+        ghAlarm = {
+          since: outage.since,
+          ticks: outage.ticks,
+          threshold: GH_OUTAGE_TICKS,
+          refusal: outage.evidence,
+        };
+    } catch (error) {
+      say(`merge-ready — the outage state could not be read: ${(error as Error).message}`);
+    }
+  }
+
   const seen = existsSync(statePath)
     ? parseNotifyState(readFileSync(statePath, "utf8"))
     : { waiting: [], stalled: [], parked: [] };
@@ -2480,6 +2529,8 @@ const runNotify = async (input: {
     stalled,
     parked,
     frozen,
+    auth: authAlarm,
+    gh: ghAlarm,
     ...(loaded.config.notifications?.templates === undefined
       ? {}
       : { templates: loaded.config.notifications.templates }),
@@ -2489,7 +2540,9 @@ const runNotify = async (input: {
   const describeWaits =
     `${plan.parked.length} parked, ${plan.freshParked.length} of them new; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
-    `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new`;
+    `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
+    `${plan.auth === undefined ? "" : `; the box cannot authenticate (${plan.auth.deaths} runs in a row)`}` +
+    `${plan.gh === undefined ? "" : `; gh has refused merge-ready ${plan.gh.ticks} ticks in a row (rings at ${plan.gh.threshold})`}`;
   if (!write) {
     say(message === "" ? "(nothing — nobody is waiting)" : message);
     return {
@@ -2528,14 +2581,32 @@ const runNotify = async (input: {
   // branch below rather than once up here. NOTHING TO ANNOUNCE IS ITSELF a confirmed
   // outcome: this is where a pair that has STOPPED waiting is forgotten, and forgetting
   // it is what makes the same thread ring again if it comes back to waiting later.
-  if (plan.fresh.length === 0 && plan.freshStalled.length === 0 && plan.freshParked.length === 0) {
+  if (
+    plan.fresh.length === 0 &&
+    plan.freshStalled.length === 0 &&
+    plan.freshParked.length === 0 &&
+    !plan.freshAuth &&
+    !plan.freshGh
+  ) {
     writeOut(
       statePath,
-      renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+      renderNotifyState({
+        waiting: plan.waiting,
+        stalled: plan.stalled,
+        parked: plan.parked,
+        auth: plan.auth?.since,
+        gh: plan.gh?.since,
+      }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
   }
   const announced = [
+    ...(plan.freshAuth && plan.auth !== undefined
+      ? [`the box cannot authenticate (${plan.auth.deaths} deaths since ${plan.auth.since})`]
+      : []),
+    ...(plan.freshGh && plan.gh !== undefined
+      ? [`gh refuses merge-ready (${plan.gh.ticks} ticks since ${plan.gh.since})`]
+      : []),
     ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
@@ -2550,7 +2621,13 @@ const runNotify = async (input: {
     say(message);
     writeOut(
       statePath,
-      renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+      renderNotifyState({
+        waiting: plan.waiting,
+        stalled: plan.stalled,
+        parked: plan.parked,
+        auth: plan.auth?.since,
+        gh: plan.gh?.since,
+      }),
     );
     return { kind: "sent", summary, lines: said };
   }
@@ -2575,7 +2652,13 @@ const runNotify = async (input: {
   }
   writeOut(
     statePath,
-    renderNotifyState({ waiting: plan.waiting, stalled: plan.stalled, parked: plan.parked }),
+    renderNotifyState({
+      waiting: plan.waiting,
+      stalled: plan.stalled,
+      parked: plan.parked,
+      auth: plan.auth?.since,
+      gh: plan.gh?.since,
+    }),
   );
   say(outcome.detail);
   return { kind: "sent", summary, lines: said };
@@ -4302,6 +4385,12 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // disagree about whether the box is standing down.
     quota: openQuotaShelves(events, now),
     auth: openAuthShelf(events, now),
+    // The tier's own health, from the file the daemon writes (thread 051): a frame that
+    // showed an empty merge-ready tier and a silently refusing `gh` identically is the
+    // defect this section exists to close.
+    ghOutage: existsSync(paths.mergeReadyOutage)
+      ? parseGhOutage(readFile(paths.mergeReadyOutage, "merge-ready outage state"))
+      : undefined,
     // R23-1 in the FRAME (T-1): from the SAME threads the queue above is built from, so
     // a resident wait and a launch candidate can never disagree about who is waiting.
     // The section exists only where the project has resident roles at all.
@@ -6657,6 +6746,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // Remembered for the WHOLE LIFE of the daemon, keyed by (PR, head): a head that has
   // not moved is not asked about twice (thread 019, point 5, the price limits).
   const mergeReadyCache = createMergeReadyCache();
+  // The run of identical `gh` refusals, carried across ticks in memory AND on disk: the
+  // memory is what makes the fold a fold, the file is what the courier and the operator
+  // frame read. A daemon that restarts picks the file back up (see the read below).
+  let ghOutage: GhOutage | undefined = existsSync(paths.mergeReadyOutage)
+    ? parseGhOutage(readFile(paths.mergeReadyOutage, "merge-ready outage state"))
+    : undefined;
 
   const tickMs = positiveInt(argv, "--tick", 30) * 1000;
   // The two gates of the loop, WITH THEIR SOURCES — printed in the banner below (R12).
@@ -7049,6 +7144,26 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       cache: mergeReadyCache,
     });
     for (const line of mergeReady.notes) err(`agent-protocol: ${line}`);
+    // THE REFUSAL IS COUNTED, NOT JUST PRINTED (thread 051). Before this, a `gh` that had
+    // been refusing since morning lived in `daemon.log` and nowhere else: the tier degraded
+    // exactly as designed and told nobody it had been off for hours. The fold is pure, the
+    // write is one small file, and NEITHER can change what this tick does — fail-open is the
+    // load-bearing property of the tier and is not weakened by watching it.
+    try {
+      ghOutage = foldGhOutage({
+        previous: ghOutage,
+        refusal: mergeReady.refusal,
+        asked: mergeReady.asked,
+        now: new Date(),
+      });
+      writeOut(paths.mergeReadyOutage, renderGhOutage(ghOutage));
+      if (ghOutage !== undefined && ghAlarmDue(ghOutage))
+        err(`agent-protocol: ${describeGhOutage(ghOutage)}`);
+    } catch (error) {
+      err(
+        `agent-protocol: daemon — the merge-ready outage state was not written: ${(error as Error).message}`,
+      );
+    }
     const { ranked, ignored } = rankCandidates({
       threads,
       roles: launchable,

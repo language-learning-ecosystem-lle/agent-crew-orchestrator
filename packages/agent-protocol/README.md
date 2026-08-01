@@ -270,6 +270,35 @@ apart along lines the package already had:
   moved the fork. A stall is announced once and keyed by the handoff stamp, so a fork
   that moves and stalls again rings again.
 
+- **The fourth and fifth questions are not about the mail at all** (thread 051): "can
+  this box still authenticate" and "is the merge-ready tier being refused". Both are
+  facts about the BOX, and that is why they need their own slots rather than a thread
+  to hang on — a shelved box has no ONE thread whose turn is stuck, every thread's turn
+  is stuck, so `stalledAfterMinutes` is not applicable to it by construction and the
+  call carries no age at all (the rule a park already lives by). The **authorisation
+  shelf** rings on the predicate that produced it (`authAlarmDue`: the second run in a
+  row dead on the vendor's credentials) and is keyed by the shelf's stamp — ONE
+  DELIVERY PER SHELF, not one per tick, the same accounting that puts one line per
+  shelf into the journal. The **merge-ready outage** (`orchestrator/outage.ts`) counts
+  a RUN of identical refusals from `gh`: the identity of the outage is the text of the
+  refusal, so a different message is a different fault and rings again, while the same
+  one repeating stays quiet. Its threshold is a number (`GH_OUTAGE_TICKS`, 5
+  consecutive ticks) and it is printed BESIDE THE COUNT everywhere the count is printed
+  — the operator frame, the daemon's stream and the message itself — because a bare "3
+  ticks" is a number the reader would have to go and look up. A run is counted over the
+  ticks that ASKED: a tick with no candidates opens no socket, so it neither extends the
+  run nor ends it — reading a lull as "the tier answered" would have restarted the count
+  at every quiet stretch and an outage lasting hours might never reach the threshold. The
+  operator frame speaks on the SAME predicate the phone rings on (`ghAlarmDue`) and on
+  nothing weaker: below the threshold the frame is byte-identical to a circuit with no
+  tier at all, which is the whole point of a section that is silent when the news is good.
+  What the message quotes
+  is the vendor's OWN SENTENCE, never a guess at what it means: the path and the text
+  of a refusal are facts, a candidate right is a hypothesis, and the lesson is
+  #108/#109/#112. **Fail-open is untouched by any of it**: the tier still degrades to
+  an empty map, and nothing here may slow a tick, reorder a queue or fail a run — the
+  worst this whole mechanism can do is stay quiet.
+
 - **The circuit dials it — on the daemon's tick** (thread 024). Until then nothing
   called `notify` at all: it could compose the message and deliver it, and the only
   way to make that happen was for somebody to type the command, so the bell rang

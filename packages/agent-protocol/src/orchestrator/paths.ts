@@ -50,6 +50,13 @@ export type OrchestratorPaths = {
    * designed to make it durable.
    */
   readonly notifyState: string;
+  /**
+   * The run of identical refusals from `gh` in the merge-ready tier (`outage.ts`, thread
+   * 051): written by the daemon each tick, read by the courier and by the operator frame,
+   * so the picture a human sees and the state the alarm rings from are ONE object.
+   * Disposable for the same reason as the state above — losing it costs one repeated call.
+   */
+  readonly mergeReadyOutage: string;
   /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
   readonly mailRoot: string;
 };
@@ -62,6 +69,7 @@ const FORCE = "force";
 const HOLDS = "holds";
 const SESSIONS = "sessions";
 const NOTIFY_STATE = "notify.state";
+const MERGE_READY_OUTAGE = "merge-ready-outage.json";
 const DAEMON_LOG = "daemon.log";
 const DAEMON_PID = "daemon.pid";
 
@@ -81,6 +89,7 @@ export const orchestratorPaths = (input: {
     holds: join(state, HOLDS),
     sessions: join(state, SESSIONS),
     notifyState: join(state, NOTIFY_STATE),
+    mergeReadyOutage: join(state, MERGE_READY_OUTAGE),
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),
