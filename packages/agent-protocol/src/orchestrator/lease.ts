@@ -211,6 +211,14 @@ const isFailedTerminal = (state: LeaseLifecycle, reason: LeaseView["reason"]): b
  * says. WHAT STOPS THE RETRY LOOP INSTEAD is the backoff on the reopening time — it
  * is NOT in this part of D-3, and until it lands the tick will keep re-raising a role
  * into a closed window, cheaply (the session dies at once) but loudly.
+ *
+ * `auth-failed` IS NOT A FAILURE EITHER, by the same reasoning applied to the box's
+ * credentials (thread 023, the OAuth episode of 2026-08-01) — and this one is not an
+ * argument but a measurement: during the outage three pairs (019, 046, 016) went
+ * `exhausted` on runs that died in 0 seconds having spent $0, on a first turn that never
+ * reached the work. The cause was the token of the box, shared by every role of it, and
+ * the ceiling exists to catch a pair breaking on its OWN cause. What stops the retry loop
+ * instead is the shelf in `auth.ts`.
  */
 
 type Acc = {

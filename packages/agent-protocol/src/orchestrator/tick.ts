@@ -40,6 +40,7 @@
  */
 
 import { parkedOnKind } from "../thread/thread.js";
+import { type AuthShelf, authRefusalRecorded, openAuthShelf } from "./auth.js";
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
 import {
   type Ceiling,
@@ -96,7 +97,8 @@ export type SkipReason =
   | "exhausted"
   | "role-busy"
   | "parked"
-  | "quota";
+  | "quota"
+  | "auth";
 
 export type TickSkip = {
   readonly role: string;
@@ -144,6 +146,17 @@ export type TickDecisionKind =
   | {
       readonly kind: "quota";
       readonly shelves: readonly QuotaShelf[];
+      readonly cut?: TickCut;
+    }
+  // THE BOX CANNOT AUTHENTICATE (thread 023, the OAuth episode of 2026-08-01). Its own
+  // kind beside `quota` and never folded into it: both stand the whole box down, and the
+  // operator in front of a silent circuit needs the two apart — a window reopens by the
+  // vendor's clock and wants nothing from anybody, dead credentials want a human to run
+  // `claude login` here and reopen by nothing else. `cut` is present only on the FIRST
+  // tick of a shelf — one shelf, one journal record.
+  | {
+      readonly kind: "auth";
+      readonly shelf: AuthShelf;
       readonly cut?: TickCut;
     }
   // THE PLAN OF THIS TICK: at most one pair per free role, in queue order, plus whatever
@@ -221,6 +234,9 @@ export const planTick = (input: {
   // ceilings are folded from, so a closed window cannot be true for the planner and
   // false for the operator's frame.
   const shelves = openQuotaShelves(input.events, input.now);
+  // THE CREDENTIALS SHELF IS READ IN THE SAME BREATH AND FOR THE SAME REASON — one fact
+  // about the box, folded out of the events the ceilings are folded from.
+  const authShelf = openAuthShelf(input.events, input.now);
   const skipped: TickSkip[] = [];
   const eligible: Candidate[] = [];
   // Seeded with the roles this process is ALREADY running (D-2): "one session per role"
@@ -265,6 +281,13 @@ export const planTick = (input: {
       skipped.push({ ...candidate, reason: "quota", attempt });
       continue;
     }
+    // THE REFUSED CREDENTIALS SIT BESIDE THE CLOSED WINDOW, and after it: when both are
+    // true the window is the fact with a clock on it, and a box that cannot authenticate
+    // will say so again the moment the window reopens.
+    if (authShelf !== undefined) {
+      skipped.push({ ...candidate, reason: "auth", attempt });
+      continue;
+    }
     // ONE PAIR PER ROLE, and the ceiling is not a policy choice: the role has one
     // workspace (R17), and a second session in it is refused by the lock anyway. So the
     // planner refuses it HERE, by name, instead of raising a pair that would die on the
@@ -297,6 +320,28 @@ export const planTick = (input: {
               reason: "quota" as const,
               candidates: refusedByQuota.map((skip) => ({ role: skip.role, thread: skip.thread })),
               recorded: { role: quotaHead.role, thread: quotaHead.thread },
+            },
+          }),
+      skipped,
+    };
+  }
+
+  // THE SAME SHAPE AS THE CLOSED WINDOW ABOVE, one shelf instead of many: the record is
+  // written against the head of what was refused, once per SHELF and not once per tick
+  // (`authRefusalRecorded`), while the daemon's stream repeats it every tick.
+  const refusedByAuth = skipped.filter((skip) => skip.reason === "auth");
+  const authHead = refusedByAuth[0];
+  if (authShelf !== undefined && authHead !== undefined) {
+    return {
+      kind: "auth",
+      shelf: authShelf,
+      ...(authRefusalRecorded(input.events, authShelf)
+        ? {}
+        : {
+            cut: {
+              reason: "auth" as const,
+              candidates: refusedByAuth.map((skip) => ({ role: skip.role, thread: skip.thread })),
+              recorded: { role: authHead.role, thread: authHead.thread },
             },
           }),
       skipped,
@@ -366,6 +411,8 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
     }
     case "quota":
       return `candidate ${pair} skipped: the rate-limit window is closed — the window belongs to the ACCOUNT, so a signal from any role stands the whole box down; it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
+    case "auth":
+      return `candidate ${pair} skipped: this box cannot authenticate to the vendor — the credentials belong to the BOX, so a refusal seen by any role stands every role down; unlike the window it does NOT end by the clock (a human runs 'claude login' here), and the shelf only decides how often one pair is raised to knock (see 'orchestrator status')`;
     case "role-busy":
       return `candidate ${pair} skipped: ${skip.role} already has a session (raised on an older thread of this tick, or still running from an earlier one) — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
   }

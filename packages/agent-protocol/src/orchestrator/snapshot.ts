@@ -39,6 +39,7 @@
  * forbidden to do — see `mailCheckoutFreshness`).
  */
 import type { MailFreshness } from "../fs/git.js";
+import { type AuthShelf, describeAuthShelf } from "./auth.js";
 import type { HoldView } from "./hold.js";
 import { renderHolds } from "./hold.js";
 import type { InstanceDigest } from "./instances.js";
@@ -115,6 +116,12 @@ export type OperatorFrame = {
    * hour" — and that second one is asked by somebody who was not watching the stream.
    */
   readonly quota?: readonly QuotaShelf[];
+  /**
+   * THE BOX'S OWN CREDENTIALS (thread 023, the OAuth episode) — absent when they work.
+   * Beside the windows rather than inside them: both stand the circuit down and only one
+   * of them ends by itself.
+   */
+  readonly auth?: AuthShelf | undefined;
   /**
    * THE ROLES THIS CIRCUIT NEVER RAISES, and the threads waiting on one (R23-1) — in
    * the FRAME since T-1 (thread 019), where until now it was printed beside the frame
@@ -243,6 +250,16 @@ export const renderQuota = (shelves: readonly QuotaShelf[] = []): string =>
     ? "quota:\n  no window is closed — the circuit raises on the ordinary rules"
     : ["quota:", ...shelves.map((shelf) => `  ⏸ ${describeQuotaShelf(shelf)}`)].join("\n");
 
+/**
+ * THE BOX'S CREDENTIALS, one line. Spoken in the open case too, for the reason the windows
+ * are: the reader's question is "why is nothing running", and a section that only appears
+ * on bad news teaches them to conclude nothing from its absence.
+ */
+export const renderAuth = (shelf?: AuthShelf): string =>
+  shelf === undefined
+    ? "auth:\n  the box authenticates — no run has died on the vendor's credentials since its last delivery"
+    : `auth:\n  ⏸ ${describeAuthShelf(shelf)}`;
+
 /** Whole minutes, for an age a human reads rather than counts. */
 const ageWords = (seconds: number): string =>
   seconds < 90 ? `${seconds}s` : `${Math.round(seconds / 60)}m`;
@@ -294,6 +311,7 @@ export const renderFrame = (frame: OperatorFrame): string =>
     renderHolds(frame.holds),
     renderCircuit(frame.circuit),
     renderQuota(frame.quota),
+    renderAuth(frame.auth),
     renderQueue(frame.queue, frame.queueNotes, frame.parked),
     // Beside the queue, because it is the same question answered for the pairs that are
     // NOT in it: `renderResidentWaits` returns nothing when the project has no resident

@@ -248,6 +248,22 @@ const proseSurfacesOf = (event: Record<string, unknown>): readonly string[] => {
   return texts;
 };
 
+/**
+ * THE SURFACES OF ONE LINE WHERE THE TOOL — not the session — WRITES PROSE. The rule of
+ * the correction of 2026-07-30, exported so that a SECOND infrastructure signal reuses it
+ * instead of copying a regex over whole lines (`auth.ts`, thread 023): the lesson that
+ * cost three sessions of 30.07 lives in one place or it is unlearnt by the next module.
+ *
+ * A line that is not stream JSON is the launcher's own output and is a surface WHOLE; a
+ * stream event yields the surfaces `proseSurfacesOf` allows and no others.
+ */
+export const toolSurfacesOf = (line: string): readonly string[] => {
+  const trimmed = line.trim();
+  if (trimmed === "") return [];
+  const event = streamEventOf(trimmed);
+  return event === undefined ? [trimmed] : proseSurfacesOf(event);
+};
+
 /** Layers 2 and 3 over ONE SURFACE of text — see `proseSurfacesOf` for what may be one. */
 const proseSignalOf = (text: string): QuotaSignal | undefined => {
   const exact = EXACT.exec(text);
