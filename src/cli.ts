@@ -194,6 +194,7 @@ import {
   renderMetrics,
   type VerdictRecord,
 } from "./orchestrator/metrics.js";
+import { hydrateFromStreams } from "./orchestrator/metrics-cache.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
 import {
   type OrchestratorPaths,
@@ -1341,9 +1342,21 @@ const metrics = (argv: readonly string[]): void => {
   const since = flag(argv, "--since");
   const role = flag(argv, "--role");
   const thread = flag(argv, "--thread");
+  // The history from before the `usage` block: read out of the streams ONCE per stream
+  // and remembered (msg-003 §2). `--no-streams` is the escape hatch for a box whose
+  // `sessions/` is on slow storage — it gives the journal-only answer and says so by
+  // the recovery row simply not appearing.
+  const hydrated = argv.includes("--no-streams")
+    ? { events, recovery: undefined }
+    : hydrateFromStreams({
+        events,
+        sessions: flag(argv, "--sessions") ?? paths.sessions,
+        cache: flag(argv, "--metrics-cache") ?? join(paths.state, "metrics.cache.jsonl"),
+      });
   const folded = foldMetrics({
-    events,
+    events: hydrated.events,
     ...sources,
+    ...(hydrated.recovery === undefined ? {} : { streamRecovery: hydrated.recovery }),
     ...(since === undefined ? {} : { since }),
     ...(role === undefined ? {} : { role }),
     ...(thread === undefined ? {} : { thread }),

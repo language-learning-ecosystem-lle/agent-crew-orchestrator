@@ -115,7 +115,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # THE BOARD FOR MACHINES (thread 021): the same model as
                               # 'TASKS.md', computed FROM THE THREADS — a consumer parsing the
                               # derived file would answer "what is being done now" with yesterday
-  agent-protocol metrics      --ref <ref> [--root <mail>] [--journal <p>] [--sessions <d>] [--since <ts>] [--role <id>] [--thread <id>] [--json]
+  agent-protocol metrics      --ref <ref> [--root <mail>] [--journal <p>] [--sessions <d>] [--metrics-cache <p>] [--no-streams] [--since <ts>] [--role <id>] [--thread <id>] [--json]
                               # WHAT THE CIRCUIT BURNED (thread 029), folded out of the box's
                               # own journal — the network is not touched and nothing goes into git
                               # currency and tokens are TWO COLUMNS: a run killed before its
@@ -126,6 +126,11 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # the start of the stream era, and 'no usage block after the era began'
                               # — which is PRINTED and never called a loss, because a daemon runs
                               # the code it started with and that window reopens at every merge
+                              # the runs OLDER than the 'usage' block are priced out of their own
+                              # streams LAZILY: one read per stream, remembered in
+                              # '.orchestrator/metrics.cache.jsonl' (key: name + size), and the
+                              # recovery is its own printed row. '--no-streams' asks the
+                              # journal-only question on a box whose sessions/ is slow
   agent-protocol mail         --ref <ref> --role <id> [--root <mail>]
                               # --root defaults to the mail of THIS MACHINE (R26): the state
                               # directory and the mail root hang off the main checkout, so the
