@@ -4,9 +4,10 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { parkedOnOf } from "../thread/thread.js";
 import { loadThreads, renderThreadFailures, renderThreadWarnings } from "./comms.js";
 
-const ROLES = ["dev-core", "curator", "john"];
+const ROLES = ["dev-core", "curator", "john", "reviewer-pr"];
 
 const META = "---\ntitle: Thread\nparticipants: dev-core, curator\nstatus: open\n---\n";
 const MESSAGE =
@@ -103,6 +104,40 @@ describe("loadThreads — a failure of one thread does not blind the circuit", (
     // ...and the parser's own sentence survives inside the line, not instead of it.
     expect(warnings[0]?.problem).toContain("worker: claude.ai");
     expect(renderThreadWarnings(warnings)[0]).toContain("DROPPED");
+
+    rmSync(at, { recursive: true, force: true });
+  });
+
+  it("an EVENT park written into a file reaches the reader whole — no failure, no drop (thread 023)", () => {
+    const at = root();
+    migrated(at, "047-event-park");
+    // The exact header of the second incident of the day (047, 2026-07-31T23:03:55Z): the
+    // turn is handed to the reviewer AND the thread declares itself frozen behind the merge
+    // of the PR that reviewer is judging. Both fields at once, in a file, is what the writing
+    // door emits — and the layers below it were pinned one by one (the door writes `pr:127`,
+    // the queue row calls it a merge) with nothing pinning the WHOLE path from the file. The
+    // asymmetry that costs a night is not a layer being wrong, it is a layer being untested:
+    // a park the writers consider live must arrive at the planner as a park, or the thread is
+    // read as ordinary and raised, or dropped and frozen, and neither is said out loud.
+    writeFileSync(
+      join(at, "047-event-park", "messages", "2026-07-31T23-03-55Z-dev-core.md"),
+      MESSAGE.replace("from: curator", "from: dev-core")
+        .replace("waiting-on: dev-core", "waiting-on: reviewer-pr")
+        .replace("expects: answer", "expects: answer\nparked-on: pr:149"),
+    );
+
+    const { threads, failures, warnings } = loadThreads(at, ROLES);
+
+    expect(failures).toEqual([]);
+    expect(warnings).toEqual([]);
+    const loaded = threads.find((entry) => entry.thread.id === "047-event-park");
+    if (loaded === undefined) throw new Error("the thread was not read at all");
+    expect(loaded.thread.messages.at(-1)?.fields.parkedOn).toBe("pr:149");
+    // ...and the same value as the planner reads it: the park of the THREAD, still frozen
+    // because no notifier has said 149 back anywhere in the mail.
+    expect(parkedOnOf(loaded.thread, new Set())).toBe("pr:149");
+    // The merge lifts it, and from the merges of the WHOLE mail — not of this feed.
+    expect(parkedOnOf(loaded.thread, new Set([149]))).toBeUndefined();
 
     rmSync(at, { recursive: true, force: true });
   });
