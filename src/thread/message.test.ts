@@ -243,17 +243,20 @@ describe("provenance in the header (R7)", () => {
     expect(parsed.fields.session).toBeUndefined();
   });
 
-  it("but a present value must be well formed — a malformed one fails like a malformed 'from'", () => {
-    expect(() =>
-      parseMessageFile(
-        "---\nfrom: john\nworker: Claude Code\ndate: 2026-07-21\nexpects: none\n---\n\nb\n",
-      ),
-    ).toThrow(MessageFormatError);
-    expect(() =>
-      parseMessageFile(
-        "---\nfrom: john\nsession: two words\ndate: 2026-07-21\nexpects: none\n---\n\nb\n",
-      ),
-    ).toThrow(MessageFormatError);
+  it("but a present value must be well formed — a malformed one is DROPPED and named (thread 023)", () => {
+    const worker = parseMessageFile(
+      "---\nfrom: john\nworker: Claude Code\ndate: 2026-07-21\nexpects: none\n---\n\nb\n",
+    );
+    expect(worker.fields.worker).toBeUndefined();
+    expect(worker.warnings?.[0]).toMatch(/worker: Claude Code/);
+    // The message itself is READ: the fields that decide whose turn it is are intact.
+    expect(worker.fields.from).toBe("john");
+
+    const session = parseMessageFile(
+      "---\nfrom: john\nsession: two words\ndate: 2026-07-21\nexpects: none\n---\n\nb\n",
+    );
+    expect(session.fields.session).toBeUndefined();
+    expect(session.warnings?.[0]).toMatch(/session: two words/);
   });
 
   it("stays out of the assembled heading — the feed is the conversation, not the run", () => {
@@ -296,11 +299,12 @@ describe("the priority of a thread in the header (R5)", () => {
     expect(parseMessageFile(raw("")).fields.priority).toBeUndefined();
   });
 
-  it("a value outside the vocabulary fails the whole message, and the error lists the vocabulary", () => {
-    // Unlike `launch`, whose values belong to a foreign tool: this vocabulary is the
-    // protocol's own, so a wrong value is a defect and not a message from the future.
-    expect(() => parseMessageFile(raw("priority: urgent\n"))).toThrow(MessageFormatError);
-    expect(() => parseMessageFile(raw("priority: urgent\n"))).toThrow(/high \| normal \| low/);
+  it("a value outside the vocabulary is dropped, and the reason lists the vocabulary", () => {
+    // The vocabulary is the protocol's own, so a wrong value here is a defect — but a defect
+    // of ONE optional field, and the thread is not blinded by it (thread 023).
+    const message = parseMessageFile(raw("priority: urgent\n"));
+    expect(message.fields.priority).toBeUndefined();
+    expect(message.warnings?.[0]).toMatch(/high \| normal \| low/);
   });
 
   it("stays out of the assembled heading, like the launch directive", () => {
@@ -329,7 +333,24 @@ describe("the park of a turn in the header (R27)", () => {
     expect(parseMessageFile(raw("")).fields.parkedOn).toBeUndefined();
   });
 
-  it("a value that is not a role id is refused as loudly as a malformed 'from'", () => {
-    expect(() => parseMessageFile(raw("parked-on: John Smith\n"))).toThrow(MessageFormatError);
+  it("a value this reader cannot make sense of is DROPPED, not thrown (thread 023)", () => {
+    // THE LIVE CLASS: a daemon started at 15:15Z met `parked-on: pr:133`, written at 16:18Z by
+    // code that landed at 16:10Z — and the WHOLE thread went unreadable to the planner over a
+    // field nobody plans with. An old reader meeting a new field is perpetual, not a one-off.
+    const message = parseMessageFile(raw("parked-on: John Smith\n"));
+    expect(message.fields.parkedOn).toBeUndefined();
+    expect(message.warnings).toEqual([
+      "'parked-on: John Smith' — expected the id of a role or an event ('pr:<number>')",
+    ]);
+    expect(message.fields.from).toBe("curator");
+  });
+
+  it("the four fields of the turn still refuse the file — staleness is worse than a refusal", () => {
+    expect(() => parseMessageFile(raw("").replace("expects: answer", "expects: maybe"))).toThrow(
+      MessageFormatError,
+    );
+    expect(() =>
+      parseMessageFile(raw("").replace("waiting-on: curator", "waiting-on: curator, dev-core")),
+    ).toThrow(MessageFormatError);
   });
 });

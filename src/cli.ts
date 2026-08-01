@@ -52,7 +52,13 @@ import {
 import { describePolicySkew, policyRole } from "./config/policy.js";
 import { configSetSummary, planConfigSet } from "./config/set.js";
 import { createStandingConfig, standingKey } from "./config/standing.js";
-import { type LoadedThread, loadThread, loadThreads, renderThreadFailures } from "./fs/comms.js";
+import {
+  type LoadedThread,
+  loadThread,
+  loadThreads,
+  renderThreadFailures,
+  renderThreadWarnings,
+} from "./fs/comms.js";
 import {
   fileExistsAtRef,
   mailCheckoutFreshness,
@@ -982,7 +988,7 @@ const taskInputsOf = (
 const checkAll = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const registry = registryFrom(argv, repoOf(root));
-  const { threads, failures } = loadThreads(root, registry.ids());
+  const { threads, failures, warnings } = loadThreads(root, registry.ids());
 
   const found = threads.flatMap((loaded) =>
     loaded.input === undefined ? [] : checkThread(loaded.input, registry),
@@ -1031,6 +1037,13 @@ const checkAll = (argv: readonly string[]): void => {
   // `check` exists to say "something is wrong with the mail", and it must not stay
   // silent about a thread that did not parse at all.
   const failureIssues = renderThreadFailures(failures);
+  // A DROPPED FIELD IS AN ISSUE HERE, though it is only a warning to a reader (thread 023):
+  // `check` runs the current code over the mail, so a field it cannot make sense of is a
+  // malformed field and not a version skew — and this is the one place that says so.
+  // IT KEEPS ITS OWN HEADING: the two say opposite things about the same mail ("the
+  // conversation is not in the answer" against "it is, minus one field"), so printing them
+  // under `threads were not read` made every warning line contradict the heading above it.
+  const warningIssues = renderThreadWarnings(warnings);
 
   // Message immutability is checked RELATIVE TO A POINT IN HISTORY: only "now"
   // lies on disk, and the question "was it edited after the fact" makes no sense
@@ -1063,13 +1076,17 @@ const checkAll = (argv: readonly string[]): void => {
       out(`- ${note.thread}${note.file === undefined ? "" : `/${note.file}`}: ${note.message}`);
     }
   }
-  if (issues.length === 0 && failureIssues.length === 0) {
+  if (issues.length === 0 && failureIssues.length === 0 && warningIssues.length === 0) {
     out(`agent-protocol: ok — ${threads.length - legacy.length} threads passed the format check`);
     return;
   }
   if (failureIssues.length > 0) {
     err("agent-protocol: threads were not read:");
     for (const line of failureIssues) err(`- ${line}`);
+  }
+  if (warningIssues.length > 0) {
+    err("agent-protocol: fields were dropped (the threads WERE read):");
+    for (const line of warningIssues) err(`- ${line}`);
   }
   if (issues.length > 0) {
     err("agent-protocol: the format is violated:");
@@ -2666,10 +2683,18 @@ const agentFor = (
  * the same source every other read of the mail in the circuit uses.
  *
  * A THREAD THAT CANNOT BE READ IS NOT AN ERROR HERE. A legacy `_thread.md` has no
- * message headers at all, so it can carry no directive by construction, and a
- * malformed one is already loud everywhere it matters (`check`, `mail`). Falling back
+ * message headers at all, so it can carry no directive by construction, and a thread
+ * that did not parse at all is loud everywhere it matters (`check`, `mail`). Falling back
  * to "no directive" means the role is raised on its standing calibration — which is
  * exactly what happened before R21 existed.
+ *
+ * A MALFORMED DIRECTIVE FIELD IS NOT THE SAME THING and is louder in one place only
+ * (thread 023): since the field degrades instead of failing its file, a `launch`/`priority`
+ * line this code cannot read is dropped with a warning, and the only command that prints
+ * those warnings is `check` — `mail` and the daemon print failures alone. The narrowing is
+ * deliberate: to a reader of a LIVE circuit a dropped field usually means "this process is
+ * older than the field it just met", which is not the daemon's business to shout about,
+ * while `check` runs the current code on purpose and is the place the question is asked.
  */
 const threadDirectiveFor = (input: {
   readonly mailRoot: string;

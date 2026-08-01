@@ -2696,3 +2696,30 @@ Both are process-tested against a remote that is unreachable for real
 says so on every tick, and goes back to reading by itself when it comes back. The control
 was run the way D-0's was — with the fallback disabled the test goes red on the historical
 message verbatim.
+
+**(c) A field newer than the code.** The third death of the same evening was a message,
+not a config: a daemon raised at 15:15Z met `parked-on: pr:133` (the field's code landed
+at 16:10Z) and dropped THE WHOLE THREAD out of the mail. The class is permanent — the
+readers of a live circuit are processes started at different times — so the line is drawn
+by the MEANING of a field rather than by tolerating errors:
+
+- the four fields that answer WHOSE TURN IT IS (`from`, `date`, `expects`, `waiting-on`)
+  still refuse their file. A thread that answers "whose turn" out of a message read
+  without one of them is the silent staleness this package exists against;
+- everything else — provenance, parking, priority, the launch directive, a task line — is
+  read `soft`: the field is dropped, the reason is recorded in `Message.warnings`, the
+  message is read. `loadThreads` returns those `warnings` (thread + FILE + reason) beside
+  its `failures`.
+
+**The two are said under separate headings, and that is load-bearing.** They state
+opposite things about the same mail — "the conversation is not in the answer" against "it
+is, minus one field" — so `check` prints `threads were not read:` and `fields were
+dropped (the threads WERE read):` as two lists (`check.process.test.ts` asserts which
+heading a line lands under; the first version appended the warnings to the failures and
+every warning line contradicted the heading above it).
+
+**Only `check` prints the warnings, and the narrowing is deliberate**: `mail`, `status`
+and the daemon print failures alone. To a reader of a live circuit a dropped field
+usually means "this process is older than the field it just met", which is not the
+daemon's business to shout about; `check` runs the current code over the mail on purpose,
+so there a field it cannot make sense of is a malformed field and gets a red exit.
