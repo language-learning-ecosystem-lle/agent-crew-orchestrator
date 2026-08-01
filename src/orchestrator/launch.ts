@@ -901,7 +901,16 @@ export const consecutiveLaunchesWithoutDelivery = (
     // would be inventing good news. Not doing this is what deadlocked the box on
     // 30.07 — the budget is reset by a delivery, a delivery is made by a session, and
     // a session is not raised while the budget is spent; it took a hand to break.
-    else if (event.kind === "lease-released" && event.reason === "quota-exhausted") {
+    else if (
+      event.kind === "lease-released" &&
+      (event.reason === "quota-exhausted" || event.reason === "auth-failed")
+    ) {
+      // A DEAD TOKEN TAKES ITS OWN LAUNCH BACK for the same reason a closed window does
+      // (thread 023, the OAuth episode): the run never reached the work, the cause is the
+      // box's and not any pair's, and leaving it counted is how the outage of 2026-08-01
+      // walked the global budget towards the same deadlock — the budget is reset by a
+      // delivery, a delivery is made by a session, and no session is raised on a spent
+      // budget.
       count = Math.max(0, count - 1);
     }
   }

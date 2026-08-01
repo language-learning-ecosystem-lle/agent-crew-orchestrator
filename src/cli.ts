@@ -99,6 +99,13 @@ import {
 } from "./orchestrator/activity.js";
 import { parseUsage, strayArguments } from "./orchestrator/argv.js";
 import {
+  type AuthSignal,
+  authSignalOf,
+  describeAuthRelease,
+  describeAuthShelf,
+  openAuthShelf,
+} from "./orchestrator/auth.js";
+import {
   type Continuation,
   describeContinuation,
   type OwnMessage,
@@ -4294,6 +4301,7 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // THE SAME FOLD THE DAEMON PLANS BY (`planTick`) — the frame and the tick cannot
     // disagree about whether the box is standing down.
     quota: openQuotaShelves(events, now),
+    auth: openAuthShelf(events, now),
     // R23-1 in the FRAME (T-1): from the SAME threads the queue above is built from, so
     // a resident wait and a launch candidate can never disagree about who is waiting.
     // The section exists only where the project has resident roles at all.
@@ -5430,6 +5438,8 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   let pending = "";
   /** The quota signal, once seen (finding C) — the latch the poll loop reads. */
   let quota: QuotaSignal | undefined;
+  /** The authorisation refusal, once seen (thread 023) — the same latch, its own fact. */
+  let authFailure: AuthSignal | undefined;
   // THE SESSION LEARNS ITS OWN ID (R7) — from the init line of its own stream, which
   // the supervisor is reading anyway, written into the file whose path the session
   // was given in its environment. Once: the id does not change mid-run, and a
@@ -5467,6 +5477,19 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     quota = signal;
     writeLog(`supervisor  ${describeQuotaRelease(signal)}`);
   };
+  // THE BOX COULD NOT AUTHENTICATE (thread 023, the OAuth episode of 2026-08-01) —
+  // latched off the same lines, on both streams, and for the sharper of the two reasons
+  // the quota is: this refusal arrives BEFORE a session exists at all, so it is the
+  // launcher complaining on stderr, and a refusal missed there comes back as
+  // `exited-without-handoff` — the misattribution that took three innocent pairs out of
+  // the circuit during the episode.
+  const noteAuth = (line: string): void => {
+    if (authFailure !== undefined) return;
+    const signal = authSignalOf(line);
+    if (signal === undefined) return;
+    authFailure = signal;
+    writeLog(`supervisor  ${describeAuthRelease(signal)}`);
+  };
   // WHAT THE RUN BURNED (thread 029) — latched off the same lines, and WRAPPED, which is
   // the whole of curator's first acceptance condition (msg-004). Telemetry has no right to
   // touch the fact that the lease is released: "every outcome leaves a trace" is the
@@ -5500,6 +5523,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // loop below, which is the one place that knows the lifecycle. The first signal
       // wins — a session that repeats the message is still the same closed window.
       noteQuota(line);
+      noteAuth(line);
       for (const rendered of renderStreamLine(line)) {
         writeLog(rendered);
         out(p.streamPrefix === undefined ? rendered : `${p.streamPrefix} ${rendered}`);
@@ -5514,6 +5538,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       if (line.trim() === "") continue;
       writeLog(`stderr  ${line}`);
       noteQuota(line);
+      noteAuth(line);
     }
   });
 
@@ -5694,6 +5719,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       awaitingInput,
       waitOverdue: lifecycle === "waiting" && Date.now() > waitUntilMs,
       quotaExhausted: quota !== undefined,
+      authFailed: authFailure !== undefined,
     });
     if (step === null) continue;
 
@@ -5828,6 +5854,16 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       writeLog(`supervisor  the lease was released: quota-exhausted — ${line}`);
       err(
         `agent-protocol: the run was cut off by the QUOTA, not by a fault of its own — ${line} Session output: ${p.sessionLog}`,
+      );
+    } else if (step.reason === "auth-failed") {
+      // ITS OWN SENTENCE for the same reason the quota has one (thread 023): "the turn was
+      // not passed" sends the reader looking for a session at fault, and there is none —
+      // the box could not talk to the vendor. What the reader needs is the one action that
+      // fixes it, and that it is not this pair's doing.
+      const line = describeAuthRelease(authFailure as AuthSignal);
+      writeLog(`supervisor  the lease was released: auth-failed — ${line}`);
+      err(
+        `agent-protocol: the run died on the CREDENTIALS OF THIS BOX, not on a fault of its own — ${line} Session output: ${p.sessionLog}`,
       );
     } else if (step.reason !== "completed") {
       const quiet = step.reason === "stalled" ? ` (${describeQuiet(quietMs)})` : "";
@@ -7119,6 +7155,24 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         });
         err(
           `agent-protocol: the launch of ${decision.cut.recorded.role}/${decision.cut.recorded.thread} was refused (quota) — one record per closed window, not one per tick`,
+        );
+      }
+    } else if (decision.kind === "auth") {
+      // THE BOX IS STANDING DOWN ON ITS OWN CREDENTIALS, and it says so every tick — the
+      // episode of 2026-08-01 was silent for two hours on this exact state, and silence is
+      // what made a human the detector. Once per shelf in the journal, every tick on the
+      // stream: the operator's question in front of a still circuit is "is this alive".
+      err(`agent-protocol: daemon — ${describeAuthShelf(decision.shelf)}, ${next}`);
+      if (decision.cut !== undefined) {
+        appendEvent(journalPath, {
+          kind: "launch-refused",
+          ts: eventTimestamp(new Date()),
+          role: decision.cut.recorded.role,
+          thread: decision.cut.recorded.thread,
+          reason: decision.cut.reason,
+        });
+        err(
+          `agent-protocol: the launch of ${decision.cut.recorded.role}/${decision.cut.recorded.thread} was refused (auth) — one record per shelf, not one per tick`,
         );
       }
     } else if (decision.kind === "plan") {

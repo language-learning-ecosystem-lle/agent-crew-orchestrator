@@ -1245,11 +1245,18 @@ risky action after — not a single spawn.
   of the lines of a single writer, so the seq comparator of migrated messages is
   not needed here. Kinds of events: `lease-acquired` (with a `deadline`),
   `launch`, `handoff-detected`, `lease-released` (with a `reason`:
-  `completed|forced|exited-without-handoff|supervisor-gone|timeout|stalled|input-timeout|exited-while-waiting|exhausted|quota-exhausted`;
+  `completed|forced|exited-without-handoff|supervisor-gone|timeout|stalled|input-timeout|exited-while-waiting|exhausted|quota-exhausted|auth-failed`;
   a `quota-exhausted` also carries `until` when the signal named the reopening time,
   and `window` — the vendor's own word for WHICH window closed, which is the key of the
   backoff shelf),
-  `launch-refused` (with a `reason`: `run-budget|quota`, S3) and `stop` (with a `mode`). The
+  an `auth-failed` says THIS BOX COULD NOT AUTHENTICATE to the vendor (thread 023, the
+  OAuth episode of 2026-08-01) — the same class as the closed window and deliberately a
+  different name: a window reopens by the vendor's clock, dead credentials reopen when a
+  human runs `claude login` here. Like `quota-exhausted` it counts towards neither the
+  pair's attempt ceiling nor the global run budget, and while it stands the tick raises
+  nobody, knocking once every `AUTH_SHELF_MINUTES` — that knock IS the probe, because such
+  a death costs 0 seconds and $0;
+  `launch-refused` (with a `reason`: `run-budget|quota|auth`, S3) and `stop` (with a `mode`). The
   shape is held by the schema: `lease-acquired` without `--deadline` and
   `lease-released` without `--reason` are a loud refusal.
 - **`record`** is a manual write of an event by the same path the daemon writes

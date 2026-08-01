@@ -82,6 +82,14 @@ export const MAX_ATTEMPTS = 3;
  * excluded from the ceiling in `lease.ts`. `until` carries the reopening time when
  * the signal named it.
  *
+ * `auth-failed` — THE BOX COULD NOT AUTHENTICATE, not the session (thread 023, the
+ * OAuth episode of 2026-08-01). The same shape as `quota-exhausted` one paragraph up and
+ * deliberately not folded into it: a closed window reopens by the vendor's clock, dead
+ * credentials reopen when a human logs in on this box, and an operator reading a stalled
+ * circuit needs to be told which of the two they are looking at. Excluded from the attempt
+ * ceiling in `lease.ts` and from the global run budget in `launch.ts` — during the episode
+ * it ate both and took three innocent pairs out of the circuit.
+ *
  * `forced` has NOT been removed from the list even though the `lease-released`
  * path no longer writes it (a real force writes a `stop {mode: forced, by, note}`
  * event): journals are append-only files on disk, and removing a value would make
@@ -99,6 +107,7 @@ export const RELEASE_REASONS = [
   "exited-while-waiting",
   "exhausted",
   "quota-exhausted",
+  "auth-failed",
 ] as const;
 export type ReleaseReason = (typeof RELEASE_REASONS)[number];
 
@@ -117,8 +126,12 @@ export type ReleaseReason = (typeof RELEASE_REASONS)[number];
  * once per tick — the line says NOTHING WAS LAUNCHED, which is the box's property and not
  * any one window's; see `quotaRefusalRecorded` for why the journal and the daemon's stream
  * differ here, and why the unit is the box rather than the window.
+ *
+ * `auth` — THE BOX'S CREDENTIALS ARE STILL REFUSED (thread 023, the OAuth episode). The
+ * same once-per-shelf discipline as `quota` (`authRefusalRecorded`): the tick knocks every
+ * ten minutes, the journal keeps one line per knock rather than one per tick.
  */
-export const REFUSAL_REASONS = ["run-budget", "quota"] as const;
+export const REFUSAL_REASONS = ["run-budget", "quota", "auth"] as const;
 export type RefusalReason = (typeof REFUSAL_REASONS)[number];
 
 const base = {

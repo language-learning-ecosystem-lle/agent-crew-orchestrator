@@ -126,6 +126,7 @@ export type WorkspacePlan =
  */
 export const ABORTED_RUN_REASONS: readonly string[] = [
   "quota-exhausted",
+  "auth-failed",
   "timeout",
   "supervisor-gone",
   "stalled",

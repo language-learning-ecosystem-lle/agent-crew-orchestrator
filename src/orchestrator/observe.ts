@@ -55,6 +55,12 @@ export type ObserveSignals = {
    * reading of the stream is IO and lives in the CLI, the verdict is here.
    */
   readonly quotaExhausted?: boolean;
+  /**
+   * THE BOX COULD NOT AUTHENTICATE (thread 023, the OAuth episode of 2026-08-01) — the
+   * launcher's own refusal, read off the same streams as the quota signal (`authSignalOf`)
+   * and arriving ready-made for the same reason: reading is IO and lives in the CLI.
+   */
+  readonly authFailed?: boolean;
 };
 
 /** What to record at the next step (or null — keep observing). */
@@ -71,7 +77,8 @@ export type ObserveStep =
         | "exited-without-handoff"
         | "input-timeout"
         | "exited-while-waiting"
-        | "quota-exhausted";
+        | "quota-exhausted"
+        | "auth-failed";
     }
   | null;
 
@@ -147,6 +154,16 @@ export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): Obse
     // failure that came first.
     if (signals.quotaExhausted === true) {
       return { record: "lease-released", reason: "quota-exhausted" };
+    }
+    // THE CREDENTIALS OF THIS BOX WERE REFUSED (thread 023, the OAuth episode). Checked
+    // in the same place and for the same reason as the quota above — such a run DOES exit
+    // by itself without passing the turn, so the branch below would call it
+    // `exited-without-handoff` and count it as the pair's failure, which is exactly what
+    // took 019, 046 and 016 out of the circuit on 2026-08-01. It is checked AFTER the
+    // quota because the two cannot both be true honestly: a stream that named the closed
+    // window is the vendor speaking about a window, and that is the more specific fact.
+    if (signals.authFailed === true) {
+      return { record: "lease-released", reason: "auth-failed" };
     }
     // The process exited BY ITSELF, without passing the turn, before the deadline —
     // it left without doing the job. The reason is ITS OWN, not `forced`: a force is
