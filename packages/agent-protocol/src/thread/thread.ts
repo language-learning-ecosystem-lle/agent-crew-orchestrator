@@ -275,25 +275,29 @@ export const waitingOnOf = (thread: Thread): string | undefined => {
  *   unpark anything. This matters more here than for the turn — the session that parked the
  *   thread is dead by then, and a state only a dead session could clear would need a human's
  *   hand every time;
- * - AN ANNOUNCEMENT OF THE CIRCUIT DOES NOT LIFT IT: an `expects: none` message written by a
- *   WORKFLOW (`worker: gh-action` — the merge notifier, the CI announcement). A green run of
- *   somebody's checks is not a person's decision, and reading those literally would unpark the
- *   thread the moment CI reported, which is exactly the wasted raise the state exists to
- *   prevent.
+ * - THE NEXT MESSAGE LIFTS IT, WHOEVER WROTE IT — no author is examined, and neither is
+ *   `expects`. The rule had two narrower shapes before, and each one froze a thread that had
+ *   its answer already inside it:
  *
- *   THE AUTHOR IS THE DISCRIMINATOR, and `expects` alone is not (thread 023, three live
- *   repros: 040, 044, 016). The three threads froze on messages that WERE the decision
- *   arriving — curator relaying john's "merge it, done" and passing the turn on — written
- *   with `expects: none` because they asked nobody for anything. Under "informational does
- *   not lift" the answer landed, the turn moved to another role, and the thread stayed
- *   invisible to the planner until a human's hand. A participant speaking is the answer
- *   arriving whatever it expects back; only the circuit's own traffic is noise.
+ *   "informational does not lift" cost three (thread 023, live repros 040, 044, 016): a
+ *   curator relaying a decision and passing the turn on writes `expects: none` — it asks
+ *   nobody for anything — and the thread stayed invisible to the planner until a human's
+ *   hand. "An announcement of the circuit does not lift" (`worker: gh-action`) cost 046: the
+ *   merge notifier reported the very PR the decision was about, and the park stood for
+ *   twelve more hours because the fact came from the circuit rather than from a person.
  *
- *   The vocabulary of `worker` is open, so this is a POSITIVE identification of the
- *   workflows we write ourselves, not a classification of everything else — and the
- *   direction it fails in is the cheap one: an announcement written under some other worker
- *   lifts a park and costs one raise, where mistaking a person for the circuit costs a
- *   thread frozen until somebody notices.
+ *   Both narrowings were an attempt to answer "is this the answer arriving?" from the
+ *   header, and the header does not carry that. What it does carry is the only thing the
+ *   state actually needs: SOMEBODY WROTE INTO THIS THREAD AFTER THE PARK. The two ways of
+ *   being wrong are not equal — lifting too eagerly costs one raise that finds nothing new,
+ *   holding too long costs a thread frozen with its answer in it until somebody notices —
+ *   and every live incident so far has been of the second kind (thread 023, curator's
+ *   measurement of a day: 016, 040, 044, 046, and two more headers repaired by hand).
+ *
+ *   The author being out of it also settles the DOUBLES question that "the author
+ *   discriminates" opened (thread 023): a role writes both from a raised session and from a
+ *   human's chat, the two are one `from:` and cannot be told apart in the header — and under
+ *   this rule nothing has to tell them apart.
  *
  * THE FIELD IS READ BEFORE THAT SKIP, and the order is the whole of the fix (thread 034,
  * paid for twice with empty sessions): a park DECLARED ON an informational message is still a
@@ -340,14 +344,6 @@ export const mergedPrs = (threads: readonly Thread[]): ReadonlySet<number> => {
   }
   return merged;
 };
-
-/**
- * The worker of the circuit's own writers — the workflows that announce facts into a thread
- * (the merge notifier, the CI outcome). Their traffic is the one kind of message that does not
- * lift a park; see the doc block above `parkedOnOf` for why the author, and not `expects`, is
- * what separates it from a participant speaking.
- */
-const CIRCUIT_WORKER = "gh-action";
 
 /** WHAT a raw `parked-on` value names — a person, or the merge of a PR. */
 export type ParkedOn =
@@ -408,34 +404,23 @@ export const parkingOf = (
   mergedElsewhere?: ReadonlySet<number>,
 ): Parking | undefined => {
   if (thread.meta.status === "closed") return undefined;
-  // The merges announced AFTER the park would be — the scan runs backwards, so they are met
-  // first, and an event park is compared against the set the moment it is found. The mail's
-  // own merges are in the set from the start: they are not ordered against this feed at all.
-  const merged = new Set<number>(mergedElsewhere);
-  for (let at = thread.messages.length - 1; at >= 0; at--) {
-    const message = thread.messages[at];
-    if (message === undefined) continue;
-    const mergedPr = message.fields.mergedPr;
-    if (mergedPr !== undefined) merged.add(mergedPr);
-    const on = message.fields.parkedOn;
-    if (on !== undefined) {
-      const since = message.fields.date;
-      const question = questionOf(message.text);
-      const named = parkedOnKind(on);
-      if (named.kind === "person") return { kind: "person", person: on, since, question };
-      const { pr } = named;
-      // THE ONE PARK THAT LIFTS WITHOUT A PERSON (thread 023): the merge notifier's message
-      // names the PR (`merged-pr`), and that is the answer arriving. It has `expects: none`
-      // like every other announcement, so the rule above ("informational does not lift")
-      // would hold it frozen forever — the thread would wait for a human to relay a fact the
-      // circuit already delivered, which is the whole cost this park exists to avoid.
-      if (merged.has(pr)) return undefined;
-      return { kind: "event", pr, since, question };
-    }
-    if (message.fields.expects === "none" && message.fields.worker === CIRCUIT_WORKER) continue;
-    return undefined;
-  }
-  return undefined;
+  // ONE MESSAGE IS READ, AND IT IS THE LAST ONE: anybody having written after the park is the
+  // answer arriving, so a park that is not the newest statement of the feed is already lifted.
+  // This used to be a backwards scan over the messages it was allowed to skip — the doc block
+  // above names the five live threads that cost.
+  const last = thread.messages.at(-1);
+  const on = last?.fields.parkedOn;
+  if (last === undefined || on === undefined) return undefined;
+  const since = last.fields.date;
+  const question = questionOf(last.text);
+  const named = parkedOnKind(on);
+  if (named.kind === "person") return { kind: "person", person: on, since, question };
+  const { pr } = named;
+  // THE ONE PARK THAT LIFTS WITH NOBODY WRITING AT ALL (thread 023): the merge lands and its
+  // notifier writes into the PR's OWN thread, which is not this one. Without this set the park
+  // would outlive the merge it waits for, in the one feed that cannot see it.
+  if (mergedElsewhere?.has(pr) === true) return undefined;
+  return { kind: "event", pr, since, question };
 };
 
 /** How wide a question may be before it stops being one line in a phone notification. */
