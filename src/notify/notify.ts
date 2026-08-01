@@ -109,6 +109,18 @@ export const NOTIFICATION_VARIABLES: Readonly<Record<NotificationKind, readonly 
 };
 
 /**
+ * THE BOX'S OWN TWO LINES (thread 051) — deliberately NOT slots of the project's template
+ * map, and the reason is R2 rather than taste: the map's KEYS are part of the frozen config
+ * shape, so making these two overridable costs a protocol version and a migration step for
+ * every box in the field. They are the package's operational voice about the machine it is
+ * running on, they name no role and no thread, and their readers are the operator and
+ * whoever can log in. If a project ever needs them in its own language, that is a version
+ * bump made on purpose — asked in the thread, not taken here in silence.
+ */
+export const BOX_ALARM_KINDS = ["auth", "gh-outage"] as const;
+export type BoxAlarmKind = (typeof BOX_ALARM_KINDS)[number];
+
+/**
  * The package's own texts — ENGLISH, and that is the whole of R1's answer to "which
  * language does a protocol speak": its own prose is English, and a project that
  * wants its team's language writes it down as data. A default that is silence would
@@ -121,6 +133,13 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Readonly<Record<NotificationKind, s
   "turn-with-nudge": "your turn: {thread} (and {nudged} is waiting on it as well)",
   nudge: "{thread} is waiting on {role}, who comes alive only through {via} — open the chat",
   stalled: "{thread} has not moved for {age} — the turn is with {role}",
+};
+
+/** The two box-wide texts, in the package's own English — see {@link BOX_ALARM_KINDS}. */
+export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
+  auth: "the box cannot authenticate to the vendor: {deaths} runs in a row died on its credentials since {since}. Nothing is raised until {until}, and nothing will be until somebody logs in on the box — the circuit is standing still",
+  "gh-outage":
+    "merge-ready has been refused by gh for {ticks} ticks in a row (threshold {threshold}) since {since}: {refusal}. Nothing is broken by it — the queue is ordered as it would be without the tier — but the tier is off until this is fixed",
 };
 
 /** The announcements the package writes INTO A THREAD; same mechanism, different reader. */
@@ -143,7 +162,7 @@ export const DEFAULT_ANNOUNCEMENT_TEMPLATES: Readonly<Record<AnnouncementKind, s
 
 /** One rendered notification line, with the facts that produced it kept beside the text. */
 export type NotificationLine = {
-  readonly kind: NotificationKind;
+  readonly kind: NotificationKind | BoxAlarmKind;
   readonly thread: string;
   readonly role: RoleId;
   readonly text: string;
@@ -185,11 +204,59 @@ export type ParkedThread = {
   readonly question: string;
 };
 
-/** What was announced last run: the three classes of event in one file. */
+/**
+ * THE FOURTH AND FIFTH CLASSES OF EVENT — THE ONES WITH NO THREAD AT ALL (thread
+ * `051-ringing-predicates`).
+ *
+ * Everything above is a fact about a conversation: a turn that has passed, a turn that has
+ * not moved, a turn frozen behind a person. These two are facts about the BOX, and that is
+ * exactly why they need their own slots rather than a thread to hang on:
+ *
+ *  - the AUTHORISATION SHELF (`orchestrator/auth.ts`): every session raised on this box
+ *    dies on its first turn because the vendor refuses its credentials. There is no thread
+ *    whose turn is stuck — every thread's turn is stuck — so `stalledAfterMinutes` is not
+ *    applicable to it BY CONSTRUCTION, and like a park it rings with NO threshold of its
+ *    own. Its threshold is the predicate that produced it (`authAlarmDue`: the second death
+ *    in a row), and that decision is not made twice;
+ *  - the MERGE-READY OUTAGE (`orchestrator/outage.ts`): `gh` has been refusing the tier for
+ *    a run of ticks. Nothing is broken by it — the queue degrades to the order it would
+ *    have without the tier — but a feature the operator believes in is off, silently.
+ *
+ * BOTH ARE KEYED BY A STAMP, like the stall and the park, and for the identical reason: an
+ * outage that ends and starts again is a NEW event, and keying by "there is an outage"
+ * would swallow the second one for as long as the daemon lived. What the stamp means is
+ * different in each case, and each says so at its own field.
+ */
+export type AuthAlarm = {
+  /** The stamp of the LAST authorisation death — the shelf this rings for. */
+  readonly since: string;
+  /** How many runs in a row died on the credentials. */
+  readonly deaths: number;
+  /** When the box next knocks on the door (one pair raised as the probe). */
+  readonly until: string;
+};
+
+/** One run of identical refusals from `gh`, long enough to be worth a human's phone. */
+export type GhAlarm = {
+  /** When THIS run of refusals began — its identity, and what the state is keyed by. */
+  readonly since: string;
+  /** How many consecutive ticks were refused. */
+  readonly ticks: number;
+  /** The threshold that was crossed, carried so the message can print it beside the count. */
+  readonly threshold: number;
+  /** The vendor's own sentence, verbatim — the fact, never a guess at what it means. */
+  readonly refusal: string;
+};
+
+/** What was announced last run: the five classes of event in one file. */
 export type NotifyState = {
   readonly waiting: readonly WaitingPair[];
   readonly stalled: readonly StalledTurn[];
   readonly parked: readonly ParkedThread[];
+  /** The stamp of the authorisation shelf already announced, if any. */
+  readonly auth?: string | undefined;
+  /** The stamp of the merge-ready outage already announced, if any. */
+  readonly gh?: string | undefined;
 };
 
 export type NotificationPlan = {
@@ -205,6 +272,14 @@ export type NotificationPlan = {
   readonly freshStalled: readonly StalledTurn[];
   /** Parks not announced before — the same rule, keyed by the message that parked. */
   readonly freshParked: readonly ParkedThread[];
+  /** The authorisation shelf in force now, if the predicate rings — also part of the state. */
+  readonly auth?: AuthAlarm | undefined;
+  /** The merge-ready outage in force now, if the predicate rings — also part of the state. */
+  readonly gh?: GhAlarm | undefined;
+  /** True when this shelf has not been announced yet: ONE DELIVERY PER SHELF, not per tick. */
+  readonly freshAuth: boolean;
+  /** True when this run of refusals has not been announced yet — same rule, same reason. */
+  readonly freshGh: boolean;
   /** The message, one line per thread-and-human. Rendered from the FULL composition. */
   readonly lines: readonly NotificationLine[];
 };
@@ -225,6 +300,11 @@ export const renderNotifyState = (state: NotifyState): string => {
     ...state.waiting.map(key),
     ...state.stalled.map((turn) => `stalled\t${stalledKey(turn)}`),
     ...state.parked.map((park) => `parked\t${parkedKey(park)}`),
+    // The two box-wide events are one line each and carry only their stamp: what
+    // identifies them is the shelf and the run of refusals, and the rest is re-read from
+    // the journal and the outage file every time.
+    ...(state.auth === undefined ? [] : [`auth\t${state.auth}`]),
+    ...(state.gh === undefined ? [] : [`gh\t${state.gh}`]),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -233,6 +313,8 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const waiting: WaitingPair[] = [];
   const stalled: StalledTurn[] = [];
   const parked: ParkedThread[] = [];
+  let auth: string | undefined;
+  let gh: string | undefined;
   for (const line of raw.split("\n").map((entry) => entry.trim())) {
     if (line === "") continue;
     const columns = line.split("\t");
@@ -254,10 +336,18 @@ export const parseNotifyState = (raw: string): NotifyState => {
       }
       continue;
     }
+    if (columns[0] === "auth") {
+      if (columns[1] !== undefined) auth = columns[1];
+      continue;
+    }
+    if (columns[0] === "gh") {
+      if (columns[1] !== undefined) gh = columns[1];
+      continue;
+    }
     const [role, thread] = columns;
     if (role !== undefined && thread !== undefined) waiting.push({ role, thread });
   }
-  return { waiting, stalled, parked };
+  return { waiting, stalled, parked, auth, gh };
 };
 
 const ordered = (pairs: readonly WaitingPair[]): readonly WaitingPair[] =>
@@ -290,6 +380,15 @@ export const planNotifications = (input: {
    * like a dead turn.
    */
   readonly frozen?: readonly string[];
+  /**
+   * The box's own credentials are refused and the predicate rings (thread 051). NOT filtered
+   * by target the way a park is: it names no role because it belongs to no thread — it is
+   * delivered whenever there is anybody human to deliver to at all, and is dropped when
+   * there is not, since a message about a dead box has no second reader.
+   */
+  readonly auth?: AuthAlarm | undefined;
+  /** The merge-ready tier has been refused for a run of ticks past its threshold. */
+  readonly gh?: GhAlarm | undefined;
   readonly templates?: Partial<Record<NotificationKind, string>>;
 }): NotificationPlan => {
   const byRole = new Map(input.targets.map((target) => [target.id, target]));
@@ -333,7 +432,42 @@ export const planNotifications = (input: {
   const template = (kind: NotificationKind): string =>
     input.templates?.[kind] ?? DEFAULT_NOTIFICATION_TEMPLATES[kind];
 
+  // THE BOX-WIDE EVENTS ARE DROPPED WHEN NOBODY HUMAN IS CONFIGURED, and the reason is the
+  // one that governs a park: a notification is an instruction to a reader, and both of
+  // these can only be acted on by a person at (or with access to) the machine.
+  const human = input.targets.some((target) => target.style === "direct");
+  const auth = human ? input.auth : undefined;
+  const gh = human ? input.gh : undefined;
+  const freshAuth = auth !== undefined && auth.since !== input.seen.auth;
+  const freshGh = gh !== undefined && gh.since !== input.seen.gh;
+
   const lines: NotificationLine[] = [];
+  // THE BOX COMES BEFORE THE MAIL. A shelved box means none of the lines below can be acted
+  // on by the circuit at all — reading "your turn: 042" first and "nothing is being raised"
+  // last is the wrong order to learn those two facts in.
+  if (auth !== undefined)
+    lines.push({
+      kind: "auth",
+      thread: "",
+      role: "",
+      text: renderTemplate(BOX_ALARM_TEMPLATES.auth, {
+        deaths: String(auth.deaths),
+        since: auth.since,
+        until: auth.until,
+      }),
+    });
+  if (gh !== undefined)
+    lines.push({
+      kind: "gh-outage",
+      thread: "",
+      role: "",
+      text: renderTemplate(BOX_ALARM_TEMPLATES["gh-outage"], {
+        refusal: gh.refusal,
+        since: gh.since,
+        ticks: String(gh.ticks),
+        threshold: String(gh.threshold),
+      }),
+    });
   // THE PARKS COME FIRST, and they are the only lines that name a question: this is the
   // section "waiting on your decision", and it is at the top because it is the only part of
   // the message that is an instruction to the reader rather than a report about the circuit.
@@ -396,7 +530,19 @@ export const planNotifications = (input: {
     });
   }
 
-  return { waiting, stalled, parked, fresh, freshStalled, freshParked, lines };
+  return {
+    waiting,
+    stalled,
+    parked,
+    fresh,
+    freshStalled,
+    freshParked,
+    auth,
+    gh,
+    freshAuth,
+    freshGh,
+    lines,
+  };
 };
 
 /**

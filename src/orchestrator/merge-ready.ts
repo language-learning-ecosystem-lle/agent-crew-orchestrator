@@ -76,9 +76,24 @@ export type MergeReadyReading = {
   readonly ready: ReadonlyMap<string, number>;
   /** Lines for the daemon's stream — a refusal, or the pairs that were accelerated. */
   readonly notes: readonly string[];
+  /**
+   * THE VENDOR'S OWN SENTENCE when the tier could not be read AT ALL, verbatim — the fact
+   * a persistent outage is counted and quoted from (`outage.ts`, thread 051). It is set
+   * only for the failure of the cheap half (`open()`), which is the whole tier going dark;
+   * a single pull request that could not be read is a partial answer, stays a note, and
+   * does not stand the tier down. Absent means the tier answered.
+   */
+  readonly refusal?: string;
+  /**
+   * WAS THE VENDOR ASKED AT ALL. Three answers, not two (reviewer's finding 2 on #161): a
+   * tick with no candidates never opens a socket, and reading its silence as "the tier
+   * answered" would clear a run of refusals that nothing has fixed. It is NO EVIDENCE
+   * either way, and `foldGhOutage` holds the run on it.
+   */
+  readonly asked: boolean;
 };
 
-const EMPTY: MergeReadyReading = { ready: new Map(), notes: [] };
+const EMPTY: MergeReadyReading = { ready: new Map(), notes: [], asked: false };
 
 /**
  * Read the merge-readiness of the threads that are already queued.
@@ -103,6 +118,8 @@ export const readMergeReady = async (input: {
       notes: [
         `merge-ready: not asked — ${describe(error)}. Nothing is accelerated and nothing is slowed: the queue is exactly the queue without merge-ready`,
       ],
+      refusal: describe(error),
+      asked: true,
     };
   }
   const ready = new Map<string, number>();
@@ -143,7 +160,7 @@ export const readMergeReady = async (input: {
     notes.push(
       `merge-ready: ${thread} — guards 1-2 hold on PR #${pr} (approve on the head, checks green on it); the pair is raised ahead of the ordinary queue`,
     );
-  return { ready, notes };
+  return { ready, notes, asked: true };
 };
 
 const describe = (error: unknown): string =>

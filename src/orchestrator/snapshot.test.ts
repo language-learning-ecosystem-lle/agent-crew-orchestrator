@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 
 import type { HoldView } from "./hold.js";
 import type { LeaseView } from "./lease.js";
+import { GH_OUTAGE_TICKS, type GhOutage, ghAlarmDue } from "./outage.js";
 import type { RankedCandidate } from "./priority.js";
 import {
   type CircuitState,
@@ -21,6 +22,7 @@ import {
   renderCircuit,
   renderFrame,
   renderFreshness,
+  renderMergeReady,
   renderParallelism,
   renderQueue,
   renderQuota,
@@ -386,5 +388,52 @@ describe("renderQuota — the shelf in the operator's frame", () => {
     const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));
     expect(at("circuit:")).toBeLessThan(at("quota:"));
     expect(at("quota:")).toBeLessThan(at("queue:"));
+  });
+});
+
+describe("renderMergeReady — the ONE section that is silent when the news is good", () => {
+  const outage = (ticks: number): GhOutage => ({
+    evidence: "Could not resolve to a Repository with the name 'owner/repo'.",
+    since: "2026-08-01T19:00:00Z",
+    ticks,
+    last: "2026-08-01T19:0Z",
+  });
+
+  it("says nothing at all while the tier answers", () => {
+    expect(renderMergeReady(undefined)).toBe("");
+  });
+
+  it("says nothing BELOW the threshold — one flaky call must not grow a line", () => {
+    expect(ghAlarmDue(outage(GH_OUTAGE_TICKS - 1))).toBe(false);
+    expect(renderMergeReady(outage(1))).toBe("");
+    expect(renderMergeReady(outage(GH_OUTAGE_TICKS - 1))).toBe("");
+  });
+
+  it("speaks AT the threshold, with the threshold beside the count and the vendor's own words", () => {
+    const text = renderMergeReady(outage(GH_OUTAGE_TICKS));
+    expect(text).toContain("merge-ready:");
+    expect(text).toContain(`rings at ${GH_OUTAGE_TICKS}`);
+    expect(text).toContain("Could not resolve to a Repository");
+  });
+
+  it("the FRAME follows the same predicate — below the threshold it is byte-identical to no tier at all", () => {
+    const bare: OperatorFrame = {
+      now: NOW,
+      leases: [],
+      holds: [],
+      parallelism: { raisable: [], live: [], held: [] },
+      circuit: circuit(),
+      queue: [],
+      queueNotes: [],
+      digests: [],
+      mail: { root: "/mail", fetchedAt: NOW, behind: 0 },
+    };
+    expect(renderFrame({ ...bare, ghOutage: outage(GH_OUTAGE_TICKS - 1) })).toBe(renderFrame(bare));
+    const ringing = renderFrame({ ...bare, ghOutage: outage(GH_OUTAGE_TICKS) });
+    expect(ringing).toContain("merge-ready:");
+    const lines = ringing.split("\n");
+    const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));
+    expect(at("auth:")).toBeLessThan(at("merge-ready:"));
+    expect(at("merge-ready:")).toBeLessThan(at("queue:"));
   });
 });
