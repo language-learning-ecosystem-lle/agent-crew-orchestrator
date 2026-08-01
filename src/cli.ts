@@ -39,6 +39,7 @@ import {
   writeFileSync,
   writeSync,
 } from "node:fs";
+import { homedir, hostname } from "node:os";
 import { dirname, join, relative } from "node:path";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
@@ -116,6 +117,16 @@ import {
   mailPresenceCheck,
   repositoryConfigCheck,
 } from "./orchestrator/doctor.js";
+import {
+  deployKeyHint,
+  githubSummary,
+  hasHostEntry,
+  keyStep,
+  probeStep,
+  readSshProbe,
+  sshConfigBlock,
+  sshConfigStep,
+} from "./orchestrator/github.js";
 import {
   foldHolds,
   HOLD_TTL_SECONDS,
@@ -3579,6 +3590,98 @@ const boxInit = (argv: readonly string[]): void => {
       : ["--local-config", flag(withRef, "--local-config") as string]),
     ...(withRef.includes("--offline") ? ["--offline"] : []),
   ]);
+};
+
+/**
+ * `init github` — THE BOX'S IDENTITY FOR GITHUB (thread 019, п.4).
+ *
+ * The reasoning lives in `orchestrator/github.ts`; here are the effects, and three of
+ * them are worth naming where they happen:
+ *
+ *  - `ssh-keygen` IS NEVER RUN OVER AN EXISTING FILE. The step decides `keep`, and the
+ *    effect below is guarded by the same decision — one refusal, not two opinions.
+ *  - THE PROBE'S EXIT CODE IS DISCARDED, deliberately: `ssh -T git@github.com` exits 1
+ *    on a working key. What is read is what GitHub said, on either stream.
+ *  - THE GRANT IS NOT AUTOMATED. The public half and the four clicks are printed and the
+ *    command stops there: adding a deploy key is the one step of the commissioning that
+ *    hands out power, and it stays a human's.
+ */
+const initGithub = (argv: readonly string[]): void => {
+  const withRef = withOperatorRef(argv);
+  const local = localFrom(withRef);
+  const home = process.env["HOME"] ?? homedir();
+  const keyPath = flag(withRef, "--key") ?? join(home, ".ssh", "github");
+  const host = flag(withRef, "--host") ?? "github.com";
+  const configPath = join(home, ".ssh", "config");
+  const write = withRef.includes("--write");
+  const probing = !withRef.includes("--no-probe");
+  // WHAT THE KEY IS CALLED ON GITHUB'S SIDE. The instance id is the name the rest of the
+  // circuit knows this box by (R13), so a deploy key list of five entries reads as five
+  // boxes instead of five dates.
+  const comment = flag(withRef, "--comment") ?? local.config.instance ?? hostname();
+
+  const keyThere = existsSync(keyPath);
+  const configThere = existsSync(configPath);
+  const steps: InitStep[] = [
+    keyStep({ path: keyPath, present: keyThere, comment }),
+    sshConfigStep({
+      path: configPath,
+      host,
+      key: keyPath,
+      present: configThere,
+      hasEntry: configThere && hasHostEntry(readFileSync(configPath, "utf8"), host),
+    }),
+  ];
+
+  if (!write) {
+    out(renderInitSteps(steps));
+    out("");
+    out(deployKeyHint({ host }));
+    out(githubSummary({ steps, write, probed: false }));
+    return;
+  }
+
+  // 0700 on ~/.ssh and 0600 on the private half are not hygiene here: ssh REFUSES to use
+  // a key whose file is group-readable, and the refusal it prints talks about permissions
+  // rather than about the key, which is how an hour goes.
+  mkdirSync(join(home, ".ssh"), { recursive: true, mode: 0o700 });
+  if (!keyThere) {
+    execFileSync("ssh-keygen", ["-t", "ed25519", "-f", keyPath, "-N", "", "-C", comment], {
+      stdio: "ignore",
+    });
+  }
+  if (steps[1]?.action !== "keep") {
+    appendFileSync(
+      configPath,
+      `${configThere ? "\n" : ""}${sshConfigBlock({ host, key: keyPath })}\n`,
+      { mode: 0o600 },
+    );
+  }
+
+  out(renderInitSteps(steps));
+  out("");
+  out(deployKeyHint({ pub: readFileSync(`${keyPath}.pub`, "utf8"), host }));
+
+  if (!probing) {
+    out(githubSummary({ steps, write, probed: false }));
+    return;
+  }
+  // Both streams, and no code: GitHub's answer arrives on stderr, and the command that
+  // carries it exits non-zero on the one outcome the operator wants.
+  const said = spawnSync("ssh", ["-T", "-o", "BatchMode=yes", `git@${host}`], {
+    encoding: "utf8",
+    timeout: 20_000,
+  });
+  const probe = probeStep(
+    readSshProbe(
+      `${said.stdout ?? ""}\n${said.stderr ?? ""}${said.error === undefined ? "" : `\n${said.error.message}`}`,
+    ),
+    host,
+  );
+  const all = [...steps, probe];
+  out(renderInitSteps([probe]));
+  out(githubSummary({ steps: all, write, probed: true }));
+  if (probe.action === "missing") process.exitCode = 2;
 };
 
 /**
@@ -8026,6 +8129,11 @@ const main = async (argv: readonly string[]): Promise<void> => {
     configSet(argv.slice(2));
   } else if (command === "doctor") {
     doctor(argv.slice(1));
+  } else if (command === "init" && subcommand === "github") {
+    // The one two-word form of `init`, so both the key of the guard's table and the argv
+    // it reads shift by a token — the same shift `orchestrator systemd` makes.
+    guardArguments("init github", argv.slice(2));
+    initGithub(argv.slice(2));
   } else if (command === "init") {
     guardArguments("init", argv.slice(1));
     boxInit(argv.slice(1));
