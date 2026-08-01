@@ -277,22 +277,29 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
     expect(parkedOnOf(parked({}))).toBeUndefined();
   });
 
-  it("an announcement of the circuit does NOT lift it — a green CI run is not a decision", () => {
+  it("AN ANNOUNCEMENT OF THE CIRCUIT LIFTS IT TOO — the fact arriving is still the answer", () => {
+    // Live repro 046 (thread 023, curator's measurement of a day): the park named a person,
+    // the notifier reported the merge of the very PR that person's decision was about, and
+    // the thread stood frozen for twelve more hours because the fact came from the circuit
+    // rather than from a person's hand relaying it.
     const thread = parked({ from: "github", worker: "gh-action", expects: "none" });
-    expect(parkedOnOf(thread)).toBe("john");
+    expect(parkedOnOf(thread)).toBeUndefined();
   });
 
   it("a participant speaking lifts it even with 'expects: none' — the decision relayed", () => {
     // Thread 023, three live repros (040, 044, 016): curator relaying john's decision and
     // handing the turn on writes 'expects: none' — it asks nobody for anything — and the
-    // thread stayed frozen with the answer already in it. The author is what separates the
-    // circuit's noise from a person: only 'worker: gh-action' is skipped.
+    // thread stayed frozen with the answer already in it.
     const thread = parked({ from: "curator", worker: "claude-ai", expects: "none" });
     expect(parkedOnOf(thread)).toBeUndefined();
   });
 
-  it("a message with no worker at all is a participant — the skip is positive identification", () => {
-    expect(parkedOnOf(parked({ from: "curator", expects: "none" }))).toBeUndefined();
+  it("THE PARKER'S OWN ROLE LIFTS IT — the doubles of a role are one author in the header", () => {
+    // A role writes both from a raised session and from a human's chat ('worker' differs,
+    // 'from' does not), and the chat one is exactly the courier delivering the decision the
+    // park waits for. Nothing in the header tells the two apart, and under this rule nothing
+    // has to (thread 023, curator's open question).
+    expect(parkedOnOf(parked({ from: "curator", worker: "claude-ai" }))).toBeUndefined();
   });
 
   it("a park DECLARED ON an informational message acts — the field is read before the skip", () => {
@@ -475,7 +482,10 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
     expect(parkingOf(thread([parked, merged]))).toBeUndefined();
   });
 
-  it("somebody else's merge lifts nothing", () => {
+  it("somebody else's merge lifts it too — anything written after the park lifts it", () => {
+    // The narrow reading ("only the merge of THIS PR lifts an event park") is the same shape
+    // that froze 046, and it fails the same way: the price of lifting early is one raise that
+    // finds nothing and parks again, the price of holding is a thread nobody sees.
     const parked = message({ parkedOn: "pr:127" });
     const merged = message(
       {
@@ -487,7 +497,7 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
       },
       "PR #129 merged",
     );
-    expect(parkingOf(thread([parked, merged]))?.pr).toBe(127);
+    expect(parkingOf(thread([parked, merged]))).toBeUndefined();
   });
 
   it("an announcement BEFORE the park does not lift it — a park is a later statement", () => {
