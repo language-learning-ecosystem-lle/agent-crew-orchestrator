@@ -299,7 +299,11 @@ The strict forms below keep every flag they had.
                               # old the mail on disk is; then the static sections
                               # --watch: THE SAME FRAME, redrawn every --interval seconds (2 by
                               # default) — for a dumb terminal, a tmux pane or a pipe into tee;
-                              # it READS ONLY: no fetch, nothing repaired, the age is shown instead
+                              # it CHANGES NOTHING: the mail checkout is never fetched or repaired
+                              # (its age is shown instead), and the one thing it does ask the
+                              # network is the merge-ready tier of the queue — the same guards
+                              # 1-2 the tick measures, at most once a minute however fast the
+                              # frame redraws, and silence from GitHub leaves the frame identical
                               # the config is resolved ONCE at the start (the network is not
                               # touched again), and a failed collection draws the LAST KNOWN
                               # frame under 'frame: unavailable since HH:MM (why)' — the watch
