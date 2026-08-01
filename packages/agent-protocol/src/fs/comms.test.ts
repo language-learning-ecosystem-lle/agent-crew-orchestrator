@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadThreads, renderThreadFailures } from "./comms.js";
+import { loadThreads, renderThreadFailures, renderThreadWarnings } from "./comms.js";
 
 const ROLES = ["dev-core", "curator", "john"];
 
@@ -81,27 +81,49 @@ describe("loadThreads — a failure of one thread does not blind the circuit", (
     rmSync(at, { recursive: true, force: true });
   });
 
-  it("a broken MESSAGE names the file that broke the thread", () => {
+  it("a FIELD this reader cannot read costs the field, not the thread (thread 023)", () => {
+    const at = root();
+    migrated(at, "012-ok");
+    migrated(at, "024-odd-field");
+    // `claude.ai` instead of `claude-ai` — the incident of 2026-07-28. It used to take the
+    // whole thread out of the mail; since 023 (`parked-on: pr:133` read by a daemon older
+    // than the field) the field is dropped, the thread is read, and the drop is SAID.
+    writeFileSync(
+      join(at, "024-odd-field", "messages", "2026-07-28T19-51-10Z-curator.md"),
+      MESSAGE.replace("expects: answer", "expects: answer\nworker: claude.ai"),
+    );
+
+    const { threads, failures, warnings } = loadThreads(at, ROLES);
+
+    expect(threads.map((loaded) => loaded.thread.id)).toEqual(["012-ok", "024-odd-field"]);
+    expect(failures).toEqual([]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.id).toBe("024-odd-field");
+    expect(warnings[0]?.file).toBe("messages/2026-07-28T19-51-10Z-curator.md");
+    // ...and the parser's own sentence survives inside the line, not instead of it.
+    expect(warnings[0]?.problem).toContain("worker: claude.ai");
+    expect(renderThreadWarnings(warnings)[0]).toContain("DROPPED");
+
+    rmSync(at, { recursive: true, force: true });
+  });
+
+  it("a message broken in the FIELDS OF THE TURN still refuses the thread, by file name", () => {
     const at = root();
     migrated(at, "012-ok");
     migrated(at, "024-broken");
-    // `claude.ai` instead of `claude-ai` — the real incident of 2026-07-28: a message
-    // written past `new-message` (which refuses this value at the door) took three
-    // threads out of the mail at once.
+    // A hole in the feed would make the turn stale-but-plausible, and the broken file is
+    // typically the last one (thread 016: three threads at once, in all three the last file).
     writeFileSync(
       join(at, "024-broken", "messages", "2026-07-28T19-51-10Z-curator.md"),
-      MESSAGE.replace("expects: answer", "expects: answer\nworker: claude.ai"),
+      MESSAGE.replace("expects: answer", "expects: maybe"),
     );
 
     const { threads, failures } = loadThreads(at, ROLES);
 
-    // The thread is still refused whole — a hole in the feed would make the turn
-    // stale-but-plausible, and the broken file is typically the last one.
     expect(threads.map((loaded) => loaded.thread.id)).toEqual(["012-ok"]);
     expect(failures.map((failure) => failure.id)).toEqual(["024-broken"]);
     expect(failures[0]?.problem).toContain("messages/2026-07-28T19-51-10Z-curator.md");
-    // ...and the parser's own sentence survives inside it, not instead of it.
-    expect(failures[0]?.problem).toContain("worker: claude.ai");
+    expect(failures[0]?.problem).toContain("expects: maybe");
 
     rmSync(at, { recursive: true, force: true });
   });

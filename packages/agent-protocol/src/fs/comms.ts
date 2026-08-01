@@ -44,10 +44,26 @@ export type ThreadFailure = {
   readonly problem: string;
 };
 
+/**
+ * A field of ONE message this reader could not make sense of (thread 023) — the thread was
+ * read anyway. Carried beside the failures rather than folded into them because the two say
+ * opposite things to the caller: a failure means "this conversation is not in your answer", a
+ * warning means "it is, minus one field nobody plans with". Silence was never an option: a
+ * dropped field with no line about it is the same silent staleness a refusal was chosen to avoid.
+ */
+export type ThreadWarning = {
+  readonly id: string;
+  /** The message file the field is in — the one thing that turns a warning into an action. */
+  readonly file: string;
+  readonly problem: string;
+};
+
 /** Result of walking the directory: parsed threads and broken ones, separately. */
 export type LoadedThreads = {
   readonly threads: readonly LoadedThread[];
   readonly failures: readonly ThreadFailure[];
+  /** Fields dropped inside threads that WERE read — see `ThreadWarning`. */
+  readonly warnings: readonly ThreadWarning[];
 };
 
 export const loadThread = (
@@ -132,20 +148,50 @@ export const loadThread = (
 export const loadThreads = (root: string, knownRoles: readonly string[]): LoadedThreads => {
   const threads: LoadedThread[] = [];
   const failures: ThreadFailure[] = [];
+  const warnings: ThreadWarning[] = [];
 
   for (const name of readdirSync(root)
     .filter((entry) => THREAD_DIR.test(entry) && statSync(join(root, entry)).isDirectory())
     .sort()) {
     try {
-      threads.push(loadThread(join(root, name), name, knownRoles));
+      const loaded = loadThread(join(root, name), name, knownRoles);
+      threads.push(loaded);
+      warnings.push(...threadWarnings(name, loaded));
     } catch (error) {
       failures.push({ id: name, problem: (error as Error).message });
     }
   }
 
-  return { threads, failures };
+  return { threads, failures, warnings };
 };
+
+/**
+ * The dropped fields of one thread, addressed by file. The file name comes from the entries
+ * (`input`) and not from the message: a legacy thread has no files, and its sections carry no
+ * header to be wrong in the first place — so there is nothing to address there and nothing to say.
+ */
+const threadWarnings = (id: string, loaded: LoadedThread): ThreadWarning[] =>
+  (loaded.input?.entries ?? []).flatMap((entry) =>
+    (entry.message.warnings ?? []).map((problem) => ({
+      id,
+      file: `messages/${entry.fileName}`,
+      problem,
+    })),
+  );
 
 /** Broken threads, one readable line each — for the caller's stderr. */
 export const renderThreadFailures = (failures: readonly ThreadFailure[]): string[] =>
   failures.map((failure) => `thread '${failure.id}' could not be read: ${failure.problem}`);
+
+/**
+ * Dropped fields, one readable line each — for the caller's stderr, beside the failures.
+ *
+ * Worded as what happened rather than as an error: the conversation IS in the answer, one field
+ * of one message is not, and the reader's action is to look at that file (usually: this process
+ * is older than the field it just met).
+ */
+export const renderThreadWarnings = (warnings: readonly ThreadWarning[]): string[] =>
+  warnings.map(
+    (warning) =>
+      `thread '${warning.id}', ${warning.file}: the field was DROPPED and the thread read without it — ${warning.problem}`,
+  );

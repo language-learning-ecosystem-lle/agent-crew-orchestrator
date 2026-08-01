@@ -327,6 +327,22 @@ export type Message = {
   readonly fields: MessageFields;
   /** Body without the surrounding blank lines: the assembly places those. */
   readonly text: string;
+  /**
+   * WHAT THIS READER COULD NOT MAKE SENSE OF IN THE HEADER, field by field (thread 023).
+   *
+   * A message is not all-or-nothing: the four fields that decide WHOSE TURN IT IS (`from`,
+   * `date`, `expects`, `waiting-on`) still refuse the file, because a thread answering "whose
+   * turn" from a stale message is the silent staleness this package exists to remove. The rest
+   * — provenance, a park, a priority, a launch directive, a task line — are DROPPED with the
+   * reason recorded here, and the message is read.
+   *
+   * The class this is for is a PERPETUAL one: an old reader meeting a new field of the schema.
+   * It happened live (a daemon raised at 15:15Z read `parked-on: pr:133` written at 16:18Z by
+   * code that landed at 16:10Z) and it will happen at every next field, because the readers of
+   * a running circuit are processes started at different times. The cost of refusing was the
+   * WHOLE thread going unreadable to the planner over one field nobody needs to plan with.
+   */
+  readonly warnings?: readonly string[];
 };
 
 const FENCE = "---";
@@ -503,53 +519,83 @@ export const parseMessageFile = (raw: string): Message => {
   const waitingRaw = raws.get("waiting-on");
   const suffix = raws.get("suffix");
 
+  // FROM HERE ON A BAD FIELD IS DROPPED, NOT THROWN (thread 023): everything above decides
+  // whose turn it is and stays all-or-nothing; everything below is read through `soft`, which
+  // records the reason and returns nothing. See `Message.warnings` for why the line is drawn here.
+  const warnings: string[] = [];
+  const soft = <T>(read: () => T): T | undefined => {
+    try {
+      return read();
+    } catch (error) {
+      if (!(error instanceof MessageFormatError)) throw error;
+      warnings.push(error.message);
+      return undefined;
+    }
+  };
+
   // Provenance is OPTIONAL on read and always will be: legacy threads carry none by
   // construction (a `_thread.md` section has no header at all), and history predates
-  // the field. Present but malformed is a different matter — that is a defect of the
-  // writer, and it fails as loudly as a malformed `from` does.
-  const worker = raws.get("worker");
-  const session = raws.get("session");
-  if (worker !== undefined && !WORKER.test(worker)) {
-    throw new MessageFormatError(
-      `'worker: ${worker}' — a worker id looks like a role id (${KNOWN_WORKERS.join(" | ")}, or another tool)`,
-    );
-  }
-  if (session !== undefined && !SESSION.test(session)) {
-    throw new MessageFormatError(
-      `'session: ${session}' — a session id must be one printable token without spaces (up to 128 characters)`,
-    );
-  }
+  // the field. Present but malformed is a defect of the writer — named, and left out.
+  const worker = soft(() => {
+    const value = raws.get("worker");
+    if (value !== undefined && !WORKER.test(value)) {
+      throw new MessageFormatError(
+        `'worker: ${value}' — a worker id looks like a role id (${KNOWN_WORKERS.join(" | ")}, or another tool)`,
+      );
+    }
+    return value;
+  });
+  const session = soft(() => {
+    const value = raws.get("session");
+    if (value !== undefined && !SESSION.test(value)) {
+      throw new MessageFormatError(
+        `'session: ${value}' — a session id must be one printable token without spaces (up to 128 characters)`,
+      );
+    }
+    return value;
+  });
 
   const launchRaw = raws.get("launch");
-  const launch = launchRaw === undefined ? undefined : parseLaunchDirective(launchRaw);
+  const launch = launchRaw === undefined ? undefined : soft(() => parseLaunchDirective(launchRaw));
 
-  const priority = raws.get("priority");
-  if (priority !== undefined && !(THREAD_PRIORITY_VALUES as readonly string[]).includes(priority)) {
-    throw new MessageFormatError(
-      `'priority: ${priority}' — allowed values are ${THREAD_PRIORITY_VALUES.join(" | ")}`,
-    );
-  }
+  const priority = soft(() => {
+    const value = raws.get("priority");
+    if (value !== undefined && !(THREAD_PRIORITY_VALUES as readonly string[]).includes(value)) {
+      throw new MessageFormatError(
+        `'priority: ${value}' — allowed values are ${THREAD_PRIORITY_VALUES.join(" | ")}`,
+      );
+    }
+    return value;
+  });
 
   // `parked-on` is a ROLE NAME or an EVENT and nothing else — the check that a role here
   // names a human (`wake.mode: 'self'`) needs the config and lives at the writing door, where
   // the config is in hand and a refusal can still be acted on. A reader of an append-only feed
   // cannot fix what is already written, so here the demand is only on the SHAPE of the value.
-  const parkedOn = raws.get("parked-on");
-  if (parkedOn !== undefined && !ROLE.test(parkedOn) && !PARK_EVENT.test(parkedOn)) {
-    throw new MessageFormatError(
-      `'parked-on: ${parkedOn}' — expected the id of a role or an event ('pr:<number>')`,
-    );
-  }
+  const parkedOn = soft(() => {
+    const value = raws.get("parked-on");
+    if (value !== undefined && !ROLE.test(value) && !PARK_EVENT.test(value)) {
+      throw new MessageFormatError(
+        `'parked-on: ${value}' — expected the id of a role or an event ('pr:<number>')`,
+      );
+    }
+    return value;
+  });
 
   // The fact that LIFTS an event park, and the only one the courier of merges can state:
   // "PR N is in the default branch now". A number, because that is what the notifier has.
-  const mergedPrRaw = raws.get("merged-pr");
-  if (mergedPrRaw !== undefined && !/^\d+$/.test(mergedPrRaw)) {
-    throw new MessageFormatError(`'merged-pr: ${mergedPrRaw}' — expected the number of a PR`);
-  }
-  const mergedPr = mergedPrRaw === undefined ? undefined : Number(mergedPrRaw);
+  const mergedPr = soft(() => {
+    const value = raws.get("merged-pr");
+    if (value !== undefined && !/^\d+$/.test(value)) {
+      throw new MessageFormatError(`'merged-pr: ${value}' — expected the number of a PR`);
+    }
+    return value === undefined ? undefined : Number(value);
+  });
 
-  const tasks = (repeated.get("task") ?? []).map(parseTaskDeclaration);
+  const tasks = (repeated.get("task") ?? []).flatMap((raw) => {
+    const task = soft(() => parseTaskDeclaration(raw));
+    return task === undefined ? [] : [task];
+  });
 
   const fields: MessageFields = {
     ...(msgRaw === undefined ? {} : { msg: Number(msgRaw) }),
@@ -581,6 +627,7 @@ export const parseMessageFile = (raw: string): Message => {
       .join("\n")
       .replace(/^\n+/, "")
       .replace(/\n+$/, ""),
+    ...(warnings.length === 0 ? {} : { warnings }),
   };
 };
 
