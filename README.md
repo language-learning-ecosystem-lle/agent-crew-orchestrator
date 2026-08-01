@@ -683,9 +683,10 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # then the age of the wait, then the thread number
                             # --parked-on <person>: the turn STAYS on its holder and is FROZEN until that
                             # person decides (R27) — the pair is not raised and spends nothing; it lifts by
-                            # itself on the next message from a PARTICIPANT of the thread — an announcement
-                            # of the circuit (`worker: 'gh-action'`) is not one (thread 023). Only a role the circuit
-                            # cannot wake (`wake.mode: 'self'`) may be named
+                            # itself on THE NEXT MESSAGE OF THE THREAD, whoever wrote it — an announcement
+                            # of the circuit and the parker's own role included (thread 023: reading more
+                            # than that out of the header froze five threads with their answer inside).
+                            # Only a role the circuit cannot wake (`wake.mode: 'self'`) may be named
                             # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (thread 023) — the
                             # MERGE of a pull request rather than a person's decision. The courier says
                             # NOTHING about such a thread (neither a call nor a stall: the decision has been
