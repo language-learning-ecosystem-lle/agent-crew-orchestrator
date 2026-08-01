@@ -36,6 +36,7 @@
  */
 
 import type { OrchestratorEvent, ReleaseReason } from "./journal.js";
+import type { StreamRecovery } from "./metrics-cache.js";
 
 /** A reviewer's verdict as it lies on disk: the body's first two lines, and when. */
 export type VerdictRecord = {
@@ -59,6 +60,12 @@ export type MetricsInput = {
    * stream on the box at all, so the boundary cannot be drawn and is not claimed.
    */
   readonly streamEraStart?: string | undefined;
+  /**
+   * What the lazy recovery of pre-block history did on this call (`metrics-cache.ts`).
+   * Carried through the fold as DATA so `--json` says it too: a total that grows because
+   * a stream was read for the first time must be explainable without reading the prose.
+   */
+  readonly streamRecovery?: StreamRecovery | undefined;
   /** Filters, all optional and all applied to the journal side only. */
   readonly since?: string;
   readonly role?: string;
@@ -113,6 +120,12 @@ export type Economy = {
   readonly blockAbsentAfterEra?: BoundaryRow | undefined;
   /** The tokens sentence, carried as data so `--json` says it too. */
   readonly tokensNote: string;
+  /**
+   * Where part of the price came from on this call: the runs older than the `usage`
+   * block are priced out of their own streams, once per stream (msg-003 §2). Absent
+   * when nothing was recovered — the box has no pre-block history left to read.
+   */
+  readonly streamRecovery?: StreamRecovery | undefined;
 };
 
 export type ReviewRounds = {
@@ -275,6 +288,7 @@ export const foldEconomy = (input: MetricsInput): Economy => {
     preStreamEra: boundaryOf(preStream),
     blockAbsentAfterEra: boundaryOf(blockless),
     tokensNote: TOKENS_NOTE,
+    streamRecovery: input.streamRecovery,
   };
 };
 
@@ -372,6 +386,13 @@ export const renderMetrics = (metrics: Metrics): string[] => {
     );
   }
   lines.push(`  ${e.tokensNote}`);
+
+  if (e.streamRecovery !== undefined && e.streamRecovery.recovered > 0) {
+    const s = e.streamRecovery;
+    lines.push(
+      `priced out of their own streams (runs older than the usage block): ${s.recovered} runs · ${s.parsed} streams read now · ${s.cached} answered from the cache · ${s.unresolved} with no ledger to read`,
+    );
+  }
 
   if (e.preStreamEra !== undefined) {
     const b = e.preStreamEra;
