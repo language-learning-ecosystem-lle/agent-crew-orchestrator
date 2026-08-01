@@ -323,6 +323,25 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
     ],
   ],
   ["config set", ["agent", "claude-code", "--exec", "/usr/local/bin/claude"]],
+  // `init github` is the one TWO-WORD form of `init`, and the guard is keyed on both
+  // words: keyed on the first alone it would look up `init`'s line and refuse --key.
+  [
+    "init github",
+    [
+      "--ref",
+      "origin/main",
+      "--local-config",
+      "/tmp/local.json",
+      "--key",
+      "/home/a/.ssh/github",
+      "--host",
+      "github.com",
+      "--comment",
+      "lle-agents",
+      "--no-probe",
+      "--write",
+    ],
+  ],
 ];
 
 /**
@@ -456,6 +475,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       // writes; without it the change is decided, judged and printed and the file is
       // not opened for writing at all.
       configSet: "'config set'",
+      // `init github --write` makes the box's identity on disk — outside git and
+      // outside both configs, which is why it is machine-local; the grant it does NOT
+      // make is the reason the bullet exists rather than sharing `init`'s.
+      initGithub: "'init github'",
     };
     expect([...reading].filter((name) => named[name] === undefined)).toEqual([]);
     // Bounded at the next section: past it, tokens like "record" or "hold" match the

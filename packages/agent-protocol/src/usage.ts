@@ -63,6 +63,27 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # declared value and a new one are printed as a change, both sides
                               # --no-doctor: stop after writing (for a box with no network yet)
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
+  agent-protocol init github  [--ref <ref>] [--local-config <p>] [--key <path>] [--host <h>] [--comment <c>] [--no-probe] [--write]
+                              # THE BOX'S IDENTITY FOR GITHUB (thread 019, п.4): the one step of
+                              # the commissioning that makes material OUTSIDE the repository and
+                              # outside both configs — an ed25519 pair in ~/.ssh, a 'Host' block
+                              # beside it, and an answer from GitHub about who this box is
+                              # THE FORM IS DECIDED (john, 2026-08-01): the key goes on the
+                              # repository as a DEPLOY KEY with write access. No separate account
+                              # and no machine user — a machine user is the answer only when one
+                              # box serves several repositories, and it is a line in the doc
+                              # IT NEVER OVERWRITES A KEY (hosts that trust it are not known
+                              # here — rotation is a human act), never grants itself access (the
+                              # public half and the four clicks are PRINTED), and never reads the
+                              # probe's EXIT CODE: 'ssh -T git@github.com' exits 1 on a working
+                              # key, so the verdict is read from what GitHub SAID — and what it
+                              # says names the REPOSITORY a deploy key opens, which is the fact
+                              # worth having. An account name where a repository belongs is
+                              # reported as a mismatch, not as success
+                              # WITHOUT --write it decides and prints and touches nothing —
+                              # ~/.ssh included, and GitHub is not asked anything either
+                              # --no-probe: stop after the identity is on disk (a box with no
+                              # network yet); the summary then says it proves nothing
   agent-protocol roles list   --ref <ref> [--repo <path>]
   agent-protocol schema migrate [--repo <path>] [--config-path <p>] [--root <mail>] [--to <n>] [--write]
                               # the ONE command with no --ref: it plans against the working tree it rewrites
@@ -203,6 +224,12 @@ each for a stated reason:
     above names: on a box with no mail checkout yet, asking whether the instance id is
     already published FETCHES the mail branch ('origin/<branch>' moves on this disk,
     nothing else does), and the summary line says so; '--offline' declines the read;
+  · 'init github' — the identity of THIS BOX, and the only material of the whole
+    commissioning that lies outside git and outside both configs: a key pair in ~/.ssh
+    and a 'Host' block. Machine-local for that reason, and the word means "do it" here
+    too — without it nothing is generated, ~/.ssh is not opened and GitHub is not asked
+    anything. The one thing '--write' still does NOT do is the grant: the public half is
+    printed for a human to paste, because that step hands out power;
   · 'config set' — the same file as 'init', one key of it, and the word means the same
     thing: without it the change is decided, judged against the repository config and
     printed, and the file keeps every byte it had;
