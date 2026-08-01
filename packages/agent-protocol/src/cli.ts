@@ -4146,14 +4146,69 @@ const loadDigests = (
  */
 /**
  * `snapshot()` OF THE STATEMENT OF WORK — the whole live view collected in one call
- * (T-0, thread 019). Everything it touches is DISK: the journal, the holds, the four
- * flags, the pid file, the mail directory, the digests. Not one git command, and in
- * particular never `mailCheckoutState`, which fetches and fast-forwards — a reader
- * that repaired the checkout would race the daemon for it (see `mailCheckoutFreshness`
- * for the whole argument). How old that disk state is comes back as a fact in the
- * frame instead.
+ * (T-0, thread 019). Everything it touches is DISK — the journal, the holds, the four
+ * flags, the pid file, the mail directory, the digests — with ONE named exception, the
+ * merge-ready tier of the queue (`frameMergeReady`), which asks GitHub the same question
+ * the tick asks and degrades to silence. Not one git command, and in particular never
+ * `mailCheckoutState`, which fetches and fast-forwards — a reader that repaired the
+ * checkout would race the daemon for it (see `mailCheckoutFreshness` for the whole
+ * argument). How old that disk state is comes back as a fact in the frame instead.
  */
-const operatorFrame = (argv: readonly string[]): OperatorFrame => {
+/**
+ * TIER 2 IN THE OPERATOR'S FRAME (thread 019, the addendum to point 5) — the same
+ * measurement the tick makes, read for the queue a HUMAN is shown.
+ *
+ * NO SECOND DEFINITION OF READINESS: this calls `readMergeReady`, which calls guards 1
+ * and 2 of the merge door. Nothing here judges a pull request; the words of the queue
+ * line come from `describeOrder`, where the tick's words come from too.
+ *
+ * THE PRICE — and this is where the frame differs from the tick, deliberately. A tick is
+ * tens of seconds apart; `status --watch` redraws every two. A network read per frame
+ * would turn a reader into a poll of GitHub thirty times a minute, so the reading is
+ * REFRESHED AT MOST ONCE PER {@link MERGE_READY_FLOOR_MS} and reused by every frame in
+ * between (the head-SHA cache underneath is shared for the life of the process, as the
+ * daemon's is). The floor is a minute against a fact that moves on the scale of a review
+ * round — sixteen to twenty-four minutes, measured — so no frame is ever stale in a way
+ * the operator could act on, and a one-shot `status` reads exactly once, always.
+ *
+ * DEGRADATION RUNS IN ONE DIRECTION, as it does for the tick: no `gh`, no token, no
+ * network, an unparseable payload → an empty map, which orders the queue bit-for-bit as
+ * a circuit without merge-ready. The notes go to STDERR, never into the frame: a picture
+ * that grew an error line because GitHub was quiet would be worse than no tier at all.
+ * The last good reading is kept across a failed refresh for the same reason the watch
+ * keeps its last good frame — an outage must not silently reorder what is on screen.
+ */
+const MERGE_READY_FLOOR_MS = 60_000;
+
+const frameMergeReadyCache = createMergeReadyCache();
+let frameMergeReadyAt = 0;
+let frameMergeReadyMap: ReadonlyMap<string, number> = new Map();
+
+const frameMergeReady = async (
+  argv: readonly string[],
+  waiting: readonly string[],
+): Promise<ReadonlyMap<string, number>> => {
+  if (waiting.length === 0) return frameMergeReadyMap;
+  // `Date.now()` and not the frame's `--now`: the floor is about how often THIS PROCESS
+  // touches the network, which no test stamp may move.
+  const now = Date.now();
+  if (frameMergeReadyAt !== 0 && now - frameMergeReadyAt < MERGE_READY_FLOOR_MS) {
+    return frameMergeReadyMap;
+  }
+  frameMergeReadyAt = now;
+  const reading = await readMergeReady({
+    source: ghMergeReadySource(flag(argv, "--repo") ?? homeOf(process.cwd())),
+    threads: waiting,
+    cache: frameMergeReadyCache,
+  });
+  // A refusal leaves the previous reading standing (`ready` is empty on failure, and an
+  // empty map from a first read is the honest "nothing measured" either way).
+  if (reading.ready.size > 0 || reading.notes.length === 0) frameMergeReadyMap = reading.ready;
+  for (const line of reading.notes) err(`agent-protocol: ${line}`);
+  return frameMergeReadyMap;
+};
+
+const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> => {
   const paths = pathsFrom(argv);
   const journal = flag(argv, "--journal") ?? paths.journal;
   const holds = flag(argv, "--holds") ?? paths.holds;
@@ -4182,12 +4237,18 @@ const operatorFrame = (argv: readonly string[]): OperatorFrame => {
   const scan = loadThreads(mailRoot, registry.ids());
   const threads = scan.threads.map((loaded) => loaded.thread);
   // The queue is built by the SAME function the daemon builds it with, scoped to the
-  // same roles — see `rankCandidates`.
+  // same roles — AND FROM THE SAME FACTS. One function was never enough: until the
+  // statement of work of 2026-08-01 the tick passed `mergeReady` here and the frame did
+  // not, so the moment a merge-ready PR appeared the human would have read an order the
+  // tick was not going to raise from — with a comment in each place claiming they agreed.
+  const waiting = [...new Set(scope.roles.flatMap((role) => threadsWaitingOn(threads, role)))];
+  const mergeReady = await frameMergeReady(argv, waiting);
   const { ranked, ignored } = rankCandidates({
     threads,
     roles: scope.roles,
     waitingOn: (role) => threadsWaitingOn(threads, role),
     authorized: (role) => registry.canSetThreadPriority(role),
+    mergeReady,
   });
   const residentRoles = registry.residents();
   const published = loadDigests(mailRoot);
@@ -4291,7 +4352,7 @@ const SHOW_CURSOR = "\u001b[?25h";
 /** `HH:MM:SSZ` — the outage line says WHEN, and a whole timestamp is noise in a frame. */
 const clockOf = (at: Date): string => at.toISOString().slice(11, 19);
 
-const watchFrame = (argv: readonly string[]): void => {
+const watchFrame = async (argv: readonly string[]): Promise<void> => {
   // ONE resolution of the config for the whole watch — see `freezeConfig`. Taken before
   // the first frame, so the network is touched once and never again.
   freezeConfig();
@@ -4319,10 +4380,10 @@ const watchFrame = (argv: readonly string[]): void => {
   let lastGood: string | undefined;
   let outage: { readonly since: Date; readonly reason: string } | undefined;
 
-  const collect = (): string => {
+  const collect = async (): Promise<string> => {
     collectingFrame = true;
     try {
-      const frame = renderFrame(operatorFrame(argv));
+      const frame = renderFrame(await operatorFrame(argv));
       lastGood = frame;
       outage = undefined;
       return frame;
@@ -4341,8 +4402,8 @@ const watchFrame = (argv: readonly string[]): void => {
     }
   };
 
-  const draw = (): void => {
-    const frame = collect();
+  const draw = async (): Promise<void> => {
+    const frame = await collect();
     if (!tty) {
       process.stdout.write(`${frame}\n\n`);
       return;
@@ -4358,19 +4419,22 @@ const watchFrame = (argv: readonly string[]): void => {
   };
 
   let drawn = 0;
-  const tick = (): void => {
-    draw();
+  // THE FRAMES DO NOT OVERLAP. Since the collection may touch the network (the merge-ready
+  // tier), the next frame is scheduled AFTER the previous one has been drawn, not on a
+  // fixed clock: an interval firing into an unfinished collection would stack redraws.
+  const tick = async (): Promise<void> => {
+    await draw();
     drawn += 1;
     if (limit !== undefined && drawn >= limit) {
       restore();
       return;
     }
-    setTimeout(tick, seconds * 1000);
+    setTimeout(() => void tick(), seconds * 1000);
   };
   process.stdout.on("resize", () => {
-    if (limit === undefined || drawn < limit) draw();
+    if (limit === undefined || drawn < limit) void draw();
   });
-  tick();
+  await tick();
 };
 
 /**
@@ -4436,10 +4500,10 @@ const orchestratorTui = (rawArgv: readonly string[]): void => {
   let openFile: string | undefined;
   let offset = 0;
 
-  const collect = (): void => {
+  const collect = async (): Promise<void> => {
     collectingFrame = true;
     try {
-      frame = operatorFrame(argv);
+      frame = await operatorFrame(argv);
       trouble = undefined;
     } catch (error) {
       // The observer dies of `q` and of nothing else — the same rule the watch lives by.
@@ -4553,8 +4617,10 @@ const orchestratorTui = (rawArgv: readonly string[]): void => {
           : `REFUSED (exit ${child.status ?? "?"}): ${said[said.length - 1] ?? "it said nothing"}`;
     echo = `${typed} → ${outcome}`;
     // The frame is collected immediately rather than at the next interval: the operator
-    // pressed a key and is looking at the screen for its consequence right now.
-    collect();
+    // pressed a key and is looking at the screen for its consequence right now. The
+    // collection may touch the network now (the merge-ready tier), so the redraw is
+    // chained onto it instead of being awaited by a key handler that must stay instant.
+    void collect().then(draw);
   };
 
   let pasting = false;
@@ -4579,19 +4645,21 @@ const orchestratorTui = (rawArgv: readonly string[]): void => {
         restore();
         process.exit(0);
       }
-      if (step.effect === "collect") collect();
+      if (step.effect === "collect") void collect().then(draw);
       if (step.effect === "act" && step.action !== undefined) perform(step.action);
     }
     draw();
   });
   process.stdout.on("resize", draw);
 
-  const tick = (): void => {
-    collect();
+  // Chained, not on a fixed clock — as in `--watch`, and for the same reason: a
+  // collection that may touch the network must never have a second one fired into it.
+  const tick = async (): Promise<void> => {
+    await collect();
     draw();
-    setTimeout(tick, seconds * 1000);
+    setTimeout(() => void tick(), seconds * 1000);
   };
-  tick();
+  void tick();
 };
 
 /** The journal the `l` overlay shows — read on demand, never held between frames. */
@@ -4600,7 +4668,7 @@ const journalEventsFor = (argv: readonly string[]): readonly OrchestratorEvent[]
   return existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
 };
 
-const orchestratorStatus = (rawArgv: readonly string[]): void => {
+const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => {
   // `status` JOINS THE OPERATOR'S SHORT FORMS (thread 019): it is read between `up` and
   // `down`, by the same person in the same minute, and being the one of the three that
   // demanded `--ref` made it the one they got wrong — john walked into it on 2026-07-27.
@@ -4609,11 +4677,11 @@ const orchestratorStatus = (rawArgv: readonly string[]): void => {
   // `--watch` is THE SAME FRAME, repeated (T-0): not a second command with a view of
   // its own, which is how the two would start to differ.
   if (argv.includes("--watch")) {
-    watchFrame(argv);
+    await watchFrame(argv);
     return;
   }
   const paths = pathsFrom(argv);
-  out(renderFrame(operatorFrame(argv)));
+  out(renderFrame(await operatorFrame(argv)));
   out(renderPaths(paths));
 
   // S7: the PERMISSIONS the circuit will raise a role with. The same argument as
@@ -8221,7 +8289,7 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "notify") {
     await notify(argv.slice(1));
   } else if (command === "orchestrator" && subcommand === "status") {
-    orchestratorStatus(argv.slice(2));
+    await orchestratorStatus(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "tui") {
     guardArguments("orchestrator tui", argv.slice(2));
     orchestratorTui(argv.slice(2));
