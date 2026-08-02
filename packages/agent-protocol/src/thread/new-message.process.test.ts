@@ -805,6 +805,27 @@ describe("new-message and the turn parked behind a person (R27)", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("pr:<number>");
+    // The writing door and the reader learn a value TOGETHER (requirement of 023): a form the
+    // writer can put in the feed and the reader goes blind on is the mine this line watches.
+    expect(result.out).toContain("run:<number>");
+  });
+
+  it("the ROUND of a PR passes the same door: 'run:163' waits for a verdict (thread 019)", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:163");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkedOn).toBe("run:163");
+  });
+
+  it("'run' without a number is a name, and is refused as one", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--parked-on", "run:");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("not listed in the config");
   });
 
   it("--merged-pr is the fact that lifts an event park, and only a number is one", () => {

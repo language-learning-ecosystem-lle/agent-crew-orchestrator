@@ -340,9 +340,17 @@ describe("the park of a turn in the header (R27)", () => {
     const message = parseMessageFile(raw("parked-on: John Smith\n"));
     expect(message.fields.parkedOn).toBeUndefined();
     expect(message.warnings).toEqual([
-      "'parked-on: John Smith' — expected the id of a role or an event ('pr:<number>')",
+      "'parked-on: John Smith' — expected the id of a role or an event ('pr:<number>', 'run:<number>')",
     ]);
     expect(message.fields.from).toBe("curator");
+  });
+
+  it("the round of a PR is a legal value too, and round-trips (thread 019)", () => {
+    const parsed = parseMessageFile(raw("parked-on: run:163\n"));
+
+    expect(parsed.fields.parkedOn).toBe("run:163");
+    expect(parsed.warnings).toBeUndefined();
+    expect(parseMessageFile(renderMessageFile(parsed)).fields.parkedOn).toBe("run:163");
   });
 
   it("the four fields of the turn still refuse the file — staleness is worse than a refusal", () => {

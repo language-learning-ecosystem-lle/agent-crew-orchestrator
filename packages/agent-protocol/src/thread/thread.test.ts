@@ -396,6 +396,12 @@ describe("parkedOnKind — the one reading of the field (thread 023)", () => {
     expect(parkedOnKind("pr:12x").kind).toBe("person");
     expect(parkedOnKind("pr-reviewer").kind).toBe("person");
     expect(parkedOnKind("pr:").kind).toBe("person");
+    expect(parkedOnKind("run:12x").kind).toBe("person");
+    expect(parkedOnKind("runner").kind).toBe("person");
+  });
+
+  it("reads a round (thread 019) — the same PR number, the other thing waited for", () => {
+    expect(parkedOnKind("run:163")).toEqual({ kind: "run", pr: 163 });
   });
 });
 
@@ -533,6 +539,110 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
 
   it("a caller with one thread reads what that thread saw — the set is optional", () => {
     expect(parkingOf(thread([message({ parkedOn: "pr:133" })]))?.pr).toBe(133);
+  });
+});
+
+describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () => {
+  const message = (fields: Partial<Message["fields"]>, text = "тело"): Message => ({
+    fields: {
+      from: "curator",
+      date: "2026-08-02T09:12:57Z",
+      expects: "answer",
+      waitingOn: "curator",
+      ...fields,
+    } as Message["fields"],
+    text,
+  });
+  const announcement = (fields: Partial<Message["fields"]>, text: string): Message => ({
+    fields: {
+      from: "github",
+      worker: "gh-action",
+      date: "2026-08-02T09:15:07Z",
+      expects: "none",
+      ...fields,
+    } as Message["fields"],
+    text,
+  });
+  const thread = (messages: readonly Message[]): Thread => ({
+    id: "019-operator-ux",
+    meta: { title: "t", participants: ["curator", "dev-core"], status: "open" },
+    messages,
+  });
+
+  it("names the PR whose ROUND is waited for — a verdict, not a button", () => {
+    expect(parkingOf(thread([message({ parkedOn: "run:163" }, "Жду вердикта по #163.")]))).toEqual({
+      kind: "run",
+      pr: 163,
+      since: "2026-08-02T09:12:57Z",
+      question: "Жду вердикта по #163.",
+    });
+  });
+
+  it("THE LIVE CASE: the CI announcement does NOT lift it — it is not the verdict", () => {
+    // 09:12:57Z parked, 09:15:07Z "CI по PR #163 — success", 09:16:13Z the pair raised into a
+    // review round with twelve minutes still to run. That raise is the whole reason for the form.
+    const parked = message({ parkedOn: "run:163" });
+    const ci = announcement({ date: "2026-08-02T09:15:07Z" }, "CI по PR #163: success");
+    expect(parkingOf(thread([parked, ci]))?.kind).toBe("run");
+    expect(parkedOnOf(thread([parked, ci]))).toBe("run:163");
+  });
+
+  it("several announcements in a row do not lift it either", () => {
+    const parked = message({ parkedOn: "run:163" });
+    expect(
+      parkingOf(
+        thread([
+          parked,
+          announcement({ date: "2026-08-02T09:15:07Z" }, "CI: success"),
+          announcement({ date: "2026-08-02T09:16:07Z" }, "смоук: success"),
+        ]),
+      )?.pr,
+    ).toBe(163);
+  });
+
+  it("the verdict lifts it — a message that asks somebody for something", () => {
+    const parked = message({ parkedOn: "run:163" });
+    const ci = announcement({ date: "2026-08-02T09:15:07Z" }, "CI: success");
+    const verdict = message(
+      { from: "reviewer-pr", date: "2026-08-02T09:20:00Z", expects: "answer" },
+      "verdict: approve",
+    );
+    expect(parkingOf(thread([parked, ci, verdict]))).toBeUndefined();
+  });
+
+  it("the merge of THAT PR lifts it, wherever it was announced — the round cannot end twice", () => {
+    const parked = message({ parkedOn: "run:163" });
+    expect(parkingOf(thread([parked]), new Set([163]))).toBeUndefined();
+    const merged = announcement({ date: "2026-08-02T09:30:00Z", mergedPr: 163 }, "PR #163 merged");
+    expect(parkingOf(thread([parked, merged]))).toBeUndefined();
+  });
+
+  it("somebody else's merge announced afterwards lifts nothing", () => {
+    const parked = message({ parkedOn: "run:163" });
+    const merged = announcement({ date: "2026-08-02T09:30:00Z", mergedPr: 149 }, "PR #149 merged");
+    expect(parkingOf(thread([parked, merged]))?.pr).toBe(163);
+    expect(parkingOf(thread([parked]), new Set([149]))?.pr).toBe(163);
+  });
+
+  it("a park declared AFTER the announcements is the newest statement and stands", () => {
+    const ci = announcement({ date: "2026-08-02T09:10:00Z" }, "CI: success");
+    const parked = message({ parkedOn: "run:163" });
+    expect(parkingOf(thread([ci, parked]))?.kind).toBe("run");
+  });
+
+  it("a person park behind the announcements keeps its WIDE lift — 023 is untouched", () => {
+    // The two parks wait for different things: the wide lift is the safety against a thread
+    // frozen behind a human forever, and it fired correctly the same morning (08:41 → 08:44).
+    const parked = message({ parkedOn: "john" });
+    const ci = announcement({ date: "2026-08-02T09:15:07Z" }, "CI: success");
+    expect(parkingOf(thread([parked, ci]))).toBeUndefined();
+    const merge = message({ parkedOn: "pr:163" });
+    expect(parkingOf(thread([merge, ci]))).toBeUndefined();
+  });
+
+  it("closed outranks it, as it outranks every other park", () => {
+    const parked = thread([message({ parkedOn: "run:163" })]);
+    expect(parkingOf({ ...parked, meta: { ...parked.meta, status: "closed" } })).toBeUndefined();
   });
 });
 

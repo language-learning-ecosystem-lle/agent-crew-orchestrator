@@ -629,6 +629,26 @@ describe("planTick — the turn parked behind a person (R27)", () => {
     expect(decision.skipped[0]?.reason).toBe("active");
   });
 
+  it("a park behind a ROUND is skipped by what it waits for: a VERDICT (thread 019)", () => {
+    const decision = planTick({
+      ...base,
+      enabled: true,
+      stopped: false,
+      parked: new Map([["t1", "run:163"]]),
+    });
+    expect(raised(decision)).toEqual([]);
+    const line = describeSkip(
+      { role: "curator", thread: "t1", reason: "parked", attempt: 0, parkedOn: "run:163" },
+      { value: 3, source: "default" },
+    );
+    expect(line).toContain("the round running on PR #163");
+    expect(line).toContain("waiting for a VERDICT");
+    // The one thing the operator must not read here: nobody is sitting on a button, and no
+    // person owes an answer. Both of the other two parks say one of those.
+    expect(line).not.toContain("waiting for a PERSON");
+    expect(line).not.toContain("parked behind the merge");
+  });
+
   it("only the parked thread drops out: another thread of the same role is raised", () => {
     const decision = planTick({
       ...base,

@@ -274,7 +274,13 @@ export const describeOrder = (
   });
 
 /** The frozen half of a queue row: what holds the turn, and what will let it go. */
-const describeFreeze = (on: ParkedOn): string =>
-  on.kind === "event"
-    ? `PARKED behind the merge of PR #${on.pr} (R27) — not raised until the merge notifier reports that PR`
-    : `PARKED behind a decision of ${on.person} (R27) — not raised until the next substantive message`;
+const describeFreeze = (on: ParkedOn): string => {
+  switch (on.kind) {
+    case "event":
+      return `PARKED behind the merge of PR #${on.pr} (R27) — not raised until the merge notifier reports that PR`;
+    case "run":
+      return `PARKED behind the round running on PR #${on.pr} (R27) — not raised until a message asks somebody for something (the circuit's own announcements do not)`;
+    case "person":
+      return `PARKED behind a decision of ${on.person} (R27) — not raised until the next substantive message`;
+  }
+};
