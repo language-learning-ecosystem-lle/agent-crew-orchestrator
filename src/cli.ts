@@ -121,8 +121,10 @@ import {
   resolveThreadDirective,
 } from "./orchestrator/directive.js";
 import {
+  agentChecksWithoutRoles,
   agentLiveCheck,
   boxIdentityCheck,
+  boxRaisesNoRoles,
   type CommitIdentity,
   commitIdentityCheck,
   type DoctorOutcome,
@@ -330,6 +332,7 @@ import {
   type TuiAction,
 } from "./orchestrator/tui.js";
 import {
+  checkWorkspaceSignature,
   createWorkspaceLocks,
   describeFinishDirt,
   describeWorkspaceIdentity,
@@ -2963,6 +2966,23 @@ const baseCommitOf = (repo: string, branch: string): { ref: string; commit: stri
  * obscurely or, worse, operate on somebody else's repository that happens to sit at
  * that path.
  */
+/**
+ * WHO THIS TREE SIGNS AS — asked of git, in the tree, the way git will answer it when
+ * it commits (thread 052): `config --get` resolves worktree → local → global → system
+ * once, by git itself. An unset key exits 1, which `gitAsk` returns as `undefined` —
+ * that is the answer "nothing is set", not a failure to ask, so the empty object is a
+ * measurement and never a gap.
+ */
+const workspaceSignature = (path: string): { name?: string; email?: string } => {
+  const asked = (key: string): string | undefined => {
+    const value = gitAsk(["-C", path, "config", "--get", key]);
+    return value === undefined || value === "" ? undefined : value;
+  };
+  const name = asked("user.name");
+  const email = asked("user.email");
+  return { ...(name === undefined ? {} : { name }), ...(email === undefined ? {} : { email }) };
+};
+
 const workspaceFacts = (path: string): WorkspaceFacts => {
   if (!existsSync(path)) return { exists: false };
   const branch = gitAsk(["-C", path, "rev-parse", "--abbrev-ref", "HEAD"]);
@@ -2975,11 +2995,16 @@ const workspaceFacts = (path: string): WorkspaceFacts => {
   }
   const locked = lockTextOf(path);
   const holder = locked === undefined ? undefined : lockHolderPid(locked);
+  // WHO THIS TREE SIGNS AS — asked of git, in the tree, the way git will answer it when
+  // it commits (thread 052): `config --get` resolves worktree → local → global → system
+  // once, by git. An unset key exits 1, which `gitAsk` returns as `undefined` — that is
+  // the answer "nothing is set", not a failure to ask.
   return {
     exists: true,
     branch,
     head,
     dirty: gitAsk(["-C", path, "status", "--porcelain"]) !== "",
+    signature: workspaceSignature(path),
     ...(locked === undefined ? {} : { locked }),
     ...(holder === undefined ? {} : { lockHolderAlive: processAlive(holder) }),
   };
@@ -4061,6 +4086,16 @@ const doctor = (argv: readonly string[]): void => {
   const local = localFrom(withRef);
   const offline = withRef.includes("--offline");
   const skipped: DoctorSkipped = { skipped: "--offline" };
+  // WHO THIS BOX IS, read ONCE: the instance row states it, and the agent rows below
+  // are governed by the same two facts rather than by a second reading of them.
+  const declared = (loaded.config.instances ?? []).map((instance) => instance.id);
+  const instanceRoles =
+    local.config.instance === undefined
+      ? undefined
+      : rolesOfInstance({
+          ...(loaded.config.instances === undefined ? {} : { instances: loaded.config.instances }),
+          instance: local.config.instance,
+        });
 
   const checks: PreflightCheck[] = [
     repositoryConfigCheck({
@@ -4076,26 +4111,26 @@ const doctor = (argv: readonly string[]): void => {
     }),
     instanceCheck({
       ...(local.config.instance === undefined ? {} : { instance: local.config.instance }),
-      declared: (loaded.config.instances ?? []).map((instance) => instance.id),
-      ...(local.config.instance === undefined
-        ? {}
-        : {
-            roles: rolesOfInstance({
-              ...(loaded.config.instances === undefined
-                ? {}
-                : { instances: loaded.config.instances }),
-              instance: local.config.instance,
-            }),
-          }),
+      declared,
+      ...(instanceRoles === undefined ? {} : { roles: instanceRoles }),
       localConfigPath: local.path,
     }),
   ];
 
   // The agent: WHERE it is (the same verdict preflight makes, so the two commands
   // cannot disagree) and then WHETHER IT ANSWERS, which only doctor asks.
+  //
+  // BOTH ROWS FOLLOW THE FACT OF THE BOX (thread 052): the answer `config: instance`
+  // has already given is carried into them, so a box that raises no role is not asked
+  // whether it could. On a box that does raise roles nothing below changes.
   const env = childEnvFrom(withRef);
+  const noRoles = boxRaisesNoRoles({
+    ...(local.config.instance === undefined ? {} : { instance: local.config.instance }),
+    declared,
+    ...(instanceRoles === undefined ? {} : { roles: instanceRoles }),
+  });
   const roles = launchableRoles(withRef);
-  for (const target of execTargets(withRef, local, roles)) {
+  for (const target of noRoles === undefined ? execTargets(withRef, local, roles) : []) {
     // The binary is looked up IN THE CHILD'S ENVIRONMENT, for preflight's reason: the
     // daemon's PATH and the session's PATH are different things.
     let found: string | null = null;
@@ -4132,6 +4167,7 @@ const doctor = (argv: readonly string[]): void => {
       }),
     );
   }
+  if (noRoles !== undefined) checks.push(...agentChecksWithoutRoles(noRoles));
 
   // Git: the remote the circuit reads and writes through. The write probe names the
   // instance, so two boxes probing the same remote are told apart in its logs.
@@ -6317,6 +6353,21 @@ const settleRun = (input: {
   lines.push(
     `identity — ${applyWorkspaceIdentity({ repo, path, role: role.id, write: input.write })}`,
   );
+  // AND THEN IT IS READ BACK (thread 052). The setting above can fail silently — the
+  // per-worktree file is only read with `extensions.worktreeConfig` on, and it is
+  // deliberately left off where `core.bare`/`core.worktree` are in the way — so what is
+  // judged here is what GIT answers in that tree, never what we just tried to write.
+  //
+  // ONLY ON A REAL LAUNCH: without `--write` the identity was not applied, so the
+  // readback would refuse a plan that the actual run would have fixed on its way in.
+  if (input.write) {
+    const signed = checkWorkspaceSignature({
+      role: role.id,
+      path,
+      signature: workspaceSignature(path),
+    });
+    if (!signed.ok) return { ok: false, reason: signed.reason, lines };
+  }
   return {
     ok: true,
     workdir: path,
