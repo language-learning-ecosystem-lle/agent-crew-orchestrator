@@ -39,8 +39,9 @@ import {
   writeFileSync,
   writeSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { homedir, hostname } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
 import { type LoadedConfig, type LoadedPolicy, loadProtocolConfig } from "./config/load.js";
@@ -5034,6 +5035,39 @@ const orchestratorSystemdUnit = (argv: readonly string[]): void => {
  * raises agents by itself from now on" is a decision with a human's name on it. The
  * command prints the three commands in order; typing them is the decision.
  */
+/**
+ * WHERE THE TSX LOADER IS ON THIS BOX (systemd.ts, decision 4). Resolved from THIS
+ * module, not from the working directory: the unit must name a file, and the only
+ * process that knows which `node_modules` this CLI actually came from is this one.
+ * Unresolvable (a build without tsx beside it) is not a refusal — the plan falls back
+ * to the bare specifier and the command says which of the two it wrote.
+ */
+const tsxLoader = (): string | undefined => {
+  try {
+    return createRequire(import.meta.url).resolve("tsx");
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * WHERE A BARE BINARY NAME ACTUALLY IS on this box — `command -v`, run the way preflight
+ * runs it: the name goes through an environment variable rather than into a shell string,
+ * because it comes from a config file and interpolating it would be an injection for no
+ * reason. Unresolvable is not a refusal — `systemd install` names it out loud instead.
+ */
+const commandPath = (exec: string): string | undefined => {
+  try {
+    const found = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
+      encoding: "utf8",
+      env: { ...process.env, AGENT_PROTOCOL_EXEC: exec },
+    }).trim();
+    return found === "" ? undefined : found;
+  } catch {
+    return undefined;
+  }
+};
+
 const orchestratorSystemdInstall = (argv: readonly string[]): void => {
   // The ref of the daemon's own argv comes from the working tree, like the operator's
   // five — a unit is written once and must not carry a ref somebody typed by hand.
@@ -5048,19 +5082,62 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
   const unitDir = flag(args, "--unit-dir");
   const description = flag(args, "--description");
   const user = process.env.USER;
+  const loader = tsxLoader();
+  // THE AGENT BINARIES GO INTO THE UNIT'S PATH, NOT INTO ITS ExecStart (systemd.ts,
+  // decision 5): the daemon spawns them, so it is the CHILD's PATH that has to hold their
+  // directory. A binary the machine config names by a bare word is resolved HERE, in the
+  // operator's shell, because that shell is the only place it is findable at all — and if
+  // it is not, the command says so instead of writing a guess.
+  const local = localFrom(args);
+  const declared = Object.entries(local.config.agents).map(([id, agent]) => ({
+    id,
+    exec: agent.exec,
+    resolved: isAbsolute(agent.exec) ? agent.exec : commandPath(agent.exec),
+  }));
   const plan = planSystemdUnit({
     repo,
     node: process.execPath,
     cli: process.argv[1] as string,
+    ...(loader === undefined ? {} : { loader }),
+    agents: declared
+      .map((agent) => agent.resolved)
+      .filter((path): path is string => path !== undefined),
     daemonArgs,
     ...(unitName === undefined ? {} : { unitName }),
     ...(unitDir === undefined ? {} : { unitDir }),
     ...(description === undefined ? {} : { description }),
     ...(user === undefined ? {} : { user }),
   });
+  // WHICH INTERPRETER WENT INTO THE FILE, said out loud in both branches: the live unit
+  // that died on `lle-agents` looked perfectly well-formed, and the one token that was
+  // wrong (bare node on a `.ts` entry) is the one nobody reads twice.
+  const interpreter =
+    loader === undefined
+      ? "agent-protocol: the loader was NOT resolved from this install — the unit carries the bare specifier 'tsx' and node will resolve it against WorkingDirectory; check the unit before enabling it"
+      : `agent-protocol: interpreter — node with the tsx loader (${loader}); a TypeScript entry point started by bare node dies on its first import`;
+  // WHICH BINARIES THE UNIT WILL BE ABLE TO REACH, said out loud for the same reason the
+  // interpreter is: the unit that started and raised nobody looked perfectly well-formed.
+  const lost = declared.filter((agent) => agent.resolved === undefined);
+  const path =
+    declared.length === 0
+      ? `agent-protocol: the machine config (${local.path}) declares no agent binaries — the unit's PATH carries the interpreter and the system directories only, and a session will be raised only if its binary is already there`
+      : `agent-protocol: agent binaries in the unit's PATH — ${declared
+          .map((agent) => `${agent.id} → ${agent.resolved ?? "NOT FOUND"}`)
+          .join(", ")}`;
+  const unresolved =
+    lost.length === 0
+      ? undefined
+      : `agent-protocol: ${lost
+          .map((agent) => `'${agent.exec}' (${agent.id})`)
+          .join(
+            ", ",
+          )} could not be resolved from this shell — its directory is NOT in the unit's PATH, and the daemon would fail the spawn with the lease already taken; declare it by absolute path ('config set agent <kind> --exec <path>')`;
   if (!args.includes("--write")) {
     out(`agent-protocol: would write ${plan.path}`);
     out(plan.unit);
+    out(interpreter);
+    out(path);
+    if (unresolved !== undefined) err(unresolved);
     out("agent-protocol: --write puts it there; then, by hand:");
     for (const step of plan.steps) out(`  ${step}`);
     return;
@@ -5069,6 +5146,9 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
   mkdirSync(dirname(plan.path), { recursive: true });
   writeFileSync(plan.path, plan.unit, "utf8");
   out(`agent-protocol: ${existed ? "replaced" : "wrote"} ${plan.path}`);
+  out(interpreter);
+  out(path);
+  if (unresolved !== undefined) err(unresolved);
   out("agent-protocol: the rest is yours to type — none of it happens by itself:");
   for (const step of plan.steps) out(`  ${step}`);
   out(

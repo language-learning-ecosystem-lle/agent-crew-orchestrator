@@ -9,9 +9,16 @@
  * would refuse every valid flag while still looking like a working command.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -58,6 +65,33 @@ const box = (): string => {
     "config",
   ]);
   return repo;
+};
+
+/**
+ * A PATH holding exactly one binary: `git`. Built as a directory of symlinks rather than
+ * by trimming the ambient PATH — a box with a globally installed `tsx` would otherwise
+ * keep handing the test the very crutch it is checking the absence of.
+ */
+const gitOnly = (): string => {
+  const bin = mkdtempSync(join(tmpdir(), "agent-protocol-path-"));
+  const found = (process.env.PATH ?? "")
+    .split(":")
+    .map((dir) => join(dir, "git"))
+    .find((candidate) => existsSync(candidate));
+  if (found === undefined) throw new Error("git is not on PATH — this suite needs it");
+  symlinkSync(found, join(bin, "git"));
+  return bin;
+};
+
+/**
+ * A MACHINE CONFIG FOR THIS BOX (R14) — written into the sandbox's config home, which is
+ * where the spawned CLI reads it from. It is the only place that says where the agent
+ * binary is, and therefore the only source the unit's `PATH` can have.
+ */
+const machineConfig = (repo: string, config: unknown): void => {
+  const dir = join(configHome(repo), "agent-protocol");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "local.json"), `${JSON.stringify(config, null, 2)}\n`, "utf8");
 };
 
 const run = (repo: string, ...args: string[]) => {
@@ -109,6 +143,121 @@ describe("orchestrator systemd install", () => {
 
     expect(again.status).toBe(0);
     expect(again.stdout).toContain(`replaced ${unit}`);
+  });
+
+  it("the ExecStart it wrote actually STARTS — no global tsx, no build, nothing on PATH", () => {
+    // THE REGRESSION OF 2026-08-02 (thread 019 msg 4): the first live unit on `lle-agents`
+    // died with `ERR_MODULE_NOT_FOUND … config/config.js imported from … cli.ts`, because
+    // the generator wrote bare node in front of a TypeScript entry point. Reading the unit
+    // could not catch it — only running its own ExecStart can, and this is that run: the
+    // tokens come OUT OF THE FILE, and the environment has no PATH to fall back to.
+    const repo = box();
+    const dir = join(repo, "units");
+    run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
+
+    const unit = readFileSync(join(dir, "lle-orchestrator.service"), "utf8");
+    const exec = /^ExecStart=(.*)$/m.exec(unit)?.[1] as string;
+    const tokens = exec.split(" ");
+    // Everything up to the entry point is the INTERPRETER; the daemon's own subcommand is
+    // replaced by a dry `systemd install`, which loads the whole module graph, exits 0 and
+    // writes nothing — the failure being guarded is an import, and starting a real daemon
+    // inside a test is not a test.
+    const entry = tokens.findIndex((token) => token === "orchestrator");
+    const [bin, ...rest] = tokens.slice(0, entry);
+    const started = spawnSync(bin as string, [...rest, "orchestrator", "systemd", "install"], {
+      cwd: repo,
+      encoding: "utf8",
+      timeout: 60_000,
+      // A PATH WITH GIT ON IT AND NOTHING ELSE: a unit that only works because the
+      // operator's shell had tsx in it is the same defect one layer down, and a unit under
+      // systemd gets no login shell. Git stays because the CLI shells out to it for the
+      // ref of the working tree — that is the command's own business, not the loader's.
+      env: { ...sandbox(configHome(repo), {}), PATH: gitOnly() },
+    });
+
+    expect(`${started.stdout}${started.stderr}`).not.toContain("ERR_MODULE_NOT_FOUND");
+    expect(started.status).toBe(0);
+    expect(started.stdout).toContain("would write");
+  });
+
+  it("writes a PATH holding the AGENT BINARY of the machine config, resolved to a directory", () => {
+    // THE THIRD DEFECT OF THE SAME LIVE REPRO (statement of 2026-08-02 19:42:30Z): the
+    // unit started, `verify` was green, and the first session the daemon tried to raise
+    // would have died on resolving its binary through the child's PATH. The assertion is
+    // on the FILE, not on the constructor — the file is what systemd reads.
+    const repo = box();
+    const dir = join(repo, "units");
+    // A real binary in a directory of its own, declared the way R14 declares it.
+    const agentDir = mkdtempSync(join(tmpdir(), "agent-protocol-agent-"));
+    writeFileSync(join(agentDir, "claude"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    machineConfig(repo, { agents: { "claude-code": { exec: join(agentDir, "claude") } } });
+
+    const done = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
+
+    expect(done.status).toBe(0);
+    const text = readFileSync(join(dir, "lle-orchestrator.service"), "utf8");
+    const path = /^Environment=PATH=(.*)$/m.exec(text)?.[1] as string;
+    expect(path).toBeDefined();
+    const dirs = path.split(":");
+    // The directory of the agent binary and the directory of the interpreter that wrote
+    // the unit — the two the spawn actually needs.
+    expect(dirs).toContain(agentDir);
+    expect(dirs).toContain(dirname(process.execPath));
+    expect(dirs).toContain("/usr/bin");
+    // And the operator is told which binary went in, by name: a unit whose PATH silently
+    // misses one looks exactly like a unit whose PATH does not.
+    expect(done.stdout).toContain(`claude-code → ${join(agentDir, "claude")}`);
+  });
+
+  it("refuses to invent a directory for a binary it cannot find, and says so", () => {
+    const repo = box();
+    const dir = join(repo, "units");
+    machineConfig(repo, { agents: { "claude-code": { exec: "no-such-binary-anywhere" } } });
+
+    const done = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
+
+    // NOT a refusal of the install: the unit is still the right thing to write, and the
+    // operator is the one who fixes the machine config. But the sentence names the
+    // consequence — a spawn that fails with the lease already taken.
+    expect(done.status).toBe(0);
+    const text = readFileSync(join(dir, "lle-orchestrator.service"), "utf8");
+    expect(text).not.toContain("no-such-binary-anywhere");
+    expect(`${done.stdout}${done.stderr}`).toContain("could not be resolved from this shell");
+  });
+
+  it("tells the operator to clear a previous failure before enabling the unit", () => {
+    // `enable --now` on a unit that hit the start limit answers about the PREVIOUS
+    // install ("start request repeated too quickly") — the sentence that cost the live
+    // diagnosis its first minute.
+    const repo = box();
+    const dir = join(repo, "units");
+
+    const done = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
+
+    const reset = done.stdout.indexOf("systemctl --user reset-failed lle-orchestrator.service");
+    const enable = done.stdout.indexOf("systemctl --user enable --now");
+    expect(reset).toBeGreaterThan(-1);
+    expect(reset).toBeLessThan(enable);
+    // And the unit itself stops on the refusal code instead of hammering the ceiling.
+    expect(readFileSync(join(dir, "lle-orchestrator.service"), "utf8")).toContain(
+      "RestartPreventExitStatus=2",
+    );
+  });
+
+  it("prints the self-check FIRST, before the step that enables the thing", () => {
+    const repo = box();
+    const dir = join(repo, "units");
+
+    const done = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
+
+    const verify = done.stdout.indexOf("systemd-analyze --user verify");
+    const enable = done.stdout.indexOf("systemctl --user enable --now");
+    expect(verify).toBeGreaterThan(-1);
+    expect(verify).toBeLessThan(enable);
+    // `verify` is what catches a key in the wrong section — the other half of the same
+    // live repro, where the ceiling was silently absent.
+    expect(done.stdout).toContain(join(dir, "lle-orchestrator.service"));
+    expect(done.stdout).toContain("tsx loader");
   });
 
   it("the two-word name passes its own flags through the guard, and still refuses a stray one", () => {

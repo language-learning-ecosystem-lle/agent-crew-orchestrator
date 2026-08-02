@@ -1601,6 +1601,16 @@ installation).** The package does NOT register itself with the system:
 — a daemon that makes itself permanent would be exactly the surprise that starting
 in `disabled` protects against.
 
+**The generated unit runs node PLUS the tsx loader, by absolute path** (both named
+from the box `systemd install` ran on). This CLI is TypeScript: bare `process.execPath`
+in front of a `.ts` entry point produces a unit that fails on its first import
+(`ERR_MODULE_NOT_FOUND` — the live one of 2026-08-02), and a `.bin/tsx` shim would put
+a second process between systemd and the daemon. A built `.js` entry takes no loader —
+the suffix decides. For the same reason the first human step the command prints is
+`systemd-analyze --user verify`: systemd does not refuse a key in the wrong section,
+it ignores it with a journal line, so a unit can look installed with half of its
+guarantees quietly absent.
+
 **`Restart=on-failure` in that unit is the SECOND echelon, not the first.** The
 daemon survives what heals by itself (the mail probe above) inside its own loop; the
 unit covers what it cannot survive — a crash, an OOM kill, a fatal check that was
