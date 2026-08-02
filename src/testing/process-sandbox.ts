@@ -16,7 +16,7 @@
  * forgot the same line independently, which is what a copied convention does. Anything
  * that spawns the CLI takes its environment from `sandbox()`.
  */
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 /**
  * The environment of one CLI launch: the ambient one, with the config home replaced by
@@ -31,9 +31,22 @@ export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.Pro
 
 /**
  * The home of a circuit laid out as `<mkdtemp>/work` (an origin, a checkout and a mail
- * checkout side by side): a sibling of the checkout, inside the test's own temp base.
+ * checkout side by side): a sibling of the checkout, NAMED AFTER IT.
+ *
+ * The name is the checkout's own because a fixed one ("xdg") is only unique while the
+ * checkout sits inside a temp base of the test's own. Half the callers pass a checkout
+ * that IS an `mkdtemp` root, and for those the sibling landed on `<tmpdir>/xdg` — one
+ * path shared by every run of the suite AND BY EVERY USER OF THE BOX. It stopped being
+ * theoretical on 2026-08-02: the self-hosted runner (user `runner`) and the operator
+ * (user `lle`) live on the same machine, the runner created `/tmp/xdg` first at mode
+ * 0755, and every local run afterwards died with `EACCES` on it — which reads as "the
+ * package is red" and is nothing of the kind. Two concurrent runs of ONE user would
+ * have stomped each other's machine config just as quietly.
+ *
+ * Deriving from the checkout puts the guarantee where `mkdtemp` already gives it: the
+ * checkout is unique, so the home beside it is too, wherever the caller laid it out.
  */
-export const configHome = (repo: string): string => join(repo, "..", "xdg");
+export const configHome = (repo: string): string => join(repo, "..", `${basename(repo)}-xdg`);
 
 /**
  * The home of a circuit whose checkout IS the temp root. It nests inside the checkout,
