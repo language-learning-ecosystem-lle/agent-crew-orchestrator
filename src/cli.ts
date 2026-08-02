@@ -122,6 +122,7 @@ import {
 } from "./orchestrator/directive.js";
 import {
   agentLiveCheck,
+  boxIdentityCheck,
   type CommitIdentity,
   commitIdentityCheck,
   type DoctorOutcome,
@@ -133,6 +134,7 @@ import {
   machineConfigCheck,
   mailPresenceCheck,
   repositoryConfigCheck,
+  type SigningPlace,
 } from "./orchestrator/doctor.js";
 import {
   deployKeyHint,
@@ -3530,6 +3532,37 @@ const probeCommitIdentities = (input: {
 };
 
 /**
+ * WHAT THIS BOX WILL SIGN WITH, asked of git the way git will answer it when it commits:
+ * `config --get user.email` per place, so system → global → local → worktree resolve
+ * exactly once and by git itself rather than by a reader of files.
+ *
+ * AN UNSET KEY IS AN ANSWER, NOT AN ERROR — `git config --get` exits 1 on a key nobody
+ * set, and reading that exit as "could not ask" would turn the very defect this measures
+ * into silence. `gitAsk` swallows the code, so `undefined` here means precisely "nothing
+ * is set", and the row says what git would then derive.
+ *
+ * ONLY PLACES THAT EXIST are asked: a role whose workspace has not been created yet is
+ * not a box defect, and `workspaceVerdict` already speaks about its absence.
+ */
+const probeSigningPlaces = (input: {
+  readonly repo: string;
+  readonly mailCheckout?: string;
+  readonly workspaces: readonly { readonly role: string; readonly path: string }[];
+}): readonly SigningPlace[] => {
+  const ask = (path: string): string | null =>
+    gitAsk(["-C", path, "config", "--get", "user.email"]) ?? null;
+  const places: SigningPlace[] = [{ place: "the checkout", email: ask(input.repo) }];
+  if (input.mailCheckout !== undefined && existsSync(input.mailCheckout)) {
+    places.push({ place: "the mail checkout", email: ask(input.mailCheckout) });
+  }
+  for (const workspace of input.workspaces) {
+    if (!existsSync(workspace.path)) continue;
+    places.push({ place: `the workspace of '${workspace.role}'`, email: ask(workspace.path) });
+  }
+  return places;
+};
+
+/**
  * WHAT THE BINARY OF A TOOL IS CALLED. Known for the one tool the package raises
  * (`claude-code` → `claude`); for anything else the id is the best guess there is, and
  * a wrong guess costs nothing — it is looked up on PATH, and a miss is a row asking for
@@ -4122,6 +4155,29 @@ const doctor = (argv: readonly string[]): void => {
       identities: identities.identities,
       roles: loaded.registry.ids(),
       ...(identities.error === undefined ? {} : { error: identities.error }),
+    }),
+  );
+
+  // And the other half: what this box will sign the NEXT commit with. The row above is
+  // the consequence and it is silent on a fresh box (no commits of its own yet); this
+  // one is the cause, and it is the one that can still be fixed for free.
+  const identityWorkdir = loaded.config.orchestrator?.workdir?.worktrees;
+  checks.push(
+    boxIdentityCheck({
+      places: probeSigningPlaces({
+        repo,
+        ...(loaded.config.orchestrator === undefined
+          ? {}
+          : { mailCheckout: join(repo, loaded.config.orchestrator.mailCheckout) }),
+        workspaces:
+          identityWorkdir === undefined
+            ? []
+            : loaded.registry.active().map((role) => ({
+                role: role.id,
+                path: workspacePath({ repo, worktrees: identityWorkdir, role: role.id }),
+              })),
+      }),
+      roles: loaded.registry.ids(),
     }),
   );
 

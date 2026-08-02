@@ -50,6 +50,12 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # answers to no declared role is a cross, not a note
                               # --identity-window <days>: how far back (7 by default); --identity-all:
                               # the whole history, which is the archaeology rather than the checklist
+                              # THE SECOND HALF IS THE CAUSE, not the consequence: what
+                              # 'user.email' answers HERE — in the checkout, in the mail
+                              # checkout and in each role's workspace — because a fresh box
+                              # has signed nothing yet and the history row would call it green
+                              # an UNSET key is the cross: git derives '<user>@<hostname>'
+                              # silently, and that is where every '@*.local' address came from
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
   agent-protocol init         [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <id>] [--agent <kind>] [--exec <path>] [--operator <role>] [--secrets <path>] [--no-doctor] [--offline] [--write]
                               # COMMISSIONING A BOX, the other half of 'doctor' (thread 019): the

@@ -348,7 +348,7 @@ export const commitIdentityCheck = (input: {
   readonly error?: string;
   readonly dictionary?: string;
 }): PreflightCheck => {
-  const name = "git: commit identity";
+  const name = "git: commit identity (history)";
   if (input.error !== undefined) {
     return { name, status: "info", detail: `not asked — ${input.error}` };
   }
@@ -387,6 +387,109 @@ export const commitIdentityCheck = (input: {
     name,
     status: "ok",
     detail: `${input.window} — ${input.identities.length} identities, every one canonical (roles, ${MACHINERY_IDENTITY}, GitHub)`,
+  };
+};
+
+/**
+ * WHAT THIS BOX WILL SIGN THE NEXT COMMIT WITH (thread 019, task 019.1).
+ *
+ * WHY THE HISTORY IS NOT ENOUGH, and this is the half that matters on a fresh box: the
+ * row above measures the CONSEQUENCE, and over the whole repository. A box commissioned
+ * an hour ago has made no commits of its own — the history it reads is somebody else's
+ * and it is canonical, so the row says "ok" about a box that is about to sign wrong.
+ * When the row does speak, it is too late by construction: the address is in the history
+ * and history is not rewritten. The CAUSE is one local question with no network in it —
+ * what `git config --get user.email` answers here, which is exactly what git will write
+ * into the next commit.
+ *
+ * WHY AN EMPTY ANSWER IS A CROSS AND NOT A FACT. Unset does not mean "git will refuse";
+ * on a box whose hostname carries a domain git derives `<user>@<hostname>` SILENTLY and
+ * commits — that is where every `@lle.local`, `@agents.local`, `@agent.local` in this
+ * repository's history came from. (On a hostname without a domain git refuses instead,
+ * which is why the defect never reproduced on the dev machine.) So the emptiness is the
+ * defect itself, seen before it costs anything, and the module's own rule applies: the
+ * circuit on this box will do the wrong thing.
+ *
+ * WHY EVERY OTHER ADDRESS IS A DOT, exactly as in the history: an address the package
+ * cannot derive may be a legitimate hand, and the dictionary — not a schema — is what
+ * authorizes it. The one exception is the same one the history row makes: a name inside
+ * `@agents.invalid` that answers to no declared role means this box signs as somebody
+ * who does not exist.
+ *
+ * WHICH PLACES ARE ASKED, and why more than one: git resolves `user.email` through
+ * system → global → local → worktree, so a repository, its mail checkout and each role's
+ * workspace can answer differently — and they do, since R17 sets the role's signature on
+ * the workspace itself. The answers are printed per place rather than folded together: a
+ * cross that does not say WHERE sends the operator to the global config, which may be the
+ * one place that was already right.
+ *
+ * WHAT IT DELIBERATELY DOES NOT JUDGE: whether the address of a role's workspace is that
+ * ROLE's address. It is printed beside the place, so a workspace signing as another role
+ * is legible; but the orchestrator writes in those trees too, and turning "not the role I
+ * expected" into a cross would invent a rule the statement of the canon does not have.
+ */
+export type SigningPlace = {
+  /** In the operator's words: `the checkout`, `the workspace of 'dev-core'`. */
+  readonly place: string;
+  /** What git answers here, or `null` when it answers nothing at all. */
+  readonly email: string | null;
+};
+
+const placeListing = (places: readonly SigningPlace[]): string => {
+  const shown = places
+    .slice(0, LISTING_CAP)
+    .map((place) => `${place.place} → '${place.email ?? "nothing"}'`)
+    .join(", ");
+  const rest = places.length - LISTING_CAP;
+  return rest > 0 ? `${shown}, and ${rest} more` : shown;
+};
+
+/** THE OTHER HALF OF THE ROW: the cause, asked of this disk, before the first commit. */
+export const boxIdentityCheck = (input: {
+  readonly places: readonly SigningPlace[];
+  readonly roles: readonly string[];
+  readonly dictionary?: string;
+}): PreflightCheck => {
+  const name = "git: commit identity (this box)";
+  const dictionary = input.dictionary ?? "docs/protocol-reference.md";
+  if (input.places.length === 0) {
+    return { name, status: "info", detail: "not asked — there is no place on this box to ask of" };
+  }
+  const unset = input.places.filter((place) => place.email === null || place.email.trim() === "");
+  const judged = input.places
+    .filter((place) => !unset.includes(place))
+    .map((place) => ({
+      place,
+      verdict: identityVerdict({ email: place.email as string, roles: input.roles }),
+    }));
+  const impostors = judged.filter((row) => row.verdict === "impostor").map((row) => row.place);
+  const strays = judged.filter((row) => row.verdict === "unrecognised").map((row) => row.place);
+  if (unset.length > 0 || impostors.length > 0) {
+    const sentences = [
+      unset.length === 0
+        ? ""
+        : `${placeListing(unset)}: git has no 'user.email' there and will derive one from the hostname ('<user>@<hostname>') without saying so — that is where the '@*.local' addresses of this history came from;`,
+      impostors.length === 0
+        ? ""
+        : `${placeListing(impostors)}: signs inside '@${ROLE_IDENTITY_DOMAIN}' as a name no declared role answers to — this box commits as somebody who does not exist;`,
+    ].filter((sentence) => sentence !== "");
+    return {
+      name,
+      status: "fail",
+      detail: `${sentences.join(" ")} set it (the canon is in ${dictionary})`,
+    };
+  }
+  if (strays.length > 0) {
+    return {
+      name,
+      status: "info",
+      detail: `${placeListing(input.places)} — outside the canon this package can derive: ${placeListing(strays)}; a person's own address is authorized by the dictionary in ${dictionary}, this one cannot tell it from a box signing by hand`,
+    };
+  }
+  return {
+    name,
+    status: "ok",
+    detail: `${placeListing(input.places)} — every signature canonical (roles, ${MACHINERY_IDENTITY}, GitHub)`,
   };
 };
 

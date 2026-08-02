@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentLiveCheck,
+  boxIdentityCheck,
   type CommitIdentity,
   commitIdentityCheck,
   doctorPassed,
@@ -353,5 +354,92 @@ describe("commit identity against the canon", () => {
     expect(identityVerdict({ email: "Dev-Core@Agents.Invalid", roles })).toBe("role");
     expect(identityVerdict({ email: "curator@lle.local", roles })).toBe("unrecognised");
     expect(identityVerdict({ email: MACHINERY_IDENTITY, roles })).toBe("machinery");
+  });
+});
+
+/**
+ * WHAT THIS BOX WILL SIGN WITH (thread 019, task 019.1). The half above measures the
+ * history and therefore the consequence; these cases are the ones it cannot see — a box
+ * that has committed nothing yet, and a box whose next commit is already wrong.
+ */
+describe("the effective signature of this box", () => {
+  const roles = ["john", "curator", "dev-core", "reviewer-pr"];
+
+  it("crosses an unset key: git derives an address from the hostname and says nothing", () => {
+    const check = boxIdentityCheck({
+      roles,
+      places: [
+        { place: "the checkout", email: null },
+        { place: "the workspace of 'dev-core'", email: "dev-core@agents.invalid" },
+      ],
+    });
+    expect(check.status).toBe("fail");
+    expect(check.detail).toContain("the checkout → 'nothing'");
+    expect(check.detail).toContain("hostname");
+    expect(check.detail).toContain("docs/protocol-reference.md");
+    // The place that was already right is not dragged into the cross: the operator is
+    // sent to the one config that needs a hand.
+    expect(check.detail).not.toContain("the workspace of 'dev-core' → 'dev-core@agents.invalid'");
+  });
+
+  it("crosses a name inside the role namespace that answers to no declared role", () => {
+    const check = boxIdentityCheck({
+      roles,
+      places: [{ place: "the checkout", email: "dev-mobile@agents.invalid" }],
+    });
+    expect(check.status).toBe("fail");
+    expect(check.detail).toContain("dev-mobile@agents.invalid");
+    expect(check.detail).toContain("somebody who does not exist");
+  });
+
+  it("names both crosses in one row when a box has both", () => {
+    const check = boxIdentityCheck({
+      roles,
+      places: [
+        { place: "the mail checkout", email: "   " },
+        { place: "the checkout", email: "dev-mobile@agents.invalid" },
+      ],
+    });
+    expect(check.status).toBe("fail");
+    expect(check.detail).toContain("the mail checkout");
+    expect(check.detail).toContain("the checkout → 'dev-mobile@agents.invalid'");
+  });
+
+  it("is a dot on an address it cannot derive — the dictionary authorizes a person's own", () => {
+    const check = boxIdentityCheck({
+      roles,
+      places: [{ place: "the checkout", email: "ivan@corp.ru" }],
+    });
+    expect(check.status).toBe("info");
+    expect(check.detail).toContain("ivan@corp.ru");
+    expect(check.detail).toContain("cannot tell it from a box signing by hand");
+  });
+
+  it("passes the machinery and the roles, and prints every place it asked", () => {
+    const check = boxIdentityCheck({
+      roles,
+      places: [
+        { place: "the checkout", email: MACHINERY_IDENTITY },
+        { place: "the mail checkout", email: "curator@agents.invalid" },
+        { place: "the workspace of 'dev-core'", email: "DEV-CORE@agents.invalid" },
+      ],
+    });
+    expect(check.status).toBe("ok");
+    expect(check.detail).toContain(`the checkout → '${MACHINERY_IDENTITY}'`);
+    expect(check.detail).toContain("the mail checkout → 'curator@agents.invalid'");
+    expect(check.detail).toContain("the workspace of 'dev-core' → 'DEV-CORE@agents.invalid'");
+  });
+
+  it("says it was not asked rather than passing a box it never measured", () => {
+    const check = boxIdentityCheck({ roles, places: [] });
+    expect(check.status).toBe("info");
+    expect(check.detail).toContain("not asked");
+  });
+
+  it("is the OTHER row: the two halves are told apart by name", () => {
+    const history = commitIdentityCheck({ window: "the last 7 days", roles, identities: [] });
+    const box = boxIdentityCheck({ roles, places: [] });
+    expect(history.name).toBe("git: commit identity (history)");
+    expect(box.name).toBe("git: commit identity (this box)");
   });
 });
