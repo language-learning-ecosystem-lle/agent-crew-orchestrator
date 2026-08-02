@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  checkWorkspaceSignature,
   createWorkspaceLocks,
   describeFinishDirt,
   describeWorkspaceIdentity,
@@ -277,6 +278,46 @@ describe("what the operator is shown", () => {
         }).status,
       ).toBe("info");
     }
+  });
+
+  it("says who the tree signs as when the signature was measured", () => {
+    const check = workspaceVerdict({
+      role: "dev-core",
+      path: "/repo/.worktrees/dev-core",
+      facts: {
+        exists: true,
+        branch: "HEAD",
+        head: BASE,
+        dirty: false,
+        signature: { name: "dev-core", email: "dev-core@agents.invalid" },
+      },
+      base: BASE,
+      baseRef: "origin/main",
+    });
+
+    expect(check.status).toBe("ok");
+    expect(check.detail).toContain("signed by dev-core");
+  });
+
+  it("demotes the tick when the tree signs as somebody else — the launch refuses there", () => {
+    const check = workspaceVerdict({
+      role: "dev-core",
+      path: "/repo/.worktrees/dev-core",
+      facts: {
+        exists: true,
+        branch: "HEAD",
+        head: BASE,
+        dirty: false,
+        signature: { name: "John", email: "john@example.com" },
+      },
+      base: BASE,
+      baseRef: "origin/main",
+    });
+
+    expect(check.status).toBe("info");
+    expect(check.detail).toContain("John <john@example.com>");
+    expect(check.detail).toContain("'dev-core'");
+    expect(check.detail).toContain("a run refuses here");
   });
 
   it("the operator's own checkout is reported as nobody's workplace, and compared with nothing", () => {
@@ -568,5 +609,66 @@ describe("the dirt a run leaves at its own ending", () => {
     expect(line).toContain("completed");
     expect(line).toContain("/repo/.worktrees/dev-core");
     expect(line).toContain("next package");
+  });
+});
+
+describe("the workspace is signed by the role whose name it bears (thread 052)", () => {
+  const path = "/repo/.worktrees/dev-core";
+
+  it("passes when git in that tree answers with the role's own identity", () => {
+    expect(
+      checkWorkspaceSignature({
+        role: "dev-core",
+        path,
+        signature: { name: "dev-core", email: "dev-core@agents.invalid" },
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("refuses on a foreign signature, naming BOTH sides and the tree that has the problem", () => {
+    const verdict = checkWorkspaceSignature({
+      role: "dev-core",
+      path,
+      signature: { name: "John", email: "john@example.com" },
+    });
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.reason).toContain("John <john@example.com>");
+    expect(verdict.reason).toContain("dev-core <dev-core@agents.invalid>");
+    expect(verdict.reason).toContain(path);
+    // The repair, not a diagnosis: the commands to type and the setting to look at.
+    expect(verdict.reason).toContain("extensions.worktreeConfig");
+    expect(verdict.reason).toContain("config --worktree user.email");
+  });
+
+  it("half a signature is a mismatch — the email is what a history is read by", () => {
+    expect(
+      checkWorkspaceSignature({ role: "dev-core", path, signature: { name: "dev-core" } }).ok,
+    ).toBe(false);
+    expect(
+      checkWorkspaceSignature({
+        role: "dev-core",
+        path,
+        signature: { name: "John", email: "dev-core@agents.invalid" },
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("a tree nothing is set in refuses too, and says the signature is nobody's", () => {
+    const verdict = checkWorkspaceSignature({ role: "dev-core", path, signature: {} });
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.reason).toContain("nobody (nothing set)");
+  });
+
+  it("the role's name is taken from the role, not from the path — a renamed role is caught", () => {
+    expect(
+      checkWorkspaceSignature({
+        role: "curator",
+        path,
+        signature: { name: "dev-core", email: "dev-core@agents.invalid" },
+      }).ok,
+    ).toBe(false);
   });
 });

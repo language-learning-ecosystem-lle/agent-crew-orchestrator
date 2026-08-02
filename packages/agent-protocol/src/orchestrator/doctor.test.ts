@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentChecksWithoutRoles,
   agentLiveCheck,
   boxIdentityCheck,
+  boxRaisesNoRoles,
   type CommitIdentity,
   commitIdentityCheck,
   doctorPassed,
@@ -15,7 +17,7 @@ import {
   maskedRemote,
   repositoryConfigCheck,
 } from "./doctor.js";
-import type { PreflightCheck } from "./preflight.js";
+import { agentBinaryVerdict, type PreflightCheck } from "./preflight.js";
 
 describe("the repository config row", () => {
   it("passes with the ref it was read at, because a config is only true at one", () => {
@@ -117,6 +119,98 @@ describe("which instance this box is (R13)", () => {
     expect(check.status).toBe("ok");
     expect(check.detail).toContain("dev-core, curator");
   });
+});
+
+describe("the agent rows follow the fact of the box (thread 052)", () => {
+  const declared = ["laptop", "lle-agents"];
+
+  it("a box with roles is asked both questions, whatever the binary answers", () => {
+    expect(
+      boxRaisesNoRoles({ instance: "lle-agents", declared, roles: ["dev-core", "curator"] }),
+    ).toBeUndefined();
+  });
+
+  it("a repository with no topology is one box with every role — the questions stand", () => {
+    expect(boxRaisesNoRoles({ declared: [] })).toBeUndefined();
+    expect(boxRaisesNoRoles({ instance: "my-laptop", declared: [] })).toBeUndefined();
+  });
+
+  it("an UNDECLARED name is a bench: it raises nothing, so it is asked nothing", () => {
+    expect(boxRaisesNoRoles({ instance: "my-laptop", declared })).toContain("bench");
+  });
+
+  it("a declared box with no role assigned to it raises nothing either", () => {
+    expect(boxRaisesNoRoles({ instance: "lle-agents", declared, roles: [] })).toContain(
+      "no role of the project is assigned to it",
+    );
+  });
+
+  it("NO NAME is not NO ROLES — an unconfigured box keeps being asked (curator's boundary)", () => {
+    expect(boxRaisesNoRoles({ declared })).toBeUndefined();
+  });
+
+  it("the rows of a box without roles are dots with the reason, and keep their names", () => {
+    const rows = agentChecksWithoutRoles("'my-laptop' is not declared in the repository — a bench");
+
+    expect(rows.map((row) => row.status)).toEqual(["info", "info"]);
+    expect(rows.map((row) => row.name)).toEqual(["agent: binary", "agent: headless run"]);
+    for (const row of rows) expect(row.detail).toContain("bench");
+    // A box that raises nothing is READY: dots do not stop it, so the acceptance
+    // criterion "green doctor on the bench" is reachable — which it was not before.
+    expect(doctorPassed([...rows])).toBe(true);
+  });
+});
+
+/**
+ * THE FOUR CELLS OF THE ACCEPTANCE (thread 052) — the box (raises roles / raises none)
+ * against the binary (there / missing), assembled the way `doctor` assembles them, so
+ * the table is a statement about the COMMAND and not about one of its helpers.
+ *
+ * The point of holding all four: the change may only touch the bottom row. A box with
+ * roles keeps failing on a missing binary — that cross is what commissioning is for —
+ * and a box with none stops being asked at all, whatever is on its PATH.
+ */
+describe("the four cells: what each kind of box is asked about the agent", () => {
+  const rowsOf = (input: {
+    readonly raisesRoles: boolean;
+    readonly binaryFound: boolean;
+  }): readonly PreflightCheck[] => {
+    const reason = boxRaisesNoRoles({
+      instance: input.raisesRoles ? "lle-agents" : "my-laptop",
+      declared: ["lle-agents"],
+      ...(input.raisesRoles ? { roles: ["dev-core"] } : {}),
+    });
+    if (reason !== undefined) return agentChecksWithoutRoles(reason);
+    return [
+      agentBinaryVerdict({
+        worker: "claude-code",
+        exec: "claude",
+        source: "machine",
+        resolved: input.binaryFound ? "/usr/bin/claude" : null,
+      }),
+      agentLiveCheck({
+        worker: "claude-code",
+        outcome: input.binaryFound
+          ? { ok: true, detail: "answered" }
+          : { skipped: "the binary was not found — there is nothing to run" },
+      }),
+    ];
+  };
+
+  it.each([
+    { raisesRoles: true, binaryFound: true, statuses: ["ok", "ok"], ready: true },
+    { raisesRoles: true, binaryFound: false, statuses: ["fail", "info"], ready: false },
+    { raisesRoles: false, binaryFound: true, statuses: ["info", "info"], ready: true },
+    { raisesRoles: false, binaryFound: false, statuses: ["info", "info"], ready: true },
+  ])(
+    "roles: $raisesRoles, binary: $binaryFound → $statuses (ready: $ready)",
+    ({ raisesRoles, binaryFound, statuses, ready }) => {
+      const rows = rowsOf({ raisesRoles, binaryFound });
+
+      expect(rows.map((row) => row.status)).toEqual(statuses);
+      expect(doctorPassed([...rows])).toBe(ready);
+    },
+  );
 });
 
 describe("the headless probe — the moment of truth of a box", () => {

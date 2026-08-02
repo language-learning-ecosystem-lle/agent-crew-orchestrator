@@ -82,6 +82,17 @@ export type WorkspaceFacts = {
    * live run" and "a lock left behind by a killed one" ask a human for opposite things.
    */
   readonly lockHolderAlive?: boolean;
+  /**
+   * WHAT GIT WOULD SIGN A COMMIT MADE HERE WITH — `user.name`/`user.email` as git
+   * itself resolves them (worktree → local → global → system), not as a reader of
+   * files guesses them.
+   *
+   * The absence of the whole field and an empty object are DIFFERENT facts, and the
+   * difference is load-bearing: absent means "nobody asked" (a caller that builds
+   * facts without probing git config), `{}` means "asked, and nothing is set" — a tree
+   * whose commits would carry the machine owner's name or none at all.
+   */
+  readonly signature?: { readonly name?: string; readonly email?: string };
 };
 
 /**
@@ -336,17 +347,37 @@ export const workspaceVerdict = (input: {
           : `${input.path} — locked by a live run: '${input.facts.locked}'`,
     };
   }
+  // THE SIGNATURE IS SHOWN HERE AND REFUSED AT THE DOOR (thread 052). Preflight's rule
+  // holds — never a `fail`, because this belongs to one role and not to the circuit —
+  // but a mismatch demotes the tick: the run of THIS role will not start, and a row
+  // that ticks while the launch refuses is exactly the disagreement R12 removed.
+  const signature =
+    input.facts.signature === undefined
+      ? undefined
+      : checkWorkspaceSignature({
+          role: input.role,
+          path: input.path,
+          signature: input.facts.signature,
+        });
+  if (signature?.ok === false) {
+    return {
+      name,
+      status: "info",
+      detail: `${input.path} — SIGNED BY ${describeSignature(input.facts.signature ?? {})}, not by '${input.role}': a run refuses here. ${signature.reason}`,
+    };
+  }
+  const signed = signature === undefined ? "" : `, signed by ${input.role}`;
   if (input.facts.head === input.base && input.facts.dirty !== true) {
     return {
       name,
       status: "ok",
-      detail: `${input.path} — ${where} at ${input.baseRef}, clean`,
+      detail: `${input.path} — ${where} at ${input.baseRef}, clean${signed}`,
     };
   }
   return {
     name,
     status: "info",
-    detail: `${input.path} — ${where} ${(input.facts.head ?? "?").slice(0, 8)}${dirt}; a fresh run moves it to ${input.baseRef}`,
+    detail: `${input.path} — ${where} ${(input.facts.head ?? "?").slice(0, 8)}${dirt}${signed}; a fresh run moves it to ${input.baseRef}`,
   };
 };
 
@@ -394,6 +425,49 @@ export const planWorkspaceIdentity = (input: {
     };
   }
   return { action: "set", identity: roleIdentity(input.role) };
+};
+
+/**
+ * THE WORKSPACE IS SIGNED BY THE ROLE WHOSE NAME IT BEARS — checked at the door
+ * (thread 052, curator's point 2), not read off a commit afterwards.
+ *
+ * WHY A CHECK AT ALL WHEN THE LAUNCH SETS IT ITSELF. `applyWorkspaceIdentity` writes
+ * the identity at every start, so the ordinary path heals itself — and every way it
+ * can fail is silent: `--worktree` writes into a file git only reads with
+ * `extensions.worktreeConfig` on (the launch turns it on, a human or a re-clone can
+ * turn it off), the extension is deliberately NOT turned on where `core.bare` or
+ * `core.worktree` are in the way, and `GIT_AUTHOR_*` in the environment outranks
+ * configuration entirely. In all three the setting looks applied and the commits come
+ * out under somebody else's name — visible only in the history, after the fact.
+ *
+ * WHY A REFUSAL AND NOT A REPAIR. The repair was already attempted a moment earlier
+ * and did not take; doing it again is a loop, and doing it harder (turning the
+ * extension on over `core.bare`) is the one gesture this package refuses to make on
+ * somebody's repository. What is left is a door: the same shape as a dirty tree — the
+ * run does not start, and the line says whose signature was found, whose it should be,
+ * and the two commands that fix it in the tree that has the problem.
+ */
+export const checkWorkspaceSignature = (input: {
+  readonly role: string;
+  readonly path: string;
+  readonly signature?: { readonly name?: string; readonly email?: string };
+}): { readonly ok: true } | { readonly ok: false; readonly reason: string } => {
+  const want = roleIdentity(input.role);
+  const found = input.signature ?? {};
+  if (found.name === want.name && found.email === want.email) return { ok: true };
+  return {
+    ok: false,
+    reason: `the workspace '${input.path}' is not signed by '${input.role}': git would commit there as ${describeSignature(found)}, and the tree of a role signs with ${want.name} <${want.email}>. The launch sets that at every start, so a signature that survived it is not being read — check 'git -C ${input.path} config --get extensions.worktreeConfig' (it must be 'true'; it is left off when 'core.bare' or 'core.worktree' sit in the shared config, and those have to be moved by hand first), then: git -C ${input.path} config --worktree user.name ${want.name} && git -C ${input.path} config --worktree user.email ${want.email}`,
+  };
+};
+
+/** A signature as it is read to a human — including the one that is not there at all. */
+export const describeSignature = (signature: {
+  readonly name?: string;
+  readonly email?: string;
+}): string => {
+  if (signature.name === undefined && signature.email === undefined) return "nobody (nothing set)";
+  return `${signature.name ?? "(no name)"} <${signature.email ?? "(no email)"}>`;
 };
 
 /** The identity line printed beside the workspace plan — before the launch, never after. */

@@ -174,6 +174,60 @@ export const instanceCheck = (input: {
 };
 
 /**
+ * DOES THIS BOX RAISE ANYBODY — the question that must be answered BEFORE the agent
+ * rows are asked at all (thread 052, curator's §1(C)).
+ *
+ * THE DEFECT IT REMOVES. `config: instance` already knows the answer and says it in
+ * words ("a bench: it raises no role of this project"), but the agent rows were built
+ * from a different question: `launchableRoles` filters by the launchability of a ROLE,
+ * which is a property of the repository, not of this box. So a laptop that raises
+ * nobody was still asked whether it could — and answered with two crosses (no binary,
+ * no credentials) for a capability nobody wants from it. "Green doctor on the bench"
+ * was unreachable by construction, and an acceptance criterion nobody can reach is how
+ * a checklist starts being read past.
+ *
+ * WHY A DOT AND NOT A DISAPPEARANCE. A row that vanishes is a row that was never
+ * judged, and the reader cannot tell it from one nobody wrote; a row that ticks says a
+ * probe passed. Both are lies here. The honest shape is the third status: the question
+ * was not asked, and the reason is in the line.
+ *
+ * THE BOUNDARY, and it is the one thing here that may not move: "no roles" is not "no
+ * name". A box with NO name while the repository declares instances is not a bench, it
+ * is unconfigured — the daemon refuses to raise anything there — so it keeps its cross
+ * (`instanceCheck`) and keeps being asked the agent questions: nobody has said yet that
+ * it raises nothing, only that it has not been told who it is.
+ *
+ * Returns the reason a box raises nothing, or `undefined` when it does raise roles —
+ * including the one-box case (no instances declared at all: every role is this box's).
+ */
+export const boxRaisesNoRoles = (input: {
+  readonly instance?: string;
+  readonly declared: readonly string[];
+  readonly roles?: readonly string[];
+}): string | undefined => {
+  if (input.declared.length === 0) return undefined;
+  if (input.instance === undefined) return undefined;
+  if (!input.declared.includes(input.instance)) {
+    return `'${input.instance}' is not declared in the repository — a bench: it raises no role of this project`;
+  }
+  return (input.roles ?? []).length === 0
+    ? `'${input.instance}' is declared, and no role of the project is assigned to it`
+    : undefined;
+};
+
+/**
+ * The agent rows of a box that raises nothing: the same two names, so a reader
+ * comparing two boxes' checklists compares the same lines — with the question left
+ * unasked and the reason for that in the detail.
+ */
+export const agentChecksWithoutRoles = (reason: string): readonly PreflightCheck[] =>
+  ["agent: binary", "agent: headless run"].map((name) => ({
+    name,
+    status: "info" as CheckStatus,
+    detail: `not asked — ${reason}. A box that raises no role is not asked whether it could raise one; the rows come back the day a role is assigned to it`,
+  }));
+
+/**
  * THE MOMENT OF TRUTH OF THE EVENING THIS COMMAND COMES FROM: does the agent, spawned
  * exactly as the circuit spawns it, answer a headless prompt on this box?
  *
