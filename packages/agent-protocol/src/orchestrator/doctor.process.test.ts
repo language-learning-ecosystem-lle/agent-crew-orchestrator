@@ -29,7 +29,12 @@ const CARD = "docs/roles/dev-core.md";
 const CONFIG = {
   protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
-  orchestrator: { state: ".orchestrator", mailCheckout: "mailco", ref: "HEAD" },
+  orchestrator: {
+    state: ".orchestrator",
+    mailCheckout: "mailco",
+    ref: "HEAD",
+    workdir: { branch: "main", worktrees: ".worktrees" },
+  },
   instances: [{ id: "main", roles: ["dev-core"] }],
   roles: [
     { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "the one" },
@@ -88,7 +93,15 @@ const doctorIn = (cwd: string, repo: string): string => {
   const done = spawnSync(TSX, [CLI, "doctor", "--ref", "HEAD", "--offline"], {
     cwd,
     encoding: "utf8",
-    env: sandbox(configHome(repo)),
+    // THE DEVELOPER'S OWN GIT CONFIG IS NOT PART OF THIS BOX: one of the rows measures
+    // 'user.email' the way git resolves it (system → global → local → worktree), so a
+    // machine whose global config is set would make the temp repository read as
+    // configured — the case the row exists to catch would never be reachable in a test.
+    env: {
+      ...sandbox(configHome(repo)),
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_CONFIG_SYSTEM: "/dev/null",
+    },
   });
   return `${done.stdout ?? ""}${done.stderr ?? ""}`;
 };
@@ -107,5 +120,42 @@ describe("doctor judges the config of the tree it read the config from (R26)", (
     git(repo, "rm", "-q", CARD);
     git(repo, "commit", "-qm", "the card moves");
     expect(doctorIn(work, repo)).not.toContain(`instructions '${CARD}' are declared`);
+  });
+});
+
+/**
+ * THE SIGNATURE OF THIS BOX, end to end (thread 019, task 019.1). The unit cases judge
+ * the rule; what only a process can show is that the question is asked of GIT — the
+ * commits here are made with an inline `-c user.email`, so the history is canonical
+ * while the config is unset, which is exactly the box the history half calls green.
+ */
+describe("doctor asks what this box will sign the NEXT commit with", () => {
+  it("crosses a checkout whose 'user.email' is unset — git would derive it from the hostname", () => {
+    const { repo, work } = contour(true);
+    const said = doctorIn(work, repo);
+    expect(said).toContain("git: commit identity (this box)");
+    expect(said).toContain("the checkout → 'nothing'");
+    expect(said).toContain("hostname");
+  });
+
+  it("passes a checkout signed with the machinery's own address, and names the place", () => {
+    const { repo, work } = contour(true);
+    git(repo, "config", "user.email", "orchestrator@agents.invalid");
+    const said = doctorIn(work, repo);
+    expect(said).toContain("the checkout → 'orchestrator@agents.invalid'");
+    expect(said).not.toContain("the checkout → 'nothing'");
+  });
+
+  it("crosses a workspace signing as a role nobody declared, though the checkout is right", () => {
+    const { repo, work } = contour(true);
+    git(repo, "config", "user.email", "orchestrator@agents.invalid");
+    // How R17 signs a role's workspace: per-worktree config, which needs the extension.
+    git(repo, "config", "extensions.worktreeConfig", "true");
+    git(work, "config", "--worktree", "user.email", "dev-mobile@agents.invalid");
+    // From the MAIN checkout: that is where the workspaces of the roles hang off, and
+    // the point of the case is that a green checkout does not cover for them.
+    const said = doctorIn(repo, repo);
+    expect(said).toContain("the workspace of 'dev-core' → 'dev-mobile@agents.invalid'");
+    expect(said).toContain("somebody who does not exist");
   });
 });
