@@ -18,6 +18,7 @@ import {
   planWorkspace,
   planWorkspaceIdentity,
   workspacePath,
+  workspaceRoleOf,
   workspaceVerdict,
 } from "./workspace.js";
 
@@ -35,6 +36,43 @@ describe("where a role works", () => {
     expect(workspacePath({ repo: "/repo/", worktrees: ".worktrees/", role: "dev-core" })).toBe(
       "/repo/.worktrees/dev-core",
     );
+  });
+});
+
+describe("whose workspace a checkout is", () => {
+  const ROLES = ["dev-core", "curator"];
+  const ask = (checkout: string, worktrees: string | undefined = ".worktrees") =>
+    workspaceRoleOf({
+      checkout,
+      repo: "/repo",
+      ...(worktrees === undefined ? {} : { worktrees }),
+      roles: ROLES,
+    });
+
+  it("the inverse of workspacePath — the last segment names the role", () => {
+    expect(ask("/repo/.worktrees/dev-core")).toBe("dev-core");
+    expect(ask("/repo/.worktrees/dev-core/")).toBe("dev-core");
+  });
+
+  it("a directory named after a NON-role is nobody's workspace", () => {
+    // The mail checkout lives beside the workspaces and is not one: the circuit does not
+    // reset, lock or remove it, and a guard that treats it as a role's tree lies.
+    expect(ask("/repo/.worktrees/comms")).toBeUndefined();
+  });
+
+  it("the same role name somewhere else is not the workspace either", () => {
+    expect(ask("/tmp/dev-core")).toBeUndefined();
+    expect(ask("/repo/apps/dev-core")).toBeUndefined();
+  });
+
+  it("the home checkout is nobody's workspace", () => {
+    expect(ask("/repo")).toBeUndefined();
+  });
+
+  it("no declared workspaces — no role can be inferred from any path", () => {
+    expect(
+      workspaceRoleOf({ checkout: "/repo/.worktrees/dev-core", repo: "/repo", roles: ROLES }),
+    ).toBeUndefined();
   });
 });
 

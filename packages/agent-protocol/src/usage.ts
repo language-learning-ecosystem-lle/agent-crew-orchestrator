@@ -389,4 +389,13 @@ The strict forms below keep every flag they had.
                               # user-level + linger, NOT root: the sessions read the operator's
                               # machine config (R14) and credentials — 'systemctl --user enable'
                               # and 'loginctl enable-linger' stay HUMAN actions, as they were
+                              # IT REFUSES IN A ROLE'S WORKSPACE ('orchestrator.workdir.worktrees',
+                              # the same sign 'zones check --role-from-workspace' reads):
+                              # WorkingDirectory resolves to the home checkout from anywhere,
+                              # but ExecStart would name the entry point of the tree you typed
+                              # in — and a role's tree is reset, locked and removed by the
+                              # circuit itself (R17). Type it in the home checkout
+                              # ANY OTHER linked worktree (the mail checkout, your own) is
+                              # passed with a NOTE: R17 does not govern it, and a refusal there
+                              # would name a reason that is not true
                               # --daemon-args '<a b c>': the daemon's own flags, baked into ExecStart`;

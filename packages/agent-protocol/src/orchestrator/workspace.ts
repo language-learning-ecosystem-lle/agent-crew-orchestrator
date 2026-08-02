@@ -205,6 +205,39 @@ export const workspacePath = (input: {
 }): string => `${input.repo}/${input.worktrees}/${input.role}`.replace(/\/+/g, "/");
 
 /**
+ * WHOSE WORKSPACE THIS CHECKOUT IS — the inverse of `workspacePath`, and the ONE answer
+ * every guard about "am I standing in a role's tree" is allowed to use (`zones check
+ * --role-from-workspace`, `systemd install`). It exists as a function rather than as two
+ * copies of the same four lines because the two guards disagreeing would be worse than
+ * either of them being wrong: one would refuse what the other passes, in the same tree.
+ *
+ * The judgement is exactly as narrow as the layout it reads: the last path segment must
+ * name a role OF THE CONFIG, and the whole path must be the one `workspacePath` builds
+ * for that role. Anything else — the operator's own checkout, a CI checkout, the mail
+ * worktree, a linked worktree somebody made by hand — is NOT a role workspace and gets
+ * `undefined`; what a caller does with that (pass, note, refuse) is the caller's, and
+ * this function never decides it.
+ */
+export const workspaceRoleOf = (input: {
+  /** The checkout being judged, absolute and already at its top level. */
+  readonly checkout: string;
+  /** The home checkout the workspaces hang under (R26). */
+  readonly repo: string;
+  /** `orchestrator.workdir.worktrees` — `undefined` when the project declares none. */
+  readonly worktrees?: string;
+  /** The role ids of the config; a directory named after a non-role is not a workspace. */
+  readonly roles: readonly string[];
+}): string | undefined => {
+  if (input.worktrees === undefined) return undefined;
+  const here = input.checkout.replace(/\/+$/, "");
+  const candidate = here.slice(here.lastIndexOf("/") + 1);
+  if (!input.roles.includes(candidate)) return undefined;
+  return workspacePath({ repo: input.repo, worktrees: input.worktrees, role: candidate }) === here
+    ? candidate
+    : undefined;
+};
+
+/**
  * The decision, from the facts and from whether this run is a continuation. Pure, so
  * that the one branch that destroys work if it is wrong (`rebase` over a dirty tree)
  * is decided by something a test can hold.

@@ -6,6 +6,7 @@ import {
   interpreterTokens,
   planSystemdUnit,
   unitPathDirs,
+  worktreeInstallVerdict,
 } from "./systemd.js";
 
 const LOADER = "/srv/lle/node_modules/tsx/dist/loader.mjs";
@@ -185,5 +186,132 @@ describe("the refusal a unit gets", () => {
     expect(said).toContain("john: acceptance");
     expect(said).toContain("NOT a failure");
     expect(said).toContain("Restart=on-failure");
+  });
+});
+
+describe("the install refuses a ROLE'S WORKSPACE, and only that (decision 7)", () => {
+  const HOME = "/srv/lle";
+  const WORKSPACE = "/srv/lle/.worktrees/dev-core";
+  const MAIL = "/srv/lle/.worktrees/comms";
+  const ENTRY = `${WORKSPACE}/packages/agent-protocol/src/cli.ts`;
+
+  it("refuses when the command was typed in a role's workspace", () => {
+    const said = worktreeInstallVerdict({
+      home: HOME,
+      cwdCheckout: WORKSPACE,
+      cwdRole: "dev-core",
+      entryCheckout: WORKSPACE,
+      entryHome: HOME,
+      entryRole: "dev-core",
+      entry: ENTRY,
+      workspacesDeclared: true,
+    });
+
+    expect(said.kind).toBe("refusal");
+    // The THREE things the statement (§4) says the refusal owes the operator: whose
+    // workspace this is, why a resident unit may not come out of it, and where to type it.
+    expect(said.kind === "refusal" && said.message).toContain(WORKSPACE);
+    expect(said.kind === "refusal" && said.message).toContain("role 'dev-core'");
+    expect(said.kind === "refusal" && said.message).toContain("R17");
+    expect(said.kind === "refusal" && said.message).toContain(`run it in ${HOME}`);
+  });
+
+  it("refuses on the ENTRY POINT alone — the directory typed in is not the whole story", () => {
+    const said = worktreeInstallVerdict({
+      home: HOME,
+      cwdCheckout: HOME,
+      entryCheckout: WORKSPACE,
+      entryHome: HOME,
+      entryRole: "dev-core",
+      entry: ENTRY,
+      workspacesDeclared: true,
+    });
+
+    expect(said.kind).toBe("refusal");
+    expect(said.kind === "refusal" && said.message).toContain(ENTRY);
+    expect(said.kind === "refusal" && said.message).toContain("role 'dev-core'");
+  });
+
+  it("NOTES a linked worktree that is nobody's workspace instead of refusing it", () => {
+    // The mail checkout is a linked worktree and is NOT put back on base, locked or
+    // removed by the circuit — refusing it would state a reason that is false (review
+    // of #172). The fact is said out loud, and the command goes on.
+    const said = worktreeInstallVerdict({
+      home: HOME,
+      cwdCheckout: MAIL,
+      entryCheckout: MAIL,
+      entryHome: HOME,
+      entry: `${MAIL}/packages/agent-protocol/src/cli.ts`,
+      workspacesDeclared: true,
+    });
+
+    expect(said.kind).toBe("note");
+    expect(said.kind === "note" && said.message).toContain(MAIL);
+    expect(said.kind === "note" && said.message).toContain("not the workspace of any role");
+    expect(said.kind === "note" && said.message).not.toContain("R17 guard applies");
+  });
+
+  it("says in the note when the project declares no workspaces at all", () => {
+    const said = worktreeInstallVerdict({
+      home: HOME,
+      cwdCheckout: MAIL,
+      entry: `${MAIL}/packages/agent-protocol/src/cli.ts`,
+      workspacesDeclared: false,
+    });
+
+    expect(said.kind === "note" && said.message).toContain(
+      "declares no role workspaces (orchestrator.workdir.worktrees)",
+    );
+  });
+
+  it("lets the home checkout through", () => {
+    expect(
+      worktreeInstallVerdict({
+        home: HOME,
+        cwdCheckout: HOME,
+        entryCheckout: HOME,
+        entryHome: HOME,
+        entry: `${HOME}/packages/agent-protocol/src/cli.ts`,
+        workspacesDeclared: true,
+      }).kind,
+    ).toBe("ok");
+  });
+
+  it("lets an INSTALLED cli through — an entry outside any repository is not a worktree", () => {
+    expect(
+      worktreeInstallVerdict({
+        home: HOME,
+        cwdCheckout: HOME,
+        entry: "/usr/lib/node_modules/agent-protocol/dist/cli.js",
+        workspacesDeclared: true,
+      }).kind,
+    ).toBe("ok");
+  });
+
+  it("lets an entry from ANOTHER repository through — only this repo's worktrees are ours", () => {
+    expect(
+      worktreeInstallVerdict({
+        home: HOME,
+        cwdCheckout: HOME,
+        entryCheckout: "/home/op/agent-protocol",
+        entryHome: "/home/op/agent-protocol",
+        entry: "/home/op/agent-protocol/src/cli.ts",
+        workspacesDeclared: true,
+      }).kind,
+    ).toBe("ok");
+  });
+
+  it("says nothing about the working directory when --repo was typed", () => {
+    // `--repo` IS the operator saying which checkout they mean; the two disagreeing is
+    // then the request, not the defect.
+    expect(
+      worktreeInstallVerdict({
+        home: HOME,
+        entryCheckout: HOME,
+        entryHome: HOME,
+        entry: `${HOME}/packages/agent-protocol/src/cli.ts`,
+        workspacesDeclared: true,
+      }).kind,
+    ).toBe("ok");
   });
 });
