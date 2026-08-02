@@ -1489,6 +1489,12 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   we wait for the process to exit naturally → `completed`. The deadline without a
   passed turn → `timeout`, and the role does not hang forever. `handedOff`
   outweighs `overdue`: a success noticed at the deadline is still a success.
+  **In the operator frame that state is printed `working past handoff`** (thread 019):
+  `draining` is the machine's word and reads as "shutting down", while the session is
+  in fact still working inside the same window — john read the frame twice and asked
+  both times. The translation lives in the renderer only; `state` stays `draining`
+  wherever it is data (the journal, the digest a box publishes), and the deadline
+  column beside it is the "until when".
 - **Putting things down covers the whole process group (`-pid`), not just the direct
   child.** A SIGTERM to a launcher does not reach its children (`claude` → its
   subprocesses), and they would be orphaned; the spawn is `detached` and the

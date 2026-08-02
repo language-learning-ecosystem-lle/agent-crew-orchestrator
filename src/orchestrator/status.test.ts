@@ -68,6 +68,23 @@ describe("renderStatus", () => {
     expect(line).not.toContain("⚠ OVERDUE");
   });
 
+  it("draining reads as work, not as shutdown, and keeps its landing point (thread 019)", () => {
+    // The lifecycle word says "shutting down" to a reader who did not write the state
+    // machine — john asked twice why a pair marked `draining` was working. The frame
+    // answers in words; the deadline column beside it is the "until when".
+    const line = renderStatus([view({ state: "draining" })]);
+    expect(line).toContain("working past handoff");
+    expect(line).not.toContain("draining");
+    expect(line).toContain("deadline 2026-07-24T13:30:00Z");
+  });
+
+  it("the translation touches draining only — every other state reads as itself", () => {
+    expect(renderStatus([view({ state: "running" })])).toContain("running");
+    expect(renderStatus([view({ state: "waiting" })])).toContain("waiting");
+    expect(renderStatus([view({ state: "released", reason: "completed" })])).toContain("released");
+    expect(renderStatus([view({ state: "stopped", reason: "forced" })])).toContain("stopped");
+  });
+
   it("a null deadline is printed as a dash", () => {
     expect(renderStatus([view({ deadline: null })])).toContain("deadline —");
   });

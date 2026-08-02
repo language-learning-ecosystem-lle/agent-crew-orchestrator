@@ -6,7 +6,23 @@
  * attempt ceiling) are called out as explicit marks instead of hiding inside the
  * state column.
  */
-import type { LeaseView } from "./lease.js";
+import type { LeaseLifecycle, LeaseView } from "./lease.js";
+
+/**
+ * THE STATE COLUMN, IN THE OPERATOR'S WORDS (thread 019, john) — `draining` is the
+ * word of the state machine, and to a reader who did not write that machine it says
+ * "shutting down". It means the opposite of that: the turn has been passed and the
+ * session is still WORKING, inside the same window, until its process exits by itself.
+ * john read the frame twice and asked both times why a pair marked `draining` was
+ * plainly doing work; the second asking is the repro. Only the column a human reads is
+ * translated — `state` stays `draining` everywhere it is data (the journal, the digest
+ * a box publishes about itself), because a display word in a data file is how two
+ * readers of one fact start to disagree. The "until when" the phrase implies is not
+ * repeated here: the `deadline` column sits right beside it and already carries it.
+ * Every other state reads as itself and is left alone.
+ */
+const stateWord = (state: LeaseLifecycle): string =>
+  state === "draining" ? "working past handoff" : state;
 
 /** A mark on a problem state of the pair — what the operator must not miss. */
 const flag = (view: LeaseView): string => {
@@ -33,7 +49,7 @@ export const renderLeaseLine = (view: LeaseView): string => {
   const cols = [
     view.role,
     view.thread,
-    view.state,
+    stateWord(view.state),
     // The count AND what it is judged against: "attempt 13" left an operator to guess
     // both the ceiling and whether their `--max-attempts` had arrived at all.
     `attempt ${view.attempt}/${view.ceiling}`,
