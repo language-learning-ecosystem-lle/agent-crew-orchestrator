@@ -1723,10 +1723,14 @@ const parkedOnFrom = (
   // repository or it is not, and the door has no business asking GitHub. It lifts by itself
   // when the merge notifier says the number back (`merged-pr`), which is the whole point of
   // the form: nobody has to remember to unpark it, and nobody is called about it meanwhile.
-  if (/^pr:\d+$/.test(value)) return value;
+  // `run:127` passes the same door for the same reason, and is the other half of the vocabulary
+  // (thread 019): `pr:` waits for the BUTTON, `run:` waits for the VERDICT of the round on that
+  // PR. The requirement from 023 is what makes it one change and not two — the writing door and
+  // the reading side learn the value together, or the writer writes what the reader goes blind on.
+  if (/^pr:\d+$/.test(value) || /^run:\d+$/.test(value)) return value;
   if (!input.registry.isKnown(value)) {
     return fail(
-      `--parked-on '${value}' is not listed in the config, and is not an event ('pr:<number>')`,
+      `--parked-on '${value}' is not listed in the config, and is not an event ('pr:<number>' for a merge, 'run:<number>' for the round running on a PR)`,
       2,
     );
   }
@@ -2475,7 +2479,11 @@ const runNotify = async (input: {
   // and what is left is somebody's hand on a merge button. It is passed to the plan by name
   // so that the age pass stays silent about it — otherwise the safety call ("nothing is
   // moving this") would fire on the one class of thread that is moving exactly as intended.
-  const frozen = parkings.flatMap(({ id, parking }) => (parking.kind === "event" ? [id] : []));
+  // A park on a ROUND is not a call either, and for the neighbouring reason: nobody has taken
+  // a decision that somebody is now sitting on — a machine is judging, and the pair moves the
+  // moment it answers (thread 019). It joins the frozen for the same purpose: to keep the age
+  // pass quiet about a thread that is behaving exactly as intended.
+  const frozen = parkings.flatMap(({ id, parking }) => (parking.kind === "person" ? [] : [id]));
   const stalled = parsed.flatMap((thread) => {
     const holder = waitingOnOf(thread);
     if (holder === undefined) return [];

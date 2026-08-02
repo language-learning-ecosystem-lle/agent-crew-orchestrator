@@ -407,6 +407,12 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       const on = parkedOnKind(skip.parkedOn ?? "");
       if (on.kind === "event")
         return `candidate ${pair} skipped: the turn is parked behind the merge of PR #${on.pr} (R27, 'parked-on: ${skip.parkedOn}' in the feed) — it is waiting for an EVENT, not for a launch; it lifts by itself when the merge notifier reports that PR in the thread`;
+      // The third park (thread 019) says what neither of the other two can: the decision is
+      // NOT made and no human is making it — a round is running on the PR, and until its
+      // verdict lands there is no action to raise anybody for. Which is why its lift is the
+      // narrow one: the circuit's own announcements about that round do not count as answers.
+      if (on.kind === "run")
+        return `candidate ${pair} skipped: the turn is parked behind the round running on PR #${on.pr} (R27, 'parked-on: ${skip.parkedOn}' in the feed) — it is waiting for a VERDICT, not for a launch; it lifts by itself with the next message that asks anybody for anything (the announcements of the circuit carry 'expects: none' and do not), and with the merge of that PR`;
       return `candidate ${pair} skipped: the turn is parked behind a decision of ${skip.parkedOn ?? "a person"} (R27, 'parked-on' in the feed) — it is waiting for a PERSON, not for a launch; it lifts by itself with the next substantive message in the thread`;
     }
     case "quota":

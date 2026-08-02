@@ -315,7 +315,8 @@ export const parkedOnOf = (
 ): string | undefined => {
   const parking = parkingOf(thread, mergedElsewhere);
   if (parking === undefined) return undefined;
-  return parking.kind === "person" ? parking.person : `pr:${parking.pr}`;
+  if (parking.kind === "person") return parking.person;
+  return parking.kind === "run" ? `run:${parking.pr}` : `pr:${parking.pr}`;
 };
 
 /**
@@ -345,10 +346,11 @@ export const mergedPrs = (threads: readonly Thread[]): ReadonlySet<number> => {
   return merged;
 };
 
-/** WHAT a raw `parked-on` value names — a person, or the merge of a PR. */
+/** WHAT a raw `parked-on` value names — a person, the merge of a PR, or the round running on one. */
 export type ParkedOn =
   | { readonly kind: "person"; readonly person: string }
-  | { readonly kind: "event"; readonly pr: number };
+  | { readonly kind: "event"; readonly pr: number }
+  | { readonly kind: "run"; readonly pr: number };
 
 /**
  * THE ONE PARSER OF THE FIELD, for every reader that prints a park.
@@ -364,7 +366,10 @@ export type ParkedOn =
  */
 export const parkedOnKind = (raw: string): ParkedOn => {
   const event = /^pr:(\d+)$/.exec(raw);
-  return event === null ? { kind: "person", person: raw } : { kind: "event", pr: Number(event[1]) };
+  if (event !== null) return { kind: "event", pr: Number(event[1]) };
+  const run = /^run:(\d+)$/.exec(raw);
+  if (run !== null) return { kind: "run", pr: Number(run[1]) };
+  return { kind: "person", person: raw };
 };
 
 /**
@@ -382,10 +387,10 @@ export type Parking = {
    * field, and in exactly one more — whether the courier calls a human, which is why the
    * reader has to be able to tell them apart without parsing the value again.
    */
-  readonly kind: "person" | "event";
+  readonly kind: "person" | "event" | "run";
   /** The person of a `kind: "person"` park — the role named in the field. */
   readonly person?: string;
-  /** The PR of a `kind: "event"` park: the merge that lifts it. */
+  /** The PR of a `kind: "event"` or `kind: "run"` park: the merge, or the round, that lifts it. */
   readonly pr?: number;
   /** The stamp of the message that declared it — the identity of the event, not of the thread. */
   readonly since: string;
@@ -409,18 +414,63 @@ export const parkingOf = (
   // This used to be a backwards scan over the messages it was allowed to skip — the doc block
   // above names the five live threads that cost.
   const last = thread.messages.at(-1);
-  const on = last?.fields.parkedOn;
-  if (last === undefined || on === undefined) return undefined;
-  const since = last.fields.date;
-  const question = questionOf(last.text);
+  // THE PARK OF A ROUND IS THE ONE THING INFORMATIONAL TRAFFIC DOES NOT LIFT (thread 019),
+  // so it is looked for BEHIND the announcements of the circuit — and only behind those.
+  const declared =
+    last?.fields.parkedOn === undefined ? runParkOf(thread) : thread.messages.length - 1;
+  const at = declared === undefined ? undefined : thread.messages[declared];
+  const on = at?.fields.parkedOn;
+  if (at === undefined || on === undefined) return undefined;
+  const since = at.fields.date;
+  const question = questionOf(at.text);
   const named = parkedOnKind(on);
   if (named.kind === "person") return { kind: "person", person: on, since, question };
   const { pr } = named;
-  // THE ONE PARK THAT LIFTS WITH NOBODY WRITING AT ALL (thread 023): the merge lands and its
-  // notifier writes into the PR's OWN thread, which is not this one. Without this set the park
-  // would outlive the merge it waits for, in the one feed that cannot see it.
+  // THE PARKS THAT LIFT WITH NOBODY WRITING INTO THIS THREAD AT ALL (thread 023): the merge
+  // lands and its notifier writes into the PR's OWN thread, which is not this one. Without this
+  // set the park would outlive the merge it waits for, in the one feed that cannot see it. A
+  // round is over when its PR is merged too — the verdict it waited for cannot arrive after.
   if (mergedElsewhere?.has(pr) === true) return undefined;
+  if (named.kind === "run") {
+    // The same fact, read from THIS feed, for a caller holding one thread (`mergedElsewhere`
+    // is what a whole-mail caller has, and only that one).
+    const merged = thread.messages
+      .slice(declared === undefined ? 0 : declared + 1)
+      .some((message) => message.fields.mergedPr === pr);
+    return merged ? undefined : { kind: "run", pr, since, question };
+  }
   return { kind: "event", pr, since, question };
+};
+
+/**
+ * WHERE A `run:` PARK STILL STANDS — the index of the message that declared it, or nothing.
+ *
+ * Every other park is honoured only as the LAST statement of the feed, because anybody writing
+ * after it is the answer arriving. A round is the one thing that is not true of: the circuit
+ * announces its OWN events (`from: github`, `expects: none`) about the very round being waited
+ * for, and a round produces two of them — the CI outcome and the verdict — of which only the
+ * second is what the parked role is standing behind. It happened live within minutes of the
+ * form being proposed (thread 019, 2026-08-02): the park of 09:12:57Z was lifted at 09:15:07Z
+ * by "CI по PR #163 — success", the pair was raised at 09:16:13Z, the door refused it because
+ * the review round still had twelve minutes to run, and the session had nothing to do.
+ *
+ * So the walk backwards is over the messages that ASK NOBODY FOR ANYTHING, and stops at the
+ * first message that does — which is the verdict, and is also every other kind of answer. The
+ * wide lift of `parked-on: <person>` is deliberately left alone: it is the safety against a
+ * thread frozen behind a human forever, and the two parks wait for different things.
+ */
+const runParkOf = (thread: Thread): number | undefined => {
+  for (let at = thread.messages.length - 1; at >= 0; at -= 1) {
+    const message = thread.messages[at];
+    if (message === undefined) return undefined;
+    const on = message.fields.parkedOn;
+    // THE FIELD IS READ BEFORE THE SKIP, as it is above (thread 034): a park declared on an
+    // informational message is still a park — and here the message declaring one is itself a
+    // legal step of the walk, so the order is what keeps it from being walked over.
+    if (on !== undefined) return parkedOnKind(on).kind === "run" ? at : undefined;
+    if (message.fields.expects !== "none") return undefined;
+  }
+  return undefined;
 };
 
 /** How wide a question may be before it stops being one line in a phone notification. */

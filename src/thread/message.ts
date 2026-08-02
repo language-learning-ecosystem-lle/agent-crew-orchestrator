@@ -352,16 +352,25 @@ const ROLE = /^[a-z][a-z0-9-]*$/;
 
 /**
  * THE OTHER THING A TURN CAN BE FROZEN BEHIND: an EVENT (thread 023, variant A of john's
- * decision) — today exactly one, the merge of a pull request, written `pr:127`.
+ * decision) — today two of them, both about one pull request and told apart by WHAT THEY WAIT
+ * FOR: `pr:127` waits for the BUTTON (the merge, lifted by the notifier's `merged-pr`), and
+ * `run:127` waits for the VERDICT of the round running on it (lifted by the first message that
+ * asks anybody for anything).
+ *
+ * The prefix the day this opened was said to keep the door open for a second kind of event
+ * without promising one; thread 019 walked through it. The measurement that decided it (curator,
+ * 2026-08-02): four raises of one pair in a morning, three of which could do nothing but look at
+ * a review round that was still running — $4.79 of waiting against $1.64 of work. Neither
+ * existing form says it. `pr:` claims the decision is made and only a hand is missing, and a
+ * person claims a human is deciding at all — the machine is.
  *
  * A namespaced token rather than a bare number, and rather than a second field beside
- * `parked-on`: the two parks are the same state (the turn is here and cannot move) and differ
+ * `parked-on`: the parks are the same state (the turn is here and cannot move) and differ
  * only in what releases them, so they belong in one field a reader can answer "what is this
- * waiting for?" from. The prefix is what keeps the door open for a second kind of event
- * without promising one — a role id can never collide with it, and nothing has to be renamed
- * the day something else becomes observable to the circuit.
+ * waiting for?" from. A role id can never collide with it, and nothing has to be renamed
+ * the day a third thing becomes observable to the circuit.
  */
-const PARK_EVENT = /^pr:\d+$/;
+const PARK_EVENT = /^pr:(?:\d+)$|^run:(?:\d+)$/;
 /** The shape of a worker id — the same one a role id has: an open vocabulary, a fixed spelling. */
 const WORKER = /^[a-z][a-z0-9-]*$/;
 /**
@@ -576,7 +585,7 @@ export const parseMessageFile = (raw: string): Message => {
     const value = raws.get("parked-on");
     if (value !== undefined && !ROLE.test(value) && !PARK_EVENT.test(value)) {
       throw new MessageFormatError(
-        `'parked-on: ${value}' — expected the id of a role or an event ('pr:<number>')`,
+        `'parked-on: ${value}' — expected the id of a role or an event ('pr:<number>', 'run:<number>')`,
       );
     }
     return value;

@@ -245,4 +245,17 @@ describe("describeOrder (R5) — the queue is readable without the code", () => 
     expect(lines[0]).toContain("not raised until the merge notifier reports that PR");
     expect(lines[0]).not.toContain("decision of pr:127");
   });
+
+  it("a park behind a ROUND says a round, and does not promise a merge (thread 019)", () => {
+    // The two event parks differ in one word the operator reads off this row: 'pr:' waits for
+    // the button, 'run:' waits for the verdict. A row calling the second one a merge would be
+    // read as "somebody is not pressing it".
+    const lines = describeOrder(
+      orderCandidates([{ role: "curator", thread: "019-a", priority: "normal" }]),
+      new Map([["019-a", "run:163"]]),
+    );
+    expect(lines[0]).toContain("⏸ PARKED behind the round running on PR #163 (R27)");
+    expect(lines[0]).toContain("the circuit's own announcements do not");
+    expect(lines[0]).not.toContain("merge");
+  });
 });

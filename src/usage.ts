@@ -183,7 +183,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N>] [--merged-pr <n>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--merged-pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -208,6 +208,15 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (023) — a
                               # MERGE, not a person. Nobody is called about it (the decision is made,
                               # what is left is a button), and it lifts on the notifier's '--merged-pr'
+                              # --parked-on run:<n>: the THIRD (019) — the round RUNNING on PR n.
+                              # The one line that tells the two apart: 'pr:' waits for the BUTTON,
+                              # 'run:' waits for the VERDICT. Nobody is called about it either (no
+                              # decision of anybody's is pending — a machine is judging), and its
+                              # lift is the NARROW one: the first message that asks somebody for
+                              # something ('expects' != none), plus the merge of that PR. The
+                              # circuit's own announcements about the very round being waited for
+                              # (CI outcome, merge-notify) carry 'expects: none' and do NOT lift it
+                              # — a round produces two events and only the verdict is an answer
                               # --merged-pr <n>: this message announces that PR as landed — every thread
                               # parked on 'pr:<n>' lifts on it, though the announcement is informational
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in
