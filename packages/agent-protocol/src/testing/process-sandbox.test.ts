@@ -30,8 +30,29 @@ describe("the config home of a process test (R14)", () => {
     expect(sandbox("/home", { PATH: "/only/here" }).PATH).toBe("/only/here");
   });
 
-  it("the two layouts name different homes, and neither is a shared one", () => {
-    expect(configHome("/tmp/base/work")).toBe(join("/tmp/base", "xdg"));
+  it("the two layouts name different homes, and both stay inside the test's own base", () => {
+    expect(configHome("/tmp/base/work")).toBe(join("/tmp/base", "work-xdg"));
     expect(configHomeInside("/tmp/checkout")).toBe(join("/tmp/checkout", "xdg"));
+  });
+
+  it("a checkout that IS an mkdtemp root gets a home of its own, not one shared by the box", () => {
+    // The defect of 2026-08-02: half the callers pass `mkdtempSync(join(tmpdir(), …))`
+    // straight in, and a fixed sibling name put every one of them on `<tmpdir>/xdg` —
+    // shared by every run and by every user of the machine (the self-hosted runner owns
+    // that directory here, and the operator's runs died with EACCES on it).
+    expect(configHome("/tmp/agent-protocol-check-a1b2")).toBe("/tmp/agent-protocol-check-a1b2-xdg");
+    expect(configHome("/tmp/agent-protocol-check-a1b2")).not.toBe(
+      configHome("/tmp/agent-protocol-check-c3d4"),
+    );
+  });
+
+  it("two checkouts of the same run never share a home, whatever the layout", () => {
+    const homes = [
+      configHome("/tmp/agent-protocol-x-1/work"),
+      configHome("/tmp/agent-protocol-x-2/work"),
+      configHome("/tmp/agent-protocol-x-3"),
+      configHomeInside("/tmp/agent-protocol-x-4"),
+    ];
+    expect(new Set(homes).size).toBe(homes.length);
   });
 });
