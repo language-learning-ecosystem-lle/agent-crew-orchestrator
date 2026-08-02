@@ -122,6 +122,8 @@ import {
 } from "./orchestrator/directive.js";
 import {
   agentLiveCheck,
+  type CommitIdentity,
+  commitIdentityCheck,
   type DoctorOutcome,
   type DoctorSkipped,
   doctorPassed,
@@ -3492,6 +3494,42 @@ const probeGit = (args: readonly string[]): DoctorOutcome => {
 };
 
 /**
+ * WHO SIGNED THE COMMITS, tallied the way a human would tally them by hand (`git log
+ * --format='%an <%ae>' | sort | uniq -c`) and for the same reason: the identity is
+ * whatever git recorded, so it is read out of git rather than out of a config.
+ *
+ * BOTH HALVES OF EVERY COMMIT ARE COUNTED — author and committer. They differ exactly
+ * where it matters: a squash on GitHub keeps the role as the author and puts GitHub in
+ * as the committer, and a box with the wrong `user.email` in its config is often wrong
+ * in only one of the two. `--all` rather than HEAD, because a stray identity usually
+ * lives on the branch it was made on, not on the trunk.
+ */
+const probeCommitIdentities = (input: {
+  readonly repo: string;
+  readonly since?: string;
+}): { readonly identities: readonly CommitIdentity[]; readonly error?: string } => {
+  const said = gitAsk([
+    "-C",
+    input.repo,
+    "log",
+    "--all",
+    ...(input.since === undefined ? [] : [`--since=${input.since}`]),
+    "--format=%an <%ae>%n%cn <%ce>",
+  ]);
+  if (said === undefined) return { identities: [], error: "git refused to read the history" };
+  const tally = new Map<string, CommitIdentity>();
+  for (const line of said.split("\n")) {
+    const parsed = /^(.*) <([^>]*)>$/.exec(line.trim());
+    if (parsed === null) continue;
+    const [, name = "", email = ""] = parsed;
+    const key = `${name} <${email}>`;
+    const seen = tally.get(key);
+    tally.set(key, { name, email, commits: (seen?.commits ?? 0) + 1 });
+  }
+  return { identities: [...tally.values()] };
+};
+
+/**
  * WHAT THE BINARY OF A TOOL IS CALLED. Known for the one tool the package raises
  * (`claude-code` → `claude`); for anything else the id is the best guess there is, and
  * a wrong guess costs nothing — it is looked up on PATH, and a miss is a row asking for
@@ -4065,6 +4103,25 @@ const doctor = (argv: readonly string[]): void => {
       push: offline
         ? skipped
         : probeGit(["-C", repo, "push", "--dry-run", "origin", `HEAD:${probeRef}`]),
+    }),
+  );
+
+  // Who signed the history. LOCAL AND CHEAP, so `--offline` does not touch it: the
+  // question is asked of this disk. The window is the operator's, and the row says
+  // which one it measured — the default is a week, which is what "has anything on THIS
+  // box started signing wrong" means; `--identity-all` is the archaeology.
+  const wholeHistory = withRef.includes("--identity-all");
+  const days = positiveInt(withRef, "--identity-window", 7);
+  const identities = probeCommitIdentities({
+    repo,
+    ...(wholeHistory ? {} : { since: `${days} days ago` }),
+  });
+  checks.push(
+    commitIdentityCheck({
+      window: wholeHistory ? "the whole history" : `the last ${days} days`,
+      identities: identities.identities,
+      roles: loaded.registry.ids(),
+      ...(identities.error === undefined ? {} : { error: identities.error }),
     }),
   );
 
