@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_UNIT_NAME, foregroundRefusal, planSystemdUnit } from "./systemd.js";
+import {
+  DEFAULT_UNIT_NAME,
+  foregroundRefusal,
+  interpreterTokens,
+  planSystemdUnit,
+  unitPathDirs,
+} from "./systemd.js";
+
+const LOADER = "/srv/lle/node_modules/tsx/dist/loader.mjs";
 
 const plan = (over: Partial<Parameters<typeof planSystemdUnit>[0]> = {}) =>
   planSystemdUnit({
     repo: "/srv/lle",
     node: "/usr/bin/node",
     cli: "/srv/lle/packages/agent-protocol/src/cli.ts",
+    loader: LOADER,
     home: "/home/op",
     user: "op",
     daemonArgs: ["--ref", "origin/main"],
@@ -17,7 +26,7 @@ describe("the unit is generated from this box", () => {
   it("runs the daemon in the foreground — systemd supervises what it started", () => {
     const unit = plan().unit;
     expect(unit).toContain(
-      "ExecStart=/usr/bin/node /srv/lle/packages/agent-protocol/src/cli.ts orchestrator up --foreground --ref origin/main",
+      `ExecStart=/usr/bin/node --import ${LOADER} /srv/lle/packages/agent-protocol/src/cli.ts orchestrator up --foreground --ref origin/main`,
     );
     expect(unit).toContain("Type=simple");
     expect(unit).toContain("WorkingDirectory=/srv/lle");
@@ -35,6 +44,17 @@ describe("the unit is generated from this box", () => {
     expect(unit).toContain("StartLimitBurst=5");
   });
 
+  it("puts the start limit in [Unit] — in [Service] systemd ignores it and says so only in the journal", () => {
+    // The live repro on `lle-agents` (2026-08-02): "Unknown key name StartLimitIntervalSec
+    // in section 'Service'". The unit came up, the ceiling did not exist, and nothing in
+    // the operator's hands said so.
+    const [, service = ""] = plan().unit.split("\n[Service]");
+    expect(service).not.toContain("StartLimit");
+    const [unitSection = ""] = plan().unit.split("\n[Service]");
+    expect(unitSection).toContain("StartLimitIntervalSec=300");
+    expect(unitSection).toContain("StartLimitBurst=5");
+  });
+
   it("says in the file itself why a flag beats the restart policy", () => {
     // The line exists so that the next person reading the unit does not "fix" the
     // restart policy into 'always' — which would make the off switch stop working.
@@ -48,23 +68,113 @@ describe("the unit is generated from this box", () => {
 
   it("quotes a path with a space instead of handing systemd two tokens", () => {
     const unit = plan({ node: "/opt/my node/bin/node" }).unit;
-    expect(unit).toContain('ExecStart="/opt/my node/bin/node" /srv/lle/');
+    expect(unit).toContain('ExecStart="/opt/my node/bin/node" --import /srv/lle/');
   });
 
-  it("names the human actions, and enabling is one of them", () => {
+  it("names the human actions, and the self-check is the first of them", () => {
     const steps = plan().steps;
-    expect(steps[0]).toBe("systemctl --user daemon-reload");
-    expect(steps[1]).toBe(`systemctl --user enable --now ${DEFAULT_UNIT_NAME}`);
+    // `verify` before `enable`: a key in the wrong section costs nothing to catch here
+    // and is invisible once the thing is running (the live repro of 2026-08-02).
+    expect(steps[0]).toBe(
+      `systemd-analyze --user verify /home/op/.config/systemd/user/${DEFAULT_UNIT_NAME}`,
+    );
+    expect(steps[1]).toBe("systemctl --user daemon-reload");
+    // `reset-failed` BEFORE `enable --now`, and that order is the whole point: a unit
+    // left in `failed` by the previous install refuses the next start with "repeated too
+    // quickly" — an answer about the run before this one (the live repro of 2026-08-02,
+    // where it cost the first minute of the diagnosis).
+    expect(steps[2]).toContain(`systemctl --user reset-failed ${DEFAULT_UNIT_NAME}`);
+    expect(steps[3]).toBe(`systemctl --user enable --now ${DEFAULT_UNIT_NAME}`);
     // Linger is what makes a user unit survive the operator logging out — without it
     // the "resident box" property is quietly missing (see the doc block, decision 1).
-    expect(steps[2]).toBe("loginctl enable-linger op");
+    expect(steps[4]).toBe("loginctl enable-linger op");
     expect(steps.join("\n")).toContain("journalctl --user -u");
+  });
+
+  it("hands its children a PATH — the daemon needs none, the sessions it spawns do", () => {
+    // The third defect of the same live repro (statement of 2026-08-02 19:42:30Z): the
+    // interpreter is absolute and starts fine, and then the first spawn resolves the
+    // agent binary through the CHILD's PATH and finds nothing — with the lease taken.
+    const unit = plan({
+      node: "/home/op/.nvm/versions/node/v24/bin/node",
+      agents: ["/opt/claude/bin/claude"],
+    }).unit;
+    expect(unit).toContain(
+      "Environment=PATH=/home/op/.nvm/versions/node/v24/bin:/opt/claude/bin:/usr/local/bin:/usr/bin:/bin",
+    );
+    // In [Service], where systemd reads it — the mistake this whole PR is about.
+    const [, service = ""] = unit.split("\n[Service]");
+    expect(service).toContain("Environment=PATH=");
+  });
+
+  it("does not restart on exit 2 — 'the arguments do not resolve' is not fixed by trying again", () => {
+    // Without this the unit spends its start limit on a refusal and then reports the
+    // ceiling ("start request repeated too quickly") instead of the fault.
+    const [, service = ""] = plan().unit.split("\n[Service]");
+    expect(service).toContain("RestartPreventExitStatus=2");
+    // It is a [Service] key: in [Unit] it would be an "Unknown key name" and no guard at
+    // all — the very failure mode of the start limit, mirrored.
+    const [unitSection = ""] = plan().unit.split("\n[Service]");
+    expect(unitSection).not.toContain("RestartPreventExitStatus");
   });
 
   it("takes a name of its own — one box may host more than one contour", () => {
     const named = plan({ unitName: "lle-staging.service", unitDir: "/tmp/units" });
     expect(named.path).toBe("/tmp/units/lle-staging.service");
     expect(named.unit).toContain("SyslogIdentifier=lle-staging");
+  });
+});
+
+describe("the PATH of the unit", () => {
+  it("is the interpreter, the agent binaries and the system floor, in that order", () => {
+    expect(
+      unitPathDirs({ node: "/opt/node/bin/node", agents: ["/opt/claude/bin/claude"] }),
+    ).toEqual(["/opt/node/bin", "/opt/claude/bin", "/usr/local/bin", "/usr/bin", "/bin"]);
+  });
+
+  it("says each directory once — node and the agent often live in the same one", () => {
+    expect(unitPathDirs({ node: "/usr/bin/node", agents: ["/usr/bin/claude"] })).toEqual([
+      "/usr/bin",
+      "/usr/local/bin",
+      "/bin",
+    ]);
+  });
+
+  it("takes no directory from a bare binary name — a guess is not a fact", () => {
+    // `claude` in the machine config says WHICH tool, not where it is. Inventing a
+    // directory for it would put a lie in a file that is read by systemd and by nobody
+    // else; the command resolves it first, or says out loud that it could not.
+    expect(unitPathDirs({ node: "/opt/node/bin/node", agents: ["claude"] })).toEqual([
+      "/opt/node/bin",
+      "/usr/local/bin",
+      "/usr/bin",
+      "/bin",
+    ]);
+  });
+});
+
+describe("the interpreter of the unit", () => {
+  it("gives a TypeScript entry point the loader — bare node dies on its first import", () => {
+    expect(
+      interpreterTokens({ node: "/usr/bin/node", cli: "/srv/cli.ts", loader: LOADER }),
+    ).toEqual(["/usr/bin/node", "--import", LOADER, "/srv/cli.ts"]);
+  });
+
+  it("names the loader by ABSOLUTE path, and falls back to the specifier when there is none", () => {
+    // The fallback is resolved by node against WorkingDirectory — it works on a box whose
+    // repo carries its own node_modules and is worth saying out loud, which the command does.
+    expect(interpreterTokens({ node: "/usr/bin/node", cli: "/srv/cli.ts" })).toEqual([
+      "/usr/bin/node",
+      "--import",
+      "tsx",
+      "/srv/cli.ts",
+    ]);
+  });
+
+  it("gives a built entry point NOTHING — the suffix decides, not a flag", () => {
+    expect(
+      interpreterTokens({ node: "/usr/bin/node", cli: "/srv/dist/cli.js", loader: LOADER }),
+    ).toEqual(["/usr/bin/node", "/srv/dist/cli.js"]);
   });
 });
 

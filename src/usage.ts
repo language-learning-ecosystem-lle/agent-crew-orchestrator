@@ -379,6 +379,13 @@ The strict forms below keep every flag they had.
                               # box (the repo, this interpreter, the CLI path) — a unit typed
                               # per box is the first path to go stale. Without --write it prints
                               # the unit and the path it would write and touches nothing
+                              # THE INTERPRETER IS NODE PLUS THE TSX LOADER, by absolute path,
+                              # and the command says which one it wrote: this CLI is TypeScript,
+                              # and bare node in front of a '.ts' entry dies on its first import
+                              # (the live unit of 2026-08-02). A '.js' entry takes no loader
+                              # the FIRST human step printed is 'systemd-analyze --user verify':
+                              # a key in the wrong section is not refused by systemd, it is
+                              # ignored with a journal line — a guarantee silently missing
                               # user-level + linger, NOT root: the sessions read the operator's
                               # machine config (R14) and credentials — 'systemctl --user enable'
                               # and 'loginctl enable-linger' stay HUMAN actions, as they were
