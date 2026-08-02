@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   agentLiveCheck,
+  type CommitIdentity,
+  commitIdentityCheck,
   doctorPassed,
   doctorSummary,
   gitChecks,
+  identityVerdict,
   instanceCheck,
+  MACHINERY_IDENTITY,
   machineConfigCheck,
   mailPresenceCheck,
   maskedRemote,
@@ -262,5 +266,92 @@ describe("the remote url as it may be printed", () => {
   it("touches nothing in a url that carries no credential at all", () => {
     expect(maskedRemote("https://github.com/org/repo.git")).toBe("https://github.com/org/repo.git");
     expect(maskedRemote("/srv/git/repo.git")).toBe("/srv/git/repo.git");
+  });
+});
+
+/**
+ * WHO SIGNED THE HISTORY (thread 019, the identity tail). The rows are judged against
+ * the tally a human would have made by hand — the same one that found "two dev-cores"
+ * — so the cases here are the addresses that measurement actually turned up.
+ */
+describe("commit identity against the canon", () => {
+  const roles = ["john", "curator", "dev-core", "reviewer-pr"];
+  const one = (name: string, email: string, commits = 1): CommitIdentity => ({
+    name,
+    email,
+    commits,
+  });
+
+  it("passes the three kinds the config can derive: a role, the machinery, GitHub", () => {
+    const check = commitIdentityCheck({
+      window: "the last 7 days",
+      roles,
+      identities: [
+        one("dev-core", "dev-core@agents.invalid", 328),
+        one("agent-protocol", MACHINERY_IDENTITY, 1061),
+        one("github-actions[bot]", "41898282+github-actions[bot]@users.noreply.github.com", 1127),
+        one("GitHub", "noreply@github.com", 140),
+      ],
+    });
+    expect(check.status).toBe("ok");
+    expect(check.detail).toContain("the last 7 days");
+  });
+
+  it("names a stray without failing the box — a person's own address is authorized elsewhere", () => {
+    const check = commitIdentityCheck({
+      window: "the last 7 days",
+      roles,
+      identities: [one("dev-core", "dev-core@agents.invalid", 9), one("ivan", "ivan@corp.ru", 5)],
+    });
+    expect(check.status).toBe("info");
+    expect(check.detail).toContain("'ivan <ivan@corp.ru>' (5)");
+    expect(check.detail).toContain("docs/protocol-reference.md");
+  });
+
+  it("says which strays wear a role's name — that is the shape the measurement found", () => {
+    const check = commitIdentityCheck({
+      window: "the last 7 days",
+      roles,
+      identities: [one("curator", "curator@lle.local", 8), one("ivan", "ivan@corp.ru", 500)],
+    });
+    expect(check.status).toBe("info");
+    expect(check.detail).toContain("1 of them wear a declared role's NAME");
+    expect(check.detail).toContain("'curator <curator@lle.local>' (8)");
+  });
+
+  it("fails on a name inside the role namespace that answers to no declared role", () => {
+    const check = commitIdentityCheck({
+      window: "the whole history",
+      roles,
+      identities: [one("dev-mobile", "dev-mobile@agents.invalid", 3)],
+    });
+    expect(check.status).toBe("fail");
+    expect(check.detail).toContain("dev-mobile@agents.invalid");
+    expect(check.detail).toContain("no declared role");
+  });
+
+  it("counts the tail out loud instead of cutting the listing silently", () => {
+    const many = Array.from({ length: 13 }, (_, index) =>
+      one(`box-${index}`, `box-${index}@hand.local`, 13 - index),
+    );
+    const check = commitIdentityCheck({ window: "the whole history", roles, identities: many });
+    expect(check.detail).toContain("and 3 more");
+  });
+
+  it("is a fact, not a verdict, when git could not be read at all", () => {
+    const check = commitIdentityCheck({
+      window: "the last 7 days",
+      roles,
+      identities: [],
+      error: "git refused to read the history",
+    });
+    expect(check.status).toBe("info");
+    expect(check.detail).toContain("not asked");
+  });
+
+  it("judges an address by case-folded email — git does not fold it, a reader does", () => {
+    expect(identityVerdict({ email: "Dev-Core@Agents.Invalid", roles })).toBe("role");
+    expect(identityVerdict({ email: "curator@lle.local", roles })).toBe("unrecognised");
+    expect(identityVerdict({ email: MACHINERY_IDENTITY, roles })).toBe("machinery");
   });
 });

@@ -241,6 +241,156 @@ export const gitChecks = (input: {
 ];
 
 /**
+ * WHO SIGNED THE COMMITS OF THIS REPOSITORY (thread 019, the identity tail).
+ *
+ * The measurement behind it: the GitHub interface showed "two dev-cores", and a tally
+ * over the whole history explained why — beside the canonical `<role>@agents.invalid`
+ * there were `dev-core@lle.local`, `@agents.local`, `@agent.local`, `@local` and a
+ * personal address, each a box or an epoch where the signing was set by hand and set
+ * differently. Nothing breaks from it, which is exactly why nobody notices: the
+ * identity of a commit is read months later, by a human trying to tell a session's
+ * work from the machinery's, and by then the wrong name is history and history is not
+ * rewritten. So it is asked while it is still cheap to fix — on the box, by doctor.
+ *
+ * WHAT IS THE CANON, and why most of it is DERIVED rather than listed: the roles of the
+ * project are in the config, so `<role>@agents.invalid` needs no dictionary; the
+ * machinery signs `orchestrator@agents.invalid` (a deliberate second identity, not a
+ * defect — "session vs orchestrator" is worth telling apart); GitHub's own writes come
+ * from `@users.noreply.github.com` and `noreply@github.com`. Everything else this
+ * package CANNOT judge — a human's own named address is authorized by a project, not
+ * by a schema — so it is NAMED and handed to the reader, together with the dictionary
+ * that says which of them a project has blessed.
+ *
+ * WHY THE STRAY IS A DOT AND THE IMPOSTOR IS A CROSS. A dot is the module's word for a
+ * fact nobody promised anything about, and an unrecognised address is precisely that:
+ * the circuit works, and the address may be a legitimate hand. An address inside
+ * `@agents.invalid` that is NOT a declared role is the other thing — that namespace
+ * exists so a commit can be read as "this role did it", and a name in it that no role
+ * answers to means some box is signing as somebody who does not exist.
+ */
+export type CommitIdentity = {
+  readonly name: string;
+  readonly email: string;
+  readonly commits: number;
+};
+
+/** The namespace the circuit signs in: a role, or the machinery itself. */
+export const ROLE_IDENTITY_DOMAIN = "agents.invalid";
+export const MACHINERY_IDENTITY = `orchestrator@${ROLE_IDENTITY_DOMAIN}`;
+
+export type IdentityVerdict = "role" | "machinery" | "github" | "impostor" | "unrecognised";
+
+/**
+ * One address against the canon. Case is folded because git does not: the same box
+ * spelling its email with a capital would otherwise read as a second identity.
+ */
+export const identityVerdict = (input: {
+  readonly email: string;
+  readonly roles: readonly string[];
+}): IdentityVerdict => {
+  const email = input.email.trim().toLowerCase();
+  if (email === MACHINERY_IDENTITY) return "machinery";
+  if (email.endsWith(`@${ROLE_IDENTITY_DOMAIN}`)) {
+    const local = email.slice(0, -`@${ROLE_IDENTITY_DOMAIN}`.length);
+    return input.roles.some((role) => role.toLowerCase() === local) ? "role" : "impostor";
+  }
+  if (email === "noreply@github.com" || email.endsWith("@users.noreply.github.com")) {
+    return "github";
+  }
+  return "unrecognised";
+};
+
+/**
+ * The addresses, loudest first, and NEVER SILENTLY CUT: a row that shows six of eleven
+ * without saying so reads as "there are six". Ten is where a terminal line stops being
+ * read at all; the tail is counted out loud and `--identity-all` prints the archaeology.
+ */
+const LISTING_CAP = 10;
+
+const listing = (identities: readonly CommitIdentity[]): string => {
+  const sorted = [...identities].sort(
+    (a, b) => b.commits - a.commits || a.email.localeCompare(b.email),
+  );
+  const shown = sorted
+    .slice(0, LISTING_CAP)
+    .map((identity) => `'${identity.name} <${identity.email}>' (${identity.commits})`)
+    .join(", ");
+  const rest = sorted.length - LISTING_CAP;
+  return rest > 0 ? `${shown}, and ${rest} more` : shown;
+};
+
+/**
+ * THE SHAPE THE MEASUREMENT STARTED FROM — "two dev-cores in the GitHub interface":
+ * a DECLARED ROLE'S NAME over an address outside the role namespace. It is not a cross
+ * (history cannot be fixed, and a stray that landed a week ago would keep a
+ * commissioned box red until it aged out of the window), but it is not the same fact as
+ * a person's own address either: nobody is called `dev-core` except dev-core, so the
+ * row says which of the strays are of this kind.
+ */
+const roleNamed = (
+  identities: readonly CommitIdentity[],
+  roles: readonly string[],
+): readonly CommitIdentity[] =>
+  identities.filter((identity) =>
+    roles.some((role) => role.toLowerCase() === identity.name.trim().toLowerCase()),
+  );
+
+/**
+ * THE ROW. `window` is said in the words the operator typed (`the last 7 days`, `the
+ * whole history`), because a row that names a window a flag can move must say which
+ * window it measured — a green "all in the canon" over a day is not the same promise
+ * as one over a year.
+ */
+export const commitIdentityCheck = (input: {
+  readonly window: string;
+  readonly identities: readonly CommitIdentity[];
+  readonly roles: readonly string[];
+  readonly error?: string;
+  readonly dictionary?: string;
+}): PreflightCheck => {
+  const name = "git: commit identity";
+  if (input.error !== undefined) {
+    return { name, status: "info", detail: `not asked — ${input.error}` };
+  }
+  if (input.identities.length === 0) {
+    return { name, status: "info", detail: `${input.window} — no commits to judge` };
+  }
+  const verdicts = input.identities.map((identity) => ({
+    identity,
+    verdict: identityVerdict({ email: identity.email, roles: input.roles }),
+  }));
+  const of = (kind: IdentityVerdict): readonly CommitIdentity[] =>
+    verdicts.filter((row) => row.verdict === kind).map((row) => row.identity);
+  const impostors = of("impostor");
+  const strays = of("unrecognised");
+  const dictionary = input.dictionary ?? "docs/protocol-reference.md";
+  if (impostors.length > 0) {
+    return {
+      name,
+      status: "fail",
+      detail: `${input.window} — ${listing(impostors)} sign inside '@${ROLE_IDENTITY_DOMAIN}' and answer to no declared role: some box is committing as a role that does not exist; fix its 'user.email' (the canon is in ${dictionary})`,
+    };
+  }
+  if (strays.length > 0) {
+    const wearing = roleNamed(strays, input.roles);
+    const shape =
+      wearing.length === 0
+        ? ""
+        : ` ${wearing.length} of them wear a declared role's NAME over an address outside '@${ROLE_IDENTITY_DOMAIN}' (${listing(wearing)}) — that is the "two dev-cores" shape: a checkout whose 'user.email' was set by hand;`;
+    return {
+      name,
+      status: "info",
+      detail: `${input.window} — outside the canon this package can derive: ${listing(strays)}.${shape} the rest is either a person's own address (authorized by the dictionary in ${dictionary}) or another box signing by hand — this one cannot tell, the dictionary can`,
+    };
+  }
+  return {
+    name,
+    status: "ok",
+    detail: `${input.window} — ${input.identities.length} identities, every one canonical (roles, ${MACHINERY_IDENTITY}, GitHub)`,
+  };
+};
+
+/**
  * The mail checkout, as a box question rather than a run question: is it there at all.
  * Its FRESHNESS is judged by `mailCheckoutVerdict`, which the caller passes straight
  * through — the daemon's refusal and doctor's row must be the same sentence, or a

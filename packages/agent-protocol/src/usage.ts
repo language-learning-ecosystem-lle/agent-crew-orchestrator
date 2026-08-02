@@ -33,7 +33,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # WITHOUT --write it decides and prints and touches nothing; a
                               # value already there is a 'keep' and is not rewritten even with it
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
-  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
+  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all]
                               # IS THIS BOX COMMISSIONED (thread 019, the operator tail): the
                               # checklist of a machine that is supposed to raise roles unattended —
                               # both configs, which instance it is, the agent binary AND A LIVE
@@ -43,6 +43,13 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # it REACHES THE NETWORK and SPENDS ONE AGENT CALL, which is the
                               # point — those facts are in no file. --offline leaves them unasked
                               # and says so in the rows, never passes them
+                              # WHO SIGNED THE COMMITS is asked too, of this disk and for free:
+                              # roles sign '<role>@agents.invalid', the machinery
+                              # 'orchestrator@agents.invalid', GitHub its own — anything else is
+                              # NAMED with its count, and a name inside '@agents.invalid' that
+                              # answers to no declared role is a cross, not a note
+                              # --identity-window <days>: how far back (7 by default); --identity-all:
+                              # the whole history, which is the archaeology rather than the checklist
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
   agent-protocol init         [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <id>] [--agent <kind>] [--exec <path>] [--operator <role>] [--secrets <path>] [--no-doctor] [--offline] [--write]
                               # COMMISSIONING A BOX, the other half of 'doctor' (thread 019): the
