@@ -34,7 +34,15 @@ const CONFIG = {
   mail: { branch: "comms", dir: "agent-comms" },
   // The ref of the operator's five comes from HERE, not from a hand-typed flag: the unit
   // is written once and must not carry somebody's terminal in its ExecStart.
-  orchestrator: { state: ".orchestrator", mailCheckout: "mailco", ref: "HEAD" },
+  // `workdir.worktrees` is what makes a directory a ROLE'S workspace — the sign the
+  // install guard reads (systemd.ts, decision 7), the same one `zones check
+  // --role-from-workspace` reads. Without it declared no tree is anybody's.
+  orchestrator: {
+    state: ".orchestrator",
+    mailCheckout: "mailco",
+    ref: "HEAD",
+    workdir: { branch: "main", worktrees: ".worktrees" },
+  },
   instances: [{ id: "main", roles: ["dev-core"] }],
   roles: [
     {
@@ -289,5 +297,120 @@ describe("orchestrator systemd install", () => {
 
     expect(stray.status).toBe(2);
     expect(`${stray.stdout}${stray.stderr}`).toContain("--nonsense");
+  });
+
+  it("REFUSES inside a ROLE'S workspace — the tree the circuit resets and locks (R17)", () => {
+    // THE FINDING THAT DID NOT FIT THE PREVIOUS CIRCLE (thread 019, msg 2026-08-02, §4):
+    // `WorkingDirectory` resolves to the home checkout from anywhere (R26), but ExecStart
+    // names the entry point of the tree the command was typed in. In a role's workspace
+    // that unit is well-formed and doomed — the circuit puts that tree back on base,
+    // locks it and removes it. The assertion is the disk: a refusal that still wrote the
+    // file would be no refusal at all.
+    const repo = box();
+    const workspace = join(repo, ".worktrees", "dev-core");
+    execFileSync("git", ["-C", repo, "worktree", "add", "-q", "--detach", workspace]);
+    const dir = join(repo, "units");
+
+    const done = spawnSync(TSX, [CLI, "orchestrator", "systemd", "install", "--unit-dir", dir], {
+      cwd: workspace,
+      encoding: "utf8",
+      timeout: 60_000,
+      env: sandbox(configHome(repo), {}),
+    });
+
+    expect(done.status).toBe(2);
+    const said = `${done.stdout}${done.stderr}`;
+    // The three things the statement asks the refusal to name.
+    expect(said).toContain(workspace);
+    expect(said).toContain("role 'dev-core'");
+    expect(said).toContain(repo);
+    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(false);
+
+    // ...and the same install from the home checkout is untouched by the guard.
+    const home = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
+
+    expect(home.status).toBe(0);
+    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(true);
+  });
+
+  it("a linked worktree that is NOBODY'S workspace is NOTED and written, not refused", () => {
+    // The review of #172: the mail checkout is a linked worktree and is NOT put back on
+    // base, locked or removed by anything — a refusal there would hand the operator a
+    // reason that is false. The guard is the declared workspaces, so this tree passes,
+    // and the fact that ExecStart names it is said out loud instead of being silent.
+    const repo = box();
+    const mail = join(repo, ".worktrees", "comms");
+    execFileSync("git", ["-C", repo, "worktree", "add", "-q", "--detach", mail]);
+    const dir = join(repo, "units");
+
+    const done = spawnSync(
+      TSX,
+      [CLI, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write"],
+      { cwd: mail, encoding: "utf8", timeout: 60_000, env: sandbox(configHome(repo), {}) },
+    );
+
+    expect(done.status).toBe(0);
+    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(true);
+    const said = `${done.stdout}${done.stderr}`;
+    expect(said).toContain(mail);
+    expect(said).toContain("not the workspace of any role");
+    // ...and it does NOT claim R17 governs this tree — that is the sentence being fixed.
+    expect(said).not.toContain("removes it before every package (R17)");
+  });
+
+  it("judges the same and prints the same with and without --write (the dry run is real)", () => {
+    // The statement §4: "without --write — the same judgement and the same print". A dry
+    // run that passes where the real one refuses is worse than no dry run.
+    const repo = box();
+    const workspace = join(repo, ".worktrees", "dev-core");
+    execFileSync("git", ["-C", repo, "worktree", "add", "-q", "--detach", workspace]);
+    const dir = join(repo, "units");
+    const args = ["orchestrator", "systemd", "install", "--unit-dir", dir];
+    const at = (extra: string[]) =>
+      spawnSync(TSX, [CLI, ...args, ...extra], {
+        cwd: workspace,
+        encoding: "utf8",
+        timeout: 60_000,
+        env: sandbox(configHome(repo), {}),
+      });
+
+    const dry = at([]);
+    const wet = at(["--write"]);
+
+    expect(dry.status).toBe(2);
+    expect(wet.status).toBe(2);
+    expect(`${dry.stdout}${dry.stderr}`).toBe(`${wet.stdout}${wet.stderr}`);
+    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(false);
+  });
+
+  it("a closed pipe ends the command quietly — `install | head -1` is not a crash", () => {
+    // The operator's tail of thread 019: `status | head` printed a stack trace over the
+    // lines it had just produced. EPIPE is the reader leaving, and a shell ends on it
+    // silently; the command must do the same, with no trace and a zero status.
+    const repo = box();
+
+    const piped = spawnSync(
+      "/bin/sh",
+      ["-c", `"$TSX" "$CLI" orchestrator systemd install --unit-dir "$DIR" | head -1`],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        timeout: 60_000,
+        env: {
+          ...sandbox(configHome(repo), {}),
+          TSX,
+          CLI,
+          DIR: join(repo, "units"),
+        },
+      },
+    );
+
+    // `head` took its one line and left; the command that kept printing into the closed
+    // pipe ends with the same status as one nobody interrupted.
+    expect(piped.status).toBe(0);
+    expect(piped.stdout.split("\n").filter((line) => line !== "")).toHaveLength(1);
+    expect(piped.stderr).not.toContain("EPIPE");
+    // A stack trace is the whole symptom — a frame line is what the operator saw.
+    expect(piped.stderr).not.toMatch(/^\s+at /m);
   });
 });

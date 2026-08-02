@@ -82,6 +82,26 @@
  * quickly" — the ceiling talking, not the fault. That is how the first live diagnosis on
  * `lle-agents` lost its opening minute. With it, the unit stops on the first refusal and
  * `status` shows the real exit; a genuine crash (any other code) still restarts.
+ *
+ * 7. THE UNIT IS NOT GENERATED FROM A ROLE'S WORKSPACE (found while the fixes above were
+ * on the wire, thread 019). `WorkingDirectory` is the machine's HOME checkout — since R26
+ * it is resolved through `--git-common-dir` and answers the same from every worktree — but
+ * `ExecStart` names the entry point and the loader BY ABSOLUTE PATH, and those come from
+ * the checkout the command was typed in. Typed inside a role's workspace the two disagree:
+ * the resident would be raised out of `…/.worktrees/<role>`, a tree the circuit itself puts
+ * back on base and locks before every package (R17) and removes when it cleans up. The unit
+ * would look perfectly well-formed and would break on the day the workspace moved — the
+ * same class as decisions 4–6, which is why it refuses rather than warns, and refuses
+ * rather than silently rewriting the path: the checkout that was typed in is the one whose
+ * `node_modules` produced this loader, and pointing the unit at another tree would name
+ * files this command never saw.
+ *
+ * WHAT IS A ROLE'S WORKSPACE is read from `orchestrator.workdir.worktrees` through
+ * `workspaceRoleOf` — the same mechanism as `zones check --role-from-workspace`, and the
+ * same for the same reason: two guards answering "whose tree is this" differently in the
+ * same directory would be worse than either being wrong. Any OTHER linked worktree (the
+ * mail checkout, the operator's own) is passed with a note, because R17 does not govern it
+ * and a refusal there would state a reason that is false.
  */
 
 import { homedir } from "node:os";
@@ -159,6 +179,96 @@ export type SystemdUnitPlan = {
 };
 
 export const DEFAULT_UNIT_NAME = "lle-orchestrator.service";
+
+/** What `systemd install` may do from the checkout it was typed in — see below. */
+export type WorktreeInstallVerdict =
+  /** Nothing to say: the home checkout, an installed package, another repository. */
+  | { readonly kind: "ok" }
+  /** A linked worktree that is NOT a role's — passed, and the fact is said out loud. */
+  | { readonly kind: "note"; readonly message: string }
+  /** A role's workspace: the unit would name a tree the circuit owns. Exit 2. */
+  | { readonly kind: "refusal"; readonly message: string };
+
+/**
+ * WHY THIS INSTALL MUST NOT HAPPEN HERE (decision 7) — and why the answer has THREE
+ * values rather than two.
+ *
+ * Two facts can each put the unit's `ExecStart` in a tree that is not the home checkout,
+ * and they are asked separately because the cure differs:
+ *
+ * - the command was TYPED in a linked worktree (`cwdCheckout`) — the entry point that
+ *   goes into `ExecStart` is that tree's;
+ * - the ENTRY POINT itself came from a linked worktree of this same repository, whatever
+ *   the operator's directory was.
+ *
+ * WHAT MAKES IT A REFUSAL IS NOT "a linked worktree" BUT "a role's workspace", and that
+ * is the statement of the thread (curator, 2026-08-02 §4): the sign is the same mechanism
+ * `zones check --role-from-workspace` already uses — `orchestrator.workdir.worktrees`,
+ * resolved by `workspaceRoleOf`. Only such a tree is put back on base, locked and removed
+ * under the daemon before every package (R17), and only about such a tree may the message
+ * say so. A linked worktree that is nobody's workspace (the mail checkout, the operator's
+ * own, a tree made by hand) is passed with a NOTE: it is not what R17 governs, and a
+ * refusal there would tell the operator a reason that is not true (the review of #172).
+ *
+ * `cwdCheckout` is `undefined` when the home was not derived from the working directory
+ * (`--repo` was typed): then the two disagreeing is what the operator asked for. The entry
+ * pair is `undefined` when the entry is not in a git repository at all — an installed
+ * package is a legitimate way to run this and is nothing like a worktree.
+ */
+export const worktreeInstallVerdict = (input: {
+  /** `WorkingDirectory` of the unit: the machine's home checkout (R26). */
+  readonly home: string;
+  /** Top level of the checkout the command was typed in, when the home came from it. */
+  readonly cwdCheckout?: string;
+  /** Whose workspace that checkout is (`workspaceRoleOf`), when it is one at all. */
+  readonly cwdRole?: string;
+  /** Top level of the checkout the CLI entry point lives in, when it is in one. */
+  readonly entryCheckout?: string;
+  /** The home checkout of THAT tree — equal to `home` when it is a worktree of this repo. */
+  readonly entryHome?: string;
+  /** Whose workspace the entry's checkout is, when it is one at all. */
+  readonly entryRole?: string;
+  /** The entry point itself, named in the message. */
+  readonly entry: string;
+  /** Whether the project declares `orchestrator.workdir.worktrees` at all — said in the note. */
+  readonly workspacesDeclared?: boolean;
+}): WorktreeInstallVerdict => {
+  // The three things the refusal owes the operator (statement §4): whose workspace this
+  // is, why a RESIDENT unit may not come out of it, and the path to type it in instead.
+  const cure = `run it in ${input.home} — the checkout the unit's WorkingDirectory names`;
+  const why = `the circuit puts a role's workspace back on base, locks it and removes it before every package (R17), so the resident unit would be started out of a tree that is rewritten under it`;
+  const notWorkspace =
+    input.workspacesDeclared === false
+      ? "this project declares no role workspaces (orchestrator.workdir.worktrees)"
+      : "it is not the workspace of any role (orchestrator.workdir.worktrees)";
+  const notes: string[] = [];
+
+  if (input.cwdCheckout !== undefined && input.cwdCheckout !== input.home) {
+    if (input.cwdRole !== undefined) {
+      return {
+        kind: "refusal",
+        message: `this is '${input.cwdCheckout}', the workspace of role '${input.cwdRole}' — a unit generated here would name '${input.entry}' in its ExecStart, and ${why}; ${cure}`,
+      };
+    }
+    notes.push(
+      `agent-protocol: '${input.cwdCheckout}' is a linked worktree of ${input.home} and ${notWorkspace} — the R17 guard does not apply, and the unit will name '${input.entry}' in its ExecStart; check that this tree is one that stays`,
+    );
+  }
+
+  if (input.entryHome === input.home && input.entryCheckout !== input.home) {
+    if (input.entryRole !== undefined) {
+      return {
+        kind: "refusal",
+        message: `the entry point of this command, '${input.entry}', lives in '${input.entryCheckout}', the workspace of role '${input.entryRole}' — ${why}; ${cure}`,
+      };
+    }
+    notes.push(
+      `agent-protocol: the entry point of this command, '${input.entry}', lives in the linked worktree '${input.entryCheckout}' of ${input.home}, and ${notWorkspace} — the R17 guard does not apply, and the unit's ExecStart will name it`,
+    );
+  }
+
+  return notes.length === 0 ? { kind: "ok" } : { kind: "note", message: notes.join("\n") };
+};
 
 /**
  * The unit, from the facts of this box. `daemonArgs` are the daemon's own flags (the

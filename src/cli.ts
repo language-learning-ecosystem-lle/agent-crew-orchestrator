@@ -309,7 +309,11 @@ import {
   scopeFlagIssues,
 } from "./orchestrator/scope.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
-import { foregroundRefusal, planSystemdUnit } from "./orchestrator/systemd.js";
+import {
+  foregroundRefusal,
+  planSystemdUnit,
+  worktreeInstallVerdict,
+} from "./orchestrator/systemd.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
@@ -347,6 +351,7 @@ import {
   type WorkspaceFacts,
   type WorkspacePlan,
   workspacePath,
+  workspaceRoleOf,
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
 import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
@@ -426,6 +431,21 @@ import {
   WriteRefusedError,
 } from "./thread/write.js";
 import { USAGE } from "./usage.js";
+
+/**
+ * A CLOSED PIPE IS THE READER LEAVING, NOT A CRASH (thread 019, `status | head`). `head`
+ * closes its end after the tenth line, node turns the next write into an EPIPE error
+ * event on the stream, and an unhandled one prints a stack trace where the operator asked
+ * for ten lines — the command looks broken while it did exactly what was asked. A shell
+ * ends quietly on SIGPIPE and this reproduces that: EPIPE exits 0, everything else on
+ * these streams is a real error and is left to throw.
+ */
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code !== "EPIPE") throw error;
+    process.exit(0);
+  });
+}
 
 const out = (line: string): void => {
   process.stdout.write(`${line}\n`);
@@ -5068,11 +5088,71 @@ const commandPath = (exec: string): string | undefined => {
   }
 };
 
+/** `repoOf`/`homeOf` for a path that may not be in a repository at all — see decision 7. */
+const checkoutOf = (at: string): string | undefined => {
+  try {
+    return execFileSync("git", ["-C", at, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    return undefined;
+  }
+};
+const homeOrNone = (at: string): string | undefined => {
+  try {
+    return circuitHome(at);
+  } catch {
+    return undefined;
+  }
+};
+
 const orchestratorSystemdInstall = (argv: readonly string[]): void => {
   // The ref of the daemon's own argv comes from the working tree, like the operator's
   // five — a unit is written once and must not carry a ref somebody typed by hand.
   const args = withOperatorRef(argv);
-  const repo = flag(args, "--repo") ?? homeOf(process.cwd());
+  const typedRepo = flag(args, "--repo");
+  const repo = typedRepo ?? homeOf(process.cwd());
+  // A UNIT GENERATED FROM A ROLE'S WORKSPACE IS A UNIT THAT BREAKS LATER (systemd.ts,
+  // decision 7): `WorkingDirectory` is the home checkout from anywhere, but the entry
+  // point and the loader are the typed-in tree's — and a ROLE'S tree is the circuit's to
+  // reset, lock and remove. Whose tree it is comes from the declared workspaces
+  // (`orchestrator.workdir.worktrees`), through the same `workspaceRoleOf` that
+  // `zones check --role-from-workspace` uses — the statement of thread 019 §4 asks for
+  // that mechanism by name, and a second answer to the same question would be a second
+  // truth. Any other linked worktree passes with a note, exactly as the zones guard does.
+  // The judgement happens BEFORE the plan, and it is the same judgement and the same
+  // print with and without `--write`: a dry run that disagrees with the real one is not
+  // a dry run.
+  const entry = process.argv[1] as string;
+  const entryCheckout = checkoutOf(dirname(entry));
+  const entryHome = homeOrNone(dirname(entry));
+  const policy = policyFrom(args).config;
+  const workspaces = policy.orchestrator?.workdir?.worktrees;
+  const roleIds = policy.roles.map((role) => role.id);
+  const workspaceOf = (checkout: string | undefined): string | undefined =>
+    checkout === undefined
+      ? undefined
+      : workspaceRoleOf({
+          checkout,
+          repo,
+          ...(workspaces === undefined ? {} : { worktrees: workspaces }),
+          roles: roleIds,
+        });
+  const cwdCheckout = typedRepo === undefined ? repoOf(process.cwd()) : undefined;
+  const cwdRole = workspaceOf(cwdCheckout);
+  const entryRole = entryHome === repo ? workspaceOf(entryCheckout) : undefined;
+  const verdict = worktreeInstallVerdict({
+    home: repo,
+    ...(cwdCheckout === undefined ? {} : { cwdCheckout }),
+    ...(cwdRole === undefined ? {} : { cwdRole }),
+    ...(entryCheckout === undefined ? {} : { entryCheckout }),
+    ...(entryHome === undefined ? {} : { entryHome }),
+    ...(entryRole === undefined ? {} : { entryRole }),
+    entry,
+    workspacesDeclared: workspaces !== undefined,
+  });
+  if (verdict.kind === "refusal") fail(verdict.message, 2);
+  if (verdict.kind === "note") err(verdict.message);
   const typed = flag(args, "--daemon-args");
   const daemonArgs =
     typed === undefined
@@ -8394,13 +8474,16 @@ const zonesCheck = (argv: readonly string[]): void => {
       return;
     }
     const here = repo.replace(/\/+$/, "");
-    const candidate = here.slice(here.lastIndexOf("/") + 1);
-    const expected = workspacePath({
+    // The SAME `workspaceRoleOf` that `systemd install` asks (systemd.ts, decision 7):
+    // one function, so that two guards can never answer "whose tree is this" differently
+    // while standing in the same directory.
+    const candidate = workspaceRoleOf({
+      checkout: here,
       repo: repoOf(`${here}/..`, gitEnvOutsideHook()),
       worktrees,
-      role: candidate,
+      roles: loaded.config.roles.map((role) => role.id),
     });
-    if (expected !== here || policyRole(loaded.config, candidate) === undefined) {
+    if (candidate === undefined) {
       out(`agent-protocol: zones — '${here}' is not a role workspace, the guard does not apply`);
       return;
     }
