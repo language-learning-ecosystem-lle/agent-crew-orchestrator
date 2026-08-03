@@ -207,16 +207,22 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # asks nobody for anything, and a park says the thread waits for a person
                               # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (023) — a
                               # MERGE, not a person. Nobody is called about it (the decision is made,
-                              # what is left is a button), and it lifts on the notifier's '--merged-pr'
+                              # what is left is a button)
                               # --parked-on run:<n>: the THIRD (019) — the round RUNNING on PR n.
                               # The one line that tells the two apart: 'pr:' waits for the BUTTON,
                               # 'run:' waits for the VERDICT. Nobody is called about it either (no
-                              # decision of anybody's is pending — a machine is judging), and its
-                              # lift is the NARROW one: the first message that asks somebody for
-                              # something ('expects' != none), plus the merge of that PR. The
-                              # circuit's own announcements about the very round being waited for
-                              # (CI outcome, merge-notify) carry 'expects: none' and do NOT lift it
-                              # — a round produces two events and only the verdict is an answer
+                              # decision of anybody's is pending — a machine is judging)
+                              # BOTH EVENT PARKS LIFT NARROWLY, by one walk (023, 2026-08-03): a
+                              # message that MOVES somebody, plus the merge of that PR announced
+                              # anywhere in the mail. Two header facts move somebody, and the
+                              # trace class of the circuit carries neither:
+                              #   * 'expects' != none — it asks somebody for something (the verdict);
+                              #   * 'waiting-on: <role>' — it hands the turn over without asking.
+                              # The second IS the actionable CI outcome (048): the notifier names
+                              # the role on 'failure'/'timed_out'/… and leaves the field out on
+                              # 'success'/'cancelled'/… A green trace still lifts nothing — that
+                              # is the case the narrow form was built for; a red one that froze a
+                              # pair for 3.5 hours with work in front of it is what widened it
                               # --merged-pr <n>: this message announces that PR as landed — every thread
                               # parked on 'pr:<n>' lifts on it, though the announcement is informational
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in

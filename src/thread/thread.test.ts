@@ -456,6 +456,19 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
     } as Message["fields"],
     text,
   });
+  // The trace class of the circuit: it asks nobody for anything AND names no holder of the
+  // turn — the two things the narrow lift reads (023). `waiting-on` is left OUT, exactly as
+  // `ci-outcome.yml` leaves it out on `success`/`cancelled`.
+  const announcement = (fields: Partial<Message["fields"]>, text: string): Message => ({
+    fields: {
+      from: "github",
+      worker: "gh-action",
+      date: "2026-07-31T12:30:00Z",
+      expects: "none",
+      ...fields,
+    } as Message["fields"],
+    text,
+  });
   const thread = (messages: readonly Message[]): Thread => ({
     id: "023-x",
     meta: { title: "t", participants: ["curator", "dev-core"], status: "open" },
@@ -473,50 +486,44 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
     });
   });
 
-  it("the merge notifier lifts it, though the announcement is informational", () => {
+  it("THE MERGE IT WAITS FOR lifts it, though the announcement is informational", () => {
     const parked = message({ parkedOn: "pr:127" });
-    const merged = message(
-      {
-        from: "github",
-        worker: "gh-action",
-        expects: "none",
-        date: "2026-07-31T12:30:00Z",
-        mergedPr: 127,
-      },
-      "PR #127 merged",
-    );
+    const merged = announcement({ mergedPr: 127 }, "PR #127 merged");
     expect(parkingOf(thread([parked, merged]))).toBeUndefined();
   });
 
-  it("somebody else's merge lifts it too — anything written after the park lifts it", () => {
-    // The narrow reading ("only the merge of THIS PR lifts an event park") is the same shape
-    // that froze 046, and it fails the same way: the price of lifting early is one raise that
-    // finds nothing and parks again, the price of holding is a thread nobody sees.
+  it("somebody else's merge does NOT lift it — the lift is narrow, as the round's is (023)", () => {
+    // The wide lift was the whole shape of this park until 2026-08-03, and curator's statement
+    // of that morning narrowed it to the round's: an announcement about ANOTHER PR is not the
+    // button being pressed, and the raise it bought read four files and parked again.
     const parked = message({ parkedOn: "pr:127" });
-    const merged = message(
-      {
-        from: "github",
-        worker: "gh-action",
-        expects: "none",
-        date: "2026-07-31T12:30:00Z",
-        mergedPr: 129,
-      },
-      "PR #129 merged",
+    const merged = announcement({ mergedPr: 129 }, "PR #129 merged");
+    expect(parkingOf(thread([parked, merged]))?.pr).toBe(127);
+  });
+
+  it("an outcome of the circuit does not lift it either — it asks nobody for anything", () => {
+    const parked = message({ parkedOn: "pr:127" });
+    const ci = announcement({}, "✅ CI по PR #131: `success`.");
+    expect(parkingOf(thread([parked, ci]))?.kind).toBe("event");
+  });
+
+  it("a message that ASKS lifts it — the answer arriving is the answer arriving", () => {
+    const parked = message({ parkedOn: "pr:127" });
+    const asked = message({ from: "curator", date: "2026-07-31T12:40:00Z", expects: "answer" });
+    expect(parkingOf(thread([parked, asked]))).toBeUndefined();
+  });
+
+  it("an ACTIONABLE outcome lifts it — it hands the turn over without asking (048)", () => {
+    const parked = message({ parkedOn: "pr:127" });
+    const red = announcement(
+      { waitingOn: "dev-core", date: "2026-07-31T12:40:00Z" },
+      "❌ CI по PR #127: `failure`.",
     );
-    expect(parkingOf(thread([parked, merged]))).toBeUndefined();
+    expect(parkingOf(thread([parked, red]))).toBeUndefined();
   });
 
   it("an announcement BEFORE the park does not lift it — a park is a later statement", () => {
-    const merged = message(
-      {
-        from: "github",
-        worker: "gh-action",
-        expects: "none",
-        date: "2026-07-31T11:00:00Z",
-        mergedPr: 127,
-      },
-      "PR #127 merged",
-    );
+    const merged = announcement({ date: "2026-07-31T11:00:00Z", mergedPr: 127 }, "PR #127 merged");
     const parked = message({ parkedOn: "pr:127" });
     expect(parkingOf(thread([merged, parked]))?.kind).toBe("event");
   });
@@ -630,14 +637,43 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
     expect(parkingOf(thread([ci, parked]))?.kind).toBe("run");
   });
 
+  it("THE LIVE INCIDENT OF 023: an ACTIONABLE outcome DOES lift it (2026-08-03)", () => {
+    // The `failure` of #177 was delivered at 06:23:44Z into a thread parked on `run:177`; the
+    // park did not lift, the pair stood dead for 3.5 hours with an actionable red in front of
+    // it, and a human noticed the silence. The notifier names the role on the actionable class
+    // (048, form (б)) and leaves the field out on the trace class — which is where this reads.
+    const parked = message({ parkedOn: "run:177", date: "2026-08-03T06:15:46Z" });
+    const red = announcement(
+      { date: "2026-08-03T06:23:44Z", waitingOn: "dev-core" },
+      "❌ CI по PR #177: `failure`.",
+    );
+    expect(parkingOf(thread([parked, red]))).toBeUndefined();
+  });
+
+  it("a GREEN trace still lifts nothing — that is the case the narrow form was built for", () => {
+    const parked = message({ parkedOn: "run:177", date: "2026-08-03T06:15:46Z" });
+    const green = announcement({ date: "2026-08-03T06:23:44Z" }, "✅ CI по PR #177: `success`.");
+    expect(parkingOf(thread([parked, green]))?.pr).toBe(177);
+  });
+
+  it("a DECLARED NULL is not a handover — it moves the turn to nobody", () => {
+    const parked = message({ parkedOn: "run:163" });
+    const nulled = announcement({ date: "2026-08-02T09:15:07Z", waitingOn: null }, "CI: success");
+    expect(parkingOf(thread([parked, nulled]))?.pr).toBe(163);
+  });
+
   it("a person park behind the announcements keeps its WIDE lift — 023 is untouched", () => {
     // The two parks wait for different things: the wide lift is the safety against a thread
     // frozen behind a human forever, and it fired correctly the same morning (08:41 → 08:44).
     const parked = message({ parkedOn: "john" });
     const ci = announcement({ date: "2026-08-02T09:15:07Z" }, "CI: success");
     expect(parkingOf(thread([parked, ci]))).toBeUndefined();
+  });
+
+  it("a `pr:` park behind the announcements now STANDS — both event parks read one walk", () => {
     const merge = message({ parkedOn: "pr:163" });
-    expect(parkingOf(thread([merge, ci]))).toBeUndefined();
+    const ci = announcement({ date: "2026-08-02T09:15:07Z" }, "CI: success");
+    expect(parkingOf(thread([merge, ci]))?.kind).toBe("event");
   });
 
   it("closed outranks it, as it outranks every other park", () => {
