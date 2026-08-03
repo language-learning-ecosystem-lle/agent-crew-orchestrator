@@ -759,10 +759,20 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # answer) and `waiting-on: <role>` (it hands the turn over without asking).
                             # The second IS the actionable CI outcome (thread 048): the notifier names the
                             # role on `failure`/`timed_out`/`startup_failure`/`action_required` and leaves
-                            # the field out entirely on `success`/`cancelled`/`skipped`/… So a green trace
-                            # lifts nothing (the case the narrow form was built for, thread 019) and a red
-                            # one lifts (thread 023: a `failure` delivered into a thread parked on the very
-                            # round left the pair dead for 3.5 hours with the work already in front of it).
+                            # the field out entirely on `success`/`cancelled`/`skipped`/… The trace class
+                            # has EXACTLY ONE exception, and it is about an ACTION rather than an outcome
+                            # (thread 023, 2026-08-03): a green `checks` on a PR that does NOT yet carry
+                            # the `review` label names the AUTHOR's role, because the norm of 03.08 puts
+                            # that label up AFTER a green `checks` on the same head — the author has
+                            # exactly one move there and it is theirs. It was built because that wait was
+                            # parked by no form at all and the lift closed on itself (no green, no label;
+                            # no label, no round; no round, no verdict). Everything else green stays
+                            # silent: a PR that ALREADY carries the label (the round is running — that is
+                            # case 048), the outcome of a PREVIOUS head, and a run without the `checks`
+                            # job. So the trace of a round ALREADY RUNNING lifts nothing (the case the
+                            # narrow form was built for, thread 019) and a red one lifts (thread 023: a
+                            # `failure` delivered into a thread parked on the very round left the pair
+                            # dead for 3.5 hours with the work already in front of it).
                             # A declared NULL (`waiting-on: —`) is not a handover: it moves the turn to
                             # nobody. The WIDE lift of `parked-on: <person>` is untouched by all of this
                             # --merged-pr <n>: this message announces that PR as landed — every thread parked
