@@ -302,6 +302,10 @@ The strict forms below keep every flag they had.
                               # a banner line into the daemon log, and a log over --log-max-bytes
                               # (8 MB by default) is rotated to '<log>.1' — one generation, so the
                               # footprint is bounded by construction rather than by a cron job
+                              # THE BANNER SAYS WHICH CODE WAS LOADED (023.2): the SHA of the
+                              # checkout node resolved the modules from, and the moment of the
+                              # start. From then on every tick compares it with --ref ON DISK
+                              # (no fetch) and speaks beside the skips when they differ
                               # --foreground: the daemon runs AS THIS PROCESS instead of being
                               # backgrounded — what a systemd unit has to be given (it supervises
                               # the process it started). The stream goes to stdout/stderr AND to
@@ -340,6 +344,22 @@ The strict forms below keep every flag they had.
                               # rate-limit windows with the time each reopens, the queue
                               # with the reason for its order, the neighbours' digests, and how
                               # old the mail on disk is; then the static sections
+                              # HOW OLD THE CODE IN THE LIVE DAEMON IS (023.2), and ONLY when
+                              # it is not the ref: the config is re-read every tick, the code
+                              # is loaded once by node at start, and on 2026-08-03 those two
+                              # tempos were six hours apart in silence. The line names facts —
+                              # the loaded SHA, the ref's SHA, the distance, since when the
+                              # process is up — never a command to run. A daemon on the ref
+                              # gets no line: good news every frame is the noise that hides it
+                              # the vintage is believed only from the LIVE pid: the file
+                              # outlives its writer, and a daemon too old to publish one
+                              # leaves the predecessor's behind — trusted, that reads as
+                              # 'current' about code nobody measured. A live daemon that
+                              # published none is NAMED, which is the whole point
+                              # a reading that could NOT BE TAKEN (the ref does not resolve
+                              # on disk) is named too, in the same words the tick uses —
+                              # silence is earned by one state only: a measurement that
+                              # happened and came back on the ref
                               # --watch: THE SAME FRAME, redrawn every --interval seconds (2 by
                               # default) — for a dumb terminal, a tmux pane or a pipe into tee;
                               # it CHANGES NOTHING: the mail checkout is never fetched or repaired

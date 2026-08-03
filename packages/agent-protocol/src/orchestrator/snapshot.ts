@@ -40,6 +40,12 @@
  */
 import type { MailFreshness } from "../fs/git.js";
 import { type AuthShelf, describeAuthShelf } from "./auth.js";
+import {
+  type CodeAgeView,
+  describeCodeDrift,
+  describeUnpublishedCode,
+  describeUnreadableCodeAge,
+} from "./code-age.js";
 import type { HoldView } from "./hold.js";
 import { renderHolds } from "./hold.js";
 import type { InstanceDigest } from "./instances.js";
@@ -143,6 +149,14 @@ export type OperatorFrame = {
     readonly roles: readonly string[];
     readonly waits: readonly ResidentWait[];
   };
+  /**
+   * THE CODE THE LIVE DAEMON IS RUNNING, when there is something to say about it
+   * (023.2, `codeAgeView`). Present only while a daemon is alive — a vintage left by a
+   * process that is gone describes nothing that is happening, and the circuit section
+   * above already says the daemon is not there — and absent when the live daemon's own
+   * code IS the ref, because good news repeated every frame is noise.
+   */
+  readonly codeAge?: CodeAgeView | undefined;
   readonly digests: readonly InstanceDigest[];
   readonly unreadableDigests?: ReadonlyMap<string, string>;
   /** This box's instance id, when the topology declares one. */
@@ -287,6 +301,33 @@ export const renderMergeReady = (outage?: GhOutage): string =>
     ? ""
     : `merge-ready:\n  ⚠ ${describeGhOutage(outage)}`;
 
+/**
+ * THE SECOND SECTION THAT IS SILENT WHEN THE NEWS IS GOOD, and for the reason the
+ * merge-ready tier is (`renderMergeReady` above): a daemon running current code is the
+ * ordinary state, and a line repeating it every frame is a line the reader learns to
+ * skip — which is how the six-hour silence of 2026-08-03 stayed invisible in the first
+ * place. The gate is `codeAge` being present at all — and it is present for every state
+ * except a measured match, which is the point: not knowing is not good news.
+ *
+ * THE WORDS ARE THE DAEMON'S OWN in every state that has a counterpart in the stream
+ * (`describeCodeDrift`, `describeUnreadableCodeAge` — the tick calls the same two), so
+ * the stream and the frame cannot say different things. `unpublished` has no counterpart
+ * by construction: a process that published nothing is not a process that can complain
+ * about it. `unreadable` HAD no counterpart here and did have one in the stream, which is
+ * exactly how the two came to disagree (#190 review, 2026-08-03) — the frame drew silence
+ * over an unresolvable ref while the tick was naming it.
+ */
+export const renderCodeAge = (view: CodeAgeView | undefined, now: Date): string => {
+  if (view === undefined) return "";
+  const said =
+    view.kind === "drift"
+      ? describeCodeDrift(view.drift, now)
+      : view.kind === "unpublished"
+        ? describeUnpublishedCode(view.pid)
+        : describeUnreadableCodeAge(view.problem);
+  return `code: ⚠ ${said}`;
+};
+
 /** Whole minutes, for an age a human reads rather than counts. */
 const ageWords = (seconds: number): string =>
   seconds < 90 ? `${seconds}s` : `${Math.round(seconds / 60)}m`;
@@ -337,6 +378,10 @@ export const renderFrame = (frame: OperatorFrame): string =>
     renderParallelism(frame.parallelism),
     renderHolds(frame.holds),
     renderCircuit(frame.circuit),
+    // Beside the circuit, because it is a fact ABOUT the daemon named just above — and
+    // dropped rather than joined as a blank line when the code is current, exactly like
+    // the merge-ready tier below.
+    renderCodeAge(frame.codeAge, frame.now) || undefined,
     renderQuota(frame.quota),
     renderAuth(frame.auth),
     // The empty string a quiet tier renders is dropped here rather than joined as a
