@@ -414,7 +414,7 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       // actionable outcome is not a trace — it hands the turn over, and 023 paid 3.5 hours of
       // a dead pair for reading it as one.
       if (on.kind === "run")
-        return `candidate ${pair} skipped: the turn is parked behind the round running on PR #${on.pr} (R27, 'parked-on: ${skip.parkedOn}' in the feed) — it is waiting for a VERDICT, not for a launch; it lifts by itself with the next message that MOVES anybody (asks for something, or names whose turn it is — an actionable CI outcome does, a green trace does not), and with the merge of that PR`;
+        return `candidate ${pair} skipped: the turn is parked behind the round running on PR #${on.pr} (R27, 'parked-on: ${skip.parkedOn}' in the feed) — it is waiting for a VERDICT, not for a launch; it lifts by itself with the next message that MOVES anybody (asks for something, or names whose turn it is — an actionable CI outcome does, the trace of the round already running does not), and with the merge of that PR`;
       return `candidate ${pair} skipped: the turn is parked behind a decision of ${skip.parkedOn ?? "a person"} (R27, 'parked-on' in the feed) — it is waiting for a PERSON, not for a launch; it lifts by itself with the next substantive message in the thread`;
     }
     case "quota":

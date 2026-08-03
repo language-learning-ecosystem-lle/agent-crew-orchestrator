@@ -501,8 +501,17 @@ export const parkingOf = (
  *   It cost 3.5 hours of a dead pair to learn (thread 023, 2026-08-03): the `failure` of #177
  *   was delivered at 06:23:44Z into a thread parked on `run:177`, the park did not lift, the
  *   role held its turn with an actionable red in front of it, and the silence was noticed by a
- *   human at 09:40Z. A green trace lifting nothing stays exactly as it was — that is the case
- *   the narrow form was built for, and it is untouched.
+ *   human at 09:40Z.
+ *
+ *   The trace class has EXACTLY ONE exception, and it is about an ACTION rather than an outcome
+ *   (thread 023, 2026-08-03, decision of john): a green `checks` on a PR that does NOT yet carry
+ *   the `review` label names the AUTHOR's role, because the norm of 03.08 puts that label up
+ *   AFTER a green `checks` on the same head — the author has exactly one move there and it is
+ *   theirs. It reaches this walk the same way every handover does, through `waiting-on: <role>`
+ *   in the header, so nothing here changes. Everything else green stays silent: a PR that
+ *   ALREADY carries the label (the round is running — case 048), the outcome of a PREVIOUS head,
+ *   and a run without the `checks` job. The trace of a round ALREADY RUNNING therefore lifts
+ *   nothing, exactly as it did — that is the case the narrow form was built for.
  *
  * A declared NULL (`waiting-on: —`) is not a handover: it zeroes the holder of the turn and
  * moves the thread to nobody, so it is skipped like any other announcement.

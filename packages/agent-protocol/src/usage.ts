@@ -225,9 +225,18 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               #   * 'waiting-on: <role>' — it hands the turn over without asking.
                               # The second IS the actionable CI outcome (048): the notifier names
                               # the role on 'failure'/'timed_out'/… and leaves the field out on
-                              # 'success'/'cancelled'/… A green trace still lifts nothing — that
-                              # is the case the narrow form was built for; a red one that froze a
-                              # pair for 3.5 hours with work in front of it is what widened it
+                              # 'success'/'cancelled'/… The trace class has EXACTLY ONE exception,
+                              # and it is about an ACTION rather than an outcome (023, 2026-08-03):
+                              # a green 'checks' on a PR that does NOT yet carry the 'review' label
+                              # names the AUTHOR's role — the norm of 03.08 puts the label up AFTER
+                              # a green 'checks' on the same head, so the author has exactly one
+                              # move there and it is theirs. Everything else green stays silent: a
+                              # PR that ALREADY carries the label (the round is running — that is
+                              # case 048), the outcome of a PREVIOUS head, and a run without the
+                              # 'checks' job. So the trace of a round ALREADY RUNNING still lifts
+                              # nothing — that is the case the narrow form was built for; a red one
+                              # that froze a pair for 3.5 hours with work in front of it is what
+                              # widened it
                               # --merged-pr <n>: this message announces that PR as landed — every thread
                               # parked on 'pr:<n>' lifts on it, though the announcement is informational
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in
