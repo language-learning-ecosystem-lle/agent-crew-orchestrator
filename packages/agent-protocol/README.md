@@ -698,7 +698,7 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N>] [--merged-pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--merged-pr <n>] [--write] [--no-push]
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
@@ -719,8 +719,23 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (thread 023) — the
                             # MERGE of a pull request rather than a person's decision. The courier says
                             # NOTHING about such a thread (neither a call nor a stall: the decision has been
-                            # made, what is left is somebody's hand on a button), and it lifts on the merge
-                            # notifier's message rather than on a human relaying the fact
+                            # made, what is left is somebody's hand on a button)
+                            # --parked-on run:<n>: the THIRD (thread 019) — the ROUND running on that PR.
+                            # `pr:` waits for the BUTTON, `run:` waits for the VERDICT; the courier is
+                            # silent about this one too (a machine is judging, no decision is pending)
+                            # BOTH EVENT PARKS LIFT NARROWLY, by one walk (thread 023, 2026-08-03): the
+                            # merge of that PR announced anywhere in the mail, plus the first message that
+                            # MOVES somebody. Two header facts move somebody, and the circuit's trace class
+                            # carries neither: `expects` != none (it asks — the verdict, and every other
+                            # answer) and `waiting-on: <role>` (it hands the turn over without asking).
+                            # The second IS the actionable CI outcome (thread 048): the notifier names the
+                            # role on `failure`/`timed_out`/`startup_failure`/`action_required` and leaves
+                            # the field out entirely on `success`/`cancelled`/`skipped`/… So a green trace
+                            # lifts nothing (the case the narrow form was built for, thread 019) and a red
+                            # one lifts (thread 023: a `failure` delivered into a thread parked on the very
+                            # round left the pair dead for 3.5 hours with the work already in front of it).
+                            # A declared NULL (`waiting-on: —`) is not a handover: it moves the turn to
+                            # nobody. The WIDE lift of `parked-on: <person>` is untouched by all of this
                             # --merged-pr <n>: this message announces that PR as landed — every thread parked
                             # on `pr:<n>` lifts on it, though the announcement is `expects: none`
                             # ANYWHERE IN THE MAIL (thread 023): the notifier writes into the thread named

@@ -414,10 +414,10 @@ export const parkingOf = (
   // This used to be a backwards scan over the messages it was allowed to skip — the doc block
   // above names the five live threads that cost.
   const last = thread.messages.at(-1);
-  // THE PARK OF A ROUND IS THE ONE THING INFORMATIONAL TRAFFIC DOES NOT LIFT (thread 019),
+  // A PARK ON AN EVENT IS THE ONE THING INFORMATIONAL TRAFFIC DOES NOT LIFT (threads 019, 023),
   // so it is looked for BEHIND the announcements of the circuit — and only behind those.
   const declared =
-    last?.fields.parkedOn === undefined ? runParkOf(thread) : thread.messages.length - 1;
+    last?.fields.parkedOn === undefined ? standingParkOf(thread) : thread.messages.length - 1;
   const at = declared === undefined ? undefined : thread.messages[declared];
   const on = at?.fields.parkedOn;
   if (at === undefined || on === undefined) return undefined;
@@ -431,35 +431,57 @@ export const parkingOf = (
   // set the park would outlive the merge it waits for, in the one feed that cannot see it. A
   // round is over when its PR is merged too — the verdict it waited for cannot arrive after.
   if (mergedElsewhere?.has(pr) === true) return undefined;
-  if (named.kind === "run") {
-    // The same fact, read from THIS feed, for a caller holding one thread (`mergedElsewhere`
-    // is what a whole-mail caller has, and only that one).
-    const merged = thread.messages
-      .slice(declared === undefined ? 0 : declared + 1)
-      .some((message) => message.fields.mergedPr === pr);
-    return merged ? undefined : { kind: "run", pr, since, question };
-  }
-  return { kind: "event", pr, since, question };
+  // The same fact, read from THIS feed, for a caller holding one thread (`mergedElsewhere`
+  // is what a whole-mail caller has, and only that one). Both event parks need it since the
+  // lift of both became narrow (023): the announcement carrying `merged-pr` asks nobody for
+  // anything, so the walk above steps over it, and the merge would go unseen in its own feed.
+  const merged = thread.messages
+    .slice(declared === undefined ? 0 : declared + 1)
+    .some((message) => message.fields.mergedPr === pr);
+  if (merged) return undefined;
+  return named.kind === "run"
+    ? { kind: "run", pr, since, question }
+    : { kind: "event", pr, since, question };
 };
 
 /**
- * WHERE A `run:` PARK STILL STANDS — the index of the message that declared it, or nothing.
+ * WHERE AN EVENT PARK (`run:`/`pr:`) STILL STANDS — the index of the message that declared it.
  *
- * Every other park is honoured only as the LAST statement of the feed, because anybody writing
- * after it is the answer arriving. A round is the one thing that is not true of: the circuit
- * announces its OWN events (`from: github`, `expects: none`) about the very round being waited
- * for, and a round produces two of them — the CI outcome and the verdict — of which only the
- * second is what the parked role is standing behind. It happened live within minutes of the
- * form being proposed (thread 019, 2026-08-02): the park of 09:12:57Z was lifted at 09:15:07Z
- * by "CI по PR #163 — success", the pair was raised at 09:16:13Z, the door refused it because
- * the review round still had twelve minutes to run, and the session had nothing to do.
+ * A `person` park is honoured only as the LAST statement of the feed, because anybody writing
+ * after it is the answer arriving. An EVENT park is the one thing that is not true of: the
+ * circuit announces its OWN events (`from: github`, `expects: none`) about the very PR being
+ * waited for, and they are not the thing being waited for. It happened live within minutes of
+ * the form being proposed (thread 019, 2026-08-02): the park of 09:12:57Z was lifted at
+ * 09:15:07Z by "CI по PR #163 — success", the pair was raised at 09:16:13Z, the door refused it
+ * because the review round still had twelve minutes to run, and the session had nothing to do.
+ * The `pr:` park was narrowed to the same walk for the same reason, one thread later (023,
+ * curator's statement of 2026-08-03): a turn frozen behind a merge button is not released by
+ * the circuit reporting some other PR's outcome, and the raise it bought found nothing to do.
  *
- * So the walk backwards is over the messages that ASK NOBODY FOR ANYTHING, and stops at the
- * first message that does — which is the verdict, and is also every other kind of answer. The
- * wide lift of `parked-on: <person>` is deliberately left alone: it is the safety against a
- * thread frozen behind a human forever, and the two parks wait for different things.
+ * So the walk backwards is over the messages that MOVE NOBODY, and stops at the first message
+ * that does. Two things move somebody, and the header carries both:
+ *
+ * - `expects != none` — the message asks somebody for something: the verdict, and every other
+ *   kind of answer;
+ * - `waiting-on: <role>` DECLARED with a role in it — the message hands the turn over without
+ *   asking anything. This is the ACTIONABLE CI OUTCOME (thread 048, form (б)): the notifier
+ *   names the role on `failure`/`timed_out`/`startup_failure`/`action_required` and leaves the
+ *   field out entirely on the trace class (`success`, `cancelled`, …). The distinction is
+ *   therefore read where the notifier already writes it, and no body text is parsed.
+ *
+ *   It cost 3.5 hours of a dead pair to learn (thread 023, 2026-08-03): the `failure` of #177
+ *   was delivered at 06:23:44Z into a thread parked on `run:177`, the park did not lift, the
+ *   role held its turn with an actionable red in front of it, and the silence was noticed by a
+ *   human at 09:40Z. A green trace lifting nothing stays exactly as it was — that is the case
+ *   the narrow form was built for, and it is untouched.
+ *
+ * A declared NULL (`waiting-on: —`) is not a handover: it zeroes the holder of the turn and
+ * moves the thread to nobody, so it is skipped like any other announcement.
+ *
+ * The wide lift of `parked-on: <person>` is deliberately left alone: it is the safety against a
+ * thread frozen behind a human forever, and the parks wait for different things.
  */
-const runParkOf = (thread: Thread): number | undefined => {
+const standingParkOf = (thread: Thread): number | undefined => {
   for (let at = thread.messages.length - 1; at >= 0; at -= 1) {
     const message = thread.messages[at];
     if (message === undefined) return undefined;
@@ -467,11 +489,15 @@ const runParkOf = (thread: Thread): number | undefined => {
     // THE FIELD IS READ BEFORE THE SKIP, as it is above (thread 034): a park declared on an
     // informational message is still a park — and here the message declaring one is itself a
     // legal step of the walk, so the order is what keeps it from being walked over.
-    if (on !== undefined) return parkedOnKind(on).kind === "run" ? at : undefined;
-    if (message.fields.expects !== "none") return undefined;
+    if (on !== undefined) return parkedOnKind(on).kind === "person" ? undefined : at;
+    if (movesSomebody(message)) return undefined;
   }
   return undefined;
 };
+
+/** Does this message move anybody — by asking, or by naming whose turn it now is? */
+const movesSomebody = (message: Message): boolean =>
+  message.fields.expects !== "none" || typeof message.fields.waitingOn === "string";
 
 /** How wide a question may be before it stops being one line in a phone notification. */
 const QUESTION_WIDTH = 140;
