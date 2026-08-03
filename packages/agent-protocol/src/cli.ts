@@ -8758,9 +8758,11 @@ const mergeGate = (argv: readonly string[]): void => {
         // `mergeable`/`mergeStateStatus`: what GitHub itself would refuse (D2).
         // `commits` beside `reviews`: the date of the head commit, the one fact a
         // substituted review anchor cannot fake (thread 043).
-        // `baseRefOid`: the base the credited checks are dated against (023.3) — read for
-        // a note, never for a guard.
-        "number,headRefOid,body,statusCheckRollup,reviews,commits,files,baseRefOid,mergeable,mergeStateStatus",
+        // `baseRefName`: the NAME of the branch whose head the credited checks are dated
+        // against (023.3, input repaired in 023.4) — read for a note, never for a guard.
+        // The name and not `baseRefOid`: that SHA is the base the branch was cut from and
+        // stands still while the base moves, which made the note a silent no-op.
+        "number,headRefOid,body,statusCheckRollup,reviews,commits,files,baseRefName,mergeable,mergeStateStatus",
       ],
       {
         cwd: repo,
@@ -8822,19 +8824,34 @@ const mergeGate = (argv: readonly string[]): void => {
       out(`merge-gate: --working-cards matches no role's instructions: ${stray.join(", ")}`);
     }
   }
-  // WHEN THE BASE LAST MOVED (023.3), the second read: `gh pr view` dates the commits of
-  // the PR and never the base's head. A failure here is NOT fatal and is not even
-  // reported twice — nothing is computed from it, and the note downstream says "unknown"
-  // in its own words, which is the whole of the one-sided degradation this scope asks for.
-  const baseCommittedAt = ((): string | undefined => {
-    const base = parsed.data.baseRefOid;
-    if (base === undefined || base === null || base.trim().length === 0) return undefined;
+  // WHERE THE BASE BRANCH IS NOW (023.3, input repaired in 023.4), the second read: `gh pr
+  // view` dates the commits of the PR and never the base's head, and the base SHA it does
+  // report is the one the branch was cut from — dating THAT is a measurement of nothing.
+  // The BRANCH is asked for by name, and the answer carries both halves of the one fact:
+  // which commit the base is at now, and when it landed there.
+  // A failure here is NOT fatal and is not even reported twice — nothing is computed from
+  // it, and the note downstream says "unknown" in its own words, which is the whole of the
+  // one-sided degradation this scope asks for.
+  const baseHead = ((): { sha: string; committedAt: string } | undefined => {
+    const branch = parsed.data.baseRefName;
+    if (branch === undefined || branch === null || branch.trim().length === 0) return undefined;
     try {
-      return execFileSync(
+      const answer = execFileSync(
         "gh",
-        ["api", `repos/{owner}/{repo}/commits/${base.trim()}`, "--jq", ".commit.committer.date"],
+        [
+          "api",
+          `repos/{owner}/{repo}/commits/${branch.trim()}`,
+          "--jq",
+          "[.sha, .commit.committer.date] | @tsv",
+        ],
         { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 1024 * 1024 },
       ).trim();
+      const [sha, committedAt] = answer.split(/\s+/);
+      // Half an answer is no answer: a SHA with no date, or a date with no SHA, would be
+      // read downstream as a measurement that happened.
+      if (sha === undefined || sha.length === 0) return undefined;
+      if (committedAt === undefined || committedAt.length === 0) return undefined;
+      return { sha, committedAt };
     } catch {
       return undefined;
     }
@@ -8842,7 +8859,7 @@ const mergeGate = (argv: readonly string[]): void => {
 
   // The SAME reading of the payload the scheduler's merge-ready uses (`pullRequestFacts`).
   const verdict = evaluateMergeGate({
-    pr: pullRequestFacts(parsed.data, baseCommittedAt),
+    pr: pullRequestFacts(parsed.data, baseHead),
     powerDocs,
   });
 

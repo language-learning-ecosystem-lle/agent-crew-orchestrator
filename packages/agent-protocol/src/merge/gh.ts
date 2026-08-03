@@ -67,11 +67,16 @@ export const ghPullRequestSchema = z.looseObject({
     }),
   ),
   files: z.array(z.looseObject({ path: z.string() })),
-  // THE HEAD OF THE BASE BRANCH (023.3) — NOT pinned, unlike the fields above, and for the
+  // THE NAME OF THE BASE BRANCH (023.4) — the branch, not a SHA, and that is the whole
+  // repair: `baseRefOid` was read here first and it is the base recorded when the branch
+  // was CUT. It stands still exactly when the base moves, so the drift it was read for was
+  // unreachable by construction (measured 2026-08-03: #192 said `44471804` while `main`
+  // was `6b87776f`; #3, opened 24.07, still says a July commit). The head of the branch is
+  // asked for by name, in a second read. NOT pinned, unlike the fields above, and for the
   // reason that decides everything else about this reading: no guard is computed from it.
   // A payload without it makes the door SAY it cannot tell whether the base moved; a
   // payload without `mergeable` makes it refuse. The two absences are not the same class.
-  baseRefOid: nullableText,
+  baseRefName: nullableText,
   mergeable: z.string(),
   mergeStateStatus: nullableText,
 });
@@ -99,12 +104,18 @@ export const ghOpenPullRequestsSchema = z.array(
 export const pullRequestFacts = (
   pr: GhPullRequest,
   /**
-   * The commit date of the base head (023.3). It arrives from a SECOND read — `gh pr view`
-   * dates the PR's own commits and never the base's — so it is a parameter and not a field
-   * of the payload: a caller with no use for the drift note (the scheduler) simply does
-   * not pay for the call, and the note says "unknown" instead of guessing.
+   * THE HEAD OF THE BASE BRANCH AS IT IS NOW, and its commit date (023.3, repaired 023.4).
+   * Both arrive from a SECOND read — `gh pr view` dates the PR's own commits, never the
+   * base's, and the SHA it does report for the base is the one the branch was cut from
+   * (see `baseRefName` above) — so this is a parameter and not a field of the payload: a
+   * caller with no use for the drift note (the scheduler) simply does not pay for the
+   * call, and the note says "unknown" instead of guessing.
+   *
+   * The two halves travel TOGETHER because they are one measurement: a SHA from the
+   * payload dated by a commit read elsewhere is exactly the pair that produced the silent
+   * no-op this repairs.
    */
-  baseCommittedAt?: string | undefined,
+  baseHead?: { readonly sha: string; readonly committedAt: string } | undefined,
 ): PullRequestFacts => ({
   number: pr.number,
   headSha: pr.headRefOid,
@@ -131,8 +142,8 @@ export const pullRequestFacts = (
     startedAt: check.startedAt ?? undefined,
   })),
   changedPaths: pr.files.map((file) => file.path),
-  baseSha: pr.baseRefOid ?? undefined,
-  baseCommittedAt,
+  baseSha: baseHead?.sha,
+  baseCommittedAt: baseHead?.committedAt,
   mergeable: pr.mergeable,
   mergeStateStatus: pr.mergeStateStatus ?? undefined,
 });

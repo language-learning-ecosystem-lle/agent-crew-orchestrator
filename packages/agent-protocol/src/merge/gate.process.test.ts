@@ -16,7 +16,14 @@
  * message GitHub sends does not contain.
  */
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -553,22 +560,31 @@ describe("merge-gate — the command, with a real gh on the other side of the se
 });
 
 /**
- * 023.3 — THE SECOND READ. The base's date is not in `gh pr view` at all: the command
- * asks `gh api …/commits/<baseRefOid>` for it, and NOTHING is computed from the answer.
- * So what the wiring has to prove is the pair: the note appears when the date arrives,
- * and a refusal of that second ask leaves the exit code exactly where it was.
+ * 023.3 — THE SECOND READ, with the input 023.4 repaired. Where the base branch is now is
+ * not in `gh pr view` at all: the command asks `gh api …/commits/<baseRefName>` for it —
+ * THE BRANCH BY NAME — and NOTHING is computed from the answer. So what the wiring has to
+ * prove is three things: the note appears when the answer arrives, a refusal of that
+ * second ask leaves the exit code exactly where it was, and the ask names the BRANCH. The
+ * third is the one that was missing: #191 asked about `baseRefOid`, a SHA that stands
+ * still while the base moves, and every test of the pair still passed.
  */
-const stubGhWithBase = (repo: string, payload: unknown, baseDate: string | undefined): string => {
+const stubGhWithBase = (
+  repo: string,
+  payload: unknown,
+  base: { sha: string; date: string } | undefined,
+): string => {
   const bin = join(repo, "stub-bin-base");
   mkdirSync(bin, { recursive: true });
-  // `$1` tells the two asks apart: `pr view …` and `api repos/…/commits/<sha>`.
-  const date =
-    baseDate === undefined
+  // `$1` tells the two asks apart: `pr view …` and `api repos/…/commits/<ref>`. The ref of
+  // the second ask is recorded on disk so a test can read WHAT WAS ASKED ABOUT.
+  const answer =
+    base === undefined
       ? 'echo "gh: HTTP 404" >&2\n  exit 1'
-      : `echo ${JSON.stringify(baseDate)}`;
+      : `printf '%s\\t%s\\n' ${JSON.stringify(base.sha)} ${JSON.stringify(base.date)}`;
   const script = `#!/bin/sh
 if [ "$1" = "api" ]; then
-  ${date}
+  echo "$2" > ${JSON.stringify(join(repo, "second-ask.txt"))}
+  ${answer}
 else
   cat <<'PAYLOAD'
 ${JSON.stringify(payload)}
@@ -583,9 +599,10 @@ fi
 
 describe("merge-gate — the base under a credited check (023.3)", () => {
   const BASE = "9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f";
+  const at = (date: string): { sha: string; date: string } => ({ sha: BASE, date });
   const withBase = (over: Record<string, unknown> = {}): unknown =>
     mergeable({
-      baseRefOid: BASE,
+      baseRefName: "main",
       statusCheckRollup: [
         {
           name: "checks",
@@ -600,7 +617,7 @@ describe("merge-gate — the base under a credited check (023.3)", () => {
 
   it("names the drift end to end — and still exits 0", () => {
     const repo = repoWithConfig();
-    const result = run(repo, stubGhWithBase(repo, withBase(), "2026-07-30T00:03:00Z"));
+    const result = run(repo, stubGhWithBase(repo, withBase(), at("2026-07-30T00:03:00Z")));
 
     expect(result.code).toBe(0);
     expect(result.out).toContain("note · base:");
@@ -608,9 +625,34 @@ describe("merge-gate — the base under a credited check (023.3)", () => {
     expect(result.out).toContain("guards 3 and 5 are yours to answer");
   });
 
+  /**
+   * THE REGRESSION OF 023.4, AND THE ONLY TEST THAT COULD HAVE SEEN IT: the second ask
+   * must name the BRANCH. `baseRefOid` is the head of the base as it was when this branch
+   * was cut — it does not move when the base does, so dating it answered a question about
+   * a commit nobody asked about and the note fell silent for good. A fact of the right
+   * type in the wrong meaning: every other assertion here passed while it was wrong.
+   */
+  it("asks about the BRANCH, not the base SHA the payload reports", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGhWithBase(
+        repo,
+        // Both fields present: the payload OFFERS the stale SHA, and it must be ignored.
+        withBase({ baseRefName: "main", baseRefOid: BASE }),
+        at("2026-07-30T00:03:00Z"),
+      ),
+    );
+
+    const asked = readFileSync(join(repo, "second-ask.txt"), "utf8").trim();
+    expect(asked).toBe("repos/{owner}/{repo}/commits/main");
+    expect(asked).not.toContain(BASE);
+    expect(result.out).toContain("note · base:");
+  });
+
   it("stays silent — and exits 0 identically — when the base is older than the check", () => {
     const repo = repoWithConfig();
-    const result = run(repo, stubGhWithBase(repo, withBase(), "2026-07-30T00:01:00Z"));
+    const result = run(repo, stubGhWithBase(repo, withBase(), at("2026-07-30T00:01:00Z")));
 
     expect(result.code).toBe(0);
     expect(result.out).not.toContain("note · base:");
@@ -625,12 +667,28 @@ describe("merge-gate — the base under a credited check (023.3)", () => {
     expect(result.out).toContain("UNKNOWN");
   });
 
-  it("a payload with no baseRefOid at all is read, not refused — no guard is computed from it", () => {
+  it("a payload with no baseRefName at all is read, not refused — and nothing is asked twice", () => {
     const repo = repoWithConfig();
-    const result = run(repo, stubGhWithBase(repo, withBase({ baseRefOid: null }), undefined));
+    const result = run(repo, stubGhWithBase(repo, withBase({ baseRefName: null }), undefined));
 
     expect(result.code).toBe(0);
-    expect(result.out).toContain("no base commit");
+    expect(result.out).toContain("the head of the base branch was not read");
+    // With no branch to name there is no second ask at all — the stub never recorded one.
+    expect(existsSync(join(repo, "second-ask.txt"))).toBe(false);
+  });
+
+  /**
+   * HALF AN ANSWER IS NO ANSWER: a SHA with no date read as a measurement that happened
+   * would date the base as `undefined` and print `current` — silence again, earned by
+   * nothing.
+   */
+  it("a second ask that answers a SHA without a date says UNKNOWN, not silence", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGhWithBase(repo, withBase(), { sha: BASE, date: "" }));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("note · base:");
+    expect(result.out).toContain("UNKNOWN");
   });
 
   it("the drift changes no refusal either — a document of power still exits 1", () => {
@@ -640,7 +698,7 @@ describe("merge-gate — the base under a credited check (023.3)", () => {
       stubGhWithBase(
         repo,
         withBase({ files: [{ path: "docs/roles/curator.md" }] }),
-        "2026-07-30T00:03:00Z",
+        at("2026-07-30T00:03:00Z"),
       ),
     );
 

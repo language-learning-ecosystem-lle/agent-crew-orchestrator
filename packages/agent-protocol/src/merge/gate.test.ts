@@ -939,7 +939,7 @@ describe("the base under a credited check — a note beside guard 2", () => {
   it("an unreadable base is NAMED, never folded into silence", () => {
     const noBase = answer({ checks: [started("checks", "2026-08-03T14:05:00Z")] });
     expect(noBase.baseDrift.state).toBe("unknown");
-    expect(noBase.baseDrift.detail).toContain("no base commit");
+    expect(noBase.baseDrift.detail).toContain("the head of the base branch was not read");
     expect(note(noBase)).toContain("UNKNOWN");
 
     const noDate = answer({
