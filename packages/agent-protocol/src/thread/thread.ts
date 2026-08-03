@@ -396,6 +396,31 @@ export type Parking = {
   readonly since: string;
   /** The first line of the parking message: the question, in the words it was asked in. */
   readonly question: string;
+  /**
+   * WHETHER THE PARKING MESSAGE ASKS ANYTHING OF THE PERSON — the difference between a park
+   * that is a QUESTION and a park that is a long-lived STATE (thread 051, john's pain of
+   * 2026-08-03: repeated "❓ ждёт твоего решения" about threads where nothing was asked).
+   *
+   * The freeze is the same in both cases and is read from `kind`/`person`: the turn cannot
+   * move, the scheduler skips the thread and the age pass stays quiet about it. What differs
+   * is whether a HUMAN IS BEING CALLED, and only the courier cares — `expects: none` says in
+   * the author's own words that the message asks nobody for anything, and a ❓ printed over it
+   * teaches the reader to ignore the mark, which costs more than a missed call.
+   *
+   * THE LINE IS `none`, NOT `answer` (curator's decision of 2026-08-03, this thread): the door
+   * refuses `--parked-on` together with `--expects none` (034), so the only two LEGAL parks are
+   * `answer` and `ack` — and a park with `ack` is "I stand until you confirm", which is an
+   * action required of the human just the same. A reader that rang only on `answer` would let
+   * the door pass a combination that FREEZES A THREAD AND TELLS NOBODY: the age pass is quiet
+   * about parks by rule, the scheduler skips it, and it would stand until somebody happened to
+   * read the feed. Noise a reader filters; silence it cannot.
+   *
+   * `none` therefore stays mute — that is the legacy park the fact was carried for: today's
+   * live parks (016, 052) were declared by informational messages the door predates, and the
+   * reader honours the park either way, which is why the fact is carried rather than the
+   * message rejected.
+   */
+  readonly asks: boolean;
 };
 
 /**
@@ -423,8 +448,12 @@ export const parkingOf = (
   if (at === undefined || on === undefined) return undefined;
   const since = at.fields.date;
   const question = questionOf(at.text);
+  // WHAT THE MESSAGE ITSELF SAYS IT WANTS — carried, not re-decided by the reader: a park is
+  // a call to a human unless the message that declared it asks nobody for anything. Both legal
+  // parks (`answer` and `ack`) require an action of the person; only `none` is mute.
+  const asks = at.fields.expects !== "none";
   const named = parkedOnKind(on);
-  if (named.kind === "person") return { kind: "person", person: on, since, question };
+  if (named.kind === "person") return { kind: "person", person: on, since, question, asks };
   const { pr } = named;
   // THE PARKS THAT LIFT WITH NOBODY WRITING INTO THIS THREAD AT ALL (thread 023): the merge
   // lands and its notifier writes into the PR's OWN thread, which is not this one. Without this
@@ -440,8 +469,8 @@ export const parkingOf = (
     .some((message) => message.fields.mergedPr === pr);
   if (merged) return undefined;
   return named.kind === "run"
-    ? { kind: "run", pr, since, question }
-    : { kind: "event", pr, since, question };
+    ? { kind: "run", pr, since, question, asks }
+    : { kind: "event", pr, since, question, asks };
 };
 
 /**

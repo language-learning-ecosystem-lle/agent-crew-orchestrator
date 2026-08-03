@@ -259,6 +259,7 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     person: "john",
     since: "2026-07-31T11:08:20Z",
     question: "Перезапустить демон и посмотреть, встал ли скип parked?",
+    asks: true,
   };
   const PARK_TEMPLATE = { ...TEMPLATES, parked: "❓ {thread} ждёт твоего решения: {question}" };
 
@@ -283,12 +284,43 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     );
   });
 
-  it("does not repeat a park it has already announced", () => {
+  it("does not repeat a park it has already announced — and prints NOTHING about it", () => {
+    // THE ECHO (thread 051, john's pain of 2026-08-03): the line used to be rendered from the
+    // composition, so an unchanged park was repeated in every digest that had anything else
+    // to say — measured live on 016 (a park held as a mode) and 049 (a park over two manual
+    // operations, its questions already closed). ❓ has to mean "a question you have not read".
     const first = withPark([PARKED]);
     const again = withPark([PARKED], { waiting: [], stalled: [], parked: first.parked });
 
     expect(again.freshParked).toEqual([]);
-    expect(again.lines).toHaveLength(1); // still SAID, only not counted as new
+    expect(again.lines).toEqual([]);
+    // The park is still IN FORCE: the composition (and so the state, and so the silence of
+    // the age pass about this thread) is unchanged — only the call is not repeated.
+    expect(again.parked).toEqual([PARKED]);
+  });
+
+  it("a park declared by an informational message freezes the thread and calls nobody", () => {
+    // `expects: none` says in the author's own words that the message asks for nothing. The
+    // door refuses that combination today (`--parked-on` with `--expects none`), so this is
+    // the feed as it stands: messages older than the door, and messages written by hand.
+    const result = withPark([{ ...PARKED, asks: false }]);
+
+    expect(result.freshParked).toEqual([]);
+    expect(result.lines).toEqual([]);
+    expect(result.parked).toHaveLength(1);
+  });
+
+  it("an informational re-park does not ring either — a new stamp is not a new question", () => {
+    // The shape of 016 exactly: the park is re-declared day after day by messages that ask
+    // nothing, and every one of them used to be a fresh event because the key moved.
+    const first = withPark([PARKED]);
+    const later = withPark(
+      [{ ...PARKED, since: "2026-08-03T08:29:57Z", question: "фиксация мыслей", asks: false }],
+      { waiting: [], stalled: [], parked: first.parked },
+    );
+
+    expect(later.freshParked).toEqual([]);
+    expect(later.lines).toEqual([]);
   });
 
   it("a thread answered and parked AGAIN is a new question — the key is the parking message", () => {
@@ -300,6 +332,8 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     });
 
     expect(later.freshParked).toHaveLength(1);
+    expect(later.lines).toHaveLength(1);
+    expect(later.lines[0]?.text).toBe("❓ 023-x ждёт твоего решения: И ещё?");
   });
 
   it("a parked thread is NOT also reported as stalled — the two say opposite things", () => {
@@ -333,7 +367,9 @@ describe("a thread frozen behind a person — the third class of event (thread 0
   });
 
   it("the state file carries parks beside waits and stalls", () => {
-    const state = { waiting: [], stalled: [], parked: [{ ...PARKED, question: "" }] };
+    // Neither the question nor `asks` is stored: the state answers one question — "was this
+    // event announced" — and answers it by the key (person, thread, the stamp of the message).
+    const state = { waiting: [], stalled: [], parked: [{ ...PARKED, question: "", asks: false }] };
 
     expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
   });

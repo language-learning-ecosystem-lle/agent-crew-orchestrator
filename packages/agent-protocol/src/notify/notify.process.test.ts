@@ -98,6 +98,18 @@ const contour = (options: {
   writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(config, null, 2)}\n`);
 
   const root = join(repo, "agent-comms");
+  /** A thread FROZEN BEHIND JOHN, declared by a message that either asks or does not. */
+  const park = (id: string, options: { asks: boolean; date?: string; body?: string }): void => {
+    mkdirSync(join(root, id, "messages"), { recursive: true });
+    writeFileSync(join(root, id, "_meta.md"), meta("dev-core, curator"));
+    const date = options.date ?? "2026-07-25T20:00:00Z";
+    writeFileSync(
+      join(root, id, "messages", `${date.replace(/:/g, "-")}-curator.md`),
+      `---\nfrom: curator\nworker: human\ndate: ${date}\nexpects: ${
+        options.asks ? "answer" : "none"
+      }\nwaiting-on: curator\nparked-on: john\n---\n\n${options.body ?? "Чинить ли гард 2?"}\n`,
+    );
+  };
   const thread = (id: string, waitingOn: string): void => {
     mkdirSync(join(root, id, "messages"), { recursive: true });
     writeFileSync(join(root, id, "_meta.md"), meta("dev-core, curator"));
@@ -114,6 +126,7 @@ const contour = (options: {
     delivered,
     state: join(repo, ".orchestrator", "notify.state"),
     thread,
+    park,
     commit: (): void => {
       execFileSync("git", ["-C", repo, "add", "."]);
       execFileSync(
@@ -320,6 +333,64 @@ describe("notify as a command", () => {
 
     expect(again.out).toContain("nothing to announce");
     expect(readFileSync(contest.state, "utf8")).not.toContain("016-x");
+  });
+
+  it("A PARK RINGS ONCE — the next digest does not repeat the question (thread 051)", () => {
+    // john's pain of 2026-08-03, end to end: the ❓ line used to be rendered from the
+    // composition, so every digest with anything else in it carried the same question again.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("023-x", { asks: true });
+    contest.commit();
+
+    run(contest, ["--write"]);
+    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain(
+      "your decision: 023-x — Чинить ли гард 2?",
+    );
+    rmSync(contest.delivered);
+
+    // A NEW event on another thread — the digest goes out, and it is not about the park.
+    contest.thread("016-x", "john");
+    const second = run(contest, ["--write"]);
+
+    expect(second.code).toBe(0);
+    const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
+    expect(text).toContain("⏳ твой ход: 016-x");
+    expect(text).not.toContain("023-x");
+    // The park is still IN FORCE: it stays in the state, and the thread is not called stalled.
+    expect(readFileSync(contest.state, "utf8")).toContain("parked\tjohn\t023-x\t");
+    expect(second.out).toContain("1 parked, 0 of them asking");
+  });
+
+  it("a park declared by an informational message never rings, and no blank is sent", () => {
+    // `expects: none` says the message asks nobody for anything. The park still freezes the
+    // thread — so the wait line is suppressed too, and the whole digest renders to nothing.
+    // A blank buzz on somebody's phone is not a delivery, and the state still moves.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("016-x", { asks: false, body: "фиксация мыслей, НЕ в работу" });
+    contest.commit();
+
+    const result = run(contest, ["--write"]);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("nothing to announce");
+    expect(existsSync(contest.delivered)).toBe(false);
+    expect(readFileSync(contest.state, "utf8")).toContain("parked\tjohn\t016-x\t");
+  });
+
+  it("re-parked with a NEW question it rings again — the key is the message that asked", () => {
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("023-x", { asks: true });
+    contest.commit();
+    run(contest, ["--write"]);
+    rmSync(contest.delivered);
+
+    contest.park("023-x", { asks: true, date: "2026-07-26T09:00:00Z", body: "А теперь чинить?" });
+    const again = run(contest, ["--write"]);
+
+    expect(again.out).toContain("1 of them asking");
+    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain(
+      "your decision: 023-x — А теперь чинить?",
+    );
   });
 
   it("a transport that does not load REFUSES before the state is touched", () => {

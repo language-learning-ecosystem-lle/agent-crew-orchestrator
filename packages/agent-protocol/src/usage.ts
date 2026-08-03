@@ -178,6 +178,11 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # its question — the first line of the parking message (023): the age
                               # answers nothing about a turn that cannot move, and a call that names
                               # a thread but not the question reads as 'the circuit is working'
+                              # and it rings ONCE, on the message that ASKED (051): a park already
+                              # announced gets NO line in later digests, and one declared by an
+                              # INFORMATIONAL message ('expects: none') gets none at all — the park
+                              # still freezes the thread, it just calls nobody. 'ack' DOES call:
+                              # the door leaves exactly two legal parks and both need the person
                               # the turn has passed to a HUMAN: whom is derived from wake.mode,
                               # the words come from notifications.templates, delivery from the transport plugin
                               # without --write: prints what it would send and leaves the state alone

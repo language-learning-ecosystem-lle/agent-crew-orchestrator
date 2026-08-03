@@ -195,6 +195,15 @@ export type StalledTurn = {
  *
  * `since` is the stamp of the message that parked it: a thread answered and parked again is
  * a NEW question, and keying by the id alone would swallow the second one.
+ *
+ * IT RINGS ONCE, ON THE MESSAGE THAT ASKED (thread 051, john's pain of 2026-08-03). A park is
+ * the one class of event that does not go away by itself — the turn stays frozen for as long
+ * as the person takes — so a courier that prints the full composition every time it has
+ * anything else to say repeats the same ❓ for days. It was measured live on 016 (a park held
+ * as a MODE by john's own decision) and on 049 (a park over two manual operations, ringing
+ * with its questions already closed). The mark has to mean "there is a question you have not
+ * read"; a mark that means "this thread is still parked" teaches the reader to skip it, and
+ * the missed call that follows is dearer than the one that was never made.
  */
 export type ParkedThread = {
   readonly thread: string;
@@ -202,6 +211,13 @@ export type ParkedThread = {
   readonly since: string;
   /** The first line of the parking message — the question, in the words it was asked in. */
   readonly question: string;
+  /**
+   * Whether the parking message asks anything of the person (`expects` is not `none`) — a park
+   * declared by an INFORMATIONAL message freezes the thread exactly the same way and calls
+   * nobody. `ack` calls: it is "I stand until you confirm", and a silent freeze costs more than
+   * a ❓ too many (curator, 2026-08-03) — see `Parking.asks` for the whole reason.
+   */
+  readonly asks: boolean;
 };
 
 /**
@@ -270,7 +286,12 @@ export type NotificationPlan = {
   readonly fresh: readonly WaitingPair[];
   /** Stalls not announced before — a stall that was already reported is not repeated. */
   readonly freshStalled: readonly StalledTurn[];
-  /** Parks not announced before — the same rule, keyed by the message that parked. */
+  /**
+   * Parks not announced before AND asking something — the same rule, keyed by the message that
+   * parked, and the ONLY parks that produce a line: a park in force but already announced is
+   * silent from the second digest on, and one declared by an informational message is silent
+   * from the first.
+   */
   readonly freshParked: readonly ParkedThread[];
   /** The authorisation shelf in force now, if the predicate rings — also part of the state. */
   readonly auth?: AuthAlarm | undefined;
@@ -331,8 +352,10 @@ export const parseNotifyState = (raw: string): NotifyState => {
       const [, person, thread, since] = columns;
       // The question is not stored either, for the same reason the age is not: what
       // identifies the event is the message that parked, and the text is re-read from it.
+      // `asks` is not stored for the third time for the same reason — the state answers one
+      // question ("was this event announced"), and it answers it by the key alone.
       if (person !== undefined && thread !== undefined && since !== undefined) {
-        parked.push({ person, thread, since, question: "" });
+        parked.push({ person, thread, since, question: "", asks: false });
       }
       continue;
     }
@@ -402,7 +425,11 @@ export const planNotifications = (input: {
     .filter((park) => byRole.get(park.person)?.style === "direct")
     .sort((a, b) => a.thread.localeCompare(b.thread));
   const seenParks = new Set(input.seen.parked.map(parkedKey));
-  const freshParked = parked.filter((park) => !seenParks.has(parkedKey(park)));
+  // A PARK IS AN EVENT, NOT A STATE, FOR THE COURIER (thread 051): it rings on the message
+  // that asked, once, and the composition below keeps it only so that the age pass stays
+  // quiet about it and the state remembers it was told. `asks` is the message's own word:
+  // `expects: none` says it wants nothing of anybody, and ❓ over it is a lie by mark.
+  const freshParked = parked.filter((park) => park.asks && !seenParks.has(parkedKey(park)));
 
   // A PARKED THREAD IS NEVER ALSO A STALLED ONE (thread 023). Both would be true of it —
   // the turn is not moving, by construction — but "your decision is wanted, here is the
@@ -471,7 +498,16 @@ export const planNotifications = (input: {
   // THE PARKS COME FIRST, and they are the only lines that name a question: this is the
   // section "waiting on your decision", and it is at the top because it is the only part of
   // the message that is an instruction to the reader rather than a report about the circuit.
-  for (const park of parked) {
+  //
+  // AND IT IS THE FRESH ONES, not the composition — the one place in this function where the
+  // message is NOT the full picture, deliberately (thread 051). Every other line is a fact
+  // that is true again each time it is printed ("your turn: 042" is an instruction the reader
+  // has still not carried out); a question is read once. A park already announced therefore
+  // produces NO LINE AT ALL rather than a quieter one: the second form was available and was
+  // not taken, because the digest is a courier of events and the standing picture is what
+  // `cli mail` and the operator frame are for — a state line repeated for days is the same
+  // noise with a smaller mark.
+  for (const park of freshParked) {
     lines.push({
       kind: "parked",
       thread: park.thread,
