@@ -406,7 +406,7 @@ describe("parkedOnKind — the one reading of the field (thread 023)", () => {
 });
 
 describe("parkingOf — the facts the courier to the human needs (thread 023)", () => {
-  const thread = (text: string): Thread => ({
+  const thread = (text: string, expects: "answer" | "ack" | "none" = "answer"): Thread => ({
     id: "023-x",
     meta: { title: "t", participants: ["curator", "john"], status: "open" },
     messages: [
@@ -414,7 +414,7 @@ describe("parkingOf — the facts the courier to the human needs (thread 023)", 
         fields: {
           from: "curator",
           date: "2026-07-31T11:08:20Z",
-          expects: "answer",
+          expects,
           waitingOn: "curator",
           parkedOn: "john",
         },
@@ -429,7 +429,24 @@ describe("parkingOf — the facts the courier to the human needs (thread 023)", 
       person: "john",
       since: "2026-07-31T11:08:20Z",
       question: "Перезапустить демон?",
+      asks: true,
     });
+  });
+
+  it("carries WHETHER THE MESSAGE ASKS ANYTHING — the freeze is the same, the call is not", () => {
+    // Thread 051: a park declared by an informational message is still a park (the turn cannot
+    // move, the scheduler skips the thread), but nobody is being called — the message says so
+    // itself. The door refuses this combination today; the feed предшествует двери.
+    expect(parkingOf(thread("фиксация мыслей, НЕ в работу", "none"))?.asks).toBe(false);
+    expect(parkingOf(thread("Чинить ли гард 2?"))?.asks).toBe(true);
+  });
+
+  it("`ack` CALLS TOO — the door leaves exactly two legal parks, and both need the person", () => {
+    // Curator's decision of 2026-08-03: the door refuses `--parked-on` with `--expects none`
+    // (034), so a park is either `answer` or `ack`; `ack` is "I stand until you confirm", which
+    // is an action of the human just the same. Ringing only on `answer` would let a thread
+    // freeze with NOBODY told — the age pass is quiet about parks, the scheduler skips them.
+    expect(parkingOf(thread("подтверди, что снёс лок", "ack"))?.asks).toBe(true);
   });
 
   it("the question is the first line WITHOUT its markup — a heading is still a question", () => {
@@ -483,6 +500,7 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
       pr: 127,
       since: "2026-07-31T12:00:00Z",
       question: "Жду merge #127.",
+      asks: true,
     });
   });
 
@@ -582,6 +600,7 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
       pr: 163,
       since: "2026-08-02T09:12:57Z",
       question: "Жду вердикта по #163.",
+      asks: true,
     });
   });
 

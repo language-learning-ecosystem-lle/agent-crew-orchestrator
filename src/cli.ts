@@ -2495,6 +2495,9 @@ const runNotify = async (input: {
             person: parking.person,
             since: parking.since,
             question: parking.question,
+            // Whether the human is being CALLED, as opposed to the thread being frozen — the
+            // parking message's own `expects` (thread 051). The freeze is the same either way.
+            asks: parking.asks,
           },
         ]
       : [],
@@ -2574,7 +2577,9 @@ const runNotify = async (input: {
   const message = renderNotification(plan.lines);
 
   const describeWaits =
-    `${plan.parked.length} parked, ${plan.freshParked.length} of them new; ` +
+    // "asking" and not "new": a park in force is not news, and the number that matters to
+    // whoever reads this line is how many of them RING (thread 051).
+    `${plan.parked.length} parked, ${plan.freshParked.length} of them asking; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
     `${plan.auth === undefined ? "" : `; the box cannot authenticate (${plan.auth.deaths} runs in a row)`}` +
@@ -2617,12 +2622,18 @@ const runNotify = async (input: {
   // branch below rather than once up here. NOTHING TO ANNOUNCE IS ITSELF a confirmed
   // outcome: this is where a pair that has STOPPED waiting is forgotten, and forgetting
   // it is what makes the same thread ring again if it comes back to waiting later.
+  // AN EMPTY MESSAGE IS NOT A DELIVERY, and since thread 051 it is reachable: a thread parked
+  // by an informational message has its wait line suppressed (the park owns the thread's line)
+  // and its park line silent (nothing was asked), so a fresh pair can render to nothing at all.
+  // Sending that would be a blank buzz on somebody's phone; the state still moves, because
+  // "nothing had to be said" is as confirmed an outcome as a delivery.
   if (
-    plan.fresh.length === 0 &&
-    plan.freshStalled.length === 0 &&
-    plan.freshParked.length === 0 &&
-    !plan.freshAuth &&
-    !plan.freshGh
+    message === "" ||
+    (plan.fresh.length === 0 &&
+      plan.freshStalled.length === 0 &&
+      plan.freshParked.length === 0 &&
+      !plan.freshAuth &&
+      !plan.freshGh)
   ) {
     writeOut(
       statePath,

@@ -255,7 +255,36 @@ apart along lines the package already had:
 - **The trigger is a new pair, the text is the FULL composition.** Both halves are
   carried over verbatim from the predecessor, because both were paid for: notify only
   on appearance, but list everything, since a list of one reads as "the rest is
-  closed" and that would be a lie at the price of a forgotten thread.
+  closed" and that would be a lie at the price of a forgotten thread. **The one
+  exception is a park** — see below, and it is an exception because the rule's own
+  reason does not hold there: "your turn: 042" is still an instruction the reader has
+  not carried out, and a question is read once.
+
+- **The third question: WHAT IS FROZEN BEHIND A PERSON, and it rings ONCE** (thread
+  023, tightened in 051). A park has no age threshold by construction — it is a
+  declaration that the turn cannot move until somebody decides, so waiting it out only
+  postpones the call — and it is keyed by the stamp of the message that parked, so a
+  thread answered and parked again is a new question. What 051 added is the other half
+  of "once": the ❓ line is rendered from the FRESH parks and not from the composition,
+  so a park already announced produces **no line at all** in later digests, and a park
+  declared by a message that asks nothing (`expects: none`) produces none from the
+  start. The line between the two is `none` and not `answer`: the door refuses
+  `--parked-on` together with `--expects none` (034), so the only two LEGAL parks are
+  `answer` and `ack` — and `ack` is "I stand until you confirm", an action required of
+  the person just the same. A reader ringing only on `answer` would let the door pass a
+  combination that freezes a thread and tells nobody, since the age pass is quiet about
+  parks by rule and the scheduler skips them; noise the reader filters, silence he
+  cannot (curator, 2026-08-03). `none` stays mute because that is the legacy park the
+  fact was carried for. The park itself stays in the composition and in the state — the
+  scheduler still skips the thread and the age pass still says nothing about it; only
+  the call is not repeated. The pain was john's, measured live on 2026-08-03: 016 (a
+  park held as a MODE by his own decision, ringing for days) and 049 (a park over two
+  manual operations, ringing with its questions already closed). **❓ has to mean "there
+  is a question you have not read"** — a mark that means "this thread is still parked"
+  teaches the reader to skip it, and the missed call that follows costs more than the
+  one never made. A quieter state line was the other available form and was NOT taken:
+  the digest is a courier of events, and the standing picture is what `cli mail` and the
+  operator frame are for.
 
 - **The second question: what has NOT MOVED** (thread 024). Since schema v13 the turn
   is held by exactly one role and a human is outside its domain, so "who is awaited"
