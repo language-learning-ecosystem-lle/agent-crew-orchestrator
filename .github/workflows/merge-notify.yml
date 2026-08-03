@@ -14,7 +14,12 @@ on:
 jobs:
   notify:
     if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
+    # Пул ящика (этап 2, тред 049; решение john «переносится ВСЁ, включая
+    # уведомители»). Оговорка та же, что у ci-outcome.yml: в пиковый час
+    # доставка встаёт в очередь за `checks`, а это уведомитель, ПЕРЕДАЮЩИЙ ХОД —
+    # задержка здесь стоит не минут, а простоя роли. Мерится пунктом 5
+    # постановки; откат — одна строка.
+    runs-on: [self-hosted, linux, x64]
     permissions:
       contents: write # запись в ветку comms
     steps:
@@ -31,7 +36,16 @@ jobs:
         with:
           ref: main
           path: .code
-      - uses: pnpm/action-setup@v4
+      # `dest` ОБЯЗАТЕЛЕН вместе с переездом на пул — см. ci.yml: по умолчанию
+      # pnpm ставится в `~/setup-pnpm`, общий `$HOME` трёх воркеров ящика, и
+      # джоба выдёргивает бинарь и стор из-под соседа. Вход `dest` есть и в v4
+      # (`action.yml` тега: `required: false`, `default: ~/setup-pnpm`), но пин
+      # подтянут до v5 заодно: единственный файл, отстававший от остальных шести,
+      # — расхождение пинов ничем не оправдано, а чинить класс на старом теге
+      # значит оставить его единственным местом с другим поведением.
+      - uses: pnpm/action-setup@v5
+        with:
+          dest: ${{ runner.tool_cache }}/setup-pnpm
       - uses: actions/setup-node@v5
         with:
           node-version-file: .code/.nvmrc
