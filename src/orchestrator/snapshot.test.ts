@@ -208,6 +208,73 @@ describe("renderFrame", () => {
     );
   });
 
+  /**
+   * 023.2: the code the LIVE DAEMON loaded, when it is not the ref. The frame's second
+   * silent-on-good-news section, and the fact that was missing on 2026-08-03 — a pair
+   * standing behind a park the running process had no code to lift.
+   */
+  it("a daemon running stale code says so, beside the circuit it is a fact about", () => {
+    const lines = renderFrame({
+      ...frame,
+      codeAge: {
+        kind: "drift",
+        drift: {
+          vintage: {
+            sha: "a830761a1c0ffee0000000000000000000000000",
+            checkout: "/home/lle/projects/language-learning-ecosystem",
+            startedAt: "2026-08-03T05:13:11Z",
+            pid: 710030,
+          },
+          ref: "origin/main",
+          refSha: "951b7551ffffffffffffffffffffffffffffffff",
+          behind: 13,
+        },
+      },
+    }).split("\n");
+    const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));
+    expect(at("code: ⚠")).toBeGreaterThan(at("circuit:"));
+    expect(at("code: ⚠")).toBeLessThan(at("queue:"));
+    expect(lines[at("code: ⚠")]).toContain("13 commit(s) behind");
+    expect(lines[at("code: ⚠")]).toContain("a830761a");
+    expect(lines[at("code: ⚠")]).toContain("951b7551");
+  });
+
+  it("a daemon running the ref gets no line and no blank one either", () => {
+    expect(renderFrame(frame)).not.toContain("code: ");
+    expect(renderFrame(frame)).not.toContain("\n\n");
+  });
+
+  /**
+   * The third state, and the one that keeps the silence above meaning something: a live
+   * daemon that published no vintage of its own code. Silence here would be read as
+   * "current", which is exactly the wrong answer for a process too old to publish.
+   */
+  it("a live daemon that published nothing is NAMED, not read as current", () => {
+    const line = renderFrame({ ...frame, codeAge: { kind: "unpublished", pid: 3295463 } })
+      .split("\n")
+      .find((row) => row.includes("code: ⚠"));
+    expect(line).toContain("3295463");
+    expect(line).toContain("cannot be judged");
+  });
+
+  /**
+   * The fourth state, and the disagreement it closes (#190 review): the tick printed the
+   * unreadable reading into the daemon's stream while the frame drew nothing for it — the
+   * two saying different things about the one subject this section exists to keep honest.
+   * A ref that does not resolve is a measurement that did not happen, and the frame is
+   * silent for exactly one reason: a measurement that did and came back clean.
+   */
+  it("a reading the frame could not take is NAMED, not drawn as a match", () => {
+    const line = renderFrame({
+      ...frame,
+      codeAge: { kind: "unreadable", problem: "fatal: bad revision 'origin/mian^{commit}'" },
+    })
+      .split("\n")
+      .find((row) => row.includes("code: ⚠"));
+    expect(line).toContain("unreadable");
+    expect(line).toContain("origin/mian");
+  });
+
   it("a project with no resident roles gets no section and no blank line for one", () => {
     // There is no question to answer here, and an empty section would teach a reader to
     // conclude something from its absence. The frame must also not grow a stray newline.

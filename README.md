@@ -809,6 +809,9 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # for its order AND the mark on a thread frozen behind a person ('parked-on', R27),
                             # the neighbours' digests, and how old the mail on disk is; then the static half
                             # (paths, permissions, resolution)
+                            # AND, only when it is true, HOW OLD THE CODE IN THE LIVE DAEMON IS (023.2):
+                            # the SHA it loaded, the SHA of --ref on disk, the distance, since when it
+                            # is up. A daemon on the ref gets no line at all
                             # --watch redraws THE SAME frame every --interval seconds and READS ONLY
 agent-protocol orchestrator tui    [--ref <ref>] [--interval <sec>]        # THE OBSERVER (T-1)
                             # the same frame as a SCREEN: pairs on top, the circuit in the middle,
@@ -2830,3 +2833,66 @@ and the daemon print failures alone. To a reader of a live circuit a dropped fie
 usually means "this process is older than the field it just met", which is not the
 daemon's business to shout about; `check` runs the current code over the mail on purpose,
 so there a field it cannot make sense of is a malformed field and gets a red exit.
+
+### S24 — the code in the live daemon has an age, and it says it (thread 023, 023.2)
+
+The config is re-read at `--ref` every tick; the CODE is loaded once, by node, when the
+process starts. Nothing said so, and on 2026-08-03 the gap between those two tempos was
+six hours wide: the daemon raised at 05:13Z carried modules from `a830761a`, the lift of
+a `run:` park landed in `main` at 11:15Z, and two pairs stood behind a park the running
+process had no code to lift. The stalls were read first as two defects of one predicate
+and were not — the predicate on disk was correct both times. A fix that has landed and a
+fix that is RUNNING are different facts, and only the first of them was visible.
+
+**What was built is the smallest of the three variants on the table, deliberately.** The
+daemon SPEAKS; it does not refuse to raise pairs on a divergence (that turns every merge
+into a stop of the circuit) and it does not restart itself (a daemon killing itself among
+live sessions). Those are variants (2) and (3): they change what the circuit costs and
+they need a conversation about live sessions that has not happened. The cheapest cure for
+silence is that it stops being silence — and the first measurement to take is how often
+the line lights up at all.
+
+- **at start** the daemon dates itself: `git rev-parse HEAD` in the checkout its own
+  module lies in (the one thing that cannot lie about where node resolved from), plus the
+  moment. Both go into the banner, and the pair is published to `daemon-code.json` in the
+  state directory;
+- **every tick** it compares that SHA with `--ref` **as the ref lies on disk** — no fetch,
+  ever: a frame redraws every two seconds and a tick has one network read already;
+- **a divergence** is one line beside the skips, and one line in the operator frame. It
+  names FACTS — the loaded SHA, the ref's SHA, the distance in commits, since when the
+  process is up — and no command to run: a line that ends in advice gets skimmed;
+- **a match is silence**, in both places. This is the same rule the merge-ready tier
+  follows (S21) and for a stronger reason here: a line every thirty seconds saying the
+  code is current is exactly the noise that hid this failure for six hours;
+- **the frame reads the DAEMON's vintage, never its own modules.** `status` is typed in a
+  terminal that may be standing in any checkout; asked about staleness it would answer
+  about itself. Hence the published file, read only while the daemon's pid is alive — a
+  vintage left by a process that is gone describes nothing that is running, and the
+  circuit section already says the daemon is not there;
+- **and the vintage is believed only from the LIVE pid**, which is where the one asymmetry
+  of this check sits. The file outlives its writer. A daemon raised from a checkout so old
+  it has no idea this check exists publishes NOTHING and leaves its newer predecessor's
+  file lying in the state directory — and a reader trusting that file would compare the
+  ref against code nobody is running, find a MATCH, and say nothing. Silence about a stale
+  daemon is this feature failing in the exact shape of the incident it was built for. So
+  the vintage carries the pid that wrote it, and a live daemon that published none under
+  its own pid is NAMED (`the live daemon (pid N) published no vintage…`) instead of
+  passing for current. Why it published none is not knowable from here — code older than
+  the check, an unwritable state directory, a process seconds from writing it — and the
+  line says what is true rather than picking one;
+- **and a reading that could not be TAKEN is a fourth state, not silence** (the reviewer's
+  finding on #190). The ref may not resolve on disk at all: a checkout that was never
+  fetched, a typo in `--ref`, a state directory that went away. That is a measurement that
+  did not happen, and folding it into the same `undefined` as a match made the frame draw
+  silence while the tick was naming the fault in the stream — the two disagreeing about
+  the one subject this check exists to keep them honest about. Both now print the SAME
+  sentence, from the same function: `the age of the loaded code is unreadable: <git's own
+  words>`. Silence is earned by exactly one state — a measurement that happened and came
+  back clean.
+
+The core is pure and the repro is a test (`code-age.test.ts`): code at SHA A with the ref
+at SHA B gives a line carrying both and the distance; code at the ref gives `match` and
+nothing is printed anywhere; a CURRENT vintage signed by a dead predecessor, read beside a
+different live pid, gives `unpublished` rather than the silence it would earn on its own
+SHA; and a reading of `unknown` gives `unreadable` in the frame (`snapshot.test.ts`) rather
+than the silence of a match.

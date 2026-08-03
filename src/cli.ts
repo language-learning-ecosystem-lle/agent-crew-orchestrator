@@ -42,6 +42,7 @@ import {
 import { createRequire } from "node:module";
 import { homedir, hostname } from "node:os";
 import { dirname, isAbsolute, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
 import { type LoadedConfig, type LoadedPolicy, loadProtocolConfig } from "./config/load.js";
@@ -109,6 +110,18 @@ import {
   describeAuthShelf,
   openAuthShelf,
 } from "./orchestrator/auth.js";
+import {
+  type CodeVintage,
+  codeAgeView,
+  describeCodeDrift,
+  describeCodeVintage,
+  describeUnreadableCodeAge,
+  isVintage,
+  measureCodeDrift,
+  parseCodeVintage,
+  readCodeVintage,
+  renderCodeVintage,
+} from "./orchestrator/code-age.js";
 import {
   type Continuation,
   describeContinuation,
@@ -4533,6 +4546,22 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
   const published = loadDigests(mailRoot);
   const checkout = dirname(mailRoot);
   const daemonPid = runningDaemon(pidFile);
+  /**
+   * 023.2: HOW OLD THE CODE IN THE LIVE DAEMON IS — the vintage IT published, never this
+   * reader's own modules (`status` is typed in a terminal that may be standing anywhere)
+   * and never a vintage published UNDER ANOTHER PID: the file outlives its writer, and a
+   * predecessor's newer SHA read as the live daemon's would answer "current" about a
+   * process nobody started. The whole rule is `codeAgeView`; every failure of the reads
+   * around it is silence, because a frame must not die of a diagnostic.
+   */
+  const publishedVintage = existsSync(paths.daemonCode)
+    ? parseCodeVintage(readFile(paths.daemonCode, "the daemon's code vintage"))
+    : undefined;
+  const codeAge = codeAgeView({
+    daemonPid,
+    published: publishedVintage,
+    measure: (vintage) => measureCodeDrift({ vintage, ref: required(argv, "--ref") }),
+  });
   // The SAME attempt ceiling the daemon judges by (`--max-attempts`), and the SAME
   // mail (thread 023) — either one missing here would make the frame call a pair
   // exhausted that the next tick raises without blinking.
@@ -4570,6 +4599,9 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
       ...(daemonPid === undefined ? {} : { daemonPid }),
       pidFilePresent: existsSync(pidFile),
     },
+    // Beside the circuit: a fact about the daemon named there, absent when its code is
+    // the ref (the frame stays silent on good news, like the merge-ready tier).
+    ...(codeAge === undefined ? {} : { codeAge }),
     // THE SAME FOLD THE DAEMON PLANS BY (`planTick`) — the frame and the tick cannot
     // disagree about whether the box is standing down.
     quota: openQuotaShelves(events, now),
@@ -7138,6 +7170,41 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     `agent-protocol: the daemon is up, launches are ${enabledAtStart ? "ENABLED" : `disabled (no '${enableFlag}')`}; stop '${stopFlag}', force '${forceFlag}'; roles ${launchable.join(", ") || "—"}`,
   );
   out(`agent-protocol: daemon — gates: ${describeGates(gates)}`);
+  /**
+   * 023.2: WHAT CODE THIS PROCESS IS RUNNING — measured once, here, because that is the
+   * only moment it is true of: node loads modules at start and never again, while the
+   * config below is re-read at `--ref` every tick. The gap between those two tempos was
+   * silent for six hours on 2026-08-03 and produced two "quiet stalls" that were read as
+   * two defects of a predicate. The directory asked is THIS module's own — the one thing
+   * that cannot lie about where the modules came from.
+   */
+  const vintageRead = readCodeVintage({
+    dir: dirname(fileURLToPath(import.meta.url)),
+    startedAt: new Date(),
+    // Signed with THIS pid: the file outlives the process, and the frame refuses a
+    // vintage that belongs to a predecessor rather than reporting its SHA as live.
+    pid: process.pid,
+  });
+  const vintage: CodeVintage | undefined = isVintage(vintageRead) ? vintageRead : undefined;
+  if (vintage === undefined) {
+    err(
+      `agent-protocol: daemon — the loaded code cannot be dated (${(vintageRead as { problem: string }).problem}); a divergence between this process and ${required(argv, "--ref")} will NOT be reported`,
+    );
+  } else {
+    out(`agent-protocol: daemon — ${describeCodeVintage(vintage)}`);
+    // Published for the operator frame, which is drawn by a reader whose own modules are
+    // its own — see `paths.daemonCode`. A failure to publish costs a line of a picture
+    // and must not cost the daemon.
+    try {
+      writeOut(paths.daemonCode, renderCodeVintage(vintage));
+    } catch (error) {
+      err(
+        `agent-protocol: daemon — the loaded code was not published to '${paths.daemonCode}': ${(error as Error).message}; 'status' will not show its age`,
+      );
+    }
+  }
+  /** The last unreadable-ref complaint, so an unanswerable ref is said once, not per tick. */
+  let codeNote: string | undefined;
   // R13: WHAT THIS RUN RAISES, and what it leaves to somebody else — in the banner,
   // because a role missing from the queue for an unspoken reason is indistinguishable
   // from a role with no mail.
@@ -7571,6 +7638,27 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // is declining to do.
     for (const skip of decision.skipped) {
       err(`agent-protocol: ${describeSkip(skip, gates.maxAttempts)}`);
+    }
+    // 023.2, BESIDE THE SKIPS AND FOR THE SAME REASON: this is the other answer to "why
+    // is nothing happening", and the only one the daemon could not give on 2026-08-03.
+    // Silent on a match — a line every tick saying the code is current is the noise that
+    // teaches a reader to skip the section. Nothing here can change what the tick does.
+    if (vintage !== undefined) {
+      const reading = measureCodeDrift({ vintage, ref: required(argv, "--ref") });
+      if (reading.kind === "drift") {
+        err(`agent-protocol: daemon — ${describeCodeDrift(reading.drift, new Date())}`);
+        codeNote = undefined;
+      } else if (reading.kind === "unknown" && reading.problem !== codeNote) {
+        // Said when it CHANGES, not every tick: an unresolvable ref is one fault, and
+        // repeating it thirty seconds apart would bury the drift line it stands next to.
+        // The SENTENCE is shared with the frame (`describeUnreadableCodeAge`) — this
+        // state used to be said here and drawn nowhere, and two places writing their own
+        // words is how that gap opened in the first place.
+        codeNote = reading.problem;
+        err(`agent-protocol: daemon — ${describeUnreadableCodeAge(reading.problem)}`);
+      } else if (reading.kind === "match") {
+        codeNote = undefined;
+      }
     }
     /** What happens after this tick — said in the same breath as what it decided. */
     const next = once ? "exiting (--once)" : `waiting ${tickMs / 1000}s for the next tick`;

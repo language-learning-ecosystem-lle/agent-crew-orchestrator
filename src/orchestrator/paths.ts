@@ -57,6 +57,14 @@ export type OrchestratorPaths = {
    * Disposable for the same reason as the state above — losing it costs one repeated call.
    */
   readonly mergeReadyOutage: string;
+  /**
+   * WHAT CODE THE LIVE DAEMON LOADED (023.2, `code-age.ts`): written once at its start,
+   * read by the operator frame. It lies here rather than being asked of the process
+   * because only the daemon knows which checkout node resolved its modules from — a
+   * reader asking the question of itself would answer about its own terminal. Disposable
+   * like the state above: losing it costs one line of a picture.
+   */
+  readonly daemonCode: string;
   /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
   readonly mailRoot: string;
 };
@@ -70,6 +78,7 @@ const HOLDS = "holds";
 const SESSIONS = "sessions";
 const NOTIFY_STATE = "notify.state";
 const MERGE_READY_OUTAGE = "merge-ready-outage.json";
+const DAEMON_CODE = "daemon-code.json";
 const DAEMON_LOG = "daemon.log";
 const DAEMON_PID = "daemon.pid";
 
@@ -90,6 +99,7 @@ export const orchestratorPaths = (input: {
     sessions: join(state, SESSIONS),
     notifyState: join(state, NOTIFY_STATE),
     mergeReadyOutage: join(state, MERGE_READY_OUTAGE),
+    daemonCode: join(state, DAEMON_CODE),
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),
