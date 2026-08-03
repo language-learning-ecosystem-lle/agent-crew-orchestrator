@@ -67,6 +67,11 @@ export const ghPullRequestSchema = z.looseObject({
     }),
   ),
   files: z.array(z.looseObject({ path: z.string() })),
+  // THE HEAD OF THE BASE BRANCH (023.3) — NOT pinned, unlike the fields above, and for the
+  // reason that decides everything else about this reading: no guard is computed from it.
+  // A payload without it makes the door SAY it cannot tell whether the base moved; a
+  // payload without `mergeable` makes it refuse. The two absences are not the same class.
+  baseRefOid: nullableText,
   mergeable: z.string(),
   mergeStateStatus: nullableText,
 });
@@ -91,7 +96,16 @@ export const ghOpenPullRequestsSchema = z.array(
  * empty-string absences and of `name ?? context`, which is exactly the drift the shared
  * guard function exists to prevent.
  */
-export const pullRequestFacts = (pr: GhPullRequest): PullRequestFacts => ({
+export const pullRequestFacts = (
+  pr: GhPullRequest,
+  /**
+   * The commit date of the base head (023.3). It arrives from a SECOND read — `gh pr view`
+   * dates the PR's own commits and never the base's — so it is a parameter and not a field
+   * of the payload: a caller with no use for the drift note (the scheduler) simply does
+   * not pay for the call, and the note says "unknown" instead of guessing.
+   */
+  baseCommittedAt?: string | undefined,
+): PullRequestFacts => ({
   number: pr.number,
   headSha: pr.headRefOid,
   body: pr.body,
@@ -117,6 +131,8 @@ export const pullRequestFacts = (pr: GhPullRequest): PullRequestFacts => ({
     startedAt: check.startedAt ?? undefined,
   })),
   changedPaths: pr.files.map((file) => file.path),
+  baseSha: pr.baseRefOid ?? undefined,
+  baseCommittedAt,
   mergeable: pr.mergeable,
   mergeStateStatus: pr.mergeStateStatus ?? undefined,
 });

@@ -133,6 +133,20 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # words: what is missing is a run on the 'pull_request' event
                               # 'mergeable' is read too and printed BESIDE the guards, not as a sixth:
                               # the door refuses what GitHub itself would refuse, UNKNOWN included
+                              # WHAT GUARD 2 DOES NOT ASK, said under it as 'note · base' (023.3): a
+                              # 'pull_request' check measures the head MERGED WITH THE BASE OF ITS OWN
+                              # MOMENT, and a base that moves afterwards reruns nothing — the green
+                              # stays on the head and the guard goes on crediting it. The note dates
+                              # the base's head commit against the START of the credited checks and
+                              # NEVER changes the verdict or the exit code: that half is john's
+                              # the measurement is CONSERVATIVE (the merge-ref a check really read is
+                              # not in the API) and assumes squash-only merges, where the commit date
+                              # of the base head is the moment it landed — a base move that could not
+                              # change the merge is named too, and one line of text is its whole price
+                              # silence is earned by ONE state: a base read, dated, and older than
+                              # every credited check. No base, no date, no start stamp, nothing green
+                              # credited — each is SAID. The date costs a second ask ('gh api
+                              # …/commits/<base>'), whose refusal is a note and not an error
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
   agent-protocol index build  --root <mail> --ref <ref> [--write]
   agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]
