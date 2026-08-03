@@ -191,9 +191,11 @@ export type PullRequestFacts = {
   /** `files[].path`, repository-relative. */
   readonly changedPaths: readonly string[];
   /**
-   * `baseRefOid`: the head of the branch this PR merges INTO, right now. Guard 2 does not
-   * judge it and never will (023.3) — it is read so the door can SAY that the base moved
-   * under the green check it is crediting. Absent means gh was not asked (or did not say).
+   * The head of the branch this PR merges INTO, AS MEASURED NOW — the branch asked for by
+   * name, not the `baseRefOid` of the payload, which is the base the branch was cut from
+   * (023.4). Guard 2 does not judge it and never will (023.3) — it is read so the door can
+   * SAY that the base moved under the green check it is crediting. Absent means gh was not
+   * asked (the scheduler never asks) or could not answer.
    */
   readonly baseSha?: string | undefined;
   /** `committedDate` of {@link baseSha} — when the base last moved; see {@link baseDriftOf}. */
@@ -567,6 +569,20 @@ export const mergeabilityOf = (pr: PullRequestFacts): Mergeability => {
  * older than every credited check. No base, no date, no start stamp, nothing credited at
  * all: all of them are SAID. This is the false-silence class #190 repaired twice already
  * (`unpublished`, `unreadable`); a third repetition of it has nowhere to hide.
+ *
+ * AND IT HID THERE ANYWAY, FOR FOUR MINUTES (023.4, the repair of the input). #191 shipped
+ * with `baseRefOid` as the base: the field is the head of the base branch AS RECORDED WHEN
+ * THE BRANCH WAS CUT, and it does not move when the base does. Measured on the live circuit
+ * minutes after that merge: `main` went to `6b87776f` at 15:42:33Z while PR #192 — whose
+ * credited `checks` started 15:25:28Z, the exact case this note exists for — still reported
+ * `baseRefOid: 44471804`; PR #3, opened 24.07, reports a July commit to this day. Dated
+ * that way the base is older than the credited checks essentially always, so `drift` was
+ * unreachable and `current` was printed about a reading nobody took. Every guard held,
+ * every test passed, and the note was a no-op that looked like good news — the same shape
+ * as the two false silences above, one layer lower: the states were honest about the
+ * ANSWER and nothing checked the QUESTION. The base branch is now asked for BY NAME and
+ * its head read live; the tests that lock this pin the second read to the branch, because
+ * a fact of the right type in the wrong meaning is what the unit tests could not see.
  */
 export type BaseDrift = {
   /** `current`: measured, the base is older than the credited checks — nothing to say. */
@@ -590,7 +606,7 @@ export const baseDriftOf = (pr: PullRequestFacts): BaseDrift => {
   if (base === undefined || baseTime === undefined)
     return {
       state: "unknown",
-      detail: `${base === undefined ? "gh reported no base commit" : `no readable date for the base ${base.slice(0, 7)}`} — whether the base moved under the credited checks is UNKNOWN, which is not the same as 'it did not'`,
+      detail: `${base === undefined ? "the head of the base branch was not read" : `no readable date for the base ${base.slice(0, 7)}`} — whether the base moved under the credited checks is UNKNOWN, which is not the same as 'it did not'`,
     };
   const unstamped = credited.filter((check) => check.since === undefined);
   if (unstamped.length > 0)

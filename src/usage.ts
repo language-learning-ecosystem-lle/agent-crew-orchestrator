@@ -145,8 +145,12 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # change the merge is named too, and one line of text is its whole price
                               # silence is earned by ONE state: a base read, dated, and older than
                               # every credited check. No base, no date, no start stamp, nothing green
-                              # credited — each is SAID. The date costs a second ask ('gh api
-                              # …/commits/<base>'), whose refusal is a note and not an error
+                              # credited — each is SAID. The base costs a second ask ('gh api
+                              # …/commits/<baseRefName>'), whose refusal is a note and not an error
+                              # it asks about the BRANCH BY NAME (023.4): the payload's 'baseRefOid'
+                              # is the base this branch was CUT from and stands still while the base
+                              # moves — dating it made the note a no-op that printed 'current' about
+                              # a measurement nobody took, with every guard and every test green
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
   agent-protocol index build  --root <mail> --ref <ref> [--write]
   agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]

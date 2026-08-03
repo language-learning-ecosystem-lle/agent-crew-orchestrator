@@ -1228,15 +1228,27 @@ text. It rests on one assumption, said rather than implied: **the commit date of
 head is the moment it landed** — true while merges are squash-only, as they are here.
 
 **Silence is earned by one state only:** a base read, dated, and older than every credited
-check. No base in the payload, no readable date, no start stamp on a credited check,
-nothing green credited at all — every one of those is SAID, in its own words. This is the
-false-silence class the daemon's vintage line repaired twice (`unpublished`, `unreadable`),
-and there is nowhere left to repeat it. The date costs a second ask —
-`gh api repos/{owner}/{repo}/commits/<base>`, since `gh pr view` dates the PR's commits and
-never the base's — and a refusal of that ask is a note, not an error: nothing is computed
-from it. For the same reason `baseRefOid` is the one field of the payload that is NOT
-pinned: a `gh` that stops answering it makes the door say it cannot tell, where a `gh` that
-stops answering `mergeable` makes it refuse.
+check. No branch name in the payload, no readable answer, no start stamp on a credited
+check, nothing green credited at all — every one of those is SAID, in its own words. This
+is the false-silence class the daemon's vintage line repaired twice (`unpublished`,
+`unreadable`), and there is nowhere left to repeat it. The base costs a second ask —
+`gh api repos/{owner}/{repo}/commits/<baseRefName>`, since `gh pr view` dates the PR's
+commits and never the base's — and a refusal of that ask is a note, not an error: nothing
+is computed from it. For the same reason `baseRefName` is the one field of the payload that
+is NOT pinned: a `gh` that stops answering it makes the door say it cannot tell, where a
+`gh` that stops answering `mergeable` makes it refuse.
+
+**The ask names the BRANCH, and this is the whole of the repair of 023.4.** The first
+shipped form of the note asked about `baseRefOid` — the head of the base as recorded when
+the branch was CUT. That SHA does not move when the base does, so it dated a commit nobody
+was asking about, `drift` was unreachable and `current` was printed about a measurement
+that never happened. Measured on the live circuit minutes after the merge: `main` moved to
+`6b87776f` at 15:42:33Z while PR #192, whose credited `checks` started at 15:25:28Z, still
+reported `baseRefOid: 44471804`; PR #3, opened 24.07, reports a July commit to this day.
+Every guard held and every test passed while it was wrong — the states were honest about
+the answer and nothing checked the question. The second ask is now pinned to the branch by
+test, and both halves of the reading (which commit, and when it landed) travel together:
+half an answer is treated as no answer, because a SHA with no date would print as silence.
 
 **`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
 card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
