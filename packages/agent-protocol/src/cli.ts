@@ -8758,7 +8758,9 @@ const mergeGate = (argv: readonly string[]): void => {
         // `mergeable`/`mergeStateStatus`: what GitHub itself would refuse (D2).
         // `commits` beside `reviews`: the date of the head commit, the one fact a
         // substituted review anchor cannot fake (thread 043).
-        "number,headRefOid,body,statusCheckRollup,reviews,commits,files,mergeable,mergeStateStatus",
+        // `baseRefOid`: the base the credited checks are dated against (023.3) — read for
+        // a note, never for a guard.
+        "number,headRefOid,body,statusCheckRollup,reviews,commits,files,baseRefOid,mergeable,mergeStateStatus",
       ],
       {
         cwd: repo,
@@ -8820,8 +8822,29 @@ const mergeGate = (argv: readonly string[]): void => {
       out(`merge-gate: --working-cards matches no role's instructions: ${stray.join(", ")}`);
     }
   }
+  // WHEN THE BASE LAST MOVED (023.3), the second read: `gh pr view` dates the commits of
+  // the PR and never the base's head. A failure here is NOT fatal and is not even
+  // reported twice — nothing is computed from it, and the note downstream says "unknown"
+  // in its own words, which is the whole of the one-sided degradation this scope asks for.
+  const baseCommittedAt = ((): string | undefined => {
+    const base = parsed.data.baseRefOid;
+    if (base === undefined || base === null || base.trim().length === 0) return undefined;
+    try {
+      return execFileSync(
+        "gh",
+        ["api", `repos/{owner}/{repo}/commits/${base.trim()}`, "--jq", ".commit.committer.date"],
+        { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 1024 * 1024 },
+      ).trim();
+    } catch {
+      return undefined;
+    }
+  })();
+
   // The SAME reading of the payload the scheduler's merge-ready uses (`pullRequestFacts`).
-  const verdict = evaluateMergeGate({ pr: pullRequestFacts(parsed.data), powerDocs });
+  const verdict = evaluateMergeGate({
+    pr: pullRequestFacts(parsed.data, baseCommittedAt),
+    powerDocs,
+  });
 
   for (const line of describeMergeGate(verdict)) out(line);
   if (!verdict.curatorMayMerge) process.exit(1);

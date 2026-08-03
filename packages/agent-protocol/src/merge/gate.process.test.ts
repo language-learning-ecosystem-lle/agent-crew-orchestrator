@@ -551,3 +551,101 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(result.out).not.toContain("not green: review=\n");
   });
 });
+
+/**
+ * 023.3 — THE SECOND READ. The base's date is not in `gh pr view` at all: the command
+ * asks `gh api …/commits/<baseRefOid>` for it, and NOTHING is computed from the answer.
+ * So what the wiring has to prove is the pair: the note appears when the date arrives,
+ * and a refusal of that second ask leaves the exit code exactly where it was.
+ */
+const stubGhWithBase = (repo: string, payload: unknown, baseDate: string | undefined): string => {
+  const bin = join(repo, "stub-bin-base");
+  mkdirSync(bin, { recursive: true });
+  // `$1` tells the two asks apart: `pr view …` and `api repos/…/commits/<sha>`.
+  const date =
+    baseDate === undefined
+      ? 'echo "gh: HTTP 404" >&2\n  exit 1'
+      : `echo ${JSON.stringify(baseDate)}`;
+  const script = `#!/bin/sh
+if [ "$1" = "api" ]; then
+  ${date}
+else
+  cat <<'PAYLOAD'
+${JSON.stringify(payload)}
+PAYLOAD
+fi
+`;
+  const path = join(bin, "gh");
+  writeFileSync(path, script, "utf8");
+  chmodSync(path, 0o755);
+  return bin;
+};
+
+describe("merge-gate — the base under a credited check (023.3)", () => {
+  const BASE = "9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f";
+  const withBase = (over: Record<string, unknown> = {}): unknown =>
+    mergeable({
+      baseRefOid: BASE,
+      statusCheckRollup: [
+        {
+          name: "checks",
+          status: "COMPLETED",
+          conclusion: "SUCCESS",
+          startedAt: "2026-07-30T00:02:00Z",
+          completedAt: "2026-07-30T00:04:05Z",
+        },
+      ],
+      ...over,
+    });
+
+  it("names the drift end to end — and still exits 0", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGhWithBase(repo, withBase(), "2026-07-30T00:03:00Z"));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("note · base:");
+    expect(result.out).toContain("moved AFTER");
+    expect(result.out).toContain("guards 3 and 5 are yours to answer");
+  });
+
+  it("stays silent — and exits 0 identically — when the base is older than the check", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGhWithBase(repo, withBase(), "2026-07-30T00:01:00Z"));
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("note · base:");
+  });
+
+  it("a refused second ask is NAMED and fatal to nothing", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGhWithBase(repo, withBase(), undefined));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("note · base:");
+    expect(result.out).toContain("UNKNOWN");
+  });
+
+  it("a payload with no baseRefOid at all is read, not refused — no guard is computed from it", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGhWithBase(repo, withBase({ baseRefOid: null }), undefined));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("no base commit");
+  });
+
+  it("the drift changes no refusal either — a document of power still exits 1", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGhWithBase(
+        repo,
+        withBase({ files: [{ path: "docs/roles/curator.md" }] }),
+        "2026-07-30T00:03:00Z",
+      ),
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("note · base:");
+    expect(result.out).toContain("REFUSED");
+  });
+});

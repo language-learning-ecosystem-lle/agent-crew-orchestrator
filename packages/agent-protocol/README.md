@@ -1199,6 +1199,45 @@ survives the grouping is asked its age. An author whose LAST word is anchorless 
 stops the door, and another author's approve does not clear it — being overtaken by the
 same reviewer is what clears a verdict, and nothing else is.
 
+**What guard 2 does not ask, said under it — `note · base` (023.3).** A green check hangs
+on the head and the guard credits it there. But a `pull_request` run does not measure the
+head: it measures `refs/pull/N/merge` — **the head merged with the base as the base was
+when the run started**. Move the base afterwards and GitHub rebuilds that ref, but nobody
+reruns a check that has already answered: it stays green, stays on the same head, and the
+guard goes on crediting a reading of a tree that is no longer the result of this merge.
+Measured in thread 023: run `30819577162` started 13:47:19Z on head `92b2c612` over base
+`951b7551`, #189 landed at 14:00:28Z, and until the next push the door would have counted
+that reading for fifteen minutes. `mergeStateStatus` does not cover it — it says `BEHIND`
+only under a "branch must be up to date" protection, which this repository does not have.
+The symmetry that makes it one class: guard 1 already asks this question on the other
+axis (a verdict older than the head commit is not about it); the time of a CHECK against
+the BASE was asked by nobody.
+
+**It only speaks.** The verdict and the exit code are identical with a drift and without
+one, in every branch, and that is locked by test rather than by intention: a door that
+began refusing what it used to pass would be a change of the norm, and the norm is
+john's. The note is printed under guard 2 and marked `note`, never as a guard.
+
+**The measurement is conservative, and that is its honest name.** The API does not hand
+back the merge-ref a check actually read, so the comparison is the base head's
+`committedDate` against the **start** of the credited attempts — the earliest of them,
+because guard 2 credits them all. It will therefore name a base move that could not
+change the merge at all (#189, one new test, is exactly such a move), which is admissible
+precisely because the verdict does not move: the price of a false positive is one line of
+text. It rests on one assumption, said rather than implied: **the commit date of the base
+head is the moment it landed** — true while merges are squash-only, as they are here.
+
+**Silence is earned by one state only:** a base read, dated, and older than every credited
+check. No base in the payload, no readable date, no start stamp on a credited check,
+nothing green credited at all — every one of those is SAID, in its own words. This is the
+false-silence class the daemon's vintage line repaired twice (`unpublished`, `unreadable`),
+and there is nowhere left to repeat it. The date costs a second ask —
+`gh api repos/{owner}/{repo}/commits/<base>`, since `gh pr view` dates the PR's commits and
+never the base's — and a refusal of that ask is a note, not an error: nothing is computed
+from it. For the same reason `baseRefOid` is the one field of the payload that is NOT
+pinned: a `gh` that stops answering it makes the door say it cannot tell, where a `gh` that
+stops answering `mergeable` makes it refuse.
+
 **`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
 card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
 mergeability of the branch altogether — a PR with a conflicting tree, one clean set of

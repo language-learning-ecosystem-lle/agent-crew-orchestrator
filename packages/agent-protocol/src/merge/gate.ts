@@ -190,6 +190,14 @@ export type PullRequestFacts = {
   }[];
   /** `files[].path`, repository-relative. */
   readonly changedPaths: readonly string[];
+  /**
+   * `baseRefOid`: the head of the branch this PR merges INTO, right now. Guard 2 does not
+   * judge it and never will (023.3) — it is read so the door can SAY that the base moved
+   * under the green check it is crediting. Absent means gh was not asked (or did not say).
+   */
+  readonly baseSha?: string | undefined;
+  /** `committedDate` of {@link baseSha} — when the base last moved; see {@link baseDriftOf}. */
+  readonly baseCommittedAt?: string | undefined;
   /** `mergeable`: `MERGEABLE` / `CONFLICTING` / `UNKNOWN` — absent means gh did not say. */
   readonly mergeable?: string | undefined;
   /** `mergeStateStatus`: `CLEAN` / `DIRTY` / `BLOCKED` …, printed beside the verdict. */
@@ -227,6 +235,11 @@ export type MergeGateVerdict = {
   readonly curatorMayMerge: boolean;
   readonly guards: readonly GateOutcome[];
   readonly mergeability: Mergeability;
+  /**
+   * What guard 2 does not ask (023.3) — said beside it and counted in NOTHING: see
+   * {@link baseDriftOf}. Never a guard, never a state, never part of `curatorMayMerge`.
+   */
+  readonly baseDrift: BaseDrift;
 };
 
 /** Normalised prefix: no leading `./`, no trailing slash. Same normalisation as `zones`. */
@@ -327,6 +340,13 @@ type Attempt = {
   readonly state: string | undefined;
   /** The moment this attempt last spoke; `undefined` when the payload carries no stamp. */
   readonly at: number | undefined;
+  /**
+   * When this attempt STARTED — a different question from {@link at}, and the only one the
+   * base can be dated against (023.3): what a run measured is fixed at its start, not at
+   * its finish. Optional so the callers that build an {@link Attempt} by hand need not
+   * know about it.
+   */
+  readonly since?: number | undefined;
 };
 
 const momentOf = (check: PullRequestFacts["checks"][number]): number | undefined => {
@@ -336,12 +356,20 @@ const momentOf = (check: PullRequestFacts["checks"][number]): number | undefined
   return stamps.length === 0 ? undefined : Math.max(...stamps);
 };
 
+const stampOf = (value: string | undefined): number | undefined => {
+  const text = present(value);
+  if (text === undefined) return undefined;
+  const parsed = Date.parse(text);
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
+
 const asAttempt = (check: PullRequestFacts["checks"][number]): Attempt => ({
   name: present(check.name) ?? "?",
   status: present(check.status),
   conclusion: present(check.conclusion),
   state: present(check.state),
   at: momentOf(check),
+  since: stampOf(check.startedAt),
 });
 
 /**
@@ -496,6 +524,91 @@ export const mergeabilityOf = (pr: PullRequestFacts): Mergeability => {
   return {
     state: "blocked",
     detail: `mergeable=${mergeable}${beside} — the branch does not apply to its base: a rebase and a new round, not a merge`,
+  };
+};
+
+/**
+ * WHAT GUARD 2 DOES NOT ASK — said beside it, and never instead of it (023.3, curator's
+ * statement of work of 2026-08-03, thread `023-daemon-parallelism`).
+ *
+ * A green check hangs on the head, and guard 2 credits it there. But a `pull_request` run
+ * does not measure the head: it measures `refs/pull/N/merge` — THE HEAD MERGED WITH THE
+ * BASE AS THE BASE WAS WHEN THE RUN STARTED. Move the base afterwards and GitHub rebuilds
+ * that ref, but NOBODY reruns the check that already answered: it stays green, stays on
+ * the same head, and guard 2 goes on crediting a measurement of a tree that no longer is
+ * the result of this merge. Measured in thread 023: run `30819577162` started 13:47:19Z on
+ * head `92b2c612` over base `951b7551`, #189 landed at 14:00:28Z, and for the fifteen
+ * minutes until the next push the door would have counted a reading of a tree that had
+ * ceased to exist. `mergeStateStatus` does not cover it — it would say `BEHIND` only under
+ * a "branch must be up to date" protection, which this repository does not have.
+ *
+ * THE SYMMETRY THAT MAKES IT ONE CLASS: guard 1 already thinks this thought on the other
+ * axis — a verdict older than the head commit is not a verdict about it (thread 043). The
+ * time of a CHECK against the BASE was asked by nobody.
+ *
+ * IT ONLY SPEAKS. The verdict and the exit code are the same with a drift and without one,
+ * in every branch — that is the whole scope, and it is locked by test. A door that began
+ * refusing what it used to pass would be a change of the norm, and the norm is john's.
+ *
+ * THE MEASUREMENT IS CONSERVATIVE, and this is the honest name for it: the API does not
+ * hand back the merge-ref a check actually measured, so the comparison is the base's
+ * `committedDate` against the START of the credited attempts — it will name a base move
+ * that could not have changed the merge at all (#189, a lone new test, is exactly such a
+ * move). Admissible precisely because the verdict does not move: the price of a false
+ * positive is one line of text. It rests on one assumption, said out loud rather than
+ * implied: THE COMMIT DATE OF THE BASE HEAD IS THE MOMENT IT LANDED — true while merges
+ * are squash-only, as they are here, and wrong the day a merge commit carries an older date.
+ *
+ * The EARLIEST start among the credited attempts is the one compared, because guard 2
+ * credits them all: if the base moved after any of them began, one of the readings the
+ * door is counting is about the older base.
+ *
+ * SILENCE IS EARNED BY ONE STATE ONLY — a measurement that happened and dated the base
+ * older than every credited check. No base, no date, no start stamp, nothing credited at
+ * all: all of them are SAID. This is the false-silence class #190 repaired twice already
+ * (`unpublished`, `unreadable`); a third repetition of it has nowhere to hide.
+ */
+export type BaseDrift = {
+  /** `current`: measured, the base is older than the credited checks — nothing to say. */
+  readonly state: "current" | "drift" | "unknown";
+  readonly detail: string;
+};
+
+const isoOf = (moment: number): string => new Date(moment).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+export const baseDriftOf = (pr: PullRequestFacts): BaseDrift => {
+  const credited = latestAttemptPerName(pr.checks.map(asAttempt)).filter(checkIsGreen);
+  if (credited.length === 0)
+    return {
+      state: "unknown",
+      detail:
+        "no green attempt is credited on this head, so there is no reading whose base could have moved — guard 2 answers this one on its own",
+    };
+  const base = present(pr.baseSha);
+  const baseAt = present(pr.baseCommittedAt);
+  const baseTime = baseAt === undefined ? undefined : stampOf(baseAt);
+  if (base === undefined || baseTime === undefined)
+    return {
+      state: "unknown",
+      detail: `${base === undefined ? "gh reported no base commit" : `no readable date for the base ${base.slice(0, 7)}`} — whether the base moved under the credited checks is UNKNOWN, which is not the same as 'it did not'`,
+    };
+  const unstamped = credited.filter((check) => check.since === undefined);
+  if (unstamped.length > 0)
+    return {
+      state: "unknown",
+      detail: `no start stamp on ${unstamped.map((check) => check.name).join(", ")} — a check that does not say when it began cannot be dated against the base ${base.slice(0, 7)}`,
+    };
+  const starts = credited.map((check) => check.since as number);
+  const earliest = Math.min(...starts);
+  const first = credited.find((check) => check.since === earliest);
+  if (baseTime <= earliest)
+    return {
+      state: "current",
+      detail: `the base ${base.slice(0, 7)} (${baseAt}) is older than every credited check — they measured this base`,
+    };
+  return {
+    state: "drift",
+    detail: `the base moved AFTER the credited checks started: ${base.slice(0, 7)} committed ${baseAt}, '${first?.name ?? "?"}' started ${isoOf(earliest)}. A 'pull_request' run measures the head merged with the base OF ITS OWN MOMENT, and a base that moves does not rerun it — the green guard 2 credits is a reading of a tree that is no longer the result of this merge. Conservative: a base move that cannot change the merge is named too`,
   };
 };
 
@@ -690,20 +803,28 @@ export const evaluateMergeGate = (input: {
   return {
     number: pr.number,
     headSha: head,
+    // `baseDrift` is deliberately absent from this expression, and that is the scope of
+    // 023.3: the door says what it sees and decides exactly what it decided before.
     curatorMayMerge:
       guards.every((guard) => guard.state !== "fail") && mergeability.state === "clear",
     guards,
     mergeability,
+    baseDrift: baseDriftOf(pr),
   };
 };
 
 /** The verdict as lines for a terminal; the last one is the answer. */
 export const describeMergeGate = (verdict: MergeGateVerdict): readonly string[] => [
   `merge-gate: PR #${verdict.number} at ${verdict.headSha.slice(0, 7)}`,
-  ...verdict.guards.map(
-    (guard) =>
-      `  ${guard.state === "pass" ? "ok  " : guard.state === "fail" ? "STOP" : "you "} guard ${guard.guard} · ${guard.title}: ${guard.detail}`,
-  ),
+  ...verdict.guards.flatMap((guard) => {
+    const line = `  ${guard.state === "pass" ? "ok  " : guard.state === "fail" ? "STOP" : "you "} guard ${guard.guard} · ${guard.title}: ${guard.detail}`;
+    // Under guard 2 and indented under it, because that is what it is about — a fact the
+    // guard does not ask, marked `note` so no reader can mistake it for a sixth guard or
+    // for a state of the fifth (023.3). It changes no answer below it.
+    return guard.guard === 2 && verdict.baseDrift.state !== "current"
+      ? [line, `       note · base: ${verdict.baseDrift.detail}`]
+      : [line];
+  }),
   // Beside the guards and before the answer — a fact, said in its own words so nobody
   // reads it as a sixth guard (D2).
   `  ${verdict.mergeability.state === "clear" ? "ok  " : "STOP"} mergeability · not a guard, a fact GitHub answers: ${verdict.mergeability.detail}`,

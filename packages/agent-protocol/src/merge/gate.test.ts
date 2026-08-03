@@ -877,3 +877,139 @@ describe("the verdict", () => {
     expect(verdict.guards.find((entry) => entry.guard === 5)?.state).toBe("by-hand");
   });
 });
+
+/**
+ * 023.3 — WHAT GUARD 2 DOES NOT ASK, said beside it. The scope is "only speak": every
+ * test here asserts the words AND that the answer is byte-for-byte the answer without them.
+ */
+describe("the base under a credited check — a note beside guard 2", () => {
+  const BASE = "2222222222222222222222222222222222222222";
+  /** A green attempt with the one stamp the base is dated against — its START. */
+  const started = (name: string, startedAt: string): PullRequestFacts["checks"][number] => ({
+    name,
+    status: "COMPLETED",
+    conclusion: "SUCCESS",
+    state: undefined,
+    startedAt,
+    completedAt: "2026-08-03T14:10:00Z",
+  });
+  const answer = (over: Partial<PullRequestFacts> = {}) =>
+    evaluateMergeGate({ pr: pr(over), powerDocs: ["PROTOCOL.md"] });
+  const note = (verdict: ReturnType<typeof answer>): string | undefined =>
+    describeMergeGate(verdict).find((line) => line.includes("note · base:"));
+
+  it("names the drift when the base moved after the credited check started — the window of thread 023", () => {
+    const verdict = answer({
+      checks: [started("checks", "2026-08-03T13:47:19Z")],
+      baseSha: BASE,
+      baseCommittedAt: "2026-08-03T14:00:28Z",
+    });
+
+    expect(verdict.baseDrift.state).toBe("drift");
+    expect(verdict.baseDrift.detail).toContain("2026-08-03T14:00:28Z");
+    expect(verdict.baseDrift.detail).toContain("2026-08-03T13:47:19Z");
+    expect(note(verdict)).toContain("moved AFTER");
+    // The line hangs under guard 2 and nowhere else.
+    const lines = describeMergeGate(verdict);
+    expect(lines[lines.findIndex((line) => line.includes("guard 2")) + 1]).toContain("note · base");
+  });
+
+  it("says nothing when the base is older than every credited check — the one earned silence", () => {
+    const verdict = answer({
+      checks: [started("checks", "2026-08-03T14:05:00Z")],
+      baseSha: BASE,
+      baseCommittedAt: "2026-08-03T14:00:28Z",
+    });
+
+    expect(verdict.baseDrift.state).toBe("current");
+    expect(note(verdict)).toBeUndefined();
+  });
+
+  it("compares the EARLIEST credited start — guard 2 credits them all", () => {
+    const verdict = answer({
+      checks: [started("checks", "2026-08-03T13:47:19Z"), started("e2e", "2026-08-03T14:30:00Z")],
+      baseSha: BASE,
+      baseCommittedAt: "2026-08-03T14:00:28Z",
+    });
+
+    expect(verdict.baseDrift.state).toBe("drift");
+    expect(verdict.baseDrift.detail).toContain("'checks' started");
+  });
+
+  it("an unreadable base is NAMED, never folded into silence", () => {
+    const noBase = answer({ checks: [started("checks", "2026-08-03T14:05:00Z")] });
+    expect(noBase.baseDrift.state).toBe("unknown");
+    expect(noBase.baseDrift.detail).toContain("no base commit");
+    expect(note(noBase)).toContain("UNKNOWN");
+
+    const noDate = answer({
+      checks: [started("checks", "2026-08-03T14:05:00Z")],
+      baseSha: BASE,
+      baseCommittedAt: "   ",
+    });
+    expect(noDate.baseDrift.state).toBe("unknown");
+    expect(noDate.baseDrift.detail).toContain("no readable date");
+
+    const badDate = answer({
+      checks: [started("checks", "2026-08-03T14:05:00Z")],
+      baseSha: BASE,
+      baseCommittedAt: "yesterday",
+    });
+    expect(badDate.baseDrift.state).toBe("unknown");
+  });
+
+  it("a credited check with no start stamp is NAMED — it cannot be dated against anything", () => {
+    const verdict = answer({
+      checks: [{ name: "checks", status: "COMPLETED", conclusion: "SUCCESS", state: undefined }],
+      baseSha: BASE,
+      baseCommittedAt: "2026-08-03T14:00:28Z",
+    });
+
+    expect(verdict.baseDrift.state).toBe("unknown");
+    expect(verdict.baseDrift.detail).toContain("no start stamp on checks");
+  });
+
+  it("says so when guard 2 credits nothing — there is no reading whose base could have moved", () => {
+    const verdict = answer({
+      checks: [{ name: "checks", status: "COMPLETED", conclusion: "FAILURE", state: undefined }],
+      baseSha: BASE,
+      baseCommittedAt: "2026-08-03T14:00:28Z",
+    });
+
+    expect(verdict.baseDrift.state).toBe("unknown");
+    expect(verdict.baseDrift.detail).toContain("no green attempt is credited");
+  });
+
+  it("CHANGES NOTHING: the verdict and every guard are identical with the drift and without it", () => {
+    const checks = [started("checks", "2026-08-03T13:47:19Z")];
+    const drifted = answer({ checks, baseSha: BASE, baseCommittedAt: "2026-08-03T14:00:28Z" });
+    const quiet = answer({ checks, baseSha: BASE, baseCommittedAt: "2026-08-03T13:00:00Z" });
+    const blind = answer({ checks });
+
+    for (const verdict of [quiet, blind]) {
+      expect(verdict.curatorMayMerge).toBe(drifted.curatorMayMerge);
+      expect(verdict.guards).toEqual(drifted.guards);
+      expect(verdict.mergeability).toEqual(drifted.mergeability);
+    }
+    expect(drifted.curatorMayMerge).toBe(true);
+    // And it is not a guard: the five are still the five.
+    expect(drifted.guards.map((entry) => entry.guard)).toEqual([1, 2, 3, 4, 5]);
+    // The only difference in the print is the note itself.
+    expect(describeMergeGate(drifted).filter((line) => !line.includes("note · base:"))).toEqual(
+      describeMergeGate(quiet),
+    );
+  });
+
+  it("a drift under a REFUSING door does not change the refusal either", () => {
+    const refused = answer({
+      checks: [started("checks", "2026-08-03T13:47:19Z")],
+      changedPaths: ["PROTOCOL.md"],
+      baseSha: BASE,
+      baseCommittedAt: "2026-08-03T14:00:28Z",
+    });
+
+    expect(refused.baseDrift.state).toBe("drift");
+    expect(refused.curatorMayMerge).toBe(false);
+    expect(describeMergeGate(refused).at(-1)).toContain("REFUSED");
+  });
+});
