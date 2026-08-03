@@ -675,6 +675,25 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
     expect(parkingOf(thread([parked, green]))?.pr).toBe(177);
   });
 
+  it("THE SECOND LIVE INCIDENT OF 023: a GREEN outcome CARRYING THE TURN lifts it (2026-08-03)", () => {
+    // The lift is read from ONE FACT — does the message move anybody — and never from a list of
+    // conclusions, which is what makes this case need no second rule. It is the same predicate
+    // the red of #177 above goes through; the only thing that changed under it is the notifier,
+    // which since #187 names the author's role on a GREEN `checks` of a PR with no `review`
+    // label (048, form (б)): the turn is the one action of hanging the label.
+    //
+    // Live, and the reason this test exists: 11:51:59Z parked on `run:188`, 11:59:46Z the green
+    // arrived carrying `waiting-on: dev-core`, and the pair still stood — for over an hour, to
+    // a human's eye and not the circuit's. The park was NOT the cause, and the test says so by
+    // construction: this is the very state of that feed, and it lifts.
+    const parked = message({ parkedOn: "run:188", date: "2026-08-03T11:51:59Z" });
+    const green = announcement(
+      { date: "2026-08-03T11:59:46Z", waitingOn: "dev-core" },
+      "✅ CI по PR #188: `success`. Метка `review` не повешена — ход у автора.",
+    );
+    expect(parkingOf(thread([parked, green]))).toBeUndefined();
+  });
+
   it("a DECLARED NULL is not a handover — it moves the turn to nobody", () => {
     const parked = message({ parkedOn: "run:163" });
     const nulled = announcement({ date: "2026-08-02T09:15:07Z", waitingOn: null }, "CI: success");
