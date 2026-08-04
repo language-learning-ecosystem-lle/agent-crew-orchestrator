@@ -300,9 +300,9 @@ describe("a thread frozen behind a person — the third class of event (thread 0
   });
 
   it("a park declared by an informational message freezes the thread and calls nobody", () => {
-    // `expects: none` says in the author's own words that the message asks for nothing. The
-    // door refuses that combination today (`--parked-on` with `--expects none`), so this is
-    // the feed as it stands: messages older than the door, and messages written by hand.
+    // `expects: none` says in the author's own words that the message asks for nothing. This
+    // is the PARK AS A MODE — a line of state calling nobody, which the door refused from 034
+    // and passes again since 2026-08-04 (decision of john, thread 023). 016 and 052 are it.
     const result = withPark([{ ...PARKED, asks: false }]);
 
     expect(result.freshParked).toEqual([]);

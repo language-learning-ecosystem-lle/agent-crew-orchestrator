@@ -1740,21 +1740,21 @@ const priorityFrom = (
  */
 const parkedOnFrom = (
   argv: readonly string[],
-  input: { readonly registry: RoleRegistry; readonly expects: Expects },
+  input: { readonly registry: RoleRegistry },
 ): string | undefined => {
   const value = flag(argv, "--parked-on");
   if (value === undefined) return undefined;
-  if (input.expects === "none") {
-    // The reader honours a park declared this way (`parkingOf`), so nothing already in
-    // the feed is lost — but the two words point opposite ways: `expects: none` says "this
-    // message asks nobody for anything", and a park says "this thread is waiting for a
-    // person". Written together they read as a park that informational traffic may lift,
-    // which is precisely the shape that cost two empty sessions in thread 034.
-    return fail(
-      `--parked-on '${value}' with --expects none — an informational message asks nobody for anything, and a park says the thread is waiting for a person. Park with the message that carries the question ('--expects answer')`,
-      2,
-    );
-  }
+  // `--parked-on` TOGETHER WITH `--expects none` IS LEGAL (decision of john 2026-08-04, thread
+  // 023) — it is the PARK AS A MODE: a line of state that calls nobody, which is how 016 and
+  // 052 are actually parked. The door refused it from 034 until then, on the reading that the
+  // two words point opposite ways; what made the refusal wrong was not the reading but the
+  // world moving under it. Both reasons it stood on are gone: such a park is no longer one
+  // that informational traffic may lift (the lift of a person park became narrow the same
+  // day), and it no longer rings at the human on every digest (#186 — the courier rings on
+  // FRESH parks that ask, and this one asks nothing and says so). Nothing else in this door
+  // changes: an unknown name, a role the circuit can wake, and the event forms are judged
+  // exactly as before.
+  //
   // AN EVENT PARK GOES NO FURTHER THAN ITS SHAPE (thread 023): `pr:127` names a merge, not a
   // participant, so there is no config to check it against — the number is either in the
   // repository or it is not, and the door has no business asking GitHub. It lifts by itself
@@ -1884,7 +1884,7 @@ const newMessage = (argv: readonly string[]): void => {
   const expects = parseExpects(required(argv, "--expects"));
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
-  const parkedOn = parkedOnFrom(argv, { registry, expects });
+  const parkedOn = parkedOnFrom(argv, { registry });
   // THE COUNTERPART OF AN EVENT PARK (thread 023): the merge notifier says which PR landed,
   // and every thread parked on that number lifts. It is written by a workflow rather than by
   // an agent, so the door only checks the shape — the notifier knows the number it merged.

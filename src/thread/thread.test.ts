@@ -277,20 +277,49 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
     expect(parkedOnOf(parked({}))).toBeUndefined();
   });
 
-  it("AN ANNOUNCEMENT OF THE CIRCUIT LIFTS IT TOO — the fact arriving is still the answer", () => {
-    // Live repro 046 (thread 023, curator's measurement of a day): the park named a person,
-    // the notifier reported the merge of the very PR that person's decision was about, and
-    // the thread stood frozen for twelve more hours because the fact came from the circuit
-    // rather than from a person's hand relaying it.
+  it("THE MERGE NOTIFIER OF #192 DOES NOT LIFT IT — the repro the narrow lift was bought with", () => {
+    // 2026-08-03, thread 023: the park stood on john, and it was thawed by the notifier of the
+    // merge of #192 ('from: github', 'expects: none', no 'waiting-on') — announcing a merge
+    // curator had pressed herself three minutes earlier. Price, measured: one empty curator
+    // session and a gap of THREE SECONDS to the `restart` button that raise then held up
+    // ('agent-comms/023-daemon-parallelism/messages/2026-08-03T19-57-08Z-curator.md' §1).
+    // Decision of john 2026-08-04: the same predicate as the event parks.
     const thread = parked({ from: "github", worker: "gh-action", expects: "none" });
+    expect(parkedOnOf(thread)).toBe("john");
+  });
+
+  it("A MUDDY DELIVERY DOES NOT LIFT IT EITHER — it asks nobody and hands the turn to nobody", () => {
+    // Deliberate, and named as such in curator's statement: such a message has nothing for a
+    // raised pair to do, and the thaw costs one more message from the same courier.
+    const thread = parked({ from: "curator", worker: "claude-ai", expects: "none" });
+    expect(parkedOnOf(thread)).toBe("john");
+  });
+
+  it("A DECLARED NULL DOES NOT LIFT IT — zeroing the holder is not a handover", () => {
+    const thread = parked({
+      from: "github",
+      worker: "gh-action",
+      expects: "none",
+      waitingOn: null,
+    });
+    expect(parkedOnOf(thread)).toBe("john");
+  });
+
+  it("a message that ASKS lifts it — 'expects' != none is one of the two facts that move", () => {
+    const thread = parked({ from: "github", worker: "gh-action", expects: "answer" });
     expect(parkedOnOf(thread)).toBeUndefined();
   });
 
-  it("a participant speaking lifts it even with 'expects: none' — the decision relayed", () => {
-    // Thread 023, three live repros (040, 044, 016): curator relaying john's decision and
-    // handing the turn on writes 'expects: none' — it asks nobody for anything — and the
-    // thread stayed frozen with the answer already in it.
-    const thread = parked({ from: "curator", worker: "claude-ai", expects: "none" });
+  it("THE COURIER OF A DECISION LIFTS IT with 'expects: none' — it names who acts on it", () => {
+    // Thread 023, live repros (040, 044, 016): curator relaying john's decision and handing
+    // the turn on writes 'expects: none'. Under the narrow lift the human's own word still
+    // lifts the park, because a courier moves somebody by construction — here by the field.
+    const thread = parked({
+      from: "curator",
+      worker: "claude-ai",
+      expects: "none",
+      waitingOn: "dev-core",
+    });
     expect(parkedOnOf(thread)).toBeUndefined();
   });
 
@@ -305,8 +334,8 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
   it("a park DECLARED ON an informational message acts — the field is read before the skip", () => {
     // Thread 034, paid for twice with empty sessions: 'expects: none' used to be skipped
     // before the field was looked at, so this park was invisible and the pair was raised
-    // into a thread waiting for a human. The door refuses the combination now; the ones
-    // already lying in the feed act.
+    // into a thread waiting for a human. The door refused the combination from 034 until
+    // 2026-08-04 and passes it again since (park as a MODE); either way it acts here.
     const thread = parked({ from: "curator", expects: "none", parkedOn: "john" });
     expect(parkedOnOf(thread)).toBe("john");
   });
@@ -436,16 +465,15 @@ describe("parkingOf — the facts the courier to the human needs (thread 023)", 
   it("carries WHETHER THE MESSAGE ASKS ANYTHING — the freeze is the same, the call is not", () => {
     // Thread 051: a park declared by an informational message is still a park (the turn cannot
     // move, the scheduler skips the thread), but nobody is being called — the message says so
-    // itself. The door refuses this combination today; the feed предшествует двери.
+    // itself. Legal at the door again since 2026-08-04 — the park as a MODE (023).
     expect(parkingOf(thread("фиксация мыслей, НЕ в работу", "none"))?.asks).toBe(false);
     expect(parkingOf(thread("Чинить ли гард 2?"))?.asks).toBe(true);
   });
 
-  it("`ack` CALLS TOO — the door leaves exactly two legal parks, and both need the person", () => {
-    // Curator's decision of 2026-08-03: the door refuses `--parked-on` with `--expects none`
-    // (034), so a park is either `answer` or `ack`; `ack` is "I stand until you confirm", which
-    // is an action of the human just the same. Ringing only on `answer` would let a thread
-    // freeze with NOBODY told — the age pass is quiet about parks, the scheduler skips them.
+  it("`ack` CALLS TOO — the line is `none`, and everything else needs the person", () => {
+    // Curator's decision of 2026-08-03: `ack` is "I stand until you confirm", which is an
+    // action of the human just the same. Ringing only on `answer` would let a thread freeze
+    // with NOBODY told — the age pass is quiet about parks, the scheduler skips them.
     expect(parkingOf(thread("подтверди, что снёс лок", "ack"))?.asks).toBe(true);
   });
 
@@ -700,12 +728,14 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
     expect(parkingOf(thread([parked, nulled]))?.pr).toBe(163);
   });
 
-  it("a person park behind the announcements keeps its WIDE lift — 023 is untouched", () => {
-    // The two parks wait for different things: the wide lift is the safety against a thread
-    // frozen behind a human forever, and it fired correctly the same morning (08:41 → 08:44).
+  it("a person park behind the announcements STANDS TOO — one walk for all three (2026-08-04)", () => {
+    // This test used to assert the opposite, and it named the wide lift the safety against a
+    // thread frozen behind a human forever. On 2026-08-03 that safety fired at its own circuit
+    // (the merge notifier of #192 thawed a park on john, for an empty session), and john's
+    // decision of 2026-08-04 gave all three kinds one criterion of lifting.
     const parked = message({ parkedOn: "john" });
     const ci = announcement({ date: "2026-08-02T09:15:07Z" }, "CI: success");
-    expect(parkingOf(thread([parked, ci]))).toBeUndefined();
+    expect(parkingOf(thread([parked, ci]))?.kind).toBe("person");
   });
 
   it("a `pr:` park behind the announcements now STANDS — both event parks read one walk", () => {

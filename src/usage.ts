@@ -222,12 +222,16 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # only from a role holding 'thread-priority'; the queue is priority, then a merge
                               # held by the thread (guards 1-2 of the door, measured), then age of wait, then number
                               # --parked-on <person>: the turn STAYS here and is FROZEN until that person decides
-                              # (R27) — the pair is not raised and spends nothing; it lifts by itself on THE
-                              # NEXT MESSAGE OF THE THREAD, whoever wrote it — the circuit's own
-                              # announcements and the parker's own role included (023)
+                              # (R27) — the pair is not raised and spends nothing; it lifts by itself, by the
+                              # SAME NARROW WALK as the event parks below (023, 2026-08-04): the first
+                              # message that MOVES somebody. The human's own word lifts it as it always
+                              # did — a courier delivering a decision either names who acts on it
+                              # ('waiting-on: <role>') or asks for something ('expects' != none)
                               # Only a role the circuit cannot wake ('wake.mode: self') may be named
-                              # REFUSED together with '--expects none' (034): an informational message
-                              # asks nobody for anything, and a park says the thread waits for a person
+                              # LEGAL together with '--expects none': the PARK AS A MODE — a line of
+                              # state that calls nobody (016, 052). Refused from 034 until 2026-08-04,
+                              # when the narrow lift removed the reason (such a park is no longer thawed
+                              # by informational traffic, and #186 stopped it ringing every digest)
                               # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (023) — a
                               # MERGE, not a person. Nobody is called about it (the decision is made,
                               # what is left is a button)
@@ -235,10 +239,11 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # The one line that tells the two apart: 'pr:' waits for the BUTTON,
                               # 'run:' waits for the VERDICT. Nobody is called about it either (no
                               # decision of anybody's is pending — a machine is judging)
-                              # BOTH EVENT PARKS LIFT NARROWLY, by one walk (023, 2026-08-03): a
-                              # message that MOVES somebody, plus the merge of that PR announced
-                              # anywhere in the mail. Two header facts move somebody, and the
-                              # trace class of the circuit carries neither:
+                              # ALL THREE PARKS LIFT NARROWLY, by one walk (023; the event ones
+                              # 2026-08-03, the person one 2026-08-04): a message that MOVES
+                              # somebody, plus — for the event ones — the merge of that PR
+                              # announced anywhere in the mail. Two header facts move somebody,
+                              # and the trace class of the circuit carries neither:
                               #   * 'expects' != none — it asks somebody for something (the verdict);
                               #   * 'waiting-on: <role>' — it hands the turn over without asking.
                               # The second IS the actionable CI outcome (048): the notifier names
