@@ -268,14 +268,14 @@ apart along lines the package already had:
   of "once": the ❓ line is rendered from the FRESH parks and not from the composition,
   so a park already announced produces **no line at all** in later digests, and a park
   declared by a message that asks nothing (`expects: none`) produces none from the
-  start. The line between the two is `none` and not `answer`: the door refuses
-  `--parked-on` together with `--expects none` (034), so the only two LEGAL parks are
-  `answer` and `ack` — and `ack` is "I stand until you confirm", an action required of
-  the person just the same. A reader ringing only on `answer` would let the door pass a
-  combination that freezes a thread and tells nobody, since the age pass is quiet about
-  parks by rule and the scheduler skips them; noise the reader filters, silence he
-  cannot (curator, 2026-08-03). `none` stays mute because that is the legacy park the
-  fact was carried for. The park itself stays in the composition and in the state — the
+  start. The line between the two is `none` and not `answer`: `ack` is "I stand until
+  you confirm", an action required of the person just the same, so a reader ringing only
+  on `answer` would stay silent about a thread that freezes and tells nobody, since the
+  age pass is quiet about parks by rule and the scheduler skips them; noise the reader
+  filters, silence he cannot (curator, 2026-08-03). `none` stays mute, and it is a park
+  like any other: the door refused it together with `--parked-on` from 034 until
+  2026-08-04 (decision of john, thread 023) — "parks quietly, calls nobody" is the live
+  MODE park of 016 and 052. The park itself stays in the composition and in the state — the
   scheduler still skips the thread and the age pass still says nothing about it; only
   the call is not repeated. The pain was john's, measured live on 2026-08-03: 016 (a
   park held as a MODE by his own decision, ringing for days) and 049 (a park over two
@@ -741,10 +741,16 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # then the age of the wait, then the thread number
                             # --parked-on <person>: the turn STAYS on its holder and is FROZEN until that
                             # person decides (R27) — the pair is not raised and spends nothing; it lifts by
-                            # itself on THE NEXT MESSAGE OF THE THREAD, whoever wrote it — an announcement
-                            # of the circuit and the parker's own role included (thread 023: reading more
-                            # than that out of the header froze five threads with their answer inside).
+                            # itself, by the SAME NARROW WALK as the event parks below (thread 023,
+                            # 2026-08-04): the first message that MOVES somebody. The human's own word
+                            # lifts it as it always did — a courier delivering a decision either names
+                            # who acts on it (`waiting-on: <role>`) or asks for something. What no longer
+                            # lifts it is the circuit's own trace: on 2026-08-03 the merge notifier of
+                            # #192 thawed a park on john, and the raise it bought was an empty session
+                            # three seconds ahead of the `restart` button it then held up.
                             # Only a role the circuit cannot wake (`wake.mode: 'self'`) may be named
+                            # LEGAL together with `--expects none`: the PARK AS A MODE — a line of state
+                            # that calls nobody (016, 052). The door refused it from 034 until 2026-08-04
                             # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (thread 023) — the
                             # MERGE of a pull request rather than a person's decision. The courier says
                             # NOTHING about such a thread (neither a call nor a stall: the decision has been
@@ -752,9 +758,10 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # --parked-on run:<n>: the THIRD (thread 019) — the ROUND running on that PR.
                             # `pr:` waits for the BUTTON, `run:` waits for the VERDICT; the courier is
                             # silent about this one too (a machine is judging, no decision is pending)
-                            # BOTH EVENT PARKS LIFT NARROWLY, by one walk (thread 023, 2026-08-03): the
-                            # merge of that PR announced anywhere in the mail, plus the first message that
-                            # MOVES somebody. Two header facts move somebody, and the circuit's trace class
+                            # ALL THREE PARKS LIFT NARROWLY, by one walk (thread 023; the event ones on
+                            # 2026-08-03, the person one on 2026-08-04): the first message that MOVES
+                            # somebody, plus — for the event ones only — the merge of that PR announced
+                            # anywhere in the mail. Two header facts move somebody, and the circuit's trace class
                             # carries neither: `expects` != none (it asks — the verdict, and every other
                             # answer) and `waiting-on: <role>` (it hands the turn over without asking).
                             # The second IS the actionable CI outcome (thread 048): the notifier names the
@@ -774,7 +781,7 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # `failure` delivered into a thread parked on the very round left the pair
                             # dead for 3.5 hours with the work already in front of it).
                             # A declared NULL (`waiting-on: —`) is not a handover: it moves the turn to
-                            # nobody. The WIDE lift of `parked-on: <person>` is untouched by all of this
+                            # nobody — for the person park just as for the event ones
                             # --merged-pr <n>: this message announces that PR as landed — every thread parked
                             # on `pr:<n>` lifts on it, though the announcement is `expects: none`
                             # ANYWHERE IN THE MAIL (thread 023): the notifier writes into the thread named

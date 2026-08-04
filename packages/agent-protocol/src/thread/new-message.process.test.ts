@@ -836,17 +836,29 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(direct(contour(), "curator", "--merged-pr", "#127").code).toBe(2);
   });
 
-  it("a park on an INFORMATIONAL message is refused — the two words point opposite ways", () => {
-    // Thread 034: written together they read as a park that a merge notifier may lift.
-    // The reader honours such a park (`parkingOf`), so nothing in the feed is lost — the
-    // door is what stops new ones being written.
+  it("A PARK ON AN INFORMATIONAL MESSAGE PASSES — the park as a MODE, calling nobody", () => {
+    // Refused from 034 until 2026-08-04 (decision of john, thread 023): the refusal rested on
+    // such a park being one that informational traffic may lift and one that rings at a human
+    // with nothing asked. Both reasons are gone — the lift of a person park became narrow the
+    // same day, and #186 made the courier ring on FRESH parks that ASK. The live parks of 016
+    // and 052 are exactly this shape: a line of state, no call.
     const contest = contour();
 
     const result = parkedWithExpects(contest, "none");
 
-    expect(result.code).toBe(2);
-    expect(result.out).toContain("--expects none");
-    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkedOn).toBe("john");
+    expect(written(contest.root).fields.expects).toBe("none");
+  });
+
+  it("the other refusals of the door are untouched by that — only this one combination moved", () => {
+    // The guard of 023.5 is narrow by construction: an unknown name, a role the circuit wakes
+    // and the event forms are judged exactly as before, with `--expects none` alongside.
+    expect(parkedWithExpects(contour(), "answer").code).toBe(0);
+    const unknown = contour();
+    expect(direct(unknown, "curator", "--parked-on", "jonh").code).toBe(2);
+    const wakeable = contour();
+    expect(direct(wakeable, "curator", "--parked-on", "dev-core").code).toBe(2);
   });
 });
 
@@ -883,6 +895,9 @@ const parkedWithExpects = (
         "--worker",
         "human",
         "--write",
+        // `--no-push`: the door is what is under test, and this contour has no remote —
+        // the body file lives inside the checkout, which delivery refuses to touch.
+        "--no-push",
       ],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );

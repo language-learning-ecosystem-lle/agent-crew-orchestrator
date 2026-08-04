@@ -407,18 +407,17 @@ export type Parking = {
    * the author's own words that the message asks nobody for anything, and a ❓ printed over it
    * teaches the reader to ignore the mark, which costs more than a missed call.
    *
-   * THE LINE IS `none`, NOT `answer` (curator's decision of 2026-08-03, this thread): the door
-   * refuses `--parked-on` together with `--expects none` (034), so the only two LEGAL parks are
-   * `answer` and `ack` — and a park with `ack` is "I stand until you confirm", which is an
-   * action required of the human just the same. A reader that rang only on `answer` would let
-   * the door pass a combination that FREEZES A THREAD AND TELLS NOBODY: the age pass is quiet
-   * about parks by rule, the scheduler skips it, and it would stand until somebody happened to
-   * read the feed. Noise a reader filters; silence it cannot.
+   * THE LINE IS `none`, NOT `answer` (curator's decision of 2026-08-03, this thread): a park
+   * with `ack` is "I stand until you confirm", which is an action required of the human just
+   * the same, so a reader that rang only on `answer` would stay silent about a thread FROZEN
+   * AND TELLING NOBODY — the age pass is quiet about parks by rule, the scheduler skips them,
+   * and it would stand until somebody happened to read the feed. Noise a reader filters;
+   * silence it cannot.
    *
-   * `none` therefore stays mute — that is the legacy park the fact was carried for: today's
-   * live parks (016, 052) were declared by informational messages the door predates, and the
-   * reader honours the park either way, which is why the fact is carried rather than the
-   * message rejected.
+   * `none` therefore stays mute, and it is a park like any other: the door used to refuse it
+   * together with `--parked-on` (034) and stopped on 2026-08-04 (decision of john, this
+   * thread) — "parks quietly, calls nobody" is the live MODE park of 016 and 052, and after
+   * the narrow lift it no longer thaws on the next informational message either.
    */
   readonly asks: boolean;
 };
@@ -434,15 +433,10 @@ export const parkingOf = (
   mergedElsewhere?: ReadonlySet<number>,
 ): Parking | undefined => {
   if (thread.meta.status === "closed") return undefined;
-  // ONE MESSAGE IS READ, AND IT IS THE LAST ONE: anybody having written after the park is the
-  // answer arriving, so a park that is not the newest statement of the feed is already lifted.
-  // This used to be a backwards scan over the messages it was allowed to skip — the doc block
-  // above names the five live threads that cost.
-  const last = thread.messages.at(-1);
-  // A PARK ON AN EVENT IS THE ONE THING INFORMATIONAL TRAFFIC DOES NOT LIFT (threads 019, 023),
-  // so it is looked for BEHIND the announcements of the circuit — and only behind those.
-  const declared =
-    last?.fields.parkedOn === undefined ? standingParkOf(thread) : thread.messages.length - 1;
+  // ONE WALK FOR ALL THREE KINDS (thread 023, 2026-08-04): a park is looked for BEHIND the
+  // messages that move nobody, and the walk stops at the first one that moves somebody — that
+  // message is the answer arriving. The kind of the park no longer changes the reading.
+  const declared = standingParkOf(thread);
   const at = declared === undefined ? undefined : thread.messages[declared];
   const on = at?.fields.parkedOn;
   if (at === undefined || on === undefined) return undefined;
@@ -474,18 +468,33 @@ export const parkingOf = (
 };
 
 /**
- * WHERE AN EVENT PARK (`run:`/`pr:`) STILL STANDS — the index of the message that declared it.
+ * WHERE A PARK STILL STANDS — the index of the message that declared it. ALL THREE KINDS
+ * (`person`, `pr:`, `run:`) are read by this one walk since 2026-08-04; the shape of the walk
+ * is the event parks', and the person park was lifted into it by john's decision of that day.
  *
- * A `person` park is honoured only as the LAST statement of the feed, because anybody writing
- * after it is the answer arriving. An EVENT park is the one thing that is not true of: the
- * circuit announces its OWN events (`from: github`, `expects: none`) about the very PR being
- * waited for, and they are not the thing being waited for. It happened live within minutes of
- * the form being proposed (thread 019, 2026-08-02): the park of 09:12:57Z was lifted at
- * 09:15:07Z by "CI по PR #163 — success", the pair was raised at 09:16:13Z, the door refused it
- * because the review round still had twelve minutes to run, and the session had nothing to do.
- * The `pr:` park was narrowed to the same walk for the same reason, one thread later (023,
- * curator's statement of 2026-08-03): a turn frozen behind a merge button is not released by
- * the circuit reporting some other PR's outcome, and the raise it bought found nothing to do.
+ * The walk exists because the circuit announces its OWN events (`from: github`,
+ * `expects: none`) about the very thing being waited for, and they are not the thing being
+ * waited for. It happened live within minutes of the form being proposed (thread 019,
+ * 2026-08-02): the park of 09:12:57Z was lifted at 09:15:07Z by "CI по PR #163 — success", the
+ * pair was raised at 09:16:13Z, the door refused it because the review round still had twelve
+ * minutes to run, and the session had nothing to do. The `pr:` park was narrowed to the same
+ * walk for the same reason, one thread later (023, curator's statement of 2026-08-03): a turn
+ * frozen behind a merge button is not released by the circuit reporting some other PR's
+ * outcome, and the raise it bought found nothing to do.
+ *
+ * THE PERSON PARK JOINED THEM LAST, and it was measured too (023, decision of john
+ * 2026-08-04). The wide lift used to be defended as the safety against a thread frozen behind a
+ * human forever; on 2026-08-03 the safety fired at its own circuit — the park on john was
+ * lifted by the merge notifier of #192 (`from: github`, `expects: none`, no `waiting-on`),
+ * announcing a merge curator had pressed herself three minutes earlier. It bought an empty
+ * curator session and a gap of THREE SECONDS between that raise and the `restart` button the
+ * raise then held up (`023-daemon-parallelism/messages/2026-08-03T19-57-08Z-curator.md` §1).
+ * All three kinds of park now have ONE criterion of lifting, and the human's own word lifts it
+ * as it always did: the courier delivering a decision moves somebody by construction — it
+ * either names who acts on it (`waiting-on: <role>`) or asks for something (`expects` != none).
+ * A muddy delivery (`expects: none` and no `waiting-on`) does NOT lift, and that is deliberate:
+ * such a message asks nobody for anything and hands the turn to nobody, so there is nothing for
+ * a raised pair to do; the thaw costs one more message from the same courier.
  *
  * So the walk backwards is over the messages that MOVE NOBODY, and stops at the first message
  * that does. Two things move somebody, and the header carries both:
@@ -515,19 +524,16 @@ export const parkingOf = (
  *
  * A declared NULL (`waiting-on: —`) is not a handover: it zeroes the holder of the turn and
  * moves the thread to nobody, so it is skipped like any other announcement.
- *
- * The wide lift of `parked-on: <person>` is deliberately left alone: it is the safety against a
- * thread frozen behind a human forever, and the parks wait for different things.
  */
 const standingParkOf = (thread: Thread): number | undefined => {
   for (let at = thread.messages.length - 1; at >= 0; at -= 1) {
     const message = thread.messages[at];
     if (message === undefined) return undefined;
-    const on = message.fields.parkedOn;
     // THE FIELD IS READ BEFORE THE SKIP, as it is above (thread 034): a park declared on an
     // informational message is still a park — and here the message declaring one is itself a
-    // legal step of the walk, so the order is what keeps it from being walked over.
-    if (on !== undefined) return parkedOnKind(on).kind === "person" ? undefined : at;
+    // legal step of the walk, so the order is what keeps it from being walked over. The kind of
+    // the park is not asked about at all any more (023, 2026-08-04): one criterion for three.
+    if (message.fields.parkedOn !== undefined) return at;
     if (movesSomebody(message)) return undefined;
   }
   return undefined;
