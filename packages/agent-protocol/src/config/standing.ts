@@ -40,29 +40,42 @@ export const standingKey = (
   options: Pick<LoadOptions, "repo" | "ref"> & { path: string },
 ): string => [options.repo, options.ref, options.path].join("\0");
 
-export type StandingOutcome =
+/**
+ * WHAT IS REMEMBERED IS A PARAMETER, and one memory is never shared between two
+ * shapes (thread 055.3, the reviewer's finding on PR #202). The healer reads the
+ * same file with another question (`intent: "repair"` — where this box keeps its
+ * state), and it needs exactly this survival for exactly this reason: `restart`
+ * resolves the paths three times in one command, and the last of those runs AFTER
+ * `down` has stopped the daemon, where a wire failure is a half-restart. It gets
+ * its OWN instance rather than this one: a key of (repo, ref, path) says nothing
+ * about the intent, so a shared map could hand a loosely-parsed repair read to a
+ * caller whose version was never checked.
+ */
+export type StandingOutcome<T = LoadedConfig> =
   /** The ref was read; this is what it says, and it is now what stands. */
-  | { readonly kind: "read"; readonly config: LoadedConfig }
+  | { readonly kind: "read"; readonly config: T }
   /** The ref was not reachable — the last config read at this key stays in force, out loud. */
-  | { readonly kind: "stood"; readonly config: LoadedConfig; readonly reason: string }
+  | { readonly kind: "stood"; readonly config: T; readonly reason: string }
   /** Nothing to stand on, or a refusal that must not be stood over. */
   | { readonly kind: "unread"; readonly error: Error };
 
-export type StandingConfig = {
+export type StandingConfig<T = LoadedConfig> = {
   /**
    * Read through the memory. `load` is the real door — this module never reads
    * anything itself, which is what makes it testable without a repository.
    */
-  readonly read: (key: string, load: () => LoadedConfig) => StandingOutcome;
+  readonly read: (key: string, load: () => T) => StandingOutcome<T>;
 };
 
 /** A rejection of the DATA, as opposed to a failure to reach it. Never stood over. */
 const isVerdict = (error: unknown): boolean =>
   error instanceof RoleConfigError || error instanceof ProtocolVersionError;
 
-export const createStandingConfig = (options?: { readonly now?: () => Date }): StandingConfig => {
+export const createStandingConfig = <T = LoadedConfig>(options?: {
+  readonly now?: () => Date;
+}): StandingConfig<T> => {
   const now = options?.now ?? ((): Date => new Date());
-  const remembered = new Map<string, { readonly config: LoadedConfig; readonly at: Date }>();
+  const remembered = new Map<string, { readonly config: T; readonly at: Date }>();
 
   return {
     read: (key, load) => {

@@ -29,6 +29,11 @@
  * `tolerateOlder`, which relaxed the NUMBER alone, was the special case of it and is
  * gone: it could never close a bump of the FORM, because a strict parse of a config
  * from another version fails BEFORE the version is ever compared.
+ *
+ * `repair` (thread 055, task 055.3) is the third question, and it arrived the way the
+ * second did — from a live refusal: the gate killed `orchestrator restart --pull`, the
+ * command whose whole job is to end the mismatch the gate had just reported. It reads
+ * where the state of THIS box lies and nothing else (`config/repair.ts`).
  */
 import { fetchRef, readFileAtRef } from "../fs/git.js";
 import { createRoleRegistry, RoleConfigError, type RoleRegistry } from "../roles/registry.js";
@@ -41,6 +46,7 @@ import {
 } from "../schema/version.js";
 import { DEFAULT_CONFIG_PATH, type ProtocolConfig, protocolConfigSchema } from "./config.js";
 import { type PolicyConfig, policyConfigSchema } from "./policy.js";
+import { type RepairConfig, repairConfigSchema } from "./repair.js";
 
 /**
  * WHAT THE CALLER IS ASKING THE CONFIG FOR — and therefore what a version mismatch
@@ -52,7 +58,9 @@ export type ConfigIntent =
   /** Data of the protocol is about to be read or written; another shape stops the circuit. */
   | "data"
   /** Only policy fields of a FOREIGN ref are read; another shape is printed, not refused. */
-  | "policy";
+  | "policy"
+  /** Only where this box keeps its state is read, BY THE COMMAND THAT REPAIRS THE SHAPE. */
+  | "repair";
 
 export type LoadOptions = {
   /** Working copy of the repository where the config lives (any branch — we read at a ref). */
@@ -88,11 +96,26 @@ export type LoadedPolicy = {
   readonly version: VersionVerdict;
 };
 
+/**
+ * What a REPAIR reader gets: the paths of this box and the skew for it to say out
+ * loud. No registry here either, and for a sharper reason than policy's — the caller
+ * is a build that is knowingly behind the data, so every question about roles, wake
+ * chains or sessions would be answered from the wrong shape.
+ */
+export type LoadedRepair = {
+  readonly config: RepairConfig;
+  readonly path: string;
+  readonly ref: string;
+  /** How the version at the ref stands against this package — printed by the caller, never fatal. */
+  readonly version: VersionVerdict;
+};
+
 export function loadProtocolConfig(options: LoadOptions & { intent?: "data" }): LoadedConfig;
 export function loadProtocolConfig(options: LoadOptions & { intent: "policy" }): LoadedPolicy;
+export function loadProtocolConfig(options: LoadOptions & { intent: "repair" }): LoadedRepair;
 export function loadProtocolConfig(
   options: LoadOptions & { readonly intent?: ConfigIntent },
-): LoadedConfig | LoadedPolicy {
+): LoadedConfig | LoadedPolicy | LoadedRepair {
   const path = options.path ?? DEFAULT_CONFIG_PATH;
   if (options.fetch !== false) fetchRef(options.repo, options.ref);
 
@@ -114,6 +137,30 @@ export function loadProtocolConfig(
   // list of strings — which is the honest half of what the strict parse used to say.
   if (options.intent === "policy") {
     const result = policyConfigSchema.safeParse(parsed);
+    if (!result.success) {
+      const hint = legacyVersionHint(parsed);
+      throw new RoleConfigError([
+        ...(hint === undefined ? [] : [hint]),
+        ...result.error.issues.map(
+          (issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`,
+        ),
+      ]);
+    }
+    return {
+      config: result.data,
+      path,
+      ref: options.ref,
+      version: compareProtocolVersion(result.data.protocolVersion),
+    };
+  }
+
+  // THE HEALER LEAVES HERE TOO, and for the same two reasons in one: it is reading a
+  // config whose shape is ahead of it BY CONSTRUCTION (that is the state it was called
+  // to end), and the fields it came for — where this box keeps its state — mean the
+  // same thing at every version. Skipping the gate alone would not have been enough:
+  // a bump that ADDS a field trips the strict parse before the number is compared.
+  if (options.intent === "repair") {
+    const result = repairConfigSchema.safeParse(parsed);
     if (!result.success) {
       const hint = legacyVersionHint(parsed);
       throw new RoleConfigError([

@@ -45,7 +45,12 @@ import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
-import { type LoadedConfig, type LoadedPolicy, loadProtocolConfig } from "./config/load.js";
+import {
+  type LoadedConfig,
+  type LoadedPolicy,
+  type LoadedRepair,
+  loadProtocolConfig,
+} from "./config/load.js";
 import {
   describeLocalConfig,
   instanceConfigPath,
@@ -55,6 +60,7 @@ import {
   resolveLocalConfig,
 } from "./config/local.js";
 import { describePolicySkew, policyRole } from "./config/policy.js";
+import { createSkewVoice, describeRepairSkew } from "./config/repair.js";
 import { configSetSummary, planConfigSet } from "./config/set.js";
 import { createStandingConfig, standingKey } from "./config/standing.js";
 import {
@@ -557,6 +563,27 @@ const freezeConfig = (): void => {
   frozenConfig ??= new Map();
 };
 
+/**
+ * THE HEALER'S MODE (thread 055, task 055.3) — this process is `orchestrator restart`,
+ * and the config it is about to read may be at a shape it does not know. That is not an
+ * accident here: it is the state the command was invoked to end.
+ *
+ * IT IS A PROCESS-WIDE SWITCH, not an argument, and the reason is the call chain: a
+ * restart is `down` → (pull) → `up`, and both of those resolve the paths themselves
+ * (`pathsFrom`). Threading a flag through two commands that mean nothing by it — and
+ * through the argv `up` SAVES beside the pid for the next restart to reuse — would put
+ * the healer's exception into the daemon's own record. One switch, set once, at the top
+ * of the command that owns the whole chain.
+ *
+ * NOT SET BY `--mode force`: that path writes a message into the mail before it kills
+ * anything (the trace of 023), and a message is protocol data — exactly what the gate
+ * protects. A force stop on a build behind the canon stays the operator's two commands.
+ */
+let repairingConfig = false;
+const repairConfigReads = (): void => {
+  repairingConfig = true;
+};
+
 const configFrom = (argv: readonly string[], root?: string): LoadedConfig => {
   const ref = required(argv, "--ref");
   // Only `ref` has no default — it is precisely what decides WHAT we read, and a
@@ -645,6 +672,64 @@ const policyFrom = (argv: readonly string[], root?: string): LoadedPolicy => {
     if (error instanceof RoleConfigError) return fail(error.message, 2);
     return fail(`the protocol config at '${ref}' was not read: ${(error as Error).message}`, 2);
   }
+};
+
+/**
+ * THE SAME DOOR, ASKED THE HEALER'S QUESTION (thread 055.3) — where does the state of
+ * THIS box lie, asked by the command that is about to replace the code reading it.
+ *
+ * The skew is PRINTED — a restart quietly working around a shape it does not understand
+ * is the silence this package exists against, and the operator typing `restart --pull`
+ * is precisely the person who needs to know that the repository is ahead: it is why
+ * they typed it. Once per statement, not once per read (`createSkewVoice`): one command
+ * asks this door three times, and the same sentence three times among the phases reads
+ * as three discoveries rather than one fact.
+ *
+ * IT STANDS, AND POLICY'S REASON DOES NOT APPLY (the reviewer's finding on PR #202).
+ * `policyFrom` has no memory because its callers are one-shot guards that read once and
+ * exit; this door is asked THREE TIMES by a single `restart` — before phase 1, inside
+ * `down`, and inside `up` — and the third of those runs after the daemon has already
+ * been stopped and the pull has already happened. A wire failure there is precisely the
+ * incident `standing` was built from (2026-07-28, 8.3 hours), except worse: it lands in
+ * the middle of a restart, and `fail()` writes to stderr while the same command's own
+ * promise is that a refusal is "printed and appended to the daemon log". So the healer
+ * survives a dead wire the way the data reader does — on the last config actually read,
+ * out loud.
+ *
+ * ITS MEMORY IS ITS OWN, and that half of policy's reason DOES hold: the key is (repo,
+ * ref, path) and says nothing about the intent, so a loosely-parsed repair read sharing
+ * the map with `configFrom` could be handed to a caller whose version was never checked.
+ * A separate instance makes that impossible by construction rather than by care.
+ *
+ * No freezing here: freezing is the observer's (`--watch`), and a restart is the one
+ * caller that MUST see the config move under it — phase 3 pulls it.
+ */
+const repairStanding = createStandingConfig<LoadedRepair>();
+const repairSkew = createSkewVoice();
+
+const repairFrom = (argv: readonly string[]): LoadedRepair => {
+  const ref = required(argv, "--ref");
+  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const noFetch = argv.includes("--no-fetch");
+  const path = flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH;
+  const key = standingKey({ repo, ref, path });
+  const outcome = repairStanding.read(key, () =>
+    loadProtocolConfig({ repo, ref, fetch: !noFetch, path, intent: "repair" }),
+  );
+  if (outcome.kind === "unread") {
+    const { error } = outcome;
+    if (error instanceof RoleConfigError) return fail(error.message, 2);
+    return fail(`the protocol config at '${ref}' was not read: ${error.message}`, 2);
+  }
+  if (outcome.kind === "stood") {
+    // LOUD, EVERY TIME, for `configFrom`'s reason: standing keeps the restart moving,
+    // and the danger of it is that it looks identical to a restart reading current data.
+    err(`agent-protocol: WARNING — the config at '${ref}' was NOT re-read: ${outcome.reason}`);
+  }
+  const loaded = outcome.config;
+  const skew = describeRepairSkew({ ref: loaded.ref, version: loaded.version });
+  if (skew !== undefined && repairSkew.announce(key, skew)) out(`agent-protocol: ${skew}`);
+  return loaded;
 };
 
 /**
@@ -2778,7 +2863,7 @@ const notify = async (argv: readonly string[]): Promise<void> => {
  * it.
  */
 const pathsFrom = (argv: readonly string[]): OrchestratorPaths => {
-  const loaded = configFrom(argv, undefined);
+  const loaded = repairingConfig ? repairFrom(argv) : configFrom(argv, undefined);
   const section = loaded.config.orchestrator;
   if (section === undefined) {
     return fail(
@@ -8440,6 +8525,20 @@ const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
     fail(`--mode '${mode}' — allowed values are graceful | force`, 2);
     return;
   }
+  // THE VERSION GATE IS NOT THIS COMMAND'S (thread 055.3, john's live repro of
+  // 2026-08-05): with the repository ahead of the package the gate refused `restart
+  // --pull` by naming the very repair it was performing — the door stands before the
+  // dispatch and cannot tell a reader of the canon from its healer. From here the whole
+  // chain (`down`, then `up`) reads only where this box keeps its state, loosely, and
+  // says the skew out loud. `--mode force` keeps the gate: it writes into the mail.
+  if (mode === "graceful") repairConfigReads();
+  // THIS FIRST RESOLUTION IS ALSO WHAT THE LATER TWO STAND ON (the reviewer's finding on
+  // PR #202). `down` and `up` resolve the paths themselves, i.e. after the daemon is
+  // stopped and after the pull — and a wire failure there would abort the process
+  // through `fail()`, which speaks to stderr only, while the block above promises that a
+  // refusal is appended to the daemon log. It cannot: this read happens BEFORE anything
+  // is stopped, and from here on the healer's door survives a dead wire on the config it
+  // has already read (`repairFrom`), saying so every time.
   const paths = pathsFrom(args);
   const pidFile = flag(args, "--pid-file") ?? paths.daemonPid;
   const logPath = flag(args, "--daemon-log") ?? paths.daemonLog;

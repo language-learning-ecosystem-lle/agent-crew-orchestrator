@@ -205,3 +205,81 @@ describe("a refusal in the middle leaves the circuit down", () => {
     expect(readFileSync(state(repo, "daemon.log"), "utf8")).toContain("git pull --ff-only FAILED");
   }, 60_000);
 });
+
+/**
+ * THE VERSION GATE IS NOT THIS COMMAND'S (thread 055, task 055.3).
+ *
+ * john's repro, verbatim (2026-08-05, live on the box): the repository ahead of the
+ * package — `restart --pull` died with `restart required: … this build is behind the
+ * data (pull and restart what is running on it)`, exit 2, nothing restarted. The
+ * sentence names the repair and kills the command that performs it.
+ *
+ * The config here is ahead AND carries a field this build has never heard of, because
+ * that is what a bump normally looks like and because it is the half a gate-only
+ * exemption would have missed.
+ */
+describe("a restart is the healer, not a reader of the canon", () => {
+  const ahead = (repo: string): void => {
+    // `--pull` runs `pnpm install` after the pull, and the contour is a bare git
+    // repository: a manifest with no dependencies is what makes that phase reach its
+    // "ok" instead of failing for a reason this test is not about.
+    writeFileSync(
+      join(repo, "package.json"),
+      `${JSON.stringify({ name: "restart-contour", version: "0.0.0", private: true })}\n`,
+    );
+    writeFileSync(
+      join(repo, "agent-protocol.json"),
+      `${JSON.stringify(
+        {
+          ...CONFIG,
+          protocolVersion: CURRENT_PROTOCOL_VERSION + 1,
+          somethingTheNextVersionAdded: { whatever: true },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    // The config alone: the mail checkout lives inside this repo, and `add .` would
+    // stage it as a would-be submodule.
+    git(repo, "add", "agent-protocol.json", "package.json");
+    git(repo, "commit", "-qm", "the bump this build has not caught up with");
+    git(repo, "push", "-q", "origin", "main");
+  };
+
+  it("--pull goes through a repository ahead of the package, and says the skew", () => {
+    const { repo } = contour();
+    ahead(repo);
+
+    const done = run(repo, "orchestrator", "restart", "--pull", "--wait", "5");
+
+    expect(done.status).toBe(0);
+    // The skew is SAID — a restart quietly working around a shape it does not
+    // understand would be the silence this package exists against.
+    expect(done.stdout).toContain(`declares protocol version ${CURRENT_PROTOCOL_VERSION + 1}`);
+    expect(done.stdout).toContain("orchestrator.state");
+    // AND SAID ONCE (the reviewer's finding on PR #202, measured with `grep -c`: three).
+    // `restart` resolves the paths three times — before phase 1, inside `down`, inside
+    // `up` — and three identical lines among the phases read as three discoveries; the
+    // next person's first question is which of them was the real one. Counting rather
+    // than `toContain` is the point of the assertion: the old one passed at three.
+    expect(
+      done.stdout.split("\n").filter((line) => line.includes("declares protocol version")).length,
+    ).toBe(1);
+    expect(done.stdout).toContain("git pull --ff-only — ok");
+    // The circuit is back up over the fresh code: the flags are down, the daemon was
+    // spawned. This is the assertion the defect failed at exit 2.
+    expect(existsSync(state(repo, "stop"))).toBe(false);
+    expect(existsSync(state(repo, "daemon.pid"))).toBe(true);
+    leftovers.push(Number(readFileSync(state(repo, "daemon.pid"), "utf8").trim()));
+  }, 60_000);
+
+  it("but a data command on the same repository still refuses, by the same door", () => {
+    const { repo } = contour();
+    ahead(repo);
+
+    const done = run(repo, "orchestrator", "status", "--ref", "HEAD", "--no-fetch");
+
+    expect(done.status).not.toBe(0);
+    expect(`${done.stdout}${done.stderr}`).toContain("restart required");
+  }, 60_000);
+});

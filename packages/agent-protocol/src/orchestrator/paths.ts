@@ -82,11 +82,19 @@ const DAEMON_CODE = "daemon-code.json";
 const DAEMON_LOG = "daemon.log";
 const DAEMON_PID = "daemon.pid";
 
+/**
+ * THE TWO FIELDS, NOT THE TWO SECTIONS. It is written as a `Pick` rather than as
+ * `Orchestrator`/`Mail` because a caller that is knowingly behind the config's shape
+ * exists (`restart`, thread 055.3, `config/repair.ts`): it parses these two fields
+ * loosely and can offer nothing more. The narrow type is also the true claim — the
+ * builder has never read anything else, and a wider one invited callers to believe
+ * this place understood their whole config.
+ */
 export const orchestratorPaths = (input: {
   /** The repository root: paths in the config are relative to it. */
   readonly repo: string;
-  readonly orchestrator: Orchestrator;
-  readonly mail: Mail;
+  readonly orchestrator: Pick<Orchestrator, "state" | "mailCheckout">;
+  readonly mail: Pick<Mail, "dir">;
 }): OrchestratorPaths => {
   const state = join(input.repo, input.orchestrator.state);
   return {
