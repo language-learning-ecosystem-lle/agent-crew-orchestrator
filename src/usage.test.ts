@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { parseUsage, strayArguments } from "./orchestrator/argv.js";
+import { selfRestartArgv } from "./orchestrator/self-restart.js";
 import { argvOf, type TuiAction } from "./orchestrator/tui.js";
 import { USAGE } from "./usage.js";
 
@@ -568,6 +569,53 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       const key = `${words[0]} ${words[1]}`;
       expect([key, strayArguments(words.slice(2), specFor(key))]).toEqual([key, []]);
     }
+  });
+
+  it("accepts the argv a daemon spawns to repair itself (055.2)", () => {
+    // MEASURED, NOT SUPPOSED: on the acceptance bench of 2026-08-05 the tick spawned
+    // exactly this command and the door refused '--self' as an unknown flag — the
+    // usage line did not spell it, and this text IS the argument checker. The repair
+    // died at the door, twice, without a word (the child's stdio is 'ignore'), and the
+    // attempt ceiling then closed the mechanism for that target. The unit tests of the
+    // rule all passed: they judge the VERDICT, and nobody had asked whether the command
+    // the verdict types exists. The corpus above cannot catch it either — it is a list
+    // of calls a human wrote, and this call is written by the daemon.
+    const words = selfRestartArgv({ ref: "origin/main", repo: "/tmp/box", waitSec: 120 });
+    const key = `${words[0]} ${words[1]}`;
+    expect([key, strayArguments(words.slice(2), specFor(key))]).toEqual([
+      "orchestrator restart",
+      [],
+    ]);
+  });
+
+  it("carries the identity the daemon was raised with, and the door takes it too (055)", () => {
+    // WHY THIS IS COMPUTED AND NOT LISTED: the flags that select the machine config are
+    // read in exactly one place, `localFrom` in `cli.ts`, and the claim of the repair is
+    // "whatever named the config for the daemon names it for the repair". A hand-written
+    // pair of flags here would say nothing about a third one added tomorrow — so the list
+    // is read off that function's body, and a new layer there reddens this test by name.
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+    const opens = source.indexOf("const localFrom =");
+    const body = source.slice(opens, opens + source.slice(opens).indexOf("\n};"));
+    const selectors = [...body.matchAll(/flag\(argv, "(--[\w-]+)"\)/g)].map(
+      (found) => found[1] as string,
+    );
+    expect(selectors.sort()).toEqual(["--instance", "--local-config", "--repo"]);
+
+    const words = selfRestartArgv({
+      ref: "origin/main",
+      repo: "/tmp/box",
+      instance: "crew",
+      localConfig: "/tmp/box/local.json",
+      waitSec: 120,
+    });
+    // `--repo` is the served checkout and rides in every case; the other two ride when
+    // the daemon was given them, which is the case constructed here.
+    for (const selector of selectors) expect(words).toContain(selector);
+    // And the door of the command the daemon types accepts them: a flag passed through
+    // to a command whose usage line does not spell it dies at the parser, silently, in a
+    // child nobody reads — which is exactly how `--self` died on 2026-08-05.
+    expect(strayArguments(words.slice(2), specFor("orchestrator restart"))).toEqual([]);
   });
 
   it("lets `up` pass its own flags through to the daemon it starts", () => {

@@ -363,7 +363,27 @@ The strict forms below keep every flag they had.
                               # reason: a daemon raised over it exits on its first tick and
                               # says so only in its log. --clear-force removes it deliberately
   agent-protocol orchestrator down   [--ref <ref>] [--repo <p>] [--stop-flag <p>] [--pid-file <p>]
-  agent-protocol orchestrator restart [--ref <ref>] [--repo <p>] [--instance <name>] [--local-config <p>] [--pull] [--wait <sec>] [--pid-file <p>] [--daemon-log <p>] [--mode <m>] [--thread <slug>] [--reason <why>] [--by <who>]   # plus every 'daemon' flag
+  agent-protocol orchestrator restart [--ref <ref>] [--repo <p>] [--instance <name>] [--local-config <p>] [--pull] [--self] [--wait <sec>] [--pid-file <p>] [--daemon-log <p>] [--mode <m>] [--thread <slug>] [--reason <why>] [--by <who>]   # plus every 'daemon' flag
+                              # --self: THE BOX TYPED THIS, NOT A HAND (055.2) — it changes
+                              # one thing, the label the phases are said under ('self-restart'),
+                              # so the log of an unattended repair reads as one. It stands on
+                              # this line because this text IS the argument door: the daemon
+                              # spawned exactly this command on 2026-08-05 and the door
+                              # refused '--self' as unknown — the repair died at the door,
+                              # silently (the child spoke into 'ignore'), twice, and the
+                              # attempt ceiling then closed the mechanism for that target
+                              # THE CHILD IS NO LONGER MUTE (055): its streams go to the
+                              # daemon's own log, the way 'up' gives its daemon that file —
+                              # a refusal at the door or a failure before the phases start
+                              # would otherwise leave 'attempted N/2' with no cause, which
+                              # is what made the case above cost a hand-run to diagnose
+                              # THE REPAIR IS TYPED WITH THE DAEMON'S OWN IDENTITY (055):
+                              # '--instance'/'--local-config' of the daemon are passed into
+                              # it verbatim. No layer reproduces them — the env one is only
+                              # read here, and the checkout one answers about '--repo', the
+                              # served tree. Without them a repair on a multi-instance box
+                              # (whose unit's ExecStart carries '--instance') resolves
+                              # ANOTHER config, hence another state directory, quietly
                               # PICKING UP FRESH CODE AS ONE GESTURE: down, wait out the
                               # live sessions, (--pull: git pull --ff-only + pnpm install),
                               # up again WITH THE FLAGS OF THE DAEMON THAT WAS STOPPED —

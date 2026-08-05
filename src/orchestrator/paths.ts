@@ -65,6 +65,15 @@ export type OrchestratorPaths = {
    * like the state above: losing it costs one line of a picture.
    */
   readonly daemonCode: string;
+  /**
+   * WHAT REPAIR THIS BOX HAS ALREADY TRIED ON ITSELF (055.2, `self-restart.ts`): the SHA
+   * it is trying to reach and how many attempts it has spent on it. Written by the tick
+   * that decides to restart itself, read by the next tick and by the daemon that comes
+   * up after it — which is why it is a file and not a variable: the process that counts
+   * an attempt is precisely the process that is about to be replaced. Disposable like
+   * everything here — losing it costs one extra attempt, never a decision.
+   */
+  readonly daemonSelfRestart: string;
   /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
   readonly mailRoot: string;
 };
@@ -79,6 +88,7 @@ const SESSIONS = "sessions";
 const NOTIFY_STATE = "notify.state";
 const MERGE_READY_OUTAGE = "merge-ready-outage.json";
 const DAEMON_CODE = "daemon-code.json";
+const DAEMON_SELF_RESTART = "self-restart.json";
 const DAEMON_LOG = "daemon.log";
 const DAEMON_PID = "daemon.pid";
 
@@ -108,6 +118,7 @@ export const orchestratorPaths = (input: {
     notifyState: join(state, NOTIFY_STATE),
     mergeReadyOutage: join(state, MERGE_READY_OUTAGE),
     daemonCode: join(state, DAEMON_CODE),
+    daemonSelfRestart: join(state, DAEMON_SELF_RESTART),
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),

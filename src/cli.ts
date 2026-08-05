@@ -119,6 +119,7 @@ import {
   openAuthShelf,
 } from "./orchestrator/auth.js";
 import {
+  type CodeDrift,
   type CodeVintage,
   codeAgeView,
   describeCodeDrift,
@@ -332,6 +333,20 @@ import {
   resolveLaunchScope,
   scopeFlagIssues,
 } from "./orchestrator/scope.js";
+import {
+  attemptsFor,
+  describeSelfRestartGo,
+  describeSelfRestartSpawned,
+  describeSelfRestartStand,
+  describeSelfRestartUnspawned,
+  parseSelfRestartMemory,
+  renderSelfRestartMemory,
+  SELF_RESTART_MAX_ATTEMPTS,
+  selfRestartArgv,
+  selfRestartVerdict,
+  spawnSelfRestart,
+  workingTreeState,
+} from "./orchestrator/self-restart.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
 import {
   foregroundRefusal,
@@ -7314,6 +7329,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const journalPath = flag(argv, "--journal") ?? paths.journal;
   const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
   const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
+  // 055.2: the TOPLEVEL of the tree this daemon serves, resolved once and at startup —
+  // the self-restart rule compares it with the checkout node loaded the code from, and a
+  // comparison of two spellings of one path would answer that question wrongly. Resolved
+  // here rather than inside the tick so an unreadable repository is a refusal to START,
+  // never a `process.exit` in the middle of a round.
+  const servedCheckout = repoOf(repo);
   const enableFlag = flag(argv, "--enable-flag") ?? paths.enableFlag;
   const stopFlag = flag(argv, "--stop-flag") ?? paths.stopFlag;
   const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
@@ -7421,6 +7442,109 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   }
   /** The last unreadable-ref complaint, so an unanswerable ref is said once, not per tick. */
   let codeNote: string | undefined;
+  /**
+   * 055.2 — THE BOX PICKS UP ITS OWN NEW CODE. Called from the tick on every drift, it
+   * asks the pure verdict (`selfRestartVerdict`) and does at most one thing with the
+   * answer: spawn the SAME `restart --pull` a hand would type, detached, and let it stop
+   * this process. Nothing here changes what the tick decided about pairs — a repair
+   * refused is today's contour verbatim, said out loud beside the drift line.
+   *
+   * The impure reads are here rather than in the rule: the working tree of the checkout
+   * the modules came from (the tree `git pull --ff-only` is about to move — a pull over
+   * somebody's unsaved work is the one irreversible step of the chain), the memory of
+   * what this box has already tried against this target, and the toplevel of the tree
+   * this daemon serves (`servedCheckout`, resolved at startup), which is what tells a
+   * box repairing ITSELF from a daemon whose code came from somewhere else entirely.
+   *
+   * WHY THE OLD PROCESS DOES NOT WAIT FOR THE OUTCOME: it cannot. `restart` is a
+   * composition that stops THIS pid and raises a successor, and a process cannot outlive
+   * its own replacement to report on it — so the handover is the last thing said here,
+   * the phases go to `daemon.log` under the `self-restart` label, and the new daemon's
+   * banner names the SHA it loaded. The attempt is counted BEFORE the spawn: a repair
+   * that dies between the two must cost an attempt, or a box that cannot spawn would try
+   * forever at tick speed.
+   */
+  const selfRestart = (drift: CodeDrift): void => {
+    const memory = existsSync(paths.daemonSelfRestart)
+      ? parseSelfRestartMemory(readFile(paths.daemonSelfRestart, "the self-restart memory"))
+      : undefined;
+    const verdict = selfRestartVerdict({
+      target: drift.refSha,
+      running: runningRoles(),
+      openLeases: unclosedLeases(
+        existsSync(journalPath) ? parseJournal(readFile(journalPath, "orchestrator journal")) : [],
+        new Date(),
+      ).map((lease) => `${lease.role}/${lease.thread}`),
+      stopping: existsSync(stopFlag) || existsSync(forceFlag),
+      held: heldRoles(foldHolds(loadHolds(holdsDir), new Date())),
+      tree: workingTreeState(drift.vintage.checkout),
+      checkout: drift.vintage.checkout,
+      served: servedCheckout,
+      attempts: attemptsFor(memory, drift.refSha),
+      ceiling: SELF_RESTART_MAX_ATTEMPTS,
+    });
+    if (verdict.kind === "stand") {
+      err(`agent-protocol: daemon — ${describeSelfRestartStand(verdict.block)}`);
+      return;
+    }
+    err(
+      `agent-protocol: daemon — ${describeSelfRestartGo({
+        target: verdict.target,
+        ...(drift.behind === undefined ? {} : { behind: drift.behind }),
+        attempt: verdict.attempt,
+        ceiling: SELF_RESTART_MAX_ATTEMPTS,
+      })}`,
+    );
+    try {
+      writeOut(
+        paths.daemonSelfRestart,
+        renderSelfRestartMemory({
+          target: verdict.target,
+          attempts: verdict.attempt,
+          at: eventTimestamp(new Date()),
+        }),
+      );
+    } catch (error) {
+      // The memory is what stops a loop, so a box that cannot write it does not start
+      // one: the repair is skipped and the reason is on the stream.
+      err(
+        `agent-protocol: daemon — SELF-RESTART skipped: the attempt could not be recorded in '${paths.daemonSelfRestart}' (${(error as Error).message}); without that record a failing repair would retry every tick`,
+      );
+      return;
+    }
+    try {
+      // The child speaks into the daemon's own log rather than into 'ignore', and the
+      // wiring lives in `spawnSelfRestart` so that a test can drive exactly the case that
+      // was silent: an argv the door refuses (see the module's doc block).
+      const pid = spawnSelfRestart({
+        node: process.execPath,
+        nodeArgs: process.execArgv,
+        entry: process.argv[1] as string,
+        argv: selfRestartArgv({
+          ref: required(argv, "--ref"),
+          repo: drift.vintage.checkout,
+          // Whatever named the machine config for THIS daemon rides into the repair
+          // unchanged: no other layer reproduces it (see `selfRestartArgv`).
+          ...(flag(argv, "--instance") === undefined
+            ? {}
+            : { instance: flag(argv, "--instance") as string }),
+          ...(flag(argv, "--local-config") === undefined
+            ? {}
+            : { localConfig: flag(argv, "--local-config") as string }),
+          // Zero leases is a condition of getting here, so this process leaves at its
+          // next tick; the wait only has to outlast a tick, and a long one would hide
+          // a hang rather than survive it.
+          waitSec: Math.max(120, (tickMs / 1000) * 5),
+        }),
+        cwd: drift.vintage.checkout,
+        logPath: paths.daemonLog,
+        env: process.env,
+      });
+      err(`agent-protocol: daemon — ${describeSelfRestartSpawned(pid as number, paths.daemonLog)}`);
+    } catch (error) {
+      err(`agent-protocol: daemon — ${describeSelfRestartUnspawned((error as Error).message)}`);
+    }
+  };
   // R13: WHAT THIS RUN RAISES, and what it leaves to somebody else — in the banner,
   // because a role missing from the queue for an unspoken reason is indistinguishable
   // from a role with no mail.
@@ -7865,6 +7989,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       if (reading.kind === "drift") {
         err(`agent-protocol: daemon — ${describeCodeDrift(reading.drift, new Date())}`);
         codeNote = undefined;
+        // 055.2 — AND THEN IT DOES SOMETHING ABOUT IT, when and only when the box is
+        // safe to repair unattended. The verdict is pure (`self-restart.ts`); everything
+        // impure about the decision is here and is exactly two things: reading the tree
+        // the pull would move, and spawning the manual command. `decision` above already
+        // ran, so the tick's own work for this round is done — a restart decided here
+        // takes effect at the NEXT tick, when the stop flag the repair sets is seen.
+        selfRestart(reading.drift);
       } else if (reading.kind === "unknown" && reading.problem !== codeNote) {
         // Said when it CHANGES, not every tick: an unresolvable ref is one fault, and
         // repeating it thirty seconds apart would bury the drift line it stands next to.
@@ -8545,11 +8676,15 @@ const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
   // The phases are said to the terminal AND written where a backgrounded daemon speaks:
   // a restart that refused at 04:00 has to be readable at 09:00, and the terminal it
   // spoke into is gone by then.
+  // 055.2: WHO TYPED IT. A restart the daemon started for itself and one a human typed
+  // do the same thing and mean different things — a log read a day later has to tell
+  // them apart, and the cheapest place to say it is every line the restart writes.
+  const label = args.includes("--self") ? "self-restart" : "restart";
   const say = (text: string): void => {
-    out(`agent-protocol: restart — ${text}`);
+    out(`agent-protocol: ${label} — ${text}`);
     try {
       mkdirSync(dirname(logPath), { recursive: true });
-      appendFileSync(logPath, `[restart ${new Date().toISOString().slice(0, 19)}Z] ${text}\n`);
+      appendFileSync(logPath, `[${label} ${new Date().toISOString().slice(0, 19)}Z] ${text}\n`);
     } catch {
       // The log is a courtesy here, not the channel: a restart must not fail because
       // the file it wanted to annotate is unwritable.
