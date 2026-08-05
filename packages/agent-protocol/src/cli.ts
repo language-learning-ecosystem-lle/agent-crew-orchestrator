@@ -413,6 +413,7 @@ import type {
   ThreadPriorityValue,
 } from "./thread/message.js";
 import {
+  bodyClaimsTurnRelease,
   EXPECTS,
   isSessionId,
   isWorkerId,
@@ -1878,6 +1879,17 @@ const newMessage = (argv: readonly string[]): void => {
   const text = readFile(required(argv, "--body-file"), "message body");
   const waitingRaw = flag(argv, "--waiting-on");
   const waitingOn = waitingRaw === undefined ? undefined : parseWaitingOn(waitingRaw, registry);
+  // A RELEASE THAT LIVES ONLY IN THE PROSE IS NOT A RELEASE (thread 042): the body says
+  // the header lets the turn go, the header says nothing, and the turn stays with whoever
+  // held it — silently, in an append-only feed where the message cannot be taken back.
+  // Refused, not folded to `--waiting-on —`: the writer meant one of two different things
+  // (release it, or leave the claim out), and the door must not pick for them.
+  if (waitingOn === undefined && bodyClaimsTurnRelease(text)) {
+    fail(
+      "the body says the turn is released ('waiting-on: —') and no --waiting-on was given — the turn is the HEADER's, so it would stay with whoever holds it now and raise them again on a thread where nothing happened (thread 042, two messages in a row). Pass '--waiting-on —' to mean it, or take the claim out of the body if the turn stays where it is",
+      2,
+    );
+  }
   // Required BEFORE `--write` is even looked at: a dry run is the preview of the
   // write, and a preview that succeeds where the write refuses is a lie.
   const provenance = provenanceFrom(argv, { required: true });
@@ -2093,6 +2105,15 @@ const newThread = (argv: readonly string[]): void => {
   const expects = parseExpects(required(argv, "--expects"));
   const waitingRaw = flag(argv, "--waiting-on");
   const waitingOn = waitingRaw === undefined ? undefined : parseWaitingOn(waitingRaw, registry);
+  // The same door as `new-message`'s (thread 042). An opening message that releases the
+  // turn in prose only is rarer, but the asymmetry would be the surprise: one command
+  // refusing what its neighbour writes is a rule nobody can hold in their head.
+  if (waitingOn === undefined && bodyClaimsTurnRelease(text)) {
+    fail(
+      "the body of the first message says the turn is released ('waiting-on: —') and no --waiting-on was given — the turn is the HEADER's, and a thread opened this way holds a claim its header does not carry. Pass '--waiting-on —' to mean it, or take the claim out of the body",
+      2,
+    );
+  }
 
   // Replanned per attempt like a message's: the stamp is taken at the moment of the
   // attempt, so a retry after somebody else's push does not carry a stale one.

@@ -453,6 +453,42 @@ export class MessageFormatError extends Error {
 }
 
 /**
+ * THE BODY CLAIMING THE TURN IS RELEASED — the one prose form the door reads, and it
+ * reads it ONLY to refuse the message, never to believe it (thread 042).
+ *
+ * The header stays the single source of the turn: this is not `waiting-on` parsed out
+ * of prose again (pain 2), it is the contradiction between what a message SAYS about
+ * its own header and what the header carries. On 2026-08-05 two messages in a row —
+ * curator's and dev-core's — wrote "ход снимаю полем `waiting-on: —`" and passed no
+ * flag; the turn stayed on `dev-core` from a notifier's letter, and the pair was
+ * raised on a receiver where nothing had happened. A feed is append-only, so neither
+ * message could be corrected: the only place to catch this is before the write.
+ *
+ * WHY ONLY THE RELEASE FORM, and not any mention of the markup. Measured over the
+ * live mail AT ONE NAMED MOMENT — 2026-08-05, mail commit 9ad9f08, 1854 messages:
+ * a scan for any `waiting-on:`/`parked-on:` in a body whose header carries neither
+ * flags 7 messages, and 5 of them merely QUOTE another thread's field or a PR title
+ * — the body is free text by contract and quoting is normal. The release form is the
+ * narrow one: 22 messages mention it, 20 carry the field (never refused — the flag is
+ * there), and the 2 that do not are exactly the defect. Zero false positives.
+ *
+ * The moment is named because the mail GROWS and every count above drifts with it
+ * (two runs of the same scan an hour apart already disagreed by one message, and the
+ * disagreement read as a wrong measurement rather than as a later one). What does not
+ * drift is the shape of the answer, and that is what the narrow form rests on: the
+ * wide scan is majority false positives, the narrow scan is exactly the defect.
+ *
+ * Fenced blocks are cut out first: a message DOCUMENTING the protocol pastes headers
+ * as examples while its own turn stays where it is. Inline backticks are deliberately
+ * kept — both real cases were written as inline `waiting-on: —`.
+ */
+const FENCED_BLOCK = /^```[\s\S]*?^```/gm;
+const TURN_RELEASE_CLAIM = /waiting-on:\s*`?\s*[—–]/;
+
+export const bodyClaimsTurnRelease = (text: string): boolean =>
+  TURN_RELEASE_CLAIM.test(text.replace(FENCED_BLOCK, ""));
+
+/**
  * `waiting-on` off the wire. ONE role, or `—` for nobody. A list is REFUSED rather
  * than folded to its first element: a header that names two is either history that
  * the v13 migration has not been run over, or a writer still thinking in sets — and
