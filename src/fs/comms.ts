@@ -3,10 +3,12 @@
  * `fs`: everything above is "string → string" functions and is therefore tested
  * without a file system.
  *
- * TWO FORMS LIVE SIDE BY SIDE and are told apart by the presence of `messages/`:
- * a migrated thread — read the files; a non-migrated one — parse the legacy
- * `_thread.md`. Only this way do threads migrate one at a time, without a
- * "switch-over day" and without downtime of the circuit.
+ * TWO FORMS LIVE SIDE BY SIDE and are told apart by the presence of `_meta.md`:
+ * a migrated thread — read `_meta.md` plus whatever is in `messages/`; a
+ * non-migrated one — parse the legacy `_thread.md`. Only this way do threads
+ * migrate one at a time, without a "switch-over day" and without downtime of the
+ * circuit. The sign used to be `messages/`, and it mistook a thread OPENED AND NOT
+ * YET SPOKEN IN for a legacy one — see `loadThread`.
  *
  * A FAILURE OF ONE THREAD DOES NOT BLIND THE CIRCUIT (curator's statement of
  * work, thread 012, 21:35). Previously `loadThreads` parsed threads in a row and
@@ -74,25 +76,38 @@ export const loadThread = (
   const messagesDir = join(dir, "messages");
   const threadDocPath = join(dir, "_thread.md");
   const metaPath = join(dir, "_meta.md");
+  const hasMessages = existsSync(messagesDir);
+  const hasMeta = existsSync(metaPath);
 
-  if (!existsSync(messagesDir)) {
+  // WHICH FORM THIS IS, is answered by `_meta.md` and not by `messages/` (thread 042).
+  // The two signs agree on every thread that has been spoken in, and they disagree on
+  // exactly one state — A THREAD OPENED AND NOT YET SPOKEN IN, which is `_meta.md`
+  // alone. `messages/` as the discriminator read that as legacy, went for the
+  // `_thread.md` that a fresh thread does not have yet, and died on a raw ENOENT.
+  // It is not a hypothetical state: `new-thread --write` puts both files in one commit,
+  // but a human opening a conversation by hand pushes `_meta.md` first (john, 2026-08-05
+  // — thread 055), and that push made `derive` red and rang the notifier at 042 for a
+  // conversation that was in no way broken.
+  if (!hasMeta) {
+    // A HALF-MIGRATED THREAD is called by its name: a message file dropped into a
+    // legacy thread by hand (bypassing `new-message`, which refuses to make such a
+    // write) leaves `messages/` without a `_meta.md`. A raw ENOENT on a file path
+    // would make the reader infer the state themselves.
+    if (hasMessages) {
+      throw new Error(
+        `half-migrated thread: 'messages/' is present but '_meta.md' is missing` +
+          (existsSync(threadDocPath)
+            ? " (a legacy '_thread.md' lies next to it — either finish migrating the thread or put the message back into it)"
+            : ""),
+      );
+    }
+    if (!existsSync(threadDocPath)) {
+      throw new Error(
+        `neither '_meta.md' nor '_thread.md' — this directory is a thread in no form (an opened thread carries '_meta.md', a legacy one '_thread.md')`,
+      );
+    }
     const raw = readFileSync(threadDocPath, "utf8");
     return { thread: parseLegacyThread(id, raw, knownRoles), legacy: true };
-  }
-
-  // A HALF-MIGRATED THREAD is called by its name. The form is told apart by the
-  // presence of `messages/`, so a message file dropped into a legacy thread by
-  // hand (bypassing `new-message`, which refuses to make such a write) moves the
-  // thread onto the migrated branch — and that one fails on the missing
-  // `_meta.md`. A raw ENOENT on a file path would make the reader infer the state
-  // themselves.
-  if (!existsSync(metaPath)) {
-    throw new Error(
-      `half-migrated thread: 'messages/' is present but '_meta.md' is missing` +
-        (existsSync(threadDocPath)
-          ? " (a legacy '_thread.md' lies next to it — either finish migrating the thread or put the message back into it)"
-          : ""),
-    );
   }
 
   const meta = parseMetaFile(readFileSync(metaPath, "utf8"));
@@ -100,7 +115,7 @@ export const loadThread = (
   // name leads with a date, and the date is sometimes non-monotonic against the
   // feed (msg-069 in 012). We read first and sort with the comparator afterwards —
   // a flat `.sort()` of names would lie.
-  const entries: MessageEntry[] = readdirSync(messagesDir)
+  const entries: MessageEntry[] = (hasMessages ? readdirSync(messagesDir) : [])
     .filter((name) => name.endsWith(".md"))
     .map((fileName) => {
       try {
