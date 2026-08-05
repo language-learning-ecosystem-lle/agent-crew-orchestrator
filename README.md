@@ -148,6 +148,35 @@ every machine and belongs to none of them.
 is read and never printed, while this one is printed on every preflight. Both fields
 say the same kind of thing — where something on this box happens to sit.
 
+`accounts` is the same kind of thing for the SUBSCRIPTIONS a box holds (thread 055),
+and it is one half of a join that runs across the R14 line in both directions:
+
+| the question | who answers it |
+| --- | --- |
+| WHICH account a role's runs spend | the repository — `launch.account: <id>` of the role, reviewed in a PR |
+| WHERE that account lives on this box | the machine — `accounts.<id>.configDir` |
+| WHICH subscription stands behind the id | neither file: the id is a label, and only whoever logged in knows |
+
+The id is policy because it decides whose quota a role burns; the directory is
+location for the same reason `exec` is. The session is pointed at it with
+`CLAUDE_CONFIG_DIR`, and that one directory holds the whole account — credentials,
+the tool's config, the transcripts and the session store — so the isolation is
+directory-deep and there is no second switch to forget. Two consequences worth
+saying out loud:
+
+  * an id the repository names and this box does not declare is a REFUSAL by name at
+    the launch door. The quiet fall-back to the box's own account is the one answer
+    that must not exist: it spends a subscription nobody assigned the role, and from
+    the outside it looks exactly like a run that obeyed;
+  * `--resume` (R18) is bound to the account, the session store living under the same
+    directory. A role whose account is changed does not corrupt its resumable
+    sessions, it stops seeing them — the first run after such a change is `--fresh`
+    in fact, whatever the continuation policy would have decided.
+
+A role that names no account inherits the box's own, which is what every run did
+before the field existed; the environment variable is then not set at all rather than
+set to the default path, so an operator who exported one keeps it.
+
 `operator` is WHO SITS AT THIS BOX — the role a short-form hold is signed by when
 `--by` is not typed. It was `$USER` alone, and an OS account name coincides with a
 role of the config only by luck: on the box this was written on it is `cosysoft`,
@@ -225,7 +254,10 @@ is printed (`doctor`, `orchestrator preflight`):
 | 4 | the unnamed config | `local.json` — a box that hosts one instance |
 
 `--instance` is spelled on the usage line of every command that resolves the machine
-config, and nowhere else — the usage text IS the argument checker (`orchestrator/argv.ts`),
+config, plus `orchestrator up` and `orchestrator restart` — which do not call the loader
+themselves and carry it because the generated unit's `ExecStart` does, and an operator
+reads that line rather than the merging of flag sets behind it. The usage text IS the
+argument checker (`orchestrator/argv.ts`),
 so a flag left off a line is refused at the door however well the loader behind it works.
 That is not a hypothetical: the first version of this shipped with the resolution
 unit-tested and the flag rejected by every `orchestrator` command, including the `up` that

@@ -428,6 +428,53 @@ export const resolveExec = (input: {
   return { value: DEFAULT_EXEC, source: "default" };
 };
 
+/**
+ * WHICH ACCOUNT THIS RUN SPENDS, AND WHERE IT LIVES (thread 055) — the second join
+ * of R14 in this file, and it reads in the opposite direction from `resolveExec`.
+ *
+ * `exec` asks the machine a question the repository has no business answering (where
+ * a binary is). The account asks BOTH: the repository names WHICH account
+ * (`launch.account` — policy, it decides whose quota a role burns and a reviewer
+ * sees it in a diff), the machine names WHERE that account's directory sits. Neither
+ * file names the subscription itself.
+ *
+ * THE THREE ANSWERS ARE THREE DIFFERENT FACTS, and each is said in its own words:
+ *  · the role names no account — the run inherits the box's own, exactly as every
+ *    run did before this field existed. Not an error, and not printed as one;
+ *  · the role names an account this box declares — that directory, said out loud
+ *    beside the model and the effort;
+ *  · the role names an account this box does NOT declare — a refusal BY NAME. The
+ *    quiet fall-back to the box's own account is the one answer that must not
+ *    exist: it raises a role on a subscription nobody assigned it, and it looks
+ *    from the outside exactly like a run that obeyed.
+ */
+export type ResolvedAccount = {
+  /** The id as the repository names it — a label, never the account itself. */
+  readonly id: string;
+  /** The directory this box keeps it in; goes to the session as `CLAUDE_CONFIG_DIR`. */
+  readonly configDir: string;
+};
+
+export type AccountResolution =
+  | { readonly ok: true; readonly account?: ResolvedAccount }
+  | { readonly ok: false; readonly reason: string };
+
+export const resolveAccount = (input: {
+  readonly launch?: Launch;
+  readonly local?: LocalConfig;
+}): AccountResolution => {
+  const id = input.launch?.account;
+  if (id === undefined) return { ok: true };
+  const declared = input.local?.accounts?.[id]?.configDir;
+  if (declared === undefined) {
+    return {
+      ok: false,
+      reason: `the role is to be raised on account '${id}', and this machine declares no such account — say where it lives ('accounts.${id}.configDir' of the machine config) or the run would silently spend the box's own`,
+    };
+  }
+  return { ok: true, account: { id, configDir: declared } };
+};
+
 /** The launch parameters of the resolved tool, each with the layer it came from. */
 export type AgentParams = {
   readonly model?: Resolved<string, ParamSource>;
@@ -567,10 +614,15 @@ export const describeAgent = (input: {
   readonly worker: ResolvedWorker;
   readonly exec: ResolvedExec;
   readonly params: AgentParams;
+  /** Thread 055: absent means the box's own account — which is what silence meant before. */
+  readonly account?: ResolvedAccount;
 }): string =>
   [
     `${input.worker.value} (${input.worker.source})`,
     `exec ${input.exec.value} (${input.exec.source})`,
+    ...(input.account === undefined
+      ? []
+      : [`account ${input.account.id} (${input.account.configDir})`]),
     ...(input.params.model === undefined
       ? []
       : [`model ${input.params.model.value} (${input.params.model.source})`]),

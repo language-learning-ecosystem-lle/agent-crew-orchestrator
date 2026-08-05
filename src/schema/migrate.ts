@@ -58,6 +58,7 @@ import { INSTANCES_STEP } from "./v11-instances.js";
 import { RESIDENT_WAKE_STEP } from "./v12-resident.js";
 import { SCALAR_WAITING_ON_STEP } from "./v13-scalar-waiting-on.js";
 import { NATIVE_TASKS_STEP } from "./v14-native-tasks.js";
+import { LAUNCH_ACCOUNT_STEP } from "./v15-launch-account.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -78,6 +79,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   RESIDENT_WAKE_STEP,
   SCALAR_WAITING_ON_STEP,
   NATIVE_TASKS_STEP,
+  LAUNCH_ACCOUNT_STEP,
 ];
 
 export type {
