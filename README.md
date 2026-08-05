@@ -2781,6 +2781,20 @@ Three things it decides, and each is a promise:
 cycle; `up --clear-force` is passed by the same command that put the force there a minute ago,
 which is why that is not the silent clearing `up` refuses.
 
+**And the fourth promise, bought live: the version gate is not this command's** (thread 055,
+task 055.3). With `protocolVersion 15` on `origin/main` and a package that knows 14,
+`restart --pull` died at the door — `restart required: … this build is behind the data (pull
+and restart what is running on it)`, exit 2, nothing restarted. The message names the repair
+and kills the command that performs it: the gate stands before the dispatch and cannot tell a
+reader of the canon from its healer. A graceful restart therefore asks the config the third
+question of `config/repair.ts` — *where does this box keep its state* (`orchestrator.state`,
+`orchestrator.mailCheckout`, `mail.dir`) — parsed loosely, with the skew PRINTED on every read
+that finds one. Loosely and not merely gate-free, for the reason `tolerateOlder` was deleted
+over: a bump that adds a field trips the strict parse before any number is compared, and the
+repro of 05.08 (a one-line `protocolVersion` bump) was the only shape a gate-only exemption
+would have closed. `--mode force` keeps the gate — it writes a message into the mail before it
+kills anything, and a message is protocol data.
+
 **`hold <role>` / `resume <role>`.** The same action as the strict `hold --mode take/release`
 with the two answers the operator was retyping filled in: the ref from the config, `--by` from
 `$USER` (checked against the roles of the config, like the strict form). They ACT rather than

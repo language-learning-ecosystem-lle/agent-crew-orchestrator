@@ -124,6 +124,32 @@ describe("createStandingConfig", () => {
     expect(outcome.kind).toBe("unread");
   });
 
+  it("stands over a dead wire for ANOTHER shape too, and out of its own memory", () => {
+    // The healer's read (`intent: "repair"`, PR #202) gets exactly this survival — its
+    // third path resolution runs after `down` has already stopped the daemon — and gets
+    // its OWN instance: a key of (repo, ref, path) says nothing about the intent, so one
+    // shared map could hand a loosely-parsed repair read to a version-checked caller.
+    const healer = createStandingConfig<{ readonly where: string }>({
+      now: at("2026-08-05T13:00:00.000Z"),
+    });
+    const data = createStandingConfig();
+    const key = standingKey({ repo: "/r", ref: "origin/main", path: "c.json" });
+    healer.read(key, () => ({ where: ".orchestrator" }));
+
+    const stood = healer.read(key, () => {
+      throw new Error("git fetch: Connection timed out");
+    });
+    const other = data.read(key, () => {
+      throw new Error("git fetch: Connection timed out");
+    });
+
+    expect(stood.kind).toBe("stood");
+    if (stood.kind !== "stood") throw new Error("unreachable");
+    expect(stood.config.where).toBe(".orchestrator");
+    // The data reader remembers nothing of it: two memories, not one.
+    expect(other.kind).toBe("unread");
+  });
+
   it("the key separates repository, ref and path", () => {
     expect(standingKey({ repo: "/a", ref: "origin/main", path: "c.json" })).not.toBe(
       standingKey({ repo: "/a", ref: "origin/mainc.json", path: "" }),

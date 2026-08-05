@@ -42,7 +42,7 @@ describe("orchestratorPaths", () => {
   });
 
   it("the mail directory comes from mail.dir and is not hardcoded", () => {
-    const other = orchestratorPaths({ ...input, mail: { branch: "comms", dir: "inbox" } });
+    const other = orchestratorPaths({ ...input, mail: { dir: "inbox" } });
     expect(other.mailRoot).toBe("/repo/.worktrees/comms/inbox");
   });
 });

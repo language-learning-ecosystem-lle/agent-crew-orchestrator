@@ -373,6 +373,13 @@ The strict forms below keep every flag they had.
                               # cleared without hands and the daemon comes back up
                               # the process waits itself and prints the phases; a wait that
                               # runs out, a failed pull or install raises NOTHING and says so
+                              # THE VERSION GATE IS NOT THIS COMMAND'S (055.3): a repository
+                              # AHEAD of the package refused the very command that ends the
+                              # mismatch ('restart required: … pull and restart what is
+                              # running on it' — exit 2, live on 2026-08-05). A graceful
+                              # restart reads only WHERE this box keeps its state, loosely,
+                              # and prints the skew. '--mode force' keeps the gate: it writes
+                              # a message into the mail first, and that is protocol data
   agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>] [--local-config <p>] [--instance <name>]
   agent-protocol orchestrator resume <role> [--ref <ref>] [--holds <d>]
                               # the short forms ACT (no --write): typing them IS the decision
