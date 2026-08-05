@@ -988,10 +988,11 @@ describe("new-message and the scalar turn (R24)", () => {
   });
 });
 
-/** `new-thread` with everything but the id filled in. */
+/** `new-thread` with everything but the id filled in; `null` leaves out `--waiting-on`. */
 const newThread = (
   contest: { repo: string; root: string; body: string },
   id: string,
+  waitingOn: string | null = "curator",
 ): { code: number; out: string } => {
   try {
     const out = execFileSync(
@@ -1016,8 +1017,7 @@ const newThread = (
         "dev-core",
         "--expects",
         "answer",
-        "--waiting-on",
-        "curator",
+        ...(waitingOn === null ? [] : ["--waiting-on", waitingOn]),
         "--worker",
         "claude-code",
         "--body-file",
@@ -1055,5 +1055,128 @@ describe("new-thread and the uniqueness of a number (thread 029)", () => {
 
     expect(newThread(contest, "017-y").code).toBe(0);
     expect(existsSync(join(contest.root, "017-y", "_meta.md"))).toBe(true);
+  });
+});
+
+/**
+ * The command with the body and `--waiting-on` as the variables — the door of thread
+ * 042, where a message SAID the header let the turn go and the header said nothing.
+ */
+const claiming = (
+  contest: { repo: string; root: string; body: string },
+  body: string,
+  extra: readonly string[],
+): { code: number; out: string } => {
+  const file = join(contest.repo, "claim.md");
+  writeFileSync(file, body);
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-message",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--thread",
+        "016-x",
+        "--from",
+        "dev-core",
+        "--expects",
+        "none",
+        "--body-file",
+        file,
+        "--worker",
+        "human",
+        "--write",
+        "--no-push",
+        ...extra,
+      ],
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
+const filesIn = (contest: { root: string }): readonly string[] =>
+  readdirSync(join(contest.root, "016-x", "messages"));
+
+describe("a turn released in the prose only (thread 042)", () => {
+  it("REFUSES the message whose body says 'waiting-on: —' while no flag was given", () => {
+    // The live case: curator's and dev-core's messages of 2026-08-05 both wrote "ход
+    // снимаю полем `waiting-on: —`" and passed nothing. The turn stayed on dev-core
+    // from a notifier's letter and the pair was raised on a receiver where nothing had
+    // happened — and an append-only feed has nothing to correct either message with.
+    const contest = contour();
+
+    const result = claiming(contest, "Разобрано. Ход снимаю полем `waiting-on: —`.\n", []);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--waiting-on —");
+    expect(filesIn(contest)).toEqual([]);
+  });
+
+  it("writes the very same body once the flag means it", () => {
+    // The refusal is about the contradiction, never about the words: the intent of both
+    // messages was legitimate and this is the one keystroke they were missing.
+    const contest = contour();
+
+    const result = claiming(contest, "Разобрано. Ход снимаю полем `waiting-on: —`.\n", [
+      "--waiting-on",
+      "—",
+    ]);
+
+    expect(result.code).toBe(0);
+    const [file] = filesIn(contest);
+    const message = parseMessageFile(
+      readFileSync(join(contest.root, "016-x", "messages", file as string), "utf8"),
+    );
+    expect(message.fields.waitingOn).toBe(null);
+  });
+
+  it("lets a body QUOTING somebody else's turn through, flag or no flag", () => {
+    // Measured, not assumed: over the live mail a scan for any mention of the markup
+    // flags 7 messages and 5 of them merely quote another thread's field or a PR title.
+    // The body is free text by contract; only the release form is read here.
+    const contest = contour();
+
+    const result = claiming(
+      contest,
+      "Перенос имеет дом: тред `023`, сообщение с `waiting-on: dev-core` и `parked-on: john`.\n",
+      [],
+    );
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+
+  it("lets a fenced header EXAMPLE through — documenting the form is not using it", () => {
+    const contest = contour();
+
+    const result = claiming(contest, "Форма пустого ожидания:\n\n```\nwaiting-on: —\n```\n", []);
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+});
+
+describe("new-thread and the same claim (thread 042)", () => {
+  it("REFUSES an opening message that releases the turn in prose only", () => {
+    const contest = contour();
+    const body = join(contest.repo, "opening.md");
+    writeFileSync(body, "Стоячий приёмник. Ход никому: `waiting-on: —`.\n");
+
+    const result = newThread({ ...contest, body }, "018-y", null);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("waiting-on");
+    expect(existsSync(join(contest.root, "018-y"))).toBe(false);
   });
 });
