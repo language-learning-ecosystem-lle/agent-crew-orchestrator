@@ -184,7 +184,11 @@ const HANDLER_COMMANDS: Readonly<Record<string, readonly string[]>> = {
   orchestratorSystemdInstall: ["orchestrator systemd install"],
   orchestratorRun: ["orchestrator run"],
   orchestratorDaemon: ["orchestrator daemon"],
-  operatorSignature: ["orchestrator hold"],
+  // Called from two handlers, not one: `orchestratorRestart` (`--mode force`) and
+  // `orchestratorHold`. The structural check compares handler NAMES, so an
+  // under-declared entry does not redden it — the map still claims to state
+  // "handler → its commands", and for this one it was incomplete.
+  operatorSignature: ["orchestrator hold", "orchestrator restart"],
 };
 
 /** Every top-level handler in `cli.ts` that resolves the machine config out of argv. */

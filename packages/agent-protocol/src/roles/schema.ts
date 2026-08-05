@@ -257,6 +257,25 @@ export const launchSchema = z.strictObject({
   limits: launchLimitsSchema.optional(),
   /** Which tool raises this role and with which parameters; unsaid — the package default tool. */
   agent: launchAgentSchema.optional(),
+  /**
+   * WHICH ACCOUNT OF THE TOOL THIS ROLE'S RUNS SPEND (thread 055) — an ID, and the
+   * repository's half of the same join `agent.kind` makes with the binary (R14):
+   * the project says WHICH account a role works on, the machine says WHERE that
+   * account's directory is (`accounts` of the machine config).
+   *
+   * IT IS AN ID AND NOT A PATH, deliberately. A path to a credentials directory is
+   * true of one box and of no other — that is R14's line and `exec` is already on
+   * the far side of it. "Role X works on subscription A", by contrast, is a
+   * statement ABOUT THE PROJECT: it decides whose quota a role burns, and a
+   * reviewer has to be able to see it in a diff.
+   *
+   * THE SUBSCRIPTION IS NAMED IN NEITHER FILE. The id is a label (`main`,
+   * `second`); which account stands behind it is known only to whoever logged in.
+   *
+   * Unsaid — the runs of this role inherit the box's own account, which is the
+   * behaviour of every run before this field existed.
+   */
+  account: z.string().min(1).optional(),
 });
 
 export const roleSchema = z.strictObject({

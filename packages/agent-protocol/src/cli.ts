@@ -228,10 +228,12 @@ import {
   ignoredDirective,
   LAUNCH_ENV,
   planLaunch,
+  type ResolvedAccount,
   type ResolvedCeilings,
   type ResolvedExec,
   type ResolvedGates,
   type ResolvedWorker,
+  resolveAccount,
   resolveAgentParams,
   resolveCeilings,
   resolveExec,
@@ -2872,6 +2874,8 @@ const agentFor = (
   worker: ResolvedWorker;
   exec: ResolvedExec;
   params: AgentParams;
+  /** Thread 055: which account the run spends and where it lives; absent — the box's own. */
+  account?: ResolvedAccount;
   ignored: readonly string[];
 } => {
   const worker = resolveWorker({
@@ -2895,10 +2899,20 @@ const agentFor = (
     ...(directive === undefined ? {} : { directive }),
   });
   if (!resolution.ok) return fail(`role '${role.id}': ${resolution.reason}`, 2);
+  // WHICH ACCOUNT (thread 055) — resolved here, with the tool and its binary, because
+  // it keys off the same R14 join and every caller needs the same answer. Fatal for
+  // the same reason the parameter refusal above is: an account the machine cannot
+  // place is not a run with one fact missing, it is a run on somebody else's quota.
+  const account = resolveAccount({
+    ...(role.launch === undefined ? {} : { launch: role.launch }),
+    local: local.config,
+  });
+  if (!account.ok) return fail(`role '${role.id}': ${account.reason}`, 2);
   return {
     worker,
     exec,
     params: resolution.params,
+    ...(account.account === undefined ? {} : { account: account.account }),
     ignored: ignoredDirective({ ...(directive === undefined ? {} : { directive }), worker }),
   };
 };
@@ -5628,6 +5642,12 @@ type RunParams = {
   readonly worker: string;
   /** The tool's own launch parameters — model, effort (R15). Empty means "the tool's defaults". */
   readonly params: AgentParams;
+  /**
+   * WHICH ACCOUNT THIS RUN SPENDS (thread 055). Absent — the box's own, which is what
+   * every run did before the field existed; present — the session is pointed at that
+   * account's directory and nothing of the box's own account is read or written.
+   */
+  readonly account?: ResolvedAccount;
   /** How this run was decided (R18) — it carries the world onto the `launch` event. */
   readonly continuation: Continuation;
   readonly world?: World;
@@ -5964,6 +5984,15 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // — this one is here for the shell: a session checking how much is left runs
         // `date`, not a re-read of its own prompt.
         [LAUNCH_ENV.leaseDeadline]: plan.deadline,
+        // WHICH ACCOUNT IT SPENDS (thread 055). The whole account — credentials, the
+        // tool's config, the transcripts and the session store — hangs off this one
+        // directory, so pointing at it is the entire isolation; there is no second
+        // switch to forget. Absent means the box's own account, and the key is then
+        // not set at all rather than set to the default path: an inherited
+        // `CLAUDE_CONFIG_DIR` (an operator running the daemon with one exported) must
+        // keep working, and writing the default over it would be this package
+        // deciding something it was not asked about.
+        ...(p.account === undefined ? {} : { CLAUDE_CONFIG_DIR: p.account.configDir }),
       },
     },
   );
@@ -6924,6 +6953,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     waitFlag: sessionWaitPath(sessionLog),
     worker: agent.worker.value,
     params: agent.params,
+    // Thread 055: the account travels with the parameters, being the same resolution.
+    ...(agent.account === undefined ? {} : { account: agent.account }),
     env: childEnvFrom(argv),
     wallClockMs,
     pollMs,
@@ -7509,6 +7540,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           waitFlag: sessionWaitPath(sessionLog),
           worker: agent.worker.value,
           params: agent.params,
+          ...(agent.account === undefined ? {} : { account: agent.account }),
           wallClockMs: ceilings.wallClock.value * 1000,
           pollMs,
           idleMs: ceilings.idle.value * 1000,

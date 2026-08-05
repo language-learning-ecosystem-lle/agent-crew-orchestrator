@@ -99,8 +99,45 @@ export const localSecretsSchema = z.strictObject({
   envFile: z.string().min(1),
 });
 
+/**
+ * WHAT MAY BE SAID ABOUT ONE ACCOUNT OF A TOOL (thread 055): where its directory is
+ * — a path, and only a path, for the same reason `secrets.envFile` is one.
+ *
+ * The tool keeps a whole account under one directory (credentials, its config, the
+ * transcripts and the session store), so the isolation this buys is directory-deep
+ * rather than token-deep: two accounts on one box share nothing, including the
+ * sessions `--resume` looks for. THAT IS A NORM AND NOT A BUG, and it is worth
+ * saying once: a role whose account is changed does not corrupt its resumable
+ * sessions, it STOPS SEEING THEM — the first run after such a change is `--fresh`
+ * in fact, whatever the continuation policy would have decided (R18).
+ */
+export const localAccountSchema = z.strictObject({
+  /**
+   * The directory the tool is to keep this account in — absolute, and passed to the
+   * session as `CLAUDE_CONFIG_DIR`. Relative would depend on the cwd of whoever
+   * happened to start the daemon.
+   */
+  configDir: z.string().min(1),
+});
+
 export const localConfigSchema = z.strictObject({
   agents: z.record(z.string().min(1), localAgentSchema).default({}),
+  /**
+   * WHERE THE ACCOUNTS OF THIS BOX LIVE (thread 055) — the machine's half of the
+   * join `launch.account` opens. The keys are the ids the repository names; the
+   * values are directories on this disk and nothing else.
+   *
+   * An id the repository names and this map does not is a REFUSAL by name at the
+   * launch door, never a quiet fall-back to the box's own account: the fall-back
+   * would raise a role on a subscription nobody assigned it, and it would look
+   * exactly like a run that obeyed.
+   *
+   * OPTIONAL, not defaulted to `{}` like `agents` above: absence has a meaning here
+   * ("this box declares no accounts, every role runs on its own") and the default
+   * would make every construction of this config in the package carry an empty map
+   * for a field most boxes never write.
+   */
+  accounts: z.record(z.string().min(1), localAccountSchema).optional(),
   secrets: localSecretsSchema.optional(),
   /**
    * WHICH INSTANCE THIS BOX IS (R13) — the machine's half of the topology join.
@@ -153,6 +190,7 @@ export const localConfigSchema = z.strictObject({
 });
 
 export type LocalAgent = z.infer<typeof localAgentSchema>;
+export type LocalAccount = z.infer<typeof localAccountSchema>;
 export type LocalSecrets = z.infer<typeof localSecretsSchema>;
 export type LocalConfig = z.infer<typeof localConfigSchema>;
 

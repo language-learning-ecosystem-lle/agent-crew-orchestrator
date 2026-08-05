@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Role } from "../roles/schema.js";
+import type { Launch, Role } from "../roles/schema.js";
 import type { OrchestratorEvent } from "./journal.js";
 import {
   buildLaunchArgv,
@@ -16,6 +16,7 @@ import {
   describeLaunch,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
+  resolveAccount,
   resolveAgentParams,
   resolveCeilings,
   resolveExec,
@@ -763,6 +764,40 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
     });
   });
 
+  describe("resolveAccount — whose quota the run spends (thread 055)", () => {
+    const local = {
+      agents: {},
+      accounts: { second: { configDir: "/home/j/.claude-second" } },
+    };
+    const on = (account: string): Launch => ({ allowedTools: ["Bash"], account });
+
+    it("the role names no account → the box's own, and that is not an error", () => {
+      // The answer before this field existed, and it must stay the answer: a project
+      // that never mentions accounts is not to be told anything about them.
+      expect(resolveAccount({ launch: { allowedTools: ["Bash"] }, local })).toEqual({ ok: true });
+    });
+
+    it("the role names an account the machine declares → its directory", () => {
+      expect(resolveAccount({ launch: on("second"), local })).toEqual({
+        ok: true,
+        account: { id: "second", configDir: "/home/j/.claude-second" },
+      });
+    });
+
+    it("the role names an account this box does not declare → refused BY NAME", () => {
+      // The one answer that must not exist is a quiet fall-back to the box's own
+      // account: it spends a subscription nobody assigned the role, and from the
+      // outside it is indistinguishable from a run that obeyed.
+      const resolved = resolveAccount({ launch: on("third"), local });
+      expect(resolved.ok).toBe(false);
+      expect(resolved.ok === false && resolved.reason).toContain("accounts.third.configDir");
+    });
+
+    it("…and a box with no accounts at all refuses the same way, not silently", () => {
+      expect(resolveAccount({ launch: on("second"), local: { agents: {} } }).ok).toBe(false);
+    });
+  });
+
   describe("resolveAgentParams — and the door they are refused at", () => {
     it("the role's parameters travel with their source", () => {
       const resolved = resolveAgentParams({
@@ -867,6 +902,29 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       expect(line).toContain("claude-code (role)");
       expect(line).toContain("exec /opt/claude (machine)");
       expect(line).toContain("effort max (flag)");
+    });
+
+    it("…and the account beside them, when the run spends a named one (thread 055)", () => {
+      // The whole point of printing it: the operator reading the launch line is the
+      // one person who can notice a role raised on the wrong subscription.
+      const line = describeAgent({
+        worker: { value: "claude-code", source: "role" },
+        exec: { value: "/opt/claude", source: "machine" },
+        params: {},
+        account: { id: "second", configDir: "/home/j/.claude-second" },
+      });
+      expect(line).toContain("account second (/home/j/.claude-second)");
+    });
+
+    it("…and says nothing at all when it spends the box's own", () => {
+      // Silence is the answer here, not "account: default": every run before this
+      // field existed printed exactly this line, and it must keep printing it.
+      const line = describeAgent({
+        worker: { value: "claude-code", source: "role" },
+        exec: { value: "/opt/claude", source: "machine" },
+        params: {},
+      });
+      expect(line).not.toContain("account");
     });
   });
 });
