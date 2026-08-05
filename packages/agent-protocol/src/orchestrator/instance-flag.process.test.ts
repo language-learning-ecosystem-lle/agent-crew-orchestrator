@@ -18,7 +18,7 @@
  * this file whatever the two sides are edited into.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -105,28 +105,77 @@ const cli = (at: Bench, args: readonly string[]): { code: number; out: string } 
 const REFUSAL = "'--instance' — unknown flag";
 
 describe("the flag that names the instance passes the CLI door (thread 055)", () => {
-  it.each([
-    ["orchestrator preflight", ["orchestrator", "preflight"]],
-    ["orchestrator status", ["orchestrator", "status"]],
-    ["orchestrator run", ["orchestrator", "run", "--role", "dev-core", "--thread", "016-x"]],
-    ["orchestrator daemon", ["orchestrator", "daemon", "--once"]],
-    ["orchestrator up", ["orchestrator", "up"]],
-    ["orchestrator restart", ["orchestrator", "restart"]],
-    ["orchestrator systemd install", ["orchestrator", "systemd", "install"]],
-    ["orchestrator hold", ["orchestrator", "hold", "dev-core"]],
+  // The third element is the GUARD of a case that would otherwise raise a daemon (see the
+  // two comments below); typed so a case without one is still the ordinary pair.
+  it.each<[string, readonly string[], "live-pid" | "collect" | undefined]>([
+    ["orchestrator preflight", ["orchestrator", "preflight"], undefined],
+    ["orchestrator status", ["orchestrator", "status"], undefined],
+    [
+      "orchestrator run",
+      ["orchestrator", "run", "--role", "dev-core", "--thread", "016-x"],
+      undefined,
+    ],
+    ["orchestrator daemon", ["orchestrator", "daemon", "--once"], undefined],
+    // `up` BACKGROUNDS A DAEMON, and this case only ever wanted to knock on the door: run
+    // bare it left a live daemon per run behind it, ticking against a temporary bench in
+    // /tmp forever (46 of them were found alive on the developer's box on 2026-08-05,
+    // hours old, from this line). It is given a pid file holding a pid that IS alive —
+    // this process — so the already-up check, which is the FIRST thing `up` does, refuses
+    // before anything is spawned or written. The same trick, for the same reason, is used
+    // by the systemd case at the bottom of this file.
+    ["orchestrator up", ["orchestrator", "up"], "live-pid"],
+    // `restart` ends in phase 4, which is `up` — so it raises one too, and the live-pid
+    // trick cannot be used on it: phase 1 is `down`, and a pid file naming THIS process
+    // would have the command signal the test runner. So this one is COLLECTED instead —
+    // the pid file is the bench's, and whatever was raised under it is stopped when the
+    // case ends. (Measured with the line above: this was the second of the two leaks.)
+    ["orchestrator restart", ["orchestrator", "restart"], "collect"],
+    ["orchestrator systemd install", ["orchestrator", "systemd", "install"], undefined],
+    ["orchestrator hold", ["orchestrator", "hold", "dev-core"], undefined],
     // NOT `orchestrator` commands, and that is the whole of the second review round: the
     // sentence "every command that resolves the machine config" was written while looking
     // at the `orchestrator` family, and these two read the same loader from outside it.
-    ["config set", ["config", "set", "operator", "john"]],
-    ["init github", ["init", "github", "--no-probe"]],
-  ])("'%s' understands --instance", (_name, args) => {
+    ["config set", ["config", "set", "operator", "john"], undefined],
+    ["init github", ["init", "github", "--no-probe"], undefined],
+  ])("'%s' understands --instance", (_name, args, guard) => {
     // The commands do different work and some of them refuse for their own reasons here
     // (no daemon to restart, no mail on disk). What is pinned is the ONE answer none of
     // them may give: that the flag itself is not a word this command knows.
     const at = bench();
-    const result = cli(at, [...args, "--instance", INSTANCE, "--ref", "HEAD", "--no-fetch"]);
-    expect(result.out).not.toContain(REFUSAL);
-    expect(result.out).not.toContain("does not understand what it was given");
+    // The one case that would otherwise RAISE something rather than answer: see above.
+    const pidFile = join(at.repo, "live.pid");
+    if (guard === "live-pid") writeFileSync(pidFile, `${process.pid}\n`, "utf8");
+    const held = guard === undefined ? [] : ["--pid-file", pidFile];
+    const result = cli(at, [
+      ...args,
+      ...held,
+      "--instance",
+      INSTANCE,
+      "--ref",
+      "HEAD",
+      "--no-fetch",
+    ]);
+    try {
+      expect(result.out).not.toContain(REFUSAL);
+      expect(result.out).not.toContain("does not understand what it was given");
+      // And the guard is not decoration: the refusal it produces is the proof that the
+      // command got past parsing WITHOUT raising a daemon this test would never collect.
+      if (guard === "live-pid") expect(result.out).toContain("a daemon is already up");
+    } finally {
+      // In `finally` because a failed assertion must not turn one red case into a leak
+      // that outlives the run — the way to notice this class is a box, hours later.
+      if (guard === "collect" && existsSync(pidFile)) {
+        const raised = Number(readFileSync(pidFile, "utf8").trim());
+        if (Number.isInteger(raised) && raised > 0) {
+          try {
+            process.kill(raised, "SIGKILL");
+          } catch {
+            // Already gone: the command may have refused for a reason of its own, which
+            // is fine — this case pins the door, not the raising.
+          }
+        }
+      }
+    }
   });
 
   it("`preflight` names the instance and the layer that answered", () => {

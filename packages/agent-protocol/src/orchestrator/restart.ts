@@ -45,7 +45,13 @@ export const RESTART_OWN_VALUE_FLAGS = [
   "--by",
   "--wait",
 ] as const;
-export const RESTART_OWN_BOOLEAN_FLAGS = ["--pull"] as const;
+/**
+ * `--self` says WHO TYPED IT (055.2): the daemon itself rather than a hand. It changes
+ * nothing about what the restart does — only the words in the log, so that the two are
+ * distinguishable when read a day later — and it is owned by this command for the same
+ * reason `--pull` is: the daemon behind it has never heard of it.
+ */
+export const RESTART_OWN_BOOLEAN_FLAGS = ["--pull", "--self"] as const;
 
 /** Where `up` writes the argv it raised the daemon with — beside the pid file. */
 export const daemonArgvPath = (pidFile: string): string => `${pidFile}.args`;
