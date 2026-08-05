@@ -178,6 +178,47 @@ describe("loadThreads — a failure of one thread does not blind the circuit", (
     rmSync(at, { recursive: true, force: true });
   });
 
+  // The live incident of thread 042: john opened `055` by hand, pushed `_meta.md`
+  // alone, and `derive` died on the ENOENT of a `_thread.md` that a fresh thread has
+  // no reason to have yet — a red run and a notifier letter about a conversation that
+  // was in no way broken.
+  it("a thread OPENED AND NOT YET SPOKEN IN is read, not mistaken for a legacy one", () => {
+    const at = root();
+    migrated(at, "012-ok");
+    mkdirSync(join(at, "055-opened"), { recursive: true });
+    writeFileSync(join(at, "055-opened", "_meta.md"), META);
+
+    const { threads, failures } = loadThreads(at, ROLES);
+
+    expect(failures).toEqual([]);
+    expect(threads.map((loaded) => loaded.thread.id)).toEqual(["012-ok", "055-opened"]);
+    const opened = threads.find((loaded) => loaded.thread.id === "055-opened");
+    // The migrated form with an empty feed — NOT legacy: `derive` rebuilds its
+    // `_thread.md` (a legacy one it would leave alone, that file being the source).
+    expect(opened?.legacy).toBe(false);
+    expect(opened?.thread.messages).toEqual([]);
+    expect(opened?.thread.meta.title).toBe("Thread");
+    expect(opened?.input?.entries).toEqual([]);
+
+    rmSync(at, { recursive: true, force: true });
+  });
+
+  it("a directory that is a thread in NO form is named as that, not as a missing file", () => {
+    const at = root();
+    migrated(at, "012-ok");
+    mkdirSync(join(at, "056-empty"), { recursive: true });
+
+    const { threads, failures } = loadThreads(at, ROLES);
+
+    expect(threads.map((loaded) => loaded.thread.id)).toEqual(["012-ok"]);
+    expect(failures.map((failure) => failure.id)).toEqual(["056-empty"]);
+    expect(failures[0]?.problem).toContain("_meta.md");
+    expect(failures[0]?.problem).toContain("_thread.md");
+    expect(failures[0]?.problem).not.toContain("ENOENT");
+
+    rmSync(at, { recursive: true, force: true });
+  });
+
   it("an unreadable ROOT is still an exception: that is not 'part of the mail' but its absence", () => {
     expect(() => loadThreads(join(tmpdir(), "agent-protocol-no-such-directory"), ROLES)).toThrow();
   });
