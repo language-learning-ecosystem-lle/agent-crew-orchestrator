@@ -14,6 +14,7 @@ import {
   describeCeilings,
   describeGates,
   describeLaunch,
+  instanceAccountOf,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
   resolveAccount,
@@ -780,7 +781,7 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
     it("the role names an account the machine declares → its directory", () => {
       expect(resolveAccount({ launch: on("second"), local })).toEqual({
         ok: true,
-        account: { id: "second", configDir: "/home/j/.claude-second" },
+        account: { id: "second", configDir: "/home/j/.claude-second", source: "role" },
       });
     });
 
@@ -795,6 +796,73 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
 
     it("…and a box with no accounts at all refuses the same way, not silently", () => {
       expect(resolveAccount({ launch: on("second"), local: { agents: {} } }).ok).toBe(false);
+    });
+
+    it("nobody names one and the instance defaults → the instance's, said as its layer", () => {
+      // The case the second half of B.2 exists for: "the crew instance runs on the
+      // second subscription" is said ONCE, not once per role.
+      expect(
+        resolveAccount({ launch: { allowedTools: ["Bash"] }, local, instanceAccount: "second" }),
+      ).toEqual({
+        ok: true,
+        account: { id: "second", configDir: "/home/j/.claude-second", source: "instance" },
+      });
+    });
+
+    it("the role names one and the instance defaults → the ROLE's; a default never overrides", () => {
+      const withBoth = {
+        agents: {},
+        accounts: {
+          second: { configDir: "/home/j/.claude-second" },
+          third: { configDir: "/home/j/.claude-third" },
+        },
+      };
+      expect(
+        resolveAccount({ launch: on("third"), local: withBoth, instanceAccount: "second" }),
+      ).toEqual({
+        ok: true,
+        account: { id: "third", configDir: "/home/j/.claude-third", source: "role" },
+      });
+    });
+
+    it("the INSTANCE names one this box does not declare → refused, and the reason names the layer", () => {
+      // The refusal has to send the reader to the right file: a role's id is in
+      // 'roles[].launch.account', an instance's in 'instances[].account', and being
+      // told the wrong one costs a hunt through the config that has nothing in it.
+      const resolved = resolveAccount({
+        launch: { allowedTools: ["Bash"] },
+        local,
+        instanceAccount: "third",
+      });
+      expect(resolved.ok).toBe(false);
+      expect(resolved.ok === false && resolved.reason).toContain("instances[].account");
+      expect(resolved.ok === false && resolved.reason).toContain("accounts.third.configDir");
+    });
+  });
+
+  describe("instanceAccountOf — the R13 join, and the two silences it keeps (thread 055)", () => {
+    const instances = [
+      { id: "lle-agents", account: "main" },
+      { id: "crew", account: "second" },
+      { id: "bare" },
+    ];
+
+    it("the box's own instance answers with its default", () => {
+      expect(instanceAccountOf({ instances, instance: "crew" })).toBe("second");
+    });
+
+    it("an instance that declares no account has no default — silence, not a guess", () => {
+      expect(instanceAccountOf({ instances, instance: "bare" })).toBeUndefined();
+    });
+
+    it("a box that calls itself nothing has no default, whatever the repository declares", () => {
+      // The pre-R13 single-box shape, and it must stay exactly as loud as it was:
+      // not at all.
+      expect(instanceAccountOf({ instances })).toBeUndefined();
+    });
+
+    it("a repository that declares no instances has none either", () => {
+      expect(instanceAccountOf({ instance: "crew" })).toBeUndefined();
     });
   });
 
@@ -911,9 +979,9 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
         worker: { value: "claude-code", source: "role" },
         exec: { value: "/opt/claude", source: "machine" },
         params: {},
-        account: { id: "second", configDir: "/home/j/.claude-second" },
+        account: { id: "second", configDir: "/home/j/.claude-second", source: "role" },
       });
-      expect(line).toContain("account second (/home/j/.claude-second)");
+      expect(line).toContain("account second (role, /home/j/.claude-second)");
     });
 
     it("…and says nothing at all when it spends the box's own", () => {

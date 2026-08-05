@@ -521,9 +521,19 @@ export const describeLocalConfig = (loaded: LoadedLocalConfig | ResolvedLocalCon
   // file, asked at the moment the signature looks wrong.
   const operator =
     loaded.config.operator === undefined ? "" : `; operator ${loaded.config.operator}`;
+  // WHICH SUBSCRIPTIONS THIS BOX HOLDS (thread 055) — printed for the same reason the
+  // binaries are: an id the repository names and this box does not declare is a refusal
+  // at the launch door, and the one command an operator asks "what does this box
+  // actually have" of is this one. Paths only, exactly like `exec` and
+  // `secrets.envFile`: which subscription stands behind an id is in no file at all.
+  const accounts = Object.entries(loaded.config.accounts ?? {});
+  const declared =
+    accounts.length === 0
+      ? ""
+      : `; accounts ${accounts.map(([id, account]) => `${id} → ${account.configDir}`).join(", ")}`;
   if (agents.length === 0)
-    return `${named}${loaded.path} — no agents declared${secrets}${operator}`;
+    return `${named}${loaded.path} — no agents declared${secrets}${declared}${operator}`;
   return `${named}${loaded.path} — ${agents
     .map(([id, agent]) => `${id} → ${agent.exec}`)
-    .join(", ")}${secrets}${operator}`;
+    .join(", ")}${secrets}${declared}${operator}`;
 };

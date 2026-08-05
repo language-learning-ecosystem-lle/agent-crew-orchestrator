@@ -202,6 +202,24 @@ export const instanceSchema = z.strictObject({
   roles: z.array(z.string().min(1)),
   /** A human's signature on the box: which machine this is. Not read by anything. */
   note: z.string().min(1).optional(),
+  /**
+   * THE ACCOUNT EVERY ROLE OF THIS INSTANCE SPENDS UNLESS IT NAMES ITS OWN (thread 055).
+   *
+   * The same id as `roles[].launch.account` and resolved in the same R14 join: the
+   * repository names WHICH account, the machine says WHERE that id lives
+   * (`accounts.<id>.configDir`). The subscription itself is named in neither.
+   *
+   * IT IS HERE AND NOT IN THE MACHINE CONFIG for the reason the role's field is: an
+   * instance is the unit a project is hosted as, and "the crew instance runs on the
+   * second subscription" decides whose quota a whole project burns — a statement a
+   * reviewer has to see in a diff. Where that subscription's directory sits on one
+   * box stays on that box.
+   *
+   * ABSENT MEANS WHAT SILENCE MEANT BEFORE THE FIELD: the roles of this instance are
+   * raised on the account the box itself is logged into. A default is a fall-back for
+   * a role that said nothing — it never overrides one that did.
+   */
+  account: z.string().min(1).optional(),
 });
 
 export const protocolConfigSchema = z.strictObject({
