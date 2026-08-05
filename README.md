@@ -188,6 +188,84 @@ nothing anywhere said so.
 The tool id is the JOIN between the two files and is said once in each: the repository
 says which tool raises a role (`launch.agent.kind`), the machine says where that tool
 is (`agents.<id>.exec`), and a message header says which tool wrote it (`worker`).
+
+### A box that hosts several instances (thread 055)
+
+An instance stopped being a synonym for a machine: **one box, one instance per
+project**, each with its own checkout, its own machine config and its own daemon. So
+the single file grew NAMED SIBLINGS, one per instance:
+
+```json
+// ~/.config/agent-protocol/instances/crew.json
+{
+  "instance": "crew",
+  "repo": "/srv/agent-crew-orchestrator",
+  "agents": { "claude-code": { "exec": "/home/j/.local/bin/claude" } }
+}
+```
+
+`repo` is the checkout this instance serves — location in the plainest R14 sense, and
+the field that lets a command typed inside a project find its instance without naming
+it (a role's worktree, `<repo>/.worktrees/<role>`, answers with its home checkout).
+
+**Files, not a section.** `instances` — the topology of who raises what — is POLICY
+and is refused in the machine config by name (R13). A section of named instances
+inside one file is the one shape that would have required weakening `POLICY_KEYS`, and
+that list is the boundary itself.
+
+**Which instance a command is about** resolves in layers, and the layer that answered
+is printed (`doctor`, `orchestrator preflight`):
+
+| | layer | how it is said |
+|---|---|---|
+| 0 | an outright path | `--local-config <p>` — answers for itself, skips the question |
+| 1 | the flag | `--instance <name>` |
+| 2 | the environment | `$AGENT_PROTOCOL_INSTANCE` |
+| 3 | the checkout | the named config whose `repo` contains it (the longest claim wins) |
+| 4 | the unnamed config | `local.json` — a box that hosts one instance |
+
+`--instance` is spelled on the usage line of every command that resolves the machine
+config, and nowhere else — the usage text IS the argument checker (`orchestrator/argv.ts`),
+so a flag left off a line is refused at the door however well the loader behind it works.
+That is not a hypothetical: the first version of this shipped with the resolution
+unit-tested and the flag rejected by every `orchestrator` command, including the `up` that
+the generated unit's own `ExecStart` runs (`orchestrator/instance-flag.process.test.ts`
+now types it at a real CLI, and takes the argv out of the unit rather than retyping it).
+The second version shipped the same sentence while `config set`, `init github`, `doctor`
+and `notify` were still off the list — which is why the list is now READ OFF THE CODE:
+the test walks the call sites of the loader and fails on a command whose line does not
+carry the flag, so the sentence above cannot drift from the usage text again. Being
+outside `guardArguments` is not the same as being on the list — `doctor` and `notify`
+took the flag all along and said so nowhere.
+
+Each layer alone was tried and each fails where the others do not: the flag alone is
+the ceremony back (the name typed in every one of the five operator commands, exactly
+where `--ref` was taken out of them); the env alone is forgotten silently and drifts
+between a terminal and a systemd unit; the checkout alone cannot answer for a command
+typed somewhere else. Together they give what R21 gives a model — every answer has a
+source and the source is SAID.
+
+Two refusals carry the shape, and neither is a fallback:
+
+- **a name that disagrees with the checkout** (`--instance crew` inside the `lle`
+  tree) — the case where a quiet pick raises one project's roles with another
+  project's binaries, with nothing anywhere saying why;
+- **a checkout claimed by nobody** on a box that has named configs and no `local.json`
+  — proceeding would mean running with defaults nobody chose.
+
+**The daemon of an instance has its own unit**: `lle-orchestrator@<name>.service`,
+with `--instance <name>` baked into its `ExecStart`. The name was the last path in the
+package that was global to the USER rather than to an instance — two projects would
+have fought over one file at `systemctl --user enable`. It is a name per instance and
+not a real systemd template on purpose: a template shares ONE `ExecStart`, and ours is
+generated per box (its repository path, this interpreter, the PATH of the agent
+binaries that instance declares), so a template would reduce to `%i` lookups of the
+very facts the generator exists to write down.
+
+**A box with no `instances/` directory behaves exactly as it did before**, to the
+byte; there is no "main" instance to migrate to. The second instance is commissioned
+by the same command as the first — `init --instance <name>` names the identity AND the
+file it lives in, and records the checkout it serves.
 Neither file mentions the other.
 
 **Three resolutions, one pattern — the flag, then the standing declaration, then the
