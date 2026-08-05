@@ -48,9 +48,11 @@ import { DEFAULT_CONFIG_PATH } from "./config/config.js";
 import { type LoadedConfig, type LoadedPolicy, loadProtocolConfig } from "./config/load.js";
 import {
   describeLocalConfig,
+  instanceConfigPath,
   type LoadedLocalConfig,
   LocalConfigError,
-  loadLocalConfig,
+  type ResolvedLocalConfig,
+  resolveLocalConfig,
 } from "./config/local.js";
 import { describePolicySkew, policyRole } from "./config/policy.js";
 import { configSetSummary, planConfigSet } from "./config/set.js";
@@ -325,6 +327,7 @@ import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
 import {
   foregroundRefusal,
   planSystemdUnit,
+  unitNameFor,
   worktreeInstallVerdict,
 } from "./orchestrator/systemd.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
@@ -2804,13 +2807,43 @@ const childEnvFrom = (argv: readonly string[]): NodeJS.ProcessEnv => {
  * defaults: the operator pointed at a file, and answering that with silence is how a
  * run ends up using settings nobody chose.
  */
-const localFrom = (argv: readonly string[]): LoadedLocalConfig => {
-  const path = flag(argv, "--local-config");
+/** One named file, read through the ordinary loader and its refusals. */
+const localAt = (path: string): ResolvedLocalConfig => {
   try {
-    return loadLocalConfig(path === undefined ? {} : { path });
+    return resolveLocalConfig({ path });
   } catch (error) {
     if (error instanceof LocalConfigError) return fail(error.message, 2);
     throw error;
+  }
+};
+
+const localFrom = (argv: readonly string[]): ResolvedLocalConfig => {
+  try {
+    return resolveLocalConfig({
+      path: flag(argv, "--local-config"),
+      instance: flag(argv, "--instance"),
+      // The checkout the command is ABOUT, not the directory it was typed in: the two
+      // differ in every role workspace, and it is the home checkout that a named
+      // instance claims (`repo`).
+      repo: flag(argv, "--repo") ?? homeOfOrCwd(process.cwd()),
+    });
+  } catch (error) {
+    if (error instanceof LocalConfigError) return fail(error.message, 2);
+    throw error;
+  }
+};
+
+/**
+ * The home checkout of wherever this was typed, or the directory itself when that is
+ * not a checkout at all. Layer 3 of the instance resolution is a CONVENIENCE: it must
+ * not turn "you are not in a repository" into the error message of a command that
+ * never needed one (`systemd-unit`, `--help` of a subcommand).
+ */
+const homeOfOrCwd = (at: string): string => {
+  try {
+    return circuitHome(at);
+  } catch {
+    return at;
   }
 };
 
@@ -3364,7 +3397,7 @@ const probeMailCheckout = (argv: readonly string[]): PreflightCheck => {
 const runPreflight = (
   argv: readonly string[],
   targets: readonly { worker: string; exec: ResolvedExec }[],
-  local: LoadedLocalConfig,
+  local: LoadedLocalConfig | ResolvedLocalConfig,
   /** The roles whose workspaces are reported (R17); empty in a repository that raises nothing. */
   roles: readonly Role[] = [],
 ): PreflightCheck[] => {
@@ -3453,7 +3486,11 @@ const runPreflight = (
   }
 
   return [
-    machineConfigVerdict(describeLocalConfig(local)),
+    // The LAYER that answered rides along (thread 055): on a multi-instance box the
+    // path alone does not say whether it was named or merely inferred from the checkout.
+    machineConfigVerdict(
+      `${describeLocalConfig(local)}${"source" in local ? ` [${local.source}]` : ""}`,
+    ),
     ...targets.map((target) =>
       agentBinaryVerdict({
         worker: target.worker,
@@ -3708,11 +3745,22 @@ const boxInit = (argv: readonly string[]): void => {
   // command that brings the file into being, so `--local-config` on a fresh box names
   // where it WILL be. One that exists and does not parse is still a refusal: somebody
   // wrote it, and init would be overwriting a statement it could not read.
-  const named = flag(withRef, "--local-config");
+  //
+  // AND ON A BOX THAT HOSTS SEVERAL INSTANCES `--instance <name>` names the FILE as
+  // well as the identity (thread 055): the commissioning of a second project writes
+  // `instances/<name>.json`, so one word does both and no second flag exists to
+  // disagree with the first.
+  const named =
+    flag(withRef, "--local-config") ??
+    (flag(withRef, "--instance") === undefined
+      ? undefined
+      : instanceConfigPath(flag(withRef, "--instance") as string));
   const local: LoadedLocalConfig =
-    named !== undefined && !existsSync(named)
-      ? { config: { agents: {} }, path: named, found: false, explicit: true }
-      : localFrom(withRef);
+    named === undefined
+      ? localFrom(withRef)
+      : existsSync(named)
+        ? localAt(named)
+        : { config: { agents: {} }, path: named, found: false, explicit: true };
   const write = withRef.includes("--write");
   const env = childEnvFrom(withRef);
 
@@ -3832,6 +3880,9 @@ const boxInit = (argv: readonly string[]): void => {
 
   const decisions = {
     ...(instance === undefined ? {} : { instance }),
+    // Only a NAMED config records the checkout it serves: `local.json` is the answer of
+    // a box that hosts one instance and has nothing to tell apart.
+    ...(instance === undefined ? {} : { repo }),
     ...(flag(withRef, "--operator") === undefined
       ? {}
       : { operator: flag(withRef, "--operator") as string }),
@@ -4174,6 +4225,7 @@ const doctor = (argv: readonly string[]): void => {
       path: local.path,
       found: local.found,
       summary: describeLocalConfig(local),
+      source: local.source,
     }),
     instanceCheck({
       ...(local.config.instance === undefined ? {} : { instance: local.config.instance }),
@@ -5041,6 +5093,10 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
   // read off in one place.
   const local = localFrom(argv);
   out(`machine config: ${describeLocalConfig(local)}`);
+  // WHICH LAYER ANSWERED (thread 055). On a box hosting one instance this is one dull
+  // line; on a box hosting two it is the difference between "the daemon raised the
+  // wrong project" and a sentence naming the flag, the env or the checkout that said so.
+  out(`  resolution: ${local.resolution}`);
   const roles = launchableRoles(argv);
   // R13: WHICH ROLES THIS BOX RAISES — the answer spans the two configs as well, and it
   // is the first thing to look at when a role is not raised and nobody says why.
@@ -5217,12 +5273,24 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
   });
   if (verdict.kind === "refusal") fail(verdict.message, 2);
   if (verdict.kind === "note") err(verdict.message);
+  // The machine config is read BEFORE the unit is named: on a box hosting several
+  // projects the unit's name and its daemon's flags both hang off which instance this
+  // install is about (thread 055).
+  const local = localFrom(args);
   const typed = flag(args, "--daemon-args");
   const daemonArgs =
     typed === undefined
-      ? ["--ref", flag(args, "--ref") as string]
+      ? [
+          "--ref",
+          flag(args, "--ref") as string,
+          // THE UNIT SAYS WHICH INSTANCE IT IS, rather than inferring it from
+          // `WorkingDirectory` at every start: the checkout layer would answer the same
+          // today, and it would stop answering the day the `repo` of a named config is
+          // edited — a resident unit must not depend on a fact it does not carry.
+          ...(local.instanceName === undefined ? [] : ["--instance", local.instanceName]),
+        ]
       : typed.split(/\s+/).filter((token) => token !== "");
-  const unitName = flag(args, "--unit-name");
+  const unitName = flag(args, "--unit-name") ?? unitNameFor(local.instanceName);
   const unitDir = flag(args, "--unit-dir");
   const description = flag(args, "--description");
   const user = process.env.USER;
@@ -5232,7 +5300,6 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
   // directory. A binary the machine config names by a bare word is resolved HERE, in the
   // operator's shell, because that shell is the only place it is findable at all — and if
   // it is not, the command says so instead of writing a guess.
-  const local = localFrom(args);
   const declared = Object.entries(local.config.agents).map(([id, agent]) => ({
     id,
     exec: agent.exec,
@@ -5247,7 +5314,7 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
       .map((agent) => agent.resolved)
       .filter((path): path is string => path !== undefined),
     daemonArgs,
-    ...(unitName === undefined ? {} : { unitName }),
+    unitName,
     ...(unitDir === undefined ? {} : { unitDir }),
     ...(description === undefined ? {} : { description }),
     ...(user === undefined ? {} : { user }),

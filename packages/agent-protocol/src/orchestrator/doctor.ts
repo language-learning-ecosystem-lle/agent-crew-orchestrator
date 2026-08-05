@@ -96,13 +96,21 @@ export const repositoryConfigCheck = (input: {
  * decision `loadLocalConfig` already makes: a box whose agent is simply on `PATH` and
  * who raises nobody has nothing to say in that file. An unreadable or invalid one IS a
  * cross — it was written, so somebody meant it to be read.
+ *
+ * WHICH LAYER PICKED THE FILE is part of the row (thread 055): on a box hosting several
+ * instances the path differs in one segment, so "is this the config I meant" is answered
+ * by the layer, not by the path. The suffix is the same `[<source>]` `preflight` prints —
+ * the two commands are read side by side and must not word the same fact differently.
  */
 export const machineConfigCheck = (input: {
   readonly path: string;
   readonly found: boolean;
   readonly error?: string;
   readonly summary?: string;
+  /** `--local-config` / `--instance` / env / checkout / the unnamed config. */
+  readonly source?: string;
 }): PreflightCheck => {
+  const layer = input.source === undefined ? "" : ` [${input.source}]`;
   if (input.error !== undefined) {
     return { name: "config: machine", status: "fail", detail: input.error };
   }
@@ -110,13 +118,13 @@ export const machineConfigCheck = (input: {
     return {
       name: "config: machine",
       status: "info",
-      detail: `${input.path} — absent (the binaries are taken from PATH; a box that raises roles needs it)`,
+      detail: `${input.path} — absent (the binaries are taken from PATH; a box that raises roles needs it)${layer}`,
     };
   }
   return {
     name: "config: machine",
     status: "ok",
-    detail: input.summary ?? `${input.path} — valid`,
+    detail: `${input.summary ?? `${input.path} — valid`}${layer}`,
   };
 };
 

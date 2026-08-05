@@ -291,6 +291,13 @@ export const nextLocalConfig = (
     readonly operator?: string;
     readonly agent?: { readonly kind: string; readonly exec: string };
     readonly secretsEnvFile?: string;
+    /**
+     * WHICH CHECKOUT THIS INSTANCE SERVES (thread 055) — written only into a NAMED
+     * config, because it is what makes the checkout layer of the resolution work:
+     * commissioning `instances/crew.json` from the crew checkout is what lets every
+     * later command typed there find it without naming it.
+     */
+    readonly repo?: string;
   },
 ): LocalConfig => ({
   ...current,
@@ -308,6 +315,11 @@ export const nextLocalConfig = (
       ? {}
       : { operator: current.operator }
     : { operator: decisions.operator }),
+  ...(decisions.repo === undefined
+    ? current.repo === undefined
+      ? {}
+      : { repo: current.repo }
+    : { repo: decisions.repo }),
   ...(decisions.secretsEnvFile === undefined
     ? current.secrets === undefined
       ? {}

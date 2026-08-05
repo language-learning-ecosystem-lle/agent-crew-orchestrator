@@ -32,9 +32,28 @@
  *  4. `XDG_CONFIG_HOME` is the platform's own answer to "a user's config for a
  *     tool", and honouring it costs one line.
  *
- * The counter-case — one machine serving two projects that need different binaries —
- * is answered by `--local-config <path>` today. A per-project section would be an
- * abstraction built ahead of its first user.
+ * THE COUNTER-CASE ARRIVED (thread `055-multi-instance-multi-account`, Э-1′): one box
+ * serving several projects, one instance per repository. So the single file grew
+ * NAMED SIBLINGS — `~/.config/agent-protocol/instances/<name>.json` — and the old
+ * `local.json` stays exactly what it was for a box that names nothing. A box with no
+ * `instances/` directory behaves today as it did yesterday, to the byte.
+ *
+ * WHY FILES AND NOT A SECTION inside one file: the key `instances` is POLICY here and
+ * is refused BY NAME (the topology of who raises what travels in the repository, R13).
+ * A section of named instances in the machine config is the one shape that would have
+ * required weakening `POLICY_KEYS`, and that list is the boundary itself.
+ *
+ * WHY THE NAME ARRIVES IN THREE LAYERS (`--instance`, `AGENT_PROTOCOL_INSTANCE`, the
+ * checkout the command was typed in) rather than one — each layer alone was tried on
+ * paper and each fails somewhere the others do not:
+ *  · the flag alone is the ceremony back: the name would have to be typed in every one
+ *    of the five operator commands, exactly where `--ref` was taken out of them;
+ *  · the env alone is forgotten silently and drifts between an operator's terminal and
+ *    a systemd unit — the failure reads as "the daemon raised the wrong project", with
+ *    no line anywhere saying why;
+ *  · the checkout alone cannot answer for commands typed somewhere else.
+ * Together they give what R21 gives a model: every answer has a source, and the source
+ * is SAID. A disagreement between two layers is a refusal by name, never a quiet pick.
  *
  * IT IS NOT VERSIONED BY `protocolVersion`, deliberately. That number covers the
  * shape of data that TRAVELS — the config, threads, message headers, the journal —
@@ -43,9 +62,9 @@
  * the diagnosis, and the strict schema gives that directly, by naming the field it
  * does not know.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 
 import { z } from "zod";
 
@@ -118,6 +137,19 @@ export const localConfigSchema = z.strictObject({
    * where it is read, and every refusal names which of the three it came from.
    */
   operator: z.string().min(1).optional(),
+  /**
+   * WHICH CHECKOUT THIS INSTANCE SERVES (thread 055) — an absolute path, and the only
+   * reason it exists: it is what lets a command typed inside a project pick that
+   * project's instance without naming it. Location in the plainest sense of R14 — the
+   * same repository sits at a different path on every box.
+   *
+   * A checkout MATCHES if it is this path or lies under it, so a role's worktree
+   * (`.worktrees/<role>`) answers with the instance of its home checkout.
+   *
+   * Meaningful only in a NAMED file (`instances/<name>.json`); the unnamed
+   * `local.json` is the box's answer when nothing is named, and has nothing to match.
+   */
+  repo: z.string().min(1).optional(),
 });
 
 export type LocalAgent = z.infer<typeof localAgentSchema>;
@@ -163,17 +195,29 @@ export class LocalConfigError extends Error {
 /** The name is the package's convention; the directory is the platform's. */
 export const LOCAL_CONFIG_DIR = "agent-protocol";
 export const LOCAL_CONFIG_FILE = "local.json";
+/** Where the NAMED configs of a multi-instance box lie, one file per instance. */
+export const LOCAL_CONFIG_INSTANCES_DIR = "instances";
+/** The env layer of the name (layer 2 of three). */
+export const INSTANCE_ENV = "AGENT_PROTOCOL_INSTANCE";
 
 /**
- * Where the machine config lies, from the environment as the process sees it.
- * `XDG_CONFIG_HOME` first (the platform's own override), then `~/.config`. Pure:
- * the environment is passed in, so the resolution is testable without touching the
- * home directory of whoever runs the tests.
+ * The package's own directory under the platform's config home. `XDG_CONFIG_HOME`
+ * first (the platform's own override), then `~/.config`. Pure: the environment is
+ * passed in, so the resolution is testable without touching the home directory of
+ * whoever runs the tests.
  */
-export const localConfigPath = (env: NodeJS.ProcessEnv = process.env): string => {
+export const localConfigHome = (env: NodeJS.ProcessEnv = process.env): string => {
   const base = env.XDG_CONFIG_HOME ?? join(env.HOME ?? homedir(), ".config");
-  return join(base, LOCAL_CONFIG_DIR, LOCAL_CONFIG_FILE);
+  return join(base, LOCAL_CONFIG_DIR);
 };
+
+/** Where the UNNAMED machine config lies — the box that hosts one instance. */
+export const localConfigPath = (env: NodeJS.ProcessEnv = process.env): string =>
+  join(localConfigHome(env), LOCAL_CONFIG_FILE);
+
+/** Where the config of instance `<name>` lies. The name IS the file name. */
+export const instanceConfigPath = (name: string, env: NodeJS.ProcessEnv = process.env): string =>
+  join(localConfigHome(env), LOCAL_CONFIG_INSTANCES_DIR, `${name}.json`);
 
 /**
  * Parse the raw JSON of a machine config. The policy check runs FIRST, so a file
@@ -248,12 +292,189 @@ export const loadLocalConfig = (options?: {
 };
 
 /**
+ * THE NAMED CONFIGS ON THIS BOX, by name, in a stable order. A missing directory is
+ * an empty list and not an error: it is what a one-instance box looks like.
+ */
+export const listInstanceConfigs = (
+  env: NodeJS.ProcessEnv = process.env,
+): readonly { readonly name: string; readonly path: string }[] => {
+  const dir = join(localConfigHome(env), LOCAL_CONFIG_INSTANCES_DIR);
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((entry) => entry.endsWith(".json"))
+    .map((entry) => ({ name: entry.slice(0, -".json".length), path: join(dir, entry) }))
+    .filter((entry) => entry.name.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
+/** WHICH LAYER ANSWERED. Printed beside the path, always — that is the point of layers. */
+export type LocalConfigSource = "path" | "flag" | "env" | "checkout" | "default";
+
+export type ResolvedLocalConfig = LoadedLocalConfig & {
+  /** The instance whose named file was read; absent for `local.json` and for `--local-config`. */
+  readonly instanceName?: string;
+  readonly source: LocalConfigSource;
+  /** The one line that says which layer answered, and with what. */
+  readonly resolution: string;
+};
+
+const contains = (parent: string, child: string): boolean => {
+  const p = resolve(parent);
+  const c = resolve(child);
+  return c === p || c.startsWith(p.endsWith(sep) ? p : p + sep);
+};
+
+/**
+ * WHICH NAMED INSTANCE CLAIMS THIS CHECKOUT (layer 3). The named files are read for
+ * their `repo` alone; the longest matching path wins, because a checkout nested under
+ * another is a more specific answer than its parent. Two files claiming the SAME path
+ * are a refusal — the box cannot know which project the operator meant.
+ *
+ * A named file that does not parse is SKIPPED and NAMED in the note: one broken
+ * sibling must not blind a box to the instance it was actually asked about, and
+ * silence about it would be the drift this package exists to prevent.
+ */
+const instanceOfCheckout = (
+  repo: string,
+  env: NodeJS.ProcessEnv,
+): { readonly name?: string; readonly skipped: readonly string[] } => {
+  const skipped: string[] = [];
+  const claims: { name: string; repo: string }[] = [];
+  for (const candidate of listInstanceConfigs(env)) {
+    let config: LocalConfig;
+    try {
+      config = parseLocalConfig(JSON.parse(readFileSync(candidate.path, "utf8")), candidate.path);
+    } catch (error) {
+      skipped.push(`${candidate.name} (${(error as Error).message})`);
+      continue;
+    }
+    if (config.repo !== undefined && contains(config.repo, repo)) {
+      claims.push({ name: candidate.name, repo: config.repo });
+    }
+  }
+  if (claims.length === 0) return { skipped };
+  claims.sort((a, b) => resolve(b.repo).length - resolve(a.repo).length);
+  const [best, second] = claims;
+  if (best === undefined) return { skipped };
+  if (second !== undefined && resolve(second.repo) === resolve(best.repo)) {
+    throw new LocalConfigError(
+      `'${repo}' is claimed by ${claims
+        .filter((claim) => resolve(claim.repo) === resolve(best.repo))
+        .map((claim) => `'${claim.name}'`)
+        .join(
+          " and ",
+        )} — two instances of this box declare the same 'repo'. Name the one you mean with --instance`,
+    );
+  }
+  return { name: best.name, skipped };
+};
+
+/**
+ * READ THE MACHINE CONFIG OF THE INSTANCE THIS COMMAND IS ABOUT (thread 055).
+ *
+ * The layers, in order, each one able to refuse: an explicit `--local-config <path>`
+ * (a path, not a name — it answers for itself and skips the whole question), then
+ * `--instance`, then `AGENT_PROTOCOL_INSTANCE`, then the checkout, then `local.json`.
+ *
+ * TWO REFUSALS ARE THE VALUE OF THE SHAPE, and neither is a fallback:
+ *  · a NAME that disagrees with the checkout — the operator says `A`, the tree they
+ *    are standing in belongs to `B`. That is the case where a quiet pick would raise
+ *    another project's roles with this project's binaries;
+ *  · a checkout that belongs to NO declared instance on a box that has named ones and
+ *    no `local.json` — proceeding would mean running with defaults nobody chose.
+ * Everything else resolves and SAYS which layer answered.
+ */
+export const resolveLocalConfig = (options?: {
+  /** `--local-config <path>`: a file named outright; wins over every layer below. */
+  readonly path?: string | undefined;
+  /** `--instance <name>` (layer 1). */
+  readonly instance?: string | undefined;
+  /** The checkout the command is about — `--repo`, or the home of the current tree (layer 3). */
+  readonly repo?: string | undefined;
+  readonly env?: NodeJS.ProcessEnv | undefined;
+}): ResolvedLocalConfig => {
+  const env = options?.env ?? process.env;
+  if (options?.path !== undefined) {
+    const loaded = loadLocalConfig({ path: options.path, env });
+    return { ...loaded, source: "path", resolution: `${loaded.path} ← --local-config` };
+  }
+
+  const fromEnv = env[INSTANCE_ENV];
+  const named =
+    options?.instance !== undefined
+      ? { name: options.instance, source: "flag" as const, said: "--instance" }
+      : fromEnv !== undefined && fromEnv.length > 0
+        ? { name: fromEnv, source: "env" as const, said: `$${INSTANCE_ENV}` }
+        : undefined;
+
+  const byCheckout =
+    options?.repo === undefined ? { skipped: [] } : instanceOfCheckout(options.repo, env);
+  const skipped =
+    byCheckout.skipped.length === 0 ? "" : `; skipped ${byCheckout.skipped.join(", ")}`;
+
+  if (named !== undefined) {
+    if (byCheckout.name !== undefined && byCheckout.name !== named.name) {
+      throw new LocalConfigError(
+        `${named.said} says '${named.name}' and the checkout '${options?.repo}' belongs to '${byCheckout.name}' — this box will not guess which project the command is about. Either drop ${named.said} or run it against the checkout of '${named.name}'`,
+      );
+    }
+    const path = instanceConfigPath(named.name, env);
+    const loaded = loadLocalConfig({ path, env });
+    return {
+      ...loaded,
+      instanceName: named.name,
+      source: named.source,
+      resolution: `${path} ← instance '${named.name}' (${named.said})${skipped}`,
+    };
+  }
+
+  if (byCheckout.name !== undefined) {
+    const path = instanceConfigPath(byCheckout.name, env);
+    const loaded = loadLocalConfig({ path, env });
+    return {
+      ...loaded,
+      instanceName: byCheckout.name,
+      source: "checkout",
+      resolution: `${path} ← instance '${byCheckout.name}' (checkout ${options?.repo})${skipped}`,
+    };
+  }
+
+  const declared = listInstanceConfigs(env);
+  const loaded = loadLocalConfig({ env });
+  if (!loaded.found && declared.length > 0) {
+    throw new LocalConfigError(
+      `this box declares ${declared.map((entry) => `'${entry.name}'`).join(", ")} and none of them claims '${options?.repo ?? "the current directory"}', while '${loaded.path}' does not exist — name the instance with --instance or $${INSTANCE_ENV}${skipped}`,
+    );
+  }
+  return {
+    ...loaded,
+    source: "default",
+    resolution: `${loaded.path} ← the unnamed config of this box${
+      declared.length === 0 ? "" : ` (named: ${declared.map((entry) => entry.name).join(", ")})`
+    }${skipped}`,
+  };
+};
+
+/**
  * One line for `status` and `preflight`: which file, and whether it is there at all.
  * The secrets FILE is named when declared (a path is not a secret and its absence is
  * the first suspect when nothing was delivered); its contents are never touched here.
+ *
+ * WHEN THE FILE BELONGS TO A NAMED INSTANCE the name comes FIRST (thread 055): on a
+ * box hosting two projects, "which file" is answered by a path that differs in one
+ * segment, and the question actually being asked is "which project is this".
  */
-export const describeLocalConfig = (loaded: LoadedLocalConfig): string => {
-  if (!loaded.found) return `${loaded.path} — absent (the binaries are taken from PATH)`;
+export const describeLocalConfig = (loaded: LoadedLocalConfig | ResolvedLocalConfig): string => {
+  const named =
+    "instanceName" in loaded && loaded.instanceName !== undefined
+      ? `instance '${loaded.instanceName}' · `
+      : "";
+  if (!loaded.found) return `${named}${loaded.path} — absent (the binaries are taken from PATH)`;
   const agents = Object.entries(loaded.config.agents);
   const secrets =
     loaded.config.secrets === undefined ? "" : `; secrets ← ${loaded.config.secrets.envFile}`;
@@ -262,8 +483,9 @@ export const describeLocalConfig = (loaded: LoadedLocalConfig): string => {
   // file, asked at the moment the signature looks wrong.
   const operator =
     loaded.config.operator === undefined ? "" : `; operator ${loaded.config.operator}`;
-  if (agents.length === 0) return `${loaded.path} — no agents declared${secrets}${operator}`;
-  return `${loaded.path} — ${agents
+  if (agents.length === 0)
+    return `${named}${loaded.path} — no agents declared${secrets}${operator}`;
+  return `${named}${loaded.path} — ${agents
     .map(([id, agent]) => `${id} → ${agent.exec}`)
     .join(", ")}${secrets}${operator}`;
 };

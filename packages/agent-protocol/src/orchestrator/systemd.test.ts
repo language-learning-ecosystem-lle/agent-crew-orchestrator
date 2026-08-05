@@ -5,6 +5,7 @@ import {
   foregroundRefusal,
   interpreterTokens,
   planSystemdUnit,
+  unitNameFor,
   unitPathDirs,
   worktreeInstallVerdict,
 } from "./systemd.js";
@@ -313,5 +314,36 @@ describe("the install refuses a ROLE'S WORKSPACE, and only that (decision 7)", (
         workspacesDeclared: true,
       }).kind,
     ).toBe("ok");
+  });
+});
+
+/**
+ * ONE BOX, SEVERAL DAEMONS (thread `055-multi-instance-multi-account`). The unit name
+ * was the last path in the package that was global to the USER rather than to an
+ * instance: two projects enabling the daemon would have fought over one file.
+ */
+describe("the unit of one instance (thread 055)", () => {
+  it("a box that names no instance keeps the name it has today", () => {
+    expect(unitNameFor()).toBe(DEFAULT_UNIT_NAME);
+  });
+
+  it("a named instance gets its own unit, in the shape an operator reads", () => {
+    expect(unitNameFor("crew")).toBe("lle-orchestrator@crew.service");
+  });
+
+  it("two instances do not collide — which is the whole property asked for", () => {
+    expect(unitNameFor("crew")).not.toBe(unitNameFor("lle"));
+  });
+
+  it("the plan puts the instance in the path and in the syslog identifier too", () => {
+    const plan = planSystemdUnit({
+      repo: "/srv/crew",
+      node: "/usr/bin/node",
+      cli: "/srv/crew/packages/agent-protocol/src/cli.ts",
+      home: "/home/j",
+      unitName: unitNameFor("crew"),
+    });
+    expect(plan.path).toBe("/home/j/.config/systemd/user/lle-orchestrator@crew.service");
+    expect(plan.unit).toContain("lle-orchestrator@crew");
   });
 });

@@ -180,6 +180,28 @@ export type SystemdUnitPlan = {
 
 export const DEFAULT_UNIT_NAME = "lle-orchestrator.service";
 
+/**
+ * THE UNIT OF ONE INSTANCE (thread 055). A box hosting several projects runs several
+ * daemons, and `DEFAULT_UNIT_NAME` is one name on the whole user: the second
+ * `systemctl --user enable` would fight the first over that file, which is precisely
+ * the collision the multi-instance work exists to remove.
+ *
+ * WHY A NAME PER INSTANCE AND NOT A REAL SYSTEMD TEMPLATE (`foo@.service` + `%i`):
+ * a template has ONE `ExecStart` shared by every instance, and ours is GENERATED per
+ * box — the repository path, this interpreter, this CLI entry point, the PATH of the
+ * agent binaries THIS instance declares. None of that is common between two projects
+ * on one box, so a template would have to reduce to `%i` lookups of the very facts the
+ * generator exists to write down. The `@<instance>` shape is kept because it is what an
+ * operator reads (`systemctl --user status lle-orchestrator@crew`) and because it gives
+ * the property the statement asked for: N daemons that do not interfere.
+ *
+ * A box that names no instance keeps the name it has today, to the byte.
+ */
+export const unitNameFor = (instance?: string): string =>
+  instance === undefined
+    ? DEFAULT_UNIT_NAME
+    : `${DEFAULT_UNIT_NAME.replace(/\.service$/, "")}@${instance}.service`;
+
 /** What `systemd install` may do from the checkout it was typed in — see below. */
 export type WorktreeInstallVerdict =
   /** Nothing to say: the home checkout, an installed package, another repository. */

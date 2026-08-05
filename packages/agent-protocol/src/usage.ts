@@ -16,7 +16,7 @@
  */
 export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor', 'init', 'config set' and the operator's five below; --repo defaults to the repository of the current directory):
   agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
-  agent-protocol config set   <key> <value> [--exec <path>] [--ref <ref>] [--local-config <p>] [--write]
+  agent-protocol config set   <key> <value> [--exec <path>] [--ref <ref>] [--local-config <p>] [--instance <name>] [--write]
                               # ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019): the
                               # commissioned box whose agent binary moved, whose operator is
                               # somebody else now, whose secrets file was moved off /root —
@@ -32,8 +32,12 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # writes cannot be one this package refuses to read afterwards
                               # WITHOUT --write it decides and prints and touches nothing; a
                               # value already there is a 'keep' and is not rewritten even with it
+                              # '--instance <name>' and the KEY 'instance <id>' are two different
+                              # questions (055): the flag says WHICH FILE is being edited, the key
+                              # says what identity that file claims — one picks the box, the other
+                              # writes into it
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
-  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all]
+  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all]
                               # IS THIS BOX COMMISSIONED (thread 019, the operator tail): the
                               # checklist of a machine that is supposed to raise roles unattended —
                               # both configs, which instance it is, the agent binary AND A LIVE
@@ -75,8 +79,12 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # secrets file (only where it lies), never overwrites silently — a
                               # declared value and a new one are printed as a change, both sides
                               # --no-doctor: stop after writing (for a box with no network yet)
+                              # --instance NAMES THE FILE TOO on a box hosting several projects
+                              # (055): the config goes to 'instances/<id>.json' and records the
+                              # checkout it serves, which is what lets every later command typed
+                              # in that tree find it without naming anything
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
-  agent-protocol init github  [--ref <ref>] [--local-config <p>] [--key <path>] [--host <h>] [--comment <c>] [--no-probe] [--write]
+  agent-protocol init github  [--ref <ref>] [--local-config <p>] [--instance <name>] [--key <path>] [--host <h>] [--comment <c>] [--no-probe] [--write]
                               # THE BOX'S IDENTITY FOR GITHUB (thread 019, п.4): the one step of
                               # the commissioning that makes material OUTSIDE the repository and
                               # outside both configs — an ed25519 pair in ~/.ssh, a 'Host' block
@@ -191,7 +199,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # THE INTERACTIVE TURN (R19): blocks until the thread waits on the role again
                               # needs a wait declared beside the question ('new-message --await-input') — it does not declare one
                               # code 0: the answer arrived · code 3: the wait ran out (wrap up and pass the turn)
-  agent-protocol notify       --ref <ref> [--repo <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--local-config <p>] [--write]
+  agent-protocol notify       --ref <ref> [--repo <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--local-config <p>] [--instance <name>] [--write]
                               # a thread PARKED on a human rings with NO age threshold and carries
                               # its question — the first line of the parking message (023): the age
                               # answers nothing about a turn that cannot move, and a call that names
@@ -309,6 +317,21 @@ each for a stated reason:
     the plan and touches nothing (not the workdir, not its lock, not the journal); with it
     the workdir is put on the base and locked, the events are appended, the agent is raised.
 
+WHICH INSTANCE A COMMAND IS ABOUT (thread 055). A box may host several projects, one
+instance per repository, and each has its OWN machine config:
+'~/.config/agent-protocol/instances/<name>.json'. Which one answers is resolved in
+layers, and the layer that answered is PRINTED ('doctor', 'preflight'):
+  '--local-config <p>' (a path, answering for itself) → '--instance <name>' →
+  $AGENT_PROTOCOL_INSTANCE → the CHECKOUT the command is about (each named config
+  declares the 'repo' it serves; a role's worktree answers with its home checkout) →
+  'local.json', the unnamed config of a box that hosts one instance.
+A box with no 'instances/' directory behaves exactly as it did before. Two layers that
+DISAGREE are a refusal by name — a name saying 'crew' inside the 'lle' checkout is the
+case where a quiet pick raises one project's roles with another project's binaries.
+'--instance <name>' stands on the usage line of every command that reads the machine
+config, and this text is the argument checker itself: a command whose line does not
+spell the flag REFUSES it, whatever the loader behind it understands.
+
 ORCHESTRATOR: the paths (journal, flags, holds, mail root) are taken FROM THE
 CONFIG, section 'orchestrator'. The path flags below are an override for checks
 and are not needed in operation; only --ref is required.
@@ -320,7 +343,7 @@ ref. --ref may be left out in these five (up/down/hold/resume/status) and in the
 commissioning commands above ('doctor' and 'init'), and nowhere else: it is taken from
 'orchestrator.ref' of the config in the working tree, and which ref was used is printed.
 The strict forms below keep every flag they had.
-  agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--daemon-log <p>] [--log-max-bytes <n>] [--pid-file <p>] [--foreground] [--clear-force]   # plus every 'daemon' flag
+  agent-protocol orchestrator up     [--ref <ref>] [--repo <p>] [--instance <name>] [--daemon-log <p>] [--log-max-bytes <n>] [--pid-file <p>] [--foreground] [--clear-force]   # plus every 'daemon' flag
                               # THE LOG IS BOUNDED AND ITS EPOCHS ARE LEGIBLE: every start puts
                               # a banner line into the daemon log, and a log over --log-max-bytes
                               # (8 MB by default) is rotated to '<log>.1' — one generation, so the
@@ -340,7 +363,7 @@ The strict forms below keep every flag they had.
                               # reason: a daemon raised over it exits on its first tick and
                               # says so only in its log. --clear-force removes it deliberately
   agent-protocol orchestrator down   [--ref <ref>] [--repo <p>] [--stop-flag <p>] [--pid-file <p>]
-  agent-protocol orchestrator restart [--ref <ref>] [--repo <p>] [--pull] [--wait <sec>] [--pid-file <p>] [--daemon-log <p>] [--mode <m>] [--thread <slug>] [--reason <why>] [--by <who>]   # plus every 'daemon' flag
+  agent-protocol orchestrator restart [--ref <ref>] [--repo <p>] [--instance <name>] [--local-config <p>] [--pull] [--wait <sec>] [--pid-file <p>] [--daemon-log <p>] [--mode <m>] [--thread <slug>] [--reason <why>] [--by <who>]   # plus every 'daemon' flag
                               # PICKING UP FRESH CODE AS ONE GESTURE: down, wait out the
                               # live sessions, (--pull: git pull --ff-only + pnpm install),
                               # up again WITH THE FLAGS OF THE DAEMON THAT WAS STOPPED —
@@ -350,15 +373,15 @@ The strict forms below keep every flag they had.
                               # cleared without hands and the daemon comes back up
                               # the process waits itself and prints the phases; a wait that
                               # runs out, a failed pull or install raises NOTHING and says so
-  agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>] [--local-config <p>]
+  agent-protocol orchestrator hold   <role> [--by <who>] [--ttl <sec>] [--note <t>] [--ref <ref>] [--now <iso>] [--holds <d>] [--local-config <p>] [--instance <name>]
   agent-protocol orchestrator resume <role> [--ref <ref>] [--holds <d>]
                               # the short forms ACT (no --write): typing them IS the decision
                               # --by: the flag, then 'operator' of the machine config (who sits
                               # at this box), then $USER; the value must be a role of the config
-  agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>]
+  agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator status [--ref <ref>] [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--watch] [--interval <sec>] [--frames <n>]
+  agent-protocol orchestrator status [--ref <ref>] [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--instance <name>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--watch] [--interval <sec>] [--frames <n>]
                               # it SHOWS what the daemon would do, so it reads the same
                               # answers the daemon reads: the ceilings, the scope of roles,
                               # the mail root and the agent resolution ('launch resolution')
@@ -395,7 +418,7 @@ The strict forms below keep every flag they had.
                               # frame under 'frame: unavailable since HH:MM (why)' — the watch
                               # dies of Ctrl+C and of nothing else
                               # --frames <n>: stop after n frames (for checks)
-  agent-protocol orchestrator tui    [--ref <ref>] [--interval <sec>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--now <iso>] [--mode-file <path>]
+  agent-protocol orchestrator tui    [--ref <ref>] [--interval <sec>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--instance <name>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--now <iso>] [--mode-file <path>]
                               # THE OBSERVER (T-1): the SAME frame as a screen — pairs on top,
                               # the circuit in the middle, the selected session's transcript below
                               # five keys READ: arrows pick the pair, tab switches .log/.supervisor,
@@ -413,7 +436,7 @@ The strict forms below keep every flag they had.
                               # dumb terminal, a tmux pane or 'tee' the answer is 'status --watch'
                               # it takes the alt-screen and gives it back: the scrollback is untouched
   agent-protocol orchestrator record --ref <ref> --kind <k> --role <id> --thread <slug> [--deadline <iso>] [--reason <r>] [--mode <m>] [--now <iso>] [--journal <p>] [--write]
-  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
+  agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
                               # ceilings: the flag wins over the role's launch.limits, which wins over the package default
                               # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
@@ -423,7 +446,7 @@ The strict forms below keep every flag they had.
                               # --wind-down: how long before the deadline the session is asked to land its work (R20); default 20% of the window, 2-15 min
                               # --roles/--exclude-roles: the same scope door as the daemon's (R13) — a --role
                               # owned by another instance, or left out by these flags, is REFUSED here, not raised
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>]
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>]
                               # --roles/--exclude-roles: WHICH roles THIS run raises (R13), mutually exclusive;
                               # on top of the instance filter — a role owned by another box is never raised here
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
@@ -437,7 +460,7 @@ The strict forms below keep every flag they had.
                               # An undeliverable trace is written into the checkout and said
                               # out loud — the stop still happens, silently it does not
   agent-protocol orchestrator systemd-unit --exec-start <cmd> [--working-dir <dir>] [--description <d>]
-  agent-protocol orchestrator systemd install [--ref <ref>] [--repo <p>] [--unit-name <n>] [--unit-dir <d>] [--description <t>] [--daemon-args <a>] [--write]
+  agent-protocol orchestrator systemd install [--ref <ref>] [--repo <p>] [--instance <name>] [--local-config <p>] [--unit-name <n>] [--unit-dir <d>] [--description <t>] [--daemon-args <a>] [--write]
                               # THE DAEMON AS A RESIDENT UNIT: the file is GENERATED from this
                               # box (the repo, this interpreter, the CLI path) — a unit typed
                               # per box is the first path to go stale. Without --write it prints
@@ -461,4 +484,10 @@ The strict forms below keep every flag they had.
                               # ANY OTHER linked worktree (the mail checkout, your own) is
                               # passed with a NOTE: R17 does not govern it, and a refusal there
                               # would name a reason that is not true
+                              # ON A BOX HOSTING SEVERAL INSTANCES the unit is NAMED AFTER
+                              # ONE (055): 'lle-orchestrator@<instance>.service', and its
+                              # ExecStart carries '--instance <name>' — one name on the whole
+                              # user is the collision two daemons would enable into. Not a real
+                              # systemd template: a template shares ONE ExecStart, and this one
+                              # is generated per box (its repo, its interpreter, its PATH)
                               # --daemon-args '<a b c>': the daemon's own flags, baked into ExecStart`;
