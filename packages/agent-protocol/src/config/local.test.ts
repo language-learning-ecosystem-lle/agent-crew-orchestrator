@@ -114,6 +114,32 @@ describe("what a human is shown", () => {
     expect(line).toContain("claude-code → /opt/claude");
   });
 
+  it("lists the accounts this box holds — the other half of every launch-door refusal", () => {
+    // An id the repository names and this box does not declare is a refusal at the
+    // launch door (thread 055); this line is where an operator finds out which ids
+    // the box actually has. Paths only — which subscription is behind one is in no file.
+    const line = describeLocalConfig({
+      config: {
+        agents: {},
+        accounts: { second: { configDir: "/home/j/.claude-second" } },
+      },
+      path: "/x/local.json",
+      found: true,
+      explicit: false,
+    });
+    expect(line).toContain("accounts second → /home/j/.claude-second");
+  });
+
+  it("…and says nothing about accounts when the box declares none", () => {
+    const line = describeLocalConfig({
+      config: { agents: {} },
+      path: "/x/local.json",
+      found: true,
+      explicit: false,
+    });
+    expect(line).not.toContain("accounts");
+  });
+
   it("names the operator — a hold carries that signature, so it is shown where it comes from", () => {
     const line = describeLocalConfig({
       config: { agents: {}, operator: "john" },

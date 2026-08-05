@@ -439,20 +439,37 @@ export const resolveExec = (input: {
  * file names the subscription itself.
  *
  * THE THREE ANSWERS ARE THREE DIFFERENT FACTS, and each is said in its own words:
- *  · the role names no account — the run inherits the box's own, exactly as every
+ *  · nobody names an account — the run inherits the box's own, exactly as every
  *    run did before this field existed. Not an error, and not printed as one;
- *  · the role names an account this box declares — that directory, said out loud
+ *  · an account this box declares is named — that directory, said out loud
  *    beside the model and the effort;
- *  · the role names an account this box does NOT declare — a refusal BY NAME. The
+ *  · an account this box does NOT declare is named — a refusal BY NAME. The
  *    quiet fall-back to the box's own account is the one answer that must not
  *    exist: it raises a role on a subscription nobody assigned it, and it looks
  *    from the outside exactly like a run that obeyed.
+ *
+ * WHO NAMES IT — TWO LAYERS, IN THE R21 ORDER (thread 055, the second half of B.2). The
+ * ROLE's own `launch.account` wins; the INSTANCE's `instances[].account` is the
+ * fall-back for every role of that box that named none. The default exists because the
+ * unit a subscription is bought for is the project: on a box hosting two instances the
+ * true sentence is "the crew instance runs on the second subscription", said once —
+ * written per role it is the same sentence N times, and the N+1st role is then added
+ * without it and quietly spends the other subscription.
+ *
+ * WHICH LAYER ANSWERED IS CARRIED, not just the answer, and it is printed on the launch
+ * line: a default nobody can see is a default nobody can audit, and this one decides
+ * whose money a run spends. The refusal names the layer too — "the role asks for 'x'"
+ * and "this instance defaults to 'x'" send whoever reads it to two different files.
  */
+export type AccountSource = "role" | "instance";
+
 export type ResolvedAccount = {
   /** The id as the repository names it — a label, never the account itself. */
   readonly id: string;
   /** The directory this box keeps it in; goes to the session as `CLAUDE_CONFIG_DIR`. */
   readonly configDir: string;
+  /** Which of the two layers named it — see above for why this travels with the answer. */
+  readonly source: AccountSource;
 };
 
 export type AccountResolution =
@@ -462,18 +479,53 @@ export type AccountResolution =
 export const resolveAccount = (input: {
   readonly launch?: Launch;
   readonly local?: LocalConfig;
+  /**
+   * The default of the instance this box IS (`instances[].account`) — already picked by
+   * the caller, because which instance a box is is the machine's answer (R14) and this
+   * function is about the join, not about the topology.
+   */
+  readonly instanceAccount?: string;
 }): AccountResolution => {
-  const id = input.launch?.account;
-  if (id === undefined) return { ok: true };
-  const declared = input.local?.accounts?.[id]?.configDir;
+  const named =
+    input.launch?.account !== undefined
+      ? ({ id: input.launch.account, source: "role" } as const)
+      : input.instanceAccount !== undefined
+        ? ({ id: input.instanceAccount, source: "instance" } as const)
+        : undefined;
+  if (named === undefined) return { ok: true };
+  const declared = input.local?.accounts?.[named.id]?.configDir;
   if (declared === undefined) {
+    const who =
+      named.source === "role"
+        ? `the role is to be raised on account '${named.id}'`
+        : `this instance defaults its roles to account '${named.id}' ('instances[].account')`;
     return {
       ok: false,
-      reason: `the role is to be raised on account '${id}', and this machine declares no such account — say where it lives ('accounts.${id}.configDir' of the machine config) or the run would silently spend the box's own`,
+      reason: `${who}, and this machine declares no such account — say where it lives ('accounts.${named.id}.configDir' of the machine config) or the run would silently spend the box's own`,
     };
   }
-  return { ok: true, account: { id, configDir: declared } };
+  return { ok: true, account: { id: named.id, configDir: declared, source: named.source } };
 };
+
+/**
+ * THE DEFAULT OF THE BOX THIS IS — the R13 join, and the reason `resolveAccount` takes an
+ * id rather than the topology: the repository declares the instances, the machine says
+ * which of them it is, and this is the one line where those two facts meet.
+ *
+ * Both halves have to be there for an answer. A box that calls itself nothing (no
+ * `instance` in the machine config) and a repository that declares no instances are both
+ * legitimate states — the pre-R13 single-box shape — and neither is guessed into a
+ * default: silence means the role's own field is the whole of the resolution.
+ */
+export const instanceAccountOf = (input: {
+  readonly instances?:
+    | readonly { readonly id: string; readonly account?: string | undefined }[]
+    | undefined;
+  readonly instance?: string | undefined;
+}): string | undefined =>
+  input.instance === undefined
+    ? undefined
+    : input.instances?.find((instance) => instance.id === input.instance)?.account;
 
 /** The launch parameters of the resolved tool, each with the layer it came from. */
 export type AgentParams = {
@@ -622,7 +674,7 @@ export const describeAgent = (input: {
     `exec ${input.exec.value} (${input.exec.source})`,
     ...(input.account === undefined
       ? []
-      : [`account ${input.account.id} (${input.account.configDir})`]),
+      : [`account ${input.account.id} (${input.account.source}, ${input.account.configDir})`]),
     ...(input.params.model === undefined
       ? []
       : [`model ${input.params.model.value} (${input.params.model.source})`]),

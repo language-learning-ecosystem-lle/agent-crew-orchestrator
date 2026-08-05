@@ -154,6 +154,7 @@ and it is one half of a join that runs across the R14 line in both directions:
 | the question | who answers it |
 | --- | --- |
 | WHICH account a role's runs spend | the repository — `launch.account: <id>` of the role, reviewed in a PR |
+| …and when the role names none | the repository again — `instances[].account`, the default of the instance this box is |
 | WHERE that account lives on this box | the machine — `accounts.<id>.configDir` |
 | WHICH subscription stands behind the id | neither file: the id is a label, and only whoever logged in knows |
 
@@ -173,9 +174,20 @@ saying out loud:
     sessions, it stops seeing them — the first run after such a change is `--fresh`
     in fact, whatever the continuation policy would have decided.
 
-A role that names no account inherits the box's own, which is what every run did
-before the field existed; the environment variable is then not set at all rather than
-set to the default path, so an operator who exported one keeps it.
+Two layers name the id, in the R21 order: the ROLE's own `launch.account` wins, and
+`instances[].account` is the fall-back for every role of that instance which named
+none. The default exists because the unit a subscription is bought for is the PROJECT
+— on a box hosting two instances the true sentence is "the crew instance runs on the
+second subscription", said once; written per role it is the same sentence N times, and
+the N+1st role is added without it and quietly spends the other subscription. WHICH
+LAYER ANSWERED is printed on the launch line beside the model and the effort
+(`account second (instance, /home/j/.claude-second)`), and the refusal above names it
+too: a role's id is in `roles[].launch.account`, an instance's in `instances[].account`,
+and being sent to the wrong file costs a hunt through a config that has nothing in it.
+
+A role whose instance defaults to nothing either inherits the box's own account, which
+is what every run did before the field existed; the environment variable is then not
+set at all rather than set to the default path, so an operator who exported one keeps it.
 
 `operator` is WHO SITS AT THIS BOX — the role a short-form hold is signed by when
 `--by` is not typed. It was `$USER` alone, and an OS account name coincides with a

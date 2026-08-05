@@ -226,6 +226,7 @@ import {
   describeGates,
   describeLaunch,
   ignoredDirective,
+  instanceAccountOf,
   LAUNCH_ENV,
   planLaunch,
   type ResolvedAccount,
@@ -2903,9 +2904,20 @@ const agentFor = (
   // it keys off the same R14 join and every caller needs the same answer. Fatal for
   // the same reason the parameter refusal above is: an account the machine cannot
   // place is not a run with one fact missing, it is a run on somebody else's quota.
+  // THE INSTANCE'S DEFAULT is the second layer, and it is read through the same cached
+  // door every other reader of the repository config uses: which instance this box IS is
+  // the machine's answer (R14), which account that instance defaults to is the
+  // repository's (R13's section). Neither half is guessed when the other is missing — a
+  // box that calls itself nothing, or a repository that declares no instances, simply
+  // has no default and the role's own field is the whole of it.
+  const instanceAccount = instanceAccountOf({
+    instances: configFrom(argv, undefined).config.instances,
+    instance: local.config?.instance,
+  });
   const account = resolveAccount({
     ...(role.launch === undefined ? {} : { launch: role.launch }),
     local: local.config,
+    ...(instanceAccount === undefined ? {} : { instanceAccount }),
   });
   if (!account.ok) return fail(`role '${role.id}': ${account.reason}`, 2);
   return {
