@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  authAlarmKey,
   type NotifyState,
   parseNotifyState,
   planNotifications,
@@ -7,7 +8,12 @@ import {
 } from "./notify.js";
 
 const JOHN = { id: "john", style: "direct" } as const;
-const AUTH = { since: "2026-08-01T17:04:00Z", deaths: 3, until: "2026-08-01T17:14:00Z" };
+const AUTH = {
+  account: "main",
+  since: "2026-08-01T17:04:00Z",
+  deaths: 3,
+  until: "2026-08-01T17:14:00Z",
+};
 const GH = {
   since: "2026-08-01T10:01:00Z",
   ticks: 6,
@@ -40,7 +46,7 @@ describe("the box's own alarms", () => {
       waiting: [],
       stalled: [],
       parked: [],
-      auth: AUTH.since,
+      auth: authAlarmKey(AUTH),
       gh: GH.since,
     });
     const again = plan(parseNotifyState(state));
@@ -62,7 +68,13 @@ describe("the box's own alarms", () => {
 
   it("a NEW shelf rings even though the previous one was announced", () => {
     const seen = parseNotifyState(
-      renderNotifyState({ waiting: [], stalled: [], parked: [], auth: AUTH.since, gh: GH.since }),
+      renderNotifyState({
+        waiting: [],
+        stalled: [],
+        parked: [],
+        auth: authAlarmKey(AUTH),
+        gh: GH.since,
+      }),
     );
     const later = planNotifications({
       targets: [JOHN],
@@ -86,6 +98,58 @@ describe("the box's own alarms", () => {
     expect(nudged.lines).toEqual([]);
     expect(nudged.freshAuth).toBe(false);
     expect(nudged.freshGh).toBe(false);
+  });
+
+  it("names WHOSE credentials died — the reader's action is a login, and it is per account", () => {
+    const text = plan(NOTHING)
+      .lines.map((line) => line.text)
+      .join("\n");
+    expect(text).toContain("account 'main'");
+  });
+
+  it("the box's own account is named in words, not as an empty gap", () => {
+    const own = planNotifications({
+      targets: [JOHN],
+      waiting: [],
+      seen: NOTHING,
+      auth: { ...AUTH, account: "" },
+    });
+    expect(own.lines[0]?.text).toContain("the box's own account");
+  });
+
+  it("a SECOND account with the SAME stamp rings — the key is the pair, not the stamp", () => {
+    // Ф-2. Two subscriptions dying inside the same second is what a box under a token
+    // outage does; keyed by `since` alone the second shelf was swallowed in silence, and
+    // the operator logged in the one account that had already been named.
+    const seen = parseNotifyState(
+      renderNotifyState({ waiting: [], stalled: [], parked: [], auth: authAlarmKey(AUTH) }),
+    );
+    const other = planNotifications({
+      targets: [JOHN],
+      waiting: [],
+      seen,
+      auth: { ...AUTH, account: "second" },
+    });
+    expect(other.freshAuth).toBe(true);
+    expect(other.lines[0]?.text).toContain("account 'second'");
+    // And the same account with the same stamp still does not ring twice.
+    expect(planNotifications({ targets: [JOHN], waiting: [], seen, auth: AUTH }).freshAuth).toBe(
+      false,
+    );
+  });
+
+  it("a state file written before B.4 reads as the box's own account, not as 'never told'", () => {
+    // The upgrade must not re-ring an alarm the operator was already given: a box that
+    // wrote the two-column line had one login, and that login is what its shelf was.
+    const legacy = parseNotifyState("auth\t2026-08-01T17:04:00Z\n");
+    expect(legacy.auth).toBe(authAlarmKey({ account: "", since: "2026-08-01T17:04:00Z" }));
+    const again = planNotifications({
+      targets: [JOHN],
+      waiting: [],
+      seen: legacy,
+      auth: { ...AUTH, account: "" },
+    });
+    expect(again.freshAuth).toBe(false);
   });
 
   it("an old state file still parses, and the box keys do not disturb the others", () => {

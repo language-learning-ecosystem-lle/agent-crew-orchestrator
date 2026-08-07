@@ -61,6 +61,7 @@
  * human is being told about them anyway, and two lines about one id make the reader
  * ask which of them to act on (the same reason `turn-with-nudge` exists).
  */
+import { BOX_ACCOUNT, describeAccount } from "../orchestrator/quota.js";
 import type { NotificationTarget } from "../roles/registry.js";
 import type { RoleId } from "../roles/schema.js";
 import { renderTemplate } from "./template.js";
@@ -137,7 +138,10 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Readonly<Record<NotificationKind, s
 
 /** The two box-wide texts, in the package's own English — see {@link BOX_ALARM_KINDS}. */
 export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
-  auth: "the box cannot authenticate to the vendor: {deaths} runs in a row died on its credentials since {since}. Nothing is raised until {until}, and nothing will be until somebody logs in on the box — the circuit is standing still",
+  // THE LINE NAMES THE ACCOUNT (B.4): the reader's whole action is `claude login`, and on a
+  // box with two subscriptions that instruction without a name is unusable — logging in the
+  // wrong one leaves the shelf exactly where it was and looks like the alarm lying.
+  auth: "the box cannot authenticate to the vendor for {account}: {deaths} runs in a row died on its credentials since {since}. Nothing is raised for it until {until}, and nothing will be until somebody logs that account in on the box — the roles that spend it are standing still",
   "gh-outage":
     "merge-ready has been refused by gh for {ticks} ticks in a row (threshold {threshold}) since {since}: {refusal}. Nothing is broken by it — the queue is ordered as it would be without the tier — but the tier is off until this is fixed",
 };
@@ -244,6 +248,13 @@ export type ParkedThread = {
  * different in each case, and each says so at its own field.
  */
 export type AuthAlarm = {
+  /**
+   * WHOSE CREDENTIALS (B.4). The shelves are per account since B.3, and this is the half of
+   * the identity that the stamp alone does not carry: two accounts can be shelved at once,
+   * and their `since` can be the same second. It is the raw id — {@link BOX_ACCOUNT} for a
+   * box that named none — and the human phrasing is {@link describeAccount}'s.
+   */
+  readonly account: string;
   /** The stamp of the LAST authorisation death — the shelf this rings for. */
   readonly since: string;
   /** How many runs in a row died on the credentials. */
@@ -251,6 +262,17 @@ export type AuthAlarm = {
   /** When the box next knocks on the door (one pair raised as the probe). */
   readonly until: string;
 };
+
+/**
+ * The identity of one authorisation shelf for the courier: the PAIR (account, stamp).
+ *
+ * Keyed by the stamp alone (the form before B.4) a second account's alarm was swallowed
+ * whenever its shelf carried the same `since` as the one already announced — which is not a
+ * corner case: the stamps come from journal events, and two roles dying on two subscriptions
+ * inside the same second is exactly what a box under a token outage does.
+ */
+export const authAlarmKey = (alarm: Pick<AuthAlarm, "account" | "since">): string =>
+  `${alarm.account}\t${alarm.since}`;
 
 /** One run of identical refusals from `gh`, long enough to be worth a human's phone. */
 export type GhAlarm = {
@@ -269,7 +291,7 @@ export type NotifyState = {
   readonly waiting: readonly WaitingPair[];
   readonly stalled: readonly StalledTurn[];
   readonly parked: readonly ParkedThread[];
-  /** The stamp of the authorisation shelf already announced, if any. */
+  /** The {@link authAlarmKey} of the authorisation shelf already announced, if any. */
   readonly auth?: string | undefined;
   /** The stamp of the merge-ready outage already announced, if any. */
   readonly gh?: string | undefined;
@@ -321,9 +343,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     ...state.waiting.map(key),
     ...state.stalled.map((turn) => `stalled\t${stalledKey(turn)}`),
     ...state.parked.map((park) => `parked\t${parkedKey(park)}`),
-    // The two box-wide events are one line each and carry only their stamp: what
+    // The two box-wide events are one line each and carry only their identity: what
     // identifies them is the shelf and the run of refusals, and the rest is re-read from
-    // the journal and the outage file every time.
+    // the journal and the outage file every time. The auth key is itself two columns
+    // (account, stamp), so its line is three — see {@link authAlarmKey}.
     ...(state.auth === undefined ? [] : [`auth\t${state.auth}`]),
     ...(state.gh === undefined ? [] : [`gh\t${state.gh}`]),
   ];
@@ -360,7 +383,13 @@ export const parseNotifyState = (raw: string): NotifyState => {
       continue;
     }
     if (columns[0] === "auth") {
-      if (columns[1] !== undefined) auth = columns[1];
+      // TWO COLUMNS IS THE PRE-B.4 FORM, and it reads as the box's own account rather than
+      // as an unparsable line: a box that wrote it had one login, and that login is what
+      // every one of its shelves was. Read as "no shelf announced" instead, the first run
+      // after an upgrade would re-ring an alarm the operator was already told about.
+      const [, second, third] = columns;
+      if (third !== undefined) auth = `${second}\t${third}`;
+      else if (second !== undefined) auth = `${BOX_ACCOUNT}\t${second}`;
       continue;
     }
     if (columns[0] === "gh") {
@@ -465,7 +494,7 @@ export const planNotifications = (input: {
   const human = input.targets.some((target) => target.style === "direct");
   const auth = human ? input.auth : undefined;
   const gh = human ? input.gh : undefined;
-  const freshAuth = auth !== undefined && auth.since !== input.seen.auth;
+  const freshAuth = auth !== undefined && authAlarmKey(auth) !== input.seen.auth;
   const freshGh = gh !== undefined && gh.since !== input.seen.gh;
 
   const lines: NotificationLine[] = [];
@@ -478,6 +507,7 @@ export const planNotifications = (input: {
       thread: "",
       role: "",
       text: renderTemplate(BOX_ALARM_TEMPLATES.auth, {
+        account: describeAccount(auth.account),
         deaths: String(auth.deaths),
         since: auth.since,
         until: auth.until,

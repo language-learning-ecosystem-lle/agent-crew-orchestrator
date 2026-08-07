@@ -189,6 +189,56 @@ A role whose instance defaults to nothing either inherits the box's own account,
 is what every run did before the field existed; the environment variable is then not
 set at all rather than set to the default path, so an operator who exported one keeps it.
 
+#### Logging an account in, and logging it in again (B.4)
+
+The one step of the whole mechanism that no command can take: an OAuth login is a
+browser and a human, and the package's part is to say exactly which directory it must
+happen in and to tell you when it stopped being true.
+
+**First login of an account.** Declare where it lives in the machine config (`accounts`
+is not a `config set` key — it is a map, and the four keys that command takes are single
+values), then log in there:
+
+```jsonc
+// ~/.config/agent-protocol/local.json — or instances/<name>.json on a multi-instance box
+"accounts": { "second": { "configDir": "/home/j/.claude-second" } }
+```
+
+```sh
+CLAUDE_CONFIG_DIR=/home/j/.claude-second claude   # then /login, in that session
+```
+
+The directory does not have to exist first — the tool creates its whole set inside it
+(`.credentials.json`, `.claude.json`, `projects/`, `sessions/`). Nothing else on the box
+is touched, which is the measured fact the mechanism rests on (B.1): the isolation is
+directory-deep, so a login in one home cannot disturb another. The `CLAUDE_CONFIG_DIR`
+in front is not decoration and is the whole of the procedure — the same command without
+it re-logs the box's own account, which is how a box ends up with two ids pointing at one
+subscription and a shelf that never lifts.
+
+**Re-login** is the identical command: a dead token is replaced in place, and there is no
+"logout" step to remember.
+
+**Is it alive.** `doctor` asks once per declared account, each in its own directory, and
+prints a row per subscription:
+
+```
+ok    account: 'main' token        answered in 2.7s
+fail  account: 'second' token      Invalid API key · Please run /login — log this account
+                                   in on the box: CLAUDE_CONFIG_DIR=/home/j/.claude-second claude login
+```
+
+The row above them (`agent: headless run`) is a different question and stays: it asks
+whether the binary answers at all, in the environment the daemon hands a session — which
+carries no `CLAUDE_CONFIG_DIR` and is therefore about the box's own login. On a one-login
+box the account rows are replaced by one `info` saying so; `--offline` leaves them `info`
+too, because a token nobody asked about must be reported as neither dead nor alive.
+
+**When it dies unattended** the circuit says so on its own: the authorisation shelf is per
+account (B.3), so the roles of the other subscription keep running, and the alarm that
+reaches the operator NAMES the account whose login is wanted — an instruction to run
+`claude login` without a name is unusable on a box that holds two.
+
 `operator` is WHO SITS AT THIS BOX — the role a short-form hold is signed by when
 `--by` is not typed. It was `$USER` alone, and an OS account name coincides with a
 role of the config only by luck: on the box this was written on it is `cosysoft`,
