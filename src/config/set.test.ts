@@ -152,6 +152,105 @@ describe("planConfigSet — the door", () => {
   });
 });
 
+describe("planConfigSet — accounts (thread 055)", () => {
+  it("declares where an account of this box lives", () => {
+    const result = ok(
+      plan({ key: "account", value: "lle-second", configDir: "/home/lle/.claude-lle-second" }),
+    );
+    expect(result.step.name).toBe("account: lle-second");
+    expect(result.step.action).toBe("set");
+    expect(result.next.accounts).toEqual({
+      "lle-second": { configDir: "/home/lle/.claude-lle-second" },
+    });
+  });
+
+  it("A SECOND ACCOUNT DOES NOT ERASE THE FIRST — a box declares them one command at a time", () => {
+    const result = ok(
+      plan({
+        current: { agents: {}, accounts: { "lle-main": { configDir: "/home/lle/.claude" } } },
+        key: "account",
+        value: "lle-second",
+        configDir: "/home/lle/.claude-lle-second",
+      }),
+    );
+    expect(result.next.accounts).toEqual({
+      "lle-main": { configDir: "/home/lle/.claude" },
+      "lle-second": { configDir: "/home/lle/.claude-lle-second" },
+    });
+  });
+
+  it("a directory that is not there yet is NOT a refusal — it carries the login that creates it", () => {
+    const result = ok(
+      plan({
+        key: "account",
+        value: "lle-second",
+        configDir: "/home/lle/.claude-lle-second",
+        configDirExists: false,
+      }),
+    );
+    expect(result.step.action).toBe("set");
+    expect(result.step.detail).toContain(
+      "CLAUDE_CONFIG_DIR=/home/lle/.claude-lle-second claude login",
+    );
+  });
+
+  it("prints both sides of a moved account directory", () => {
+    const result = ok(
+      plan({
+        current: { agents: {}, accounts: { "lle-second": { configDir: "/old/dir" } } },
+        key: "account",
+        value: "lle-second",
+        configDir: "/new/dir",
+        configDirExists: true,
+      }),
+    );
+    expect(result.step.action).toBe("change");
+    expect(result.step.detail).toContain("/old/dir → /new/dir");
+  });
+
+  it("the same directory again is a 'keep', so the file is not rewritten", () => {
+    const result = ok(
+      plan({
+        current: { agents: {}, accounts: { "lle-second": { configDir: "/dir" } } },
+        key: "account",
+        value: "lle-second",
+        configDir: "/dir",
+      }),
+    );
+    expect(result.step.action).toBe("keep");
+  });
+
+  it("refuses 'account' without --config-dir: WHERE it lives is all this file says", () => {
+    expect(refusal(plan({ key: "account", value: "lle-second" }))).toContain("--config-dir <path>");
+  });
+
+  it("refuses 'account' with no account named", () => {
+    expect(refusal(plan({ key: "account", configDir: "/dir" }))).toContain(
+      "'config set account <id> --config-dir <path>'",
+    );
+  });
+
+  it("REFUSES A RELATIVE PATH — the daemon that reads it was started somewhere else", () => {
+    const said = refusal(
+      plan({ key: "account", value: "lle-second", configDir: ".claude-second" }),
+    );
+    expect(said).toContain("is relative");
+    expect(said).toContain("CLAUDE_CONFIG_DIR");
+  });
+
+  it("refuses --config-dir beside a key it does not belong to", () => {
+    expect(refusal(plan({ key: "instance", value: "laptop", configDir: "/dir" }))).toContain(
+      "--config-dir belongs to",
+    );
+  });
+
+  it("refuses --exec on an account — the plausible slip, both being 'where it lives'", () => {
+    const said = refusal(plan({ key: "account", value: "lle-second", exec: "/bin/claude" }));
+    expect(said).toContain("--exec belongs to");
+    expect(said).toContain("--config-dir <path>");
+  });
+});
+
 describe("configSetSummary", () => {
   it("without --write it names the flag and promises the file was untouched", () => {
     const result = ok(plan({ key: "instance", value: "laptop" }));

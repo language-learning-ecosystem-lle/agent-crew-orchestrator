@@ -4152,10 +4152,12 @@ const initGithub = (argv: readonly string[]): void => {
  * `config set <key> <value>` — ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019, п.3).
  *
  * The decision is `config/set.ts` and every effect is here, the same split `init` makes.
- * Two of those effects are worth naming, because both are facts about THIS box that no
- * pure function can be given for free: whether the secrets file named is on disk, and
- * whether the binary named resolves — as a path, or on the PATH of the child that would
- * spawn it (which is not this process's PATH, and that difference has cost an evening).
+ * Three of those effects are worth naming, because each is a fact about THIS box that no
+ * pure function can be given for free: whether the secrets file named is on disk, whether
+ * the binary named resolves — as a path, or on the PATH of the child that would spawn it
+ * (which is not this process's PATH, and that difference has cost an evening) — and
+ * whether an account's directory exists yet (thread 055: it does not until a human logs
+ * that subscription in, which is why the step prints the command that does it).
  */
 const configSet = (argv: readonly string[]): void => {
   const withRef = withOperatorRef(argv);
@@ -4172,6 +4174,7 @@ const configSet = (argv: readonly string[]): void => {
   const key = withRef[0]?.startsWith("-") === false ? withRef[0] : undefined;
   const value = withRef[1]?.startsWith("-") === false ? withRef[1] : undefined;
   const exec = flag(withRef, "--exec");
+  const configDir = flag(withRef, "--config-dir");
 
   const outcome = planConfigSet({
     current: local.config,
@@ -4179,9 +4182,16 @@ const configSet = (argv: readonly string[]): void => {
     ...(key === undefined ? {} : { key }),
     ...(value === undefined ? {} : { value }),
     ...(exec === undefined ? {} : { exec }),
+    ...(configDir === undefined ? {} : { configDir }),
     declaredInstances: (loaded.config.instances ?? []).map((one) => one.id),
     knownRoles: loaded.registry.ids(),
     ...(key === "secrets" && value !== undefined ? { secretsExists: existsSync(value) } : {}),
+    // The third fact about THIS box that no pure function can be given for free: whether
+    // the account's directory is there yet. Absence is ordinary (the login creates it),
+    // and what it buys is the exact command printed with the path already in it.
+    ...(key === "account" && configDir !== undefined
+      ? { configDirExists: existsSync(configDir) }
+      : {}),
     ...(key === "agent" && exec !== undefined
       ? {
           execFound: exec.includes("/")
