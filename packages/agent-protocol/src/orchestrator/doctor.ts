@@ -297,6 +297,32 @@ export const accountChecksWithoutAccounts = (): readonly PreflightCheck[] => [
 ];
 
 /**
+ * THE ACCOUNT ROWS OF A BOX THAT RAISES NOTHING (the reviewer's finding on PR #206,
+ * taken by curator on 2026-08-07). The live probe above is skipped on such a box for the
+ * same reason the agent probe is — nothing is spent here — but skipping it SILENTLY is
+ * the one outcome the row above exists to prevent: a checklist that says nothing about
+ * declared accounts is byte-identical to the checklist of a box that declares none, and
+ * "this machine has no second subscription" is exactly the wrong conclusion to leave a
+ * reader free to draw. So the names stay and the question is marked unasked, the way
+ * {@link agentChecksWithoutRoles} does it for its two.
+ *
+ * A box that raises nothing AND declares nothing gets the ordinary "no accounts" row: it
+ * is the true fact about it, and inventing a second wording for the same absence would
+ * make two checklists of one state.
+ */
+export const accountChecksWithoutRoles = (input: {
+  readonly reason: string;
+  readonly accounts: readonly string[];
+}): readonly PreflightCheck[] =>
+  input.accounts.length === 0
+    ? accountChecksWithoutAccounts()
+    : input.accounts.map((id) => ({
+        name: `account: '${id}' token`,
+        status: "info" as CheckStatus,
+        detail: `not asked — ${input.reason}. The account is declared on this box and no session here spends it; the row comes back the day a role is assigned to this instance`,
+      }));
+
+/**
  * THE REMOTE URL AS IT MAY BE PRINTED. A checklist whose whole purpose is to be read
  * by a human — and pasted into a chat or a ticket — must not carry a credential, and
  * an automation clone carries one right in the url (`https://x-access-token:<token>@…`

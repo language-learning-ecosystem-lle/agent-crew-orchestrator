@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   accountChecksWithoutAccounts,
+  accountChecksWithoutRoles,
   accountLiveCheck,
   agentChecksWithoutRoles,
   agentLiveCheck,
@@ -278,6 +279,27 @@ describe("is the token of account X alive (B.4)", () => {
     expect(rows[0]?.detail).toContain("the box's own login");
     // An info row must not make doctor fail — it is a fact about the box, not a defect.
     expect(doctorPassed([...rows])).toBe(true);
+  });
+
+  it("a box that raises nothing keeps the account NAMES — silence would read as 'none'", () => {
+    const rows = accountChecksWithoutRoles({
+      reason: "'my-laptop' is not declared in the repository — a bench",
+      accounts: ["main", "second"],
+    });
+    // The same names as the live rows, so two boxes' checklists compare line by line.
+    expect(rows.map((row) => row.name)).toEqual([
+      "account: 'main' token",
+      "account: 'second' token",
+    ]);
+    expect(rows.map((row) => row.status)).toEqual(["info", "info"]);
+    for (const row of rows) expect(row.detail).toContain("bench");
+    expect(doctorPassed([...rows])).toBe(true);
+  });
+
+  it("raises nothing AND declares nothing — the ordinary 'no accounts' row, not a second wording", () => {
+    expect(accountChecksWithoutRoles({ reason: "a bench", accounts: [] })).toEqual(
+      accountChecksWithoutAccounts(),
+    );
   });
 });
 

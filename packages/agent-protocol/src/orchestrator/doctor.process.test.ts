@@ -159,3 +159,42 @@ describe("doctor asks what this box will sign the NEXT commit with", () => {
     expect(said).toContain("somebody who does not exist");
   });
 });
+
+/**
+ * THE SECTION THAT MUST NOT GO SILENT (the reviewer's finding on PR #206). Both rows of
+ * the accounts section were added to the checklist only on a box that raises roles, so a
+ * box declaring two subscriptions and no assigned role printed NOTHING about them — a
+ * checklist byte-identical to that of a box with one login. It is asked here rather than
+ * of the pure function alone because the defect was in the WIRING: which of the branches
+ * a `doctor` run walks into, and the pure rows knew nothing about it.
+ */
+describe("doctor names the accounts of a box even when that box raises nothing", () => {
+  /** A machine config for a name the repository does not declare — a bench (`boxRaisesNoRoles`). */
+  const bench = (repo: string): void => {
+    const dir = join(configHome(repo), "agent-protocol");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "local.json"),
+      `${JSON.stringify(
+        {
+          agents: {},
+          instance: "my-laptop",
+          accounts: { second: { configDir: "/home/j/.claude-second" } },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  };
+
+  it("keeps the row of a declared account, unasked and with the reason", () => {
+    const { repo, work } = contour(true);
+    bench(repo);
+    const said = doctorIn(work, repo);
+    expect(said).toContain("account: 'second' token");
+    expect(said).toContain("no session here spends it");
+    // The other half: it was NOT probed. A bench spends no token, and a row claiming a
+    // live answer here would be the opposite defect.
+    expect(said).not.toContain("CLAUDE_CONFIG_DIR=/home/j/.claude-second claude login");
+  });
+});

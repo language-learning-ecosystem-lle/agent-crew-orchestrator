@@ -232,7 +232,12 @@ The row above them (`agent: headless run`) is a different question and stays: it
 whether the binary answers at all, in the environment the daemon hands a session — which
 carries no `CLAUDE_CONFIG_DIR` and is therefore about the box's own login. On a one-login
 box the account rows are replaced by one `info` saying so; `--offline` leaves them `info`
-too, because a token nobody asked about must be reported as neither dead nor alive.
+too, because a token nobody asked about must be reported as neither dead nor alive. A box
+that raises no role of this project (a bench, or a declared instance with nothing assigned
+to it) is not asked either — but it KEEPS the rows, `info`, with the reason in them: a
+checklist silent about declared accounts is byte-identical to the checklist of a box that
+has none, and "there is no second subscription here" is the one conclusion this section
+must never leave a reader free to draw.
 
 **When it dies unattended** the circuit says so on its own: the authorisation shelf is per
 account (B.3), so the roles of the other subscription keep running, and the alarm that
