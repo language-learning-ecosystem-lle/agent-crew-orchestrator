@@ -161,6 +161,8 @@ export type OperatorFrame = {
   readonly unreadableDigests?: ReadonlyMap<string, string>;
   /** This box's instance id, when the topology declares one. */
   readonly self?: string | undefined;
+  /** Declared instances with no roles — their old digest is a bench, not an alarm (055). */
+  readonly benchedInstances?: readonly string[];
   readonly mail: MailFreshness & { readonly root: string };
 };
 
@@ -399,6 +401,7 @@ export const renderFrame = (frame: OperatorFrame): string =>
       digests: frame.digests,
       ...(frame.unreadableDigests === undefined ? {} : { unreadable: frame.unreadableDigests }),
       ...(frame.self === undefined ? {} : { self: frame.self }),
+      ...(frame.benchedInstances === undefined ? {} : { benched: frame.benchedInstances }),
       now: frame.now,
     }),
     renderFreshness(frame.mail, frame.now),
