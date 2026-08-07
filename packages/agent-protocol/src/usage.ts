@@ -16,15 +16,23 @@
  */
 export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor', 'init', 'config set' and the operator's five below; --repo defaults to the repository of the current directory):
   agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
-  agent-protocol config set   <key> <value> [--exec <path>] [--ref <ref>] [--local-config <p>] [--instance <name>] [--write]
+  agent-protocol config set   <key> <value> [--exec <path>] [--config-dir <path>] [--ref <ref>] [--local-config <p>] [--instance <name>] [--write]
                               # ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019): the
                               # commissioned box whose agent binary moved, whose operator is
                               # somebody else now, whose secrets file was moved off /root —
                               # without opening the JSON by hand
                               # <key>: 'instance <id>', 'operator <role>', 'secrets <path>',
-                              # 'agent <kind> --exec <path>'. A POLICY key ('roles', 'limits',
-                              # 'instances', …) is refused BY THE RULE, not as a typo: it lives
-                              # in the repository config, behind a PR
+                              # 'agent <kind> --exec <path>', 'account <id> --config-dir <path>'.
+                              # A POLICY key ('roles', 'limits', 'instances', …) is refused BY
+                              # THE RULE, not as a typo: it lives in the repository config,
+                              # behind a PR — and so does WHICH ROLE sits on which account
+                              # ('launch.account'); this key says only WHERE that account's
+                              # directory is on this disk
+                              # AN ACCOUNT DIRECTORY THAT IS NOT THERE YET is the ordinary case
+                              # and not a refusal (055): the login is what creates it, so the
+                              # step prints the command that does, with the path already in it
+                              # ('CLAUDE_CONFIG_DIR=<path> claude login'). Whether the token in
+                              # it is LIVE is 'doctor's question, per account, and it asks it
                               # THE CHECK RUNS BEFORE THE WRITE, which is the whole of it: the
                               # value is judged in the words 'init' uses (an undeclared instance
                               # is a bench, an operator that is no role signs no hold), and the

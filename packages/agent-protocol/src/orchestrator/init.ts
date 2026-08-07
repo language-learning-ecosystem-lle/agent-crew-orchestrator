@@ -229,6 +229,43 @@ export const operatorStep = (input: {
 };
 
 /**
+ * WHERE ONE ACCOUNT OF THIS BOX LIVES (thread 055) — the machine's half of the join
+ * `launch.account` opens: the repository says WHICH subscription a role is raised on,
+ * this says WHERE that account's directory is on this disk.
+ *
+ * A directory that is not there yet is the ORDINARY case and not a refusal, for the
+ * same reason `secretsStep` records a missing file: the order the operator works in is
+ * "declare where it goes, then log in" — and the login is the step that creates the
+ * directory. So the detail carries the exact command that fills it, with the path
+ * already in it: the account is useless until a human runs it, and an operator who has
+ * to reconstruct `CLAUDE_CONFIG_DIR=… claude login` from prose is an operator who
+ * types it into the wrong shell once.
+ *
+ * WHAT IT DOES NOT DO is judge whether that directory holds a LIVE token: `doctor`
+ * probes each declared account for real and is the command that answers it.
+ */
+export const accountStep = (input: {
+  readonly id: string;
+  readonly requested: string;
+  readonly current?: string;
+  /** Whether the directory is on this disk already. Unknown (`undefined`) says nothing. */
+  readonly exists?: boolean;
+}): InitStep => {
+  const name = `account: ${input.id}`;
+  const there =
+    input.exists === false
+      ? ` — nothing at that path yet; the login creates it: CLAUDE_CONFIG_DIR=${input.requested} claude login`
+      : "";
+  if (input.current === input.requested) {
+    return { name, action: "keep", detail: `${input.requested}${there}, unchanged` };
+  }
+  if (input.current === undefined) {
+    return { name, action: "set", detail: `${input.requested}${there}` };
+  }
+  return { name, action: "change", detail: `${input.current} → ${input.requested}${there}` };
+};
+
+/**
  * WHERE THE TRANSPORT CREDENTIALS LIE (R4) — a path, and only a path; the file itself
  * is never created here (see the module doc). A named file that is not there yet is
  * reported as such and still recorded: the order "say where it goes, then put it there"
@@ -298,6 +335,12 @@ export const nextLocalConfig = (
      * later command typed there find it without naming it.
      */
     readonly repo?: string;
+    /**
+     * ONE ACCOUNT OF THIS BOX (thread 055). Merged into the map like an agent — never
+     * replacing it: a box with two subscriptions declares them one command at a time,
+     * and the second declaration must not be how the first one disappears.
+     */
+    readonly account?: { readonly id: string; readonly configDir: string };
   },
 ): LocalConfig => ({
   ...current,
@@ -305,6 +348,19 @@ export const nextLocalConfig = (
     decisions.agent === undefined
       ? current.agents
       : { ...current.agents, [decisions.agent.kind]: { exec: decisions.agent.exec } },
+  // OPTIONAL AND MEANT AS SUCH (`localConfigSchema`): a box that declares no accounts
+  // keeps the key absent rather than growing an empty map, because absence is what says
+  // "every role here spends this box's own login".
+  ...(decisions.account === undefined
+    ? current.accounts === undefined
+      ? {}
+      : { accounts: current.accounts }
+    : {
+        accounts: {
+          ...(current.accounts ?? {}),
+          [decisions.account.id]: { configDir: decisions.account.configDir },
+        },
+      }),
   ...(decisions.instance === undefined
     ? current.instance === undefined
       ? {}

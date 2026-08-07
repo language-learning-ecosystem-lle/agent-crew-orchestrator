@@ -32,6 +32,7 @@
  */
 
 import {
+  accountStep,
   agentStep,
   type InitStep,
   instanceStep,
@@ -42,7 +43,7 @@ import {
 import { type LocalConfig, LocalConfigError, POLICY_KEYS, parseLocalConfig } from "./local.js";
 
 /** What the machine config holds, as the words an operator types. */
-export const CONFIG_SET_KEYS = ["instance", "operator", "secrets", "agent"] as const;
+export const CONFIG_SET_KEYS = ["instance", "operator", "secrets", "agent", "account"] as const;
 
 export type ConfigSetOutcome =
   | { readonly ok: true; readonly step: InitStep; readonly next: LocalConfig }
@@ -63,8 +64,12 @@ export const planConfigSet = (input: {
   readonly key?: string;
   /** The second bare word: the id, the role, the path — or, for `agent`, the tool kind. */
   readonly value?: string;
-  /** `agent <kind> --exec <path>`: the one flag of this command. */
+  /** `agent <kind> --exec <path>`: the flag of the key that has two halves. */
   readonly exec?: string;
+  /** `account <id> --config-dir <path>`: the other half of the other two-halved key. */
+  readonly configDir?: string;
+  /** Whether the account directory named is on this disk (absence is legitimate — see `accountStep`). */
+  readonly configDirExists?: boolean;
   readonly declaredInstances: readonly string[];
   readonly knownRoles: readonly string[];
   /** Whether the secrets file named is there yet (absence is legitimate — see `secretsStep`). */
@@ -98,16 +103,26 @@ export const planConfigSet = (input: {
       refusal:
         key === "agent"
           ? "'config set agent' needs the tool it is about — 'config set agent <kind> --exec <path>'"
-          : `'config set ${key}' needs a value — 'config set ${key} <${key === "secrets" ? "path" : key === "operator" ? "role" : "id"}>'`,
+          : key === "account"
+            ? "'config set account' needs the account it is about — 'config set account <id> --config-dir <path>'"
+            : `'config set ${key}' needs a value — 'config set ${key} <${key === "secrets" ? "path" : key === "operator" ? "role" : "id"}>'`,
     };
   }
-  // The one flag belongs to the one key that has two halves. Elsewhere it would be read
+  // A flag belongs to the one key that has two halves. Elsewhere it would be read
   // as accepted and silently dropped, which is the class of defect the argument guard
-  // exists for — refused here for the same reason, one level up.
+  // exists for — refused here for the same reason, one level up. Both flags are checked
+  // the same way, so that `--exec` on an account (the plausible slip, both being "where
+  // it lives") is a sentence and not a write that ignored half of what was typed.
   if (input.exec !== undefined && key !== "agent") {
     return {
       ok: false,
-      refusal: `--exec belongs to 'config set agent <kind> --exec <path>' — 'config set ${key}' takes its value as a bare word`,
+      refusal: `--exec belongs to 'config set agent <kind> --exec <path>' — 'config set ${key}' takes ${key === "account" ? "--config-dir <path>" : "its value as a bare word"}`,
+    };
+  }
+  if (input.configDir !== undefined && key !== "account") {
+    return {
+      ok: false,
+      refusal: `--config-dir belongs to 'config set account <id> --config-dir <path>' — 'config set ${key}' takes ${key === "agent" ? "--exec <path>" : "its value as a bare word"}`,
     };
   }
 
@@ -131,10 +146,12 @@ const decide = (input: {
   readonly key: string;
   readonly value: string;
   readonly exec?: string;
+  readonly configDir?: string;
   readonly declaredInstances: readonly string[];
   readonly knownRoles: readonly string[];
   readonly secretsExists?: boolean;
   readonly execFound?: boolean;
+  readonly configDirExists?: boolean;
 }): ConfigSetOutcome => {
   if (input.key === "instance") {
     return {
@@ -167,6 +184,36 @@ const decide = (input: {
         ...(input.secretsExists === undefined ? {} : { exists: input.secretsExists }),
       }),
       next: nextLocalConfig(input.current, { secretsEnvFile: input.value }),
+    };
+  }
+  if (input.key === "account") {
+    const configDir = (input.configDir ?? "").trim();
+    if (configDir === "") {
+      return {
+        ok: false,
+        refusal: `'config set account ${input.value}' needs --config-dir <path>: where the account's directory is on this box is the only thing the machine config says about an account`,
+      };
+    }
+    // Relative would depend on the cwd of whoever typed it, while the path is read by a
+    // daemon started somewhere else entirely — the same reason `secrets.envFile` is
+    // absolute. Refused here rather than by the schema, which only knows it is a string.
+    if (!configDir.startsWith("/")) {
+      return {
+        ok: false,
+        refusal: `'${configDir}' is relative — the account directory is passed to sessions this box spawns from elsewhere ('CLAUDE_CONFIG_DIR'), so it must be absolute`,
+      };
+    }
+    return {
+      ok: true,
+      step: accountStep({
+        id: input.value,
+        requested: configDir,
+        ...(input.current.accounts?.[input.value] === undefined
+          ? {}
+          : { current: (input.current.accounts[input.value] as { configDir: string }).configDir }),
+        ...(input.configDirExists === undefined ? {} : { exists: input.configDirExists }),
+      }),
+      next: nextLocalConfig(input.current, { account: { id: input.value, configDir } }),
     };
   }
   const exec = (input.exec ?? "").trim();

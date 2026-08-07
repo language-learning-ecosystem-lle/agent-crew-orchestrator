@@ -195,18 +195,32 @@ The one step of the whole mechanism that no command can take: an OAuth login is 
 browser and a human, and the package's part is to say exactly which directory it must
 happen in and to tell you when it stopped being true.
 
-**First login of an account.** Declare where it lives in the machine config (`accounts`
-is not a `config set` key — it is a map, and the four keys that command takes are single
-values), then log in there:
+**First login of an account.** Declare where it lives in the machine config, then log in
+there. The declaration is a `config set` key like the others (`account <id>` takes its
+second half as `--config-dir <path>`, the way `agent <kind>` takes `--exec <path>`), and
+it MERGES into the map rather than replacing it — a box with two subscriptions declares
+them one command at a time, and the second must not be how the first disappears:
+
+```sh
+agent-protocol config set account second --config-dir /home/j/.claude-second --write
+# account: second — set: /home/j/.claude-second — nothing at that path yet;
+#   the login creates it: CLAUDE_CONFIG_DIR=/home/j/.claude-second claude login
+```
 
 ```jsonc
-// ~/.config/agent-protocol/local.json — or instances/<name>.json on a multi-instance box
+// what lands in ~/.config/agent-protocol/local.json — or instances/<name>.json
 "accounts": { "second": { "configDir": "/home/j/.claude-second" } }
 ```
 
 ```sh
 CLAUDE_CONFIG_DIR=/home/j/.claude-second claude   # then /login, in that session
 ```
+
+The path must be absolute and is refused otherwise: it is read by a daemon started
+somewhere else entirely, so a relative one would mean whatever the cwd of the shell that
+typed it meant. WHICH ROLE sits on that account is not this command's business and never
+becomes it — `launch.account` is policy, it lives in the repository config, and a key
+from there is refused here by the rule rather than as a typo.
 
 The directory does not have to exist first — the tool creates its whole set inside it
 (`.credentials.json`, `.claude.json`, `projects/`, `sessions/`). Nothing else on the box

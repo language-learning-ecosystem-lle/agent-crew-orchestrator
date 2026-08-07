@@ -131,6 +131,36 @@ describe("config set — the file on disk", () => {
     expect(JSON.parse(readFileSync(fresh, "utf8"))).toEqual({ agents: {}, operator: "dev-core" });
   });
 
+  it("writes an account beside the one already declared, and reads back through the strict schema", () => {
+    const { repo, path } = box({
+      agents: {},
+      accounts: { "lle-main": { configDir: "/home/lle/.claude" } },
+      instance: "lle-agents",
+    });
+    const { said, code } = run(
+      repo,
+      "account",
+      "lle-second",
+      "--config-dir",
+      "/home/lle/.claude-lle-second",
+      "--local-config",
+      path,
+      "--write",
+    );
+    expect(code).toBe(0);
+    // The directory does not exist on this disk, and that is the ordinary case: what the
+    // operator gets back is the command that creates it, with the path already in it.
+    expect(said).toContain("CLAUDE_CONFIG_DIR=/home/lle/.claude-lle-second claude login");
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
+      agents: {},
+      accounts: {
+        "lle-main": { configDir: "/home/lle/.claude" },
+        "lle-second": { configDir: "/home/lle/.claude-lle-second" },
+      },
+      instance: "lle-agents",
+    });
+  });
+
   it("refuses a typo'd flag at the door, like every other command", () => {
     const { repo, path } = box({ agents: {} });
     const { said, code } = run(
