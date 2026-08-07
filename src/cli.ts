@@ -146,6 +146,7 @@ import {
 } from "./orchestrator/directive.js";
 import {
   accountChecksWithoutAccounts,
+  accountChecksWithoutRoles,
   accountLiveCheck,
   agentChecksWithoutRoles,
   agentLiveCheck,
@@ -4437,7 +4438,14 @@ const doctor = (argv: readonly string[]): void => {
   // resolved — an account is a home directory, not a different tool — so a box whose
   // binary was not found is not asked twice about the same absence.
   const accounts = Object.entries(local.config.accounts ?? {});
-  if (noRoles === undefined && accounts.length > 0) {
+  if (noRoles !== undefined) {
+    // The box raises nothing, so nothing here spends a token — but the section is NAMED
+    // anyway (the reviewer's finding on #206): silence about declared accounts reads as
+    // "there are none", which is the single conclusion this section may not allow.
+    checks.push(
+      ...accountChecksWithoutRoles({ reason: noRoles, accounts: accounts.map(([id]) => id) }),
+    );
+  } else if (accounts.length > 0) {
     for (const [id, account] of accounts)
       checks.push(
         accountLiveCheck({
@@ -4456,7 +4464,7 @@ const doctor = (argv: readonly string[]): void => {
                 }),
         }),
       );
-  } else if (noRoles === undefined) checks.push(...accountChecksWithoutAccounts());
+  } else checks.push(...accountChecksWithoutAccounts());
 
   // Git: the remote the circuit reads and writes through. The write probe names the
   // instance, so two boxes probing the same remote are told apart in its logs.
