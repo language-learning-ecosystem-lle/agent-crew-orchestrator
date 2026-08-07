@@ -128,7 +128,7 @@ export type OperatorFrame = {
    * Beside the windows rather than inside them: both stand the circuit down and only one
    * of them ends by itself.
    */
-  readonly auth?: AuthShelf | undefined;
+  readonly auth?: readonly AuthShelf[] | undefined;
   /**
    * The run of `gh` refusals in the merge-ready tier (thread 051), read from the file the
    * daemon writes. Undefined means the tier answered on the last tick that asked it.
@@ -275,10 +275,10 @@ export const renderQuota = (shelves: readonly QuotaShelf[] = []): string =>
  * are: the reader's question is "why is nothing running", and a section that only appears
  * on bad news teaches them to conclude nothing from its absence.
  */
-export const renderAuth = (shelf?: AuthShelf): string =>
-  shelf === undefined
+export const renderAuth = (shelves: readonly AuthShelf[] = []): string =>
+  shelves.length === 0
     ? "auth:\n  the box authenticates — no run has died on the vendor's credentials since its last delivery"
-    : `auth:\n  ⏸ ${describeAuthShelf(shelf)}`;
+    : ["auth:", ...shelves.map((shelf) => `  ⏸ ${describeAuthShelf(shelf)}`)].join("\n");
 
 /**
  * THE MERGE-READY TIER, and the ONE section of the frame that is silent when the news is

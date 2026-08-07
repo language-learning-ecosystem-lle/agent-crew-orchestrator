@@ -38,7 +38,7 @@
  * refusals and not every sentence with "auth" in it.
  */
 
-import { toolSurfacesOf } from "./quota.js";
+import { BOX_ACCOUNT, describeAccount, toolSurfacesOf } from "./quota.js";
 
 /** The verdict for one line: the matched text, trimmed — what the log quotes as evidence. */
 export type AuthSignal = {
@@ -126,8 +126,24 @@ export const describeAuthRelease = (signal: AuthSignal): string =>
 /** The retry interval of a shelved box — see the block above for why it is not a wait. */
 export const AUTH_SHELF_MINUTES = 10;
 
-/** The box's credentials are refused: since when, on whose evidence, until the next knock. */
+/**
+ * THE CREDENTIALS ARE THE ACCOUNT'S, NOT THE BOX'S (thread 055, B.3) — the same correction
+ * B.2 forced on the quota, and here it is sharper. A dead token was infrastructure of the
+ * BOX while a box had one login; with several accounts on one machine (`accounts.<id>.
+ * configDir`) each has its own `~/.claude` directory and its own OAuth token, and they
+ * expire independently — that is the whole point of keeping them apart. A single shelf
+ * would stand every role of the box down on a token that is dead for one of them, and,
+ * worse in the other direction, would let ANY delivery break the run of deaths: a healthy
+ * account delivering every ten minutes would keep resetting the counter of a dead one, so
+ * the alarm that rings john (`authAlarmDue`) would never reach two.
+ *
+ * So the fold is per account, keyed exactly as the quota's is, with the same meaning for
+ * silence: no `account` on the event is the box's own login ({@link BOX_ACCOUNT}), which
+ * is where every event written before B.3 belongs and where it actually spent.
+ */
 export type AuthShelf = {
+  /** Whose credentials were refused — the id, or {@link BOX_ACCOUNT} for the box's own. */
+  readonly account: string;
   /** When the next launch is allowed — UTC ISO to the second. */
   readonly until: string;
   /** The stamp of the LAST refusal seen. */
@@ -148,6 +164,7 @@ type AuthEvent = {
   readonly ts: string;
   readonly role: string;
   readonly reason?: string | undefined;
+  readonly account?: string | undefined;
 };
 
 /** The release reason this whole module is built around — one spelling, one place. */
@@ -162,31 +179,45 @@ export const AUTH_RELEASE_REASON = "auth-failed";
  * clock and by nothing else, because the thing that actually fixes it (a human logging in)
  * leaves no event in this journal to wait for.
  */
-export const openAuthShelf = (events: readonly AuthEvent[], now: Date): AuthShelf | undefined => {
-  let last: { ts: string; role: string } | undefined;
-  let deaths = 0;
+export const openAuthShelves = (events: readonly AuthEvent[], now: Date): readonly AuthShelf[] => {
+  const runs = new Map<string, { ts: string; role: string; deaths: number }>();
   for (const event of events) {
-    if (event.kind === "lease-released" && event.reason === AUTH_RELEASE_REASON) {
-      last = { ts: event.ts, role: event.role };
-      deaths += 1;
+    if (event.kind !== "lease-released") continue;
+    const account = event.account ?? BOX_ACCOUNT;
+    if (event.reason === AUTH_RELEASE_REASON) {
+      runs.set(account, {
+        ts: event.ts,
+        role: event.role,
+        deaths: (runs.get(account)?.deaths ?? 0) + 1,
+      });
       continue;
     }
-    // ANY OTHER COMPLETED RUN PROVES THE CREDENTIALS WORK, so the run of deaths is broken
-    // by it: the counter is about the CURRENT outage, and a box that delivered since is not
-    // in one. A `launch-refused` does not break it — nothing was raised, so nothing was
-    // proved either way.
-    if (event.kind === "lease-released" && event.reason !== AUTH_RELEASE_REASON) {
-      last = undefined;
-      deaths = 0;
-    }
+    // ANY OTHER COMPLETED RUN PROVES THE CREDENTIALS WORK — of THIS ACCOUNT and of no
+    // other (B.3). The run of deaths is broken by it: the counter is about the CURRENT
+    // outage, and an account that delivered since is not in one. A `launch-refused` does
+    // not break it — nothing was raised, so nothing was proved either way.
+    runs.delete(account);
   }
-  if (last === undefined) return undefined;
-  const until = `${new Date(new Date(last.ts).getTime() + AUTH_SHELF_MINUTES * 60_000)
-    .toISOString()
-    .slice(0, 19)}Z`;
-  if (new Date(until).getTime() <= now.getTime()) return undefined;
-  return { until, since: last.ts, role: last.role, deaths };
+  const shelves: AuthShelf[] = [];
+  for (const [account, last] of runs) {
+    const until = `${new Date(new Date(last.ts).getTime() + AUTH_SHELF_MINUTES * 60_000)
+      .toISOString()
+      .slice(0, 19)}Z`;
+    if (new Date(until).getTime() <= now.getTime()) continue;
+    shelves.push({ account, until, since: last.ts, role: last.role, deaths: last.deaths });
+  }
+  return shelves.sort((a, b) => (a.until < b.until ? -1 : a.until > b.until ? 1 : 0));
 };
+
+/**
+ * THE SHELF THAT STANDS IN THE WAY OF ONE CANDIDATE — the planner's whole question, and
+ * the counterpart of `shelvesAgainst`: a candidate is refused by the dead credentials of
+ * the account it would spend, and by nothing else.
+ */
+export const authShelfAgainst = (
+  shelves: readonly AuthShelf[],
+  account: string | undefined,
+): AuthShelf | undefined => shelves.find((shelf) => shelf.account === (account ?? BOX_ACCOUNT));
 
 /**
  * Whether the refusal of THIS shelf has already been written to the journal — the same
@@ -218,8 +249,8 @@ export const authAlarmDue = (shelf: AuthShelf): boolean => shelf.deaths >= AUTH_
 
 /** The shelf in a line — how long the box has been refused, and what happens next. */
 export const describeAuthShelf = (shelf: AuthShelf): string =>
-  `the box could not authenticate — ${shelf.deaths} run(s) in a row died on the vendor's credentials (last at ${shelf.since} on ${shelf.role}); nothing is raised until ${shelf.until}, when ONE pair is raised as the probe. If it dies too, the shelf is set again${
+  `${describeAccount(shelf.account)} could not authenticate — ${shelf.deaths} run(s) in a row died on the vendor's credentials (last at ${shelf.since} on ${shelf.role}); nothing is raised until ${shelf.until}, when ONE pair is raised as the probe. If it dies too, the shelf is set again${
     authAlarmDue(shelf)
-      ? " — the token is dead and the circuit is standing still: `claude login` on this box"
+      ? ` — the token is dead and the circuit is standing still: \`claude login\` on this box for ${describeAccount(shelf.account)}`
       : ""
   }.`;

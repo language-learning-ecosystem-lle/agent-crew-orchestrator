@@ -11,7 +11,7 @@
  * The stub is the witness: it writes its own `CLAUDE_CONFIG_DIR` into a file. What the
  * package intended is not evidence; what arrived in the child's environment is.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -28,6 +28,7 @@ import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
+import { parseJournal } from "./journal.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -223,5 +224,200 @@ describe("the account of a run reaches the session it raises (thread 055)", () =
     expect(result.code).not.toBe(0);
     expect(result.out).toContain("accounts.second.configDir");
     expect(existsSync(seen)).toBe(false);
+  }, 60_000);
+});
+
+/**
+ * B.3 (thread 055) — THE ACCOUNT REACHES THE PLANNER AND THE JOURNAL, and it is asked of
+ * the circuit rather than of the code, for the reason the file's own doc block gives: the
+ * shelves of B.3 are complete and unit-tested, and on an empty field they behave exactly
+ * as they did before B.3. Two facts are the whole wiring, so both are measured here:
+ *
+ *  1. a run WRITES whose account it spent — without it every shelf folds over silence;
+ *  2. a candidate CARRIES whose account it would spend — without it a window closed on
+ *     one subscription still stands the other's roles down, which is the stall B.3 exists
+ *     to remove.
+ */
+const twoAccountConfig = {
+  protocolVersion: CURRENT_PROTOCOL_VERSION,
+  mail: { branch: "comms", dir: "agent-comms" },
+  orchestrator: { state: ".orchestrator", mailCheckout: "mailco", ref: "HEAD" },
+  roles: [
+    {
+      id: "dev-core",
+      kind: "claude-code",
+      status: "active",
+      wake: { mode: "watch", session: "s" },
+      summary: "the stream",
+      instructions: [{ kind: "in-repo", path: "CARD.md" }],
+      launch: { allowedTools: ["Bash"], account: "main" },
+    },
+    {
+      id: "curator",
+      kind: "claude-code",
+      status: "active",
+      wake: { mode: "watch", session: "s2" },
+      summary: "the other stream",
+      instructions: [{ kind: "in-repo", path: "CARD.md" }],
+      launch: { allowedTools: ["Bash"], account: "second" },
+    },
+  ],
+};
+
+const WAITING_ON_CURATOR =
+  "---\nfrom: dev-core\ndate: 2026-07-25T10:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nThe body.\n";
+
+/** The contour of a box on TWO subscriptions: a role on each, a thread waiting on each. */
+const twoAccountContour = (): string => {
+  const base = mkdtempSync(join(tmpdir(), "agent-protocol-shelf-"));
+  const origin = join(base, "origin.git");
+  execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
+
+  const repo = join(base, "work");
+  execFileSync("git", ["clone", "-q", origin, repo]);
+  writeFileSync(
+    join(repo, "agent-protocol.json"),
+    `${JSON.stringify(twoAccountConfig, null, 2)}\n`,
+  );
+  writeFileSync(join(repo, "CARD.md"), "the role card\n");
+  git(repo, "add", ".");
+  git(repo, "commit", "-qm", "config");
+  git(repo, "push", "-q", "origin", "main");
+
+  const mail = join(repo, "mailco");
+  execFileSync("git", ["clone", "-q", origin, mail]);
+  git(mail, "checkout", "-q", "--orphan", "comms");
+  for (const [id, body] of [
+    ["055-a", WAITING],
+    ["055-b", WAITING_ON_CURATOR],
+  ] as const) {
+    const thread = join(mail, "agent-comms", id);
+    mkdirSync(join(thread, "messages"), { recursive: true });
+    writeFileSync(join(thread, "_meta.md"), META);
+    writeFileSync(join(thread, "messages", "2026-07-25T10-00-00Z-curator.md"), body);
+  }
+  git(mail, "add", "agent-comms");
+  git(mail, "commit", "-qm", "mail");
+  git(mail, "push", "-q", "-u", "origin", "comms");
+  return repo;
+};
+
+const journalOf = (repo: string): ReturnType<typeof parseJournal> => {
+  const path = join(repo, ".orchestrator", "journal.jsonl");
+  return existsSync(path) ? parseJournal(readFileSync(path, "utf8")) : [];
+};
+
+/** The window of ONE account, closed for hours — the fact the planner has to read per account. */
+const seedClosedWindow = (repo: string, account: string): void => {
+  const state = join(repo, ".orchestrator");
+  mkdirSync(state, { recursive: true });
+  writeFileSync(join(state, "enabled"), "", "utf8");
+  const until = new Date(Date.now() + 5 * 60 * 60_000).toISOString().slice(0, 19);
+  writeFileSync(
+    join(state, "journal.jsonl"),
+    `${JSON.stringify({
+      kind: "lease-released",
+      ts: new Date(Date.now() - 60_000).toISOString().slice(0, 19).concat("Z"),
+      role: "dev-core",
+      thread: "055-a",
+      reason: "quota-exhausted",
+      window: "five_hour",
+      until: `${until}Z`,
+      account,
+    })}\n`,
+    "utf8",
+  );
+};
+
+const daemonOnce = (repo: string, exec: string): string => {
+  const result = spawnSync(
+    TSX,
+    [
+      CLI,
+      "orchestrator",
+      "daemon",
+      "--ref",
+      "HEAD",
+      "--no-fetch",
+      "--repo",
+      repo,
+      "--once",
+      "--exec",
+      exec,
+      "--poll",
+      "1",
+    ],
+    { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
+  );
+  return `${result.stdout ?? ""}${result.stderr ?? ""}`;
+};
+
+describe("the account reaches the planner and the journal (thread 055, B.3)", () => {
+  it("a run records WHOSE account it spent — the field every shelf is folded over", () => {
+    const { repo } = contour("second");
+    const { exec } = witness(repo);
+    machineConfig(repo, { accounts: { second: { configDir: "/home/j/.claude-second" } } });
+
+    run(repo, exec);
+
+    const released = journalOf(repo).filter((event) => event.kind === "lease-released");
+    expect(released).not.toHaveLength(0);
+    expect(released.map((event) => (event as { account?: string }).account)).toContain("second");
+  }, 60_000);
+
+  it("a run on the box's own account writes NO field — silence is the key, not a gap", () => {
+    const { repo } = contour();
+    const { exec } = witness(repo);
+    machineConfig(repo, {});
+
+    run(repo, exec);
+
+    const released = journalOf(repo).filter((event) => event.kind === "lease-released");
+    expect(released).not.toHaveLength(0);
+    expect(released.every((event) => !("account" in event))).toBe(true);
+  }, 60_000);
+
+  it("the window closed on ONE account → the role of the OTHER is raised, the first is skipped", () => {
+    // The acceptance minimum of B.5, end to end: before the wiring the same contour raised
+    // nobody at all, because one closed window was a state of the whole box.
+    const repo = twoAccountContour();
+    const stub = join(repo, "stub.sh");
+    writeFileSync(stub, "#!/bin/sh\nexit 0\n");
+    chmodSync(stub, 0o755);
+    machineConfig(repo, {
+      accounts: {
+        main: { configDir: "/home/j/.claude-main" },
+        second: { configDir: "/home/j/.claude-second" },
+      },
+    });
+    seedClosedWindow(repo, "main");
+
+    const out = daemonOnce(repo, stub);
+
+    expect(out).toContain("candidate dev-core");
+    expect(out).toContain("rate-limit window is closed");
+    const launched = journalOf(repo).filter((event) => event.kind === "launch");
+    expect(launched.map((event) => event.role)).toEqual(["curator"]);
+  }, 60_000);
+
+  it("…and closed on the account of the ONLY waiting role, nobody is raised", () => {
+    // The control: the same contour, the shelf moved to the other subscription. Without it
+    // the test above would also pass on a planner that simply raises whoever is second.
+    const repo = twoAccountContour();
+    const stub = join(repo, "stub.sh");
+    writeFileSync(stub, "#!/bin/sh\nexit 0\n");
+    chmodSync(stub, 0o755);
+    machineConfig(repo, {
+      accounts: {
+        main: { configDir: "/home/j/.claude-main" },
+        second: { configDir: "/home/j/.claude-second" },
+      },
+    });
+    seedClosedWindow(repo, "second");
+
+    daemonOnce(repo, stub);
+
+    const launched = journalOf(repo).filter((event) => event.kind === "launch");
+    expect(launched.map((event) => event.role)).toEqual(["dev-core"]);
   }, 60_000);
 });

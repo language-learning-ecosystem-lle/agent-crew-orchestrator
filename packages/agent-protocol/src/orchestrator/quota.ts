@@ -359,8 +359,45 @@ export const SHORT_SHELF_MINUTES = 5;
 /** The key of a shelf for a signal that did not name its window type. */
 export const UNKNOWN_WINDOW = "unknown";
 
-/** One closed window: which one, until when, and on whose evidence. */
+/**
+ * THE SHELF IS PER ACCOUNT AND PER WINDOW (thread 055, B.3) — the correction B.2 forced.
+ *
+ * The block above says it in one line and it was true while a box had one subscription:
+ * "the window belongs to the account, not to the role". B.2 made a box able to raise its
+ * roles on SEVERAL accounts (`launch.account` in the repository, `accounts.<id>.configDir`
+ * on the machine), and from that moment "per instance" stopped being a synonym for "per
+ * account" — it became the bug. A five-hour window burnt out on account `main` would stand
+ * down the roles of account `second`, whose window nobody has touched, for five hours: the
+ * exact stall D-3 part 2 exists to remove, now caused by the backoff itself and on a box
+ * that has the quota to keep working. In the other direction nothing is lost — a signal
+ * still closes the door for every role sharing that account, which is the fact that made
+ * a per-role backoff wrong in the first place.
+ *
+ * SILENCE IS A KEY, NOT A GAP. A run with no `launch.account` spends the box's own account
+ * (`launch.ts`), and that is a real account with a real window — so `undefined` shelves
+ * under {@link BOX_ACCOUNT} and matches candidates that name no account either. This is
+ * also why journals written before B.3 need no migration: every one of their events lands
+ * on the box's own shelf, which is where every one of those runs actually spent.
+ */
+export const BOX_ACCOUNT = "";
+
+/**
+ * The key of one shelf — the pair (account, window), in that order, joined by a separator
+ * neither half can contain. It is written as the ESCAPE SEQUENCE and never as the byte
+ * itself: one literal NUL in a source file makes git, GitHub and grep call the whole blob
+ * binary for ever while every tool stays green (`sources.test.ts`, the guard of PR #81) —
+ * which is exactly what the first draft of this line did.
+ */
+const shelfKey = (account: string, window: string): string => `${account}\u0000${window}`;
+
+/** One closed window: whose account, which window, until when, and on whose evidence. */
 export type QuotaShelf = {
+  /**
+   * The account whose window closed — the id as the repository names it, or
+   * {@link BOX_ACCOUNT} for the box's own. See the block above for why the empty string is
+   * a key and not a missing value.
+   */
+  readonly account: string;
   /** The vendor's word for the window (`five_hour`, `seven_day`, …) or `unknown`. */
   readonly window: string;
   /** When the door opens again, UTC ISO to the second. */
@@ -385,6 +422,7 @@ type QuotaEvent = {
   readonly reason?: string | undefined;
   readonly until?: string | undefined;
   readonly window?: string | undefined;
+  readonly account?: string | undefined;
 };
 
 const shelfEnd = (event: QuotaEvent): { until: string; stated: boolean } =>
@@ -418,12 +456,31 @@ export const openQuotaShelves = (
   for (const event of events) {
     if (event.kind !== "lease-released" || event.reason !== "quota-exhausted") continue;
     const window = event.window ?? UNKNOWN_WINDOW;
-    latest.set(window, { window, since: event.ts, role: event.role, ...shelfEnd(event) });
+    const account = event.account ?? BOX_ACCOUNT;
+    latest.set(shelfKey(account, window), {
+      account,
+      window,
+      since: event.ts,
+      role: event.role,
+      ...shelfEnd(event),
+    });
   }
   return [...latest.values()]
     .filter((shelf) => new Date(shelf.until).getTime() > now.getTime())
     .sort((a, b) => (a.until < b.until ? -1 : a.until > b.until ? 1 : 0));
 };
+
+/**
+ * THE SHELVES THAT STAND IN THE WAY OF ONE CANDIDATE — the whole of B.3 as the planner
+ * sees it. A candidate spending account `a` is refused by the closed windows of `a` and by
+ * nothing else; a candidate that names no account spends the box's own and is refused by
+ * its shelves. The filter is an equality on the key and never a fall-back: a shelf of
+ * another account leaking into this answer is the stall this change removes.
+ */
+export const shelvesAgainst = (
+  shelves: readonly QuotaShelf[],
+  account: string | undefined,
+): readonly QuotaShelf[] => shelves.filter((shelf) => shelf.account === (account ?? BOX_ACCOUNT));
 
 /**
  * Whether the refusal of THIS shelf has already been written to the journal. Not once per
@@ -450,8 +507,16 @@ export const quotaRefusalRecorded = (events: readonly QuotaEvent[], shelf: Quota
       event.kind === "launch-refused" && event.reason === "quota" && event.ts >= shelf.since,
   );
 
-/** One shelf in a line — the window, when it opens, and whether that time is the vendor's. */
+/**
+ * WHOSE WINDOW, in the words an operator can act on: a named account, or the box's own
+ * when nothing was named. Two accounts standing down at once is the picture B.3 makes
+ * possible, and a line that does not say which is which is unreadable exactly then.
+ */
+export const describeAccount = (account: string): string =>
+  account === BOX_ACCOUNT ? "the box's own account" : `account '${account}'`;
+
+/** One shelf in a line — whose, which window, when it opens, and whose time that is. */
 export const describeQuotaShelf = (shelf: QuotaShelf): string =>
   shelf.stated
-    ? `${shelf.window} window closed until ${shelf.until} (the signal named the time; seen at ${shelf.since} on ${shelf.role})`
-    : `${shelf.window} window closed until ${shelf.until} — the signal did NOT say when it reopens, so this is the short default shelf of ${SHORT_SHELF_MINUTES}m and the next signal extends it (seen at ${shelf.since} on ${shelf.role})`;
+    ? `${shelf.window} window of ${describeAccount(shelf.account)} closed until ${shelf.until} (the signal named the time; seen at ${shelf.since} on ${shelf.role})`
+    : `${shelf.window} window of ${describeAccount(shelf.account)} closed until ${shelf.until} — the signal did NOT say when it reopens, so this is the short default shelf of ${SHORT_SHELF_MINUTES}m and the next signal extends it (seen at ${shelf.since} on ${shelf.role})`;

@@ -15,6 +15,7 @@ import type { HoldView } from "./hold.js";
 import type { LeaseView } from "./lease.js";
 import { GH_OUTAGE_TICKS, type GhOutage, ghAlarmDue } from "./outage.js";
 import type { RankedCandidate } from "./priority.js";
+import { BOX_ACCOUNT } from "./quota.js";
 import {
   type CircuitState,
   type OperatorFrame,
@@ -418,6 +419,7 @@ describe("renderQueue — the parked candidate is marked where the queue is read
 describe("renderQuota — the shelf in the operator's frame", () => {
   const shelf = {
     window: "five_hour",
+    account: BOX_ACCOUNT,
     until: "2026-07-29T21:40:00Z",
     since: "2026-07-29T16:40:00Z",
     stated: true,

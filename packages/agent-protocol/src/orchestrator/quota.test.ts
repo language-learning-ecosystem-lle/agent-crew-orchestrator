@@ -4,6 +4,8 @@ import { consecutiveLaunchesWithoutDelivery, planLaunch } from "./launch.js";
 import { foldLeases } from "./lease.js";
 import { observeStep } from "./observe.js";
 import {
+  BOX_ACCOUNT,
+  describeAccount,
   describeQuotaRelease,
   describeQuotaShelf,
   openQuotaShelves,
@@ -11,6 +13,7 @@ import {
   quotaRefusalRecorded,
   quotaSignalOf,
   SHORT_SHELF_MINUTES,
+  shelvesAgainst,
   UNKNOWN_WINDOW,
 } from "./quota.js";
 
@@ -473,6 +476,7 @@ describe("the window belongs to the ACCOUNT (correction 1)", () => {
 describe("one shelf, one journal record", () => {
   const shelf = {
     window: "five_hour",
+    account: BOX_ACCOUNT,
     until: "x",
     since: "2026-07-29T12:00:00Z",
     stated: true,
@@ -510,5 +514,79 @@ describe("the journal carries the window type", () => {
   it("a quota release with `window` round-trips through the JSONL", () => {
     const event = closed({ until: "2026-07-29T16:00:00Z", window: "seven_day" });
     expect(parseEventLine(renderEventLine(event))).toEqual(event);
+  });
+});
+
+/**
+ * B.3 (thread 055) — THE SHELF IS KEYED BY (ACCOUNT, WINDOW). The pre-B.3 fold kept one
+ * shelf per window for the whole box, which on a machine raising roles on two
+ * subscriptions files the closed window of one against the quota of both.
+ */
+describe("openQuotaShelves — a shelf per account (055, B.3)", () => {
+  const closedOn = (account: string | undefined, ts: string, until: string) =>
+    ({
+      kind: "lease-released",
+      ts,
+      role: "dev-core",
+      thread: "055-x",
+      reason: "quota-exhausted",
+      window: "five_hour",
+      until,
+      ...(account === undefined ? {} : { account }),
+    }) as const;
+
+  const NOW = new Date("2026-07-29T13:00:00Z");
+
+  it("the same window on two accounts is TWO shelves, not one overwriting the other", () => {
+    const shelves = openQuotaShelves(
+      [
+        closedOn("main", "2026-07-29T12:00:00Z", "2026-07-29T17:00:00Z"),
+        closedOn("second", "2026-07-29T12:30:00Z", "2026-07-29T17:30:00Z"),
+      ],
+      NOW,
+    );
+    expect(shelves.map((shelf) => shelf.account)).toEqual(["main", "second"]);
+  });
+
+  it("`shelvesAgainst` answers about ONE account and never falls back to another", () => {
+    const shelves = openQuotaShelves(
+      [closedOn("main", "2026-07-29T12:00:00Z", "2026-07-29T17:00:00Z")],
+      NOW,
+    );
+    expect(shelvesAgainst(shelves, "main")).toHaveLength(1);
+    expect(shelvesAgainst(shelves, "second")).toHaveLength(0);
+    expect(shelvesAgainst(shelves, undefined)).toHaveLength(0);
+  });
+
+  it("silence is the box's own account — a journal written before B.3 shelves where it spent", () => {
+    const shelves = openQuotaShelves(
+      [closedOn(undefined, "2026-07-29T12:00:00Z", "2026-07-29T17:00:00Z")],
+      NOW,
+    );
+    expect(shelves[0]?.account).toBe(BOX_ACCOUNT);
+    expect(shelvesAgainst(shelves, undefined)).toHaveLength(1);
+    expect(shelvesAgainst(shelves, BOX_ACCOUNT)).toHaveLength(1);
+  });
+
+  it("says WHOSE window closed — two accounts standing down at once is unreadable without it", () => {
+    const shelves = openQuotaShelves(
+      [closedOn("second", "2026-07-29T12:00:00Z", "2026-07-29T17:00:00Z")],
+      NOW,
+    );
+    expect(describeQuotaShelf(shelves[0] as QuotaShelf)).toContain("account 'second'");
+    expect(describeAccount(BOX_ACCOUNT)).toContain("box's own");
+  });
+
+  it("the account rides through the JSONL of the journal", () => {
+    const line = renderEventLine({
+      kind: "lease-released",
+      ts: "2026-07-29T12:00:00Z",
+      role: "dev-core",
+      thread: "055-x",
+      reason: "quota-exhausted",
+      account: "second",
+    } as OrchestratorEvent);
+    const back = parseEventLine(line);
+    expect(back.kind === "lease-released" && back.account).toBe("second");
   });
 });

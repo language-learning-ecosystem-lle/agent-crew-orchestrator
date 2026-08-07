@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   AUTH_SHELF_MINUTES,
+  type AuthShelf,
   authAlarmDue,
   authRefusalRecorded,
+  authShelfAgainst,
   authSignalOf,
   describeAuthRelease,
   describeAuthShelf,
-  openAuthShelf,
+  openAuthShelves,
 } from "./auth.js";
 import { observeStep } from "./observe.js";
 import { planTick } from "./tick.js";
@@ -92,7 +94,15 @@ describe("observeStep — an auth death is its own outcome, not a pair's failure
   });
 });
 
-describe("openAuthShelf — one shelf, the box's, folded out of the journal", () => {
+describe("openAuthShelves — a shelf per account, folded out of the journal", () => {
+  /**
+   * The box's OWN account, which is what every event of these fixtures carries by saying
+   * nothing (`BOX_ACCOUNT`). The tests below are the pre-B.3 behaviour and are kept
+   * verbatim: one login, one shelf. What the fold does with SEVERAL is the subject of its
+   * own describe further down.
+   */
+  const openAuthShelf = (events: Parameters<typeof openAuthShelves>[0], now: Date) =>
+    openAuthShelves(events, now)[0];
   const events = [released("2026-08-01T17:00:00Z", "auth-failed")];
 
   it("closes the box for its interval and reopens by the clock", () => {
@@ -140,9 +150,7 @@ describe("openAuthShelf — one shelf, the box's, folded out of the journal", ()
   });
 
   it("writes one journal line per shelf, not one per tick", () => {
-    const shelf = openAuthShelf(events, at("2026-08-01T17:05:00Z")) as NonNullable<
-      ReturnType<typeof openAuthShelf>
-    >;
+    const shelf = openAuthShelf(events, at("2026-08-01T17:05:00Z")) as NonNullable<AuthShelf>;
     expect(authRefusalRecorded(events, shelf)).toBe(false);
     const withRecord = [
       ...events,
@@ -181,5 +189,80 @@ describe("planTick — a shelved box raises nobody, and says which shelf", () =>
       now: at("2026-08-01T17:11:00Z"),
     });
     expect(decision.kind).toBe("plan");
+  });
+});
+
+/**
+ * B.3 (thread 055) — A SHELF PER ACCOUNT, and the half that is sharper than the quota's:
+ * the RUN OF DEATHS. With one shelf a healthy account delivering every ten minutes reset
+ * the counter of a dead one on every tick, so `authAlarmDue` (threshold 2) would never
+ * ring and the box would stand still on a token nobody was told about.
+ */
+describe("openAuthShelves — the credentials are the account's (055, B.3)", () => {
+  const died = (ts: string, account?: string, role = "dev-core") => ({
+    kind: "lease-released",
+    ts,
+    role,
+    thread: "055-x",
+    reason: "auth-failed",
+    ...(account === undefined ? {} : { account }),
+  });
+  const delivered = (ts: string, account?: string, role = "curator") => ({
+    kind: "lease-released",
+    ts,
+    role,
+    thread: "055-y",
+    reason: "completed",
+    ...(account === undefined ? {} : { account }),
+  });
+
+  it("shelves each account separately — one dead token does not close the other's door", () => {
+    const shelves = openAuthShelves(
+      [died("2026-08-01T17:00:00Z", "main")],
+      at("2026-08-01T17:05:00Z"),
+    );
+    expect(shelves.map((shelf) => shelf.account)).toEqual(["main"]);
+    expect(authShelfAgainst(shelves, "second")).toBeUndefined();
+    expect(authShelfAgainst(shelves, "main")?.deaths).toBe(1);
+  });
+
+  it("a delivery on ANOTHER account does not break the run of deaths — the alarm still rings", () => {
+    const shelves = openAuthShelves(
+      [
+        died("2026-08-01T17:00:00Z", "main"),
+        delivered("2026-08-01T17:01:00Z", "second"),
+        died("2026-08-01T17:02:00Z", "main"),
+      ],
+      at("2026-08-01T17:05:00Z"),
+    );
+    const shelf = authShelfAgainst(shelves, "main");
+    expect(shelf?.deaths).toBe(2);
+    expect(authAlarmDue(shelf as AuthShelf)).toBe(true);
+  });
+
+  it("…while a delivery on the SAME account still breaks it — that is what proves the token", () => {
+    const shelves = openAuthShelves(
+      [
+        died("2026-08-01T17:00:00Z", "main"),
+        delivered("2026-08-01T17:01:00Z", "main"),
+        died("2026-08-01T17:02:00Z", "main"),
+      ],
+      at("2026-08-01T17:05:00Z"),
+    );
+    expect(authShelfAgainst(shelves, "main")?.deaths).toBe(1);
+  });
+
+  it("an event with no account is the box's own login, which is where it spent", () => {
+    const shelves = openAuthShelves([died("2026-08-01T17:00:00Z")], at("2026-08-01T17:05:00Z"));
+    expect(authShelfAgainst(shelves, undefined)?.deaths).toBe(1);
+    expect(authShelfAgainst(shelves, "main")).toBeUndefined();
+  });
+
+  it("names WHOSE credentials in the line an operator acts on", () => {
+    const shelves = openAuthShelves(
+      [died("2026-08-01T17:00:00Z", "second"), died("2026-08-01T17:02:00Z", "second")],
+      at("2026-08-01T17:05:00Z"),
+    );
+    expect(describeAuthShelf(shelves[0] as AuthShelf)).toContain("account 'second'");
   });
 });

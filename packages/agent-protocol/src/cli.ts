@@ -116,7 +116,7 @@ import {
   authSignalOf,
   describeAuthRelease,
   describeAuthShelf,
-  openAuthShelf,
+  openAuthShelves,
 } from "./orchestrator/auth.js";
 import {
   type CodeDrift,
@@ -2674,7 +2674,12 @@ const runNotify = async (input: {
       const events = existsSync(paths.journal)
         ? parseJournal(readFileSync(paths.journal, "utf8"))
         : [];
-      const shelf = openAuthShelf(events, new Date(now));
+      // THE ALARM RINGS ON THE WORST SHELF (B.3): several accounts can be shelved at once,
+      // and the operator's answer — a login — is per account, so the one named is the one
+      // with the longest run of deaths behind it.
+      const shelf = [...openAuthShelves(events, new Date(now))].sort(
+        (a, b) => b.deaths - a.deaths,
+      )[0];
       // THE SHELF ALONE DOES NOT RING — `authAlarmDue` is the predicate, and it is the one
       // written in `auth.ts` for this purpose (#160). It is not re-decided here.
       if (shelf !== undefined && authAlarmDue(shelf))
@@ -4804,7 +4809,7 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // THE SAME FOLD THE DAEMON PLANS BY (`planTick`) — the frame and the tick cannot
     // disagree about whether the box is standing down.
     quota: openQuotaShelves(events, now),
-    auth: openAuthShelf(events, now),
+    auth: openAuthShelves(events, now),
     // The tier's own health, from the file the daemon writes (thread 051): a frame that
     // showed an empty merge-ready tier and a silently refusing `gh` identically is the
     // defect this section exists to close.
@@ -5991,6 +5996,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       reason: "supervisor-gone",
       output: p.sessionLog,
       ...(sessionId === undefined ? {} : { session: sessionId }),
+      // The account rides on THIS release too (B.3): a supervisor killed under a run is
+      // the one death the credentials shelf must not attribute to the wrong subscription.
+      ...(p.account === undefined ? {} : { account: p.account.id }),
       steps,
     });
     releaseWorkspaceLock(p.workdir);
@@ -6483,6 +6491,12 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // WHICH window closed rides through to the journal (D-3 part 2) — the backoff has
         // a shelf per window type, and this is the only place the type is known.
         ...(quota?.window === undefined ? {} : { window: quota.window }),
+        // WHOSE ACCOUNT THIS RUN SPENT rides to the journal (thread 055, B.3) — on EVERY
+        // release, because both shelves are folds over a run of releases: the closed
+        // window has to name the subscription it belongs to, and a delivery has to say
+        // which credentials it proves alive. Absent when the run spent the box's own,
+        // which is the key `BOX_ACCOUNT` and not a gap.
+        ...(p.account === undefined ? {} : { account: p.account.id }),
         ...(leftDirty ? { dirty: true as const } : {}),
         // WHAT THE RUN BURNED rides to the journal (thread 029) — the last moment the
         // numbers are in hand without re-parsing the transcript. Omitted entirely when the
@@ -7355,6 +7369,30 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // daemon. What the scope removed is said out loud every tick, beside the queue.
   const scope = launchScopeFrom(argv, local, launchableList);
   const launchable = scope.roles;
+  // WHOSE ACCOUNT EACH ROLE WOULD SPEND (thread 055, B.3) — resolved once, beside the
+  // scope, off the same two layers the launch itself resolves it from (`launch.account`
+  // of the role, then the account this instance defaults to). The planner needs it because
+  // both of its infrastructure shelves are the ACCOUNT'S and not the box's: without this
+  // line the whole of B.3 runs on an empty field, i.e. exactly as it did before B.3.
+  //
+  // ONLY THE ID TRAVELS, never `configDir`: the tick decides who may be raised, and where
+  // an account lives on this disk is the launcher's business. A role whose account this
+  // machine cannot place is NOT refused here — that refusal belongs to the launch, where
+  // it is fatal and says which of the two layers named the account; here it would silently
+  // reorder the queue instead. Such a role simply carries no account and shelves with the
+  // box's own, which is where it stood before the field existed.
+  //
+  // The second layer is the same R13 join the launch reads (`instanceAccountOf`): the
+  // repository declares the instances, the machine says which of them this box is.
+  const instanceAccount = instanceAccountOf({
+    instances: configFrom(argv, undefined).config.instances,
+    instance: local.config?.instance,
+  });
+  const roleAccounts = new Map<string, string>();
+  for (const roleId of launchable) {
+    const named = registry.get(roleId)?.launch?.account ?? instanceAccount;
+    if (named !== undefined) roleAccounts.set(roleId, named);
+  }
   // Remembered for the WHOLE LIFE of the daemon, keyed by (PR, head): a head that has
   // not moved is not asked about twice (thread 019, point 5, the price limits).
   const mergeReadyCache = createMergeReadyCache();
@@ -7961,7 +7999,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // next tick would raise a role right under the force.
       stopped: existsSync(stopFlag) || existsSync(forceFlag),
       events,
-      candidates,
+      // WHOSE ACCOUNT EACH PAIR WOULD SPEND, attached here and nowhere earlier (B.3): the
+      // queue is ordered by the mail (R5) and knows nothing about subscriptions, while the
+      // tick's two infrastructure shelves are read per account. The role is what carries
+      // the account, so the join is one lookup per candidate.
+      candidates: candidates.map((candidate) => {
+        const account = roleAccounts.get(candidate.role);
+        return account === undefined ? candidate : { ...candidate, account };
+      }),
       now: new Date(),
       // The mail is already parsed for the queue above — the set of sessions that
       // wrote is what keeps a run that delivered into its own turn out of the
