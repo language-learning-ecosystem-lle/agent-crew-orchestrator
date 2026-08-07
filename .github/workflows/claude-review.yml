@@ -721,7 +721,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          for attempt in 1 2 3 4 5; do
+          # Дверь push'а — общая на всех писателей контура (тред 042): она же
+          # объявляет потолок попыток и она же различает гонку и отказ сервера.
+          source "${GITHUB_WORKSPACE}/.code/.github/scripts/comms-push.sh"
+          # Пуш идёт из worktree и по URL с токеном — дверь берёт их из
+          # окружения, потому что рабочее дерево здесь не чекаут почты.
+          COMMS_PUSH_DIR=.comms-fallback
+          COMMS_PUSH_REMOTE="$MAIL_REMOTE"
+          for attempt in $(seq 1 "$COMMS_PUSH_ATTEMPTS"); do
             git -C .comms-fallback fetch --no-tags "$MAIL_REMOTE" comms
             git -C .comms-fallback reset --hard FETCH_HEAD
             if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
@@ -742,13 +749,12 @@ jobs:
             # Проверять тут нечего: в дереве только файлы почты, а имя коммита
             # фиксировано строкой ниже и conventional по построению.
             git -C .comms-fallback commit --no-verify -m "chore(comms): ревью PR #${PR} не состоялось — вердикт не сформирован"
-            if git -C .comms-fallback push "$MAIL_REMOTE" HEAD:comms; then
+            if comms_push "$attempt"; then
               echo "Об отсутствии вердикта сообщено в тред ${THREAD}."
               exit 0
             fi
-            echo "Push отклонён (попытка ${attempt}) — в comms писали параллельно, пересобираю."
           done
-          echo "::error::Не удалось сообщить в тред ${THREAD} за 5 попыток (коммент в PR доставлен)."
+          echo "::error::Не удалось сообщить в тред ${THREAD} за ${COMMS_PUSH_ATTEMPTS} попыток (коммент в PR доставлен)."
           exit 1
 
       # ТРЕТЬЯ ДОСТАВКА одного вердикта — формальный review-статус GitHub (тред

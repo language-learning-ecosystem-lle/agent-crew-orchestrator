@@ -150,11 +150,13 @@ jobs:
             fi
           } > "$BODY_TMP"
 
-          # До пяти попыток: в comms пишут параллельно живые роли. Протокол
-          # append-only — свои правки каждый раз пересобираем ПОВЕРХ свежего
-          # origin/comms, а не переносим старый текст (иначе чужая секция,
-          # пришедшая между попытками, была бы затёрта).
-          for attempt in 1 2 3 4 5; do
+          # Свои правки каждый раз пересобираем ПОВЕРХ свежего origin/comms, а
+          # не переносим старый текст (иначе чужая секция, пришедшая между
+          # попытками, была бы затёрта) — протокол append-only.
+          # Дверь push'а — общая на всех писателей контура (тред 042): она же
+          # объявляет потолок попыток и она же различает гонку и отказ сервера.
+          source "${GITHUB_WORKSPACE}/.code/.github/scripts/comms-push.sh"
+          for attempt in $(seq 1 "$COMMS_PUSH_ATTEMPTS"); do
             git fetch --no-tags origin comms
             git reset --hard origin/comms
 
@@ -229,12 +231,11 @@ jobs:
 
             git add agent-comms
             git commit -m "chore(comms): PR #${PR_NUMBER} merged — уведомление в тред ${THREAD}"
-            if git push origin HEAD:comms; then
+            if comms_push "$attempt"; then
               echo "Уведомление о merge PR #${PR_NUMBER} записано в ${THREAD}."
               exit 0
             fi
-            echo "Push отклонён (попытка ${attempt}) — в comms писали параллельно, пересобираю."
           done
 
-          echo "::error::Не удалось записать уведомление о merge PR #${PR_NUMBER} в ${THREAD} за 5 попыток."
+          echo "::error::Не удалось записать уведомление о merge PR #${PR_NUMBER} в ${THREAD} за ${COMMS_PUSH_ATTEMPTS} попыток."
           exit 1

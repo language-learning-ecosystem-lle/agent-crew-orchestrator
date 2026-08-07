@@ -138,11 +138,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # До пяти попыток: в comms пишут параллельно живые роли. Протокол
-          # append-only — свою запись каждый раз пересобираем ПОВЕРХ свежего
-          # origin/comms, а не переносим старый текст.
+          # Дверь push'а — общая на всех писателей контура (тред 042): она же
+          # объявляет потолок попыток и она же различает гонку и отказ сервера.
+          # Своя запись каждый раз пересобирается ПОВЕРХ свежего origin/comms —
+          # протокол append-only, старый текст не переносится.
+          source "${GITHUB_WORKSPACE}/.code/.github/scripts/comms-push.sh"
           echo "2/2 · запись в тред ${THREAD} (${WF_NAME}, исход ${CONCLUSION})"
-          for attempt in 1 2 3 4 5; do
+          for attempt in $(seq 1 "$COMMS_PUSH_ATTEMPTS"); do
             git fetch --no-tags origin comms
             git reset --hard origin/comms
             if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
@@ -155,12 +157,11 @@ jobs:
             fi
             git add agent-comms
             git commit -m "chore(comms): уведомитель ${WF_NAME} отказал (${CONCLUSION}) — звонок в тред ${THREAD}"
-            if git push origin HEAD:comms; then
+            if comms_push "$attempt"; then
               echo "Отказ уведомителя ${WF_NAME} (${RUN_ID}) доставлен в тред ${THREAD}."
               exit 0
             fi
-            echo "Push отклонён (попытка ${attempt}) — в comms писали параллельно, пересобираю."
           done
 
-          echo "::error::Не удалось доставить отказ уведомителя ${WF_NAME} (${RUN_ID}) в ${THREAD} за 5 попыток."
+          echo "::error::Не удалось доставить отказ уведомителя ${WF_NAME} (${RUN_ID}) в ${THREAD} за ${COMMS_PUSH_ATTEMPTS} попыток."
           exit 1
