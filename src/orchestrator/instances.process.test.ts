@@ -431,6 +431,31 @@ describe("`status` reads the other boxes out of the branch (R13)", () => {
     expect(result.out).toContain("STALE");
   });
 
+  it("a box the topology declares with NO roles is a bench — its ancient digest raises no ⚠ (055)", () => {
+    const bench = contour({
+      instance: "box-a",
+      // The digest is as old as the one called STALE above, and says so itself.
+      foreign: foreignDigest("2026-07-25T11:00:00.000Z"),
+      // …but `box-b` answers for nobody now: no daemon of its own will ever rewrite it.
+      // The id is kept declared on purpose — that is what a bench is for.
+      topology: [
+        { id: "box-a", roles: ["dev-core", "dev-speech"] },
+        { id: "box-b", roles: [] },
+      ],
+    });
+    enable(bench.repo);
+    daemon(bench);
+
+    const result = cli(bench, ["orchestrator", "status"]);
+
+    expect(result.out).toContain("bench — the repository declares it with no roles");
+    // The wiring is the point: the CLI must read the TOPOLOGY, not `box-b`'s own file,
+    // which still claims `roles: ["dev-speech"]` and would have kept the ⚠ alight.
+    expect(result.out).not.toContain("⚠ STALE");
+    // The file's age is still on screen — explained, not hidden.
+    expect(result.out).toContain("2026-07-25T11:00:00.000Z");
+  });
+
   it("a digest that does not parse is named beside the ones that do", () => {
     const bench = contour({ instance: "box-a", foreign: "{ not json\n" });
 

@@ -330,6 +330,52 @@ describe("the other boxes, in `status` (R13)", () => {
     expect(text).toContain("deadline 2026-07-27T11:00:00.000Z");
   });
 
+  it("a bench — an instance the repository declares with no roles — is explained, not warned about", () => {
+    const text = renderInstances({
+      digests: [digest({ instance: "main", roles: [] })],
+      benched: ["main"],
+      now: at("2026-07-31T10:00:00.000Z"),
+      staleAfterSeconds: 60,
+    });
+    expect(text).not.toContain("STALE");
+    // The old timestamp stays on screen — unexplained age is the other way to lose trust.
+    expect(text).toContain("2026-07-27T10:00:00.000Z");
+    expect(text).toContain("bench — the repository declares it with no roles");
+  });
+
+  it("a bench GIVEN ROLES since is stale again — the topology decides, not the box's own file", () => {
+    const text = renderInstances({
+      // The file still claims zero roles: only a daemon rewrites it, and this box runs none.
+      digests: [digest({ instance: "main", roles: [] })],
+      // …but the repository has given it roles, so `main` is no longer in the bench list.
+      benched: [],
+      now: at("2026-07-31T10:00:00.000Z"),
+      staleAfterSeconds: 60,
+    });
+    expect(text).toContain("STALE");
+    expect(text).not.toContain("bench");
+  });
+
+  it("with no topology declared every digest is judged by age alone, as before", () => {
+    const text = renderInstances({
+      digests: [digest({ instance: "main", roles: [] })],
+      now: at("2026-07-31T10:00:00.000Z"),
+      staleAfterSeconds: 60,
+    });
+    expect(text).toContain("STALE");
+  });
+
+  it("a bench does not silence the boxes beside it", () => {
+    const text = renderInstances({
+      digests: [digest({ instance: "main", roles: [] }), digest({ instance: "box-b" })],
+      benched: ["main"],
+      now: at("2026-07-31T10:00:00.000Z"),
+      staleAfterSeconds: 60,
+    });
+    expect(text).toContain("bench — the repository declares it with no roles");
+    expect(text).toContain("⚠ STALE");
+  });
+
   it("a file that did not read is shown beside the boxes that did — never swallowed", () => {
     const text = renderInstances({
       digests: [digest({})],

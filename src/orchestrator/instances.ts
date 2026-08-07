@@ -348,10 +348,30 @@ export const renderInstances = (input: {
   /** Files that did not read, name → reason — never swallowed. */
   readonly unreadable?: ReadonlyMap<string, string>;
   readonly self?: string | undefined;
+  /**
+   * THE BENCHES — instances the REPOSITORY declares with no roles at all (055, A.4).
+   * Their silence is guaranteed rather than suspicious: a box that answers for nobody
+   * raises nobody, so no daemon of its own ever rewrites its digest, and the age of
+   * that file grows forever. Marked STALE it puts a ⚠ in the operator's frame that
+   * cannot be acted on and will never clear — on this box `main` (john's laptop, kept
+   * declared so the id stays taken) had carried one for four days. A warning that is
+   * always on is how a frame stops being read.
+   *
+   * THE SOURCE IS THE TOPOLOGY, NOT THE DIGEST'S OWN `roles`. A bench that has SINCE
+   * been given roles is exactly the box whose silence is news, and its own file — which
+   * only a running daemon rewrites — would keep claiming zero roles and suppress the
+   * very warning that case needs. The repository is the current truth about who
+   * answers for what; the file is the box's last word about itself.
+   *
+   * Empty (or absent) means no topology to judge against, and then every digest is
+   * measured by age alone — the same rule `digestIssues` follows.
+   */
+  readonly benched?: readonly string[];
   readonly now: Date;
   readonly staleAfterSeconds?: number;
 }): string => {
   const stale = input.staleAfterSeconds ?? DEFAULT_STALE_AFTER_SECONDS;
+  const benched = new Set(input.benched ?? []);
   const lines: string[] = ["instances:"];
   if (input.digests.length === 0 && (input.unreadable?.size ?? 0) === 0) {
     // Silence here would read as "no other boxes", which is a claim. The absence of
@@ -364,8 +384,11 @@ export const renderInstances = (input: {
   for (const digest of [...input.digests].sort((a, b) => a.instance.localeCompare(b.instance))) {
     const age = digestAgeSeconds(digest, input.now);
     const mark = digest.instance === input.self ? " (this box)" : "";
-    const staleMark =
-      age > stale
+    // A bench is explained rather than warned about: the reader still sees an ancient
+    // `written`, and an unexplained old timestamp is the other way to lose their trust.
+    const staleMark = benched.has(digest.instance)
+      ? "  · bench — the repository declares it with no roles, so nothing rewrites this file"
+      : age > stale
         ? `  ⚠ STALE — nothing published for ${age}s, treat the state below as last known`
         : "";
     lines.push(

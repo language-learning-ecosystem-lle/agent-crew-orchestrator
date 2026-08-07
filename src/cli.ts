@@ -4883,6 +4883,11 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     digests: published.digests,
     unreadableDigests: published.unreadable,
     ...(scope.instance === undefined ? {} : { self: scope.instance }),
+    // The topology decides which old digest is a bench and which is an alarm (055) —
+    // the box's own file cannot, being rewritten only by a daemon it does not run.
+    benchedInstances: (configFrom(argv, undefined).config.instances ?? [])
+      .filter((one) => one.roles.length === 0)
+      .map((one) => one.id),
     mail: {
       root: mailRoot,
       ...mailCheckoutFreshness(checkout, configFrom(argv, undefined).config.mail.branch),

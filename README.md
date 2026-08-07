@@ -2728,6 +2728,18 @@ has silently stopped is precisely the failure that makes everyone else's view wr
 that did not parse is shown beside the ones that did, with its reason — one broken box must
 not make the other five invisible.
 
+**A BENCH is not a stale box** (thread 055). An instance the repository declares with NO roles
+raises nobody, so no daemon of its own ever rewrites its digest and the age of that file grows
+forever: on this box `main` — john's laptop, kept declared so the id stays taken — carried a ⚠
+for four days, and a warning that is always on is how an operator's frame stops being read. Its
+line says `· bench — the repository declares it with no roles, so nothing rewrites this file`
+instead, and the old `writtenAt` stays on screen: an unexplained ancient timestamp is the other
+way to lose the reader. The verdict is read off the TOPOLOGY, never off the digest's own
+`roles` — a bench that has SINCE been given roles is exactly the box whose silence is news, and
+its file (which only a running daemon rewrites) would keep claiming zero roles and suppress the
+one warning that case needs. With no topology declared there is nothing to judge against, and
+every digest is measured by age alone — the same rule `check` follows.
+
 **Publishing never stops the daemon.** The digest is a courtesy to the other boxes and to a
 human; this box's work does not depend on it. A dirty mail checkout is a refusal (delivery
 resets hard on a retry, and doing that over somebody's half-written message destroys work to
