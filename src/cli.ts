@@ -1998,7 +1998,7 @@ const newMessage = (argv: readonly string[]): void => {
   // (release it, or leave the claim out), and the door must not pick for them.
   if (waitingOn === undefined && bodyClaimsTurnRelease(text)) {
     fail(
-      "the body says the turn is released ('waiting-on: —') and no --waiting-on was given — the turn is the HEADER's, so it would stay with whoever holds it now and raise them again on a thread where nothing happened (thread 042, two messages in a row). Pass '--waiting-on —' to mean it, or take the claim out of the body if the turn stays where it is",
+      "the body says the turn is released — either as 'waiting-on: —' or in the prose that means it ('ход отсюда уходит', 'ход никому не передаю') — and no --waiting-on was given. The turn is the HEADER's, so it would stay with whoever holds it now and raise them again on a thread where nothing happened (thread 042, two messages in a row; thread 058, the sentence reporting the rule was the sentence breaking it). Pass '--waiting-on —' to mean it; if you are QUOTING the form rather than using it, put it in backticks or a fenced block (both are cut before this is read); or take the claim out of the body if the turn stays where it is",
       2,
     );
   }
@@ -2222,7 +2222,7 @@ const newThread = (argv: readonly string[]): void => {
   // refusing what its neighbour writes is a rule nobody can hold in their head.
   if (waitingOn === undefined && bodyClaimsTurnRelease(text)) {
     fail(
-      "the body of the first message says the turn is released ('waiting-on: —') and no --waiting-on was given — the turn is the HEADER's, and a thread opened this way holds a claim its header does not carry. Pass '--waiting-on —' to mean it, or take the claim out of the body",
+      "the body of the first message says the turn is released — either as 'waiting-on: —' or in the prose that means it ('ход отсюда уходит', 'ход никому не передаю') — and no --waiting-on was given. The turn is the HEADER's, and a thread opened this way holds a claim its header does not carry. Pass '--waiting-on —' to mean it; if you are QUOTING the form rather than using it, put it in backticks or a fenced block (both are cut before this is read); or take the claim out of the body",
       2,
     );
   }

@@ -453,8 +453,8 @@ export class MessageFormatError extends Error {
 }
 
 /**
- * THE BODY CLAIMING THE TURN IS RELEASED — the one prose form the door reads, and it
- * reads it ONLY to refuse the message, never to believe it (thread 042).
+ * THE BODY CLAIMING THE TURN IS RELEASED — the two forms the door reads, and it
+ * reads them ONLY to refuse the message, never to believe them (thread 042).
  *
  * The header stays the single source of the turn: this is not `waiting-on` parsed out
  * of prose again (pain 2), it is the contradiction between what a message SAYS about
@@ -481,12 +481,61 @@ export class MessageFormatError extends Error {
  * Fenced blocks are cut out first: a message DOCUMENTING the protocol pastes headers
  * as examples while its own turn stays where it is. Inline backticks are deliberately
  * kept — both real cases were written as inline `waiting-on: —`.
+ *
+ * THE SECOND FORM IS THE SAME CLAIM WITHOUT THE MARKUP (thread 058). The markup-only
+ * door let the very sentence that reports obeying the rule through: on 2026-08-07 a
+ * message on the red-main receiver wrote "Ход отсюда не передаётся никому — сказано
+ * полем, а не прозой" and passed no flag. The turn stayed on `dev-core` from a
+ * notifier's letter and raised a session onto a receiver where main was green and the
+ * previous session's answer was already filed — the third such run of the class
+ * (041/msg-009, 042 of 2026-08-05, 041/msg-019).
+ *
+ * Measured the same way, at one named moment — mail commit 08be7c26, 2112 messages:
+ * the prose form matches 35 bodies, 24 of which the markup form does not see at all.
+ * Of those 24 the header carries the field in 16 — never refused, the flag is there —
+ * and does not in 8. SEVEN of the eight are the defect: 041/msg-009 and 041/msg-019,
+ * which cost a raised session each, plus 042, 019, 032, 043 and 045, harmless only
+ * because those threads were being closed on the same breath. The eighth is the
+ * receiver's OWN standing message, whose "и ход отсюда уходит" describes the norm for
+ * future answers rather than its own header — and the refusal there asks for
+ * `--waiting-on —`, which is what that header meant anyway. The shape of the answer is
+ * the one the narrow form rests on, unchanged: matches overwhelmingly carry the flag,
+ * and the fieldless remainder is the defect rather than a quotation.
+ *
+ * THE LANGUAGE-NEUTRAL CANDIDATE WAS DROPPED BY THE SAME MEASURE, not by taste:
+ * "whoever holds the turn must declare it" would refuse 51 of the 942 messages written
+ * by the current holder, and most are lawful interim reports — a report does not end
+ * the turn, the writer keeps working (project rule 11). A door that refuses the lawful
+ * costs more than the defect it catches.
+ *
+ * The price of this form is named rather than hidden: the phrases are Russian, and this
+ * package is built to move to a repository of its own. They live in one constant with
+ * this comment over it — a mail written in another language extends the alternation and
+ * nothing else.
  */
 const FENCED_BLOCK = /^```[\s\S]*?^```/gm;
-const TURN_RELEASE_CLAIM = /waiting-on:\s*`?\s*[—–]/;
+const INLINE_CODE = /`[^`\n]*`/g;
+const TURN_RELEASE_MARKUP = /waiting-on:\s*`?\s*[—–]/;
+/**
+ * "ход" is required to stand as a word (the lookarounds keep `переходит`, `находится`
+ * and `в этом ходе` out), and the assertion has to arrive within the same sentence.
+ *
+ * INLINE CODE IS CUT for this form and only for it — measured live, one minute after
+ * the form was written: the message REPORTING this change was refused by it, because
+ * describing the alternation puts "ход" and `отсюда уходит` in one sentence. Prose
+ * about the protocol is the daily traffic of these threads, and a door that refuses
+ * every message discussing it is a nuisance the writers would learn to route around.
+ * None of the real cases hides in backticks — the defect is written as a plain
+ * sentence. The markup form keeps reading them, exactly as thread 042 left it: both of
+ * ITS live cases were written as inline `waiting-on: —`.
+ */
+const TURN_RELEASE_PROSE =
+  /(?<![а-яё])ход(?![а-яё])[^.\n]{0,60}?(?:отсюда уходит|не переда[её]тся|никому не переда|снимаю)/i;
 
-export const bodyClaimsTurnRelease = (text: string): boolean =>
-  TURN_RELEASE_CLAIM.test(text.replace(FENCED_BLOCK, ""));
+export const bodyClaimsTurnRelease = (text: string): boolean => {
+  const prose = text.replace(FENCED_BLOCK, "");
+  return TURN_RELEASE_MARKUP.test(prose) || TURN_RELEASE_PROSE.test(prose.replace(INLINE_CODE, ""));
+};
 
 /**
  * `waiting-on` off the wire. ONE role, or `—` for nobody. A list is REFUSED rather
