@@ -134,31 +134,58 @@ describe("config set — the file on disk", () => {
   it("writes an account beside the one already declared, and reads back through the strict schema", () => {
     const { repo, path } = box({
       agents: {},
-      accounts: { "lle-main": { configDir: "/home/lle/.claude" } },
+      accounts: { "lle-main": { configDir: "/var/empty/agent-protocol-test/main" } },
       instance: "lle-agents",
     });
+    // THE PREMISE IS THE TEST'S OWN, NOT THE BOX'S (thread 055, 2026-08-07). This case
+    // used to name the operator's real directories, and its claim — "the directory does
+    // not exist on this disk, so what comes back is the command that creates it" — was
+    // true only until somebody logged that account in. On 2026-08-07 john did exactly
+    // that, and the case went red on the box while staying green on the runner, which
+    // has no such directory. A path under the test's own temp tree cannot be commissioned
+    // out from under it.
+    const absent = join(repo, "not-yet", ".claude-second");
     const { said, code } = run(
       repo,
       "account",
       "lle-second",
       "--config-dir",
-      "/home/lle/.claude-lle-second",
+      absent,
       "--local-config",
       path,
       "--write",
     );
     expect(code).toBe(0);
-    // The directory does not exist on this disk, and that is the ordinary case: what the
-    // operator gets back is the command that creates it, with the path already in it.
-    expect(said).toContain("CLAUDE_CONFIG_DIR=/home/lle/.claude-lle-second claude login");
+    // Nothing at that path, and that is the ordinary case: what the operator gets back is
+    // the command that creates it, with the path already in it.
+    expect(said).toContain(`CLAUDE_CONFIG_DIR=${absent} claude login`);
     expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
       agents: {},
       accounts: {
-        "lle-main": { configDir: "/home/lle/.claude" },
-        "lle-second": { configDir: "/home/lle/.claude-lle-second" },
+        "lle-main": { configDir: "/var/empty/agent-protocol-test/main" },
+        "lle-second": { configDir: absent },
       },
       instance: "lle-agents",
     });
+  });
+
+  it("…and an account whose directory IS there is not told to log in", () => {
+    // The control the case above needs to mean anything: same command, same shape, the
+    // only difference being whether the directory exists. Without it a printer that
+    // never mentions the login would pass the pair.
+    const { repo, path } = box({ agents: {} });
+    const { said, code } = run(
+      repo,
+      "account",
+      "lle-second",
+      "--config-dir",
+      repo,
+      "--local-config",
+      path,
+      "--write",
+    );
+    expect(code).toBe(0);
+    expect(said).not.toContain("claude login");
   });
 
   it("refuses a typo'd flag at the door, like every other command", () => {

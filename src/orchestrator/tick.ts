@@ -49,6 +49,8 @@ import {
 } from "./launch.js";
 import { foldLeases, isLeaseAlive, type LeaseView } from "./lease.js";
 import {
+  BOX_ACCOUNT,
+  describeAccount,
   openQuotaShelves,
   type QuotaShelf,
   quotaRefusalRecorded,
@@ -477,9 +479,9 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       return `candidate ${pair} skipped: the turn is parked behind a decision of ${skip.parkedOn ?? "a person"} (R27, 'parked-on' in the feed) — it is waiting for a PERSON, not for a launch; it lifts by itself with the next substantive message in the thread`;
     }
     case "quota":
-      return `candidate ${pair} skipped: the rate-limit window is closed — the window belongs to the ACCOUNT, so a signal from any role stands the whole box down; it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
+      return `candidate ${pair} skipped: the rate-limit window is closed for ${describeAccount(skip.account ?? BOX_ACCOUNT)} — the window belongs to the ACCOUNT, so a signal from any role standing on it stands down every pair that spends it AND NO OTHER (B.3); it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
     case "auth":
-      return `candidate ${pair} skipped: this box cannot authenticate to the vendor — the credentials belong to the BOX, so a refusal seen by any role stands every role down; unlike the window it does NOT end by the clock (a human runs 'claude login' here), and the shelf only decides how often one pair is raised to knock (see 'orchestrator status')`;
+      return `candidate ${pair} skipped: this box cannot authenticate to the vendor with the credentials of ${describeAccount(skip.account ?? BOX_ACCOUNT)} — a refusal stands down the pairs spending THAT account and no neighbour's (B.3); unlike the window it does NOT end by the clock (a human runs 'CLAUDE_CONFIG_DIR=<its dir> claude login' here), and the shelf only decides how often one pair is raised to knock (see 'orchestrator status')`;
     case "role-busy":
       return `candidate ${pair} skipped: ${skip.role} already has a session (raised on an older thread of this tick, or still running from an earlier one) — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
   }

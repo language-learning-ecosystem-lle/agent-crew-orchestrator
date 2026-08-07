@@ -22,12 +22,27 @@ import { basename, join } from "node:path";
  * The environment of one CLI launch: the ambient one, with the config home replaced by
  * a directory the test owns. `extra` goes last — a test that also passes provenance or
  * a session file keeps saying so.
+ *
+ * `CLAUDE_CONFIG_DIR` IS DROPPED, for the same reason and by the same evidence as the
+ * config home above (thread 055, 2026-08-07). The variable became ambient on the
+ * operator's box the day a role was put on a second subscription: the session running
+ * the suite carries it, so a spawned CLI inherits it, so a child of THAT child sees it
+ * — and the one test whose whole claim is "the role names no account → the variable is
+ * not set AT ALL" measured the operator's shell instead of the package. It went red on
+ * the box and stayed green on the runner (which exports nothing), which is precisely
+ * the direction that makes a local run stop meaning anything.
+ *
+ * A test that is ABOUT inheritance passes the value through `extra` and keeps saying so
+ * in its own words — that is the difference between a premise and an ambient accident.
  */
-export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({
-  ...process.env,
-  XDG_CONFIG_HOME: home,
-  ...extra,
-});
+export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => {
+  const { CLAUDE_CONFIG_DIR: _ambient, ...ambient } = process.env;
+  return {
+    ...ambient,
+    XDG_CONFIG_HOME: home,
+    ...extra,
+  };
+};
 
 /**
  * The home of a circuit laid out as `<mkdtemp>/work` (an origin, a checkout and a mail
