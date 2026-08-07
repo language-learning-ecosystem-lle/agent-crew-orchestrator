@@ -1167,6 +1167,98 @@ describe("a turn released in the prose only (thread 042)", () => {
   });
 });
 
+describe("the same claim written without the markup (thread 058)", () => {
+  it("REFUSES the sentence that REPORTS the rule while breaking it", () => {
+    // Verbatim from 041/msg-019 of 2026-08-07. The markup-only door read it as free
+    // text, the turn stayed on dev-core from a notifier's letter, and a session was
+    // raised onto a receiver where main was green and the answer was already filed.
+    const contest = contour();
+
+    const result = claiming(
+      contest,
+      "Разбор уехал в `057`.\n\nХод отсюда не передаётся никому — сказано полем, а не прозой.\n",
+      [],
+    );
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--waiting-on —");
+    expect(filesIn(contest)).toEqual([]);
+  });
+
+  it("REFUSES the other form the mail actually uses — 'ход никому не передаю'", () => {
+    // Curator's wording on 032, 043 and 045: the same claim in the first person. All
+    // three were harmless only because the thread was being closed in the same breath.
+    const contest = contour();
+
+    const result = claiming(contest, "Работы по треду не осталось, ход никому не передаю.\n", []);
+
+    expect(result.code).toBe(2);
+    expect(filesIn(contest)).toEqual([]);
+  });
+
+  it("writes the very same prose once the flag means it", () => {
+    const contest = contour();
+
+    const result = claiming(contest, "Ход отсюда не передаётся никому.\n", ["--waiting-on", "—"]);
+
+    expect(result.code).toBe(0);
+    const [file] = filesIn(contest);
+    const message = parseMessageFile(
+      readFileSync(join(contest.root, "016-x", "messages", file as string), "utf8"),
+    );
+    expect(message.fields.waitingOn).toBe(null);
+  });
+
+  it("lets an interim report KEEPING the turn through — a report does not end it", () => {
+    // The line the language-neutral candidate would have crossed: "whoever holds the
+    // turn must declare it" refuses 51 of the 942 messages written by the holder, and
+    // this is what most of them look like.
+    const contest = contour();
+
+    const result = claiming(
+      contest,
+      "Первый шаг сделан, продолжаю в том же ходе. Ход у меня, по `042` ход у `curator`.\n",
+      [],
+    );
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+
+  it("lets a message DESCRIBING the form through — inline code is cut for the prose form", () => {
+    // Measured live, one minute after the form was written: the message reporting this
+    // very change was refused, because describing the alternation puts "ход" and
+    // `отсюда уходит` in one sentence. Prose about the protocol is the daily traffic of
+    // these threads. The markup form still reads inline code — thread 042's two cases
+    // were written that way.
+    const contest = contour();
+
+    const result = claiming(
+      contest,
+      "Прозаическая форма требует, чтобы «ход» стоял словом: `отсюда уходит | не переда[её]тся | никому не переда | снимаю`.\n",
+      [],
+    );
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+
+  it("does not read 'ход' inside another word", () => {
+    // 'переходит', 'находится', 'в этом ходе' — the lookarounds are what keep the
+    // claim a word rather than a substring.
+    const contest = contour();
+
+    const result = claiming(
+      contest,
+      "Прогон переходит на пул ящика. В этом ходе ключ не передаётся в конфиг.\n",
+      [],
+    );
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+});
+
 describe("new-thread and the same claim (thread 042)", () => {
   it("REFUSES an opening message that releases the turn in prose only", () => {
     const contest = contour();

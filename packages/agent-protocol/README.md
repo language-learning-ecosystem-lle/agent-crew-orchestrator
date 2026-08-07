@@ -820,6 +820,17 @@ role used to disappear from a declaration. An unknown role in the field **fails 
 dropped silently: a silent drop was precisely the mechanism by which a role was
 lost from a declaration.
 
+**A body that says the turn is released while the header says nothing is REFUSED**
+(`new-message` and `new-thread` alike, threads 042 and 058). The door reads that one
+claim only to refuse it, never to believe it — the header stays the single source of
+the turn. Both shapes are read: the markup written into the prose (`waiting-on: —`)
+and the sentence that means it (`ход отсюда уходит`, `ход никому не передаю`), with
+fenced blocks cut out first so documenting the form is not using it. It is refused
+rather than folded to `--waiting-on —`, because the writer meant one of two different
+things — release the turn, or leave the claim out — and the door must not pick. Nine
+messages of the live mail carry the claim with no field; two of them cost a session
+raised onto a thread where nothing had happened.
+
 **A role outside the domain of the turn is judged only where the turn actually is.**
 `waiting-on: john` in the message that holds the thread's CURRENT turn (the last
 declaration of an open thread — the same rule the index and `mail` use) fails the
