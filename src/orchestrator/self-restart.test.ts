@@ -16,6 +16,7 @@ import { daemonArgvFor } from "./restart.js";
 import {
   attemptsFor,
   describeSelfRestartStand,
+  describeSelfRestartWithheld,
   parseSelfRestartMemory,
   renderSelfRestartMemory,
   SELF_RESTART_MAX_ATTEMPTS,
@@ -353,5 +354,30 @@ describe("the line said instead", () => {
     expect(lines[0]).toContain("dev-core");
     expect(lines[3]).toContain("/box/repo");
     expect(lines[5]).toContain("2/2");
+  });
+});
+
+/**
+ * CONDITION 6 IN WORDS (the live failure of 2026-08-07). The rule that stops the
+ * half-death lives in the tick, and the process test drives it; this is the sentence it
+ * says, held to the two things a reader of `daemon.log` needs from it — the pairs by name
+ * and the reason, so that "nothing was launched" is never left to be inferred from an
+ * absence of lines.
+ */
+describe("the line of a tick that hands over", () => {
+  it("names the pairs it withheld and why they were withheld", () => {
+    const said = describeSelfRestartWithheld(["dev-core×055-x", "curator×016-y"]);
+    expect(said).toContain("this tick launches NOTHING");
+    expect(said).toContain("dev-core×055-x, curator×016-y");
+    // The reason is the load-bearing half: the wait of the repair is short BECAUSE the
+    // leases are zero, and a session started now is what breaks that premise.
+    expect(said).toContain("zero leases");
+    expect(said).toContain("drain");
+  });
+
+  it("still speaks when the plan was empty — an invariant that only speaks when it bites cannot be checked", () => {
+    const said = describeSelfRestartWithheld([]);
+    expect(said).toContain("this tick launches nothing");
+    expect(said).toContain("nothing to withhold");
   });
 });

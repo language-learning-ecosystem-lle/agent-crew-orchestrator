@@ -344,6 +344,7 @@ import {
   describeSelfRestartSpawned,
   describeSelfRestartStand,
   describeSelfRestartUnspawned,
+  describeSelfRestartWithheld,
   parseSelfRestartMemory,
   renderSelfRestartMemory,
   SELF_RESTART_MAX_ATTEMPTS,
@@ -7564,8 +7565,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
    * banner names the SHA it loaded. The attempt is counted BEFORE the spawn: a repair
    * that dies between the two must cost an attempt, or a box that cannot spawn would try
    * forever at tick speed.
+   *
+   * IT RETURNS WHETHER IT HANDED OVER, and the caller owes the answer one thing: no
+   * launches in this tick. See the module's doc block — the half-death of 2026-08-07 came
+   * through precisely this return value not existing.
    */
-  const selfRestart = (drift: CodeDrift): void => {
+  const selfRestart = (drift: CodeDrift): boolean => {
     const memory = existsSync(paths.daemonSelfRestart)
       ? parseSelfRestartMemory(readFile(paths.daemonSelfRestart, "the self-restart memory"))
       : undefined;
@@ -7586,7 +7591,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     });
     if (verdict.kind === "stand") {
       err(`agent-protocol: daemon — ${describeSelfRestartStand(verdict.block)}`);
-      return;
+      return false;
     }
     err(
       `agent-protocol: daemon — ${describeSelfRestartGo({
@@ -7611,7 +7616,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       err(
         `agent-protocol: daemon — SELF-RESTART skipped: the attempt could not be recorded in '${paths.daemonSelfRestart}' (${(error as Error).message}); without that record a failing repair would retry every tick`,
       );
-      return;
+      return false;
     }
     try {
       // The child speaks into the daemon's own log rather than into 'ignore', and the
@@ -7642,8 +7647,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         env: process.env,
       });
       err(`agent-protocol: daemon — ${describeSelfRestartSpawned(pid as number, paths.daemonLog)}`);
+      return true;
     } catch (error) {
       err(`agent-protocol: daemon — ${describeSelfRestartUnspawned((error as Error).message)}`);
+      // Nothing was handed over, so nothing is withheld either: this daemon is still the
+      // live one and its plan is the only one anybody is going to act on.
+      return false;
     }
   };
   // R13: WHAT THIS RUN RAISES, and what it leaves to somebody else — in the banner,
@@ -8092,6 +8101,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // is nothing happening", and the only one the daemon could not give on 2026-08-03.
     // Silent on a match — a line every tick saying the code is current is the noise that
     // teaches a reader to skip the section. Nothing here can change what the tick does.
+    /**
+     * 055.2, condition 6 — WHETHER THIS TICK HAS ALREADY HANDED ITSELF OVER. `decision`
+     * above is COMPUTED, not acted on: the launches happen below. So a handover taken
+     * here has to be able to stop them, and this is the flag that does it — see the doc
+     * block of `self-restart.ts` for the morning that proved a comment is not enough.
+     */
+    let handedOverToRepair = false;
     if (vintage !== undefined) {
       const reading = measureCodeDrift({ vintage, ref: required(argv, "--ref") });
       if (reading.kind === "drift") {
@@ -8100,10 +8116,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         // 055.2 — AND THEN IT DOES SOMETHING ABOUT IT, when and only when the box is
         // safe to repair unattended. The verdict is pure (`self-restart.ts`); everything
         // impure about the decision is here and is exactly two things: reading the tree
-        // the pull would move, and spawning the manual command. `decision` above already
-        // ran, so the tick's own work for this round is done — a restart decided here
-        // takes effect at the NEXT tick, when the stop flag the repair sets is seen.
-        selfRestart(reading.drift);
+        // the pull would move, and spawning the manual command.
+        handedOverToRepair = selfRestart(reading.drift);
       } else if (reading.kind === "unknown" && reading.problem !== codeNote) {
         // Said when it CHANGES, not every tick: an unresolvable ref is one fault, and
         // repeating it thirty seconds apart would bury the drift line it stands next to.
@@ -8207,7 +8221,20 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // read. That argument was about a BLOCKING tick and it dies with it: the supervisors
     // are non-blocking now, so the tail is raised beside the head against the same
     // reading, and nothing is deferred to a tick that may be half an hour away.
-    const plan: readonly Candidate[] = decision.kind === "plan" ? decision.launches : [];
+    const planned: readonly Candidate[] = decision.kind === "plan" ? decision.launches : [];
+    // 055.2, condition 6: A TICK THAT HANDED OVER TO A REPAIR RAISES NOBODY. It judged
+    // "zero leases" seconds ago and the repair's short wait stands on that judgement, so
+    // the one thing that must not happen between the handover and the stop flag is this
+    // process taking a session. Withholding costs one tick and no work: the pairs stay in
+    // the mail and the successor reads them fresh. Said out loud either way, because an
+    // invariant that speaks only when it bites cannot be checked in a log.
+    if (handedOverToRepair)
+      err(
+        `agent-protocol: daemon — ${describeSelfRestartWithheld(
+          planned.map((candidate) => `${candidate.role}×${candidate.thread}`),
+        )}`,
+      );
+    const plan: readonly Candidate[] = handedOverToRepair ? [] : planned;
     for (const candidate of plan) launch(candidate, events);
     // "Nothing was launched" IS AN OUTCOME AND IS SPOKEN OUT LOUD. Before this, both
     // of these branches were a bare comment: the daemon printed its banner and either
