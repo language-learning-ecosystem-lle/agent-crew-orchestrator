@@ -834,3 +834,150 @@ describe("planTick — the closed window stands the box down (D-3 part 2)", () =
     ]);
   });
 });
+
+/**
+ * B.3 (thread 055) — THE SHELVES ARE THE ACCOUNT'S, NOT THE BOX'S.
+ *
+ * The acceptance minimum curator set for this package, written as the control pair the
+ * D-3 tests above are written as: the same journal, the same candidates, the only
+ * difference being WHOSE account the pair spends. Before B.3 every one of these raised
+ * nobody — one closed window stood the whole machine down, which on a box with two
+ * subscriptions is the stall the backoff exists to remove, caused by the backoff.
+ */
+describe("planTick — a closed window stands down ITS account and nobody else (055, B.3)", () => {
+  const signal = (
+    account: string | undefined,
+    extra: Record<string, unknown> = {},
+  ): OrchestratorEvent =>
+    ({
+      kind: "lease-released",
+      ts: "2026-07-24T13:50:00Z",
+      role: "dev-core",
+      thread: "t9",
+      reason: "quota-exhausted",
+      until: "2026-07-24T16:00:00Z",
+      window: "five_hour",
+      ...(account === undefined ? {} : { account }),
+      ...extra,
+    }) as OrchestratorEvent;
+
+  const authDeath = (account: string | undefined, ts: string, role = "dev-core") =>
+    ({
+      kind: "lease-released",
+      ts,
+      role,
+      thread: "t9",
+      reason: "auth-failed",
+      ...(account === undefined ? {} : { account }),
+    }) as OrchestratorEvent;
+
+  /** Two roles of one box on two subscriptions — the shape B.2 made possible. */
+  const two: Candidate[] = [
+    { role: "dev-core", thread: "t1", account: "main" },
+    { role: "curator", thread: "t2", account: "second" },
+  ];
+
+  it("the window of `main` closed → the role on `second` IS RAISED", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [signal("main")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["curator×t2"]);
+    expect(decision.skipped.map((s) => [s.role, s.reason])).toEqual([["dev-core", "quota"]]);
+  });
+
+  it("…and both closed → nobody is raised, which is the pre-B.3 answer for the right reason", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [signal("main"), signal("second", { ts: "2026-07-24T13:51:00Z" })],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual([]);
+    expect(decision.kind).toBe("quota");
+  });
+
+  it("an event with NO account shelves the box's own — journals written before B.3 need no migration", () => {
+    const decision = planTick({
+      ...base,
+      candidates: [
+        { role: "dev-core", thread: "t1" },
+        { role: "curator", thread: "t2", account: "second" },
+      ],
+      events: [signal(undefined)],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["curator×t2"]);
+  });
+
+  it("the decision names the shelves of the HEAD's account and no neighbour's (Ф-1)", () => {
+    // The latent half of B.3: with two accounts shelved, a decision handing back every
+    // shelf of the box explains the stall of `main` with the closed window of `second`.
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [
+        signal("main"),
+        signal("second", { ts: "2026-07-24T13:51:00Z", until: "2026-08-04T00:00:00Z" }),
+      ],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind === "quota" && decision.shelves.map((s) => s.account)).toEqual(["main"]);
+  });
+
+  it("…and the once-per-dark-spell line is folded over THAT account's shelves alone (Ф-1)", () => {
+    // `main` was announced hours ago; `second` closing must not write a SECOND line
+    // against the head of `main`, whose dark spell already has one.
+    const events = [
+      signal("main"),
+      {
+        kind: "launch-refused",
+        ts: "2026-07-24T13:50:30Z",
+        role: "dev-core",
+        thread: "t1",
+        reason: "quota",
+      } as OrchestratorEvent,
+      signal("second", { ts: "2026-07-24T13:52:00Z" }),
+    ];
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events,
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind === "quota" && decision.cut).toBeUndefined();
+  });
+
+  it("dead credentials of one account do not stand the other down either", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [authDeath("main", "2026-07-24T13:55:00Z")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["curator×t2"]);
+    expect(decision.skipped.map((s) => [s.role, s.reason])).toEqual([["dev-core", "auth"]]);
+  });
+
+  it("the auth decision names the shelf the HEAD met, not the first one folded", () => {
+    const decision = planTick({
+      ...base,
+      candidates: two,
+      events: [
+        authDeath("second", "2026-07-24T13:54:00Z", "curator"),
+        authDeath("main", "2026-07-24T13:55:00Z"),
+      ],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind === "auth" && decision.shelf.account).toBe("main");
+  });
+});

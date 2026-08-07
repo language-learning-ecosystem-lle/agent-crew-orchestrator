@@ -260,6 +260,18 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     // of being folded into one of ours. Optional — the prose layers never name a window,
     // and journals written by part 1 parse unchanged.
     window: z.string().min(1).optional(),
+    // WHOSE ACCOUNT THE RUN SPENT (thread 055, B.3) — the id as the repository names it
+    // (`launch.account`), never the account itself. It rides on EVERY release and not only
+    // on the two infrastructure ones, because both shelves are folds over the run of
+    // releases rather than over a single event: the credentials shelf breaks its run of
+    // deaths on any other completed run, and a delivery on account `main` proves nothing
+    // whatever about the token of account `second`.
+    //
+    // ABSENCE IS A KEY AND NOT A GAP: silence has always meant "the box's own account"
+    // (`launch.ts`, the resolution of B.2), so an event without the field belongs to the
+    // box's own shelf — which is exactly where every event written before this field
+    // existed belongs. That is what makes journals of D-3 parse and shelve unchanged.
+    account: z.string().min(1).optional(),
     // THE RUN ENDED ITS OWN TURN AND LEFT ITS WORKSPACE DIRTY (thread 023, requirement 5,
     // second half). `true` or absent, never `false`, and the asymmetry is the meaning: the
     // flag is written only where the tree was actually looked at — a run raised without

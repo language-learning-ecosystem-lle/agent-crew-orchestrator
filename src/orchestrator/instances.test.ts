@@ -14,6 +14,7 @@ import {
   rolesOfInstance,
 } from "./instances.js";
 import type { LeaseView } from "./lease.js";
+import { BOX_ACCOUNT } from "./quota.js";
 
 const view = (over: Partial<LeaseView> = {}): LeaseView => ({
   role: "dev-core",
@@ -343,6 +344,7 @@ describe("the other boxes, in `status` (R13)", () => {
 describe("the digest publishes the closed windows", () => {
   const shelf = {
     window: "five_hour",
+    account: BOX_ACCOUNT,
     until: "2026-07-29T21:40:00Z",
     since: "2026-07-29T16:40:00Z",
     stated: true,

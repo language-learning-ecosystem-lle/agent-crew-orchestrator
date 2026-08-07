@@ -231,6 +231,14 @@ export const stepEvent = (
      */
     readonly window?: string;
     /**
+     * WHOSE ACCOUNT THE RUN SPENT (thread 055, B.3) — the id as the repository names it,
+     * absent for the box's own. It rides on EVERY release and not only on the two
+     * infrastructure ones: both shelves are folds over a RUN of releases, so a delivery
+     * has to say which account it proves alive, and a closed window has to say whose it
+     * was. See the field on the journal schema for why absence is a key and not a gap.
+     */
+    readonly account?: string;
+    /**
      * The run ended its own turn and left its workspace dirty (thread 023, requirement 5).
      * `true` or absent, like the field it lands in: the flag is a positive observation,
      * and a caller with no workspace to look at makes none.
@@ -262,6 +270,7 @@ export const stepEvent = (
     ...(detail?.steps === undefined ? {} : { steps: detail.steps }),
     ...(detail?.until === undefined ? {} : { until: detail.until }),
     ...(detail?.window === undefined ? {} : { window: detail.window }),
+    ...(detail?.account === undefined ? {} : { account: detail.account }),
     ...(detail?.dirty === undefined ? {} : { dirty: detail.dirty }),
     ...(detail?.usage === undefined ? {} : { usage: detail.usage }),
   };

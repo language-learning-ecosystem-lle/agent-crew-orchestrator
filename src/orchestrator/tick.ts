@@ -40,7 +40,7 @@
  */
 
 import { parkedOnKind } from "../thread/thread.js";
-import { type AuthShelf, authRefusalRecorded, openAuthShelf } from "./auth.js";
+import { type AuthShelf, authRefusalRecorded, authShelfAgainst, openAuthShelves } from "./auth.js";
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
 import {
   type Ceiling,
@@ -48,10 +48,26 @@ import {
   MAX_CONSECUTIVE_RUNS,
 } from "./launch.js";
 import { foldLeases, isLeaseAlive, type LeaseView } from "./lease.js";
-import { openQuotaShelves, type QuotaShelf, quotaRefusalRecorded } from "./quota.js";
+import {
+  openQuotaShelves,
+  type QuotaShelf,
+  quotaRefusalRecorded,
+  shelvesAgainst,
+} from "./quota.js";
 
 /** A "role awaited on a thread" pair — a launch candidate (from `threadsWaitingOn`). */
-export type Candidate = { readonly role: string; readonly thread: string };
+export type Candidate = {
+  readonly role: string;
+  readonly thread: string;
+  /**
+   * WHOSE ACCOUNT THIS PAIR WOULD SPEND (thread 055, B.3) — the id as the repository names
+   * it, absent for the box's own. It is the planner's business because the two shelves
+   * below are the account's and not the box's: without it a window closed on one
+   * subscription stands down the roles of another, which is the stall the backoff exists
+   * to remove. Absent is a KEY, not a gap — see `BOX_ACCOUNT`.
+   */
+  readonly account?: string;
+};
 
 /**
  * Why a candidate was not raised on this tick. Three reasons, and they call for
@@ -84,11 +100,18 @@ export type Candidate = { readonly role: string; readonly thread: string };
  * standing between a live session and a second one in the same workspace is that the
  * planner is told which roles are busy in this process (`running`).
  *
- * `quota` is the ONLY reason here that belongs to the BOX rather than to the pair (D-3
- * part 2): the rate-limit window is the account's, so a signal any role brought in
- * closes the door for all of them. It calls for nothing from anybody — it ends by the
- * clock — but it must be said, because a circuit standing down for hours with no line
- * on the stream is indistinguishable from a circuit that died.
+ * `quota` and `auth` are the two reasons here that belong to INFRASTRUCTURE rather than to
+ * the pair (D-3 part 2, thread 023). They call for nothing from the pair — a window ends by
+ * the clock, credentials end when a human logs in — but they must be said, because a
+ * circuit standing down for hours with no line on the stream is indistinguishable from a
+ * circuit that died.
+ *
+ * THE INFRASTRUCTURE THEY BELONG TO IS THE ACCOUNT'S, NOT THE BOX'S (thread 055, B.3).
+ * While a box had one subscription the two were the same sentence and this block said
+ * "the box"; since B.2 a box may raise its roles on several, and each has its own window
+ * and its own token. So both reasons are decided per candidate against the shelves of the
+ * account THAT candidate would spend, and neither is a state of the box any more: a tick
+ * that can still raise somebody raises them and merely SAYS the rest were shelved.
  */
 export type SkipReason =
   | "held"
@@ -108,6 +131,14 @@ export type TickSkip = {
   readonly attempt: number;
   /** Whose decision the thread is frozen behind — only meaningful for `parked` (R27). */
   readonly parkedOn?: string;
+  /**
+   * WHOSE ACCOUNT THE SKIPPED PAIR WOULD HAVE SPENT (thread 055, B.3) — copied off the
+   * candidate by the spread that builds every skip, and declared here so the two folds
+   * below can read it DIRECTLY instead of going back to `input.candidates` for the pair
+   * they already hold. A lookup by (role, thread) is a lookup that can miss; the field
+   * cannot. Absent is a KEY, not a gap — see `BOX_ACCOUNT`.
+   */
+  readonly account?: string;
 };
 
 /** Everything the tick refused to raise, whatever it decided to do instead. */
@@ -236,7 +267,7 @@ export const planTick = (input: {
   const shelves = openQuotaShelves(input.events, input.now);
   // THE CREDENTIALS SHELF IS READ IN THE SAME BREATH AND FOR THE SAME REASON — one fact
   // about the box, folded out of the events the ceilings are folded from.
-  const authShelf = openAuthShelf(input.events, input.now);
+  const authShelves = openAuthShelves(input.events, input.now);
   const skipped: TickSkip[] = [];
   const eligible: Candidate[] = [];
   // Seeded with the roles this process is ALREADY running (D-2): "one session per role"
@@ -277,14 +308,17 @@ export const planTick = (input: {
     // THE CLOSED WINDOW COMES BEFORE `role-busy` and after everything that is about the
     // PAIR: a candidate the box could not raise anyway is better named by the reason it
     // could not be raised at all than by its place in a queue that is not moving.
-    if (shelves.length > 0) {
+    // …AND THE WINDOW THAT COUNTS IS THIS CANDIDATE'S ACCOUNT'S (B.3), never any closed
+    // window of the box: on a machine raising roles on two subscriptions the second reading
+    // stands a healthy account down for the five hours of a neighbour's.
+    if (shelvesAgainst(shelves, candidate.account).length > 0) {
       skipped.push({ ...candidate, reason: "quota", attempt });
       continue;
     }
     // THE REFUSED CREDENTIALS SIT BESIDE THE CLOSED WINDOW, and after it: when both are
     // true the window is the fact with a clock on it, and a box that cannot authenticate
     // will say so again the moment the window reopens.
-    if (authShelf !== undefined) {
+    if (authShelfAgainst(authShelves, candidate.account) !== undefined) {
       skipped.push({ ...candidate, reason: "auth", attempt });
       continue;
     }
@@ -308,11 +342,28 @@ export const planTick = (input: {
   // daemon's stream repeats it every tick, which is where repetition belongs.
   const refusedByQuota = skipped.filter((skip) => skip.reason === "quota");
   const quotaHead = refusedByQuota[0];
-  if (shelves.length > 0 && quotaHead !== undefined) {
-    const announced = shelves.every((shelf) => quotaRefusalRecorded(input.events, shelf));
+  // THE SHELVES NAMED IN THE DECISION ARE THE ONES THAT REFUSED THE HEAD (B.3), exactly
+  // as the credentials half below names the shelf its own head met. Two things were wrong
+  // with handing back every shelf of the box: the operator's answer to "why is nothing
+  // happening" would name the closed window of an account the head never spends, and the
+  // `every` fold — the thing that keeps ONE line per dark spell — would turn false on a
+  // neighbour's fresh shelf and write that line against a head whose own period was
+  // announced hours ago. Both are the stall B.3 removes, only wearing the wrong label.
+  const quotaShelves = shelvesAgainst(shelves, quotaHead?.account);
+  // AND IT IS A STATE OF THE BOX, so it is only the ANSWER while the box has nothing else
+  // to do (B.3). Before the shelves were per account this guard was implied: one closed
+  // window refused every candidate, so a shelf and an empty plan were the same fact. With
+  // two subscriptions they are not — a window closed on `main` leaves the roles of
+  // `second` perfectly raisable, and returning `quota` there would stand the healthy
+  // account down for the neighbour's five hours, which is the whole stall B.3 removes.
+  // The refused pairs are not lost: they are in `skipped`, and the daemon says every one
+  // of them out loud every tick. What they do NOT get is the `launch-refused` line — its
+  // sentence is "nothing was launched", and on this tick something was.
+  if (eligible.length === 0 && quotaShelves.length > 0 && quotaHead !== undefined) {
+    const announced = quotaShelves.every((shelf) => quotaRefusalRecorded(input.events, shelf));
     return {
       kind: "quota",
-      shelves,
+      shelves: quotaShelves,
       ...(announced
         ? {}
         : {
@@ -331,7 +382,15 @@ export const planTick = (input: {
   // (`authRefusalRecorded`), while the daemon's stream repeats it every tick.
   const refusedByAuth = skipped.filter((skip) => skip.reason === "auth");
   const authHead = refusedByAuth[0];
-  if (authShelf !== undefined && authHead !== undefined) {
+  // THE SHELF NAMED IN THE DECISION IS THE ONE THAT REFUSED THE HEAD (B.3): several
+  // accounts may be shelved at once, and a decision naming a shelf the head never met
+  // would explain the stall with somebody else's dead token.
+  const authShelf =
+    authHead === undefined ? undefined : authShelfAgainst(authShelves, authHead.account);
+  // The same guard as the window's above, for the same reason and in the same words:
+  // dead credentials of one account are not a state of a box that can still raise the
+  // roles of another.
+  if (eligible.length === 0 && authShelf !== undefined && authHead !== undefined) {
     return {
       kind: "auth",
       shelf: authShelf,
