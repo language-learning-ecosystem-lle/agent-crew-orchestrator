@@ -63,6 +63,22 @@
  * refusal of the manual command, unchanged; this module does not invent a second policy
  * for it, because the operator asked for the NEW code to be running and the old one
  * quietly coming back would look exactly like success.
+ *
+ * AND THE TICK THAT HANDS OVER LAUNCHES NOTHING (the live acceptance of 2026-08-07,
+ * curator's condition 6 again — and the defect it caught). "Zero leases" is condition 2,
+ * and until 2026-08-07 the daemon judged it and then immediately broke it ITSELF: the
+ * drift block runs in the middle of a tick whose plan has been computed but not yet
+ * acted on, so the handover was followed, three lines later and in the same tick, by
+ * `the plan of this tick: 1 launch`. On the box that morning that launch was a
+ * nineteen-minute session; the repair set the stop flag one second later, waited its
+ * 150s for a daemon that was now draining, gave up, and left. The predecessor then
+ * finished the session and exited on the flag with nobody to succeed it — the circuit
+ * lay dark until a human typed `up`. Exactly the half-death condition 6 forbids, reached
+ * through the one door nobody guarded: the repair's short `--wait` is CORRECT, and its
+ * premise ("zero leases, so the old process leaves at its next tick") is this process's
+ * to keep. So the handover is now the last decision of the tick in fact and not only in
+ * the comment: whatever the plan held stays in the queue, is named out loud, and is taken
+ * by the successor, which is a fresher reading of the same mail seconds later.
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -237,6 +253,21 @@ export const describeSelfRestartSpawned = (pid: number, logPath: string): string
 /** The spawn itself failed — nothing was handed over, and this box is still the live one. */
 export const describeSelfRestartUnspawned = (problem: string): string =>
   `SELF-RESTART FAILED to start (${problem}) — nothing was stopped, this daemon stays up and behind; the attempt is counted`;
+
+/**
+ * THE LINE THAT NAMES WHAT THE HANDOVER COST THIS TICK (condition 6, 2026-08-07). It is
+ * said even when the plan was empty, and that is deliberate: "the tick that hands over
+ * launches nothing" is the invariant a reader has to be able to CHECK in a log, and an
+ * invariant that only speaks when it bites is one nobody can tell from an absent one.
+ *
+ * Nothing is lost by withholding: the pairs are not consumed, not counted as attempts and
+ * not recorded — they stay in the mail, which is what the successor reads seconds later
+ * with the queue in front of it. Losing a tick is the price of never losing the circuit.
+ */
+export const describeSelfRestartWithheld = (pairs: readonly string[]): string =>
+  pairs.length === 0
+    ? "SELF-RESTART: this tick launches nothing — there was nothing to withhold, and the zero-lease condition the handover stands on holds by itself"
+    : `SELF-RESTART: this tick launches NOTHING (${pairs.join(", ")} stay in the queue for the successor) — the handover was judged on zero leases and a session started now would make this daemon drain for as long as it lasts, outliving the repair's wait`;
 
 /**
  * THE ARGV OF THE SPAWNED REPAIR. It is the manual command verbatim plus `--self`, which

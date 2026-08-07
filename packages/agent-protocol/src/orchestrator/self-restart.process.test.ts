@@ -301,6 +301,47 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
   );
 
   it(
+    "launches nobody in the tick it hands over — the repair's short wait stands on zero leases",
+    () => {
+      // THE LIVE FAILURE OF 2026-08-07, IN THE HARNESS. The fixture already carried it and
+      // nobody looked: `seedMail` seeds a thread waiting on `dev-core`, so the tick that
+      // hands over is a tick WITH A PLAN — which is exactly the box that morning. The old
+      // daemon handed over, launched a nineteen-minute session three lines later, and the
+      // repair's 150s wait expired against a daemon that was now draining; the repair left,
+      // the predecessor died on the flag it had set, and nothing succeeded it.
+      const home = homeContour();
+      // Launches are enabled here and nowhere else in this file: the enable gate is the
+      // OTHER reason a tick raises nobody, and a case about withholding must not be able
+      // to pass because there was nothing to withhold in the first place.
+      mkdirSync(join(home.repo, ".orchestrator"), { recursive: true });
+      writeFileSync(join(home.repo, ".orchestrator", "enabled"), "");
+      const said = tick(home.cli, home.repo);
+
+      // The premise of the case, asserted rather than assumed: there WAS something to
+      // launch. Without this line a plan that silently became empty would make the test
+      // pass by measuring nothing — the failure mode of every "it did not happen" test.
+      expect(said).toContain("the plan of this tick");
+      expect(said).toContain("dev-core×055-x");
+      expect(said).toMatch(/handed over to the restart process \(pid \d+\)/);
+
+      // The invariant, in the daemon's own words and with the withheld pair named.
+      expect(said).toContain("SELF-RESTART: this tick launches NOTHING");
+      expect(said).toContain("dev-core×055-x stay in the queue for the successor");
+
+      // And the fact behind the words: no session was taken. The launch writes its own
+      // trace before the child is spawned (the workspace it moves, the identity it commits
+      // as, the ceilings it gets) — none of that may appear, and no lease may be recorded.
+      expect(said).not.toContain("workspace — dev-core:");
+      expect(said).not.toContain("ceilings:");
+      const journal = join(home.repo, ".orchestrator", "journal.jsonl");
+      expect(existsSync(journal) ? readFileSync(journal, "utf8") : "").not.toContain(
+        "lease-acquired",
+      );
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  it(
     "stands and says why while a lease is live — a wait of unknown length needs a human",
     () => {
       const home = homeContour();
