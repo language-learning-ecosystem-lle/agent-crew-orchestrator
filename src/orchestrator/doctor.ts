@@ -255,6 +255,48 @@ export const agentLiveCheck = (input: {
 }): PreflightCheck => verdict(`agent: headless run (${input.worker})`, input.outcome);
 
 /**
+ * IS THE TOKEN OF ACCOUNT X ALIVE (B.4 of thread 055) — one row per DECLARED account, and
+ * the reason it is not the row above is the whole of part B: `agent: headless run` probes
+ * with the environment the daemon hands a session, which carries no `CLAUDE_CONFIG_DIR` and
+ * therefore asks about the box's own login. On a box with two subscriptions that is one
+ * green row about one of them, and the other can be dead for a day with doctor saying so
+ * nowhere. The credential store is per DIRECTORY (measured, B.1), so each account is asked
+ * in its own, exactly the way {@link resolveAccount} would spend it.
+ *
+ * THE ROW IS THE ONE ACTION ITS READER HAS. A dead token has exactly one repair — a human
+ * `claude login` in that directory — so the failing row spells the command with the
+ * directory in it: `login` typed in the wrong home leaves the shelf where it was and reads
+ * as the alarm lying, which is the same defect Ф-2 fixed at the other end of the wire.
+ */
+export const accountLiveCheck = (input: {
+  readonly id: string;
+  readonly configDir: string;
+  readonly outcome: DoctorOutcome;
+}): PreflightCheck => {
+  const row = verdict(`account: '${input.id}' token`, input.outcome);
+  return row.status === "fail"
+    ? {
+        ...row,
+        detail: `${row.detail} — log this account in on the box: CLAUDE_CONFIG_DIR=${input.configDir} claude login`,
+      }
+    : row;
+};
+
+/**
+ * A box that declares no account has ONE login, and the row above already asked about it.
+ * Said out loud rather than left as an absent section: a checklist that is silent about
+ * accounts on a box that has several would look exactly the same.
+ */
+export const accountChecksWithoutAccounts = (): readonly PreflightCheck[] => [
+  {
+    name: "accounts: per-account tokens",
+    status: "info",
+    detail:
+      "not asked — this machine declares no 'accounts' section, so every role spends the box's own login and 'agent: headless run' above is the whole of the answer",
+  },
+];
+
+/**
  * THE REMOTE URL AS IT MAY BE PRINTED. A checklist whose whole purpose is to be read
  * by a human — and pasted into a chat or a ticket — must not carry a credential, and
  * an automation clone carries one right in the url (`https://x-access-token:<token>@…`

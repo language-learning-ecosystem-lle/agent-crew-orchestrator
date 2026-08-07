@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountChecksWithoutAccounts,
+  accountLiveCheck,
   agentChecksWithoutRoles,
   agentLiveCheck,
   boxIdentityCheck,
@@ -239,6 +241,43 @@ describe("the headless probe — the moment of truth of a box", () => {
     });
     expect(check.status).toBe("info");
     expect(check.detail).toContain("--offline");
+  });
+});
+
+describe("is the token of account X alive (B.4)", () => {
+  const probe = (outcome: Parameters<typeof accountLiveCheck>[0]["outcome"]) =>
+    accountLiveCheck({ id: "second", configDir: "/home/j/.claude-second", outcome });
+
+  it("names the account in the row — one row per subscription, not one per box", () => {
+    const check = probe({ ok: true, detail: "answered in 2.4s" });
+    expect(check.status).toBe("ok");
+    expect(check.name).toContain("'second'");
+  });
+
+  it("a dead token spells the ONE repair, with the directory in it", () => {
+    const check = probe({ ok: false, detail: "Invalid API key · Please run /login" });
+    expect(check.status).toBe("fail");
+    // The tool's own words are kept — a dead token and a timeout are different evenings.
+    expect(check.detail).toContain("Invalid API key");
+    expect(check.detail).toContain("CLAUDE_CONFIG_DIR=/home/j/.claude-second claude login");
+  });
+
+  it("a passing row does NOT carry the login instruction — there is nothing to repair", () => {
+    expect(probe({ ok: true, detail: "answered in 2.4s" }).detail).not.toContain("claude login");
+  });
+
+  it("not asked is a fact, not a pass: --offline leaves the row neither red nor green", () => {
+    const check = probe({ skipped: "--offline" });
+    expect(check.status).toBe("info");
+    expect(check.detail).toContain("--offline");
+  });
+
+  it("a box with no 'accounts' section says so instead of being silent about accounts", () => {
+    const rows = accountChecksWithoutAccounts();
+    expect(rows.map((row) => row.status)).toEqual(["info"]);
+    expect(rows[0]?.detail).toContain("the box's own login");
+    // An info row must not make doctor fail — it is a fact about the box, not a defect.
+    expect(doctorPassed([...rows])).toBe(true);
   });
 });
 

@@ -400,9 +400,11 @@ describe("the account reaches the planner and the journal (thread 055, B.3)", ()
     expect(launched.map((event) => event.role)).toEqual(["curator"]);
   }, 60_000);
 
-  it("…and closed on the account of the ONLY waiting role, nobody is raised", () => {
+  it("…and closed on the OTHER account → the OTHER role is raised, the mirror image", () => {
     // The control: the same contour, the shelf moved to the other subscription. Without it
     // the test above would also pass on a planner that simply raises whoever is second.
+    // The title said "nobody is raised" until B.4 and its own assert said otherwise — a
+    // control whose name contradicts it teaches the next reader the wrong invariant.
     const repo = twoAccountContour();
     const stub = join(repo, "stub.sh");
     writeFileSync(stub, "#!/bin/sh\nexit 0\n");

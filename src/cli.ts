@@ -91,6 +91,7 @@ import {
 } from "./merge/gh.js";
 import {
   type AuthAlarm,
+  authAlarmKey,
   describeAge,
   type GhAlarm,
   parseNotifyState,
@@ -144,6 +145,8 @@ import {
   resolveThreadDirective,
 } from "./orchestrator/directive.js";
 import {
+  accountChecksWithoutAccounts,
+  accountLiveCheck,
   agentChecksWithoutRoles,
   agentLiveCheck,
   boxIdentityCheck,
@@ -307,6 +310,7 @@ import {
   waitingSince,
 } from "./orchestrator/priority.js";
 import {
+  describeAccount,
   describeQuotaRelease,
   describeQuotaShelf,
   openQuotaShelves,
@@ -2683,7 +2687,12 @@ const runNotify = async (input: {
       // THE SHELF ALONE DOES NOT RING — `authAlarmDue` is the predicate, and it is the one
       // written in `auth.ts` for this purpose (#160). It is not re-decided here.
       if (shelf !== undefined && authAlarmDue(shelf))
-        authAlarm = { since: shelf.since, deaths: shelf.deaths, until: shelf.until };
+        authAlarm = {
+          account: shelf.account,
+          since: shelf.since,
+          deaths: shelf.deaths,
+          until: shelf.until,
+        };
     } catch (error) {
       say(`auth — the shelf could not be read: ${(error as Error).message}`);
     }
@@ -2727,7 +2736,7 @@ const runNotify = async (input: {
     `${plan.parked.length} parked, ${plan.freshParked.length} of them asking; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
-    `${plan.auth === undefined ? "" : `; the box cannot authenticate (${plan.auth.deaths} runs in a row)`}` +
+    `${plan.auth === undefined ? "" : `; ${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} runs in a row)`}` +
     `${plan.gh === undefined ? "" : `; gh has refused merge-ready ${plan.gh.ticks} ticks in a row (rings at ${plan.gh.threshold})`}`;
   if (!write) {
     say(message === "" ? "(nothing — nobody is waiting)" : message);
@@ -2786,7 +2795,7 @@ const runNotify = async (input: {
         waiting: plan.waiting,
         stalled: plan.stalled,
         parked: plan.parked,
-        auth: plan.auth?.since,
+        auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
       }),
     );
@@ -2794,7 +2803,9 @@ const runNotify = async (input: {
   }
   const announced = [
     ...(plan.freshAuth && plan.auth !== undefined
-      ? [`the box cannot authenticate (${plan.auth.deaths} deaths since ${plan.auth.since})`]
+      ? [
+          `${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} deaths since ${plan.auth.since})`,
+        ]
       : []),
     ...(plan.freshGh && plan.gh !== undefined
       ? [`gh refuses merge-ready (${plan.gh.ticks} ticks since ${plan.gh.since})`]
@@ -2817,7 +2828,7 @@ const runNotify = async (input: {
         waiting: plan.waiting,
         stalled: plan.stalled,
         parked: plan.parked,
-        auth: plan.auth?.since,
+        auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
       }),
     );
@@ -2848,7 +2859,7 @@ const runNotify = async (input: {
       waiting: plan.waiting,
       stalled: plan.stalled,
       parked: plan.parked,
-      auth: plan.auth?.since,
+      auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
       gh: plan.gh?.since,
     }),
   );
@@ -4379,6 +4390,9 @@ const doctor = (argv: readonly string[]): void => {
     ...(instanceRoles === undefined ? {} : { roles: instanceRoles }),
   });
   const roles = launchableRoles(withRef);
+  // Kept for the per-account rows below: an account is a home directory, not another tool,
+  // so they run the binary this loop already resolved rather than resolving one again.
+  let resolvedExec: string | undefined;
   for (const target of noRoles === undefined ? execTargets(withRef, local, roles) : []) {
     // The binary is looked up IN THE CHILD'S ENVIRONMENT, for preflight's reason: the
     // daemon's PATH and the session's PATH are different things.
@@ -4392,6 +4406,7 @@ const doctor = (argv: readonly string[]): void => {
     } catch {
       found = null;
     }
+    if (found !== null) resolvedExec ??= found;
     checks.push(
       agentBinaryVerdict({
         worker: target.worker,
@@ -4417,6 +4432,31 @@ const doctor = (argv: readonly string[]): void => {
     );
   }
   if (noRoles !== undefined) checks.push(...agentChecksWithoutRoles(noRoles));
+
+  // THE TOKEN OF EACH DECLARED ACCOUNT (B.4). The binary is the one the rows above
+  // resolved — an account is a home directory, not a different tool — so a box whose
+  // binary was not found is not asked twice about the same absence.
+  const accounts = Object.entries(local.config.accounts ?? {});
+  if (noRoles === undefined && accounts.length > 0) {
+    for (const [id, account] of accounts)
+      checks.push(
+        accountLiveCheck({
+          id,
+          configDir: account.configDir,
+          outcome: offline
+            ? skipped
+            : resolvedExec === undefined
+              ? { skipped: "the binary was not found — there is nothing to run" }
+              : probeHeadless({
+                  exec: resolvedExec,
+                  // THE ONE VARIABLE THAT MAKES THIS A DIFFERENT ACCOUNT (B.1): the store
+                  // is per directory — credentials, config and sessions all move with it.
+                  env: { ...env, CLAUDE_CONFIG_DIR: account.configDir },
+                  timeoutMs: positiveInt(withRef, "--probe-timeout", 120) * 1000,
+                }),
+        }),
+      );
+  } else if (noRoles === undefined) checks.push(...accountChecksWithoutAccounts());
 
   // Git: the remote the circuit reads and writes through. The write probe names the
   // instance, so two boxes probing the same remote are told apart in its logs.
