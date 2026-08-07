@@ -980,4 +980,47 @@ describe("planTick — a closed window stands down ITS account and nobody else (
     });
     expect(decision.kind === "auth" && decision.shelf.account).toBe("main");
   });
+
+  /**
+   * THE LINE THE OPERATOR READS HAD TO MOVE WITH THE MECHANICS (the closing audit of
+   * 055): both skips above are correct in the planner and were spoken in the pre-B.3
+   * words — "a signal from any role stands the WHOLE BOX down", "the credentials belong
+   * to the BOX, so a refusal seen by any role stands EVERY role down". On a box with two
+   * subscriptions that is not a rough edge, it is the opposite of what the tick just did:
+   * the frame beside it raises the neighbour. And it is the one surface where a reader
+   * decides whether to go log an account in.
+   */
+  it("the quota skip NAMES whose window closed and does not claim the box", () => {
+    const line = describeSkip(
+      { role: "dev-core", thread: "t1", reason: "quota", attempt: 0, account: "main" },
+      { value: 3, source: "default" },
+    );
+    expect(line).toContain("rate-limit window is closed for account 'main'");
+    expect(line).toContain("AND NO OTHER");
+    expect(line).not.toContain("the whole box");
+  });
+
+  it("the auth skip names the account, and its login command is that account's", () => {
+    const line = describeSkip(
+      { role: "dev-core", thread: "t1", reason: "auth", attempt: 0, account: "second" },
+      { value: 3, source: "default" },
+    );
+    expect(line).toContain("credentials of account 'second'");
+    expect(line).toContain("no neighbour's");
+    expect(line).toContain("CLAUDE_CONFIG_DIR=<its dir> claude login");
+    expect(line).not.toContain("every role");
+  });
+
+  it("a skip with no account is the box's own — a journal written before B.3 reads plainly", () => {
+    const quota = describeSkip(
+      { role: "dev-core", thread: "t1", reason: "quota", attempt: 0 },
+      { value: 3, source: "default" },
+    );
+    const auth = describeSkip(
+      { role: "dev-core", thread: "t1", reason: "auth", attempt: 0 },
+      { value: 3, source: "default" },
+    );
+    expect(quota).toContain("closed for the box's own account");
+    expect(auth).toContain("credentials of the box's own account");
+  });
 });
