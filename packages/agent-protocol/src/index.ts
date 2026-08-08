@@ -272,6 +272,15 @@ export {
   verifyMigration,
 } from "./thread/migrate.js";
 export {
+  describeStaleRunPark,
+  judgeRunPark,
+  RUN_PARK_TTL_SECONDS,
+  type RunParkFacts,
+  type RunParkVerdict,
+  type StaleRunPark,
+  staleRunParks,
+} from "./thread/run-park.js";
+export {
   declaredWaitingOn,
   mergedPrs,
   type ParkedOn,

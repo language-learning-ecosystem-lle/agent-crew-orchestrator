@@ -95,6 +95,23 @@ export const ghOpenPullRequestsSchema = z.array(
 );
 
 /**
+ * THE CHEAPEST READ OF ALL — the three facts the door of a `run:` park needs (thread 062):
+ * which head the park would wait on, whether GitHub will assemble a merge ref for this pull
+ * request at all, and whether ANY run exists on that head.
+ *
+ * Its own schema rather than {@link ghPullRequestSchema}: that one asks for reviews, commits
+ * and files, which the question "is there a run" has no use for, and this call sits in the
+ * hot path of an ordinary message. Loose for the same reason as the rest — somebody else's
+ * payload grows — and the three fields it computes from are pinned, so a rename is caught by
+ * name instead of being read as "no runs" (which here would REFUSE a legal park).
+ */
+export const ghRunParkSchema = z.looseObject({
+  headRefOid: z.string().min(1),
+  mergeable: z.string(),
+  statusCheckRollup: z.array(z.looseObject({})).nullish(),
+});
+
+/**
  * THE PAYLOAD OF `gh` READ AS THE FACTS THE GUARDS JUDGE — one mapping, because there
  * are now two callers (thread 019, point 5): the merge door and the scheduler's
  * merge-ready reader. A second copy of it would be a second reading of `commits`, of the

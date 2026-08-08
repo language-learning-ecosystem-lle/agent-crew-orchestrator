@@ -960,6 +960,20 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # --parked-on run:<n>: the THIRD (thread 019) — the ROUND running on that PR.
                             # `pr:` waits for the BUTTON, `run:` waits for the VERDICT; the courier is
                             # silent about this one too (a machine is judging, no decision is pending)
+                            # AND IT IS THE ONLY PARK WHOSE SOURCE THE DOOR VERIFIES (thread 062): one
+                            # `gh pr view` — the park is REFUSED on a head that carries no run at all,
+                            # and refused by a different name on a CONFLICTING pull request (GitHub
+                            # assembles no merge ref there, so no run will ever be born and the message
+                            # that would lift the park has no author). Live on 2026-08-08: a pair stood
+                            # 2h10m on `run:243` whose head never had one run, and nothing said so —
+                            # the park has EXACTLY ONE lift, so an event with no source is silence
+                            # without a ceiling. A `gh` that could not be asked does NOT refuse: the
+                            # park stands with the reason printed, and the AGE CEILING is the second
+                            # layer (`--run-park-ttl`, 30 min by default = 3x the measured median of
+                            # `checks` on this pool) — past it the park stops freezing the pair and the
+                            # role is raised to check the outcome of that round itself. Only `run:` is
+                            # aged: a person thinks for as long as they think, and a merge button
+                            # legitimately waits for days
                             # ALL THREE PARKS LIFT NARROWLY, by one walk (thread 023; the event ones on
                             # 2026-08-03, the person one on 2026-08-04): the first message that MOVES
                             # somebody, plus — for the event ones only — the merge of that PR announced

@@ -255,6 +255,14 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # The one line that tells the two apart: 'pr:' waits for the BUTTON,
                               # 'run:' waits for the VERDICT. Nobody is called about it either (no
                               # decision of anybody's is pending — a machine is judging)
+                              # THE ONLY PARK WHOSE SOURCE THE DOOR CHECKS (062): one 'gh' call —
+                              # a park is REFUSED on a head with no runs on it, and refused by a
+                              # different name on a CONFLICTING PR (GitHub assembles no merge ref
+                              # there, so no run will ever be born and the awaited message has no
+                              # author). Live on 2026-08-08: a pair stood 2h10m on 'run:243' whose
+                              # head never had one run. A 'gh' that could not be asked does NOT
+                              # refuse — the park stands with the reason printed, and the age
+                              # ceiling below is what catches it then
                               # ALL THREE PARKS LIFT NARROWLY, by one walk (023; the event ones
                               # 2026-08-03, the person one 2026-08-04): a message that MOVES
                               # somebody, plus — for the event ones — the merge of that PR
@@ -416,7 +424,7 @@ The strict forms below keep every flag they had.
   agent-protocol orchestrator preflight --ref <ref> [--repo <p>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>]
   agent-protocol orchestrator enable  --ref <ref> [--repo <p>] [--write]
   agent-protocol orchestrator disable --ref <ref> [--repo <p>] [--write]
-  agent-protocol orchestrator status [--ref <ref>] [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--instance <name>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--watch] [--interval <sec>] [--frames <n>]
+  agent-protocol orchestrator status [--ref <ref>] [--now <iso>] [--mode-file <path>] [--journal <p>] [--holds <d>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--pid-file <p>] [--local-config <p>] [--instance <name>] [--max-attempts <n>] [--max-runs <n>] [--root <mail>] [--roles <a,b>] [--exclude-roles <a,b>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--run-park-ttl <sec>] [--watch] [--interval <sec>] [--frames <n>]
                               # it SHOWS what the daemon would do, so it reads the same
                               # answers the daemon reads: the ceilings, the scope of roles,
                               # the mail root and the agent resolution ('launch resolution')
@@ -481,9 +489,17 @@ The strict forms below keep every flag they had.
                               # --wind-down: how long before the deadline the session is asked to land its work (R20); default 20% of the window, 2-15 min
                               # --roles/--exclude-roles: the same scope door as the daemon's (R13) — a --role
                               # owned by another instance, or left out by these flags, is REFUSED here, not raised
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>]
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>] [--run-park-ttl <sec>]
                               # --roles/--exclude-roles: WHICH roles THIS run raises (R13), mutually exclusive;
                               # on top of the instance filter — a role owned by another box is never raised here
+                              # --run-park-ttl <sec>: HOW LONG A 'run:' PARK MAY STAND (062, layer 2)
+                              # before it stops freezing the pair and the role is raised to check the
+                              # outcome of that round itself. Default 1800 (30 min) — 3x the measured
+                              # median of 'checks' on this pool (9m32s, 9m29s, 9m35s on 2026-08-08), so
+                              # it does not argue with an honestly long round. It catches what the door
+                              # check cannot see: a run that EXISTED and was lost in flight (a dead
+                              # runner, a workflow that never reported, a silent notifier). 0 switches
+                              # the ceiling off; the refusal at the door cannot be switched off
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]

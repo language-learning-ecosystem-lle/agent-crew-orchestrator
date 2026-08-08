@@ -87,6 +87,7 @@ import {
   ghOpenPullRequestsSchema,
   ghPullRequestSchema,
   ghRefusalHint,
+  ghRunParkSchema,
   pullRequestFacts,
 } from "./merge/gh.js";
 import {
@@ -460,6 +461,13 @@ import {
   taskThreadPrefix,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import {
+  describeStaleRunPark,
+  judgeRunPark,
+  RUN_PARK_TTL_SECONDS,
+  type RunParkFacts,
+  staleRunParks,
+} from "./thread/run-park.js";
 import {
   checkTasks,
   collectTaskEvents,
@@ -1838,6 +1846,57 @@ const priorityFrom = (
 };
 
 /**
+ * THE ONE `gh` CALL BEHIND THE DOOR OF A `run:` PARK (thread 062, layer 1) — the head of the
+ * pull request, whether it is mergeable, and how many runs GitHub reports on that head.
+ *
+ * IT NEVER THROWS, and that is the whole of the degradation: a `gh` that is not installed, a
+ * missing token, a payload that does not parse all come back as `refusal`, and
+ * {@link judgeRunPark} lets the park stand with the reason said out loud. A message that could
+ * not be sent because the network blinked would be a worse failure than the one being fixed.
+ */
+const runParkFacts = (
+  pr: number,
+  repo: string,
+): { readonly facts?: RunParkFacts; readonly refusal?: string } => {
+  let raw: string;
+  try {
+    raw = execFileSync(
+      "gh",
+      ["pr", "view", String(pr), "--json", "headRefOid,mergeable,statusCheckRollup"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 8 * 1024 * 1024,
+      },
+    );
+  } catch (error) {
+    const message = (error as Error).message;
+    return { refusal: `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}` };
+  }
+  let parsed: ReturnType<typeof ghRunParkSchema.safeParse>;
+  try {
+    parsed = ghRunParkSchema.safeParse(JSON.parse(raw));
+  } catch (error) {
+    return { refusal: `the answer of gh is not JSON: ${(error as Error).message}` };
+  }
+  if (!parsed.success) {
+    return {
+      refusal: `the answer of gh about PR #${pr} is not the shape this check reads: ${parsed.error.issues
+        .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+        .join("; ")}`,
+    };
+  }
+  return {
+    facts: {
+      headSha: parsed.data.headRefOid,
+      mergeable: parsed.data.mergeable,
+      checkRuns: parsed.data.statusCheckRollup?.length ?? 0,
+    },
+  };
+};
+
+/**
  * THE DOOR OF A PARK (R27) — `--parked-on` on `new-message`: the turn stays where it is and
  * is declared FROZEN until a person decides.
  *
@@ -1877,7 +1936,22 @@ const parkedOnFrom = (
   // (thread 019): `pr:` waits for the BUTTON, `run:` waits for the VERDICT of the round on that
   // PR. The requirement from 023 is what makes it one change and not two — the writing door and
   // the reading side learn the value together, or the writer writes what the reader goes blind on.
-  if (/^pr:\d+$/.test(value) || /^run:\d+$/.test(value)) return value;
+  if (/^pr:\d+$/.test(value)) return value;
+  // `run:N` IS THE ONE PARK WHOSE SOURCE THE DOOR ASKS ABOUT (thread 062, layer 1). It was the
+  // exception up to 2026-08-08, on the reading above — "the number is either in the repository
+  // or it is not, and the door has no business asking GitHub" — and that reading held for `pr:`
+  // and broke on `run:`. The two are not symmetrical: a merge is announced whenever a human
+  // presses the button, while a round is a machine event whose only announcement comes out of a
+  // workflow run — so a park on a round that does not exist waits for a message nobody will
+  // ever write. One `gh` call, and a refusal that names which of the two reasons it is.
+  const round = /^run:(\d+)$/.exec(value);
+  if (round !== null) {
+    const pr = Number(round[1]);
+    const verdict = judgeRunPark({ pr, ...runParkFacts(pr, process.cwd()) });
+    if (!verdict.ok) return fail(verdict.reason, 2);
+    if (verdict.note !== undefined) out(`agent-protocol: ${verdict.note}`);
+    return value;
+  }
   if (!input.registry.isKnown(value)) {
     return fail(
       `--parked-on '${value}' is not listed in the config, and is not an event ('pr:<number>' for a merge, 'run:<number>' for the round running on a PR)`,
@@ -4853,7 +4927,10 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
       held: heldRoles(heldViews),
     },
     // R27, from the SAME scan the queue above is built from — the map the tick plans by.
-    parked: parkedThreads(threads),
+    // WITH THE SAME CEILING THE TICK APPLIES (thread 062, layer 2): a `run:` park past it is
+    // not a park any more, and a frame that still showed one would describe a pair as frozen
+    // in the very tick the daemon is about to raise it.
+    parked: parkedThreads(threads, { now, ttlSeconds: runParkTtlFrom(argv) }),
     circuit: {
       launchesEnabled: existsSync(enableFlag),
       ...(reboot === undefined ? {} : { reboot }),
@@ -5696,6 +5773,18 @@ const gatesFrom = (argv: readonly string[]): ResolvedGates => {
   if (maxRuns !== undefined) flags.maxRuns = maxRuns;
   return resolveGates({ flags });
 };
+
+/**
+ * THE AGE CEILING OF A `run:` PARK, as the readers that decide about raising see it (thread 062).
+ *
+ * A flag with a default rather than a number in the body of a function — the requirement of the
+ * statement of work, and the reason is that the threshold is a MEASUREMENT (3× the median of
+ * `checks` on this pool) and a pool whose rounds get slower must be able to say so without a
+ * release. `--run-park-ttl 0` is a legal way to switch the layer off on a box that wants only
+ * the door check.
+ */
+const runParkTtlFrom = (argv: readonly string[]): number =>
+  flagInt(argv, "--run-park-ttl", { allowZero: true }) ?? RUN_PARK_TTL_SECONDS;
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -8042,7 +8131,16 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // The QUEUE carries the mark too, not only the skip line below it: the two are read
     // apart (a queue line promises a launch, a skip explains one that did not happen),
     // and the operator's frame prints the queue without the stream around it (D-4).
-    const parked = parkedThreads(threads);
+    // A `run:` PARK PAST ITS CEILING IS NOT A PARK (thread 062, layer 2): it stops freezing
+    // the pair, and the tick SAYS SO in the same breath — a pair raised out of a stale park
+    // looks otherwise exactly like a pair raised out of an ordinary handover, and the one
+    // thing an operator needs to know about it is that nobody ever reported that round.
+    const runParkTtl = runParkTtlFrom(argv);
+    const now = new Date();
+    for (const stale of staleRunParks(threads, { now, ttlSeconds: runParkTtl })) {
+      err(`agent-protocol: daemon — ${describeStaleRunPark(stale, runParkTtl)}`);
+    }
+    const parked = parkedThreads(threads, { now, ttlSeconds: runParkTtl });
     for (const line of describeOrder(candidates, parked)) err(`agent-protocol: ${line}`);
     // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.
     // A resident is never a candidate — it is hosted, not raised — so without this line

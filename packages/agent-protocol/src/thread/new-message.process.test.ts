@@ -9,6 +9,7 @@
  * feed quietly unattributed instead of loudly broken.
  */
 import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -649,11 +650,43 @@ describe("new-message --write delivers (R3)", () => {
  * flag has to be refused now — afterwards nothing may be fatal, and the resolution
  * can only drop the directive with a line.
  */
+/**
+ * A `gh` ON `PATH` that answers the ONE call the door of a `run:` park makes (thread 062).
+ *
+ * A shim rather than an injected source: the door is the thing under test, and it resolves the
+ * binary itself — a stub handed to it would test everything except the wiring that failed live.
+ */
+const ghShim = (
+  repo: string,
+  answer:
+    | { readonly headSha: string; readonly mergeable: string; readonly runs: number }
+    | { readonly refuse: true },
+): string => {
+  const dir = join(repo, `gh-shim-${randomUUID().slice(0, 8)}`);
+  mkdirSync(dir, { recursive: true });
+  const body =
+    "refuse" in answer
+      ? 'echo "gh: no token" >&2; exit 1'
+      : `cat <<'JSON'\n${JSON.stringify({
+          headRefOid: answer.headSha,
+          mergeable: answer.mergeable,
+          statusCheckRollup: Array.from({ length: answer.runs }, (_, at) => ({
+            name: `check-${at}`,
+            status: "IN_PROGRESS",
+          })),
+        })}\nJSON`;
+  const bin = join(dir, "gh");
+  writeFileSync(bin, `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+  return dir;
+};
+
 const direct = (
   contest: { repo: string; root: string; body: string },
   from: string,
-  ...extra: string[]
+  ...extra: (string | NodeJS.ProcessEnv)[]
 ): { code: number; out: string } => {
+  const env = extra.find((entry) => typeof entry !== "string") ?? {};
+  const args = extra.filter((entry): entry is string => typeof entry === "string");
   try {
     const out = execFileSync(
       TSX,
@@ -681,9 +714,9 @@ const direct = (
         "human",
         "--write",
         "--no-push",
-        ...extra,
+        ...args,
       ],
-      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo), env) },
     );
     return { code: 0, out };
   } catch (error) {
@@ -813,10 +846,52 @@ describe("new-message and the turn parked behind a person (R27)", () => {
   it("the ROUND of a PR passes the same door: 'run:163' waits for a verdict (thread 019)", () => {
     const contest = contour();
 
-    const result = direct(contest, "dev-core", "--parked-on", "run:163");
+    const result = direct(contest, "dev-core", "--parked-on", "run:163", {
+      PATH: `${ghShim(contest.repo, { headSha: "6f933b0321ab", mergeable: "MERGEABLE", runs: 3 })}:${process.env.PATH ?? ""}`,
+    });
 
     expect(result.code).toBe(0);
     expect(written(contest.root).fields.parkedOn).toBe("run:163");
+  });
+
+  // THREAD 062, LAYER 1 — the live case of 2026-08-08 replayed through the real door: PR #243
+  // was CONFLICTING, so no run was ever born on its head and the pair stood 2h10m waiting for
+  // a message nobody would write.
+  it("a park on a round with NO RUN on the head is refused, and nothing is written", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:243", {
+      PATH: `${ghShim(contest.repo, { headSha: "6f933b0321ab", mergeable: "MERGEABLE", runs: 0 })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("not one run on head 6f933b03");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("a CONFLICTING pull request is refused by its own reason — no merge ref, no run", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:243", {
+      PATH: `${ghShim(contest.repo, { headSha: "6f933b0321ab", mergeable: "CONFLICTING", runs: 0 })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("CONFLICTING");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  // The degradation, end to end: a `gh` that refuses does NOT cost the role its message.
+  it("a gh that cannot answer leaves the park standing, with the reason printed", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:243", {
+      PATH: `${ghShim(contest.repo, { refuse: true })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("NOT verified");
+    expect(written(contest.root).fields.parkedOn).toBe("run:243");
   });
 
   it("'run' without a number is a name, and is refused as one", () => {

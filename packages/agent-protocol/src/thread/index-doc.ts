@@ -12,6 +12,7 @@
  * one to one. Hence "is there mail" is computed from the THREADS (`waitingOnOf`),
  * and INDEX stays a display for humans: its drift costs cosmetics.
  */
+import { staleRunParks } from "./run-park.js";
 import { mergedPrs, parkedOnOf, type Thread, updatedOf, waitingOnOf } from "./thread.js";
 
 const EMPTY = "—";
@@ -53,12 +54,28 @@ export const threadsWaitingOn = (threads: readonly Thread[], role: string): stri
  * it is parked on. Only the decision to RAISE is affected, and that decision has its own
  * reader (`planTick`).
  */
-export const parkedThreads = (threads: readonly Thread[]): ReadonlyMap<string, string> => {
+export const parkedThreads = (
+  threads: readonly Thread[],
+  /**
+   * THE AGE CEILING OF A `run:` PARK (thread 062, layer 2), when the reader has a clock.
+   *
+   * Omitted, nothing ages and this function answers exactly as it did — which is what every
+   * reader that only DISPLAYS parks wants (the index, the courier). The two readers that decide
+   * about RAISING (the daemon's tick and the operator's frame) pass a `now`, and a `run:` park
+   * past the ceiling stops appearing here: the pair is no longer frozen and is raised to check
+   * the outcome of that run itself. Why only `run:` ages — `staleRunParks`.
+   */
+  ceiling?: { readonly now: Date; readonly ttlSeconds?: number },
+): ReadonlyMap<string, string> => {
   // The merges of the WHOLE mail, computed once: a park on `pr:N` is lifted by an announcement
   // that lands in N's own thread, which is almost never this one (`mergedPrs`, thread 023).
   const merged = mergedPrs(threads);
+  const stale = new Set(
+    ceiling === undefined ? [] : staleRunParks(threads, ceiling).map((entry) => entry.thread),
+  );
   const parked = new Map<string, string>();
   for (const thread of threads) {
+    if (stale.has(thread.id)) continue;
     const on = parkedOnOf(thread, merged);
     if (on !== undefined) parked.set(thread.id, on);
   }
