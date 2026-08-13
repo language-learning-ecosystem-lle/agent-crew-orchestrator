@@ -172,6 +172,13 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
   agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]
                               # THE READING HALF OF THE AGENT'S INTERFACE (R3): the conversation, in order,
                               # from the MESSAGES (not from the derived _thread.md, which lags a push behind)
+                              # A STAMP WRITTEN AS THE FILE NAME WRITES IT ('2026-08-13T17-28-50Z') IS
+                              # READ, NOT REFUSED (065, (iv)) — the same moment, other spelling; it is
+                              # normalized IN MEMORY and the file keeps every byte. The spelling is
+                              # NAMED on stderr, here and by 'derive' and 'check', on green runs too:
+                              # the off-canon byte stays in git forever, so the reader is the only
+                              # thing that can ever say so. A value that is not that same moment
+                              # written differently still refuses the thread, quoting the raw bytes
   agent-protocol thread build --root <mail> --ref <ref> --id <NNN-slug> [--write]
   agent-protocol thread status --root <mail> --ref <ref> --thread <NNN-slug> --from <role> --status <open|closed> [--write]
                               # CLOSING A THREAD IS AN ACCEPTANCE, AND IT NEEDS A DOOR (065.1): the

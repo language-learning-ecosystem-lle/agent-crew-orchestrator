@@ -343,11 +343,32 @@ export type Message = {
    * WHOLE thread going unreadable to the planner over one field nobody needs to plan with.
    */
   readonly warnings?: readonly string[];
+  /**
+   * WHAT THIS READER ACCEPTED IN A SPELLING THAT IS NOT THE CANON (thread 065, variant (iv)).
+   *
+   * The counterpart of `warnings` and deliberately a SECOND channel: nothing was dropped here
+   * and the thread is complete — one value was written another way and read as the value it
+   * plainly is. Saying that under "the field was DROPPED" would be false about the feed.
+   *
+   * Tolerance without a voice is the failure this is built against: `2026-08-13T17-28-50Z` in
+   * the header of a hand-written message (thread 066, live on 2026-08-13) made the WHOLE thread
+   * unreadable, and the refusal became visible only after another one before it was fixed. The
+   * cure is to read it — and to say, every time it is read, that the file on disk is off-canon,
+   * because nothing else will: the feed is append-only, so the byte stays there forever.
+   */
+  readonly notices?: readonly string[];
 };
 
 const FENCE = "---";
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+/**
+ * THE FILE-NAME SPELLING OF THE SAME MOMENT: `2026-08-13T17-28-50Z`. Not another value —
+ * the colons of the stamp written as the hyphens `messageFileName` puts in a name (they
+ * are legal in a name, the colons are unfriendly there). A hand that copies the name into
+ * the header produces exactly this, and it happened twice in one day.
+ */
+const FILENAME_TIMESTAMP = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z$/;
 const ROLE = /^[a-z][a-z0-9-]*$/;
 
 /**
@@ -590,16 +611,31 @@ export const parseMessageFile = (raw: string): Message => {
   }
 
   const from = raws.get("from");
-  const date = raws.get("date");
+  const dateRaw = raws.get("date");
   const expects = raws.get("expects");
-  if (!from || !date || !expects) {
+  if (!from || !dateRaw || !expects) {
     throw new MessageFormatError("'from', 'date' and 'expects' are required in the header");
   }
   if (!ROLE.test(from))
     throw new MessageFormatError(`'from: ${from}' does not look like a role id`);
+  // TOLERANT ON THE SPELLING, STRICT ON THE VALUE (thread 065, (iv)). The off-canon form is
+  // normalized HERE and only in memory: the file keeps every byte it had (it is somebody
+  // else's committed message, and those are never rewritten), and `messageFileName` rebuilds
+  // the same name from the canon it now carries, so nothing on disk moves either.
+  const notices: string[] = [];
+  const filenameSpelled = FILENAME_TIMESTAMP.exec(dateRaw);
+  const date =
+    filenameSpelled === null
+      ? dateRaw
+      : `${filenameSpelled[1]}T${filenameSpelled[2]}:${filenameSpelled[3]}:${filenameSpelled[4]}Z`;
+  if (filenameSpelled !== null) {
+    notices.push(
+      `'date: ${dateRaw}' is the file-name spelling of a UTC stamp — read as '${date}', the file itself is left as it is`,
+    );
+  }
   if (!DATE_ONLY.test(date) && !TIMESTAMP.test(date)) {
     throw new MessageFormatError(
-      `'date: ${date}' — a UTC stamp like 2026-07-23T13:45:12Z is required (or a date for migrated messages)`,
+      `'date: ${dateRaw}' — a UTC stamp like 2026-07-23T13:45:12Z is required (or a date for migrated messages)`,
     );
   }
   if (!(EXPECTS as readonly string[]).includes(expects)) {
@@ -722,6 +758,7 @@ export const parseMessageFile = (raw: string): Message => {
       .replace(/^\n+/, "")
       .replace(/\n+$/, ""),
     ...(warnings.length === 0 ? {} : { warnings }),
+    ...(notices.length === 0 ? {} : { notices }),
   };
 };
 

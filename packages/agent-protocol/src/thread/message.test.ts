@@ -80,6 +80,47 @@ describe("parseMessageFile", () => {
   });
 });
 
+describe("the file-name spelling of a stamp is read, and said out loud (thread 065, (iv))", () => {
+  const OFF_CANON = FILE.replace("2026-07-23T13:45:12Z", "2026-07-23T13-45-12Z");
+
+  it("reads it as the moment it plainly is", () => {
+    const message = parseMessageFile(OFF_CANON);
+
+    expect(message.fields.date).toBe("2026-07-23T13:45:12Z");
+  });
+
+  it("names the file's own spelling, quoting BOTH forms", () => {
+    // Both, because either alone leaves the reader guessing: the raw value is what to
+    // grep for in the mail, the canon is what the thread was actually read with.
+    const message = parseMessageFile(OFF_CANON);
+
+    expect(message.notices).toEqual([
+      "'date: 2026-07-23T13-45-12Z' is the file-name spelling of a UTC stamp — read as '2026-07-23T13:45:12Z', the file itself is left as it is",
+    ]);
+    // NOT a warning: nothing was dropped, and the two channels say opposite things.
+    expect(message.warnings).toBeUndefined();
+  });
+
+  it("addresses the same file on disk as before — the name is rebuilt from the canon", () => {
+    // The normalization is in memory only, so the round trip from the field back to the
+    // name must land on the file the value came out of; otherwise the tolerance would
+    // quietly point every reader at a file that is not there.
+    expect(messageFileName(parseMessageFile(OFF_CANON).fields)).toBe(
+      "2026-07-23T13-45-12Z-dev-core.md",
+    );
+  });
+
+  it("a canon stamp keeps its silence — the notice is not a per-message tax", () => {
+    expect(parseMessageFile(FILE).notices).toBeUndefined();
+  });
+
+  it("and a value that is NOT the same moment written differently is still refused", () => {
+    expect(() =>
+      parseMessageFile(FILE.replace("2026-07-23T13:45:12Z", "2026-07-23T13-45Z")),
+    ).toThrow(/UTC stamp/);
+  });
+});
+
 describe("messageFileName", () => {
   it("a new message — timestamp and role", () => {
     expect(
