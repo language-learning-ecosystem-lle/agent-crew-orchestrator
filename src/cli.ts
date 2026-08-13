@@ -463,6 +463,7 @@ import {
   taskThreadPrefix,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import { synthesiseMeta } from "./thread/repair.js";
 import {
   describeStaleRunPark,
   judgeRunPark,
@@ -1229,6 +1230,136 @@ const threadShow = (argv: readonly string[]): void => {
  * — the instance digest of an unchanged box is the same case. The local read survives in
  * one place only: the dry run, which fetches nothing by design and says so.
  */
+/**
+ * MODE (b) OF THE SAME DOOR: a thread whose `messages/` is on disk and whose `_meta.md` is
+ * not gets a head synthesised from the messages themselves (thread 065). It is the cure for
+ * the state that made thread 066 invisible to the queue for an afternoon with six statements
+ * of work inside it, and the hand-edit of a mail file it replaces is the very act 065.1 exists
+ * to remove.
+ *
+ * IT REFUSES ON A THREAD THAT ALREADY HAS A HEAD, under any flag: overwriting somebody's
+ * title, participants or acceptance is not a repair. And what it writes is always `open` —
+ * see `synthesiseMeta`: closing a thread is an acceptance and a machine does not make one.
+ *
+ * WHAT IT DOES NOT FIX, and says so out loud: a message whose own header is malformed. The
+ * head is one file; a broken `date:` inside a message is another failure of another file, and
+ * it only becomes visible once this one is gone (both were live on 066 on 2026-08-13, in that
+ * order). Repairing THAT would mean editing somebody's committed message, which the norm of
+ * the mail forbids without exception (`docs/roles/curator.md` → "Почта", 3).
+ */
+const threadRepair = (
+  argv: readonly string[],
+  ctx: {
+    readonly root: string;
+    readonly id: string;
+    readonly from: string;
+    readonly loaded: LoadedConfig;
+    readonly registry: RoleRegistry;
+  },
+): void => {
+  const { root, id, from, loaded, registry } = ctx;
+  refusePermission(registry, from);
+
+  const threadDir = join(root, id);
+  const metaPath = join(threadDir, "_meta.md");
+  if (existsSync(metaPath)) {
+    fail(
+      `thread '${id}' already has a head ('_meta.md') — repair synthesises a MISSING one and never overwrites an existing title, participants or status. Use --status to flip the status`,
+      2,
+    );
+  }
+  const messagesDir = join(threadDir, "messages");
+  const files = existsSync(messagesDir)
+    ? readdirSync(messagesDir)
+        .filter((name) => name.endsWith(".md"))
+        .sort()
+    : [];
+  if (files.length === 0) {
+    fail(
+      `thread '${id}' has no messages in '${root}' — there is nothing to synthesise a head from (a thread with neither a head nor a message is not a thread this command can repair)`,
+      2,
+    );
+  }
+
+  const synthesised = synthesiseMeta(
+    id,
+    files.map((fileName) => ({
+      fileName,
+      content: readFileSync(join(messagesDir, fileName), "utf8"),
+    })),
+    { ...(flag(argv, "--title") === undefined ? {} : { title: flag(argv, "--title") as string }) },
+  );
+  const meta = {
+    title: synthesised.title,
+    participants: synthesised.participants,
+    status: synthesised.status,
+  };
+  // A file whose own header could not be read is NAMED: its author came from the file name,
+  // which is a good guess and still a guess — and it is the sign that the thread carries the
+  // second failure this command does not fix.
+  for (const fileName of synthesised.guessedAuthors) {
+    err(
+      `agent-protocol: messages/${fileName} — the header could not be read, the author was taken from the file name; the thread may still be unreadable for that reason after this repair`,
+    );
+  }
+
+  if (!argv.includes("--write")) {
+    out(`agent-protocol: would write the missing head of '${id}' (--write writes it):`);
+    out(renderMetaFile(meta));
+    return;
+  }
+
+  const checkout = repoOf(root);
+  try {
+    const delivered = deliverMessage({
+      git: gitIn(checkout),
+      write: writeOut,
+      branch: loaded.config.mail.branch,
+      subject: `docs(agent-comms): ${from} → ${id} head repaired`,
+      // Replanned per attempt, like every other delivery: between the fetch and the commit
+      // somebody may have written the head themselves — and then this plan is byte-identical
+      // to theirs and `written: false` says so, or it differs and we must not clobber it.
+      stage: () => {
+        if (existsSync(metaPath)) {
+          throw new DeliveryRefusedError(
+            `thread '${id}' got a head while this repair was in flight — nothing was written, read it and decide`,
+          );
+        }
+        return {
+          files: [{ path: metaPath, content: renderMetaFile(meta) }],
+          label: `${id}/_meta.md`,
+        };
+      },
+      note: out,
+      lock: mailLockFor({ checkout, holder: `thread repair ${from} → ${id}`, note: out }),
+      identity: roleIdentity(from),
+    });
+    out(
+      delivered.written
+        ? `agent-protocol: thread '${id}' has a head again — ${delivered.label} committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the feed moved underneath)` : ""}`
+        : `agent-protocol: thread '${id}' already carries this head in the feed — nothing to write`,
+    );
+  } catch (error) {
+    if (error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError) {
+      fail(error.message, 2);
+    }
+    throw error;
+  }
+};
+
+/** The one permission both modes stand on — refused by name, with its holders listed. */
+const refusePermission = (registry: RoleRegistry, from: string): void => {
+  if (registry.canEditThreadStatus(from)) return;
+  const allowed = registry
+    .ids()
+    .filter((role) => registry.canEditThreadStatus(role))
+    .join(", ");
+  fail(
+    `role '${from}' does not hold the permission 'thread-status' — the head of a thread is an acceptance, and it is set by ${allowed === "" ? "nobody in this config" : allowed}. Ask in the thread instead of editing '_meta.md' by hand`,
+    2,
+  );
+};
+
 const threadStatus = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const id = required(argv, "--thread");
@@ -1237,22 +1368,28 @@ const threadStatus = (argv: readonly string[]): void => {
   const registry = loaded.registry;
   if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
 
+  // MODE (b) IS THE SAME POWER OVER THE SAME FILE, so it is the same door and the same
+  // permission — checked below for both. The two are mutually exclusive by argument: a
+  // call that both repairs a missing head and flips its status would be deciding an
+  // acceptance about a conversation nobody has read yet.
+  if (argv.includes("--repair")) {
+    if (argv.includes("--status")) {
+      fail(
+        "--repair and --status are two modes of one command: repair synthesises a missing head (always 'open'), --status flips the head of a thread that has one",
+        2,
+      );
+    }
+    threadRepair(argv, { root, id, from, loaded, registry });
+    return;
+  }
+
   const raw = required(argv, "--status");
   if (raw !== "open" && raw !== "closed") {
     fail(`--status '${raw}' — a thread is either 'open' or 'closed'`, 2);
   }
   const wanted: ThreadStatus = raw as ThreadStatus;
 
-  if (!registry.canEditThreadStatus(from)) {
-    const allowed = registry
-      .ids()
-      .filter((role) => registry.canEditThreadStatus(role))
-      .join(", ");
-    fail(
-      `role '${from}' does not hold the permission 'thread-status' — the status of a thread is an acceptance, and it is set by ${allowed === "" ? "nobody in this config" : allowed}. Ask in the thread instead of editing '_meta.md' by hand`,
-      2,
-    );
-  }
+  refusePermission(registry, from);
 
   const threadDir = join(root, id);
   const metaPath = join(threadDir, "_meta.md");

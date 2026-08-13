@@ -942,6 +942,18 @@ agent-protocol thread status --root <comms> --ref <ref> --thread <id> --from <ro
                             # `_meta.md`: a box that had not seen the other closer's push used to reach
                             # `git commit` with an empty index and hand out a raw git failure (#266).
                             # The local read is left in the dry run only, and the dry run says so
+agent-protocol thread status --root <comms> --ref <ref> --thread <id> --from <role> \
+                            --repair [--title <t>] [--write]
+                            # MODE (b) OF THE SAME DOOR (065): a thread with `messages/` and NO `_meta.md`
+                            # is unreadable whole, and with it every statement of work inside — thread 066
+                            # stood like that for an afternoon on 2026-08-13 holding six of them. The head
+                            # is SYNTHESISED from the messages: the title from the first thing said in the
+                            # earliest one (or `--title`), the participants from their authors, the status
+                            # always `open` — closing is an acceptance and a machine does not make one
+                            # it REFUSES on a thread that already has a head, under any flag, and takes the
+                            # same permission as the flip: it is the same power over the same file
+                            # what it does NOT fix, and says: a message whose own header is broken. That is
+                            # another file, and a committed message is never edited (the norm of the mail)
 agent-protocol index build  --root <comms> --ref <ref> [--write]
 agent-protocol thread build --root <comms> --ref <ref> --id <NNN-slug> [--write]
 agent-protocol derive       --root <comms> --ref <ref> [--write]           # all derived files
