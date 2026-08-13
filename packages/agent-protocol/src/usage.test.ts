@@ -451,6 +451,9 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       derive: "'derive'",
       newMessage: "'new-message'",
       newThread: "'new-thread'",
+      // The third SENDER (065.1): it moves `_meta.md`, and a status that moved on one
+      // disk is a thread still open for every reader of the feed.
+      threadStatus: "'thread status'",
       notify: "'notify'",
       orchestratorEnable: "enable/disable",
       orchestratorRecord: "record",

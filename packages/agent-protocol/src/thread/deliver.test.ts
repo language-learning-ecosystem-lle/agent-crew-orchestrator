@@ -23,6 +23,11 @@ const harness = (options: {
   readonly from?: string;
   /** A second file in the same attempt — what a new thread is (`_meta.md` + first message). */
   readonly extraFile?: boolean;
+  /**
+   * The staged diff comes back EMPTY — the plan turned out to be what the feed already
+   * carries. Real for the two deliveries that write a mutable file (thread 065).
+   */
+  readonly emptyDiff?: boolean;
 }) => {
   const calls: Call[] = [];
   const invocations: Invocation[] = [];
@@ -36,6 +41,10 @@ const harness = (options: {
     invocations.push({ args, ...(env === undefined ? {} : { env }) });
     if (args[0] === "status") return options.status ?? "";
     if (args[0] === "merge" && options.ffFails === true) throw new Error("not a fast-forward");
+    // `git diff --cached --name-only -- <paths>`: the names of what the index actually
+    // changed. Empty means the feed already says exactly this.
+    if (args[0] === "diff")
+      return options.emptyDiff === true ? "" : `${args.slice(4).join("\n")}\n`;
     if (args[0] === "push") {
       pushes += 1;
       if ((options.rejectPushes ?? []).includes(pushes)) throw new Error("rejected: fetch first");
@@ -88,11 +97,39 @@ describe("deliverMessage", () => {
     const h = harness({});
     const result = h.run();
 
-    expect(result).toEqual({ label: "016/messages/stamp-1Z-dev-core.md", attempts: 1 });
+    expect(result).toEqual({
+      label: "016/messages/stamp-1Z-dev-core.md",
+      attempts: 1,
+      written: true,
+    });
     expect(h.written).toEqual([
       { path: "/mail/016/messages/stamp-1Z-dev-core.md", content: "body 1" },
     ]);
-    expect(h.calls.map((c) => c[0])).toEqual(["status", "fetch", "merge", "add", "commit", "push"]);
+    expect(h.calls.map((c) => c[0])).toEqual([
+      "status",
+      "fetch",
+      "merge",
+      "add",
+      "diff",
+      "commit",
+      "push",
+    ]);
+  });
+
+  // Thread 065, the verdict on PR #266: `git commit` on an empty index exits 1 with
+  // "nothing to commit", and that error is neither a refusal nor a busy checkout — it
+  // went past every caller's catch as a raw git failure, in the one scenario the command
+  // above it promised as a no-op. The empty index is now an ANSWER.
+  it("a plan the feed already carries commits nothing and comes back written: false", () => {
+    const h = harness({ emptyDiff: true });
+    const result = h.run();
+
+    expect(result).toEqual({
+      label: "016/messages/stamp-1Z-dev-core.md",
+      attempts: 1,
+      written: false,
+    });
+    expect(h.calls.map((c) => c[0])).toEqual(["status", "fetch", "merge", "add", "diff"]);
   });
 
   it("refreshes BEFORE planning — the stamp has to fall after the last message that exists", () => {

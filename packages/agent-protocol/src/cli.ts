@@ -475,7 +475,15 @@ import {
   type TaskThreadInput,
   tasksFrom,
 } from "./thread/tasks.js";
-import { mergedPrs, parkingOf, renderThread, waitingOnOf } from "./thread/thread.js";
+import {
+  mergedPrs,
+  parkingOf,
+  parseMetaFile,
+  renderMetaFile,
+  renderThread,
+  type ThreadStatus,
+  waitingOnOf,
+} from "./thread/thread.js";
 import {
   messageTimestamp,
   nextMessageTimestamp,
@@ -1170,6 +1178,127 @@ const threadShow = (argv: readonly string[]): void => {
     out(
       `<!-- files in the conversation folder besides the messages: ${attachments.join(", ")} -->`,
     );
+  }
+};
+
+/**
+ * CLOSING A THREAD IS AN ACCEPTANCE, AND UNTIL NOW IT HAD NO DOOR (thread 065, task
+ * 065.1). `permissions: ["thread-status"]` stood in the config and in the registry
+ * (`canEditThreadStatus`) with NOT ONE CALLER anywhere in `src/` — so the only way to
+ * close a thread was to open `_meta.md` in an editor. A raised session cannot do that
+ * by construction: the mail is behind two commands (R3) and its checkout is not a place
+ * a role edits by hand. The measured consequence: finished, empty threads piling up in
+ * `status: open` — 059 was exactly one when this was found.
+ *
+ * WHAT IT WRITES, AND WHY THAT IS NOT A BREACH OF APPEND-ONLY. `_meta.md` is the one
+ * AUTHORED and MUTABLE file of a thread (`thread.ts`, "the source boundary"): title,
+ * participants and status live there and are edited, while the messages are the
+ * append-only half. Rewriting it is the intended operation, not a rule bent for a
+ * command — and the derived files (`_thread.md`, `INDEX.md`) are left alone here as
+ * everywhere else, because their generator runs on the push.
+ *
+ * THE PERMISSION IS CHECKED BY NAME. A role without `thread-status` is refused with the
+ * permission said out loud and the roles that do hold it listed: the alternative an
+ * agent falls back to is editing the file, which is the hole this closes.
+ *
+ * A STATUS ALREADY SET IS A NO-OP, NOT AN ERROR. Two roles closing the same finished
+ * thread is a normal race in this circuit, and an empty commit (or a refusal) would
+ * make the second one look like a fault. It says the status is already there and writes
+ * nothing.
+ *
+ * AND THE FEED IS WHAT ANSWERS IT, NOT THIS DISK (thread 065, the verdict on PR #266).
+ * The no-op used to be decided by one read of the local `_meta.md` before delivery, and
+ * that read is wrong in both directions on a checkout that has not seen the other box's
+ * push: the second closer PASSED the check and hit `git commit` on an empty index — exit
+ * 1, `nothing to commit`, a raw git error going past the catch below (it is neither a
+ * refusal nor a busy checkout) in the very scenario this text promised as a no-op — and
+ * a stale 'open' would just as happily report "already open" about a thread the feed had
+ * closed. So with `--write` the decision now comes back from `deliverMessage` as
+ * `written: false`: the plan, made on the state fetched INSIDE the attempt, was
+ * byte-for-byte what is already committed. The repair sits in the delivery rather than
+ * here because all five deliveries plan against a feed that may already carry their plan
+ * — the instance digest of an unchanged box is the same case. The local read survives in
+ * one place only: the dry run, which fetches nothing by design and says so.
+ */
+const threadStatus = (argv: readonly string[]): void => {
+  const root = required(argv, "--root");
+  const id = required(argv, "--thread");
+  const from = required(argv, "--from");
+  const loaded = configFrom(argv, repoOf(root));
+  const registry = loaded.registry;
+  if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
+
+  const raw = required(argv, "--status");
+  if (raw !== "open" && raw !== "closed") {
+    fail(`--status '${raw}' — a thread is either 'open' or 'closed'`, 2);
+  }
+  const wanted: ThreadStatus = raw as ThreadStatus;
+
+  if (!registry.canEditThreadStatus(from)) {
+    const allowed = registry
+      .ids()
+      .filter((role) => registry.canEditThreadStatus(role))
+      .join(", ");
+    fail(
+      `role '${from}' does not hold the permission 'thread-status' — the status of a thread is an acceptance, and it is set by ${allowed === "" ? "nobody in this config" : allowed}. Ask in the thread instead of editing '_meta.md' by hand`,
+      2,
+    );
+  }
+
+  const threadDir = join(root, id);
+  const metaPath = join(threadDir, "_meta.md");
+  if (!existsSync(metaPath)) fail(`thread '${id}' not found in '${root}'`, 2);
+
+  const current = parseMetaFile(readFileSync(metaPath, "utf8"));
+  if (!argv.includes("--write")) {
+    // The DRY RUN is the one answer that may come from this disk: it fetches nothing by
+    // design, and it says which file it read the 'from' out of.
+    if (current.status === wanted) {
+      out(`agent-protocol: thread '${id}' is already '${wanted}' on this disk — nothing to write`);
+      return;
+    }
+    out(
+      `agent-protocol: would set '${id}' from '${current.status}' to '${wanted}' (--write sets it):`,
+    );
+    out(renderMetaFile({ ...current, status: wanted }));
+    return;
+  }
+
+  const checkout = repoOf(root);
+  try {
+    const delivered = deliverMessage({
+      git: gitIn(checkout),
+      write: writeOut,
+      branch: loaded.config.mail.branch,
+      subject: `docs(agent-comms): ${from} → ${id} ${wanted}`,
+      // Replanned per attempt like a message's — and for the same reason: between the
+      // fetch and the commit somebody may have moved the status themselves, and a plan
+      // made against the stale file would silently put it back.
+      stage: () => {
+        const now = parseMetaFile(readFileSync(metaPath, "utf8"));
+        return {
+          files: [{ path: metaPath, content: renderMetaFile({ ...now, status: wanted }) }],
+          label: `${id}/_meta.md`,
+        };
+      },
+      note: out,
+      lock: mailLockFor({ checkout, holder: `thread status ${from} → ${id}`, note: out }),
+      identity: roleIdentity(from),
+    });
+    // THE NO-OP IS ANSWERED BY THE FEED, never by this disk (thread 065, the verdict on
+    // #266). `written: false` means the plan, made on the state fetched inside the
+    // attempt, was byte-for-byte what is already committed — whether the other closer
+    // pushed a second ago or a day ago is not a difference worth two sentences.
+    out(
+      delivered.written
+        ? `agent-protocol: thread '${id}' is '${wanted}' — ${delivered.label} committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the feed moved underneath)` : ""}`
+        : `agent-protocol: thread '${id}' is already '${wanted}' in the feed — nothing to write`,
+    );
+  } catch (error) {
+    if (error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError) {
+      fail(error.message, 2);
+    }
+    throw error;
   }
 };
 
@@ -9509,6 +9638,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     threadBuild(argv.slice(2));
   } else if (command === "thread" && subcommand === "show") {
     threadShow(argv.slice(2));
+  } else if (command === "thread" && subcommand === "status") {
+    threadStatus(argv.slice(2));
   } else if (command === "check") {
     checkAll(argv.slice(1));
   } else if (command === "migrate") {

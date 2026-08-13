@@ -67,6 +67,32 @@ export type StagedMessage = {
 
 export class DeliveryRefusedError extends Error {}
 
+/**
+ * WHAT A DELIVERY CAME BACK WITH.
+ *
+ * `written: false` is "the feed already says exactly this" — the plan, made on top of
+ * the FRESH state inside the attempt, turned out byte-for-byte identical to what is
+ * already committed. It is not an error and not a silent success: the caller says so in
+ * its own words, because only the caller knows what the sameness means (for a status
+ * flip it is the normal race of two roles closing one thread; for a machine digest it is
+ * a box whose state has not moved).
+ *
+ * IT EXISTS BECAUSE THE ALTERNATIVE WAS A RAW GIT FAILURE (thread 065, the verdict on
+ * PR #266). `git commit` on an empty index exits 1 with `nothing to commit, working tree
+ * clean`, and that error is neither `DeliveryRefusedError` nor `MailCheckoutBusyError` —
+ * it went through the callers' catch untouched and reached the operator as a git message
+ * about a scenario the command explicitly promised as a no-op. Reproduced live with two
+ * checkouts of one origin: the second closer got `git commit --quiet … failed (code 1)`.
+ * The check sits HERE and not in one caller on purpose — all five deliveries write plans
+ * that can coincide with the feed, and the two that write a MUTABLE file (`_meta.md`, the
+ * instance digest) can do it whenever somebody else got there first.
+ */
+export type Delivered = {
+  readonly label: string;
+  readonly attempts: number;
+  readonly written: boolean;
+};
+
 /** How many times delivery replans on top of a concurrent write before giving up. */
 export const DELIVERY_ATTEMPTS = 3;
 
@@ -85,7 +111,7 @@ export const deliverMessage = (input: {
   /** Who this commit is BY — the role of `--from`, never the owner of the machine (027). */
   readonly identity: GitIdentity;
   readonly attempts?: number;
-}): { readonly label: string; readonly attempts: number } =>
+}): Delivered =>
   // The lock is taken BEFORE the dirty check, not after: our own transient dirt is
   // precisely what another delivery would read as somebody's unfinished message.
   input.lock.hold(() => deliverUnderLock(input));
@@ -99,7 +125,7 @@ const deliverUnderLock = (input: {
   readonly note: (line: string) => void;
   readonly identity: GitIdentity;
   readonly attempts?: number;
-}): { readonly label: string; readonly attempts: number } => {
+}): Delivered => {
   const limit = input.attempts ?? DELIVERY_ATTEMPTS;
   const dirty = input.git(["status", "--porcelain"]).trim();
   if (dirty !== "") {
@@ -122,13 +148,22 @@ const deliverUnderLock = (input: {
     }
 
     const staged = input.stage();
+    const paths = staged.files.map((file) => file.path);
     for (const file of staged.files) input.write(file.path, file.content);
-    input.git(["add", "--", ...staged.files.map((file) => file.path)]);
+    input.git(["add", "--", ...paths]);
+    // NOTHING TO COMMIT IS AN ANSWER, NOT A FAILURE (see `Delivered`). The plan is made
+    // against the state fetched inside THIS attempt, so an empty index means the feed
+    // already carries exactly it — asking git to commit that gives code 1 and a message
+    // about a clean tree, which is the wrong shape of answer for the right situation.
+    // The index is asked, not the working tree: `write` may well have changed no byte.
+    if (input.git(["diff", "--cached", "--name-only", "--", ...paths]).trim() === "") {
+      return { label: staged.label, attempts: attempt, written: false };
+    }
     input.git(["commit", "--quiet", "-m", input.subject], identityEnv(input.identity));
 
     try {
       input.git(["push", "--quiet", "origin", `HEAD:${input.branch}`]);
-      return { label: staged.label, attempts: attempt };
+      return { label: staged.label, attempts: attempt, written: true };
     } catch (error) {
       if (attempt === limit) {
         throw new DeliveryRefusedError(
