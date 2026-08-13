@@ -454,6 +454,9 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       // The third SENDER (065.1): it moves `_meta.md`, and a status that moved on one
       // disk is a thread still open for every reader of the feed.
       threadStatus: "'thread status'",
+      // Mode (b) of the same command and the same delivery: the head it synthesises is a
+      // thread open for everybody who reads the feed, or it is one disk's private repair.
+      threadRepair: "'thread status'",
       notify: "'notify'",
       orchestratorEnable: "enable/disable",
       orchestratorRecord: "record",

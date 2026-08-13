@@ -198,6 +198,22 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # check and die on 'git commit' with an empty index — a raw git failure in
                               # the one scenario the no-op was written for. Delivery now reports the
                               # sameness; the local read survives only in the dry run, which says so
+  agent-protocol thread status --root <mail> --ref <ref> --thread <NNN-slug> --from <role> --repair [--title <t>] [--write]
+                              # MODE (b) OF THE SAME DOOR (065): a thread whose 'messages/' is on disk
+                              # and whose '_meta.md' is NOT is unreadable WHOLE — and with it every
+                              # statement of work inside (066 stood like that for an afternoon on
+                              # 2026-08-13 with six of them, invisible to the queue). The head is
+                              # SYNTHESISED from the messages: title from the first thing said in the
+                              # earliest one (or --title), participants from their authors, status
+                              # always 'open' — closing is an acceptance and a machine does not make one
+                              # it REFUSES on a thread that already has a head, under any flag: a repair
+                              # never overwrites somebody's title, participants or acceptance
+                              # the same permission as the flip ('thread-status'), because it is the
+                              # same power over the same file; --repair and --status are two modes and
+                              # never one call
+                              # WHAT IT DOES NOT FIX AND SAYS SO: a message whose OWN header is broken.
+                              # That is another file, and editing a committed message is forbidden by
+                              # the norm of the mail — on 066 it was invisible until the head was back
   agent-protocol check        --root <mail> --ref <ref> [--since <ref>]
                               # also validates '_instances/' as a CLASS of derived state files (R13):
                               # the one MUTABLE derived thing in an append-only branch, so it is known
