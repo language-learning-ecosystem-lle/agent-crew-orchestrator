@@ -70,6 +70,7 @@ import {
   renderThreadFailures,
   renderThreadNotices,
   renderThreadWarnings,
+  renderUnreadThreads,
 } from "./fs/comms.js";
 import {
   fileExistsAtRef,
@@ -2560,7 +2561,18 @@ const mail = (argv: readonly string[]): void => {
     }),
   ).map((candidate) => candidate.thread);
   for (const id of hits) out(id);
-  for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
+  // WHOEVER COUNTS THE INPUT NAMES WHAT IT COULD NOT READ, AND HOW MUCH (065.4). The
+  // per-thread line already existed and each cause already had its own words; what did
+  // not exist is the COUNT — and a narrowed selection printed without one reads exactly
+  // like a complete one. Measured twice on 2026-08-13: thread 066 held six statements
+  // waiting on dev-core, was unreadable (no `_meta.md`, then a `date:` in the shape of
+  // the file name), and the list of ids looked like an ordinary working input.
+  for (const line of renderUnreadThreads(
+    failures,
+    (count) =>
+      `${count} thread(s) of the mail were NOT READ — the ${hits.length} id(s) above are what is left of your input, not all of it:`,
+  ))
+    err(`agent-protocol: ${line}`);
 
   // THE EXIT CODE SOLVES ONE PROBLEM: it must not let an empty mailbox be declared
   // when we did not actually check it. The entry wrapper (`has-mail.sh`) throws
@@ -5117,7 +5129,16 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
           },
         }),
     queue: orderCandidates(ranked),
-    queueNotes: [...renderThreadFailures(scan.failures), ...ignored],
+    // The same count as `mail`'s (065.4), in the frame the operator watches: the queue
+    // below is short BECAUSE some threads were not read, and the notes said which ones
+    // without ever saying how many — one line among the skips reads as a curiosity.
+    queueNotes: [
+      ...renderUnreadThreads(
+        scan.failures,
+        (count) => `${count} thread(s) were NOT READ — the queue is narrowed by that much:`,
+      ),
+      ...ignored,
+    ],
     digests: published.digests,
     unreadableDigests: published.unreadable,
     ...(scope.instance === undefined ? {} : { self: scope.instance }),
@@ -8221,7 +8242,16 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // EVERY tick (not a single line at startup that nobody sees), and the daemon
     // keeps working.
     const scan = loadThreads(mailRoot, ids);
-    for (const line of renderThreadFailures(scan.failures)) err(`agent-protocol: ${line}`);
+    // AND HOW MANY (065.4): the statement of work names two printers, `mail` and this tick.
+    // The per-thread line here is older than the count and was never the thing missing —
+    // what the log of a night of ticks did not say is that the queue below is short
+    // BECAUSE of these, and one line among the skips reads as a curiosity.
+    for (const line of renderUnreadThreads(
+      scan.failures,
+      (count) =>
+        `${count} thread(s) were NOT READ — the queue this tick raises from is narrowed by that much:`,
+    ))
+      err(`agent-protocol: ${line}`);
     const threads = scan.threads.map((loaded) => loaded.thread);
     // THE ORDER OF THE QUEUE IS A DECISION, not the order of the scan (R5). One tick
     // raises at most one pair, so whichever candidate comes first IS the scheduling

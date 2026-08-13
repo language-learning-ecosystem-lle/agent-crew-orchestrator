@@ -345,4 +345,32 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
     expect(result.out).toContain("exiting (--once)");
     expect(journalKinds(repo)).toEqual([]);
   });
+
+  // 065.4: the statement of work names TWO printers of the unread — `mail` and this tick.
+  // The per-thread line here is older than the count and was never what went missing: a
+  // night of ticks named a broken thread once per tick and never said that the queue it
+  // raised from was narrowed by it.
+  it("a thread it could not read is COUNTED, not just named — and the tick goes on working", () => {
+    const repo = contour();
+    enable(repo);
+    // Half-migrated by hand: `messages/` present, the head of the thread missing — the
+    // exact shape thread 066 was in on 2026-08-13, hidden from the queue all afternoon.
+    const broken = join(repo, "mailco", "agent-comms", "066-broken");
+    mkdirSync(join(broken, "messages"), { recursive: true });
+    writeFileSync(join(broken, "messages", "2026-08-13T17-28-50Z-curator.md"), WAITING);
+    git(join(repo, "mailco"), "add", "agent-comms");
+    git(join(repo, "mailco"), "commit", "-qm", "a thread written by hand");
+    git(join(repo, "mailco"), "push", "-q", "origin", "comms");
+
+    const result = daemon(repo);
+
+    expect(result.out).toContain(
+      "1 thread(s) were NOT READ — the queue this tick raises from is narrowed by that much:",
+    );
+    expect(result.out).toContain(
+      "thread '066-broken' could not be read: half-migrated thread: 'messages/' is present but '_meta.md' is missing",
+    );
+    // The isolation is intact: the readable pair is still raised, the tick is not a casualty.
+    expect(journalKinds(repo)).toContain("launch");
+  });
 });

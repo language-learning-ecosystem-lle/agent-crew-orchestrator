@@ -228,6 +228,13 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # --root defaults to the mail of THIS MACHINE (R26): the state
                               # directory and the mail root hang off the main checkout, so the
                               # command finds them from a role's workspace as well
+                              # WHAT IT COULD NOT READ IS NAMED AND COUNTED (065.4): the ids go
+                              # to stdout, and an unreadable thread puts on stderr both its own
+                              # cause and HOW MANY were lost — the per-thread line existed, the
+                              # count did not, and a narrowed selection without one reads like a
+                              # complete one (thread 066 held six statements waiting on dev-core
+                              # and the queue never saw it, twice on 2026-08-13). The input does
+                              # not BREAK on it: the readable threads are still printed, exit 0
   agent-protocol await-input  --root <mail> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                               # THE INTERACTIVE TURN (R19): blocks until the thread waits on the role again
                               # needs a wait declared beside the question ('new-message --await-input') — it does not declare one
@@ -519,6 +526,11 @@ The strict forms below keep every flag they had.
   agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>] [--run-park-ttl <sec>]
                               # --roles/--exclude-roles: WHICH roles THIS run raises (R13), mutually exclusive;
                               # on top of the instance filter — a role owned by another box is never raised here
+                              # WHAT THE TICK COULD NOT READ IS NAMED AND COUNTED (065.4), every
+                              # tick and beside the skips: the per-thread line is older than the
+                              # count, and what a night of ticks never said is that the queue it
+                              # raised from was narrowed by those threads. The tick does not break
+                              # on them — a broken thread drops out of the candidates, the rest run
                               # --run-park-ttl <sec>: HOW LONG A 'run:' PARK MAY STAND (062, layer 2)
                               # before it stops freezing the pair and the role is raised to check the
                               # outcome of that round itself. Default 1800 (30 min) — 3x the measured

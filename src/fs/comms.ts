@@ -222,6 +222,23 @@ export const renderThreadFailures = (failures: readonly ThreadFailure[]): string
   failures.map((failure) => `thread '${failure.id}' could not be read: ${failure.problem}`);
 
 /**
+ * The same lines UNDER A COUNT — for everyone who counts the input (065.4): `mail`, the operator
+ * frame and the daemon tick. The per-thread line existed at all three and each cause already had
+ * its own words; what did not exist is HOW MANY, and a narrowed selection printed without a number
+ * reads exactly like a complete one.
+ *
+ * ONE FUNCTION FOR THE THREE, because they are the same promise said three times: the headline is
+ * the caller's (each says what its own selection lost), the counting is not. Nothing at all when
+ * there is nothing to count — a "0 threads were not read" every tick is the noise that hides the
+ * line that matters.
+ */
+export const renderUnreadThreads = (
+  failures: readonly ThreadFailure[],
+  headline: (count: number) => string,
+): string[] =>
+  failures.length === 0 ? [] : [headline(failures.length), ...renderThreadFailures(failures)];
+
+/**
  * Dropped fields, one readable line each — for the caller's stderr, beside the failures.
  *
  * Worded as what happened rather than as an error: the conversation IS in the answer, one field

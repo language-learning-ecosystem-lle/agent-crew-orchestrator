@@ -916,6 +916,9 @@ agent-protocol zones check  --ref <ref> [--repo <p>] (--role <id> | --role-from-
                             # the paths are read with --no-renames, -z and no --diff-filter — a deletion, a
                             # rename OUT of the zone and a non-ASCII name are each invisible without one of them
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
+                            # the ids on stdout; an unreadable thread on stderr, with its own cause
+                            # AND the count of what was lost (065.4) — the input is never silently
+                            # narrowed, and it does not break either: the readable ones still print
 agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p>] [--write]
                                                                            # the turn has passed to a HUMAN (R4)
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>]
@@ -1092,6 +1095,8 @@ agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec
                             #   on top of the instance filter — a role owned by another box is never raised here
                             # the two GATES: --max-attempts (failures of one pair since its last delivery)
                             # and --max-runs (launches in a row without a completed); both print their source
+                            # an unreadable thread is NAMED AND COUNTED every tick, beside the skips (065.4):
+                            # the queue this tick raises from is narrowed by it, and the tick keeps working
 agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
 agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
