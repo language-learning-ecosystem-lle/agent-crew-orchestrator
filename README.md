@@ -922,6 +922,23 @@ agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
                                                                            # _thread.md, which lags a push behind
+agent-protocol thread status --root <comms> --ref <ref> --thread <id> --from <role> \
+                            --status open|closed [--write]
+                            # THE DOOR OF THE PERMISSION `thread-status` (065.1): closing a thread is an
+                            # acceptance, and until this command the permission was declared in the config
+                            # and called by nobody — the only way to close a thread was to edit `_meta.md`
+                            # by hand, which a raised session cannot do (the mail is behind two commands).
+                            # Finished, empty threads therefore stayed `open`
+                            # a role without the permission is refused BY NAME, and the refusal lists who
+                            # holds it: the fallback an agent reaches for otherwise is the file itself
+                            # `_meta.md` is the one AUTHORED file of a thread (title/participants/status);
+                            # the messages stay append-only and the derived files stay the generator's
+                            # --write means DELIVERED here as everywhere; a status already set writes
+                            # nothing and says so — closing twice is a no-op, not a conflict
+                            # the sameness is decided by THE FEED, inside the attempt, not by the local
+                            # `_meta.md`: a box that had not seen the other closer's push used to reach
+                            # `git commit` with an empty index and hand out a raw git failure (#266).
+                            # The local read is left in the dry run only, and the dry run says so
 agent-protocol index build  --root <comms> --ref <ref> [--write]
 agent-protocol thread build --root <comms> --ref <ref> --id <NNN-slug> [--write]
 agent-protocol derive       --root <comms> --ref <ref> [--write]           # all derived files

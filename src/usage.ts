@@ -173,6 +173,24 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # THE READING HALF OF THE AGENT'S INTERFACE (R3): the conversation, in order,
                               # from the MESSAGES (not from the derived _thread.md, which lags a push behind)
   agent-protocol thread build --root <mail> --ref <ref> --id <NNN-slug> [--write]
+  agent-protocol thread status --root <mail> --ref <ref> --thread <NNN-slug> --from <role> --status <open|closed> [--write]
+                              # CLOSING A THREAD IS AN ACCEPTANCE, AND IT NEEDS A DOOR (065.1): the
+                              # permission 'thread-status' was declared in the config and checked by
+                              # nobody — the only way to close a thread was to edit '_meta.md' by hand,
+                              # which a raised session cannot do (the mail is behind two commands, R3).
+                              # Threads therefore piled up 'open' while being finished and empty
+                              # a role WITHOUT the permission is refused BY NAME, not by silence, and
+                              # '_meta.md' is the one authored file of a thread that may be rewritten
+                              # (title/participants/status live there; the messages stay append-only)
+                              # --write means DELIVERED, as everywhere else: the file, the commit and the
+                              # push are one action, and the derived files stay the generator's business
+                              # a status ALREADY set is not an error and not an empty commit: it is said
+                              # and nothing is written — closing twice is a no-op, not a conflict
+                              # AND THE FEED ANSWERS THAT, NOT THE LOCAL DISK (the verdict on #266): a
+                              # box that has not seen the other closer's push used to pass the local
+                              # check and die on 'git commit' with an empty index — a raw git failure in
+                              # the one scenario the no-op was written for. Delivery now reports the
+                              # sameness; the local read survives only in the dry run, which says so
   agent-protocol check        --root <mail> --ref <ref> [--since <ref>]
                               # also validates '_instances/' as a CLASS of derived state files (R13):
                               # the one MUTABLE derived thing in an append-only branch, so it is known
@@ -298,9 +316,11 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # a raised session passes neither — the launch environment carries both
                               # --no-push: write the files only (for a caller that owns its own git, e.g. CI)
 
-WHICH '--write' DELIVERS (thread 033). Two commands SEND — 'new-message' and 'new-thread':
-the file, the commit and the push are one action. Everything else writes and stops, and
-each for a stated reason:
+WHICH '--write' DELIVERS (thread 033). Three commands SEND — 'new-message', 'new-thread'
+and 'thread status': the file, the commit and the push are one action. The third joined
+them by the same argument (065.1) — a status moved on one disk is a thread still open for
+everybody who reads the feed. Everything else writes and stops, and each for a stated
+reason:
   · 'index build', 'thread build', 'derive' — DERIVED files, committed by the generator
     workflow ('chore(comms): rebuild derived') on the push that produced them;
   · 'migrate', 'schema migrate' — bulk rewrites read by a human before they are committed
