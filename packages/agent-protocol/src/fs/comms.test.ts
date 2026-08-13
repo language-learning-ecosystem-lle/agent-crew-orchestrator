@@ -5,7 +5,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { parkedOnOf } from "../thread/thread.js";
-import { loadThreads, renderThreadFailures, renderThreadWarnings } from "./comms.js";
+import {
+  loadThreads,
+  renderThreadFailures,
+  renderThreadWarnings,
+  renderUnreadThreads,
+} from "./comms.js";
 
 const ROLES = ["dev-core", "curator", "john", "reviewer-pr"];
 
@@ -235,5 +240,29 @@ describe("renderThreadFailures", () => {
 
   it("no failures — no lines (silence is honest here: there is nothing to complain about)", () => {
     expect(renderThreadFailures([])).toEqual([]);
+  });
+});
+
+describe("renderUnreadThreads — the same lines under a count (065.4)", () => {
+  it("the count comes FIRST and is the number of unread, never the number of read", () => {
+    const lines = renderUnreadThreads(
+      [
+        { id: "066-test-gaps", problem: "half-migrated" },
+        { id: "064-mobile-e2e", problem: "a UTC stamp is required" },
+      ],
+      (count) => `${count} thread(s) were NOT READ:`,
+    );
+
+    expect(lines[0]).toBe("2 thread(s) were NOT READ:");
+    // And every cause keeps its own words below it: a count without them is "2 skipped".
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toContain("066-test-gaps");
+    expect(lines[1]).toContain("half-migrated");
+    expect(lines[2]).toContain("064-mobile-e2e");
+    expect(lines[2]).toContain("a UTC stamp is required");
+  });
+
+  it("nothing read is nothing said: no failures — no headline either", () => {
+    expect(renderUnreadThreads([], (count) => `${count} thread(s) were NOT READ:`)).toEqual([]);
   });
 });
