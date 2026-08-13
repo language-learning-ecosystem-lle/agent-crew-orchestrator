@@ -68,6 +68,7 @@ import {
   loadThread,
   loadThreads,
   renderThreadFailures,
+  renderThreadNotices,
   renderThreadWarnings,
 } from "./fs/comms.js";
 import {
@@ -1153,6 +1154,13 @@ const threadShow = (argv: readonly string[]): void => {
   if (loaded === undefined) fail(`thread '${id}' not found in '${root}'`, 2);
 
   const { thread } = loaded as NonNullable<typeof loaded>;
+  // AN OFF-CANON SPELLING IS NAMED TO THE READER OF THE CONVERSATION (thread 065, (iv)):
+  // the value is in the answer, the file it came from is written another way, and this is
+  // the one command an agent runs on a thread it is about to work in. Only this thread's —
+  // the other conversations' spellings are not this reader's business.
+  for (const line of renderThreadNotices(scan.notices.filter((notice) => notice.id === id))) {
+    err(`agent-protocol: ${line}`);
+  }
   const tail = flag(argv, "--tail") === undefined ? undefined : positiveInt(argv, "--tail", 0);
   const shown =
     tail === undefined || tail >= thread.messages.length
@@ -1319,7 +1327,8 @@ const taskInputsOf = (
 const checkAll = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const registry = registryFrom(argv, repoOf(root));
-  const { threads, failures, warnings } = loadThreads(root, registry.ids());
+  const { threads, failures, warnings, notices } = loadThreads(root, registry.ids());
+  const noticeLines = renderThreadNotices(notices);
 
   const found = threads.flatMap((loaded) =>
     loaded.input === undefined ? [] : checkThread(loaded.input, registry),
@@ -1406,6 +1415,15 @@ const checkAll = (argv: readonly string[]): void => {
     for (const note of notes) {
       out(`- ${note.thread}${note.file === undefined ? "" : `/${note.file}`}: ${note.message}`);
     }
+  }
+  // THE OFF-CANON SPELLINGS DO NOT COLOUR THE CHECK (thread 065, (iv)): the reader accepts
+  // them by decision, so calling them a violation here would make this command argue with the
+  // reader it is checking. They are said out loud on every run, red or green — that IS the
+  // second half of the tolerance, and a line only printed on a red run would be a line nobody
+  // ever sees on the mail that is otherwise fine.
+  if (noticeLines.length > 0) {
+    err("agent-protocol: read in an off-canon spelling (the threads WERE read, whole):");
+    for (const line of noticeLines) err(`- ${line}`);
   }
   if (issues.length === 0 && failureIssues.length === 0 && warningIssues.length === 0) {
     out(`agent-protocol: ok — ${threads.length - legacy.length} threads passed the format check`);
@@ -1501,7 +1519,10 @@ const derive = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const registry = registryFrom(argv, repoOf(root));
   const doWrite = argv.includes("--write");
-  const { threads, failures } = loadThreads(root, registry.ids());
+  const { threads, failures, notices } = loadThreads(root, registry.ids());
+  // Said BEFORE the failures and whatever they decide: an assembly that goes through is
+  // exactly the run on which nothing else would ever mention the off-canon file (thread 065).
+  for (const line of renderThreadNotices(notices)) err(`agent-protocol: ${line}`);
   // As in `index build`: derived files are a display, and assembling one from part
   // of the threads means publishing the incomplete as complete. A broken thread
   // stops the assembly.

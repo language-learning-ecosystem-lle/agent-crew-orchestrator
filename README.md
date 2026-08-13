@@ -3151,6 +3151,33 @@ usually means "this process is older than the field it just met", which is not t
 daemon's business to shout about; `check` runs the current code over the mail on purpose,
 so there a field it cannot make sense of is a malformed field and gets a red exit.
 
+**(d) A value written the way the FILE NAME writes it** (thread 065, variant (iv) of
+curator's decision). On 2026-08-13 a thread opened by hand carried
+`date: 2026-08-13T17-28-50Z` — the stamp with the colons `messageFileName` replaces,
+copied back out of the name — and the whole conversation became unreadable to every
+reader of the circuit. It was the SECOND refusal on that thread and invisible until the
+first one (a missing `_meta.md`) was repaired by hand, which is the shape of the class:
+one hand-made defect hides the next.
+
+That form is not another value, it is another spelling of the same moment, so the reader
+takes it and normalizes it **in memory**: `Message.fields.date` carries the canon, the
+file on disk keeps every byte (it is somebody else's committed message — those are never
+rewritten, and repairing them in place would move a norm rather than fix a defect), and
+`messageFileName` rebuilds the same name it came from. Strictness is not traded away:
+anything that is not the same moment written differently still refuses its file, quoting
+the raw value rather than a normalized guess.
+
+**Tolerance without a voice was refused, so it has a third channel**: `Message.notices`,
+carried by `loadThreads` as `notices` beside `failures` and `warnings`, and rendered by
+`renderThreadNotices` under its own words — *read in an OFF-CANON spelling*. It is a
+third channel and not a warning because the three say different things about one mail
+("not in your answer" / "in it, minus a field" / "in it whole, and the file is written
+another way"), and it is printed by `derive`, `thread show` and `check` — including on
+runs that end green, since the off-canon byte stays in git forever and a line only shown
+on a red run is a line nobody would ever see. In `check` it does NOT colour the exit
+code: the reader accepts the spelling by decision, and a command that called it a
+violation would argue with the reader it checks.
+
 ### S24 — the code in the live daemon has an age, and it says it (thread 023, 023.2)
 
 The config is re-read at `--ref` every tick; the CODE is loaded once, by node, when the

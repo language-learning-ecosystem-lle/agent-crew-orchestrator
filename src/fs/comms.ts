@@ -60,12 +60,23 @@ export type ThreadWarning = {
   readonly problem: string;
 };
 
+/**
+ * A value of ONE message read in an off-canon SPELLING (thread 065, (iv)) — nothing was
+ * dropped and nothing is missing from the answer. The third channel beside failures and
+ * warnings because it is a third statement: "not in your answer", "in it minus a field",
+ * "in it whole, but the file on disk is written another way". Folding it into the warnings
+ * would say the field was dropped, which is not true of any of these.
+ */
+export type ThreadNotice = ThreadWarning;
+
 /** Result of walking the directory: parsed threads and broken ones, separately. */
 export type LoadedThreads = {
   readonly threads: readonly LoadedThread[];
   readonly failures: readonly ThreadFailure[];
   /** Fields dropped inside threads that WERE read — see `ThreadWarning`. */
   readonly warnings: readonly ThreadWarning[];
+  /** Off-canon spellings read as their canon — see `ThreadNotice`. */
+  readonly notices: readonly ThreadNotice[];
 };
 
 export const loadThread = (
@@ -164,6 +175,7 @@ export const loadThreads = (root: string, knownRoles: readonly string[]): Loaded
   const threads: LoadedThread[] = [];
   const failures: ThreadFailure[] = [];
   const warnings: ThreadWarning[] = [];
+  const notices: ThreadNotice[] = [];
 
   for (const name of readdirSync(root)
     .filter((entry) => THREAD_DIR.test(entry) && statSync(join(root, entry)).isDirectory())
@@ -172,12 +184,13 @@ export const loadThreads = (root: string, knownRoles: readonly string[]): Loaded
       const loaded = loadThread(join(root, name), name, knownRoles);
       threads.push(loaded);
       warnings.push(...threadWarnings(name, loaded));
+      notices.push(...threadNotices(name, loaded));
     } catch (error) {
       failures.push({ id: name, problem: (error as Error).message });
     }
   }
 
-  return { threads, failures, warnings };
+  return { threads, failures, warnings, notices };
 };
 
 /**
@@ -188,6 +201,16 @@ export const loadThreads = (root: string, knownRoles: readonly string[]): Loaded
 const threadWarnings = (id: string, loaded: LoadedThread): ThreadWarning[] =>
   (loaded.input?.entries ?? []).flatMap((entry) =>
     (entry.message.warnings ?? []).map((problem) => ({
+      id,
+      file: `messages/${entry.fileName}`,
+      problem,
+    })),
+  );
+
+/** The off-canon spellings of one thread, addressed by file — same shape, same reason. */
+const threadNotices = (id: string, loaded: LoadedThread): ThreadNotice[] =>
+  (loaded.input?.entries ?? []).flatMap((entry) =>
+    (entry.message.notices ?? []).map((problem) => ({
       id,
       file: `messages/${entry.fileName}`,
       problem,
@@ -209,4 +232,18 @@ export const renderThreadWarnings = (warnings: readonly ThreadWarning[]): string
   warnings.map(
     (warning) =>
       `thread '${warning.id}', ${warning.file}: the field was DROPPED and the thread read without it — ${warning.problem}`,
+  );
+
+/**
+ * Off-canon spellings, one readable line each — beside the failures and the warnings.
+ *
+ * Worded as what was read rather than as a loss, because nothing was lost: the whole point of
+ * the tolerance is that the conversation is complete. What the line buys is the second half of
+ * (iv) — the file stays off-canon in git forever, so the only thing that can say so is the
+ * reader, every time it reads it.
+ */
+export const renderThreadNotices = (notices: readonly ThreadNotice[]): string[] =>
+  notices.map(
+    (notice) =>
+      `thread '${notice.id}', ${notice.file}: read in an OFF-CANON spelling — ${notice.problem}`,
   );
