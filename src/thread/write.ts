@@ -155,6 +155,8 @@ export type NewThreadInput = {
   readonly date: string;
   readonly expects: MessageFields["expects"];
   readonly waitingOn?: string | null;
+  /** Whose decision the turn is frozen behind (R27) — the same field the first message may carry. */
+  readonly parkedOn?: string;
   readonly text: string;
 };
 
@@ -162,6 +164,12 @@ export type NewThreadInput = {
  * The files of a new thread STRAIGHT in the file form: `_meta.md` + the first
  * message in `messages/`. Legacy threads are no longer born — so `new-message`
  * will never hit one, and the invariant holds by construction.
+ *
+ * THE FIRST MESSAGE IS A MESSAGE (thread 075): the header fields it may carry are the
+ * fields any message carries, and `parked-on` is passed through for that reason and
+ * not as a special case. It was the one field an opening message could not say until
+ * 2026-08-14 — 074 was opened `--parked-on john` and written without it — and the cost
+ * of the silence is not a refusal but an empty raise a tick later.
  */
 export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
   if (input.text.trim() === "") throw new WriteRefusedError("the first message body is empty");
@@ -178,6 +186,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     date: input.date,
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
+    ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
     text: input.text,
     threadHasMessages: true, // a new thread is file-based by construction
   });
