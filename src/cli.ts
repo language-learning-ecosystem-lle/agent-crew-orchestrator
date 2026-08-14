@@ -158,6 +158,7 @@ import {
   boxRaisesNoRoles,
   type CommitIdentity,
   commitIdentityCheck,
+  DEFAULT_IDENTITY_DICTIONARY,
   type DoctorOutcome,
   type DoctorSkipped,
   doctorPassed,
@@ -5065,11 +5066,21 @@ const doctor = (argv: readonly string[]): void => {
     repo,
     ...(wholeHistory ? {} : { since: `${days} days ago` }),
   });
+  // WHERE THE CANON IS SAID TO BE, ASKED OF THIS DISK (080.5). The rows only point at the
+  // dictionary, so nothing ever resolved the path — and after the protocol moves into its
+  // own repository the file legally leaves the SERVED project. Presence is measured here,
+  // where there is a repository to measure it in, and the rows name the absence instead of
+  // sending the operator to a file that is not there.
+  const identityDictionary = {
+    path: DEFAULT_IDENTITY_DICTIONARY,
+    present: existsSync(join(repo, DEFAULT_IDENTITY_DICTIONARY)),
+  };
   checks.push(
     commitIdentityCheck({
       window: wholeHistory ? "the whole history" : `the last ${days} days`,
       identities: identities.identities,
       roles: loaded.registry.ids(),
+      dictionary: identityDictionary,
       ...(identities.error === undefined ? {} : { error: identities.error }),
     }),
   );
@@ -5094,6 +5105,7 @@ const doctor = (argv: readonly string[]): void => {
               })),
       }),
       roles: loaded.registry.ids(),
+      dictionary: identityDictionary,
     }),
   );
 
