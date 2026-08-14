@@ -9,6 +9,8 @@ import {
   boxRaisesNoRoles,
   type CommitIdentity,
   commitIdentityCheck,
+  DEFAULT_IDENTITY_DICTIONARY,
+  dictionaryAt,
   doctorPassed,
   doctorSummary,
   gitChecks,
@@ -589,6 +591,47 @@ describe("the effective signature of this box", () => {
     const check = boxIdentityCheck({ roles, places: [] });
     expect(check.status).toBe("info");
     expect(check.detail).toContain("not asked");
+  });
+
+  it("names a missing dictionary as a fact and keeps its verdict (080.5)", () => {
+    const absent = { path: DEFAULT_IDENTITY_DICTIONARY, present: false };
+    const box = boxIdentityCheck({
+      roles,
+      places: [{ place: "the checkout", email: "ivan@corp.ru" }],
+      dictionary: absent,
+    });
+    const history = commitIdentityCheck({
+      window: "the last 7 days",
+      roles,
+      identities: [{ name: "ivan", email: "ivan@corp.ru", commits: 5 }],
+      dictionary: absent,
+    });
+    // The verdict is about the SIGNATURE and does not move: a project that accepts the
+    // protocol without copying the tool's docs is not a box committing wrong.
+    expect(box.status).toBe("info");
+    expect(history.status).toBe("info");
+    for (const detail of [box.detail, history.detail]) {
+      expect(detail).toContain(DEFAULT_IDENTITY_DICTIONARY);
+      expect(detail).toContain("this repository does not have");
+      expect(detail).toContain("travels with the tool");
+    }
+  });
+
+  it("says nothing new when the dictionary is where it is said to be (080.5)", () => {
+    const present = { path: DEFAULT_IDENTITY_DICTIONARY, present: true };
+    const withDictionary = boxIdentityCheck({
+      roles,
+      places: [{ place: "the checkout", email: "ivan@corp.ru" }],
+      dictionary: present,
+    });
+    // Byte for byte the row of a caller that passes nothing: today's LLE notices nothing.
+    const silent = boxIdentityCheck({
+      roles,
+      places: [{ place: "the checkout", email: "ivan@corp.ru" }],
+    });
+    expect(withDictionary.detail).toBe(silent.detail);
+    expect(withDictionary.detail).not.toContain("does not have");
+    expect(dictionaryAt(present)).toBe(DEFAULT_IDENTITY_DICTIONARY);
   });
 
   it("is the OTHER row: the two halves are told apart by name", () => {

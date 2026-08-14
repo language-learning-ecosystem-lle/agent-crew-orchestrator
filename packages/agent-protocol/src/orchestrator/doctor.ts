@@ -411,6 +411,43 @@ export const MACHINERY_IDENTITY = `orchestrator@${ROLE_IDENTITY_DOMAIN}`;
 export type IdentityVerdict = "role" | "machinery" | "github" | "impostor" | "unrecognised";
 
 /**
+ * WHERE THE CANON OF THE ADDRESSES IS WRITTEN, AND WHETHER IT IS THERE (thread 080, 080.5).
+ *
+ * The rows below do not READ the dictionary — they POINT a reader at it, which is why the
+ * pointer went unmeasured for so long: a path in a message is never resolved by anything.
+ * The extraction of the protocol into its own repository is what makes the pointer false.
+ * `docs/protocol-reference.md` travels with the TOOL, while doctor asks its question of the
+ * SERVED project — and there the file is legally absent, exactly as it is absent in any
+ * project that accepts the protocol without copying its docs.
+ *
+ * A pointer at a file that is not there is worse than no pointer: the operator goes looking,
+ * finds nothing, and reads it as the circuit being broken. So the absence is NAMED in the
+ * same sentence and nothing else changes. It is not a cross and may never become one: the
+ * missing dictionary is a fact about the repository, not about the box's signature, and the
+ * verdict of these rows is about the signature alone.
+ */
+export const DEFAULT_IDENTITY_DICTIONARY = "docs/protocol-reference.md";
+
+export type IdentityDictionary = {
+  /** The path as it is said to the reader — relative to the repository being served. */
+  readonly path: string;
+  /** Whether that file is in the repository this doctor is asking about. */
+  readonly present: boolean;
+};
+
+/**
+ * The dictionary as one phrase. A caller that says nothing gets the default and is taken at
+ * its word about presence: this module has no disk, and inventing an absence it did not
+ * measure would be the same lie in the other direction.
+ */
+export const dictionaryAt = (dictionary?: IdentityDictionary): string => {
+  const at = dictionary ?? { path: DEFAULT_IDENTITY_DICTIONARY, present: true };
+  return at.present
+    ? at.path
+    : `${at.path}, which this repository does not have — the dictionary travels with the tool, not with the project it serves`;
+};
+
+/**
  * One address against the canon. Case is folded because git does not: the same box
  * spelling its email with a capital would otherwise read as a second identity.
  */
@@ -476,7 +513,7 @@ export const commitIdentityCheck = (input: {
   readonly identities: readonly CommitIdentity[];
   readonly roles: readonly string[];
   readonly error?: string;
-  readonly dictionary?: string;
+  readonly dictionary?: IdentityDictionary;
 }): PreflightCheck => {
   const name = "git: commit identity (history)";
   if (input.error !== undefined) {
@@ -493,7 +530,7 @@ export const commitIdentityCheck = (input: {
     verdicts.filter((row) => row.verdict === kind).map((row) => row.identity);
   const impostors = of("impostor");
   const strays = of("unrecognised");
-  const dictionary = input.dictionary ?? "docs/protocol-reference.md";
+  const dictionary = dictionaryAt(input.dictionary);
   if (impostors.length > 0) {
     return {
       name,
@@ -578,10 +615,10 @@ const placeListing = (places: readonly SigningPlace[]): string => {
 export const boxIdentityCheck = (input: {
   readonly places: readonly SigningPlace[];
   readonly roles: readonly string[];
-  readonly dictionary?: string;
+  readonly dictionary?: IdentityDictionary;
 }): PreflightCheck => {
   const name = "git: commit identity (this box)";
-  const dictionary = input.dictionary ?? "docs/protocol-reference.md";
+  const dictionary = dictionaryAt(input.dictionary);
   if (input.places.length === 0) {
     return { name, status: "info", detail: "not asked — there is no place on this box to ask of" };
   }
