@@ -943,6 +943,25 @@ agent-protocol thread status --root <comms> --ref <ref> --thread <id> --from <ro
                             # `git commit` with an empty index and hand out a raw git failure (#266).
                             # The local read is left in the dry run only, and the dry run says so
 agent-protocol thread status --root <comms> --ref <ref> --thread <id> --from <role> \
+                            --turn explicit|— [--write]
+                            # MODE (c): THE FORM THIS THREAD REQUIRES OF ITS ANSWERS (079). `explicit`
+                            # makes `--waiting-on` obligatory for every message written into the thread;
+                            # `—` withdraws the declaration. Two states, no space of values
+                            # WHY A DECLARATION AND NOT A PREDICATE. The defect — an answer that leaves the
+                            # turn where it was, so the circuit raises a pair on a thread where nothing
+                            # happened — is invisible in the messages: on a RECEIVING thread a fieldless
+                            # answer is always terminal, on a WORKING one the same bytes are the legal
+                            # middle of the work (rule 11). Three candidate predicates were counted over
+                            # the live mail (2875 messages) and the narrowest refused 32 legal messages to
+                            # catch three or four defects. So the thread declares it, exactly as
+                            # `waiting-on: —` declares a release and `parked-on` declares a freeze
+                            # THE SAME PERMISSION AS THE STATUS: the form of a conversation belongs to
+                            # whoever owns its closing, and a key without a door would be reachable only by
+                            # editing `_meta.md` by hand — the hole 065.1 closed for the status itself
+                            # the refusal at `new-message` names BOTH exits (`--waiting-on <role>` and
+                            # `--waiting-on —`): they are two different statements and the door picks
+                            # neither. A thread that declared nothing sees no door at all
+agent-protocol thread status --root <comms> --ref <ref> --thread <id> --from <role> \
                             --repair [--title <t>] [--write]
                             # MODE (b) OF THE SAME DOOR (065): a thread with `messages/` and NO `_meta.md`
                             # is unreadable whole, and with it every statement of work inside — thread 066
@@ -967,6 +986,8 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
                             # --no-push: the file only, for the ONE caller that owns its own git (CI)
                             # --await-input: this question PARKS the run instead of ending it (R19, S13)
+                            # ON A THREAD DECLARING `turn: explicit` (079) `--waiting-on` is OBLIGATORY and
+                            # the refusal names both exits; everywhere else a fieldless message stays legal
                             # --model <m> / --effort <e>: WITH WHAT the runs of this thread are raised from
                             # here on (R21, S15) — only from a role holding `launch-params`, and the value
                             # is checked against the tool's vocabulary at this door

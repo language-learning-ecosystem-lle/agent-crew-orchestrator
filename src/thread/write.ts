@@ -21,7 +21,7 @@ import type {
   ThreadPriorityValue,
 } from "./message.js";
 import { messageFileName, renderMessageFile } from "./message.js";
-import { renderMetaFile, type ThreadMeta } from "./thread.js";
+import { renderMetaFile, type ThreadMeta, type ThreadTurn } from "./thread.js";
 
 export type PlannedFile = {
   readonly path: string;
@@ -157,6 +157,8 @@ export type NewThreadInput = {
   readonly waitingOn?: string | null;
   /** Whose decision the turn is frozen behind (R27) — the same field the first message may carry. */
   readonly parkedOn?: string;
+  /** The form declared for the answers of this thread (079) — see `ThreadTurn`. */
+  readonly turn?: ThreadTurn;
   readonly text: string;
 };
 
@@ -178,6 +180,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     title: input.title,
     participants: input.participants,
     status: "open",
+    ...(input.turn === undefined ? {} : { turn: input.turn }),
   };
   const first = planNewMessage({
     from: input.from,

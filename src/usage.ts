@@ -223,6 +223,24 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # check and die on 'git commit' with an empty index — a raw git failure in
                               # the one scenario the no-op was written for. Delivery now reports the
                               # sameness; the local read survives only in the dry run, which says so
+  agent-protocol thread status --root <mail> --ref <ref> --thread <NNN-slug> --from <role> --turn <explicit|—> [--write]
+                              # MODE (c): THE FORM THIS THREAD REQUIRES OF ITS ANSWERS (079).
+                              # 'explicit' — every message in the thread must carry '--waiting-on'
+                              # (either a role or '—'); '—' withdraws the declaration. Two states,
+                              # no space of values and no per-role variants: a second mode invented
+                              # before it is needed would be invented wrong
+                              # WHY A DECLARATION AND NOT A PREDICATE: a fieldless answer on a
+                              # RECEIVING thread (the notifier writes, the role reads and leaves) and
+                              # one on a WORKING thread (the role reads its own CI and carries on) are
+                              # byte-identical. Three candidates were counted on the live mail (2875
+                              # messages): the narrowest refused 32 messages to catch 3-4 defects.
+                              # A thread that declares nothing is not touched by any of this
+                              # THE SAME PERMISSION AS THE STATUS ('thread-status'), because the form
+                              # of a conversation belongs to whoever owns its closing — and without a
+                              # door the key would be reachable only by editing '_meta.md' by hand,
+                              # the hole 065.1 closed for the status itself
+                              # neither mode requires the other: '--turn' takes no '--status', and a
+                              # status flip says nothing about the form. Given together they are refused
   agent-protocol thread status --root <mail> --ref <ref> --thread <NNN-slug> --from <role> --repair [--title <t>] [--write]
                               # MODE (b) OF THE SAME DOOR (065): a thread whose 'messages/' is on disk
                               # and whose '_meta.md' is NOT is unreadable WHOLE — and with it every
@@ -299,6 +317,10 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
+                              # ON A THREAD DECLARING 'turn: explicit' (079) --waiting-on is OBLIGATORY:
+                              # the door refuses a message without it and names both exits (a role, or '—'
+                              # for nobody). On every other thread nothing changes — a fieldless message is
+                              # the ordinary middle of a working thread and stays legal
                               # --await-input: this question PARKS the run instead of ending it (R19) — the session
                               # stays alive and reads the answer itself; block on 'await-input' after sending
                               # --model/--effort: WITH WHAT the runs of this thread are raised from here on (R21) —
@@ -362,10 +384,14 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in
                               # the PR's description, which is not the thread parked on it — the readers
                               # judge a park against the merges of the WHOLE mail, not of its own feed
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] [--turn <explicit>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                               # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
                               # first message go in ONE commit, pushed, with the same replanning retry
                               # --parked-on: THE SAME FIELD AS 'new-message''s, same values, same refusals
+                              # --turn explicit: THE FORM DECLARED AT BIRTH (079) — the same key as
+                              # 'thread status --turn', behind the same permission ('thread-status'),
+                              # and the first message obeys it at once: without '--waiting-on' the
+                              # opening call is refused, naming both exits
                               # (074) — a question to the owner of a decision often IS the opening of a
                               # thread, and 074 is the live example. It was accepted and SWALLOWED here
                               # until 2026-08-14: the flag parsed for one command only, the header went

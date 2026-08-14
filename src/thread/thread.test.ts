@@ -150,6 +150,30 @@ describe("renderThread / _meta.md", () => {
 
     expect(parseMetaFile(raw)).toEqual(thread.meta);
   });
+
+  // THE DECLARED FORM (thread 079) survives the round trip — and its ABSENCE is an
+  // absent line, not an empty value: every head written before the key existed has to
+  // render back byte for byte, which is the whole reason the key is optional.
+  it("'turn: explicit' is parsed and rendered back; a head without it keeps no line", () => {
+    const thread = parseLegacyThread("012-x", LEGACY, ROLES);
+    const declared = { ...thread.meta, turn: "explicit" as const };
+
+    const raw = renderMetaFile(declared);
+
+    expect(raw).toContain("turn: explicit\n");
+    expect(parseMetaFile(raw)).toEqual(declared);
+    expect(renderMetaFile(thread.meta)).not.toContain("turn:");
+    expect(parseMetaFile(renderMetaFile(thread.meta)).turn).toBeUndefined();
+  });
+
+  it("a 'turn' the key does not know is refused, naming the one value there is", () => {
+    const raw = renderMetaFile({ title: "t", participants: ["curator"], status: "open" }).replace(
+      "status: open\n",
+      "status: open\nturn: strict\n",
+    );
+
+    expect(() => parseMetaFile(raw)).toThrow(/explicit/);
+  });
 });
 
 describe("renderIndex / threadsWaitingOn", () => {

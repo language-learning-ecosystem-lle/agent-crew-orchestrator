@@ -27,10 +27,28 @@ import {
 
 export type ThreadStatus = "open" | "closed";
 
+/**
+ * THE FORM THE THREAD DECLARES FOR ITS ANSWERS (thread 079). One key, two states:
+ * declared (`turn: explicit`) or absent — no space of values, no per-role variants.
+ *
+ * It exists because the defect it closes is NOT MEASURABLE from the messages. A
+ * receiving thread ('the notifier writes, the role reads and leaves') and a working
+ * thread ('the role reads the outcome of its own CI and carries on') produce
+ * byte-identical messages without `waiting-on`; the three candidate predicates were
+ * counted on the live mail (2875 messages) and each refused dozens of LEGAL messages
+ * to catch a handful of defects. So the answer is the protocol's usual one for the
+ * unmeasurable — a DECLARATION (`waiting-on: —` declares a release, `parked-on`
+ * declares a freeze, `--d1` declares a class): the thread says that an answer in it
+ * must name who acts next, and the door of `new-message` holds it to that.
+ */
+export type ThreadTurn = "explicit";
+
 export type ThreadMeta = {
   readonly title: string;
   readonly participants: readonly string[];
   readonly status: ThreadStatus;
+  /** Absent on every thread that has not declared it — and that is the majority. */
+  readonly turn?: ThreadTurn;
 };
 
 export type Thread = {
@@ -101,11 +119,25 @@ export const parseMetaFile = (raw: string): ThreadMeta => {
     );
   }
 
-  return { title, participants: parseParticipants(participants), status };
+  // The key is OPTIONAL and its absence is the ordinary case, so it is read only when
+  // it is there — every thread written before 079 stays byte-identical and readable.
+  const turn = raws.get("turn");
+  if (turn !== undefined && turn !== "explicit") {
+    throw new MessageFormatError(
+      `_meta.md: 'turn: ${turn}' — the only value is 'explicit' (the key is declared or absent, there is no space of values)`,
+    );
+  }
+
+  return {
+    title,
+    participants: parseParticipants(participants),
+    status,
+    ...(turn === undefined ? {} : { turn: turn as ThreadTurn }),
+  };
 };
 
 export const renderMetaFile = (meta: ThreadMeta): string =>
-  `${FENCE}\ntitle: ${meta.title}\nparticipants: ${meta.participants.join(", ")}\nstatus: ${meta.status}\n${FENCE}\n`;
+  `${FENCE}\ntitle: ${meta.title}\nparticipants: ${meta.participants.join(", ")}\nstatus: ${meta.status}\n${meta.turn === undefined ? "" : `turn: ${meta.turn}\n`}${FENCE}\n`;
 
 /**
  * Assembling `_thread.md`: the head from `_meta.md` + sections from the messages in

@@ -485,7 +485,9 @@ import {
   parseMetaFile,
   renderMetaFile,
   renderThread,
+  type ThreadMeta,
   type ThreadStatus,
+  type ThreadTurn,
   waitingOnOf,
 } from "./thread/thread.js";
 import {
@@ -1361,6 +1363,105 @@ const refusePermission = (registry: RoleRegistry, from: string): void => {
   );
 };
 
+/**
+ * `--turn` at the door: `explicit` declares the form, `—` withdraws it. The value
+ * space is deliberately those two and nothing else (thread 079, condition (в)) — a
+ * second mode invented before it is needed would be invented wrong.
+ */
+const parseTurnFlag = (raw: string): ThreadTurn | undefined => {
+  const trimmed = raw.trim();
+  if (trimmed === "—" || trimmed === "") return undefined;
+  if (trimmed !== "explicit") {
+    fail(
+      `--turn '${trimmed}' — the key has two states: 'explicit' declares that an answer in this thread must name who acts next, '—' withdraws the declaration`,
+      2,
+    );
+  }
+  return "explicit";
+};
+
+/**
+ * MODE (c): the form of the conversation, written into the same file by the same
+ * permission. The key is not decoration and it is not a message — a thread that
+ * declares it makes `--waiting-on` obligatory for everybody who answers in it, so it
+ * belongs to whoever owns the thread's closing (thread 079, condition (а)). Without a
+ * door it would be reachable only by editing `_meta.md` by hand — the exact hole 065.1
+ * closed for `status`.
+ */
+const threadTurnKey = (
+  argv: readonly string[],
+  context: {
+    root: string;
+    id: string;
+    from: string;
+    loaded: ReturnType<typeof configFrom>;
+    registry: RoleRegistry;
+    raw: string;
+  },
+): void => {
+  const { root, id, from, loaded, registry } = context;
+  const wanted = parseTurnFlag(context.raw);
+  refusePermission(registry, from);
+
+  const metaPath = join(root, id, "_meta.md");
+  if (!existsSync(metaPath)) fail(`thread '${id}' not found in '${root}'`, 2);
+
+  // Built field by field rather than spread-and-delete: the absent state of the key is
+  // its ABSENCE from the file, not an empty value, and the render has to be able to say so.
+  const withTurn = (meta: ThreadMeta): ThreadMeta => ({
+    title: meta.title,
+    participants: meta.participants,
+    status: meta.status,
+    ...(wanted === undefined ? {} : { turn: wanted }),
+  });
+
+  const current = parseMetaFile(readFileSync(metaPath, "utf8"));
+  if (!argv.includes("--write")) {
+    if (current.turn === wanted) {
+      out(
+        `agent-protocol: thread '${id}' already ${wanted === undefined ? "declares no form" : `declares 'turn: ${wanted}'`} on this disk — nothing to write`,
+      );
+      return;
+    }
+    out(`agent-protocol: would set the form of '${id}' (--write sets it):`);
+    out(renderMetaFile(withTurn(current)));
+    return;
+  }
+
+  const checkout = repoOf(root);
+  try {
+    const delivered = deliverMessage({
+      git: gitIn(checkout),
+      write: writeOut,
+      branch: loaded.config.mail.branch,
+      subject: `docs(agent-comms): ${from} → ${id} turn ${wanted ?? "default"}`,
+      // Replanned per attempt, exactly like the status flip: between the fetch and the
+      // commit the title or the status may have moved, and a plan made against the
+      // stale file would put them back.
+      stage: () => {
+        const now = parseMetaFile(readFileSync(metaPath, "utf8"));
+        return {
+          files: [{ path: metaPath, content: renderMetaFile(withTurn(now)) }],
+          label: `${id}/_meta.md`,
+        };
+      },
+      note: out,
+      lock: mailLockFor({ checkout, holder: `thread turn ${from} → ${id}`, note: out }),
+      identity: roleIdentity(from),
+    });
+    out(
+      delivered.written
+        ? `agent-protocol: thread '${id}' ${wanted === undefined ? "declares no form any more" : `declares 'turn: ${wanted}' — every answer in it must carry --waiting-on`} — ${delivered.label} committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the feed moved underneath)` : ""}`
+        : `agent-protocol: thread '${id}' already carries this form in the feed — nothing to write`,
+    );
+  } catch (error) {
+    if (error instanceof DeliveryRefusedError || error instanceof MailCheckoutBusyError) {
+      fail(error.message, 2);
+    }
+    throw error;
+  }
+};
+
 const threadStatus = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const id = required(argv, "--thread");
@@ -1380,7 +1481,29 @@ const threadStatus = (argv: readonly string[]): void => {
         2,
       );
     }
+    if (flag(argv, "--turn") !== undefined) {
+      fail(
+        "--repair and --turn are two modes of one command: repair synthesises a missing head (and a synthesised head declares no form — the machine does not decide how a conversation must be answered), --turn declares that form on a thread that has a head",
+        2,
+      );
+    }
     threadRepair(argv, { root, id, from, loaded, registry });
+    return;
+  }
+
+  // NEITHER MODE REQUIRES THE OTHER (079, condition (а)): declaring the form is not an
+  // acceptance, and closing a thread says nothing about the form of its answers. Given
+  // together they are refused rather than applied in some order — two decisions in one
+  // call is how one of them gets made without being read.
+  const turnRaw = flag(argv, "--turn");
+  if (turnRaw !== undefined) {
+    if (argv.includes("--status")) {
+      fail(
+        "--turn and --status are two decisions about one file: the form of the answers and the acceptance of the thread. Say them in two calls",
+        2,
+      );
+    }
+    threadTurnKey(argv, { root, id, from, loaded, registry, raw: turnRaw });
     return;
   }
 
@@ -2339,6 +2462,29 @@ const tasksFor = (
  * exception is honester than a command that behaves differently depending on where
  * it runs.
  */
+/**
+ * WHAT FORM THIS THREAD DECLARED (thread 079) — read from its own head, on the disk the
+ * writer is about to write into.
+ *
+ * A head that cannot be PARSED is not a refusal of the write: the thread is broken in a
+ * way this command does not repair (`thread status --repair` does), and an unwritable
+ * conversation is a worse failure than an undeclared one. It is said on stderr instead —
+ * the same manner as the unreadable threads of 065.4, which are named and counted rather
+ * than allowed to break the input.
+ */
+const declaredTurnOf = (threadDir: string): ThreadTurn | undefined => {
+  const metaPath = join(threadDir, "_meta.md");
+  if (!existsSync(metaPath)) return undefined;
+  try {
+    return parseMetaFile(readFileSync(metaPath, "utf8")).turn;
+  } catch (error) {
+    err(
+      `agent-protocol: the head of this thread could not be read (${error instanceof Error ? error.message : String(error)}) — whatever form it declares was not applied`,
+    );
+    return undefined;
+  }
+};
+
 const newMessage = (argv: readonly string[]): void => {
   const root = required(argv, "--root");
   const threadId = required(argv, "--thread");
@@ -2362,6 +2508,17 @@ const newMessage = (argv: readonly string[]): void => {
   if (waitingOn === undefined && bodyClaimsTurnRelease(text)) {
     fail(
       "the body says the turn is released — either as 'waiting-on: —' or in the prose that means it ('ход отсюда уходит', 'ход никому не передаю') — and no --waiting-on was given. The turn is the HEADER's, so it would stay with whoever holds it now and raise them again on a thread where nothing happened (thread 042, two messages in a row; thread 058, the sentence reporting the rule was the sentence breaking it). Pass '--waiting-on —' to mean it; if you are QUOTING the form rather than using it, put it in backticks or a fenced block (both are cut before this is read); or take the claim out of the body if the turn stays where it is",
+      2,
+    );
+  }
+  // THE FORM THE THREAD DECLARED (thread 079). On a thread carrying `turn: explicit` an
+  // answer without `--waiting-on` is refused — and BOTH exits are named, because they are
+  // two different statements and the door must not pick between them (the manner of 058).
+  // A thread that declared nothing is not touched by this: the class is invisible in the
+  // messages themselves, which is exactly why it is a declaration and not a predicate.
+  if (waitingOn === undefined && declaredTurnOf(threadDir) === "explicit") {
+    fail(
+      `thread '${threadId}' declares 'turn: explicit' — every message in it must say who acts next, and this one carries no --waiting-on. Pass '--waiting-on <role>' to hand the turn over, or '--waiting-on —' to take it off the thread. The thread declared this because a fieldless answer here leaves the turn with whoever holds it and raises them on a thread where nothing happened (thread 079: four such raises on 041, and no predicate over the feed can tell them from the legal fieldless answers of a working thread)`,
       2,
     );
   }
@@ -2598,6 +2755,29 @@ const newThread = (argv: readonly string[]): void => {
   // refusals are `parkedOnFrom`'s, unchanged.
   const parkedOn = parkedOnFrom(argv, { registry });
 
+  // THE FORM DECLARED AT BIRTH (thread 079). The same key as `thread status --turn`, the
+  // same permission behind it — the flag says what the thread requires of everybody who
+  // answers in it, and that is the power of whoever owns its closing, not of whoever
+  // happens to open it. Its own first message obeys it immediately: a thread that
+  // declares the rule and breaks it in line one is the defect of 058 in a new place.
+  const turnRaw = flag(argv, "--turn");
+  const turn = turnRaw === undefined ? undefined : parseTurnFlag(turnRaw);
+  if (turnRaw !== undefined) {
+    refusePermission(registry, from);
+    if (turn === undefined) {
+      fail(
+        "--turn — a thread being opened declares no form by default, so there is nothing to withdraw here. Pass '--turn explicit' to declare it, or leave the flag out",
+        2,
+      );
+    }
+    if (waitingOn === undefined) {
+      fail(
+        `this thread is opened with 'turn: explicit' — every message in it must say who acts next, and its first one carries no --waiting-on. Pass '--waiting-on <role>' to hand the turn over, or '--waiting-on —' to take it off the thread`,
+        2,
+      );
+    }
+  }
+
   // Replanned per attempt like a message's: the stamp is taken at the moment of the
   // attempt, so a retry after somebody else's push does not carry a stale one.
   const plan = (): readonly PlannedFile[] => {
@@ -2611,6 +2791,7 @@ const newThread = (argv: readonly string[]): void => {
         expects,
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
+        ...(turn === undefined ? {} : { turn }),
         text,
       });
     } catch (error) {
