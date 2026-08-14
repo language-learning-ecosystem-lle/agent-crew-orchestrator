@@ -9,7 +9,14 @@
  * every case below looks at `git ls-tree` of the bare origin.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
+import { parseMessageFile } from "./message.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -129,6 +137,62 @@ const open = (contest: Contour, extra: readonly string[] = []): { code: number; 
     const failure = error as { status?: number; stdout?: string; stderr?: string };
     return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
   }
+};
+
+/**
+ * The same command with the header fields typed by the case rather than by the helper
+ * above: `--expects` and `--waiting-on` are read with `indexOf`, so a value appended
+ * after the defaults would never be seen — a park tested against `--expects none` has
+ * to type the whole line.
+ */
+const openWith = (
+  contest: Contour,
+  fields: readonly string[],
+): { code: number; out: string; id: string } => {
+  const id = "042-park";
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-thread",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--id",
+        id,
+        "--title",
+        "A question to the owner of a decision",
+        "--participants",
+        "dev-core,curator",
+        "--from",
+        "curator",
+        "--worker",
+        "claude-code",
+        "--body-file",
+        contest.body,
+        ...fields,
+        "--write",
+        "--no-push",
+      ],
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo), IDENTITY) },
+    );
+    return { code: 0, out, id };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}`, id };
+  }
+};
+
+/** The header of the one message the thread was born with. */
+const firstHeader = (contest: Contour, id: string): ReturnType<typeof parseMessageFile> => {
+  const dir = join(contest.root, id, "messages");
+  const names = readdirSync(dir).filter((name) => name.endsWith(".md"));
+  return parseMessageFile(readFileSync(join(dir, names[0] as string), "utf8"));
 };
 
 /** THE ONLY QUESTION WORTH ASKING: what does the feed in origin actually hold? */
@@ -276,5 +340,82 @@ describe("new-thread --write delivers (R3, thread 033)", () => {
     expect(dry).toContain("would create thread 041-dry");
     expect(existsSync(join(contest.root, "041-dry"))).toBe(false);
     expect(inOrigin(contest)).not.toContain("041-dry");
+  });
+});
+
+/**
+ * THE PARK OF AN OPENING MESSAGE (thread 075). A question to the owner of a decision
+ * is very often what OPENS a conversation — 074 is the live case — and until
+ * 2026-08-14 `--parked-on` was parsed for `new-message` alone: `new-thread` accepted
+ * the flag, said nothing and wrote a header without it. The failure is invisible at
+ * the door and visible one tick later, as a pair raised on a thread that is waiting
+ * for a person.
+ *
+ * Nothing here is a new rule: every case below is `new-message`'s door, asked of the
+ * second entrance.
+ */
+describe("new-thread and the turn parked behind a person (R27, thread 075)", () => {
+  it("the header of the FIRST message carries the park", () => {
+    const contest = contour();
+
+    const opened = openWith(contest, [
+      "--expects",
+      "ack",
+      "--waiting-on",
+      "curator",
+      "--parked-on",
+      "john",
+    ]);
+
+    expect(opened.code).toBe(0);
+    expect(firstHeader(contest, opened.id).fields.parkedOn).toBe("john");
+  });
+
+  it("a park with '--expects none' is legal — the park as a MODE, a line of state that calls nobody", () => {
+    const contest = contour();
+
+    const opened = openWith(contest, ["--expects", "none", "--parked-on", "john"]);
+
+    expect(opened.code).toBe(0);
+    expect(firstHeader(contest, opened.id).fields.parkedOn).toBe("john");
+  });
+
+  it("a role the circuit CAN wake is refused here too — that is a turn to pass, not a person to wait for", () => {
+    const contest = contour();
+
+    const opened = openWith(contest, ["--expects", "ack", "--parked-on", "dev-core"]);
+
+    expect(opened.code).toBe(2);
+    expect(opened.out).toContain("--waiting-on dev-core");
+    expect(existsSync(join(contest.root, opened.id))).toBe(false);
+  });
+});
+
+/**
+ * THE DOOR ON THE WRITING COMMAND (thread 075, item (a)). `--parked-on` was swallowed
+ * because `new-thread` had no argument check at all — `flag()` reads argv by `indexOf`,
+ * and an unknown token is not an error there, it is nothing. On a mail command that
+ * "nothing" lands in an append-only feed.
+ */
+describe("new-thread refuses what it does not understand", () => {
+  it("an unknown flag is refused BY NAME, and no thread is opened", () => {
+    const contest = contour();
+
+    const result = open(contest, ["--parked-onn", "john"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--parked-onn");
+    expect(existsSync(join(contest.root, "040-new"))).toBe(false);
+    expect(inOrigin(contest)).not.toContain("040-new");
+  });
+
+  it("'--flag=value' is named as the spelling this CLI does not read, not as a typo", () => {
+    const contest = contour();
+
+    const result = open(contest, ["--parked-on=john"]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--parked-on <value>");
+    expect(inOrigin(contest)).not.toContain("040-new");
   });
 });

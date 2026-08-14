@@ -1041,7 +1041,16 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            # --parked-on: THE SAME FIELD AS `new-message`'s, same values and same refusals
+                            # (thread 075) — an opening message is a message, and a question to the owner of
+                            # a decision is very often what opens a thread (074 is the live case). It was
+                            # ACCEPTED AND SWALLOWED here until 2026-08-14: the flag parsed for one command
+                            # only, the header went out without the park, and the tick raised the pair empty
+                            # THE ARGUMENTS ARE CHECKED (075): an unknown flag on this command and on the
+                            # mail commands beside it (`new-message`, `thread show`, `thread status`, `mail`,
+                            # `await-input`, `notify`) is refused BY NAME instead of being ignored — what a
+                            # mail command swallows, it swallows into an append-only feed
                             # THE OTHER WRITING DOOR (R3, thread 033): --write means SENT here too —
                             # `_meta.md` and the first message go in ONE commit, pushed, with the same
                             # replanning retry and the same refusal on a dirty checkout

@@ -2589,6 +2589,14 @@ const newThread = (argv: readonly string[]): void => {
       2,
     );
   }
+  // THE SAME PARK AS A MESSAGE'S (thread 075), by the same door: an opening message is a
+  // message, and a question to the owner of a decision is very often what opens a thread
+  // (074 is the live case). Until 2026-08-14 the flag was parsed for `new-message` alone
+  // and swallowed here without a word — the header went out with no `parked-on`, and the
+  // silence was paid for by the tick, which raised the pair on a thread that was waiting
+  // for a person. Nothing about parking is invented here: the values, the checks and the
+  // refusals are `parkedOnFrom`'s, unchanged.
+  const parkedOn = parkedOnFrom(argv, { registry });
 
   // Replanned per attempt like a message's: the stamp is taken at the moment of the
   // attempt, so a retry after somebody else's push does not carry a stale one.
@@ -2602,6 +2610,7 @@ const newThread = (argv: readonly string[]): void => {
         date: messageTimestamp(new Date()),
         expects,
         ...(waitingOn === undefined ? {} : { waitingOn }),
+        ...(parkedOn === undefined ? {} : { parkedOn }),
         text,
       });
     } catch (error) {
@@ -9403,6 +9412,23 @@ const orchestratorResumeShort = (argv: readonly string[]): void => {
  * (`daemon -d` swallowed and started attached) and where an unknown flag costs a
  * whole session raised with the wrong settings. `up` accepts everything `daemon`
  * does, because it is the same daemon with its start-up done for the operator.
+ *
+ * AND SINCE 2026-08-14 TO THE MAIL COMMANDS (thread 075), for the second reason the
+ * same defect has: `new-thread --parked-on john` was accepted, swallowed and written
+ * without the park (thread 074), and what a mail command swallows it swallows into an
+ * APPEND-ONLY feed — the message cannot be taken back, and the silence is paid for by
+ * a tick raising a pair on a thread that was waiting for a person. The six that write
+ * or read the mail are guarded (`new-thread`, `new-message`, `thread show`, `thread
+ * status`, `mail`, `await-input`) plus `notify`. What is left open is measured and
+ * named rather than assumed: thirteen commands, all of them tools rather than mail
+ * (`check`, `derive`, `index build`, `thread build`, `migrate`, `schema migrate`,
+ * `metrics`, `tasks list`, `roles list`, `role exists`, `config check`, `zones check`,
+ * `merge-gate`, `doctor`) — a swallowed flag there costs a re-run, not a message.
+ *
+ * A DOOR IS ONLY AS TRUE AS THE USAGE LINE: the table is the help text, so putting a
+ * command behind the guard means the line must spell every flag the handler reads.
+ * `thread show --id` was such a case — an alias accepted for months and never written
+ * down; the fix is the line, not an exception in the guard.
  */
 const USAGE_FLAGS = parseUsage(USAGE);
 
@@ -9838,8 +9864,10 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "thread" && subcommand === "build") {
     threadBuild(argv.slice(2));
   } else if (command === "thread" && subcommand === "show") {
+    guardArguments("thread show", argv.slice(2));
     threadShow(argv.slice(2));
   } else if (command === "thread" && subcommand === "status") {
+    guardArguments("thread status", argv.slice(2));
     threadStatus(argv.slice(2));
   } else if (command === "check") {
     checkAll(argv.slice(1));
@@ -9853,14 +9881,23 @@ const main = async (argv: readonly string[]): Promise<void> => {
     if (argv[1] !== "list") fail(`unknown 'tasks' subcommand '${argv[1] ?? ""}'\n${USAGE}`, 2);
     tasksList(argv.slice(2));
   } else if (command === "new-message") {
+    guardArguments("new-message", argv.slice(1));
     newMessage(argv.slice(1));
   } else if (command === "new-thread") {
+    // THE DOOR ON A WRITING COMMAND (thread 075): what `new-thread` swallows it swallows
+    // into an APPEND-ONLY feed — a mistyped flag is not a session started with the wrong
+    // settings (the defect of 019) but a message that cannot be taken back. `--parked-on`
+    // is the flag that paid for this one; the door is what makes the next one refuse.
+    guardArguments("new-thread", argv.slice(1));
     newThread(argv.slice(1));
   } else if (command === "mail") {
+    guardArguments("mail", argv.slice(1));
     mail(argv.slice(1));
   } else if (command === "await-input") {
+    guardArguments("await-input", argv.slice(1));
     await awaitInput(argv.slice(1));
   } else if (command === "notify") {
+    guardArguments("notify", argv.slice(1));
     await notify(argv.slice(1));
   } else if (command === "orchestrator" && subcommand === "status") {
     await orchestratorStatus(argv.slice(2));

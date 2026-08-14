@@ -190,7 +190,11 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # a measurement nobody took, with every guard and every test green
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
   agent-protocol index build  --root <mail> --ref <ref> [--write]
-  agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--tail <n>]
+  agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--id <NNN-slug>] [--tail <n>]
+                              # --id: THE SAME THREAD, THE OTHER SPELLING — accepted since before the
+                              # usage line was written and left out of it; named here because the door
+                              # reads THIS TEXT as the list of flags (075), so an alias missing from it
+                              # would stop being accepted the moment the command got a door
                               # THE READING HALF OF THE AGENT'S INTERFACE (R3): the conversation, in order,
                               # from the MESSAGES (not from the derived _thread.md, which lags a push behind)
                               # A STAMP WRITTEN AS THE FILE NAME WRITES IT ('2026-08-13T17-28-50Z') IS
@@ -358,9 +362,14 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in
                               # the PR's description, which is not the thread parked on it — the readers
                               # judge a park against the merges of the WHOLE mail, not of its own feed
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                               # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
                               # first message go in ONE commit, pushed, with the same replanning retry
+                              # --parked-on: THE SAME FIELD AS 'new-message''s, same values, same refusals
+                              # (074) — a question to the owner of a decision often IS the opening of a
+                              # thread, and 074 is the live example. It was accepted and SWALLOWED here
+                              # until 2026-08-14: the flag parsed for one command only, the header went
+                              # out without the park, and the pair was raised empty by the next tick
                               # the NNN is REFUSED if a thread already holds it (029): the number is a
                               # short address; nothing is renamed after the fact, the door is what changes
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
