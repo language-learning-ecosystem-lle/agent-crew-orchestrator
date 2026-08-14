@@ -351,11 +351,21 @@ describe("new-message --await-input", () => {
   it("REFUSES a session-file path of the wrong shape instead of writing beside it", () => {
     // A blind `.session` → `.waiting` swap on an unexpected name would return the name
     // unchanged — that is, overwrite the file the path came from.
+    //
+    // THE PATH LIVES INSIDE THIS CASE'S OWN TEMPORARY REPOSITORY, and that is the whole
+    // point of it: a literal '/tmp/run.log' is shared state on a box, and the door
+    // READS the file before it judges the shape (`provenanceFrom`). On 2026-08-14 a
+    // session on this machine had dumped a CI log to exactly that name, the shared
+    // self-hosted runner saw it, and the refusal that came back was about the session id
+    // read out of it — 'checks' went red on two heads of #264 for a file no test wrote.
     const contest = contour();
 
     const result = write(
       contest,
-      { AGENT_PROTOCOL_WORKER: "claude-code", AGENT_PROTOCOL_SESSION_FILE: "/tmp/run.log" },
+      {
+        AGENT_PROTOCOL_WORKER: "claude-code",
+        AGENT_PROTOCOL_SESSION_FILE: join(contest.repo, "run.log"),
+      },
       "--await-input",
     );
 
