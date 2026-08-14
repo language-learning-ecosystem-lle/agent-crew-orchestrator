@@ -5,6 +5,7 @@ import {
   latestVerdictPerAuthor,
   type PullRequestFacts,
   powerDocuments,
+  readD1Reference,
   threadOfDescription,
   touchedPowerDocuments,
   unmatchedWorkingCards,
@@ -850,6 +851,140 @@ describe("guard 4 — no self-merge on the documents of power", () => {
     expect(outcome?.state).toBe("fail");
     expect(outcome?.detail).toContain("PROTOCOL.md");
     expect(outcome?.detail).not.toContain("README.md");
+  });
+});
+
+/**
+ * 068 — CLASS Д-1, DECLARED AT THE DOOR (john's decision of 2026-08-14). The three states
+ * of guard 4, and the line that reads them: without the flag nothing moves, with it on a
+ * document of power the STOP becomes an obligation, with it on anything else it says so.
+ */
+describe("guard 4 and class Д-1", () => {
+  const REFERENCE = "068-d1-vs-guard4/2026-08-14T09-56-40Z-curator.md";
+  const d1 = {
+    thread: "068-d1-vs-guard4",
+    file: "2026-08-14T09-56-40Z-curator.md",
+    raw: REFERENCE,
+  };
+  const answer = (over: Partial<PullRequestFacts> = {}, declared = d1) =>
+    evaluateMergeGate({ pr: pr(over), powerDocs: ["docs/roles"], d1: declared });
+  const four = (verdict: ReturnType<typeof answer>) =>
+    verdict.guards.find((entry) => entry.guard === 4);
+
+  it("without the flag the STOP stands, word for word — half of the whole repair", () => {
+    const verdict = evaluateMergeGate({
+      pr: pr({ changedPaths: ["docs/roles/curator.md"] }),
+      powerDocs: ["docs/roles"],
+    });
+    expect(four(verdict)?.state).toBe("fail");
+    expect(four(verdict)?.detail).toBe("john merges this one — it changes docs/roles/curator.md");
+    expect(verdict.curatorMayMerge).toBe(false);
+  });
+
+  it("with it, a document of power becomes an obligation — never a pass", () => {
+    const verdict = answer({ changedPaths: ["docs/roles/curator.md"] });
+    const outcome = four(verdict);
+
+    expect(outcome?.state).toBe("by-hand");
+    // Both facts, by the statement of work: which paths of power, and the reference.
+    expect(outcome?.detail).toContain("docs/roles/curator.md");
+    expect(outcome?.detail).toContain(REFERENCE);
+    expect(outcome?.detail).toContain("ONLY encode");
+    expect(verdict.curatorMayMerge).toBe(true);
+  });
+
+  it("says the flag changed nothing when the diff touches no document of power", () => {
+    const verdict = answer();
+    expect(four(verdict)?.state).toBe("pass");
+    expect(four(verdict)?.detail).toContain("changed nothing here");
+    expect(four(verdict)?.detail).toContain(REFERENCE);
+  });
+
+  it("a thread of its own is printed, not refused — a decision is fixed where it was taken", () => {
+    // The PR belongs to `026-curator-merge-right`; the decision is fixed in 068.
+    const verdict = answer({ changedPaths: ["docs/roles/curator.md"] });
+    expect(four(verdict)?.state).toBe("by-hand");
+    expect(four(verdict)?.detail).toContain("068-d1-vs-guard4");
+    expect(four(verdict)?.detail).toContain("026-curator-merge-right");
+    expect(four(verdict)?.detail).toContain("not a refusal");
+  });
+
+  it("says nothing about a difference that is not there", () => {
+    const verdict = answer(
+      { body: "thread: 068-d1-vs-guard4\nrole: curator", changedPaths: ["docs/roles/curator.md"] },
+      d1,
+    );
+    expect(four(verdict)?.detail).not.toContain("not a refusal");
+  });
+
+  it("the closing line names guard 4 among the obligations (it used to name two from memory)", () => {
+    const verdict = answer({ changedPaths: ["docs/roles/curator.md"] });
+    expect(describeMergeGate(verdict).at(-1)).toBe(
+      "nothing in the facts forbids this merge — guards 3, 4 and 5 are yours to answer",
+    );
+    // And the guard is printed as an obligation, in the same column as 3 and 5.
+    expect(describeMergeGate(verdict).some((line) => line.startsWith("  you  guard 4"))).toBe(true);
+  });
+
+  it("leaves the line alone when no class is declared", () => {
+    expect(describeMergeGate(evaluateMergeGate({ pr: pr(), powerDocs: [] })).at(-1)).toBe(
+      "nothing in the facts forbids this merge — guards 3 and 5 are yours to answer",
+    );
+  });
+
+  it("does not open anything else: a failed guard is still a refusal", () => {
+    const verdict = answer({
+      changedPaths: ["docs/roles/curator.md"],
+      reviews: [{ state: "APPROVED", commitSha: OLD, author: "reviewer-pr" }],
+    });
+    expect(verdict.curatorMayMerge).toBe(false);
+    expect(describeMergeGate(verdict).at(-1)).toContain("REFUSED");
+  });
+});
+
+/** The FORM of the reference — the one half of condition (б) a machine can hold. */
+describe("readD1Reference", () => {
+  it("reads the short form: the thread and the message file", () => {
+    expect(readD1Reference("068-d1-vs-guard4/2026-08-14T09-56-40Z-curator.md")).toEqual({
+      thread: "068-d1-vs-guard4",
+      file: "2026-08-14T09-56-40Z-curator.md",
+      raw: "068-d1-vs-guard4/2026-08-14T09-56-40Z-curator.md",
+    });
+  });
+
+  it("reads the full path the mail is stored under", () => {
+    const read = readD1Reference(
+      "agent-comms/068-d1-vs-guard4/messages/2026-08-14T09-56-40Z-curator.md",
+    );
+    expect(read).toMatchObject({
+      thread: "068-d1-vs-guard4",
+      file: "2026-08-14T09-56-40Z-curator.md",
+    });
+  });
+
+  it("reads the other canonical writing of the moment — thread show reads both", () => {
+    expect(readD1Reference("068-d1/2026-08-14T09:56:40Z-curator.md")).toMatchObject({
+      file: "2026-08-14T09:56:40Z-curator.md",
+    });
+  });
+
+  it("refuses a bare thread by name — the class ascends to a MESSAGE", () => {
+    for (const bare of ["066", "066-test-gaps"]) {
+      const read = readD1Reference(bare);
+      expect(read).toHaveProperty("refusal");
+      expect((read as { refusal: string }).refusal).toContain("names no message file");
+    }
+  });
+
+  it("refuses an ordinal by its own name — ordinals travel (norm 024)", () => {
+    const read = readD1Reference("066-test-gaps/msg-003");
+    expect((read as { refusal: string }).refusal).toContain("ordinals travel");
+  });
+
+  it("refuses a value that is not a message file at all", () => {
+    expect(readD1Reference("068-d1-vs-guard4/decision")).toHaveProperty("refusal");
+    expect(readD1Reference("068-d1-vs-guard4/notes.md")).toHaveProperty("refusal");
+    expect(readD1Reference("   ")).toHaveProperty("refusal");
   });
 });
 

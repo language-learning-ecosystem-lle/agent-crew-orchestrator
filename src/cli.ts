@@ -83,6 +83,7 @@ import {
   describeMergeGate,
   evaluateMergeGate,
   powerDocuments,
+  readD1Reference,
   unmatchedWorkingCards,
 } from "./merge/gate.js";
 import {
@@ -9558,7 +9559,8 @@ const zonesCheck = (argv: readonly string[]): void => {
  * THE MERGE DOOR OF `curator` (thread 026): the three guards that are facts, checked
  * in one call instead of by eye over a `gh pr view` dump. Its answer is never "merge
  * it" — guards 3 and 5 are judgements and are printed as obligations (see
- * `merge/gate.ts` for why the tool refuses to speak for them).
+ * `merge/gate.ts` for why the tool refuses to speak for them), and `--d1` makes guard 4
+ * a third one for the class john's decision of 2026-08-14 named (thread 068).
  *
  * `gh` IS THE DEPENDENCY, deliberately and only here: it already is what a session
  * runs to look at a PR, its authentication is the operator's, and reaching for the
@@ -9656,6 +9658,16 @@ const mergeGate = (argv: readonly string[]): void => {
   const number = required(argv, "--pr");
   if (!/^\d+$/.test(number)) {
     fail(`--pr '${number}' — the number of a pull request`, 2);
+    return;
+  }
+  // Class Д-1, DECLARED (thread 068, john's decision of 2026-08-14). The form is checked
+  // here, before anything is asked of GitHub: a reference nobody can follow is a refusal
+  // about the invocation, not about the pull request — exit 2, like every other bad
+  // argument of this command.
+  const declaredD1 = flag(argv, "--d1");
+  const d1 = declaredD1 === undefined ? undefined : readD1Reference(declaredD1);
+  if (d1 !== undefined && "refusal" in d1) {
+    fail(d1.refusal, 2);
     return;
   }
   const loaded = policyFrom(argv);
@@ -9777,6 +9789,7 @@ const mergeGate = (argv: readonly string[]): void => {
   const verdict = evaluateMergeGate({
     pr: pullRequestFacts(parsed.data, baseHead),
     powerDocs,
+    d1,
   });
 
   for (const line of describeMergeGate(verdict)) out(line);

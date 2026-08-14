@@ -202,6 +202,44 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(named.out).toContain("working cards, not documents of power: CLAUDE.md");
   });
 
+  /**
+   * 068 — class Д-1 through the real process, because the exit code is the whole contract
+   * of this command with whoever calls it: 0 with the class declared on a document of
+   * power, 1 without it on the very same diff, 2 on a reference nobody could follow.
+   */
+  it("--d1 turns the STOP on a document of power into an obligation — exit 0, and the trace is asked for", () => {
+    const repo = repoWithConfig();
+    const gh = stubGh(repo, { json: mergeable({ files: [{ path: "docs/roles/curator.md" }] }) });
+
+    // The same diff, without the class declared, is the STOP it always was.
+    const stopped = run(repo, gh);
+    expect(stopped.code).toBe(1);
+    expect(stopped.out).toContain("STOP guard 4");
+
+    const declared = run(repo, gh, ["--d1", "068-d1-vs-guard4/2026-08-14T09-56-40Z-curator.md"]);
+    expect(declared.code).toBe(0);
+    expect(declared.out).toContain("you  guard 4");
+    expect(declared.out).toContain("2026-08-14T09-56-40Z-curator.md");
+    expect(declared.out).toContain("guards 3, 4 and 5 are yours to answer");
+  });
+
+  it("a --d1 nobody could follow is exit 2, refused by name and before gh is asked", () => {
+    const repo = repoWithConfig();
+    const gh = stubGh(repo, { json: mergeable({ files: [{ path: "docs/roles/curator.md" }] }) });
+
+    const bare = run(repo, gh, ["--d1", "066-test-gaps"]);
+    expect(bare.code).toBe(2);
+    expect(bare.out).toContain("names no message file");
+    expect(bare.out).not.toContain("guard 1");
+
+    const ordinal = run(repo, gh, ["--d1", "066-test-gaps/msg-003"]);
+    expect(ordinal.code).toBe(2);
+    expect(ordinal.out).toContain("ordinals travel");
+
+    const notAMessage = run(repo, gh, ["--d1", "066-test-gaps/decision"]);
+    expect(notAMessage.code).toBe(2);
+  });
+
   it("a --working-cards entry no role points at is named, not silently ignored", () => {
     const repo = repoWithConfig();
     const result = run(repo, stubGh(repo, { json: mergeable() }), [
