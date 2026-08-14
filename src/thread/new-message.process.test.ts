@@ -1318,6 +1318,47 @@ describe("the same claim written without the markup (thread 058)", () => {
     expect(filesIn(contest)).toHaveLength(1);
   });
 
+  it("lets the machine writer of the trace class through — it has no flag BY DESIGN", () => {
+    // The live cost of the wording, 2026-08-13: `ci-outcome.yml` wrote "чинить нечего,
+    // ход не передаётся" on the trace class (`cancelled`/`skipped`/`neutral`/`stale`,
+    // thread 048), where the flag is OMITTED rather than set to `—` — the turn is meant
+    // to stay where the feed left it. The door read the sentence as a release claim and
+    // refused the whole letter: run 31750839952, the `cancelled` outcome of E2E on
+    // PR #279 was never written into 066 at all. The notifier now says what its header
+    // does, and this is the sentence it says.
+    const contest = contour();
+
+    const result = claiming(
+      contest,
+      "⚪ **E2E по PR #279: `cancelled`.** Прогон не состоялся — чинить нечего, ход остаётся там, где его оставила лента.\n",
+      [],
+    );
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+
+  it("lets the machine writer of the NO_ROUND note through — the second line of the same class", () => {
+    // The other line `ci-outcome.yml` writes about the turn, fixed in the same commit as
+    // the trace class above: the `ℹ️` note for a PR that touches `claude-review.yml` and
+    // therefore gets no automatic review round. It used to end with "Ход не передаётся —
+    // действия у автора здесь нет", which the door reads exactly like the trace class did,
+    // and would have eaten the whole letter the first time an outcome landed on such a PR
+    // (it never had — that is the only reason this branch had not fired yet). Untested,
+    // the fix on this line could be undone tomorrow with nothing in CI turning red, which
+    // is what reviewer-pr named on PR #280.
+    const contest = contour();
+
+    const result = claiming(
+      contest,
+      "✅ **CI по PR #281: `success`.**\n\nℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.\n",
+      [],
+    );
+
+    expect(result.code).toBe(0);
+    expect(filesIn(contest)).toHaveLength(1);
+  });
+
   it("does not read 'ход' inside another word", () => {
     // 'переходит', 'находится', 'в этом ходе' — the lookarounds are what keep the
     // claim a word rather than a substring.
