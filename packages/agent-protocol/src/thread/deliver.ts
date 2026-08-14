@@ -185,11 +185,24 @@ const deliverUnderLock = (input: {
 
 /**
  * The commit subject of a delivered message. Conventional Commits because the mail
- * checkout carries the commit-msg hook, and `agent-comms` as the scope because that
- * is what the diff touches — the body of the message is in the file, so the subject
- * only has to say who wrote where.
+ * checkout carries the commit-msg hook, and THE MAIL DIRECTORY as the scope because
+ * that is what the diff touches — the body of the message is in the file, so the
+ * subject only has to say who wrote where.
+ *
+ * THE DIRECTORY IS TAKEN FROM THE CONFIG, NOT FROM THIS PACKAGE (thread 080). It used
+ * to be the literal `agent-comms`, which is the name of ONE project's mail directory —
+ * a project that adopts the protocol with another `mail.dir` would get commits whose
+ * scope names a path its tree does not have. `mail.dir` already exists in the config
+ * (`mail: {branch, dir}`), so nothing is added to the shape and no version moves.
+ *
+ * `detail` is what the three `_meta.md` writers add after the thread (head repair, the
+ * turn, the status): they used to spell the whole subject by hand, four copies of one
+ * literal, and a copy is exactly what did not get fixed when the literal was wrong.
  */
 export const deliverySubject = (input: {
   readonly from: string;
   readonly thread: string;
-}): string => `docs(agent-comms): ${input.from} → ${input.thread}`;
+  readonly mailDir: string;
+  readonly detail?: string;
+}): string =>
+  `docs(${input.mailDir}): ${input.from} → ${input.thread}${input.detail === undefined ? "" : ` ${input.detail}`}`;
