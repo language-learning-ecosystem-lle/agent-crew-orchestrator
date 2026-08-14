@@ -457,6 +457,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       // Mode (b) of the same command and the same delivery: the head it synthesises is a
       // thread open for everybody who reads the feed, or it is one disk's private repair.
       threadRepair: "'thread status'",
+      // Mode (c), same command and same delivery (079): the form a thread declares for
+      // its answers is a rule for every writer in the feed, so a declaration living on
+      // one disk is a rule nobody else's door can hold them to.
+      threadTurnKey: "'thread status'",
       notify: "'notify'",
       orchestratorEnable: "enable/disable",
       orchestratorRecord: "record",
