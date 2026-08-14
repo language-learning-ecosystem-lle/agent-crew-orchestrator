@@ -100,16 +100,28 @@ export const loadThread = (
   // — thread 055), and that push made `derive` red and rang the notifier at 042 for a
   // conversation that was in no way broken.
   if (!hasMeta) {
-    // A HALF-MIGRATED THREAD is called by its name: a message file dropped into a
-    // legacy thread by hand (bypassing `new-message`, which refuses to make such a
-    // write) leaves `messages/` without a `_meta.md`. A raw ENOENT on a file path
-    // would make the reader infer the state themselves.
+    // MESSAGES WITHOUT A HEAD ARE TWO STATES, NOT ONE, and each is called by the state it
+    // is actually in (thread 042, 2026-08-14). Beside a legacy `_thread.md` it is a
+    // HALF-MIGRATED thread: a message file dropped into a legacy thread by hand (bypassing
+    // `new-message`, which refuses to make such a write). With no `_thread.md` at all
+    // nothing was ever migrated — a conversation was OPENED without its head, which is what
+    // a writer going around the door does, and calling that "half-migrated" sends the reader
+    // looking for a migration that never happened.
+    //
+    // BOTH LINES NAME THE CURE, because the cure is a command of this package and neither
+    // line used to mention it: `thread status --repair` synthesises the missing head out of
+    // the messages (see `thread/repair.ts`), and a red `derive` job shows whoever is on duty
+    // this line and nothing else. It is the recurring case, not a hypothetical one — 066 on
+    // 2026-08-13 stood headless an afternoon, 077 on 2026-08-14 reddened every push to the
+    // mail branch for eight minutes, and both were cured by a hand that had to know the
+    // command already. A raw ENOENT on a file path would be a third way to say none of this.
     if (hasMessages) {
+      const cure =
+        " — 'thread status --thread <id> --from <role> --repair --write' synthesises a head from the messages";
       throw new Error(
-        `half-migrated thread: 'messages/' is present but '_meta.md' is missing` +
-          (existsSync(threadDocPath)
-            ? " (a legacy '_thread.md' lies next to it — either finish migrating the thread or put the message back into it)"
-            : ""),
+        existsSync(threadDocPath)
+          ? `half-migrated thread: 'messages/' is present but '_meta.md' is missing (a legacy '_thread.md' lies next to it — either finish migrating the thread or put the message back into it)${cure}`
+          : `a thread opened without its head: 'messages/' is present but '_meta.md' is missing, and there is no legacy '_thread.md' either — nothing was migrated here, the head was never written${cure}`,
       );
     }
     if (!existsSync(threadDocPath)) {

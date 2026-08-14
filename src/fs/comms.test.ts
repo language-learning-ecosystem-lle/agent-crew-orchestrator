@@ -69,6 +69,29 @@ describe("loadThreads — a failure of one thread does not blind the circuit", (
     expect(failures[0]?.problem).toContain("_meta.md");
     // A legacy `_thread.md` lies next to it — the hint on what to do must be there.
     expect(failures[0]?.problem).toContain("finish migrating");
+    // And the cure of this package is named in both states, not left to be known already.
+    expect(failures[0]?.problem).toContain("--repair");
+
+    rmSync(at, { recursive: true, force: true });
+  });
+
+  it("a thread OPENED without its head is not called half-migrated", () => {
+    const at = root();
+    // The live shape of 077 on 2026-08-14 and of 066 the day before: a conversation opened
+    // by a writer going around the door — message files, no head, and no legacy `_thread.md`
+    // anywhere near, so nothing was ever migrated here.
+    mkdirSync(join(at, "077-broken", "messages"), { recursive: true });
+    writeFileSync(join(at, "077-broken", "messages", "2026-08-14T14-06-40Z-curator.md"), MESSAGE);
+
+    const { failures } = loadThreads(at, ROLES);
+
+    expect(failures[0]?.problem).toContain("opened without its head");
+    expect(failures[0]?.problem).not.toContain("half-migrated");
+    // Sending the reader after a migration that never happened is the whole defect being
+    // fixed — the state is named, and so is the command that ends it.
+    expect(failures[0]?.problem).not.toContain("finish migrating");
+    expect(failures[0]?.problem).toContain("thread status");
+    expect(failures[0]?.problem).toContain("--repair");
 
     rmSync(at, { recursive: true, force: true });
   });

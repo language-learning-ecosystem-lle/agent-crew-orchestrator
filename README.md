@@ -873,9 +873,13 @@ of the whole circuit.
   role never answered. Hence the unreadability of ONE'S OWN thread is treated as
   ignorance rather than as a passed turn: the observation continues, and the limit
   is set by the deadline (`timeout`).
-- **A state is called by its own name**: `messages/` without `_meta.md` is a
-  "half-migrated thread" (plus a hint about what to do with it), not a raw ENOENT
-  on a file path.
+- **A state is called by its own name**, and `messages/` without `_meta.md` is TWO
+  states, not one: beside a legacy `_thread.md` it is a "half-migrated thread"
+  (finish the migration or put the message back), and with no `_thread.md` at all it
+  is "a thread opened without its head" — nothing was migrated there, a writer went
+  around the door. Neither is a raw ENOENT on a file path, and both name the cure by
+  the command that performs it (`thread status --repair`), because the reader of that
+  line is usually a red `derive` job and it shows them nothing else.
 
 ### Commands
 

@@ -164,7 +164,10 @@ describe("thread status --repair — the missing head, synthesised (065, mode (b
 
     const before = derive(contest);
     expect(before.code).toBe(2);
-    expect(before.out).toContain("half-migrated thread");
+    expect(before.out).toContain("a thread opened without its head");
+    // The refusal names the very command the next two lines run (thread 042): a red `derive`
+    // shows whoever is on duty this line and nothing else.
+    expect(before.out).toContain("--repair");
 
     const repaired = repair(contest, "curator");
     expect(repaired.code).toBe(0);
@@ -209,7 +212,7 @@ describe("thread status --repair — the missing head, synthesised (065, mode (b
     const after = derive(contest);
     expect(after.code).toBe(2);
     expect(after.out).toContain("messages/2026-08-13T17-28-50Z-curator.md");
-    expect(after.out).not.toContain("half-migrated");
+    expect(after.out).not.toContain("opened without its head");
   });
 
   it("a thread that ALREADY has a head is refused — a repair never overwrites an acceptance", () => {

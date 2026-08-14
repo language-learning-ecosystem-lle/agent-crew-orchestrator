@@ -129,7 +129,7 @@ describe("`orchestrator status` — the frame says how many threads it could not
     expect(result.out).toContain("2 thread(s) were NOT READ — the queue is narrowed by that much:");
     // Each cause keeps its own words — "2 skipped" would be the same blindness with a number.
     expect(result.out).toContain(
-      "thread '066-no-meta' could not be read: half-migrated thread: 'messages/' is present but '_meta.md' is missing",
+      "thread '066-no-meta' could not be read: a thread opened without its head: 'messages/' is present but '_meta.md' is missing",
     );
     expect(result.out).toContain("thread '064-bad-date' could not be read:");
     expect(result.out).toContain("13.08.2026 17:28");
