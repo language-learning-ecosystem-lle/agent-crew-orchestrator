@@ -18,14 +18,14 @@ The package lives in a monorepo but is **designed as a foreign one**: it will mo
 into a separate repository and be reused. Hence the rules from the very first
 commit:
 
-- the neutral name `agent-protocol` — **without the project scope**. In this
-  repository all workspace packages live under `@lle/`; here the scope is
+- the neutral name `agent-protocol` — **without the scope of the host project**.
+  A monorepo gives its workspace packages a scope of its own; here it is
   deliberately omitted, otherwise the move would start with a rename, and the name
   of a package is the most-referenced thing about it;
-- **zero knowledge of the project**: not one import from `apps/*`, no domain
-  concepts, no paths of a particular repository in the code. Everything
-  project-specific arrives from the outside — through the config and the command
-  arguments;
+- **zero knowledge of the project**: not one import from the host's application
+  code, no domain concepts, no paths of a particular repository in the code.
+  Everything project-specific arrives from the outside — through the config and the
+  command arguments;
 - the notification transport (Telegram and the like) is a **separate package** —
   since R4 that is a fact rather than an intention: the core produces events and
   renders text, delivery is taken over by the plugin named in the config, and the
@@ -1309,7 +1309,7 @@ reach the network, spend one agent call, and ask the remote for permission to wr
 ```
 ✓ config: repository: 'agent-protocol.json' at origin/main — 6 roles, holds together
 ✓ config: machine: ~/.config/agent-protocol/local.json — claude-code → …/bin/claude; secrets ← …
-✓ config: instance: 'main' — raises curator, dev-core, dev-speech
+✓ config: instance: 'main' — raises role-a, role-b, role-c
 ✓ agent: binary (claude-code): …/bin/claude (machine)
 ✓ agent: headless run (claude-code): answered in 3.7s
 · git: origin: git@github.com:org/repo.git
@@ -1386,29 +1386,30 @@ entries do. Hard-coding `PROTOCOL.md` in the package would turn one project's fi
 layout into the protocol's knowledge — the line this package does not cross.
 
 The declared side is where a project puts everything its own norm sends to a human,
-whether or not the word "card" fits it: here that is `PROTOCOL.md` **and
-`.github/workflows`** — a workflow is nobody's role card, but a change to one goes
-to the owner of the decision (here: john) by the same boundary, and until it was declared the gate answered a workflow PR
-with "none of them a document of power", which is silence exactly where the norm
-refuses.
+whether or not the word "card" fits it — the normative texts of the protocol, the
+CI workflows, the settings of the agent tooling. A workflow is nobody's role card,
+but a change to one goes to the owner of the decision by the same boundary, and
+until such a path was declared the gate answered a workflow PR with "none of them a
+document of power", which is silence exactly where the norm refuses.
 
 **But a role's instructions are not always a document of power** (john's decision of
 2026-07-28, on the reviewer's finding against the first version of this command): the
 boundary runs by the NATURE of the document, not by the fact that a role points at it.
-A role card says what a role MAY do; a WORKING card — `CLAUDE.md` in this repository —
-is the instruction a session works by, updated in the same commit as the code it
-describes, which under this project's rule 3 is almost every package. Derived from
+A role card says what a role MAY do; a WORKING card is the instruction a session
+works by, updated in the same commit as the code it describes — under a project rule
+that keeps documentation with its code that is almost every package. Derived from
 `instructions` alone, guard 4 stopped every one of those, and that would have eaten the
 autonomous merge as a class — the very thing the guard exists to make safe, not to
-prevent. So the caller names its working cards, `--working-cards CLAUDE.md`, and they
+prevent. So the caller names its working cards, `--working-cards <path>`, and they
 are subtracted **from the derived side only**: a path also passed to `--power-docs`
 stays a document of power, because saying it outright is the stricter statement. Both
 the subtraction and any entry that matches no role's instructions are printed — a flag
 that quietly hits nothing is a flag its author believes in.
 
-What the subtraction leaves behind is a norm, not a hole, and it lives in curator's
-card: a change to `CLAUDE.md` that moves authority, borders, permissions or zones goes
-to the owner of the decision (here: john), and doubt reads as "it moves them".
+What the subtraction leaves behind is a norm, not a hole, and it lives in the card of
+the role that merges: a change to a working card that moves authority, borders,
+permissions or zones goes to the owner of the decision, and doubt reads as "it moves
+them".
 
 **One head answers once per check name.** A rerun does not replace the attempt it
 reran: both hang on the same head in `statusCheckRollup`, and read flat, the door
@@ -2024,24 +2025,14 @@ missing binary would be the same forever-line the in-loop split refuses, only lo
 so the fatal path deliberately exits and stays exited until a human acts.
 
 - **The enable state survives a reboot by construction.** `--enable-flag` is a file
-  on disk, read every tick; after a reboot it is in the position john left it in.
-  Autostart (systemd) brings up the DAEMON but does not enable LAUNCHES: disabled
-  they stay disabled, enabled they stay enabled (otherwise autonomy would be
-  cancelled by every kernel update). **The flags must lie on persistent storage**
+  on disk, read every tick; after a reboot it is in the position the operator left
+  it in. Autostart (systemd) brings up the DAEMON but does not enable LAUNCHES:
+  disabled they stay disabled, enabled they stay enabled (otherwise autonomy would
+  be cancelled by every kernel update). **The flags must lie on persistent storage**
   (not tmpfs), otherwise the state will not survive a restart.
 - **`status` reflects the mode** (`--mode-file` + `--enable-flag`): how the daemon
   is brought up (autostart/by hand), whether launches are enabled and what will
   happen after a reboot — so that this does not live in somebody's memory.
-- **Our installation** (john's machine; john's decision of 2026-07-25, **not part of
-  the package** — it is written down here so that it does not live in memory). The
-  transitional period: **systemd is NOT enabled**, john starts the daemon by hand —
-  `--once` for a single run, without it for a watch. The threshold for autostart is
-  named in advance: a week of manual runs without surprises. **The consequence for a
-  reboot:** after a restart the circuit will not come up by itself because nobody
-  starts the daemon; the `enable` flag survives the reboot and stays in the position
-  it was left in, but an enabled flag without a daemon launches nothing. The
-  emergency entry for all this time is waking a role by hand (in this repository —
-  `wake`); the same way roles the circuit does not launch itself are raised.
 
 ### S5 — a hold: the role is taken by a human
 
