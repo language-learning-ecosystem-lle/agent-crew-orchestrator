@@ -1315,8 +1315,8 @@ reach the network, spend one agent call, and ask the remote for permission to wr
 · git: origin: git@github.com:org/repo.git
 ✓ git: fetch: ok
 ✓ git: write access (dry-run push): ok
-✓ mail: checkout: …/.worktrees/comms
-✓ mail: checkout freshness: on 'comms', matches origin
+✓ mail: checkout: …/.worktrees/mail
+✓ mail: checkout freshness: on 'mail-branch', matches origin
 doctor: green — 9 checks passed, 1 facts, nothing failed
 ```
 
@@ -1671,7 +1671,7 @@ The order is the same one the whole package was built in: observability first, t
 risky action after — not a single spawn.
 
 - **The journal** is append-only JSONL, **LOCAL, not in git** (transient state has
-  no place in the history of `comms`). One event per line; the order is the order
+  no place in the history of the mail branch). One event per line; the order is the order
   of the lines of a single writer, so the seq comparator of migrated messages is
   not needed here. Kinds of events: `lease-acquired` (with a `deadline`),
   `launch`, `handoff-detected`, `lease-released` (with a `reason`:
@@ -3088,7 +3088,7 @@ project wants its commits branded.
 *A role's workspace* has exactly one writer for its whole life, so the identity belongs
 to the DIRECTORY — `git config`, set at every launch, before the session is spawned.
 The trap is that linked worktrees SHARE `.git/config`: a plain `git config user.name`
-in `.worktrees/dev-core` renames the human on their own checkout and signs every other
+in `.worktrees/<role>` renames the human on their own checkout and signs every other
 role's tree as well. So it is `git config --worktree`, which git only reads when
 `extensions.worktreeConfig` is enabled — enabling it is part of the gesture, and the one
 case where the package refuses to is git's own documented caveat: with the extension on,
