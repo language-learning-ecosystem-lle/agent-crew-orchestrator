@@ -1153,10 +1153,9 @@ agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--wri
 **The agent's whole legal contact with the mail is TWO commands** (R3): `thread show`
 to read and `new-message --write` to send. Everything below the two — the branch, the
 checkout, the directory layout, the file names, the commit and the push — is storage
-mechanics, and mechanics is the layer an agent must not have to carry (john's
-decomposition of "what an agent knows about comms" into content / protocol semantics /
-storage mechanics, 2026-07-25). It is INCAPSULATION, NOT CONCEALMENT: the agent keeps
-its shell, and the claim is only that the legal path needs nothing else.
+mechanics, and mechanics is the layer an agent must not have to carry. It is
+INCAPSULATION, NOT CONCEALMENT: the agent keeps its shell, and the claim is only that
+the legal path needs nothing else.
 
 **Reading is `thread show`** — from the message FILES, never from `_thread.md`. The
 assembled file is derived and lags a push of the generator behind, so a reader who
