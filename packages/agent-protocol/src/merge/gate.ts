@@ -60,6 +60,25 @@
  * `docs/roles/curator.md`, never `docs/roles-old.md`) — one rule for "is this path
  * inside that entry", said the same way in both places.
  *
+ * GUARD 4 HAS A DECLARED CLASS: Д-1 (john's decision of 2026-08-14, thread
+ * `068-d1-vs-guard4`). A diff that ONLY encodes a decision john already took is
+ * curator's to merge even when it touches a document of power — that is what the class
+ * says, and until now the door printed STOP on every merge of it, BY CONSTRUCTION and
+ * not by mistake: a guard that is always wrong about a whole class is a guard people
+ * stop reading, and the day the STOP is real they will read it the same way. So the
+ * door learns the class the only way it honestly can — it is DECLARED at the door
+ * ({@link D1Reference}, `merge-gate --d1`), and guard 4 then says what guards 3 and 5
+ * say: `by-hand`, a named obligation, never a pass. Without the flag the STOP stands,
+ * word for word, which is the other half of the same repair.
+ *
+ * WHAT THE DOOR REFUSES TO MEASURE HERE, and why the state is `by-hand` and not `pass`:
+ * condition (a) of the class — "the diff adds no new norm" — is a judgement, of exactly
+ * the kind guard 3 is. No heuristic stands in for it ("only docs", "only text" appear in
+ * no norm), because a machine printing "checked" about a judgement it never took is the
+ * one failure this module exists to avoid. What the door CAN check is the FORM of the
+ * reference: condition (б) asks for the message FILE the decision is fixed in, and a
+ * flag that swallowed anything would make the obligation unverifiable.
+ *
  * A HEAD ANSWERS ONCE PER CHECK NAME (curator's statement of work of 2026-07-31, D1).
  * A rerun does not replace the failed attempt in `statusCheckRollup`: both hang on the
  * same head, and reading the array flat made the door refuse #89 for a `review=FAILURE`
@@ -233,7 +252,10 @@ export type Mergeability = {
 export type MergeGateVerdict = {
   readonly number: number;
   readonly headSha: string;
-  /** No guard failed AND no document of power is touched: curator may merge, guards 3 and 5 permitting. */
+  /**
+   * No guard FAILED and GitHub would apply the branch: curator may merge, the obligations
+   * permitting — guards 3 and 5 always, guard 4 as well when class Д-1 is declared (068).
+   */
   readonly curatorMayMerge: boolean;
   readonly guards: readonly GateOutcome[];
   readonly mergeability: Mergeability;
@@ -317,6 +339,67 @@ export const touchedPowerDocuments = (input: {
 export const threadOfDescription = (body: string): string | undefined => {
   const match = /^thread:\s*(\S+)\s*$/m.exec(body);
   return match?.[1];
+};
+
+/**
+ * The declaration of class Д-1 at the door: WHICH message of WHICH thread fixes the
+ * decision this diff encodes (condition (б) of the class).
+ */
+export type D1Reference = {
+  /** The thread the decision was fixed in — not necessarily the PR's own (see guard 4). */
+  readonly thread: string;
+  /** The message FILE. An ordinal travels (norm 024); a file name does not. */
+  readonly file: string;
+  /** As it was typed, for the obligation's own words. */
+  readonly raw: string;
+};
+
+/** The two canonical writings of a moment, as `thread show` reads them: `17-28-50Z` and `17:28:50Z`. */
+const MESSAGE_FILE = /^\d{4}-\d{2}-\d{2}T\d{2}[:-]\d{2}[:-]\d{2}Z-\S+\.md$/;
+const ORDINAL = /^msg-\d+/;
+
+/**
+ * The reference of `--d1`, read and CHECKED FOR FORM — the refusals are by name, because
+ * "this value is not a reference" and "this reference points nowhere" are different
+ * repairs. Two forms are accepted, the short one and the full path:
+ * `NNN-slug/<stamp>-<role>.md` and `<mail>/NNN-slug/messages/<stamp>-<role>.md`.
+ *
+ * WHAT IS NOT CHECKED, and deliberately: whether the file EXISTS. The door has no mail
+ * checkout in its input, and what the message SAYS is a judgement anyway — the form is
+ * the whole of what a machine can hold here. The stamp is read tolerantly for the same
+ * reason: both writings of the moment are canonical in the mail.
+ */
+export const readD1Reference = (value: string): D1Reference | { readonly refusal: string } => {
+  const raw = value.trim();
+  if (raw.length === 0) return { refusal: "--d1 was given no value" };
+  const parts = raw.split("/").filter((part) => part.length > 0);
+  const named =
+    parts.length === 2
+      ? { thread: parts[0] as string, file: parts[1] as string }
+      : parts.length === 4 && parts[1] !== undefined && parts[2] === "messages"
+        ? { thread: parts[1] as string, file: parts[3] as string }
+        : undefined;
+  if (named === undefined) {
+    // A bare thread is the commonest miss, and it is the one condition (б) forbids: it
+    // names the conversation, not the decision inside it.
+    return {
+      refusal: `--d1 '${raw}' names no message file — class Д-1 ascends to the MESSAGE that fixes the decision, not to the thread. Write 'NNN-slug/<stamp>-<role>.md' or 'agent-comms/NNN-slug/messages/<stamp>-<role>.md'`,
+    };
+  }
+  if (ORDINAL.test(named.file)) {
+    return {
+      refusal: `--d1 '${raw}' names an ordinal ('${named.file}') — ordinals travel (norm 024): the same message answers to another number as soon as one is inserted before it. Name the FILE`,
+    };
+  }
+  if (!named.file.endsWith(".md")) {
+    return { refusal: `--d1 '${raw}' — '${named.file}' is not a message file (…-<role>.md)` };
+  }
+  if (!MESSAGE_FILE.test(named.file)) {
+    return {
+      refusal: `--d1 '${raw}' — '${named.file}' is not the name of a message: they are stamped, '<YYYY-MM-DDTHH-MM-SSZ>-<role>.md'`,
+    };
+  }
+  return { thread: named.thread, file: named.file, raw };
 };
 
 /**
@@ -765,6 +848,8 @@ export const guardsOneAndTwoHold = (pr: PullRequestFacts): boolean => {
 export const evaluateMergeGate = (input: {
   readonly pr: PullRequestFacts;
   readonly powerDocs: readonly string[];
+  /** Class Д-1 DECLARED at the door — see the header and {@link readD1Reference}. */
+  readonly d1?: D1Reference | undefined;
 }): MergeGateVerdict => {
   const { pr } = input;
   const head = pr.headSha;
@@ -791,20 +876,39 @@ export const evaluateMergeGate = (input: {
     changedPaths: pr.changedPaths,
     powerDocs: input.powerDocs,
   });
+  // Where the decision is fixed and where the PACKAGE is stated are two different
+  // conversations as often as not, and that is not a refusal — it is a fact the trace
+  // has to be written with open eyes (thread 068, point 6).
+  const d1Elsewhere =
+    input.d1 !== undefined && thread !== undefined && input.d1.thread !== thread
+      ? ` (the decision is fixed in '${input.d1.thread}', the PR belongs to thread '${thread}' — not a refusal, said so the trace is written knowing it)`
+      : "";
   const power: GateOutcome =
     touched.length === 0
       ? {
           guard: 4,
           title: "no self-merge on the documents of power",
           state: "pass",
-          detail: `${pr.changedPaths.length} changed path(s), none of them a document of power`,
+          detail:
+            input.d1 === undefined
+              ? `${pr.changedPaths.length} changed path(s), none of them a document of power`
+              : // Never silent in either direction: a flag that changed nothing is a flag
+                // whose author believes it did something (the norm `--working-cards` follows).
+                `${pr.changedPaths.length} changed path(s), none of them a document of power — --d1 '${input.d1.raw}' changed nothing here: this guard was not going to stop the merge`,
         }
-      : {
-          guard: 4,
-          title: "no self-merge on the documents of power",
-          state: "fail",
-          detail: `john merges this one — it changes ${touched.join(", ")}`,
-        };
+      : input.d1 === undefined
+        ? {
+            guard: 4,
+            title: "no self-merge on the documents of power",
+            state: "fail",
+            detail: `john merges this one — it changes ${touched.join(", ")}`,
+          }
+        : {
+            guard: 4,
+            title: "no self-merge on the documents of power",
+            state: "by-hand",
+            detail: `class Д-1 declared: it changes ${touched.join(", ")}, and the diff is obliged to ONLY encode the decision fixed in '${input.d1.raw}'${d1Elsewhere} — read that message, and name the class and the reference in your trace (guard 5). A new norm in this diff is john's merge, not yours`,
+          };
 
   const trace: GateOutcome = {
     guard: 5,
@@ -829,6 +933,26 @@ export const evaluateMergeGate = (input: {
   };
 };
 
+/**
+ * The obligations of THIS verdict, in the last line — not the two the door used to name
+ * from memory (068, point 7). Guard 4 joins them when class Д-1 is declared, and the
+ * closing line is the last thing a human reads before pressing merge: it must not name a
+ * set of obligations the verdict above it does not have.
+ */
+const obligationsOf = (verdict: MergeGateVerdict): string => {
+  const numbers = verdict.guards
+    .filter((guard) => guard.state === "by-hand")
+    .map((guard) => String(guard.guard));
+  const listed =
+    numbers.length <= 1
+      ? (numbers[0] ?? "")
+      : `${numbers.slice(0, -1).join(", ")} and ${numbers.at(-1)}`;
+  // The count is never one on the path this line is printed on (guards 3 and 5 are both
+  // obligations whenever the merge is allowed), but the verb agrees anyway: a sentence
+  // built to be read by a human does not go stale on a state nobody meant to reach.
+  return numbers.length === 1 ? `guard ${listed} is` : `guards ${listed} are`;
+};
+
 /** The verdict as lines for a terminal; the last one is the answer. */
 export const describeMergeGate = (verdict: MergeGateVerdict): readonly string[] => [
   `merge-gate: PR #${verdict.number} at ${verdict.headSha.slice(0, 7)}`,
@@ -845,7 +969,7 @@ export const describeMergeGate = (verdict: MergeGateVerdict): readonly string[] 
   // reads it as a sixth guard (D2).
   `  ${verdict.mergeability.state === "clear" ? "ok  " : "STOP"} mergeability · not a guard, a fact GitHub answers: ${verdict.mergeability.detail}`,
   verdict.curatorMayMerge
-    ? "nothing in the facts forbids this merge — guards 3 and 5 are yours to answer"
+    ? `nothing in the facts forbids this merge — ${obligationsOf(verdict)} yours to answer`
     : verdict.mergeability.state === "blocked" &&
         verdict.guards.every((guard) => guard.state !== "fail")
       ? "REFUSED: GitHub itself would refuse this merge"

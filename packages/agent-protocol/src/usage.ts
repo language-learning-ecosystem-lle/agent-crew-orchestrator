@@ -123,7 +123,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # role's 'zones.forbidden' — the pre-commit hook of a role workspace
                               # (--staged --role-from-workspace) and the CI step of a PR (--base)
                               # a checkout that is not a role workspace passes with a note, not a refusal
-  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>]
+  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--d1 <thread/message.md>]
                               # THE MERGE DOOR OF 'curator' (thread 026): the three guards that are
                               # FACTS — approve on the CURRENT head, green checks on it, and no
                               # document of power in the diff (the role cards and the config are
@@ -133,6 +133,27 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # subtracted from the DERIVED side only, and always printed
                               # guards 3 and 5 (a decision of john's behind the thread, a trace after
                               # the merge) are judgements and are printed as obligations, never as a pass
+                              # --d1 <NNN-slug/<stamp>-<role>.md>: CLASS Д-1, DECLARED (john's decision
+                              # of 2026-08-14, thread 068) — a diff that ONLY encodes a decision john
+                              # already took. With it, guard 4 stops being a STOP on the documents of
+                              # power and becomes a named obligation of the same kind as guard 3: the
+                              # diff is obliged to encode THAT message and nothing else, and the class
+                              # and the reference go into the trace. WITHOUT IT THE STOP STANDS, word
+                              # for word — that is the other half of the repair: the door printed STOP
+                              # on every merge of the class by construction, and a guard that is always
+                              # wrong about a class is a guard nobody reads on the day it is right
+                              # condition (a) of the class ('the diff adds no new norm') is NOT measured
+                              # and no heuristic stands in for it — that is exactly why the state is
+                              # 'you ' and never 'ok  '
+                              # the FORM of the value is checked, and refused by name with exit 2: a
+                              # bare thread ('066-test-gaps') and an ordinal ('msg-003') name no
+                              # message — ordinals travel (norm 024), file names do not. The full path
+                              # ('agent-comms/NNN-slug/messages/<stamp>-<role>.md') is accepted too;
+                              # whether the file EXISTS is not checked (the door has no mail checkout)
+                              # a thread in --d1 that differs from the PR's own 'thread:' is NOT a
+                              # refusal — a decision is fixed where it was taken; it is printed
+                              # a --d1 on a diff that touches NO document of power leaves guard 4 the
+                              # pass it was and SAYS the flag changed nothing (never silent either way)
                               # guard 2 reads 'statusCheckRollup' — a token without 'checks: read'
                               # (and 'actions: read', asked for inside it) is refused the whole call;
                               # the command PRINTS what gh answered and only guesses at the scope
