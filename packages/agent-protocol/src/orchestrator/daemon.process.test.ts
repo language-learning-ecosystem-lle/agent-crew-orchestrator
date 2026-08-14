@@ -368,7 +368,7 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
       "1 thread(s) were NOT READ — the queue this tick raises from is narrowed by that much:",
     );
     expect(result.out).toContain(
-      "thread '066-broken' could not be read: half-migrated thread: 'messages/' is present but '_meta.md' is missing",
+      "thread '066-broken' could not be read: a thread opened without its head: 'messages/' is present but '_meta.md' is missing",
     );
     // The isolation is intact: the readable pair is still raised, the tick is not a casualty.
     expect(journalKinds(repo)).toContain("launch");
