@@ -1259,7 +1259,9 @@ is the session's own doing, through the two writing doors above.
 Sending by hand is no longer a step of the normal path — both writing doors deliver. It
 survives as an EMERGENCY path (a legacy thread that `new-message` refuses, a delivery
 interrupted midway), and when it is taken the commit is written as
-**`docs(agent-comms): <role> → <thread>`** — the exact subject `deliverySubject` produces.
+**`docs(<mail.dir>): <role> → <thread>`** — the exact subject `deliverySubject` produces,
+with the scope taken from the mail directory of the config (`agent-comms` in the project
+this package grew in, whatever `mail.dir` says in yours).
 Two reasons: `comms(...)` is not in the `@commitlint/config-conventional` enum and the
 commit-msg hook of the mail checkout rejects it (this is how the question arose — curator's
 first hand-made commit was bounced), and the feed's history should not record HOW a

@@ -262,8 +262,35 @@ describe("deliverMessage", () => {
 
 describe("deliverySubject", () => {
   it("is Conventional Commits — the mail checkout carries the commit-msg hook", () => {
-    expect(deliverySubject({ from: "dev-core", thread: "016-protocol-roadmap" })).toBe(
-      "docs(agent-comms): dev-core → 016-protocol-roadmap",
-    );
+    // THE REGRESSION, AND IT IS THE POINT OF THE CHANGE (thread 080): with this
+    // project's `mail.dir` the subject is byte-identical to the literal the package
+    // used to carry, so nothing in this repository's feed reads differently.
+    expect(
+      deliverySubject({
+        from: "dev-core",
+        thread: "016-protocol-roadmap",
+        mailDir: "agent-comms",
+      }),
+    ).toBe("docs(agent-comms): dev-core → 016-protocol-roadmap");
+  });
+
+  it("takes the scope from the mail directory — another project's feed is not ours", () => {
+    // The defect the literal was: a scope naming a path the adopting tree does not have.
+    expect(
+      deliverySubject({ from: "dev-core", thread: "016-protocol-roadmap", mailDir: "mail" }),
+    ).toBe("docs(mail): dev-core → 016-protocol-roadmap");
+  });
+
+  it("appends the detail the `_meta.md` writers add after the thread", () => {
+    // Head repair, turn and status used to spell the whole subject by hand — four copies
+    // of one literal, which is why fixing it in one place was not enough before.
+    expect(
+      deliverySubject({
+        from: "curator",
+        thread: "080-extraction-prep",
+        mailDir: "agent-comms",
+        detail: "head repaired",
+      }),
+    ).toBe("docs(agent-comms): curator → 080-extraction-prep head repaired");
   });
 });

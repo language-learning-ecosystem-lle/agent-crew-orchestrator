@@ -1319,7 +1319,12 @@ const threadRepair = (
       git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
-      subject: `docs(agent-comms): ${from} → ${id} head repaired`,
+      subject: deliverySubject({
+        from,
+        thread: id,
+        mailDir: loaded.config.mail.dir,
+        detail: "head repaired",
+      }),
       // Replanned per attempt, like every other delivery: between the fetch and the commit
       // somebody may have written the head themselves — and then this plan is byte-identical
       // to theirs and `written: false` says so, or it differs and we must not clobber it.
@@ -1435,7 +1440,12 @@ const threadTurnKey = (
       git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
-      subject: `docs(agent-comms): ${from} → ${id} turn ${wanted ?? "default"}`,
+      subject: deliverySubject({
+        from,
+        thread: id,
+        mailDir: loaded.config.mail.dir,
+        detail: `turn ${wanted ?? "default"}`,
+      }),
       // Replanned per attempt, exactly like the status flip: between the fetch and the
       // commit the title or the status may have moved, and a plan made against the
       // stale file would put them back.
@@ -1541,7 +1551,12 @@ const threadStatus = (argv: readonly string[]): void => {
       git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
-      subject: `docs(agent-comms): ${from} → ${id} ${wanted}`,
+      subject: deliverySubject({
+        from,
+        thread: id,
+        mailDir: loaded.config.mail.dir,
+        detail: wanted,
+      }),
       // Replanned per attempt like a message's — and for the same reason: between the
       // fetch and the commit somebody may have moved the status themselves, and a plan
       // made against the stale file would silently put it back.
@@ -2648,7 +2663,7 @@ const newMessage = (argv: readonly string[]): void => {
       git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
-      subject: deliverySubject({ from, thread: threadId }),
+      subject: deliverySubject({ from, thread: threadId, mailDir: loaded.config.mail.dir }),
       // The commit is BY THE ROLE, not by the owner of the box (027): the mail checkout
       // is shared by every role here, so the signature can only be per-commit.
       identity: roleIdentity(from),
@@ -2822,7 +2837,7 @@ const newThread = (argv: readonly string[]): void => {
       git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
-      subject: deliverySubject({ from, thread: id }),
+      subject: deliverySubject({ from, thread: id, mailDir: loaded.config.mail.dir }),
       // By the role that opened the conversation, not by the owner of the box (027).
       identity: roleIdentity(from),
       stage: () => {
@@ -9008,7 +9023,11 @@ const orchestratorStop = (argv: readonly string[]): void => {
       },
       write: writeOut,
       branch: loadedConfig.config.mail.branch,
-      subject: deliverySubject({ from: by, thread: threadId }),
+      subject: deliverySubject({
+        from: by,
+        thread: threadId,
+        mailDir: loadedConfig.config.mail.dir,
+      }),
       // The trace is a TURN in a thread, signed by whoever forced the stop (027) — the
       // same identity `new-message` commits a role's message with, not the machinery's:
       // a force stop is somebody's decision, and the commit says whose.
