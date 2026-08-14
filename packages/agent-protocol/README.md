@@ -1143,7 +1143,7 @@ agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec
                             # and --max-runs (launches in a row without a completed); both print their source
                             # an unreadable thread is NAMED AND COUNTED every tick, beside the skips (065.4):
                             # the queue this tick raises from is narrowed by it, and the tick keeps working
-agent-protocol orchestrator log    --ref <ref>                             # the history of events for john
+agent-protocol orchestrator log    --ref <ref>                             # the history of events for the owner of the decision (here: john)
 agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
 agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--write]
@@ -1371,7 +1371,7 @@ validated at the door — a renamed field is a refusal by name, never a silent "
 reviews, no checks", which for a merge gate would fail open.
 
 **Two guards are never reported as passed, and that is the point.** Whether the feed
-really holds a decision of john's behind this PR (guard 3), and whether the merge gets
+really holds a decision of the owner of the decision (here: john) behind this PR (guard 3), and whether the merge gets
 written up with its guards afterwards (guard 5), are judgements no JSON answers. They
 are printed as OBLIGATIONS. A tool that said "all five green" would be lying about two
 of them, and the lie would be load-bearing: the whole purpose of guard 3 is to stop
@@ -1387,8 +1387,8 @@ layout into the protocol's knowledge — the line this package does not cross.
 
 The declared side is where a project puts everything its own norm sends to a human,
 whether or not the word "card" fits it: here that is `PROTOCOL.md` **and
-`.github/workflows`** — a workflow is nobody's role card, but a change to one goes to
-john by the same boundary, and until it was declared the gate answered a workflow PR
+`.github/workflows`** — a workflow is nobody's role card, but a change to one goes
+to the owner of the decision (here: john) by the same boundary, and until it was declared the gate answered a workflow PR
 with "none of them a document of power", which is silence exactly where the norm
 refuses.
 
@@ -1408,7 +1408,7 @@ that quietly hits nothing is a flag its author believes in.
 
 What the subtraction leaves behind is a norm, not a hole, and it lives in curator's
 card: a change to `CLAUDE.md` that moves authority, borders, permissions or zones goes
-to john, and doubt reads as "it moves them".
+to the owner of the decision (here: john), and doubt reads as "it moves them".
 
 **One head answers once per check name.** A rerun does not replace the attempt it
 reran: both hang on the same head in `statusCheckRollup`, and read flat, the door
@@ -1506,8 +1506,8 @@ the BASE was asked by nobody.
 
 **It only speaks.** The verdict and the exit code are identical with a drift and without
 one, in every branch, and that is locked by test rather than by intention: a door that
-began refusing what it used to pass would be a change of the norm, and the norm is
-john's. The note is printed under guard 2 and marked `note`, never as a guard.
+began refusing what it used to pass would be a change of the norm, and the norm belongs
+to the owner of the decision (here: john). The note is printed under guard 2 and marked `note`, never as a guard.
 
 **The measurement is conservative, and that is its honest name.** The API does not hand
 back the merge-ref a check actually read, so the comparison is the base head's
@@ -1976,14 +1976,14 @@ would be raising decisions taken before the mail, the holds and the stop flag we
 read. So the daemon waits for the terminal state of the pair it raised and ticks again
 on a fresh journal, with no races, and says out loud which planned launches it deferred.
 **The machine-reboot
-role** (whether the daemon comes up by itself through systemd or by hand) is john's
-ownership fork and lies outside the daemon code: the daemon is the same, only the
+role** (whether the daemon comes up by itself through systemd or by hand) is the fork of
+the owner of the decision (here: john) and lies outside the daemon code: the daemon is the same, only the
 way it is STARTED differs. For now the start is manual; the daemon travels into
 main disabled, so a merge creates no autonomous spending.
 
 ### S4 — a forced stop and printing the journal
 
-Two stops of different strength, plus `log` for john.
+Two stops of different strength, plus `log` for the owner of the decision (here: john).
 
 - **graceful (`stop --mode graceful`)** creates the `--stop-flag`. The daemon lets
   the CURRENT session run to its natural terminal state (through `draining`) and
@@ -2113,8 +2113,8 @@ thing was operated it started with reconstructing the command from memory.
 - **The entry point is `pnpm protocol …`** (the package is in the root
   devDependencies), not a path to the package directory.
 
-**Honestly about the guarantor.** Neither `touch` nor `orchestrator enable` tells
-john apart from an agent: "a human enables it" is a PROCEDURAL guarantee and always
+**Honestly about the guarantor.** Neither `touch` nor `orchestrator enable` tells the
+owner of the decision (here: john) apart from an agent: "a human enables it" is a PROCEDURAL guarantee and always
 has been. The CLI neither strengthens nor weakens it, it removes from the procedure
 the places where anyone can go wrong. A technical guarantee (a secret held by the
 owner, a signature) is a separate fork.
@@ -2151,7 +2151,8 @@ boundary does NOT run along the list of tools: a role needs `Bash` (to run the
 tests, commit and push), and once `Bash` is granted, restricting the rest adds
 little. The real protections are structural and stand outside — code only through a
 PR, the reviewer, branch protection on `main`, the lease deadline, the ceiling of
-runs without a completion, and the stop and the force in john's hands.
+runs without a completion, and the stop and the force in the hands of the owner of the
+decision (here: john).
 
 ### S8 — preflight: zero "do not forget" items
 
