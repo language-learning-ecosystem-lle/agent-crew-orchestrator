@@ -158,7 +158,6 @@ import {
   boxRaisesNoRoles,
   type CommitIdentity,
   commitIdentityCheck,
-  DEFAULT_IDENTITY_DICTIONARY,
   type DoctorOutcome,
   type DoctorSkipped,
   doctorPassed,
@@ -5081,21 +5080,25 @@ const doctor = (argv: readonly string[]): void => {
     repo,
     ...(wholeHistory ? {} : { since: `${days} days ago` }),
   });
-  // WHERE THE CANON IS SAID TO BE, ASKED OF THIS DISK (080.5). The rows only point at the
-  // dictionary, so nothing ever resolved the path — and after the protocol moves into its
-  // own repository the file legally leaves the SERVED project. Presence is measured here,
-  // where there is a repository to measure it in, and the rows name the absence instead of
-  // sending the operator to a file that is not there.
-  const identityDictionary = {
-    path: DEFAULT_IDENTITY_DICTIONARY,
-    present: existsSync(join(repo, DEFAULT_IDENTITY_DICTIONARY)),
-  };
+  // WHERE THE CANON IS SAID TO BE — ASKED OF THE PROJECT, THEN OF THIS DISK (080.5, 080.9).
+  // The rows only point at the dictionary, so nothing ever resolved the path — and after the
+  // protocol moves into its own repository the file legally leaves the SERVED project. WHICH
+  // path is the project's own statement (`identityDictionary`), not the tool's knowledge: a
+  // package that travels has no standing to name a file in a repository it has never seen.
+  // Undeclared is passed on as undeclared — a fall-back here would be the removed default
+  // wearing another name. Presence is measured where there is a repository to measure it in,
+  // and the rows name the absence instead of sending the operator to a file that is not there.
+  const declaredDictionary = loaded.config.identityDictionary;
+  const identityDictionary =
+    declaredDictionary === undefined
+      ? undefined
+      : { path: declaredDictionary, present: existsSync(join(repo, declaredDictionary)) };
   checks.push(
     commitIdentityCheck({
       window: wholeHistory ? "the whole history" : `the last ${days} days`,
       identities: identities.identities,
       roles: loaded.registry.ids(),
-      dictionary: identityDictionary,
+      ...(identityDictionary === undefined ? {} : { dictionary: identityDictionary }),
       ...(identities.error === undefined ? {} : { error: identities.error }),
     }),
   );
@@ -5120,7 +5123,7 @@ const doctor = (argv: readonly string[]): void => {
               })),
       }),
       roles: loaded.registry.ids(),
-      dictionary: identityDictionary,
+      ...(identityDictionary === undefined ? {} : { dictionary: identityDictionary }),
     }),
   );
 

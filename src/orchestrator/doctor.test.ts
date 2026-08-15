@@ -9,11 +9,11 @@ import {
   boxRaisesNoRoles,
   type CommitIdentity,
   commitIdentityCheck,
-  DEFAULT_IDENTITY_DICTIONARY,
   dictionaryAt,
   doctorPassed,
   doctorSummary,
   gitChecks,
+  IDENTITY_DICTIONARY_UNDECLARED,
   identityVerdict,
   instanceCheck,
   MACHINERY_IDENTITY,
@@ -460,10 +460,11 @@ describe("commit identity against the canon", () => {
       window: "the last 7 days",
       roles,
       identities: [one("dev-core", "dev-core@agents.invalid", 9), one("ivan", "ivan@corp.ru", 5)],
+      dictionary: { path: "docs/canon.md", present: true },
     });
     expect(check.status).toBe("info");
     expect(check.detail).toContain("'ivan <ivan@corp.ru>' (5)");
-    expect(check.detail).toContain("docs/protocol-reference.md");
+    expect(check.detail).toContain("docs/canon.md");
   });
 
   it("says which strays wear a role's name — that is the shape the measurement found", () => {
@@ -529,11 +530,12 @@ describe("the effective signature of this box", () => {
         { place: "the checkout", email: null },
         { place: "the workspace of 'dev-core'", email: "dev-core@agents.invalid" },
       ],
+      dictionary: { path: "docs/canon.md", present: true },
     });
     expect(check.status).toBe("fail");
     expect(check.detail).toContain("the checkout → 'nothing'");
     expect(check.detail).toContain("hostname");
-    expect(check.detail).toContain("docs/protocol-reference.md");
+    expect(check.detail).toContain("docs/canon.md");
     // The place that was already right is not dragged into the cross: the operator is
     // sent to the one config that needs a hand.
     expect(check.detail).not.toContain("the workspace of 'dev-core' → 'dev-core@agents.invalid'");
@@ -594,7 +596,7 @@ describe("the effective signature of this box", () => {
   });
 
   it("names a missing dictionary as a fact and keeps its verdict (080.5)", () => {
-    const absent = { path: DEFAULT_IDENTITY_DICTIONARY, present: false };
+    const absent = { path: "docs/canon.md", present: false };
     const box = boxIdentityCheck({
       roles,
       places: [{ place: "the checkout", email: "ivan@corp.ru" }],
@@ -611,27 +613,49 @@ describe("the effective signature of this box", () => {
     expect(box.status).toBe("info");
     expect(history.status).toBe("info");
     for (const detail of [box.detail, history.detail]) {
-      expect(detail).toContain(DEFAULT_IDENTITY_DICTIONARY);
+      expect(detail).toContain("docs/canon.md");
       expect(detail).toContain("this repository does not have");
       expect(detail).toContain("travels with the tool");
     }
   });
 
-  it("says nothing new when the dictionary is where it is said to be (080.5)", () => {
-    const present = { path: DEFAULT_IDENTITY_DICTIONARY, present: true };
+  it("says the declared path and nothing more when the dictionary is there (080.5)", () => {
+    const present = { path: "docs/canon.md", present: true };
     const withDictionary = boxIdentityCheck({
       roles,
       places: [{ place: "the checkout", email: "ivan@corp.ru" }],
       dictionary: present,
     });
-    // Byte for byte the row of a caller that passes nothing: today's LLE notices nothing.
-    const silent = boxIdentityCheck({
+    expect(withDictionary.status).toBe("info");
+    expect(withDictionary.detail).toContain("docs/canon.md");
+    expect(withDictionary.detail).not.toContain("does not have");
+    expect(withDictionary.detail).not.toContain("has not declared");
+    expect(dictionaryAt(present)).toBe("docs/canon.md");
+  });
+
+  it("names the FIELD to declare when the project declared no dictionary (080.9)", () => {
+    // The third state, and the one the removed default used to hide: silence is not
+    // 'docs/protocol-reference.md' — that file is one project's, and the tool travels.
+    const box = boxIdentityCheck({
       roles,
       places: [{ place: "the checkout", email: "ivan@corp.ru" }],
     });
-    expect(withDictionary.detail).toBe(silent.detail);
-    expect(withDictionary.detail).not.toContain("does not have");
-    expect(dictionaryAt(present)).toBe(DEFAULT_IDENTITY_DICTIONARY);
+    const history = commitIdentityCheck({
+      window: "the last 7 days",
+      roles,
+      identities: [{ name: "ivan", email: "ivan@corp.ru", commits: 5 }],
+    });
+    // A row that does not say WHAT to declare fixes nothing, so the field is named.
+    for (const detail of [box.detail, history.detail]) {
+      expect(detail).toContain(IDENTITY_DICTIONARY_UNDECLARED);
+      expect(detail).toContain("identityDictionary");
+      expect(detail).not.toContain("docs/protocol-reference.md");
+    }
+    // And it stays a FACT: a repository with no dictionary is a legitimate repository —
+    // the verdict of these rows is about the box's signature alone.
+    expect(box.status).toBe("info");
+    expect(history.status).toBe("info");
+    expect(dictionaryAt()).toBe(IDENTITY_DICTIONARY_UNDECLARED);
   });
 
   it("is the OTHER row: the two halves are told apart by name", () => {

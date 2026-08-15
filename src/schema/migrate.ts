@@ -60,6 +60,7 @@ import { SCALAR_WAITING_ON_STEP } from "./v13-scalar-waiting-on.js";
 import { NATIVE_TASKS_STEP } from "./v14-native-tasks.js";
 import { LAUNCH_ACCOUNT_STEP } from "./v15-launch-account.js";
 import { INSTANCE_ACCOUNT_STEP } from "./v16-instance-account.js";
+import { IDENTITY_DICTIONARY_STEP } from "./v17-identity-dictionary.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -82,6 +83,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   NATIVE_TASKS_STEP,
   LAUNCH_ACCOUNT_STEP,
   INSTANCE_ACCOUNT_STEP,
+  IDENTITY_DICTIONARY_STEP,
 ];
 
 export type {

@@ -127,6 +127,33 @@ an abstraction ahead of its first user.
 }
 ```
 
+### The dictionary of authorized signatures — `identityDictionary`
+
+`doctor` judges what this box signs its commits with, and two of its rows POINT the
+operator at the document where the authorized addresses are written. Which document
+that is, the package cannot know: it travels, and the answer is a property of the
+project it is serving. So the project declares it, as one optional top-level path
+relative to its own repository:
+
+```json
+"identityDictionary": "docs/commit-identities.md"
+```
+
+**Silence is not a default.** A project that declares nothing gets rows that say so
+and name the field to declare — falling back on some file name would put one
+repository's document back into a tool used by others, which is the whole defect the
+field removes. It stays a FACT rather than a cross in both directions: a repository
+with no dictionary, and a declared path with no file behind it, are both legitimate
+states of a repository, while the verdict of those rows is about the box's SIGNATURE
+alone. Whether the declared file is actually there is measured when the row is built,
+against the repository being asked about, and the absence is named in the same
+sentence — an operator sent looking for a file that is not there reads it as the
+circuit being broken.
+
+There is no flag for it. `doctor` is typed by hand and ad hoc; an optional flag
+nobody types would leave the decision with a default, wearing a door marked
+"configurable".
+
 ## The machine config (R14)
 
 **The repository says WHAT, the machine says WHERE.** Roles, permissions, ceilings,
