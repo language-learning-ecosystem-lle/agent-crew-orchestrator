@@ -411,23 +411,30 @@ export const MACHINERY_IDENTITY = `orchestrator@${ROLE_IDENTITY_DOMAIN}`;
 export type IdentityVerdict = "role" | "machinery" | "github" | "impostor" | "unrecognised";
 
 /**
- * WHERE THE CANON OF THE ADDRESSES IS WRITTEN, AND WHETHER IT IS THERE (thread 080, 080.5).
+ * WHERE THE CANON OF THE ADDRESSES IS WRITTEN, AND WHETHER IT IS THERE (thread 080, 080.5,
+ * then 080.9).
  *
  * The rows below do not READ the dictionary — they POINT a reader at it, which is why the
  * pointer went unmeasured for so long: a path in a message is never resolved by anything.
- * The extraction of the protocol into its own repository is what makes the pointer false.
- * `docs/protocol-reference.md` travels with the TOOL, while doctor asks its question of the
- * SERVED project — and there the file is legally absent, exactly as it is absent in any
- * project that accepts the protocol without copying its docs.
+ * The extraction of the protocol into its own repository is what made the pointer false.
+ * A documentation file travels with the TOOL, while doctor asks its question of the SERVED
+ * project — and there that file is legally absent, exactly as it is absent in any project
+ * that accepts the protocol without copying its docs.
  *
- * A pointer at a file that is not there is worse than no pointer: the operator goes looking,
- * finds nothing, and reads it as the circuit being broken. So the absence is NAMED in the
- * same sentence and nothing else changes. It is not a cross and may never become one: the
- * missing dictionary is a fact about the repository, not about the box's signature, and the
- * verdict of these rows is about the signature alone.
+ * 080.9 TOOK THE NAME OUT OF THE PACKAGE. The path used to be a constant here
+ * (`docs/protocol-reference.md`, one project's file), and a constant is a claim the tool
+ * has no standing to make about a repository it has never seen. The project DECLARES it —
+ * `identityDictionary` in its config — and this module is handed the answer.
+ *
+ * THREE STATES, NOT TWO, and none of them a cross:
+ *   · not declared — the project has said nothing, and the row says exactly that and names
+ *     the field to declare. It is NOT a default in disguise: falling back on a file name
+ *     would re-create the defect one repository at a time;
+ *   · declared and present — the path, as the project wrote it;
+ *   · declared and missing — the path plus the absence, in the words #299 gave it.
+ * The verdict of these rows is about the box's SIGNATURE; the dictionary is only the
+ * address a reader is sent to, so a repository without one stays green with a fact in it.
  */
-export const DEFAULT_IDENTITY_DICTIONARY = "docs/protocol-reference.md";
-
 export type IdentityDictionary = {
   /** The path as it is said to the reader — relative to the repository being served. */
   readonly path: string;
@@ -435,16 +442,20 @@ export type IdentityDictionary = {
   readonly present: boolean;
 };
 
+/** The words for a project that has declared no dictionary at all. */
+export const IDENTITY_DICTIONARY_UNDECLARED =
+  "no file: this project has not declared one ('identityDictionary' in its protocol config)";
+
 /**
- * The dictionary as one phrase. A caller that says nothing gets the default and is taken at
- * its word about presence: this module has no disk, and inventing an absence it did not
- * measure would be the same lie in the other direction.
+ * The dictionary as one phrase, always readable inside "the canon is in …". A caller that
+ * says nothing means "not declared" and gets said so: this module has no disk, and neither
+ * inventing a file name nor inventing an absence it did not measure would be honest.
  */
 export const dictionaryAt = (dictionary?: IdentityDictionary): string => {
-  const at = dictionary ?? { path: DEFAULT_IDENTITY_DICTIONARY, present: true };
-  return at.present
-    ? at.path
-    : `${at.path}, which this repository does not have — the dictionary travels with the tool, not with the project it serves`;
+  if (dictionary === undefined) return IDENTITY_DICTIONARY_UNDECLARED;
+  return dictionary.present
+    ? dictionary.path
+    : `${dictionary.path}, which this repository does not have — the dictionary travels with the tool, not with the project it serves`;
 };
 
 /**

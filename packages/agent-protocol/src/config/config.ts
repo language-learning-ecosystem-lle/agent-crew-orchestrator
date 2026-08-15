@@ -246,6 +246,31 @@ export const protocolConfigSchema = z.strictObject({
    * topology for a project that has not described one.
    */
   instances: z.array(instanceSchema).optional(),
+  /**
+   * WHERE THE CANON OF THE COMMIT ADDRESSES IS WRITTEN — a fact of the SERVED project,
+   * asked rather than known (thread 080, 080.9).
+   *
+   * `doctor` points the operator at a dictionary of authorized signatures in two of its
+   * rows. Until this field the path was a constant of the TOOL — one project's file name
+   * compiled into a package designed to travel: in any other repository the pointer
+   * resolves to nothing, and an operator sent to a file that is not there reads it as the
+   * circuit being broken.
+   *
+   * A FLAG WOULD NOT HAVE FIXED IT. `doctor` is typed by hand and ad hoc; nobody types an
+   * optional path, so the default would have kept deciding — the same defect behind a
+   * door marked "configurable". The name of the dictionary is not an option of the caller,
+   * it is a property of the repository being served, and it belongs where the mail branch
+   * and the thread directory already are.
+   *
+   * ABSENCE IS NOT A DEFAULT. A project that declares nothing gets rows that say so, in
+   * the same words #299 used for a declared file that is missing — and they stay a FACT,
+   * never a cross: a project may legitimately have no dictionary, and the verdict of those
+   * rows is about the box's signature, not about the repository's documentation.
+   *
+   * The path is relative to the repository being served; whether the file is actually there
+   * is measured on the reading path, where there is a disk to measure it on.
+   */
+  identityDictionary: z.string().min(1).optional(),
   roles: z.array(roleSchema).min(1),
 });
 
