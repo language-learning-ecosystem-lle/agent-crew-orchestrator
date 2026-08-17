@@ -258,15 +258,15 @@ pnpm -F agent-protocol cli orchestrator systemd install --write    # кладё�
 человеческими действиями по R14):
 
 ```bash
-systemd-analyze --user verify ~/.config/systemd/user/lle-orchestrator.service  # ДО включения
+systemd-analyze --user verify ~/.config/systemd/user/agent-protocol.service  # ДО включения
 systemctl --user daemon-reload                                  # без него systemd юнита не видит
-systemctl --user reset-failed lle-orchestrator.service          # снимает прошлый failed и счётчик StartLimit
-systemctl --user enable --now lle-orchestrator.service
+systemctl --user reset-failed agent-protocol.service          # снимает прошлый failed и счётчик StartLimit
+systemctl --user enable --now agent-protocol.service
 loginctl enable-linger "$USER"
-journalctl --user -u lle-orchestrator.service -f                # тот же поток, что в логе демона
+journalctl --user -u agent-protocol.service -f                # тот же поток, что в логе демона
 ```
 
-Имя юнита — `lle-orchestrator.service`, если не задан `--unit-name`. Набирать его
+Имя юнита — `agent-protocol.service`, если не задан `--unit-name`. Набирать его
 с этой страницы не нужно: `systemd install` печатает все шесть строк уже с тем
 именем, которое положил, — копипастить надёжнее из вывода команды, а не отсюда.
 
@@ -327,11 +327,11 @@ pnpm -F agent-protocol cli orchestrator status                             # ж�
 **1. Пережить ребут.**
 
 ```bash
-systemctl --user is-enabled lle-orchestrator.service   # enabled
+systemctl --user is-enabled agent-protocol.service   # enabled
 loginctl show-user "$USER" -p Linger                   # Linger=yes
 sudo reboot
 # после ребута — НЕ открывая ssh-сессию заранее:
-systemctl --user is-active lle-orchestrator.service    # active
+systemctl --user is-active agent-protocol.service    # active
 pnpm -F agent-protocol cli orchestrator status         # circuit: daemon pid …, alive
 ```
 
@@ -358,7 +358,7 @@ logrotate. Каждый старт кладёт баннер `=== daemon epoch �
 # --daemon-args ЗАМЕЩАЕТ аргументы юнита целиком, а не дополняет: ref возвращается руками
 pnpm -F agent-protocol cli orchestrator systemd install \
   --daemon-args '--ref origin/main --log-max-bytes 65536' --write
-systemctl --user daemon-reload && systemctl --user restart lle-orchestrator.service
+systemctl --user daemon-reload && systemctl --user restart agent-protocol.service
 # дать демону натикать за потолок (несколько тиков), затем ещё один restart:
 ls -l ~/projects/language-learning-ecosystem/.orchestrator/daemon.log*   # появился .log.1
 grep -c '=== daemon epoch' ~/projects/language-learning-ecosystem/.orchestrator/daemon.log

@@ -168,7 +168,7 @@ export const unitPathDirs = (input: {
 
 /** What `systemd install` would write, and what a human still has to do afterwards. */
 export type SystemdUnitPlan = {
-  /** `lle-orchestrator.service` — the name `systemctl --user` is given. */
+  /** `agent-protocol.service` — the name `systemctl --user` is given. */
   readonly name: string;
   /** Where the file goes: the user unit directory. */
   readonly path: string;
@@ -178,7 +178,7 @@ export type SystemdUnitPlan = {
   readonly steps: readonly string[];
 };
 
-export const DEFAULT_UNIT_NAME = "lle-orchestrator.service";
+export const DEFAULT_UNIT_NAME = "agent-protocol.service";
 
 /**
  * THE UNIT OF ONE INSTANCE (thread 055). A box hosting several projects runs several
@@ -192,7 +192,7 @@ export const DEFAULT_UNIT_NAME = "lle-orchestrator.service";
  * agent binaries THIS instance declares. None of that is common between two projects
  * on one box, so a template would have to reduce to `%i` lookups of the very facts the
  * generator exists to write down. The `@<instance>` shape is kept because it is what an
- * operator reads (`systemctl --user status lle-orchestrator@crew`) and because it gives
+ * operator reads (`systemctl --user status agent-protocol@crew`) and because it gives
  * the property the statement asked for: N daemons that do not interfere.
  *
  * A box that names no instance keeps the name it has today, to the byte.

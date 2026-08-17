@@ -328,7 +328,7 @@ describe("the unit of one instance (thread 055)", () => {
   });
 
   it("a named instance gets its own unit, in the shape an operator reads", () => {
-    expect(unitNameFor("crew")).toBe("lle-orchestrator@crew.service");
+    expect(unitNameFor("crew")).toBe("agent-protocol@crew.service");
   });
 
   it("two instances do not collide — which is the whole property asked for", () => {
@@ -343,7 +343,7 @@ describe("the unit of one instance (thread 055)", () => {
       home: "/home/j",
       unitName: unitNameFor("crew"),
     });
-    expect(plan.path).toBe("/home/j/.config/systemd/user/lle-orchestrator@crew.service");
-    expect(plan.unit).toContain("lle-orchestrator@crew");
+    expect(plan.path).toBe("/home/j/.config/systemd/user/agent-protocol@crew.service");
+    expect(plan.unit).toContain("agent-protocol@crew");
   });
 });

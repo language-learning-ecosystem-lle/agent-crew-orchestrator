@@ -393,7 +393,7 @@ Two refusals carry the shape, and neither is a fallback:
 - **a checkout claimed by nobody** on a box that has named configs and no `local.json`
   — proceeding would mean running with defaults nobody chose.
 
-**The daemon of an instance has its own unit**: `lle-orchestrator@<name>.service`,
+**The daemon of an instance has its own unit**: `agent-protocol@<name>.service`,
 with `--instance <name>` baked into its `ExecStart`. The name was the last path in the
 package that was global to the USER rather than to an instance — two projects would
 have fought over one file at `systemctl --user enable`. It is a name per instance and
