@@ -647,7 +647,7 @@ The strict forms below keep every flag they had.
                               # passed with a NOTE: R17 does not govern it, and a refusal there
                               # would name a reason that is not true
                               # ON A BOX HOSTING SEVERAL INSTANCES the unit is NAMED AFTER
-                              # ONE (055): 'lle-orchestrator@<instance>.service', and its
+                              # ONE (055): 'agent-protocol@<instance>.service', and its
                               # ExecStart carries '--instance <name>' — one name on the whole
                               # user is the collision two daemons would enable into. Not a real
                               # systemd template: a template shares ONE ExecStart, and this one

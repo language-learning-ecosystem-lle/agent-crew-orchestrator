@@ -120,17 +120,17 @@ describe("orchestrator systemd install", () => {
     const done = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir);
 
     expect(done.status).toBe(0);
-    expect(done.stdout).toContain(`would write ${join(dir, "lle-orchestrator.service")}`);
+    expect(done.stdout).toContain(`would write ${join(dir, "agent-protocol.service")}`);
     expect(done.stdout).toContain("ExecStart=");
     // The disk is the assertion: a dry run that quietly wrote the file would print the
     // very same text.
-    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(false);
+    expect(existsSync(join(dir, "agent-protocol.service"))).toBe(false);
   });
 
   it("--write puts the unit there, and says 'replaced' the second time", () => {
     const repo = box();
     const dir = join(repo, "units");
-    const unit = join(dir, "lle-orchestrator.service");
+    const unit = join(dir, "agent-protocol.service");
 
     const first = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
 
@@ -144,7 +144,7 @@ describe("orchestrator systemd install", () => {
     expect(text).toContain("Restart=on-failure");
     // The human steps are printed and NOT performed — the enable gate has a human's name
     // on it (the old `reboot.ts` line).
-    expect(first.stdout).toContain("systemctl --user enable --now lle-orchestrator.service");
+    expect(first.stdout).toContain("systemctl --user enable --now agent-protocol.service");
     expect(first.stdout).toContain("loginctl enable-linger");
 
     const again = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
@@ -163,7 +163,7 @@ describe("orchestrator systemd install", () => {
     const dir = join(repo, "units");
     run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
 
-    const unit = readFileSync(join(dir, "lle-orchestrator.service"), "utf8");
+    const unit = readFileSync(join(dir, "agent-protocol.service"), "utf8");
     const exec = /^ExecStart=(.*)$/m.exec(unit)?.[1] as string;
     const tokens = exec.split(" ");
     // Everything up to the entry point is the INTERPRETER; the daemon's own subcommand is
@@ -203,7 +203,7 @@ describe("orchestrator systemd install", () => {
     const done = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
 
     expect(done.status).toBe(0);
-    const text = readFileSync(join(dir, "lle-orchestrator.service"), "utf8");
+    const text = readFileSync(join(dir, "agent-protocol.service"), "utf8");
     const path = /^Environment=PATH=(.*)$/m.exec(text)?.[1] as string;
     expect(path).toBeDefined();
     const dirs = path.split(":");
@@ -228,7 +228,7 @@ describe("orchestrator systemd install", () => {
     // operator is the one who fixes the machine config. But the sentence names the
     // consequence — a spawn that fails with the lease already taken.
     expect(done.status).toBe(0);
-    const text = readFileSync(join(dir, "lle-orchestrator.service"), "utf8");
+    const text = readFileSync(join(dir, "agent-protocol.service"), "utf8");
     expect(text).not.toContain("no-such-binary-anywhere");
     expect(`${done.stdout}${done.stderr}`).toContain("could not be resolved from this shell");
   });
@@ -242,12 +242,12 @@ describe("orchestrator systemd install", () => {
 
     const done = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
 
-    const reset = done.stdout.indexOf("systemctl --user reset-failed lle-orchestrator.service");
+    const reset = done.stdout.indexOf("systemctl --user reset-failed agent-protocol.service");
     const enable = done.stdout.indexOf("systemctl --user enable --now");
     expect(reset).toBeGreaterThan(-1);
     expect(reset).toBeLessThan(enable);
     // And the unit itself stops on the refusal code instead of hammering the ceiling.
-    expect(readFileSync(join(dir, "lle-orchestrator.service"), "utf8")).toContain(
+    expect(readFileSync(join(dir, "agent-protocol.service"), "utf8")).toContain(
       "RestartPreventExitStatus=2",
     );
   });
@@ -264,7 +264,7 @@ describe("orchestrator systemd install", () => {
     expect(verify).toBeLessThan(enable);
     // `verify` is what catches a key in the wrong section — the other half of the same
     // live repro, where the ceiling was silently absent.
-    expect(done.stdout).toContain(join(dir, "lle-orchestrator.service"));
+    expect(done.stdout).toContain(join(dir, "agent-protocol.service"));
     expect(done.stdout).toContain("tsx loader");
   });
 
@@ -324,13 +324,13 @@ describe("orchestrator systemd install", () => {
     expect(said).toContain(workspace);
     expect(said).toContain("role 'dev-core'");
     expect(said).toContain(repo);
-    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(false);
+    expect(existsSync(join(dir, "agent-protocol.service"))).toBe(false);
 
     // ...and the same install from the home checkout is untouched by the guard.
     const home = run(repo, "orchestrator", "systemd", "install", "--unit-dir", dir, "--write");
 
     expect(home.status).toBe(0);
-    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(true);
+    expect(existsSync(join(dir, "agent-protocol.service"))).toBe(true);
   });
 
   it("a linked worktree that is NOBODY'S workspace is NOTED and written, not refused", () => {
@@ -350,7 +350,7 @@ describe("orchestrator systemd install", () => {
     );
 
     expect(done.status).toBe(0);
-    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(true);
+    expect(existsSync(join(dir, "agent-protocol.service"))).toBe(true);
     const said = `${done.stdout}${done.stderr}`;
     expect(said).toContain(mail);
     expect(said).toContain("not the workspace of any role");
@@ -380,7 +380,7 @@ describe("orchestrator systemd install", () => {
     expect(dry.status).toBe(2);
     expect(wet.status).toBe(2);
     expect(`${dry.stdout}${dry.stderr}`).toBe(`${wet.stdout}${wet.stderr}`);
-    expect(existsSync(join(dir, "lle-orchestrator.service"))).toBe(false);
+    expect(existsSync(join(dir, "agent-protocol.service"))).toBe(false);
   });
 
   it("a closed pipe ends the command quietly — `install | head -1` is not a crash", () => {
