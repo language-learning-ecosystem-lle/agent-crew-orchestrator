@@ -1,0 +1,22 @@
+{
+  "name": "agent-protocol-workspace",
+  "private": true,
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "protocol": "tsx packages/agent-protocol/src/cli.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.4",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  }
+}

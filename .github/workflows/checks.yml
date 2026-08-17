@@ -1,0 +1,25 @@
+name: checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # треть сьюта поднимает настоящий git; без идентичности эти тесты
+      # умирают на первом же своём коммите
+      - name: git identity
+        run: |
+          git config --global user.email ci@example.invalid
+          git config --global user.name ci
+      - run: pnpm test
