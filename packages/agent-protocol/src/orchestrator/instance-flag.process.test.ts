@@ -284,7 +284,7 @@ describe("the unit the package writes is a command the package understands", () 
     ]);
     expect(install.code).toBe(0);
 
-    const unitPath = join(at.repo, "units", `lle-orchestrator@${INSTANCE}.service`);
+    const unitPath = join(at.repo, "units", `agent-protocol@${INSTANCE}.service`);
     const unit = readFileSync(unitPath, "utf8");
     const execStart = (unit.match(/^ExecStart=(.*)$/m) ?? [])[1];
     expect(execStart).toBeDefined();

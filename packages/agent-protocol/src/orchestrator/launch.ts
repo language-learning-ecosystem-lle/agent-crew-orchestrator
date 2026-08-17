@@ -907,7 +907,7 @@ export const buildLaunchPrompt = (input: {
 }): string => {
   const cards = input.instructions.map((doc) => `# ${doc.path}\n\n${doc.text}`).join("\n\n---\n\n");
   return [
-    `You are the \`${input.role}\` role of the agent-comms protocol. Your role card is below.`,
+    `You are the \`${input.role}\` role of the agent-crew-orchestrator protocol. Your role card is below.`,
     "",
     `The turn was passed to you on thread \`${input.thread}\` — AND ON THAT ONE ONLY. Do NOT handle the rest of your mail: this run is bound to exactly one thread.`,
     "",
