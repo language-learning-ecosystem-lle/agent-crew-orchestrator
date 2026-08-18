@@ -1,16 +1,9 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T20:43:31.340Z",
+  "writtenAt": "2026-08-18T20:44:35.297Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "011-protocol-dangling-pointers",
-      "state": "running",
-      "deadline": "2026-08-18T21:14:48Z"
-    }
-  ]
+  "leases": []
 }
