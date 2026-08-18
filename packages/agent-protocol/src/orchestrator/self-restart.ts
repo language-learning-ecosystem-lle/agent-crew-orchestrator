@@ -296,8 +296,15 @@ export const describeSelfRestartStand = (block: SelfRestartBlock): string => {
       return `no self-restart while roles are held manually (${block.roles.join(", ")}) — an operator is at this box`;
     case "foreign-checkout":
       return `no self-restart — this daemon runs code loaded from '${block.code}' but serves '${block.served}'; a repair pulls and relaunches ONE tree, and these are two`;
-    case "dirty":
-      return `no self-restart with uncommitted work in '${block.checkout}' (${block.paths.slice(0, 5).join(", ")}${block.paths.length > 5 ? ", …" : ""}) — 'git pull' would move that tree`;
+    case "dirty": {
+      const named = `${block.paths.slice(0, 5).join(", ")}${block.paths.length > 5 ? ", …" : ""}`;
+      // UNTRACKED-ONLY IS A DIFFERENT REPAIR, and saying "uncommitted work" about it sends
+      // the operator looking for work to commit (003): a checkout whose only dirt is the
+      // circuit's own runtime is fixed by an ignore rule, and nothing here can be committed.
+      return block.paths.every((line) => line.startsWith("??"))
+        ? `no self-restart with untracked files in '${block.checkout}' (${named}) — 'git pull --ff-only' refuses over them; NOTHING HERE IS WORK TO COMMIT: if these are this circuit's own runtime ('orchestrator.state', 'orchestrator.workdir.worktrees'), the repair is an ignore rule in the served repository`
+        : `no self-restart with uncommitted work in '${block.checkout}' (${named}) — 'git pull' would move that tree`;
+    }
     case "tree-unreadable":
       return `no self-restart — the state of '${block.checkout}' could not be read (${block.problem}); a pull over an unknown tree is not something to do unattended`;
     case "attempts":

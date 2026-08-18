@@ -363,6 +363,33 @@ describe("the line said instead", () => {
     expect(lines[3]).toContain("/box/repo");
     expect(lines[5]).toContain("2/2");
   });
+
+  // 003: the two dirty trees are two different repairs, and the line that calls both of
+  // them "uncommitted work" sends the operator of the second one looking for a commit
+  // to make. An untracked-only tree is fixed by an ignore rule and by nothing else.
+  it("calls an untracked-only tree what it is, and names the repair for it", () => {
+    const said = describeSelfRestartStand({
+      kind: "dirty",
+      checkout: "/box/repo",
+      paths: ["?? .orchestrator/", "?? .worktrees/"],
+    });
+    expect(said).toContain("untracked files in '/box/repo'");
+    expect(said).toContain(".orchestrator/");
+    expect(said).toContain(".worktrees/");
+    expect(said).toContain("NOTHING HERE IS WORK TO COMMIT");
+    expect(said).toContain("ignore rule");
+    expect(said).not.toContain("uncommitted work");
+  });
+
+  it("still calls a modified tree uncommitted work — one untracked path among them is not the other case", () => {
+    const said = describeSelfRestartStand({
+      kind: "dirty",
+      checkout: "/box/repo",
+      paths: ["M packages/agent-protocol/src/cli.ts", "?? .orchestrator/"],
+    });
+    expect(said).toContain("uncommitted work in '/box/repo'");
+    expect(said).not.toContain("ignore rule");
+  });
 });
 
 /**

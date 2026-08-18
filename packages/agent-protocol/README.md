@@ -3377,6 +3377,23 @@ into a box that stays down (`systemd install` prints this). And the exit code is
 not 1 or 2 — those are this CLI's refusal and its argument door, and a journal in which the
 repair is spelled like either of them is a journal that lies.
 
+**Neither form is ever reached on a checkout whose own runtime is untracked.** The clean-tree
+condition sits BEFORE the choice of form: `workingTreeState` reads `git status --porcelain`,
+where untracked counts as dirt (a `pull --ff-only` refuses over an untracked file it would
+overwrite, and a repair dying half-way through is worse than one that never began), and
+`selfRestartVerdict` answers `stand`. The directories named by `orchestrator.state` and
+`orchestrator.workdir.worktrees` are made by the circuit itself and are on every box that has
+raised a role, so a served repository that does not ignore them meets EVERY merge into its ref
+with a daemon that refuses to restart and calls its own workspaces dirt. Measured in this
+repository on 18.08.2026 — a `.gitignore` inherited from the workspace skeleton knew three
+lines and nothing about the runtime, and the live checkout stood at `?? .orchestrator/`,
+`?? .worktrees/`. The rule for this repository is held by a test that reads the paths from
+`agent-protocol.json` rather than keeping a second copy of the list
+(`runtime-ignored.test.ts`). And the refusal itself tells the two dirty trees apart: an
+untracked-only tree is no longer reported as "uncommitted work" (there is nothing there to
+commit) but as untracked files, with the repair — an ignore rule in the served repository —
+named in the line.
+
 **What is tested and what is not.** The rule, the form, the exit code and the install
 question are units (`self-restart.test.ts`). The seam — went away, came back — is a process
 test (`self-restart.process.test.ts`): a daemon behind its ref is raised with `INVOCATION_ID`
