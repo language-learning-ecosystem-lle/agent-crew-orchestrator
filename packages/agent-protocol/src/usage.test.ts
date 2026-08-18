@@ -337,6 +337,10 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
       "/home/a/.ssh/github",
       "--host",
       "github.com",
+      // The two are separate values since thread 004 — a corpus that only ever typed
+      // `--host` is exactly how the flag stayed undeclared and got refused at the door.
+      "--alias",
+      "github-crew",
       "--comment",
       "lle-agents",
       "--no-probe",

@@ -131,6 +131,64 @@ describe("init github --write --no-probe: what lands on the disk", () => {
     expect(twice).toBe(once);
   });
 
+  /**
+   * THE SEAM OF THREAD 004: a SECOND identity written into a `~/.ssh/config` that already
+   * belongs to somebody. Three facts at once, and all three are asserted against the file
+   * rather than against the checklist the command printed — the block resolves, the
+   * stranger's blocks are untouched, and a second run adds nothing.
+   */
+  it("a second identity lands as an alias whose HostName is the real GitHub host", () => {
+    const { home, marker } = box();
+    mkdirSync(join(home, ".ssh"), { recursive: true, mode: 0o700 });
+    const foreign = "Host build-box\n  HostName 10.0.0.4\n  User deploy\n";
+    writeFileSync(config(home), foreign, { mode: 0o600 });
+
+    const said = run(
+      { home, marker },
+      "--key",
+      join(home, ".ssh", "github-crew"),
+      "--alias",
+      "github-crew",
+      "--write",
+      "--no-probe",
+    );
+    expect(said.status, said.out).toBe(0);
+
+    const written = readFileSync(config(home), "utf8");
+    expect(written.match(/^Host github-crew$/gm)).toHaveLength(1);
+    // The line the defect got wrong: `HostName github-crew` resolves nowhere.
+    expect(written).toContain("HostName github.com");
+    expect(written).not.toContain("HostName github-crew");
+    expect(written).toContain(`IdentityFile ${join(home, ".ssh", "github-crew")}`);
+    // The file belongs to the human whose home this is: what was there is still there,
+    // byte for byte and first.
+    expect(written.startsWith(foreign)).toBe(true);
+
+    run(
+      { home, marker },
+      "--key",
+      join(home, ".ssh", "github-crew"),
+      "--alias",
+      "github-crew",
+      "--write",
+      "--no-probe",
+    );
+    expect(readFileSync(config(home), "utf8")).toBe(written);
+  });
+
+  it("refuses a --host that is plainly an alias, by name, and writes nothing at all", () => {
+    const { home, marker } = box();
+    const said = run({ home, marker }, "--host", "github-crew", "--write", "--no-probe");
+    expect(said.status).toBe(2);
+    expect(said.out).toContain("--host 'github-crew'");
+    // The refusal is only worth the exit it names — and the alias case is the one that
+    // produced this keystroke on a live box.
+    expect(said.out).toContain("--alias github-crew");
+    // A refusal that had already generated a key would be a door that fires late.
+    expect(exists(config(home))).toBe(false);
+    expect(exists(key(home))).toBe(false);
+  });
+
   it("without --write nothing on the disk moves — no ~/.ssh, no config", () => {
     const { home, marker } = box();
     const said = run({ home, marker }, "--no-probe");
