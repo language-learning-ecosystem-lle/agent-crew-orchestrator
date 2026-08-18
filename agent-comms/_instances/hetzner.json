@@ -1,11 +1,17 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T16:48:58.987Z",
+  "writtenAt": "2026-08-18T16:49:05.917Z",
   "roles": [
     "curator",
     "dev-core"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "001-mail-born",
+      "state": "running",
+      "deadline": "2026-08-18T17:29:01Z"
+    },
     {
       "role": "dev-core",
       "thread": "006-hosted-runners",
