@@ -998,6 +998,15 @@ agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mai
                             # the ids on stdout; an unreadable thread on stderr, with its own cause
                             # AND the count of what was lost (065.4) — the input is never silently
                             # narrowed, and it does not break either: the readable ones still print
+agent-protocol wake    <role> --ref <ref> [--root <comms>] [--as <invocation>] [--repo <p>]
+                            # THE ENTRY OF A ROLE, said by the package rather than copied into the
+                            # served project (thread 087 of the LLE mail): the mail branch, the mail
+                            # root of THIS machine, the role's card and the threads waiting on it —
+                            # then the steps and the standing rules, in one text on stdout
+                            # --as: HOW THIS CLI IS TYPED at the consumer ('pnpm -w protocol', a
+                            # binary on PATH, 'tsx …/cli.ts'); it goes into every command printed
+                            # it PRINTS INSTEAD OF DYING on an unreadable thread — the entry names
+                            # what it could not read (065.4) rather than leaving the role textless
 agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p>] [--write]
                                                                            # the turn has passed to a HUMAN (R4)
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>]
@@ -1281,6 +1290,34 @@ message is a conversation nobody can read or answer, and the retry would then be
 the message beside a meta already in the feed. The thread id is re-checked AFTER the
 refresh, inside the attempt: the pre-flight check only knows this disk, and if somebody
 took the number in between, writing it again would overwrite their meta.
+
+#### `wake` — вход роли говорит пакет, а не копия в обслуживаемом проекте (тред 087 почты LLE)
+
+Инструкция «ты — роль X, вот почта, вот как читают и как отвечают» жила текстом в
+обслуживаемом проекте и **разошлась с кодом по трём пунктам сразу** (замер curator,
+тред 087 §2): велела исполнять пакет из чекаута, которого на ящике нет; называла
+держателем merge роль, у которой его отобрали тремя неделями раньше; и посылала
+читать вход из ПРОИЗВОДНОГО `_thread.md` на той же странице, где объявляла принцип
+«вход считается из источника». Причина одна и она структурная: текст, описывающий
+команды, сопровождался не там, где эти команды меняются.
+
+**Почему команда, а не файл в тарболе** (кандидаты (а) и (в) постановки). Файл — это
+текст, который потребитель цитирует: он не знает ни ветки почты, ни корня чекаута на
+этом ящике, ни того, ждут ли роль треды прямо сейчас. Всё перечисленное — факты
+конфига и диска, то есть ровно тот класс, расхождением с которым предыдущая копия и
+умерла; а вход всё равно пришлось бы дочитывать вторым вызовом. Команда подставляет
+их из тех же источников, которыми живёт `mail` (одна функция на двоих — `mail`
+печатает ids для скрипта, `wake` называет их внутри текста), и попадает под CI
+дома: слова собирает чистая `renderWake`, у неё юнит.
+
+**Форма вызова CLI — чужой факт и потому флаг.** `--as 'pnpm -w protocol'` уезжает в
+каждую печатаемую команду. Пакет, печатающий свою форму вызова как единственную,
+врал бы всем ящикам, кроме одного.
+
+**Обёртка у потребителя после этого — одна строка.** Для Claude Code это
+`.claude/commands/wake.md`, чьё тело —
+`` !`pnpm -w protocol wake $ARGUMENTS --ref origin/main --as 'pnpm -w protocol'` ``;
+`allowed-tools` и права остаются вопросом того проекта, а не пакета.
 
 #### Which `--write` delivers, and which only writes (thread 033)
 

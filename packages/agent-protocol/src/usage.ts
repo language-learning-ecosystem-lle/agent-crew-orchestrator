@@ -304,6 +304,23 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # complete one (thread 066 held six statements waiting on dev-core
                               # and the queue never saw it, twice on 2026-08-13). The input does
                               # not BREAK on it: the readable threads are still printed, exit 0
+  agent-protocol wake         <role> --ref <ref> [--root <mail>] [--as <invocation>] [--repo <p>]
+                              # THE ENTRY OF A ROLE, SAID BY THE PACKAGE (thread 087 of the LLE
+                              # mail): the text that explains the mail, the watch and the writing
+                              # rules must change in the SAME move as the commands it names. Kept
+                              # as a copy in the served project it drifted three ways at once — it
+                              # pointed at a checkout that box no longer has, named a holder of
+                              # merge who had lost it three weeks earlier, and sent the role to
+                              # read its input from the DERIVED file on the page where it declares
+                              # the opposite. None of the three is inventable here: the values come
+                              # from the config and the disk, and the text itself has a unit test
+                              # '--as <invocation>': HOW THIS CLI IS TYPED at the consumer ('pnpm -w
+                              # protocol', a binary on PATH, 'tsx …/cli.ts'). It is a fact of the
+                              # other repository, so it is a flag: a package printing its own form
+                              # as the only one would be lying to every box but one
+                              # the mail is counted FROM THE THREADS, in queue order, exactly as
+                              # 'mail' counts it — and what it could not read it names, so the
+                              # entry is never silently narrowed
   agent-protocol await-input  --root <mail> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                               # THE INTERACTIVE TURN (R19): blocks until the thread waits on the role again
                               # needs a wait declared beside the question ('new-message --await-input') — it does not declare one
