@@ -618,6 +618,40 @@ describe("foldLeases — the class of a freeze and its self-thaw (thread 013)", 
     expect(v.thawAt).toBeUndefined();
   });
 
+  // THE IDENTITY OF THE SERIES (thread 013, curator's requirement): the courier owes a
+  // frozen pair one call per series, and the pair leaves the exhausted set at every thaw —
+  // so the stamp has to survive the gap and end only where the counter does.
+  it("stamps the series at the FIRST freeze and does not move it through the rounds", () => {
+    const events = spent("dev-core", "t", "2026-07-24T13:50:00Z");
+    const first = at("2026-07-24T14:00:00Z")(events).exhaustedSince;
+    expect(first).toBe("2026-07-24T13:50:00Z");
+    // Thawed and running again: no freeze is in force, the series is still the same one.
+    events.push(acquire("dev-core", "t", FUTURE));
+    const midRun = at("2026-07-24T14:06:00Z")(events);
+    expect(midRun.exhaustedClass).toBeUndefined();
+    expect(midRun.exhaustedSince).toBe(first);
+    // The retry fails externally too — the second round of the SAME series.
+    events.push(externalBreak("dev-core", "t", "2026-07-24T13:55:00Z"));
+    expect(at("2026-07-24T14:06:00Z")(events).exhaustedSince).toBe(first);
+  });
+
+  it("a delivery ends the series — the next freeze is a new one, with its own stamp", () => {
+    const events = [
+      ...spent("dev-core", "t", "2026-07-24T13:50:00Z"),
+      acquire("dev-core", "t", PAST),
+      handoff("dev-core", "t"),
+      release("dev-core", "t", "completed"),
+    ];
+    expect(at("2026-07-24T14:00:00Z")(events).exhaustedSince).toBeUndefined();
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(
+        acquire("dev-core", "t", PAST),
+        externalBreak("dev-core", "t", "2026-07-24T13:58:00Z"),
+      );
+    }
+    expect(at("2026-07-24T14:00:00Z")(events).exhaustedSince).toBe("2026-07-24T13:58:00Z");
+  });
+
   it("the backoff walks 15 → 60 → 240 with the attempts, then freezes for good", () => {
     const events = spent("dev-core", "t", "2026-07-24T13:50:00Z");
     events.push(

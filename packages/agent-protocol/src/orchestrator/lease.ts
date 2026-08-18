@@ -98,6 +98,21 @@ export type LeaseView = {
    */
   readonly thawAt?: string | null;
   /**
+   * THE IDENTITY OF THE SERIES OF FREEZES (thread 013) — the stamp of the release that
+   * first took this pair to the ceiling since its last delivery. Present on every view of
+   * a pair whose counter has reached the ceiling at least once and has not been reset
+   * since — INCLUDING while it is thawed, running or draining, which is exactly what
+   * distinguishes it from `exhaustedClass`: that one is the state of the freeze right
+   * now, this one is the run of attempts the freeze belongs to.
+   *
+   * It exists because the courier owes a frozen pair ONE call per series (curator, thread
+   * 013): an external freeze leaves the exhausted set at every thaw, so a key made of the
+   * freeze itself is forgotten in the gap and rings again on the way back. Keyed by this,
+   * the second and third rounds are silent and a NEW series — one on the far side of a
+   * delivery — rings as it should.
+   */
+  readonly exhaustedSince?: string;
+  /**
    * WHERE THIS PAIR'S TRANSCRIPT LIES (T-1, thread 019) — the `.log` of its LAST run,
    * present only when the caller said where the sessions directory is and the journal
    * has an acquire to derive the name from.
@@ -267,6 +282,16 @@ type Acc = {
   externalFailure: boolean;
   /** When the last release happened — the clock the external backoff runs from. */
   releasedAt: string | null;
+  /**
+   * WHEN THIS SERIES OF FREEZES BEGAN (thread 013) — the stamp of the release that took
+   * the counter to the ceiling for the first time SINCE THE LAST DELIVERY, and nothing
+   * afterwards moves it. It is the identity of the SERIES rather than of one freeze,
+   * which is what a courier that must ring once per series needs: an external pair leaves
+   * the frozen set at every thaw and comes back to it after the failed retry, so a key
+   * built out of "this freeze" is forgotten in between and the call repeats itself.
+   * Cleared by exactly the thing that ends the series — a delivery zeroing the counter.
+   */
+  ceilingSince: string | null;
   lastEvent: OrchestratorEvent["kind"];
 };
 
@@ -324,6 +349,7 @@ export const foldLeases = (
         acquiredAt: null,
         externalFailure: false,
         releasedAt: null,
+        ceilingSince: null,
         lastEvent: event.kind,
       };
       acc.set(k, cur);
@@ -335,7 +361,13 @@ export const foldLeases = (
     // branch, so the per-pair ceiling and the global one cannot come to mean different
     // things again.
     const selfTurn = isSelfTurnDelivery(event, deliveredSessions);
-    if (isDelivery(event) || selfTurn) cur.attempt = 0;
+    if (isDelivery(event) || selfTurn) {
+      cur.attempt = 0;
+      // THE SERIES ENDS WHERE THE COUNTER DOES (thread 013). The two are the same fact —
+      // "the pair moved" — so they are reset in the same breath rather than in two places
+      // that could come to disagree about when a freeze stops being the same freeze.
+      cur.ceilingSince = null;
+    }
 
     switch (event.kind) {
       case "lease-acquired":
@@ -388,6 +420,16 @@ export const foldLeases = (
         cur.deliveredToSelf = selfTurn;
         cur.externalFailure = event.external === true;
         cur.releasedAt = event.ts;
+        // The release that PUT the pair at the ceiling stamps the series, and only the
+        // first one of a series does: rounds 2 and 3 of an external backoff land here with
+        // the stamp already set, and leaving it alone is the whole of "one call per series".
+        if (
+          cur.ceilingSince === null &&
+          (event.reason === "exhausted" ||
+            (isFailedTerminal("released", event.reason) && !selfTurn && cur.attempt >= maxAttempts))
+        ) {
+          cur.ceilingSince = event.ts;
+        }
         cur.waitDeadline = null;
         cur.waitingSince = null;
         break;
@@ -450,6 +492,7 @@ export const foldLeases = (
       exhausted,
       launchable,
       ...(failureClass === undefined ? {} : { exhaustedClass: failureClass, thawAt: thaw }),
+      ...(cur.ceilingSince === null ? {} : { exhaustedSince: cur.ceilingSince }),
       ...(sessions === undefined || cur.acquiredAt === null
         ? {}
         : { sessionLog: sessionLogPath(sessions, cur.role, cur.thread, cur.acquiredAt) }),

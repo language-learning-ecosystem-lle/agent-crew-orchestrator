@@ -229,6 +229,60 @@ describe("running a role as a process — the outcome is always recorded", () =>
     expect(last).toMatchObject({ reason: "quota-exhausted", until: "2026-07-29T16:00:00Z" });
   }, 60_000);
 
+  /**
+   * THE SEAM OF THREAD 013: the stream → the release → the fold. The units on either
+   * side of it are green even when it is broken — `apiFailureSignalOf` recognises the
+   * vendor's sentence in a string, `foldLeases` believes a flag it is handed — and the
+   * price of a break here is one of the two failures this whole thread is about: a pair
+   * frozen for good over a five-minute overload, or an endless retry of a real defect.
+   */
+  it("A 529 ON THE STREAM REACHES THE FOLD AS A THAWING FREEZE — the whole seam, one run", () => {
+    const { repo } = contour();
+    // The vendor's own sentence, in the shape the episode of 2026-08-18 produced it:
+    // the launcher complains on stderr and the process dies before any assistant step.
+    const exec = stub(repo, 'echo \'API Error: 529 {"type":"overloaded_error"}\' >&2\nexit 1');
+
+    run(repo, exec);
+    const events = journal(repo);
+    const released = events.at(-1);
+
+    // Half one: the supervisor saw it and WROTE it — the flag is on the release itself.
+    expect(released).toMatchObject({ reason: "exited-without-handoff", external: true });
+    // Half two: the fold reads that flag as a freeze with an end. The ceiling is one
+    // here so that a single run is a whole exhaustion — the schedule is the same.
+    const view = foldLeases(events, new Date(`${released?.ts}`), 1)[0];
+    expect(view).toMatchObject({ exhausted: true, exhaustedClass: "external" });
+    expect(view?.thawAt).not.toBeNull();
+    expect(view?.exhaustedSince).toBe(released?.ts);
+    // And fifteen minutes on it is launchable again, with nothing delivered in between.
+    const later = new Date(new Date(`${released?.ts}`).getTime() + 16 * 60_000);
+    expect(foldLeases(events, later, 1)[0]).toMatchObject({ exhausted: false, launchable: true });
+  }, 60_000);
+
+  it("A SESSION THAT WORKED AND LEFT is substantive, whatever it said on the way out", () => {
+    // The control on the step ceiling: the same words, but the run reached the work —
+    // an incident inside a session is not the class that buys a second life.
+    const { repo } = contour();
+    const exec = stub(
+      repo,
+      `printf '%s\\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"working"}]}}'\nprintf '%s\\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"still working"}]}}'\necho 'API Error: 529 overloaded_error' >&2\nexit 1`,
+    );
+
+    run(repo, exec);
+    const events = journal(repo);
+
+    // The run really did reach the work: the two assistant steps are in its log, so the
+    // class below is decided by the step ceiling and not by a signal nobody recognised.
+    expect(sessionLog(repo)).toContain("still working");
+    expect(events.at(-1)).toMatchObject({ reason: "exited-without-handoff" });
+    expect(events.at(-1)).not.toHaveProperty("external");
+    expect(foldLeases(events, new Date(`${events.at(-1)?.ts}`), 1)[0]).toMatchObject({
+      exhausted: true,
+      exhaustedClass: "substantive",
+      thawAt: null,
+    });
+  }, 60_000);
+
   it("WHICH WINDOW CLOSED REACHES THE JOURNAL — two runs, two shelves, neither of them 'unknown'", () => {
     // THE DEFECT THIS EXISTS TO CATCH (thread 038): `runOne` put `window` into the
     // detail of `stepEvent`, `stepEvent` copied every field of that detail into the

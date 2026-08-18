@@ -1017,6 +1017,28 @@ agent-protocol wake    <role> --ref <ref> [--root <comms>] [--as <invocation>] [
                             # what it could not read (065.4) rather than leaving the role textless
 agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p>] [--write]
                                                                            # the turn has passed to a HUMAN (R4)
+                            # AND THE SIXTH CLASS: A PAIR THE CIRCUIT HAS STOPPED RAISING (thread 013).
+                            # The line carries a STANDING category beside the parks, the waits and the
+                            # stalls — `N exhausted, M of them new — dev-core×006 (external, thaws at …)`
+                            # — printed every run, news or not, with the same sentence the `status` frame
+                            # uses. Read from the journal's own fold, so it costs no extra state
+                            # TWO EVENTS RING, EACH ONCE: `exhausted` — the pair entered a freeze that
+                            # ends by itself (the vendor's side failed; the backoff of `thaw.ts` runs);
+                            # `frozen` — the terminal, meaning a person is needed (an external freeze
+                            # with its schedule spent, or a substantive one, which is terminal from its
+                            # first second and therefore rings ONLY as `frozen`). Rounds 2 and 3 of a
+                            # backoff are silent — no action hangs on them, and the standing category
+                            # shows them to whoever looks
+                            # THE MEMORY IS KEYED BY THE SERIES (`LeaseView.exhaustedSince`), not by the
+                            # freeze: an external pair LEAVES the exhausted set at every thaw, so a
+                            # per-freeze key is forgotten in the gap and the same pair rings on every
+                            # round. The state file therefore keeps ANNOUNCED KEYS (`freeze <kind> <role>
+                            # <thread> <stamp>`) for as long as their series lives; a delivery resets the
+                            # counter, the series ends, the key is dropped and the next freeze rings again
+                            # both texts are the package's own (`BOX_ALARM_TEMPLATES`) and not project
+                            # slots: they report the ORCHESTRATOR's machinery rather than the
+                            # conversation, and the template map's keys are part of the frozen config
+                            # shape — a version of the protocol, which is john's call
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
