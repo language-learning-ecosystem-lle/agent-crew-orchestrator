@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      transport-telegram:
+        specifier: workspace:*
+        version: link:packages/transport-telegram
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.5.4
