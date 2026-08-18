@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T16:57:16.804Z",
+  "writtenAt": "2026-08-18T17:00:48.888Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,12 +11,6 @@
       "thread": "001-mail-born",
       "state": "running",
       "deadline": "2026-08-18T17:37:12Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "006-hosted-runners",
-      "state": "running",
-      "deadline": "2026-08-18T17:57:05Z"
     }
   ]
 }
