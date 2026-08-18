@@ -30,6 +30,24 @@ describe("pathsOutsideZones", () => {
     expect(pathsOutsideZones({ role: r, paths: ["apps/api/a.ts"] })).toEqual([]);
   });
 
+  it("a NON-EMPTY writes narrows nothing: outside writes and outside forbidden is legal", () => {
+    // THE FACT OF 2026-08-18 (thread 010), fixed here so that the next change of this
+    // semantics is visible in a diff rather than discovered by a role mid-task. The
+    // live case: `curator` declares writes = four documents and forbidden = packages,
+    // and the door passed `biome.json` and `.github/workflows/checks.yml` — neither of
+    // them in `writes`. That is the design (`writes` is prose, `forbidden` is the
+    // verdict) and NOT an oversight: read as an allow-list, `dev-core`'s `writes: []`
+    // would deny it the whole repository. Flipping it changes the de-facto powers of
+    // every role and is john's call, not this module's.
+    const r = role({ writes: ["docs/roles", "PROTOCOL.md"], forbidden: ["packages"] });
+    expect(
+      pathsOutsideZones({ role: r, paths: ["biome.json", ".github/workflows/checks.yml"] }),
+    ).toEqual([]);
+    expect(pathsOutsideZones({ role: r, paths: ["packages/agent-protocol/src/cli.ts"] })).toEqual([
+      "packages/agent-protocol/src/cli.ts",
+    ]);
+  });
+
   it("names the paths under a banned prefix, and only those", () => {
     const r = role({ writes: [], forbidden: ["apps/pronunciation-service"] });
     const verdict = pathsOutsideZones({

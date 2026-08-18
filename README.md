@@ -994,6 +994,14 @@ agent-protocol zones check  --ref <ref> [--repo <p>] (--role <id> | --role-from-
                             # every PR arrives from one GitHub account, so the author's login says nothing
                             # the paths are read with --no-renames, -z and no --diff-filter — a deletion, a
                             # rename OUT of the zone and a non-ASCII name are each invisible without one of them
+                            # 'zones.forbidden' IS THE WHOLE VERDICT — 'zones.writes' is not read by this
+                            # command at all and narrows nothing: a path outside 'writes' and outside
+                            # 'forbidden' is GREEN (measured on 2026-08-18, thread 010: 'curator', whose
+                            # 'writes' lists four docs, passed on biome.json and .github/workflows/checks.yml)
+                            # that is the design and not a hole: 'writes' says where the role's work lives,
+                            # and read as a closed allow-list it would deny 'dev-core' — which declares
+                            # writes: [] — every file in the repository. The green line names the criterion,
+                            # because "inside its zone" was read as "inside writes" by a role in the field
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
                             # the ids on stdout; an unreadable thread on stderr, with its own cause
                             # AND the count of what was lost (065.4) — the input is never silently

@@ -36,6 +36,16 @@ const CONFIG = {
       summary: "the stream",
       zones: { writes: [], forbidden: [FOREIGN] },
     },
+    // A role shaped like the live `curator` of 2026-08-18 (thread 010): a NON-EMPTY
+    // `writes` naming a few documents, and a `forbidden` naming the neighbour's code.
+    {
+      id: "curator",
+      kind: "claude-code",
+      status: "active",
+      wake: { mode: "watch", session: "c" },
+      summary: "the mail",
+      zones: { writes: ["docs/roles", "PROTOCOL.md"], forbidden: ["packages"] },
+    },
   ],
 };
 
@@ -66,16 +76,17 @@ const repoWithHistory = (): string => {
   file(repo, `${FOREIGN}/main.py`, "print(1)\n");
   file(repo, `${FOREIGN}/тест.py`, "print(2)\n");
   file(repo, "packages/agent-protocol/src/own.ts", "export const a = 1;\n");
+  file(repo, "biome.json", "{}\n");
   git(repo, "add", "-A");
   git(repo, "commit", "-qm", "base");
   return repo;
 };
 
-const check = (repo: string): { code: number; out: string } => {
+const check = (repo: string, role = "dev-core"): { code: number; out: string } => {
   try {
     const out = execFileSync(
       TSX,
-      [CLI, "zones", "check", "--ref", "HEAD", "--repo", repo, "--role", "dev-core", "--staged"],
+      [CLI, "zones", "check", "--ref", "HEAD", "--repo", repo, "--role", role, "--staged"],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: sandbox(configHomeInside(repo)) },
     );
     return { code: 0, out };
@@ -127,7 +138,24 @@ describe("zones check — the staged paths of a change against the role's zone",
     const result = check(repo);
 
     expect(result.code).toBe(0);
-    expect(result.out).toContain("inside its zone");
+    expect(result.out).toContain("none under a forbidden prefix");
+  });
+
+  it("a NON-EMPTY writes narrows nothing — a path outside it and outside forbidden is green", () => {
+    // THE MEASUREMENT OF 2026-08-18 (thread 010), reproduced against a real index:
+    // `curator` declares `writes` = two documents, and the door passed `biome.json`,
+    // which is in neither list. `forbidden` is the whole verdict and `writes` is
+    // prose; flipping that changes what every role may write de facto and is john's
+    // decision, so the fact is nailed down here rather than left to be re-measured.
+    const repo = repoWithHistory();
+    file(repo, "biome.json", '{ "x": 1 }\n');
+    git(repo, "add", "-A");
+
+    const result = check(repo, "curator");
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("none under a forbidden prefix");
+    expect(result.out).toContain("narrows nothing");
   });
 
   it("a BASE a version behind is still read — the door of a version-bumping PR is not red by construction", () => {
