@@ -75,6 +75,18 @@ export const roleIdSchema = z
  * answer is VISIBILITY, not liveness (a heartbeat is refused for the reason written in
  * `hold.ts`): a thread waiting on a resident role is spoken by the daemon every tick and
  * shown by `status` (`orchestrator/resident.ts`).
+ *
+ * `session` OF A `watch` ROLE IS RESERVED, AND ITS VALUE IS READ BY NOTHING IN
+ * PRODUCTION (measured 2026-08-18, thread `012-wake-watch-reserved`). The MODE carries
+ * weight — `roleLaunchability` refuses to raise a role that is not `watch`, and the
+ * `launch permissions:` view filters by it — but the NAME reaches production code in a
+ * single place: the cross-check in `roles/registry.ts` that no two roles claim the same
+ * one. Nobody wakes by that name: the daemon raises a role by spawning the agent binary
+ * and never asks which session to wake it in, and `watchTargets()`, which pairs the
+ * roles with their names, is called only by tests. The field is kept and NOT cleaned
+ * out (john, 2026-08-18) as the reservation the wake-by-name keeper of the resident
+ * floor would stand on; this note is here so the next reader does not re-derive the
+ * finding from a grep.
  */
 export const wakeSchema = z.discriminatedUnion("mode", [
   z.strictObject({ mode: z.literal("self") }),
