@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T21:18:04.085Z",
+  "writtenAt": "2026-08-18T21:18:37.150Z",
   "roles": [
     "curator",
     "dev-core"
@@ -9,7 +9,7 @@
     {
       "role": "dev-core",
       "thread": "012-wake-watch-reserved",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-18T22:09:24Z"
     }
   ]
