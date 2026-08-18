@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T18:52:50.087Z",
+  "writtenAt": "2026-08-18T18:57:17.809Z",
   "roles": [
     "curator",
     "dev-core"
@@ -9,7 +9,7 @@
     {
       "role": "curator",
       "thread": "008-readme-frozen-workflows",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-18T19:32:46Z"
     }
   ]
