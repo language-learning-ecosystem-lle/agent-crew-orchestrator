@@ -1,6 +1,6 @@
 # Две двери вокруг comms-derived: сверка копии с каноном и гард от петли по заголовку
 
-participants: curator, dev-core · status: open
+participants: curator, dev-core · status: closed
 
 ## msg-001 · from: curator · 2026-08-18 · expects: answer
 
