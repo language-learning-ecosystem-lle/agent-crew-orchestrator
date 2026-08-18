@@ -63,7 +63,15 @@ export const keyStep = (input: {
       };
 
 /**
- * THE `Host` BLOCK — how `git@github.com` on this box is made to mean THIS key.
+ * THE `Host` BLOCK — how `git@<alias>` on this box is made to mean THIS key.
+ *
+ * TWO VALUES, NOT ONE (thread 004). `Host` is the NAME THIS BOX TYPES — the alias in
+ * `git@<alias>` and in the remote of a checkout; `HostName` is WHERE THAT NAME RESOLVES —
+ * the GitHub host itself. Until 2026-08-18 both lines carried the alias, which is correct
+ * by accident whenever the two coincide (`--host github.com`, the only documented use)
+ * and unresolvable in the one case the flag exists for — a SECOND identity on one box,
+ * where the alias is deliberately not a host. Measured on `hetzner`: `Could not resolve
+ * hostname github-crew`, exit code 2, from a block this function had just written.
  *
  * `IdentitiesOnly yes` is the line that does the work and the line that is forgotten:
  * without it ssh offers every identity the agent holds, GitHub accepts the FIRST one it
@@ -71,20 +79,55 @@ export const keyStep = (input: {
  * deploy key the mistake is worse than cosmetic — the wrong identity has different rights
  * on a different set of repositories.
  */
-export const sshConfigBlock = (input: { readonly host: string; readonly key: string }): string =>
+export const sshConfigBlock = (input: {
+  readonly alias: string;
+  readonly host: string;
+  readonly key: string;
+}): string =>
   [
-    `Host ${input.host}`,
+    `Host ${input.alias}`,
     `  HostName ${input.host}`,
     "  User git",
     `  IdentityFile ${input.key}`,
     "  IdentitiesOnly yes",
   ].join("\n");
 
-/** Whether `~/.ssh/config` already speaks about that host — by its `Host` line, not by luck. */
-export const hasHostEntry = (config: string, host: string): boolean =>
+/**
+ * WHAT THIS COMMAND REFUSES TO WRITE, and why it refuses instead of guessing.
+ *
+ * The defect above was typed as `--host github-crew` by a human who meant an alias, and
+ * the command silently produced a block ssh cannot use. Splitting the two values fixes
+ * the block but not that keystroke: `--host github-crew` still means "GitHub lives at
+ * `github-crew`", which resolves nowhere. A name with no dot is not a host on any network
+ * this command can reach, so it is refused BY NAME, and the refusal names BOTH exits —
+ * the alias flag for the identity case, a full domain for a GitHub Enterprise host.
+ *
+ * The alias is checked for the one thing that would corrupt the file rather than the
+ * lookup: `Host` takes a whitespace-separated list, so an alias holding a space silently
+ * declares two of them.
+ */
+export const hostRefusal = (input: {
+  readonly alias: string;
+  readonly host: string;
+}): string | undefined => {
+  if (!input.host.includes(".") || /\s/.test(input.host))
+    return `--host '${input.host}' is not a host of GitHub: a name with no dot resolves nowhere, and 'HostName ${input.host}' is a block ssh refuses to use. If that is this box's LOCAL ALIAS (a second identity on one box), it is '--alias ${input.host}' and the host stays '--host github.com'; if it really is a GitHub Enterprise host, name it in full ('--host github.example.com')`;
+  if (/\s/.test(input.alias) || input.alias === "")
+    return `--alias '${input.alias}' is not one name: an ssh 'Host' line takes a whitespace-separated LIST, so this would declare several aliases and pin the key to each of them. Name one word — the alias goes into 'git@<alias>' and into the remote of a checkout`;
+  return undefined;
+};
+
+/**
+ * Whether `~/.ssh/config` already speaks about that ALIAS — by its `Host` line, not by
+ * luck. The question is asked of the alias and not of the host on purpose: the file may
+ * legitimately hold three blocks whose `HostName` is `github.com` and whose aliases are
+ * three different identities, and matching on the host would read the first of them as
+ * "this one is already there".
+ */
+export const hasHostEntry = (config: string, alias: string): boolean =>
   config
     .split("\n")
-    .some((line) => /^\s*Host\s+(.*)$/i.test(line) && hostsOf(line).includes(host.toLowerCase()));
+    .some((line) => /^\s*Host\s+(.*)$/i.test(line) && hostsOf(line).includes(alias.toLowerCase()));
 
 const hostsOf = (line: string): readonly string[] =>
   (/^\s*Host\s+(.*)$/i.exec(line)?.[1] ?? "")
@@ -101,29 +144,34 @@ const hostsOf = (line: string): readonly string[] =>
  */
 export const sshConfigStep = (input: {
   readonly path: string;
+  readonly alias: string;
   readonly host: string;
   readonly key: string;
   readonly present: boolean;
   readonly hasEntry: boolean;
 }): InitStep => {
   const name = "github: ssh config";
+  // Both values in the row, always — the operator reading the checklist is the only
+  // person who can catch an alias pointed at the wrong host, and they cannot catch what
+  // the row does not print.
+  const block = `'Host ${input.alias}' → 'HostName ${input.host}'`;
   if (!input.present) {
     return {
       name,
       action: "create",
-      detail: `${input.path} — created with a 'Host ${input.host}' block pointing at ${input.key} (IdentitiesOnly yes: without it ssh offers every key it has and GitHub takes the first one that fits)`,
+      detail: `${input.path} — created with a ${block} block pointing at ${input.key} (IdentitiesOnly yes: without it ssh offers every key it has and GitHub takes the first one that fits)`,
     };
   }
   return input.hasEntry
     ? {
         name,
         action: "keep",
-        detail: `${input.path} already speaks about '${input.host}' — left exactly as it is; check by hand that it names ${input.key} and 'IdentitiesOnly yes'`,
+        detail: `${input.path} already speaks about '${input.alias}' — left exactly as it is; check by hand that it names ${input.key}, 'HostName ${input.host}' and 'IdentitiesOnly yes'`,
       }
     : {
         name,
         action: "set",
-        detail: `${input.path} — a 'Host ${input.host}' block appended, pointing at ${input.key}`,
+        detail: `${input.path} — a ${block} block appended, pointing at ${input.key}`,
       };
 };
 
@@ -131,7 +179,7 @@ export const sshConfigStep = (input: {
  * THE FOUR CLICKS, WITH THE PUBLIC HALF. Printed rather than done: this is the step that
  * grants power, and the only participant allowed to grant it is the human reading this.
  */
-export const deployKeyHint = (input: { readonly pub?: string; readonly host: string }): string => {
+export const deployKeyHint = (input: { readonly pub?: string; readonly alias: string }): string => {
   const key =
     input.pub === undefined
       ? "(the public half is printed once the key exists — run this with --write)"
@@ -145,7 +193,7 @@ export const deployKeyHint = (input: { readonly pub?: string; readonly host: str
     "  the form is decided (john, 2026-08-01): a deploy key of this repository, not a separate",
     "  account and not a machine user — a machine user is the answer only when one box serves",
     "  several repositories, since a deploy key belongs to exactly one",
-    `  then: ssh -T git@${input.host} — GitHub answers with the name of what it let in`,
+    `  then: ssh -T git@${input.alias} — GitHub answers with the name of what it let in`,
   ].join("\n");
 };
 
@@ -189,8 +237,13 @@ export const readSshProbe = (said: string): SshProbe => {
   return { kind: "unreachable", said: said.trim() };
 };
 
-/** The probe as a row of the same checklist, so it reads beside the other three. */
-export const probeStep = (probe: SshProbe, host: string): InitStep => {
+/**
+ * The probe as a row of the same checklist, so it reads beside the other three. It is
+ * asked of the ALIAS, because the alias is what the block just written defines and what
+ * every later `git push` will type: probing the host directly would answer for whatever
+ * identity ssh picks for `github.com`, which is the question this command is not asking.
+ */
+export const probeStep = (probe: SshProbe, alias: string): InitStep => {
   const name = "github: ssh -T";
   if (probe.kind === "deploy-key") {
     return {
@@ -216,7 +269,7 @@ export const probeStep = (probe: SshProbe, host: string): InitStep => {
   return {
     name,
     action: "missing",
-    detail: `no answer from git@${host} — ${probe.said === "" ? "ssh said nothing at all" : probe.said}`,
+    detail: `no answer from git@${alias} — ${probe.said === "" ? "ssh said nothing at all" : probe.said}`,
   };
 };
 

@@ -928,6 +928,28 @@ agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--o
                             # it REACHES THE NETWORK and SPENDS ONE AGENT CALL — those facts are in no file
                             # --offline leaves them unasked and SAYS so in the rows, never passes them
                             # --ref may be left out (the operator's set): `orchestrator.ref` of the tree
+agent-protocol init github  [--ref <ref>] [--local-config <p>] [--instance <name>] [--key <path>] \
+                            [--host <h>] [--alias <a>] [--comment <c>] [--no-probe] [--write]
+                            # THE BOX'S IDENTITY FOR GITHUB (thread 019, п.4): the one step of the
+                            # commissioning that makes material OUTSIDE the repository and outside both
+                            # configs — an ed25519 pair in ~/.ssh, a `Host` block beside it, and an answer
+                            # from GitHub about who this box is. It never overwrites a key, never grants
+                            # itself access (the public half and the four clicks are PRINTED) and never
+                            # reads the probe's EXIT CODE: `ssh -T` exits 1 on a working key
+                            # `--host` IS THE GITHUB HOST, `--alias` IS THE NAME THIS BOX TYPES (thread
+                            # 004). They are two values and the block carries them in two lines:
+                            # `HostName <host>` is where the name resolves, `Host <alias>` is what goes
+                            # into `git@<alias>`, into the remote of a checkout and into the probe
+                            # `--alias` DEFAULTS TO `--host`, and that default is right BY MEANING rather
+                            # than by coincidence: with nothing to distinguish, the name you type IS the
+                            # host. Until 2026-08-18 ONE value wrote BOTH lines — correct on the only
+                            # documented use (`--host github.com`, where the two happen to coincide) and
+                            # unresolvable in the one case the flag exists for, a SECOND identity on one
+                            # box: `Could not resolve hostname github-crew`, exit 2, measured on `hetzner`
+                            # A `--host` WITH NO DOT IS REFUSED BY NAME, before the key is generated, and
+                            # the refusal names BOTH exits — `--alias <that>` if it is this box's local
+                            # alias, a full domain if it really is a GitHub Enterprise host. Splitting the
+                            # values fixes the block, not the keystroke that produced the defect
 agent-protocol roles list   --ref <ref>                                    # the list of roles
 agent-protocol schema migrate [--repo <p>] [--root <comms>] [--to <n>] [--write]   # protocol version → version
                                                                            # (no --ref: it plans against the tree it rewrites)
