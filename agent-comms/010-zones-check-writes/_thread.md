@@ -239,3 +239,64 @@ waiting-on → curator.
 2. **Развилка §4: вариант 2** — слово john «forbidden дозакрыть»: `.github/workflows` и `agent-protocol.json` добавляются в `zones.forbidden` роли `curator` (только её; для dev-core — нельзя, оговорка принята). Конфиг-PR — класс Д-1 — за тобой; merge — кнопка john (док власти).
 
 waiting-on → curator.
+
+## msg-005 · from: curator · 2026-08-18 · expects: ack
+
+**Требуется решение john: кнопка на PR #18** — конфиг-PR класса Д-1, которым закодировано твоё решение 21:03Z (вариант 2 развилки §4): `.github/workflows` и `agent-protocol.json` в `zones.forbidden` роли `curator`. Голова зелёная, факты ниже.
+
+## 1. Что сделано
+
+PR **#18**, ветка `curator/010-zones-forbidden-curator`, голова **`aa7227bf3bc9069c5f4fe338c8999e725ff6a4ee`**, коммит `2026-08-18T21:12:31Z`, база `main`, `mergeable: MERGEABLE`.
+
+Дифф — два файла:
+
+- `agent-protocol.json`, `roles[curator].zones.forbidden`: `["packages"]` → `["packages", ".github/workflows", "agent-protocol.json"]`. **Только роль `curator`** — `dev-core` не тронут, оговорка треда (воркфлоу CI — его работа, PR #12/тред 007) соблюдена;
+- `docs/roles/curator.md:111`, строка «Зоны роли» приведена к данным. **Это единственная правка сверх буквы решения, заявляю вслух:** строка отставала (не несла `docs/install-notes.md` из #15) и не называла критерий двери. Она пересказывает данные и уже смёрженный факт #16, новой нормы не вводит — но если ты сочтёшь, что Д-1 этим размыт, я выношу её отдельным PR одной правкой.
+
+## 2. Поведение двери — замер, а не рассуждение
+
+```
+$ zones check --ref origin/main --role curator \
+    --paths agent-protocol.json,.github/workflows/checks.yml,docs/roles/curator.md
+agent-protocol: zones — 3 path(s) of 'curator': none under a forbidden prefix
+  ('zones.writes' narrows nothing — 'forbidden' is the whole verdict)
+exit=0
+
+$ zones check --ref aa7227b --role curator --paths <те же три>
+agent-protocol: 'curator' may not write these paths
+  (curator: zones — writes denied under packages, .github/workflows, agent-protocol.json):
+  agent-protocol.json
+  .github/workflows/checks.yml
+exit=1
+```
+
+Вердикт переключается ровно на двух названных путях; `docs/roles/curator.md` остаётся зелёным. `config check --ref aa7227b` → ok (protocol version 17, 3 roles, 1 instance).
+
+## 3. Зелёный снят своей рукой
+
+`ci-outcome.yml` заморожен — исход событием не приезжает.
+
+```
+$ gh run list --commit aa7227bf3bc9069c5f4fe338c8999e725ff6a4ee
+completed  success  …  checks  curator/010-zones-forbidden-curator  pull_request  32186558787  3m33s  2026-08-18T21:13:09Z
+$ gh pr checks 18
+checks  pass  3m29s
+```
+
+Старт прогона `21:13:09Z` — **позже коммита головы** (`21:12:31Z`): зелёный висит именно на этой голове.
+
+## 4. Следствие, которое надо знать ДО кнопки
+
+После merge дверь отказывает curator **на этом же диффе**: следующая правка `agent-protocol.json` или `.github/workflows/**` собственной рукой curator станет невозможна — она пойдёт задачей `dev-core` (его `forbidden` = `docs/roles`) либо твоей рукой. Это и есть смысл варианта 2 — граница «к john» перестаёт держаться текстом карточки, — но цена в том, что конфиг-PR у curator больше нет, включая исправление этой же записи. Называю, чтобы решение было принято с открытыми глазами; отменять рекомендацию не прошу.
+
+`merge-gate` здесь не звался: гард 1 опирается на вердикт ревьюера, `claude-review.yml` заморожен до `workflow_dispatch`, право merge роли не включено — кнопка твоя по действующему порядку. Класс Д-1 объявлен в описании PR со ссылкой на файл сообщения `agent-comms/010-zones-check-writes/messages/2026-08-18T21-04-50Z-curator.md`.
+
+## 5. Состояние треда
+
+Тред **не закрываю**: работа принимается по факту merge, не по зелёному прогону. #16 смёржен, #18 ждёт кнопки — после неё закрытие треда 010 за curator одним ходом.
+
+Незакоммиченного нет: оба рабочих дерева (`.worktrees/curator`, корневой чекаут) чисты, всё в ветке `curator/010-zones-forbidden-curator` и запушено.
+
+Парковка: `parked-on: john`, ход остаётся у curator.
+
+waiting-on → curator.
