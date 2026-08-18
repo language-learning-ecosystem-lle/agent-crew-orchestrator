@@ -71,6 +71,7 @@ import {
   renderThreadNotices,
   renderThreadWarnings,
   renderUnreadThreads,
+  type ThreadFailure,
 } from "./fs/comms.js";
 import {
   fileExistsAtRef,
@@ -419,6 +420,7 @@ import {
 import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import { claudeCodeEffortSchema, type Launch, type Role } from "./roles/schema.js";
+import { renderWake } from "./roles/wake.js";
 import {
   type ChangedPathsSource,
   changedPathsGitArgs,
@@ -2879,26 +2881,24 @@ const newThread = (argv: readonly string[]): void => {
   }
 };
 
-const mail = (argv: readonly string[]): void => {
-  // THE MAIL ROOT IS A FACT ABOUT THE MACHINE (R26), so `--root` stops being
-  // obligatory here: the reading half of the agent's interface, called from a role's
-  // workspace, now finds the real mail on its own. It used to be mandatory precisely
-  // because the fallback resolved against the caller's worktree, i.e. against a
-  // directory holding no mail — which is why the role cards carry the flag by hand.
-  const root = flag(argv, "--root") ?? pathsFrom(argv).mailRoot;
-  const role = required(argv, "--role");
-  const registry = registryFrom(argv, repoOf(root));
-  if (!registry.isKnown(role)) fail(`role '${role}' is not listed in the config`, 2);
-
+/**
+ * The threads waiting on a role, IN QUEUE ORDER (R5), plus what could not be read.
+ *
+ * It is one function because two commands must never answer "what is my input"
+ * differently: `mail` prints the ids for a script, `wake` says them inside the entry
+ * text of a role — and a second implementation of the same question is the way the
+ * two would drift apart on the day the ordering changes.
+ */
+const waitingThreadsFor = (
+  root: string,
+  role: string,
+  registry: ReturnType<typeof registryFrom>,
+): { hits: readonly string[]; failures: readonly ThreadFailure[] } => {
   // Mail is computed from the THREADS, not from the derived INDEX: otherwise a
   // failure of the index generator would blind the watch and the keeper (pain 5,
   // thread 008).
   const { threads, failures } = loadThreads(root, registry.ids());
   const parsed = threads.map((loaded) => loaded.thread);
-  // IN QUEUE ORDER, not in the order of the directories (R5). The FORM of the output
-  // is untouched — one thread id per line, because it is read by scripts — but a role
-  // reading its own mail is told the same thing the daemon decides by: what to take
-  // first. Two answers to "which one now" would be worse than none.
   const hits = orderCandidates(
     threadsWaitingOn(parsed, role).map((thread): RankedCandidate => {
       const messages = parsed.find((t) => t.id === thread)?.messages ?? [];
@@ -2915,6 +2915,25 @@ const mail = (argv: readonly string[]): void => {
       };
     }),
   ).map((candidate) => candidate.thread);
+  return { hits, failures };
+};
+
+const mail = (argv: readonly string[]): void => {
+  // THE MAIL ROOT IS A FACT ABOUT THE MACHINE (R26), so `--root` stops being
+  // obligatory here: the reading half of the agent's interface, called from a role's
+  // workspace, now finds the real mail on its own. It used to be mandatory precisely
+  // because the fallback resolved against the caller's worktree, i.e. against a
+  // directory holding no mail — which is why the role cards carry the flag by hand.
+  const root = flag(argv, "--root") ?? pathsFrom(argv).mailRoot;
+  const role = required(argv, "--role");
+  const registry = registryFrom(argv, repoOf(root));
+  if (!registry.isKnown(role)) fail(`role '${role}' is not listed in the config`, 2);
+
+  // IN QUEUE ORDER, not in the order of the directories (R5). The FORM of the output
+  // is untouched — one thread id per line, because it is read by scripts — but a role
+  // reading its own mail is told the same thing the daemon decides by: what to take
+  // first. Two answers to "which one now" would be worse than none.
+  const { hits, failures } = waitingThreadsFor(root, role, registry);
   for (const id of hits) out(id);
   // WHOEVER COUNTS THE INPUT NAMES WHAT IT COULD NOT READ, AND HOW MUCH (065.4). The
   // per-thread line already existed and each cause already had its own words; what did
@@ -2943,6 +2962,50 @@ const mail = (argv: readonly string[]): void => {
       2,
     );
   }
+};
+
+/**
+ * `wake <role>` — the entry of a role, printed by the package (see `roles/wake.ts`
+ * for WHY it is a command rather than a file shipped in the tarball).
+ *
+ * This half is only the collection: the role from the config, the mail branch from
+ * the config, the mail root of THIS machine (R26), the waiting threads from the same
+ * function `mail` uses. The words are `renderWake`, which touches neither disk nor
+ * config and is therefore under an ordinary unit test.
+ *
+ * IT PRINTS INSTEAD OF DYING when the mail cannot be read: an entry that refuses
+ * because one thread is broken would leave the role with no instruction at all, and
+ * the unreadable ones are named inside the text (065.4). The one refusal kept is an
+ * unknown role — there is nothing truthful to print about it.
+ */
+const wake = (argv: readonly string[]): void => {
+  const role = argv[0];
+  if (role === undefined || role.startsWith("-")) {
+    fail("wake needs the role as its first argument: 'wake <role> --ref <ref>'", 2);
+    return;
+  }
+  const rest = argv.slice(1);
+  const root = flag(rest, "--root") ?? pathsFrom(rest).mailRoot;
+  const loaded = configFrom(rest, root);
+  const registry = loaded.registry;
+  const known = registry.get(role);
+  if (known === undefined) fail(`role '${role}' is not listed in the config`, 2);
+
+  const { hits, failures } = waitingThreadsFor(root, role, registry);
+  out(
+    renderWake({
+      role: {
+        id: role,
+        instructions: (known?.instructions ?? []).map((entry) => entry.path),
+      },
+      cli: flag(rest, "--as") ?? "agent-protocol",
+      ref: required(rest, "--ref"),
+      mailRoot: root,
+      mailBranch: loaded.config.mail.branch,
+      threads: hits,
+      unreadable: renderThreadFailures(failures),
+    }),
+  );
 };
 
 /**
@@ -10235,6 +10298,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "mail") {
     guardArguments("mail", argv.slice(1));
     mail(argv.slice(1));
+  } else if (command === "wake") {
+    guardArguments("wake", argv.slice(1));
+    wake(argv.slice(1));
   } else if (command === "await-input") {
     guardArguments("await-input", argv.slice(1));
     await awaitInput(argv.slice(1));
