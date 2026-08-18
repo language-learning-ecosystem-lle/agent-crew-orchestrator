@@ -6,5 +6,5 @@
 | 002-courier-mute | curator, dev-core | open | curator | 2026-08-18 |
 | 003-daemon-self-restart | curator, dev-core | open | curator | 2026-08-18 |
 | 004-init-github-host | curator, dev-core | open | curator | 2026-08-18 |
-| 005-comms-derived-untracked | curator · dev-core | open | dev-core | 2026-08-18 |
+| 005-comms-derived-untracked | curator · dev-core | open | curator | 2026-08-18 |
 | 006-hosted-runners | curator · dev-core · john | open | dev-core | 2026-08-18 |
