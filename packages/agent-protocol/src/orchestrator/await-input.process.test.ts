@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
+import { waitFor } from "../testing/wait-for.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -215,7 +216,10 @@ describe("await-input — the blocking half of the interactive turn (R19)", () =
     const contour_ = contour();
     ask(contour_, { push: true });
 
-    const child = spawn(TSX, argv(contour_, ["--timeout", "30", "--poll", "1"]), {
+    // The waiter's OWN ceiling is generous on purpose: what this test asserts is that a
+    // remote answer is seen at all, and a ceiling sized for an idle box would make a
+    // loaded one fail for the waiter's patience instead (thread 084).
+    const child = spawn(TSX, argv(contour_, ["--timeout", "120", "--poll", "1"]), {
       cwd: contour_.repo,
       env: env(contour_),
       stdio: ["ignore", "pipe", "pipe"],
@@ -224,7 +228,12 @@ describe("await-input — the blocking half of the interactive turn (R19)", () =
     child.stdout?.on("data", (chunk: Buffer) => {
       out += chunk.toString("utf8");
     });
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    // THE WAIT IS ANNOUNCED BEFORE THE ANSWER IS GIVEN (thread 084): the fixed two
+    // seconds were an estimate of how long this box needs to start a `tsx` under load,
+    // and an answer pushed before the waiter exists proves nothing about a waiter that
+    // FETCHES. Its own first line says it is up, and that is the state to wait for.
+    const waiting = await waitFor(() => out.trim() !== "");
+    expect(waiting, "the waiter never said a word — it never got up").toBe(true);
     answer(contour_);
 
     const code = await new Promise<number>((resolve) => {
@@ -234,5 +243,6 @@ describe("await-input — the blocking half of the interactive turn (R19)", () =
     expect(code).toBe(0);
     expect(out).toContain("the answer arrived");
     expect(existsSync(markerPath(contour_))).toBe(false);
-  }, 60_000);
+    // Above the hang-sized ceiling of the wait inside it (thread 084).
+  }, 180_000);
 });

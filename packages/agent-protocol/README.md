@@ -604,6 +604,32 @@ a breakage that is not there. `detail` is printed into a log that lives in a cro
 mailbox, so a transport that puts a token in it leaks it for ever — `transport-telegram`
 scrubs its own secrets out of every line it emits, and that is a test, not a promise.
 
+**Declaring a transport is a separate act from naming it, and the courier is mute
+until both are done** (thread `002-courier-mute`). `notifications.transport.module` is
+a module specifier and nothing more: `import()` resolves it from the file system like
+any other import, so a package that the repository has not declared as a dependency
+does not resolve, however correct the name is. That failure is loud (`the transport
+'X' was not loaded: … — it is named in the config as notifications.transport.module
+and must be a dependency of the repository`) and it costs the circuit its entire
+notification channel while it lasts: "your turn", the escalation park on a human and
+`stalled` all go through this one seam.
+
+**The dependency belongs to the HOST REPOSITORY, not to this package.** A transport
+declared in `packages/agent-protocol/package.json` would put a chat vendor into the
+core's dependency graph, which is the thing the seam exists to prevent — and the move
+into a repository of its own would carry Telegram along. Declared in the workspace
+root (`"transport-telegram": "workspace:*"` in the root `package.json`), the module
+resolves from `packages/agent-protocol` by ordinary upward lookup, and the core still
+learns the vendor's name from the config alone. What holds this in place is a test
+that reads the repository's own config, loads whatever it names and never spells the
+vendor out (`src/notify/transport.test.ts`), and a seam test on the plugin's side that
+goes name → resolution → the wire, with the double at the network rather than at the
+module boundary (`packages/transport-telegram/src/seam.test.ts`).
+
+One operational consequence: a merge that changes this declaration is not in force on
+a box until `pnpm install` has run there — the resolution lives in `node_modules`, not
+in the config the daemon re-reads every tick.
+
 A role's `instructions` is an array, and the order is the reading order (the
 general rules of the project first, then the role card). `kind: external` means the
 text lies in the repository but is EXECUTED outside (a skill on the chat side) —
