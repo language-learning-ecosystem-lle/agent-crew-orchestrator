@@ -65,7 +65,7 @@
           "docs/protocol-reference.md",
           "docs/install-notes.md"
         ],
-        "forbidden": ["packages"]
+        "forbidden": ["packages", ".github/workflows", "agent-protocol.json"]
       },
       "instructions": [
         {

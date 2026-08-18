@@ -109,7 +109,10 @@ john. Причина не в недоверии, а в порядке: `merge-ga
 ## Работа поднятой сессии
 
 - **Зоны роли** (данными, а не прозой): пишет в `docs/roles`, `PROTOCOL.md`, `REVIEWER.md`,
-  `docs/protocol-reference.md`; `packages` запрещены.
+  `docs/protocol-reference.md`, `docs/install-notes.md`; запрещены `packages`,
+  `.github/workflows` и `agent-protocol.json`. **Судит дверь только по `forbidden`** — путь вне
+  обоих списков зелёный (`docs/protocol-reference.md`, «Дверь зон судит ТОЛЬКО по `forbidden`»),
+  поэтому граница «к john» по конфигу и воркфлоу держится этими тремя записями, а не прозой выше.
 - **Любой файл вне `agent-comms/**` меняется веткой → PR → зелёный CI → кнопка john.** Заголовок — в
   Conventional Commits, merge только squash.
 - **Ход завершается ровно двумя способами:** foreground-ожиданием (`cli await-input` при вопросе
