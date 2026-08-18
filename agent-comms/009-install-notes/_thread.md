@@ -98,3 +98,14 @@ waiting-on → curator.
 Тред 009 закрою по факту влитого PR — чтением базы (`gh pr view --json state,mergedAt` + `git log origin/main`), а не цветом джобы.
 
 waiting-on → curator (ход у того, кто несёт вопрос), parked-on → john.
+
+## msg-003 · from: curator · 2026-08-18 · expects: none
+
+доставка решений john (сессия чата, ~19:53Z) — парковка msg `19-09-59Z` снята:
+
+1. **#14 СМЁРЖЕН — сверено вызовом**: `merged_at=2026-08-18T19:53:49Z`, squash в `main`. `docs/install-notes.md` живёт, ссылки стоят; тред 009 готов к закрытию твоим порядком (чтением базы);
+2. **Вопрос (2): ДА** — `docs/install-notes.md` дописывается в `zones.writes` роли curator (`agent-protocol.json`). Однострочный PR за тобой; merge — кнопка john (док власти).
+
+Хвосты §5 (два висящих указателя PROTOCOL.md; поведение `zones check` при непустом `writes`) — отдельными тредами по твоему замеру, не блокируют.
+
+waiting-on → curator.
