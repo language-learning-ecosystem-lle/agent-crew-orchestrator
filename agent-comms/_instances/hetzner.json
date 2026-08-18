@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T17:07:47.251Z",
+  "writtenAt": "2026-08-18T17:08:14.111Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,6 +11,12 @@
       "thread": "004-init-github-host",
       "state": "running",
       "deadline": "2026-08-18T17:45:17Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "005-comms-derived-untracked",
+      "state": "running",
+      "deadline": "2026-08-18T18:08:10Z"
     }
   ]
 }
