@@ -1,16 +1,9 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T17:15:38.374Z",
+  "writtenAt": "2026-08-18T17:19:00.417Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "004-init-github-host",
-      "state": "running",
-      "deadline": "2026-08-18T17:55:31Z"
-    }
-  ]
+  "leases": []
 }
