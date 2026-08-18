@@ -474,11 +474,26 @@ describe("running a role as a process — the outcome is always recorded", () =>
     // producing" — and the session's own pid file says so first-hand: the log is
     // opened by the SUPERVISOR before the spawn, so it can exist while there is still
     // nothing to kill.
-    await waitFor(() => existsSync(pidFile) && readFileSync(pidFile, "utf8").trim() !== "");
+    //
+    // AND ITS ANSWER IS READ (thread 084): a wait whose boolean is discarded is a clock
+    // again the moment the ceiling runs out — the test walks on and kills a supervisor
+    // that never got to a session, then fails about the invariant instead of about the
+    // start. The lease on disk is the second half of the same precondition: it is
+    // written before the spawn, so a session with no `lease-acquired` behind it is a
+    // start that has not happened yet.
+    const started = await waitFor(
+      () =>
+        existsSync(pidFile) &&
+        readFileSync(pidFile, "utf8").trim() !== "" &&
+        existsSync(journalPath(repo)) &&
+        journal(repo).some((event) => event.kind === "lease-acquired"),
+    );
+    expect(
+      started,
+      `the supervisor never got as far as a leased session; it said: ${readFileSync(supervisorOut, "utf8")}`,
+    ).toBe(true);
     const sessionPid = Number(readFileSync(pidFile, "utf8").trim());
     expect(Number.isInteger(sessionPid) && sessionPid > 0).toBe(true);
-    // A moment of real work after the spawn, so the kill hits a live session.
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
     process.kill(-(child.pid as number), "SIGTERM");
     // AND HERE TOO, THE STATE RATHER THAN A CLOCK — with the ceiling raised to the
     // size of a HANG. The twenty seconds this replaced were the last deadline in the
@@ -617,8 +632,26 @@ describe("running a role as a process — the outcome is always recorded", () =>
       },
     );
     try {
-      await waitFor(() => existsSync(pidFile) && readFileSync(pidFile, "utf8").trim() !== "");
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      // THE PRECONDITION IS ASSERTED, NOT ASSUMED (thread 084). This wait used to have
+      // its answer discarded and a fixed 2000 ms bolted on after it: on the loaded pool
+      // of 2026-08-18 the supervisor was still inside `settleRun` when the ceiling ran
+      // out, the test killed a process that held no lease yet, and the failure read as
+      // "the release waited on the unlock" about a release that was never owed. The
+      // supervisor's captured output in that red run said so in one line — it had
+      // printed `continuation` and nothing after it. What this test needs before the
+      // signal is a session that EXISTS and a lease that is already on disk; both are
+      // facts with names, so neither is a clock.
+      const started = await waitFor(
+        () =>
+          existsSync(pidFile) &&
+          readFileSync(pidFile, "utf8").trim() !== "" &&
+          existsSync(journalPath(repo)) &&
+          journal(repo).some((event) => event.kind === "lease-acquired"),
+      );
+      expect(
+        started,
+        `the supervisor never got as far as a leased session; it said: ${readFileSync(supervisorOut, "utf8")}`,
+      ).toBe(true);
       process.kill(-(child.pid as number), "SIGTERM");
 
       // A CEILING WELL UNDER THE STALL, and here that is not impatience but the whole
@@ -844,8 +877,15 @@ describe("attached by default, detached on request (R12)", () => {
     // that we did not simply wait for it.
     expect(returnedAfter).toBeLessThan(6_000);
 
-    // …and the detached supervisor closes the lease on its own, later.
-    await new Promise((resolve) => setTimeout(resolve, 12_000));
+    // …and the detached supervisor closes the lease on its own, later. WAITED FOR AS A
+    // STATE (thread 084): twelve seconds is the stub's six plus a guess about how long
+    // a start takes on this machine, and a guess about a loaded machine is how this file
+    // went red. The ceiling is the hang-sized one — what is asserted is that the release
+    // ARRIVES without this process watching, not that it arrives inside twelve seconds.
+    const released = await waitFor(
+      () => existsSync(journalPath(repo)) && journal(repo).at(-1)?.kind === "lease-released",
+    );
+    expect(released, "the detached supervisor never closed the lease").toBe(true);
     expect(journal(repo).at(-1)).toMatchObject({ kind: "lease-released" });
 
     // Its own words went to a file: a background run has no terminal, and a
@@ -854,7 +894,10 @@ describe("attached by default, detached on request (R12)", () => {
     const supervisor = readdirSync(dir).filter((name) => name.endsWith(".supervisor"));
     expect(supervisor).toHaveLength(1);
     expect(readFileSync(join(dir, supervisor[0] as string), "utf8").length).toBeGreaterThan(0);
-  }, 60_000);
+    // The timeout is above the hang-sized ceiling of the wait, not around the twelve
+    // seconds it replaced: a test deadline under its own wait turns the hang ceiling
+    // back into a clock (thread 084).
+  }, 180_000);
 
   it("--detach without --write is REFUSED: a dry run has nothing to background", () => {
     const { repo } = contour();

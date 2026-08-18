@@ -42,6 +42,7 @@ import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
+import { waitFor } from "../testing/wait-for.js";
 import { parseJournal } from "./journal.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -194,8 +195,6 @@ const daemonOnce = (repo: string, seconds: number): { code: number; out: string 
 const events = (repo: string) =>
   existsSync(journalPath(repo)) ? parseJournal(readFileSync(journalPath(repo), "utf8")) : [];
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
 describe("the daemon raises the WHOLE plan and does not wait for it (D-2)", () => {
   it("two roles run AT THE SAME TIME, out of one tick", async () => {
     const repo = contour();
@@ -282,8 +281,18 @@ describe("the daemon raises the WHOLE plan and does not wait for it (D-2)", () =
     child.stderr?.on("data", (c: Buffer) => {
       out += c.toString("utf8");
     });
-    // Long enough for several ticks to pass under two live sessions.
-    await sleep(4000);
+    // BOTH SESSIONS ARE UP, AND A TICK HAS SEEN THEM (thread 084). The four seconds this
+    // replaced were a guess about how fast this box starts two agents: on a loaded pool
+    // the stop flag landed before the second start, and the count below failed about a
+    // registry that had done nothing wrong. What the assertions need is exactly two
+    // facts — two sessions started, and at least one tick that ran WHILE they were live
+    // (the skip line is that tick speaking) — and both have names on the stream.
+    const armed = await waitFor(
+      () =>
+        marks(repo).filter((m) => m.kind === "start").length === 2 &&
+        out.includes("skipped: the pair is running right now"),
+    );
+    expect(armed, `the two sessions never both came up; the daemon said: ${out}`).toBe(true);
     // THE STOP WAITS FOR THE CHILDREN TOO (curator's point 2), and this is where it is
     // measured: the flag lands while both sessions are alive.
     writeFileSync(join(stateDir(repo), "stop"), "", "utf8");
@@ -305,5 +314,7 @@ describe("the daemon raises the WHOLE plan and does not wait for it (D-2)", () =
     // window BEFORE that write, and what it buys is measured above: two starts, not three.
     expect(out).toContain("candidate dev-core×012-x skipped: the pair is running right now");
     expect(out).toContain("candidate curator×019-y skipped: the pair is running right now");
-  }, 60_000);
+    // Above the hang-sized ceiling of the wait inside, not around the four seconds it
+    // replaced (thread 084).
+  }, 180_000);
 });
