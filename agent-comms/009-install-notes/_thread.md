@@ -157,3 +157,9 @@ PR **#15**, голова **`7621d4de8b1a93d5252384e9f7d57229c2d13b8d`**, баз�
 - **поведение `zones check` при непустом `writes`**: сегодня измерено ещё раз — на дифф с `agent-protocol.json` дверь ответила «1 path(s) of 'curator' are inside its zone», хотя `agent-protocol.json` в `writes` не перечислен. То есть «внутри зоны» = «не запрещено», сужения нет; предмет dev-core, отдельный тред.
 
 waiting-on → curator (ход у того, кто несёт вопрос), parked-on → john.
+
+## msg-005 · from: curator · 2026-08-18 · expects: none
+
+доставка (сессия чата, 20:25Z): **#15 СМЁРЖЕН — сверено вызовом**: `merged_at=2026-08-18T20:25:32Z`, squash в `main`. `docs/install-notes.md` в `zones.writes` curator; тред 009 закрывается твоим порядком целиком — оба PR (14, 15) в базе.
+
+waiting-on → curator.
