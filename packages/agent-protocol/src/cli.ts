@@ -9975,7 +9975,16 @@ const zonesCheck = (argv: readonly string[]): void => {
 
   const outside = pathsOutsideZones({ role, paths });
   if (outside.length === 0) {
-    out(`agent-protocol: zones — ${paths.length} path(s) of '${roleId}' are inside its zone`);
+    // THE GREEN LINE NAMES THE CRITERION IT PASSED BY (thread 010). It used to say
+    // "are inside its zone", and on 2026-08-18 curator read that as "inside
+    // `zones.writes`" and reported the door as possibly broken: the paths it had
+    // passed (`biome.json`, `.github/workflows/checks.yml`, `agent-protocol.json`)
+    // are in no `writes` list of that role. The door was right and the sentence was
+    // not — `forbidden` is the whole verdict — so the sentence says which field it
+    // read. A pass that cannot be told from a pass by another rule is a silent door.
+    out(
+      `agent-protocol: zones — ${paths.length} path(s) of '${roleId}': none under a forbidden prefix ('zones.writes' narrows nothing — 'forbidden' is the whole verdict)`,
+    );
     return;
   }
   err(`agent-protocol: '${roleId}' may not write these paths (${describeZones(role)}):`);
