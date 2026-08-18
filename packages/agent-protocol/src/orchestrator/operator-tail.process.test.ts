@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
+import { waitFor } from "../testing/wait-for.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -277,7 +278,17 @@ describe("the watcher survives what it watches", () => {
     // Between the frames, not before them: the first frame must be allowed to resolve
     // the config for real, so what the second frame proves is the FREEZE and not a
     // command that never looked.
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    //
+    // "BETWEEN" IS A STATE, NOT TWO SECONDS (thread 084). The fixed pause measured how
+    // fast this box collects a frame: on the loaded pool of 2026-08-18 the first frame
+    // was still collecting when the origin went, and the watcher reported an honest
+    // outage over a remote the test had removed under it — `frame: unavailable`, red,
+    // on an invariant nobody had broken. Without a TTY a frame is appended and closed
+    // by a blank line, so the first `\n\n` on the stream IS "frame one has landed";
+    // after it the watcher sleeps out its interval, which is the window this deletion
+    // belongs in.
+    const landed = await waitFor(() => stdout.includes("\n\n"));
+    expect(landed, `the first frame never landed; the watcher said: ${stdout}`).toBe(true);
     rmSync(origin, { recursive: true, force: true });
 
     const code = await new Promise<number | null>((resolve) => watcher.on("close", resolve));
@@ -293,7 +304,8 @@ describe("the watcher survives what it watches", () => {
         .split("\n\n")
         .filter((block) => block.trim() !== "").length,
     ).toBeGreaterThanOrEqual(2);
-  }, 30_000);
+    // Above the hang-sized ceiling of the wait above, for the reason that wait exists.
+  }, 180_000);
 });
 
 describe("who signs a hold when nobody typed --by", () => {
