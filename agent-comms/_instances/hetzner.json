@@ -1,9 +1,16 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T20:06:55.004Z",
+  "writtenAt": "2026-08-18T20:26:22.410Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "009-install-notes",
+      "state": "running",
+      "deadline": "2026-08-18T21:06:18Z"
+    }
+  ]
 }
