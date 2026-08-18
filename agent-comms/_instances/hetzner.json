@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T21:06:02.391Z",
+  "writtenAt": "2026-08-18T21:09:28.427Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,6 +11,12 @@
       "thread": "011-protocol-dangling-pointers",
       "state": "running",
       "deadline": "2026-08-18T21:45:58Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "012-wake-watch-reserved",
+      "state": "running",
+      "deadline": "2026-08-18T22:09:24Z"
     }
   ]
 }
