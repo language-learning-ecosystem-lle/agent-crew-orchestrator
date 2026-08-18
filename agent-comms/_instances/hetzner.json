@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T17:50:02.747Z",
+  "writtenAt": "2026-08-18T17:50:19.152Z",
   "roles": [
     "curator",
     "dev-core"
@@ -9,7 +9,7 @@
     {
       "role": "curator",
       "thread": "005-comms-derived-untracked",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-18T18:24:24Z"
     },
     {
