@@ -15,12 +15,20 @@ import { HANG_CEILING_MS, waitFor } from "../testing/wait-for.js";
 import { daemonArgvFor } from "./restart.js";
 import {
   attemptsFor,
+  describeInstallSkipped,
+  describeSelfRestartForm,
+  describeSelfRestartHandback,
   describeSelfRestartStand,
+  describeSelfRestartStepFailed,
   describeSelfRestartWithheld,
+  INSTALL_INPUTS,
+  installNeeded,
   parseSelfRestartMemory,
   renderSelfRestartMemory,
+  SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
   selfRestartArgv,
+  selfRestartForm,
   selfRestartVerdict,
   spawnSelfRestart,
 } from "./self-restart.js";
@@ -355,6 +363,33 @@ describe("the line said instead", () => {
     expect(lines[3]).toContain("/box/repo");
     expect(lines[5]).toContain("2/2");
   });
+
+  // 003: the two dirty trees are two different repairs, and the line that calls both of
+  // them "uncommitted work" sends the operator of the second one looking for a commit
+  // to make. An untracked-only tree is fixed by an ignore rule and by nothing else.
+  it("calls an untracked-only tree what it is, and names the repair for it", () => {
+    const said = describeSelfRestartStand({
+      kind: "dirty",
+      checkout: "/box/repo",
+      paths: ["?? .orchestrator/", "?? .worktrees/"],
+    });
+    expect(said).toContain("untracked files in '/box/repo'");
+    expect(said).toContain(".orchestrator/");
+    expect(said).toContain(".worktrees/");
+    expect(said).toContain("NOTHING HERE IS WORK TO COMMIT");
+    expect(said).toContain("ignore rule");
+    expect(said).not.toContain("uncommitted work");
+  });
+
+  it("still calls a modified tree uncommitted work — one untracked path among them is not the other case", () => {
+    const said = describeSelfRestartStand({
+      kind: "dirty",
+      checkout: "/box/repo",
+      paths: ["M packages/agent-protocol/src/cli.ts", "?? .orchestrator/"],
+    });
+    expect(said).toContain("uncommitted work in '/box/repo'");
+    expect(said).not.toContain("ignore rule");
+  });
 });
 
 /**
@@ -379,5 +414,93 @@ describe("the line of a tick that hands over", () => {
     const said = describeSelfRestartWithheld([]);
     expect(said).toContain("this tick launches nothing");
     expect(said).toContain("nothing to withhold");
+  });
+});
+
+/**
+ * WHICH FORM OF THE REPAIR THIS PROCESS CAN ACTUALLY USE (thread 003, 2026-08-18) — the
+ * half of the decision that has no process in it, and the half where the defect of 17.08
+ * lived. A daemon under a systemd unit spawned a child and left; `KillMode=control-group`
+ * killed the child with the cgroup, the daemon exited 0, `Restart=on-failure` is blind to
+ * a clean exit, and the box stood dark for eleven and a half hours.
+ *
+ * Reproduced on a stand of two units differing in that one key (2026-08-18): the child
+ * took SIGTERM within a second of the parent's exit under `control-group` and ran every
+ * phase to the end under `process`. So the mechanism is measured, not inferred — and the
+ * repair is to stop needing a survivor rather than to weaken the unit's cleanup.
+ */
+describe("the form of the repair, and the exit that asks for a replacement", () => {
+  it("reads the supervisor off the environment — INVOCATION_ID is set by systemd and by nothing else", () => {
+    expect(selfRestartForm({ INVOCATION_ID: "9a1c" })).toBe("supervised");
+    expect(selfRestartForm({})).toBe("detached");
+    // An empty value is not a supervisor: an exported-but-blank variable is the shape a
+    // shell leaves behind, and answering "supervised" to it would make a backgrounded
+    // daemon leave for a supervisor that is not there.
+    expect(selfRestartForm({ INVOCATION_ID: "" })).toBe("detached");
+    expect(selfRestartForm({ INVOCATION_ID: "  " })).toBe("detached");
+  });
+
+  it("leaves with a NON-ZERO code — 'Restart=on-failure' is by construction blind to a clean exit", () => {
+    expect(SELF_RESTART_EXIT_CODE).not.toBe(0);
+    // Not the two this CLI already speaks: 1 is a refusal, 2 is the argument door, and a
+    // journal in which the repair is spelled like either of them is a journal that lies.
+    expect(SELF_RESTART_EXIT_CODE).not.toBe(1);
+    expect(SELF_RESTART_EXIT_CODE).not.toBe(2);
+  });
+
+  it("says which mechanism it chose, and why the other one cannot work here", () => {
+    const supervised = describeSelfRestartForm("supervised");
+    expect(supervised).toContain("supervised");
+    expect(supervised).toContain("nothing is spawned and no stop flag is set");
+    expect(supervised).toContain("cgroup");
+    expect(describeSelfRestartForm("detached")).toContain("not supervised");
+  });
+
+  it("names the code it leaves with AND what a supervisor that does not answer means", () => {
+    const said = describeSelfRestartHandback("0123456789abcdef", SELF_RESTART_EXIT_CODE);
+    expect(said).toContain("01234567");
+    expect(said).toContain(`code ${SELF_RESTART_EXIT_CODE}`);
+    // The failure mode is stated where the operator reads it: a unit without 'Restart='
+    // turns this exit into a box that stays down, and silence about that is what made
+    // the daemon of 17.08 indistinguishable from one that shut down on purpose.
+    expect(said).toContain("DOWN");
+  });
+
+  it("cancels the exit when the repair failed — a process that came back to the same drift would loop", () => {
+    const said = describeSelfRestartStepFailed(
+      "git pull --ff-only",
+      "not possible to fast-forward",
+    );
+    expect(said).toContain("NOT leaving");
+    expect(said).toContain("stays up and behind");
+    expect(said).toContain("not possible to fast-forward");
+  });
+});
+
+/**
+ * WHETHER THE INSTALLER HAS ANYTHING TO DO. It is asked because the repair runs it inside
+ * the daemon's own process now: a needless `pnpm install` costs the box tens of seconds of
+ * darkness and adds a network failure mode to the one path whose whole job is coming back.
+ */
+describe("whether a pull needs the installer run after it", () => {
+  it("runs it when the pull moved what the installer reads — at the root or in a package", () => {
+    expect(installNeeded(["package.json"])).toBe(true);
+    expect(installNeeded(["pnpm-lock.yaml"])).toBe(true);
+    expect(installNeeded(["pnpm-workspace.yaml"])).toBe(true);
+    expect(installNeeded(["packages/agent-protocol/package.json"])).toBe(true);
+    expect(installNeeded(["src/cli.ts", "packages/agent-protocol/pnpm-lock.yaml"])).toBe(true);
+  });
+
+  it("skips it when the pull moved only sources — the ordinary merge of this repository", () => {
+    expect(installNeeded(["src/cli.ts", "docs/protocol-reference.md"])).toBe(false);
+    expect(installNeeded([])).toBe(false);
+    // A name that merely ENDS in one of the words is not one of them: 'my-package.json'
+    // declares nothing, and a rule matching it would run the installer on a doc rename.
+    expect(installNeeded(["docs/my-package.json"])).toBe(false);
+  });
+
+  it("says why it was skipped — silence there reads as 'it ran and said nothing'", () => {
+    expect(describeInstallSkipped()).toContain("pnpm install skipped");
+    for (const input of INSTALL_INPUTS) expect(describeInstallSkipped()).toContain(input);
   });
 });
