@@ -54,7 +54,7 @@ import { describe, expect, it } from "vitest";
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { HANG_CEILING_MS } from "../testing/wait-for.js";
-import { parseSelfRestartMemory } from "./self-restart.js";
+import { parseSelfRestartMemory, SELF_RESTART_EXIT_CODE } from "./self-restart.js";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 const NODE_MODULES = fileURLToPath(new URL("../../../../node_modules", import.meta.url));
@@ -140,7 +140,10 @@ const contour = (): string => {
  * DECISION and the HANDOVER — the two things the old daemon does and can be held to;
  * what the successor makes of it belongs to `restart`, which has its own tests.
  */
-const homeContour = (): { readonly repo: string; readonly cli: string } => {
+const homeContour = (options?: {
+  /** Leave the HEAD ON ITS BRANCH one commit behind, so `pull --ff-only` can succeed. */
+  readonly pullable?: boolean;
+}): { readonly repo: string; readonly cli: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-selfrestart-home-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
@@ -159,12 +162,22 @@ const homeContour = (): { readonly repo: string; readonly cli: string } => {
   seedMail(origin, repo);
   git(repo, "commit", "-qm", "the ref", "--allow-empty");
   git(repo, "push", "-q", "origin", "main");
-  git(repo, "checkout", "-q", loaded);
+  // THE TWO SHAPES OF THE SAME DRIFT, and which one a case needs is the whole difference
+  // between "the decision was taken" and "the repair went through". Detached is the
+  // cheaper fixture (its `pull --ff-only` refuses, so the repair dies harmlessly and the
+  // test can only assert the DECISION); on the branch the pull fast-forwards, which is
+  // what a case about the repair COMPLETING has to have.
+  if (options?.pullable === true) git(repo, "reset", "--hard", "-q", loaded);
+  else git(repo, "checkout", "-q", loaded);
   return { repo, cli: join(repo, "src", "cli.ts") };
 };
 
-/** One tick of a real daemon over `repo`, raised from `cli`, with both its streams. */
-const tick = (cli: string, repo: string): string => {
+/** One tick of a real daemon over `repo`, raised from `cli` — both streams AND the code. */
+const tickRun = (
+  cli: string,
+  repo: string,
+  env?: Readonly<Record<string, string>>,
+): { readonly said: string; readonly status: number | null } => {
   const ran = spawnSync(
     TSX,
     [
@@ -187,14 +200,16 @@ const tick = (cli: string, repo: string): string => {
       cwd: repo,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      env: sandbox(configHome(repo)),
+      env: { ...sandbox(configHome(repo)), ...(env ?? {}) },
       timeout: HANG_CEILING_MS,
     },
   );
   // Both streams: the daemon says its verdicts on stderr and its queue on stdout, and the
   // assertions live one on each.
-  return `${ran.stdout ?? ""}${ran.stderr ?? ""}`;
+  return { said: `${ran.stdout ?? ""}${ran.stderr ?? ""}`, status: ran.status };
 };
+
+const tick = (cli: string, repo: string): string => tickRun(cli, repo).said;
 
 /**
  * THE CHECKOUT THE CODE COMES FROM — a copy of these sources with a git history of its
@@ -370,6 +385,102 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       expect(said).not.toContain("SELF-RESTART: the loaded code is behind");
       expect(said).not.toContain("handed over to the restart process");
       expect(existsSync(join(home.repo, ".orchestrator", "self-restart.json"))).toBe(false);
+    },
+    2 * HANG_CEILING_MS,
+  );
+});
+
+/**
+ * THE SEAM THE UNITS CANNOT REACH (thread 003, 2026-08-18): "it went away and it came
+ * back". A daemon under a supervisor is raised, its code is behind its ref, and what has
+ * to be true afterwards is a fact about PROCESSES — the first one left in a way its
+ * supervisor answers, the tree it left behind carries the new code, nothing it set is
+ * still on the floor to kill the next start, and the process the supervisor then raises
+ * ticks with no drift left to complain about.
+ *
+ * WHY THERE IS NO systemd HERE, and what stands in for it. The defect being fixed is a
+ * property of the CONTRACT between the daemon and any supervisor (leave non-zero, leave
+ * nothing behind), and that contract is exactly what a test can drive: the supervisor is
+ * two lines of this file — see the exit code, raise it again — which is `Restart=on-failure`
+ * with the systemd removed. What genuinely cannot be reproduced here is the OTHER half,
+ * that this box's own unit answers a code 75 with a fresh process: a CI runner has neither
+ * this systemd nor this unit. That half is the live acceptance on `hetzner`, and it is
+ * named as such in the thread rather than quietly assumed.
+ *
+ * `INVOCATION_ID` is what the daemon reads to know it is supervised (`selfRestartForm`),
+ * and systemd is what sets it in the field.
+ */
+describe("a supervised daemon that finds itself behind its ref", () => {
+  it(
+    "repairs the tree in place, leaves with a code a supervisor answers, and leaves no flag behind",
+    () => {
+      const home = homeContour({ pullable: true });
+      const behind = git(home.repo, "rev-parse", "HEAD").trim();
+      const target = git(home.repo, "rev-parse", "origin/main").trim();
+      expect(behind).not.toBe(target);
+
+      const first = tickRun(home.cli, home.repo, { INVOCATION_ID: "test-invocation" });
+
+      // It chose the form that can work here, and said so — the log of 17.08 showed a
+      // daemon leaving with no word about the mechanism it was counting on.
+      expect(first.said).toContain("this process is supervised");
+      expect(first.said).toContain("nothing is spawned and no stop flag is set");
+      // And it did NOT do the thing that dies under a cgroup: no child, no `restart`.
+      expect(first.said).not.toContain("handed over to the restart process");
+
+      // The repair itself: the pull ran and the tree is ON the target now. This is the
+      // half that makes the exit worth anything — a process replaced over the same code
+      // would drift again at its first tick.
+      expect(first.said).toContain("git pull --ff-only");
+      expect(git(home.repo, "rev-parse", "HEAD").trim()).toBe(target);
+      // The merge moved no manifest, so the installer had nothing to reconcile and said so.
+      expect(first.said).toContain("pnpm install skipped");
+
+      // THE EXIT IS DISTINGUISHABLE FROM A SHUTDOWN. This one assertion is the whole
+      // defect: with a 0 here `Restart=on-failure` never fires and the box stands dark.
+      expect(first.status).toBe(SELF_RESTART_EXIT_CODE);
+      expect(first.status).not.toBe(0);
+      expect(first.said).toContain(`leaving with code ${SELF_RESTART_EXIT_CODE}`);
+
+      // NOTHING IS LEFT ON THE FLOOR. A stop flag that outlives a repair turns one failure
+      // into a box that stays dark through every attempt to revive it — the second half of
+      // the statement, and the reason the field failure cost eleven hours instead of one.
+      expect(existsSync(join(home.repo, ".orchestrator", "stop"))).toBe(false);
+      expect(existsSync(join(home.repo, ".orchestrator", "force-stop"))).toBe(false);
+
+      // THE SUPERVISOR, WITH THE systemd TAKEN OUT: a non-zero code means raise it again.
+      const second = tickRun(home.cli, home.repo, { INVOCATION_ID: "test-invocation-2" });
+      // The successor is on the ref, so it repairs nothing and says nothing about drift —
+      // and it TICKED, which is the difference between "came back" and "came back to the
+      // same problem". A second code 75 here would be the loop this design must not have.
+      expect(second.status).toBe(0);
+      expect(second.said).not.toContain("the LOADED CODE is not the ref");
+      expect(second.said).not.toContain("SELF-RESTART");
+      expect(second.said).toContain("agent-protocol: daemon —");
+    },
+    3 * HANG_CEILING_MS,
+  );
+
+  it(
+    "does NOT leave when the repair failed — a replacement over the same code would loop",
+    () => {
+      // The one difference: the HEAD is detached (the default fixture), so `pull --ff-only`
+      // refuses. The drift is identical, the verdict is identical, and the exit must not
+      // happen — an exit here would hand the supervisor a process that comes straight back
+      // to this same tick, at restart speed.
+      const home = homeContour();
+      const ran = tickRun(home.cli, home.repo, { INVOCATION_ID: "test-invocation" });
+
+      expect(ran.said).toContain("this process is supervised");
+      expect(ran.said).toContain("git pull --ff-only FAILED");
+      expect(ran.said).toContain("NOT leaving");
+      expect(ran.status).not.toBe(SELF_RESTART_EXIT_CODE);
+      // The attempt was still counted before the repair ran: the ceiling is what stops a
+      // box whose pull can never succeed from trying at tick speed forever.
+      const memory = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      expect(memory?.attempts).toBe(1);
     },
     2 * HANG_CEILING_MS,
   );

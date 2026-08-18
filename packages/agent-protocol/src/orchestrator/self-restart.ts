@@ -87,6 +87,70 @@ import { closeSync, openSync } from "node:fs";
 /** How many times one target SHA may be attempted before the box stands and speaks. */
 export const SELF_RESTART_MAX_ATTEMPTS = 2;
 
+/**
+ * THE FORM OF THE REPAIR IS DECIDED BY WHO OWNS THIS PROCESS (thread 003, 2026-08-18).
+ *
+ * MEASURED, not supposed. The detached form above — spawn `restart --pull`, keep ticking,
+ * let the child stop this process — is correct for a daemon nobody supervises and is
+ * IMPOSSIBLE under a systemd unit. The unit of this box carries `KillMode=control-group`
+ * (`systemctl --user show`, 2026-08-18), and that setting kills the rest of the cgroup the
+ * moment MainPID leaves. The child is in that cgroup: `detached: true` makes a new session,
+ * not a new cgroup. Reproduced on a stand of two units differing in that one key
+ * (2026-08-18): under `control-group` the child took SIGTERM within a second of the
+ * parent's exit — one loop iteration in, mid-phase — while under `process` the same child
+ * ran all its phases to the end. That is exactly the field trace of 17.08 on `lle-hetzner`
+ * — `stopping pid … gracefully`, `the stop flag is set`, then nothing — and the box stood
+ * without a daemon for eleven and a half hours, because the daemon had exited 0 and
+ * `Restart=on-failure` is by construction blind to a clean exit.
+ *
+ * WHY NOT SIMPLY WEAKEN THE UNIT. `KillMode=process` would let the child live, but the
+ * daemon it then raises would live inside the cgroup of a unit systemd believes is dead:
+ * `systemctl status` would say inactive over a running circuit, `Restart=` would never
+ * apply to it and the next `systemctl restart` would manage nothing. A supervised process
+ * that wants a fresh copy of itself asks its supervisor, and the ask is an exit code.
+ *
+ * SO THE SUPERVISED FORM SPAWNS NOTHING AND SETS NO FLAG. This process does the two steps
+ * `restart --pull` does — `git pull --ff-only`, then the install when the pull moved what
+ * the install reads — and leaves with `SELF_RESTART_EXIT_CODE`. The supervisor raises the
+ * replacement, which is a fresh `node` over the code that was just pulled. Nothing has to
+ * outlive the exit, so nothing can be killed by it; there is no stop flag, so a repair that
+ * fails leaves nothing behind that would kill the next start.
+ *
+ * AND A FAILING REPAIR NEVER PRETENDS. The pull is done BEFORE the exit and its failure
+ * cancels the exit: the daemon stays up, behind and loud, and the attempt is already
+ * counted, so the ceiling closes the loop after `SELF_RESTART_MAX_ATTEMPTS`. The only exit
+ * this adds is one that a supervisor is guaranteed to answer.
+ */
+export type SelfRestartForm = "supervised" | "detached";
+
+/**
+ * WHAT ONE TICK'S REPAIR DID, in the three words the caller has to tell apart: it stood
+ * (nothing happened, the plan is this daemon's to act on), it spawned (the detached form
+ * handed over — withhold the plan and keep ticking), or it handed back (the supervised
+ * form repaired the tree — withhold the plan and LEAVE).
+ */
+export type SelfRestartOutcome = "stood" | "spawned" | "handback";
+
+/**
+ * The exit code of a daemon asking its supervisor for a fresh process. Any non-zero code
+ * satisfies `Restart=on-failure`; this one is `EX_TEMPFAIL`, whose meaning ("the thing
+ * failed, try again") is the message exactly, and it is far enough from the codes this CLI
+ * already uses (1 refusal, 2 argument door) to be read for what it is in a journal.
+ */
+export const SELF_RESTART_EXIT_CODE = 75;
+
+/**
+ * WHO OWNS THIS PROCESS, asked of the environment rather than of a flag. `INVOCATION_ID` is
+ * set by systemd for every service it starts and by nothing else; a daemon backgrounded by
+ * `up` never has it. It is read rather than configured on purpose: the answer is a fact of
+ * how the process was started, and a flag would let the two get out of step exactly once,
+ * on the box where it matters.
+ */
+export const selfRestartForm = (env: NodeJS.ProcessEnv): SelfRestartForm =>
+  typeof env.INVOCATION_ID === "string" && env.INVOCATION_ID.trim() !== ""
+    ? "supervised"
+    : "detached";
+
 /** Why a box that is behind is nevertheless not restarting itself right now. */
 export type SelfRestartBlock =
   | { readonly kind: "leases"; readonly roles: readonly string[] }
@@ -253,6 +317,57 @@ export const describeSelfRestartSpawned = (pid: number, logPath: string): string
 /** The spawn itself failed — nothing was handed over, and this box is still the live one. */
 export const describeSelfRestartUnspawned = (problem: string): string =>
   `SELF-RESTART FAILED to start (${problem}) — nothing was stopped, this daemon stays up and behind; the attempt is counted`;
+
+/**
+ * WHICH FORM WAS CHOSEN AND WHY, said before either of them acts. A log that shows a
+ * daemon leaving without saying which mechanism it was counting on is the log of 17.08.
+ */
+export const describeSelfRestartForm = (form: SelfRestartForm): string =>
+  form === "supervised"
+    ? "SELF-RESTART: this process is supervised (INVOCATION_ID is set) — repairing in place and leaving for the supervisor to raise the replacement; nothing is spawned and no stop flag is set, because a child of this process would be killed with its cgroup the moment it exits"
+    : "SELF-RESTART: this process is not supervised — spawning the restart the way a hand would type it";
+
+/** One step of the in-place repair, named before it runs — phases, not a silence. */
+export const describeSelfRestartStep = (step: string, checkout: string): string =>
+  `SELF-RESTART: ${step} in '${checkout}'`;
+
+/** It worked, and what it said (tail only — the log is a stream, not a transcript). */
+export const describeSelfRestartStepOk = (step: string, tail: string): string =>
+  `SELF-RESTART: ${step} — ok${tail === "" ? "" : `: ${tail}`}`;
+
+/**
+ * THE REPAIR FAILED AND THE EXIT IS CANCELLED — the daemon stays up rather than leaving on
+ * a lie. Leaving here would hand the supervisor a process that comes back on the SAME code
+ * and drifts again in a tick: a loop at restart speed, bounded only by systemd's start
+ * limit, which ends in a unit nobody raises again.
+ */
+export const describeSelfRestartStepFailed = (step: string, why: string): string =>
+  `SELF-RESTART: ${step} FAILED (${why}) — NOT leaving: this daemon stays up and behind on the old code, the attempt is counted, and the supervisor is not asked for a process that would come back to the same drift`;
+
+/** The last line of a supervised daemon — the one the log of 17.08 did not have. */
+export const describeSelfRestartHandback = (target: string, code: number): string =>
+  `SELF-RESTART: the tree is on ${short(target)} — leaving with code ${code} so the supervisor raises a fresh process over the pulled code. A supervisor that does NOT (no 'Restart=' on this unit, or none at all) leaves this box DOWN and says so in its own journal — which is the point: an exit that failed to be replaced must not look like a clean shutdown`;
+
+/**
+ * WHETHER THE INSTALL HAS ANYTHING TO RECONCILE. `pnpm install` exists in this chain to
+ * make the node_modules of the tree match what the tree declares, so what decides is
+ * whether the pull moved a file the installer reads. A pull that touched only sources is
+ * the ordinary case here (this repository merges code far more often than dependencies),
+ * and running the installer over it costs the repair tens of seconds and adds a failure
+ * mode — a network hiccup — to a path whose whole job is to come back up.
+ */
+export const INSTALL_INPUTS = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"] as const;
+
+export const installNeeded = (changed: readonly string[]): boolean =>
+  changed.some((path) =>
+    (INSTALL_INPUTS as readonly string[]).some(
+      (input) => path === input || path.endsWith(`/${input}`),
+    ),
+  );
+
+/** Why the installer was not run — silence here would read as "it ran and said nothing". */
+export const describeInstallSkipped = (): string =>
+  `SELF-RESTART: pnpm install skipped — the pull moved none of ${INSTALL_INPUTS.join(", ")}, so what is installed already matches what the tree declares`;
 
 /**
  * THE LINE THAT NAMES WHAT THE HANDOVER COST THIS TICK (condition 6, 2026-08-07). It is
