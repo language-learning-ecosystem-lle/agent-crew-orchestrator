@@ -1,9 +1,16 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T18:32:16.792Z",
+  "writtenAt": "2026-08-18T18:52:50.087Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "008-readme-frozen-workflows",
+      "state": "running",
+      "deadline": "2026-08-18T19:32:46Z"
+    }
+  ]
 }
