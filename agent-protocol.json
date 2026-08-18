@@ -1,0 +1,116 @@
+{
+  "protocolVersion": 17,
+  "mail": {
+    "branch": "comms",
+    "dir": "agent-comms"
+  },
+  "orchestrator": {
+    "state": ".orchestrator",
+    "mailCheckout": ".worktrees/comms",
+    "ref": "origin/main",
+    "workdir": {
+      "branch": "main",
+      "worktrees": ".worktrees"
+    }
+  },
+  "notifications": {
+    "transport": {
+      "module": "transport-telegram"
+    },
+    "templates": {
+      "parked": "❓ {thread} ждёт твоего решения: {question}",
+      "turn": "⏳ твой ход: {thread}",
+      "turn-with-nudge": "⏳ твой ход: {thread} ({nudged} следом)",
+      "nudge": "🔔 тред {thread} ждёт {role} — зайди в чат и дёрни его",
+      "stalled": "⌛ {thread} стоит {age} — ход у {role}, и никто не звонит"
+    }
+  },
+  "announcements": {
+    "force-stop": "Сессия по треду {thread} остановлена принудительно ({by}): {reason}"
+  },
+  "identityDictionary": "docs/protocol-reference.md",
+  "instances": [
+    {
+      "id": "hetzner",
+      "roles": ["curator", "dev-core"],
+      "note": "выделенный сервер (Hetzner, i5-12500/64 ГБ/2×2 ТБ NVMe RAID1), тот же ящик и тот же пользователь 'lle', что держит инстанс 'lle-hetzner' проекта LLE — два инстанса на одном ящике, каждый со своим машинным конфигом '~/.config/agent-protocol/instances/<name>.json' (форма 055). Заведён 2026-08-18 (LLE-тред 082, день 2 Э-3′): собственный клон, собственная ветка почты, собственный резидентный юнит рядом с LLE-шным. Обе роли живут здесь — инстанс у репозитория пока ровно один"
+    }
+  ],
+  "roles": [
+    {
+      "id": "john",
+      "kind": "человек",
+      "status": "active",
+      "wake": {
+        "mode": "self"
+      },
+      "summary": "Владелец: развилки продукта протокола, деньги, приёмки (merge PR), деструктивные разрешения",
+      "permissions": ["thread-status", "launch-params", "thread-priority", "task-declare"]
+    },
+    {
+      "id": "curator",
+      "kind": "claude-code",
+      "status": "active",
+      "wake": {
+        "mode": "watch",
+        "session": "crew-curator"
+      },
+      "summary": "PM-ассистент репозитория протокола: координация, постановки, разборы, ведение почты, REVIEWER.md; пакетный код не пишет — ставит задачей dev-core",
+      "permissions": ["thread-status", "thread-priority", "task-declare"],
+      "zones": {
+        "writes": ["docs/roles", "PROTOCOL.md", "REVIEWER.md", "docs/protocol-reference.md"],
+        "forbidden": ["packages"]
+      },
+      "instructions": [
+        {
+          "kind": "in-repo",
+          "path": "docs/roles/curator.md"
+        }
+      ],
+      "launch": {
+        "allowedTools": ["Bash", "Read", "Edit", "Write"],
+        "limits": {
+          "idleSeconds": 600,
+          "wallClockSeconds": 2400,
+          "maxTurns": 300
+        },
+        "agent": {
+          "kind": "claude-code"
+        },
+        "account": "lle-main"
+      }
+    },
+    {
+      "id": "dev-core",
+      "kind": "claude-code",
+      "status": "active",
+      "wake": {
+        "mode": "watch",
+        "session": "crew-dev-core"
+      },
+      "summary": "Код протокола: packages/agent-protocol, packages/transport-telegram, воркфлоу и доки поведения кода",
+      "zones": {
+        "writes": [],
+        "forbidden": ["docs/roles"]
+      },
+      "instructions": [
+        {
+          "kind": "in-repo",
+          "path": "docs/roles/dev-core.md"
+        }
+      ],
+      "launch": {
+        "allowedTools": ["Bash", "Read", "Edit", "Write"],
+        "limits": {
+          "idleSeconds": 600,
+          "wallClockSeconds": 3600,
+          "maxTurns": 300
+        },
+        "agent": {
+          "kind": "claude-code"
+        },
+        "account": "lle-second"
+      }
+    }
+  ]
+}
