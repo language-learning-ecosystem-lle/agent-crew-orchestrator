@@ -133,6 +133,11 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # role's 'zones.forbidden' — the pre-commit hook of a role workspace
                               # (--staged --role-from-workspace) and the CI step of a PR (--base)
                               # a checkout that is not a role workspace passes with a note, not a refusal
+                              # 'zones.writes' NARROWS NOTHING and is not read by this command at all:
+                              # a path outside 'writes' and outside 'forbidden' is GREEN, and the green
+                              # line says so. 'writes' states where the role's work lives, for humans —
+                              # reading it as a closed allow-list would deny 'dev-core' (writes: [])
+                              # every file in the repository. 'forbidden' is the whole verdict
   agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--d1 <thread/message.md>]
                               # THE MERGE DOOR OF 'curator' (thread 026): the three guards that are
                               # FACTS — approve on the CURRENT head, green checks on it, and no
