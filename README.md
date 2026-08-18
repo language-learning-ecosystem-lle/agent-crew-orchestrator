@@ -3018,6 +3018,15 @@ Three things it decides, and each is a promise:
   circuit stays down, the reason goes to the terminal AND to `daemon.log` (a restart that refused
   at 04:00 has to be readable at 09:00), and `up` by hand is one word away. Raising the OLD code
   instead would answer a question nobody asked while looking exactly like success.
+- **But the STOP FLAG does not outlive that refusal** (thread 003, 2026-08-18). A `--pull` that
+  fails in phase 3 has already stopped the daemon in phase 1, and the flag that stopped it is
+  from then on aimed at whoever types `up` next: one failed repair becomes a box that stays dark
+  through every attempt to revive it, which is what a hand met on 17.08. So a failing pull or
+  install CLEARS the flag it set itself, by name and out loud, and says the circuit is down. That
+  is not the silent clearing `up` refuses — it is the same command taking back, in the same
+  breath, something it put down thirty seconds ago. The wait that runs out is the other case and
+  keeps the flag: there the daemon is still ALIVE and still draining, and clearing it would
+  quietly cancel a stop the operator asked for.
 
 `--mode force` also clears both flags on the way up, so `rm` on a flag file leaves the operator's
 cycle; `up --clear-force` is passed by the same command that put the force there a minute ago,
@@ -3359,3 +3368,86 @@ nothing is printed anywhere; a CURRENT vintage signed by a dead predecessor, rea
 different live pid, gives `unpublished` rather than the silence it would earn on its own
 SHA; and a reading of `unknown` gives `unreadable` in the frame (`snapshot.test.ts`) rather
 than the silence of a match.
+
+### S25 — the box picks up its own new code, in the form its supervisor allows (055.2, thread 003)
+
+Variant (3) of S24 — the daemon repairing its own drift — was built in 055.2 and is
+described by the rule it runs on (`self-restart.ts`): on a drift, and only on a box with
+zero leases, no stop/force flag, no operator hold, a clean tree and a checkout the daemon
+actually serves, the process repairs itself; anything unmet is S24 verbatim (stand, and say
+why, every tick). The attempt ceiling is keyed by the TARGET SHA, which is what makes it
+self-clearing: a new commit on the ref is a new target with a fresh count.
+
+**What thread 003 changed is not the rule but the MECHANISM, and it changed because the
+mechanism could not work under a unit.** The 055.2 form spawns `restart --pull` detached and
+keeps ticking; the child sets the stop flag, waits the old process out, pulls and raises the
+successor. That works for a daemon nobody supervises. Under this box's systemd unit it
+cannot, and the failure is measured rather than argued:
+
+- **the field trace** (`lle-hetzner`, 17–18.08.2026): the child printed `stopping pid …
+  gracefully` and `the stop flag is set` and stopped mid-phase. The daemon exited **0**.
+  `Restart=on-failure` is by construction blind to a clean exit, so nothing was raised, and
+  the stop flag the child had already set was still on the floor to kill anything raised by
+  hand. The box stood without a daemon for about eleven and a half hours;
+- **the unit** (`systemctl --user show`, 18.08.2026): `Type=simple`, `Restart=on-failure`,
+  `KillMode=control-group`;
+- **the reproduction** (18.08.2026, a stand of two units differing in that one key): a
+  parent that spawns a `setsid` child and exits 0. Under `control-group` the child took
+  SIGTERM within a second of the parent's exit — one loop iteration in; under `process` the
+  same child ran every phase to the end. `detached: true` makes a new SESSION, not a new
+  cgroup, so the child is killed by exactly the exit it is waiting for.
+
+**The repair is to stop needing a survivor, not to weaken the unit.** `KillMode=process`
+would let the child live, but the daemon it then raises would run inside the cgroup of a
+unit systemd believes is dead: `systemctl status` inactive over a live circuit, `Restart=`
+never applying to it, the next `systemctl restart` managing nothing. A supervised process
+that wants a fresh copy of itself asks its supervisor, and the ask is an exit code.
+
+So the form is chosen from the environment (`selfRestartForm`), and it is said out loud
+before either form acts:
+
+- **supervised** (`INVOCATION_ID` is set — systemd sets it for every service and nothing
+  else does): the daemon runs the two steps `restart --pull` runs, IN ITS OWN PROCESS —
+  `git pull --ff-only`, then `pnpm install` only when the pull moved `package.json`,
+  `pnpm-lock.yaml` or `pnpm-workspace.yaml` — and then exits with **75**. Nothing is
+  spawned, so nothing can be killed with the cgroup; no flag is set, so nothing is left on
+  the floor to kill the successor. The supervisor raises a fresh `node` over the code that
+  was just pulled;
+- **detached** (no supervisor): the 055.2 form, unchanged;
+- **and a failed repair cancels the exit.** A pull or install that fails leaves the daemon
+  UP, behind, and loud — the attempt is already counted, so the ceiling closes it after two.
+  Leaving there would hand the supervisor a process that comes straight back to the same
+  drift, at restart speed, until systemd's start limit puts the unit in `failed`.
+
+Two things follow for the operator, and both are said by the commands that touch them.
+`Restart=on-failure` is now **load-bearing**: a unit edited to `Restart=no` turns the repair
+into a box that stays down (`systemd install` prints this). And the exit code is deliberately
+not 1 or 2 — those are this CLI's refusal and its argument door, and a journal in which the
+repair is spelled like either of them is a journal that lies.
+
+**Neither form is ever reached on a checkout whose own runtime is untracked.** The clean-tree
+condition sits BEFORE the choice of form: `workingTreeState` reads `git status --porcelain`,
+where untracked counts as dirt (a `pull --ff-only` refuses over an untracked file it would
+overwrite, and a repair dying half-way through is worse than one that never began), and
+`selfRestartVerdict` answers `stand`. The directories named by `orchestrator.state` and
+`orchestrator.workdir.worktrees` are made by the circuit itself and are on every box that has
+raised a role, so a served repository that does not ignore them meets EVERY merge into its ref
+with a daemon that refuses to restart and calls its own workspaces dirt. Measured in this
+repository on 18.08.2026 — a `.gitignore` inherited from the workspace skeleton knew three
+lines and nothing about the runtime, and the live checkout stood at `?? .orchestrator/`,
+`?? .worktrees/`. The rule for this repository is held by a test that reads the paths from
+`agent-protocol.json` rather than keeping a second copy of the list
+(`runtime-ignored.test.ts`). And the refusal itself tells the two dirty trees apart: an
+untracked-only tree is no longer reported as "uncommitted work" (there is nothing there to
+commit) but as untracked files, with the repair — an ignore rule in the served repository —
+named in the line.
+
+**What is tested and what is not.** The rule, the form, the exit code and the install
+question are units (`self-restart.test.ts`). The seam — went away, came back — is a process
+test (`self-restart.process.test.ts`): a daemon behind its ref is raised with `INVOCATION_ID`
+set, and what is asserted is that the tree ended up ON the target, that the exit was 75, that
+no stop or force flag was left behind, and that the process raised afterwards (the supervisor
+with the systemd taken out: see a non-zero code, raise it again) ticks with no drift left to
+report. What a CI runner cannot reproduce is the other half — that THIS box's unit answers a
+75 with a fresh process — because it has neither this systemd nor this unit; that half is a
+live acceptance on the box and is named as one rather than assumed.

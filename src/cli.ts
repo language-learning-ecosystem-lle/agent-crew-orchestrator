@@ -345,15 +345,26 @@ import {
 } from "./orchestrator/scope.js";
 import {
   attemptsFor,
+  describeInstallSkipped,
+  describeSelfRestartForm,
   describeSelfRestartGo,
+  describeSelfRestartHandback,
   describeSelfRestartSpawned,
   describeSelfRestartStand,
+  describeSelfRestartStep,
+  describeSelfRestartStepFailed,
+  describeSelfRestartStepOk,
   describeSelfRestartUnspawned,
   describeSelfRestartWithheld,
+  INSTALL_INPUTS,
+  installNeeded,
   parseSelfRestartMemory,
   renderSelfRestartMemory,
+  SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
+  type SelfRestartOutcome,
   selfRestartArgv,
+  selfRestartForm,
   selfRestartVerdict,
   spawnSelfRestart,
   workingTreeState,
@@ -6179,6 +6190,9 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
   out(
     "agent-protocol: the unit runs 'up --foreground' — launches are still gated by the enable flag, and a stop/force flag still keeps the circuit down (the daemon exits cleanly, so 'Restart=on-failure' does not re-raise it)",
   );
+  out(
+    `agent-protocol: 'Restart=on-failure' is LOAD-BEARING under this unit (thread 003) — a daemon that finds itself behind its ref repairs the tree in place and leaves with code ${SELF_RESTART_EXIT_CODE} for this unit to raise it again. A unit edited to 'Restart=no' turns that repair into a box that stays down`,
+  );
 };
 
 /**
@@ -8201,7 +8215,68 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
    * launches in this tick. See the module's doc block — the half-death of 2026-08-07 came
    * through precisely this return value not existing.
    */
-  const selfRestart = (drift: CodeDrift): boolean => {
+  /**
+   * THE IN-PLACE HALF OF A SUPERVISED REPAIR (thread 003). The same two steps
+   * `restart --pull` runs, in the same tree, under the same preconditions the verdict has
+   * already checked (zero leases, clean tree, the checkout this daemon serves) — but run
+   * by THIS process, because under a supervisor there is no child that could outlive it.
+   * It answers whether the tree actually moved: only then is leaving worth anything.
+   */
+  const repairInPlace = (checkout: string): boolean => {
+    const head = (): string =>
+      execFileSync("git", ["-C", checkout, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+    const step = (what: string, run: readonly [string, readonly string[]]): boolean => {
+      err(`agent-protocol: daemon — ${describeSelfRestartStep(what, checkout)}`);
+      try {
+        const said = execFileSync(run[0], [...run[1]], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        err(
+          `agent-protocol: daemon — ${describeSelfRestartStepOk(what, said.trim().split("\n").slice(-3).join(" · "))}`,
+        );
+        return true;
+      } catch (error) {
+        const failure = error as { stderr?: string; stdout?: string; status?: number };
+        const why = ((failure.stderr ?? failure.stdout ?? "") as string)
+          .replace(/\s+/g, " ")
+          .trim();
+        err(
+          `agent-protocol: daemon — ${describeSelfRestartStepFailed(what, why === "" ? `code ${failure.status ?? "?"}` : why)}`,
+        );
+        return false;
+      }
+    };
+    let before: string;
+    try {
+      before = head();
+    } catch (error) {
+      err(
+        `agent-protocol: daemon — ${describeSelfRestartStepFailed("git rev-parse HEAD", (error as Error).message)}`,
+      );
+      return false;
+    }
+    if (!step("git pull --ff-only", ["git", ["-C", checkout, "pull", "--ff-only"]])) return false;
+    let changed: readonly string[] = [];
+    try {
+      changed = execFileSync("git", ["-C", checkout, "diff", "--name-only", before, "HEAD"], {
+        encoding: "utf8",
+      })
+        .split("\n")
+        .filter((line) => line.trim() !== "");
+    } catch {
+      // Unreadable is not "nothing changed": the installer runs, which is the safe side of
+      // this question — a needless install costs seconds, a skipped one costs the process.
+      changed = [...INSTALL_INPUTS];
+    }
+    if (!installNeeded(changed)) {
+      err(`agent-protocol: daemon — ${describeInstallSkipped()}`);
+      return true;
+    }
+    return step("pnpm install", ["pnpm", ["--dir", checkout, "install"]]);
+  };
+
+  const selfRestart = (drift: CodeDrift): SelfRestartOutcome => {
     const memory = existsSync(paths.daemonSelfRestart)
       ? parseSelfRestartMemory(readFile(paths.daemonSelfRestart, "the self-restart memory"))
       : undefined;
@@ -8222,7 +8297,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     });
     if (verdict.kind === "stand") {
       err(`agent-protocol: daemon — ${describeSelfRestartStand(verdict.block)}`);
-      return false;
+      return "stood";
     }
     err(
       `agent-protocol: daemon — ${describeSelfRestartGo({
@@ -8247,8 +8322,15 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       err(
         `agent-protocol: daemon — SELF-RESTART skipped: the attempt could not be recorded in '${paths.daemonSelfRestart}' (${(error as Error).message}); without that record a failing repair would retry every tick`,
       );
-      return false;
+      return "stood";
     }
+    // WHICH MECHANISM CAN ACTUALLY WORK HERE (thread 003) — see `selfRestartForm`. Under a
+    // supervisor the child of the detached form dies with this process's cgroup, measured;
+    // so a supervised daemon repairs the tree itself and asks for a fresh process by
+    // leaving with a code the supervisor answers.
+    const form = selfRestartForm(process.env);
+    err(`agent-protocol: daemon — ${describeSelfRestartForm(form)}`);
+    if (form === "supervised") return repairInPlace(drift.vintage.checkout) ? "handback" : "stood";
     try {
       // The child speaks into the daemon's own log rather than into 'ignore', and the
       // wiring lives in `spawnSelfRestart` so that a test can drive exactly the case that
@@ -8278,12 +8360,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         env: process.env,
       });
       err(`agent-protocol: daemon — ${describeSelfRestartSpawned(pid as number, paths.daemonLog)}`);
-      return true;
+      return "spawned";
     } catch (error) {
       err(`agent-protocol: daemon — ${describeSelfRestartUnspawned((error as Error).message)}`);
       // Nothing was handed over, so nothing is withheld either: this daemon is still the
       // live one and its plan is the only one anybody is going to act on.
-      return false;
+      return "stood";
     }
   };
   // R13: WHAT THIS RUN RAISES, and what it leaves to somebody else — in the banner,
@@ -8757,6 +8839,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
      * block of `self-restart.ts` for the morning that proved a comment is not enough.
      */
     let handedOverToRepair = false;
+    /** The tree was repaired in place and this process is leaving for its supervisor. */
+    let handBackTarget: string | undefined;
     if (vintage !== undefined) {
       const reading = measureCodeDrift({ vintage, ref: required(argv, "--ref") });
       if (reading.kind === "drift") {
@@ -8766,7 +8850,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         // safe to repair unattended. The verdict is pure (`self-restart.ts`); everything
         // impure about the decision is here and is exactly two things: reading the tree
         // the pull would move, and spawning the manual command.
-        handedOverToRepair = selfRestart(reading.drift);
+        const outcome = selfRestart(reading.drift);
+        handedOverToRepair = outcome !== "stood";
+        if (outcome === "handback") handBackTarget = reading.drift.refSha;
       } else if (reading.kind === "unknown" && reading.problem !== codeNote) {
         // Said when it CHANGES, not every tick: an unresolvable ref is one fault, and
         // repeating it thirty seconds apart would bury the drift line it stands next to.
@@ -8883,6 +8969,18 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           planned.map((candidate) => `${candidate.role}×${candidate.thread}`),
         )}`,
       );
+    // THE EXIT THAT IS THE REPAIR (thread 003). It happens HERE and not inside
+    // `selfRestart`: withholding the plan is the invariant condition 6 buys, and it has to
+    // be said before this process stops speaking — a daemon that left without naming the
+    // pairs it did not take would be the same silence in a shorter log. Nothing is drained
+    // (zero leases is a condition of the verdict) and no flag is set, so the successor the
+    // supervisor raises meets a floor with nothing on it.
+    if (handBackTarget !== undefined) {
+      err(
+        `agent-protocol: daemon — ${describeSelfRestartHandback(handBackTarget, SELF_RESTART_EXIT_CODE)}`,
+      );
+      process.exit(SELF_RESTART_EXIT_CODE);
+    }
     const plan: readonly Candidate[] = handedOverToRepair ? [] : planned;
     for (const candidate of plan) launch(candidate, events);
     // "Nothing was launched" IS AN OUTCOME AND IS SPOKEN OUT LOUD. Before this, both
@@ -9479,6 +9577,9 @@ const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
     }
   };
 
+  // The same path `down` writes and `up` clears — resolved here because a failing phase 3
+  // has to be able to take back what phase 1 put down (see the pull step below).
+  const stopFlagOfRestart = flag(args, "--stop-flag") ?? paths.stopFlag;
   const pid = runningDaemon(pidFile);
   const saved = existsSync(daemonArgvPath(pidFile))
     ? parseDaemonArgv(readFile(daemonArgvPath(pidFile), "the daemon's saved flags"))
@@ -9548,6 +9649,19 @@ const orchestratorRestart = async (argv: readonly string[]): Promise<void> => {
         say(
           `${step.what} FAILED (code ${failure.status ?? "?"})${why === "" ? "" : `: ${why}`} — nothing was raised, the circuit stays down until this is dealt with`,
         );
+        // AND THE FLAG DOES NOT OUTLIVE THE FAILURE (thread 003, 2026-08-18). The stop
+        // flag was put down by phase 1 of THIS command, the daemon it was aimed at is
+        // already gone, and nothing is going to be raised now — so from here on it is
+        // aimed at whoever types `up` next. That turns one failed repair into a box that
+        // stays dark through every attempt to revive it, which is what a hand met on
+        // 17.08. Clearing it is not the silent clearing `up` refuses: it is this command
+        // taking back, by name, a flag it set itself thirty seconds ago.
+        if (existsSync(stopFlagOfRestart)) {
+          rmSync(stopFlagOfRestart);
+          say(
+            `the stop flag this restart set ('${stopFlagOfRestart}') was cleared — it was aimed at a daemon that is already gone, and leaving it down would kill the next 'up' too. The circuit is DOWN and 'up' is one word away once the failure above is dealt with`,
+          );
+        }
         fail(`${step.what} failed — the daemon was NOT raised`, 1);
         return;
       }

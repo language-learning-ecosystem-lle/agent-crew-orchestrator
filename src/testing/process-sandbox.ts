@@ -36,7 +36,16 @@ import { basename, join } from "node:path";
  * in its own words — that is the difference between a premise and an ambient accident.
  */
 export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => {
-  const { CLAUDE_CONFIG_DIR: _ambient, ...ambient } = process.env;
+  // `INVOCATION_ID` GOES THE SAME WAY AND FOR A SHARPER REASON (thread 003, 2026-08-18):
+  // systemd sets it for every process under a unit, and a raised session inherits it, so a
+  // test suite run by the circuit itself would hand every daemon it raises the identity of
+  // a supervisor that is not supervising IT. Since thread 003 that variable DECIDES a
+  // behaviour (`selfRestartForm`: repair in place and leave, versus spawn a child), which
+  // means the suite would measure one form on a developer's terminal and the other on the
+  // box — and it did, the minute the flag was read: two cases of this package's own
+  // process tests flipped. A sandbox inherits the ambient environment for convenience; the
+  // two variables that would make it a DIFFERENT BOX are removed by name.
+  const { CLAUDE_CONFIG_DIR: _ambient, INVOCATION_ID: _supervisor, ...ambient } = process.env;
   return {
     ...ambient,
     XDG_CONFIG_HOME: home,
