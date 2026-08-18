@@ -92,11 +92,21 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # checkout it serves, which is what lets every later command typed
                               # in that tree find it without naming anything
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
-  agent-protocol init github  [--ref <ref>] [--local-config <p>] [--instance <name>] [--key <path>] [--host <h>] [--comment <c>] [--no-probe] [--write]
+  agent-protocol init github  [--ref <ref>] [--local-config <p>] [--instance <name>] [--key <path>] [--host <h>] [--alias <a>] [--comment <c>] [--no-probe] [--write]
                               # THE BOX'S IDENTITY FOR GITHUB (thread 019, п.4): the one step of
                               # the commissioning that makes material OUTSIDE the repository and
                               # outside both configs — an ed25519 pair in ~/.ssh, a 'Host' block
                               # beside it, and an answer from GitHub about who this box is
+                              # --host IS THE GITHUB HOST and --alias IS THE NAME THIS BOX TYPES
+                              # (thread 004): 'HostName <host>' is where the name resolves,
+                              # 'Host <alias>' is what goes into 'git@<alias>', into the remote of
+                              # a checkout and into the probe. --alias defaults to --host, which is
+                              # right BY MEANING (with nothing to distinguish, the name you type is
+                              # the host) — until 2026-08-18 ONE value wrote both lines, correct on
+                              # '--host github.com' and unresolvable on the second identity the flag
+                              # exists for ('Could not resolve hostname github-crew', measured)
+                              # A --host WITH NO DOT IS REFUSED BY NAME and the refusal names both
+                              # exits: '--alias <that>' for a local alias, a full domain for GHES
                               # THE FORM IS DECIDED (john, 2026-08-01): the key goes on the
                               # repository as a DEPLOY KEY with write access. No separate account
                               # and no machine user — a machine user is the answer only when one

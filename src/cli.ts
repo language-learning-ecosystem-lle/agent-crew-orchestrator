@@ -173,6 +173,7 @@ import {
   deployKeyHint,
   githubSummary,
   hasHostEntry,
+  hostRefusal,
   keyStep,
   probeStep,
   readSshProbe,
@@ -4649,6 +4650,14 @@ const boxInit = (argv: readonly string[]): void => {
  *  - THE GRANT IS NOT AUTOMATED. The public half and the four clicks are printed and the
  *    command stops there: adding a deploy key is the one step of the commissioning that
  *    hands out power, and it stays a human's.
+ *
+ * `--host` AND `--alias` ARE TWO VALUES (thread 004). `--host` means what it is named —
+ * the GitHub host, which is what `HostName` carries and where the name resolves; `--alias`
+ * is the name THIS BOX TYPES (`git@<alias>`, the remote of a checkout, the `Host` line)
+ * and it defaults to the host. That default is correct BY MEANING and not by coincidence:
+ * with nothing to distinguish, the name you type IS the host. Writing both from one value
+ * was the defect — correct on `--host github.com` and unresolvable on the second identity
+ * the flag exists for.
  */
 const initGithub = (argv: readonly string[]): void => {
   const withRef = withOperatorRef(argv);
@@ -4656,6 +4665,9 @@ const initGithub = (argv: readonly string[]): void => {
   const home = process.env["HOME"] ?? homedir();
   const keyPath = flag(withRef, "--key") ?? join(home, ".ssh", "github");
   const host = flag(withRef, "--host") ?? "github.com";
+  const alias = flag(withRef, "--alias") ?? host;
+  const refused = hostRefusal({ alias, host });
+  if (refused !== undefined) fail(refused, 2);
   const configPath = join(home, ".ssh", "config");
   const write = withRef.includes("--write");
   const probing = !withRef.includes("--no-probe");
@@ -4670,17 +4682,18 @@ const initGithub = (argv: readonly string[]): void => {
     keyStep({ path: keyPath, present: keyThere, comment }),
     sshConfigStep({
       path: configPath,
+      alias,
       host,
       key: keyPath,
       present: configThere,
-      hasEntry: configThere && hasHostEntry(readFileSync(configPath, "utf8"), host),
+      hasEntry: configThere && hasHostEntry(readFileSync(configPath, "utf8"), alias),
     }),
   ];
 
   if (!write) {
     out(renderInitSteps(steps));
     out("");
-    out(deployKeyHint({ host }));
+    out(deployKeyHint({ alias }));
     out(githubSummary({ steps, write, probed: false }));
     return;
   }
@@ -4697,14 +4710,14 @@ const initGithub = (argv: readonly string[]): void => {
   if (steps[1]?.action !== "keep") {
     appendFileSync(
       configPath,
-      `${configThere ? "\n" : ""}${sshConfigBlock({ host, key: keyPath })}\n`,
+      `${configThere ? "\n" : ""}${sshConfigBlock({ alias, host, key: keyPath })}\n`,
       { mode: 0o600 },
     );
   }
 
   out(renderInitSteps(steps));
   out("");
-  out(deployKeyHint({ pub: readFileSync(`${keyPath}.pub`, "utf8"), host }));
+  out(deployKeyHint({ pub: readFileSync(`${keyPath}.pub`, "utf8"), alias }));
 
   if (!probing) {
     out(githubSummary({ steps, write, probed: false }));
@@ -4712,7 +4725,7 @@ const initGithub = (argv: readonly string[]): void => {
   }
   // Both streams, and no code: GitHub's answer arrives on stderr, and the command that
   // carries it exits non-zero on the one outcome the operator wants.
-  const said = spawnSync("ssh", ["-T", "-o", "BatchMode=yes", `git@${host}`], {
+  const said = spawnSync("ssh", ["-T", "-o", "BatchMode=yes", `git@${alias}`], {
     encoding: "utf8",
     timeout: 20_000,
   });
@@ -4720,7 +4733,7 @@ const initGithub = (argv: readonly string[]): void => {
     readSshProbe(
       `${said.stdout ?? ""}\n${said.stderr ?? ""}${said.error === undefined ? "" : `\n${said.error.message}`}`,
     ),
-    host,
+    alias,
   );
   const all = [...steps, probe];
   out(renderInitSteps([probe]));

@@ -4,6 +4,7 @@ import {
   deployKeyHint,
   githubSummary,
   hasHostEntry,
+  hostRefusal,
   keyStep,
   probeStep,
   readSshProbe,
@@ -28,12 +29,81 @@ describe("keyStep", () => {
 
 describe("sshConfigBlock", () => {
   it("names the key and pins ssh to it", () => {
-    const block = sshConfigBlock({ host: "github.com", key: "/home/a/.ssh/github" });
+    const block = sshConfigBlock({
+      alias: "github.com",
+      host: "github.com",
+      key: "/home/a/.ssh/github",
+    });
     expect(block).toContain("Host github.com");
     expect(block).toContain("IdentityFile /home/a/.ssh/github");
     // Without this line ssh offers every identity it holds and GitHub takes the first
     // one that fits — the box then pushes as somebody else with different rights.
     expect(block).toContain("IdentitiesOnly yes");
+  });
+
+  /**
+   * THE CASE THAT LET THE DEFECT LIVE (thread 004). Every test of this function used to
+   * pass `github.com` for both halves, where `HostName ${alias}` and `HostName ${host}`
+   * produce identical bytes — the suite was green under either of the two possible
+   * mistakes. The alias of a SECOND identity on one box is the case the flag exists for,
+   * and it is the case where the two values differ.
+   */
+  it("puts the alias in Host and the GITHUB HOST in HostName when they differ", () => {
+    const block = sshConfigBlock({
+      alias: "github-crew",
+      host: "github.com",
+      key: "/home/a/.ssh/github-crew",
+    });
+    expect(block).toContain("Host github-crew");
+    // Measured on `hetzner` before this was split: `HostName github-crew` gave
+    // "Could not resolve hostname github-crew", exit code 2.
+    expect(block).toContain("HostName github.com");
+    expect(block).not.toContain("HostName github-crew");
+    expect(block).toContain("IdentityFile /home/a/.ssh/github-crew");
+  });
+
+  it("keeps a GitHub Enterprise host in both lines when no alias asks otherwise", () => {
+    const block = sshConfigBlock({
+      alias: "github.example.com",
+      host: "github.example.com",
+      key: "/home/a/.ssh/github",
+    });
+    expect(block).toContain("Host github.example.com");
+    expect(block).toContain("HostName github.example.com");
+  });
+});
+
+/**
+ * THE DOOR THAT SAYS WHAT TO TYPE INSTEAD (thread 004). Splitting the two values fixes
+ * the block but not the keystroke that produced the defect — a human typed
+ * `--host github-crew` meaning an alias. Under the split that argument is no longer a
+ * silent wrong block, but it is still a claim that GitHub lives at `github-crew`, and a
+ * refusal is only worth the exit it names.
+ */
+describe("hostRefusal", () => {
+  it("passes the documented use and a GitHub Enterprise host", () => {
+    expect(hostRefusal({ alias: "github.com", host: "github.com" })).toBeUndefined();
+    expect(hostRefusal({ alias: "github-crew", host: "github.com" })).toBeUndefined();
+    expect(hostRefusal({ alias: "ghe", host: "github.example.com" })).toBeUndefined();
+  });
+
+  it("refuses a --host with no dot and names BOTH ways out", () => {
+    const said = hostRefusal({ alias: "github-crew", host: "github-crew" });
+    expect(said).toContain("--host 'github-crew'");
+    // The exit for the case that actually happened, with the value already in it…
+    expect(said).toContain("--alias github-crew");
+    // …and the exit for the other reading, so the refusal does not assume which one.
+    expect(said).toContain("--host github.example.com");
+  });
+
+  it("refuses an alias that is several names, because a Host line takes a list", () => {
+    const said = hostRefusal({ alias: "gh crew", host: "github.com" });
+    expect(said).toContain("--alias 'gh crew'");
+    expect(said).toContain("LIST");
+  });
+
+  it("refuses an empty alias rather than writing a bare 'Host' line", () => {
+    expect(hostRefusal({ alias: "", host: "github.com" })).toContain("--alias");
   });
 });
 
@@ -50,6 +120,17 @@ describe("hasHostEntry", () => {
     expect(hasHostEntry("Host work\n  HostName github.com\n", "github.com")).toBe(false);
   });
 
+  /**
+   * The same property, now load-bearing (thread 004): a box with two identities holds two
+   * blocks whose `HostName` is `github.com`, and asking about the second alias must not
+   * be answered by the first one's host line.
+   */
+  it("does not read another identity's block as this alias's", () => {
+    const config = "Host github.com\n  HostName github.com\n";
+    expect(hasHostEntry(config, "github-crew")).toBe(false);
+    expect(hasHostEntry(config, "github.com")).toBe(true);
+  });
+
   it("reads an indented, differently-cased declaration", () => {
     expect(hasHostEntry("  host GitHub.com\n", "github.com")).toBe(true);
   });
@@ -60,7 +141,12 @@ describe("hasHostEntry", () => {
 });
 
 describe("sshConfigStep", () => {
-  const base = { path: "/home/a/.ssh/config", host: "github.com", key: "/home/a/.ssh/github" };
+  const base = {
+    path: "/home/a/.ssh/config",
+    alias: "github.com",
+    host: "github.com",
+    key: "/home/a/.ssh/github",
+  };
 
   it("creates the file when there is none", () => {
     const step = sshConfigStep({ ...base, present: false, hasEntry: false });
@@ -78,24 +164,46 @@ describe("sshConfigStep", () => {
     expect(step.detail).toContain("/home/a/.ssh/github");
     expect(step.detail).toContain("IdentitiesOnly yes");
   });
+
+  /**
+   * The row is the only place the operator can catch an alias aimed at the wrong host,
+   * and a row that prints one of the two values cannot be checked against anything.
+   */
+  it("prints BOTH names in every tense when they differ", () => {
+    const split = { ...base, alias: "github-crew" };
+    for (const step of [
+      sshConfigStep({ ...split, present: false, hasEntry: false }),
+      sshConfigStep({ ...split, present: true, hasEntry: false }),
+      sshConfigStep({ ...split, present: true, hasEntry: true }),
+    ]) {
+      expect(step.detail).toContain("github-crew");
+      expect(step.detail).toContain("github.com");
+    }
+  });
 });
 
 describe("deployKeyHint", () => {
   it("prints the public half with the four clicks", () => {
-    const hint = deployKeyHint({ pub: "ssh-ed25519 AAAA… lle-agents\n", host: "github.com" });
+    const hint = deployKeyHint({ pub: "ssh-ed25519 AAAA… lle-agents\n", alias: "github.com" });
     expect(hint).toContain("ssh-ed25519 AAAA… lle-agents");
     expect(hint).toContain("Deploy keys");
     expect(hint).toContain("Allow write access");
   });
 
   it("names the machine user as the multi-repo answer, not as a fork in the road", () => {
-    const hint = deployKeyHint({ host: "github.com" });
+    const hint = deployKeyHint({ alias: "github.com" });
     expect(hint).toContain("machine user");
     expect(hint).toContain("several repositories");
   });
 
   it("says where the public half will come from when there is no key yet", () => {
-    expect(deployKeyHint({ host: "github.com" })).toContain("--write");
+    expect(deployKeyHint({ alias: "github.com" })).toContain("--write");
+  });
+
+  // The command it hands the operator has to be the one that tests THIS block — the
+  // alias, not the host every other identity on the box also resolves to.
+  it("hands over the probe typed against the alias", () => {
+    expect(deployKeyHint({ alias: "github-crew" })).toContain("ssh -T git@github-crew");
   });
 });
 
