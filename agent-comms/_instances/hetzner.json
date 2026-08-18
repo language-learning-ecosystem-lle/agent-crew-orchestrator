@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-18T10:19:22.688Z",
+  "writtenAt": "2026-08-18T10:19:47.356Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,6 +11,12 @@
       "thread": "003-daemon-self-restart",
       "state": "running",
       "deadline": "2026-08-18T10:59:02Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "004-init-github-host",
+      "state": "running",
+      "deadline": "2026-08-18T11:19:43Z"
     }
   ]
 }
