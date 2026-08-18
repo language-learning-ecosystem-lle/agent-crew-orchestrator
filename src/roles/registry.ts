@@ -57,6 +57,16 @@ export type RoleRegistry = {
   canHoldTurn(id: RoleId): boolean;
   /** Whether the role may OPEN and DROP tasks in the feed (thread 021, `task-declare`). */
   canDeclareTask(id: RoleId): boolean;
+  /**
+   * The `watch` roles paired with the session name each is to be woken in. RESERVED:
+   * called by nothing but tests today (measured 2026-08-18, thread
+   * `012-wake-watch-reserved`) — this installation has no watch-keeper at all, and the
+   * daemon raises a role by spawning the agent binary rather than by waking a session
+   * by name. Kept and not cleaned out (john, 2026-08-18) as the reservation the
+   * wake-by-name keeper of the resident floor would stand on; the test that calls it is
+   * the only holder of its contract. The reason the whole `session` value is a
+   * reservation is written beside the field, in `roles/schema.ts`.
+   */
   watchTargets(): readonly WatchTarget[];
   notificationTargets(): readonly NotificationTarget[];
   /**
