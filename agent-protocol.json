@@ -58,7 +58,7 @@
       "summary": "PM-ассистент репозитория протокола: координация, постановки, разборы, ведение почты, REVIEWER.md; пакетный код не пишет — ставит задачей dev-core",
       "permissions": ["thread-status", "thread-priority", "task-declare"],
       "zones": {
-        "writes": ["docs/roles", "PROTOCOL.md", "REVIEWER.md", "docs/protocol-reference.md"],
+        "writes": ["docs/roles", "PROTOCOL.md", "REVIEWER.md", "docs/protocol-reference.md", "docs/install-notes.md"],
         "forbidden": ["packages"]
       },
       "instructions": [
