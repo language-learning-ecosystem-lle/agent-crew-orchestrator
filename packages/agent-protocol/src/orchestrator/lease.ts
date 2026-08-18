@@ -34,6 +34,7 @@
  */
 import { MAX_ATTEMPTS, type OrchestratorEvent, type ReleaseReason } from "./journal.js";
 import { sessionLogPath } from "./paths.js";
+import { type FailureClass, thawAt } from "./thaw.js";
 
 /**
  * The lease lifecycle. `released`/`stopped` are terminal (with `reason`/`mode`).
@@ -72,10 +73,30 @@ export type LeaseView = {
   readonly lastEvent: OrchestratorEvent["kind"];
   /** The lease is alive, but its `deadline` has already passed relative to `now`. */
   readonly overdue: boolean;
-  /** The attempt ceiling is exhausted — we do not launch any more. */
+  /**
+   * The attempt ceiling is exhausted — we do not launch any more. AN EXTERNAL FREEZE
+   * WHOSE TIMER HAS RUN OUT IS NOT ONE (thread 013): the pair thawed, so it is exhausted
+   * no longer, and every reader that skipped it — the tick, the frame, the courier —
+   * stops skipping it in the same breath.
+   */
   readonly exhausted: boolean;
   /** The pair CAN be launched again (unsuccessful finish and the ceiling not reached). */
   readonly launchable: boolean;
+  /**
+   * WHAT SPENT THE CEILING (thread 013), on a pair that reached it — `external` when the
+   * last failed run died on the vendor's side before reaching the work, `substantive` when
+   * the session worked and left without passing the turn. Absent on every pair that is not
+   * at the ceiling: it is a property of the freeze, not of the pair.
+   */
+  readonly exhaustedClass?: FailureClass;
+  /**
+   * WHEN THE FREEZE LIFTS BY ITSELF — present only beside `exhaustedClass`, and `null`
+   * there is a fact rather than a gap: a `substantive` freeze has no self-thaw by design,
+   * and an `external` one with `null` has spent its backoff and stands until a delivery.
+   * Kept on the view even after the thaw has passed (`exhausted` is then false), because
+   * that is what lets a reader say WHY the pair is back rather than merely that it is.
+   */
+  readonly thawAt?: string | null;
   /**
    * WHERE THIS PAIR'S TRANSCRIPT LIES (T-1, thread 019) — the `.log` of its LAST run,
    * present only when the caller said where the sessions directory is and the journal
@@ -236,6 +257,16 @@ type Acc = {
   deliveredToSelf: boolean;
   /** The stamp of the LAST acquire — the moment the session's file names (T-1). */
   acquiredAt: string | null;
+  /**
+   * The last release said the run died on the VENDOR's side before reaching the work
+   * (thread 013) — the `external` flag the supervisor writes. It is the class of THAT
+   * release and of no other, so it is overwritten by every release, including the ones
+   * that are not failures: a pair that fails externally and then completes must not carry
+   * the flag into its next freeze.
+   */
+  externalFailure: boolean;
+  /** When the last release happened — the clock the external backoff runs from. */
+  releasedAt: string | null;
   lastEvent: OrchestratorEvent["kind"];
 };
 
@@ -291,6 +322,8 @@ export const foldLeases = (
         reason: null,
         deliveredToSelf: false,
         acquiredAt: null,
+        externalFailure: false,
+        releasedAt: null,
         lastEvent: event.kind,
       };
       acc.set(k, cur);
@@ -353,6 +386,8 @@ export const foldLeases = (
         // reason stays what the journal says (the process did exit with the turn
         // here), and the judgement below reads this flag instead of the name.
         cur.deliveredToSelf = selfTurn;
+        cur.externalFailure = event.external === true;
+        cur.releasedAt = event.ts;
         cur.waitDeadline = null;
         cur.waitingSince = null;
         break;
@@ -378,7 +413,28 @@ export const foldLeases = (
     // R19's two endings and `quota-exhausted` were taken off this list, now a third
     // case of it rather than a new policy (john, 2026-07-30).
     const failed = isFailedTerminal(cur.state, cur.reason) && !cur.deliveredToSelf;
-    const exhausted = cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts);
+    const atCeiling = cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts);
+    // THE FREEZE HAS A CLASS AND, FOR ONE OF THE TWO, AN END (thread 013). The class is
+    // read off the release rather than judged here: the supervisor saw the stream, this
+    // fold sees only the journal. The thaw is a stamp, so the whole policy is one
+    // comparison — and the comparison is `>=` for the same reason `overdue` is `>`: the
+    // thaw is a moment the pair BECOMES launchable at, not one it must outlive.
+    const failureClass: FailureClass | undefined = atCeiling
+      ? cur.externalFailure
+        ? "external"
+        : "substantive"
+      : undefined;
+    const thaw =
+      failureClass === undefined || cur.releasedAt === null
+        ? null
+        : thawAt({
+            failureClass,
+            attempt: cur.attempt,
+            ceiling: maxAttempts,
+            since: cur.releasedAt,
+          });
+    const thawed = thaw !== null && nowIso >= thaw;
+    const exhausted = atCeiling && !thawed;
     const launchable = failed && !exhausted;
     return {
       role: cur.role,
@@ -393,6 +449,7 @@ export const foldLeases = (
       overdue,
       exhausted,
       launchable,
+      ...(failureClass === undefined ? {} : { exhaustedClass: failureClass, thawAt: thaw }),
       ...(sessions === undefined || cur.acquiredAt === null
         ? {}
         : { sessionLog: sessionLogPath(sessions, cur.role, cur.thread, cur.acquiredAt) }),

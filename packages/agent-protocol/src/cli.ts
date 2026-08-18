@@ -377,6 +377,12 @@ import {
   unitNameFor,
   worktreeInstallVerdict,
 } from "./orchestrator/systemd.js";
+import {
+  type ApiFailureSignal,
+  apiFailureSignalOf,
+  describeApiFailure,
+  failureClassOf,
+} from "./orchestrator/thaw.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
@@ -6898,6 +6904,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   let quota: QuotaSignal | undefined;
   /** The authorisation refusal, once seen (thread 023) — the same latch, its own fact. */
   let authFailure: AuthSignal | undefined;
+  // The vendor's side failed before the session reached the work (thread 013) — latched
+  // like the two signals above and read once, at the release.
+  let apiFailure: ApiFailureSignal | undefined;
   // THE SESSION LEARNS ITS OWN ID (R7) — from the init line of its own stream, which
   // the supervisor is reading anyway, written into the file whose path the session
   // was given in its environment. Once: the id does not change mid-run, and a
@@ -6948,6 +6957,19 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     authFailure = signal;
     writeLog(`supervisor  ${describeAuthRelease(signal)}`);
   };
+  // THE VENDOR'S SIDE FAILED (thread 013) — latched off the same lines of both streams as
+  // the two above, and for the same reason: the decision belongs to the release below,
+  // this handler only records that the words were seen. It is NOT a release reason of its
+  // own — a 5xx does not stop the run, the run dies of it and comes back as
+  // `exited-without-handoff`, which is the truth. All this flag changes is that the
+  // exhaustion such a run spends thaws by itself instead of standing until a human looks.
+  const noteApiFailure = (line: string): void => {
+    if (apiFailure !== undefined) return;
+    const signal = apiFailureSignalOf(line);
+    if (signal === undefined) return;
+    apiFailure = signal;
+    writeLog(`supervisor  ${describeApiFailure(signal)}`);
+  };
   // WHAT THE RUN BURNED (thread 029) — latched off the same lines, and WRAPPED, which is
   // the whole of curator's first acceptance condition (msg-004). Telemetry has no right to
   // touch the fact that the lease is released: "every outcome leaves a trace" is the
@@ -6982,6 +7004,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // wins — a session that repeats the message is still the same closed window.
       noteQuota(line);
       noteAuth(line);
+      noteApiFailure(line);
       for (const rendered of renderStreamLine(line)) {
         writeLog(rendered);
         out(p.streamPrefix === undefined ? rendered : `${p.streamPrefix} ${rendered}`);
@@ -6997,6 +7020,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       writeLog(`stderr  ${line}`);
       noteQuota(line);
       noteAuth(line);
+      noteApiFailure(line);
     }
   });
 
@@ -7270,6 +7294,16 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // which is the key `BOX_ACCOUNT` and not a gap.
         ...(p.account === undefined ? {} : { account: p.account.id }),
         ...(leftDirty ? { dirty: true as const } : {}),
+        // WHICH CLASS OF FAILURE SPENT THIS ATTEMPT (thread 013). Judged here, at the one
+        // moment both facts are in hand — the latched signal off the stream and how much of
+        // the run had actually been burned — and written only when it is `external`: the
+        // flag is a positive observation, and its absence is the substantive class by
+        // default. It rides on every release rather than only on the failed ones for the
+        // same reason `account` does: the fold decides what a class MEANS, and a writer
+        // that also decided when to mention it would be the second place to keep in step.
+        ...(failureClassOf({ apiFailure: apiFailure !== undefined, steps }) === "external"
+          ? { external: true as const }
+          : {}),
         // WHAT THE RUN BURNED rides to the journal (thread 029) — the last moment the
         // numbers are in hand without re-parsing the transcript. Omitted entirely when the
         // run left no ledger AND no model: an empty object would claim a measurement

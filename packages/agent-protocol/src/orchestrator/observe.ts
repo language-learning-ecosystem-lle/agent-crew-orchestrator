@@ -245,6 +245,12 @@ export const stepEvent = (
      */
     readonly dirty?: true;
     /**
+     * The run died on the vendor's side before reaching the work (thread 013) — the class
+     * that makes an exhaustion thaw by itself. `true` or absent, like the field it lands
+     * in, and computed by `failureClassOf` from the latched signal and the step count.
+     */
+    readonly external?: true;
+    /**
      * WHAT THE RUN BURNED (thread 029) — turns, wall time, dollars, tokens, model. Absent
      * for every run that broke off before its stream emitted a ledger, and that absence is
      * legal: see the field on the journal schema. It is copied through the list below like
@@ -272,6 +278,7 @@ export const stepEvent = (
     ...(detail?.window === undefined ? {} : { window: detail.window }),
     ...(detail?.account === undefined ? {} : { account: detail.account }),
     ...(detail?.dirty === undefined ? {} : { dirty: detail.dirty }),
+    ...(detail?.external === undefined ? {} : { external: detail.external }),
     ...(detail?.usage === undefined ? {} : { usage: detail.usage }),
   };
 };
