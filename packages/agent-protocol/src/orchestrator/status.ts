@@ -7,6 +7,7 @@
  * state column.
  */
 import type { LeaseLifecycle, LeaseView } from "./lease.js";
+import { describeFreeze } from "./thaw.js";
 
 /**
  * THE STATE COLUMN, IN THE OPERATOR'S WORDS (thread 019, john) — `draining` is the
@@ -27,7 +28,15 @@ const stateWord = (state: LeaseLifecycle): string =>
 /** A mark on a problem state of the pair — what the operator must not miss. */
 const flag = (view: LeaseView): string => {
   if (view.exhausted)
-    return "  ⚠ EXHAUSTED — no more attempts until the pair delivers again (a completed run or a handoff resets the count), see the journal";
+    // WHICH FREEZE THIS IS, AND WHETHER IT ENDS BY ITSELF (thread 013). The old line said
+    // one thing about two states that need opposite actions from the reader: a substantive
+    // exhaustion waits for a person, an external one waits for a clock the box already
+    // holds. The words are `describeFreeze`'s and not this file's on purpose — the frame,
+    // the courier line and the digest say the same sentence about the same fact.
+    return `  ⚠ EXHAUSTED (${describeFreeze({
+      failureClass: view.exhaustedClass ?? "substantive",
+      thaw: view.thawAt ?? null,
+    })}) — no more attempts until then; a delivery (a completed run or a handoff) resets the count, see the journal`;
   // WHICH deadline has passed is said out loud, because the two mean opposite things:
   // an overrun of the work window is a session that did not fit, an overrun of a WAIT
   // is a human who has not answered (R19) — and the second one is nobody's failure.

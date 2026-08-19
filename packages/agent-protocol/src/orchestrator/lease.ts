@@ -34,6 +34,7 @@
  */
 import { MAX_ATTEMPTS, type OrchestratorEvent, type ReleaseReason } from "./journal.js";
 import { sessionLogPath } from "./paths.js";
+import { type FailureClass, thawAt } from "./thaw.js";
 
 /**
  * The lease lifecycle. `released`/`stopped` are terminal (with `reason`/`mode`).
@@ -72,10 +73,45 @@ export type LeaseView = {
   readonly lastEvent: OrchestratorEvent["kind"];
   /** The lease is alive, but its `deadline` has already passed relative to `now`. */
   readonly overdue: boolean;
-  /** The attempt ceiling is exhausted — we do not launch any more. */
+  /**
+   * The attempt ceiling is exhausted — we do not launch any more. AN EXTERNAL FREEZE
+   * WHOSE TIMER HAS RUN OUT IS NOT ONE (thread 013): the pair thawed, so it is exhausted
+   * no longer, and every reader that skipped it — the tick, the frame, the courier —
+   * stops skipping it in the same breath.
+   */
   readonly exhausted: boolean;
   /** The pair CAN be launched again (unsuccessful finish and the ceiling not reached). */
   readonly launchable: boolean;
+  /**
+   * WHAT SPENT THE CEILING (thread 013), on a pair that reached it — `external` when the
+   * last failed run died on the vendor's side before reaching the work, `substantive` when
+   * the session worked and left without passing the turn. Absent on every pair that is not
+   * at the ceiling: it is a property of the freeze, not of the pair.
+   */
+  readonly exhaustedClass?: FailureClass;
+  /**
+   * WHEN THE FREEZE LIFTS BY ITSELF — present only beside `exhaustedClass`, and `null`
+   * there is a fact rather than a gap: a `substantive` freeze has no self-thaw by design,
+   * and an `external` one with `null` has spent its backoff and stands until a delivery.
+   * Kept on the view even after the thaw has passed (`exhausted` is then false), because
+   * that is what lets a reader say WHY the pair is back rather than merely that it is.
+   */
+  readonly thawAt?: string | null;
+  /**
+   * THE IDENTITY OF THE SERIES OF FREEZES (thread 013) — the stamp of the release that
+   * first took this pair to the ceiling since its last delivery. Present on every view of
+   * a pair whose counter has reached the ceiling at least once and has not been reset
+   * since — INCLUDING while it is thawed, running or draining, which is exactly what
+   * distinguishes it from `exhaustedClass`: that one is the state of the freeze right
+   * now, this one is the run of attempts the freeze belongs to.
+   *
+   * It exists because the courier owes a frozen pair ONE call per series (curator, thread
+   * 013): an external freeze leaves the exhausted set at every thaw, so a key made of the
+   * freeze itself is forgotten in the gap and rings again on the way back. Keyed by this,
+   * the second and third rounds are silent and a NEW series — one on the far side of a
+   * delivery — rings as it should.
+   */
+  readonly exhaustedSince?: string;
   /**
    * WHERE THIS PAIR'S TRANSCRIPT LIES (T-1, thread 019) — the `.log` of its LAST run,
    * present only when the caller said where the sessions directory is and the journal
@@ -236,6 +272,26 @@ type Acc = {
   deliveredToSelf: boolean;
   /** The stamp of the LAST acquire — the moment the session's file names (T-1). */
   acquiredAt: string | null;
+  /**
+   * The last release said the run died on the VENDOR's side before reaching the work
+   * (thread 013) — the `external` flag the supervisor writes. It is the class of THAT
+   * release and of no other, so it is overwritten by every release, including the ones
+   * that are not failures: a pair that fails externally and then completes must not carry
+   * the flag into its next freeze.
+   */
+  externalFailure: boolean;
+  /** When the last release happened — the clock the external backoff runs from. */
+  releasedAt: string | null;
+  /**
+   * WHEN THIS SERIES OF FREEZES BEGAN (thread 013) — the stamp of the release that took
+   * the counter to the ceiling for the first time SINCE THE LAST DELIVERY, and nothing
+   * afterwards moves it. It is the identity of the SERIES rather than of one freeze,
+   * which is what a courier that must ring once per series needs: an external pair leaves
+   * the frozen set at every thaw and comes back to it after the failed retry, so a key
+   * built out of "this freeze" is forgotten in between and the call repeats itself.
+   * Cleared by exactly the thing that ends the series — a delivery zeroing the counter.
+   */
+  ceilingSince: string | null;
   lastEvent: OrchestratorEvent["kind"];
 };
 
@@ -291,6 +347,9 @@ export const foldLeases = (
         reason: null,
         deliveredToSelf: false,
         acquiredAt: null,
+        externalFailure: false,
+        releasedAt: null,
+        ceilingSince: null,
         lastEvent: event.kind,
       };
       acc.set(k, cur);
@@ -302,7 +361,13 @@ export const foldLeases = (
     // branch, so the per-pair ceiling and the global one cannot come to mean different
     // things again.
     const selfTurn = isSelfTurnDelivery(event, deliveredSessions);
-    if (isDelivery(event) || selfTurn) cur.attempt = 0;
+    if (isDelivery(event) || selfTurn) {
+      cur.attempt = 0;
+      // THE SERIES ENDS WHERE THE COUNTER DOES (thread 013). The two are the same fact —
+      // "the pair moved" — so they are reset in the same breath rather than in two places
+      // that could come to disagree about when a freeze stops being the same freeze.
+      cur.ceilingSince = null;
+    }
 
     switch (event.kind) {
       case "lease-acquired":
@@ -353,6 +418,18 @@ export const foldLeases = (
         // reason stays what the journal says (the process did exit with the turn
         // here), and the judgement below reads this flag instead of the name.
         cur.deliveredToSelf = selfTurn;
+        cur.externalFailure = event.external === true;
+        cur.releasedAt = event.ts;
+        // The release that PUT the pair at the ceiling stamps the series, and only the
+        // first one of a series does: rounds 2 and 3 of an external backoff land here with
+        // the stamp already set, and leaving it alone is the whole of "one call per series".
+        if (
+          cur.ceilingSince === null &&
+          (event.reason === "exhausted" ||
+            (isFailedTerminal("released", event.reason) && !selfTurn && cur.attempt >= maxAttempts))
+        ) {
+          cur.ceilingSince = event.ts;
+        }
         cur.waitDeadline = null;
         cur.waitingSince = null;
         break;
@@ -378,7 +455,28 @@ export const foldLeases = (
     // R19's two endings and `quota-exhausted` were taken off this list, now a third
     // case of it rather than a new policy (john, 2026-07-30).
     const failed = isFailedTerminal(cur.state, cur.reason) && !cur.deliveredToSelf;
-    const exhausted = cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts);
+    const atCeiling = cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts);
+    // THE FREEZE HAS A CLASS AND, FOR ONE OF THE TWO, AN END (thread 013). The class is
+    // read off the release rather than judged here: the supervisor saw the stream, this
+    // fold sees only the journal. The thaw is a stamp, so the whole policy is one
+    // comparison — and the comparison is `>=` for the same reason `overdue` is `>`: the
+    // thaw is a moment the pair BECOMES launchable at, not one it must outlive.
+    const failureClass: FailureClass | undefined = atCeiling
+      ? cur.externalFailure
+        ? "external"
+        : "substantive"
+      : undefined;
+    const thaw =
+      failureClass === undefined || cur.releasedAt === null
+        ? null
+        : thawAt({
+            failureClass,
+            attempt: cur.attempt,
+            ceiling: maxAttempts,
+            since: cur.releasedAt,
+          });
+    const thawed = thaw !== null && nowIso >= thaw;
+    const exhausted = atCeiling && !thawed;
     const launchable = failed && !exhausted;
     return {
       role: cur.role,
@@ -393,6 +491,8 @@ export const foldLeases = (
       overdue,
       exhausted,
       launchable,
+      ...(failureClass === undefined ? {} : { exhaustedClass: failureClass, thawAt: thaw }),
+      ...(cur.ceilingSince === null ? {} : { exhaustedSince: cur.ceilingSince }),
       ...(sessions === undefined || cur.acquiredAt === null
         ? {}
         : { sessionLog: sessionLogPath(sessions, cur.role, cur.thread, cur.acquiredAt) }),

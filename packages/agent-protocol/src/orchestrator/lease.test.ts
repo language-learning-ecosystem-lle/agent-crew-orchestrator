@@ -524,3 +524,151 @@ describe("the transcript of the pair (T-1, thread 019)", () => {
     expect((view as LeaseView).sessionLog).toBeUndefined();
   });
 });
+
+describe("foldLeases — the class of a freeze and its self-thaw (thread 013)", () => {
+  // The episode of 2026-08-18: three attempts spent on `API Error: 529`, all of them dead
+  // before the first assistant step. The supervisor writes `external` on such a release;
+  // everything below is what the fold makes of it.
+  const externalBreak = (role: string, thread: string, at: string): OrchestratorEvent => ({
+    kind: "lease-released",
+    ts: at,
+    role,
+    thread,
+    reason: "exited-without-handoff",
+    external: true,
+  });
+  const spent = (role: string, thread: string, at: string): OrchestratorEvent[] => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < MAX_ATTEMPTS - 1; i += 1) {
+      events.push(acquire(role, thread, PAST), externalBreak(role, thread, ts()));
+    }
+    events.push(acquire(role, thread, PAST), externalBreak(role, thread, at));
+    return events;
+  };
+
+  const at =
+    (iso: string) =>
+    (events: OrchestratorEvent[]): LeaseView => {
+      const views = foldLeases(events, new Date(iso), MAX_ATTEMPTS);
+      expect(views).toHaveLength(1);
+      return views[0] as LeaseView;
+    };
+
+  it("an external exhaustion carries its class and the moment it lifts", () => {
+    const v = at("2026-07-24T14:00:00Z")(spent("dev-core", "t", "2026-07-24T13:50:00Z"));
+    expect(v).toMatchObject({
+      exhausted: true,
+      launchable: false,
+      exhaustedClass: "external",
+      thawAt: "2026-07-24T14:05:00Z",
+    });
+  });
+
+  it("the same journal, fifteen minutes on → thawed: exhausted no more, launchable again", () => {
+    const v = at("2026-07-24T14:06:00Z")(spent("dev-core", "t", "2026-07-24T13:50:00Z"));
+    expect(v).toMatchObject({
+      exhausted: false,
+      launchable: true,
+      exhaustedClass: "external",
+      thawAt: "2026-07-24T14:05:00Z",
+    });
+  });
+
+  it("a substantive exhaustion never thaws, however long the journal stands", () => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(
+        acquire("dev-core", "t", PAST),
+        release("dev-core", "t", "exited-without-handoff"),
+      );
+    }
+    const v = at("2026-08-24T14:00:00Z")(events);
+    expect(v).toMatchObject({
+      exhausted: true,
+      launchable: false,
+      exhaustedClass: "substantive",
+      thawAt: null,
+    });
+  });
+
+  // The flag is the class of ONE release: a pair that failed externally and then worked
+  // must not carry it into the next freeze.
+  it("a delivery in between clears the class as it clears the counter", () => {
+    const events = [
+      ...spent("dev-core", "t", "2026-07-24T13:50:00Z"),
+      acquire("dev-core", "t", PAST),
+      handoff("dev-core", "t"),
+      release("dev-core", "t", "completed"),
+      acquire("dev-core", "t", PAST),
+      release("dev-core", "t", "timeout"),
+    ];
+    const v = at("2026-07-24T14:00:00Z")(events);
+    expect(v).toMatchObject({ attempt: 1, exhausted: false, launchable: true });
+    expect(v.exhaustedClass).toBeUndefined();
+  });
+
+  // A pair below the ceiling has no freeze, hence no class: the fields are a property of
+  // the freeze and not of the pair.
+  it("says nothing about a class while the ceiling has not been reached", () => {
+    const v = at("2026-07-24T14:00:00Z")([
+      acquire("dev-core", "t", PAST),
+      externalBreak("dev-core", "t", "2026-07-24T13:50:00Z"),
+    ]);
+    expect(v.exhaustedClass).toBeUndefined();
+    expect(v.thawAt).toBeUndefined();
+  });
+
+  // THE IDENTITY OF THE SERIES (thread 013, curator's requirement): the courier owes a
+  // frozen pair one call per series, and the pair leaves the exhausted set at every thaw —
+  // so the stamp has to survive the gap and end only where the counter does.
+  it("stamps the series at the FIRST freeze and does not move it through the rounds", () => {
+    const events = spent("dev-core", "t", "2026-07-24T13:50:00Z");
+    const first = at("2026-07-24T14:00:00Z")(events).exhaustedSince;
+    expect(first).toBe("2026-07-24T13:50:00Z");
+    // Thawed and running again: no freeze is in force, the series is still the same one.
+    events.push(acquire("dev-core", "t", FUTURE));
+    const midRun = at("2026-07-24T14:06:00Z")(events);
+    expect(midRun.exhaustedClass).toBeUndefined();
+    expect(midRun.exhaustedSince).toBe(first);
+    // The retry fails externally too — the second round of the SAME series.
+    events.push(externalBreak("dev-core", "t", "2026-07-24T13:55:00Z"));
+    expect(at("2026-07-24T14:06:00Z")(events).exhaustedSince).toBe(first);
+  });
+
+  it("a delivery ends the series — the next freeze is a new one, with its own stamp", () => {
+    const events = [
+      ...spent("dev-core", "t", "2026-07-24T13:50:00Z"),
+      acquire("dev-core", "t", PAST),
+      handoff("dev-core", "t"),
+      release("dev-core", "t", "completed"),
+    ];
+    expect(at("2026-07-24T14:00:00Z")(events).exhaustedSince).toBeUndefined();
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(
+        acquire("dev-core", "t", PAST),
+        externalBreak("dev-core", "t", "2026-07-24T13:58:00Z"),
+      );
+    }
+    expect(at("2026-07-24T14:00:00Z")(events).exhaustedSince).toBe("2026-07-24T13:58:00Z");
+  });
+
+  it("the backoff walks 15 → 60 → 240 with the attempts, then freezes for good", () => {
+    const events = spent("dev-core", "t", "2026-07-24T13:50:00Z");
+    events.push(
+      acquire("dev-core", "t", PAST),
+      externalBreak("dev-core", "t", "2026-07-24T13:50:00Z"),
+    );
+    expect(at("2026-07-24T14:00:00Z")(events).thawAt).toBe("2026-07-24T14:50:00Z");
+    events.push(
+      acquire("dev-core", "t", PAST),
+      externalBreak("dev-core", "t", "2026-07-24T13:50:00Z"),
+    );
+    expect(at("2026-07-24T14:00:00Z")(events).thawAt).toBe("2026-07-24T17:50:00Z");
+    events.push(
+      acquire("dev-core", "t", PAST),
+      externalBreak("dev-core", "t", "2026-07-24T13:50:00Z"),
+    );
+    const last = at("2026-07-25T14:00:00Z")(events);
+    expect(last).toMatchObject({ exhausted: true, launchable: false, thawAt: null });
+  });
+});

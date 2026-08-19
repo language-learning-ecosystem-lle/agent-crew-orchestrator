@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import type { NotificationTarget } from "../roles/registry.js";
 import {
   describeAge,
+  type ExhaustedPair,
   type NotifyState,
   type ParkedThread,
   parseNotifyState,
@@ -403,5 +404,123 @@ describe("a thread frozen behind an EVENT — the class that gets no line at all
     });
 
     expect(result.stalled.map((turn) => turn.thread)).toEqual(["025-y"]);
+  });
+});
+
+/**
+ * THE SIXTH CLASS — A PAIR THE CIRCUIT HAS STOPPED RAISING (thread 013).
+ *
+ * The measured defect: on 2026-08-18 three pairs stood at the attempt ceiling for five
+ * hours and the courier's line said `nothing to announce`. The repair is two events, and
+ * every test below is about the one thing that makes them two rather than four: an
+ * external freeze LEAVES the frozen set at each thaw, so the memory of "already
+ * announced" has to be keyed by the SERIES and carried across the gap.
+ */
+describe("frozen pairs — one call per series, and a second one for the terminal", () => {
+  const SINCE = "2026-08-18T18:00:00Z";
+  const PAIR = { role: "dev-core", thread: "006-x", since: SINCE, attempts: 3 };
+
+  const withFreezes = (exhausted: readonly ExhaustedPair[], seen: NotifyState = EMPTY) =>
+    planNotifications({ targets: TARGETS, waiting: [], seen, exhausted, templates: TEMPLATES });
+
+  /** The state the next run reads: what this one announced, carried in the state file. */
+  const carried = (plan: { readonly freezeKeys: readonly string[] }): NotifyState => ({
+    ...EMPTY,
+    freezes: plan.freezeKeys,
+  });
+
+  it("a full backoff rings EXACTLY TWICE, in the order exhausted → frozen", () => {
+    // The pair walks its whole schedule: 15 → 60 → 240 → spent. Between the rounds it is
+    // thawed and running, which is where the free path loses the key (curator's trap).
+    const rounds: ExhaustedPair[][] = [
+      [{ ...PAIR, failureClass: "external", thaw: "2026-08-18T18:15:00Z" }],
+      [PAIR], // thawed: the series lives, no freeze is in force
+      [{ ...PAIR, failureClass: "external", thaw: "2026-08-18T19:15:00Z", attempts: 4 }],
+      [PAIR],
+      [{ ...PAIR, failureClass: "external", thaw: "2026-08-18T23:15:00Z", attempts: 5 }],
+      [PAIR],
+      [{ ...PAIR, failureClass: "external", thaw: null, attempts: 6 }],
+      [{ ...PAIR, failureClass: "external", thaw: null, attempts: 6 }],
+    ];
+    let seen = EMPTY;
+    const rung: string[] = [];
+    for (const round of rounds) {
+      const plan = withFreezes(round, seen);
+      rung.push(...plan.freshFreezes.map((event) => event.kind));
+      seen = carried(plan);
+    }
+
+    expect(rung).toEqual(["exhausted", "frozen"]);
+  });
+
+  it("the substantive class rings ONCE, as frozen — it is terminal from its first second", () => {
+    const substantive = [{ ...PAIR, failureClass: "substantive" as const, thaw: null }];
+    const first = withFreezes(substantive);
+    const again = withFreezes(substantive, carried(first));
+
+    expect(first.freshFreezes.map((event) => event.kind)).toEqual(["frozen"]);
+    expect(again.freshFreezes).toEqual([]);
+    expect(renderNotification(first.lines)).toContain("only a delivery lifts it");
+  });
+
+  it("a delivery ends the series, and the NEXT freeze of the same pair rings again", () => {
+    const first = withFreezes([
+      { ...PAIR, failureClass: "external", thaw: "2026-08-18T18:15:00Z" },
+    ]);
+    // The delivery reset the counter: the caller stops passing the pair at all, so the key
+    // is dropped — and the pair that freezes tomorrow is a new series, with a new stamp.
+    const delivered = withFreezes([], carried(first));
+    const later = withFreezes(
+      [
+        {
+          ...PAIR,
+          since: "2026-08-19T09:00:00Z",
+          failureClass: "external",
+          thaw: "2026-08-19T09:15:00Z",
+        },
+      ],
+      carried(delivered),
+    );
+
+    expect(delivered.freezeKeys).toEqual([]);
+    expect(later.freshFreezes.map((event) => event.kind)).toEqual(["exhausted"]);
+  });
+
+  it("the standing composition counts every pair AT the ceiling, announced or not", () => {
+    // Rounds 2 and 3 do not ring; this is where they stay visible to whoever looks.
+    const plan = withFreezes(
+      [{ ...PAIR, failureClass: "external", thaw: "2026-08-18T19:15:00Z", attempts: 4 }],
+      carried(withFreezes([{ ...PAIR, failureClass: "external", thaw: "2026-08-18T18:15:00Z" }])),
+    );
+
+    expect(plan.freshFreezes).toEqual([]);
+    expect(plan.exhausted).toHaveLength(1);
+  });
+
+  it("a pair in the gap is in no line at all — there is no freeze in force", () => {
+    const plan = withFreezes([PAIR]);
+
+    expect(plan.freshFreezes).toEqual([]);
+    expect(plan.exhausted).toEqual([]);
+    expect(plan.lines).toEqual([]);
+  });
+
+  it("the announced keys survive a round trip through the state file", () => {
+    const plan = withFreezes([{ ...PAIR, failureClass: "external", thaw: "2026-08-18T18:15:00Z" }]);
+    const reread = parseNotifyState(renderNotifyState(carried(plan)));
+
+    expect(reread.freezes).toEqual(plan.freezeKeys);
+    expect(withFreezes([PAIR], reread).freezeKeys).toEqual(plan.freezeKeys);
+  });
+
+  it("nobody human configured — nothing rings, exactly as for the box's own alarms", () => {
+    const plan = planNotifications({
+      targets: [{ id: "curator", style: "nudge", nudge: "john" }],
+      waiting: [],
+      seen: EMPTY,
+      exhausted: [{ ...PAIR, failureClass: "external", thaw: "2026-08-18T18:15:00Z" }],
+    });
+
+    expect(plan.freshFreezes).toEqual([]);
   });
 });

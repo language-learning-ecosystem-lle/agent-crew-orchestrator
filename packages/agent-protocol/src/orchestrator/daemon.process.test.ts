@@ -152,6 +152,39 @@ const seedFailures = (repo: string, times: number): void => {
   writeFileSync(journalPath(repo), `${lines.join("\n")}\n`, "utf8");
 };
 
+/**
+ * A journal in which the pair spent its ceiling on the VENDOR's side, `minutesAgo`
+ * minutes before now (thread 013). Real time, not a fixture stamp: the thaw is decided by
+ * comparing a stamp against the clock the daemon is actually running on.
+ */
+const seedExternalFailures = (repo: string, times: number, minutesAgo: number): void => {
+  const stamp = (offset: number): string =>
+    `${new Date(Date.now() - (minutesAgo + offset) * 60_000).toISOString().slice(0, 19)}Z`;
+  const lines: string[] = [];
+  for (let i = 0; i < times; i += 1) {
+    const back = (times - i) * 2;
+    lines.push(
+      JSON.stringify({
+        kind: "lease-acquired",
+        ts: stamp(back),
+        role: "dev-core",
+        thread: "012-x",
+        deadline: stamp(back - 1),
+      }),
+      JSON.stringify({
+        kind: "lease-released",
+        ts: stamp(back - 1),
+        role: "dev-core",
+        thread: "012-x",
+        reason: "exited-without-handoff",
+        external: true,
+      }),
+    );
+  }
+  mkdirSync(stateDir(repo), { recursive: true });
+  writeFileSync(journalPath(repo), `${lines.join("\n")}\n`, "utf8");
+};
+
 /** Append a delivery — the event that puts the attempt count back to zero. */
 const seedCompletion = (repo: string): void => {
   const line = JSON.stringify({
@@ -372,5 +405,51 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
     );
     // The isolation is intact: the readable pair is still raised, the tick is not a casualty.
     expect(journalKinds(repo)).toContain("launch");
+  });
+});
+
+/**
+ * THE THAW, IN A LIVE TICK (thread 013). The fold's units say a view stops being
+ * `exhausted` once its stamp has passed; this is the question they cannot answer — does
+ * the DAEMON then raise the pair, with nothing new in the mail? That is the whole promise
+ * of the repair, and the two halves of it (the timer and "no delivery required") are one
+ * fact only here, in a real tick against a real mail.
+ */
+describe("an external exhaustion thaws by itself and the tick picks the pair up (thread 013)", () => {
+  it("three 529s twenty minutes ago → raised again, and nothing was delivered in between", () => {
+    const repo = contour();
+    enable(repo);
+    // The mail is the one the pair already failed on: the same waiting message, no new
+    // one. If the launch below needed a delivery, this is where it would not happen.
+    seedExternalFailures(repo, 3, 20);
+
+    const result = daemon(repo);
+
+    expect(result.out).not.toContain("skipped: exhausted");
+    expect(journalKinds(repo)).toContain("launch");
+  });
+
+  it("the same three, four minutes ago → still frozen, and the skip says when it lifts", () => {
+    const repo = contour();
+    enable(repo);
+    seedExternalFailures(repo, 3, 4);
+
+    const result = daemon(repo);
+
+    expect(result.out).toContain("candidate dev-core×012-x skipped: exhausted");
+    expect(journalKinds(repo)).not.toContain("launch");
+  });
+
+  it("A SUBSTANTIVE exhaustion does NOT thaw — a day later it is still frozen", () => {
+    // The control that the timer belongs to the class and not to the ceiling: the same
+    // three failures, without the vendor's fingerprint on them, stay frozen forever.
+    const repo = contour();
+    enable(repo);
+    seedFailures(repo, 3);
+
+    const result = daemon(repo);
+
+    expect(result.out).toContain("candidate dev-core×012-x skipped: exhausted");
+    expect(journalKinds(repo)).not.toContain("launch");
   });
 });
