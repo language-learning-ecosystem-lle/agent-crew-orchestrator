@@ -2145,6 +2145,28 @@ construction:
   reported as "running right now" gets the operator to do nothing, and the wait then
   ends in its own ceiling.
 
+- **Every tick sends a dead-man ping, and silence is the alarm** (thread 017, john's
+  decision of 2026-08-19). The daemon has a watch of its own, and it is a SECOND monitor
+  beside the box's cron ping: on 2026-08-18 the circuit stood dead for 2 h 50 min behind a
+  fully green dashboard, because the box's ping answers "is the box alive" (it was) and CI
+  answers "does the code build" (it did), and nobody was asking whether the daemon was
+  ticking. The URL lives in the secrets file the machine config names (`secrets.envFile`,
+  R14) under `HEALTHCHECKS_CIRCUIT_URL` — never in `agent-protocol.json`; it is a
+  credential (whoever knows it can silence the alarm), so only the NAME of the key is ever
+  printed. **The box's own `HEALTHCHECKS_URL` is refused as the value, by name**: one
+  monitor beaten by two senders stays green while either of them lives, which reproduces
+  the 2 h 50 min by construction. **The key absent is the ordinary case** — no ping, the
+  daemon works exactly as before, and it says so ONCE in the banner rather than every tick.
+  **What a beat proves is narrow and is said in the code**: this process is ticking. A
+  daemon spinning without raising anybody beats too — the class this catches is "the
+  process is dead or was never started", which is the class that cost the 2 h 50 min.
+  **The degradation is one-way**: the ping is issued at the top of the tick and waited out
+  at the bottom (so its latency runs alongside the tick's work, never in front of a
+  launch), it is bounded by a 5s timeout, and a dead network, a 5xx or a timeout can never
+  become the reason a role was not raised. The failure is said on the stream when it
+  STARTS and when it ends, not on every tick. **Creating the monitor is john's hand**
+  (an external account, money) — see §7 of `docs/box-setup.md`.
+
 - **A dead network does not kill the watch** (R6-достройка, john's decision of
   2026-07-26). The one thing that used to end the daemon before it started was the
   cheapest failure there is: the mail fetch in preflight. A hiccup at the wrong

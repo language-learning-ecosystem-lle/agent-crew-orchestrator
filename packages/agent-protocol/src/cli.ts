@@ -408,6 +408,7 @@ import {
   subjectOf,
   type TuiAction,
 } from "./orchestrator/tui.js";
+import { describeWatchdog, resolveWatchdog, watchdogBeacon } from "./orchestrator/watchdog.js";
 import {
   checkWorkspaceSignature,
   createWorkspaceLocks,
@@ -8554,6 +8555,44 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       return "stood";
     }
   };
+  /**
+   * THE WATCHDOG OF THE CIRCUIT (thread 017) — resolved ONCE, at startup, beside the rest
+   * of the machine's configuration and for the same reason: a daemon whose secrets moved
+   * under it should be restarted, and re-reading a home-directory file every tick would
+   * make "was this box beating" depend on the moment rather than on the launch.
+   *
+   * SAID ONCE, WHICHEVER WAY IT WENT. An absent key is the ordinary case and is not an
+   * error — the box works exactly as before — but it is the one state where nobody will
+   * ever notice this daemon dying, so it is a line in the banner and not a silence. An
+   * unreadable secrets file is the same class and is caught here rather than thrown: the
+   * watch must never be the thing that stops the watch.
+   */
+  const watchdogSecrets = ((): LoadedSecrets => {
+    // The machine config is the only source here — never a flag of its own. Where the
+    // secrets of this box are is a fact of the box (R14), and a daemon started by systemd
+    // has no shell to hold a second answer.
+    try {
+      return loadSecrets({ path: local.config.secrets?.envFile ?? null });
+    } catch (error) {
+      err(
+        `agent-protocol: daemon — the secrets file was NOT read (${(error as Error).message}); the circuit watchdog stays off and the daemon works as before`,
+      );
+      return { values: {}, path: null, names: [] };
+    }
+  })();
+  const watchdogState = resolveWatchdog({
+    secrets: watchdogSecrets.values,
+    source: watchdogSecrets.path,
+  });
+  const watchdog = watchdogBeacon({
+    state: watchdogState,
+    // The real client, injected here and nowhere else: every test of this path drives it
+    // from the outside (a server on loopback) or replaces it (the unit tests).
+    fetch: (url, init) => fetch(url, { method: "GET", signal: init.signal, redirect: "follow" }),
+    note: (line) => err(`agent-protocol: daemon — ${line}`),
+  });
+  out(`agent-protocol: daemon — ${describeWatchdog(watchdogState)}`);
+
   // R13: WHAT THIS RUN RAISES, and what it leaves to somebody else — in the banner,
   // because a role missing from the queue for an unspoken reason is indistinguishable
   // from a role with no mail.
@@ -8838,6 +8877,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   }
 
   for (;;) {
+    // THE DEAD-MAN PING, FIRST AND BEFORE THE SHUT GATE (thread 017). It is issued here
+    // and settled at the bottom of the tick, so the request runs alongside the tick's own
+    // work and never in front of a launch (see `watchdog.ts`). BEFORE the gate on purpose:
+    // the class this watch catches is "the process is dead", and a daemon that is up while
+    // the mail is unreadable is alive and doing its job — re-probing. What it beats is the
+    // tick, and it says so in its own words; it never claims the circuit is healthy.
+    watchdog.start();
     // THE SHUT GATE, BEFORE ANYTHING ELSE (R6-достройка). While the mail probe is
     // failing the daemon reads no mail and raises nobody — but it is not deaf: the
     // stop and force flags are checked FIRST, because a network outage must never be
@@ -8846,6 +8892,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     if (mailStale !== null) {
       if (existsSync(stopFlag) || existsSync(forceFlag)) {
         const which = existsSync(forceFlag) ? "force" : "stop";
+        await watchdog.settle();
         await drain(`the ${which} flag`);
         out(`agent-protocol: the daemon stopped — the ${which} flag`);
         return;
@@ -8856,6 +8903,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         err(
           `agent-protocol: daemon — LAUNCHING NOBODY, the mail is not readable: ${probe.detail}; the daemon stays up and re-probes, ${once ? "exiting (--once)" : `next try in ${tickMs / 1000}s`}`,
         );
+        await watchdog.settle();
         if (once) {
           await drain("--once");
           return;
@@ -9061,6 +9109,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // is not a contradiction: the observers read it and put their sessions down, so
       // draining under force is short, and it is what makes the releases get written.
       const which = existsSync(forceFlag) ? "force" : "stop";
+      await watchdog.settle();
       await drain(`the ${which} flag`);
       out(`agent-protocol: the daemon stopped — the ${which} flag`);
       return;
@@ -9190,6 +9239,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // ceiling that made a pair terminal. Only on a CHANGE, so an idle box does not turn
     // the mail branch into a heartbeat log.
     publishState();
+
+    // THE BEAT OF THIS TICK IS WAITED OUT HERE — where the tick was going to sleep anyway
+    // (thread 017). Not at the top, so the ping's latency runs alongside the tick's work
+    // instead of in front of it; not never, because `--once` is the shape of every cron
+    // entry and a fire-and-forget beat would leave the box before the request did.
+    await watchdog.settle();
 
     if (once) {
       // `--once` IS ONE TICK, AND A TICK NOW OUTLIVES ITSELF. It is the shape every check
