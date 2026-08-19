@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-19T13:18:26.672Z",
+  "writtenAt": "2026-08-19T13:21:05.352Z",
   "roles": [
     "curator",
     "dev-core"
@@ -15,7 +15,7 @@
     {
       "role": "curator",
       "thread": "017-circuit-watchdog",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-19T13:58:22Z"
     }
   ]
