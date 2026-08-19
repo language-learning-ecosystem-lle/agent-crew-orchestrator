@@ -1491,8 +1491,17 @@ what they race over is the remote, and the push retry already settles that.
 
 `new-message` **REFUSES** to write into a non-migrated (legacy) thread:
 a file write would cut its history down to a single file — a legacy thread is
-appended to by hand as a section in `_thread.md` until it is migrated (right now
-that is only 009/010).
+appended to by hand as a section in `_thread.md` until it is migrated. WHICH threads
+those are is not a list to be remembered but a fact of the mail, and it is measured
+with one command from the root of the `comms` branch:
+
+```
+for d in agent-comms/[0-9][0-9][0-9]-*/; do [ -d "${d}messages" ] || echo "$d"; done
+```
+
+Empty output — there are no non-migrated threads and this refusal is unreachable
+(measured 2026-08-19, thread `014-merge-model`: empty, all 16 threads carry
+`messages/`).
 
 ### `doctor` — is this box commissioned (thread 019, the operator tail)
 
