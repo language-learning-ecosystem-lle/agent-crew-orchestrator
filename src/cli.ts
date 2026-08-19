@@ -98,6 +98,7 @@ import {
   type AuthAlarm,
   authAlarmKey,
   describeAge,
+  type ExhaustedPair,
   type GhAlarm,
   parseNotifyState,
   planNotifications,
@@ -377,6 +378,13 @@ import {
   unitNameFor,
   worktreeInstallVerdict,
 } from "./orchestrator/systemd.js";
+import {
+  type ApiFailureSignal,
+  apiFailureSignalOf,
+  describeApiFailure,
+  describeFreeze,
+  failureClassOf,
+} from "./orchestrator/thaw.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   isAssistantStep,
@@ -3329,11 +3337,32 @@ const runNotify = async (input: {
   // daemon's tick with it, and the whole point of these two is that somebody gets told.
   let authAlarm: AuthAlarm | undefined;
   let ghAlarm: GhAlarm | undefined;
+  // THE SIXTH QUESTION, and the one the courier had no category for at all (thread 013):
+  // "which pairs has the circuit stopped raising". It is read from the same journal as the
+  // shelf — the fold already carries the class of the freeze and the stamp of its series —
+  // and it is as unable to refuse this command as the two above.
+  let exhaustedPairs: ExhaustedPair[] = [];
   if (paths !== undefined) {
     try {
       const events = existsSync(paths.journal)
         ? parseJournal(readFileSync(paths.journal, "utf8"))
         : [];
+      // THE SERIES SET, not the pairs frozen at this instant: a pair mid-backoff is thawed
+      // and running for part of every round, and dropping it from the composition there is
+      // what makes the memory of "already announced" fall out (curator, thread 013).
+      exhaustedPairs = foldLeases(events, new Date(now), gatesFrom(argv).maxAttempts.value)
+        .filter((view) => view.exhaustedSince !== undefined)
+        .map((view) => ({
+          role: view.role,
+          thread: view.thread,
+          since: view.exhaustedSince as string,
+          attempts: view.attempt,
+          // In force ONLY while the pair is actually standing at the ceiling: a thawed pair
+          // is in the gap of its series, and a freeze that is not in force says nothing.
+          ...(view.exhausted
+            ? { failureClass: view.exhaustedClass, thaw: view.thawAt ?? null }
+            : {}),
+        }));
       // THE ALARM RINGS ON THE WORST SHELF (B.3): several accounts can be shelved at once,
       // and the operator's answer — a login — is per account, so the one named is the one
       // with the longest run of deaths behind it.
@@ -3350,7 +3379,11 @@ const runNotify = async (input: {
           until: shelf.until,
         };
     } catch (error) {
-      say(`auth — the shelf could not be read: ${(error as Error).message}`);
+      // One journal, two questions (the shelf and the freezes) — and one line when it
+      // cannot be read, naming both, rather than a silence about whichever came second.
+      say(
+        `journal — the shelf and the frozen pairs could not be read: ${(error as Error).message}`,
+      );
     }
     try {
       const outage = existsSync(paths.mergeReadyOutage)
@@ -3378,6 +3411,7 @@ const runNotify = async (input: {
     stalled,
     parked,
     frozen,
+    exhausted: exhaustedPairs,
     auth: authAlarm,
     gh: ghAlarm,
     ...(loaded.config.notifications?.templates === undefined
@@ -3392,6 +3426,20 @@ const runNotify = async (input: {
     `${plan.parked.length} parked, ${plan.freshParked.length} of them asking; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
+    // THE STANDING CATEGORY THAT DID NOT EXIST (thread 013). It prints EVERY tick, news or
+    // not, and it names the pairs: the line of 2026-08-18 said `nothing to announce` with
+    // three pairs standing at the ceiling, and a count with no names would have left the
+    // reader of that line exactly where they were.
+    `${
+      plan.exhausted.length === 0
+        ? ""
+        : `; ${plan.exhausted.length} exhausted, ${plan.freshFreezes.length} of them new — ${plan.exhausted
+            .map(
+              (pair) =>
+                `${pair.role}×${pair.thread} (${describeFreeze({ failureClass: pair.failureClass ?? "substantive", thaw: pair.thaw ?? null })})`,
+            )
+            .join(", ")}`
+    }` +
     `${plan.auth === undefined ? "" : `; ${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} runs in a row)`}` +
     `${plan.gh === undefined ? "" : `; gh has refused merge-ready ${plan.gh.ticks} ticks in a row (rings at ${plan.gh.threshold})`}`;
   if (!write) {
@@ -3442,6 +3490,7 @@ const runNotify = async (input: {
     (plan.fresh.length === 0 &&
       plan.freshStalled.length === 0 &&
       plan.freshParked.length === 0 &&
+      plan.freshFreezes.length === 0 &&
       !plan.freshAuth &&
       !plan.freshGh)
   ) {
@@ -3453,6 +3502,7 @@ const runNotify = async (input: {
         parked: plan.parked,
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
+        freezes: plan.freezeKeys,
       }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
@@ -3466,6 +3516,10 @@ const runNotify = async (input: {
     ...(plan.freshGh && plan.gh !== undefined
       ? [`gh refuses merge-ready (${plan.gh.ticks} ticks since ${plan.gh.since})`]
       : []),
+    ...plan.freshFreezes.map(
+      (event) =>
+        `${event.pair.role}×${event.pair.thread} (${event.kind === "frozen" ? "frozen for good" : "exhausted"})`,
+    ),
     ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
@@ -3486,6 +3540,7 @@ const runNotify = async (input: {
         parked: plan.parked,
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
+        freezes: plan.freezeKeys,
       }),
     );
     return { kind: "sent", summary, lines: said };
@@ -3517,6 +3572,7 @@ const runNotify = async (input: {
       parked: plan.parked,
       auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
       gh: plan.gh?.since,
+      freezes: plan.freezeKeys,
     }),
   );
   say(outcome.detail);
@@ -6898,6 +6954,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   let quota: QuotaSignal | undefined;
   /** The authorisation refusal, once seen (thread 023) — the same latch, its own fact. */
   let authFailure: AuthSignal | undefined;
+  // The vendor's side failed before the session reached the work (thread 013) — latched
+  // like the two signals above and read once, at the release.
+  let apiFailure: ApiFailureSignal | undefined;
   // THE SESSION LEARNS ITS OWN ID (R7) — from the init line of its own stream, which
   // the supervisor is reading anyway, written into the file whose path the session
   // was given in its environment. Once: the id does not change mid-run, and a
@@ -6948,6 +7007,19 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     authFailure = signal;
     writeLog(`supervisor  ${describeAuthRelease(signal)}`);
   };
+  // THE VENDOR'S SIDE FAILED (thread 013) — latched off the same lines of both streams as
+  // the two above, and for the same reason: the decision belongs to the release below,
+  // this handler only records that the words were seen. It is NOT a release reason of its
+  // own — a 5xx does not stop the run, the run dies of it and comes back as
+  // `exited-without-handoff`, which is the truth. All this flag changes is that the
+  // exhaustion such a run spends thaws by itself instead of standing until a human looks.
+  const noteApiFailure = (line: string): void => {
+    if (apiFailure !== undefined) return;
+    const signal = apiFailureSignalOf(line);
+    if (signal === undefined) return;
+    apiFailure = signal;
+    writeLog(`supervisor  ${describeApiFailure(signal)}`);
+  };
   // WHAT THE RUN BURNED (thread 029) — latched off the same lines, and WRAPPED, which is
   // the whole of curator's first acceptance condition (msg-004). Telemetry has no right to
   // touch the fact that the lease is released: "every outcome leaves a trace" is the
@@ -6982,6 +7054,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // wins — a session that repeats the message is still the same closed window.
       noteQuota(line);
       noteAuth(line);
+      noteApiFailure(line);
       for (const rendered of renderStreamLine(line)) {
         writeLog(rendered);
         out(p.streamPrefix === undefined ? rendered : `${p.streamPrefix} ${rendered}`);
@@ -6997,6 +7070,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       writeLog(`stderr  ${line}`);
       noteQuota(line);
       noteAuth(line);
+      noteApiFailure(line);
     }
   });
 
@@ -7270,6 +7344,16 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // which is the key `BOX_ACCOUNT` and not a gap.
         ...(p.account === undefined ? {} : { account: p.account.id }),
         ...(leftDirty ? { dirty: true as const } : {}),
+        // WHICH CLASS OF FAILURE SPENT THIS ATTEMPT (thread 013). Judged here, at the one
+        // moment both facts are in hand — the latched signal off the stream and how much of
+        // the run had actually been burned — and written only when it is `external`: the
+        // flag is a positive observation, and its absence is the substantive class by
+        // default. It rides on every release rather than only on the failed ones for the
+        // same reason `account` does: the fold decides what a class MEANS, and a writer
+        // that also decided when to mention it would be the second place to keep in step.
+        ...(failureClassOf({ apiFailure: apiFailure !== undefined, steps }) === "external"
+          ? { external: true as const }
+          : {}),
         // WHAT THE RUN BURNED rides to the journal (thread 029) — the last moment the
         // numbers are in hand without re-parsing the transcript. Omitted entirely when the
         // run left no ledger AND no model: an empty object would claim a measurement

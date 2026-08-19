@@ -62,6 +62,7 @@
  * ask which of them to act on (the same reason `turn-with-nudge` exists).
  */
 import { BOX_ACCOUNT, describeAccount } from "../orchestrator/quota.js";
+import { describeFreeze, type FailureClass } from "../orchestrator/thaw.js";
 import type { NotificationTarget } from "../roles/registry.js";
 import type { RoleId } from "../roles/schema.js";
 import { renderTemplate } from "./template.js";
@@ -117,8 +118,25 @@ export const NOTIFICATION_VARIABLES: Readonly<Record<NotificationKind, readonly 
  * running on, they name no role and no thread, and their readers are the operator and
  * whoever can log in. If a project ever needs them in its own language, that is a version
  * bump made on purpose — asked in the thread, not taken here in silence.
+ *
+ * THE TWO FREEZES JOIN THEM (thread 013) even though they DO name a role and a thread, and
+ * the reason is the same one: what they report is the CIRCUIT's own machinery — the attempt
+ * ceiling of the orchestrator — stopping to raise a pair, not anything that happened in the
+ * conversation. Nobody in the thread wrote them, and no reader of the thread can answer
+ * them; the action behind `frozen` is a person's, and the action behind `exhausted` is a
+ * clock's. Making them project slots would change the KEYS of the frozen config shape,
+ * which is john's decision and not a side effect of this thread (see above).
+ *
+ *  - `exhausted` — a pair has just entered a freeze that ENDS BY ITSELF: the vendor's side
+ *    failed and the backoff of `thaw.ts` is running. One call per series, and rounds 2 and
+ *    3 of the same series are silent — they are visible to whoever looks (the standing
+ *    counters of the courier line and the `status` frame print them every tick) and there
+ *    is no action behind them, so they do not ring;
+ *  - `frozen` — the terminal: an external freeze whose schedule is spent, or a substantive
+ *    one, which is terminal from its first second. THIS is the call that means "a human is
+ *    needed" — nothing but a delivery into the thread will move that pair again.
  */
-export const BOX_ALARM_KINDS = ["auth", "gh-outage"] as const;
+export const BOX_ALARM_KINDS = ["auth", "gh-outage", "exhausted", "frozen"] as const;
 export type BoxAlarmKind = (typeof BOX_ALARM_KINDS)[number];
 
 /**
@@ -144,6 +162,13 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   auth: "the box cannot authenticate to the vendor for {account}: {deaths} runs in a row died on its credentials since {since}. Nothing is raised for it until {until}, and nothing will be until somebody logs that account in on the box — the roles that spend it are standing still",
   "gh-outage":
     "merge-ready has been refused by gh for {ticks} ticks in a row (threshold {threshold}) since {since}: {refusal}. Nothing is broken by it — the queue is ordered as it would be without the tier — but the tier is off until this is fixed",
+  // NEITHER LINE ASKS FOR ANYTHING IN THE FIRST CASE AND BOTH SAY WHOSE MOVE IT IS. The
+  // whole defect this comes from is a pair standing for five hours with nobody told, so the
+  // texts are built around the one question its reader has: "must I do something now".
+  exhausted:
+    "{role} is no longer being raised on {thread}: {attempts} attempts in a row failed and the vendor's side is what spent them ({detail}). Nothing to do — the box knocks again by itself; you are told so that a queue that stopped moving is not a mystery",
+  frozen:
+    "{role}×{thread} is frozen for good: {detail}. The circuit will not raise this pair again by itself — it moves when a message lands in that thread",
 };
 
 /** The announcements the package writes INTO A THREAD; same mechanism, different reader. */
@@ -286,7 +311,56 @@ export type GhAlarm = {
   readonly refusal: string;
 };
 
-/** What was announced last run: the five classes of event in one file. */
+/**
+ * ONE PAIR THE CIRCUIT HAS STOPPED RAISING (thread 013) — the sixth class of event, and
+ * the one that was invisible on 2026-08-18: three pairs stood at the ceiling for five
+ * hours while the courier's line said `nothing to announce`, and a HUMAN found them by
+ * asking where the PR was.
+ *
+ * It is the pair's SERIES of freezes rather than one freeze, which is why `since` is the
+ * stamp of the release that started the series (`LeaseView.exhaustedSince`) and never the
+ * stamp of the current one: an external freeze thaws, retries, fails and freezes again,
+ * and every one of those is the same event to whoever is being told about it.
+ *
+ * `failureClass`/`thaw` describe the freeze IN FORCE NOW and are absent in the gap — a
+ * pair mid-series that is thawed, running or draining. Such a pair rings for nothing; it
+ * stays in the composition only so that what was already announced about the series is not
+ * forgotten while it is away.
+ */
+export type ExhaustedPair = {
+  readonly role: RoleId;
+  readonly thread: string;
+  /** The identity of the series: the release that first took the counter to the ceiling. */
+  readonly since: string;
+  /** What spent the ceiling, while the pair is standing at it. */
+  readonly failureClass?: FailureClass | undefined;
+  /** When this freeze lifts by itself; `null` — it does not (see {@link describeFreeze}). */
+  readonly thaw?: string | null | undefined;
+  /** Failed attempts behind the series — printed in the text, not part of the identity. */
+  readonly attempts?: number | undefined;
+};
+
+/**
+ * WHICH OF THE TWO THINGS HAPPENED TO A PAIR, as an event with its own key: `exhausted` —
+ * the series began and the backoff is running; `frozen` — the terminal, and the one that
+ * needs a person. Both are keyed by the SERIES, so each rings exactly once for it.
+ */
+export type FreezeEvent = {
+  readonly kind: "exhausted" | "frozen";
+  readonly pair: ExhaustedPair;
+};
+
+/** The identity of one freeze announcement: its kind and the series it belongs to. */
+export const freezeKey = (event: FreezeEvent): string =>
+  `${event.kind}\t${event.pair.role}\t${event.pair.thread}\t${event.pair.since}`;
+
+/** The series a freeze key belongs to — the three columns after the kind. */
+const seriesOf = (key: string): string => key.split("\t").slice(1).join("\t");
+
+/** The series of one pair, in the same three columns — what keeps a key alive. */
+const pairSeries = (pair: ExhaustedPair): string => `${pair.role}\t${pair.thread}\t${pair.since}`;
+
+/** What was announced last run: the six classes of event in one file. */
 export type NotifyState = {
   readonly waiting: readonly WaitingPair[];
   readonly stalled: readonly StalledTurn[];
@@ -295,6 +369,14 @@ export type NotifyState = {
   readonly auth?: string | undefined;
   /** The stamp of the merge-ready outage already announced, if any. */
   readonly gh?: string | undefined;
+  /**
+   * The {@link freezeKey}s already announced, for every series that is STILL RUNNING
+   * (thread 013). Unlike every other class here this one is not the current composition:
+   * it is what was said, carried forward for as long as the series it was said about
+   * lives — which is the whole repair, because the pair itself disappears from the frozen
+   * set at every thaw and a composition-shaped memory would forget it there.
+   */
+  readonly freezes?: readonly string[] | undefined;
 };
 
 export type NotificationPlan = {
@@ -319,6 +401,17 @@ export type NotificationPlan = {
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready outage in force now, if the predicate rings — also part of the state. */
   readonly gh?: GhAlarm | undefined;
+  /**
+   * The pairs standing at the attempt ceiling right now, ordered — the STANDING count of
+   * the courier line and of the `status` frame, printed every tick whether it is news or
+   * not (thread 013): rounds 2 and 3 of a backoff do not ring, and this is where they are
+   * nonetheless visible to whoever looks.
+   */
+  readonly exhausted: readonly ExhaustedPair[];
+  /** The freeze announcements this run makes — at most one per series per kind. */
+  readonly freshFreezes: readonly FreezeEvent[];
+  /** Every freeze key that must survive into the next state file — see {@link NotifyState}. */
+  readonly freezeKeys: readonly string[];
   /** True when this shelf has not been announced yet: ONE DELIVERY PER SHELF, not per tick. */
   readonly freshAuth: boolean;
   /** True when this run of refusals has not been announced yet — same rule, same reason. */
@@ -349,6 +442,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     // (account, stamp), so its line is three — see {@link authAlarmKey}.
     ...(state.auth === undefined ? [] : [`auth\t${state.auth}`]),
     ...(state.gh === undefined ? [] : [`gh\t${state.gh}`]),
+    // A freeze line is the announcement itself, not the pair: `freeze <kind> <role>
+    // <thread> <since>`. Sorted so that a diff of the file stays readable when several
+    // pairs freeze in one storm — which is what a 529 storm does.
+    ...[...(state.freezes ?? [])].sort().map((entry) => `freeze\t${entry}`),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -357,6 +454,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const waiting: WaitingPair[] = [];
   const stalled: StalledTurn[] = [];
   const parked: ParkedThread[] = [];
+  const freezes: string[] = [];
   let auth: string | undefined;
   let gh: string | undefined;
   for (const line of raw.split("\n").map((entry) => entry.trim())) {
@@ -396,10 +494,26 @@ export const parseNotifyState = (raw: string): NotifyState => {
       if (columns[1] !== undefined) gh = columns[1];
       continue;
     }
+    if (columns[0] === "freeze") {
+      // Four columns exactly (kind, role, thread, since) — a short line is dropped rather
+      // than half-read: a key that is not the key announces the same freeze a second time.
+      const [, kind, role, thread, since] = columns;
+      if (
+        (kind === "exhausted" || kind === "frozen") &&
+        role !== undefined &&
+        thread !== undefined &&
+        since !== undefined
+      ) {
+        freezes.push(`${kind}\t${role}\t${thread}\t${since}`);
+      }
+      continue;
+    }
     const [role, thread] = columns;
     if (role !== undefined && thread !== undefined) waiting.push({ role, thread });
   }
-  return { waiting, stalled, parked, auth, gh };
+  // An empty set is ABSENT rather than empty: the state of a box that has never frozen a
+  // pair must read exactly as it did before this field existed.
+  return { waiting, stalled, parked, auth, gh, ...(freezes.length === 0 ? {} : { freezes }) };
 };
 
 const ordered = (pairs: readonly WaitingPair[]): readonly WaitingPair[] =>
@@ -441,6 +555,14 @@ export const planNotifications = (input: {
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready tier has been refused for a run of ticks past its threshold. */
   readonly gh?: GhAlarm | undefined;
+  /**
+   * Pairs whose attempt counter has reached the ceiling and has not been reset since
+   * (thread 013) — the whole series set, INCLUDING the ones currently thawed or running,
+   * which the caller reads off `LeaseView.exhaustedSince`. Passing only the pairs frozen
+   * at this instant would be the free path curator named: the memory would be dropped in
+   * every thaw gap and the same series would ring on every round of its backoff.
+   */
+  readonly exhausted?: readonly ExhaustedPair[];
   readonly templates?: Partial<Record<NotificationKind, string>>;
 }): NotificationPlan => {
   const byRole = new Map(input.targets.map((target) => [target.id, target]));
@@ -497,6 +619,45 @@ export const planNotifications = (input: {
   const freshAuth = auth !== undefined && authAlarmKey(auth) !== input.seen.auth;
   const freshGh = gh !== undefined && gh.since !== input.seen.gh;
 
+  // THE SIXTH CLASS (thread 013). Two decisions live here and neither is a detail:
+  //
+  //  - THE MEMORY IS KEYED BY THE SERIES AND CARRIED FORWARD, not rebuilt from the set of
+  //    pairs frozen at this instant. `liveSeries` is what keeps a key alive, and a series
+  //    ends the only way it can — a delivery resets the counter, the caller stops passing
+  //    the pair, the key is dropped and the next freeze of that pair rings again;
+  //  - A PAIR IN THE GAP RINGS FOR NOTHING. Between the thaw and the next failure there is
+  //    no freeze in force (`failureClass` absent), and there is nothing to say about it
+  //    that the standing counters do not already print every tick.
+  const series = [...(input.exhausted ?? [])].sort(
+    (a, b) => a.thread.localeCompare(b.thread) || a.role.localeCompare(b.role),
+  );
+  const liveSeries = new Set(series.map(pairSeries));
+  const seenFreezes = new Set(input.seen.freezes ?? []);
+  const freshFreezes: FreezeEvent[] = [];
+  // A FREEZE IS DROPPED WHEN NOBODY HUMAN IS CONFIGURED, for the reason the two box-wide
+  // alarms are: `frozen` is an instruction to a person, and `exhausted` is a fact about the
+  // machine — an assistant poked through a chat can act on neither.
+  if (human) {
+    for (const pair of series) {
+      if (pair.failureClass === undefined) continue;
+      // THE TWO EVENTS ARE TOLD APART BY THE THAW AND BY NOTHING ELSE: a freeze with a
+      // stamp ahead of it ends by itself, one without a stamp does not — which is true of
+      // a substantive freeze from its first second, and that is why the substantive class
+      // rings ONCE, as `frozen`, and never as `exhausted`.
+      const event: FreezeEvent = {
+        kind: (pair.thaw ?? null) === null ? "frozen" : "exhausted",
+        pair,
+      };
+      if (seenFreezes.has(freezeKey(event))) continue;
+      freshFreezes.push(event);
+    }
+  }
+  const freezeKeys = [
+    ...[...seenFreezes].filter((entry) => liveSeries.has(seriesOf(entry))),
+    ...freshFreezes.map(freezeKey),
+  ];
+  const exhausted = series.filter((pair) => pair.failureClass !== undefined);
+
   const lines: NotificationLine[] = [];
   // THE BOX COMES BEFORE THE MAIL. A shelved box means none of the lines below can be acted
   // on by the circuit at all — reading "your turn: 042" first and "nothing is being raised"
@@ -525,6 +686,27 @@ export const planNotifications = (input: {
         threshold: String(gh.threshold),
       }),
     });
+  // THE FREEZES COME WITH THE BOX'S OWN LINES, above the mail, for the same reason: a pair
+  // the circuit has stopped raising is not a turn that has passed, and a reader who learns
+  // "your turn: 042" first and "nothing is being raised for 042" last has read them in the
+  // wrong order. Each freeze is its own line — two frozen pairs are two facts.
+  for (const event of freshFreezes) {
+    const detail = describeFreeze({
+      failureClass: event.pair.failureClass ?? "substantive",
+      thaw: event.pair.thaw ?? null,
+    });
+    lines.push({
+      kind: event.kind,
+      thread: event.pair.thread,
+      role: event.pair.role,
+      text: renderTemplate(BOX_ALARM_TEMPLATES[event.kind], {
+        role: event.pair.role,
+        thread: event.pair.thread,
+        attempts: String(event.pair.attempts ?? ""),
+        detail,
+      }),
+    });
+  }
   // THE PARKS COME FIRST, and they are the only lines that name a question: this is the
   // section "waiting on your decision", and it is at the top because it is the only part of
   // the message that is an instruction to the reader rather than a report about the circuit.
@@ -603,6 +785,9 @@ export const planNotifications = (input: {
     fresh,
     freshStalled,
     freshParked,
+    exhausted,
+    freshFreezes,
+    freezeKeys,
     auth,
     gh,
     freshAuth,

@@ -280,6 +280,19 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     // It is on the RELEASE rather than a new event kind because it is a property of how
     // this run finished, and the release is the record of that.
     dirty: z.literal(true).optional(),
+    // THE RUN DIED ON THE VENDOR'S SIDE BEFORE REACHING THE WORK (thread 013) — the
+    // external class of a failed attempt. `true` or absent, never `false`, and the
+    // asymmetry is the meaning exactly as it is for `dirty` one field up: the flag is a
+    // positive observation of the stream (an `API Error: 5xx` and no assistant step behind
+    // it, `failureClassOf`), and its absence is "nobody saw that", which is also what every
+    // journal written before this field says. Absence therefore reads as SUBSTANTIVE, the
+    // conservative direction: a pair frozen by mistake is loud, an endless retry is quiet.
+    //
+    // It rides on the release and not on a reason of its own on purpose: `quota-exhausted`
+    // and `auth-failed` are causes the vendor NAMES about the box and they cost no attempt,
+    // while this one is a class we RECOGNISE about one run — it still costs the attempt,
+    // and all it buys is that the exhaustion it spends thaws by itself (`thaw.ts`).
+    external: z.literal(true).optional(),
     // WHAT THE RUN BURNED (thread 029). The economics of the circuit is not computed —
     // it is simply STOPPED FROM BEING THROWN AWAY: the supervisor already reads every
     // line of the session's stream, so by the time the lease is let go it knows the
