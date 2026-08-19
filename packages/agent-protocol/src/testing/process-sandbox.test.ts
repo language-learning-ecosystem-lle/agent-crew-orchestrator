@@ -8,7 +8,20 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { LAUNCH_ENV } from "../orchestrator/launch.js";
 import { configHome, configHomeInside, sandbox } from "./process-sandbox.js";
+
+/** Sets a variable for the body and puts the ambient value back, absent or not. */
+const withAmbient = (name: string, value: string, body: () => void): void => {
+  const ambient = process.env[name];
+  process.env[name] = value;
+  try {
+    body();
+  } finally {
+    if (ambient === undefined) delete process.env[name];
+    else process.env[name] = ambient;
+  }
+};
 
 describe("the config home of a process test (R14)", () => {
   it("replaces an ambient XDG_CONFIG_HOME rather than deferring to it", () => {
@@ -28,6 +41,27 @@ describe("the config home of a process test (R14)", () => {
 
   it("extra wins over the ambient environment — a test that says more keeps saying it", () => {
     expect(sandbox("/home", { PATH: "/only/here" }).PATH).toBe("/only/here");
+  });
+
+  // The launch channel is the supervisor's, so on the box that runs the circuit every
+  // one of its variables is ambient and on a runner none of them is. A sandbox that let
+  // them through would hand a spawned CLI the provenance of the session running the
+  // suite — which is what happened on 2026-08-19: three cases green on the box and red
+  // on the runner, at the door that requires `--worker`.
+  it("drops every variable of the launch channel — a suite raised by the circuit is not a session", () => {
+    for (const name of Object.values(LAUNCH_ENV)) {
+      withAmbient(name, "the ambient session", () => {
+        expect(sandbox("/home")[name]).toBeUndefined();
+      });
+    }
+  });
+
+  it("a test that is ABOUT the launch channel still passes the value through extra", () => {
+    withAmbient(LAUNCH_ENV.worker, "the ambient session", () => {
+      expect(sandbox("/home", { [LAUNCH_ENV.worker]: "claude-code" })[LAUNCH_ENV.worker]).toBe(
+        "claude-code",
+      );
+    });
   });
 
   it("the two layouts name different homes, and both stay inside the test's own base", () => {
