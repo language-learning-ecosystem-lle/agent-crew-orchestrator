@@ -132,6 +132,15 @@
           "path": "REVIEWER.md"
         }
       ]
+    },
+    {
+      "id": "github",
+      "kind": "github-actions",
+      "status": "active",
+      "wake": {
+        "mode": "event"
+      },
+      "summary": "Машинный уведомитель контура: пишет в тред факт merge (merge-notify.yml), исход прогона (ci-outcome.yml) и след смотрителя (notifier-watch.yml); ожиданий не принимает, поднимает его GitHub Actions, не контур"
     }
   ]
 }
