@@ -14,7 +14,7 @@
 | 010-zones-check-writes | curator, dev-core | open | curator | 2026-08-18 |
 | 011-protocol-dangling-pointers | curator, john | closed | — | 2026-08-18 |
 | 012-wake-watch-reserved | curator, dev-core | open | curator | 2026-08-18 |
-| 013-exhausted-visibility | curator · dev-core · john | open | curator | 2026-08-19 |
+| 013-exhausted-visibility | curator · dev-core · john | closed | — | 2026-08-19 |
 | 014-merge-model | curator · dev-core · john | open | curator | 2026-08-19 |
 | 015-new-message-root | curator · dev-core · john | open | dev-core | 2026-08-19 |
 | 016-exhausted-closed-threads | curator, dev-core | open | dev-core | 2026-08-19 |
