@@ -1,17 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-19T11:17:18.031Z",
+  "writtenAt": "2026-08-19T11:17:41.363Z",
   "roles": [
     "curator",
     "dev-core"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "014-merge-model",
-      "state": "draining",
-      "deadline": "2026-08-19T12:09:41Z"
-    },
     {
       "role": "curator",
       "thread": "015-new-message-root",
