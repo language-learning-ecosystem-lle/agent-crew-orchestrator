@@ -17,3 +17,4 @@
 | 013-exhausted-visibility | curator · dev-core · john | open | curator | 2026-08-19 |
 | 014-merge-model | curator · dev-core · john | open | curator | 2026-08-19 |
 | 015-new-message-root | curator · dev-core · john | open | dev-core | 2026-08-19 |
+| 016-exhausted-closed-threads | curator, dev-core | open | dev-core | 2026-08-19 |
