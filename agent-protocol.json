@@ -117,6 +117,21 @@
         },
         "account": "lle-second"
       }
+    },
+    {
+      "id": "reviewer-pr",
+      "kind": "github-actions",
+      "status": "active",
+      "wake": {
+        "mode": "event"
+      },
+      "summary": "Автономный ревьюер PR: вердикт по REVIEWER.md в тред, коммент в PR и review-статус; поднимает его воркфлоу claude-review.yml, не контур",
+      "instructions": [
+        {
+          "kind": "in-repo",
+          "path": "REVIEWER.md"
+        }
+      ]
     }
   ]
 }

@@ -29,7 +29,7 @@
 | `merge-notify.yml` | `pull_request: types: [closed]` + `workflow_dispatch` | **жив** — merge приезжает в тред |
 | `ci-outcome.yml` | `workflow_dispatch` | заморожен |
 | `notifier-watch.yml` | `workflow_dispatch` | заморожен |
-| `claude-review.yml` | `pull_request: types: [labeled]` + `issue_comment: types: [created]` + `workflow_dispatch` (inputs `pr`, `max_turns`) | **жив** — автономный ревьюер по метке `review` или `@claude` в PR; тратит `ANTHROPIC_API_KEY` (секрет кладёт john рукой) |
+| `claude-review.yml` | `pull_request: types: [labeled]` + `issue_comment: types: [created]` + `workflow_dispatch` (inputs `pr`, `max_turns`) | **жив** — автономный ревьюер по метке `review` или `@claude` в PR; тратит `CLAUDE_CODE_OAUTH_TOKEN` (подписочный токен, секрет положен john рукой) |
 
 Два следствия для роли, обе стороны — из этой же таблицы: **`ci-outcome.yml` заморожен, значит исход CI событием в тред НЕ приезжает** — зелёный на голове роль снимает своей рукой (`gh run list --commit <head>`) ДО передачи хода, а «жду прогон» здесь означает «жду того, чего не будет»; **`merge-notify.yml` жив, значит парковка `parked-on: pr:<n>` законна** и снимается штатно. Приведённая таблица — не режим, а факт: `.github/workflows/**` правит только john. Оба следствия плюс третье того же класса (ревьюер разморожен → право merge у ролей включается его вердиктом) развёрнуты в надстройке установки — [`docs/install-notes.md`](docs/install-notes.md); там же дата и способ сверки таблицы с `on:`, чтобы следующая сверка стоила одно чтение.
 
