@@ -18,4 +18,4 @@
 | 014-merge-model | curator · dev-core · john | open | dev-core | 2026-08-19 |
 | 015-new-message-root | curator · dev-core · john | closed | — | 2026-08-19 |
 | 016-exhausted-closed-threads | curator, dev-core | open | curator | 2026-08-19 |
-| 017-circuit-watchdog | curator, dev-core | open | reviewer-pr | 2026-08-19 |
+| 017-circuit-watchdog | curator, dev-core | open | curator | 2026-08-19 |
