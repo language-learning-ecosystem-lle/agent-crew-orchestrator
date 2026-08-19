@@ -2163,8 +2163,12 @@ construction:
   **The degradation is one-way**: the ping is issued at the top of the tick and waited out
   at the bottom (so its latency runs alongside the tick's work, never in front of a
   launch), it is bounded by a 5s timeout, and a dead network, a 5xx or a timeout can never
-  become the reason a role was not raised. The failure is said on the stream when it
-  STARTS and when it ends, not on every tick. **Creating the monitor is john's hand**
+  become the reason a role was not raised. **"At the bottom" is every way out of the tick,
+  including the one that leaves by `process.exit`** — the handback of a supervised daemon
+  that repaired its own tree waits the beat out like the rest, because a request nobody
+  waits for does not leave the box, and the tick before a repair is the one whose beat
+  says the process reached its handover rather than died on the way. The failure is said
+  on the stream when it STARTS and when it ends, not on every tick. **Creating the monitor is john's hand**
   (an external account, money) — see §7 of `docs/box-setup.md`.
 
 - **A dead network does not kill the watch** (R6-достройка, john's decision of

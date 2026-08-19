@@ -42,6 +42,14 @@
  * it, and a monitor that hangs spends its timeout out of the idle sleep that follows, never
  * out of a launch. The same rule the merge-ready tier and the digest already live by.
  *
+ * "AT THE BOTTOM" MEANS EVERY WAY OUT OF THE TICK AND NOT THE LAST LINE OF IT — the stop
+ * flag, the unreadable mail, the halt, the ordinary end, AND `process.exit` on the handback
+ * of a supervised daemon that repaired its own tree. The last one is the exit that has no
+ * bottom to reach and it was missed on the first pass (the reviewer's finding on #36,
+ * covered by a case since): the `--once` argument below is not about `--once`, it is about
+ * every departure — a beat nobody waits for leaves the box only by luck, and measured, it
+ * did not leave at all.
+ *
  * WHERE THE VALUE LIVES: the secrets file of the machine config (R14, `secrets.envFile`) —
  * never `agent-protocol.json`. The URL is a credential in the exact sense that matters:
  * whoever knows it can silence the alarm. So this module takes it from the same loader the

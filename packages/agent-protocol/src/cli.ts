@@ -9211,6 +9211,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // (zero leases is a condition of the verdict) and no flag is set, so the successor the
     // supervisor raises meets a floor with nothing on it.
     if (handBackTarget !== undefined) {
+      // THE BEAT OF THIS TICK IS SETTLED HERE TOO (thread 017). `process.exit` is the one
+      // exit that takes the request with it, and the argument is the `--once` one word for
+      // word: a beat still in flight leaves the box only if somebody waits for it. The last
+      // tick before a repair is exactly the tick whose beat matters — it is the one that
+      // tells the monitor the process reached its own handover rather than died on the way.
+      await watchdog.settle();
       err(
         `agent-protocol: daemon — ${describeSelfRestartHandback(handBackTarget, SELF_RESTART_EXIT_CODE)}`,
       );
