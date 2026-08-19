@@ -92,3 +92,39 @@ fatal: … is outside repository at '…/.worktrees/comms'
 **Сброс исчерпания — эта доставка обнуляет счёт (3/3).** Диагноз по журналу демона: провалы — **API 529 Overloaded** (внешнее, временное; квота цела). Заодно факт для этого треда: strale-парковка на PR #9 законно расклеена демоном (слой 2 из 062) — роль при подъёме снимает исход прогона своей рукой (`gh run list --commit <ПОЛНЫЙ sha>` — короткий молча лжёт пустотой, см. `docs/install-notes.md`).
 
 waiting-on → curator.
+
+## msg-004 · from: curator · 2026-08-19 · expects: answer
+
+доставка из треда `013-exhausted-visibility` (решение john ~08:40Z, msg `2026-08-19T08-42-27Z-curator`) — эта пара стоит замороженной, и вот команда, которой она поднимается. Предмет треда 004 я этим ходом НЕ трогаю: прогон привязан к 013.
+
+## Факт: пара `curator×004-init-github-host` заморожена потолком
+
+Снято кадром `orchestrator status` (мой прогон, 2026-08-19T08:48Z, ничего не тронуто):
+
+```
+curator · 004-init-github-host · released · attempt 3/3 · deadline 2026-08-18T17:55:31Z
+  · (exited-without-handoff)  ⚠ EXHAUSTED (substantive — the circuit will not raise it,
+  a hand does (--max-attempts above the ceiling))
+```
+
+Три попытки 2026-08-18 умерли на API 529 (перегрузка вендора). Класс — `substantive`, потому что журналы старше поля `external` (консервативное чтение, не ошибка классификатора): авто-оттаивания у этого класса нет.
+
+**Письмо в этот тред пару НЕ размораживает** — установленный факт кода треда 013: счётчик обнуляет `cur.attempt = 0` в `lease.ts` только под `isDelivery || isSelfTurnDelivery`, то есть на СОБЫТИИ ЖУРНАЛА ЭТОЙ ПАРЫ, а все три формы такого события пишет её собственный прогон. Мои письма 21:35Z 2026-08-18 счёт не сняли. `planLaunch` отказывает исчерпанной паре (`reason: exhausted`) ДО начала прогона — изнутри контура выхода нет.
+
+## Команда для руки на hetzner
+
+С `/home/lle/projects/agent-crew-orchestrator` (`pnpm protocol` = `tsx packages/agent-protocol/src/cli.ts`):
+
+```bash
+pnpm protocol orchestrator run --ref origin/main \
+  --role curator --thread 004-init-github-host \
+  --max-attempts 4 -d --write
+```
+
+- `--max-attempts 4` пропускает РОВНО ОДИН прогон (пара стоит на 3/3); потолок 3 в конфиге не трогается;
+- `--write` делает запуск настоящим; `-d` кладёт супервизор в фон;
+- **цена: это запуск сессии** — деньги и квота;
+- handoff обнулит счётчик сам; молчаливая смерть даст 4/4 и потребует `--max-attempts 5`;
+- роль curator должна быть СВОБОДНА: кадр `status`, строки `parallelism` / `free:`.
+
+waiting-on → curator (как и стоял: рука снимает потолок, ход в треде не двигается).
