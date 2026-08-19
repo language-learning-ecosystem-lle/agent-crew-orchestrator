@@ -102,7 +102,7 @@
       "instructions": [
         {
           "kind": "in-repo",
-          "path": "docs/roles/dev-core.md"
+          "path": "docs/roles/dev-core-typo.md"
         }
       ],
       "launch": {
