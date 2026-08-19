@@ -940,12 +940,41 @@ of the whole circuit.
 `--repo` defaults to the repository of the current directory. Without `--write`
 nothing is written.
 
+`--root` (the mail directory) is MADE ABSOLUTE AT THE DOOR, about the directory the
+command was typed in — one base for every phase afterwards (thread 015). A relative
+value used to be measured about the process while the message was planned and written,
+and about the mail checkout while it was staged (`git -C <checkout> add`): the dry run
+printed a plan and `--write` died on `fatal: … is outside repository` after the file was
+already on disk. Its other half is in delivery, which now takes its own writes back —
+that orphan sat in the checkout uncommitted, and a dirty checkout is refused by design,
+so one mistyped path shut the mail for every role on the box until a hand cleaned it.
+
 The entry point in this repository is `pnpm protocol <command>` (the package is
 declared as a dependency of the root); below the commands are written by the
 binary name.
 
 ```
 agent-protocol config check --ref <ref> [--repo <p>]                       # the config is intact
+agent-protocol config set   <key> <value> [--exec <p>] [--config-dir <p>] [--ref <ref>] \
+                            [--local-config <p>] [--instance <name>] [--write]
+                            # ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019) — the commissioned box
+                            # whose agent binary moved, whose operator is somebody else now, whose secrets
+                            # file left /root: without opening that JSON by hand
+                            # <key>: `instance <id>`, `operator <role>`, `secrets <path>`,
+                            # `agent <kind> --exec <path>`, `account <id> --config-dir <path>`
+                            # A POLICY key (`roles`, `limits`, `instances`, …) is refused BY THE RULE and
+                            # not as a typo: it lives in the repository config, behind a PR — and so does
+                            # WHICH ROLE sits on which account (`launch.account`). This key says only
+                            # WHERE that account's directory is on this disk
+                            # AN ACCOUNT DIRECTORY THAT IS NOT THERE YET is the ordinary case, not a
+                            # refusal (055): the login creates it, so the command prints the line that
+                            # does — `CLAUDE_CONFIG_DIR=<path> claude login`
+                            # THE CHECK RUNS BEFORE THE WRITE, and the RESULT is re-parsed by the strict
+                            # schema: a file this command writes cannot be one the package refuses to read
+                            # `--instance <name>` (WHICH FILE is edited) and the key `instance <id>` (what
+                            # identity that file claims) are two different questions
+                            # a value already there is a `keep` and is not rewritten even with --write
+                            # --ref may be left out (the operator's set): `orchestrator.ref` of the tree
 agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
                             # IS THIS BOX COMMISSIONED (thread 019): the checklist of a machine that is
                             # supposed to raise roles unattended — both configs, which instance it is, the
@@ -953,6 +982,29 @@ agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--o
                             # the mail checkout and its freshness; then one line: green, or what failed
                             # it REACHES THE NETWORK and SPENDS ONE AGENT CALL — those facts are in no file
                             # --offline leaves them unasked and SAYS so in the rows, never passes them
+                            # --ref may be left out (the operator's set): `orchestrator.ref` of the tree
+agent-protocol init         [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <id>] \
+                            [--agent <kind>] [--exec <path>] [--operator <role>] [--secrets <path>] \
+                            [--no-doctor] [--offline] [--write]
+                            # COMMISSIONING A BOX, the other half of `doctor` (thread 019): the machine
+                            # config (R14) assembled from flags and from what this box already knows — the
+                            # agent binary is FOUND on PATH, not typed — the mail worktree created WITH A
+                            # FETCH (one made without it reads as 'never pulled' in every frame
+                            # afterwards), and then `doctor` is run: the commissioning ends in the
+                            # checklist and not in a belief
+                            # IT NEVER GUESSES AN IDENTITY: --instance is refused, not invented — a guess
+                            # raises another box's role. It never writes the secrets file (only where it
+                            # lies) and never overwrites silently: a declared value and a new one are
+                            # printed as a change, both sides
+                            # WITHOUT --write it decides and prints and DOES none of it. One effect
+                            # survives the plan and the summary names it: on a box with no mail checkout
+                            # yet, reading whether the instance id is already published FETCHES the mail
+                            # branch — that read is why the warning about a taken id reaches you BEFORE
+                            # you take it. --offline declines it and says so
+                            # --instance NAMES THE FILE TOO on a box hosting several projects (055): the
+                            # config goes to `instances/<id>.json` and records the checkout it serves,
+                            # which is what lets every later command typed in that tree find it
+                            # --no-doctor: stop after writing (a box with no network yet)
                             # --ref may be left out (the operator's set): `orchestrator.ref` of the tree
 agent-protocol init github  [--ref <ref>] [--local-config <p>] [--instance <name>] [--key <path>] \
                             [--host <h>] [--alias <a>] [--comment <c>] [--no-probe] [--write]

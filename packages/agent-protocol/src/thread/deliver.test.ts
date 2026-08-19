@@ -28,8 +28,13 @@ const harness = (options: {
    * carries. Real for the two deliveries that write a mutable file (thread 065).
    */
   readonly emptyDiff?: boolean;
+  /** The git call that fails (`add`, `commit`) — everything short of the push. */
+  readonly failsAt?: string;
+  /** The removal of a written file throws — a cleanup that could not clean up (015). */
+  readonly removeFails?: boolean;
 }) => {
   const calls: Call[] = [];
+  const removed: string[] = [];
   const invocations: Invocation[] = [];
   const written: { path: string; content: string }[] = [];
   const notes: string[] = [];
@@ -40,6 +45,7 @@ const harness = (options: {
     calls.push(args);
     invocations.push({ args, ...(env === undefined ? {} : { env }) });
     if (args[0] === "status") return options.status ?? "";
+    if (args[0] === options.failsAt) throw new Error(`git ${options.failsAt} said no`);
     if (args[0] === "merge" && options.ffFails === true) throw new Error("not a fast-forward");
     // `git diff --cached --name-only -- <paths>`: the names of what the index actually
     // changed. Empty means the feed already says exactly this.
@@ -85,11 +91,15 @@ const harness = (options: {
       subject: "docs(agent-comms): dev-core → 016",
       stage,
       note: (line) => notes.push(line),
+      remove: (path) => {
+        if (options.removeFails === true) throw new Error("permission denied");
+        removed.push(path);
+      },
       lock,
       identity: roleIdentity(options.from ?? "dev-core"),
     });
 
-  return { run, calls, invocations, written, notes, held, plans: () => plans };
+  return { run, calls, invocations, written, removed, notes, held, plans: () => plans };
 };
 
 describe("deliverMessage", () => {
@@ -167,6 +177,56 @@ describe("deliverMessage", () => {
     const h = harness({ rejectPushes: [1, 2, 3] });
     expect(() => h.run()).toThrow(DeliveryRefusedError);
     expect(h.plans()).toBe(DELIVERY_ATTEMPTS);
+  });
+
+  // THREAD 015 — the trace of a failed delivery, which cost more than the failure: the
+  // message file stayed on disk uncommitted, and delivery refuses a dirty checkout, so
+  // the NEXT send of EVERY role on the box failed until a hand removed the orphan.
+  it("a failure between the write and the commit takes the written file back", () => {
+    const h = harness({ failsAt: "add" });
+
+    expect(() => h.run()).toThrow(/git add said no/);
+    expect(h.written.map((w) => w.path)).toEqual(["/mail/016/messages/stamp-1Z-dev-core.md"]);
+    expect(h.removed).toEqual(["/mail/016/messages/stamp-1Z-dev-core.md"]);
+    // And the checkout goes back on the feed: the index of a failed `add`, and a commit
+    // whose push never landed, are dirt of exactly the same kind as the file.
+    expect(h.calls.map((c) => c[0]).filter((name) => name === "reset")).toHaveLength(1);
+  });
+
+  it("a failure the loop cannot answer leaves as it arrived — it is not retried three times", () => {
+    const h = harness({ failsAt: "commit" });
+
+    expect(() => h.run()).toThrow(/git commit said no/);
+    expect(h.plans()).toBe(1);
+    expect(h.notes).toEqual([]);
+  });
+
+  it("takes back EVERY file of the attempt — a new thread is born as two", () => {
+    const h = harness({ failsAt: "add", extraFile: true });
+
+    expect(() => h.run()).toThrow();
+    expect(h.removed).toEqual(["/mail/016/messages/stamp-1Z-dev-core.md", "/mail/016/_meta.md"]);
+  });
+
+  it("the last rejected push cleans up after itself too — the refusal leaves no dirt", () => {
+    const h = harness({ rejectPushes: [1, 2, 3] });
+
+    expect(() => h.run()).toThrow(DeliveryRefusedError);
+    expect(h.removed).toEqual([
+      "/mail/016/messages/stamp-1Z-dev-core.md",
+      "/mail/016/messages/stamp-2Z-dev-core.md",
+      "/mail/016/messages/stamp-3Z-dev-core.md",
+    ]);
+  });
+
+  // A cleanup that raises would replace the cause of the failure with the story of the
+  // cleanup — and a cleanup that stays silent leaves a dirty checkout nobody can explain.
+  it("says what it could not take back, and still refuses with the original cause", () => {
+    const h = harness({ failsAt: "add", removeFails: true });
+
+    expect(() => h.run()).toThrow(/git add said no/);
+    expect(h.notes.join("\n")).toContain("could not be removed");
+    expect(h.notes.join("\n")).toContain("stamp-1Z-dev-core.md");
   });
 
   it("refuses a dirty checkout instead of resetting somebody else's work", () => {

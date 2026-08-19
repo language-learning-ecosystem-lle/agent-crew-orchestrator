@@ -80,6 +80,7 @@ import {
   messagesAtRef,
   workdirState,
 } from "./fs/git.js";
+import { resolveMailRoot } from "./fs/mail-root.js";
 import {
   describeMergeGate,
   evaluateMergeGate,
@@ -583,6 +584,31 @@ const flagAll = (argv: readonly string[], name: string): string[] => {
 const required = (argv: readonly string[], name: string): string =>
   flag(argv, name) ?? fail(`${name} is not set\n${USAGE}`, 2);
 
+/**
+ * `--root` AS AN ABSOLUTE PATH, FROM THE DOOR ONWARDS (thread 015) — why the whole
+ * package reads the flag through these three and never raw: `fs/mail-root.ts`. The short
+ * of it: a relative value used to be measured about the process's directory while
+ * planning and about the mail checkout while staging, so `--write` died after the message
+ * file was already on disk, and the orphan it left shut the mail for every role.
+ *
+ * `requiredRoot` is the flag where it is obligatory, `rootOr` where a fallback from the
+ * machine's own paths stands behind it, and `mapRoot` where the value stays optional and
+ * the absence means something to the caller.
+ */
+const requiredRoot = (argv: readonly string[]): string => resolveMailRoot(required(argv, "--root"));
+
+const rootOr = (argv: readonly string[], fallback: () => string): string => {
+  // The fallback is a THUNK and not a value: `paths…mailRoot` is only resolvable on a
+  // config that HAS an `orchestrator` section, and the `??` this replaced never asked for
+  // it when `--root` was given. Evaluating it eagerly turned a legal call into a refusal
+  // about a section the caller had no reason to have (caught by `mail.process.test.ts`).
+  const given = flag(argv, "--root");
+  return resolveMailRoot(given ?? fallback());
+};
+
+const mapRoot = (value: string | undefined): string | undefined =>
+  value === undefined ? undefined : resolveMailRoot(value);
+
 const readFile = (path: string, what: string): string => {
   try {
     return readFileSync(path, "utf8");
@@ -1027,7 +1053,7 @@ const schemaMigrate = (argv: readonly string[]): void => {
   const section = (parsed as { orchestrator?: { mailCheckout?: unknown } }).orchestrator;
   const mailDir = (parsed as { mail?: { dir?: unknown } }).mail?.dir;
   const mailRoot =
-    flag(argv, "--root") ??
+    mapRoot(flag(argv, "--root")) ??
     (typeof section?.mailCheckout === "string" && typeof mailDir === "string"
       ? join(repo, section.mailCheckout, mailDir)
       : "");
@@ -1089,7 +1115,7 @@ const roleExists = (argv: readonly string[]): void => {
 };
 
 const indexBuild = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const registry = registryFrom(argv, repoOf(root));
   const { threads, failures } = loadThreads(root, registry.ids());
   const rendered = renderIndex(threads.map((loaded) => loaded.thread));
@@ -1125,7 +1151,7 @@ const indexBuild = (argv: readonly string[]): void => {
 };
 
 const threadBuild = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const id = required(argv, "--id");
   const registry = registryFrom(argv, repoOf(root));
   const scan = loadThreads(root, registry.ids());
@@ -1171,7 +1197,7 @@ const threadBuild = (argv: readonly string[]): void => {
  * there without the prompt having to describe the folder.
  */
 const threadShow = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const id = flag(argv, "--id") ?? required(argv, "--thread");
   const registry = registryFrom(argv, repoOf(root));
   const scan = loadThreads(root, registry.ids());
@@ -1495,7 +1521,7 @@ const threadTurnKey = (
 };
 
 const threadStatus = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const id = required(argv, "--thread");
   const from = required(argv, "--from");
   const loaded = configFrom(argv, repoOf(root));
@@ -1624,7 +1650,7 @@ const taskInputsOf = (
 });
 
 const checkAll = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const registry = registryFrom(argv, repoOf(root));
   const { threads, failures, warnings, notices } = loadThreads(root, registry.ids());
   const noticeLines = renderThreadNotices(notices);
@@ -1746,7 +1772,7 @@ const checkAll = (argv: readonly string[]): void => {
 };
 
 const migrate = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const registry = registryFrom(argv, repoOf(root));
   const only = flag(argv, "--id");
   const doWrite = argv.includes("--write");
@@ -1815,7 +1841,7 @@ const migrate = (argv: readonly string[]): void => {
  * the same".
  */
 const derive = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const registry = registryFrom(argv, repoOf(root));
   const doWrite = argv.includes("--write");
   const { threads, failures, notices } = loadThreads(root, registry.ids());
@@ -1900,7 +1926,7 @@ const derive = (argv: readonly string[]): void => {
  * with silence when the generator failed.
  */
 const tasksList = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const registry = registryFrom(argv, repoOf(root));
   const { threads, failures } = loadThreads(root, registry.ids());
   for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
@@ -1956,7 +1982,7 @@ const metricsSources = (
   argv: readonly string[],
   paths: OrchestratorPaths,
 ): { verdicts: VerdictRecord[]; merges: MergeRecord[]; streamEraStart?: string } => {
-  const root = flag(argv, "--root") ?? paths.mailRoot;
+  const root = rootOr(argv, () => paths.mailRoot);
   const verdicts: VerdictRecord[] = [];
   const merges: MergeRecord[] = [];
   if (existsSync(root)) {
@@ -2523,7 +2549,7 @@ const declaredTurnOf = (threadDir: string): ThreadTurn | undefined => {
 };
 
 const newMessage = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const threadId = required(argv, "--thread");
   const from = required(argv, "--from");
   const loaded = configFrom(argv, repoOf(root));
@@ -2732,7 +2758,7 @@ const newMessage = (argv: readonly string[]): void => {
  * after the fast-forward.
  */
 const newThread = (argv: readonly string[]): void => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const id = required(argv, "--id");
   const loaded = configFrom(argv, repoOf(root));
   const registry = loaded.registry;
@@ -2932,7 +2958,7 @@ const mail = (argv: readonly string[]): void => {
   // workspace, now finds the real mail on its own. It used to be mandatory precisely
   // because the fallback resolved against the caller's worktree, i.e. against a
   // directory holding no mail — which is why the role cards carry the flag by hand.
-  const root = flag(argv, "--root") ?? pathsFrom(argv).mailRoot;
+  const root = rootOr(argv, () => pathsFrom(argv).mailRoot);
   const role = required(argv, "--role");
   const registry = registryFrom(argv, repoOf(root));
   if (!registry.isKnown(role)) fail(`role '${role}' is not listed in the config`, 2);
@@ -2993,7 +3019,7 @@ const wake = (argv: readonly string[]): void => {
     return;
   }
   const rest = argv.slice(1);
-  const root = flag(rest, "--root") ?? pathsFrom(rest).mailRoot;
+  const root = rootOr(rest, () => pathsFrom(rest).mailRoot);
   const loaded = configFrom(rest, root);
   const registry = loaded.registry;
   const known = registry.get(role);
@@ -3040,7 +3066,7 @@ const wake = (argv: readonly string[]): void => {
  * out loud, exactly as it does in the supervisor's own loop.
  */
 const awaitInput = async (argv: readonly string[]): Promise<void> => {
-  const root = required(argv, "--root");
+  const root = requiredRoot(argv);
   const role = required(argv, "--role");
   const threadId = required(argv, "--thread");
   const loaded = configFrom(argv, root);
@@ -3240,7 +3266,7 @@ const runNotify = async (input: {
   const registry = loaded.registry;
   const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
   const section = loaded.config.orchestrator;
-  const rootFlag = flag(argv, "--root");
+  const rootFlag = mapRoot(flag(argv, "--root"));
   const stateFlag = flag(argv, "--state");
 
   if (section === undefined && (rootFlag === undefined || stateFlag === undefined)) {
@@ -5521,7 +5547,7 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
   const stopFlag = flag(argv, "--stop-flag") ?? paths.stopFlag;
   const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
   const pidFile = flag(argv, "--pid-file") ?? paths.daemonPid;
-  const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
+  const mailRoot = rootOr(argv, () => paths.mailRoot);
 
   const events = existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
   const now = orchestratorNow(argv);
@@ -7747,7 +7773,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   const journalPath = flag(argv, "--journal") ?? paths.journal;
   const roleId = required(argv, "--role");
   const thread = required(argv, "--thread");
-  const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
+  const mailRoot = rootOr(argv, () => paths.mailRoot);
   const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
 
   const registry = registryFrom(argv, undefined);
@@ -8210,7 +8236,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // config; the flags remain an override for checks on a copy of the mail.
   const paths = pathsFrom(argv);
   const journalPath = flag(argv, "--journal") ?? paths.journal;
-  const mailRoot = flag(argv, "--root") ?? paths.mailRoot;
+  const mailRoot = rootOr(argv, () => paths.mailRoot);
   const repo = flag(argv, "--repo") ?? homeOf(process.cwd());
   // 055.2: the TOPLEVEL of the tree this daemon serves, resolved once and at startup —
   // the self-restart rule compares it with the checkout node loaded the code from, and a
@@ -9228,7 +9254,7 @@ const orchestratorStop = (argv: readonly string[]): void => {
   const forceFlag = flag(argv, "--force-flag") ?? paths.forceFlag;
   const by = required(argv, "--by");
   const why = required(argv, "--reason");
-  const root = flag(argv, "--root") ?? paths.mailRoot;
+  const root = rootOr(argv, () => paths.mailRoot);
   const threadId = required(argv, "--thread");
   const loadedConfig = configFrom(argv, repoOf(root));
   const registry = loadedConfig.registry;
