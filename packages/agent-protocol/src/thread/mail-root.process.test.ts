@@ -86,7 +86,16 @@ const contour = (): Contour => {
   return { repo, root: join(repo, "agent-comms"), body, remote };
 };
 
-/** `new-message --write` with the root spelled as the caller spells it, from `cwd`. */
+/**
+ * `new-message --write` with the root spelled as the caller spells it, from `cwd`.
+ *
+ * `--worker` is passed OUT LOUD, as every other process test of this command does: the
+ * writing door requires it, and the only other way to satisfy it is the launch channel
+ * — an environment variable a raised session has and a runner does not. This helper
+ * inherited it once, which bought three green runs on the box and three red cases on
+ * the runner (thread 015, 2026-08-19); `sandbox()` now removes the whole channel, and
+ * this line is what says which provenance the delivery is being measured under.
+ */
 const send = (
   contest: Contour,
   options: { root: string; cwd: string },
@@ -114,6 +123,8 @@ const send = (
         "curator",
         "--body-file",
         contest.body,
+        "--worker",
+        "claude-code",
         "--write",
       ],
       {

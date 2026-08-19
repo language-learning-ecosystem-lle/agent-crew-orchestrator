@@ -18,6 +18,8 @@
  */
 import { basename, join } from "node:path";
 
+import { LAUNCH_ENV } from "../orchestrator/launch.js";
+
 /**
  * The environment of one CLI launch: the ambient one, with the config home replaced by
  * a directory the test owns. `extra` goes last — a test that also passes provenance or
@@ -34,6 +36,21 @@ import { basename, join } from "node:path";
  *
  * A test that is ABOUT inheritance passes the value through `extra` and keeps saying so
  * in its own words — that is the difference between a premise and an ambient accident.
+ *
+ * THE WHOLE LAUNCH CHANNEL GOES THE SAME WAY (thread 015, 2026-08-19), and by name of
+ * the contract rather than by a list typed here: every variable of `LAUNCH_ENV` is what
+ * the SUPERVISOR puts into a raised session, so on the box where the circuit runs the
+ * suite they are all ambient and on a runner not one of them exists. That is the same
+ * direction as the two above — green on the box, red on the runner — and it stopped
+ * being theoretical the day this file was touched: a process test that did not pass
+ * `--worker` read `AGENT_PROTOCOL_WORKER` out of the session running the suite, went
+ * green locally three times, and failed three cases on the runner at the door that
+ * requires it.
+ *
+ * Derived from `LAUNCH_ENV` rather than spelled out because the channel grows: the
+ * deadline and the wait ceiling joined it after the first two variables, and a copy of
+ * their names here would have gone stale silently — which is exactly the failure this
+ * whole file exists to prevent.
  */
 export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => {
   // `INVOCATION_ID` GOES THE SAME WAY AND FOR A SHARPER REASON (thread 003, 2026-08-18):
@@ -46,6 +63,7 @@ export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.Pro
   // process tests flipped. A sandbox inherits the ambient environment for convenience; the
   // two variables that would make it a DIFFERENT BOX are removed by name.
   const { CLAUDE_CONFIG_DIR: _ambient, INVOCATION_ID: _supervisor, ...ambient } = process.env;
+  for (const name of Object.values(LAUNCH_ENV)) delete ambient[name];
   return {
     ...ambient,
     XDG_CONFIG_HOME: home,
