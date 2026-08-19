@@ -122,8 +122,22 @@ describe("describeFreeze", () => {
       "thaws at 2026-08-18T12:15:00Z",
     );
     expect(describeFreeze({ failureClass: "external", thaw: null })).toContain("backoff is spent");
-    expect(describeFreeze({ failureClass: "substantive", thaw: null })).toContain(
-      "only a delivery",
-    );
+    expect(describeFreeze({ failureClass: "substantive", thaw: null })).toContain("substantive");
+  });
+
+  // The exit named by the two TERMINAL branches has to be one that exists (curator's §1,
+  // thread 013): a delivery of this pair is written by a run of this pair, and an exhausted
+  // pair is refused before it runs — so "only a delivery lifts it" advised a closed door.
+  it("names a reachable exit on both terminal branches, and never a delivery", () => {
+    for (const line of [
+      describeFreeze({ failureClass: "substantive", thaw: null }),
+      describeFreeze({ failureClass: "external", thaw: null }),
+    ]) {
+      expect(line).toContain("--max-attempts");
+      expect(line).not.toContain("delivery");
+    }
+    // The branch that DOES lift itself keeps saying so and names no hand.
+    const thawing = describeFreeze({ failureClass: "external", thaw: "2026-08-18T12:15:00Z" });
+    expect(thawing).not.toContain("--max-attempts");
   });
 });

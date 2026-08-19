@@ -1039,6 +1039,17 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # slots: they report the ORCHESTRATOR's machinery rather than the
                             # conversation, and the template map's keys are part of the frozen config
                             # shape — a version of the protocol, which is john's call
+                            # IT FOLDS WITH THE MAIL, exactly as the daemon does: the first version of
+                            # the category called `foldLeases` without `sessionsThatWrote`, so a release
+                            # of the shape thread 023 forgives (`exited-without-handoff` whose own
+                            # session signed a message) counted as a failure here and as a delivery
+                            # there. Six live pairs disagreed on 2026-08-19 — one broken run away from a
+                            # `frozen` call about a pair the next tick raises without blinking
+                            # AND THE TWO TERMINAL TEXTS NAME A HAND: the count is zeroed by a delivery
+                            # EVENT OF THE PAIR, every shape of which a RUN writes, and an exhausted
+                            # pair is refused before it runs — so no message into the thread lifts it.
+                            # What does: `--max-attempts` above the ceiling (one run through, its
+                            # handoff zeroes the count), or the retroactive shape above
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
