@@ -181,6 +181,18 @@ export const describeApiFailure = (signal: ApiFailureSignal): string =>
 /**
  * How an exhausted pair reads in a courier line, a status frame or a digest — one sentence,
  * the same words everywhere. `thaw` is the stamp from `thawAt`.
+ *
+ * THE TWO TERMINAL BRANCHES NAME A HAND, NOT A DELIVERY (curator's §1, thread 013). They
+ * used to say "only a delivery lifts it", and that advice is unreachable from inside the
+ * circuit: the counter is zeroed by a DELIVERY EVENT OF THIS PAIR (`isDelivery` /
+ * `isSelfTurnDelivery` in `lease.ts`), every shape of which is written by a RUN of the pair
+ * — and `planLaunch` refuses an exhausted pair before any run starts (`reason: "exhausted"`),
+ * as does `orchestrator run` through the same gate. So no message into the thread lifts it:
+ * a letter from another role, or from another session of the same role, creates no event of
+ * this pair at all. What is left is the operator (`--max-attempts` above the ceiling, which
+ * lets one run through and its handoff zeroes the count) and the retroactive shape of thread
+ * 023 — the dead session's OWN message appearing in the mail, which no live actor can write.
+ * A line that advises the unreachable costs the reader the time this thread exists to save.
  */
 export const describeFreeze = (input: {
   readonly failureClass: FailureClass;
@@ -188,6 +200,6 @@ export const describeFreeze = (input: {
 }): string =>
   input.failureClass === "external"
     ? input.thaw === null
-      ? "external, the backoff is spent — frozen until a delivery"
+      ? "external, the backoff is spent — the circuit will not raise it again, a hand does (--max-attempts above the ceiling)"
       : `external, thaws at ${input.thaw}`
-    : "substantive — only a delivery lifts it";
+    : "substantive — the circuit will not raise it, a hand does (--max-attempts above the ceiling)";

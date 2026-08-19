@@ -460,7 +460,13 @@ describe("frozen pairs — one call per series, and a second one for the termina
 
     expect(first.freshFreezes.map((event) => event.kind)).toEqual(["frozen"]);
     expect(again.freshFreezes).toEqual([]);
-    expect(renderNotification(first.lines)).toContain("only a delivery lifts it");
+    // The call is terminal, so the text it carries must name a move that EXISTS: no message
+    // into the thread lifts this pair (curator's §1, thread 013) — a run let through by hand
+    // does, and the line the phone shows is the one place that fact reaches its reader.
+    const said = renderNotification(first.lines);
+    expect(said).toContain("--max-attempts");
+    expect(said).not.toContain("only a delivery lifts it");
+    expect(said).toContain("no message into that thread lifts it");
   });
 
   it("a delivery ends the series, and the NEXT freeze of the same pair rings again", () => {

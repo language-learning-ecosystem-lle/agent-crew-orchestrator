@@ -36,7 +36,7 @@ const flag = (view: LeaseView): string => {
     return `  ⚠ EXHAUSTED (${describeFreeze({
       failureClass: view.exhaustedClass ?? "substantive",
       thaw: view.thawAt ?? null,
-    })}) — no more attempts until then; a delivery (a completed run or a handoff) resets the count, see the journal`;
+    })}) — no more attempts until then; what zeroes the count is a DELIVERY OF THIS PAIR (a completed run, a handoff, or a break whose own session signed a message in the mail), and every shape of it is written by a run, see the journal`;
   // WHICH deadline has passed is said out loud, because the two mean opposite things:
   // an overrun of the work window is a session that did not fit, an overrun of a WAIT
   // is a human who has not answered (R19) — and the second one is nobody's failure.

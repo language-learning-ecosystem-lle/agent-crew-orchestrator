@@ -167,8 +167,15 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   // texts are built around the one question its reader has: "must I do something now".
   exhausted:
     "{role} is no longer being raised on {thread}: {attempts} attempts in a row failed and the vendor's side is what spent them ({detail}). Nothing to do — the box knocks again by itself; you are told so that a queue that stopped moving is not a mystery",
+  // AND THE TERMINAL LINE NAMES A MOVE THAT EXISTS (curator's §1, thread 013). It used to
+  // end "it moves when a message lands in that thread", which is advice to the reader whose
+  // only question is what to do: the count is zeroed by a delivery EVENT OF THIS PAIR, every
+  // shape of which is written by a RUN of it, and the pair is refused before it runs. A
+  // letter into the thread — from another role, or from another session of this one —
+  // creates no event of the pair at all, and the three that stood on 2026-08-18 stayed
+  // frozen through exactly such letters.
   frozen:
-    "{role}×{thread} is frozen for good: {detail}. The circuit will not raise this pair again by itself — it moves when a message lands in that thread",
+    "{role}×{thread} is frozen for good: {detail}. The circuit will not raise this pair again by itself, and no message into that thread lifts it — the move is a run let through by hand (`orchestrator run --max-attempts` above the ceiling), whose handoff zeroes the count",
 };
 
 /** The announcements the package writes INTO A THREAD; same mechanism, different reader. */

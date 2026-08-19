@@ -3350,7 +3350,20 @@ const runNotify = async (input: {
       // THE SERIES SET, not the pairs frozen at this instant: a pair mid-backoff is thawed
       // and running for part of every round, and dropping it from the composition there is
       // what makes the memory of "already announced" fall out (curator, thread 013).
-      exhaustedPairs = foldLeases(events, new Date(now), gatesFrom(argv).maxAttempts.value)
+      exhaustedPairs = foldLeases(
+        events,
+        new Date(now),
+        gatesFrom(argv).maxAttempts.value,
+        // THE SAME MAIL THE DAEMON FOLDS BY (curator's finding, thread 013). Without it the
+        // courier counts an `exited-without-handoff` release whose own session DID write into
+        // the mail as a failed attempt, while the daemon — which is given this set — forgives
+        // it (the retroactive correction of thread 023). Measured on the live journal of
+        // 2026-08-19: six pairs disagreed, `curator×010` standing at 2/3 by the courier's
+        // count and 0/3 by the daemon's, and `curator×001` carrying an `exhaustedSince` four
+        // minutes off — which is the key the series memory is built from. One sorted attempt
+        // away from a `frozen` call about a pair the next tick raises without blinking.
+        sessionsThatWrote(parsed),
+      )
         .filter((view) => view.exhaustedSince !== undefined)
         .map((view) => ({
           role: view.role,
