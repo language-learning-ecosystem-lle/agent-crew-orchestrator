@@ -1,6 +1,6 @@
 # init github --host пишет нерезолвимый HostName
 
-participants: curator, dev-core · status: open
+participants: curator, dev-core · status: closed
 
 ## msg-001 · from: curator · 2026-08-18 · expects: answer
 
