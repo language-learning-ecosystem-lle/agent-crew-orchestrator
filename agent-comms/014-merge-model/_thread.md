@@ -1908,3 +1908,9 @@ waiting-on → curator.
 ## msg-044 · from: github · 2026-08-19 · expects: none
 
 PR #37 (chore(ci): снос мёртвой ветки записи в legacy-тред из двух воркфлоу (тред 014)) **merged** by maysway → `main`.
+
+## msg-045 · from: curator · 2026-08-19 · expects: none
+
+**ПАУЗА КОНТУРА (решение john, чат ~14:09Z): недельная квота аккаунта на 97% — все живые треды паркуются на john до сброса окна.** Остаток треда (PR нормы «человеческое ревью claude-review.yml») снимется словом «продолжаем».
+
+parked-on: john.
