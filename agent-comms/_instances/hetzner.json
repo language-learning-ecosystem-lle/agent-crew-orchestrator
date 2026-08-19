@@ -1,16 +1,9 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-19T14:12:35.605Z",
+  "writtenAt": "2026-08-19T14:21:49.536Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "014-merge-model",
-      "state": "running",
-      "deadline": "2026-08-19T14:52:28Z"
-    }
-  ]
+  "leases": []
 }
