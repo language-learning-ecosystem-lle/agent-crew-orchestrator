@@ -41,7 +41,18 @@
  * whoever configured it last would sign the next role's message. So the signature
  * travels with the one git call that makes the commit, out of `--from`, and the commit
  * finally says what the header of the message inside it says.
+ *
+ * A DELIVERY THAT FAILED LEAVES NOTHING BEHIND (thread 015). The write happens before the
+ * commit — that is the order git imposes — so between them the message exists as dirt, and
+ * ANY failure in between used to leave it there: the file written, nothing committed, and
+ * the checkout dirty. Delivery refuses a dirty checkout (the rule above), so that orphan
+ * did not fail one send, it shut the mail for every role on the box until a hand removed
+ * it — which is the worst possible answer to a mistyped flag, and it is what a relative
+ * `--root` produced live (`fs/mail-root.ts` is the other half of the repair). Every
+ * attempt therefore undoes itself: the files it wrote are removed and the checkout is put
+ * back on the feed, on the retry path and on the way out of a refusal alike.
  */
+import { rmSync } from "node:fs";
 import { type GitIdentity, identityEnv } from "../roles/identity.js";
 import type { MailLock } from "./checkout-lock.js";
 
@@ -106,6 +117,13 @@ export const deliverMessage = (input: {
   /** Replanned per attempt: the stamp and therefore the file name depend on what is already there. */
   readonly stage: () => StagedMessage;
   readonly note: (line: string) => void;
+  /**
+   * How a written file is taken back when the attempt fails (thread 015) — the twin of
+   * `write`, injected for the same reason. It defaults to the file system because the
+   * cleanup is not optional: a caller that forgot to pass it would go back to leaving
+   * orphans, which is the defect this closes.
+   */
+  readonly remove?: (path: string) => void;
   /** ONE writer inside the checkout at a time; `unlockedMail` when there is nobody to race. */
   readonly lock: MailLock;
   /** Who this commit is BY — the role of `--from`, never the owner of the machine (027). */
@@ -116,16 +134,54 @@ export const deliverMessage = (input: {
   // precisely what another delivery would read as somebody's unfinished message.
   input.lock.hold(() => deliverUnderLock(input));
 
-const deliverUnderLock = (input: {
+type UnderLock = {
   readonly git: GitRun;
   readonly write: (path: string, content: string) => void;
   readonly branch: string;
   readonly subject: string;
   readonly stage: () => StagedMessage;
   readonly note: (line: string) => void;
+  readonly remove?: (path: string) => void;
   readonly identity: GitIdentity;
   readonly attempts?: number;
-}): Delivered => {
+};
+
+/**
+ * PUT THE CHECKOUT BACK WHERE THE ATTEMPT FOUND IT (thread 015).
+ *
+ * The files go first and the reset second, in that order and not the other way round: the
+ * removal is what deals with a path OUTSIDE the checkout (git cannot reach it, and that
+ * is exactly the case that taught this — a `--root` resolved about another base), while
+ * the reset is what deals with everything git owns — a staged index, a commit whose push
+ * never landed, and a tracked file the attempt overwrote and the removal has just deleted.
+ *
+ * IT NEVER RAISES OVER THE FAILURE IT IS CLEANING UP AFTER. This runs on the way out of an
+ * error path, and an exception thrown here would replace the cause of the failure with the
+ * story of the cleanup. What it could not undo is SAID instead — silence would leave a
+ * dirty checkout with no explanation of where it came from, which is the state this whole
+ * mechanism exists to prevent.
+ */
+const undoAttempt = (input: UnderLock, wrote: readonly string[]): void => {
+  const remove = input.remove ?? ((path: string) => rmSync(path, { force: true }));
+  for (const path of wrote) {
+    try {
+      remove(path);
+    } catch (error) {
+      input.note(
+        `agent-protocol: the message file '${path}' could not be removed after the delivery failed (${(error as Error).message}) — it is uncommitted dirt now, and the next delivery into this checkout will refuse until it is gone`,
+      );
+    }
+  }
+  try {
+    input.git(["reset", "--hard", "--quiet", `origin/${input.branch}`]);
+  } catch (error) {
+    input.note(
+      `agent-protocol: the mail checkout could not be put back on origin/${input.branch} after the delivery failed (${(error as Error).message})`,
+    );
+  }
+};
+
+const deliverUnderLock = (input: UnderLock): Delivered => {
   const limit = input.attempts ?? DELIVERY_ATTEMPTS;
   const dirty = input.git(["status", "--porcelain"]).trim();
   if (dirty !== "") {
@@ -149,34 +205,53 @@ const deliverUnderLock = (input: {
 
     const staged = input.stage();
     const paths = staged.files.map((file) => file.path);
-    for (const file of staged.files) input.write(file.path, file.content);
-    input.git(["add", "--", ...paths]);
-    // NOTHING TO COMMIT IS AN ANSWER, NOT A FAILURE (see `Delivered`). The plan is made
-    // against the state fetched inside THIS attempt, so an empty index means the feed
-    // already carries exactly it — asking git to commit that gives code 1 and a message
-    // about a clean tree, which is the wrong shape of answer for the right situation.
-    // The index is asked, not the working tree: `write` may well have changed no byte.
-    if (input.git(["diff", "--cached", "--name-only", "--", ...paths]).trim() === "") {
-      return { label: staged.label, attempts: attempt, written: false };
-    }
-    input.git(["commit", "--quiet", "-m", input.subject], identityEnv(input.identity));
-
+    // FROM HERE ON THE ATTEMPT OWNS DIRT, so from here on it is obliged to clean up after
+    // itself whichever way it leaves (thread 015): what it wrote is tracked in `wrote` as
+    // it is written, because a write that failed halfway through a two-file thread still
+    // put the first file on disk.
+    const wrote: string[] = [];
+    let pushRejected: Error | undefined;
     try {
-      input.git(["push", "--quiet", "origin", `HEAD:${input.branch}`]);
+      for (const file of staged.files) {
+        input.write(file.path, file.content);
+        wrote.push(file.path);
+      }
+      input.git(["add", "--", ...paths]);
+      // NOTHING TO COMMIT IS AN ANSWER, NOT A FAILURE (see `Delivered`). The plan is made
+      // against the state fetched inside THIS attempt, so an empty index means the feed
+      // already carries exactly it — asking git to commit that gives code 1 and a message
+      // about a clean tree, which is the wrong shape of answer for the right situation.
+      // The index is asked, not the working tree: `write` may well have changed no byte.
+      if (input.git(["diff", "--cached", "--name-only", "--", ...paths]).trim() === "") {
+        return { label: staged.label, attempts: attempt, written: false };
+      }
+      input.git(["commit", "--quiet", "-m", input.subject], identityEnv(input.identity));
+      try {
+        input.git(["push", "--quiet", "origin", `HEAD:${input.branch}`]);
+      } catch (error) {
+        // The one failure this loop knows how to answer: somebody wrote into the feed
+        // first. It is undone like any other and then REPLANNED — the message content is
+        // in memory, its NAME is not ours to keep (see the note at the top).
+        pushRejected = error as Error;
+        throw error;
+      }
       return { label: staged.label, attempts: attempt, written: true };
     } catch (error) {
+      undoAttempt(input, wrote);
+      if (pushRejected === undefined) {
+        // Anything else — the staging, the hook on the commit, a path git will not take —
+        // is not ours to retry: it would fail the same way three times. It leaves as it
+        // arrived, with git's own words, and the checkout is already back on the feed.
+        throw error;
+      }
       if (attempt === limit) {
         throw new DeliveryRefusedError(
-          `the push was rejected ${limit} times in a row — somebody is writing into the feed continuously, or the remote refuses us: ${(error as Error).message}`,
+          `the push was rejected ${limit} times in a row — somebody is writing into the feed continuously, or the remote refuses us: ${pushRejected.message}`,
         );
       }
       input.note(
         `agent-protocol: the push was rejected (attempt ${attempt} of ${limit}) — refreshing the mail and replanning the message on top of the fresh feed`,
       );
-      // The message is dropped along with the commit and written again by the next
-      // attempt: its content is in memory, its NAME is not ours to keep.
-      input.git(["fetch", "--quiet", "origin", input.branch]);
-      input.git(["reset", "--hard", "--quiet", `origin/${input.branch}`]);
     }
   }
   // Unreachable: the last attempt either returns or throws above.
