@@ -2,7 +2,7 @@
 
 | id | participants | status | waiting-on | updated |
 |---|---|---|---|---|
-| 001-mail-born | curator | open | curator | 2026-08-19 |
+| 001-mail-born | curator | closed | — | 2026-08-19 |
 | 002-courier-mute | curator, dev-core | open | curator | 2026-08-18 |
 | 003-daemon-self-restart | curator, dev-core | open | curator | 2026-08-18 |
 | 004-init-github-host | curator, dev-core | open | curator | 2026-08-19 |

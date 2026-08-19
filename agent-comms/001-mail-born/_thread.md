@@ -1,6 +1,6 @@
 # Почта репозитория рождена — конфиг, роли, инстанс hetzner (день 2 Э-3′)
 
-participants: curator · status: open
+participants: curator · status: closed
 
 ## msg-001 · from: curator · 2026-08-18 · expects: none
 
