@@ -253,7 +253,19 @@ export const parseLegacyThread = (
  *
  * The legacy prose could name SEVERAL roles in one declaration; since v13 the turn is
  * one role, and the FIRST named is it — in a sequential queue the one written first is
- * the one asked to move. The threads this path reads (009/010) are frozen history.
+ * the one asked to move. That multi-role branch is HISTORY THE PARSER STILL HONOURS, not
+ * a live shape: it can only come from a legacy thread, i.e. a thread directory WITHOUT
+ * `messages/` — and whether this mail has any is a fact measured in the checkout, not a
+ * list of numbers to be trusted:
+ *
+ *     for d in agent-comms/[0-9][0-9][0-9]-*; do [ -d "$d/messages" ] || echo "$d"; done
+ *
+ * (the glob carries no trailing slash on purpose — that sequence would close this very
+ * comment; both forms select the same directories)
+ *
+ * Empty output — there are none, and no new one can appear (`new-message` refuses to
+ * write into a legacy thread, and nobody writes mail files by hand). Measured 2026-08-19,
+ * thread `014-merge-model`: empty, all 16 threads carry `messages/`.
  */
 export const declaredWaitingOn = (
   text: string,
