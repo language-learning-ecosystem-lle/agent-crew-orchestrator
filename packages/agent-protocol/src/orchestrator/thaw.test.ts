@@ -3,6 +3,7 @@ import {
   apiFailureSignalOf,
   describeFreeze,
   failureClassOf,
+  freezeHasTerm,
   THAW_BACKOFF_MINUTES,
   thawAt,
   thawDelayMinutes,
@@ -139,5 +140,35 @@ describe("describeFreeze", () => {
     // The branch that DOES lift itself keeps saying so and names no hand.
     const thawing = describeFreeze({ failureClass: "external", thaw: "2026-08-18T12:15:00Z" });
     expect(thawing).not.toContain("--max-attempts");
+  });
+
+  // A CLOSED THREAD ADVISES NOBODY (thread 016): the hand the terminal branches call for
+  // has nothing to raise the pair FOR, so the class is reported and the advice is dropped.
+  it("the closed branch names the class and calls no hand", () => {
+    for (const failureClass of ["substantive", "external"] as const) {
+      const line = describeFreeze({ failureClass, thaw: null, closed: true });
+      expect(line).toContain(failureClass);
+      expect(line).toContain("THREAD IS CLOSED");
+      expect(line).not.toContain("--max-attempts");
+    }
+    // It outranks a live backoff too — a thaw is a promise to raise the pair again.
+    expect(
+      describeFreeze({ failureClass: "external", thaw: "2026-08-18T12:15:00Z", closed: true }),
+    ).not.toContain("thaws at");
+  });
+});
+
+// THE PREDICATE BEHIND THE WORD "THEN" (thread 016, defect 2) — one place, so that a
+// surface printing "until then" and the sentence naming the term cannot disagree.
+describe("freezeHasTerm", () => {
+  it("only a live external backoff has a moment to point at", () => {
+    expect(freezeHasTerm({ failureClass: "external", thaw: "2026-08-18T12:15:00Z" })).toBe(true);
+    expect(freezeHasTerm({ failureClass: "external", thaw: null })).toBe(false);
+    expect(freezeHasTerm({ failureClass: "substantive", thaw: null })).toBe(false);
+    // A substantive freeze waits for a hand, and a hand is not a moment — a stamp on one
+    // would be the same lie in the other direction.
+    expect(freezeHasTerm({ failureClass: "substantive", thaw: "2026-08-18T12:15:00Z" })).toBe(
+      false,
+    );
   });
 });

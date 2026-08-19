@@ -412,7 +412,14 @@ export const renderTui = (input: {
   }
 
   const pairs = frame.leases.map((view, index) => {
-    const line = cutTo(renderLeaseLine(view).split("\n")[0] as string, cols - 2);
+    // The observer and `status` are one frame (T-1), the closures included: a pair whose
+    // thread is closed loses its mark here for the same reason it loses it there.
+    const line = cutTo(
+      renderLeaseLine(view, frame.closedThreads?.has(view.thread) ?? false).split(
+        "\n",
+      )[0] as string,
+      cols - 2,
+    );
     return `${index === state.selected ? "▸ " : "  "}${line}`;
   });
   const top = capped(

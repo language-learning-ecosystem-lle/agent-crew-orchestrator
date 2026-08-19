@@ -97,6 +97,13 @@ export type Parallelism = {
 export type OperatorFrame = {
   readonly now: Date;
   readonly leases: readonly LeaseView[];
+  /**
+   * THE THREADS THAT ARE OVER (thread 016), from the same scan the queue is built from —
+   * a lease line whose thread is closed keeps its row and loses its `⚠ EXHAUSTED` mark,
+   * because a mark is a call to a hand and a closed thread has nothing to call one for.
+   * Absent for a reader with no mail in its hands; the frame then reads as it always did.
+   */
+  readonly closedThreads?: ReadonlySet<string>;
   readonly holds: readonly HoldView[];
   /** The live count, the pairs behind it and what is left free (D-4). */
   readonly parallelism: Parallelism;
@@ -376,7 +383,7 @@ export const renderFreshness = (
  */
 export const renderFrame = (frame: OperatorFrame): string =>
   [
-    renderStatus(frame.leases),
+    renderStatus(frame.leases, frame.closedThreads),
     renderParallelism(frame.parallelism),
     renderHolds(frame.holds),
     renderCircuit(frame.circuit),

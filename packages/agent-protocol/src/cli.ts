@@ -100,6 +100,7 @@ import {
   authAlarmKey,
   describeAge,
   type ExhaustedPair,
+  exhaustedPairsOf,
   type GhAlarm,
   parseNotifyState,
   planNotifications,
@@ -462,6 +463,7 @@ import {
   type StagedMessage,
 } from "./thread/deliver.js";
 import {
+  closedThreads,
   parkedThreads,
   renderIndex,
   sessionsThatWrote,
@@ -3368,7 +3370,7 @@ const runNotify = async (input: {
   // "which pairs has the circuit stopped raising". It is read from the same journal as the
   // shelf — the fold already carries the class of the freeze and the stamp of its series —
   // and it is as unable to refuse this command as the two above.
-  let exhaustedPairs: ExhaustedPair[] = [];
+  let exhaustedPairs: readonly ExhaustedPair[] = [];
   if (paths !== undefined) {
     try {
       const events = existsSync(paths.journal)
@@ -3377,32 +3379,27 @@ const runNotify = async (input: {
       // THE SERIES SET, not the pairs frozen at this instant: a pair mid-backoff is thawed
       // and running for part of every round, and dropping it from the composition there is
       // what makes the memory of "already announced" fall out (curator, thread 013).
-      exhaustedPairs = foldLeases(
-        events,
-        new Date(now),
-        gatesFrom(argv).maxAttempts.value,
-        // THE SAME MAIL THE DAEMON FOLDS BY (curator's finding, thread 013). Without it the
-        // courier counts an `exited-without-handoff` release whose own session DID write into
-        // the mail as a failed attempt, while the daemon — which is given this set — forgives
-        // it (the retroactive correction of thread 023). Measured on the live journal of
-        // 2026-08-19: six pairs disagreed, `curator×010` standing at 2/3 by the courier's
-        // count and 0/3 by the daemon's, and `curator×001` carrying an `exhaustedSince` four
-        // minutes off — which is the key the series memory is built from. One sorted attempt
-        // away from a `frozen` call about a pair the next tick raises without blinking.
-        sessionsThatWrote(parsed),
-      )
-        .filter((view) => view.exhaustedSince !== undefined)
-        .map((view) => ({
-          role: view.role,
-          thread: view.thread,
-          since: view.exhaustedSince as string,
-          attempts: view.attempt,
-          // In force ONLY while the pair is actually standing at the ceiling: a thawed pair
-          // is in the gap of its series, and a freeze that is not in force says nothing.
-          ...(view.exhausted
-            ? { failureClass: view.exhaustedClass, thaw: view.thawAt ?? null }
-            : {}),
-        }));
+      exhaustedPairs = exhaustedPairsOf({
+        views: foldLeases(
+          events,
+          new Date(now),
+          gatesFrom(argv).maxAttempts.value,
+          // THE SAME MAIL THE DAEMON FOLDS BY (curator's finding, thread 013). Without it the
+          // courier counts an `exited-without-handoff` release whose own session DID write into
+          // the mail as a failed attempt, while the daemon — which is given this set — forgives
+          // it (the retroactive correction of thread 023). Measured on the live journal of
+          // 2026-08-19: six pairs disagreed, `curator×010` standing at 2/3 by the courier's
+          // count and 0/3 by the daemon's, and `curator×001` carrying an `exhaustedSince` four
+          // minutes off — which is the key the series memory is built from. One sorted attempt
+          // away from a `frozen` call about a pair the next tick raises without blinking.
+          sessionsThatWrote(parsed),
+        ),
+        // AND THE SAME MAIL AGAIN, for the second fact it holds (thread 016): a pair whose
+        // thread is closed is announced by nobody. The neighbouring categories get this for
+        // free from `waitingOnOf`/`parkingOf`; this one is folded from the journal, where a
+        // closure leaves no event, so it is handed the closures explicitly.
+        closed: closedThreads(parsed),
+      });
       // THE ALARM RINGS ON THE WORST SHELF (B.3): several accounts can be shelved at once,
       // and the operator's answer — a login — is per account, so the one named is the one
       // with the longest run of deaths behind it.
@@ -5620,6 +5617,10 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
   return {
     now,
     leases,
+    // From the SAME scan as the queue and the parks (thread 016): the fold reads the
+    // journal, where a closure leaves no event at all, so a pair frozen on a thread that
+    // has since been accepted would keep its call-to-action mark forever.
+    closedThreads: closedThreads(threads),
     holds: heldViews,
     // D-4: the capacity of the box and what it is spent on. `scope.roles` and not
     // `roles` — the count must be what THIS run would raise (R13, the instance filter
