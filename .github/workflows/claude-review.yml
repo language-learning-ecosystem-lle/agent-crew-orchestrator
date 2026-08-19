@@ -399,28 +399,21 @@ jobs:
                задачами с владельцами, а не тактом разговора; если тред ждал
                кого-то ещё по другому вопросу, назови это словами в теле вердикта.
 
-               Форма зависит от того, мигрирован ли тред. ОБЕ ветви ИСПОЛНЯЕМЫ, и
-               после записи — проверка, что в тред реально что-то легло, иначе
-               падение: тихий no-op здесь — наша же болезнь.
+               Запись ОДНА — файл-сообщение пакетом; после неё проверка, что в тред
+               реально что-то легло, иначе падение: тихий no-op здесь — наша же
+               болезнь. Вторая ветвь (дописка секции в `_thread.md` для треда без
+               `messages/`) СНЕСЕНА 2026-08-19, решение john «сносить», тред
+               `014-merge-model`: протокол legacy ЧИТАЕТ (история), в legacy НЕ
+               ПИШЕТ. Отказ `new-message` — единственный исход «вердикт не лёг», и
+               он громкий.
                    SLUG=<slug из thread:>; WAIT="<одна роль>"
-                   TF=".comms-mail/agent-comms/$SLUG/_thread.md"
-                   if [ -d ".comms-mail/agent-comms/$SLUG/messages" ]; then
-                     # мигрированный — файл-сообщение ПАКЕТОМ из чекаута main (.code):
-                     (cd .code && pnpm -F agent-protocol --silent cli new-message \
-                        --root "$GITHUB_WORKSPACE/.comms-mail/agent-comms" --repo . --ref origin/main \
-                        --thread "$SLUG" --from reviewer-pr --expects answer --waiting-on "$WAIT" \
-                        --worker gh-action \
-                        --body-file "$GITHUB_WORKSPACE/verdict.md" --write --no-push) \
-                       || { echo "::error::new-message не записал вердикт"; exit 1; }
-                   else
-                     # legacy (нет messages/) — ИСПОЛНЯЕМО дописать секцию в конец _thread.md:
-                     LAST=$(grep -oE '^## msg-[0-9]+' "$TF" | grep -oE '[0-9]+' | sort -n | tail -1)
-                     NEXT=$(printf '%03d' $(( 10#${LAST:-0} + 1 )))
-                     { printf '\n## msg-%s · from: reviewer-pr · %s · expects: answer\n\n' "$NEXT" "$(date -u +%F)"
-                       cat "$GITHUB_WORKSPACE/verdict.md"
-                       printf '\nwaiting-on → %s\n' "$WAIT"
-                     } >> "$TF"
-                   fi
+                   # файл-сообщение ПАКЕТОМ из чекаута main (.code):
+                   (cd .code && pnpm -F agent-protocol --silent cli new-message \
+                      --root "$GITHUB_WORKSPACE/.comms-mail/agent-comms" --repo . --ref origin/main \
+                      --thread "$SLUG" --from reviewer-pr --expects answer --waiting-on "$WAIT" \
+                      --worker gh-action \
+                      --body-file "$GITHUB_WORKSPACE/verdict.md" --write --no-push) \
+                     || { echo "::error::new-message не записал вердикт"; exit 1; }
                    # Проверка: запись реально произошла (git видит изменение). Пусто
                    # — вердикт не лёг, падаем громко, а не «доставлено» вхолостую:
                    git -C .comms-mail status --porcelain | grep -q . \
@@ -429,8 +422,7 @@ jobs:
                    git -C .comms-mail commit -m "docs(agent-comms): вердикт reviewer-pr по PR #<PR>"
                    git -C .comms-mail push origin HEAD:comms
                Push отклонён (параллельная запись) — освежи ПОЧТУ и повтори запись
-               поверх свежего (для мигрированного new-message создаст файл заново;
-               для legacy пересчитай NNN), push снова:
+               поверх свежего (new-message создаст файл заново), push снова:
                    git -C .comms-mail fetch --no-tags origin comms
                    git -C .comms-mail reset --hard FETCH_HEAD
                Именно `FETCH_HEAD`: почта тянется БЕЗ рефспека, `origin/comms` в
@@ -739,7 +731,7 @@ jobs:
           git fetch --no-tags "$MAIL_REMOTE" comms
           git worktree add .comms-fallback FETCH_HEAD
           if [ ! -d ".comms-fallback/agent-comms/${THREAD}/messages" ]; then
-            echo "::warning::Тред '${THREAD}' не найден или ещё legacy — в тред не сообщено (коммент в PR доставлен)."
+            echo "::warning::Каталога .comms-fallback/agent-comms/${THREAD}/messages нет — в тред не сообщено (коммент в PR доставлен)."
             exit 0
           fi
 
