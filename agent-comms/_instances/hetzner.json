@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T17:28:36.345Z",
+  "writtenAt": "2026-08-21T17:33:45.071Z",
   "roles": [
     "curator",
     "dev-core"
@@ -9,7 +9,7 @@
     {
       "role": "dev-core",
       "thread": "025-power-docs-as-data",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-21T18:26:38Z"
     }
   ]
