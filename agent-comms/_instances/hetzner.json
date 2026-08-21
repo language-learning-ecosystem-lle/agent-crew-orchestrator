@@ -1,9 +1,16 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T14:09:37.047Z",
+  "writtenAt": "2026-08-21T14:09:54.029Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "020-parked-turn-not-failure",
+      "state": "running",
+      "deadline": "2026-08-21T14:49:50Z"
+    }
+  ]
 }
