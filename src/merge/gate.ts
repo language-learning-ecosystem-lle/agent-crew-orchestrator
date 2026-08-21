@@ -273,36 +273,96 @@ const underPrefix = (path: string, prefix: string): boolean =>
   path === prefix || path.startsWith(`${prefix}/`);
 
 /**
- * The documents of power of this repository: every role's instruction paths MINUS the
- * working cards, the protocol config itself, and whatever the caller adds
- * (`--power-docs`). Deduplicated, order of first appearance kept — the list is printed
- * to a human.
+ * WHERE A DOCUMENT OF POWER CAME FROM. Printed beside every path, and the reason is the
+ * whole of thread `025`: a list with no provenance cannot be told apart from a SHORTER one.
+ * The guard's completeness used to depend on a flag somebody remembered to type, and the
+ * trace it left said only which paths were judged — never that three more should have been.
+ * With the source said out loud, "the config declares nothing" is a fact on the screen
+ * instead of a silence.
  */
-export const powerDocuments = (input: {
+export type PowerDocumentSource =
+  /** The protocol config itself — always, and derived from nothing. */
+  | "config"
+  /** An `instructions` path of some role: the role cards, derived from the config. */
+  | "role"
+  /** The `powerDocuments` list the served project declares (v18). */
+  | "declared"
+  /** `--power-docs` on the command line: what the caller adds on top. */
+  | "flag";
+
+export type PowerDocument = {
+  readonly path: string;
+  readonly source: PowerDocumentSource;
+};
+
+/**
+ * The documents of power of this repository, WITH the source of each: the protocol config
+ * itself, every role's instruction paths MINUS the working cards, the `powerDocuments` the
+ * project declares, and whatever the caller adds (`--power-docs`). Deduplicated, order of
+ * first appearance kept — the list is printed to a human, and the first appearance is also
+ * what names the source: a path that is both derived and declared is derived, because the
+ * derivation would hold even if the declaration were deleted.
+ */
+export const powerDocumentList = (input: {
   readonly roles: readonly {
     readonly instructions?: readonly { readonly path: string }[] | undefined;
   }[];
   readonly configPath: string;
+  /** The `powerDocuments` of the config the door is judging by (the BASE of the PR). */
+  readonly configured?: readonly string[] | undefined;
   readonly declared?: readonly string[] | undefined;
   /** Instruction paths that are WORKING cards, not documents of power (see the header). */
   readonly workingCards?: readonly string[] | undefined;
-}): readonly string[] => {
-  const seen = new Set<string>();
-  const push = (entry: string): void => {
+}): readonly PowerDocument[] => {
+  const seen = new Map<string, PowerDocumentSource>();
+  const push = (entry: string, source: PowerDocumentSource): void => {
     const normalised = normalise(entry);
-    if (normalised.length > 0) seen.add(normalised);
+    if (normalised.length > 0 && !seen.has(normalised)) seen.set(normalised, source);
   };
   const working = new Set((input.workingCards ?? []).map(normalise).filter((e) => e.length > 0));
-  push(input.configPath);
+  push(input.configPath, "config");
   for (const role of input.roles)
     for (const doc of role.instructions ?? []) {
-      if (!working.has(normalise(doc.path))) push(doc.path);
+      if (!working.has(normalise(doc.path))) push(doc.path, "role");
     }
-  // The declared side is NOT filtered: naming a path outright outranks calling it a
-  // working card, and a caller that says both things means the stricter one.
-  for (const entry of input.declared ?? []) push(entry);
-  return [...seen];
+  // Neither the declared nor the flagged side is filtered by the working cards: naming a
+  // path outright outranks calling it a working card, and a caller that says both things
+  // means the stricter one.
+  for (const entry of input.configured ?? []) push(entry, "declared");
+  for (const entry of input.declared ?? []) push(entry, "flag");
+  return [...seen].map(([path, source]) => ({ path, source }));
 };
+
+/** How each source is named to a human. One wording, so two traces read as one fact. */
+const SOURCE_WORDING: Record<PowerDocumentSource, string> = {
+  config: "the protocol config itself",
+  role: "derived from a role's instructions",
+  declared: "declared by 'powerDocuments' of the config",
+  flag: "named on the command line by --power-docs",
+};
+
+/**
+ * The list guard 4 judges by, said out loud with the source of every path — and, when the
+ * config declares nothing, said out loud THAT it declares nothing. The second half is the
+ * point: the failure this trace exists to catch is a list that looks complete because the
+ * paths missing from it were never mentioned.
+ */
+export const describePowerDocuments = (documents: readonly PowerDocument[]): readonly string[] => {
+  const lines = [`merge-gate: documents of power judged by (${documents.length}):`];
+  for (const document of documents) {
+    lines.push(`merge-gate:   ${document.path} — ${SOURCE_WORDING[document.source]}`);
+  }
+  if (!documents.some((document) => document.source === "declared")) {
+    lines.push(
+      "merge-gate:   (the config declares no 'powerDocuments': the list above is derived plus whatever --power-docs named)",
+    );
+  }
+  return lines;
+};
+
+/** The same list as bare paths — what guard 4 actually matches the changed files against. */
+export const powerDocuments = (input: Parameters<typeof powerDocumentList>[0]): readonly string[] =>
+  powerDocumentList(input).map((document) => document.path);
 
 /**
  * The working cards a caller named that no role actually points at — a flag that hits

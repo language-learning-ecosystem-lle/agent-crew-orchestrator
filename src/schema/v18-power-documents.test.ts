@@ -1,12 +1,12 @@
 /**
- * The step 16 → 17 — a step that moves NO DATA, and that is exactly what is checked here:
+ * The step 17 → 18 — a step that moves NO DATA, and that is exactly what is checked here:
  * the config comes out byte-identical except for the number, and no message is touched.
  *
- * The version exists for the other half (thread 080, 080.9): the config schema gains an
- * optional key (`identityDictionary`), and a strict object met by an OLDER build answers
- * `Unrecognized key` — invalid, true and useless — unless the number says the config is
- * newer. So the pair (config 17, code 16) is measured here too, in the words the operator
- * will read: a live daemon on the old build must say "restart required" and not "invalid".
+ * The version exists for the other half (thread `025-power-docs-as-data`): the config schema
+ * gains an optional key (`powerDocuments`), and a strict object met by an OLDER build answers
+ * `Unrecognized key` — invalid, true and useless — unless the number says the config is newer.
+ * So the pair (config 18, code 17) is measured here too, in the words the operator will read:
+ * a live daemon on the old build must say "restart required" and not "invalid".
  */
 import { describe, expect, it } from "vitest";
 
@@ -22,7 +22,7 @@ const CONFIG_PATH = "/repo/agent-protocol.json";
 const MAIL_ROOT = "/repo/.worktrees/comms/agent-comms";
 
 const config = (): Record<string, unknown> => ({
-  protocolVersion: 16,
+  protocolVersion: 17,
   mail: { branch: "comms", dir: "agent-comms" },
   instances: [{ id: "box", roles: ["dev-core"] }],
   roles: [
@@ -46,50 +46,52 @@ const context = (): MigrationContext => ({
   list: () => [],
 });
 
-describe("16 → 17: the dictionary of authorized signatures becomes a declaration", () => {
+describe("17 → 18: the documents of power become a declaration", () => {
   it("moves no data: the config comes back with the number changed and nothing else", () => {
-    const plan = planMigration({ declared: 16, target: 17, context: context() });
+    const plan = planMigration({ declared: 17, target: 18, context: context() });
     expect(plan.steps).toHaveLength(1);
     expect(plan.writes).toHaveLength(1);
     const written = plan.writes[0] as { path: string; content: string };
     expect(written.path).toBe(CONFIG_PATH);
     const after = JSON.parse(written.content) as Record<string, unknown>;
-    expect(after.protocolVersion).toBe(17);
-    expect({ ...after, protocolVersion: 16 }).toEqual(config());
+    expect(after.protocolVersion).toBe(18);
+    expect({ ...after, protocolVersion: 17 }).toEqual(config());
   });
 
-  it("declares the dictionary for nobody — a filled-in default is the defect it removes", () => {
-    const plan = planMigration({ declared: 16, target: 17, context: context() });
+  it("declares the list for nobody — a filled-in default is the thing v17 just removed", () => {
+    const plan = planMigration({ declared: 17, target: 18, context: context() });
     const after = JSON.parse((plan.writes[0] as { content: string }).content) as Record<
       string,
       unknown
     >;
-    expect(after.identityDictionary).toBeUndefined();
+    expect(after.powerDocuments).toBeUndefined();
     // And the plan says so, so a human reading the dry run is not left to infer it.
     expect(plan.steps[0]?.notes.join(" ")).toContain("declares it for nobody");
   });
 
   it("touches no message: this version says nothing about the mail", () => {
-    const plan = planMigration({ declared: 16, target: 17, context: context() });
+    const plan = planMigration({ declared: 17, target: 18, context: context() });
     expect(plan.writes.map((file) => file.path)).toEqual([CONFIG_PATH]);
   });
 
-  // "is the version this build writes" USED TO STAND HERE and moved on with the number
-  // (v18, thread 025): the statement is about the LATEST step, not about this one, and
-  // leaving a copy behind would mean every version bump editing the tests of released
-  // steps — which are history, like the shapes they froze. What stays here is that this
-  // step still exists and still lands on 17, and the assertion below covers the half that
-  // is genuinely about v17: an old build meeting it.
-  it("still lands on 17 — a released step is history and keeps its landing", () => {
-    const plan = planMigration({ declared: 16, target: 17, context: context() });
-    expect(plan.steps[0]?.to).toBe(17);
-    expect(CURRENT_PROTOCOL_VERSION).toBeGreaterThanOrEqual(17);
+  it("is idempotent: a config already at 18 has nothing to migrate", () => {
+    const plan = planMigration({
+      declared: 18,
+      target: 18,
+      context: { ...context(), config: { ...config(), protocolVersion: 18 } },
+    });
+    expect(plan.steps).toHaveLength(0);
+    expect(plan.writes).toHaveLength(0);
   });
 
-  it("answers a v17 config on a v16 build with 'restart required', not with 'invalid'", () => {
+  it("is the version this build writes", () => {
+    expect(CURRENT_PROTOCOL_VERSION).toBe(18);
+  });
+
+  it("answers a v18 config on a v17 build with 'restart required', not with 'invalid'", () => {
     // The whole reason an optional field costs a version: the OLD build is the one that
     // has to produce a diagnosis, and without the number it produces 'Unrecognized key'.
-    const verdict = compareProtocolVersion(17, 16);
+    const verdict = compareProtocolVersion(18, 17);
     expect(verdict.state).toBe("ahead");
     const refusal = renderVersionVerdict(verdict);
     expect(refusal).toContain("restart required");

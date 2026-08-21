@@ -73,6 +73,26 @@ describe("the policy shape of the config", () => {
     expect(result.error?.issues.map((issue) => issue.path.join("."))).toContain("roles");
   });
 
+  it("reads 'powerDocuments' out of a FOREIGN config — the half the door judges guard 4 by", () => {
+    // The test that tells a working field from one only the strict schema knows about
+    // (thread 025): `merge-gate` reads the BASE through this shape, so a `powerDocuments`
+    // missing here would leave guard 4 at yesterday's list while every unit on the strict
+    // schema stayed green. `FOREIGN` carries a renamed section on purpose — the list has
+    // to survive a config this build cannot parse strictly.
+    const parsed = policyConfigSchema.parse({
+      ...FOREIGN,
+      powerDocuments: ["PROTOCOL.md", ".github/workflows"],
+    });
+
+    expect(parsed.powerDocuments).toEqual(["PROTOCOL.md", ".github/workflows"]);
+  });
+
+  it("and a base that has no such key at all is read without a refusal", () => {
+    // Every repository the package travels to is that base until it declares one, and so
+    // is this one's own base for as long as the PR introducing the key is open.
+    expect(policyConfigSchema.parse(FOREIGN).powerDocuments).toBeUndefined();
+  });
+
   it("says the skew in both directions and says nothing when the shapes match", () => {
     const supported = CURRENT_PROTOCOL_VERSION;
     const line = (declared: number): string | undefined =>

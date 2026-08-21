@@ -83,8 +83,9 @@ import {
 import { resolveMailRoot } from "./fs/mail-root.js";
 import {
   describeMergeGate,
+  describePowerDocuments,
   evaluateMergeGate,
-  powerDocuments,
+  powerDocumentList,
   readD1Reference,
   unmatchedWorkingCards,
 } from "./merge/gate.js";
@@ -10315,15 +10316,20 @@ const zonesCheck = (argv: readonly string[]): void => {
  * "ask again" — so the command asks again ITSELF, once, and only then reports `UNKNOWN`
  * as the answer it is.
  *
- * `--power-docs` IS A FLAG AND NOT A CONFIG SECTION, and the reason it stayed one is
- * now HISTORY rather than a constraint: a new config field costs a protocol version by
- * R2, and a version bump used to be uncommittable — the zones door read the config of
- * the base with the package of the working tree and halted on the mismatch. That door
- * asks a policy question since thread 037 and no longer halts, so moving the list into
- * the config is a decision about shape, not a blocked one; until somebody takes it, the
- * extra documents of power are named on the command line by whoever runs the gate, and
- * the role card holds the invocation. The derived two — the role cards and the config —
- * need no list either way.
+ * THE LIST GUARD 4 JUDGES BY HAS THREE SOURCES, AND THE DOOR PRINTS WHICH IS WHICH.
+ * Two are DERIVED — the protocol config itself and every role's `instructions` — and
+ * derivation reaches only what some role points at. The third is DECLARED by the served
+ * project: `powerDocuments` in the config (v18, thread `025`, john's decision of
+ * 2026-08-21). It used to be `--power-docs` and nothing else, which made the guard exactly
+ * as complete as the memory of whoever typed the invocation — the measurement (thread 024,
+ * msg-002) says 4 of 17 pull requests touched documents of power and derivation would have
+ * caught one. `--power-docs` still ADDS to the list, so a caller who knows something the
+ * config does not can still say it without a commit.
+ *
+ * AND THE DECLARED HALF IS READ FROM THE BASE, like every other policy field here: a pull
+ * request that adds a path to `powerDocuments` is judged by the list WITHOUT it. That is
+ * right by construction — what a change proposes about its own authority is not authority
+ * yet — and it is the reason the source of every path is printed rather than assumed.
  *
  * AND THIS COMMAND READS ITS CONFIG AS POLICY (thread 037, the same PR): it is the
  * SECOND copy of the zones door — a foreign ref (the base of the PR) asked which
@@ -10465,12 +10471,19 @@ const mergeGate = (argv: readonly string[]): void => {
       .filter((entry) => entry.length > 0);
 
   const workingCards = list("--working-cards");
-  const powerDocs = powerDocuments({
+  const powerDocList = powerDocumentList({
     roles: loaded.config.roles,
     configPath: loaded.path,
+    configured: loaded.config.powerDocuments,
     declared: list("--power-docs"),
     workingCards,
   });
+  const powerDocs = powerDocList.map((document) => document.path);
+  // NEVER SILENT ABOUT THE LIST ITSELF (thread 025): guard 4 is only as complete as the
+  // paths it was handed, so the paths AND where each came from are printed before any
+  // verdict — a trace that showed the verdict alone could not tell a full list from a
+  // short one.
+  for (const line of describePowerDocuments(powerDocList)) out(line);
   // Never silent in either direction: what was subtracted, and what the subtraction
   // did not find — a flag that matches no role's instructions is doing nothing.
   if (workingCards.length > 0) {
