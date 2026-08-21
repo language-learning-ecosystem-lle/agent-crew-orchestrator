@@ -2164,7 +2164,19 @@ construction:
   credential (whoever knows it can silence the alarm), so only the NAME of the key is ever
   printed. **The box's own `HEALTHCHECKS_URL` is refused as the value, by name**: one
   monitor beaten by two senders stays green while either of them lives, which reproduces
-  the 2 h 50 min by construction. **The key absent is the ordinary case** — no ping, the
+  the 2 h 50 min by construction. **On a box that hosts several instances the key carries
+  the instance's name** — `HEALTHCHECKS_CIRCUIT_URL_<INSTANCE>`, UPPER_SNAKE with `-` → `_`
+  (`lle-hetzner` → `HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER`), because both machine configs of
+  such a box name ONE secrets file and one key there would mean one monitor for two
+  daemons: the same refusal one level up. A named instance does NOT fall back on the bare
+  key — the bare key with several instances IS that collision, so the watchdog is off and
+  the banner names the key it wanted; an unnamed `local.json` box reads the bare key and
+  behaves exactly as before; both keys present is the MIGRATION (lay the keys down, restart,
+  then delete the bare one) — the suffixed one wins and the bare one is named as ignored in
+  one line. An instance name that is not a legal key suffix is refused rather than mangled.
+  **And the box-URL refusal has a general form**: the value already present in the same
+  secrets file under ANY other name is refused by both NAMES (never the values) — that is
+  what catches one URL pasted under two instances. **The key absent is the ordinary case** — no ping, the
   daemon works exactly as before, and it says so ONCE in the banner rather than every tick.
   **What a beat proves is narrow and is said in the code**: this process is ticking. A
   daemon spinning without raising anybody beats too — the class this catches is "the

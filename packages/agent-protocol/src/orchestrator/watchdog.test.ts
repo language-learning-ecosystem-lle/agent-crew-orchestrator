@@ -4,6 +4,7 @@ import {
   type BeatOutcome,
   BOX_URL_KEY,
   CIRCUIT_URL_KEY,
+  circuitKeyOf,
   describeBeat,
   describeWatchdog,
   type FetchLike,
@@ -36,7 +37,7 @@ describe("resolveWatchdog", () => {
       secrets: { [CIRCUIT_URL_KEY]: URL_OF_CIRCUIT },
       source: "/home/op/.config/agent-protocol/secrets.env",
     });
-    expect(state).toEqual({ kind: "on", url: URL_OF_CIRCUIT });
+    expect(state).toEqual({ kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY });
     expect(describeWatchdog(state)).toContain(CIRCUIT_URL_KEY);
     expect(describeWatchdog(state)).not.toContain(URL_OF_CIRCUIT);
   });
@@ -72,7 +73,7 @@ describe("resolveWatchdog", () => {
       resolveWatchdog({
         secrets: { [CIRCUIT_URL_KEY]: URL_OF_CIRCUIT, [BOX_URL_KEY]: URL_OF_BOX },
       }),
-    ).toEqual({ kind: "on", url: URL_OF_CIRCUIT });
+    ).toEqual({ kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY });
   });
 
   it("refuses a value that is not a url, and a url that is not http, BY NAME", () => {
@@ -94,6 +95,144 @@ describe("resolveWatchdog", () => {
     expect(state.kind).toBe("off");
     if (state.kind !== "off") throw new Error("unreachable");
     expect(state.reason).toContain(`no '${CIRCUIT_URL_KEY}'`);
+  });
+});
+
+/**
+ * ONE FILE, TWO CIRCUITS (curator's statement of work of 2026-08-21).
+ *
+ * Every case here is about the same defect said twice: two daemons on one monitor look
+ * exactly like one healthy daemon. The unit's whole job is that no configuration reaches
+ * that state QUIETLY — either the right key is read, or the state is refused with the name
+ * of the key that is missing. The seam of it (two real processes, two real paths) is in
+ * `daemon.watchdog.process.test.ts`; what a unit can hold is the policy.
+ */
+describe("resolveWatchdog · one secrets file, several instances", () => {
+  const URL_OF_LLE = "https://hc.example/ping/lle-uuid";
+  const SUFFIXED = `${CIRCUIT_URL_KEY}_HETZNER`;
+  const FILE = "/home/op/.config/agent-protocol/secrets.env";
+
+  it("normalises the instance name into the key's suffix, UPPER_SNAKE and '-' → '_'", () => {
+    expect(circuitKeyOf("lle-hetzner")).toEqual({
+      kind: "key",
+      key: `${CIRCUIT_URL_KEY}_LLE_HETZNER`,
+    });
+    expect(circuitKeyOf("hetzner")).toEqual({ kind: "key", key: SUFFIXED });
+  });
+
+  it("a NAMED instance beats the monitor of its own key", () => {
+    const state = resolveWatchdog({
+      secrets: { [SUFFIXED]: URL_OF_CIRCUIT },
+      names: [SUFFIXED],
+      source: FILE,
+      instance: "hetzner",
+    });
+    expect(state).toEqual({ kind: "on", url: URL_OF_CIRCUIT, key: SUFFIXED });
+    expect(describeWatchdog(state)).toContain(SUFFIXED);
+    expect(describeWatchdog(state)).not.toContain(URL_OF_CIRCUIT);
+  });
+
+  it("a named instance with ONLY the bare key is OFF, and the reason names the key it wants", () => {
+    const state = resolveWatchdog({
+      secrets: { [CIRCUIT_URL_KEY]: URL_OF_CIRCUIT },
+      names: [CIRCUIT_URL_KEY],
+      source: FILE,
+      instance: "hetzner",
+    });
+    expect(state.kind).toBe("off");
+    if (state.kind !== "off") throw new Error("unreachable");
+    // Not a fallback that failed: this IS the collision, and it is said by name.
+    expect(state.reason).toContain(SUFFIXED);
+    expect(state.reason).toContain("hetzner");
+    expect(state.reason).not.toContain(URL_OF_CIRCUIT);
+  });
+
+  it("an UNNAMED box goes on reading the bare key, exactly as before", () => {
+    // The guard against the regression that would matter most: a one-circuit box must not
+    // notice this change at all.
+    for (const instance of [undefined, null]) {
+      expect(
+        resolveWatchdog({
+          secrets: { [CIRCUIT_URL_KEY]: URL_OF_CIRCUIT },
+          names: [CIRCUIT_URL_KEY],
+          source: FILE,
+          ...(instance === undefined ? {} : { instance }),
+        }),
+      ).toEqual({ kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY });
+    }
+  });
+
+  it("with BOTH keys the suffixed one wins and the bare one is named as ignored", () => {
+    const state = resolveWatchdog({
+      secrets: { [SUFFIXED]: URL_OF_CIRCUIT, [CIRCUIT_URL_KEY]: URL_OF_LLE },
+      names: [SUFFIXED, CIRCUIT_URL_KEY],
+      source: FILE,
+      instance: "hetzner",
+    });
+    expect(state.kind).toBe("on");
+    if (state.kind !== "on") throw new Error("unreachable");
+    expect(state.url).toBe(URL_OF_CIRCUIT);
+    expect(state.key).toBe(SUFFIXED);
+    expect(describeWatchdog(state)).toContain("IGNORED");
+    expect(describeWatchdog(state)).toContain(CIRCUIT_URL_KEY);
+  });
+
+  it("the migration order is legitimate: the bare key may hold the SAME url and is not refused", () => {
+    // The keys are laid down BEFORE the restart, so for a while the bare key holds this
+    // instance's own url for the daemon that is still running the old code. Refusing that
+    // would forbid the only migration with no window of silence.
+    const state = resolveWatchdog({
+      secrets: { [SUFFIXED]: URL_OF_CIRCUIT, [CIRCUIT_URL_KEY]: URL_OF_CIRCUIT },
+      names: [SUFFIXED, CIRCUIT_URL_KEY],
+      source: FILE,
+      instance: "hetzner",
+    });
+    expect(state.kind).toBe("on");
+    if (state.kind !== "on") throw new Error("unreachable");
+    expect(state.key).toBe(SUFFIXED);
+  });
+
+  it("REFUSES a value that another key of the same file already holds, by both NAMES", () => {
+    const other = `${CIRCUIT_URL_KEY}_LLE_HETZNER`;
+    const state = resolveWatchdog({
+      secrets: { [SUFFIXED]: URL_OF_CIRCUIT, [other]: URL_OF_CIRCUIT },
+      names: [SUFFIXED, other],
+      source: FILE,
+      instance: "hetzner",
+    });
+    expect(state.kind).toBe("off");
+    if (state.kind !== "off") throw new Error("unreachable");
+    expect(state.reason).toContain(SUFFIXED);
+    expect(state.reason).toContain(other);
+    // Two names and not one value: the url is a credential even inside a refusal.
+    expect(state.reason).not.toContain(URL_OF_CIRCUIT);
+  });
+
+  it("the duplicate refusal is scoped to the FILE, not to the environment it was merged into", () => {
+    // `loadSecrets` hands over the process environment with the file laid on top; an
+    // ambient variable carrying the same value is not a second sender.
+    const state = resolveWatchdog({
+      secrets: { [SUFFIXED]: URL_OF_CIRCUIT, SOME_AMBIENT_COPY: URL_OF_CIRCUIT },
+      names: [SUFFIXED],
+      source: FILE,
+      instance: "hetzner",
+    });
+    expect(state).toEqual({ kind: "on", url: URL_OF_CIRCUIT, key: SUFFIXED });
+  });
+
+  it("an instance name that is not a legal key suffix is REFUSED, never mangled into one", () => {
+    const bad = circuitKeyOf("lle.hetzner");
+    expect(bad.kind).toBe("bad");
+    const state = resolveWatchdog({
+      secrets: { [CIRCUIT_URL_KEY]: URL_OF_CIRCUIT },
+      names: [CIRCUIT_URL_KEY],
+      source: FILE,
+      instance: "lle.hetzner",
+    });
+    expect(state.kind).toBe("off");
+    if (state.kind !== "off") throw new Error("unreachable");
+    expect(state.reason).toContain("lle.hetzner");
+    expect(describeWatchdog(state)).toContain("circuit watchdog OFF");
   });
 });
 
@@ -132,7 +271,7 @@ describe("watchdogBeacon", () => {
       () => new Promise((resolve) => (release = () => resolve({ ok: true, status: 200 }))),
     );
     const beacon = watchdogBeacon({
-      state: { kind: "on", url: URL_OF_CIRCUIT },
+      state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
       fetch: http.fetch,
       note: () => {},
     });
@@ -147,7 +286,7 @@ describe("watchdogBeacon", () => {
     const notes: string[] = [];
     const http = recorder(() => Promise.reject(new Error("getaddrinfo ENOTFOUND hc.example")));
     const beacon = watchdogBeacon({
-      state: { kind: "on", url: URL_OF_CIRCUIT },
+      state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
       fetch: http.fetch,
       note: (line) => notes.push(line),
     });
@@ -162,7 +301,7 @@ describe("watchdogBeacon", () => {
     const notes: string[] = [];
     const http = recorder(() => Promise.resolve({ ok: false, status: 503 }));
     const beacon = watchdogBeacon({
-      state: { kind: "on", url: URL_OF_CIRCUIT },
+      state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
       fetch: http.fetch,
       note: (line) => notes.push(line),
     });
@@ -180,7 +319,7 @@ describe("watchdogBeacon", () => {
         }),
     );
     const beacon = watchdogBeacon({
-      state: { kind: "on", url: URL_OF_CIRCUIT },
+      state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
       fetch: http.fetch,
       note: (line) => notes.push(line),
       timeoutMs: 10,
@@ -196,7 +335,7 @@ describe("watchdogBeacon", () => {
       Promise.reject(new Error(`connect ECONNREFUSED ${URL_OF_CIRCUIT}`)),
     );
     const beacon = watchdogBeacon({
-      state: { kind: "on", url: URL_OF_CIRCUIT },
+      state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
       fetch: http.fetch,
       note: (line) => notes.push(line),
     });

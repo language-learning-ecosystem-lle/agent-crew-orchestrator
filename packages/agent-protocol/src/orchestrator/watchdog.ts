@@ -54,9 +54,40 @@
  * never `agent-protocol.json`. The URL is a credential in the exact sense that matters:
  * whoever knows it can silence the alarm. So this module takes it from the same loader the
  * transports use, and NEVER prints it — only the name of the key it came from.
+ *
+ * ONE BOX, TWO CIRCUITS, TWO MONITORS — AND WHY THE KEY CARRIES THE INSTANCE'S NAME rather
+ * than the instances carrying a secrets file each (curator's statement of work of
+ * 2026-08-21, this thread). A box that hosts several instances answers each of them from
+ * its own machine config (`instances/<name>.json`), and on the box this code runs on BOTH
+ * of those configs name the SAME `secrets.envFile`. One key in that file therefore means
+ * one monitor beaten by two daemons — which is the header's own refusal (a monitor with two
+ * senders stays green while EITHER lives) reappearing one level up, between circuits
+ * instead of between the box and the daemon.
+ *
+ * The nil-code alternative — a secrets file per instance — was weighed and refused, and the
+ * argument is not taste: it moves the collision ACROSS FILES, where no process can see it.
+ * Each daemon loads its own file, never the other's, so "both configs point at one URL"
+ * becomes a state nothing is able to refuse, and the defect we are repairing is not
+ * inconvenience, it is SILENCE BY CONSTRUCTION. Keeping both keys in one file keeps the two
+ * monitors where they are read side by side and makes a duplicate value REFUSABLE BY NAME
+ * inside the process — which is what the last rule below does.
+ *
+ * The rule, whole (`resolveWatchdog`): a NAMED instance beats the monitor of
+ * `HEALTHCHECKS_CIRCUIT_URL_<INSTANCE>` and nothing else; a named instance with only the
+ * bare key present is OFF WITH A REASON, because that is not a missing fallback, it is
+ * exactly the configuration being repaired; an UNNAMED box (`local.json`, one circuit)
+ * reads the bare key and behaves byte for byte as before. Both keys present is the
+ * MIGRATION and is legitimate: the suffixed one wins and the bare one is named as ignored
+ * in one line, so the keys can be laid down BEFORE the restart and the live daemon — whose
+ * code was loaded once, at start — goes on reading the bare key until it is restarted.
+ * That is a migration with no window of silence, which is the only kind worth offering for
+ * a watch.
  */
 
-/** The key the circuit's own monitor is read from — the secrets file (R14). */
+/**
+ * The key the circuit's own monitor is read from — the secrets file (R14). The bare form:
+ * what an unnamed box reads, and what a named instance reads NOTHING from (see the header).
+ */
 export const CIRCUIT_URL_KEY = "HEALTHCHECKS_CIRCUIT_URL";
 
 /**
@@ -70,32 +101,110 @@ export const BEAT_TIMEOUT_MS = 5_000;
 
 export type WatchdogState =
   /** No beat will be sent, and the reason is a sentence an operator can act on. */
-  { readonly kind: "off"; readonly reason: string } | { readonly kind: "on"; readonly url: string };
+  | { readonly kind: "off"; readonly reason: string }
+  | {
+      readonly kind: "on";
+      readonly url: string;
+      /** WHICH KEY SPOKE — the banner says the name, never the value. */
+      readonly key: string;
+      /** One more line when something present was deliberately not read (the migration). */
+      readonly note?: string;
+    };
+
+/**
+ * The key of a NAMED instance: the bare key plus the name in UPPER_SNAKE
+ * (`lle-hetzner` → `HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER`).
+ *
+ * A name that does not become a legal environment key is REFUSED rather than mangled into
+ * one. Mangling would be the same class of silence as everything else in this module: two
+ * instances whose names differ only in a character the mangler drops would land on ONE key
+ * and beat ONE monitor, and the operator would have no way to see it — the file would look
+ * as if it named two.
+ */
+export const circuitKeyOf = (
+  instance: string,
+):
+  | { readonly kind: "key"; readonly key: string }
+  | { readonly kind: "bad"; readonly reason: string } => {
+  const suffix = instance.trim().replace(/-/g, "_").toUpperCase();
+  if (!/^[A-Z][A-Z0-9_]*$/.test(suffix)) {
+    return {
+      kind: "bad",
+      reason: `the instance is named '${instance}', and '${CIRCUIT_URL_KEY}_${suffix}' is not a legal key of a secrets file — no ping is sent. An instance whose monitor is to be read here is named with letters, digits, '-' and '_', starting with a letter (the name becomes the key's suffix in UPPER_SNAKE); rename the instance or leave this box unnamed`,
+    };
+  }
+  return { kind: "key", key: `${CIRCUIT_URL_KEY}_${suffix}` };
+};
 
 /**
  * Decide whether this box beats, from the secrets it was given. Pure, and the whole of
  * the policy: absence is legitimate (a box that watches nothing is a normal box), while
  * a value that is PRESENT and unusable is a defect and is named as one.
  *
- * The three refusals are all "the operator meant to switch this on and it will not work",
- * which is the class discipline 4 of the role card is about: a door that says nothing is
- * worse than no door. An empty value, a value that is not an http(s) URL, and the box's
- * own URL each get their own sentence naming what to change.
+ * The refusals are all "the operator meant to switch this on and it will not work", which
+ * is the class discipline 4 of the role card is about: a door that says nothing is worse
+ * than no door. An empty value, a value that is not an http(s) URL, an unusable instance
+ * name, a named instance carrying only the bare key, and a value that is ALREADY IN THE
+ * FILE UNDER ANOTHER NAME each get their own sentence naming what to change.
+ *
+ * THE LAST ONE IS THE GENERAL FORM OF THE BOX-URL REFUSAL, and it is what actually catches
+ * the hand that pastes one URL under two instances: any other key of the SAME FILE holding
+ * this same value means two senders on one monitor, whoever they are. The box's own key
+ * keeps its own sentence because its case has a history an operator should be told about,
+ * not because its logic is different.
+ *
+ * TWO NAMES ARE LEFT OUT OF THAT COMPARISON ON PURPOSE — the key being read and the bare
+ * key. A named instance during the migration has the bare key sitting there holding the
+ * very same URL, put there for the daemon that is still running the old code; refusing it
+ * would forbid the one migration order that has no window of silence.
  */
 export const resolveWatchdog = (input: {
   readonly secrets: Readonly<Record<string, string | undefined>>;
   /** Which file the values came from, for the reason lines. `null` — the environment. */
   readonly source?: string | null;
+  /**
+   * The instance whose machine config answered for THIS daemon, or `null`/absent for the
+   * unnamed config of a one-circuit box. Taken from the config resolver and never from a
+   * flag of its own: which instance this is, is a fact of the box.
+   */
+  readonly instance?: string | null;
+  /**
+   * The names that came out of the secrets FILE — the scope of the duplicate-value
+   * refusal. Absent means "the whole of what was given", which is what an environment-only
+   * box has.
+   */
+  readonly names?: readonly string[];
 }): WatchdogState => {
   const where =
     input.source === undefined || input.source === null
       ? "the environment (no secrets file is named in the machine config)"
       : `'${input.source}'`;
-  const raw = (input.secrets[CIRCUIT_URL_KEY] ?? "").trim();
+  const instance = input.instance ?? null;
+
+  let key = CIRCUIT_URL_KEY;
+  let note: string | undefined;
+  const bare = (input.secrets[CIRCUIT_URL_KEY] ?? "").trim();
+  if (instance !== null && instance !== "") {
+    const named = circuitKeyOf(instance);
+    if (named.kind === "bad") return { kind: "off", reason: named.reason };
+    key = named.key;
+    const own = (input.secrets[key] ?? "").trim();
+    if (own === "" && bare !== "") {
+      return {
+        kind: "off",
+        reason: `this daemon is instance '${instance}' and ${where} carries the bare '${CIRCUIT_URL_KEY}' but no '${key}' — refused, and NOT fallen back on: a box that hosts several instances answers them from one secrets file, so the bare key means every daemon here beats ONE monitor and the death of any one of them stops being visible. Put this instance's own monitor under '${key}'`,
+      };
+    }
+    if (own !== "" && bare !== "") {
+      note = `'${CIRCUIT_URL_KEY}' is set in ${where} as well and is IGNORED here — a named instance reads '${key}' only. Remove the bare key once every instance on this box has its own`;
+    }
+  }
+
+  const raw = (input.secrets[key] ?? "").trim();
   if (raw === "") {
     return {
       kind: "off",
-      reason: `no '${CIRCUIT_URL_KEY}' in ${where} — this daemon sends NO dead-man ping, and a dead circuit will look exactly like a quiet night. Put the URL of a monitor of its own there (NOT the box's '${BOX_URL_KEY}'); everything else works as before`,
+      reason: `no '${key}' in ${where} — this daemon sends NO dead-man ping, and a dead circuit will look exactly like a quiet night. Put the URL of a monitor of its own there (NOT the box's '${BOX_URL_KEY}', and not another instance's); everything else works as before`,
     };
   }
   let parsed: URL;
@@ -104,30 +213,43 @@ export const resolveWatchdog = (input: {
   } catch {
     return {
       kind: "off",
-      reason: `'${CIRCUIT_URL_KEY}' in ${where} is not a URL — no ping is sent (the value is not shown: it is a credential, whoever knows it can silence the alarm)`,
+      reason: `'${key}' in ${where} is not a URL — no ping is sent (the value is not shown: it is a credential, whoever knows it can silence the alarm)`,
     };
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return {
       kind: "off",
-      reason: `'${CIRCUIT_URL_KEY}' in ${where} is '${parsed.protocol}//…', and a ping is an HTTP request — no ping is sent`,
+      reason: `'${key}' in ${where} is '${parsed.protocol}//…', and a ping is an HTTP request — no ping is sent`,
     };
   }
   const box = (input.secrets[BOX_URL_KEY] ?? "").trim();
   if (box !== "" && box === raw) {
     return {
       kind: "off",
-      reason: `'${CIRCUIT_URL_KEY}' in ${where} is the SAME value as '${BOX_URL_KEY}' — refused: the box's cron and this daemon would beat one monitor, so it stays green while EITHER of them lives and the death of the daemon behind a living box (2 h 50 min on 2026-08-18) is the one case that watch would miss. Make a second monitor and put ITS url here`,
+      reason: `'${key}' in ${where} is the SAME value as '${BOX_URL_KEY}' — refused: the box's cron and this daemon would beat one monitor, so it stays green while EITHER of them lives and the death of the daemon behind a living box (2 h 50 min on 2026-08-18) is the one case that watch would miss. Make a second monitor and put ITS url here`,
     };
   }
-  return { kind: "on", url: raw };
+  const scope = input.names ?? Object.keys(input.secrets);
+  const twins = scope.filter(
+    (name) =>
+      name !== key && name !== CIRCUIT_URL_KEY && (input.secrets[name] ?? "").trim() === raw,
+  );
+  if (twins.length > 0) {
+    return {
+      kind: "off",
+      reason: `'${key}' in ${where} is the SAME value as ${twins.map((name) => `'${name}'`).join(", ")} — refused: one monitor beaten by two senders stays green while either of them lives, so the death of one is invisible, which is the whole of what this watch exists to catch. Give this instance a monitor of its own (the values are not shown — only the names)`,
+    };
+  }
+  return { kind: "on", url: raw, key, ...(note === undefined ? {} : { note }) };
 };
 
 /** The startup line. Says which key spoke, never what it said. */
 export const describeWatchdog = (state: WatchdogState): string =>
   state.kind === "off"
     ? `circuit watchdog OFF — ${state.reason}`
-    : `circuit watchdog ON — every tick pings the monitor named by '${CIRCUIT_URL_KEY}' (value not shown). It proves ONE thing: this process is ticking. It does NOT prove that anybody is being raised — silence is the alarm, a beat is not a health report`;
+    : `circuit watchdog ON — every tick pings the monitor named by '${state.key}' (value not shown). It proves ONE thing: this process is ticking. It does NOT prove that anybody is being raised — silence is the alarm, a beat is not a health report${
+        state.note === undefined ? "" : `. ${state.note}`
+      }`;
 
 export type BeatOutcome =
   | { readonly kind: "beat"; readonly status: number }
