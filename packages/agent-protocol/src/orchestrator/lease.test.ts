@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { marksOfSessions, NO_DELIVERY_MARKS, pairKey } from "../thread/index-doc.js";
 
 import { MAX_ATTEMPTS, type OrchestratorEvent } from "./journal.js";
 import { foldLeases, isDelivery, type LeaseView, unclosedLeases } from "./lease.js";
@@ -425,7 +426,7 @@ describe("unclosedLeases — a lease nobody was left to close", () => {
 describe("the turn that stayed on the role (thread 023)", () => {
   // Both halves of the judgement are pinned here, and that is the point of the pair:
   // the run that DELIVERED and parked must not count, the one that died silently must.
-  const mine = new Set(["session-a"]);
+  const mine = marksOfSessions(new Set(["session-a"]));
 
   it("a run whose session wrote into the mail delivers, though the turn stayed", () => {
     const events = [
@@ -481,6 +482,112 @@ describe("the turn that stayed on the role (thread 023)", () => {
   });
 });
 
+describe("the run that could not name its own session (thread 021)", () => {
+  // The window `provenanceFrom` documents, in events: the message goes out while the
+  // supervisor has not yet written the id file, so the header carries `worker` and no
+  // `session:` — and the release carries an id nothing in the mail can match.
+  const at = (kind: "lease-acquired" | "lease-released", stamp: string): OrchestratorEvent =>
+    kind === "lease-acquired"
+      ? { kind, ts: stamp, role: "curator", thread: "021", deadline: "2026-08-21T15:00:00Z" }
+      : {
+          kind,
+          ts: stamp,
+          role: "curator",
+          thread: "021",
+          reason: "exited-without-handoff",
+          session: "session-nobody-saw",
+        };
+  const run = [
+    at("lease-acquired", "2026-08-21T13:00:00Z"),
+    at("lease-released", "2026-08-21T13:40:00Z"),
+  ];
+  const wrote = (role: string, thread: string, ...stamps: string[]) =>
+    ({
+      sessions: new Set<string>(),
+      runMessages: new Map([[pairKey(role, thread), stamps.map((s) => Date.parse(s))]]),
+    }) as const;
+
+  it("a message of this role, in this thread, inside the lease window IS the delivery", () => {
+    const view = foldLeases(
+      run,
+      NOW,
+      3,
+      wrote("curator", "021", "2026-08-21T13:39:12Z"),
+    )[0] as LeaseView;
+    expect(view.attempt).toBe(0);
+    expect(view.exhausted).toBe(false);
+    // The journal keeps saying what the observer saw — the reading is what changed.
+    expect(view.reason).toBe("exited-without-handoff");
+  });
+
+  it("three of them do not close the pair, while the same journal without the mail does", () => {
+    const three = [...run, ...run, ...run];
+    expect(
+      (foldLeases(three, NOW, 3, wrote("curator", "021", "2026-08-21T13:39:12Z"))[0] as LeaseView)
+        .exhausted,
+    ).toBe(false);
+    expect((foldLeases(three, NOW, 3)[0] as LeaseView).exhausted).toBe(true);
+  });
+
+  // The three narrowings, one test each: without them the second sign would swallow the
+  // honest `exited-without-handoff` the ceiling exists for.
+  it("a session that died silently still spends its attempt", () => {
+    const view = foldLeases(run, NOW, 3, wrote("curator", "021"))[0] as LeaseView;
+    expect(view.attempt).toBe(1);
+    expect(view.launchable).toBe(true);
+  });
+
+  it("a message of the same pair from BEFORE the acquire is not this run's delivery", () => {
+    const view = foldLeases(
+      run,
+      NOW,
+      3,
+      wrote("curator", "021", "2026-08-21T12:59:59Z"),
+    )[0] as LeaseView;
+    expect(view.attempt).toBe(1);
+  });
+
+  it("a message of the same role in ANOTHER thread is not this pair's delivery", () => {
+    const view = foldLeases(
+      run,
+      NOW,
+      3,
+      wrote("curator", "020", "2026-08-21T13:39:12Z"),
+    )[0] as LeaseView;
+    expect(view.attempt).toBe(1);
+  });
+
+  it("a message of ANOTHER role in this thread is not this pair's delivery", () => {
+    const view = foldLeases(
+      run,
+      NOW,
+      3,
+      wrote("dev-core", "021", "2026-08-21T13:39:12Z"),
+    )[0] as LeaseView;
+    expect(view.attempt).toBe(1);
+  });
+
+  it("only `exited-without-handoff` is reclassified — a timeout inside the window still fails", () => {
+    const timedOut: OrchestratorEvent[] = [
+      at("lease-acquired", "2026-08-21T13:00:00Z"),
+      {
+        kind: "lease-released",
+        ts: "2026-08-21T13:40:00Z",
+        role: "curator",
+        thread: "021",
+        reason: "timeout",
+      },
+    ];
+    const view = foldLeases(
+      timedOut,
+      NOW,
+      3,
+      wrote("curator", "021", "2026-08-21T13:39:12Z"),
+    )[0] as LeaseView;
+    expect(view.attempt).toBe(1);
+  });
+});
+
 describe("the transcript of the pair (T-1, thread 019)", () => {
   // The observer's bottom panel is the session's own file. Where it lies is derived
   // here, from the acquire moment the journal already carries, by the very function
@@ -490,7 +597,7 @@ describe("the transcript of the pair (T-1, thread 019)", () => {
 
   it("names the file of the pair's LAST run", () => {
     const started = acquire("dev-core", "019", FUTURE);
-    const [view] = foldLeases([started], NOW, 3, new Set(), SESSIONS);
+    const [view] = foldLeases([started], NOW, 3, NO_DELIVERY_MARKS, SESSIONS);
     // The name is the acquire's own stamp, colons swapped — the same composition the
     // supervisor uses, asserted against the event rather than against a copy of it.
     expect((view as LeaseView).sessionLog).toBe(
@@ -502,7 +609,7 @@ describe("the transcript of the pair (T-1, thread 019)", () => {
     const first = acquire("dev-core", "019", PAST);
     const second = acquire("dev-core", "019", FUTURE);
     const events = [first, release("dev-core", "019", "timeout"), second];
-    const [view] = foldLeases(events, NOW, 3, new Set(), SESSIONS);
+    const [view] = foldLeases(events, NOW, 3, NO_DELIVERY_MARKS, SESSIONS);
     expect((view as LeaseView).sessionLog).toBe(
       `${SESSIONS}/${second.ts.replaceAll(":", "-")}-dev-core-019.log`,
     );
@@ -520,7 +627,7 @@ describe("the transcript of the pair (T-1, thread 019)", () => {
     const events: OrchestratorEvent[] = [
       { kind: "stop", ts: ts(), role: "dev-core", thread: "019", mode: "graceful" },
     ];
-    const [view] = foldLeases(events, NOW, 3, new Set(), SESSIONS);
+    const [view] = foldLeases(events, NOW, 3, NO_DELIVERY_MARKS, SESSIONS);
     expect((view as LeaseView).sessionLog).toBeUndefined();
   });
 });

@@ -1097,7 +1097,7 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # conversation, and the template map's keys are part of the frozen config
                             # shape — a version of the protocol, which is john's call
                             # IT FOLDS WITH THE MAIL, exactly as the daemon does: the first version of
-                            # the category called `foldLeases` without `sessionsThatWrote`, so a release
+                            # the category called `foldLeases` without `deliveryMarks`, so a release
                             # of the shape thread 023 forgives (`exited-without-handoff` whose own
                             # session signed a message) counted as a failure here and as a delivery
                             # there. Six live pairs disagreed on 2026-08-19 — one broken run away from a
@@ -2146,9 +2146,23 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   an answer, because the reset hangs on a delivery and an answer that leaves the turn
   where it is is not one.
   **The differentiator is THE MAIL, not a new event** (`isSelfTurnDelivery` +
-  `sessionsThatWrote`): a `lease-released` carrying a `session` that also signs a
+  `deliveryMarks`): a `lease-released` carrying a `session` that also signs a
   message in the mail delivered; a session that wrote nothing did not. Both halves are
-  load-bearing — silence is exactly the failure the ceiling exists for. Judging by the
+  load-bearing — silence is exactly the failure the ceiling exists for.
+  **The mail answers in TWO signs, because the first one has a window it cannot cover**
+  (thread 021). `session:` is minted by the vendor and reaches the writing command through
+  a file the supervisor fills once it has parsed the id off the session's stream; a message
+  written before that goes out with `worker` and no `session`, on purpose — a run that
+  cannot name its run still has a turn to pass. The second sign takes such a release as a
+  delivery when a message written by a RUN's worker, by the pair's own role, into the pair's
+  own thread, is stamped INSIDE that run's lease window (both edges come from the journal —
+  the acquire and this release). It is narrow by all four at once: a session that died
+  silently still spends its attempt, and a reader with no acquire behind it does not use the
+  second sign at all. What it cannot tell apart, said out loud: a person writing by hand as
+  the role, into that thread, with `--worker claude-code`, inside that window. Measured on
+  2026-08-21: the window at the door is reachable (13 messages of the current header form
+  carry a worker and no session), while on the live journals the second sign changes nothing
+  yet — LLE's 18 self-exits of that day still read 15 deliveries, exactly as before. Judging by the
   mail rather than by a new outcome name is what makes the correction RETROACTIVE: the
   journal keeps its honest record of what the observer saw, and pairs already
   `exhausted` come back the moment a reader hands the fold the set — no hand rewrites

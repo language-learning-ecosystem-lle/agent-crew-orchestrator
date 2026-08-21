@@ -109,6 +109,94 @@ export const sessionsThatWrote = (threads: readonly Thread[]): ReadonlySet<strin
 };
 
 /**
+ * THE PAIR KEY — `(role, thread)`, the identity the lease fold is written against. It
+ * lives here rather than in `lease.ts` because the mail side now builds a map on the
+ * same key, and two spellings of one identity is how they come to disagree.
+ */
+export const pairKey = (role: string, thread: string): string => JSON.stringify([role, thread]);
+
+/**
+ * THE WORKER A RAISED RUN CARRIES — the supervisor puts it into the environment of every
+ * session it spawns (`LAUNCH_ENV.worker`) and `provenanceFrom` writes it into the header.
+ * It is the only narrowing by provenance available to the second sign below, and it is a
+ * narrowing rather than a proof: `claude-code` is also what a person running the tool by
+ * hand writes.
+ */
+const RUN_WORKER = "claude-code";
+
+/**
+ * WHAT THE MAIL KNOWS ABOUT DELIVERIES — the two signs, built in one pass (thread 021).
+ *
+ * `sessions` is the first and sharp one: the run's own id is in the header, so the release
+ * event and the message name the same thing. `runMessages` is the second and narrow one,
+ * for the messages whose header could not carry that id (see `deliveryMarks`).
+ */
+export type DeliveryMarks = {
+  /** Sessions named by a `session:` header anywhere in the mail (`sessionsThatWrote`). */
+  readonly sessions: ReadonlySet<string>;
+  /** `pairKey(from, thread)` → epoch ms of every message a RUN's worker wrote there. */
+  readonly runMessages: ReadonlyMap<string, readonly number[]>;
+};
+
+/** No mail at hand: a fold that only reads the journal judges by neither sign. */
+export const NO_DELIVERY_MARKS: DeliveryMarks = { sessions: new Set(), runMessages: new Map() };
+
+/** Sessions alone, in the shape the fold takes — for a caller that has only the set. */
+export const marksOfSessions = (sessions: ReadonlySet<string>): DeliveryMarks => ({
+  sessions,
+  runMessages: new Map(),
+});
+
+/**
+ * THE SECOND SIGN OF A DELIVERY, and why the first one is not enough (thread 021).
+ *
+ * `session:` is minted by the vendor and reaches the writing command through a file the
+ * supervisor writes once it has parsed the id off the session's own stream. Between the
+ * spawn and that line there is a window, and a message written inside it goes out without
+ * the field — silently, on purpose (`provenanceFrom`: a run that cannot name its RUN still
+ * has a turn to pass, and losing the turn over a provenance field is the worse trade).
+ *
+ * MEASURED RATHER THAN ASSUMED (2026-08-21): 13 messages of the current header form carry
+ * `worker: claude-code` and no `session:`, all of them inside the era in which the field
+ * already existed — two in this repository's mail (`005-comms-derived-untracked`
+ * 2026-08-18T11:58:31Z, `017-circuit-watchdog` 2026-08-19T12:28:45Z) and eleven in the LLE
+ * mail, the latest `042-notifier-down` 2026-08-21T09:19:58Z. So the window is reachable,
+ * and a fold judging by the id alone calls every run that lands in it a failed attempt —
+ * three of those close the pair.
+ *
+ * THE SIGN IS NARROW BY FOUR THINGS AT ONCE, because a wide one would swallow the honest
+ * `exited-without-handoff` the ceiling exists for: the message is written by a RUN's worker,
+ * by the pair's OWN role, into the pair's OWN thread, and stamped INSIDE the lease window of
+ * that very run (the fold holds both edges — `acquiredAt` and the release). A session that
+ * died silently wrote no such message and still spends its attempt.
+ *
+ * WHAT IT CANNOT TELL APART, said out loud rather than left to be discovered: a person
+ * writing by hand as the role, into that thread, with `--worker claude-code`, inside that
+ * run's window, is counted as that run's delivery. That is the price of there being no other
+ * mark, and it is narrow — a human writing in the role's place while the role's own run is
+ * up is already an anomaly, and what it buys off is a run that did its work being called
+ * broken.
+ */
+export const deliveryMarks = (threads: readonly Thread[]): DeliveryMarks => {
+  const runMessages = new Map<string, number[]>();
+  for (const thread of threads) {
+    for (const message of thread.messages) {
+      const { from, worker, date } = message.fields;
+      if (worker !== RUN_WORKER) continue;
+      // A migrated date-only stamp (`2026-08-21`) parses to midnight and simply falls
+      // outside every lease window — history is read, never counted.
+      const at = Date.parse(date);
+      if (Number.isNaN(at)) continue;
+      const k = pairKey(from, thread.id);
+      const stamps = runMessages.get(k);
+      if (stamps === undefined) runMessages.set(k, [at]);
+      else stamps.push(at);
+    }
+  }
+  return { sessions: sessionsThatWrote(threads), runMessages };
+};
+
+/**
  * THE THREADS THAT ARE OVER — the other fact the journal does not have (thread 016).
  *
  * The neighbouring categories drop a closed thread AT THE SOURCE: `waitingOnOf` and
