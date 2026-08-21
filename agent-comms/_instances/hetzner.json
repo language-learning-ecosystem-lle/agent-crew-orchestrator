@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T13:21:27.645Z",
+  "writtenAt": "2026-08-21T13:21:38.347Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,6 +11,12 @@
       "thread": "019-quota-aware-scheduler",
       "state": "draining",
       "deadline": "2026-08-21T14:13:33Z"
+    },
+    {
+      "role": "curator",
+      "thread": "019-quota-aware-scheduler",
+      "state": "running",
+      "deadline": "2026-08-21T14:01:34Z"
     }
   ]
 }
