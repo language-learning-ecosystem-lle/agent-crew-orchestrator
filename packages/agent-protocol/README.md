@@ -1975,6 +1975,21 @@ risky action after — not a single spawn.
   how well it works. A handoff resets it as well as a `completed`, because the turn
   passing IS the delivery: a supervisor that dies right after one leaves
   `supervisor-gone` on a run that did its job.
+- **AND IT COUNTS ONLY THE ROUNDS THE PAIR ACTUALLY GOT** (thread 023). Which endings
+  spend an attempt is ONE table in `lease.ts` (`SPENDS_ATTEMPT`), one row per class of
+  `RELEASE_REASONS`, each decided by one question — *did the pair have its own chance to
+  do the work in this round?* Spent: `completed`, `timeout`, `forced`,
+  `exited-without-handoff`, `stalled`. **Not spent, and the acquire that opened the round
+  is undone**: `quota-exhausted` and `auth-failed` (one resource of the whole box — one
+  closure hits every role at once), `input-timeout` and `exited-while-waiting` (the round
+  went to a wait for a human, R19), `supervisor-gone` (the box killed its own sessions on
+  the way out), `exhausted` (the ceiling was already reached). It is an UNDO, not an
+  amnesty: two own breaks, then a round nobody gave the pair, then a third own break still
+  reads `3/3 ⚠ EXHAUSTED`.
+- **A COUNT PAST ITS CEILING SAYS WHY.** `attempt 4/3` is a real state — a thaw raises a
+  frozen pair once more — and the frame no longer prints it bare: past the ceiling the
+  column reads `attempt 4/3 (past the ceiling — raised again by a thaw)`, unless the pair
+  is exhausted, where the `⚠ EXHAUSTED` mark already carries the whole sentence.
 
 **Every outcome leaves a trace**: releasing a lease for any reason, timeout and
 exhaustion included, is a `lease-released` event with a `reason`. Hanging quietly
