@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T08:36:05.196Z",
+  "writtenAt": "2026-08-21T08:36:32.788Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,6 +11,12 @@
       "thread": "016-exhausted-closed-threads",
       "state": "running",
       "deadline": "2026-08-21T09:15:44Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "018-package-delivery-lle",
+      "state": "running",
+      "deadline": "2026-08-21T09:36:28Z"
     }
   ]
 }
