@@ -326,6 +326,9 @@ import {
   openQuotaShelves,
   type QuotaSignal,
   quotaSignalOf,
+  shelfEndOfRefusal,
+  type WindowBoundary,
+  windowBoundaryOf,
 } from "./orchestrator/quota.js";
 import { renderSystemdUnit } from "./orchestrator/reboot.js";
 import { describeResidentWait, residentWaits } from "./orchestrator/resident.js";
@@ -6993,6 +6996,13 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   let pending = "";
   /** The quota signal, once seen (finding C) — the latch the poll loop reads. */
   let quota: QuotaSignal | undefined;
+  /**
+   * WHERE THE WINDOWS END, as this run's own stream stated them (thread 019). Not a latch
+   * of the first one: the frames of a run state a boundary per window type and may correct
+   * it, so all of them are kept and the rule that picks one lives in `shelfEndOfRefusal`.
+   * Inert unless a REFUSAL is latched above — a boundary is not a closure.
+   */
+  const windowBoundaries: WindowBoundary[] = [];
   /** The authorisation refusal, once seen (thread 023) — the same latch, its own fact. */
   let authFailure: AuthSignal | undefined;
   // The vendor's side failed before the session reached the work (thread 013) — latched
@@ -7034,6 +7044,16 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     if (signal === undefined) return;
     quota = signal;
     writeLog(`supervisor  ${describeQuotaRelease(signal)}`);
+  };
+  // WHERE THE WINDOW ENDS (thread 019) — read off the same lines and kept beside the
+  // refusal above, never instead of it. The vendor states `resetsAt` on every turn,
+  // including on the events that PERMIT work, which is what lets a refusal that named no
+  // time end at the vendor's own boundary instead of at our five-minute guess. It records
+  // nothing in the log: an `allowed` event is the ordinary state of every run, and a line
+  // per turn about a window nobody has hit is exactly the noise that hides the refusal.
+  const noteWindowBoundary = (line: string): void => {
+    const boundary = windowBoundaryOf(line);
+    if (boundary !== undefined) windowBoundaries.push(boundary);
   };
   // THE BOX COULD NOT AUTHENTICATE (thread 023, the OAuth episode of 2026-08-01) —
   // latched off the same lines, on both streams, and for the sharper of the two reasons
@@ -7094,6 +7114,9 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // loop below, which is the one place that knows the lifecycle. The first signal
       // wins — a session that repeats the message is still the same closed window.
       noteQuota(line);
+      // Only on stdout, and that is not an omission: the boundary is a field of a STREAM
+      // EVENT, and stderr carries the launcher's prose, which never has one.
+      noteWindowBoundary(line);
       noteAuth(line);
       noteApiFailure(line);
       for (const rendered of renderStreamLine(line)) {
@@ -7374,7 +7397,21 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         output: p.sessionLog,
         session: sessionId,
         steps,
-        ...(quota?.resetsAt === undefined ? {} : { until: quota.resetsAt }),
+        // WHEN THE SHELF THIS RELEASE OPENS ENDS (thread 019). The refusal's own number
+        // when it stated one; otherwise the boundary the vendor stated for the window in
+        // this run's own frames, which is what turns a timeless refusal from a five-minute
+        // guess into the moment the window actually reopens. The rule is in
+        // `shelfEndOfRefusal`; absent still means the short default shelf.
+        ...(quota === undefined
+          ? {}
+          : (() => {
+              const until = shelfEndOfRefusal({
+                signal: quota,
+                boundaries: windowBoundaries,
+                now: new Date(),
+              });
+              return until === undefined ? {} : { until };
+            })()),
         // WHICH window closed rides through to the journal (D-3 part 2) — the backoff has
         // a shelf per window type, and this is the only place the type is known.
         ...(quota?.window === undefined ? {} : { window: quota.window }),

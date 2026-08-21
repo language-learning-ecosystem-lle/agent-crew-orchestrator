@@ -13,8 +13,10 @@ import {
   quotaRefusalRecorded,
   quotaSignalOf,
   SHORT_SHELF_MINUTES,
+  shelfEndOfRefusal,
   shelvesAgainst,
   UNKNOWN_WINDOW,
+  windowBoundaryOf,
 } from "./quota.js";
 
 /** A moment after every signal the shelf tests build. */
@@ -588,5 +590,163 @@ describe("openQuotaShelves — a shelf per account (055, B.3)", () => {
     } as OrchestratorEvent);
     const back = parseEventLine(line);
     expect(back.kind === "lease-released" && back.account).toBe("second");
+  });
+});
+
+/* ── THREAD 019: THE BOUNDARY THE VENDOR STATES BEFORE THE WINDOW CLOSES ──────────── */
+
+/** The shape measured on the live LLE box, 2026-08-21 — every session's first frames. */
+const boundaryFrame = (status: string, window: string, epoch: number): string =>
+  JSON.stringify({
+    type: "rate_limit_event",
+    rate_limit_info: {
+      status,
+      resetsAt: epoch,
+      rateLimitType: window,
+      overageStatus: "rejected",
+      isUsingOverage: false,
+    },
+    uuid: "23f09058-a2b2-41e1-831e-28caa7bb38e6",
+    session_id: "82b65192-eaa9-4f1e-8c00-26e92cec5256",
+  });
+
+/** 2026-07-29T17:00:00Z and 2026-08-04T12:00:00Z, as the vendor sends them (epoch seconds). */
+const FIVE_HOUR_END = Math.floor(new Date("2026-07-29T17:00:00Z").getTime() / 1000);
+const SEVEN_DAY_END = Math.floor(new Date("2026-08-04T12:00:00Z").getTime() / 1000);
+
+describe("windowBoundaryOf — the reset time is stated on EVERY turn, closed or open", () => {
+  it("reads the boundary off a PERMITTING event — the live shape of the LLE box", () => {
+    expect(windowBoundaryOf(boundaryFrame("allowed", "five_hour", FIVE_HOUR_END))).toEqual({
+      window: "five_hour",
+      resetsAt: "2026-07-29T17:00:00Z",
+    });
+  });
+
+  it("a permitting event is a boundary and NOT a closure — it opens no shelf", () => {
+    // The whole safety of this reading. `resetsAt` on `allowed` says when the current
+    // window rolls over; shelving on it would stand the box down permanently.
+    const line = boundaryFrame("allowed", "five_hour", FIVE_HOUR_END);
+    expect(windowBoundaryOf(line)).toBeDefined();
+    expect(quotaSignalOf(line)).toBeUndefined();
+  });
+
+  it("a refusing event states its boundary too", () => {
+    expect(windowBoundaryOf(boundaryFrame("exceeded", "seven_day", SEVEN_DAY_END))).toEqual({
+      window: "seven_day",
+      resetsAt: "2026-08-04T12:00:00Z",
+    });
+  });
+
+  it("nothing to read is `undefined` — prose, other events, a broken epoch", () => {
+    expect(windowBoundaryOf("Claude AI usage limit reached|1785340800")).toBeUndefined();
+    expect(windowBoundaryOf(JSON.stringify({ type: "assistant" }))).toBeUndefined();
+    expect(
+      windowBoundaryOf(
+        JSON.stringify({ type: "rate_limit_event", rate_limit_info: { status: "allowed" } }),
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe("shelfEndOfRefusal — a timeless refusal ends at the vendor's boundary, not at a guess", () => {
+  const NOW_AT_REFUSAL = new Date("2026-07-29T12:05:00Z");
+  const fiveHour = { window: "five_hour", resetsAt: "2026-07-29T17:00:00Z" } as const;
+  const sevenDay = { window: "seven_day", resetsAt: "2026-08-04T12:00:00Z" } as const;
+
+  it("the refusal's own time wins over everything observed earlier", () => {
+    expect(
+      shelfEndOfRefusal({
+        signal: { resetsAt: "2026-07-29T16:00:00Z", window: "five_hour", evidence: "x" },
+        boundaries: [fiveHour],
+        now: NOW_AT_REFUSAL,
+      }),
+    ).toBe("2026-07-29T16:00:00Z");
+  });
+
+  it("a refusal that named its window takes THAT window's boundary", () => {
+    expect(
+      shelfEndOfRefusal({
+        signal: { window: "seven_day", evidence: "x" },
+        boundaries: [fiveHour, sevenDay],
+        now: NOW_AT_REFUSAL,
+      }),
+    ).toBe("2026-08-04T12:00:00Z");
+  });
+
+  it("a prose refusal names no window — the EARLIEST boundary, never the longest", () => {
+    // A seven-day boundary standing the box down for a week on a refusal that never
+    // said which window it was is the expensive direction; one wasted launch is the
+    // cheap one, and it re-signals and re-shelves immediately.
+    expect(
+      shelfEndOfRefusal({
+        signal: { evidence: "rate_limit_error" },
+        boundaries: [sevenDay, fiveHour],
+        now: NOW_AT_REFUSAL,
+      }),
+    ).toBe("2026-07-29T17:00:00Z");
+  });
+
+  it("a boundary already in the past is no answer — the short default stands", () => {
+    expect(
+      shelfEndOfRefusal({
+        signal: { evidence: "rate_limit_error" },
+        boundaries: [{ window: "five_hour", resetsAt: "2026-07-29T11:00:00Z" }],
+        now: NOW_AT_REFUSAL,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("nothing observed at all — the short default stands, exactly as before", () => {
+    expect(
+      shelfEndOfRefusal({
+        signal: { evidence: "rate_limit_error" },
+        boundaries: [],
+        now: NOW_AT_REFUSAL,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("the shelf that comes out of it ends at the vendor's time and is marked as stated", () => {
+    // The end of the road this function is on: the `until` it produces is what the fold
+    // reads, so the pause lasts until the window reopens instead of five minutes.
+    const until = shelfEndOfRefusal({
+      signal: { window: "five_hour", evidence: "rate_limit_error" },
+      boundaries: [fiveHour],
+      now: NOW_AT_REFUSAL,
+    });
+    const shelf = openQuotaShelves(
+      [closed({ window: "five_hour", ...(until === undefined ? {} : { until }) })],
+      LATER,
+    )[0];
+    expect(shelf?.until).toBe("2026-07-29T17:00:00Z");
+    expect(shelf?.stated).toBe(true);
+  });
+});
+
+describe("a rate-limit death is external whatever the session had already done (thread 019)", () => {
+  it("the quota release does not look at the step count — 200 steps is still not an attempt", () => {
+    const events = [
+      at("2026-07-29T12:00:00Z", "lease-acquired", { deadline: "2026-07-29T12:59:00Z" }),
+      at("2026-07-29T12:40:00Z", "lease-released", { reason: "quota-exhausted", steps: 200 }),
+      at("2026-07-29T13:00:00Z", "lease-acquired", { deadline: "2026-07-29T13:59:00Z" }),
+      at("2026-07-29T13:40:00Z", "lease-released", { reason: "quota-exhausted", steps: 240 }),
+      at("2026-07-29T14:00:00Z", "lease-acquired", { deadline: "2026-07-29T14:59:00Z" }),
+      at("2026-07-29T14:40:00Z", "lease-released", { reason: "quota-exhausted", steps: 180 }),
+    ];
+    const view = foldLeases(events, new Date("2026-07-29T15:00:00Z"))[0];
+    expect(view?.exhausted).toBe(false);
+  });
+
+  it("`observeStep` has no step gate either — the signal alone decides", () => {
+    // The control of the sentence above, at the other end of the road: whatever the run
+    // had done, a stream that named the closed window releases as `quota-exhausted`.
+    expect(
+      observeStep("running", {
+        handedOff: false,
+        processExited: true,
+        overdue: false,
+        quotaExhausted: true,
+      }),
+    ).toEqual({ record: "lease-released", reason: "quota-exhausted" });
   });
 });

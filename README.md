@@ -2090,10 +2090,22 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
     direction and freeze the circuit for a week in the other. The key is the vendor's own
     word, so a type we have never seen gets its own shelf instead of being folded into
     one of ours.
-  - **A signal without a time gets a SHORT shelf (`SHORT_SHELF_MINUTES`, 5m) and says so.**
-    "Closed, reopening unknown" must not be inflated into "closed for five hours": the
-    cost of too short is one launch that immediately re-signals and re-shelves, the cost
-    of too long is hours of a circuit that could have worked. A repeat signal extends it.
+  - **A signal without a time ends at the boundary the vendor already stated** (thread
+    019, `windowBoundaryOf` + `shelfEndOfRefusal`), and only falls back to the SHORT shelf
+    (`SHORT_SHELF_MINUTES`, 5m) when there is none. The stream carries a `rate_limit_event`
+    in the first frames of every session and it carries `resetsAt` **whatever the status**
+    (measured on the live LLE box, 2026-08-21: every observation is `status: allowed` with
+    a `resetsAt` and a `rateLimitType`) — so the moment the window reopens is known before
+    it ever closes, and a refusal that named no time no longer has to be guessed at. The
+    refusal's own time still wins; a refusal that named its window takes that window's
+    boundary; a prose refusal that named none takes the EARLIEST future boundary, never
+    the longest — a seven-day number must not stand the box down for a week on a signal
+    that never said which window it was. **A permitting event is a boundary and never a
+    closure:** it opens no shelf, and the two readings are separate functions so that no
+    later edit can turn `status: allowed` into a stand-down. "Closed, reopening unknown"
+    must still not be inflated into "closed for five hours": the cost of too short is one
+    launch that immediately re-signals and re-shelves, the cost of too long is hours of a
+    circuit that could have worked. A repeat signal extends the shelf.
   The tick returns its own decision kind (`quota`), every candidate it stands down comes
   back as a skip with that reason, and the daemon says the shelf out loud EVERY tick —
   while the journal gets ONE `launch-refused {reason: quota}` per shelf, not one per tick.

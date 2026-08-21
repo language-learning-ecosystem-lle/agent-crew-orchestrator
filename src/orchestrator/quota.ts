@@ -390,6 +390,104 @@ export const BOX_ACCOUNT = "";
  */
 const shelfKey = (account: string, window: string): string => `${account}\u0000${window}`;
 
+/**
+ * THE BOUNDARY THE VENDOR STATES ON EVERY TURN (thread 019) — and the reason the short
+ * shelf above is a last resort rather than the answer.
+ *
+ * Measured on the live journal of the LLE box (2026-08-21, `daemon.log`, 46 events, every
+ * one of them of this shape): the stream carries a `rate_limit_event` in the first frames
+ * of EVERY session, and it carries `resetsAt` whatever the status —
+ * `{"status":"allowed","resetsAt":1787305800,"rateLimitType":"five_hour"}`. So the moment
+ * the window ends is known to the circuit long BEFORE the window closes, and it is known
+ * from the vendor's own number rather than from a guess.
+ *
+ * WHAT THIS IS NOT, and the mistake it would be: a permitting event is NOT a closure and
+ * must never open a shelf. `resetsAt` on an `allowed` status says when the CURRENT window
+ * rolls over — every session sees one, and shelving on it would stand the box down
+ * permanently, on the very signal that says work is allowed. The boundary is therefore
+ * inert on its own: it is only ever read as the END of a shelf that a REFUSAL has already
+ * opened (`shelfEndOfRefusal`), and it changes nothing about when a shelf opens.
+ */
+export type WindowBoundary = {
+  /** The vendor's word for the window (`five_hour`, `seven_day`, …) or `unknown`. */
+  readonly window: string;
+  /** When that window rolls over, UTC ISO to the second. */
+  readonly resetsAt: string;
+};
+
+/**
+ * ONE LINE OF THE SESSION STREAM → the window boundary it states, or `undefined` for
+ * every line that is not a `rate_limit_event` with a readable `resetsAt`.
+ *
+ * The status is deliberately NOT looked at: both a permitting and a refusing event carry
+ * the same field about the same window, and this function's whole job is to read that
+ * number. Whether the window is OPEN is `quotaSignalOf`'s question and stays there — the
+ * two are kept apart so that no future edit can turn an `allowed` event into a shelf.
+ *
+ * Pure and total: it never throws.
+ */
+export const windowBoundaryOf = (line: string): WindowBoundary | undefined => {
+  const trimmed = line.trim();
+  if (trimmed === "") return undefined;
+  const event = streamEventOf(trimmed);
+  if (event === undefined) return undefined;
+  const info = event["rate_limit_info"] as RateLimitInfo | undefined;
+  if (info === undefined || info === null || typeof info !== "object") return undefined;
+  if (typeof info.resetsAt !== "number" && typeof info.resetsAt !== "string") return undefined;
+  const resetsAt = stampOfEpoch(String(info.resetsAt));
+  if (resetsAt === undefined) return undefined;
+  return {
+    window: typeof info.rateLimitType === "string" ? info.rateLimitType : UNKNOWN_WINDOW,
+    resetsAt,
+  };
+};
+
+/**
+ * WHEN THE SHELF OPENED BY THIS REFUSAL ENDS — the whole of thread 019's part 2 as the
+ * supervisor sees it, in one pure function so the rule has one home.
+ *
+ * Three answers, in order, and the order is the point:
+ *
+ *  1. **The refusal's own number wins.** `Claude AI usage limit reached|<epoch>` and a
+ *     refusing `rate_limit_event` both state the reopening of the window that ACTUALLY
+ *     closed; nothing observed earlier in the run can be better evidence than that.
+ *  2. **The boundary of the SAME window.** A refusal that named its window type but no
+ *     time (and the loose prose never names a time) is answered by the number the vendor
+ *     stated for that very window in the frames of this run.
+ *  3. **The EARLIEST future boundary**, when the refusal named no window at all — which is
+ *     every prose form, `rate_limit_error` and the launcher's 429 included. Earliest and
+ *     not latest, by the asymmetry this module already lives by: waiting too long is hours
+ *     of a circuit that could have worked, waiting too little is ONE launch that
+ *     immediately re-signals and re-shelves. A seven-day boundary must never be able to
+ *     stand the box down for a week on a refusal that never said which window it was.
+ *
+ * `undefined` — nothing was observed and the short default shelf stands, exactly as
+ * before. A boundary already in the past is not an answer either: it describes a window
+ * that has since rolled over, and a shelf ending in the past is no shelf at all.
+ */
+export const shelfEndOfRefusal = (input: {
+  readonly signal: QuotaSignal;
+  /** Boundaries seen in this run's stream, in the order they arrived. */
+  readonly boundaries: readonly WindowBoundary[];
+  /** The moment of the release — what makes a boundary "future". */
+  readonly now: Date;
+}): string | undefined => {
+  if (input.signal.resetsAt !== undefined) return input.signal.resetsAt;
+  const future = input.boundaries.filter(
+    (boundary) => new Date(boundary.resetsAt).getTime() > input.now.getTime(),
+  );
+  if (future.length === 0) return undefined;
+  const window = input.signal.window;
+  if (window !== undefined && window !== UNKNOWN_WINDOW) {
+    // The newest reading of that window: a run's later frames correct its earlier ones.
+    const named = future.filter((boundary) => boundary.window === window).at(-1);
+    if (named !== undefined) return named.resetsAt;
+  }
+  return future.reduce((earliest, boundary) =>
+    boundary.resetsAt < earliest.resetsAt ? boundary : earliest,
+  ).resetsAt;
+};
+
 /** One closed window: whose account, which window, until when, and on whose evidence. */
 export type QuotaShelf = {
   /**
