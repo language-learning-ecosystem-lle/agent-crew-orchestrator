@@ -13,7 +13,7 @@
  * отсутствующей — рез идёт руками на каждом бампе, и человек за ним обязан прочитать в
  * отказе, что чинить.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -67,16 +67,30 @@ const repoWithPackage = (version = "0.2.0"): string => {
   return dir;
 };
 
+/**
+ * The line moved on while a branch stayed behind — the defect of 2026-08-21 in miniature:
+ * `stale` is the branch head one would cut from, `main` carries work merged after it. The
+ * `touching` argument says whether that work is inside the package or outside it: only the
+ * first kind changes the artifact, and the door is expected to tell those two apart.
+ */
+const repoWithMovedLine = (touching: "package" | "elsewhere"): string => {
+  const dir = repoWithPackage();
+  git(dir, "branch", "stale");
+  const path = touching === "package" ? "packages/thing/src/notify.ts" : "docs/notes.md";
+  mkdirSync(join(dir, "docs"), { recursive: true });
+  writeFileSync(join(dir, path), "export const notify = () => 0;\n");
+  git(dir, "add", "-A");
+  git(dir, "commit", "--quiet", "-m", "fix(notify): the work that must not be lost");
+  return dir;
+};
+
+/** Both streams matter: the refusals go to stderr, and so does the --allow-behind warning. */
 const split = (
   cwd: string,
   ...args: readonly string[]
 ): { readonly ok: boolean; readonly out: string } => {
-  try {
-    return { ok: true, out: execFileSync("bash", [SCRIPT, ...args], { cwd, encoding: "utf8" }) };
-  } catch (error) {
-    const said = error as { stdout?: string; stderr?: string; message: string };
-    return { ok: false, out: `${said.stdout ?? ""}${said.stderr ?? ""}${said.message}` };
-  }
+  const run = spawnSync("bash", [SCRIPT, ...args], { cwd, encoding: "utf8" });
+  return { ok: run.status === 0, out: `${run.stdout ?? ""}${run.stderr ?? ""}` };
 };
 
 describe("scripts/split-package.sh", () => {
@@ -126,6 +140,72 @@ describe("scripts/split-package.sh", () => {
     const again = split(repo, "--tag", "thing-v0.2.0", "--prefix", "packages/thing");
     expect(again.ok).toBe(false);
     expect(again.out).toContain("уже есть");
+  });
+
+  it("refuses a revision that does not carry the whole line, naming the missing commit", () => {
+    const repo = repoWithMovedLine("package");
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.0",
+      "--prefix",
+      "packages/thing",
+      "--ref",
+      "stale",
+      "--base",
+      "main",
+    );
+    expect(run.ok).toBe(false);
+    expect(run.out).toContain("НЕ несёт линию 'main'");
+    expect(run.out).toContain("fix(notify): the work that must not be lost");
+    // Refusal means refusal: no tag was left behind pointing at the stale cut.
+    expect(git(repo, "tag", "--list").trim()).toBe("");
+  });
+
+  it("cuts a revision behind the line under --allow-behind, and still says what is missing", () => {
+    const repo = repoWithMovedLine("package");
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.0",
+      "--prefix",
+      "packages/thing",
+      "--ref",
+      "stale",
+      "--base",
+      "main",
+      "--allow-behind",
+    );
+    expect(run.ok, run.out).toBe(true);
+    expect(run.out).toContain("ВНИМАНИЕ");
+    expect(run.out).toContain("fix(notify): the work that must not be lost");
+    expect(git(repo, "tag", "--list").trim()).toBe("thing-v0.2.0");
+    expect(() => git(repo, "cat-file", "-e", "thing-v0.2.0:src/notify.ts")).toThrow();
+  });
+
+  it("does not refuse when the line moved outside the package, and says so", () => {
+    const repo = repoWithMovedLine("elsewhere");
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.0",
+      "--prefix",
+      "packages/thing",
+      "--ref",
+      "stale",
+      "--base",
+      "main",
+    );
+    expect(run.ok, run.out).toBe(true);
+    expect(run.out).toContain("те коммиты не трогают");
+    expect(git(repo, "tag", "--list").trim()).toBe("thing-v0.2.0");
+  });
+
+  it("says out loud when the base line is not in the repository at all", () => {
+    const run = split(repoWithPackage(), "--tag", "thing-v0.2.0", "--prefix", "packages/thing");
+    expect(run.ok, run.out).toBe(true);
+    expect(run.out).toContain("ПРОПУЩЕНА");
+    expect(run.out).toContain("origin/main");
   });
 
   it("does not push without --push, and says the command that would", () => {
