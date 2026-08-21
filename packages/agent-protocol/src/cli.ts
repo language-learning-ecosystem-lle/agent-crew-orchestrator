@@ -8583,6 +8583,16 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   const watchdogState = resolveWatchdog({
     secrets: watchdogSecrets.values,
     source: watchdogSecrets.path,
+    // WHICH INSTANCE THIS DAEMON IS decides which key holds its monitor, and the answer
+    // comes from the layer that already gave it — the machine config resolver — rather
+    // than from a flag of this command: a box with two circuits pointing at one secrets
+    // file is the case being repaired, and a second way to say who you are is a second
+    // way to say it wrong.
+    instance: local.instanceName ?? null,
+    // The scope of the duplicate refusal is the FILE, not the process environment it was
+    // merged into: an ambient variable that happens to carry the same value is not two
+    // senders on one monitor, and only the file is what an operator edits.
+    names: watchdogSecrets.names,
   });
   const watchdog = watchdogBeacon({
     state: watchdogState,
