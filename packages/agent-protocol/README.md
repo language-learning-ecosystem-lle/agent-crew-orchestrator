@@ -2114,6 +2114,25 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   (its own `quota:` panel, which also says when no window is closed) and in this box's
   **instance digest** — a box standing down has no live leases to publish, so without it
   the neighbours would read its silence as "nothing to do".
+  - **Every surface opens on the word `quota-paused`** (thread 019, §4): the daemon's
+    stream, the `status` panel, the TUI and a neighbour's digest all print
+    `quota-paused until <ISO> (<Nm> left) — <window> window of <account>; …`, and
+    `notify` carries the same fact as a STANDING category of its one-line digest —
+    `quota-paused, resumes HH:MMZ (Nm left) — …`, printed every tick while a window is
+    closed. The minutes are rounded UP (a shelf with forty seconds left says `1m`, never
+    `0m`) and a shelf whose end we GUESSED says so in both shapes, so the short default
+    is never read as the vendor's word. The courier's category does **not ring**: a quota
+    pause ends by a clock the box already holds and there is no action behind it, so it
+    is printed, not delivered.
+  - **The round the vendor ended is UNDONE, not merely forgiven** (thread 019, §4). A
+    `quota-exhausted` release has never counted as a failed attempt, but the
+    `lease-acquired` that opened the round moved the counter and nothing moved it back:
+    a pair at 2/3 came out of a closed window reading 3/3, and after its next real break
+    the frame printed `attempt 4/3` with no `⚠ EXHAUSTED` — a line contradicting itself
+    and claiming one attempt left where two remained. The release now decrements what the
+    acquire added, exactly as `consecutiveLaunchesWithoutDelivery` already did for the run
+    budget. It is an undo and not an amnesty: the pair's own failures before the window
+    are still its own, so it still exhausts on its third real break.
 - **A TURN THAT STAYED ON THE ROLE IS STILL A DELIVERY** (thread 023, john's decision
   of 2026-07-30 — the same class as finding C above). Scalar `waiting-on` (v13) does
   not accept `john`, so "this needs a human decision" has exactly ONE legal shape: the

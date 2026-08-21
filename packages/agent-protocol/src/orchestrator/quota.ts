@@ -613,8 +613,57 @@ export const quotaRefusalRecorded = (events: readonly QuotaEvent[], shelf: Quota
 export const describeAccount = (account: string): string =>
   account === BOX_ACCOUNT ? "the box's own account" : `account '${account}'`;
 
-/** One shelf in a line — whose, which window, when it opens, and whose time that is. */
-export const describeQuotaShelf = (shelf: QuotaShelf): string =>
+/**
+ * HOW LONG THIS SHELF STILL STANDS, in whole minutes, rounded UP and never below zero.
+ *
+ * Rounded up because the reader's question is "may I stop waiting yet", and a shelf with
+ * forty seconds left printed as `0m left` answers it wrongly in the one direction that
+ * costs something: it reads as "this should already be over" and sends a hand looking for
+ * a defect that is not there. Clamped at zero because a passed shelf is not returned by
+ * {@link openQuotaShelves} at all, so a negative here would only ever be a caller holding
+ * an older `now` than the fold did — and `-3m left` is noise, not news.
+ */
+export const minutesLeftOnShelf = (shelf: QuotaShelf, now: Date): number =>
+  Math.max(0, Math.ceil((new Date(shelf.until).getTime() - now.getTime()) / 60_000));
+
+/**
+ * THE MOMENT THE DOOR OPENS, in the clock a human reads — `16:00Z`, not a full ISO stamp.
+ * The date is dropped and the `Z` is kept: every shelf in the field opens within hours of
+ * being read, so the day is noise, while the ZONE is the one part that cannot be guessed
+ * from context — a bare `16:00` on a box whose operator lives in +03:00 is a three-hour
+ * lie about when the circuit comes back.
+ */
+export const resumesAt = (shelf: QuotaShelf): string => `${shelf.until.slice(11, 16)}Z`;
+
+/**
+ * ONE SHELF IN A LINE, AND IT OPENS WITH THE WORD THE READER IS LOOKING FOR (thread 019,
+ * §4). The line used to begin with the window's name, so the answer to "why is the circuit
+ * silent" was spelled out in the middle of a sentence whose first half was vendor jargon.
+ * `quota-paused` is the marker — the same token in the daemon's stream, the `status` frame,
+ * the TUI and the digest of a neighbouring box — and the minutes left are on it because the
+ * ISO stamp alone makes every reader do arithmetic against a clock they must first find.
+ *
+ * The rest of the sentence is unchanged in substance: whose account, which window, and
+ * whether `until` is the VENDOR'S time or our short guess. That last distinction is the
+ * reason this is not one string with a placeholder — a guess printed in the shape of a fact
+ * is how an operator learns to distrust the whole line.
+ */
+export const describeQuotaShelf = (shelf: QuotaShelf, now: Date): string =>
   shelf.stated
-    ? `${shelf.window} window of ${describeAccount(shelf.account)} closed until ${shelf.until} (the signal named the time; seen at ${shelf.since} on ${shelf.role})`
-    : `${shelf.window} window of ${describeAccount(shelf.account)} closed until ${shelf.until} — the signal did NOT say when it reopens, so this is the short default shelf of ${SHORT_SHELF_MINUTES}m and the next signal extends it (seen at ${shelf.since} on ${shelf.role})`;
+    ? `quota-paused until ${shelf.until} (${minutesLeftOnShelf(shelf, now)}m left) — ${shelf.window} window of ${describeAccount(shelf.account)}; the signal named the time (seen at ${shelf.since} on ${shelf.role})`
+    : `quota-paused until ${shelf.until} (${minutesLeftOnShelf(shelf, now)}m left) — ${shelf.window} window of ${describeAccount(shelf.account)}; the signal did NOT say when it reopens, so this is the short default shelf of ${SHORT_SHELF_MINUTES}m and the next signal extends it (seen at ${shelf.since} on ${shelf.role})`;
+
+/**
+ * THE SAME FACT FOR A ONE-LINE DIGEST, where the whole circuit gets one sentence and this
+ * shelf gets a clause of it (thread 019, §4). The courier's line is read on a phone: it
+ * carries the marker, the clock and how long is left, and drops the provenance — whoever
+ * wants to know which signal opened the shelf has `status` open in the next breath.
+ *
+ * A GUESSED END IS NAMED AS A GUESS HERE TOO, in four words rather than in a sentence. The
+ * short default expires by design and a reader who takes it for the vendor's word will be
+ * back in five minutes wondering why the circuit is still down.
+ */
+export const describeQuotaPause = (shelf: QuotaShelf, now: Date): string =>
+  `quota-paused, resumes ${resumesAt(shelf)} (${minutesLeftOnShelf(shelf, now)}m left${
+    shelf.stated ? "" : ", our short default — the signal named no time"
+  }) — ${shelf.window} window of ${describeAccount(shelf.account)}`;
