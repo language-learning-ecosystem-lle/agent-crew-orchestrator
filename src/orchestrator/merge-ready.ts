@@ -156,12 +156,38 @@ export const readMergeReady = async (input: {
     // for the same reason either way, and naming one keeps the queue line short.
     if (!ready.has(thread)) ready.set(thread, pr.number);
   }
-  for (const [thread, pr] of ready)
-    notes.push(
-      `merge-ready: ${thread} — guards 1-2 hold on PR #${pr} (approve on the head, checks green on it); the pair is raised ahead of the ordinary queue`,
-    );
+  for (const [thread, pr] of ready) notes.push(note({ thread, pr }));
   return { ready, notes, asked: true };
 };
+
+/**
+ * WHAT THE RAISE IS FOR, IN THE LINE ITSELF (thread `024-merge-ready-vs-power-docs`,
+ * curator's statement of work of 2026-08-21).
+ *
+ * The line used to end at "the pair is raised ahead of the ordinary queue", and a reader
+ * of the frame — the curator, on 2026-08-21T15:15Z — read that ending as "the pair was
+ * raised in order to press merge". On PR #48 of that morning the button was not the
+ * pair's at all: guard 4 of the door stops a diff that touches a document of power at
+ * EVERY raised role, and john's hand is the only one that merges it. The tier measured
+ * the truth (guards 1-2 did hold) and promised something else with it. MEASURED, not
+ * remembered: over both files of the daemon's log the tier fired for 17 pull requests,
+ * of which 4 touched documents of power — #33, #35, #38, #48. The class is not a
+ * one-off, so the words are the thing that changes; the ORDER is not touched, and neither
+ * is the map (see the header: any weakening of that degradation is worse than the tier).
+ *
+ * ONE NOTE FOR EVERY PULL REQUEST, and the missing half is missing ON PURPOSE. This
+ * module could name the offending document for SOME pull requests — `powerDocuments()`
+ * derives half of the door's list from the role cards and the config without any new
+ * data — and that is exactly the trap: of the four measured cases the derived half would
+ * name only #38, leaving #33, #35 and #48 with no name at all while their diffs DO touch
+ * documents of power. A note that names a document sometimes teaches its reader that
+ * silence means "no documents of power here" — a false "clear" is read as a fact, whereas
+ * a standing caveat is read as what it is. Naming the document of THIS pull request needs
+ * the declared list to become data (a field of `agent-protocol.json`, john's to own); until
+ * it is, the line carries the caveat and no name.
+ */
+const note = (input: { readonly thread: string; readonly pr: number }): string =>
+  `merge-ready: ${input.thread} — guards 1-2 hold on PR #${input.pr} (approve on the head, checks green on it). Guards 3-5 stay with a human, and a diff that touches a document of power is john's button, not the pair's. The pair is raised ahead of the ordinary queue to MOVE that pull request: merge it if the remaining guards allow, otherwise park behind it or report`;
 
 const describe = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);

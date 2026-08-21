@@ -284,3 +284,48 @@ describe("the queue line (describeOrder)", () => {
     expect(line).not.toContain("guards 1-2");
   });
 });
+
+/**
+ * WHAT THE RAISE IS FOR (thread `024-merge-ready-vs-power-docs`). The measured defect: the
+ * line ended at "raised ahead of the ordinary queue" and was read as "raised in order to
+ * press merge", on a pull request whose merge no raised role may perform at all — guard 4
+ * of the door stops a diff touching a document of power at every one of them. The assert
+ * bites the TEXT, on the curator's requirement: a note whose presence is checked and whose
+ * words are not is exactly the note that promised the wrong thing for three weeks.
+ */
+describe("the note of the tier — the raise names its own purpose", () => {
+  it("carries the two halves the frame was missing: whose the remaining guards are, and what the pair may do", async () => {
+    const reading = await readMergeReady({
+      source: source({ open: [open()] }),
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+    });
+    const [line] = reading.notes;
+    expect(line).toContain("guards 1-2 hold on PR #152");
+    expect(line).toContain("Guards 3-5 stay with a human");
+    expect(line).toContain("document of power is john's button, not the pair's");
+    expect(line).toContain(
+      "merge it if the remaining guards allow, otherwise park behind it or report",
+    );
+    // The old ending, verbatim — the sentence that stopped at the raise and let the reader
+    // finish it with "…to press merge".
+    expect(line).not.toContain("the pair is raised ahead of the ordinary queue");
+  });
+
+  it("ONE note for every pull request: a diff touching a document of power reads exactly like one that does not", async () => {
+    const reading = async (changedPaths: readonly string[]) =>
+      readMergeReady({
+        source: source({ open: [open()], facts: () => facts({ changedPaths }) }),
+        threads: ["019-operator-ux"],
+        cache: createMergeReadyCache(),
+      });
+    // #48 of 2026-08-21 (the measured case) against an ordinary code PR.
+    const power = await reading(["PROTOCOL.md"]);
+    const ordinary = await reading(["packages/agent-protocol/src/cli.ts"]);
+    expect(power.notes).toEqual(ordinary.notes);
+    // AND THE ORDER IS NOT TOUCHED BY ANY OF IT — the map is the same map either way, which
+    // is the whole of "the words change, the queue does not".
+    expect([...power.ready]).toEqual([["019-operator-ux", 152]]);
+    expect([...ordinary.ready]).toEqual([...power.ready]);
+  });
+});
