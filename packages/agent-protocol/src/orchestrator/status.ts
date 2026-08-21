@@ -26,6 +26,24 @@ const stateWord = (state: LeaseLifecycle): string =>
   state === "draining" ? "working past handoff" : state;
 
 /**
+ * THE COUNT COLUMN, AND WHY IT MAY EXCEED ITS OWN CEILING (thread 023). `attempt 4/3`
+ * with nothing beside it contradicts itself: the reader is shown a ceiling and a number
+ * over it and left to decide which of the two is a lie. Neither is — a frozen pair is
+ * raised once more by a THAW (thread 013), and the run that thaw raises is honestly the
+ * fourth of three. Measured, not supposed: on the box's own journal of 2026-08-21
+ * `curator×014-merge-model` reached 6/3, and every such moment was a `running` line,
+ * which is exactly the state that carries no `⚠ EXHAUSTED` to explain itself.
+ *
+ * So the number stays as it is and the SILENCE is what gets fixed: past the ceiling the
+ * column says why. While the pair is exhausted the flag below already says it in full, and
+ * a second sentence on the same line would only compete with it.
+ */
+const attemptWord = (view: LeaseView): string =>
+  view.attempt > view.ceiling && !view.exhausted
+    ? `attempt ${view.attempt}/${view.ceiling} (past the ceiling — raised again by a thaw)`
+    : `attempt ${view.attempt}/${view.ceiling}`;
+
+/**
  * A mark on a problem state of the pair — what the operator must not miss.
  *
  * `closed`: the pair's thread is over (thread 016). The LINE stays — a frame prints the
@@ -82,7 +100,7 @@ export const renderLeaseLine = (view: LeaseView, closed = false): string => {
     stateWord(view.state),
     // The count AND what it is judged against: "attempt 13" left an operator to guess
     // both the ceiling and whether their `--max-attempts` had arrived at all.
-    `attempt ${view.attempt}/${view.ceiling}`,
+    attemptWord(view),
     view.deadline === null ? "deadline —" : `deadline ${view.deadline}`,
     // The wait's own clock is shown only while it is the one in force: an empty column
     // in every other state would read as "no wait ceiling exists".
