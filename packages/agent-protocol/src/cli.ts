@@ -467,9 +467,9 @@ import {
 } from "./thread/deliver.js";
 import {
   closedThreads,
+  deliveryMarks,
   parkedThreads,
   renderIndex,
-  sessionsThatWrote,
   threadsWaitingOn,
 } from "./thread/index-doc.js";
 import type {
@@ -3395,7 +3395,7 @@ const runNotify = async (input: {
           // count and 0/3 by the daemon's, and `curator×001` carrying an `exhaustedSince` four
           // minutes off — which is the key the series memory is built from. One sorted attempt
           // away from a `frozen` call about a pair the next tick raises without blinking.
-          sessionsThatWrote(parsed),
+          deliveryMarks(parsed),
         ),
         // AND THE SAME MAIL AGAIN, for the second fact it holds (thread 016): a pair whose
         // thread is closed is announced by nobody. The neighbouring categories get this for
@@ -5609,7 +5609,7 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     events,
     now,
     gatesFrom(argv).maxAttempts.value,
-    sessionsThatWrote(threads),
+    deliveryMarks(threads),
     // T-1: every pair names its own transcript. The directory is derived from the journal
     // exactly as the launchers derive it (`join(dirname(journalPath), "sessions")`), so an
     // operator pointing `--journal` at a copy gets that copy's sessions and not this box's.
@@ -6776,7 +6776,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // The gate of a single run judges by the SAME mail the daemon's tick does
     // (thread 023): a pair that delivered into its own turn is not exhausted, and a
     // `run` that refused where the daemon would have raised is the drift itself.
-    deliveredSessions: sessionsThatWrote(
+    deliveryMarks: deliveryMarks(
       loadThreads(p.mailRoot, p.ids).threads.map((loaded) => loaded.thread),
     ),
     continuation: p.continuation,
@@ -7925,7 +7925,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       // The dry run answers the same question the real one does, so it reads the
       // same mail (thread 023) — a plan that refuses where `--write` would go is
       // worse than no plan.
-      deliveredSessions: sessionsThatWrote(
+      deliveryMarks: deliveryMarks(
         loadThreads(mailRoot, registry.ids()).threads.map((loaded) => loaded.thread),
       ),
       continuation: setup.continuation,
@@ -9096,7 +9096,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // The mail is already parsed for the queue above — the set of sessions that
       // wrote is what keeps a run that delivered into its own turn out of the
       // failed attempts (thread 023).
-      deliveredSessions: sessionsThatWrote(threads),
+      deliveryMarks: deliveryMarks(threads),
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
       parked,

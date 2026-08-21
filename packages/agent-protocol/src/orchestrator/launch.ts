@@ -42,6 +42,7 @@ import {
   type Role,
 } from "../roles/schema.js";
 import { denySettings } from "../roles/zones.js";
+import { type DeliveryMarks, NO_DELIVERY_MARKS, pairKey } from "../thread/index-doc.js";
 import type { LaunchDirective } from "../thread/message.js";
 import { DEFAULT_IDLE_MS } from "./activity.js";
 import type { Continuation } from "./continuation.js";
@@ -990,13 +991,24 @@ export const buildResumePrompt = (input: {
  */
 export const consecutiveLaunchesWithoutDelivery = (
   events: readonly OrchestratorEvent[],
-  /** Sessions that wrote into the mail (`isSelfTurnDelivery`, thread 023). */
-  deliveredSessions: ReadonlySet<string> = new Set(),
+  /** What the mail knows about deliveries (`isSelfTurnDelivery`, threads 023 and 021). */
+  marks: DeliveryMarks = NO_DELIVERY_MARKS,
 ): number => {
   let count = 0;
+  // The acquire each pair is currently inside — the left edge the SECOND delivery sign is
+  // narrowed by (thread 021). Kept here rather than asked of the caller for the same reason
+  // the lease fold keeps it: the journal states it, and a global counter that read the sign
+  // without the window would zero itself on any old message of that role in that thread.
+  const acquiredAt = new Map<string, string>();
   for (const event of events) {
+    if (event.kind === "lease-acquired")
+      acquiredAt.set(pairKey(event.role, event.thread), event.ts);
     if (event.kind === "launch") count += 1;
-    else if (isDelivery(event) || isSelfTurnDelivery(event, deliveredSessions)) count = 0;
+    else if (
+      isDelivery(event) ||
+      isSelfTurnDelivery(event, marks, acquiredAt.get(pairKey(event.role, event.thread)) ?? null)
+    )
+      count = 0;
     // THE CLOSED WINDOW TAKES ITS OWN LAUNCH BACK — the same reasoning that already
     // keeps it out of the per-pair `attempt` (`lease.ts`), applied to the ceiling it
     // was still reaching: the cause is not the pair's and not any pair's. It is
@@ -1052,12 +1064,12 @@ export const planLaunch = (input: {
   readonly continuation?: Continuation;
   readonly world?: World;
   /** Sessions that wrote into the mail (`isSelfTurnDelivery`, thread 023). */
-  readonly deliveredSessions?: ReadonlySet<string>;
+  readonly deliveryMarks?: DeliveryMarks;
 }): LaunchPlan => {
   const { events, role, thread, now, wallClockMs } = input;
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
 
-  const view = foldLeases(events, now, input.maxAttempts, input.deliveredSessions).find(
+  const view = foldLeases(events, now, input.maxAttempts, input.deliveryMarks).find(
     (v) => v.role === role && v.thread === thread,
   );
   // `isLeaseAlive` and not two comparisons: since R19 a lease also lives while it is
@@ -1067,7 +1079,7 @@ export const planLaunch = (input: {
     return { ok: false, reason: "already-running" };
   }
   if (view?.exhausted) return { ok: false, reason: "exhausted" };
-  if (consecutiveLaunchesWithoutDelivery(events, input.deliveredSessions) >= maxConsecutive) {
+  if (consecutiveLaunchesWithoutDelivery(events, input.deliveryMarks) >= maxConsecutive) {
     return { ok: false, reason: "run-budget" };
   }
 

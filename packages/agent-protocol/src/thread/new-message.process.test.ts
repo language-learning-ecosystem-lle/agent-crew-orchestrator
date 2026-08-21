@@ -16,6 +16,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -172,6 +173,39 @@ describe("new-message and provenance", () => {
     expect(written(contest.root).fields.worker).toBe("human");
     expect(written(contest.root).fields.session).toBe("hand-1");
   });
+
+  /**
+   * THE WINDOW BETWEEN THE SPAWN AND THE ID (thread 021), pinned as a FACT rather than
+   * left in a comment. The supervisor writes the id file only once it has parsed the id
+   * off the session's own stream; a message written before that — or after the file was
+   * emptied, or where it cannot be read at all — goes out with `worker` and no `session`,
+   * and it GOES OUT: a run that could not name its run still has a turn to pass.
+   *
+   * Each of the three shapes is a case of its own because they fail in different places
+   * inside `provenanceFrom` (no file, an empty read, a read that throws), and a comment
+   * does not break when one of them starts refusing.
+   */
+  for (const [shape, prepare] of [
+    ["the file does not exist yet", (path: string): void => rmSync(path, { force: true })],
+    ["the file is there but empty", (path: string): void => writeFileSync(path, "")],
+    ["the file cannot be read at all", (path: string): void => mkdirSync(path)],
+  ] as const) {
+    it(`the message is WRITTEN, with a worker and no session, when ${shape}`, () => {
+      const contest = contour();
+      const sessionFile = join(contest.repo, "run.session");
+      prepare(sessionFile);
+
+      const result = write(contest, {
+        AGENT_PROTOCOL_WORKER: "claude-code",
+        AGENT_PROTOCOL_SESSION_FILE: sessionFile,
+      });
+
+      expect(result.code).toBe(0);
+      const message = written(contest.root);
+      expect(message.fields.worker).toBe("claude-code");
+      expect(message.fields.session).toBeUndefined();
+    });
+  }
 
   it("no environment, no flags → REFUSED, and nothing is written", () => {
     // The contract half of R7: the door requires what it can always obtain. Every
