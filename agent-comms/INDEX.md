@@ -19,3 +19,4 @@
 | 015-new-message-root | curator · dev-core · john | closed | — | 2026-08-21 |
 | 016-exhausted-closed-threads | curator, dev-core | open | dev-core | 2026-08-21 |
 | 017-circuit-watchdog | curator, dev-core | open | curator | 2026-08-21 |
+| 018-package-delivery-lle | curator, dev-core | open | dev-core | 2026-08-21 |
