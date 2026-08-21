@@ -271,6 +271,37 @@ export const protocolConfigSchema = z.strictObject({
    * is measured on the reading path, where there is a disk to measure it on.
    */
   identityDictionary: z.string().min(1).optional(),
+  /**
+   * THE DOCUMENTS OF POWER THIS PROJECT DECLARES — the declared half of the list guard 4
+   * of `merge-gate` judges by (thread `025-power-docs-as-data`, john's decision of
+   * 2026-08-21). Paths, relative to the repository being served; a directory prefix
+   * matches everything under it, exactly as `zones` does.
+   *
+   * WHY IT IS DATA AND NOT A FLAG, WHICH IS WHAT IT WAS. The other half of the list is
+   * DERIVED — every role's `instructions` plus the config itself — and derivation cannot
+   * reach a document no role points at: a canon, a reviewer's criteria, the workflows of
+   * the conveyor. Those arrived as `--power-docs` on the command line, so the completeness
+   * of the guard equalled the memory of whoever typed the invocation. The string lives in
+   * a role card and is copied by hand, and a guard held up by a copied string is the
+   * silent door this package refuses everywhere else. The measurement that decided it
+   * (thread `024`, msg-002): of 17 pull requests the merge-ready tier fired on, 4 touched
+   * documents of power, and the derived half would have caught ONE.
+   *
+   * THE FLAG IS NOT REPLACED, IT IS DEMOTED. `--power-docs` keeps ADDING to this list: a
+   * caller who knows something the config does not — a document that became one this
+   * morning — must still be able to say so without a commit.
+   *
+   * ABSENCE IS NOT A DEFAULT AND IS NOT A REFUSAL. A repository that declares nothing gets
+   * today's behaviour bit for bit. Which documents carry authority is a judgement about one
+   * repository, and the package travels: naming `PROTOCOL.md` for everyone would re-create,
+   * one repository at a time, the compiled-in default v17 has just finished removing.
+   *
+   * AND THE LIST IS READ FROM THE BASE OF THE PULL REQUEST, not from its head — the door
+   * reads policy (`config/policy.ts`). So a PR that adds a path to this list is judged by
+   * the list WITHOUT that path, which is right by construction: what a change proposes
+   * about its own authority is not yet authority.
+   */
+  powerDocuments: z.array(z.string().min(1)).optional(),
   roles: z.array(roleSchema).min(1),
 });
 

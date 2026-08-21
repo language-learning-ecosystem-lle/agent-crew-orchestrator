@@ -70,6 +70,15 @@ export const policyRoleSchema = roleSchema
  */
 export const policyConfigSchema = z.looseObject({
   protocolVersion: z.number().int().min(1),
+  /**
+   * The documents of power the served project DECLARES (v18). It is listed here and not
+   * merely tolerated by the loose object for one reason: a field only the strict schema
+   * knows about is a field the DOOR never sees — `merge-gate` reads the base through this
+   * shape, so guard 4 would keep judging by yesterday's list while every unit test on the
+   * strict schema stayed green. Optional and loosely typed for the same reason as the rest
+   * of this file: a base at another version may not have the key at all.
+   */
+  powerDocuments: z.array(z.string().min(1)).optional(),
   roles: z.array(policyRoleSchema).min(1),
   orchestrator: z
     .looseObject({

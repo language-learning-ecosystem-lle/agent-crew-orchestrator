@@ -159,6 +159,23 @@ There is no flag for it. `doctor` is typed by hand and ad hoc; an optional flag
 nobody types would leave the decision with a default, wearing a door marked
 "configurable".
 
+### The documents of power this project declares — `powerDocuments`
+
+An optional top-level list of paths, relative to the repository being served. It is the
+DECLARED half of the list guard 4 of [`merge-gate`](#merge-gate--the-guards-of-a-merge-that-are-facts-thread-026)
+judges by; the derived half — every role's `instructions` plus the config itself — is
+computed and needs no declaration.
+
+```json
+"powerDocuments": ["PROTOCOL.md", "REVIEWER.md", ".github/workflows"]
+```
+
+Paths match as prefixes, exactly as `zones` entries do, so a directory covers everything
+under it. Absence is not a default and not a refusal: a project that declares nothing gets
+the behaviour of protocol version 17 unchanged. `--power-docs` still ADDS to the list, for
+what the config does not know yet. The full reasoning, and why the list is read from the
+BASE of a pull request, is with the command.
+
 ## The machine config (R14)
 
 **The repository says WHAT, the machine says WHERE.** Roles, permissions, ceilings,
@@ -1641,6 +1658,40 @@ but a change to one goes to the owner of the decision by the same boundary, and
 until such a path was declared the gate answered a workflow PR with "none of them a
 document of power", which is silence exactly where the norm refuses.
 
+**The declared side lives in the config, `powerDocuments`** (protocol version 18), and
+`--power-docs` ADDS to it rather than replacing it. It was a flag alone until then, which
+made the completeness of guard 4 equal to the memory of whoever typed the invocation: the
+string sits in a role card and is copied by hand, and the measurement of thread 024 says 4
+of 17 pull requests touched documents of power while derivation would have caught one. The
+flag stays for what the config does not know yet — a document that became one this
+morning, named without a commit.
+
+```json
+{ "powerDocuments": ["PROTOCOL.md", "REVIEWER.md", ".github/workflows"] }
+```
+
+The key is OPTIONAL, and a config without it behaves exactly as before: the derived side
+and the flag are untouched, and nothing refuses. Which documents carry authority is a
+judgement about one repository, so no default is supplied and no migration fills it in.
+
+**The list is read from the BASE of the pull request**, like every other policy field this
+command asks about (`config/policy.ts`) — so a pull request that adds a path to
+`powerDocuments` is judged by the list *without* that path. That is right by construction:
+what a change proposes about its own authority is not authority yet. It is also why the
+door prints **the source of every path** — derived from a role's instructions, the config
+itself, declared by `powerDocuments`, or named by `--power-docs` — and says out loud when
+the config declares nothing at all:
+
+```
+merge-gate: documents of power judged by (3):
+merge-gate:   agent-protocol.json — the protocol config itself
+merge-gate:   docs/roles/curator.md — derived from a role's instructions
+merge-gate:   PROTOCOL.md — declared by 'powerDocuments' of the config
+```
+
+A trace that showed only the verdict could not tell a full list from a short one, and a
+short one is exactly what a forgotten flag produced.
+
 **But a role's instructions are not always a document of power** (john's decision of
 2026-07-28, on the reviewer's finding against the first version of this command): the
 boundary runs by the NATURE of the document, not by the fact that a role points at it.
@@ -1827,14 +1878,16 @@ them in one round. Now the reason `gh` returned is printed whole as the fact, an
 is added only on a refusal that is scope-shaped, naming the path GitHub itself refused and
 offering a candidate as a guess (`merge/gh.ts` → `ghRefusalHint`).
 
-**Why the project's extra documents come in on `--power-docs` and not from a config
-section**, which is the shape one would otherwise pick: a new config field costs a
-protocol version by R2, and **a version bump cannot currently be committed at all**.
-The zones door reads the config at `origin/main` — still at the old number — with the
-package of the working tree, which writes the new one, so `loadProtocolConfig` halts
-`zones check` in the pre-commit hook and in the CI step alike. That is a defect of the
-door (it is the first bump since the door was built) and not of this command; when it
-is settled, moving the list into the config is a few lines.
+**Why the project's extra documents came in on `--power-docs` alone for as long as they
+did**, a config section being the shape one would otherwise pick from the start: a new
+config field costs a protocol version by R2, and a version bump used to be uncommittable —
+the zones door read the config at `origin/main`, still at the old number, with the package
+of the working tree, which writes the new one, so `loadProtocolConfig` halted the door on
+the mismatch. That was a defect of the door and not of this command, it was settled in
+thread 037 (both doors ask a POLICY question about a foreign ref and tolerate the skew),
+and the list moved into the config at version 18 — measured first: on a head carrying code
+18, `config check --ref HEAD` refuses a config still at 17 and passes one bumped in the
+same commit, so the number rides in the same pull request as the field.
 
 ### Who said it, and what wrote it down (R7)
 

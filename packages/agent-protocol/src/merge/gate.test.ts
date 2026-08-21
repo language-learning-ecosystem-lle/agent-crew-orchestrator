@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   describeMergeGate,
+  describePowerDocuments,
   evaluateMergeGate,
   latestVerdictPerAuthor,
   type PullRequestFacts,
+  powerDocumentList,
   powerDocuments,
   readD1Reference,
   threadOfDescription,
@@ -92,6 +94,117 @@ describe("powerDocuments", () => {
         workingCards: ["CLAUDE.md"],
       }),
     ).toEqual(["agent-protocol.json", "CLAUDE.md"]);
+  });
+});
+
+describe("powerDocuments: the DECLARED half — 'powerDocuments' of the config (v18, thread 025)", () => {
+  it("makes guard 4 STOP on a declared path with NO flag in the invocation", () => {
+    // The whole of thread 025 in one assertion: the completeness of guard 4 used to equal
+    // the memory of whoever typed `--power-docs`, and this call types nothing.
+    const powerDocs = powerDocuments({
+      configPath: "agent-protocol.json",
+      roles: [{ instructions: [{ path: "docs/roles/curator.md" }] }],
+      configured: ["PROTOCOL.md", "REVIEWER.md", ".github/workflows"],
+    });
+    const outcome = guard(pr({ changedPaths: ["PROTOCOL.md"] }), 4, powerDocs);
+    // "STOP" in the words of the statement of work is `fail` in the words of this door —
+    // the state that takes `curatorMayMerge` down, so it is asserted here too and not
+    // only through the guard's own field.
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("PROTOCOL.md");
+    expect(
+      evaluateMergeGate({ pr: pr({ changedPaths: ["PROTOCOL.md"] }), powerDocs }).curatorMayMerge,
+    ).toBe(false);
+  });
+
+  it("matches a declared DIRECTORY the way zones do — everything under the prefix", () => {
+    const powerDocs = powerDocuments({
+      configPath: "agent-protocol.json",
+      roles: [],
+      configured: [".github/workflows"],
+    });
+    expect(
+      touchedPowerDocuments({ changedPaths: [".github/workflows/checks.yml"], powerDocs }),
+    ).toEqual([".github/workflows/checks.yml"]);
+  });
+
+  it("the flag keeps ADDING to the declared list — both halves are judged, not one of them", () => {
+    expect(
+      powerDocuments({
+        configPath: "agent-protocol.json",
+        roles: [],
+        configured: ["PROTOCOL.md"],
+        declared: ["MIGRATION.md"],
+      }),
+    ).toEqual(["agent-protocol.json", "PROTOCOL.md", "MIGRATION.md"]);
+  });
+
+  it("a config with no 'powerDocuments' is bit-for-bit what the same call answered at v17", () => {
+    const input = {
+      configPath: "agent-protocol.json",
+      roles: [{ instructions: [{ path: "docs/roles/curator.md" }] }],
+      declared: ["PROTOCOL.md"],
+      workingCards: ["CLAUDE.md"],
+    };
+    expect(powerDocuments({ ...input, configured: undefined })).toEqual(powerDocuments(input));
+    expect(powerDocuments({ ...input, configured: [] })).toEqual(powerDocuments(input));
+    expect(powerDocuments(input)).toEqual([
+      "agent-protocol.json",
+      "docs/roles/curator.md",
+      "PROTOCOL.md",
+    ]);
+  });
+});
+
+describe("powerDocumentList: every path says where it came from", () => {
+  const list = () =>
+    powerDocumentList({
+      configPath: "agent-protocol.json",
+      roles: [{ instructions: [{ path: "docs/roles/curator.md" }] }],
+      configured: ["PROTOCOL.md"],
+      declared: ["MIGRATION.md"],
+    });
+
+  it("names the source of each of the four kinds", () => {
+    expect(list()).toEqual([
+      { path: "agent-protocol.json", source: "config" },
+      { path: "docs/roles/curator.md", source: "role" },
+      { path: "PROTOCOL.md", source: "declared" },
+      { path: "MIGRATION.md", source: "flag" },
+    ]);
+  });
+
+  it("a path that is both derived and declared is DERIVED: the derivation holds without it", () => {
+    expect(
+      powerDocumentList({
+        configPath: "agent-protocol.json",
+        roles: [{ instructions: [{ path: "REVIEWER.md" }] }],
+        configured: ["REVIEWER.md"],
+      }),
+    ).toEqual([
+      { path: "agent-protocol.json", source: "config" },
+      { path: "REVIEWER.md", source: "role" },
+    ]);
+  });
+
+  it("the trace prints the source beside every path", () => {
+    const lines = describePowerDocuments(list()).join("\n");
+    expect(lines).toContain("documents of power judged by (4)");
+    expect(lines).toContain("PROTOCOL.md — declared by 'powerDocuments' of the config");
+    expect(lines).toContain("MIGRATION.md — named on the command line by --power-docs");
+    expect(lines).toContain("docs/roles/curator.md — derived from a role's instructions");
+  });
+
+  it("says out loud when the config declares NOTHING — a short list must not read as a full one", () => {
+    const lines = describePowerDocuments(
+      powerDocumentList({ configPath: "agent-protocol.json", roles: [] }),
+    ).join("\n");
+    expect(lines).toContain("the config declares no 'powerDocuments'");
+  });
+
+  it("and stays silent about it as soon as the config does declare something", () => {
+    const lines = describePowerDocuments(list()).join("\n");
+    expect(lines).not.toContain("declares no 'powerDocuments'");
   });
 });
 
