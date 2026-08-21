@@ -1102,6 +1102,15 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # pair is refused before it runs — so no message into the thread lifts it.
                             # What does: `--max-attempts` above the ceiling (one run through, its
                             # handoff zeroes the count), or the retroactive shape above
+                            # A CLOSED THREAD IS NOT A FROZEN PAIR (thread 016): the category counts
+                            # over the fold MINUS the pairs whose thread is closed. The neighbouring
+                            # categories get this at the source (`waitingOnOf`/`parkingOf` answer
+                            # `undefined` on a closed thread), this one is folded from the JOURNAL,
+                            # where a closure leaves no event — so it is handed the closures too.
+                            # Without it the pair never left: only a delivery OF THAT PAIR zeroes the
+                            # count, every shape of a delivery is written by a run, and a closed thread
+                            # gets no runs — measured 2026-08-19, two accepted threads standing in the
+                            # line as `2 exhausted` with advice to raise `--max-attempts` on them
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
@@ -1922,6 +1931,16 @@ risky action after — not a single spawn.
   attempt ceiling on a (role, thread) pair is reached, we launch no more). Both signs
   are in the data from S0 on; the behaviour based on them (releasing on timeout,
   refusing to relaunch) arrives with S2/S3.
+- **A MARK IS A CALL TO A HAND, AND A CLOSED THREAD HAS NOTHING TO CALL ONE FOR**
+  (thread 016). A pair whose thread is closed keeps its ROW — the frame prints the
+  history of the journal, and that history happened — and loses `⚠ EXHAUSTED` with the
+  advice attached to it; the line then reads `· exhausted (substantive, and the THREAD
+  IS CLOSED — …)`. The frame learns the closures from the same mail scan the queue is
+  built from (`closedThreads`); a reader with no mail in its hands prints the frame it
+  always did. **The word "until then" is conditional with it**: the term is named only
+  where one exists (an external freeze with a live backoff) and left out where the
+  sentence names a hand instead — a half-sentence promising a deadline the other half
+  had stopped naming was what #23 left behind in the same sentence.
 - **THE ATTEMPT COUNTER IS CONSECUTIVE, AND IT IS PRINTED WITH ITS CEILING**
   (`attempt 1/3`). It counts the failures of a pair SINCE ITS LAST DELIVERY — a
   `completed` release or a handoff puts it back to zero. A cumulative count was the

@@ -5,11 +5,12 @@
  * "simplified" away by whoever meets it next.
  */
 import { describe, expect, it } from "vitest";
-
+import type { LeaseView } from "../orchestrator/lease.js";
 import type { NotificationTarget } from "../roles/registry.js";
 import {
   describeAge,
   type ExhaustedPair,
+  exhaustedPairsOf,
   type NotifyState,
   type ParkedThread,
   parseNotifyState,
@@ -528,5 +529,75 @@ describe("frozen pairs — one call per series, and a second one for the termina
     });
 
     expect(plan.freshFreezes).toEqual([]);
+  });
+});
+
+/**
+ * THE SET THE SIXTH CATEGORY COUNTS OVER (thread 016, defect 1).
+ *
+ * The control is the whole of it: a fix that simply stopped counting anything would pass
+ * "the closed pair is gone" and fail "the open one is still there". The two cases below are
+ * THE SAME PAIR — same role, same series, same fold — read against two mails.
+ */
+describe("exhaustedPairsOf — the closures the journal does not carry", () => {
+  const frozen = (thread: string): LeaseView => ({
+    role: "curator",
+    thread,
+    state: "released",
+    attempt: 3,
+    ceiling: 3,
+    deadline: null,
+    waitDeadline: null,
+    reason: "exited-without-handoff",
+    lastEvent: "lease-released",
+    overdue: false,
+    exhausted: true,
+    launchable: false,
+    exhaustedClass: "substantive",
+    thawAt: null,
+    exhaustedSince: "2026-08-19T09:00:00Z",
+  });
+
+  it("a pair whose thread is closed is not in it — and the same pair on an open thread is", () => {
+    const views = [frozen("001-mail-born")];
+
+    expect(exhaustedPairsOf({ views, closed: new Set(["001-mail-born"]) })).toEqual([]);
+    expect(exhaustedPairsOf({ views, closed: new Set() }).map((pair) => pair.thread)).toEqual([
+      "001-mail-born",
+    ]);
+  });
+
+  it("only the closed thread's pair goes; the neighbours keep their series and their class", () => {
+    const pairs = exhaustedPairsOf({
+      views: [frozen("001-mail-born"), frozen("013-exhausted-visibility")],
+      closed: new Set(["001-mail-born"]),
+    });
+
+    expect(pairs).toEqual([
+      {
+        role: "curator",
+        thread: "013-exhausted-visibility",
+        since: "2026-08-19T09:00:00Z",
+        attempts: 3,
+        failureClass: "substantive",
+        thaw: null,
+      },
+    ]);
+  });
+
+  // The SERIES, not the freeze in force (thread 013): a pair mid-backoff is thawed for part
+  // of every round and must stay in the composition, or the memory of "already announced"
+  // falls out. Closing its thread is what takes it out — nothing else does.
+  it("a thawed pair stays in the set, with no freeze in force to describe", () => {
+    const thawed = { ...frozen("013-exhausted-visibility"), exhausted: false };
+
+    expect(exhaustedPairsOf({ views: [thawed], closed: new Set() })).toEqual([
+      {
+        role: "curator",
+        thread: "013-exhausted-visibility",
+        since: "2026-08-19T09:00:00Z",
+        attempts: 3,
+      },
+    ]);
   });
 });
