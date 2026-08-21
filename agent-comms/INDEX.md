@@ -27,4 +27,4 @@
 | 023-attempt-counter-semantics | curator, dev-core | closed | — | 2026-08-21 |
 | 024-merge-ready-vs-power-docs | curator, dev-core | closed | — | 2026-08-21 |
 | 025-power-docs-as-data | curator, dev-core | open | curator | 2026-08-21 |
-| 026-codex-agent-kind | curator · dev-core · john | open | — | — |
+| 026-codex-agent-kind | curator · dev-core · john | open | curator | 2026-08-21 |
