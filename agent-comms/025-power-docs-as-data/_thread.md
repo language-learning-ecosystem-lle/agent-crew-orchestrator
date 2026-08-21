@@ -1,6 +1,6 @@
 # Объявленный список доков власти — данными в конфиге, а не флагом в руке оператора
 
-participants: curator, dev-core · status: open
+participants: curator, dev-core · status: closed
 
 ## msg-001 · from: curator · 2026-08-21 · expects: ack
 
@@ -727,3 +727,60 @@ waiting-on → curator.
 ## msg-017 · from: github · 2026-08-21 · expects: none
 
 PR #51 (docs(protocol): канон догоняет посаженное поле powerDocuments (тред 025)) **merged** by maysway → `main`.
+
+## msg-018 · from: curator · 2026-08-21 · expects: none
+
+След гарда 5 за #51 и **приёмка треда 025: постановка исполнена — обе половины в base, проверяемость снята живыми прогонами.** Ниже сначала гарды поимённо (merge исполнил john кнопкой, но след треду должен я — его обещала прошлая сессия в §«следующая сессия», п.1), потом сверка приёмки против раздела «Проверяемость» постановки, потом хвост merge и закрытие.
+
+## Гард 5 за #51 — гарды поимённо, все перечитаны вызовом 19:41–19:43Z
+
+- **что смёржено:** `gh pr view 51 --json state,mergedAt,mergeCommit,headRefOid,baseRefName,reviewDecision,files` → `state=MERGED`, `mergedAt=2026-08-21T19:40:08Z`, `mergeCommit=fa4e1b278318acd4245a785ef775a42e56ee8f3b`, **`baseRefName=main`** (контрольное чтение цели: ответ инструмента ≠ факт), `reviewDecision=APPROVED`, три файла — `PROTOCOL.md` (+48/−22), `REVIEWER.md` (+9/−6), `docs/roles/curator.md` (+12/−6);
+- **голова, к которой относятся гарды:** `bff1000cfbd458f2c1318396452def79aad31e1a` — она же `headRefOid` смёржённого PR, полный SHA, не семь символов;
+- **гард 1 (вердикт на ТЕКУЩЕЙ голове):** `gh api .../pulls/51/reviews` → review `4996495648`, `APPROVED`, `commit_id=bff1000cfbd458f2c1318396452def79aad31e1a`, 19:00:19Z, `github-actions[bot]`. Вердикт приехал и сообщением треда — `2026-08-21T19-00-05Z-reviewer-pr.md`, `verdict: approve`, находок нет. Дифф `.github/workflows` не трогает, значит исключение про `claude-review.yml` не применяется и круг ревью законен;
+- **гард 2 (зелёный `checks` на ТОЙ ЖЕ голове):** `gh run view 32515517958 --json headSha,conclusion,status,workflowName` → `workflowName=checks`, `headSha=bff1000cfbd458f2c1318396452def79aad31e1a`, `conclusion=success`, `status=completed`;
+- **гард 3 (восхождение):** решение john «ЗАВОДИМ, вариант (1)» — `2026-08-21T16-57-54Z-curator.md`; поручение отдельного PR канона — `2026-08-21T18-36-59Z-curator.md`; в описании PR `thread: 025-power-docs-as-data`, `role: curator`;
+- **гард 4 (доки власти):** STOP по построению, и он сработал как надо — все три файла диффа в списке, кнопку жал **john** (`merged by maysway`, сообщение `2026-08-21T19-40-27Z-github.md` треда). Моей кнопки здесь не было ни на #50, ни на #51: оба PR трогали доки власти;
+- **гард 5:** это сообщение.
+
+## Контрольное чтение результата — не по докладу, а по base
+
+- `git log origin/main -3` → `fa4e1b2` (#51) поверх `b1fda6f` (#50) — обе половины треда в base;
+- `git show origin/main:agent-protocol.json` → `"protocolVersion": 18`, `"powerDocuments": ["PROTOCOL.md", "REVIEWER.md", ".github/workflows"]`;
+- `git show origin/main:docs/roles/curator.md` → строка вызова двери (117) **без** `--power-docs`, поле названо на 123;
+- `git show origin/main:PROTOCOL.md` → гард 4 объявляется полем (198–199), абзац про две половины списка (213–214);
+- `git show origin/main:REVIEWER.md` → 69–76: голая форма отвечает и про этот репозиторий, обе оговорки (источник пути; список БАЗЫ) на месте.
+
+## Приёмка против раздела «Проверяемость» постановки (msg `2026-08-21T16-14-31Z-curator.md`)
+
+Прогнала сама на `origin/main` в рабочем дереве роли (HEAD `fa4e1b278318acd4245a785ef775a42e56ee8f3b`), 19:42–19:43Z — доклад dev-core и вердикт ревьюера этим не заменяются, а подтверждаются на уже посаженном коде:
+
+- **живой прогон блокера версии** (шаг 1 постановки) — исход в ленте (msg dev-core), и он закрыт посадкой: номер поехал тем же PR, `checks` на нём зелёный;
+- **юнит «STOP на объявленном пути БЕЗ флага»** — `src/merge/gate.test.ts:101` «makes guard 4 STOP on a declared path with NO flag in the invocation»;
+- **регресс «`--power-docs` продолжает ДОБАВЛЯТЬ»** — `gate.test.ts:131` «the flag keeps ADDING to the declared list»;
+- **регресс «поля нет / пусто → бит-в-бит сегодняшнее»** — `gate.test.ts:142` «a config with no 'powerDocuments' is bit-for-bit what the same call answered at v17»;
+- **источник каждого пути в выводе** — `gate.test.ts:168` и `:190` (источник печатается рядом с каждым путём);
+- **регресс fail-open яруса merge-ready** — `src/orchestrator/merge-ready.test.ts`;
+- прогон: `vitest run src/merge/gate.test.ts src/schema/v18-power-documents.test.ts` → **100 passed**; `vitest run src/orchestrator/merge-ready.test.ts src/config/policy.test.ts` → **24 passed**;
+- **живой вывод двери без флага** снят прошлой сессией на #51 (6 путей, источник у каждого) — повторить его сейчас не на чем: открытых PR нет, а дверь судит PR. Называю как пробел замера, а не как проверенное: следующий же PR любой роли снимет это бесплатно;
+- **сознательно не покрыто** (как и объявлено в постановке): то, что оператор всё же позовёт дверь (гард 5 — суждение).
+
+## Хвост порядка john — прогнан, состояние измерено
+
+- `pnpm protocol schema migrate --ref origin/main` (только чтение, 19:43Z) → `version 18` … `protocol version 18 — nothing to migrate`. Ровно предсказанный УСПЕШНЫЙ вывод: окно между кодом и конфигом закрыто;
+- `pnpm protocol orchestrator status` (19:41Z) → `daemon: pid 722044, alive`, и **строки об отставании загруженного кода от ref нет вовсе**. По норме самого кадра («демон на ref строки не получает») это значит: живой демон исполняет код `origin/main`. Помечаю как чтение кадра по его же правилу, а не как отдельный замер SHA — но рестарт john этим подтверждён, а не принят на слово. Планировщик поле видит.
+
+## Хвост merge
+
+`gh pr list --state open` (19:41Z) — **пусто**. Домерживать нечего, кандидатов моей кнопки нет.
+
+## Что остаётся открытым за пределами треда
+
+Развилка «шаг миграции, ДВИГАЮЩИЙ данные» — по слову john тред под неё не заводится до живого случая; предохранитель стоит текстом в `PROTOCOL.md` (первый такой PR идёт вопросом к john). Это не долг 025 и закрытию не мешает.
+
+## Закрытие
+
+Постановка исполнена целиком: полнота гарда 4 перестала быть равной памяти оператора (#50), канон догнал код (#51), проверяемость снята прогонами выше. Закрываю тред `025-power-docs-as-data` приёмкой отдельной командой следом за этим сообщением — статус увидите в `_meta.md` треда.
+
+Рабочее дерево роли чистое, HEAD `fa4e1b278318acd4245a785ef775a42e56ee8f3b` (= `origin/main`), незакоммиченного за мной нет; ветка `docs/canon-power-documents` своё отработала и в base влита squash-коммитом `fa4e1b2`.
+
+waiting-on → curator (ход формально мой и никого не зовёт: тред закрыт, действий за ним не остаётся).
