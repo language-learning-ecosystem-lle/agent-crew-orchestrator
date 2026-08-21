@@ -275,6 +275,89 @@ const isFailedTerminal = (state: LeaseLifecycle, reason: LeaseView["reason"]): b
  * instead is the shelf in `auth.ts`.
  */
 
+/**
+ * DOES THIS ENDING SPEND AN ATTEMPT OF THE PAIR — every class of `RELEASE_REASONS` in
+ * ONE table (thread 023). It is one table and not a condition per branch because a fold
+ * that moves its own number for four reasons scattered over a file is not something the
+ * reader of one thread can check: #44 put the first exception in (`quota-exhausted`) and
+ * had to say in a comment which neighbours it was deliberately leaving broken.
+ *
+ * EVERY ROW IS DECIDED BY ONE QUESTION: **did the pair have its own chance to do the work
+ * in this round?** Yes — the round was the pair's and the attempt is spent. No — the
+ * `lease-acquired` that opened the round is UNDONE, which is the move #44 made for
+ * `quota-exhausted` (thread 019, §4) and no new policy beyond it.
+ *
+ * IT IS AN UNDO, NOT AN AMNESTY. Nothing here forgives a count already earned: two of the
+ * pair's own breaks, a closed window, and then a third own break still reads `exhausted`.
+ * And it is NOT a second verdict — `isFailedTerminal` above answers "is this release a
+ * FAILURE", this answers "does it cost a TRY", and the two questions come apart in both
+ * directions: `stalled` is not called a failure and did burn a round of the pair's own
+ * window; `supervisor-gone` is called one and did not.
+ */
+export const SPENDS_ATTEMPT: Readonly<Record<ReleaseReason, boolean>> = {
+  /**
+   * The work was done and the turn passed — the pair's own round, spent. The row is
+   * never load-bearing: the same event is a delivery and zeroes the counter outright.
+   */
+  completed: true,
+  /**
+   * A hand stopped the run. The window was the pair's up to that moment, and force has
+   * counted against the ceiling since it was built (`isFailedTerminal`) — this table
+   * re-reads the classes nobody had judged, it does not re-open the settled ones.
+   */
+  forced: true,
+  /**
+   * The session had its window, used it, and left without passing the turn. This is the
+   * very break loop the ceiling was built for ("launch → break → launch").
+   */
+  "exited-without-handoff": true,
+  /**
+   * THE BOX KILLED THE ROUND, NOT THE PAIR. This release is written by the supervisor as
+   * it goes away — a daemon stop, a self-restart, an adoption — and it kills every live
+   * session at once, so counting it hits every pair of the box on one keystroke of an
+   * operator: the same shared-cause shape as a closed quota window. The protocol already
+   * treats such a round as unfinished rather than failed elsewhere (`RESUMABLE_REASONS`
+   * resumes exactly this session). It stays a FAILURE in the verdict — the turn did not
+   * pass and the pair must be retried — and stops being a spent try.
+   */
+  "supervisor-gone": false,
+  /** The whole work window was the pair's and the work did not fit into it. Its own. */
+  timeout: true,
+  /**
+   * The session was up, inside its own window, and silent. Nobody took the round away —
+   * it was spent producing nothing, which is precisely what the ceiling counts.
+   */
+  stalled: true,
+  /**
+   * R19's two endings: the round was given away to a WAIT and the pair could not work
+   * while it lasted. Counting them exhausts a pair for the one thing that is supposed to
+   * happen — a human taking their time — and the mail is left consistent either way (the
+   * question stands in the thread, the turn is with somebody else).
+   */
+  "input-timeout": false,
+  "exited-while-waiting": false,
+  /**
+   * The ceiling itself, worn as a release reason. Nothing in the code writes it today —
+   * a pair at the ceiling is refused BEFORE any run starts (`planLaunch`, a
+   * `launch-refused`), and the value is kept because journals are append-only files that
+   * must stay readable. If it does appear, no round was the pair's: the ceiling had
+   * already been reached, and the number must not climb past it.
+   */
+  exhausted: false,
+  /**
+   * The vendor's window was shut (thread 019). One resource of the whole box, so one
+   * closure hits every role at once — three of them would mark every pair `exhausted` in
+   * an afternoon. The first row of this table to exist, and the precedent for the rest.
+   */
+  "quota-exhausted": false,
+  /**
+   * The box's credentials, by the same reasoning and with a measurement behind it (the
+   * OAuth outage of 2026-08-01): three pairs went `exhausted` on runs that died in 0
+   * seconds having spent $0, on a first turn that never reached the work.
+   */
+  "auth-failed": false,
+};
+
 type Acc = {
   role: string;
   thread: string;
@@ -378,9 +461,15 @@ export const foldLeases = (
     // event is (`isDelivery`) — one predicate rather than a reset written into each
     // branch, so the per-pair ceiling and the global one cannot come to mean different
     // things again.
+    //
+    // THE SELF-TURN DELIVERY IS COVERED HERE AND NOT IN `SPENDS_ATTEMPT` (thread 023): a
+    // run whose own session signed a message moved the work, so its round is not undone
+    // but ZEROED like any other delivery — a stronger answer than the table gives, and the
+    // reason the twelfth case needs no row of its own.
+    //
     // `cur.acquiredAt` is THIS run's acquire: the events arrive in order, so at a release
     // it still holds the stamp the matching `lease-acquired` put there. That is the left
-    // edge the second sign is narrowed by.
+    // edge the second sign is narrowed by (thread 021).
     const selfTurn = isSelfTurnDelivery(event, marks, cur.acquiredAt);
     if (isDelivery(event) || selfTurn) {
       cur.attempt = 0;
@@ -435,24 +524,20 @@ export const foldLeases = (
       case "lease-released":
         cur.state = "released";
         cur.reason = event.reason;
-        // THE ROUND THE VENDOR ENDED IS UNDONE, NOT FORGIVEN LATER (thread 019, §4). The
-        // verdict below has never counted `quota-exhausted` as a failure, but the COUNTER
-        // was still moved by the `lease-acquired` that opened the round, so a pair that
-        // stood at 2/3 came out of a closed window reading 3/3 — and after the next real
-        // break the frame printed `attempt 4/3` with no `⚠ EXHAUSTED` beside it, a line
-        // that contradicts itself and reads as "one attempt left" when there are two.
-        // Measured in `quota-pause.process.test.ts` on the real `status` frame.
+        // A ROUND THAT WAS NOT THE PAIR'S IS UNDONE, NOT FORGIVEN LATER (thread 019 §4 for
+        // the first class, thread 023 for the rest). The verdict below has never counted
+        // these releases as failures, but the COUNTER was still moved by the
+        // `lease-acquired` that opened the round, so a pair that stood at 2/3 came out of a
+        // closed window reading 3/3 — and after the next real break the frame printed
+        // `attempt 4/3`. Which ending is which is READ OFF `SPENDS_ATTEMPT` above, one table
+        // for eleven classes, rather than decided here class by class.
         //
         // UNDONE IS THE RIGHT SHAPE, not zeroed: the count belongs to the pair's own break
-        // loop and a closed window is not part of it — the two failures before it happened
-        // and are still the pair's. This is the same move `consecutiveLaunchesWithoutDelivery`
-        // already makes for the run budget ("it is UNDONE, not reset"), now on the ceiling.
-        //
-        // THE NEIGHBOURING CLASSES ARE LEFT ALONE ON PURPOSE — `auth-failed` and R19's two
-        // endings inflate the counter the same way and are the same defect; they belong to
-        // their own threads, and a fold quietly changing its number for four reasons at once
-        // is not something a reader of one thread can check.
-        if (event.reason === "quota-exhausted") cur.attempt = Math.max(0, cur.attempt - 1);
+        // loop and a round nobody gave it is not part of that loop — the failures before it
+        // happened and are still the pair's. This is the same move
+        // `consecutiveLaunchesWithoutDelivery` already makes for the run budget ("it is
+        // UNDONE, not reset"), now on the ceiling.
+        if (!SPENDS_ATTEMPT[event.reason]) cur.attempt = Math.max(0, cur.attempt - 1);
         // The release that DELIVERED into its own turn is remembered as such: the
         // reason stays what the journal says (the process did exit with the turn
         // here), and the judgement below reads this flag instead of the name.

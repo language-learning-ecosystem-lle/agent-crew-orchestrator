@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { marksOfSessions, NO_DELIVERY_MARKS, pairKey } from "../thread/index-doc.js";
 
-import { MAX_ATTEMPTS, type OrchestratorEvent } from "./journal.js";
-import { foldLeases, isDelivery, type LeaseView, unclosedLeases } from "./lease.js";
+import {
+  MAX_ATTEMPTS,
+  type OrchestratorEvent,
+  RELEASE_REASONS,
+  type ReleaseReason,
+} from "./journal.js";
+import { foldLeases, isDelivery, type LeaseView, SPENDS_ATTEMPT, unclosedLeases } from "./lease.js";
 
 const NOW = new Date("2026-07-24T14:00:00Z");
 const PAST = "2026-07-24T13:30:00Z"; // earlier than NOW
@@ -26,13 +31,7 @@ const acquire = (role: string, thread: string, deadline: string): OrchestratorEv
 const release = (
   role: string,
   thread: string,
-  reason:
-    | "completed"
-    | "forced"
-    | "exited-without-handoff"
-    | "supervisor-gone"
-    | "timeout"
-    | "exhausted",
+  reason: ReleaseReason,
   session?: string,
 ): OrchestratorEvent => ({
   kind: "lease-released",
@@ -777,5 +776,156 @@ describe("foldLeases — the class of a freeze and its self-thaw (thread 013)", 
     );
     const last = at("2026-07-25T14:00:00Z")(events);
     expect(last).toMatchObject({ exhausted: true, launchable: false, thawAt: null });
+  });
+});
+
+describe("SPENDS_ATTEMPT — one row per ending, one test per row (thread 023)", () => {
+  // THE TABLE IS THE READABLE HALF OF THE FOLD, and this is the check that keeps the two
+  // halves the same thing. One test per CLASS, not per class-that-changed: a fold moving
+  // its own number for several reasons at once is checkable by a reader of one thread only
+  // if every reason is written down beside its number.
+  //
+  // Each row plays the shortest journal that can hold the question — one acquire, one
+  // release — and then the same class three times over, which is where the ceiling
+  // verdict either appears or does not.
+  const rounds = (reason: ReleaseReason, times: number): OrchestratorEvent[] => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < times; i += 1) {
+      events.push(acquire("dev-core", "t", FUTURE), release("dev-core", "t", reason));
+    }
+    return events;
+  };
+
+  it("the table answers for every release reason and invents none", () => {
+    expect(Object.keys(SPENDS_ATTEMPT).sort()).toEqual([...RELEASE_REASONS].sort());
+  });
+
+  const ROWS: ReadonlyArray<{
+    reason: ReleaseReason;
+    spends: boolean;
+    /**
+     * After the single round — `spends` itself, except where a stronger rule one level up
+     * overrides it: a delivery ZEROES, so `completed` spends its round and still reads 0.
+     */
+    first?: number;
+    /** After three rounds of THIS class alone. */
+    afterThree: { attempt: number; exhausted: boolean };
+    /** Why the answer is what it is — the same sentence the table gives. */
+    because: string;
+  }> = [
+    {
+      reason: "completed",
+      spends: true,
+      first: 0,
+      afterThree: { attempt: 0, exhausted: false },
+      because: "its own round, done — and the delivery zeroes the count outright",
+    },
+    {
+      reason: "forced",
+      spends: true,
+      afterThree: { attempt: 3, exhausted: true },
+      because: "the window was the pair's until a hand stopped it",
+    },
+    {
+      reason: "exited-without-handoff",
+      spends: true,
+      afterThree: { attempt: 3, exhausted: true },
+      because: "the break loop the ceiling was built for",
+    },
+    {
+      reason: "supervisor-gone",
+      spends: false,
+      afterThree: { attempt: 0, exhausted: false },
+      because: "the box killed the round on its way out, and it kills every pair at once",
+    },
+    {
+      reason: "timeout",
+      spends: true,
+      afterThree: { attempt: 3, exhausted: true },
+      because: "the whole window was the pair's and the work did not fit",
+    },
+    {
+      reason: "stalled",
+      spends: true,
+      afterThree: { attempt: 3, exhausted: false },
+      because: "the round was spent producing nothing — a count without a failure verdict",
+    },
+    {
+      reason: "input-timeout",
+      spends: false,
+      afterThree: { attempt: 0, exhausted: false },
+      because: "the round was given to a wait for a human (R19)",
+    },
+    {
+      reason: "exited-while-waiting",
+      spends: false,
+      afterThree: { attempt: 0, exhausted: false },
+      because: "the round was given to a wait for a human (R19)",
+    },
+    {
+      reason: "exhausted",
+      spends: false,
+      afterThree: { attempt: 0, exhausted: true },
+      because: "the ceiling had already been reached — the number must not climb past it",
+    },
+    {
+      reason: "quota-exhausted",
+      spends: false,
+      afterThree: { attempt: 0, exhausted: false },
+      because: "the vendor's window is one resource of the whole box",
+    },
+    {
+      reason: "auth-failed",
+      spends: false,
+      afterThree: { attempt: 0, exhausted: false },
+      because: "the box's credentials are one resource of the whole box",
+    },
+  ];
+
+  for (const row of ROWS) {
+    it(`${row.reason} ${row.spends ? "SPENDS" : "does not spend"} — ${row.because}`, () => {
+      expect(SPENDS_ATTEMPT[row.reason]).toBe(row.spends);
+      expect(only(rounds(row.reason, 1)).attempt).toBe(row.first ?? (row.spends ? 1 : 0));
+      expect(only(rounds(row.reason, 3))).toMatchObject(row.afterThree);
+    });
+  }
+
+  it("the twelfth case: a release that delivered into its own turn is ZEROED, not undone", () => {
+    // It is not a row of the table — `isDelivery`/`isSelfTurnDelivery` answer it one level
+    // up, and with a stronger answer than an undo: two of the pair's own breaks before it
+    // are wiped as well, because the pair MOVED.
+    const events = [
+      ...rounds("timeout", 2),
+      acquire("curator", "t", FUTURE),
+      release("curator", "t", "exited-without-handoff", "session-a"),
+    ];
+    const views = foldLeases(events, NOW, MAX_ATTEMPTS, marksOfSessions(new Set(["session-a"])));
+    expect(views.find((v) => v.role === "curator")).toMatchObject({
+      attempt: 0,
+      exhausted: false,
+    });
+  });
+
+  it("AN UNDO, NOT AN AMNESTY: 2/3 → a round nobody gave it → 2/3 → its own third → exhausted", () => {
+    // The control test of thread 023 — it guards what the change must NOT do. Every class
+    // that does not spend is walked through the same three-step story, and the pair is
+    // exhausted at the end of each: the two failures before the interruption are still its
+    // own, and the third own break is still the third.
+    for (const reason of RELEASE_REASONS.filter((r) => !SPENDS_ATTEMPT[r] && r !== "exhausted")) {
+      const events = [
+        ...rounds("timeout", 2),
+        acquire("dev-core", "t", FUTURE),
+        release("dev-core", "t", reason),
+      ];
+      expect(only(events), `after ${reason} the two own failures stand`).toMatchObject({
+        attempt: 2,
+        exhausted: false,
+      });
+      events.push(acquire("dev-core", "t", FUTURE), release("dev-core", "t", "timeout"));
+      expect(only(events), `${reason} did not forgive the third own break`).toMatchObject({
+        attempt: MAX_ATTEMPTS,
+        exhausted: true,
+      });
+    }
   });
 });

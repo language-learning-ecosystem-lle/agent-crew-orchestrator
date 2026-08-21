@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { LeaseView } from "./lease.js";
+import type { OrchestratorEvent } from "./journal.js";
+import { foldLeases, type LeaseView } from "./lease.js";
 import { renderLeaseLine, renderStatus } from "./status.js";
 
 const view = (partial: Partial<LeaseView>): LeaseView => ({
@@ -165,5 +166,70 @@ describe("renderLeaseLine (T-1)", () => {
 
   it("carries the marks, not just the columns", () => {
     expect(renderLeaseLine(view({ exhausted: true }))).toContain("EXHAUSTED");
+  });
+});
+
+describe("a count past its ceiling never stands there silently (thread 023)", () => {
+  // `attempt 4/3` with nothing beside it shows the reader a ceiling and a number over it
+  // and leaves them to work out which one is lying. Neither is: a THAW raises a frozen
+  // pair once more (thread 013), and the run it raises is the fourth of three. The frame
+  // is checked through the REAL fold rather than a hand-built view — the defect lives in
+  // the join between the two, and a string assembled in a test would never show it.
+  const NOW = new Date("2026-07-24T14:00:00Z");
+  const externalBreak = (at: string): OrchestratorEvent => ({
+    kind: "lease-released",
+    ts: at,
+    role: "dev-core",
+    thread: "t",
+    reason: "timeout",
+    external: true,
+  });
+  const acquired = (at: string): OrchestratorEvent => ({
+    kind: "lease-acquired",
+    ts: at,
+    role: "dev-core",
+    thread: "t",
+    deadline: "2026-07-24T15:00:00Z",
+  });
+
+  /** Three of the pair's OWN breaks, external class — the freeze that thaws by a clock. */
+  const spent: OrchestratorEvent[] = [
+    acquired("2026-07-24T12:00:00Z"),
+    externalBreak("2026-07-24T12:01:00Z"),
+    acquired("2026-07-24T12:10:00Z"),
+    externalBreak("2026-07-24T12:11:00Z"),
+    acquired("2026-07-24T12:20:00Z"),
+    externalBreak("2026-07-24T12:21:00Z"),
+  ];
+
+  it("the run a thaw raised prints 4/3 AND says why", () => {
+    const views = foldLeases([...spent, acquired("2026-07-24T13:59:00Z")], NOW);
+    expect(views[0]).toMatchObject({ attempt: 4, ceiling: 3, state: "running", exhausted: false });
+    const line = renderStatus(views);
+    expect(line).toContain("attempt 4/3");
+    expect(line).toContain("past the ceiling");
+  });
+
+  it("no line anywhere in the frame shows N/M with N>M and no word about it", () => {
+    // The regression itself, written as the rule and not as one case of it.
+    const views = foldLeases([...spent, acquired("2026-07-24T13:59:00Z")], NOW);
+    for (const line of renderStatus(views).split("\n")) {
+      const count = /attempt (\d+)\/(\d+)/.exec(line);
+      if (count === null) continue;
+      if (Number(count[1]) <= Number(count[2])) continue;
+      expect(line, `an unexplained '${count[0]}'`).toMatch(/EXHAUSTED|exhausted|past the ceiling/);
+    }
+  });
+
+  it("while the pair IS exhausted the flag carries it, and the column does not repeat it", () => {
+    const line = renderLeaseLine(view({ attempt: 4, ceiling: 3, exhausted: true }));
+    expect(line).toContain("attempt 4/3");
+    expect(line).toContain("EXHAUSTED");
+    expect(line).not.toContain("past the ceiling");
+  });
+
+  it("a count at or below its ceiling reads exactly as it always did", () => {
+    expect(renderLeaseLine(view({ attempt: 3, ceiling: 3 }))).toContain("attempt 3/3");
+    expect(renderLeaseLine(view({ attempt: 3, ceiling: 3 }))).not.toContain("past the ceiling");
   });
 });
