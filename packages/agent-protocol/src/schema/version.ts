@@ -35,7 +35,7 @@
  * met by an older build as `Unrecognized key` instead of "restart required", which is how
  * a live daemon died on 2026-07-31.
  */
-export const CURRENT_PROTOCOL_VERSION = 17;
+export const CURRENT_PROTOCOL_VERSION = 18;
 
 /** The key of the config field. Kept as a constant: the loader's hint quotes it. */
 export const PROTOCOL_VERSION_FIELD = "protocolVersion";

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 17,
+  "protocolVersion": 18,
   "mail": {
     "branch": "comms",
     "dir": "agent-comms"
@@ -29,6 +29,7 @@
     "force-stop": "Сессия по треду {thread} остановлена принудительно ({by}): {reason}"
   },
   "identityDictionary": "docs/protocol-reference.md",
+  "powerDocuments": ["PROTOCOL.md", "REVIEWER.md", ".github/workflows"],
   "instances": [
     {
       "id": "hetzner",

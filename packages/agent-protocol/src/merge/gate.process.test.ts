@@ -99,10 +99,13 @@ const stubGh = (
 };
 
 /** A repository with the config committed — `--ref HEAD` reads it from there. */
-const repoWithConfig = (): string => {
+const repoWithConfig = (over: Record<string, unknown> = {}): string => {
   const repo = mkdtempSync(join(tmpdir(), "agent-protocol-merge-gate-"));
   git(repo, "init", "-q", "-b", "main");
-  writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
+  writeFileSync(
+    join(repo, "agent-protocol.json"),
+    `${JSON.stringify({ ...CONFIG, ...over }, null, 2)}\n`,
+  );
   git(repo, "add", "-A");
   git(repo, "commit", "-qm", "base");
   return repo;
@@ -261,6 +264,36 @@ describe("merge-gate — the command, with a real gh on the other side of the se
 
     expect(result.code).toBe(1);
     expect(result.out).toContain("STOP guard 4");
+  });
+
+  /**
+   * THE WIRING OF THE DECLARED HALF (thread 025), not its verdict (that is `gate.test.ts`):
+   * between the JSON on disk and the printed trace there is a layer only the process runs —
+   * the schema the door reads the BASE config by. A `powerDocuments` known to the strict
+   * schema alone would pass every unit here and still be invisible to the door, so this
+   * case starts where the field really starts: committed in the config, with nothing on
+   * the command line.
+   */
+  it("a path the config declares stops the merge with no flag in the call, and the trace names the config as the source", () => {
+    const declaring = repoWithConfig({ powerDocuments: ["PROTOCOL.md"] });
+    const gh = stubGh(declaring, { json: mergeable({ files: [{ path: "PROTOCOL.md" }] }) });
+    const result = run(declaring, gh);
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP guard 4");
+    expect(result.out).toContain("PROTOCOL.md — declared by 'powerDocuments' of the config");
+    // The list is declared, so it is not called an underived one.
+    expect(result.out).not.toContain("the config declares no 'powerDocuments'");
+
+    // The same diff against a config WITHOUT the field: today's behaviour, bit for bit —
+    // no stop, and the trace says out loud that nothing was declared.
+    const silent = repoWithConfig();
+    const before = run(
+      silent,
+      stubGh(silent, { json: mergeable({ files: [{ path: "PROTOCOL.md" }] }) }),
+    );
+    expect(before.code).toBe(0);
+    expect(before.out).toContain("the config declares no 'powerDocuments'");
   });
 
   it("gh refusing the call is exit 2 with no verdict — and a scope is offered for it", () => {

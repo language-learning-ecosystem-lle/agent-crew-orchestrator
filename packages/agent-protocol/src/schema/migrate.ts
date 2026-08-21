@@ -61,6 +61,7 @@ import { NATIVE_TASKS_STEP } from "./v14-native-tasks.js";
 import { LAUNCH_ACCOUNT_STEP } from "./v15-launch-account.js";
 import { INSTANCE_ACCOUNT_STEP } from "./v16-instance-account.js";
 import { IDENTITY_DICTIONARY_STEP } from "./v17-identity-dictionary.js";
+import { POWER_DOCUMENTS_STEP } from "./v18-power-documents.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -84,6 +85,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   LAUNCH_ACCOUNT_STEP,
   INSTANCE_ACCOUNT_STEP,
   IDENTITY_DICTIONARY_STEP,
+  POWER_DOCUMENTS_STEP,
 ];
 
 export type {
