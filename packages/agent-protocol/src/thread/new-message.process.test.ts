@@ -947,6 +947,125 @@ describe("new-message and the turn parked behind a person (R27)", () => {
   });
 });
 
+/**
+ * The command with `--expects` and the park as the variables, and the turn named as the
+ * author's OWN — the door of thread 022, where a role waiting for a human wrote a header
+ * that says "I am carrying on by myself" and the circuit raised it until `exhausted`.
+ */
+const selfTurned = (
+  contest: { repo: string; root: string; body: string },
+  expects: string,
+  extra: readonly string[] = [],
+  /** Whom the header names as acting next — the author itself unless a test says otherwise. */
+  waiting = "curator",
+): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-message",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--thread",
+        "016-x",
+        "--from",
+        "curator",
+        "--expects",
+        expects,
+        "--waiting-on",
+        waiting,
+        ...extra,
+        "--body-file",
+        contest.body,
+        "--worker",
+        "human",
+        "--write",
+        "--no-push",
+      ],
+      { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo)) },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
+describe("new-message and a park by MEANING that is not a park by FIELD (thread 022)", () => {
+  it("REFUSES 'expects: ack' + a self-named turn without a park, and nothing is written", () => {
+    // The live header of `010-speech-service`, 2026-08-21: six of them, then the pair went
+    // `exhausted`. The refusal bites into the TEXT — a refusal that does not name the exit is
+    // one the raised session cannot repair.
+    const contest = contour();
+
+    const result = selfTurned(contest, "ack");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--parked-on <person>");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("WARNS on 'expects: answer' + a self-named turn, and writes the message all the same", () => {
+    // The measured class is 173 messages of live everyday form, against 17 of the `ack` one:
+    // the warning is read by the raised session it is addressed to, and blocks nobody.
+    const contest = contour();
+
+    const result = selfTurned(contest, "answer");
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("--parked-on <person>");
+    expect(written(contest.root).fields.waitingOn).toBe("curator");
+  });
+
+  it("'expects: none' + a self-named turn passes IN SILENCE — the middle of a working thread", () => {
+    const contest = contour();
+
+    const result = selfTurned(contest, "none");
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("--parked-on <person>");
+    expect(written(contest.root).fields.expects).toBe("none");
+  });
+
+  it("the same header WITH a park passes in silence — the net of 020 does not move", () => {
+    const contest = contour();
+
+    const result = selfTurned(contest, "ack", ["--parked-on", "john"]);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("--parked-on <person>");
+    expect(written(contest.root).fields.parkedOn).toBe("john");
+  });
+
+  it("a turn handed to ANOTHER role passes in silence at any --expects", () => {
+    // The door does not touch the handover of a turn: there the circuit knows who acts next.
+    const acked = contour();
+    const result = selfTurned(acked, "ack", [], "dev-core");
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("--parked-on <person>");
+    expect(written(acked.root).fields.waitingOn).toBe("dev-core");
+  });
+
+  it("the TWIN door refuses it too — an opening message is a message (the lesson of 075)", () => {
+    // A door standing on one command of the pair is the defect of 075 verbatim: there the park
+    // itself parsed for `new-message` alone and was swallowed here without a word.
+    const contest = contour();
+
+    const result = newThread(contest, "018-y", "dev-core", "ack");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--parked-on <person>");
+    expect(existsSync(join(contest.root, "018-y"))).toBe(false);
+  });
+});
+
 /** `--parked-on` with an `--expects` of the caller's choosing — the door under test here. */
 const parkedWithExpects = (
   contest: { repo: string; root: string; body: string },
@@ -1078,6 +1197,7 @@ const newThread = (
   contest: { repo: string; root: string; body: string },
   id: string,
   waitingOn: string | null = "curator",
+  expects = "answer",
 ): { code: number; out: string } => {
   try {
     const out = execFileSync(
@@ -1101,7 +1221,7 @@ const newThread = (
         "--from",
         "dev-core",
         "--expects",
-        "answer",
+        expects,
         ...(waitingOn === null ? [] : ["--waiting-on", waitingOn]),
         "--worker",
         "claude-code",

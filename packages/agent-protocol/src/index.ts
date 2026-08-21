@@ -280,6 +280,7 @@ export {
   type StaleRunPark,
   staleRunParks,
 } from "./thread/run-park.js";
+export { judgeSelfTurn, type SelfTurnVerdict } from "./thread/self-turn.js";
 export {
   declaredWaitingOn,
   mergedPrs,

@@ -503,6 +503,7 @@ import {
   type RunParkFacts,
   staleRunParks,
 } from "./thread/run-park.js";
+import { judgeSelfTurn } from "./thread/self-turn.js";
 import {
   checkTasks,
   collectTaskEvents,
@@ -2600,6 +2601,22 @@ const newMessage = (argv: readonly string[]): void => {
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
   const parkedOn = parkedOnFrom(argv, { registry });
+  // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
+  // can still be retyped, because the feed is append-only and such a header cannot be taken
+  // back: it names its own author as the one who acts next, asks for something, and says
+  // nothing about what it is waiting for. The circuit reads the field and raises the role
+  // again until the ceiling of the pair is spent. The measurement behind "refuse `ack`, warn
+  // on `answer`" is in `judgeSelfTurn` — the wording lives there so it is testable as words.
+  const selfTurn = judgeSelfTurn({
+    from,
+    waitingOn,
+    expects,
+    ...(parkedOn === undefined ? {} : { parkedOn }),
+  });
+  // The warning goes on STDOUT, beside the note of a `run:` park (thread 062) rather than on
+  // stderr: its reader is the raised session, which reads the output of the command it ran.
+  if (!selfTurn.ok) fail(selfTurn.reason, 2);
+  else if (selfTurn.warning !== undefined) out(`agent-protocol: ${selfTurn.warning}`);
   // THE COUNTERPART OF AN EVENT PARK (thread 023): the merge notifier says which PR landed,
   // and every thread parked on that number lifts. It is written by a workflow rather than by
   // an agent, so the door only checks the shape — the notifier knows the number it merged.
@@ -2825,6 +2842,19 @@ const newThread = (argv: readonly string[]): void => {
   // for a person. Nothing about parking is invented here: the values, the checks and the
   // refusals are `parkedOnFrom`'s, unchanged.
   const parkedOn = parkedOnFrom(argv, { registry });
+  // AND THE SAME MISSING PARK, by the same judge (thread 022). The lesson of 075 is the whole
+  // reason this is two lines and not a scope for later: a door standing on one command of a
+  // pair is a rule nobody can hold in their head, and the shape it catches — a role opening a
+  // thread with a question to a human and keeping its own turn — is exactly the live case of
+  // 074. The wording is one (`judgeSelfTurn`), so the two doors cannot drift apart.
+  const openingTurn = judgeSelfTurn({
+    from,
+    waitingOn,
+    expects,
+    ...(parkedOn === undefined ? {} : { parkedOn }),
+  });
+  if (!openingTurn.ok) fail(openingTurn.reason, 2);
+  else if (openingTurn.warning !== undefined) out(`agent-protocol: ${openingTurn.warning}`);
 
   // THE FORM DECLARED AT BIRTH (thread 079). The same key as `thread status --turn`, the
   // same permission behind it — the flag says what the thread requires of everybody who
