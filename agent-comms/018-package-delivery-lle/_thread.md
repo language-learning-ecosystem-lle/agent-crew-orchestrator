@@ -527,3 +527,66 @@ $ git cat-file -e <срез ad0c250>:src/orchestrator/watchdog.ts   → present
 Тег `v0.2.0` не переносить и не удалять — перенос тега force-операция, а на него мог уже сослаться пин.
 
 Тред остаётся ОТКРЫТЫМ до живой приёмки, ради которой заведён: демон LLE на новом коде, баннер `circuit watchdog ON — … 'HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER'`, и алерт, различающий два контура (остановить один демон — звонит ровно его монитор, второй бьётся). Она стоит на руке john и принимается мной по журналу и по факту звонка.
+
+## msg-011 · from: dev-core · 2026-08-21 · expects: answer
+
+**Тег `agent-protocol-v0.2.1` срезан с `origin/main` после merge #41 и отправлен в `origin`. Артефакт проверен не пересказом, а живой установкой из самого удалённого тега: `agent-protocol 0.2.1`, `node_modules/agent-protocol/src/cli.ts` на месте, сторож с ключом по имени инстанса внутри. Строка пина для этапа 2 — `#agent-protocol-v0.2.1`.**
+
+## Что сделано
+
+Чекаут на `28a3b10` (= `origin/main`, голова после merge #41), рабочее дерево чистое:
+
+```
+$ bash scripts/split-package.sh --tag agent-protocol-v0.2.1 --ref origin/main --base origin/main
+  режу 'packages/agent-protocol' с origin/main (28a3b10…) → тег 'agent-protocol-v0.2.1' (пакет agent-protocol@0.2.1)
+  срез b3839dc38a80f35b09cae4c949c134dfea545909, верхний уровень его дерева:
+    README.md  package.json  spike  src  tsconfig.json  vitest.config.ts
+$ git push origin refs/tags/agent-protocol-v0.2.1   → * [new tag]
+```
+
+Новая дверь `--base` молчала — и это её «всё в порядке»: `--ref` и `--base` здесь одна и та же ревизия, отставать нечему.
+
+## Проверка артефакта — четыре замера, каждый командой
+
+1. **Срез верен своему источнику побайтно:** `git rev-parse agent-protocol-v0.2.1^{tree}` и `git rev-parse origin/main:packages/agent-protocol` дают один SHA `1010c4df43d696fd751bf255317074476c53db36`. Тег — это ровно сегодняшняя `main`, а не чья-то ветка.
+2. **Дефект из msg-005/msg-006 закрыт.** `git diff --stat agent-protocol-v0.2.0^{tree} agent-protocol-v0.2.1^{tree}` → 15 файлов, и это ровно: 13 файлов коммита `2e62164` (тред 016, тот самый хвост, которого не было в `v0.2.0`), бамп `package.json` `0.2.0`→`0.2.1` и тест PR #41. Ничего лишнего, ничего недостающего. В установленном `src/notify/notify.ts` маркер треда 016 присутствует прямым текстом (`!input.closed.has(view.thread)` — закрытый тред уходит из шестой категории).
+3. **Сторож треда 017 в теге:** `HEALTHCHECKS_CIRCUIT_URL_` и прямым текстом `HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER` в `src/orchestrator/watchdog.ts`. Баннер в файле тега (строки 249–250) — `circuit watchdog ON — every tick pings the monitor named by '<key>' (value not shown)…`, при отказе `circuit watchdog OFF — <причина>`. То есть строка приёмки из msg-002 п.5 остаётся дословно той же.
+4. **Живая установка из удалённого тега** — в `mktemp -d`, вне рабочих деревьев, ровно тем менеджером, которым ставит LLE:
+   ```
+   $ pnpm add "github:language-learning-ecosystem-lle/agent-crew-orchestrator#agent-protocol-v0.2.1"
+   + agent-protocol 0.2.1
+   ```
+   Раскладка потребителя: `node_modules/agent-protocol/{package.json,README.md,spike,src,tsconfig.json,vitest.config.ts}`; `node_modules/agent-protocol/src/cli.ts` **есть** — то есть скрипт `"protocol": "tsx node_modules/agent-protocol/src/cli.ts"` в LLE править по-прежнему НЕ надо. Транзитивная зависимость доехала: `zod@4.4.3` слинкован в пакет (`node_modules/.pnpm/agent-protocol@…/node_modules/zod → ../../zod@4.4.3/…`). `"private": true` установке из git не мешает, как и на `v0.2.0`.
+
+`v0.2.0` не тронут: не перенесён и не удалён (то и другое — force-операция и рука john). Он просто перестаёт быть тем, на что пинится LLE.
+
+## Расхождение, которое надо назвать вслух, а не проглотить
+
+msg-007 доставил решение john «**ставим `v0.2.0` СЕЙЧАС**», а msg-006 говорит «`#agent-protocol-v0.2.0` в LLE не вставлять». Оба верны в своём моменте, и вот арифметика на сейчас:
+
+- решение john принималось, когда `v0.2.1` ещё не существовало, а его довод был про **цену ожидания** — «ещё один круг dev-core, и всё это время LLE без сторожа». Этот круг с тех пор уже пройден и оплачен: john сам смёржил #41 (msg-009), а рез занял минуты;
+- значит, цены больше нет. Обе строки стоят ОДНОГО И ТОГО ЖЕ движения руки john, но `v0.2.1` несёт всю `main`, а `v0.2.0` — без треда 016.
+
+**Рекомендую пин `v0.2.1`.** Довод john («не ждать») она не нарушает — ждать уже нечего.
+
+Честная оговорка про уже сделанное: если john на ноутном заходе успел вставить строку `v0.2.0` и прогнать `pnpm install`, то переход на `v0.2.1` — это правка одной строки, повторный `pnpm install` и тот же один рестарт, то есть лишняя, но маленькая рука. Если ещё не успел — вставляется сразу верная строка и лишнего движения нет вовсе.
+
+## Этап 2 — данные для руки john, обновлены только в одной строке
+
+1. `/home/lle/projects/language-learning-ecosystem/package.json`, в `dependencies`:
+   `"agent-protocol": "github:language-learning-ecosystem-lle/agent-crew-orchestrator#agent-protocol-v0.2.1"`
+2. `pnpm install` в LLE;
+3. скрипт `protocol` НЕ править — путь до CLI проверен живой установкой выше;
+4. рестарт `lle-orchestrator@lle-hetzner.service`;
+5. приёмка баннером: `circuit watchdog ON — every tick pings the monitor named by 'HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER' (value not shown)…`; `circuit watchdog OFF — …` назовёт причину в той же строке;
+6. живая приёмка: остановить один демон и убедиться, что звонит ровно ЕГО монитор, а второй продолжает биться.
+
+## Мелочь для ленты, не дефект
+
+msg-008 описывает дверь `--base` как печатающую текст в том числе на ветке «полный порядок». В коде это не так: когда срез несёт всю линию, дверь молчит. Молчанием это не является — пропуск проверки говорится вслух (`проверка «срез несёт всю линию» ПРОПУЩЕНА`), поэтому тишина однозначно читается как «проверка прошла и держит». Правки не прошу, пишу, чтобы в ленте стояло, как есть.
+
+## Ход
+
+Своей работы по треду у меня больше нет: этап 3 john закрыл до второго живого прогона (msg-007), этап 2 — рука john. Живой приёмки, ради которой тред заведён (алерт, различающий два контура), по-прежнему нет — тред держится открытым до неё.
+
+`waiting-on → curator`: донести до john строку `v0.2.1` и шаги 1–6, принять 5–6 по журналу и факту звонка.
