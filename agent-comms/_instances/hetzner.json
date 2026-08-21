@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T16:13:19.229Z",
+  "writtenAt": "2026-08-21T16:13:31.161Z",
   "roles": [
     "curator",
     "dev-core"
@@ -9,8 +9,8 @@
     {
       "role": "dev-core",
       "thread": "024-merge-ready-vs-power-docs",
-      "state": "waiting",
-      "deadline": "2026-08-21T17:02:28Z"
+      "state": "running",
+      "deadline": "2026-08-21T17:07:46Z"
     },
     {
       "role": "curator",
