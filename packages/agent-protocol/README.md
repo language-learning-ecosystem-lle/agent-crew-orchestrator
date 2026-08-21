@@ -33,7 +33,12 @@ commit:
   here either — that is the language of a particular team, and it arrives as
   templates (see "Notifications" below);
 - the move must be mechanical (`git subtree split` plus replacing the workspace
-  dependency with a version from a registry).
+  dependency with a version from a registry). Since thread 018 the first half of
+  that is a script rather than an intention — `scripts/split-package.sh` in the host
+  repository cuts this directory into a tag whose tree root is the package, and a
+  consumer pins THAT tag, never a branch of the workspace (the host repository's
+  `README.md`, "Доставка пакета наружу"). The second half — a registry — is still
+  not taken: the delivery goes over `github:<owner>/<repo>#<tag>`.
 
 The storage abstraction (`git-local` / `github-api`), the package's MCP server and
 the requirement of a runtime-agnostic core were **dropped** by john's decision of
