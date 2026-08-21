@@ -1,11 +1,17 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T13:27:21.013Z",
+  "writtenAt": "2026-08-21T13:29:17.319Z",
   "roles": [
     "curator",
     "dev-core"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "019-quota-aware-scheduler",
+      "state": "running",
+      "deadline": "2026-08-21T14:09:13Z"
+    },
     {
       "role": "dev-core",
       "thread": "020-parked-turn-not-failure",
