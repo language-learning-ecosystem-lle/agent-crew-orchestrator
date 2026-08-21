@@ -107,3 +107,20 @@ export const sessionsThatWrote = (threads: readonly Thread[]): ReadonlySet<strin
   }
   return sessions;
 };
+
+/**
+ * THE THREADS THAT ARE OVER — the other fact the journal does not have (thread 016).
+ *
+ * The neighbouring categories drop a closed thread AT THE SOURCE: `waitingOnOf` and
+ * `parkingOf` return `undefined` on `status: closed`, so `waiting`, `stalled`, `parked`
+ * and `frozen` cannot name one by construction. The sixth — the frozen pairs — is folded
+ * from the JOURNAL, where a closure leaves no event at all, and so it went on announcing
+ * a pair whose thread had been accepted and closed. Forever, at that: only a delivery OF
+ * THAT PAIR zeroes the count, every shape of a delivery is written by a run, and a closed
+ * thread gets no runs. This set is how a reader of the journal is told.
+ */
+export const closedThreads = (threads: readonly Thread[]): ReadonlySet<string> => {
+  const closed = new Set<string>();
+  for (const thread of threads) if (thread.meta.status === "closed") closed.add(thread.id);
+  return closed;
+};

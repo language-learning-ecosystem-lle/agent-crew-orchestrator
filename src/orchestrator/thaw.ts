@@ -193,13 +193,36 @@ export const describeApiFailure = (signal: ApiFailureSignal): string =>
  * lets one run through and its handoff zeroes the count) and the retroactive shape of thread
  * 023 — the dead session's OWN message appearing in the mail, which no live actor can write.
  * A line that advises the unreachable costs the reader the time this thread exists to save.
+ *
+ * `closed` IS THE THIRD BRANCH AND IT ADVISES NOBODY (thread 016). A freeze on a closed
+ * thread is history: the circuit was never going to raise the pair again, and neither is
+ * the hand the two branches above call for — there is nothing left to raise it FOR. The
+ * class is still named, because the reader of a frame is reading history and the class is
+ * what that history says; what is dropped is the call to action, which is the whole
+ * difference between a mark and a fact.
  */
 export const describeFreeze = (input: {
   readonly failureClass: FailureClass;
   readonly thaw: string | null;
+  /** The pair's thread is closed — see the block above; the surfaces that CALL drop it. */
+  readonly closed?: boolean;
 }): string =>
-  input.failureClass === "external"
-    ? input.thaw === null
-      ? "external, the backoff is spent — the circuit will not raise it again, a hand does (--max-attempts above the ceiling)"
-      : `external, thaws at ${input.thaw}`
-    : "substantive — the circuit will not raise it, a hand does (--max-attempts above the ceiling)";
+  input.closed === true
+    ? `${input.failureClass}, and the THREAD IS CLOSED — nothing raises this pair any more and nothing needs to: history, not a call`
+    : input.failureClass === "external"
+      ? input.thaw === null
+        ? "external, the backoff is spent — the circuit will not raise it again, a hand does (--max-attempts above the ceiling)"
+        : `external, thaws at ${input.thaw}`
+      : "substantive — the circuit will not raise it, a hand does (--max-attempts above the ceiling)";
+
+/**
+ * DOES THIS FREEZE END AT A MOMENT THAT CAN BE NAMED — the predicate behind the word
+ * "then" (thread 016, defect 2). Only an external freeze with a live backoff has one; a
+ * substantive freeze and a spent backoff both wait for a hand, which is not a moment. It
+ * lives here, beside the sentence it belongs to, so that a surface printing "until then"
+ * and the sentence naming the term can never disagree about whether there IS one.
+ */
+export const freezeHasTerm = (input: {
+  readonly failureClass: FailureClass;
+  readonly thaw: string | null;
+}): boolean => input.failureClass === "external" && input.thaw !== null;

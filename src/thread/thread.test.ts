@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parkedThreads, renderIndex, threadsWaitingOn } from "./index-doc.js";
+import { closedThreads, parkedThreads, renderIndex, threadsWaitingOn } from "./index-doc.js";
 import type { Message } from "./message.js";
 import { migrateLegacyThread, verifyMigration } from "./migrate.js";
 import {
@@ -209,6 +209,20 @@ describe("renderIndex / threadsWaitingOn", () => {
 
   it("updated is the date of the last message", () => {
     expect(updatedOf(parseLegacyThread("012-x", LEGACY, ROLES))).toBe("2026-07-23");
+  });
+
+  // THE CLOSURES AS A SET (thread 016) — the fact the journal does not carry, for the one
+  // reader that folds the journal and has no other way of learning it.
+  it("closedThreads names the closed threads and only those", () => {
+    const open = parseLegacyThread("012-x", LEGACY, ROLES);
+    const closed = parseLegacyThread(
+      "001-y",
+      LEGACY.replace("status: open", "status: closed"),
+      ROLES,
+    );
+
+    expect([...closedThreads([closed, open])]).toEqual(["001-y"]);
+    expect([...closedThreads([open])]).toEqual([]);
   });
 });
 

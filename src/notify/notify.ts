@@ -61,6 +61,7 @@
  * human is being told about them anyway, and two lines about one id make the reader
  * ask which of them to act on (the same reason `turn-with-nudge` exists).
  */
+import type { LeaseView } from "../orchestrator/lease.js";
 import { BOX_ACCOUNT, describeAccount } from "../orchestrator/quota.js";
 import { describeFreeze, type FailureClass } from "../orchestrator/thaw.js";
 import type { NotificationTarget } from "../roles/registry.js";
@@ -346,6 +347,41 @@ export type ExhaustedPair = {
   /** Failed attempts behind the series — printed in the text, not part of the identity. */
   readonly attempts?: number | undefined;
 };
+
+/**
+ * THE SET THE SIXTH CATEGORY COUNTS OVER — the folded journal, minus the pairs whose
+ * thread is CLOSED (thread 016).
+ *
+ * Two facts meet here and only here, which is why the selection is a function of its own
+ * rather than a filter at a call site: the fold knows the freezes and nothing about the
+ * mail, the mail knows the closures and nothing about the freezes. A pair of a closed
+ * thread satisfies `exhaustedSince !== undefined` FOR GOOD — the counter is zeroed only by
+ * a delivery of that pair, every shape of a delivery is written by a run, and a closed
+ * thread gets no runs — so the courier announced it every tick and the digest advised a
+ * hand (`--max-attempts` above the ceiling) towards a thread that had been accepted. A
+ * standing lie rather than a stale one, and standing in the very line thread 013 built to
+ * be believed.
+ *
+ * `closed` IS REQUIRED AND NOT OPTIONAL on purpose: this is the shape of the defect thread
+ * 023 left behind (`sessionsThatWrote`, forgotten at one call site out of four) — an
+ * argument a caller may leave out is one a caller will leave out, and the surface born
+ * from that omission looks green.
+ */
+export const exhaustedPairsOf = (input: {
+  readonly views: readonly LeaseView[];
+  readonly closed: ReadonlySet<string>;
+}): readonly ExhaustedPair[] =>
+  input.views
+    .filter((view) => view.exhaustedSince !== undefined && !input.closed.has(view.thread))
+    .map((view) => ({
+      role: view.role,
+      thread: view.thread,
+      since: view.exhaustedSince as string,
+      attempts: view.attempt,
+      // In force ONLY while the pair is actually standing at the ceiling: a thawed pair is
+      // in the gap of its series, and a freeze that is not in force says nothing.
+      ...(view.exhausted ? { failureClass: view.exhaustedClass, thaw: view.thawAt ?? null } : {}),
+    }));
 
 /**
  * WHICH OF THE TWO THINGS HAPPENED TO A PAIR, as an event with its own key: `exhausted` —

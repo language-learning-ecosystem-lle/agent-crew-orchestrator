@@ -7,7 +7,7 @@
  * state column.
  */
 import type { LeaseLifecycle, LeaseView } from "./lease.js";
-import { describeFreeze } from "./thaw.js";
+import { describeFreeze, freezeHasTerm } from "./thaw.js";
 
 /**
  * THE STATE COLUMN, IN THE OPERATOR'S WORDS (thread 019, john) — `draining` is the
@@ -25,18 +25,34 @@ import { describeFreeze } from "./thaw.js";
 const stateWord = (state: LeaseLifecycle): string =>
   state === "draining" ? "working past handoff" : state;
 
-/** A mark on a problem state of the pair — what the operator must not miss. */
-const flag = (view: LeaseView): string => {
-  if (view.exhausted)
+/**
+ * A mark on a problem state of the pair — what the operator must not miss.
+ *
+ * `closed`: the pair's thread is over (thread 016). The LINE stays — a frame prints the
+ * history of the journal and that history happened — but the MARK goes: `⚠ EXHAUSTED`
+ * calls a hand to a pair, and there is no hand to call for a thread nobody will reopen.
+ */
+const flag = (view: LeaseView, closed: boolean): string => {
+  if (view.exhausted) {
     // WHICH FREEZE THIS IS, AND WHETHER IT ENDS BY ITSELF (thread 013). The old line said
     // one thing about two states that need opposite actions from the reader: a substantive
     // exhaustion waits for a person, an external one waits for a clock the box already
     // holds. The words are `describeFreeze`'s and not this file's on purpose — the frame,
     // the courier line and the digest say the same sentence about the same fact.
-    return `  ⚠ EXHAUSTED (${describeFreeze({
+    const freeze = {
       failureClass: view.exhaustedClass ?? "substantive",
       thaw: view.thawAt ?? null,
-    })}) — no more attempts until then; what zeroes the count is a DELIVERY OF THIS PAIR (a completed run, a handoff, or a break whose own session signed a message in the mail), and every shape of it is written by a run, see the journal`;
+    } as const;
+    // A CLOSED THREAD IS HISTORY AND READS AS ONE: no ⚠, no "no more attempts", no advice
+    // about zeroing a count nobody is going to spend. One sentence, `describeFreeze`'s.
+    if (closed) return `  · exhausted (${describeFreeze({ ...freeze, closed: true })})`;
+    // "UNTIL THEN" ONLY WHERE THERE IS A "THEN" (thread 016, defect 2). The tail used to be
+    // glued on unconditionally, and after #23 gave the terminal branches their own words the
+    // half-sentence pointed at a moment its own sentence no longer named.
+    return `  ⚠ EXHAUSTED (${describeFreeze(freeze)}) — no more attempts${
+      freezeHasTerm(freeze) ? " until then" : ""
+    }; what zeroes the count is a DELIVERY OF THIS PAIR (a completed run, a handoff, or a break whose own session signed a message in the mail), and every shape of it is written by a run, see the journal`;
+  }
   // WHICH deadline has passed is said out loud, because the two mean opposite things:
   // an overrun of the work window is a session that did not fit, an overrun of a WAIT
   // is a human who has not answered (R19) — and the second one is nobody's failure.
@@ -53,8 +69,13 @@ const flag = (view: LeaseView): string => {
  * (T-1, thread 019). A second formatter for the same columns is refused on principle:
  * the top panel of the observer and the first section of `status` are the same fact,
  * and two renderers is how they would quietly start to differ.
+ *
+ * `closed` — this pair's thread is closed (thread 016); it changes the MARK and nothing
+ * else. It is a parameter and not a field of the view on purpose: the fold reads the
+ * journal, and whether a thread is closed is a fact of the MAIL, which the fold has never
+ * been given and must not start needing.
  */
-export const renderLeaseLine = (view: LeaseView): string => {
+export const renderLeaseLine = (view: LeaseView, closed = false): string => {
   const cols = [
     view.role,
     view.thread,
@@ -70,7 +91,7 @@ export const renderLeaseLine = (view: LeaseView): string => {
   ]
     .filter((c) => c !== "")
     .join("  ·  ");
-  return `${cols}${flag(view)}`;
+  return `${cols}${flag(view, closed)}`;
 };
 
 /**
@@ -78,8 +99,15 @@ export const renderLeaseLine = (view: LeaseView): string => {
  * honest "no active sessions" line rather than empty output: silence is
  * indistinguishable from a failure to read the journal (the P0 lesson), so the
  * absence of sessions is spelled out.
+ *
+ * `closed` — the ids of the threads that are over, from the mail the caller has already
+ * read. Empty by default: a caller with no mail in its hands (a test, a reader pointed at
+ * a journal alone) prints the same frame it always did.
  */
-export const renderStatus = (views: readonly LeaseView[]): string => {
+export const renderStatus = (
+  views: readonly LeaseView[],
+  closed: ReadonlySet<string> = new Set(),
+): string => {
   if (views.length === 0) return "orchestrator: no sessions in the journal";
-  return views.map(renderLeaseLine).join("\n");
+  return views.map((view) => renderLeaseLine(view, closed.has(view.thread))).join("\n");
 };

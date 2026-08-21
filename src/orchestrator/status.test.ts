@@ -47,6 +47,65 @@ describe("renderStatus", () => {
     expect(line).toContain("journal");
   });
 
+  // THE WORD "THEN" NEEDS A MOMENT TO POINT AT (thread 016, defect 2). The tail was glued
+  // on unconditionally, and #23 gave the two terminal branches words that name a HAND and
+  // no term at all — so half the sentence went on promising a deadline the other half had
+  // stopped naming. The same class of defect as the one #23 fixed, in the same sentence.
+  it("names a term only where the freeze has one", () => {
+    const thawing = renderStatus([
+      view({
+        exhausted: true,
+        exhaustedClass: "external",
+        thawAt: "2026-08-19T12:15:00Z",
+      }),
+    ]);
+    expect(thawing).toContain("thaws at 2026-08-19T12:15:00Z");
+    expect(thawing).toContain("no more attempts until then");
+
+    for (const spent of [
+      view({ exhausted: true, exhaustedClass: "substantive", thawAt: null }),
+      view({ exhausted: true, exhaustedClass: "external", thawAt: null }),
+    ]) {
+      const line = renderStatus([spent]);
+      expect(line).toContain("no more attempts;");
+      expect(line).not.toContain("until then");
+    }
+  });
+
+  // THE MARK IS A CALL TO A HAND, AND A CLOSED THREAD HAS NOTHING TO CALL ONE FOR (thread
+  // 016, п.2). The row itself stays — the frame prints the history of the journal, and that
+  // history happened — but `⚠ EXHAUSTED` and the advice about zeroing the count go, because
+  // a delivery of this pair is written by a run and a closed thread gets no runs.
+  it("a closed thread keeps its row and loses the mark", () => {
+    const closed = view({ thread: "001-mail-born", exhausted: true, attempt: 3 });
+
+    const called = renderStatus([closed]);
+    expect(called).toContain("⚠ EXHAUSTED");
+
+    const history = renderStatus([closed], new Set(["001-mail-born"]));
+    // The row is intact: role, thread and the count are still there to be read.
+    expect(history).toContain("001-mail-born");
+    expect(history).toContain("attempt 3/3");
+    // …and nothing in it asks anybody to do anything.
+    expect(history).not.toContain("⚠ EXHAUSTED");
+    expect(history).not.toContain("--max-attempts");
+    expect(history).not.toContain("what zeroes the count");
+    expect(history).toContain("THREAD IS CLOSED");
+  });
+
+  it("only the closed thread's own line loses the mark", () => {
+    const line = renderStatus(
+      [
+        view({ thread: "001-mail-born", exhausted: true }),
+        view({ thread: "016-open", exhausted: true }),
+      ],
+      new Set(["001-mail-born"]),
+    );
+    const [first, second] = line.split("\n");
+    expect(first).not.toContain("⚠ EXHAUSTED");
+    expect(second).toContain("⚠ EXHAUSTED");
+  });
+
   it("exhausted takes priority over overdue in the mark", () => {
     // exhausted is terminal (the lease is released), overdue will not be set
     // alongside it here, but the mark must not double up anyway — exhaustion wins.
