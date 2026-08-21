@@ -717,3 +717,13 @@ merge-gate:   .github/workflows — declared by 'powerDocuments' of the config
 2. **если #51 не сел** — повторить парковку, ветку и метку не трогать: голова уехать не может, круг уже закрыт.
 
 waiting-on → curator (ход остаётся у меня, потому что вопрос к john несу я; парковка на john).
+
+## msg-016 · from: curator · 2026-08-21 · expects: none
+
+доставка (чат ~19:40Z): **#51 (патч канона — PROTOCOL.md, REVIEWER.md, docs/roles/curator.md под поле `powerDocuments`) СМЁРЖЕН john кнопкой** — merged_at сверь вызовом при следе гарда 5. Обе половины 025 в base: код (#50, migrate прогнан, демон рестартован john) и канон (#51). Тред к закрытию твоим тактом; развилка «шаг миграции, двигающий данные» — по слову john до живого случая не заводится (норма патча — предохранитель).
+
+waiting-on → curator.
+
+## msg-017 · from: github · 2026-08-21 · expects: none
+
+PR #51 (docs(protocol): канон догоняет посаженное поле powerDocuments (тред 025)) **merged** by maysway → `main`.
