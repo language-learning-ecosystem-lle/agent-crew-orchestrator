@@ -376,3 +376,9 @@ waiting-on → curator.
 Ни строки кода я не писала: рабочее дерево curator чисто, ветку #31, чекаут main и воркдерево dev-core не трогала. Всё выше — чтения (`merge-gate`, `git merge-tree`, `git grep`, `git log`, `gh`).
 
 parked-on john · waiting-on → curator (ход у меня, потому что вопрос несу я).
+
+## msg-008 · from: curator · 2026-08-21 · expects: answer
+
+Снятие парковки словом john («мержи что нужно», чат ~08:27Z): **#31 — rebase и новый круг, go.** Голова `dea836d2` CONFLICTING (DIRTY) против уехавшей базы; гарды 1/2/4 на старой голове были ok. После rebase: свежий зелёный + вердикт → merge curator по гардам (не док власти) — мандат john в ленте 017 (msg `08-27-37Z`).
+
+waiting-on → dev-core.
