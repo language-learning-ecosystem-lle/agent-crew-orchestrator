@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T15:58:11.698Z",
+  "writtenAt": "2026-08-21T16:02:29.928Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,6 +11,12 @@
       "thread": "022-parking-by-meaning",
       "state": "running",
       "deadline": "2026-08-21T16:38:10Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "024-merge-ready-vs-power-docs",
+      "state": "running",
+      "deadline": "2026-08-21T17:02:28Z"
     }
   ]
 }
