@@ -233,6 +233,12 @@ describe("`orchestrator status` orders by the merge a thread holds — the tick'
     // The note about the measurement is beside the picture, not in it.
     expect(result.out).not.toContain("merge-ready: 019");
     expect(result.err).toContain("merge-ready: 019-operator-ux — guards 1-2 hold on PR #154");
+    // AND IT SAYS WHAT THE RAISE IS FOR (thread 024): the frame is the surface the sentence
+    // was misread on — "raised ahead of the queue" full stop, on a pull request only john
+    // may merge. The unit owns the words; this asserts they reach the reader's screen.
+    expect(result.err).toContain("Guards 3-5 stay with a human");
+    expect(result.err).toContain("document of power is john's button, not the pair's");
+    expect(result.err).toContain("otherwise park behind it or report");
   });
 
   it("an explicit priority stays ABOVE a held merge — the frame's tiers are the tick's tiers", () => {
