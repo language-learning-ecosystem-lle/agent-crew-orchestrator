@@ -86,6 +86,14 @@ const handoff = (options: {
     options.priority === undefined ? "" : `priority: ${options.priority}\n`
   }${options.parkedOn === undefined ? "" : `parked-on: ${options.parkedOn}\n`}---\n\nThe body.\n`;
 
+/**
+ * A message that MOVES SOMEBODY back to `dev-core` — the answer arriving on a parked thread
+ * (`standingParkOf`). Written by another author on purpose: the lift is not about who wrote it,
+ * but a curator relaying john's decision is the shape the live circuit actually produces.
+ */
+const answer = (options: { readonly from: string; readonly date: string }): string =>
+  `---\nfrom: ${options.from}\ndate: ${options.date}\nexpects: answer\nwaiting-on: dev-core\n---\n\nThe decision.\n`;
+
 type ThreadSpec = { readonly id: string; readonly message: string };
 
 /** The full circuit on disk, carrying exactly the threads it is given. */
@@ -160,6 +168,63 @@ const launched = (repo: string): string | undefined => {
   return event === undefined ? undefined : `${event.role}×${event.thread}`;
 };
 
+/** Every pair the journal says was raised, in order — a park is about ticks that add NOTHING. */
+const allLaunched = (repo: string): readonly string[] => {
+  const path = join(repo, ".orchestrator", "journal.jsonl");
+  if (!existsSync(path)) return [];
+  return parseJournal(readFileSync(path, "utf8"))
+    .filter((e) => e.kind === "launch")
+    .map((e) => `${e.role}×${e.thread}`);
+};
+
+/**
+ * A journal carrying `attempts` FAILED runs of a pair — the state a park has to preserve.
+ *
+ * Written as the daemon writes it (acquire, then a release with a losing reason) rather than
+ * as a count, because the count is not a field: it is folded out of these two events by
+ * `foldLeases`, and a test that seeded a number would prove nothing about the fold the tick
+ * actually reads.
+ */
+const failedRuns = (
+  repo: string,
+  pair: { readonly role: string; readonly thread: string },
+  attempts: number,
+): void => {
+  mkdirSync(join(repo, ".orchestrator"), { recursive: true });
+  const lines: string[] = [];
+  for (let at = 0; at < attempts; at += 1) {
+    const hour = String(at + 1).padStart(2, "0");
+    lines.push(
+      JSON.stringify({
+        kind: "lease-acquired",
+        ts: `2026-07-25T${hour}:00:00Z`,
+        deadline: `2026-07-25T${hour}:30:00Z`,
+        ...pair,
+      }),
+      JSON.stringify({
+        kind: "lease-released",
+        ts: `2026-07-25T${hour}:20:00Z`,
+        reason: "exited-without-handoff",
+        exitCode: 0,
+        ...pair,
+      }),
+    );
+  }
+  writeFileSync(join(repo, ".orchestrator", "journal.jsonl"), `${lines.join("\n")}\n`, "utf8");
+};
+
+/** The answer landing in the mail the daemon reads — a new message, committed on the mail branch. */
+const deliver = (repo: string, thread: string, message: string): void => {
+  const mail = join(repo, "mailco");
+  writeFileSync(
+    join(mail, "agent-comms", thread, "messages", "2026-07-25T12-00-00Z-curator.md"),
+    message,
+  );
+  git(mail, "add", "agent-comms");
+  git(mail, "commit", "-qm", "the answer");
+  git(mail, "push", "-q", "origin", "comms");
+};
+
 describe("the daemon raises the thread the queue puts first (R5)", () => {
   it("an explicit 'high' beats an older wait — and the whole queue is printed with its reasons", () => {
     const repo = contour([
@@ -231,6 +296,73 @@ describe("the daemon raises the thread the queue puts first (R5)", () => {
 
     expect(launched(repo)).toBe("dev-core×016-ordinary");
     expect(result.out).toContain("queue 2/2: dev-core×003-parked — priority low");
+  });
+});
+
+/**
+ * THREAD 020 — A PARKED TURN IS NOT A FAILED ONE, ACROSS THE SEAM.
+ *
+ * `planTick` is proved on this by unit (`tick.test.ts`), and the unit cannot prove the thing
+ * that actually broke a live circuit: the park is a fact of the MAIL and the attempt count is a
+ * fact of the JOURNAL, and nothing but the daemon puts the two in the same tick. A pair one
+ * attempt from its ceiling, sitting on a thread frozen behind a person, has to survive any
+ * number of ticks with that count unmoved — and the only honest way to observe "unmoved" from
+ * outside is to lift the park afterwards and watch the pair still be raisable. Had the frozen
+ * ticks each spent an attempt, the ceiling would have closed over it and the raise below would
+ * never happen.
+ */
+describe("a thread frozen behind a person costs the pair nothing (thread 020)", () => {
+  const pair = { role: "dev-core", thread: "030-consult" };
+
+  it("ticks pass, nothing is raised, and the attempts the pair had left are still there", () => {
+    const repo = contour([
+      {
+        id: pair.thread,
+        message: handoff({ from: "curator", date: "2026-07-25T10:00:00Z", parkedOn: "john" }),
+      },
+    ]);
+    enable(repo);
+    // Two of the three attempts are gone. One tick that miscounted the freeze as a failure
+    // would take the third, and the pair would be `exhausted` before john ever answered —
+    // which is the shape the live circuit produced three times over on 2026-08-21.
+    failedRuns(repo, pair, 2);
+
+    const first = daemon(repo);
+    const second = daemon(repo);
+
+    expect(allLaunched(repo)).toEqual([]);
+    for (const tick of [first, second]) {
+      expect(tick.out).toContain("candidate dev-core×030-consult skipped: the turn is parked");
+      expect(tick.out).toContain("a decision of john");
+      // NOT the other silence: an exhausted pair reads as damage done and sends the operator
+      // to the journal, a parked one asks a person for an answer.
+      expect(tick.out).not.toContain("candidate dev-core×030-consult skipped: exhausted");
+    }
+
+    // THE ANSWER LANDS — and the pair is raised by the ordinary queue, which is only possible
+    // if the two frozen ticks above left the count where they found it.
+    deliver(repo, pair.thread, answer({ from: "curator", date: "2026-07-25T12:00:00Z" }));
+    const third = daemon(repo);
+
+    expect(allLaunched(repo)).toEqual(["dev-core×030-consult"]);
+    expect(third.out).toContain("queue 1/1: dev-core×030-consult");
+  });
+
+  it("the net is NARROW: the same pair without a park is raised, and the attempt is spent", () => {
+    // The control of the pair above, differing in one header field. Without it the freeze
+    // could be swallowing the honest no-handoff — a session that died having written nothing
+    // keeps its ceiling, and that ceiling is the only thing standing between a broken pair
+    // and an endless loop of raising it.
+    const repo = contour([
+      { id: pair.thread, message: handoff({ from: "curator", date: "2026-07-25T10:00:00Z" }) },
+    ]);
+    enable(repo);
+    failedRuns(repo, pair, 2);
+
+    const result = daemon(repo);
+
+    expect(allLaunched(repo)).toEqual(["dev-core×030-consult"]);
+    expect(result.out).not.toContain("skipped: the turn is parked");
   });
 });
 
