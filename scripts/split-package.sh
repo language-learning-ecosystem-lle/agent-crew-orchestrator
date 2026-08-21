@@ -20,11 +20,15 @@ readonly SELF="split-package.sh"
 
 usage() {
   cat <<'EOF'
-usage: scripts/split-package.sh --tag <tag> [--prefix <path>] [--ref <ref>] [--remote <name>] [--push]
+usage: scripts/split-package.sh --tag <tag> [--prefix <path>] [--ref <ref>] [--base <ref>]
+                               [--allow-behind] [--remote <name>] [--push]
 
   --tag <tag>       имя тега, который будет создан на срезанном коммите. Обязателен.
   --prefix <path>   каталог пакета в этом репозитории (по умолчанию packages/agent-protocol).
   --ref <ref>       ревизия, с которой режется пакет (по умолчанию HEAD).
+  --base <ref>      линия, которую артефакт обязан нести целиком (по умолчанию origin/main).
+  --allow-behind    резать, даже если --ref не несёт всю линию --base: отказ станет громким
+                    предупреждением с тем же списком коммитов.
   --remote <name>   удалённый для --push (по умолчанию origin).
   --push            отправить тег на удалённый. Без флага — только локальный тег.
 
@@ -42,6 +46,8 @@ die() {
 tag=""
 prefix="packages/agent-protocol"
 ref="HEAD"
+base="origin/main"
+allow_behind="no"
 remote="origin"
 push="no"
 
@@ -50,6 +56,8 @@ while [ $# -gt 0 ]; do
     --tag) [ $# -ge 2 ] || die "флаг --tag назван без значения"; tag="$2"; shift 2 ;;
     --prefix) [ $# -ge 2 ] || die "флаг --prefix назван без значения"; prefix="$2"; shift 2 ;;
     --ref) [ $# -ge 2 ] || die "флаг --ref назван без значения"; ref="$2"; shift 2 ;;
+    --base) [ $# -ge 2 ] || die "флаг --base назван без значения"; base="$2"; shift 2 ;;
+    --allow-behind) allow_behind="yes"; shift ;;
     --remote) [ $# -ge 2 ] || die "флаг --remote назван без значения"; remote="$2"; shift 2 ;;
     --push) push="yes"; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -84,6 +92,27 @@ version="$(printf '%s' "$manifest" | node -e 'let s="";process.stdin.on("data",(
 expected="$name-v$version"
 if [ "$tag" != "$expected" ]; then
   die "имя тега '$tag' расходится с пакетом: package.json на ревизии '$ref' говорит name='$name' version='$version', то есть тег этого среза — '$expected'. Либо бампни версию пакета, либо назови тег так, как он есть"
+fi
+
+# НЕСЁТ ЛИ СРЕЗ ВСЮ ЛИНИЮ. Рез с головы ветки, чья база отстала, молча выпускает наружу
+# артефакт БЕЗ уже слитой в main работы: так тег agent-protocol-v0.2.0 уехал в LLE без
+# коммита треда 016 (замер 2026-08-21). Молчащая дверь хуже отсутствующей — считаем сами
+# и называем коммиты поимённо, а не оставляем это глазу человека на каждом бампе.
+if base_resolved="$(git rev-parse --verify --quiet "$base^{commit}" 2>/dev/null)"; then
+  if ! git merge-base --is-ancestor "$base_resolved" "$resolved" 2>/dev/null; then
+    behind="$(git log --oneline "$resolved..$base_resolved" -- "$prefix")"
+    if [ -n "$behind" ]; then
+      said="ревизия '$ref' ($resolved) НЕ несёт линию '$base' ($base_resolved): в срез не попадёт уже слитая работа по '$prefix' —
+$(printf '%s' "$behind" | sed 's/^/  /')
+Пересядь на '$base' (rebase ветки бампа) или скажи --allow-behind, если срез с отставшей линии — это то, чего ты хочешь"
+      [ "$allow_behind" = "yes" ] || die "$said"
+      echo "$SELF: ВНИМАНИЕ (--allow-behind): $said" >&2
+    else
+      echo "$SELF: линия '$base' ушла вперёд '$ref', но '$prefix' те коммиты не трогают — на срез это не влияет"
+    fi
+  fi
+else
+  echo "$SELF: ревизии '$base' в этом репозитории нет — проверка «срез несёт всю линию» ПРОПУЩЕНА (назови линию через --base)"
 fi
 
 echo "$SELF: режу '$prefix' с $ref ($resolved) → тег '$tag' (пакет $name@$version)"
