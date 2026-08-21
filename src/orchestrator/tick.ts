@@ -39,6 +39,7 @@
  * the entrance.
  */
 
+import type { DeliveryMarks } from "../thread/index-doc.js";
 import { parkedOnKind } from "../thread/thread.js";
 import { type AuthShelf, authRefusalRecorded, authShelfAgainst, openAuthShelves } from "./auth.js";
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
@@ -241,7 +242,7 @@ export const planTick = (input: {
    * threads anyway to build its candidates, so the set costs it nothing; without it the
    * fold judges by the journal alone and counts such a run a failed attempt.
    */
-  readonly deliveredSessions?: ReadonlySet<string>;
+  readonly deliveryMarks?: DeliveryMarks;
 }): TickDecision => {
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
   const held = input.held ?? [];
@@ -255,7 +256,7 @@ export const planTick = (input: {
   // Roles taken by a human drop out ENTIRELY, not per pair: a hold holds the role,
   // not the thread — a manual dev-core session is busy with itself on any thread.
   // The other roles are launched as usual, hence a filter here rather than an exit.
-  const views = foldLeases(input.events, input.now, input.maxAttempts, input.deliveredSessions);
+  const views = foldLeases(input.events, input.now, input.maxAttempts, input.deliveryMarks);
   const viewOf = (candidate: Candidate): LeaseView | undefined =>
     views.find((v) => v.role === candidate.role && v.thread === candidate.thread);
 
@@ -428,7 +429,7 @@ export const planTick = (input: {
   // refusal N times — the two ways a global ceiling stops being global.
   const remaining = Math.max(
     0,
-    maxConsecutive - consecutiveLaunchesWithoutDelivery(input.events, input.deliveredSessions),
+    maxConsecutive - consecutiveLaunchesWithoutDelivery(input.events, input.deliveryMarks),
   );
   const launches = eligible.slice(0, remaining);
   const cutCandidates = eligible.slice(remaining);

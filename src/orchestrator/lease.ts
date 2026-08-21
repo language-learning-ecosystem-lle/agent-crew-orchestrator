@@ -32,6 +32,7 @@
  * Counting that as a failed attempt would push a productive pair towards the ceiling
  * for a fault of the supervisor's, so the reset hangs on the handoff as well.
  */
+import { type DeliveryMarks, NO_DELIVERY_MARKS, pairKey } from "../thread/index-doc.js";
 import { MAX_ATTEMPTS, type OrchestratorEvent, type ReleaseReason } from "./journal.js";
 import { sessionLogPath } from "./paths.js";
 import { type FailureClass, thawAt } from "./thaw.js";
@@ -133,8 +134,9 @@ export type LeaseView = {
 
 // The (role, thread) key goes through JSON so that no separator has to be
 // invented: role/thread are kept separately in the accumulator and are never
-// parsed back out of the key.
-const key = (role: string, thread: string): string => JSON.stringify([role, thread]);
+// parsed back out of the key. Shared with the mail side (`pairKey`), which builds
+// its map of the second delivery sign on the very same identity.
+const key = pairKey;
 
 /**
  * The lease is active (held by the orchestrator right now) — EXPORTED because it is
@@ -205,12 +207,28 @@ export const isDelivery = (event: OrchestratorEvent): boolean =>
  */
 export const isSelfTurnDelivery = (
   event: OrchestratorEvent,
-  deliveredSessions: ReadonlySet<string>,
-): boolean =>
-  event.kind === "lease-released" &&
-  event.reason === "exited-without-handoff" &&
-  event.session !== undefined &&
-  deliveredSessions.has(event.session);
+  marks: DeliveryMarks,
+  /**
+   * WHEN THIS RUN'S LEASE BEGAN — the left edge of the window the second sign is narrow
+   * to (thread 021). `null` (a caller that does not track the acquire) leaves the second
+   * sign OFF rather than open-ended: a window without a left edge would count a message
+   * this role wrote into this thread at any time in the past, which is the ceiling gone.
+   */
+  acquiredAt: string | null = null,
+): boolean => {
+  if (event.kind !== "lease-released" || event.reason !== "exited-without-handoff") return false;
+  // The first sign: the id in the header and the id in the event are the same run.
+  if (event.session !== undefined && marks.sessions.has(event.session)) return true;
+  // The second sign (`deliveryMarks`), for the release whose run never got its id into a
+  // header: a message of this role, in this thread, written by a run's worker between the
+  // acquire and this very release.
+  if (acquiredAt === null) return false;
+  const from = Date.parse(acquiredAt);
+  const to = Date.parse(event.ts);
+  if (Number.isNaN(from) || Number.isNaN(to)) return false;
+  const stamps = marks.runMessages.get(pairKey(event.role, event.thread)) ?? [];
+  return stamps.some((at) => at >= from && at <= to);
+};
 
 /**
  * A terminal FAILURE: the run was broken off rather than finished normally. Three
@@ -313,11 +331,11 @@ export const foldLeases = (
   now: Date,
   maxAttempts: number = MAX_ATTEMPTS,
   /**
-   * Sessions that wrote a message into the mail (`isSelfTurnDelivery`). Defaults to
-   * empty — a caller that has no mail at hand folds exactly as before, and nothing
-   * that only reads the journal has to learn about the circuit.
+   * What the mail knows about deliveries — the two signs of `isSelfTurnDelivery`.
+   * Defaults to neither: a caller that has no mail at hand folds exactly as before, and
+   * nothing that only reads the journal has to learn about the circuit.
    */
-  deliveredSessions: ReadonlySet<string> = new Set(),
+  marks: DeliveryMarks = NO_DELIVERY_MARKS,
   /**
    * WHERE THE SESSION FILES LIE, when the caller knows (T-1). Omitted — the views carry
    * no `sessionLog` and nothing changes for a caller that only reads the journal; given
@@ -360,7 +378,10 @@ export const foldLeases = (
     // event is (`isDelivery`) — one predicate rather than a reset written into each
     // branch, so the per-pair ceiling and the global one cannot come to mean different
     // things again.
-    const selfTurn = isSelfTurnDelivery(event, deliveredSessions);
+    // `cur.acquiredAt` is THIS run's acquire: the events arrive in order, so at a release
+    // it still holds the stamp the matching `lease-acquired` put there. That is the left
+    // edge the second sign is narrowed by.
+    const selfTurn = isSelfTurnDelivery(event, marks, cur.acquiredAt);
     if (isDelivery(event) || selfTurn) {
       cur.attempt = 0;
       // THE SERIES ENDS WHERE THE COUNTER DOES (thread 013). The two are the same fact —
