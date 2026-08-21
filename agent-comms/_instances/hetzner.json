@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T15:05:56.198Z",
+  "writtenAt": "2026-08-21T15:05:58.271Z",
   "roles": [
     "curator",
     "dev-core"
@@ -15,7 +15,7 @@
     {
       "role": "curator",
       "thread": "022-parking-by-meaning",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-21T15:31:58Z"
     }
   ]
