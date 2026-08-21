@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T18:33:20.491Z",
+  "writtenAt": "2026-08-21T18:43:46.364Z",
   "roles": [
     "curator",
     "dev-core"
@@ -10,7 +10,7 @@
       "role": "curator",
       "thread": "018-package-delivery-lle",
       "state": "running",
-      "deadline": "2026-08-21T19:13:19Z"
+      "deadline": "2026-08-21T19:23:45Z"
     }
   ]
 }
