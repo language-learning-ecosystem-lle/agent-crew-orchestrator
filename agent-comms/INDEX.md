@@ -22,6 +22,6 @@
 | 018-package-delivery-lle | curator, dev-core | open | curator | 2026-08-21 |
 | 019-quota-aware-scheduler | curator · dev-core · john | closed | — | 2026-08-21 |
 | 020-parked-turn-not-failure | curator, dev-core, john | closed | — | 2026-08-21 |
-| 021-delivery-sign-narrow | curator, dev-core | open | curator | 2026-08-21 |
+| 021-delivery-sign-narrow | curator, dev-core | closed | — | 2026-08-21 |
 | 022-parking-by-meaning | curator, dev-core | open | curator | 2026-08-21 |
 | 023-attempt-counter-semantics | curator, dev-core | open | dev-core | 2026-08-21 |
