@@ -253,7 +253,17 @@ const driftHome = (secrets: Readonly<Record<string, string>>): Contour => {
  */
 const tick = (
   place: Contour,
-  extra?: { readonly ref?: string; readonly env?: Readonly<Record<string, string>> },
+  extra?: {
+    readonly ref?: string;
+    readonly env?: Readonly<Record<string, string>>;
+    /**
+     * The daemon of a NAMED instance: the machine config is found the way production
+     * finds it — by name, under the config home — instead of being handed over as a path.
+     * That layer is the one that answers "which instance is this", so a test about
+     * per-instance monitors cannot bypass it.
+     */
+    readonly instance?: string;
+  },
 ): Promise<{ code: number; out: string }> =>
   new Promise((resolve) => {
     const child = spawn(
@@ -272,8 +282,9 @@ const tick = (
         "--no-fetch",
         "--repo",
         place.repo,
-        "--local-config",
-        place.local,
+        ...(extra?.instance === undefined
+          ? ["--local-config", place.local]
+          : ["--instance", extra.instance]),
       ],
       {
         cwd: place.repo,
@@ -405,5 +416,88 @@ describe("the dead-man ping and the exit that is a repair", () => {
     // ...and this exit waited for what came back, which is the whole of the finding: the
     // 503 was answered 750ms after the request, long after an unsettled tick would have gone.
     expect(run.out).toContain("the dead-man ping was NOT delivered: the monitor answered 503");
+  }, 120_000);
+});
+
+/**
+ * ONE BOX, TWO CIRCUITS, TWO MONITORS — THE SEAM (curator's statement of work of
+ * 2026-08-21).
+ *
+ * The unit proves the policy of the key; what it cannot reach is the join this whole
+ * change exists for: TWO REAL DAEMONS, told apart only by `--instance`, reading ONE REAL
+ * secrets file through the machine-config layer that names it, each sending a request of
+ * its own. The judgement is the PATHS THAT ARRIVED at the monitor — each instance knocked
+ * on its own and neither on the other's. Before this change both would knock on one, and
+ * no unit test of a mapping would show it: the defect lives exactly in the join.
+ *
+ * The two configs deliberately name THE SAME `secrets.envFile`, because that is the live
+ * box (`instances/hetzner.json` and `instances/lle-hetzner.json`, both pointing at
+ * `~/.config/agent-protocol/secrets.env`) rather than a shape invented for a test.
+ */
+const namedInstances = (
+  place: Contour,
+  secrets: Readonly<Record<string, string>>,
+  names: readonly string[],
+): void => {
+  const home = configHome(place.repo);
+  const envFile = join(home, "secrets.env");
+  const dir = join(home, "agent-protocol", "instances");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    envFile,
+    `${Object.entries(secrets)
+      .map(([key, value]) => `${key}=${value}`)
+      .join("\n")}\n`,
+  );
+  for (const name of names) {
+    writeFileSync(
+      join(dir, `${name}.json`),
+      `${JSON.stringify({ secrets: { envFile } }, null, 2)}\n`,
+    );
+  }
+};
+
+/** A path on the monitor that is not the one the helper hands out by default. */
+const at = (open: Monitor, path: string): string => new URL(path, open.url).toString();
+
+describe("two instances of one box, one secrets file", () => {
+  it("each instance beats ITS OWN monitor and neither beats the other's", async () => {
+    open = await monitor(200);
+    const place = contour(undefined);
+    namedInstances(
+      place,
+      {
+        [`${CIRCUIT_URL_KEY}_HETZNER`]: at(open, "/ping/aco-circuit"),
+        [`${CIRCUIT_URL_KEY}_LLE_HETZNER`]: at(open, "/ping/lle-circuit"),
+      },
+      ["hetzner", "lle-hetzner"],
+    );
+
+    const aco = await tick(place, { instance: "hetzner" });
+    expect(aco.code).toBe(0);
+    expect(open.paths).toEqual(["/ping/aco-circuit"]);
+    expect(raised(place)).toBe(true);
+
+    const lle = await tick(place, { instance: "lle-hetzner" });
+    expect(lle.code).toBe(0);
+    // The whole of the change, in one assertion: the second daemon's beat went somewhere
+    // the first one never touched, so the death of either is visible on its own monitor.
+    expect(open.paths).toEqual(["/ping/aco-circuit", "/ping/lle-circuit"]);
+  }, 240_000);
+
+  it("a named instance with only the BARE key beats nothing and says which key it wants", async () => {
+    open = await monitor(200);
+    const place = contour(undefined);
+    namedInstances(place, { [CIRCUIT_URL_KEY]: at(open, "/ping/shared") }, ["hetzner"]);
+
+    const run = await tick(place, { instance: "hetzner" });
+    expect(run.code).toBe(0);
+    // Refused rather than fallen back on: the bare key on a box with named instances IS
+    // the collision, and a beat sent here would be the silence being repaired.
+    expect(open.paths).toEqual([]);
+    expect(run.out).toContain("circuit watchdog OFF");
+    expect(run.out).toContain(`${CIRCUIT_URL_KEY}_HETZNER`);
+    // And the tick did its own work regardless — the degradation stays one-way.
+    expect(raised(place)).toBe(true);
   }, 120_000);
 });
