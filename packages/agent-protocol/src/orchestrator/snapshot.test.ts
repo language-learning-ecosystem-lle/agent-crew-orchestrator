@@ -427,17 +427,17 @@ describe("renderQuota — the shelf in the operator's frame", () => {
   };
 
   it("says the window IS open when it is — an absent section teaches nothing", () => {
-    expect(renderQuota([])).toContain("no window is closed");
+    expect(renderQuota(NOW, [])).toContain("no window is closed");
   });
 
   it("names the window type and when it opens", () => {
-    const text = renderQuota([shelf]);
+    const text = renderQuota(NOW, [shelf]);
     expect(text).toContain("five_hour");
     expect(text).toContain("2026-07-29T21:40:00Z");
   });
 
   it("marks a shelf whose time we invented, so it is not read as the vendor's", () => {
-    expect(renderQuota([{ ...shelf, stated: false }])).toContain("short default shelf");
+    expect(renderQuota(NOW, [{ ...shelf, stated: false }])).toContain("short default shelf");
   });
 
   it("is a panel of the frame, above the queue", () => {

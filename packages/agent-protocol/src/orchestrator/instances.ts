@@ -395,7 +395,7 @@ export const renderInstances = (input: {
       `  ${digest.instance}${mark}: ${digest.leases.length} live · roles ${digest.roles.join(", ") || "—"} · written ${digest.writtenAt} (${age}s ago)${staleMark}`,
     );
     for (const shelf of digest.quota ?? []) {
-      lines.push(`    ⏸ ${describeQuotaShelf(shelf)}`);
+      lines.push(`    ⏸ ${describeQuotaShelf(shelf, input.now)}`);
     }
     for (const lease of digest.leases) {
       lines.push(

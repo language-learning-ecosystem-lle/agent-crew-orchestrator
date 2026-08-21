@@ -6,8 +6,10 @@ import { observeStep } from "./observe.js";
 import {
   BOX_ACCOUNT,
   describeAccount,
+  describeQuotaPause,
   describeQuotaRelease,
   describeQuotaShelf,
+  minutesLeftOnShelf,
   openQuotaShelves,
   type QuotaShelf,
   quotaRefusalRecorded,
@@ -290,11 +292,17 @@ describe("the attempt ceiling — a closed window is nobody's failed attempt", (
       at(`2026-07-29T1${i}:05:00Z`, "lease-released", { reason: "quota-exhausted" }),
     ]).flat();
 
-  it("three quota releases do NOT exhaust the pair", () => {
+  it("three quota releases do NOT exhaust the pair, and cost it no count either", () => {
     // Three ordinary failures do — that is the ceiling working. The whole point of
     // finding C is that these three are not that.
+    //
+    // THE COUNT CHANGED HERE IN THREAD 019 (§4) and the change is deliberate: this line
+    // used to expect `3`, which recorded what the fold DID rather than what the sentence
+    // above it says. The verdict was already right; the counter was moved by the acquire
+    // that opened each quota round and never moved back, so the frame said `attempt 3/3`
+    // about a pair that had spent nothing. Now the round is undone with the release.
     const view = foldLeases(window(3), new Date("2026-07-29T13:00:00Z"))[0];
-    expect(view?.attempt).toBe(3);
+    expect(view?.attempt).toBe(0);
     expect(view?.exhausted).toBe(false);
   });
 
@@ -433,7 +441,7 @@ describe("a signal without a time gets a SHORT shelf (correction 3)", () => {
     const shelf = openQuotaShelves([closed({ window: "five_hour" })], LATER)[0];
     expect(shelf?.until).toBe("2026-07-29T12:05:00Z");
     expect(shelf?.stated).toBe(false);
-    expect(describeQuotaShelf(shelf as QuotaShelf)).toContain("did NOT say when it reopens");
+    expect(describeQuotaShelf(shelf as QuotaShelf, LATER)).toContain("did NOT say when it reopens");
   });
 
   it("the short shelf is MINUTES, never a made-up five hours", () => {
@@ -575,7 +583,7 @@ describe("openQuotaShelves — a shelf per account (055, B.3)", () => {
       [closedOn("second", "2026-07-29T12:00:00Z", "2026-07-29T17:00:00Z")],
       NOW,
     );
-    expect(describeQuotaShelf(shelves[0] as QuotaShelf)).toContain("account 'second'");
+    expect(describeQuotaShelf(shelves[0] as QuotaShelf, NOW)).toContain("account 'second'");
     expect(describeAccount(BOX_ACCOUNT)).toContain("box's own");
   });
 
@@ -737,6 +745,45 @@ describe("a rate-limit death is external whatever the session had already done (
     expect(view?.exhausted).toBe(false);
   });
 
+  it("the round the vendor ended is UNDONE — a pair at 2/3 comes out of the window at 2/3", () => {
+    // The counter, not just the verdict (thread 019, §4). `quota-exhausted` was already
+    // excluded from the FAILURE test, but the `lease-acquired` that opened the quota round
+    // still moved the count, so the frame printed one attempt more than the pair had spent
+    // — and after the next real break, `attempt 4/3` with no `⚠ EXHAUSTED` beside it.
+    const events = [
+      at("2026-07-29T10:00:00Z", "lease-acquired", { deadline: "2026-07-29T10:59:00Z" }),
+      at("2026-07-29T10:40:00Z", "lease-released", { reason: "exited-without-handoff" }),
+      at("2026-07-29T11:00:00Z", "lease-acquired", { deadline: "2026-07-29T11:59:00Z" }),
+      at("2026-07-29T11:40:00Z", "lease-released", { reason: "exited-without-handoff" }),
+      at("2026-07-29T12:00:00Z", "lease-acquired", { deadline: "2026-07-29T12:59:00Z" }),
+      at("2026-07-29T12:10:00Z", "lease-released", {
+        reason: "quota-exhausted",
+        until: "2026-07-29T17:00:00Z",
+      }),
+    ];
+    const view = foldLeases(events, new Date("2026-07-29T17:30:00Z"))[0];
+    expect(view?.attempt).toBe(2);
+    expect(view?.exhausted).toBe(false);
+  });
+
+  it("and the pair still exhausts on its OWN third break — the undo is not an amnesty", () => {
+    // The control of the line above: undoing the vendor's round must not buy the pair a
+    // free failure, or the ceiling would be liftable by waiting for a closed window.
+    const events = [
+      at("2026-07-29T10:00:00Z", "lease-acquired", { deadline: "2026-07-29T10:59:00Z" }),
+      at("2026-07-29T10:40:00Z", "lease-released", { reason: "exited-without-handoff" }),
+      at("2026-07-29T11:00:00Z", "lease-acquired", { deadline: "2026-07-29T11:59:00Z" }),
+      at("2026-07-29T11:40:00Z", "lease-released", { reason: "exited-without-handoff" }),
+      at("2026-07-29T12:00:00Z", "lease-acquired", { deadline: "2026-07-29T12:59:00Z" }),
+      at("2026-07-29T12:10:00Z", "lease-released", { reason: "quota-exhausted" }),
+      at("2026-07-29T13:00:00Z", "lease-acquired", { deadline: "2026-07-29T13:59:00Z" }),
+      at("2026-07-29T13:40:00Z", "lease-released", { reason: "exited-without-handoff" }),
+    ];
+    const view = foldLeases(events, new Date("2026-07-29T14:00:00Z"))[0];
+    expect(view?.attempt).toBe(3);
+    expect(view?.exhausted).toBe(true);
+  });
+
   it("`observeStep` has no step gate either — the signal alone decides", () => {
     // The control of the sentence above, at the other end of the road: whatever the run
     // had done, a stream that named the closed window releases as `quota-exhausted`.
@@ -748,5 +795,68 @@ describe("a rate-limit death is external whatever the session had already done (
         quotaExhausted: true,
       }),
     ).toEqual({ record: "lease-released", reason: "quota-exhausted" });
+  });
+});
+
+/**
+ * THE SILENCE SAYS ITS OWN NAME (thread 019, §4). The defect these guard is not a wrong
+ * decision — the pause itself was right since #42 — but an unreadable one: the operator's
+ * question is "why is nothing moving", and every surface answered it with a sentence that
+ * opened on the vendor's word for a window and buried the reason in the middle.
+ *
+ * They are written against the two SHAPES of the answer (the frame's long line and the
+ * courier's clause), and both are asserted to carry the marker and the time left, because
+ * a marker in one surface and not the other is the divergence this exists to prevent.
+ */
+describe("the pause names itself: `quota-paused` and how long is left", () => {
+  const shelf: QuotaShelf = {
+    window: "five_hour",
+    account: BOX_ACCOUNT,
+    until: "2026-07-29T17:00:00Z",
+    since: "2026-07-29T12:00:00Z",
+    stated: true,
+    role: "dev-core",
+  };
+  const now = new Date("2026-07-29T16:17:00Z");
+
+  it("the long line opens with the marker and carries the ISO stamp and the minutes", () => {
+    const line = describeQuotaShelf(shelf, now);
+    expect(line.startsWith("quota-paused until 2026-07-29T17:00:00Z (43m left)")).toBe(true);
+    // The provenance did not go anywhere — it moved behind the answer, not out of it.
+    expect(line).toContain("five_hour window of the box's own account");
+    expect(line).toContain("seen at 2026-07-29T12:00:00Z on dev-core");
+  });
+
+  it("the courier's clause is the same fact in a phone-sized sentence", () => {
+    expect(describeQuotaPause(shelf, now)).toBe(
+      "quota-paused, resumes 17:00Z (43m left) — five_hour window of the box's own account",
+    );
+  });
+
+  it("the zone rides on the clock — `17:00` on a box in +03:00 is a three-hour lie", () => {
+    expect(describeQuotaPause(shelf, now)).toContain("17:00Z");
+  });
+
+  it("a GUESSED end is marked as a guess in BOTH surfaces, never printed as the vendor's", () => {
+    const guessed = { ...shelf, stated: false };
+    expect(describeQuotaShelf(guessed, now)).toContain("did NOT say when it reopens");
+    expect(describeQuotaPause(guessed, now)).toContain("our short default");
+  });
+
+  it("both surfaces name WHOSE account — two accounts standing down at once need it (B.3)", () => {
+    const other = { ...shelf, account: "second" };
+    expect(describeQuotaShelf(other, now)).toContain("account 'second'");
+    expect(describeQuotaPause(other, now)).toContain("account 'second'");
+  });
+
+  it("the minutes round UP — forty seconds left is `1m`, never `0m`", () => {
+    // `0m left` reads as "this should be over by now" and sends a hand looking for a
+    // defect that is not there; the error of a whole minute the other way costs nothing.
+    expect(minutesLeftOnShelf(shelf, new Date("2026-07-29T16:59:20Z"))).toBe(1);
+    expect(minutesLeftOnShelf(shelf, new Date("2026-07-29T17:00:00Z"))).toBe(0);
+  });
+
+  it("a `now` past the shelf gives zero, not a negative — noise, not news", () => {
+    expect(minutesLeftOnShelf(shelf, new Date("2026-07-29T17:05:00Z"))).toBe(0);
   });
 });

@@ -414,6 +414,24 @@ export const foldLeases = (
       case "lease-released":
         cur.state = "released";
         cur.reason = event.reason;
+        // THE ROUND THE VENDOR ENDED IS UNDONE, NOT FORGIVEN LATER (thread 019, §4). The
+        // verdict below has never counted `quota-exhausted` as a failure, but the COUNTER
+        // was still moved by the `lease-acquired` that opened the round, so a pair that
+        // stood at 2/3 came out of a closed window reading 3/3 — and after the next real
+        // break the frame printed `attempt 4/3` with no `⚠ EXHAUSTED` beside it, a line
+        // that contradicts itself and reads as "one attempt left" when there are two.
+        // Measured in `quota-pause.process.test.ts` on the real `status` frame.
+        //
+        // UNDONE IS THE RIGHT SHAPE, not zeroed: the count belongs to the pair's own break
+        // loop and a closed window is not part of it — the two failures before it happened
+        // and are still the pair's. This is the same move `consecutiveLaunchesWithoutDelivery`
+        // already makes for the run budget ("it is UNDONE, not reset"), now on the ceiling.
+        //
+        // THE NEIGHBOURING CLASSES ARE LEFT ALONE ON PURPOSE — `auth-failed` and R19's two
+        // endings inflate the counter the same way and are the same defect; they belong to
+        // their own threads, and a fold quietly changing its number for four reasons at once
+        // is not something a reader of one thread can check.
+        if (event.reason === "quota-exhausted") cur.attempt = Math.max(0, cur.attempt - 1);
         // The release that DELIVERED into its own turn is remembered as such: the
         // reason stays what the journal says (the process did exit with the turn
         // here), and the judgement below reads this flag instead of the name.

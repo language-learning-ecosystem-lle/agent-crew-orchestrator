@@ -321,9 +321,11 @@ import {
 } from "./orchestrator/priority.js";
 import {
   describeAccount,
+  describeQuotaPause,
   describeQuotaRelease,
   describeQuotaShelf,
   openQuotaShelves,
+  type QuotaShelf,
   type QuotaSignal,
   quotaSignalOf,
   shelfEndOfRefusal,
@@ -3374,6 +3376,19 @@ const runNotify = async (input: {
   // shelf — the fold already carries the class of the freeze and the stamp of its series —
   // and it is as unable to refuse this command as the two above.
   let exhaustedPairs: readonly ExhaustedPair[] = [];
+  // THE SEVENTH QUESTION, and the last one the courier could not answer (thread 019, §4):
+  // "is the box paused on the vendor's window, and until when". It is the loudest silence
+  // the circuit produces — nothing is raised for hours and every other category is empty,
+  // which reads exactly like a dead daemon — and it is read from the same journal as the
+  // two above, with the same rule: it cannot refuse this command.
+  //
+  // IT DOES NOT RING, and that is deliberate rather than unfinished. A quota pause ends by
+  // a clock the box already holds, there is no action behind it, and a five-hour window
+  // that woke somebody's phone would be a buzz whose only honest text is "do nothing".
+  // It is a STANDING category, like the exhausted count: printed every tick, news or not,
+  // so that whoever asks "why is nothing moving" has the answer in the line they already
+  // read.
+  let quotaShelves: readonly QuotaShelf[] = [];
   if (paths !== undefined) {
     try {
       const events = existsSync(paths.journal)
@@ -3403,6 +3418,9 @@ const runNotify = async (input: {
         // closure leaves no event, so it is handed the closures explicitly.
         closed: closedThreads(parsed),
       });
+      // The same fold the daemon's stream and the `status` frame stand on — one function,
+      // three surfaces, so a pause cannot be visible in one of them and absent in another.
+      quotaShelves = openQuotaShelves(events, new Date(now));
       // THE ALARM RINGS ON THE WORST SHELF (B.3): several accounts can be shelved at once,
       // and the operator's answer — a login — is per account, so the one named is the one
       // with the longest run of deaths behind it.
@@ -3422,7 +3440,7 @@ const runNotify = async (input: {
       // One journal, two questions (the shelf and the freezes) — and one line when it
       // cannot be read, naming both, rather than a silence about whichever came second.
       say(
-        `journal — the shelf and the frozen pairs could not be read: ${(error as Error).message}`,
+        `journal — the shelf, the frozen pairs and the quota pause could not be read: ${(error as Error).message}`,
       );
     }
     try {
@@ -3480,6 +3498,11 @@ const runNotify = async (input: {
             )
             .join(", ")}`
     }` +
+    // THE PAUSE STANDS BEFORE THE CREDENTIALS, because the two are read as one question
+    // ("is the box able to run at all") and only one of them asks for a hand. One clause
+    // per closed window: two accounts standing down at once is the picture B.3 makes
+    // possible, and a single clause could not say which is which.
+    `${quotaShelves.map((shelf) => `; ${describeQuotaPause(shelf, new Date(now))}`).join("")}` +
     `${plan.auth === undefined ? "" : `; ${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} runs in a row)`}` +
     `${plan.gh === undefined ? "" : `; gh has refused merge-ready ${plan.gh.ticks} ticks in a row (rings at ${plan.gh.threshold})`}`;
   if (!write) {
@@ -9177,7 +9200,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // operator's question is "is this thing alive". The pairs themselves were named
       // above with their own reason; these lines are the state of the circuit.
       for (const shelf of decision.shelves) {
-        err(`agent-protocol: daemon — ${describeQuotaShelf(shelf)}, ${next}`);
+        // The clock is taken HERE and not from the tick's `now` above: the line says how
+        // many minutes are left, and a stamp carried down from the start of the tick would
+        // make that number quietly older than the line it stands in.
+        err(`agent-protocol: daemon — ${describeQuotaShelf(shelf, new Date())}, ${next}`);
       }
       if (decision.cut !== undefined) {
         appendEvent(journalPath, {
