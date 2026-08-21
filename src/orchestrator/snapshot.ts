@@ -274,10 +274,10 @@ export const renderParallelism = (p: Parallelism): string => {
  * is the answer to "is the box standing down?", and a section that only appears when the
  * news is bad teaches a reader to conclude nothing from its absence.
  */
-export const renderQuota = (shelves: readonly QuotaShelf[] = []): string =>
+export const renderQuota = (now: Date, shelves: readonly QuotaShelf[] = []): string =>
   shelves.length === 0
     ? "quota:\n  no window is closed — the circuit raises on the ordinary rules"
-    : ["quota:", ...shelves.map((shelf) => `  ⏸ ${describeQuotaShelf(shelf)}`)].join("\n");
+    : ["quota:", ...shelves.map((shelf) => `  ⏸ ${describeQuotaShelf(shelf, now)}`)].join("\n");
 
 /**
  * THE BOX'S CREDENTIALS, one line. Spoken in the open case too, for the reason the windows
@@ -391,7 +391,7 @@ export const renderFrame = (frame: OperatorFrame): string =>
     // dropped rather than joined as a blank line when the code is current, exactly like
     // the merge-ready tier below.
     renderCodeAge(frame.codeAge, frame.now) || undefined,
-    renderQuota(frame.quota),
+    renderQuota(frame.now, frame.quota),
     renderAuth(frame.auth),
     // The empty string a quiet tier renders is dropped here rather than joined as a
     // blank line: the gate is `renderMergeReady`'s alone, so the frame and the section
