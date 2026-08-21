@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-21T15:36:00.683Z",
+  "writtenAt": "2026-08-21T15:37:00.856Z",
   "roles": [
     "curator",
     "dev-core"
@@ -9,7 +9,7 @@
     {
       "role": "dev-core",
       "thread": "023-attempt-counter-semantics",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-21T16:35:56Z"
     },
     {
