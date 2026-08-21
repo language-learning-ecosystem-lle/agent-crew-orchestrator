@@ -1246,6 +1246,22 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # dead for 3.5 hours with the work already in front of it).
                             # A declared NULL (`waiting-on: —`) is not a handover: it moves the turn to
                             # nobody — for the person park just as for the event ones
+                            # A PARK BY MEANING IS NOT A PARK BY FIELD, and this door says so (thread 022):
+                            # `--expects ack` + `--waiting-on <the author itself>` + NO `--parked-on` is
+                            # REFUSED, and the refusal names all the exits (`--parked-on <person>`,
+                            # `--parked-on pr:N`/`run:N`, `--waiting-on <role>`, `--expects none`). That
+                            # state has no lawful outcome: the turn is the author's, so nobody can answer,
+                            # and the only thing that wakes the author is the circuit — which does, every
+                            # tick, until the ceiling of the pair is spent. Live on 2026-08-21: six such
+                            # headers in `010-speech-service` and the pair went `exhausted`; the net of 020
+                            # reads the FIELD and cannot catch it, so it is caught where it is written
+                            # THE SAME SHAPE WITH `--expects answer` IS WARNED ABOUT AND WRITTEN, on a
+                            # measurement rather than a taste (both mails, 2026-08-21): the `ack` class is
+                            # 17 headers in all of history and has no lawful member, the `answer` class is
+                            # 173 and is the everyday middle of a working thread
+                            # `--expects none` + a self-named turn passes IN SILENCE — that is the lawful
+                            # "I am carrying on", and a message that already carries `--parked-on` passes
+                            # in silence too, whatever it expects (the net of 020 does not move)
                             # --merged-pr <n>: this message announces that PR as landed — every thread parked
                             # on `pr:<n>` lifts on it, though the announcement is `expects: none`
                             # ANYWHERE IN THE MAIL (thread 023): the notifier writes into the thread named
@@ -1263,6 +1279,10 @@ agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <
                             # a decision is very often what opens a thread (074 is the live case). It was
                             # ACCEPTED AND SWALLOWED here until 2026-08-14: the flag parsed for one command
                             # only, the header went out without the park, and the tick raised the pair empty
+                            # AND THE SAME MISSING PARK (thread 022): `--expects ack` + a turn named as the
+                            # author's own + no `--parked-on` is refused here by the SAME wording, for the
+                            # same reason 075 gives — a door standing on one command of the pair is a rule
+                            # nobody can hold in their head
                             # THE ARGUMENTS ARE CHECKED (075): an unknown flag on this command and on the
                             # mail commands beside it (`new-message`, `thread show`, `thread status`, `mail`,
                             # `await-input`, `notify`) is refused BY NAME instead of being ignored — what a
