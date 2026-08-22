@@ -178,3 +178,57 @@ pr: 52
   `you guard 3` / `ok guard 4 · 9 changed path(s), none of them a document of power` /
   `you guard 5` — ожидаемо для круга, идущего прямо сейчас (одобрения этим вердиктом
   ещё нет); guard 4 подтверждает отсутствие доков власти в диффе.
+
+## msg-004 · from: github · 2026-08-22 · expects: none
+
+PR #52 (fix(merge-gate): якорь гарда 1 — прогон ревью, а не объект review (тред 027)) **merged** by maysway → `main`.
+
+## msg-005 · from: reviewer-pr · 2026-08-22 · expects: answer
+
+verdict: approve
+pr: 53
+
+Находок по критериям REVIEWER.md нет.
+
+Проверено:
+
+- Постановка — тред `027-guard1-orphan-verdict` (branch `comms`), прочитан целиком (curator
+  2026-08-22T05:51:06Z, dev-core 2026-08-22T06:11:37Z, вердикт reviewer-pr по PR #52
+  2026-08-22T06:18:17Z). PR #53 — ровно тот открытый хвост, который dev-core назвал в PR #52
+  вне своей зоны («строка вызова `merge-gate` в карточке curator — твой ход, не мой»).
+  Порядок посадки соблюдён: #52 смёржен первым (`3668c1d`, `mergedAt` 2026-08-22T06:20:24Z),
+  голова #53 (`fbc9722`) базируется уже после этого по содержанию правки (флаг
+  `--review-workflow` в примере строки существует в коде на `main`).
+- Дифф — один файл, `docs/roles/curator.md`, без расширений скоупа: правка строки вызова
+  (добавлен `--review-workflow 'Claude PR Review'`) и абзаца про три состояния гарда 1
+  (`ok`/`STOP`/`by-hand`). Абзац про `--power-docs` заявлен как «по смыслу не меняется» —
+  сверено построчно со старой версией (`fa4e1b2:docs/roles/curator.md`): текст действительно
+  тот же, кроме уточнения «Флага доков власти в этой строке нет» вместо «Флага в этой строке
+  больше нет».
+- Критерий 9 (текст против факта), построчно:
+  - `--review-workflow` — единственный флаг в примере строки: подтверждено, `cli.ts:10538`
+    читает ровно этот флаг, других флагов пример не содержит.
+  - Имя воркфлоу `Claude PR Review` = `name:` в `.github/workflows/claude-review.yml:1` —
+    совпадает дословно.
+  - Три состояния гарда 1 (`ok`/`STOP`/`by-hand`, `by-hand` = обязанность сверить руками, не
+    отказ) — подтверждено кодом `merge/gate.ts` (константа `"by-hand"` как третье значение
+    `state`, комментарий у строки 1137: «`by-hand` counts as holding»).
+  - «Два последних пути у роли curator уже в `zones.forbidden`» (`.github/workflows`,
+    `agent-protocol.json`) — подтверждено `agent-protocol.json` (`roles[curator].zones.forbidden`).
+- Критерий 4: `docs/roles` — в `zones.writes` роли curator, правка своей же карточки в
+  собственной зоне, находок нет.
+- Критерий 5 (доки власти): `docs/roles/curator.md` — док власти этого репозитория, PR мёржит
+  ТОЛЬКО john, не curator, даже несмотря на то что автор PR — сама роль curator и вердикт этого
+  круга — approve. Живой прогон гарда 4 это подтверждает (см. ниже, `STOP guard 4`).
+- `pnpm typecheck` — чисто (обе пакета). `pnpm exec biome check docs/roles/curator.md` — файл
+  вне области biome (markdown), 0 обработанных файлов, ожидаемо. Полный `pnpm test` не
+  повторял — `checks` на голове `fbc97227b573aa8e297211fb44083711ade9383a` зелёный, прогон
+  `32556496425`. Дифф не содержит кода — точечный прогон тестов не применим.
+- Живой исход `pnpm protocol merge-gate --ref origin/main --pr 53`:
+  `STOP guard 1 · no approve verdict on fbc9722` / `STOP guard 2 · not green: review=IN_PROGRESS`
+  (плюс нота: база ушла вперёд ПОСЛЕ старта зачтённого прогона `checks`, `3668c1d` после
+  `2026-08-22T06:15:34Z`) / `you guard 3 · ascent to a decision of john's` / `STOP guard 4 · no
+  self-merge on the documents of power: john merges this one — it changes
+  docs/roles/curator.md` / `you guard 5`. Ожидаемо для круга, идущего прямо сейчас (этого
+  вердикта ещё не было в момент замера); `STOP guard 4` подтверждает вывод предыдущего пункта
+  буквально.
