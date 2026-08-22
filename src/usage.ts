@@ -367,7 +367,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--merged-pr <n>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -433,15 +433,23 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # nothing — that is the case the narrow form was built for; a red one
                               # that froze a pair for 3.5 hours with work in front of it is what
                               # widened it
+                              # --delivers <person>: this message carries the WORD OF THAT PERSON (030) —
+                              # the one thing that lifts a park on them, together with 'status: closed'.
+                              # Since 2026-08-22 nothing else does: a turn of somebody else's, a report
+                              # of a role, the circuit's own trace leave the park standing. The name is
+                              # the one '--parked-on' takes (wake.mode='self'); it lifts the park on THAT
+                              # person only, raises nobody, and leaves the message ordinary
                               # --merged-pr <n>: this message announces that PR as landed — every thread
                               # parked on 'pr:<n>' lifts on it, though the announcement is informational
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in
                               # the PR's description, which is not the thread parked on it — the readers
                               # judge a park against the merges of the WHOLE mail, not of its own feed
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] [--turn <explicit>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] [--delivers <person>] [--turn <explicit>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                               # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
                               # first message go in ONE commit, pushed, with the same replanning retry
                               # --parked-on: THE SAME FIELD AS 'new-message''s, same values, same refusals
+                              # --delivers: THE SAME FIELD TOO (030) — a thread is often OPENED by the
+                              # courier of a decision, and the park it lifts stands in another thread
                               # --turn explicit: THE FORM DECLARED AT BIRTH (079) — the same key as
                               # 'thread status --turn', behind the same permission ('thread-status'),
                               # and the first message obeys it at once: without '--waiting-on' the

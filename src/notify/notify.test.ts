@@ -494,10 +494,13 @@ describe("a thread frozen behind a person — the third class of event (thread 0
   });
 });
 
-describe("a park LIFTED with the question unanswered — a line, never a call (thread 030, (в2))", () => {
-  // THE DEFECT, in the shape it was measured in on 2026-08-22: a park on john is lifted by the
-  // first message that moves anybody — here an automatic `github` announcement nobody wrote —
-  // and the thread leaves the courier's composition ENTIRELY. Not the call: all three numbers.
+describe("a park ANNOUNCED AND LIFTED — a line, never a call (thread 030, (в2))", () => {
+  // THE DEFECT, in the shape it was measured in on 2026-08-22: a park on john was lifted by the
+  // first message that moved anybody — an automatic `github` announcement nobody wrote — and the
+  // thread left the courier's composition ENTIRELY. Not the call: all three numbers. Since (в1)
+  // of the same day the person park lifts on `delivers: <that person>` alone, so what reaches
+  // this plan is a key that was announced and no longer stands; the line about it is unchanged
+  // in mechanism and says one thing less — see the wording below.
   const PARKED: ParkedThread = {
     thread: "030-x",
     person: "john",
@@ -523,8 +526,11 @@ describe("a park LIFTED with the question unanswered — a line, never a call (t
     const result = afterLift();
 
     expect(result.liftedParked).toEqual([PARKED]);
+    // THE SENTENCE CLAIMS ONLY WHAT IT MEASURED ((в1), 2026-08-22): it used to say "with no
+    // answer named", which was true of the wide lift and is false of the narrow one — a person
+    // park now goes on `delivers`, the field that NAMES the answer. The mechanism is untouched.
     expect(renderNotification(result.lines)).toBe(
-      "the park was lifted with no answer named, the question stands: " +
+      "the park was lifted, the last line about the question: " +
         "❓ 030-x ждёт твоего решения: Сузить ли снятие парковки до слова самого человека?",
     );
     // It is NOT in the composition and NOT a call: the three numbers say "nothing is parked",

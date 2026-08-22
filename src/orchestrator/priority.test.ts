@@ -230,7 +230,9 @@ describe("describeOrder (R5) — the queue is readable without the code", () => 
       new Map([["023-a", "john"]]),
     );
     expect(lines[0]).toContain("⏸ PARKED behind a decision of john (R27)");
-    expect(lines[0]).toContain("not raised until the next substantive message");
+    // AND WHAT WILL LET IT GO, as it is since 2026-08-22 (thread 030): the word of that person
+    // carried into the mail. The row is read by an operator deciding what to do about the freeze.
+    expect(lines[0]).toContain("not raised until a message carries that word ('delivers: john')");
   });
 
   it("a park behind a MERGE calls it a merge, not a decision of 'pr:127' (thread 023)", () => {

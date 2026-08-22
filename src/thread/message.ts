@@ -296,13 +296,37 @@ export type MessageFields = {
    * the norm prescribes.
    *
    * So this is not a second `waiting-on`: the turn stays where it is (a scalar, one holder),
-   * and this field says that it is FROZEN. The state lifts by itself — the first substantive
-   * message after it (see `parkedOnOf`) is the answer arriving, whoever relays it.
+   * and this field says that it is FROZEN. A park on a PERSON lifts on the word of that person
+   * ({@link MessageFields.delivers}) and on `status: closed`, and on nothing else since
+   * 2026-08-22; the event parks (`pr:`, `run:`) keep the wide walk of `standingParkOf`.
    *
    * Only a role that wakes ITSELF (`wake.mode: 'self'`) may be named here; a role the daemon
    * can raise is not something to park behind — that is `waiting-on`.
    */
   readonly parkedOn?: string;
+  /**
+   * WHOSE WORD THIS MESSAGE CARRIES — the one lift of a park on a person (thread 030, defect
+   * (в1); decision of john 2026-08-22, `PROTOCOL.md` "ЛИФТ ПАРКОВКИ НА ЧЕЛОВЕКЕ СУЖЕН ДО СЛОВА
+   * САМОГО ЧЕЛОВЕКА").
+   *
+   * A person does not write into the mail: their decision arrives in a letter of a courier
+   * role, and by the header such a letter is indistinguishable from any other message of a role
+   * with a turn in it — whether THE ANSWER HAS COME does not follow from `from`/`expects`/
+   * `waiting-on` at all, and reading it out of the body is forbidden to the R27 net by the norm
+   * of 020 (the net is built on header fields). So a narrow lift needs a new sign by
+   * construction, and the sign is the declaration of the deliverer, the only one who knows the
+   * fact.
+   *
+   * The value is a PARTICIPANT THE FEED CANNOT MOVE (`wake.mode: 'self'`) — the same list
+   * `parked-on: <person>` takes, checked at the writing door for the same reason (a reader of an
+   * append-only feed cannot fix what is written; here the demand is on the SHAPE only).
+   *
+   * WHAT IT DOES NOT DO: it lifts the park on the person it NAMES and no other (a park on
+   * somebody else and both event parks are untouched), it raises nobody and spends nothing, and
+   * it leaves the message ordinary — `waiting-on` and `expects` are declared and judged in it
+   * exactly as always. No permission gates it: the courier of a decision is any role.
+   */
+  readonly delivers?: string;
   /**
    * THE MERGE THIS MESSAGE ANNOUNCES (thread 023) — the number of a PR that has just landed
    * in the default branch. Written by the merge notifier, read by `parkingOf`: a thread
@@ -712,6 +736,21 @@ export const parseMessageFile = (raw: string): Message => {
     return value;
   });
 
+  // `delivers` names a PERSON, and the check that this name is one the feed cannot move lives
+  // at the writing door beside `parked-on`'s, for the reason stated there. Here, as there, only
+  // the SHAPE is demanded — and the event forms are NOT accepted: a merge delivers nobody's
+  // word, and a value like `pr:5` here would be a park lifted by a machine event, which is the
+  // whole class the narrow lift was bought to stop.
+  const delivers = soft(() => {
+    const value = raws.get("delivers");
+    if (value !== undefined && !ROLE.test(value)) {
+      throw new MessageFormatError(
+        `'delivers: ${value}' — expected the id of the person whose word this message carries`,
+      );
+    }
+    return value;
+  });
+
   // The fact that LIFTS an event park, and the only one the courier of merges can state:
   // "PR N is in the default branch now". A number, because that is what the notifier has.
   const mergedPr = soft(() => {
@@ -739,6 +778,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(launch === undefined ? {} : { launch }),
     ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
     ...(parkedOn === undefined ? {} : { parkedOn }),
+    ...(delivers === undefined ? {} : { delivers }),
     ...(mergedPr === undefined ? {} : { mergedPr }),
     ...(tasks.length === 0 ? {} : { tasks }),
     ...(suffix === undefined ? {} : { suffix }),
@@ -784,6 +824,9 @@ export const renderMessageFile = (message: Message): string => {
     // Right after `waiting-on`'s neighbours, because it qualifies the turn itself: whose it
     // is, and whether it can move at all before a person says something.
     ...(fields.parkedOn === undefined ? [] : [`parked-on: ${fields.parkedOn}`]),
+    // Beside `parked-on` for the same reason `merged-pr` is: one freezes a turn behind a
+    // person, this one says that the person has spoken.
+    ...(fields.delivers === undefined ? [] : [`delivers: ${fields.delivers}`]),
     // Beside `parked-on` because it is its counterpart: one freezes a turn behind an event,
     // this one says the event happened.
     ...(fields.mergedPr === undefined ? [] : [`merged-pr: ${fields.mergedPr}`]),

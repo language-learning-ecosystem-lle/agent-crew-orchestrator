@@ -541,7 +541,7 @@ apart along lines the package already had:
   quiet tick — the courier runs every few minutes, and a downgrade that turns into a
   disappearance is the trade of 051 made backwards. The courier's line names it as a fourth
   number when there is one: `N parked, K of them asking, M of those new, R restated,
-  L lifted unanswered, X with nobody to call: …` (the last three clauses appear only when
+  L lifted, X with nobody to call: …` (the last three clauses appear only when
   they are not zero). What
   the pair key costs is stated rather than hidden: if the person answers and a NEW question
   is parked on the same thread before the courier has ticked once, the composition was never
@@ -550,16 +550,16 @@ apart along lines the package already had:
   file on the next tick and the next park of that pair rings again, because the courier's
   memory of parks is the current composition and not a journal.
 
-- **A park LIFTED with nothing answered is a line too, and for the opposite reason**
-  (thread 030, defect (в2), decision of john «ОБА» of 2026-08-22). The same wide lift as
-  above works the other way round as well: the first message that moves anybody lifts the
-  park, and the thread then leaves the composition ENTIRELY — not the call, all three
-  numbers. The unanswered question stops existing for the signal layer. Measured on
+- **A park that was ANNOUNCED AND LIFTED is a line too, and for the opposite reason**
+  (thread 030, defect (в2), decision of john «ОБА» of 2026-08-22). The wide lift that made
+  the repeat above works the other way round as well: the first message that moves anybody
+  lifted the park, and the thread then left the composition ENTIRELY — not the call, all
+  three numbers. The unanswered question stopped existing for the signal layer. Measured on
   2026-08-22: eight live parks of john in `.orchestrator/notify.state`, and the thread whose
   question had just been asked (030, lifted by an automatic `github` message about a merge)
   in none of them. So a key that was ANNOUNCED and is no longer in the composition produces
   a line — the project's `parked` sentence prefixed by the package's own "the park was
-  lifted with no answer named, the question stands" — on the same terms as a restatement: it
+  lifted, the last line about the question" — on the same terms as a restatement: it
   rides in a letter somebody else's event triggered, never raises one, and stays owed
   (the key is held in the state with the stamp that was announced) until a letter actually
   carries it. The question and `asks` are re-read from the declaring message by that stamp
@@ -567,13 +567,16 @@ apart along lines the package already had:
   `expects: none` asked nothing, so its lift says nothing; a CLOSED thread declares nothing,
   so closing a thread is the acceptance and no line survives it; a key nobody can read back
   is dropped rather than announced in the words of nobody. The courier's line names it as a
-  fifth number when there is one (`, L lifted unanswered`). **The price is named and
-  accepted, not hidden:** the courier CANNOT tell "the park was lifted by the delivery of
-  john's answer" from "somebody else's move lifted it" — john does not write into the mail,
-  his word arrives in a letter of the courier role, and no machine mark of "answered" exists
-  in the fields — so a legitimately answered park also produces one line. One line too many
-  against a question that disappears; a mark guessed from the text was NOT invented, because
-  it would be the silent miss again wearing the look of precision.
+  fifth number when there is one (`, L lifted`). **The wording stopped claiming the answer
+  was not named, and the mechanism did not move** (thread 030, (в1), the same day): the line
+  used to read "the park was lifted with no answer named, the question stands", which was
+  true while any move lifted a park and is false now that a person park lifts on
+  `delivers: <that person>` and on nothing else — it would print the claim in the one case
+  where the answer was named, and named by the very field that did the lifting. The class did
+  not empty out (a park also stops standing when a LATER park is declared in the thread), so
+  the line states what it measured — a key that rang and no longer stands — and leaves
+  "was it answered" to the reader, who has the thread. A mark guessed from the text was NOT
+  invented then and is not now: it would be the silent miss wearing the look of precision.
 
 - **A park the courier CANNOT CALL ANYBODY ABOUT is counted apart and named, never
   dropped** (thread 031). A park is an event for the person it names, and only if that
@@ -1308,7 +1311,7 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--merged-pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--write] [--no-push]
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
@@ -1323,17 +1326,33 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # (R5, S16) — only from a role holding `thread-priority`; the queue is priority,
                             # then the age of the wait, then the thread number
                             # --parked-on <person>: the turn STAYS on its holder and is FROZEN until that
-                            # person decides (R27) — the pair is not raised and spends nothing; it lifts by
-                            # itself, by the SAME NARROW WALK as the event parks below (thread 023,
-                            # 2026-08-04): the first message that MOVES somebody. The human's own word
-                            # lifts it as it always did — a courier delivering a decision either names
-                            # who acts on it (`waiting-on: <role>`) or asks for something. What no longer
-                            # lifts it is the circuit's own trace: on 2026-08-03 the merge notifier of
-                            # #192 thawed a park on john, and the raise it bought was an empty session
-                            # three seconds ahead of the `restart` button it then held up.
+                            # person decides (R27) — the pair is not raised and spends nothing; it lifts on
+                            # THE WORD OF THAT PERSON and on nothing else (thread 030, decision of john
+                            # 2026-08-22): a message declaring `delivers: <that person>`, by whichever role
+                            # relays it, and `status: closed`, which outranks a park as it outranks a turn.
+                            # A turn of somebody else's, a counter-report of a role, the circuit's own
+                            # trace leave it STANDING — until 2026-08-22 all of them lifted it, and that
+                            # is the class it is set against. The event parks below keep the wide walk
+                            # (the first message that MOVES somebody): they wait for a machine event.
                             # Only a role the circuit cannot wake (`wake.mode: 'self'`) may be named
                             # LEGAL together with `--expects none`: the PARK AS A MODE — a line of state
                             # that calls nobody (016, 052). The door refused it from 034 until 2026-08-04
+                            # --delivers <person>: THIS MESSAGE CARRIES THE WORD OF THAT PERSON (thread 030,
+                            # decision of john 2026-08-22) — the one lift of a park on them, beside
+                            # `status: closed`. A person does not write into the mail: the decision arrives
+                            # in a letter of a courier role, and by the header such a letter is
+                            # indistinguishable from any other message with a turn in it — so the courier
+                            # SAYS it, in the one field a reader can trust (reading the body is forbidden
+                            # to this net by the norm of 020). It lifts the park on the person NAMED and no
+                            # other, raises nobody, spends nothing, and leaves the message ordinary:
+                            # `--waiting-on` and `--expects` are declared and judged in it as always. No
+                            # permission gates it — the courier is whichever role the human spoke to.
+                            # The value is the list `--parked-on <person>` takes (`wake.mode: 'self'`), and
+                            # the two refusals are the same: a name no config knows, and a role the circuit
+                            # CAN wake (nothing is ever parked behind it — the refusal says `--waiting-on`)
+                            # THE PRICE, NAMED: a courier who forgets the flag leaves the park standing,
+                            # and the human reads it in the NEXT digest (`N parked, K of them asking`) —
+                            # which is what made the narrowing affordable at all (thread 030)
                             # --parked-on pr:<n>: the OTHER thing a turn is frozen behind (thread 023) — the
                             # MERGE of a pull request rather than a person's decision. The courier says
                             # NOTHING about such a thread (neither a call nor a stall: the decision has been
@@ -1415,7 +1434,12 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            # --delivers: THE SAME FIELD TOO (thread 030), by the same door and with the
+                            # same two refusals — a thread is often OPENED by the courier of a decision,
+                            # and the park that word lifts stands in ANOTHER thread. Written here on the
+                            # day the field is born, because 075 is what a flag parsed by one command of
+                            # the pair and swallowed by the other costs in an append-only feed
                             # --parked-on: THE SAME FIELD AS `new-message`'s, same values and same refusals
                             # (thread 075) — an opening message is a message, and a question to the owner of
                             # a decision is very often what opens a thread (074 is the live case). It was

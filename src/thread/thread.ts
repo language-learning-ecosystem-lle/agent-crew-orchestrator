@@ -477,9 +477,10 @@ export const parkingOf = (
   mergedElsewhere?: ReadonlySet<number>,
 ): Parking | undefined => {
   if (thread.meta.status === "closed") return undefined;
-  // ONE WALK FOR ALL THREE KINDS (thread 023, 2026-08-04): a park is looked for BEHIND the
-  // messages that move nobody, and the walk stops at the first one that moves somebody — that
-  // message is the answer arriving. The kind of the park no longer changes the reading.
+  // ONE WALK, TWO CRITERIA (thread 023 for the event parks, thread 030 for the person one): an
+  // event park is looked for BEHIND the messages that move nobody and lifts on the first one
+  // that moves somebody; a park on a person lifts on the word of that person (`delivers`) and
+  // on nothing else. `status: closed` outranks both, above.
   const declared = standingParkOf(thread);
   const at = declared === undefined ? undefined : thread.messages[declared];
   const on = at?.fields.parkedOn;
@@ -548,9 +549,31 @@ export const personParksOf = (thread: Thread): readonly Parking[] => {
 };
 
 /**
- * WHERE A PARK STILL STANDS — the index of the message that declared it. ALL THREE KINDS
- * (`person`, `pr:`, `run:`) are read by this one walk since 2026-08-04; the shape of the walk
- * is the event parks', and the person park was lifted into it by john's decision of that day.
+ * WHERE A PARK STILL STANDS — the index of the message that declared it. ONE WALK, and since
+ * 2026-08-22 TWO CRITERIA in it: the event parks (`pr:`, `run:`) lift on the first message that
+ * MOVES ANYBODY, and the park on a PERSON lifts on `delivers: <that person>` and on nothing
+ * else. The walk therefore no longer stops at a moving message — it remembers it, because behind
+ * that message there may stand a park the message does not touch.
+ *
+ * WHY THE PERSON PARK LEFT THE COMMON WALK (thread 030, defect (в1), decision of john
+ * 2026-08-22, `PROTOCOL.md`). The wide lift was defended by an ASYMMETRY of the price: lifting
+ * early cost one empty raise, not lifting cost a thread frozen with the answer already inside it
+ * until a human noticed (046 stood 12 hours). Thread 030 closed the expensive half by
+ * measurement — a standing park with an unanswered question is counted and RINGS (`N parked, K
+ * of them asking`), and one that has been lifted goes into the digest as a line instead
+ * of vanishing from the composition — so the narrowing now pays that price instead: a forgotten
+ * `delivers` is read by the human in the NEXT digest, not half a day later. What it buys is the
+ * defect the wide lift kept producing: the park was lifted by the class of messages it was set
+ * against — the circuit's own trace and the role's own report — and the raise it bought found a
+ * thread still waiting for the person.
+ *
+ * The delivery has to be a FIELD: a person does not write into the mail, their word arrives in a
+ * letter of a courier role, and "has the answer come" does not follow from `from`/`expects`/
+ * `waiting-on` at all, while reading it out of the body is forbidden to this net by the norm of
+ * 020. Narrowing to `from:` of the parker instead was considered and rejected — it lifts the
+ * park on the role's own echo, which repairs one half and leaves the other silent.
+ *
+ * Everything below describes the walk of the EVENT parks, which is unchanged.
  *
  * The walk exists because the circuit announces its OWN events (`from: github`,
  * `expects: none`) about the very thing being waited for, and they are not the thing being
@@ -569,12 +592,12 @@ export const personParksOf = (thread: Thread): readonly Parking[] => {
  * announcing a merge curator had pressed herself three minutes earlier. It bought an empty
  * curator session and a gap of THREE SECONDS between that raise and the `restart` button the
  * raise then held up (`023-daemon-parallelism/messages/2026-08-03T19-57-08Z-curator.md` §1).
- * All three kinds of park now have ONE criterion of lifting, and the human's own word lifts it
- * as it always did: the courier delivering a decision moves somebody by construction — it
- * either names who acts on it (`waiting-on: <role>`) or asks for something (`expects` != none).
- * A muddy delivery (`expects: none` and no `waiting-on`) does NOT lift, and that is deliberate:
- * such a message asks nobody for anything and hands the turn to nobody, so there is nothing for
- * a raised pair to do; the thaw costs one more message from the same courier.
+ * From that day until 2026-08-22 all three kinds had ONE criterion of lifting, on the reading
+ * that the courier of a decision moves somebody by construction — it either names who acts on it
+ * (`waiting-on: <role>`) or asks for something (`expects` != none). What that reading could not
+ * tell apart is the courier from anybody ELSE holding a turn, and thread 030 measured the cost;
+ * the person park is now lifted by the courier SAYING SO (`delivers`), and the paragraphs below
+ * describe the walk the event parks kept.
  *
  * So the walk backwards is over the messages that MOVE NOBODY, and stops at the first message
  * that does. Two things move somebody, and the header carries both:
@@ -606,15 +629,35 @@ export const personParksOf = (thread: Thread): readonly Parking[] => {
  * moves the thread to nobody, so it is skipped like any other announcement.
  */
 const standingParkOf = (thread: Thread): number | undefined => {
+  // What the walk has seen SINCE the park it is about to find — the two facts the two lifts are
+  // made of. They are collected on the way down and read at the park, because which of them
+  // applies is known only when the kind of the park is: the same message lifts an event park and
+  // leaves a person park standing.
+  let moved = false;
+  const delivered = new Set<string>();
   for (let at = thread.messages.length - 1; at >= 0; at -= 1) {
     const message = thread.messages[at];
     if (message === undefined) return undefined;
     // THE FIELD IS READ BEFORE THE SKIP, as it is above (thread 034): a park declared on an
     // informational message is still a park — and here the message declaring one is itself a
-    // legal step of the walk, so the order is what keeps it from being walked over. The kind of
-    // the park is not asked about at all any more (023, 2026-08-04): one criterion for three.
-    if (message.fields.parkedOn !== undefined) return at;
-    if (movesSomebody(message)) return undefined;
+    // legal step of the walk, so the order is what keeps it from being walked over.
+    const on = message.fields.parkedOn;
+    if (on !== undefined) {
+      const named = parkedOnKind(on);
+      // THE PERSON PARK LIFTS ON THE WORD OF THAT PERSON AND ON NOTHING ELSE (thread 030, defect
+      // (в1), decision of john 2026-08-22): `delivers: <the same person>`, said by whoever
+      // carries the word. A park on somebody else is not lifted by it — the state names one
+      // person, and so does the delivery.
+      if (named.kind === "person") return delivered.has(named.person) ? undefined : at;
+      // The event parks keep the walk exactly as it was: they wait for a machine event, and the
+      // first message that MOVES anybody says the wait is over.
+      return moved ? undefined : at;
+    }
+    const delivers = message.fields.delivers;
+    if (delivers !== undefined) delivered.add(delivers);
+    // The walk does not stop here any more, it REMEMBERS: a message that moves somebody lifts an
+    // event park, and behind it there may still stand a park on a person that it does not touch.
+    if (movesSomebody(message)) moved = true;
   }
   return undefined;
 };

@@ -394,6 +394,39 @@ describe("the park of a turn in the header (R27)", () => {
     expect(parseMessageFile(renderMessageFile(parsed)).fields.parkedOn).toBe("run:163");
   });
 
+  it("THE DELIVERY OF A WORD round-trips beside the park it lifts (thread 030)", () => {
+    const parsed = parseMessageFile(raw("delivers: john\n"));
+
+    expect(parsed.fields.delivers).toBe("john");
+    expect(parsed.warnings).toBeUndefined();
+    // An ordinary message otherwise: the turn is declared and judged as always.
+    expect(parsed.fields.waitingOn).toBe("curator");
+    expect(renderMessageFile(parsed)).toContain("delivers: john");
+    expect(parseMessageFile(renderMessageFile(parsed)).fields.delivers).toBe("john");
+  });
+
+  it("absent is the ordinary case here too — a message delivers nobody's word by default", () => {
+    expect(parseMessageFile(raw("")).fields.delivers).toBeUndefined();
+  });
+
+  it("a delivery this reader cannot make sense of is DROPPED, not thrown — the same perpetual class", () => {
+    const message = parseMessageFile(raw("delivers: John Smith\n"));
+    expect(message.fields.delivers).toBeUndefined();
+    expect(message.warnings).toEqual([
+      "'delivers: John Smith' — expected the id of the person whose word this message carries",
+    ]);
+    expect(message.fields.from).toBe("curator");
+  });
+
+  it("AN EVENT IS NOT A WORD — 'delivers: pr:5' is dropped with its reason", () => {
+    // A merge delivers nobody's decision: the park that lifts on a merge is the event park, and
+    // accepting the form here would be a person park lifted by a machine, which is the very
+    // class the narrow lift was bought to stop.
+    const message = parseMessageFile(raw("delivers: pr:5\n"));
+    expect(message.fields.delivers).toBeUndefined();
+    expect(message.warnings?.[0]).toMatch(/^'delivers: pr:5'/);
+  });
+
   it("the four fields of the turn still refuse the file — staleness is worse than a refusal", () => {
     expect(() => parseMessageFile(raw("").replace("expects: answer", "expects: maybe"))).toThrow(
       MessageFormatError,
