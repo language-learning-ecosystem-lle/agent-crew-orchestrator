@@ -470,6 +470,33 @@ export type NotificationPlan = {
    */
   readonly restatedParked: readonly ParkedThread[];
   /**
+   * THE PARKS THAT WERE LIFTED WITHOUT AN ANSWER BEING NAMED — a line, never a call
+   * (thread 030, defect (в2), decision of john «ОБА» of 2026-08-22).
+   *
+   * A park is lifted by the FIRST message that moves anybody (`standingParkOf`, R27), and the
+   * message that lifts it is very often not an answer: the merge notifier of some PR, a
+   * courier's report, a role's handover. From that instant `parkingOf` returns nothing and the
+   * thread falls out of the courier's composition ENTIRELY — not out of the call, out of all
+   * three numbers. The unanswered question stops existing for the signal layer. Measured in
+   * the field on 2026-08-22: eight live parks of john in `.orchestrator/notify.state` and the
+   * one thread whose question had just been asked (030) in none of them, its park lifted by an
+   * automatic `github` message nobody wrote.
+   *
+   * So the disappearance is NAMED. It rings for nothing — john's own word: "an unanswered
+   * question to a person lives as a LINE of the digest rather than vanishing from the
+   * composition" — and it rides in whatever letter is already going out, exactly like
+   * {@link restatedParked}.
+   *
+   * THE PRICE IS NAMED AND ACCEPTED (curator, the statement of this defect): the courier
+   * CANNOT tell "the park was lifted by the delivery of john's answer" from "somebody else's
+   * move lifted it". john does not write into the mail — his word arrives in a letter of the
+   * courier role — so no machine mark of "answered" exists in the fields. A legitimately
+   * answered park therefore also produces ONE line. One line too many against a question that
+   * disappears; the mark was not invented, because a mark guessed from the text would be the
+   * silent miss again, only wearing the look of precision.
+   */
+  readonly liftedParked: readonly ParkedThread[];
+  /**
    * THE PARKED COMPOSITION AS THE STATE MUST HOLD IT WHEN THIS RUN SAYS NOTHING.
    *
    * Identical to {@link parked} except for the {@link restatedParked}, which keep the stamp
@@ -477,6 +504,13 @@ export type NotificationPlan = {
    * a disappearance: the courier ticks every few minutes, the quiet tick after a restatement
    * would record the new stamp as told, and the line would be owed to a letter that never
    * learns it. A restated park therefore stays pending until a letter actually carries it.
+   *
+   * THE {@link liftedParked} ARE HELD HERE FOR THE SAME REASON AND AT A HIGHER PRICE: they are
+   * no longer in the composition at all, so a quiet tick that wrote {@link parked} would forget
+   * the key and the line would be owed to nobody — the repair would swap one silent miss for
+   * another. They stay in the state, with the stamp that was announced, until a letter actually
+   * carries the line; the letter's own write uses {@link parked} and drops them, which is what
+   * makes the line happen exactly once.
    */
   readonly parkedIfSilent: readonly ParkedThread[];
   /** The authorisation shelf in force now, if the predicate rings — also part of the state. */
@@ -534,6 +568,18 @@ const parkedKey = (park: ParkedThread): string => `${park.person}\t${park.thread
  * fact the project cannot know — that this is the same question said again.
  */
 const restatedPrefix = "still standing, asked again (not a new question): ";
+
+/**
+ * How a park that was LIFTED with its question unanswered is said — the package's own words
+ * for the same reason {@link restatedPrefix} is the package's, and saying the one fact the
+ * project's sentence cannot: that this thread is no longer frozen behind the reader, so its
+ * question is now standing in the open with nobody holding the turn for it.
+ *
+ * It must not read like a fresh call ("your decision: …" alone) — the statement of (в2) says
+ * so in as many words — because a reader who cannot tell "the circuit is holding this for you"
+ * from "this fell out of the freeze unanswered" is being taught to skip both.
+ */
+const liftedPrefix = "the park was lifted with no answer named, the question stands: ";
 
 /**
  * The state as a file: one event per line, ordered, so a diff of it is readable.
@@ -651,6 +697,19 @@ export const planNotifications = (input: {
   /** Threads frozen behind a person (R27) — no threshold: the caller reads the feed, this picks. */
   readonly parked?: readonly ParkedThread[];
   /**
+   * EVERY PERSON-PARK DECLARED IN AN OPEN THREAD — the standing ones and the lifted ones alike
+   * (thread 030, (в2)). It is what {@link NotificationPlan.liftedParked} is read from: the
+   * state remembers a pair and a stamp, and the question and the `asks` of that stamp live
+   * only in the feed the caller is holding (`personParksOf`).
+   *
+   * ABSENT MEANS SILENT, and that is the safe direction rather than an oversight: a caller
+   * that does not hand over the declarations cannot be told apart from a mail where every
+   * park was lifted, and inventing lines for keys nobody can read back would announce a
+   * question in the words of nobody. A CLOSED thread contributes nothing here, which is how
+   * "a closed thread produces no line" is enforced — closing is the acceptance.
+   */
+  readonly declaredParks?: readonly ParkedThread[];
+  /**
    * Threads frozen behind an EVENT rather than a person (R27, variant A of thread 023):
    * parked on the merge of a PR. They produce NO LINE AT ALL — neither a call ("your
    * decision is wanted" is false: the decision was made, the merge is somebody's hand on a
@@ -704,12 +763,35 @@ export const planNotifications = (input: {
     return announced !== undefined && announced !== park.since;
   });
   const restatedKeys = new Set(restatedParked.map(parkedKey));
-  const parkedIfSilent = parked.map((park) => {
-    const announced = restatedKeys.has(parkedKey(park))
-      ? seenParks.get(parkedKey(park))
-      : undefined;
-    return announced === undefined ? park : { ...park, since: announced };
-  });
+  // THE PARK THAT WAS ANNOUNCED AND IS NO LONGER THERE (thread 030, (в2)). The key is the pair,
+  // as everywhere since Д-2; the DECLARATION is found by the pair AND the announced stamp,
+  // because that is the message whose question was told and whose `asks` decides whether
+  // anything was ever asked. A key that finds no declaration says nothing: the thread was
+  // closed (the acceptance), or its feed no longer carries that message — and a line put
+  // together out of a key alone would name a question nobody wrote.
+  const standingKeys = new Set(parked.map(parkedKey));
+  const declared = new Map(
+    (input.declaredParks ?? []).map((park) => [`${parkedKey(park)}\t${park.since}`, park]),
+  );
+  const liftedParked = input.seen.parked
+    .filter((park) => !standingKeys.has(parkedKey(park)))
+    .flatMap((park) => {
+      const at = declared.get(`${parkedKey(park)}\t${park.since}`);
+      // `asks` is the message's own word here as it is in `freshParked`: a park declared by an
+      // informational message asked nobody for anything, so its lift owes nobody a line.
+      return at === undefined || !at.asks ? [] : [at];
+    })
+    .filter((park) => byRole.get(park.person)?.style === "direct")
+    .sort((a, b) => a.thread.localeCompare(b.thread));
+  const parkedIfSilent = [
+    ...parked.map((park) => {
+      const announced = restatedKeys.has(parkedKey(park))
+        ? seenParks.get(parkedKey(park))
+        : undefined;
+      return announced === undefined ? park : { ...park, since: announced };
+    }),
+    ...liftedParked,
+  ];
 
   // A PARKED THREAD IS NEVER ALSO A STALLED ONE (thread 023). Both would be true of it —
   // the turn is not moving, by construction — but "your decision is wanted, here is the
@@ -875,6 +957,25 @@ export const planNotifications = (input: {
         }),
     });
   }
+  // AND THE LIFTED ONES AFTER BOTH (thread 030, (в2)): the same slot again, because what the
+  // reader is owed is the question in the words it was asked in — and the package's own
+  // sentence in front of it, saying the one thing the project cannot know, that this question
+  // is no longer holding the thread. It rides in a letter somebody else's event triggered; the
+  // send condition in `notify --write` does not read this list, and that is the whole of "a
+  // line, never a call".
+  for (const park of liftedParked) {
+    lines.push({
+      kind: "parked",
+      thread: park.thread,
+      role: park.person,
+      text:
+        liftedPrefix +
+        renderTemplate(template("parked"), {
+          thread: park.thread,
+          question: park.question,
+        }),
+    });
+  }
   for (const thread of threads) {
     const here = waiting.filter((pair) => pair.thread === thread);
     const directs = here.filter((pair) => byRole.get(pair.role)?.style === "direct");
@@ -932,6 +1033,7 @@ export const planNotifications = (input: {
     freshParked,
     askingParked,
     restatedParked,
+    liftedParked,
     parkedIfSilent,
     exhausted,
     freshFreezes,

@@ -458,6 +458,137 @@ describe("a thread frozen behind a person — the third class of event (thread 0
   });
 });
 
+describe("a park LIFTED with the question unanswered — a line, never a call (thread 030, (в2))", () => {
+  // THE DEFECT, in the shape it was measured in on 2026-08-22: a park on john is lifted by the
+  // first message that moves anybody — here an automatic `github` announcement nobody wrote —
+  // and the thread leaves the courier's composition ENTIRELY. Not the call: all three numbers.
+  const PARKED: ParkedThread = {
+    thread: "030-x",
+    person: "john",
+    since: "2026-08-22T17:44:22Z",
+    question: "Сузить ли снятие парковки до слова самого человека?",
+    asks: true,
+  };
+  const PARK_TEMPLATE = { ...TEMPLATES, parked: "❓ {thread} ждёт твоего решения: {question}" };
+  const ANNOUNCED: NotifyState = { waiting: [], stalled: [], parked: [PARKED] };
+
+  const afterLift = (rest: Record<string, unknown> = {}) =>
+    planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: ANNOUNCED,
+      parked: [],
+      declaredParks: [PARKED],
+      templates: PARK_TEMPLATE,
+      ...rest,
+    });
+
+  it("names the thread, the person and the question — and does not read as a fresh call", () => {
+    const result = afterLift();
+
+    expect(result.liftedParked).toEqual([PARKED]);
+    expect(renderNotification(result.lines)).toBe(
+      "the park was lifted with no answer named, the question stands: " +
+        "❓ 030-x ждёт твоего решения: Сузить ли снятие парковки до слова самого человека?",
+    );
+    // It is NOT in the composition and NOT a call: the three numbers say "nothing is parked",
+    // which is true, and the line says what became of the question, which is the repair.
+    expect(result.parked).toEqual([]);
+    expect(result.askingParked).toEqual([]);
+    expect(result.freshParked).toEqual([]);
+  });
+
+  it("holds the key through a quiet tick and drops it once a letter has carried the line", () => {
+    // REQUIREMENT 3 OF THE STATEMENT, and the lesson of 051 taken the other way round: the
+    // courier ticks every few minutes, so a state written from the composition alone would
+    // forget the key on the first silent tick and the line would be owed to nobody.
+    const owed = afterLift();
+
+    expect(owed.parkedIfSilent).toEqual([PARKED]);
+
+    // The letter goes out (the caller writes `parked`, which no longer holds the key), and the
+    // tick after it is silent about a question already named.
+    const told = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: { waiting: [], stalled: [], parked: owed.parked },
+      parked: [],
+      declaredParks: [PARKED],
+      templates: PARK_TEMPLATE,
+    });
+
+    expect(told.liftedParked).toEqual([]);
+    expect(told.lines).toEqual([]);
+    expect(told.parkedIfSilent).toEqual([]);
+  });
+
+  it("a CLOSED thread gives no line and does not linger in the state — closing is the acceptance", () => {
+    // `personParksOf` returns nothing for a closed thread, so the key finds no declaration:
+    // no line, and — the half that matters as much — the key is not held pending for ever.
+    const result = afterLift({ declaredParks: [] });
+
+    expect(result.liftedParked).toEqual([]);
+    expect(result.lines).toEqual([]);
+    expect(result.parkedIfSilent).toEqual([]);
+  });
+
+  it("a park STILL STANDING is not a lift — and is not confused with a restatement either", () => {
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: ANNOUNCED,
+      parked: [PARKED],
+      declaredParks: [PARKED],
+      templates: PARK_TEMPLATE,
+    });
+
+    expect(result.liftedParked).toEqual([]);
+    expect(result.restatedParked).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("a lifted INFORMATIONAL park owes nobody a line — `asks` is the message's own word", () => {
+    // The park as a MODE (016, 052): it declared nothing to answer, so its lift answers
+    // nothing. A ❓-class line over it is the lie by mark that thread 051 paid for.
+    const mode: ParkedThread = { ...PARKED, asks: false };
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: { waiting: [], stalled: [], parked: [mode] },
+      parked: [],
+      declaredParks: [mode],
+      templates: PARK_TEMPLATE,
+    });
+
+    expect(result.liftedParked).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("a lift of a park on somebody the notifier does not write to is not a line", () => {
+    const elsewhere: ParkedThread = { ...PARKED, person: "curator" };
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: { waiting: [], stalled: [], parked: [elsewhere] },
+      parked: [],
+      declaredParks: [elsewhere],
+      templates: PARK_TEMPLATE,
+    });
+
+    expect(result.liftedParked).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("the line rides in a letter somebody else's event triggered, and never raises one", () => {
+    // The whole of "a line, never a call" (john's word: it lives as a LINE of the digest).
+    // What the send condition reads is the `fresh*` counts, and none of them moves here.
+    const result = afterLift({ waiting: [{ role: "john", thread: "016-y" }] });
+
+    expect(result.fresh).toEqual([{ role: "john", thread: "016-y" }]);
+    expect(result.lines.map((line) => line.kind)).toEqual(["parked", "turn"]);
+  });
+});
+
 describe("a thread frozen behind an EVENT — the class that gets no line at all (thread 023)", () => {
   it("a merge the thread waits for is neither a call to john nor a stall", () => {
     // The one instruction the courier owes such a thread is silence: the decision behind it

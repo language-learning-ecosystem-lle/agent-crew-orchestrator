@@ -291,6 +291,7 @@ export {
   parkingOf,
   parseLegacyThread,
   parseMetaFile,
+  personParksOf,
   questionOf,
   renderMetaFile,
   renderThread,
