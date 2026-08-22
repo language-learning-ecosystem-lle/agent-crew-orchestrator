@@ -740,6 +740,47 @@ version has to be readable before validation — a config one version behind is 
 config the current schema may legitimately reject, and going through the loader
 would turn "run the migration" into "invalid config".
 
+### The two numbers of a pin, before it moves (thread 028)
+
+```
+agent-protocol schema version [--package-ref <ref>] [--package-repo <p>] [--repo <p>] [--ref <ref>] [--config-path <p>]
+```
+
+The gate above is asked by the INSTALLED package, and during a pin bump in a foreign
+circuit that is the old one by construction: the consumer's `config check` stays green
+right up to the merge that moves the pin and goes red on a live `main` afterwards.
+Measured on 2026-08-22 in LLE — the pin went `v0.2.1` → `v0.2.3` by hand, and 37
+seconds later CI was red on "the repository declares protocol version 17, the package
+writes 18". The shape had moved on the step that was skipped over (`v0.2.2`), under a
+title that read as a pure release bump.
+
+So this command asks the CANDIDATE instead. `--package-ref` names a tag (or any ref of
+the package repository, `--package-repo` if it is not the current one) and the number is
+read out of its SOURCE — nothing installed, nothing checked out; both layouts are tried,
+`src/schema/version.ts` for a cut tag and `packages/agent-protocol/src/schema/version.ts`
+for a branch of the host repository. `--repo`/`--ref` name the consumer's config, read
+RAW — the same exception `schema migrate` makes, and for a sharper reason: the loader's
+version gate would refuse the very mismatch this command exists to show. With no `--ref`
+the consumer's working tree is read and the output says so; with no `--repo` only the
+package's own number is printed.
+
+Both numbers are printed with their origins, then the verdict — the three states of the
+gate itself (`renderVersionVerdict`), so a repository behind the package is told to
+migrate and a repository ahead of it is told the candidate is stale and **a downgrade is
+not performed**.
+
+**A mismatch exits 0, on purpose.** This is a measurement taken BEFORE the pin moves —
+where the mismatch is the expected finding and the answer is "the migration rides in the
+same PR as the pin" — and not a door: the pin lives in a repository this package does not
+own, so a refusal there would have nothing to stand on and could be walked around by
+editing somebody else's `package.json`. A false guarantee is worse than a visible number.
+Exit `2` means a number could not be READ (a ref that is not a build of the package, a
+config with no `protocolVersion`) — that is the one thing here that is a defect.
+
+`scripts/split-package.sh` prints the same number at the cut, in its final line — the one
+copied into the thread as the announcement of a tag — so the number travels with the tag
+instead of being looked up in the sources on each bump.
+
 **What counts as a breaking change here.** The schemas are strict by design, so the
 bar is lower than usual:
 
@@ -1053,6 +1094,13 @@ agent-protocol init github  [--ref <ref>] [--local-config <p>] [--instance <name
 agent-protocol roles list   --ref <ref>                                    # the list of roles
 agent-protocol schema migrate [--repo <p>] [--root <comms>] [--to <n>] [--write]   # protocol version → version
                                                                            # (no --ref: it plans against the tree it rewrites)
+agent-protocol schema version [--package-ref <ref>] [--package-repo <p>] [--repo <p>] [--ref <ref>]
+                            # THE TWO NUMBERS OF A PIN, BEFORE IT MOVES (thread 028): what the CANDIDATE
+                            # tag writes (read out of its source — nothing installed) against what the
+                            # consumer's config declares (read raw — the loader's gate would refuse the
+                            # very mismatch being measured), then the verdict of the three states
+                            # a mismatch exits 0: a measurement taken before the pin moves, not a door
+                            # over somebody else's repository. Exit 2 = a number could not be READ
 agent-protocol role exists  --ref <ref> --role <id>                        # is the role known?
 agent-protocol zones check  --ref <ref> [--repo <p>] (--role <id> | --role-from-workspace) \
                             (--staged | --base <ref> | --paths <a,b>)
