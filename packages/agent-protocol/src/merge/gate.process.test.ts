@@ -81,17 +81,34 @@ const git = (repo: string, ...args: string[]): string =>
  */
 const stubGh = (
   repo: string,
-  answer: { json?: unknown; nextAsk?: unknown; failWith?: string },
+  answer: {
+    json?: unknown;
+    nextAsk?: unknown;
+    failWith?: string;
+    /** The answer to `gh api …/actions/runs?…` (thread 027) — the third read of the door. */
+    runs?: unknown;
+    /** …or its refusal, which is the state the whole repair turns on. */
+    runsFailWith?: string;
+  },
 ): string => {
   const bin = join(repo, "stub-bin");
   mkdirSync(bin, { recursive: true });
   const once = `cat <<'PAYLOAD'\n${JSON.stringify(answer.json)}\nPAYLOAD\n`;
+  // The runs ask is answered BEFORE anything else, by matching the argument GitHub's path
+  // carries — the door makes three different calls through one binary, and a stub that
+  // answered them all alike would prove nothing about the wiring of any of them.
+  const runsBranch =
+    answer.runsFailWith !== undefined
+      ? `case "$*" in *actions/runs*) echo ${JSON.stringify(answer.runsFailWith)} >&2; exit 1;; esac\n`
+      : answer.runs !== undefined
+        ? `case "$*" in *actions/runs*) cat <<'RUNS'\n${JSON.stringify(answer.runs)}\nRUNS\nexit 0;; esac\n`
+        : "";
   const script =
     answer.failWith !== undefined
-      ? `#!/bin/sh\necho ${JSON.stringify(answer.failWith)} >&2\nexit 1\n`
+      ? `#!/bin/sh\n${runsBranch}echo ${JSON.stringify(answer.failWith)} >&2\nexit 1\n`
       : answer.nextAsk === undefined
-        ? `#!/bin/sh\n${once}`
-        : `#!/bin/sh\nif [ -f "$0.asked" ]; then\ncat <<'AGAIN'\n${JSON.stringify(answer.nextAsk)}\nAGAIN\nelse\ntouch "$0.asked"\n${once}fi\n`;
+        ? `#!/bin/sh\n${runsBranch}${once}`
+        : `#!/bin/sh\n${runsBranch}if [ -f "$0.asked" ]; then\ncat <<'AGAIN'\n${JSON.stringify(answer.nextAsk)}\nAGAIN\nelse\ntouch "$0.asked"\n${once}fi\n`;
   const path = join(bin, "gh");
   writeFileSync(path, script, "utf8");
   chmodSync(path, 0o755);
@@ -167,10 +184,34 @@ const mergeable = (over: Record<string, unknown> = {}): unknown => ({
   ...over,
 });
 
+/**
+ * A CLOSED ROUND OF THE REVIEWER'S WORKFLOW ON THE HEAD (thread 027), open across the whole
+ * era these fixtures are stamped in — so a test that is not about the anchor states one in
+ * two words and still exercises the same wiring the door uses.
+ */
+const ROUND_ON_HEAD: unknown = {
+  total_count: 1,
+  workflow_runs: [
+    {
+      id: 32535411165,
+      name: "Claude PR Review",
+      head_sha: HEAD,
+      event: "pull_request",
+      status: "completed",
+      conclusion: "success",
+      created_at: "2026-07-01T00:00:00Z",
+      updated_at: "2026-08-01T00:00:00Z",
+    },
+  ],
+};
+
+/** The flag that names the reviewer's workflow — without it guard 1 is an obligation (027). */
+const REVIEWED = ["--review-workflow", "Claude PR Review"];
+
 describe("merge-gate — the command, with a real gh on the other side of the seam", () => {
   it("maps a gh answer onto the verdict and exits 0 when nothing in the facts forbids the merge", () => {
     const repo = repoWithConfig();
-    const result = run(repo, stubGh(repo, { json: mergeable() }));
+    const result = run(repo, stubGh(repo, { json: mergeable(), runs: ROUND_ON_HEAD }), REVIEWED);
 
     expect(result.code).toBe(0);
     expect(result.out).toContain("ok   guard 1");
@@ -212,14 +253,21 @@ describe("merge-gate — the command, with a real gh on the other side of the se
    */
   it("--d1 turns the STOP on a document of power into an obligation — exit 0, and the trace is asked for", () => {
     const repo = repoWithConfig();
-    const gh = stubGh(repo, { json: mergeable({ files: [{ path: "docs/roles/curator.md" }] }) });
+    const gh = stubGh(repo, {
+      json: mergeable({ files: [{ path: "docs/roles/curator.md" }] }),
+      runs: ROUND_ON_HEAD,
+    });
 
     // The same diff, without the class declared, is the STOP it always was.
-    const stopped = run(repo, gh);
+    const stopped = run(repo, gh, REVIEWED);
     expect(stopped.code).toBe(1);
     expect(stopped.out).toContain("STOP guard 4");
 
-    const declared = run(repo, gh, ["--d1", "068-d1-vs-guard4/2026-08-14T09-56-40Z-curator.md"]);
+    const declared = run(repo, gh, [
+      ...REVIEWED,
+      "--d1",
+      "068-d1-vs-guard4/2026-08-14T09-56-40Z-curator.md",
+    ]);
     expect(declared.code).toBe(0);
     expect(declared.out).toContain("you  guard 4");
     expect(declared.out).toContain("2026-08-14T09-56-40Z-curator.md");
@@ -470,7 +518,9 @@ describe("merge-gate — the command, with a real gh on the other side of the se
             },
           ],
         }),
+        runs: ROUND_ON_HEAD,
       }),
+      REVIEWED,
     );
 
     expect(result.code).toBe(0);
@@ -668,6 +718,86 @@ fi
   return bin;
 };
 
+/**
+ * THE THIRD READ OF THE DOOR (thread 027) — `gh api actions/runs?head_sha=…`, end to end.
+ * `gate.test.ts` proves the anchor; only the process proves that the command asks for it,
+ * maps the REST payload (`head_sha`, `created_at` — snake case, unlike everything `gh pr
+ * view` answers) and survives the refusal that the whole third state exists for.
+ */
+describe("merge-gate — the round of review behind the approve (thread 027)", () => {
+  const runs = (over: Record<string, unknown> = {}): unknown => ({
+    total_count: 1,
+    workflow_runs: [
+      {
+        id: 32535411165,
+        name: "Claude PR Review",
+        head_sha: HEAD,
+        event: "pull_request",
+        status: "completed",
+        conclusion: "success",
+        created_at: "2026-07-30T00:05:00Z",
+        updated_at: "2026-07-30T00:11:00Z",
+        ...over,
+      },
+    ],
+  });
+
+  it("credits the approve when the round on this head produced it — and says which round", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGh(repo, { json: mergeable(), runs: runs() }), [
+      "--review-workflow",
+      "Claude PR Review",
+    ]);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("ok   guard 1");
+    expect(result.out).toContain("inside the round 32535411165");
+  });
+
+  it("STOPS the orphan — a round that read another head, the verdict shown against this one", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable(),
+        runs: runs({ head_sha: `34716450${"0".repeat(32)}`, id: 32534201968 }),
+      }),
+      ["--review-workflow", "Claude PR Review"],
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP guard 1");
+    expect(result.out).toContain("32534201968");
+    expect(result.out).toContain("REFUSED");
+  });
+
+  it("a refused Actions resource is by-hand, quoted — not an ok, and not a refusal", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable(),
+        runsFailWith: "Resource not accessible by integration (actions/runs)",
+      }),
+      ["--review-workflow", "Claude PR Review"],
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("you  guard 1");
+    expect(result.out).toContain("Resource not accessible by integration");
+    expect(result.out).toContain("guards 1, 3 and 5 are yours to answer");
+  });
+
+  it("without the flag nothing is asked of Actions, and guard 1 says so instead of passing", () => {
+    const repo = repoWithConfig();
+    const result = run(repo, stubGh(repo, { json: mergeable() }));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("you  guard 1");
+    expect(result.out).toContain("--review-workflow");
+  });
+});
+
 describe("merge-gate — the base under a credited check (023.3)", () => {
   const BASE = "9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f";
   const at = (date: string): { sha: string; date: string } => ({ sha: BASE, date });
@@ -693,7 +823,9 @@ describe("merge-gate — the base under a credited check (023.3)", () => {
     expect(result.code).toBe(0);
     expect(result.out).toContain("note · base:");
     expect(result.out).toContain("moved AFTER");
-    expect(result.out).toContain("guards 3 and 5 are yours to answer");
+    // Guard 1 joins the obligations because this call names no reviewer's workflow (027) —
+    // the drift note is what this test is about, and it is unchanged by that.
+    expect(result.out).toContain("guards 1, 3 and 5 are yours to answer");
   });
 
   /**

@@ -17,11 +17,41 @@ import {
 const HEAD = "6ab1bdf92d8d6b1689d3f25075c3e153f19be4f7";
 const OLD = "1111111111111111111111111111111111111111";
 
+/**
+ * A round of review that was open the whole of the era these fixtures live in (thread 027) —
+ * so a verdict of ANY of them is anchored by it, and a test that is not about the anchor does
+ * not have to state one. The cases that ARE about it name their own windows.
+ */
+const ROUND_ON_HEAD: PullRequestFacts["reviewRuns"] = {
+  state: "read",
+  workflow: "Claude PR Review",
+  runs: [
+    {
+      id: 1,
+      name: "Claude PR Review",
+      headSha: HEAD,
+      event: "pull_request",
+      status: "completed",
+      conclusion: "success",
+      createdAt: "2000-01-01T00:00:00Z",
+      updatedAt: "2100-01-01T00:00:00Z",
+    },
+  ],
+};
+
 const pr = (over: Partial<PullRequestFacts> = {}): PullRequestFacts => ({
   number: 51,
   headSha: HEAD,
   body: "thread: 026-curator-merge-right\nrole: dev-core\n\nbody",
-  reviews: [{ state: "APPROVED", commitSha: HEAD, author: "github-actions" }],
+  reviews: [
+    {
+      state: "APPROVED",
+      commitSha: HEAD,
+      author: "github-actions",
+      submittedAt: "2026-07-30T00:10:00Z",
+    },
+  ],
+  reviewRuns: ROUND_ON_HEAD,
   checks: [{ name: "checks", status: "COMPLETED", conclusion: "SUCCESS", state: undefined }],
   changedPaths: ["packages/agent-protocol/src/merge/gate.ts"],
   mergeable: "MERGEABLE",
@@ -694,6 +724,221 @@ describe("guard 1 — a verdict older than the head commit (thread 043)", () => 
 
     expect(outcome?.state).toBe("fail");
     expect(outcome?.detail).toContain("older than the head commit");
+  });
+});
+
+/**
+ * THE ANCHOR OF THREAD 027 — the defect measured on the served project's PR #347 of
+ * 2026-08-21: a round of review that started on one head, a push mid-round, and a verdict
+ * GitHub hung on the NEW head although the text answered about the old tree. Every fixture
+ * here carries the recorded numbers, so the case that produced the repair is the case the
+ * suite refuses.
+ */
+describe("guard 1 — the round of review behind the approve (thread 027)", () => {
+  /** The heads of #347: the tree the round read, and the one the push made mid-round. */
+  const READ_HEAD = `34716450${"0".repeat(32)}`;
+  const PUSHED_HEAD = `e7386435${"0".repeat(32)}`;
+  const REVIEW = "Claude PR Review";
+
+  const run = (over: Record<string, unknown> = {}) => ({
+    id: 32534201968,
+    name: REVIEW,
+    headSha: READ_HEAD,
+    event: "pull_request",
+    status: "completed",
+    conclusion: "success",
+    createdAt: "2026-08-21T22:40:00Z",
+    updatedAt: "2026-08-21T22:54:35Z",
+    ...over,
+  });
+
+  /** #347 as it stood: the verdict of 22:54:33Z, hung by GitHub on the head of 22:48:38Z. */
+  const orphan = (reviewRuns: PullRequestFacts["reviewRuns"]): PullRequestFacts =>
+    pr({
+      headSha: PUSHED_HEAD,
+      headCommittedAt: "2026-08-21T22:48:38Z",
+      reviews: [
+        {
+          state: "APPROVED",
+          commitSha: PUSHED_HEAD,
+          author: "github-actions",
+          submittedAt: "2026-08-21T22:54:33Z",
+        },
+      ],
+      reviewRuns,
+    });
+
+  it("(а) credits an approve that lies inside the window of a round on THIS head", () => {
+    const outcome = guard(
+      orphan({
+        state: "read",
+        workflow: REVIEW,
+        // The healthy shape, #348: the round ran on the head the verdict is shown against.
+        runs: [run({ id: 32535411165, headSha: PUSHED_HEAD })],
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("pass");
+    expect(outcome?.detail).toContain("inside the round 32535411165");
+  });
+
+  it("(б) STOPS the recorded orphan of #347 — the round read 3471645, the verdict hangs on e738643", () => {
+    const outcome = guard(orphan({ state: "read", workflow: REVIEW, runs: [run()] }), 1);
+
+    expect(outcome?.state).toBe("fail");
+    // The run is named with the head it actually read: that is the whole discrimination.
+    expect(outcome?.detail).toContain("no CLOSED round of 'Claude PR Review' on e738643");
+    expect(outcome?.detail).toContain("head 3471645");
+    expect(outcome?.detail).toContain("32534201968");
+  });
+
+  it("(б') STOPS a verdict that lies outside the window of a round that IS on this head", () => {
+    const outcome = guard(
+      orphan({
+        state: "read",
+        workflow: REVIEW,
+        runs: [
+          run({
+            headSha: PUSHED_HEAD,
+            createdAt: "2026-08-21T23:00:00Z",
+            updatedAt: "2026-08-21T23:05:00Z",
+          }),
+        ],
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("lies OUTSIDE every closed round");
+  });
+
+  it("(в) STOPS when no round of the reviewer's workflow is reported for the head at all", () => {
+    const outcome = guard(orphan({ state: "read", workflow: REVIEW, runs: [] }), 1);
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("no round of 'Claude PR Review' is reported for e738643");
+  });
+
+  it("(г) an Actions resource the token cannot read is by-hand with GitHub's own words", () => {
+    const outcome = guard(
+      orphan({
+        state: "unreadable",
+        workflow: REVIEW,
+        reason: "Resource not accessible by integration (actions/runs)",
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("by-hand");
+    expect(outcome?.detail).toContain("Resource not accessible by integration (actions/runs)");
+    expect(outcome?.detail).toContain("actions: read");
+    // Never a pass, and never a refusal for everyone: the merge is not blocked by it.
+    expect(
+      evaluateMergeGate({
+        pr: orphan({
+          state: "unreadable",
+          workflow: REVIEW,
+          reason: "Resource not accessible by integration (actions/runs)",
+        }),
+        powerDocs: ["PROTOCOL.md"],
+      }).curatorMayMerge,
+    ).toBe(true);
+  });
+
+  it("(д) a workflow_dispatch round does not anchor anything — it hangs on the head of the base", () => {
+    const outcome = guard(
+      orphan({
+        state: "read",
+        workflow: REVIEW,
+        runs: [
+          run({
+            // A dispatch round of the reviewer: the run hangs on the head of `main`, and the
+            // verdict it sends is shown against the PR's head all the same (thread 043 met
+            // the same run from the other side).
+            event: "workflow_dispatch",
+            headSha: `aaaaaaaa${"0".repeat(32)}`,
+            createdAt: "2026-08-21T22:50:00Z",
+            updatedAt: "2026-08-21T22:55:00Z",
+          }),
+        ],
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("workflow_dispatch");
+  });
+
+  it("a round of ANOTHER workflow on this head anchors nothing — the name is the caller's", () => {
+    const outcome = guard(
+      orphan({
+        state: "read",
+        workflow: REVIEW,
+        // `checks` was running on the new head at exactly the moment of the orphan verdict —
+        // which is why "any run on the head" would have passed #347 and this door does not.
+        runs: [
+          run({
+            id: 999,
+            name: "checks",
+            headSha: PUSHED_HEAD,
+            createdAt: "2026-08-21T22:48:40Z",
+            updatedAt: "2026-08-21T22:56:00Z",
+          }),
+        ],
+      }),
+      1,
+    );
+
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("no round of 'Claude PR Review' is reported");
+  });
+
+  it("nobody named the reviewer's workflow: by-hand, with the manual form of the check", () => {
+    const outcome = guard(orphan(undefined), 1);
+
+    expect(outcome?.state).toBe("by-hand");
+    expect(outcome?.detail).toContain("--review-workflow");
+    expect(outcome?.detail).toContain("actions/runs?head_sha=");
+  });
+
+  it("an approve with no stamp is 'cannot tell', not 'orphan' — by-hand, and the merge stands", () => {
+    const facts = pr({
+      headSha: PUSHED_HEAD,
+      reviews: [{ state: "APPROVED", commitSha: PUSHED_HEAD, author: "github-actions" }],
+      reviewRuns: { state: "read", workflow: REVIEW, runs: [run({ headSha: PUSHED_HEAD })] },
+    });
+    const outcome = guard(facts, 1);
+
+    expect(outcome?.state).toBe("by-hand");
+    expect(outcome?.detail).toContain("no 'submittedAt'");
+  });
+
+  it("a changes-requested still STOPS before the anchor is ever asked", () => {
+    const outcome = guard(
+      orphan({ state: "read", workflow: REVIEW, runs: [run({ headSha: PUSHED_HEAD })] }),
+      1,
+    );
+    expect(outcome?.state).toBe("pass");
+
+    const refused = guard(
+      pr({
+        headSha: PUSHED_HEAD,
+        reviews: [
+          {
+            state: "CHANGES_REQUESTED",
+            commitSha: PUSHED_HEAD,
+            author: "github-actions",
+            submittedAt: "2026-08-21T22:54:33Z",
+          },
+        ],
+        reviewRuns: { state: "read", workflow: REVIEW, runs: [run({ headSha: PUSHED_HEAD })] },
+      }),
+      1,
+    );
+
+    expect(refused?.state).toBe("fail");
+    expect(refused?.detail).toContain("changes were requested");
   });
 });
 
