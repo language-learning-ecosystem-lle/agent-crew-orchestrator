@@ -16,6 +16,14 @@
  * curator) handed to a machine role, and an opinion frozen at the moment of the verdict:
  * the checks on that head may still be flying, and the head may move with the next push.
  *
+ * AND "READY" IS "NOTHING REFUSES", NOT "EVERYTHING PASSES" (thread 027). Guard 1 gained a
+ * third state — `by-hand`, for an anchor it could not measure — and this reader never
+ * measures it: the anchor costs an Actions call per pull request per tick, and what is being
+ * decided here is the ORDER of a queue, not the opening of a merge. So an obligation counts
+ * as holding, the pair is raised, and the obligation is answered at the door. Read the other
+ * way, the new state would have switched this whole tier off for every PR there is — silently,
+ * since a tier that never fires looks exactly like a queue with nothing ready in it.
+ *
  * A PR IS TIED TO A THREAD THE WAY THE DOOR TIES IT — by the `thread: NNN-slug` line of
  * its description (rule 14), read with the door's own {@link threadOfDescription}. That
  * line already exists for the reviewer and for guard 3; inventing a second link (a

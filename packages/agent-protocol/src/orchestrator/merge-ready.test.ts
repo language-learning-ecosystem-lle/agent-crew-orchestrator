@@ -131,9 +131,14 @@ describe("readMergeReady — the fact is measured through the door's own guards"
         cache: createMergeReadyCache(),
       });
       const door = evaluateMergeGate({ pr, powerDocs: [] });
+      // "Holds" is "does not REFUSE" (thread 027): guard 1 answers `by-hand` whenever the
+      // rounds of review were not read, and this reader never reads them — one Actions call
+      // per pull request per tick, for a hint about the ORDER of a queue. Read as "not
+      // ready", that state would switch the merge-ready acceleration off for every PR there
+      // is; the obligation itself is answered at the door, which is what opens a merge.
       const doorHolds = door.guards
         .filter((guard) => guard.guard === 1 || guard.guard === 2)
-        .every((guard) => guard.state === "pass");
+        .every((guard) => guard.state !== "fail");
       expect(reading.ready.size > 0).toBe(doorHolds);
     }
   });
