@@ -524,6 +524,7 @@ import {
   mergedPrs,
   parkingOf,
   parseMetaFile,
+  personParksOf,
   renderMetaFile,
   renderThread,
   type ThreadMeta,
@@ -3499,6 +3500,25 @@ const runNotify = async (input: {
         ]
       : [],
   );
+  // AND EVERY PERSON-PARK THE OPEN THREADS HAVE EVER DECLARED (thread 030, (в2)) — the one
+  // fact the state file cannot hold. A park announced to a human and then LIFTED by somebody
+  // else's move disappears from the composition above; what it was asking is readable only
+  // here, in the message that declared it, by the stamp the state remembers.
+  const declaredParks = parsed.flatMap((thread) =>
+    personParksOf(thread).flatMap((park) =>
+      park.person === undefined
+        ? []
+        : [
+            {
+              thread: thread.id,
+              person: park.person,
+              since: park.since,
+              question: park.question,
+              asks: park.asks,
+            },
+          ],
+    ),
+  );
   // A park on an EVENT is not a call and not a stall: the decision behind it has been made,
   // and what is left is somebody's hand on a merge button. It is passed to the plan by name
   // so that the age pass stays silent about it — otherwise the safety call ("nothing is
@@ -3623,6 +3643,7 @@ const runNotify = async (input: {
     seen,
     stalled,
     parked,
+    declaredParks,
     frozen,
     exhausted: exhaustedPairs,
     auth: authAlarm,
@@ -3646,7 +3667,12 @@ const runNotify = async (input: {
     // THE FOURTH NUMBER APPEARS ONLY WHEN IT IS NOT ZERO (thread 030, Д-2): a repeat that
     // rides in someone else's letter is a thing the operator can be surprised by, and a
     // clause printed every tick to say "none" is the noise this thread is spending itself on.
-    `${plan.restatedParked.length === 0 ? "" : `, ${plan.restatedParked.length} restated`}; ` +
+    `${plan.restatedParked.length === 0 ? "" : `, ${plan.restatedParked.length} restated`}` +
+    // THE FIFTH NUMBER, on the same rule and for the same reason (thread 030, (в2)): a park
+    // that was lifted with its question unanswered is no longer in the first three numbers at
+    // all — it is not parked any more — so without a clause of its own the operator reading
+    // this line would see the count fall by one and nothing else. Zero stays invisible.
+    `${plan.liftedParked.length === 0 ? "" : `, ${plan.liftedParked.length} lifted unanswered`}; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
     // THE STANDING CATEGORY THAT DID NOT EXIST (thread 013). It prints EVERY tick, news or
@@ -3756,6 +3782,9 @@ const runNotify = async (input: {
     // A REPEAT IS NAMED AMONG WHAT WENT OUT, not among what rang: it did not raise this
     // letter, it rode in it — and the operator reading the summary is owed both facts.
     ...plan.restatedParked.map((park) => `${park.thread} (restated on ${park.person})`),
+    // A LIFT IS NAMED THE SAME WAY AND FOR THE SAME REASON: it rode in this letter without
+    // raising it, and the summary is where the operator learns what actually went out.
+    ...plan.liftedParked.map((park) => `${park.thread} (lifted unanswered on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
   ];

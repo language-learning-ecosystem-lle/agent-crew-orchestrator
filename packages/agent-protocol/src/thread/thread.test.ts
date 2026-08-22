@@ -11,6 +11,7 @@ import {
   parkingOf,
   parseLegacyThread,
   parseMetaFile,
+  personParksOf,
   questionOf,
   renderMetaFile,
   renderThread,
@@ -525,6 +526,75 @@ describe("parkingOf — the facts the courier to the human needs (thread 023)", 
     const long = questionOf("ы".repeat(400));
     expect(long.length).toBeLessThanOrEqual(140);
     expect(long.endsWith("…")).toBe(true);
+  });
+});
+
+describe("personParksOf — the declarations a LIFTED park leaves behind (thread 030, (в2))", () => {
+  const at = (date: string, fields: Partial<Message["fields"]> = {}, text = "Чинить?"): Message =>
+    ({
+      fields: { from: "curator", date, expects: "answer", waitingOn: "curator", ...fields },
+      text,
+    }) as Message;
+  const thread = (messages: readonly Message[], status: "open" | "closed" = "open"): Thread => ({
+    id: "030-x",
+    meta: { title: "t", participants: ["curator", "john"], status },
+    messages,
+  });
+
+  it("reads EVERY person-park of the feed, the lifted ones included — parkingOf reads one", () => {
+    // The courier's second question: a park it announced has vanished from the composition,
+    // and what it was asking lives only in the message that declared it — behind the walk of
+    // `standingParkOf`, which stopped at the message that lifted it.
+    const feed = thread([
+      at("2026-08-22T17:44:22Z", { parkedOn: "john" }, "# Сузить ли снятие парковки?"),
+      at("2026-08-22T18:10:30Z", { from: "github", waitingOn: "dev-core" }, "PR #61 merged"),
+      at("2026-08-22T18:30:00Z", { parkedOn: "john" }, "Вопрос (в) ставится заново"),
+    ]);
+
+    expect(personParksOf(feed)).toEqual([
+      {
+        kind: "person",
+        person: "john",
+        since: "2026-08-22T17:44:22Z",
+        question: "Сузить ли снятие парковки?",
+        asks: true,
+      },
+      {
+        kind: "person",
+        person: "john",
+        since: "2026-08-22T18:30:00Z",
+        question: "Вопрос (в) ставится заново",
+        asks: true,
+      },
+    ]);
+    // And the standing one is still exactly what `parkingOf` says it is — the two readers do
+    // not disagree about the park in force, they answer different questions.
+    expect(parkingOf(feed)?.since).toBe("2026-08-22T18:30:00Z");
+  });
+
+  it("carries `asks` — a park declared as a MODE asked nothing, so its lift owes nothing", () => {
+    expect(
+      personParksOf(thread([at("2026-08-22T17:44:22Z", { parkedOn: "john", expects: "none" })])),
+    ).toEqual([
+      {
+        kind: "person",
+        person: "john",
+        since: "2026-08-22T17:44:22Z",
+        question: "Чинить?",
+        asks: false,
+      },
+    ]);
+  });
+
+  it("an EVENT park is not a person park — nobody is being waited for by name", () => {
+    expect(personParksOf(thread([at("2026-08-22T17:44:22Z", { parkedOn: "pr:63" })]))).toEqual([]);
+    expect(personParksOf(thread([at("2026-08-22T17:44:22Z", { parkedOn: "run:63" })]))).toEqual([]);
+  });
+
+  it("a CLOSED thread declares nothing — closing the thread IS the answer", () => {
+    const feed = thread([at("2026-08-22T17:44:22Z", { parkedOn: "john" })], "closed");
+
+    expect(personParksOf(feed)).toEqual([]);
   });
 });
 
