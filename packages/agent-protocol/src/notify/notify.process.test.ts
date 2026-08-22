@@ -398,7 +398,7 @@ describe("notify as a command", () => {
     expect(result.code).toBe(0);
     // The three numbers still speak only about the CALL, and there is none to make here...
     expect(result.out).toContain("0 parked, 0 of them asking, 0 of those new");
-    // ...and the fifth clause is what tells this world from an empty mail, by name.
+    // ...and the sixth clause is what tells this world from an empty mail, by name.
     expect(result.out).toContain("1 with nobody to call: 031-x (on curator, asking)");
     expect(result.out).toContain("nothing to announce");
     // NOTHING WAS RUNG AND NOTHING WAS REMEMBERED: the repair is the sentence, not a new call.
@@ -522,6 +522,58 @@ describe("notify as a command", () => {
 
     expect(existsSync(contest.delivered)).toBe(false);
     expect(after.out).not.toContain("lifted unanswered");
+  });
+
+  it("THE LIFTED PARK AND THE PARK WITH NOBODY TO CALL MEET IN ONE LINE (threads 030 + 031)", () => {
+    // THE SEAM BETWEEN THE TWO REPAIRS, and the only thing merging their branches could break
+    // silently: both grew a clause of the same sentence and both are read off the same park
+    // composition, so the question is whether one park can ever fall into both counts — or be
+    // eaten by the other's filter. It cannot, and this is the measurement that says so rather
+    // than the argument: a park nobody can be called about is never written into the state as
+    // announced, so it can never come back as a lift; a park that DID ring is not in the
+    // unaddressed count, because its person is a target. Here they stand side by side in one
+    // tick, and the line carries both numbers with the three about the call still true.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("030-x", { asks: true, body: "Сузить ли снятие парковки?" });
+    contest.park("031-x", { asks: true, on: "curator", waitingOn: "dev-core" });
+    contest.commit();
+
+    const first = run(contest, ["--write"]);
+
+    // The call is john's alone, and the park with nobody to call is beside it, not inside it.
+    expect(first.out).toContain(
+      "1 parked, 1 of them asking, 1 of those new, 1 with nobody to call: 031-x (on curator, asking)",
+    );
+    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain(
+      "your decision: 030-x — Сузить ли снятие парковки?",
+    );
+    // ONLY THE PARK THAT RANG IS REMEMBERED — this is what keeps 031 out of the lift count.
+    expect(readFileSync(contest.state, "utf8")).toContain("parked\tjohn\t030-x\t");
+    expect(readFileSync(contest.state, "utf8")).not.toContain("031-x");
+    rmSync(contest.delivered);
+
+    // THE LIFT of john's park by a message nobody wrote — while 031 keeps standing untouched.
+    writeFileSync(
+      join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-github.md"),
+      "---\nfrom: github\nworker: gh-action\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
+        "waiting-on: dev-core\n---\n\nPR #61 merged.\n",
+    );
+    const both = run(contest, ["--write"]);
+
+    // BOTH CLAUSES IN ONE SENTENCE, in the order they are printed: the fifth about a park that
+    // rang and stopped standing, the sixth about a park that never rang at all.
+    expect(both.out).toContain(
+      "0 parked, 0 of them asking, 0 of those new, 1 lifted unanswered, " +
+        "1 with nobody to call: 031-x (on curator, asking)",
+    );
+    // Neither rings: the lift owes a line, the unaddressed park has nobody to ring.
+    expect(existsSync(contest.delivered)).toBe(false);
+    expect(both.out).toContain("nothing to announce");
+    // The lift stays owed in the state; 031 is still not written, tick after tick.
+    expect(readFileSync(contest.state, "utf8")).toContain(
+      "parked\tjohn\t030-x\t2026-07-25T20:00:00Z",
+    );
+    expect(readFileSync(contest.state, "utf8")).not.toContain("031-x");
   });
 
   it("a CLOSED thread's lifted park says nothing and does not linger (thread 030, (в2))", () => {
