@@ -138,7 +138,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # line says so. 'writes' states where the role's work lives, for humans —
                               # reading it as a closed allow-list would deny 'dev-core' (writes: [])
                               # every file in the repository. 'forbidden' is the whole verdict
-  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--d1 <thread/message.md>]
+  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--review-workflow <name>] [--d1 <thread/message.md>]
                               # THE MERGE DOOR OF 'curator' (thread 026): the three guards that are
                               # FACTS — approve on the CURRENT head, green checks on it, and no
                               # document of power in the diff (the role cards and the config are
@@ -183,6 +183,16 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # of the review) is shown against the CURRENT head, so such an approve
                               # would follow the branch forever; it STOPS, and says so in its own
                               # words: what is missing is a run on the 'pull_request' event
+                              # --review-workflow <name>: WHICH ROUND PRODUCED THE VERDICT (thread
+                              # 027) — GitHub hangs a review on the head the PR has WHEN THE VERDICT
+                              # IS SENT, so a round that read an older tree and answered after a push
+                              # is credited against a tree it never saw. With the name (the 'name:'
+                              # of the reviewer's workflow, e.g. 'Claude PR Review'), the approve is
+                              # counted only inside the window of a CLOSED successful round of THAT
+                              # workflow on THIS head — otherwise STOP, and the round is named
+                              # WITHOUT THE FLAG guard 1 answers 'by-hand', not 'ok': the anchor
+                              # could not be measured, so the check is owed by hand. The name is a
+                              # fact of the served project and is never guessed here
                               # 'mergeable' is read too and printed BESIDE the guards, not as a sixth:
                               # the door refuses what GitHub itself would refuse, UNKNOWN included
                               # WHAT GUARD 2 DOES NOT ASK, said under it as 'note · base' (023.3): a
