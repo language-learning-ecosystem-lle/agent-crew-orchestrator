@@ -440,12 +440,16 @@ describe("notify as a command", () => {
     );
     rmSync(contest.delivered);
 
-    // THE LIFT, as the circuit performs it: `waiting-on` names a role, so the message moves
-    // somebody and the park is lifted by R27 — and nobody answered anything.
+    // THE LIFT, as the circuit performs it SINCE 2026-08-22 (thread 030, (в1)): the courier
+    // declares `delivers: john` and the park goes. The automatic `github` message this case was
+    // measured on — 'expects: none' with 'waiting-on: dev-core' — no longer lifts anything, and
+    // that is the repair of (в1); what does NOT change is the courier's second question, which
+    // is what this test is about: a key that WAS announced and has left the composition owes the
+    // human a line instead of vanishing.
     writeFileSync(
-      join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-github.md"),
-      "---\nfrom: github\nworker: gh-action\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
-        "waiting-on: dev-core\n---\n\nPR #61 merged.\n",
+      join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-curator.md"),
+      "---\nfrom: curator\nworker: claude-code\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
+        "waiting-on: dev-core\ndelivers: john\n---\n\nСлово john по вопросу.\n",
     );
     const lifted = run(contest, ["--write"]);
 
