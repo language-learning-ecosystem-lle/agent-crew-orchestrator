@@ -1625,6 +1625,7 @@ working tree, printed when it is used).
 
 ```
 agent-protocol merge-gate --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>]
+                          [--review-workflow <name>] [--d1 <thread>/<message file>]
 ```
 
 The `curator` role merges pull requests itself, under five guards. Three of them are
@@ -1710,6 +1711,47 @@ What the subtraction leaves behind is a norm, not a hole, and it lives in the ca
 the role that merges: a change to a working card that moves authority, borders,
 permissions or zones goes to the owner of the decision, and doubt reads as "it moves
 them".
+
+**And a verdict younger than the head can still be about another tree — so the anchor of
+guard 1 is the RUN** (thread 027, measured twice on the served project's PR #347 of
+2026-08-21). The round of review started on head `34716450`; a push landed mid-round and the
+head became `e7386435`; the round went on judging the old tree and sent its verdict at
+22:54:33Z. GitHub anchors a review to the head the pull request has **when `gh pr review` is
+called**, not to the head the text answered about, so the formal status said "approved on
+`e7386435`" and this door printed `ok guard 1` about an analysis of somebody else's tree. The
+age test above cannot see it: the verdict is YOUNGER than the head, which is the one thing
+that test reads as healthy. It cost nothing that day only because guard 2 happened to STOP the
+same PR for its own reason — two refusals coinciding is luck, not a door.
+
+The review object cannot be made to give up the commit it analysed: `commit_id` of REST and
+`reviews[].commit.oid` of GraphQL both answer the current head for the orphan exactly as they
+do for a healthy verdict. What does answer honestly is the run — a round on the `pull_request`
+event carries the head it read in its own `head_sha`, and nobody substitutes that. So an
+approve is credited when a **closed round of the reviewer's workflow exists on this head** and
+the verdict lies **inside its window** (`created_at` … `updated_at`):
+
+```
+agent-protocol merge-gate --ref origin/main --pr 61 --review-workflow 'Claude PR Review'
+  ok   guard 1 · approve on the current head: approved on 7ba1d22 by reviewer-pr — inside the round 32535411165 of 'Claude PR Review' on this head (…)
+```
+
+**The workflow is NAMED by the caller and never guessed** — the reviewer's workflow is a fact
+of the served project, the same line the documents of power do not cross. And the reading has
+**three** states, not two, because `actions/runs` is an ACTIONS resource: an installation token
+(`ghs_…`, what every `gh-action` executor of this protocol runs with) answers `Resource not
+accessible by integration` unless its job lists `actions: read`. A door that read that refusal
+as `ok` would put the defect straight back, and one that read it as STOP would refuse every
+caller that never had the scope — so guard 1 answers `by-hand`, with GitHub's refusal quoted
+word for word and the manual form of the check (`gh api "repos/{owner}/{repo}/actions/runs?head_sha=<head>"`)
+named beside it. It answers the same way when no `--review-workflow` was given at all, and when
+the approve carries no `submittedAt` to place inside a window: `by-hand` means the anchor could
+not be MEASURED, STOP means it was measured and does not hold, and neither is ever a pass.
+
+Nothing new is let through by any of this — the guard only stops crediting an approve it used
+to credit blindly, which is why the change is a defect of the tooling and not a move of the
+norm. The scheduler's merge-ready reader (`orchestrator status`, the queue) does not ask
+Actions at all, one call per PR per tick being too much for a hint: it treats an obligation as
+"nothing refuses" and raises the pair, and the anchor is answered at the door, where it belongs.
 
 **One head answers once per check name.** A rerun does not replace the attempt it
 reran: both hang on the same head in `statusCheckRollup`, and read flat, the door

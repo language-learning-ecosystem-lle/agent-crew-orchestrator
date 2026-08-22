@@ -171,6 +171,46 @@
  * all) is named for what it is rather than folded into "go ahead".
  */
 
+/**
+ * AND TIME ALONE IS NOT ENOUGH: A VERDICT CAN BE YOUNGER THAN THE HEAD AND STILL BE ABOUT
+ * ANOTHER TREE (thread `027-guard1-orphan-verdict`; measured twice by the curator of the
+ * served project on its PR #347, 2026-08-21, and carried here as the statement of work).
+ * The round of review started on head `34716450`. A push landed MID-ROUND — the head became
+ * `e7386435`, committed 22:48:38Z — and the round went on judging the OLD tree, sending its
+ * verdict at 22:54:33Z. GitHub anchors a review to the head THE PULL REQUEST HAS WHEN
+ * `gh pr review` IS CALLED, not to the head the text answered about, so the formal status
+ * came back "approved on e7386435" and this door printed `ok guard 1`. The age test of 043
+ * cannot see it: the verdict is YOUNGER than the head, which is the one thing that test
+ * reads as healthy. The price that day was zero only because guard 2 happened to STOP on
+ * the same PR for its own reason — two refusals coinciding is luck, not a door.
+ *
+ * SO THE ANCHOR OF GUARD 1 IS THE RUN, NOT THE REVIEW OBJECT. The review object cannot be
+ * made to give up the commit it analysed — measured across both APIs: `reviews[].commit_id`
+ * of REST and `reviews[].commit.oid` of GraphQL answer the CURRENT head for the orphan as
+ * readily as for a healthy verdict. What does answer honestly is the run that produced the
+ * verdict: a round of review on the `pull_request` event carries the head it read in its own
+ * `head_sha`, and that field is not substituted by anybody. So an approve counts when a
+ * CLOSED round of the reviewer's workflow exists ON THIS HEAD and the verdict lies inside
+ * that round's window (`created_at` … `updated_at`). The orphan of #347 fails it by
+ * construction: the only closed round of that moment carried `head_sha 34716450`.
+ *
+ * AND THE THIRD STATE IS THE HALF THAT MAKES IT HONEST. `actions/runs` is an ACTIONS
+ * resource: an installation token (`ghs_…`, what any `gh-action` executor of this protocol
+ * runs with, the reviewer included) gets `Resource not accessible by integration` unless its
+ * job lists `actions: read`. A door that read a refusal as `ok` would put the defect back,
+ * and one that read it as STOP would refuse every caller that never had the scope. So the
+ * guard answers `by-hand` — with the refusal of GitHub quoted word for word and the manual
+ * form of the check named — and it answers the same way when nobody told it WHICH workflow
+ * is the review (`--review-workflow`): the reviewer's workflow is a name of the served
+ * project, and a package that guessed it would be inventing project knowledge again (see
+ * the note on the documents of power above). An obligation is not a pass: `by-hand` never
+ * says the anchor holds, it says a human still owes the check.
+ *
+ * WHAT THIS DOES NOT CHANGE: nothing new is let through. The guard only stops crediting an
+ * approve it used to credit blindly, so the class of the change is a defect of the tooling
+ * and not a move of the norm — the norm always said "an approve ON THIS HEAD".
+ */
+
 /** One review as the gate reads it — who said what, against which commit, when. */
 export type ReviewFact = {
   readonly state: string;
@@ -179,6 +219,45 @@ export type ReviewFact = {
   /** When it was submitted — how a second round is told from the verdict it replaced (D4). */
   readonly submittedAt?: string | undefined;
 };
+
+/**
+ * One workflow run as guard 1 reads it (thread 027) — the shape of an entry of
+ * `repos/{owner}/{repo}/actions/runs`. Every field is optional because it is somebody
+ * else's payload; a run missing what the anchor is computed from simply cannot anchor
+ * anything, and saying so is the guard's job, not the schema's.
+ */
+export type ReviewRunFact = {
+  readonly id: number | undefined;
+  /** The workflow's name — matched against `--review-workflow`, never guessed. */
+  readonly name: string | undefined;
+  /** THE FIELD THE WHOLE REPAIR RESTS ON: the head this round actually read. */
+  readonly headSha: string | undefined;
+  /** `pull_request`, `workflow_dispatch`, … — a dispatch round hangs on the head of the base. */
+  readonly event: string | undefined;
+  readonly status: string | undefined;
+  readonly conclusion: string | undefined;
+  /** The window the verdict has to lie in: when the round started … when it last spoke. */
+  readonly createdAt: string | undefined;
+  readonly updatedAt: string | undefined;
+};
+
+/**
+ * WHAT THE DOOR KNOWS ABOUT THE ROUNDS OF REVIEW ON THIS HEAD — including, as a state of
+ * its own, that it could not ask. The three cases are not interchangeable and the guard
+ * says which one it is in: an unread resource is an obligation, an unasked one is an
+ * obligation with a different repair, and neither is a verdict.
+ */
+export type ReviewRunReading =
+  /** The runs of the named workflow on this head, as GitHub answered. */
+  | {
+      readonly state: "read";
+      readonly workflow: string;
+      readonly runs: readonly ReviewRunFact[];
+    }
+  /** GitHub refused, or the answer was not the shape we read — `reason` is quoted verbatim. */
+  | { readonly state: "unreadable"; readonly workflow: string; readonly reason: string }
+  /** No `--review-workflow`: nobody named the reviewer's workflow, so nothing was asked. */
+  | { readonly state: "not-asked" };
 
 /** The facts about a pull request the gate judges — the shape `gh pr view --json` gives. */
 export type PullRequestFacts = {
@@ -196,6 +275,14 @@ export type PullRequestFacts = {
    * taken as given, which is the behaviour that let the defect through.
    */
   readonly headCommittedAt?: string | undefined;
+  /**
+   * The rounds of review on this head, and the anchor guard 1 credits an approve by
+   * (thread 027). Absent means the caller does not ask Actions at all — the scheduler's
+   * merge-ready reader does not, because it ranks a queue rather than opening a door —
+   * and it is read exactly as {@link ReviewRunReading} `not-asked`: an obligation, never
+   * a pass.
+   */
+  readonly reviewRuns?: ReviewRunReading | undefined;
   /** `statusCheckRollup`: check runs (status/conclusion) and status contexts (state) alike. */
   readonly checks: readonly {
     readonly name: string;
@@ -635,6 +722,122 @@ export const withoutAnchor = (input: {
   });
 };
 
+/**
+ * THE ANCHOR OF AN APPROVE, AS THE RUNS TELL IT (thread 027) — see the header for why the
+ * review object cannot tell it and the run can.
+ *
+ * Three answers, and they are the three states of guard 1: `anchored` (a closed round of the
+ * named workflow ran ON THIS HEAD and the verdict lies inside its window), `orphan` (there is
+ * no such round, or the verdict lies outside every one of them — the round that produced it
+ * read another tree), `by-hand` (the rounds could not be read, or nobody named the workflow).
+ */
+export type RunAnchor = {
+  readonly state: "anchored" | "orphan" | "by-hand";
+  readonly detail: string;
+};
+
+/** The manual form of the check, printed with every `by-hand` — an obligation names its work. */
+const anchorByHand = (head: string): string =>
+  `check it by hand: \`gh api "repos/{owner}/{repo}/actions/runs?head_sha=${head}"\` — a CLOSED round of the reviewer's workflow (event 'pull_request', conclusion 'success') must exist on this head, and the verdict must lie inside its 'created_at'…'updated_at'`;
+
+/** A run said in one line — what it read and how it ended, so a STOP can be acted on. */
+const describeRun = (run: ReviewRunFact): string =>
+  `run ${run.id ?? "?"} (${run.event ?? "?"}, head ${(run.headSha ?? "?").slice(0, 7)}, ${run.status ?? "?"}/${run.conclusion ?? "?"}, ${run.createdAt ?? "?"}…${run.updatedAt ?? "?"})`;
+
+export const reviewRunAnchor = (input: {
+  readonly reading: ReviewRunReading | undefined;
+  readonly headSha: string;
+  /** The approvals guard 1 is about to credit — the ones whose anchor is at stake. */
+  readonly approvals: readonly ReviewFact[];
+}): RunAnchor => {
+  const head = input.headSha;
+  const reading = input.reading ?? { state: "not-asked" as const };
+  if (reading.state === "not-asked")
+    return {
+      state: "by-hand",
+      detail: `the round of review behind this approve was NOT asked about: no --review-workflow was given, and the name of the reviewer's workflow belongs to the project, not to this package. GitHub anchors a review to the head the PR has when the verdict is SENT, so the formal status alone cannot tell an answer about this head from one about the tree a mid-round push replaced. Pass --review-workflow '<name>', or ${anchorByHand(head)}`,
+    };
+  if (reading.state === "unreadable")
+    return {
+      state: "by-hand",
+      detail: `the rounds of '${reading.workflow}' on ${head.slice(0, 7)} could not be read, so the anchor of this approve is unverified — GitHub answered: ${reading.reason}. 'actions/runs' is an ACTIONS resource: an installation token needs 'actions: read' in its job's permissions, and unlisted is zeroed, not defaulted. Add the scope, or ${anchorByHand(head)}`,
+    };
+
+  // A round that ANSWERS about this head: the workflow the caller named, run on this head,
+  // on the `pull_request` event, and finished successfully. `workflow_dispatch` is excluded
+  // by both halves at once — such a round hangs on the head of the base branch and carries
+  // that `head_sha` (thread 043 met the same run from the other side).
+  const named = reading.runs.filter((run) => run.name === reading.workflow);
+  const rounds = named.filter(
+    (run) =>
+      run.headSha === head &&
+      run.event === "pull_request" &&
+      run.status === "completed" &&
+      run.conclusion === "success",
+  );
+  if (rounds.length === 0)
+    return {
+      state: "orphan",
+      detail:
+        named.length === 0
+          ? `no round of '${reading.workflow}' is reported for ${head.slice(0, 7)} at all — an approve shown against this head with no round behind it is not an answer about it. What is missing is a round of review ON THIS HEAD (re-label, or a push), not a merge`
+          : `no CLOSED round of '${reading.workflow}' on ${head.slice(0, 7)}: ${named.map(describeRun).join("; ")} — a round that read another head, or on another event, or that has not finished, does not anchor a verdict about this head`,
+    };
+
+  const windows = rounds
+    .map((run) => ({ run, from: stampOf(run.createdAt), to: stampOf(run.updatedAt) }))
+    .filter((window) => window.from !== undefined && window.to !== undefined);
+  if (windows.length === 0)
+    return {
+      state: "by-hand",
+      detail: `the round(s) of '${reading.workflow}' on ${head.slice(0, 7)} carry no readable window (${rounds.map(describeRun).join("; ")}), so whether the verdict came out of one cannot be told from the payload. ${anchorByHand(head)}`,
+    };
+
+  const inside = input.approvals.filter((approval) => {
+    const at = stampOf(approval.submittedAt);
+    if (at === undefined) return false;
+    return windows.some((window) => at >= (window.from as number) && at <= (window.to as number));
+  });
+  // AN APPROVE WITH NO STAMP IS "CANNOT TELL", NOT "ORPHAN", and the difference is the whole
+  // value of the third state: STOP means the anchor was measured and does not hold, `by-hand`
+  // means it could not be measured. Read as a STOP, an unstamped payload would refuse a merge
+  // for a fact nobody established; read as a pass, it would be the silence this thread exists
+  // to end. It is asked AFTER the stamped ones: a verdict that IS shown inside a round of this
+  // head is anchored whatever else stands beside it.
+  if (inside.length === 0 && input.approvals.some((a) => stampOf(a.submittedAt) === undefined))
+    return {
+      state: "by-hand",
+      detail: `the approve on ${head.slice(0, 7)} carries no 'submittedAt', so it cannot be placed inside the round(s) of '${reading.workflow}' on this head (${rounds.map(describeRun).join("; ")}). ${anchorByHand(head)}`,
+    };
+  if (inside.length > 0) {
+    const window = windows.find((candidate) =>
+      inside.some((approval) => {
+        const at = stampOf(approval.submittedAt) as number;
+        return at >= (candidate.from as number) && at <= (candidate.to as number);
+      }),
+    );
+    return {
+      state: "anchored",
+      detail: `inside the round ${window?.run.id ?? "?"} of '${reading.workflow}' on this head (${window?.run.createdAt ?? "?"}…${window?.run.updatedAt ?? "?"})`,
+    };
+  }
+  return {
+    state: "orphan",
+    detail: `the approve (${input.approvals
+      .map(
+        (approval) =>
+          `${approval.author ?? "?"}${present(approval.submittedAt) === undefined ? ", no stamp" : ` at ${present(approval.submittedAt)}`}`,
+      )
+      .join(
+        ", ",
+      )}) lies OUTSIDE every closed round of '${reading.workflow}' on ${head.slice(0, 7)}: ${rounds
+      .map(describeRun)
+      .join(
+        "; ",
+      )}. A verdict sent from a round that read ANOTHER head is anchored here by GitHub anyway — it answers about the tree that round analysed, not about this one. What is missing is a round of review on this head`,
+  };
+};
+
 const checkIsGreen = (check: Attempt): boolean =>
   check.conclusion === undefined && check.status === undefined
     ? check.state !== undefined && greenStates.has(check.state)
@@ -816,7 +1019,17 @@ export const verdictAndChecks = (
   const unanchoredVerdicts = lastOnHead.filter((review) => anchorless.has(review));
 
   const onHead = lastOnHead.filter((review) => !anchorless.has(review)).map(asVerdict);
+  const approvalFacts = lastOnHead.filter(
+    (review) => !anchorless.has(review) && review.state === "APPROVED",
+  );
   const approvals = onHead.filter((review) => review.state === "APPROVED");
+  // The anchor of thread 027, asked of the approvals that survived everything above: being
+  // shown against this head is not the same as having been decided about it.
+  const runAnchor = reviewRunAnchor({
+    reading: pr.reviewRuns,
+    headSha: head,
+    approvals: approvalFacts,
+  });
   const changesRequested = onHead.filter((review) => review.state === "CHANGES_REQUESTED");
   const staleApprovals = pr.reviews.filter(
     (review) => review.state === "APPROVED" && review.commitSha !== head,
@@ -850,10 +1063,30 @@ export const verdictAndChecks = (
           ? {
               guard: 1,
               title: "approve on the current head",
-              state: "pass",
-              detail: `approved on ${head.slice(0, 7)} by ${approvals
-                .map((review) => review.author ?? "?")
-                .join(", ")}`,
+              // The three states of thread 027, in one place: the approve is credited only
+              // when a round of review on THIS head is shown to have produced it.
+              state:
+                runAnchor.state === "anchored"
+                  ? "pass"
+                  : runAnchor.state === "orphan"
+                    ? "fail"
+                    : "by-hand",
+              detail:
+                runAnchor.state === "anchored"
+                  ? `approved on ${head.slice(0, 7)} by ${approvals
+                      .map((review) => review.author ?? "?")
+                      .join(", ")} — ${runAnchor.detail}`
+                  : runAnchor.state === "orphan"
+                    ? `an approve is shown on ${head.slice(0, 7)} (${approvals
+                        .map((review) => review.author ?? "?")
+                        .join(
+                          ", ",
+                        )}) but no round of review on this head produced it: ${runAnchor.detail}`
+                    : `an approve is shown on ${head.slice(0, 7)} by ${approvals
+                        .map((review) => review.author ?? "?")
+                        .join(
+                          ", ",
+                        )}, and the door cannot tell whether it answers about THIS head: ${runAnchor.detail}`,
             }
           : {
               guard: 1,
@@ -900,9 +1133,17 @@ export const verdictAndChecks = (
  * not a reading of its own: "ready" means precisely "neither of the two guards the door
  * computes would refuse", and the words that explain WHY stay with the outcomes.
  */
+/**
+ * AND "WOULD NOT REFUSE" IS THE WHOLE OF IT — `by-hand` counts as holding (thread 027). The
+ * scheduler ranks a queue; it does not open a door. Guard 1 answers `by-hand` whenever the
+ * rounds of review were not read, and this reader never reads them (that would be an Actions
+ * call per pull request per tick, for a hint). Read as "not ready", the new state would
+ * silently switch the merge-ready acceleration off for every PR there is; read as "nothing
+ * refuses", the pair is raised and the OBLIGATION is answered at the door, where it belongs.
+ */
 export const guardsOneAndTwoHold = (pr: PullRequestFacts): boolean => {
   const { verdict, checks } = verdictAndChecks(pr);
-  return verdict.state === "pass" && checks.state === "pass";
+  return verdict.state !== "fail" && checks.state !== "fail";
 };
 
 export const evaluateMergeGate = (input: {

@@ -95,6 +95,7 @@ import {
   ghRefusalHint,
   ghRunParkSchema,
   pullRequestFacts,
+  readReviewRuns,
 } from "./merge/gh.js";
 import {
   type AuthAlarm,
@@ -10526,9 +10527,41 @@ const mergeGate = (argv: readonly string[]): void => {
     }
   })();
 
+  // WHICH ROUND OF REVIEW PRODUCED THE VERDICT (thread 027), the third read: GitHub anchors
+  // a review to the head the PR has WHEN THE VERDICT IS SENT, so a round that started on an
+  // older head and finished after a push hangs its answer on a tree it never read. The runs
+  // are the only place that still knows: a round carries the head it read in `head_sha`.
+  // The workflow is NAMED by the caller — the reviewer's workflow is a fact of the served
+  // project, and guessing it here is the same line the documents of power do not cross.
+  // A refusal is NOT fatal here, unlike the `gh pr view` above: guard 1 has a third state
+  // for it (`by-hand`), which is the point of the whole repair.
+  const reviewWorkflow = flag(argv, "--review-workflow")?.trim();
+  const reviewRuns =
+    reviewWorkflow === undefined || reviewWorkflow.length === 0
+      ? undefined
+      : readReviewRuns({
+          workflow: reviewWorkflow,
+          ask: () =>
+            execFileSync(
+              "gh",
+              [
+                "api",
+                // `per_page=100`: the rounds of ONE head, and a head with a hundred runs on
+                // it has a different problem than this door is about.
+                `repos/{owner}/{repo}/actions/runs?head_sha=${parsed.data.headRefOid}&per_page=100`,
+              ],
+              {
+                cwd: repo,
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "pipe"],
+                maxBuffer: 16 * 1024 * 1024,
+              },
+            ),
+        });
+
   // The SAME reading of the payload the scheduler's merge-ready uses (`pullRequestFacts`).
   const verdict = evaluateMergeGate({
-    pr: pullRequestFacts(parsed.data, baseHead),
+    pr: pullRequestFacts(parsed.data, baseHead, reviewRuns),
     powerDocs,
     d1,
   });
