@@ -358,7 +358,10 @@ describe("notify as a command", () => {
     expect(text).not.toContain("023-x");
     // The park is still IN FORCE: it stays in the state, and the thread is not called stalled.
     expect(readFileSync(contest.state, "utf8")).toContain("parked\tjohn\t023-x\t");
-    expect(second.out).toContain("1 parked, 0 of them asking");
+    // AND THE LINE STAYS TRUE ABOUT IT (thread 030, Д-1): the question is still standing on
+    // john, so it is still counted as asking — what is over is the RINGING, and that is the
+    // third number. The old line said `0 of them asking` here, about a live question.
+    expect(second.out).toContain("1 parked, 1 of them asking, 0 of those new");
   });
 
   it("a park declared by an informational message never rings, and no blank is sent", () => {
@@ -387,7 +390,7 @@ describe("notify as a command", () => {
     contest.park("023-x", { asks: true, date: "2026-07-26T09:00:00Z", body: "А теперь чинить?" });
     const again = run(contest, ["--write"]);
 
-    expect(again.out).toContain("1 of them asking");
+    expect(again.out).toContain("1 parked, 1 of them asking, 1 of those new");
     expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain(
       "your decision: 023-x — А теперь чинить?",
     );

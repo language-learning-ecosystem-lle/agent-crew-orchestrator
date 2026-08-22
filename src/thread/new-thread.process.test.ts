@@ -380,6 +380,24 @@ describe("new-thread and the turn parked behind a person (R27, thread 075)", () 
     expect(firstHeader(contest, opened.id).fields.parkedOn).toBe("john");
   });
 
+  // THE EVENT PARK THROUGH THE SECOND ENTRANCE (thread 030, Д-3). `--parked-on pr:N` had no
+  // case in this file at all: the shape check and the note of the lift were covered on
+  // `new-message` only, and this door was the one 075 had already caught swallowing the flag
+  // in silence. A thread OPENED frozen behind a merge is the live shape — the freeze of
+  // 2026-08-21 that stood 8 hours was declared exactly like this — so the note has to reach
+  // the writer here too, not only on the reply.
+  it("a thread OPENED behind a merge carries the park and is told what lifts it", () => {
+    const contest = contour();
+
+    const opened = openWith(contest, ["--expects", "none", "--parked-on", "pr:366"]);
+
+    expect(opened.code).toBe(0);
+    expect(firstHeader(contest, opened.id).fields.parkedOn).toBe("pr:366");
+    expect(opened.out).toContain("lifts on ONE thing");
+    expect(opened.out).toContain("'merged-pr: 366'");
+    expect(opened.out).toContain("NOTHING WATCHES THE STATE OF #366");
+  });
+
   it("a role the circuit CAN wake is refused here too — that is a turn to pass, not a person to wait for", () => {
     const contest = contour();
 

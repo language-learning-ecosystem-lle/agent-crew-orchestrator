@@ -440,6 +440,18 @@ export type NotificationPlan = {
    * from the first.
    */
   readonly freshParked: readonly ParkedThread[];
+  /**
+   * THE PARKS IN FORCE THAT ARE ASKING A HUMAN — all of them, announced or not.
+   *
+   * It exists because the courier's line said `N parked, K of them asking` and put
+   * {@link freshParked} into K, which is "asking AND not announced before". The two agree only
+   * on the tick a park is born: from the second digest on, a live question standing on a person
+   * printed `0 of them asking` — the line of 2026-08-21 (thread 030, defect Д-1), read in the
+   * same hour a human was hunting a call that had not reached them. A count whose word and
+   * whose number say different things is worse than no count: it is what an operator reads to
+   * decide there is nothing to look for.
+   */
+  readonly askingParked: readonly ParkedThread[];
   /** The authorisation shelf in force now, if the predicate rings — also part of the state. */
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready outage in force now, if the predicate rings — also part of the state. */
@@ -623,7 +635,8 @@ export const planNotifications = (input: {
   // that asked, once, and the composition below keeps it only so that the age pass stays
   // quiet about it and the state remembers it was told. `asks` is the message's own word:
   // `expects: none` says it wants nothing of anybody, and ❓ over it is a lie by mark.
-  const freshParked = parked.filter((park) => park.asks && !seenParks.has(parkedKey(park)));
+  const askingParked = parked.filter((park) => park.asks);
+  const freshParked = askingParked.filter((park) => !seenParks.has(parkedKey(park)));
 
   // A PARKED THREAD IS NEVER ALSO A STALLED ONE (thread 023). Both would be true of it —
   // the turn is not moving, by construction — but "your decision is wanted, here is the
@@ -828,6 +841,7 @@ export const planNotifications = (input: {
     fresh,
     freshStalled,
     freshParked,
+    askingParked,
     exhausted,
     freshFreezes,
     freezeKeys,
