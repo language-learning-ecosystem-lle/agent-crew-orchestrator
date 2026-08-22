@@ -35,6 +35,11 @@ usage: scripts/split-package.sh --tag <tag> [--prefix <path>] [--ref <ref>] [--b
 Схема имён тегов пакета agent-protocol: `agent-protocol-v<MAJOR.MINOR.PATCH>`, где версия —
 это `version` из package.json пакета НА СРЕЗАЕМОЙ РЕВИЗИИ. Скрипт печатает обе и отказывает,
 если они разошлись: тег, который врёт о версии, читает чужой репозиторий.
+
+Скрипт печатает также ВЕРСИЮ СХЕМЫ ПРОТОКОЛА, которую пишет срез (`CURRENT_PROTOCOL_VERSION`
+из его исходников): по номеру тега её не видно, а переезд пина через ступень, где она
+сдвинулась, роняет CI потребителя. Сверить её с числом потребителя ДО переезда пина:
+`agent-protocol schema version --package-ref <тег> --repo <потребитель> --ref main`.
 EOF
 }
 
@@ -115,6 +120,35 @@ else
   echo "$SELF: ревизии '$base' в этом репозитории нет — проверка «срез несёт всю линию» ПРОПУЩЕНА (назови линию через --base)"
 fi
 
+# КАКУЮ ВЕРСИЮ СХЕМЫ ПИШЕТ ЭТОТ ТЕГ (тред 028). Номер тега — это версия ПАКЕТА, и по ней
+# не видно, сдвинулась ли под ним схема протокола: `v0.2.1` писала 17, `v0.2.2` — уже 18,
+# а заголовок ступени читался как чистый релизный бамп. Потребитель, переехавший пином
+# через такую ступень, узнаёт об этом красным CI на живом `main` (замер 2026-08-22, LLE:
+# 37 секунд после мержа). Поэтому число едет ВМЕСТЕ с объявлением тега — рука, ведущая
+# бамп, читает его здесь, а не ищет в исходниках; сверяется оно с числом потребителя
+# командой `agent-protocol schema version --package-ref <тег> --repo <потребитель>`.
+schema_version=""
+schema_source=""
+for candidate in "src/schema/version.ts" "$prefix/src/schema/version.ts"; do
+  if git cat-file -e "$resolved:$candidate" 2>/dev/null; then
+    schema_source="$candidate"
+    schema_version="$(git show "$resolved:$candidate" |
+      sed -n 's/^export const CURRENT_PROTOCOL_VERSION[[:space:]]*=[[:space:]]*\([0-9][0-9]*\)[[:space:]]*;.*/\1/p' |
+      head -n 1)"
+    break
+  fi
+done
+
+if [ -z "$schema_source" ]; then
+  echo "$SELF: в '$prefix' на ревизии '$ref' нет src/schema/version.ts — этот срез версию схемы протокола не объявляет"
+elif [ -z "$schema_version" ]; then
+  # Файл есть, а числа в нём не нашлось: это не «нечего печатать», а нечитаемое
+  # объявление — молчать здесь значит выдать неизвестное за отсутствующее.
+  die "в '$schema_source' на ревизии '$ref' нет объявления 'CURRENT_PROTOCOL_VERSION = <n>' — версию схемы этого среза прочитать нечем, тег не создан"
+else
+  echo "$SELF: protocolVersion этот тег пишет: $schema_version (из '$schema_source')"
+fi
+
 echo "$SELF: режу '$prefix' с $ref ($resolved) → тег '$tag' (пакет $name@$version)"
 
 split="$(git subtree split --prefix="$prefix" "$resolved" 2>/dev/null | tail -n 1)"
@@ -129,7 +163,15 @@ echo "$SELF: срез $split, верхний уровень его дерева:
 git ls-tree --name-only "$split" | sed 's/^/  /'
 
 git tag "$tag" "$split"
-echo "$SELF: тег '$tag' создан на $split"
+if [ -n "$schema_version" ]; then
+  # Число повторяется в ИТОГОВОЙ строке намеренно: именно её копируют в тред как
+  # объявление тега, и объявление без версии схемы — то самое молчание, которым
+  # оплачен красный CI потребителя.
+  echo "$SELF: тег '$tag' создан на $split (пакет $name@$version, protocolVersion $schema_version)"
+else
+  echo "$SELF: тег '$tag' создан на $split (пакет $name@$version, версия схемы не объявлена)"
+fi
+echo "$SELF: перед переездом пина сверь оба числа: agent-protocol schema version --package-ref '$tag' --repo <репозиторий-потребитель> --ref main"
 
 if [ "$push" = "yes" ]; then
   git push "$remote" "refs/tags/$tag"

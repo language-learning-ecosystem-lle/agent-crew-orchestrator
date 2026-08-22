@@ -78,6 +78,7 @@ import {
   mailCheckoutFreshness,
   mailCheckoutState,
   messagesAtRef,
+  readFileAtRef,
   workdirState,
 } from "./fs/git.js";
 import { resolveMailRoot } from "./fs/mail-root.js";
@@ -453,6 +454,11 @@ import {
   planMigration,
   renderMigrationPlan,
 } from "./schema/migrate.js";
+import {
+  PACKAGE_VERSION_SOURCES,
+  parseSupportedVersion,
+  renderSchemaVersion,
+} from "./schema/probe.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   declaredProtocolVersion,
@@ -1112,6 +1118,109 @@ const schemaMigrate = (argv: readonly string[]): void => {
   err(
     "agent-protocol: the files are written but NOT committed — the config goes through a PR, the mail goes straight into its branch (README, 'Compatibility and breaking changes')",
   );
+};
+
+/**
+ * `schema version` — THE TWO NUMBERS OF A PIN, SIDE BY SIDE, BEFORE IT MOVES (thread
+ * 028). `config check` answers the same question from the INSTALLED package, which
+ * during a pin bump is the old one by definition: the consumer's CI stays green until
+ * the pin lands and goes red on a live `main` afterwards (LLE, 2026-08-22, 37 seconds
+ * after the merge). This command asks the CANDIDATE instead — `--package-ref` names a
+ * tag, and the number is read out of its source, with nothing installed and nothing
+ * checked out.
+ *
+ * NEITHER SIDE GOES THROUGH THE LOADER, and that is the point rather than a shortcut:
+ * the loader's version gate would refuse the very mismatch this command exists to
+ * SHOW. The config is read raw, the same exception `schema migrate` makes, and both
+ * origins are printed so no number in the output has to be taken on faith.
+ *
+ * IT EXITS 0 ON EVERY VERDICT IT CAN RENDER — including a mismatch, and deliberately.
+ * The mismatch is what the command is run to find BEFORE the pin moves (the migration
+ * then rides in the same PR as the pin); a non-zero there would turn a measurement
+ * into a door — and a door over somebody else's pin has nothing to stand on: the pin
+ * lives in a repository this package does not own and can be edited around it. Exit 2
+ * means the numbers could not be READ, which is the one thing that is a defect here.
+ */
+const schemaVersion = (argv: readonly string[]): void => {
+  const packageRef = flag(argv, "--package-ref");
+  const packageRepo = flag(argv, "--package-repo") ?? repoOf(process.cwd());
+
+  let writes = { version: CURRENT_PROTOCOL_VERSION, at: "this build" };
+  if (packageRef !== undefined) {
+    // The layout differs between a cut tag (the package IS the root) and a branch of
+    // this repository (the package sits under the workspace prefix), so both are
+    // tried and the one that answered is NAMED in the output.
+    const path = PACKAGE_VERSION_SOURCES.find((candidate) =>
+      fileExistsAtRef(packageRepo, packageRef, candidate),
+    );
+    if (path === undefined) {
+      fail(
+        `'${packageRef}' in '${packageRepo}' carries none of ${PACKAGE_VERSION_SOURCES.join(", ")} — this ref is not a build of the package (name the repository holding the tag with --package-repo)`,
+        2,
+      );
+      return;
+    }
+    const found = parseSupportedVersion(readFileAtRef(packageRepo, packageRef, path));
+    if (found === undefined) {
+      fail(
+        `'${path}' at ${packageRef} does not declare 'CURRENT_PROTOCOL_VERSION = <n>' — the number cannot be read out of this ref without installing it`,
+        2,
+      );
+      return;
+    }
+    writes = { version: found, at: `${packageRef}:${path}` };
+  }
+
+  const repo = flag(argv, "--repo");
+  if (repo === undefined) {
+    for (const line of renderSchemaVersion({ writes }).lines) out(`agent-protocol: ${line}`);
+    return;
+  }
+
+  const configPath = flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH;
+  const ref = flag(argv, "--ref");
+  let raw: string;
+  if (ref === undefined) {
+    // No `--ref` means the consumer's WORKING TREE, and the output says so: the pin
+    // is decided in a checkout somebody has open, and pretending that was a committed
+    // ref would name a point in history the number did not come from.
+    raw = readFile(join(repo, configPath), "protocol config");
+  } else {
+    try {
+      raw = readFileAtRef(repo, ref, configPath);
+    } catch (error) {
+      fail(
+        `'${configPath}' is not readable in '${repo}' at ${ref}: ${(error as Error).message}`,
+        2,
+      );
+      return;
+    }
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    fail(`'${join(repo, configPath)}' is not JSON: ${(error as Error).message}`, 2);
+    return;
+  }
+
+  const declared = declaredProtocolVersion(parsed);
+  if (declared === undefined) {
+    const hint = legacyVersionHint(parsed);
+    fail(
+      `'${configPath}' in '${repo}' does not declare '${PROTOCOL_VERSION_FIELD}'${hint === undefined ? "" : ` — ${hint}`}`,
+      2,
+    );
+    return;
+  }
+
+  const at =
+    ref === undefined
+      ? `'${join(repo, configPath)}' (read from the working tree)`
+      : `'${configPath}' in '${repo}' at ${ref}`;
+  const report = renderSchemaVersion({ writes, declares: { version: declared, at } });
+  for (const line of report.lines) out(`agent-protocol: ${line}`);
 };
 
 const rolesList = (argv: readonly string[]): void => {
@@ -10599,6 +10708,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     boxInit(argv.slice(1));
   } else if (command === "schema" && subcommand === "migrate") {
     schemaMigrate(argv.slice(2));
+  } else if (command === "schema" && subcommand === "version") {
+    schemaVersion(argv.slice(2));
   } else if (command === "merge-gate") {
     mergeGate(argv.slice(1));
   } else if (command === "zones" && subcommand === "check") {
