@@ -42,7 +42,7 @@
 Режет такой тег `scripts/split-package.sh` (`git subtree split` плюс проверки), и режет его рука на каждом бампе — автоматизация реза трогает `.github/workflows/**` и стоит отдельного решения john:
 
 ```
-scripts/split-package.sh --tag agent-protocol-v0.2.3 [--prefix packages/agent-protocol] [--ref HEAD] [--base origin/main] [--push]
+scripts/split-package.sh --tag agent-protocol-v0.2.4 [--prefix packages/agent-protocol] [--ref HEAD] [--base origin/main] [--push]
 ```
 
 - **Схема имён — `<name>-v<version>` из `package.json` пакета на срезаемой ревизии**, и скрипт отказывает, если имя тега и версия разошлись: тег читает чужой репозиторий, и врать о версии ему нельзя. Практическое следствие — **каждая доставка начинается с бампа `version` в `packages/agent-protocol/package.json`**, иначе следующий рез упрётся в уже существующий тег.
