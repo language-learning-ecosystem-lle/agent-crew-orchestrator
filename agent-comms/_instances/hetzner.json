@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-22T10:06:44.419Z",
+  "writtenAt": "2026-08-22T10:08:22.964Z",
   "roles": [
     "curator",
     "dev-core"
@@ -9,7 +9,7 @@
     {
       "role": "dev-core",
       "thread": "028-pin-bump-schema-gap",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-22T11:06:19Z"
     }
   ]
