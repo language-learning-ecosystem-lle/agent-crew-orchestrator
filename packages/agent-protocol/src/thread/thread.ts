@@ -560,7 +560,7 @@ export const personParksOf = (thread: Thread): readonly Parking[] => {
  * early cost one empty raise, not lifting cost a thread frozen with the answer already inside it
  * until a human noticed (046 stood 12 hours). Thread 030 closed the expensive half by
  * measurement — a standing park with an unanswered question is counted and RINGS (`N parked, K
- * of them asking`), and one lifted with no answer named goes into the digest as a line instead
+ * of them asking`), and one that has been lifted goes into the digest as a line instead
  * of vanishing from the composition — so the narrowing now pays that price instead: a forgotten
  * `delivers` is read by the human in the NEXT digest, not half a day later. What it buys is the
  * defect the wide lift kept producing: the park was lifted by the class of messages it was set

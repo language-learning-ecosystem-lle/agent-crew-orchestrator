@@ -3716,10 +3716,16 @@ const runNotify = async (input: {
     // clause printed every tick to say "none" is the noise this thread is spending itself on.
     `${plan.restatedParked.length === 0 ? "" : `, ${plan.restatedParked.length} restated`}` +
     // THE FIFTH NUMBER, on the same rule and for the same reason (thread 030, (в2)): a park
-    // that was lifted with its question unanswered is no longer in the first three numbers at
-    // all — it is not parked any more — so without a clause of its own the operator reading
-    // this line would see the count fall by one and nothing else. Zero stays invisible.
-    `${plan.liftedParked.length === 0 ? "" : `, ${plan.liftedParked.length} lifted unanswered`}` +
+    // that was announced and has been lifted is no longer in the first three numbers at all —
+    // it is not parked any more — so without a clause of its own the operator reading this
+    // line would see the count fall by one and nothing else. Zero stays invisible.
+    //
+    // THE WORD IS "lifted" AND NOT "lifted unanswered" SINCE (в1) (thread 030, 2026-08-22): a
+    // park on a person is now lifted by `delivers: <that person>` and by nothing else, so the
+    // clause that used to say the answer had NOT been named prints in the very case where it
+    // was. What the number still says is true and is the whole of it — a key that rang has
+    // stopped standing.
+    `${plan.liftedParked.length === 0 ? "" : `, ${plan.liftedParked.length} lifted`}` +
     // AND THE SIXTH ONE NAMES WHAT THE FIVE CANNOT COUNT (thread 031): the parks in force whose
     // person this notifier has no way to call. They are outside the five numbers by
     // construction — those count the CALL, and there is none here — so without this clause the
@@ -3849,7 +3855,7 @@ const runNotify = async (input: {
     ...plan.restatedParked.map((park) => `${park.thread} (restated on ${park.person})`),
     // A LIFT IS NAMED THE SAME WAY AND FOR THE SAME REASON: it rode in this letter without
     // raising it, and the summary is where the operator learns what actually went out.
-    ...plan.liftedParked.map((park) => `${park.thread} (lifted unanswered on ${park.person})`),
+    ...plan.liftedParked.map((park) => `${park.thread} (lifted on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
   ];

@@ -541,7 +541,7 @@ apart along lines the package already had:
   quiet tick — the courier runs every few minutes, and a downgrade that turns into a
   disappearance is the trade of 051 made backwards. The courier's line names it as a fourth
   number when there is one: `N parked, K of them asking, M of those new, R restated,
-  L lifted unanswered, X with nobody to call: …` (the last three clauses appear only when
+  L lifted, X with nobody to call: …` (the last three clauses appear only when
   they are not zero). What
   the pair key costs is stated rather than hidden: if the person answers and a NEW question
   is parked on the same thread before the courier has ticked once, the composition was never
@@ -550,16 +550,16 @@ apart along lines the package already had:
   file on the next tick and the next park of that pair rings again, because the courier's
   memory of parks is the current composition and not a journal.
 
-- **A park LIFTED with nothing answered is a line too, and for the opposite reason**
-  (thread 030, defect (в2), decision of john «ОБА» of 2026-08-22). The same wide lift as
-  above works the other way round as well: the first message that moves anybody lifts the
-  park, and the thread then leaves the composition ENTIRELY — not the call, all three
-  numbers. The unanswered question stops existing for the signal layer. Measured on
+- **A park that was ANNOUNCED AND LIFTED is a line too, and for the opposite reason**
+  (thread 030, defect (в2), decision of john «ОБА» of 2026-08-22). The wide lift that made
+  the repeat above works the other way round as well: the first message that moves anybody
+  lifted the park, and the thread then left the composition ENTIRELY — not the call, all
+  three numbers. The unanswered question stopped existing for the signal layer. Measured on
   2026-08-22: eight live parks of john in `.orchestrator/notify.state`, and the thread whose
   question had just been asked (030, lifted by an automatic `github` message about a merge)
   in none of them. So a key that was ANNOUNCED and is no longer in the composition produces
   a line — the project's `parked` sentence prefixed by the package's own "the park was
-  lifted with no answer named, the question stands" — on the same terms as a restatement: it
+  lifted, the last line about the question" — on the same terms as a restatement: it
   rides in a letter somebody else's event triggered, never raises one, and stays owed
   (the key is held in the state with the stamp that was announced) until a letter actually
   carries it. The question and `asks` are re-read from the declaring message by that stamp
@@ -567,13 +567,16 @@ apart along lines the package already had:
   `expects: none` asked nothing, so its lift says nothing; a CLOSED thread declares nothing,
   so closing a thread is the acceptance and no line survives it; a key nobody can read back
   is dropped rather than announced in the words of nobody. The courier's line names it as a
-  fifth number when there is one (`, L lifted unanswered`). **The price is named and
-  accepted, not hidden:** the courier CANNOT tell "the park was lifted by the delivery of
-  john's answer" from "somebody else's move lifted it" — john does not write into the mail,
-  his word arrives in a letter of the courier role, and no machine mark of "answered" exists
-  in the fields — so a legitimately answered park also produces one line. One line too many
-  against a question that disappears; a mark guessed from the text was NOT invented, because
-  it would be the silent miss again wearing the look of precision.
+  fifth number when there is one (`, L lifted`). **The wording stopped claiming the answer
+  was not named, and the mechanism did not move** (thread 030, (в1), the same day): the line
+  used to read "the park was lifted with no answer named, the question stands", which was
+  true while any move lifted a park and is false now that a person park lifts on
+  `delivers: <that person>` and on nothing else — it would print the claim in the one case
+  where the answer was named, and named by the very field that did the lifting. The class did
+  not empty out (a park also stops standing when a LATER park is declared in the thread), so
+  the line states what it measured — a key that rang and no longer stands — and leaves
+  "was it answered" to the reader, who has the thread. A mark guessed from the text was NOT
+  invented then and is not now: it would be the silent miss wearing the look of precision.
 
 - **A park the courier CANNOT CALL ANYBODY ABOUT is counted apart and named, never
   dropped** (thread 031). A park is an event for the person it names, and only if that
