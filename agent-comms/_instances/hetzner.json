@@ -1,17 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-22T08:39:41.819Z",
+  "writtenAt": "2026-08-22T08:40:53.877Z",
   "roles": [
     "curator",
     "dev-core"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "027-guard1-orphan-verdict",
-      "state": "draining",
-      "deadline": "2026-08-22T09:13:46Z"
-    },
     {
       "role": "dev-core",
       "thread": "028-pin-bump-schema-gap",
