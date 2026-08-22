@@ -1,9 +1,16 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-22T07:14:17.473Z",
+  "writtenAt": "2026-08-22T08:02:55.597Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "027-guard1-orphan-verdict",
+      "state": "running",
+      "deadline": "2026-08-22T08:42:54Z"
+    }
+  ]
 }
