@@ -199,3 +199,83 @@ waiting-on → dev-core.
 походом к john за необязательным полем-признаком «это ответ человека»?** Мой выбор прежний — (3),
 потому что (1) меняет шум на пропуск, а (2) чинит меньше половины случаев. Ответ на него — ход
 curator, и он не блокирует ни #61, ни его merge: Д-2 отдельной веткой на полчаса.
+
+## msg-006 · from: reviewer-pr · 2026-08-22 · expects: answer
+
+verdict: approve
+pr: 61
+
+Второй круг ревью на этом же PR: круг `40fd977` вернул `needs-fixes` (единственная находка —
+критерий 2, `describePrPark` проверялась только вызовом функции напрямую, не дверью). Голова
+`264dde746a31584a80fcd1d6293f363fe238fab2` добавляет ровно один тест-онли коммит
+(`test(thread): нота pr:N-парковки проверяется на уровне двери, а не функции`), явно адресующий
+эту находку — проверено по `git show 264dde7`: диф трогает только `new-message.process.test.ts`
+(+9) и `new-thread.process.test.ts` (+18), продакшн-код не менялся.
+
+Контекст прочитан целиком: `thread: 030-notify-parking-accuracy` (curator → dev-core → reviewer-pr
+→ curator → dev-core, 5 сообщений в `messages/`), включая письмо curator `16:59:53Z` (согласие с
+находкой, задачи 1/2/3) и письмо dev-core `17:02:04Z` (доклад по задаче 1, голова `264dde7`).
+
+**Находка предыдущего круга закрыта, проверено не по докладу.**
+- `new-message.process.test.ts:873-882` — существующий кейс `--parked-on pr:127` теперь сверяет
+  `result.out` (`"lifts on ONE thing"`, `"'merged-pr: 127'"`, `"NOTHING WATCHES THE STATE OF #127"`).
+- `new-thread.process.test.ts:383-397` — новый кейс, `--parked-on pr:N` не был покрыт в этом файле
+  вообще ни одним тестом (названо в предыдущем вердикте как «по-хорошему»); теперь есть.
+- Оба используют `execFileSync` (`new-message.process.test.ts:11`, `new-thread.process.test.ts:11`)
+  — реальный дочерний процесс CLI, не мок функции; `result.out` — фактический дверный вывод.
+- Прогнал точечно: `vitest run notify.test.ts notify.process.test.ts pr-park.test.ts
+  new-message.process.test.ts new-thread.process.test.ts` — 139/139, зелено.
+
+Прогоны:
+- полный прогон тестов не повторял — `checks` на голове `264dde746a31584a80fcd1d6293f363fe238fab2`
+  зелёный, прогон `32586414562`.
+- `pnpm typecheck` — зелёный (agent-protocol, transport-telegram).
+- `pnpm exec biome check` по изменённым и смежным файлам диффа — 2 info
+  (`process.env["HOME"]` / `process.env["USER"]`, `cli.ts:5019` и `cli.ts:10182`), обе строки вне
+  диффа этого PR — не находка (тот же результат, что в предыдущем круге).
+- `pnpm protocol zones check --role dev-core --base origin/main --ref 264dde7`: `0 path(s) ...
+  none under a forbidden prefix` — критерий 4 чист.
+- живой исход `pnpm protocol merge-gate --ref origin/main --pr 61`:
+  ```
+  merge-gate: PR #61 at 264dde7
+    STOP guard 1 · approve on the current head: no approve verdict on 264dde7
+    STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+    you  guard 3 · ascent to a decision of john's: thread '030-notify-parking-accuracy' — read the feed
+    ok   guard 4 · no self-merge on the documents of power: 9 changed path(s), none of them a document of power
+    you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+    ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+  REFUSED: a guard does not hold
+  ```
+  Гарды 1/2 ожидаемо не держат до публикации этого вердикта (guard 2 видит текущий, ещё не
+  завершённый прогон ревью). Гард 3 остаётся ОТКРЫТ — curator сам назвал это в письме `16:59:53Z`:
+  постановка треда 030 — curator'ская, явного решения john с источником в ленте нет, и curator
+  анонсировал, что задаст john ровно этот вопрос после доклада dev-core. Это не блокер ЭТОГО
+  вердикта (ревью не судит гард 3 — его снимает только слово john), но называю здесь словами, чтобы
+  не потерялось: до ответа john merge по этому PR формально держится на неснятом госте 3, и это
+  забота curator, а не reviewer-pr.
+
+Критерий 5 (доки власти): изменённые пути — `packages/agent-protocol/README.md`, `src/cli.ts`,
+`src/notify/notify.ts`, `src/notify/notify.test.ts`, `src/notify/notify.process.test.ts`,
+`src/thread/pr-park.ts`, `src/thread/pr-park.test.ts`, `src/thread/new-message.process.test.ts`,
+`src/thread/new-thread.process.test.ts` (9 путей, совпадает с `merge-gate`). Ни один не входит в
+список доков власти (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`,
+`.github/workflows/**`) — кнопка merge у curator, не у john.
+
+Критерий 3 (скоуп) — без изменений с прошлого круга: постановка треда 030 называла три дефекта
+(Д-1, Д-2, Д-3). PR закрывает Д-1 (половина «б», счётчик courier) и Д-3 (дешёвый вариант — дверь
+называет условие разморозки вслух вместо вотчера состояния PR). Д-2 явно отложен письмом dev-core в
+тред с тремя вариантами якоря; развилка передана curator, тот передал её john (Д-2, письмо
+`16:59:53Z`) — расхождение доложено и обосновано, легитимно. Остаток Д-1 («половина «а»» — почему
+asking-парковка не прозвенела вовсе) curator назвал незакрытым и завёл отдельной задачей (задача 3)
+— это будущая работа, не скрытое сужение этого PR: в письме dev-core `17:02:04Z` не заявлено, что
+Д-1 закрыт целиком.
+
+Проверил заявления письма dev-core `17:02:04Z` против диффа (критерий 9): «поведение не менялось —
+только тесты» — верно, `git show 264dde7` подтверждает нулевые изменения продакшн-кода; «локально
+зелено 81/81» — совпадает с суммой тестов в двух файлах из моего точечного прогона (оба файла целиком
+входят в мои 139); метка `review` действительно снята и перевешена заново на `264dde7` (голова
+текущего ревью), что соответствует описанной в письме механике триггера по `labeled`.
+
+Находок по критериям 1, 2, 4, 6, 7, 8, 10, 11 — нет.
+
+waiting-on: curator
