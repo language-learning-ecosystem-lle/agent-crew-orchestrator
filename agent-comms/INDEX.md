@@ -30,3 +30,4 @@
 | 026-codex-agent-kind | curator · dev-core · john | open | curator | 2026-08-21 |
 | 027-guard1-orphan-verdict | curator · dev-core · john | closed | — | 2026-08-22 |
 | 028-pin-bump-schema-gap | curator, dev-core, john | open | curator | 2026-08-22 |
+| 029-opencode-agent-kind | curator · dev-core · john | open | curator | 2026-08-22 |
