@@ -3672,7 +3672,25 @@ const runNotify = async (input: {
     // that was lifted with its question unanswered is no longer in the first three numbers at
     // all — it is not parked any more — so without a clause of its own the operator reading
     // this line would see the count fall by one and nothing else. Zero stays invisible.
-    `${plan.liftedParked.length === 0 ? "" : `, ${plan.liftedParked.length} lifted unanswered`}; ` +
+    `${plan.liftedParked.length === 0 ? "" : `, ${plan.liftedParked.length} lifted unanswered`}` +
+    // AND THE SIXTH ONE NAMES WHAT THE FIVE CANNOT COUNT (thread 031): the parks in force whose
+    // person this notifier has no way to call. They are outside the five numbers by
+    // construction — those count the CALL, and there is none here — so without this clause the
+    // sentence about a live question standing on an unreachable person is `0 parked, 0 of them
+    // asking, 0 of those new`, which is the sentence of an empty mail. It cannot collide with
+    // the fifth either: such a park is never written into the state as announced, so it never
+    // comes back as a lift. Named and not merely counted, for the reason the exhausted clause
+    // is: the reader's next move is to go to that thread, and a bare number leaves them exactly
+    // where they were. Zero prints nothing, like the fourth and the fifth: in this repository
+    // the class is empty, and a clause repeating "none" every few minutes is the noise the
+    // neighbouring thread was spent removing.
+    `${
+      plan.unaddressedParked.length === 0
+        ? ""
+        : `, ${plan.unaddressedParked.length} with nobody to call: ${plan.unaddressedParked
+            .map((park) => `${park.thread} (on ${park.person}${park.asks ? ", asking" : ""})`)
+            .join(", ")}`
+    }; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
     // THE STANDING CATEGORY THAT DID NOT EXIST (thread 013). It prints EVERY tick, news or

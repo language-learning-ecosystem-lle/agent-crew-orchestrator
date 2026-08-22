@@ -541,7 +541,8 @@ apart along lines the package already had:
   quiet tick — the courier runs every few minutes, and a downgrade that turns into a
   disappearance is the trade of 051 made backwards. The courier's line names it as a fourth
   number when there is one: `N parked, K of them asking, M of those new, R restated,
-  L lifted unanswered` (the last two clauses appear only when they are not zero). What
+  L lifted unanswered, X with nobody to call: …` (the last three clauses appear only when
+  they are not zero). What
   the pair key costs is stated rather than hidden: if the person answers and a NEW question
   is parked on the same thread before the courier has ticked once, the composition was never
   empty and the new question is read as a repeat — a race in one tick window, which loses
@@ -573,6 +574,25 @@ apart along lines the package already had:
   in the fields — so a legitimately answered park also produces one line. One line too many
   against a question that disappears; a mark guessed from the text was NOT invented, because
   it would be the silent miss again wearing the look of precision.
+
+- **A park the courier CANNOT CALL ANYBODY ABOUT is counted apart and named, never
+  dropped** (thread 031). A park is an event for the person it names, and only if that
+  person is a `direct` target — which the registry gives to `wake.mode: 'self'` and to
+  nothing else. That filter used to run BEFORE the counters, so a question standing on a
+  person this notifier has no way to reach printed `0 parked, 0 of them asking, 0 of those
+  new`: byte for byte the line of an empty mail, in the one situation where the reader most
+  needs the difference. The three numbers keep their meaning — they are about the CALL, and
+  there is none to make — and the line grows a sixth clause, printed only when it is not
+  zero and naming the threads the way the `exhausted` clause names its pairs: `…, 1 with
+  nobody to call: 031-x (on curator, asking)`. Informational parks are in that count too:
+  `asks` sorts calls, and what this clause answers is whether the courier dropped a freeze
+  on the floor. What is deliberately NOT done is ringing somebody else instead — who is
+  called for whom is a norm and not a count. In this repository the class is empty
+  (`wake.mode: 'self'` is john's alone), which is exactly why it was invisible. **The two
+  rules above meet in one place and do not overlap:** a park nobody can be called about is
+  never written into the state as announced, so it can never come back as a lift — the fifth
+  clause is about parks that RANG and stopped standing, the sixth about parks that never
+  rang at all, and no park is ever in both.
 
 - **The second question: what has NOT MOVED** (thread 024). Since schema v13 the turn
   is held by exactly one role and a human is outside its domain, so "who is awaited"
