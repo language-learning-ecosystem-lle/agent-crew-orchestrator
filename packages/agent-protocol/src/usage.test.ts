@@ -632,6 +632,39 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     expect(strayArguments(words.slice(2), specFor("orchestrator restart"))).toEqual([]);
   });
 
+  it("spells every flag the merge door reads (027)", () => {
+    // MEASURED, NOT SUPPOSED: `--review-workflow` landed in `mergeGate` with thread 027
+    // and in the README's «Commands», and NOWHERE in the shipped usage text — the
+    // command a curator gets when they type `merge-gate` with a missing argument named
+    // four flags out of five, and the missing one is the anchor of guard 1 itself. The
+    // corpus above could not see it: `merge-gate` is one of the thirteen commands left
+    // outside `guardArguments` (a swallowed flag there costs a re-run, not a message),
+    // so nothing refused and nothing went red.
+    //
+    // Computed off the handler's body for the same reason `localFrom` is: a pair of
+    // flags written down here would say nothing about a third one added tomorrow. The
+    // claim is "the usage line names every flag `mergeGate` reads", and a new read in
+    // that function reddens this test by the flag's own name.
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+    const opens = source.indexOf("const mergeGate = (argv: readonly string[]): void => {");
+    expect(opens).toBeGreaterThan(-1);
+    const body = source.slice(opens, opens + source.slice(opens).indexOf("\n};"));
+    const read = [
+      ...new Set(
+        [...body.matchAll(/(?:flag|required|list)\(\s*(?:argv,\s*)?"(--[\w-]+)"/g)].map(
+          (found) => found[1] as string,
+        ),
+      ),
+    ].sort();
+    // The read is only worth its assertion if it actually found the flags: an empty
+    // list would pass the subset check below and prove nothing.
+    expect(read).toContain("--review-workflow");
+
+    const spec = specFor("merge-gate");
+    const named = [...spec.value, ...spec.boolean];
+    expect(read.filter((name) => !named.includes(name))).toEqual([]);
+  });
+
   it("lets `up` pass its own flags through to the daemon it starts", () => {
     // `up` re-executes itself as `orchestrator daemon <everything typed, minus its
     // own two flags>`. If the daemon refused a flag `up` accepts, the refusal would
