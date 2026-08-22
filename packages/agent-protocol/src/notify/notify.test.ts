@@ -449,6 +449,42 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     expect(result.lines).toEqual([]);
   });
 
+  it("BUT IT IS NOT INVISIBLE EITHER — the courier counts what it cannot call (thread 031)", () => {
+    // THE OLD BEHAVIOUR, frozen here as the thing that must not come back: the target filter
+    // ran BEFORE the counters, so this exact input — a live question standing on a person the
+    // notifier has no way to reach — gave `parked`, `askingParked` and `freshParked` all empty
+    // and no line, which is byte for byte what an EMPTY MAIL gives. One sentence for two
+    // worlds, and the second world is the one thread 030 was spent on. Latent in this
+    // repository (`wake.mode: 'self'` is john's alone) and not latent in a config that differs.
+    const result = withPark([{ ...PARKED, person: "curator" }]);
+
+    expect(result.unaddressedParked).toEqual([{ ...PARKED, person: "curator" }]);
+    // And still not a call in any of its tenses: the three numbers describe the ring, and
+    // ringing somebody ELSE about a question addressed to a person is a norm, not a repair.
+    expect(result.askingParked).toEqual([]);
+    expect(result.freshParked).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("a person missing from the targets ALTOGETHER is counted the same way", () => {
+    // The other way in, and the likelier one in the field: not `nudge` but absent — a role
+    // switched off in the config, or one this instance does not raise. "Cannot be called" is
+    // the fact the count is about, and `undefined` says it exactly as loudly as `nudge` does.
+    const result = withPark([{ ...PARKED, person: "somebody-else", asks: false }]);
+
+    expect(result.unaddressedParked).toHaveLength(1);
+    // Informational parks are in it too: `asks` sorts the CALL, and there is no call here to
+    // sort — what this count answers is "did the notifier drop a freeze on the floor".
+    expect(result.parked).toEqual([]);
+  });
+
+  it("a park the notifier CAN call about stays out of that count", () => {
+    const result = withPark([PARKED]);
+
+    expect(result.unaddressedParked).toEqual([]);
+    expect(result.freshParked).toEqual([PARKED]);
+  });
+
   it("the state file carries parks beside waits and stalls", () => {
     // Neither the question nor `asks` is stored: the state answers one question — "was this
     // event announced" — and answers it by the key (person, thread, the stamp of the message).

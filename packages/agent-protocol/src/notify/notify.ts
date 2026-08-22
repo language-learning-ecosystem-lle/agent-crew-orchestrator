@@ -453,6 +453,19 @@ export type NotificationPlan = {
    */
   readonly askingParked: readonly ParkedThread[];
   /**
+   * THE PARKS IN FORCE THAT THIS NOTIFIER CANNOT CALL ANYBODY ABOUT (thread 031) — the ones
+   * whose person is not a `direct` target (no `wake.mode: 'self'` in the config, or not an
+   * active role at all), asking or not.
+   *
+   * They are in NONE of the four numbers above, and that is the point of the field: the filter
+   * that drops them used to run before the counters, so a question standing on an unreachable
+   * person printed `0 parked, 0 of them asking, 0 of those new` — the same sentence as an empty
+   * mail. The courier owes the reader the difference, and it owes it in the LINE it prints
+   * every tick rather than in a call: whom to ring instead of the named person is a decision
+   * about the norm, and no count may take it.
+   */
+  readonly unaddressedParked: readonly ParkedThread[];
+  /**
    * THE PARKS THAT SAID THEIR QUESTION AGAIN — a line in the letter, never a letter of their
    * own (thread 030, defect Д-2).
    *
@@ -745,9 +758,23 @@ export const planNotifications = (input: {
 
   // A park is only an event for the person it names, and only if that person is one of
   // the targets: "parked on somebody the notifier does not write to" is not a call.
-  const parked = [...(input.parked ?? [])]
-    .filter((park) => byRole.get(park.person)?.style === "direct")
-    .sort((a, b) => a.thread.localeCompare(b.thread));
+  const parksInForce = [...(input.parked ?? [])].sort((a, b) => a.thread.localeCompare(b.thread));
+  const parked = parksInForce.filter((park) => byRole.get(park.person)?.style === "direct");
+  // AND THE PARKS IT WILL NOT CALL DO NOT VANISH ON THE WAY (thread 031). The filter above used
+  // to be the END of them — they were dropped BEFORE the counters, so `N parked, K of them
+  // asking, M of those new` printed three zeros in two different worlds: "no question is
+  // standing" and "a question is standing on somebody this notifier cannot reach". The second
+  // world is the one thread 030 was about, and a courier's line that cannot tell it from the
+  // first is the sentence an operator reads to decide there is nothing to look for.
+  //
+  // They are counted APART rather than folded into the three numbers, and they produce NO LINE:
+  // those numbers describe THE CALL in its three tenses (in force / asking / rang this tick),
+  // and a park whose addressee is unreachable has no tense in that verb — while ringing
+  // somebody ELSE about a question addressed to a person would be a new rule about who is
+  // called for whom, which is a norm and not a count, and this repair does not invent one.
+  const unaddressedParked = parksInForce.filter(
+    (park) => byRole.get(park.person)?.style !== "direct",
+  );
   const seenParks = new Map(input.seen.parked.map((park) => [parkedKey(park), park.since]));
   // A PARK IS AN EVENT, NOT A STATE, FOR THE COURIER (thread 051): it rings on the message
   // that asked, once, and the composition below keeps it only so that the age pass stays
@@ -1032,6 +1059,7 @@ export const planNotifications = (input: {
     freshStalled,
     freshParked,
     askingParked,
+    unaddressedParked,
     restatedParked,
     liftedParked,
     parkedIfSilent,
