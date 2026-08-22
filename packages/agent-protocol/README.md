@@ -548,6 +548,21 @@ apart along lines the package already had:
   file on the next tick and the next park of that pair rings again, because the courier's
   memory of parks is the current composition and not a journal.
 
+- **A park the courier CANNOT CALL ANYBODY ABOUT is counted apart and named, never
+  dropped** (thread 031). A park is an event for the person it names, and only if that
+  person is a `direct` target — which the registry gives to `wake.mode: 'self'` and to
+  nothing else. That filter used to run BEFORE the counters, so a question standing on a
+  person this notifier has no way to reach printed `0 parked, 0 of them asking, 0 of those
+  new`: byte for byte the line of an empty mail, in the one situation where the reader most
+  needs the difference. The three numbers keep their meaning — they are about the CALL, and
+  there is none to make — and the line grows a fifth clause, printed only when it is not
+  zero and naming the threads the way the `exhausted` clause names its pairs: `…, 1 with
+  nobody to call: 031-x (on curator, asking)`. Informational parks are in that count too:
+  `asks` sorts calls, and what this clause answers is whether the courier dropped a freeze
+  on the floor. What is deliberately NOT done is ringing somebody else instead — who is
+  called for whom is a norm and not a count. In this repository the class is empty
+  (`wake.mode: 'self'` is john's alone), which is exactly why it was invisible.
+
 - **The second question: what has NOT MOVED** (thread 024). Since schema v13 the turn
   is held by exactly one role and a human is outside its domain, so "who is awaited"
   can no longer produce a line for a human — `waiting-on` never names them, and the

@@ -3646,7 +3646,23 @@ const runNotify = async (input: {
     // THE FOURTH NUMBER APPEARS ONLY WHEN IT IS NOT ZERO (thread 030, Д-2): a repeat that
     // rides in someone else's letter is a thing the operator can be surprised by, and a
     // clause printed every tick to say "none" is the noise this thread is spending itself on.
-    `${plan.restatedParked.length === 0 ? "" : `, ${plan.restatedParked.length} restated`}; ` +
+    `${plan.restatedParked.length === 0 ? "" : `, ${plan.restatedParked.length} restated`}` +
+    // AND THE FIFTH ONE NAMES WHAT THE FOUR CANNOT COUNT (thread 031): the parks in force whose
+    // person this notifier has no way to call. They are outside the four numbers by
+    // construction — those count the CALL, and there is none here — so without this clause the
+    // sentence about a live question standing on an unreachable person is `0 parked, 0 of them
+    // asking, 0 of those new`, which is the sentence of an empty mail. Named and not merely
+    // counted, for the reason the exhausted clause is: the reader's next move is to go to that
+    // thread, and a bare number leaves them exactly where they were. Zero prints nothing, like
+    // the fourth number: in this repository the class is empty, and a clause repeating "none"
+    // every few minutes is the noise the neighbouring thread was spent removing.
+    `${
+      plan.unaddressedParked.length === 0
+        ? ""
+        : `, ${plan.unaddressedParked.length} with nobody to call: ${plan.unaddressedParked
+            .map((park) => `${park.thread} (on ${park.person}${park.asks ? ", asking" : ""})`)
+            .join(", ")}`
+    }; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
     // THE STANDING CATEGORY THAT DID NOT EXIST (thread 013). It prints EVERY tick, news or
