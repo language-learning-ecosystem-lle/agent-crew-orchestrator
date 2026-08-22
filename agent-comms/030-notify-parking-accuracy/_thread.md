@@ -765,3 +765,44 @@ waiting-on → dev-core.
 Незакоммиченного нет: рабочее дерево `.worktrees/dev-core` чистое (`git status --porcelain` пуст), `origin/dev-core/030-parked-dedup` = `d2e532d0a7b330b2a0817d7f1281c2ee1f3ee8e0` — локальное и удалённое совпадают. Действия хода: сверка прогона вызовом, метка `review`, сверка запущенного круга, это письмо. Кода в этом ходу не писал — его и не требовалось.
 
 waiting-on → reviewer-pr.
+
+## msg-016 · from: reviewer-pr · 2026-08-22 · expects: answer
+
+verdict: approve
+pr: 63
+
+Контекст прочитан целиком: `thread: 030-notify-parking-accuracy` (15 файлов в `messages/`, от постановки curator до мёржа #61, PR #62 и доклада dev-core по этому PR), описание PR, `role: dev-core` из шапки. Комментариев на PR нет (`gh pr view --comments` — пусто).
+
+Прогоны:
+- полный прогон тестов не повторял — `checks` на голове `d2e532d0a7b330b2a0817d7f1281c2ee1f3ee8e0` зелёный, прогон `32589278145`.
+- `pnpm typecheck` — зелёный (agent-protocol, transport-telegram), прогнан живьём.
+- `pnpm exec biome check` по изменённым файлам (`README.md`, `cli.ts`, `notify.ts`, `notify.test.ts`, `notify.process.test.ts`) — 2 info (`process.env["HOME"]`/`["USER"]`, `cli.ts:5030`/`10193`), обе вне диффа этого PR — не находка, совпадает с прошлыми кругами.
+- точечно: `vitest run src/notify/notify.test.ts src/notify/notify.process.test.ts` — 59/59, зелено.
+- `pnpm -F agent-protocol --silent cli zones check --role dev-core --base origin/main --ref d2e532d`: «5 path(s) ... none under a forbidden prefix» — критерий 4 чист.
+- живой исход `pnpm -F agent-protocol --silent cli merge-gate --ref origin/main --pr 63 --review-workflow 'Claude PR Review'`:
+  ```
+  documents of power judged by (6): agent-protocol.json, docs/roles/curator.md, docs/roles/dev-core.md, REVIEWER.md, PROTOCOL.md (powerDocuments), .github/workflows (powerDocuments)
+  PR #63 at d2e532d
+    STOP guard 1 · no approve verdict on d2e532d
+    STOP guard 2 · not green: review=IN_PROGRESS
+    you  guard 3 · ascent to a decision of john's
+    ok   guard 4 · 5 changed path(s), none of them a document of power
+    you  guard 5 · a trace of the merge
+    ok   mergeability · MERGEABLE (mergeStateStatus UNSTABLE)
+  REFUSED: a guard does not hold
+  ```
+  Гарды 1/2 ожидаемо не держат до публикации этого вердикта (текущий круг ревью и есть предмет). Гард 3 и 5 — не блокер этого вердикта: curator в письме `2026-08-22T18-02-22Z` уже назвала источник закрытия гарда 3 для именно этого PR — слово john в `2026-08-22T17-47-05Z-curator.md» («Д-2/(3′) и задача 3 ... едут после по твоей же очереди»), проверил цитату — соответствует дословно, и относится к работе (3′), которую этот PR и реализует. Curator также заявила там, что мёржит #63 сама.
+
+Критерий 1 (числа тестов): описание PR заявляет «pnpm test — 2300 + 7 зелено». Сверено по логу прогона `32589278145` (не по докладу): `gh run view 32589278145 --log` → `packages/agent-protocol test: Tests 2300 passed`, `packages/transport-telegram test: Tests 7 passed» — совпадает точно. Прогон триггера `pull_request` (мёрж-реф), но база #63 — `31bb7fa` (текущий tip `main`, тот же, что и база PR), других открытых PR, трогающих эти файлы, нет — расхождение мёрж-реф/голова здесь не применимо. Тест, утверждавший старую норму («a thread answered and parked AGAIN is a new question»), переписан с объяснением в теле PR и в самом тесте (заморожена была формулировка дефекта) — критерий соблюдён.
+
+Критерий 2 («ждём ровно то, что проверяем»): проверил код в `notify.ts` (`parkedKey`, `restatedParked`, `parkedIfSilent`) построчно против описания. Логика подтверждается: `parkedIfSilent` используется РОВНО в ветке «nothing to announce» (`cli.ts:3716-3739`), откатывая стамп restated-парковок к объявленному, а в ветках реальной доставки (`cli.ts:3763-3781`, `3802-3812`) используется актуальный `plan.parked` — то есть стамп двигается только тогда, когда строка-повтор реально уехала в письме. Тест на стык (`notify.process.test.ts`) гоняет настоящую команду через `execFileSync` и проверяет: тихий такт не шлёт письма и держит старый стамп в файле состояния; следующее письмо по чужому свежему событию несёт строку повтора и называет её в summary; стамп после этого двигается. Это ровно дверный уровень, не только чистая функция — прецедент прошлого круга (то же семейство PR, находка про `describePrPark`) здесь учтён и не повторён.
+
+Критерий 3 (скоуп): PR реализует ровно форму (3′), принятую curator в `msg-009` этого треда (ключ `(person, thread)` без стампа + строка-повтор в уже уходящем письме, без похода к john за полем схемы). (в2) сознательно не сделан и объявлен отдельно в письме dev-core `17:58:56Z` с обоснованием («половина, выглядящая как целое») — легитимное сужение, доложено явно.
+
+Критерий 5 (доки власти): изменённые пути — `packages/agent-protocol/README.md`, `src/cli.ts`, `src/notify/notify.ts`, `src/notify/notify.test.ts`, `src/notify/notify.process.test.ts` (5 путей, совпадает с `zones check` и `merge-gate`). Ни один не входит в список доков власти — кнопка merge у curator, не у john, как и заявлено в PR.
+
+Критерий 6 (совместимость протокола): формат файла состояния не меняется (4 колонки, старый файл читается), ключ шаблонов не расширяется — приставка повтора собственные слова пакета, не новый слот `templates`. `protocolVersion` не тронут. Подтверждено чтением кода, не только заявлением PR.
+
+Критерий 9 (текст против факта): заявления письма («поведение… », «локально зелено», «доки в том же коммите») сверены с диффом и логом прогона — расхождений не нашёл.
+
+Находок по критериям 1, 2, 3, 4, 5, 6, 7, 8, 10, 11 — нет.
