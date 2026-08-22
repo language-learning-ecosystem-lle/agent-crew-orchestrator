@@ -299,6 +299,17 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     // The park is still IN FORCE: the composition (and so the state, and so the silence of
     // the age pass about this thread) is unchanged — only the call is not repeated.
     expect(again.parked).toEqual([PARKED]);
+    // AND IT IS STILL A QUESTION STANDING ON A HUMAN (thread 030, Д-1). The courier's line
+    // counted `freshParked` under the word "asking", so it said `0 of them asking` about
+    // exactly this state — a live question, silent only because it had already rung once.
+    expect(again.askingParked).toEqual([PARKED]);
+  });
+
+  it("a park that asks nothing is not counted as asking either — the word means the message", () => {
+    const result = withPark([{ ...PARKED, asks: false }]);
+
+    expect(result.askingParked).toEqual([]);
+    expect(result.parked).toHaveLength(1);
   });
 
   it("a park declared by an informational message freezes the thread and calls nobody", () => {
