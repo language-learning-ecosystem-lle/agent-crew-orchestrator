@@ -426,6 +426,80 @@ describe("notify as a command", () => {
     );
   });
 
+  it("A PARK LIFTED WITH NO ANSWER IS A LINE, AND THE LINE WAITS FOR A LETTER (thread 030, (в2))", () => {
+    // The defect end to end, in the shape it was measured in on 2026-08-22: the park of john
+    // on 030 was lifted by an automatic `github` message about the merge of #61 — a message
+    // nobody wrote — and the thread left the courier's state ENTIRELY. Eight parks stood in
+    // `.orchestrator/notify.state` that evening and the one question just asked was in none.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("030-x", { asks: true, body: "Сузить ли снятие парковки?" });
+    contest.commit();
+    run(contest, ["--write"]);
+    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain(
+      "your decision: 030-x — Сузить ли снятие парковки?",
+    );
+    rmSync(contest.delivered);
+
+    // THE LIFT, as the circuit performs it: `waiting-on` names a role, so the message moves
+    // somebody and the park is lifted by R27 — and nobody answered anything.
+    writeFileSync(
+      join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-github.md"),
+      "---\nfrom: github\nworker: gh-action\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
+        "waiting-on: dev-core\n---\n\nPR #61 merged.\n",
+    );
+    const lifted = run(contest, ["--write"]);
+
+    // NO BUZZ: the lift rings for nobody — john's word was "a line of the digest".
+    expect(existsSync(contest.delivered)).toBe(false);
+    expect(lifted.out).toContain("0 parked, 0 of them asking, 0 of those new, 1 lifted unanswered");
+    expect(lifted.out).toContain("nothing to announce");
+    // AND THE QUIET TICK DID NOT EAT IT: the key stays in the state with the stamp that was
+    // announced, because the line has not actually gone anywhere yet.
+    expect(readFileSync(contest.state, "utf8")).toContain(
+      "parked\tjohn\t030-x\t2026-07-25T20:00:00Z",
+    );
+
+    // A FRESH EVENT ELSEWHERE SENDS THE LETTER, AND THE LINE RIDES IN IT.
+    contest.thread("016-y", "john");
+    const letter = run(contest, ["--write"]);
+
+    const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
+    expect(text).toContain("⏳ твой ход: 016-y");
+    expect(text).toContain(
+      "the park was lifted with no answer named, the question stands: " +
+        "your decision: 030-x — Сузить ли снятие парковки?",
+    );
+    expect(letter.out).toContain("030-x (lifted unanswered on john)");
+    // Told at last, so the key leaves the state — and the tick after it says nothing again.
+    expect(readFileSync(contest.state, "utf8")).not.toContain("030-x");
+    rmSync(contest.delivered);
+
+    const after = run(contest, ["--write"]);
+
+    expect(existsSync(contest.delivered)).toBe(false);
+    expect(after.out).not.toContain("lifted unanswered");
+  });
+
+  it("a CLOSED thread's lifted park says nothing and does not linger (thread 030, (в2))", () => {
+    // Closing a thread IS the acceptance: the question inside it is answered by construction,
+    // and a line about it would be the courier arguing with the person who closed it.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("030-z", { asks: true });
+    contest.commit();
+    run(contest, ["--write"]);
+    rmSync(contest.delivered);
+
+    writeFileSync(
+      join(contest.root, "030-z", "_meta.md"),
+      "---\ntitle: T\nparticipants: dev-core, curator\nstatus: closed\n---\n",
+    );
+    const closed = run(contest, ["--write"]);
+
+    expect(existsSync(contest.delivered)).toBe(false);
+    expect(closed.out).not.toContain("lifted unanswered");
+    expect(readFileSync(contest.state, "utf8")).not.toContain("030-z");
+  });
+
   it("a transport that does not load REFUSES before the state is touched", () => {
     // Otherwise a setup defect would consume the trigger: the pair would be marked
     // as reported and never announced again.

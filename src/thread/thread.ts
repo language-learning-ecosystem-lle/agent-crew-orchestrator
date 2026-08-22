@@ -512,6 +512,42 @@ export const parkingOf = (
 };
 
 /**
+ * EVERY PERSON-PARK THIS THREAD HAS EVER DECLARED — the one standing and the ones already
+ * lifted alike (thread 030, defect (в2)).
+ *
+ * {@link parkingOf} answers "what is frozen NOW", which is the question the scheduler and the
+ * call to the human are made of. The courier has a second one, and it has no other source: a
+ * park it ANNOUNCED has vanished from the composition — what was the question, and did it ask
+ * anything at all? The state file remembers the pair and the stamp and nothing else (by
+ * design: what identifies the event is the message, and the text is re-read from it), so the
+ * lifted declaration has to be readable from the feed by that stamp, after the walk of
+ * `standingParkOf` has already stepped past it.
+ *
+ * A CLOSED THREAD DECLARES NOTHING, exactly as in {@link parkingOf}: closing a thread is the
+ * acceptance, and a question inside it is answered by construction.
+ *
+ * `asks` is carried for the same reason it is carried there and for one more: without it the
+ * courier cannot tell a lifted QUESTION from a lifted informational park, and a line about the
+ * second is the lie by mark that thread 051 paid for.
+ */
+export const personParksOf = (thread: Thread): readonly Parking[] => {
+  if (thread.meta.status === "closed") return [];
+  return thread.messages.flatMap((message) => {
+    const on = message.fields.parkedOn;
+    if (on === undefined || parkedOnKind(on).kind !== "person") return [];
+    return [
+      {
+        kind: "person" as const,
+        person: on,
+        since: message.fields.date,
+        question: questionOf(message.text),
+        asks: message.fields.expects !== "none",
+      },
+    ];
+  });
+};
+
+/**
  * WHERE A PARK STILL STANDS — the index of the message that declared it. ALL THREE KINDS
  * (`person`, `pr:`, `run:`) are read by this one walk since 2026-08-04; the shape of the walk
  * is the event parks', and the person park was lifted into it by john's decision of that day.
