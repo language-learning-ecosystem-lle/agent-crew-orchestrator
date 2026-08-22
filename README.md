@@ -503,8 +503,8 @@ apart along lines the package already had:
 - **The third question: WHAT IS FROZEN BEHIND A PERSON, and it rings ONCE** (thread
   023, tightened in 051). A park has no age threshold by construction — it is a
   declaration that the turn cannot move until somebody decides, so waiting it out only
-  postpones the call — and it is keyed by the stamp of the message that parked, so a
-  thread answered and parked again is a new question. What 051 added is the other half
+  postpones the call — and it is keyed by the PAIR (person, thread), so the same question
+  asked twice rings once (thread 030, defect Д-2 — see the paragraph after this one). What 051 added is the other half
   of "once": the ❓ line is rendered from the FRESH parks and not from the composition,
   so a park already announced produces **no line at all** in later digests, and a park
   declared by a message that asks nothing (`expects: none`) produces none from the
@@ -525,6 +525,28 @@ apart along lines the package already had:
   one never made. A quieter state line was the other available form and was NOT taken:
   the digest is a courier of events, and the standing picture is what `cli mail` and the
   operator frame are for.
+
+- **A question ASKED AGAIN is a line in somebody else's letter, never a letter of its
+  own** (thread 030, defect Д-2). A park is lifted by any later message that moves
+  somebody, so a role raised on a thread whose question is still unanswered re-asks it in
+  a new message — and while the stamp was part of the key, every such repeat was a second
+  call: two about `aco-028` and two about `LLE-102` in one day, one question each. The key
+  is the pair, and the stamp is kept in the state for one purpose — telling a park
+  re-declared under that key from one standing untouched. Such a park is **restated**: it
+  produces a line (the project's `parked` sentence, prefixed by the package's own "still
+  standing, asked again (not a new question)"), and that line rides in whatever digest is
+  already going out for a fresh event. It never triggers a delivery: `notify --write` sends
+  on the fresh counts, not on the message being non-empty. And a tick that sends nothing
+  keeps the stamp it had ANNOUNCED, so the line stays owed rather than being consumed by a
+  quiet tick — the courier runs every few minutes, and a downgrade that turns into a
+  disappearance is the trade of 051 made backwards. The courier's line names it as a fourth
+  number when there is one: `N parked, K of them asking, M of those new, R restated`. What
+  the pair key costs is stated rather than hidden: if the person answers and a NEW question
+  is parked on the same thread before the courier has ticked once, the composition was never
+  empty and the new question is read as a repeat — a race in one tick window, which loses
+  the ring and not the question. Everywhere else a lift empties the park out of the state
+  file on the next tick and the next park of that pair rings again, because the courier's
+  memory of parks is the current composition and not a journal.
 
 - **The second question: what has NOT MOVED** (thread 024). Since schema v13 the turn
   is held by exactly one role and a human is outside its domain, so "who is awaited"

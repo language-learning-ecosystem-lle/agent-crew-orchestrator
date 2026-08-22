@@ -380,19 +380,49 @@ describe("notify as a command", () => {
     expect(readFileSync(contest.state, "utf8")).toContain("parked\tjohn\t016-x\t");
   });
 
-  it("re-parked with a NEW question it rings again — the key is the message that asked", () => {
+  it("THE SAME QUESTION ASKED AGAIN SENDS NOTHING — it waits for a letter (thread 030, Д-2)", () => {
+    // The defect end to end, through the real command: a park is lifted by anybody's later
+    // move, the raised role finds its question unanswered and writes it out again, and every
+    // repeat used to be a second call on a human's phone. Two about aco-028 and two about
+    // LLE-102 on 2026-08-21/22, one question each.
     const contest = contour({ stalledAfter: 10_000_000 });
     contest.park("023-x", { asks: true });
     contest.commit();
     run(contest, ["--write"]);
+    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain(
+      "your decision: 023-x — Чинить ли гард 2?",
+    );
     rmSync(contest.delivered);
 
     contest.park("023-x", { asks: true, date: "2026-07-26T09:00:00Z", body: "А теперь чинить?" });
     const again = run(contest, ["--write"]);
 
-    expect(again.out).toContain("1 parked, 1 of them asking, 1 of those new");
-    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text).toContain(
-      "your decision: 023-x — А теперь чинить?",
+    // NO SECOND BUZZ: nothing was delivered at all, and the courier's line names the repeat
+    // by its own number rather than passing it off as news.
+    expect(existsSync(contest.delivered)).toBe(false);
+    expect(again.out).toContain("1 parked, 1 of them asking, 0 of those new, 1 restated");
+    expect(again.out).toContain("nothing to announce");
+    // AND THE QUIET TICK DID NOT EAT THE REPEAT: the state still carries the stamp that was
+    // ANNOUNCED, so the line is still owed. Recording the new stamp here would make the
+    // downgrade a disappearance — the courier ticks every few minutes.
+    expect(readFileSync(contest.state, "utf8")).toContain(
+      "parked\tjohn\t023-x\t2026-07-25T20:00:00Z",
+    );
+
+    // A FRESH EVENT ELSEWHERE SENDS THE LETTER, AND THE REPEAT RIDES IN IT — the trigger of
+    // the delivery and the composition of the message are two different things.
+    contest.thread("016-x", "john");
+    const third = run(contest, ["--write"]);
+
+    const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
+    expect(text).toContain("⏳ твой ход: 016-x");
+    expect(text).toContain(
+      "still standing, asked again (not a new question): your decision: 023-x — А теперь чинить?",
+    );
+    expect(third.out).toContain("023-x (restated on john)");
+    // Told at last, so the stamp moves — and the tick after this one is silent about it.
+    expect(readFileSync(contest.state, "utf8")).toContain(
+      "parked\tjohn\t023-x\t2026-07-26T09:00:00Z",
     );
   });
 

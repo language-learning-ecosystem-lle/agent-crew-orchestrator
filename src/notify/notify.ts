@@ -452,6 +452,33 @@ export type NotificationPlan = {
    * decide there is nothing to look for.
    */
   readonly askingParked: readonly ParkedThread[];
+  /**
+   * THE PARKS THAT SAID THEIR QUESTION AGAIN — a line in the letter, never a letter of their
+   * own (thread 030, defect Д-2).
+   *
+   * A park whose key was already announced but whose message has moved: the same person, the
+   * same thread, a new parking message. In the field this is not a new question but the SAME
+   * one re-asked — the park was lifted by somebody else's move, the raised role found the
+   * question unanswered and wrote it out again. It used to be a second call.
+   *
+   * It is not silence either, and that is deliberate: this class is neighbour to Д-1, where a
+   * live question vanished from every number the courier printed, and swapping noise for a
+   * miss is the trade of thread 051 made backwards. So the repeat is DOWNGRADED rather than
+   * dropped — it produces a line, and the line rides in whatever letter is already going out
+   * for a fresh event. It never triggers a delivery by itself: see the send condition in
+   * `notify --write`, which reads the `fresh*` counts and not the message.
+   */
+  readonly restatedParked: readonly ParkedThread[];
+  /**
+   * THE PARKED COMPOSITION AS THE STATE MUST HOLD IT WHEN THIS RUN SAYS NOTHING.
+   *
+   * Identical to {@link parked} except for the {@link restatedParked}, which keep the stamp
+   * that was ANNOUNCED rather than the one in force. Without it the downgrade of Д-2 would be
+   * a disappearance: the courier ticks every few minutes, the quiet tick after a restatement
+   * would record the new stamp as told, and the line would be owed to a letter that never
+   * learns it. A restated park therefore stays pending until a letter actually carries it.
+   */
+  readonly parkedIfSilent: readonly ParkedThread[];
   /** The authorisation shelf in force now, if the predicate rings — also part of the state. */
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready outage in force now, if the predicate rings — also part of the state. */
@@ -477,7 +504,36 @@ export type NotificationPlan = {
 
 const key = (pair: WaitingPair): string => `${pair.role}\t${pair.thread}`;
 const stalledKey = (turn: StalledTurn): string => `${turn.role}\t${turn.thread}\t${turn.since}`;
-const parkedKey = (park: ParkedThread): string => `${park.person}\t${park.thread}\t${park.since}`;
+/**
+ * THE IDENTITY OF A PARK FOR THE COURIER: THE PAIR (person, thread), AND NOT THE STAMP
+ * (thread 030, defect Д-2).
+ *
+ * The stamp used to be part of it, and the reasoning was sound on its face — "a thread
+ * answered and parked again is a NEW question". What it did not survive is the way a park
+ * is LIFTED: any later message that moves somebody lifts it ({@link standingParkOf}), so a
+ * role raised on a thread with its question still unanswered re-asks it in a new message,
+ * the stamp moves, and the same question rang a second time. Measured in the field on
+ * 2026-08-21/22: two calls about aco-028 and two about LLE-102, one question each.
+ *
+ * Keying by the pair costs nothing the stamp was buying, and that is a measurement rather
+ * than a hope: THE COURIER'S MEMORY OF PARKS IS THE CURRENT COMPOSITION, NOT A JOURNAL
+ * ({@link NotifyState}). A park that is lifted disappears from the state file on the very
+ * next tick, so the next park of the same pair is fresh again and rings — the swallowed
+ * second question that the stamp was there to prevent needs the lift and the new park to
+ * fall inside ONE tick window, and even then the question is not lost: it is downgraded to
+ * a line ({@link NotificationPlan.restatedParked}) rather than a call.
+ */
+const parkedKey = (park: ParkedThread): string => `${park.person}\t${park.thread}`;
+
+/**
+ * How a park that has changed its message under an unchanged key is said — the PACKAGE's
+ * own words around the project's sentence, for the reason the box alarms are the package's
+ * ({@link BOX_ALARM_KINDS}): the KEYS of the template map are part of the frozen config
+ * shape, and a new slot for this would cost a protocol version and a migration in every box
+ * in the field. What the project words is the question; what the package words is the one
+ * fact the project cannot know — that this is the same question said again.
+ */
+const restatedPrefix = "still standing, asked again (not a new question): ";
 
 /**
  * The state as a file: one event per line, ordered, so a diff of it is readable.
@@ -490,7 +546,10 @@ export const renderNotifyState = (state: NotifyState): string => {
   const lines = [
     ...state.waiting.map(key),
     ...state.stalled.map((turn) => `stalled\t${stalledKey(turn)}`),
-    ...state.parked.map((park) => `parked\t${parkedKey(park)}`),
+    // THE STAMP IS STILL WRITTEN, though it is no longer part of the key (thread 030): it is
+    // what tells a park re-declared under the same key from one standing untouched, and that
+    // difference is the whole of the downgrade "call → line". The line keeps its four columns.
+    ...state.parked.map((park) => `parked\t${park.person}\t${park.thread}\t${park.since}`),
     // The two box-wide events are one line each and carry only their identity: what
     // identifies them is the shelf and the run of refusals, and the rest is re-read from
     // the journal and the outage file every time. The auth key is itself two columns
@@ -630,13 +689,27 @@ export const planNotifications = (input: {
   const parked = [...(input.parked ?? [])]
     .filter((park) => byRole.get(park.person)?.style === "direct")
     .sort((a, b) => a.thread.localeCompare(b.thread));
-  const seenParks = new Set(input.seen.parked.map(parkedKey));
+  const seenParks = new Map(input.seen.parked.map((park) => [parkedKey(park), park.since]));
   // A PARK IS AN EVENT, NOT A STATE, FOR THE COURIER (thread 051): it rings on the message
   // that asked, once, and the composition below keeps it only so that the age pass stays
   // quiet about it and the state remembers it was told. `asks` is the message's own word:
   // `expects: none` says it wants nothing of anybody, and ❓ over it is a lie by mark.
   const askingParked = parked.filter((park) => park.asks);
   const freshParked = askingParked.filter((park) => !seenParks.has(parkedKey(park)));
+  // THE REPEAT, TOLD FROM THE FIRST TELLING BY THE STAMP AND BY NOTHING ELSE (thread 030,
+  // Д-2). An informational re-park is not here for the same reason it is not in `freshParked`:
+  // `asks` is the message's own word, and 016 re-declared its park daily asking nothing.
+  const restatedParked = askingParked.filter((park) => {
+    const announced = seenParks.get(parkedKey(park));
+    return announced !== undefined && announced !== park.since;
+  });
+  const restatedKeys = new Set(restatedParked.map(parkedKey));
+  const parkedIfSilent = parked.map((park) => {
+    const announced = restatedKeys.has(parkedKey(park))
+      ? seenParks.get(parkedKey(park))
+      : undefined;
+    return announced === undefined ? park : { ...park, since: announced };
+  });
 
   // A PARKED THREAD IS NEVER ALSO A STALLED ONE (thread 023). Both would be true of it —
   // the turn is not moving, by construction — but "your decision is wanted, here is the
@@ -786,6 +859,22 @@ export const planNotifications = (input: {
       }),
     });
   }
+  // AND THE REPEATS COME RIGHT AFTER THEM, in the one letter that was going out anyway
+  // (thread 030, Д-2): same slot, same question, the package's own words saying it is the
+  // same one. A reader who cannot tell a repeat from a new call has been given the noise back.
+  for (const park of restatedParked) {
+    lines.push({
+      kind: "parked",
+      thread: park.thread,
+      role: park.person,
+      text:
+        restatedPrefix +
+        renderTemplate(template("parked"), {
+          thread: park.thread,
+          question: park.question,
+        }),
+    });
+  }
   for (const thread of threads) {
     const here = waiting.filter((pair) => pair.thread === thread);
     const directs = here.filter((pair) => byRole.get(pair.role)?.style === "direct");
@@ -842,6 +931,8 @@ export const planNotifications = (input: {
     freshStalled,
     freshParked,
     askingParked,
+    restatedParked,
+    parkedIfSilent,
     exhausted,
     freshFreezes,
     freezeKeys,
