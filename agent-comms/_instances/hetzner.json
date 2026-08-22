@@ -1,9 +1,16 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-22T10:24:27.373Z",
+  "writtenAt": "2026-08-22T10:31:00.177Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "028-pin-bump-schema-gap",
+      "state": "running",
+      "deadline": "2026-08-22T11:10:58Z"
+    }
+  ]
 }
