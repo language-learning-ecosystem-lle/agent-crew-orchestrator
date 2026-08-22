@@ -3642,7 +3642,11 @@ const runNotify = async (input: {
     // now counts what it says (every park in force whose message asks something), and what
     // RANG THIS TICK is the third number, named as its own thing.
     `${plan.parked.length} parked, ${plan.askingParked.length} of them asking, ` +
-    `${plan.freshParked.length} of those new; ` +
+    `${plan.freshParked.length} of those new` +
+    // THE FOURTH NUMBER APPEARS ONLY WHEN IT IS NOT ZERO (thread 030, Д-2): a repeat that
+    // rides in someone else's letter is a thing the operator can be surprised by, and a
+    // clause printed every tick to say "none" is the noise this thread is spending itself on.
+    `${plan.restatedParked.length === 0 ? "" : `, ${plan.restatedParked.length} restated`}; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
     // THE STANDING CATEGORY THAT DID NOT EXIST (thread 013). It prints EVERY tick, news or
@@ -3723,7 +3727,11 @@ const runNotify = async (input: {
       renderNotifyState({
         waiting: plan.waiting,
         stalled: plan.stalled,
-        parked: plan.parked,
+        // NOTHING WENT OUT, SO A RESTATED PARK IS STILL OWED ITS LINE (thread 030, Д-2):
+        // `parkedIfSilent` keeps the stamp that was announced for exactly those parks, and
+        // is `plan.parked` for every other one. Writing the current stamp here would record
+        // a repeat as told on a tick that told nobody anything.
+        parked: plan.parkedIfSilent,
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
         freezes: plan.freezeKeys,
@@ -3745,6 +3753,9 @@ const runNotify = async (input: {
         `${event.pair.role}×${event.pair.thread} (${event.kind === "frozen" ? "frozen for good" : "exhausted"})`,
     ),
     ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
+    // A REPEAT IS NAMED AMONG WHAT WENT OUT, not among what rang: it did not raise this
+    // letter, it rode in it — and the operator reading the summary is owed both facts.
+    ...plan.restatedParked.map((park) => `${park.thread} (restated on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
   ];
