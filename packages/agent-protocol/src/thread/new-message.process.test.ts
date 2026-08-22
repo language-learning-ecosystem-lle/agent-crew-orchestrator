@@ -863,6 +863,38 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
 
+  it("THE DELIVERY OF A WORD is written into the header — the one lift of that park (030)", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--delivers", "john");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.delivers).toBe("john");
+  });
+
+  it("--delivers with a role the circuit CAN wake is refused BY NAME, with the exit named", () => {
+    // No turn is ever parked behind such a role — it speaks for itself in the feed — so the
+    // delivery of its word could lift nothing at all. The refusal says what to type instead.
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--delivers", "dev-core");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--delivers 'dev-core'");
+    expect(result.out).toContain("--waiting-on dev-core");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("--delivers with a name no config knows is refused while the flag can still be retyped", () => {
+    const contest = contour();
+
+    const result = direct(contest, "curator", "--delivers", "jonh");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("not listed in the config");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
   it("an EVENT is a legal park too: 'pr:127' names a merge, and no config knows it", () => {
     // Thread 023, variant A: the two parks are one state and differ in what lifts them, so
     // they share the field. The door checks the shape and stops — asking GitHub whether the

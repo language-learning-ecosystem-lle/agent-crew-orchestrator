@@ -398,6 +398,29 @@ describe("new-thread and the turn parked behind a person (R27, thread 075)", () 
     expect(opened.out).toContain("NOTHING WATCHES THE STATE OF #366");
   });
 
+  // THE DELIVERY THROUGH THE SECOND ENTRANCE (thread 030, (в1)) — the lesson of 075 applied to
+  // the new field the day it is born: a thread is often OPENED by the courier of a decision, and
+  // the park that word lifts stands in ANOTHER thread. A flag parsed by one command of the pair
+  // and swallowed by the other writes a silent header into an append-only feed.
+  it("a thread OPENED by the courier of a decision carries the delivery in its first header", () => {
+    const contest = contour();
+
+    const opened = openWith(contest, ["--expects", "none", "--delivers", "john"]);
+
+    expect(opened.code).toBe(0);
+    expect(firstHeader(contest, opened.id).fields.delivers).toBe("john");
+  });
+
+  it("--delivers with a role the circuit CAN wake is refused here too, by the same door", () => {
+    const contest = contour();
+
+    const opened = openWith(contest, ["--expects", "ack", "--delivers", "dev-core"]);
+
+    expect(opened.code).toBe(2);
+    expect(opened.out).toContain("--delivers 'dev-core'");
+    expect(existsSync(join(contest.root, opened.id))).toBe(false);
+  });
+
   it("a role the circuit CAN wake is refused here too — that is a turn to pass, not a person to wait for", () => {
     const contest = contour();
 

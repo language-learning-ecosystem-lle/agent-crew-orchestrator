@@ -281,6 +281,10 @@ const describeFreeze = (on: ParkedOn): string => {
     case "run":
       return `PARKED behind the round running on PR #${on.pr} (R27) — not raised until a message asks somebody for something (the circuit's own announcements do not)`;
     case "person":
-      return `PARKED behind a decision of ${on.person} (R27) — not raised until the next substantive message`;
+      // The queue row says the lift as it IS since 2026-08-22 (thread 030): the word of that
+      // person carried into the mail by whoever relays it ('delivers'), and nothing else. The
+      // operator reads this line to know what to do — "the next substantive message" would send
+      // them to write one, and it would change nothing.
+      return `PARKED behind a decision of ${on.person} (R27) — not raised until a message carries that word ('delivers: ${on.person}')`;
   }
 };

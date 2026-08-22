@@ -483,30 +483,31 @@ export type NotificationPlan = {
    */
   readonly restatedParked: readonly ParkedThread[];
   /**
-   * THE PARKS THAT WERE LIFTED WITHOUT AN ANSWER BEING NAMED — a line, never a call
+   * THE PARKS THAT WERE ANNOUNCED AND HAVE BEEN LIFTED — a line, never a call
    * (thread 030, defect (в2), decision of john «ОБА» of 2026-08-22).
    *
-   * A park is lifted by the FIRST message that moves anybody (`standingParkOf`, R27), and the
-   * message that lifts it is very often not an answer: the merge notifier of some PR, a
-   * courier's report, a role's handover. From that instant `parkingOf` returns nothing and the
-   * thread falls out of the courier's composition ENTIRELY — not out of the call, out of all
-   * three numbers. The unanswered question stops existing for the signal layer. Measured in
-   * the field on 2026-08-22: eight live parks of john in `.orchestrator/notify.state` and the
-   * one thread whose question had just been asked (030) in none of them, its park lifted by an
-   * automatic `github` message nobody wrote.
+   * Until (в1) of the same day a park was lifted by the FIRST message that moved anybody
+   * (`standingParkOf`, R27), and the message that lifted it was very often not an answer: the
+   * merge notifier of some PR, a courier's report, a role's handover. From that instant
+   * `parkingOf` returned nothing and the thread fell out of the courier's composition ENTIRELY
+   * — not out of the call, out of all three numbers. The unanswered question stopped existing
+   * for the signal layer. Measured in the field on 2026-08-22: eight live parks of john in
+   * `.orchestrator/notify.state` and the one thread whose question had just been asked (030) in
+   * none of them, its park lifted by an automatic `github` message nobody wrote.
    *
    * So the disappearance is NAMED. It rings for nothing — john's own word: "an unanswered
    * question to a person lives as a LINE of the digest rather than vanishing from the
    * composition" — and it rides in whatever letter is already going out, exactly like
    * {@link restatedParked}.
    *
-   * THE PRICE IS NAMED AND ACCEPTED (curator, the statement of this defect): the courier
-   * CANNOT tell "the park was lifted by the delivery of john's answer" from "somebody else's
-   * move lifted it". john does not write into the mail — his word arrives in a letter of the
-   * courier role — so no machine mark of "answered" exists in the fields. A legitimately
-   * answered park therefore also produces ONE line. One line too many against a question that
-   * disappears; the mark was not invented, because a mark guessed from the text would be the
-   * silent miss again, only wearing the look of precision.
+   * WHAT (в1) OF THE SAME DAY CHANGED HERE IS THE WORDS AND NOT THE MECHANISM. The price of
+   * this class used to be named as "the courier cannot tell the delivery of john's answer from
+   * somebody else's move" — true of the wide lift, and false since a person park lifts on
+   * `delivers: <that person>` alone. The class did not empty out: a park also stops standing
+   * when a LATER park is declared in the same thread, and the state remembers a key whose thread
+   * has moved on. What it stopped being is a class of accidents — so the line states the fact it
+   * measured (the key rang and no longer stands) and claims nothing about the answer. See
+   * {@link liftedPrefix} for the sentence itself.
    */
   readonly liftedParked: readonly ParkedThread[];
   /**
@@ -583,16 +584,25 @@ const parkedKey = (park: ParkedThread): string => `${park.person}\t${park.thread
 const restatedPrefix = "still standing, asked again (not a new question): ";
 
 /**
- * How a park that was LIFTED with its question unanswered is said — the package's own words
- * for the same reason {@link restatedPrefix} is the package's, and saying the one fact the
- * project's sentence cannot: that this thread is no longer frozen behind the reader, so its
- * question is now standing in the open with nobody holding the turn for it.
+ * How a park that was LIFTED is said — the package's own words for the same reason
+ * {@link restatedPrefix} is the package's, and saying the one fact the project's sentence
+ * cannot: that this thread is no longer frozen behind the reader, and that this is the last
+ * the digest will say about the question it was frozen on.
  *
  * It must not read like a fresh call ("your decision: …" alone) — the statement of (в2) says
  * so in as many words — because a reader who cannot tell "the circuit is holding this for you"
- * from "this fell out of the freeze unanswered" is being taught to skip both.
+ * from "this has left the composition" is being taught to skip both.
+ *
+ * THE WORDS STOPPED CLAIMING THE ANSWER WAS NOT NAMED (thread 030, (в1), 2026-08-22). They used
+ * to read "the park was lifted with no answer named, the question stands", and under the wide
+ * lift that was the common case. Since the person park lifts on `delivers: <that person>` and on
+ * nothing else, the sentence prints in the case where the answer WAS named — by the very field
+ * that lifted the park. The mechanism did not move an inch (the key stays owed until a letter
+ * carries it, the line rings for nobody, a closed thread is silent); what moved is the claim the
+ * courier is entitled to make. It states what it measured — the key rang and has stopped
+ * standing — and leaves "was it answered" to the reader, who can open the thread.
  */
-const liftedPrefix = "the park was lifted with no answer named, the question stands: ";
+const liftedPrefix = "the park was lifted, the last line about the question: ";
 
 /**
  * The state as a file: one event per line, ordered, so a diff of it is readable.

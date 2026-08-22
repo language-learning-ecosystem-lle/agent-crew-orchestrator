@@ -484,18 +484,22 @@ describe("notify as a command", () => {
     );
     rmSync(contest.delivered);
 
-    // THE LIFT, as the circuit performs it: `waiting-on` names a role, so the message moves
-    // somebody and the park is lifted by R27 — and nobody answered anything.
+    // THE LIFT, as the circuit performs it SINCE 2026-08-22 (thread 030, (в1)): the courier
+    // declares `delivers: john` and the park goes. The automatic `github` message this case was
+    // measured on — 'expects: none' with 'waiting-on: dev-core' — no longer lifts anything, and
+    // that is the repair of (в1); what does NOT change is the courier's second question, which
+    // is what this test is about: a key that WAS announced and has left the composition owes the
+    // human a line instead of vanishing.
     writeFileSync(
-      join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-github.md"),
-      "---\nfrom: github\nworker: gh-action\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
-        "waiting-on: dev-core\n---\n\nPR #61 merged.\n",
+      join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-curator.md"),
+      "---\nfrom: curator\nworker: claude-code\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
+        "waiting-on: dev-core\ndelivers: john\n---\n\nСлово john по вопросу.\n",
     );
     const lifted = run(contest, ["--write"]);
 
     // NO BUZZ: the lift rings for nobody — john's word was "a line of the digest".
     expect(existsSync(contest.delivered)).toBe(false);
-    expect(lifted.out).toContain("0 parked, 0 of them asking, 0 of those new, 1 lifted unanswered");
+    expect(lifted.out).toContain("0 parked, 0 of them asking, 0 of those new, 1 lifted");
     expect(lifted.out).toContain("nothing to announce");
     // AND THE QUIET TICK DID NOT EAT IT: the key stays in the state with the stamp that was
     // announced, because the line has not actually gone anywhere yet.
@@ -509,11 +513,15 @@ describe("notify as a command", () => {
 
     const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
     expect(text).toContain("⏳ твой ход: 016-y");
+    // THE COURIER DOES NOT CLAIM THE ANSWER WAS NOT NAMED ((в1), 2026-08-22): the park was
+    // lifted by `delivers: john` — the answer was named, by the field that did the lifting —
+    // and the line says only what it measured, that the key rang and has stopped standing.
     expect(text).toContain(
-      "the park was lifted with no answer named, the question stands: " +
+      "the park was lifted, the last line about the question: " +
         "your decision: 030-x — Сузить ли снятие парковки?",
     );
-    expect(letter.out).toContain("030-x (lifted unanswered on john)");
+    expect(text).not.toContain("no answer named");
+    expect(letter.out).toContain("030-x (lifted on john)");
     // Told at last, so the key leaves the state — and the tick after it says nothing again.
     expect(readFileSync(contest.state, "utf8")).not.toContain("030-x");
     rmSync(contest.delivered);
@@ -521,7 +529,7 @@ describe("notify as a command", () => {
     const after = run(contest, ["--write"]);
 
     expect(existsSync(contest.delivered)).toBe(false);
-    expect(after.out).not.toContain("lifted unanswered");
+    expect(after.out).not.toContain("lifted");
   });
 
   it("THE LIFTED PARK AND THE PARK WITH NOBODY TO CALL MEET IN ONE LINE (threads 030 + 031)", () => {
@@ -552,18 +560,22 @@ describe("notify as a command", () => {
     expect(readFileSync(contest.state, "utf8")).not.toContain("031-x");
     rmSync(contest.delivered);
 
-    // THE LIFT of john's park by a message nobody wrote — while 031 keeps standing untouched.
+    // THE LIFT of john's park — while 031 keeps standing untouched. The lift is the DELIVERY
+    // ((в1), 2026-08-22): this fixture used to lift the park with an automatic `github` message,
+    // and that class stopped lifting anything on the day the person park was narrowed. The seam
+    // this test measures is not the lift but what the two repairs do to one composition, so the
+    // fixture follows the norm and the two clauses stay side by side, as they were written.
     writeFileSync(
-      join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-github.md"),
-      "---\nfrom: github\nworker: gh-action\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
-        "waiting-on: dev-core\n---\n\nPR #61 merged.\n",
+      join(contest.root, "030-x", "messages", "2026-07-26T09-00-00Z-curator.md"),
+      "---\nfrom: curator\nworker: claude-code\ndate: 2026-07-26T09:00:00Z\nexpects: none\n" +
+        "waiting-on: dev-core\ndelivers: john\n---\n\nСлово john по вопросу.\n",
     );
     const both = run(contest, ["--write"]);
 
     // BOTH CLAUSES IN ONE SENTENCE, in the order they are printed: the fifth about a park that
     // rang and stopped standing, the sixth about a park that never rang at all.
     expect(both.out).toContain(
-      "0 parked, 0 of them asking, 0 of those new, 1 lifted unanswered, " +
+      "0 parked, 0 of them asking, 0 of those new, 1 lifted, " +
         "1 with nobody to call: 031-x (on curator, asking)",
     );
     // Neither rings: the lift owes a line, the unaddressed park has nobody to ring.
@@ -592,7 +604,7 @@ describe("notify as a command", () => {
     const closed = run(contest, ["--write"]);
 
     expect(existsSync(contest.delivered)).toBe(false);
-    expect(closed.out).not.toContain("lifted unanswered");
+    expect(closed.out).not.toContain("lifted");
     expect(readFileSync(contest.state, "utf8")).not.toContain("030-z");
   });
 

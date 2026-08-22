@@ -310,10 +310,61 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
     expect(parkedOnOf(parked({ parkedOn: "john" }))).toBe("john");
   });
 
-  it("lifts by itself on the next substantive message — nobody has to unpark it", () => {
-    // The session that parked the thread is dead by the time the answer lands, so the
-    // state cannot depend on it coming back to clear the flag.
-    expect(parkedOnOf(parked({}))).toBeUndefined();
+  it("A COUNTER-REPORT OF A ROLE LEAVES IT STANDING — the narrow lift of 2026-08-22", () => {
+    // Thread 030, defect (в1), decision of john: the park on a person lifts on the word of that
+    // person and on nothing else. An ordinary message with a turn in it — which is what this is
+    // — used to lift it, and that is the class the park was set against: the answer had not come.
+    expect(parkedOnOf(parked({}))).toBe("john");
+  });
+
+  it("'delivers: john' LIFTS IT — the word of the person, carried by whoever relays it", () => {
+    // The one lift, and it is a declaration of the courier: a person does not write into the
+    // mail, and no other header field says whether their answer has arrived.
+    expect(parkedOnOf(parked({ from: "curator", delivers: "john" }))).toBeUndefined();
+  });
+
+  it("'delivers: <ANOTHER person>' does not lift it — the delivery names one person", () => {
+    expect(parkedOnOf(parked({ from: "curator", delivers: "maria" }))).toBe("john");
+  });
+
+  it("a delivery lifts it from BEHIND later traffic — the walk remembers, it does not stop", () => {
+    // The courier says the word and hands the turn on; the roles then work in the thread. The
+    // park is lifted by the message that carried the word, not re-frozen by the ones after it.
+    const thread = parked({ from: "curator", delivers: "john", waitingOn: "dev-core" });
+    const after: Message = {
+      fields: { from: "dev-core", date: "2026-07-30T03:00:00Z", expects: "ack" },
+      text: "сделано",
+    };
+    expect(parkedOnOf({ ...thread, messages: [...thread.messages, after] })).toBeUndefined();
+  });
+
+  it("a delivery BEFORE the park lifts nothing — it answered the question that came first", () => {
+    // The stamps order the feed: a park declared after the word was delivered is a new question.
+    const thread: Thread = {
+      id: "030-x",
+      meta: { title: "t", participants: ["curator", "john"], status: "open" },
+      messages: [
+        {
+          fields: {
+            from: "curator",
+            date: "2026-07-30T01:00:00Z",
+            expects: "none",
+            delivers: "john",
+          },
+          text: "слово john по прошлому вопросу",
+        },
+        {
+          fields: {
+            from: "curator",
+            date: "2026-07-30T02:00:00Z",
+            expects: "answer",
+            parkedOn: "john",
+          },
+          text: "новый вопрос",
+        },
+      ],
+    };
+    expect(parkedOnOf(thread)).toBe("john");
   });
 
   it("THE MERGE NOTIFIER OF #192 DOES NOT LIFT IT — the repro the narrow lift was bought with", () => {
@@ -344,30 +395,33 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
     expect(parkedOnOf(thread)).toBe("john");
   });
 
-  it("a message that ASKS lifts it — 'expects' != none is one of the two facts that move", () => {
+  it("A MESSAGE THAT ASKS DOES NOT LIFT IT ANY MORE — asking is not answering (030)", () => {
+    // It did until 2026-08-22, on the reading that a courier of a decision asks or hands the
+    // turn over by construction. True of the courier, and true of everybody ELSE with a turn
+    // too — which is why the park now waits for the courier to SAY that it is a delivery.
     const thread = parked({ from: "github", worker: "gh-action", expects: "answer" });
-    expect(parkedOnOf(thread)).toBeUndefined();
+    expect(parkedOnOf(thread)).toBe("john");
   });
 
-  it("THE COURIER OF A DECISION LIFTS IT with 'expects: none' — it names who acts on it", () => {
-    // Thread 023, live repros (040, 044, 016): curator relaying john's decision and handing
-    // the turn on writes 'expects: none'. Under the narrow lift the human's own word still
-    // lifts the park, because a courier moves somebody by construction — here by the field.
+  it("THE COURIER OF A DECISION LIFTS IT — and now by the field, not by the shape of its header", () => {
+    // Thread 023, live repros (040, 044, 016): curator relaying john's decision and handing the
+    // turn on writes 'expects: none'. The delivery is the same message it always was; since
+    // 2026-08-22 it carries the fact in a field a reader can trust.
     const thread = parked({
       from: "curator",
       worker: "claude-ai",
       expects: "none",
       waitingOn: "dev-core",
+      delivers: "john",
     });
     expect(parkedOnOf(thread)).toBeUndefined();
   });
 
-  it("THE PARKER'S OWN ROLE LIFTS IT — the doubles of a role are one author in the header", () => {
-    // A role writes both from a raised session and from a human's chat ('worker' differs,
-    // 'from' does not), and the chat one is exactly the courier delivering the decision the
-    // park waits for. Nothing in the header tells the two apart, and under this rule nothing
-    // has to (thread 023, curator's open question).
-    expect(parkedOnOf(parked({ from: "curator", worker: "claude-ai" }))).toBeUndefined();
+  it("THE SAME LETTER WITHOUT THE FIELD leaves it standing — and the digest is what says so", () => {
+    // The price of the narrowing, named rather than hidden: a courier who forgets '--delivers'
+    // leaves a park standing, and the human reads it in the NEXT digest ('N parked, K of them
+    // asking' — thread 030) instead of half a day later, which is what the wide lift cost.
+    expect(parkedOnOf(parked({ from: "curator", worker: "claude-ai" }))).toBe("john");
   });
 
   it("a park DECLARED ON an informational message acts — the field is read before the skip", () => {
@@ -684,6 +738,14 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
 
   it("parkedOnOf keeps the raw value, so the skip line can tell the two apart", () => {
     expect(parkedOnOf(thread([message({ parkedOn: "pr:127" })]))).toBe("pr:127");
+  });
+
+  it("A DELIVERY DOES NOT LIFT AN EVENT PARK — the narrowing of 030 touched the person park only", () => {
+    // The norm says it in as many words: the event parks wait for a machine event, and their
+    // wide walk is left exactly as it was. A word of a human is not the button being pressed.
+    const parked = message({ parkedOn: "pr:127" });
+    const word = announcement({ delivers: "john", date: "2026-07-31T12:40:00Z" }, "john сказал");
+    expect(parkingOf(thread([parked, word]))?.pr).toBe(127);
   });
 
   it("A MERGE ANNOUNCED IN ANOTHER THREAD lifts it — the notifier writes into the PR's own", () => {
