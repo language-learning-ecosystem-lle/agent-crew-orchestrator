@@ -45,7 +45,7 @@ const git = (cwd: string, ...args: readonly string[]): string =>
  * root manifest carries a DIFFERENT name on purpose — that is the whole defect the cut is
  * against, and the test would not see a cut that quietly kept the root.
  */
-const repoWithPackage = (version = "0.2.0"): string => {
+const repoWithPackage = (version = "0.2.0", schemaVersion?: number): string => {
   const dir = mkdtempSync(join(tmpdir(), "split-package-"));
   made.push(dir);
   git(dir, "init", "--quiet", "--initial-branch=main", ".");
@@ -62,6 +62,13 @@ const repoWithPackage = (version = "0.2.0"): string => {
     JSON.stringify({ name: "thing", version, exports: { ".": "./src/index.ts" } }),
   );
   writeFileSync(join(dir, "packages/thing/src/cli.ts"), "export const cli = () => 0;\n");
+  if (schemaVersion !== undefined) {
+    mkdirSync(join(dir, "packages/thing/src/schema"), { recursive: true });
+    writeFileSync(
+      join(dir, "packages/thing/src/schema/version.ts"),
+      `export const CURRENT_PROTOCOL_VERSION = ${schemaVersion};\n`,
+    );
+  }
   git(dir, "add", "-A");
   git(dir, "commit", "--quiet", "-m", "init");
   return dir;
@@ -206,6 +213,46 @@ describe("scripts/split-package.sh", () => {
     expect(run.ok, run.out).toBe(true);
     expect(run.out).toContain("ПРОПУЩЕНА");
     expect(run.out).toContain("origin/main");
+  });
+
+  /**
+   * ЧИСЛО СХЕМЫ В ВЫВОДЕ РЕЗА (тред 028). Номер тега — версия ПАКЕТА, и по ней не видно,
+   * сдвинулась ли под ним схема протокола: так `v0.2.1` (17) → `v0.2.2` (18) уехало в
+   * LLE под заголовком чистого релизного бампа, и потребитель узнал о сдвиге красным CI
+   * на живом `main`. Проверяется именно ВЫВОД процесса: число, известное только функции
+   * внутри, руку, ведущую бамп, ни о чём не предупреждает.
+   */
+  it("says which protocol schema version the tag writes — in the output of the cut itself", () => {
+    const repo = repoWithPackage("0.2.0", 18);
+    const run = split(repo, "--tag", "thing-v0.2.0", "--prefix", "packages/thing");
+    expect(run.ok, run.out).toBe(true);
+    expect(run.out).toContain("protocolVersion этот тег пишет: 18");
+    // И в ИТОГОВОЙ строке — её копируют в тред как объявление тега.
+    expect(run.out).toContain("тег 'thing-v0.2.0' создан");
+    expect(run.out).toMatch(/создан на [0-9a-f]+ \(пакет thing@0\.2\.0, protocolVersion 18\)/);
+    // Плюс команда сверки с потребителем, названная поимённо.
+    expect(run.out).toContain("schema version --package-ref 'thing-v0.2.0'");
+  });
+
+  it("says out loud when the cut declares no schema version at all, instead of printing nothing", () => {
+    const run = split(repoWithPackage(), "--tag", "thing-v0.2.0", "--prefix", "packages/thing");
+    expect(run.ok, run.out).toBe(true);
+    expect(run.out).toContain("версию схемы протокола не объявляет");
+  });
+
+  it("refuses a version.ts whose declaration cannot be read, rather than cutting a silent tag", () => {
+    const repo = repoWithPackage("0.2.0", 18);
+    writeFileSync(
+      join(repo, "packages/thing/src/schema/version.ts"),
+      "export const CURRENT_PROTOCOL_VERSION = later;\n",
+    );
+    git(repo, "add", "-A");
+    git(repo, "commit", "--quiet", "-m", "chore: the number stops being a number");
+
+    const run = split(repo, "--tag", "thing-v0.2.0", "--prefix", "packages/thing");
+    expect(run.ok).toBe(false);
+    expect(run.out).toContain("CURRENT_PROTOCOL_VERSION");
+    expect(git(repo, "tag", "--list").trim()).toBe("");
   });
 
   it("does not push without --push, and says the command that would", () => {

@@ -126,6 +126,18 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
   agent-protocol roles list   --ref <ref> [--repo <path>]
   agent-protocol schema migrate [--repo <path>] [--config-path <p>] [--root <mail>] [--to <n>] [--write]
                               # the ONE command with no --ref: it plans against the working tree it rewrites
+  agent-protocol schema version [--package-ref <ref>] [--package-repo <path>] [--repo <path>] [--ref <ref>]
+                              [--config-path <p>]
+                              # THE TWO NUMBERS OF A PIN, BEFORE IT MOVES (thread 028): what the package
+                              # writes and what the consumer declares, with the verdict between them
+                              # --package-ref names the CANDIDATE (a tag): the number is read out of its
+                              # source, nothing installed and nothing checked out — 'config check' can only
+                              # ask the package that IS installed, which during a bump is the old one
+                              # --repo/--ref name the consumer's config; it is read RAW, without the loader,
+                              # whose version gate would refuse the very mismatch this command shows
+                              # a mismatch exits 0: this is a measurement taken BEFORE the pin moves (the
+                              # migration then rides in the same PR as the pin), not a door over somebody
+                              # else's repository. Exit 2 means a number could not be READ
   agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
   agent-protocol zones check  --ref <ref> [--repo <path>] (--role <id> | --role-from-workspace)
                               (--staged | --base <ref> | --paths <a,b>)
