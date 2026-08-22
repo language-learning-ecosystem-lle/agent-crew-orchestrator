@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-22T08:02:55.597Z",
+  "writtenAt": "2026-08-22T08:06:58.216Z",
   "roles": [
     "curator",
     "dev-core"
@@ -9,7 +9,7 @@
     {
       "role": "curator",
       "thread": "027-guard1-orphan-verdict",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-22T08:42:54Z"
     }
   ]
