@@ -25,7 +25,7 @@
  */
 
 import { z } from "zod";
-import type { PullRequestFacts } from "./gate.js";
+import type { PullRequestFacts, ReviewRunFact, ReviewRunReading } from "./gate.js";
 
 const nullableText = z.string().nullish();
 
@@ -112,6 +112,89 @@ export const ghRunParkSchema = z.looseObject({
 });
 
 /**
+ * THE ROUNDS OF REVIEW ON A HEAD (thread 027) — `repos/{owner}/{repo}/actions/runs`, the
+ * one API that still knows WHICH TREE a round of review read. Loose like the rest, and
+ * NOTHING here is pinned: this reading has a third state of its own (`by-hand`), so a
+ * payload that lost a field must degrade into that state with GitHub's own words rather
+ * than throw — the guard says "unverified", never "verified" and never "refused for
+ * everyone". `head_sha`, `event`, `status`, `conclusion` and the window are the fields the
+ * anchor is computed from, and a run missing any of them simply anchors nothing.
+ */
+export const ghWorkflowRunsSchema = z.looseObject({
+  workflow_runs: z.array(
+    z.looseObject({
+      id: z.number().int().nullish(),
+      name: nullableText,
+      head_sha: nullableText,
+      event: nullableText,
+      status: nullableText,
+      conclusion: nullableText,
+      created_at: nullableText,
+      updated_at: nullableText,
+    }),
+  ),
+});
+
+export type GhWorkflowRuns = z.infer<typeof ghWorkflowRunsSchema>;
+
+/** The runs of the answer as the guard reads them — a mapping and nothing else. */
+export const reviewRunFacts = (payload: GhWorkflowRuns): readonly ReviewRunFact[] =>
+  payload.workflow_runs.map((run) => ({
+    id: run.id ?? undefined,
+    name: run.name ?? undefined,
+    headSha: run.head_sha ?? undefined,
+    event: run.event ?? undefined,
+    status: run.status ?? undefined,
+    conclusion: run.conclusion ?? undefined,
+    createdAt: run.created_at ?? undefined,
+    updatedAt: run.updated_at ?? undefined,
+  }));
+
+/**
+ * The answer of `gh api actions/runs` read as a {@link ReviewRunReading} — INCLUDING its
+ * refusals, which is the whole reason this is a function and not two lines at the call
+ * site. A throw of `gh`, a body that is not JSON and a body that is not the shape we read
+ * are three different sentences a human can act on, and all three land in the same
+ * honest state: unreadable, with what GitHub said quoted.
+ */
+export const readReviewRuns = (input: {
+  readonly workflow: string;
+  readonly ask: () => string;
+}): ReviewRunReading => {
+  let raw: string;
+  try {
+    raw = input.ask();
+  } catch (error) {
+    const message = (error as Error).message.trim();
+    return {
+      state: "unreadable",
+      workflow: input.workflow,
+      reason: `${message}${ghRefusalHint(message)}`,
+    };
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch (error) {
+    return {
+      state: "unreadable",
+      workflow: input.workflow,
+      reason: `the answer is not JSON: ${(error as Error).message.trim()}`,
+    };
+  }
+  const parsed = ghWorkflowRunsSchema.safeParse(body);
+  if (!parsed.success)
+    return {
+      state: "unreadable",
+      workflow: input.workflow,
+      reason: `the answer is not the shape this command reads: ${parsed.error.issues
+        .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+        .join("; ")}`,
+    };
+  return { state: "read", workflow: input.workflow, runs: reviewRunFacts(parsed.data) };
+};
+
+/**
  * THE PAYLOAD OF `gh` READ AS THE FACTS THE GUARDS JUDGE — one mapping, because there
  * are now two callers (thread 019, point 5): the merge door and the scheduler's
  * merge-ready reader. A second copy of it would be a second reading of `commits`, of the
@@ -133,6 +216,13 @@ export const pullRequestFacts = (
    * no-op this repairs.
    */
   baseHead?: { readonly sha: string; readonly committedAt: string } | undefined,
+  /**
+   * THE ROUNDS OF REVIEW ON THE HEAD (thread 027), from a third read — `gh pr view` knows
+   * nothing about runs. A parameter for the same reason the base head is one: the caller
+   * that has no use for the anchor (the scheduler) does not pay for the call, and the
+   * guard then says `by-hand` instead of guessing.
+   */
+  reviewRuns?: ReviewRunReading | undefined,
 ): PullRequestFacts => ({
   number: pr.number,
   headSha: pr.headRefOid,
@@ -148,6 +238,7 @@ export const pullRequestFacts = (
   // did not exist yet (thread 043). Only the head's own entry counts.
   headCommittedAt:
     pr.commits.find((commit) => commit.oid === pr.headRefOid)?.committedDate ?? undefined,
+  reviewRuns,
   checks: pr.statusCheckRollup.map((check) => ({
     // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
     // absence itself (D3), so the mapping stays a mapping.
