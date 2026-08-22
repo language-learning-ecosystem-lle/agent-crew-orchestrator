@@ -873,6 +873,15 @@ describe("new-message and the turn parked behind a person (R27)", () => {
 
     expect(result.code).toBe(0);
     expect(written(contest.root).fields.parkedOn).toBe("pr:127");
+    // AND THE DOOR SAYS THE CONDITION OF THE LIFT OUT LOUD (thread 030, Д-3). The note is
+    // asserted HERE and not only on `describePrPark` because the defect it repairs lives in
+    // the door: the park was declared through this command, and what the writer never read
+    // was what this command printed back. A pure function returning the right sentence to
+    // nobody is the same silence with a green test on it — the `run:` note is checked at this
+    // level for the same reason, a few cases below.
+    expect(result.out).toContain("lifts on ONE thing");
+    expect(result.out).toContain("'merged-pr: 127'");
+    expect(result.out).toContain("NOTHING WATCHES THE STATE OF #127");
   });
 
   it("the refusal of an unknown name names the event form — it is the other legal value", () => {
