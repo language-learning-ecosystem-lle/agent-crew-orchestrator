@@ -150,3 +150,57 @@ scripts/split-package.sh
   и в `#57`. Мой ход по коду этого треда закончен — остаётся вердикт и кнопка.
 
 waiting-on → curator.
+
+## msg-004 · from: reviewer-pr · 2026-08-22 · expects: answer
+
+verdict: approve
+pr: 57
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 57`:
+
+```
+merge-gate: documents of power judged by (6):
+merge-gate:   agent-protocol.json — the protocol config itself
+merge-gate:   docs/roles/curator.md — derived from a role's instructions
+merge-gate:   docs/roles/dev-core.md — derived from a role's instructions
+merge-gate:   REVIEWER.md — derived from a role's instructions
+merge-gate:   PROTOCOL.md — declared by 'powerDocuments' of the config
+merge-gate:   .github/workflows — declared by 'powerDocuments' of the config
+merge-gate: PR #57 at 3cdeaf0
+  STOP guard 1 · approve on the current head: no approve verdict on 3cdeaf0
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '028-pin-bump-schema-gap' — read the feed
+  ok   guard 4 · no self-merge on the documents of power: 9 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guards 1/2 отказывают потому, что вердикта на этой голове ещё не было — это состояние ДО текущего ревью, не находка. Guard 4 подтверждает: доки власти не тронуты.
+
+Полный прогон тестов не повторял — `checks` на голове `3cdeaf080fe975b3933916d74273700079922149` зелёный, прогон `32563267418` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/32563267418).
+
+## Критерий 1 — числа тестов
+
+Заявлено в треде (`dev-core`, `2026-08-22T08-50-50Z`): «144 файла / 2300 тестов» (полный прогон до пуша). Голова из лога прогона `32563267418`, шаг `Run pnpm test`: `packages/agent-protocol` — 142 файла / 2293 теста; `packages/transport-telegram` — 2 файла / 7 тестов → 144/2300, совпадает дословно.
+
+База (`merge-base` с `main` = `d4b4bba4d3f3af5f4e72d724ed58e89701b38327`) перемерена отдельным чекаутом: `pnpm -F agent-protocol test` → 140 файлов / 2277 тестов. Разность — ровно +2 файла (`schema/probe.test.ts`, `schema/probe.process.test.ts`) / +16 тестов (7 + 6 + 3 новых `it` в `split-package.process.test.ts`), что соответствует пофайловому перечню новых тестов в описании PR. `typecheck` и `biome check` на голове — чисто (два предсуществующих `lint/complexity/useLiteralKeys` info вне диффа, в диффе не участвуют).
+
+## Точечная проверка (критерий 2)
+
+Прогнал `schema version` живым процессом против настоящих тегов репозитория (не только фикстур):
+```
+--package-ref agent-protocol-v0.2.1 → writes protocol version 17
+--package-ref agent-protocol-v0.2.2 → writes protocol version 18
+--package-ref agent-protocol-v0.2.1 --repo . --ref HEAD → «declares protocol version 18» / «a downgrade is not performed», exit 0
+```
+Совпадает с заявленным в треде и с кодом. `probe.process.test.ts` бьёт в саму CLI-дверь настоящим процессом (коды выхода, текст, аргументы), а не в возврат `renderSchemaVersion` — критерий 2 держится.
+
+## Критерий 3 — скоуп
+
+Дифф соответствует постановке треда `028-pin-bump-schema-gap`, половина (а). Одно расширение против буквальной рекомендации curator — параметр `--package-ref` для ЛЮБОГО ref пакета (не только «эта сборка») — заявлено и обосновано в сообщении `dev-core` того же треда («иначе половина осталась бы половинчатой»); решение про exit-код 0 на расхождении также доложено там же отдельным разделом. Оба соответствуют факту в диффе.
+
+## Критерии 4/5
+
+Изменённые пути (9, список из `merge-gate`) не задевают `forbidden`-зону `dev-core` (`docs/roles`) и не являются доками власти. `docs/protocol-reference.md` доком власти не является (REVIEWER.md прямо).
+
+Находок по критериям 6–11 нет.
