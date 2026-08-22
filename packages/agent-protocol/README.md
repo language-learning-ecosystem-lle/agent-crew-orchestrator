@@ -1270,6 +1270,15 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # MERGE of a pull request rather than a person's decision. The courier says
                             # NOTHING about such a thread (neither a call nor a stall: the decision has been
                             # made, what is left is somebody's hand on a button)
+                            # THE DOOR PRINTS THE CONDITION OF THE LIFT (thread 030): this park lifts on
+                            # ONE thing — a message carrying `merged-pr: <n>` in its header, anywhere in
+                            # the mail. NOTHING WATCHES THE PULL REQUEST: closing or merging it in GitHub
+                            # does not unfreeze the thread, and a merge announced in prose does not
+                            # either. Live on 2026-08-21: a thread frozen on `pr:366` at 08:23Z with "it
+                            # will thaw itself when #366 closes" in its body; #366 merged at 08:31Z, the
+                            # event landed in another thread as prose, the park stood 8 hours over a
+                            # ready head until a human lifted it. The form is legal and unchanged — the
+                            # silence about what will NOT lift it is what was the defect
                             # --parked-on run:<n>: the THIRD (thread 019) — the ROUND running on that PR.
                             # `pr:` waits for the BUTTON, `run:` waits for the VERDICT; the courier is
                             # silent about this one too (a machine is judging, no decision is pending)

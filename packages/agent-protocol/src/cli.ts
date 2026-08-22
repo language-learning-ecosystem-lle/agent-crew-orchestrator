@@ -503,6 +503,7 @@ import {
   taskThreadPrefix,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import { describePrPark } from "./thread/pr-park.js";
 import { synthesiseMeta } from "./thread/repair.js";
 import {
   describeStaleRunPark,
@@ -2531,7 +2532,20 @@ const parkedOnFrom = (
   // (thread 019): `pr:` waits for the BUTTON, `run:` waits for the VERDICT of the round on that
   // PR. The requirement from 023 is what makes it one change and not two — the writing door and
   // the reading side learn the value together, or the writer writes what the reader goes blind on.
-  if (/^pr:\d+$/.test(value)) return value;
+  //
+  // AND THE DOOR SAYS THE CONDITION OF THE LIFT OUT LOUD (thread 030, Д-3, 2026-08-22). "It
+  // lifts by itself when the merge notifier says the number back" is true and was never
+  // WRITTEN ANYWHERE THE PARKER READS: a thread frozen on `pr:366` on 2026-08-21 carried "it
+  // will thaw itself when #366 closes" in its own body, #366 was merged eight minutes later,
+  // the event went to another thread as prose with no `merged-pr` header, and the park stood
+  // eight hours. The form is not narrowed and no watcher of PR state is added — the cheap and
+  // honest half of the repair is that nobody may declare this park without being told what
+  // will not lift it.
+  const merge = /^pr:(\d+)$/.exec(value);
+  if (merge !== null) {
+    out(`agent-protocol: ${describePrPark(Number(merge[1]))}`);
+    return value;
+  }
   // `run:N` IS THE ONE PARK WHOSE SOURCE THE DOOR ASKS ABOUT (thread 062, layer 1). It was the
   // exception up to 2026-08-08, on the reading above — "the number is either in the repository
   // or it is not, and the door has no business asking GitHub" — and that reading held for `pr:`
@@ -3620,9 +3634,15 @@ const runNotify = async (input: {
   const message = renderNotification(plan.lines);
 
   const describeWaits =
-    // "asking" and not "new": a park in force is not news, and the number that matters to
-    // whoever reads this line is how many of them RING (thread 051).
-    `${plan.parked.length} parked, ${plan.freshParked.length} of them asking; ` +
+    // THREE NUMBERS ABOUT PARKS, NOT TWO (thread 030, defect Д-1). The line used to say
+    // `N parked, K of them asking` with the FRESH count in K — "asking and not announced
+    // before" — so a live question standing on a human printed `0 of them asking` from the
+    // second digest on. That is the sentence a human read on 2026-08-21 while hunting a call
+    // that had not arrived, and it told them there was nothing to look for. The word "asking"
+    // now counts what it says (every park in force whose message asks something), and what
+    // RANG THIS TICK is the third number, named as its own thing.
+    `${plan.parked.length} parked, ${plan.askingParked.length} of them asking, ` +
+    `${plan.freshParked.length} of those new; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
     // THE STANDING CATEGORY THAT DID NOT EXIST (thread 013). It prints EVERY tick, news or
