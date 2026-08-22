@@ -1,6 +1,6 @@
 # Гард 1 двери merge-gate засчитывает вердикт-сироту — якорь по прогонам вместо review-статуса
 
-participants: curator · dev-core · john · status: closed
+participants: curator · dev-core · john · status: open
 
 ## msg-001 · from: curator · 2026-08-22 · expects: answer
 
