@@ -87,12 +87,18 @@ const handoff = (options: {
   }${options.parkedOn === undefined ? "" : `parked-on: ${options.parkedOn}\n`}---\n\nThe body.\n`;
 
 /**
- * A message that MOVES SOMEBODY back to `dev-core` — the answer arriving on a parked thread
- * (`standingParkOf`). Written by another author on purpose: the lift is not about who wrote it,
- * but a curator relaying john's decision is the shape the live circuit actually produces.
+ * THE WORD OF THE PERSON arriving on a parked thread — the one lift of that park since
+ * 2026-08-22 (thread 030, `delivers`). Written by another author on purpose: the field says
+ * WHOSE word it is, not who wrote it down, and a curator relaying john's decision is the shape
+ * the live circuit actually produces. Handing the turn on at the same time is ordinary — a
+ * delivery is an ordinary message in every other respect.
  */
-const answer = (options: { readonly from: string; readonly date: string }): string =>
-  `---\nfrom: ${options.from}\ndate: ${options.date}\nexpects: answer\nwaiting-on: dev-core\n---\n\nThe decision.\n`;
+const answer = (options: {
+  readonly from: string;
+  readonly date: string;
+  readonly delivers: string;
+}): string =>
+  `---\nfrom: ${options.from}\ndate: ${options.date}\nexpects: answer\nwaiting-on: dev-core\ndelivers: ${options.delivers}\n---\n\nThe decision.\n`;
 
 type ThreadSpec = { readonly id: string; readonly message: string };
 
@@ -341,7 +347,11 @@ describe("a thread frozen behind a person costs the pair nothing (thread 020)", 
 
     // THE ANSWER LANDS — and the pair is raised by the ordinary queue, which is only possible
     // if the two frozen ticks above left the count where they found it.
-    deliver(repo, pair.thread, answer({ from: "curator", date: "2026-07-25T12:00:00Z" }));
+    deliver(
+      repo,
+      pair.thread,
+      answer({ from: "curator", date: "2026-07-25T12:00:00Z", delivers: "john" }),
+    );
     const third = daemon(repo);
 
     expect(allLaunched(repo)).toEqual(["dev-core×030-consult"]);

@@ -2578,6 +2578,44 @@ const parkedOnFrom = (
 };
 
 /**
+ * THE DOOR OF A DELIVERY (thread 030, defect (в1)) — `--delivers <person>` on both writing
+ * commands: this message carries the word of THAT person, and that is the one thing that lifts
+ * a park on them.
+ *
+ * The checks are `parkedOnFrom`'s and deliberately the same two, because the value is from the
+ * same list: a name the config does not know is a typo that would lift nothing, and a role the
+ * circuit CAN wake is not somebody a turn is parked behind at all — a park on such a role cannot
+ * exist, so a delivery of its word cannot lift anything either. The refusal names both the flag
+ * and the exit, because a refusal one cannot act on is a defect even when the logic is right.
+ *
+ * The event forms are not spelled here and are refused by the first check: `pr:5` is not a name
+ * in the config. A merge carries nobody's word — an event park is what lifts on a merge.
+ *
+ * No permission gates it, for the reason no permission gates a park: the courier of a decision
+ * is whichever role the human happened to speak to (016/040/044).
+ */
+const deliversFrom = (
+  argv: readonly string[],
+  input: { readonly registry: RoleRegistry },
+): string | undefined => {
+  const value = flag(argv, "--delivers");
+  if (value === undefined) return undefined;
+  if (!input.registry.isKnown(value)) {
+    return fail(
+      `--delivers '${value}' is not listed in the config: this field names the PERSON whose word the message carries, and an unknown name lifts no park at all`,
+      2,
+    );
+  }
+  if (input.registry.canHoldTurn(value)) {
+    return fail(
+      `--delivers '${value}' — that role CAN be woken, so it speaks for itself in the feed and no turn is ever parked behind it. This field names a person the circuit cannot move (wake.mode='self'); to hand the turn to a role use '--waiting-on ${value}'`,
+      2,
+    );
+  }
+  return value;
+};
+
+/**
  * THE DOOR OF A TASK DECLARATION (thread 021) — `--task '<NNN.k> <status>[ · tail]'`,
  * repeatable, checked here and not only in CI.
  *
@@ -2727,6 +2765,7 @@ const newMessage = (argv: readonly string[]): void => {
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
   const parkedOn = parkedOnFrom(argv, { registry });
+  const delivers = deliversFrom(argv, { registry });
   // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
   // can still be retyped, because the feed is append-only and such a header cannot be taken
   // back: it names its own author as the one who acts next, asks for something, and says
@@ -2810,6 +2849,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(launchDirective === undefined ? {} : { launch: launchDirective }),
         ...(priority === undefined ? {} : { priority }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
+        ...(delivers === undefined ? {} : { delivers }),
         ...(mergedPr === undefined ? {} : { mergedPr }),
         ...(tasks.length === 0 ? {} : { tasks }),
         text,
@@ -2968,6 +3008,12 @@ const newThread = (argv: readonly string[]): void => {
   // for a person. Nothing about parking is invented here: the values, the checks and the
   // refusals are `parkedOnFrom`'s, unchanged.
   const parkedOn = parkedOnFrom(argv, { registry });
+  // AND THE SAME DELIVERY, by the same door (thread 030): a thread can be OPENED by the courier
+  // of a decision — the park it lifts stands in another thread, and the field is the message's,
+  // not the command's. The lesson of 075 is why this is two lines here and not a scope for
+  // later: a flag parsed by one command of the pair and swallowed by the other is written
+  // without a word into an append-only feed.
+  const delivers = deliversFrom(argv, { registry });
   // AND THE SAME MISSING PARK, by the same judge (thread 022). The lesson of 075 is the whole
   // reason this is two lines and not a scope for later: a door standing on one command of a
   // pair is a rule nobody can hold in their head, and the shape it catches — a role opening a
@@ -3018,6 +3064,7 @@ const newThread = (argv: readonly string[]): void => {
         expects,
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
+        ...(delivers === undefined ? {} : { delivers }),
         ...(turn === undefined ? {} : { turn }),
         text,
       });

@@ -75,6 +75,8 @@ export type NewMessageInput = {
   readonly priority?: ThreadPriorityValue;
   /** Whose decision the turn is frozen behind — a person, and only a person (R27). */
   readonly parkedOn?: string;
+  /** Whose word this message carries — the one lift of a park on that person (thread 030). */
+  readonly delivers?: string;
   /** The PR this message announces as merged — it lifts the parks that wait on it (thread 023). */
   readonly mergedPr?: number;
   /** Tasks this message declares or moves (thread 021) — the source the board derives from. */
@@ -110,6 +112,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.launch === undefined ? {} : { launch: input.launch }),
     ...(input.priority === undefined ? {} : { priority: input.priority }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
+    ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
     ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
     ...(input.tasks === undefined ? {} : { tasks: input.tasks }),
   };
@@ -157,6 +160,12 @@ export type NewThreadInput = {
   readonly waitingOn?: string | null;
   /** Whose decision the turn is frozen behind (R27) — the same field the first message may carry. */
   readonly parkedOn?: string;
+  /**
+   * Whose word the first message carries (thread 030) — passed through for the same reason
+   * `parked-on` is: the first message is a message, and a thread can be opened by the courier
+   * of a decision just as it can be opened by a question to its owner (075, 074).
+   */
+  readonly delivers?: string;
   /** The form declared for the answers of this thread (079) — see `ThreadTurn`. */
   readonly turn?: ThreadTurn;
   readonly text: string;
@@ -190,6 +199,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
+    ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
     text: input.text,
     threadHasMessages: true, // a new thread is file-based by construction
   });

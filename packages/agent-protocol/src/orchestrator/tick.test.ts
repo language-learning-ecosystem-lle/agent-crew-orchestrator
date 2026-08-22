@@ -586,12 +586,17 @@ describe("planTick — the turn parked behind a person (R27)", () => {
     expect(decision.skipped).toEqual([
       { role: "dev-core", thread: "t1", reason: "parked", attempt: 0, parkedOn: "john" },
     ]);
-    expect(
-      describeSkip(
-        { role: "dev-core", thread: "t1", reason: "parked", attempt: 0, parkedOn: "john" },
-        { value: 3, source: "default" },
-      ),
-    ).toContain("john");
+    const line = describeSkip(
+      { role: "dev-core", thread: "t1", reason: "parked", attempt: 0, parkedOn: "john" },
+      { value: 3, source: "default" },
+    );
+    expect(line).toContain("john");
+    // AND IT NAMES THE LIFT AS IT IS (thread 030, 2026-08-22). This very line used to promise
+    // that the park thaws "with the next substantive message in the thread"; after the narrowing
+    // that is false, and a skip line that lies about the mechanism sends its reader to repair
+    // the wrong thing — this thread paid for that class three times.
+    expect(line).toContain("'delivers: john'");
+    expect(line).not.toContain("next substantive message");
   });
 
   it("the freeze costs NOTHING: no launch, so the attempt counter stands still", () => {

@@ -477,7 +477,12 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
       // a dead pair for reading it as one.
       if (on.kind === "run")
         return `candidate ${pair} skipped: the turn is parked behind the round running on PR #${on.pr} (R27, 'parked-on: ${skip.parkedOn}' in the feed) — it is waiting for a VERDICT, not for a launch; it lifts by itself with the next message that MOVES anybody (asks for something, or names whose turn it is — an actionable CI outcome does, the trace of the round already running does not), and with the merge of that PR`;
-      return `candidate ${pair} skipped: the turn is parked behind a decision of ${skip.parkedOn ?? "a person"} (R27, 'parked-on' in the feed) — it is waiting for a PERSON, not for a launch; it lifts by itself with the next substantive message in the thread`;
+      // AND THIS LINE SAYS THE LIFT AS IT IS, not as it used to be (thread 030, 2026-08-22):
+      // "the next substantive message in the thread" stopped being true when the person park
+      // was narrowed to the word of the person, and a line that lies about the mechanism is
+      // what this thread paid for three times over — the reader repairs what the text tells
+      // them to repair.
+      return `candidate ${pair} skipped: the turn is parked behind a decision of ${skip.parkedOn ?? "a person"} (R27, 'parked-on' in the feed) — it is waiting for a PERSON, not for a launch; it lifts on the word of that person carried into the mail ('delivers: ${skip.parkedOn ?? "<person>"}' in a message header, by whichever role relays it) and on the thread being closed — no other message in the thread lifts it any more`;
     }
     case "quota":
       return `candidate ${pair} skipped: the rate-limit window is closed for ${describeAccount(skip.account ?? BOX_ACCOUNT)} — the window belongs to the ACCOUNT, so a signal from any role standing on it stands down every pair that spends it AND NO OTHER (B.3); it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
