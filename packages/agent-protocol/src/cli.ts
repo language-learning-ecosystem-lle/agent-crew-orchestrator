@@ -524,6 +524,7 @@ import {
   mergedPrs,
   parkingOf,
   parseMetaFile,
+  personParksOf,
   renderMetaFile,
   renderThread,
   type ThreadMeta,
@@ -3499,6 +3500,25 @@ const runNotify = async (input: {
         ]
       : [],
   );
+  // AND EVERY PERSON-PARK THE OPEN THREADS HAVE EVER DECLARED (thread 030, (в2)) — the one
+  // fact the state file cannot hold. A park announced to a human and then LIFTED by somebody
+  // else's move disappears from the composition above; what it was asking is readable only
+  // here, in the message that declared it, by the stamp the state remembers.
+  const declaredParks = parsed.flatMap((thread) =>
+    personParksOf(thread).flatMap((park) =>
+      park.person === undefined
+        ? []
+        : [
+            {
+              thread: thread.id,
+              person: park.person,
+              since: park.since,
+              question: park.question,
+              asks: park.asks,
+            },
+          ],
+    ),
+  );
   // A park on an EVENT is not a call and not a stall: the decision behind it has been made,
   // and what is left is somebody's hand on a merge button. It is passed to the plan by name
   // so that the age pass stays silent about it — otherwise the safety call ("nothing is
@@ -3623,6 +3643,7 @@ const runNotify = async (input: {
     seen,
     stalled,
     parked,
+    declaredParks,
     frozen,
     exhausted: exhaustedPairs,
     auth: authAlarm,
@@ -3647,15 +3668,22 @@ const runNotify = async (input: {
     // rides in someone else's letter is a thing the operator can be surprised by, and a
     // clause printed every tick to say "none" is the noise this thread is spending itself on.
     `${plan.restatedParked.length === 0 ? "" : `, ${plan.restatedParked.length} restated`}` +
-    // AND THE FIFTH ONE NAMES WHAT THE FOUR CANNOT COUNT (thread 031): the parks in force whose
-    // person this notifier has no way to call. They are outside the four numbers by
+    // THE FIFTH NUMBER, on the same rule and for the same reason (thread 030, (в2)): a park
+    // that was lifted with its question unanswered is no longer in the first three numbers at
+    // all — it is not parked any more — so without a clause of its own the operator reading
+    // this line would see the count fall by one and nothing else. Zero stays invisible.
+    `${plan.liftedParked.length === 0 ? "" : `, ${plan.liftedParked.length} lifted unanswered`}` +
+    // AND THE SIXTH ONE NAMES WHAT THE FIVE CANNOT COUNT (thread 031): the parks in force whose
+    // person this notifier has no way to call. They are outside the five numbers by
     // construction — those count the CALL, and there is none here — so without this clause the
     // sentence about a live question standing on an unreachable person is `0 parked, 0 of them
-    // asking, 0 of those new`, which is the sentence of an empty mail. Named and not merely
-    // counted, for the reason the exhausted clause is: the reader's next move is to go to that
-    // thread, and a bare number leaves them exactly where they were. Zero prints nothing, like
-    // the fourth number: in this repository the class is empty, and a clause repeating "none"
-    // every few minutes is the noise the neighbouring thread was spent removing.
+    // asking, 0 of those new`, which is the sentence of an empty mail. It cannot collide with
+    // the fifth either: such a park is never written into the state as announced, so it never
+    // comes back as a lift. Named and not merely counted, for the reason the exhausted clause
+    // is: the reader's next move is to go to that thread, and a bare number leaves them exactly
+    // where they were. Zero prints nothing, like the fourth and the fifth: in this repository
+    // the class is empty, and a clause repeating "none" every few minutes is the noise the
+    // neighbouring thread was spent removing.
     `${
       plan.unaddressedParked.length === 0
         ? ""
@@ -3772,6 +3800,9 @@ const runNotify = async (input: {
     // A REPEAT IS NAMED AMONG WHAT WENT OUT, not among what rang: it did not raise this
     // letter, it rode in it — and the operator reading the summary is owed both facts.
     ...plan.restatedParked.map((park) => `${park.thread} (restated on ${park.person})`),
+    // A LIFT IS NAMED THE SAME WAY AND FOR THE SAME REASON: it rode in this letter without
+    // raising it, and the summary is where the operator learns what actually went out.
+    ...plan.liftedParked.map((park) => `${park.thread} (lifted unanswered on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
   ];
