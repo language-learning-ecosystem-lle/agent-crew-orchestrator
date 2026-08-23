@@ -759,7 +759,7 @@ export const roleLaunchability = (role: Role): Launchability => {
  * stream emits an event per step as the work happens; `--verbose` is what the
  * agent requires of `stream-json` in print mode.
  */
-export const buildLaunchArgv = (input: {
+export type LaunchArgvInput = {
   readonly prompt: string;
   readonly maxTurns: string;
   readonly launch: Launch;
@@ -785,7 +785,14 @@ export const buildLaunchArgv = (input: {
    * source, and it would shadow whatever the workspace configures on its own.
    */
   readonly denyRules?: readonly string[];
-}): string[] => {
+};
+
+/**
+ * The argv of a `claude-code` run. Reached through the kind contract
+ * ({@link import("./kind.js").AgentKind}) rather than called by name from the
+ * supervisor: every flag below is a claim about ONE vendor (thread 026, step 2).
+ */
+export const buildLaunchArgv = (input: LaunchArgvInput): string[] => {
   const settings = denySettings(input.denyRules ?? []);
   return [
     ...(input.resume === undefined ? [] : ["--resume", input.resume]),

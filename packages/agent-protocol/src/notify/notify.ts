@@ -157,9 +157,21 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Readonly<Record<NotificationKind, s
 
 /** The two box-wide texts, in the package's own English — see {@link BOX_ALARM_KINDS}. */
 export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
-  // THE LINE NAMES THE ACCOUNT (B.4): the reader's whole action is `claude login`, and on a
-  // box with two subscriptions that instruction without a name is unusable — logging in the
-  // wrong one leaves the shelf exactly where it was and looks like the alarm lying.
+  // THE LINE NAMES THE ACCOUNT (B.4) AND NO COMMAND (thread 026). Naming the account is
+  // what makes the alarm actionable on a box that holds two: repairing the wrong one leaves
+  // the shelf exactly where it was and reads as the alarm lying.
+  //
+  // The command itself is deliberately NOT spelled here, and this is the one place among the
+  // repair sites of thread 026 where {@link AgentKind.loginHint} is not what the fix is. The
+  // alarm is keyed by an ACCOUNT — {@link AuthAlarm} carries an id, a count and two stamps,
+  // and `planNotifications` is pure, holding no config at all — so nothing at this point
+  // knows which kind that account belongs to. Spelling one vendor's command from here would
+  // be the defect the kind contract exists against, only louder: the operator of a box whose
+  // shelved account is not claude-code would be told to type a login that cannot lift it.
+  // What the line owes such a reader is the account and the standstill, which it says.
+  //
+  // The verb still is one ("logs that account in"), and that is the open half: it belongs to
+  // the step that gives the alarm a kind, not to a rename of a string that names no command.
   auth: "the box cannot authenticate to the vendor for {account}: {deaths} runs in a row died on its credentials since {since}. Nothing is raised for it until {until}, and nothing will be until somebody logs that account in on the box — the roles that spend it are standing still",
   "gh-outage":
     "merge-ready has been refused by gh for {ticks} ticks in a row (threshold {threshold}) since {since}: {refusal}. Nothing is broken by it — the queue is ordered as it would be without the tier — but the tier is off until this is fixed",
