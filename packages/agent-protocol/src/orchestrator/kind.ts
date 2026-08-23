@@ -34,6 +34,7 @@
  * member below points at the function that already served the live circuit, and the
  * regression test of this step is the existing suite staying green.
  */
+import { CODEX } from "./codex.js";
 import { buildLaunchArgv, DEFAULT_EXEC, DEFAULT_WORKER, type LaunchArgvInput } from "./launch.js";
 import { type QuotaSignal, quotaSignalOf, type WindowBoundary, windowBoundaryOf } from "./quota.js";
 import {
@@ -160,8 +161,19 @@ export const CLAUDE_CODE: AgentKind = {
   cannot: [],
 };
 
-/** Every kind this package can raise, in the order they are offered to a reader. */
-export const AGENT_KINDS: readonly AgentKind[] = [CLAUDE_CODE];
+/**
+ * Every kind this package can raise, in the order they are offered to a reader —
+ * `claude-code` first because it is the one the live circuit runs on.
+ *
+ * CODEX BEING IN THIS LIST MEANS ONE THING AND NOT ANOTHER (thread 026, step 3): the
+ * package knows how to spell its argv, read its stream and probe its box, so
+ * `--worker codex` is no longer refused as unimplemented. It does NOT mean a codex run
+ * has ever happened — no key exists on this box yet, and every reading in `codex.ts`
+ * comes from the vendor's declared schema rather than from a captured stream. What is
+ * unknown there is answered by an absence (no limit readers, five levers in `cannot`),
+ * never by a plausible value.
+ */
+export const AGENT_KINDS: readonly AgentKind[] = [CLAUDE_CODE, CODEX];
 
 /** The kind by its id, or `undefined` for a name this package does not implement. */
 export const kindOf = (id: string): AgentKind | undefined =>
