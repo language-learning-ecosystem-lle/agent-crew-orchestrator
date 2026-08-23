@@ -38,6 +38,7 @@
  * refusals and not every sentence with "auth" in it.
  */
 
+import { CLAUDE_CODE } from "./kind.js";
 import { BOX_ACCOUNT, describeAccount, toolSurfacesOf } from "./quota.js";
 
 /** The verdict for one line: the matched text, trimmed — what the log quotes as evidence. */
@@ -251,6 +252,6 @@ export const authAlarmDue = (shelf: AuthShelf): boolean => shelf.deaths >= AUTH_
 export const describeAuthShelf = (shelf: AuthShelf): string =>
   `${describeAccount(shelf.account)} could not authenticate — ${shelf.deaths} run(s) in a row died on the vendor's credentials (last at ${shelf.since} on ${shelf.role}); nothing is raised until ${shelf.until}, when ONE pair is raised as the probe. If it dies too, the shelf is set again${
     authAlarmDue(shelf)
-      ? ` — the token is dead and the circuit is standing still: \`claude login\` on this box for ${describeAccount(shelf.account)}`
+      ? ` — the token is dead and the circuit is standing still: \`${CLAUDE_CODE.loginHint()}\` on this box for ${describeAccount(shelf.account)}`
       : ""
   }.`;

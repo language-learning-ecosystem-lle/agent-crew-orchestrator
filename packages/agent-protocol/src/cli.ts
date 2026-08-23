@@ -237,12 +237,11 @@ import {
   renderEventLine,
   type World,
 } from "./orchestrator/journal.js";
+import { type AgentKind, CLAUDE_CODE, execNameOf, kindOf } from "./orchestrator/kind.js";
 import {
   type AgentParams,
-  buildLaunchArgv,
   buildLaunchPrompt,
   buildResumePrompt,
-  DEFAULT_EXEC,
   DEFAULT_WORKER,
   describeAgent,
   describeCeilings,
@@ -4772,12 +4771,20 @@ const launchScopeFrom = (
  */
 const probeHeadless = (input: {
   readonly exec: string;
+  /**
+   * THE TOOL BEING PROBED, not just its path (thread 026). The argv of the probe is a
+   * claim about a vendor: `-p` is the prompt for claude-code and the PROFILE for codex,
+   * so the same line that asks one tool a question asks the other for a profile named
+   * "Answer with the single word: ok" — and gets an answer that looks like a failure of
+   * the box. The kind is asked instead of assumed.
+   */
+  readonly kind: AgentKind;
   readonly env: NodeJS.ProcessEnv;
   readonly timeoutMs: number;
 }): DoctorOutcome => {
   const started = Date.now();
   try {
-    execFileSync(input.exec, ["-p", "Answer with the single word: ok"], {
+    execFileSync(input.exec, [...input.kind.probeArgv("Answer with the single word: ok")], {
       encoding: "utf8",
       env: input.env,
       timeout: input.timeoutMs,
@@ -4890,13 +4897,9 @@ const probeSigningPlaces = (input: {
   return places;
 };
 
-/**
- * WHAT THE BINARY OF A TOOL IS CALLED. Known for the one tool the package raises
- * (`claude-code` → `claude`); for anything else the id is the best guess there is, and
- * a wrong guess costs nothing — it is looked up on PATH, and a miss is a row asking for
- * `--exec`, not a failure.
- */
-const execNameOf = (kind: string): string => (kind === DEFAULT_WORKER ? DEFAULT_EXEC : kind);
+// WHAT THE BINARY OF A TOOL IS CALLED now belongs to the kind contract
+// (`orchestrator/kind.ts`, thread 026) — it is property 1 of a kind, and it was the
+// last place in this file that answered the question by comparing a string.
 
 /** Where a binary actually is, asked of the CHILD's PATH — the daemon's is not the shell's. */
 const resolveOnPath = (name: string, env: NodeJS.ProcessEnv): string | undefined => {
@@ -5497,6 +5500,11 @@ const doctor = (argv: readonly string[]): void => {
               : { skipped: "the binary was not found — there is nothing to run" }
             : probeHeadless({
                 exec: found,
+                // The kind of THIS target, not the package's default: a box that raises
+                // two tools gets each of them asked in its own words. An id this package
+                // does not implement keeps the only probe there is — the row names the
+                // worker, so a probe that asked the wrong question is readable as one.
+                kind: kindOf(target.worker) ?? CLAUDE_CODE,
                 env,
                 timeoutMs: positiveInt(withRef, "--probe-timeout", 120) * 1000,
               }),
@@ -5528,9 +5536,16 @@ const doctor = (argv: readonly string[]): void => {
               ? { skipped: "the binary was not found — there is nothing to run" }
               : probeHeadless({
                   exec: resolvedExec,
+                  // THE KIND AN ACCOUNT BELONGS TO IS NOT DECLARED ANYWHERE YET (thread
+                  // 026): `accounts[]` carries a directory and nothing else, and this row
+                  // runs the binary the loop above resolved first. Named here rather than
+                  // left implicit — a box raising two tools needs the account to say
+                  // whose it is, and that is a config question, not a refactoring.
+                  kind: CLAUDE_CODE,
                   // THE ONE VARIABLE THAT MAKES THIS A DIFFERENT ACCOUNT (B.1): the store
-                  // is per directory — credentials, config and sessions all move with it.
-                  env: { ...env, CLAUDE_CONFIG_DIR: account.configDir },
+                  // is per directory — credentials, config and sessions all move with it,
+                  // and its NAME belongs to the kind (`CODEX_HOME` for the next one).
+                  env: { ...env, [CLAUDE_CODE.accountEnv]: account.configDir },
                   timeoutMs: positiveInt(withRef, "--probe-timeout", 120) * 1000,
                 }),
         }),
@@ -7238,9 +7253,18 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // have to be put down, not just the direct child — a SIGTERM to a shell/launcher
   // does not reach its children (the stub → sleep, `claude` → its subprocesses),
   // and they would be orphaned.
+  // WHICH TOOL IS BEING RAISED, asked once and used everywhere below (thread 026,
+  // step 2). Every vendor-shaped decision of this spawn — the argv and the name of the
+  // variable that carries the account — now hangs off this one answer instead of being
+  // spelled out here. An id this package does not implement keeps the only behaviour
+  // there was: `--worker` has always been free-form provenance, and turning an unknown
+  // value into a refusal HERE would stop live circuits that write their own name into
+  // their messages. The refusal belongs at the door that reads the config, by name
+  // ({@link unknownKindRefusal}), and that door is the next step's work.
+  const kind = kindOf(p.worker) ?? CLAUDE_CODE;
   const child = spawn(
     p.exec,
-    buildLaunchArgv({
+    kind.buildArgv({
       prompt: p.prompt({ deadline: plan.deadline }),
       maxTurns: p.maxTurns,
       launch: p.launch,
@@ -7282,7 +7306,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         // `CLAUDE_CONFIG_DIR` (an operator running the daemon with one exported) must
         // keep working, and writing the default over it would be this package
         // deciding something it was not asked about.
-        ...(p.account === undefined ? {} : { CLAUDE_CONFIG_DIR: p.account.configDir }),
+        ...(p.account === undefined ? {} : { [kind.accountEnv]: p.account.configDir }),
       },
     },
   );
