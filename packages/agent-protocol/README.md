@@ -1074,6 +1074,16 @@ of the whole circuit.
 `--repo` defaults to the repository of the current directory. Without `--write`
 nothing is written.
 
+**A flag that takes a LIST takes it in both forms** — `--x a,b` and `--x a b` name the
+same list, and a list flag reads every word up to the next `--` (thread 033). It used to
+read exactly one, so `zones check --paths a b c` judged ONE path and answered green about
+"1 path(s)" with the other two never looked at — a silent narrowing of the scope of a
+door, and the one direction in which such a mistake is expensive. The flags that take
+lists: `--paths`, `--participants`, `--power-docs`, `--working-cards`, `--roles`,
+`--exclude-roles`. A list flag given nothing at all (`--paths` and end of line) refuses by
+name rather than passing an empty list; `--waiting-on` stays a single role and now says so
+when handed two, instead of dropping the second.
+
 `--root` (the mail directory) is MADE ABSOLUTE AT THE DOOR, about the directory the
 command was typed in — one base for every phase afterwards (thread 015). A relative
 value used to be measured about the process while the message was planned and written,
@@ -1174,7 +1184,13 @@ agent-protocol schema version [--package-ref <ref>] [--package-repo <p>] [--repo
                             # over somebody else's repository. Exit 2 = a number could not be READ
 agent-protocol role exists  --ref <ref> --role <id>                        # is the role known?
 agent-protocol zones check  --ref <ref> [--repo <p>] (--role <id> | --role-from-workspace) \
-                            (--staged | --base <ref> | --paths <a,b>)
+                            (--staged | --base <ref> | --paths <a,b> | --paths a b c)
+                            # --paths TAKES BOTH FORMS and judges every path it was named (thread 033):
+                            # the space form used to be read as ONE path — a forbidden path in second
+                            # position came back exit 0, "1 path(s) … none under a forbidden prefix",
+                            # while the comma form refused the same pair by name (measured on 396a260)
+                            # the count in the green line therefore always equals the count named, and
+                            # a --paths with nothing after it refuses instead of passing an empty list
                             # THE CHANGED PATHS AGAINST THE ROLE'S ZONE (thread 020): doors 2 and 3 in ONE
                             # command — they ask the same question and differ only in where the paths come
                             # from (the index in a pre-commit hook, the PR range in CI)

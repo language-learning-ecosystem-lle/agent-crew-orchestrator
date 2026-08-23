@@ -501,6 +501,38 @@ git rev-list --parents -n1 refs/pull/N/merge     # <merge> <база> <голо�
 сверить его текст там же, где он исполнится:
 `git show refs/pull/N/merge:.github/workflows/ci.yml`.
 
+## Флаг-список читает ВСЕ свои слова, а не первое
+
+Замер curator 2026-08-23 (тред 033, находка reviewer-pr в круге #70) на `396a260`:
+одни и те же два пути, роль `curator`, две формы одного флага —
+
+```
+zones check --role curator --paths PROTOCOL.md agent-protocol.json
+  → exit 0, «1 path(s) of 'curator': none under a forbidden prefix»
+zones check --role curator --paths PROTOCOL.md,agent-protocol.json
+  → exit 1, «'curator' may not write these paths: agent-protocol.json»
+```
+
+Причина в разборе, а не в вердикте: `flag(argv, name)` берёт `argv[at + 1]` и
+останавливается — это верно для флага с ОДНИМ значением и молча неверно для
+флага со списком. Дверь вынесла верное суждение о том, чего её не просили
+судить, и о разнице промолчала. Цена ошибки односторонняя: тихое зелёное
+разрешение на путь, который роли запрещён.
+
+Чинился разбор, а не команда: `listWords` (`cli.ts`) читает слова до следующего
+`--`, `listFlag` режет их ещё и по запятым, так что обе формы дают один список
+и один вердикт байт в байт. Через него читаются `--paths`, `--participants`,
+`--power-docs`, `--working-cards`, `--roles`, `--exclude-roles`. Флаг, которому
+не назвали ничего, отказывает по имени (`--paths was given nothing to name`) —
+пустой список молча зелёным больше не проходит. `--waiting-on` остался ОДНОЙ
+ролью, но вторую теперь называет в отказе, а не отбрасывает: пустое значение
+там значимо (им ход закрывают), поэтому он читается `listWords` и склеивается
+обратно через запятую.
+
+Тесты: `roles/zones.process.test.ts`, describe «--paths judges every path it was
+named, in both forms» — паритет форм на одном наборе путей плюс запрещённый путь
+ВТОРЫМ в строке (на старом коде это зелёное «1 path(s)»).
+
 ## Дверь зон судит ТОЛЬКО по `forbidden`; `writes` не сужает ничего
 
 Замер curator 2026-08-18 (тред 010): `zones check --role curator` пропустил
