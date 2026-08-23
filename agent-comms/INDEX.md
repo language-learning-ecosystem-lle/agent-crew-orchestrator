@@ -34,4 +34,4 @@
 | 030-notify-parking-accuracy | curator · dev-core · john | closed | — | 2026-08-23 |
 | 031-notify-target-filter-blind | curator, dev-core | closed | — | 2026-08-22 |
 | 032-park-event-race | curator · dev-core · john | closed | — | 2026-08-23 |
-| 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | open | curator | 2026-08-23 |
+| 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | closed | — | 2026-08-23 |
