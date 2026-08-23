@@ -33,4 +33,4 @@
 | 029-opencode-agent-kind | curator · dev-core · john | open | curator | 2026-08-22 |
 | 030-notify-parking-accuracy | curator · dev-core · john | closed | — | 2026-08-23 |
 | 031-notify-target-filter-blind | curator, dev-core | closed | — | 2026-08-22 |
-| 032-park-event-race | curator · dev-core · john | open | curator | 2026-08-23 |
+| 032-park-event-race | curator · dev-core · john | open | dev-core | 2026-08-23 |
