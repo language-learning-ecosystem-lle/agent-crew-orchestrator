@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-23T11:19:59.751Z",
+  "writtenAt": "2026-08-23T11:23:16.938Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,6 +11,12 @@
       "thread": "026-codex-agent-kind",
       "state": "running",
       "deadline": "2026-08-23T11:59:58Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "033-zones-check-paths-silent",
+      "state": "running",
+      "deadline": "2026-08-23T12:23:15Z"
     }
   ]
 }
