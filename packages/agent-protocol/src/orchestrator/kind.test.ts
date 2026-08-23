@@ -16,6 +16,7 @@
  */
 import { describe, expect, it } from "vitest";
 
+import { CODEX } from "./codex.js";
 import { AGENT_KINDS, CLAUDE_CODE, execNameOf, kindOf, unknownKindRefusal } from "./kind.js";
 import { buildLaunchArgv, DEFAULT_EXEC, DEFAULT_WORKER } from "./launch.js";
 import { quotaSignalOf, windowBoundaryOf } from "./quota.js";
@@ -103,20 +104,25 @@ describe("the kind of claude-code is the code that was already running", () => {
 });
 
 describe("the registry answers by name and refuses by name", () => {
-  it("finds the one kind this package raises", () => {
+  it("finds the kinds this package raises", () => {
     expect(kindOf("claude-code")).toBe(CLAUDE_CODE);
+    expect(kindOf("codex")).toBe(CODEX);
     expect(AGENT_KINDS).toContain(CLAUDE_CODE);
+    expect(AGENT_KINDS).toContain(CODEX);
   });
 
   it("does not invent a kind it has not implemented", () => {
     // Not a fallback to claude-code: a fallback here would spend the wrong account.
-    expect(kindOf("codex")).toBeUndefined();
+    expect(kindOf("cursor")).toBeUndefined();
   });
 
   it("names what was asked for, what exists and the field to change", () => {
-    const said = unknownKindRefusal("codex");
-    expect(said).toContain("codex");
+    const said = unknownKindRefusal("cursor");
+    expect(said).toContain("cursor");
+    // Both implemented kinds are offered — a refusal listing only one of them would
+    // send its reader to the wrong tool as surely as no refusal at all.
     expect(said).toContain("claude-code");
+    expect(said).toContain("codex");
     expect(said).toContain("agent.kind");
   });
 
