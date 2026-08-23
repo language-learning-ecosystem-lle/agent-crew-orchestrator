@@ -38,6 +38,7 @@
  * talking to git, reading the mail checkout) lives in the CLI, where the effects are.
  */
 
+import { type AgentKind, CLAUDE_CODE } from "./kind.js";
 import type { CheckStatus, PreflightCheck } from "./preflight.js";
 
 /**
@@ -272,12 +273,19 @@ export const accountLiveCheck = (input: {
   readonly id: string;
   readonly configDir: string;
   readonly outcome: DoctorOutcome;
+  /**
+   * WHOSE LOGIN COMMAND THIS ROW DICTATES (thread 026). The words of the repair are a
+   * property of the tool, not of this row: `claude login` typed by an operator whose
+   * box runs codex is worse than a row that stays silent. Defaulted so that the one
+   * kind the package raises today needs no caller to say so.
+   */
+  readonly kind?: AgentKind;
 }): PreflightCheck => {
   const row = verdict(`account: '${input.id}' token`, input.outcome);
   return row.status === "fail"
     ? {
         ...row,
-        detail: `${row.detail} — log this account in on the box: CLAUDE_CONFIG_DIR=${input.configDir} claude login`,
+        detail: `${row.detail} — log this account in on the box: ${(input.kind ?? CLAUDE_CODE).loginHint(input.configDir)}`,
       }
     : row;
 };

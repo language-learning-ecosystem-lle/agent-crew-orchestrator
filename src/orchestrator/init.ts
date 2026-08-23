@@ -44,6 +44,7 @@
  */
 
 import type { LocalConfig } from "../config/local.js";
+import { type AgentKind, CLAUDE_CODE } from "./kind.js";
 
 /**
  * WHAT INIT DECIDED ABOUT ONE FACT. The vocabulary is deliberately not preflight's
@@ -250,11 +251,13 @@ export const accountStep = (input: {
   readonly current?: string;
   /** Whether the directory is on this disk already. Unknown (`undefined`) says nothing. */
   readonly exists?: boolean;
+  /** Whose login command this step dictates — see {@link AgentKind.loginHint} (thread 026). */
+  readonly kind?: AgentKind;
 }): InitStep => {
   const name = `account: ${input.id}`;
   const there =
     input.exists === false
-      ? ` — nothing at that path yet; the login creates it: CLAUDE_CONFIG_DIR=${input.requested} claude login`
+      ? ` — nothing at that path yet; the login creates it: ${(input.kind ?? CLAUDE_CODE).loginHint(input.requested)}`
       : "";
   if (input.current === input.requested) {
     return { name, action: "keep", detail: `${input.requested}${there}, unchanged` };
