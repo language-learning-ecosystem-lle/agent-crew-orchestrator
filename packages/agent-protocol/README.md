@@ -777,6 +777,18 @@ wrote). The consequence is deliberate: once the numbers diverge, every command
 refuses, and the only one still working is `schema migrate` — it reads the raw file
 rather than going through that door.
 
+**What forces the bump is a DOOR, not a habit** (`src/schema/shape.ts`, thread 023 for the
+paths and thread 034 for the values). Two tables freeze, per version, what the config accepts:
+`CONFIG_SHAPES` holds every key PATH, `CONFIG_VALUES` every pinned VALUE (`<path> = <json>`,
+taken from the `enum`/`const` nodes of the same JSON-Schema projection). Add a field, add a
+member to an enum, add a second member to a union — the table stops describing the schema and
+the test is red until the number moves and the new entry is appended under the NEW number. Both
+directions are named: a value ADDED is a config an older build cannot read, a value REMOVED is a
+config already on disk the NEW build cannot read, and only the second one needs a migration step
+that rewrites the file. The entries of released versions are history — appended to, never
+edited. Values checked by CODE rather than by type (`superRefine` vocabularies, `refine`
+domains) are outside the projection and deliberately outside the table.
+
 **The gate is a property of the QUESTION, not of the command** (thread 037, john's
 decision of 2026-07-31) — `loadProtocolConfig({ intent })`. `data` is the default and
 is the gate described above: it is asked by every command that reads or writes the
