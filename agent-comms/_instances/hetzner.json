@@ -1,9 +1,16 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-23T06:19:39.755Z",
+  "writtenAt": "2026-08-23T06:49:14.484Z",
   "roles": [
     "curator",
     "dev-core"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "032-park-event-race",
+      "state": "running",
+      "deadline": "2026-08-23T07:49:13Z"
+    }
+  ]
 }
