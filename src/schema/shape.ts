@@ -22,6 +22,19 @@
  *
  * The entries of released versions are HISTORY: they are appended to, never edited. Rewriting
  * one would be the same defect wearing a green test.
+ *
+ * THE GUARD HAS TWO HALVES, AND THE SECOND ONE WAS PAID FOR TOO (curator, thread
+ * `034-shape-guard-values-blind`). The half above freezes the set of key PATHS; it says nothing
+ * about the set of VALUES a frozen path accepts, and the walker below is why: members of a union
+ * are walked into the SAME path, so a second member carrying the same field names adds not one
+ * row to the table. Measured on PR #74 (thread `026`): `roles[].launch.agent.kind` has stood in
+ * the table since version 14 with `claude-code` as its only value, the PR added `codex` beside
+ * it, the set of ACCEPTED CONFIGS grew and the table did not move. An older build at an equal
+ * number would have met a card saying `kind: "codex"` as an invalid discriminator instead of
+ * "restart required" — the same class, to the byte, as the daemon of 2026-07-31. The bump that
+ * PR carries was put there by a human reviewer's eye, not by this door; so the door gained
+ * `CONFIG_VALUES`, which freezes the `enum`/`const` nodes of the SAME projection, keyed by the
+ * SAME path.
  */
 import { z } from "zod";
 
@@ -29,26 +42,27 @@ import { protocolConfigSchema } from "../config/config.js";
 import { CURRENT_PROTOCOL_VERSION } from "./version.js";
 
 /**
- * Every key path the config schema accepts, sorted — `a.b`, and `a[].b` for the members of an
- * array or of a record's values.
+ * The one walk over the JSON-Schema projection, shared by both halves of the guard.
  *
- * Derived from the schema through its JSON-Schema projection rather than from zod's internals:
- * the projection is a public contract of the library, and a walker over `_def` would be a
- * second thing to fix on every zod upgrade — in a guard whose whole value is that it does not
- * quietly stop working.
+ * Derived from the schema through its projection rather than from zod's internals: the
+ * projection is a public contract of the library, and a walker over `_def` would be a second
+ * thing to fix on every zod upgrade — in a guard whose whole value is that it does not quietly
+ * stop working. For the same reason there is ONE walker and not two: two would be two things to
+ * fix, and the half that got missed would be the half that goes quiet.
  */
-export const configShapeKeys = (): readonly string[] => {
-  const json = z.toJSONSchema(protocolConfigSchema, { io: "input", unrepresentable: "any" });
-  const keys = new Set<string>();
+const walkProjection = (
+  schema: z.ZodType,
+  visit: (node: Record<string, unknown>, at: string) => void,
+): void => {
+  const json = z.toJSONSchema(schema, { io: "input", unrepresentable: "any" });
   const walk = (node: unknown, at: string): void => {
     if (node === null || typeof node !== "object") return;
     const shape = node as Record<string, unknown>;
+    visit(shape, at);
     for (const [key, value] of Object.entries(
       (shape.properties as Record<string, unknown>) ?? {},
     )) {
-      const path = at === "" ? key : `${at}.${key}`;
-      keys.add(path);
-      walk(value, path);
+      walk(value, at === "" ? key : `${at}.${key}`);
     }
     // An array's items and a record's values are one step DOWN and nameless — `[]` says so, so
     // that `roles[].id` reads as the field of a role rather than of the list.
@@ -63,7 +77,51 @@ export const configShapeKeys = (): readonly string[] => {
     }
   };
   walk(json, "");
+};
+
+/**
+ * Every key path the config schema accepts, sorted — `a.b`, and `a[].b` for the members of an
+ * array or of a record's values.
+ *
+ * The argument exists for the guard's own tests, which have to hold a schema OTHER than the live
+ * one to show what the walker does and does not see; every caller in the package asks about the
+ * config.
+ */
+export const configShapeKeys = (schema: z.ZodType = protocolConfigSchema): readonly string[] => {
+  const keys = new Set<string>();
+  walkProjection(schema, (node, at) => {
+    for (const key of Object.keys((node.properties as Record<string, unknown>) ?? {})) {
+      keys.add(at === "" ? key : `${at}.${key}`);
+    }
+  });
   return [...keys].sort();
+};
+
+/**
+ * Every VALUE the config schema pins, sorted — one row per pair, `<path> = <json>`, where the
+ * path is the one `configShapeKeys` would give and the value is the literal spelled as it is
+ * written in the file.
+ *
+ * `enum` and `const` are the two forms zod's projection gives a pinned value (`z.enum`,
+ * `z.literal`, and the discriminator of a discriminated union). One row per PAIR rather than one
+ * row per path with a list: a diff of two sorted flat lists names the value that moved, and
+ * naming it is the whole point — "the array at `roles[].status` changed" is the refusal that
+ * sends a reader back to the schema to find out what actually happened.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT SEE: values enforced by code rather than by type — the
+ * `superRefine` vocabularies (`notifications.templates.*` is checked against the variables its
+ * slot allows) and every domain a `refine` computes. They are not in the projection, and a table
+ * that pretended to guard them would be worse than one that says it does not.
+ */
+export const configShapeValues = (schema: z.ZodType = protocolConfigSchema): readonly string[] => {
+  const values = new Set<string>();
+  walkProjection(schema, (node, at) => {
+    for (const value of (node.enum as unknown[]) ?? []) {
+      values.add(`${at} = ${JSON.stringify(value)}`);
+    }
+    if ("const" in node) values.add(`${at} = ${JSON.stringify(node.const)}`);
+  });
+  return [...values].sort();
 };
 
 /**
@@ -397,3 +455,85 @@ export const SHAPE_REPAIR = [
   "raise protocolVersion in agent-protocol.json, and APPEND the new shape to CONFIG_SHAPES under the",
   "new number — the entries of released versions are history and are not edited.",
 ].join(" ");
+
+/**
+ * The VALUES the config pinned AS OF each protocol version. Append-only for the same reason
+ * `CONFIG_SHAPES` is: an entry is the record of what a released build accepted.
+ *
+ * The table starts at 18 by exactly the logic that starts `CONFIG_SHAPES` at 14 — the version in
+ * force when this half of the guard was written. History backwards is not invented: an entry for
+ * 17 would be a claim about a build nobody can check any more, and the guard's job starts with
+ * the next value, not with the last one.
+ *
+ * (The statement of work proposed 19. It named the logic first and the number second, and on the
+ * base this landed on the logic gives 18: the PR that bumps to 19 — #74, thread `026` — was
+ * still open. Recording 19 here would have meant carrying the bump, its migration step and the
+ * config edit inside a guard's PR. The consequence is stated out loud: once #74 rebases onto
+ * this, the value `codex` it adds has no entry at 19 and THIS DOOR is what says so — the diff
+ * that paid for the guard becomes the first thing the guard catches.)
+ */
+export const CONFIG_VALUES: Readonly<Record<number, readonly string[]>> = {
+  18: [
+    'roles[].instructions[].kind = "external"',
+    'roles[].instructions[].kind = "in-repo"',
+    'roles[].launch.agent.effort = "high"',
+    'roles[].launch.agent.effort = "low"',
+    'roles[].launch.agent.effort = "max"',
+    'roles[].launch.agent.effort = "medium"',
+    'roles[].launch.agent.effort = "xhigh"',
+    'roles[].launch.agent.kind = "claude-code"',
+    'roles[].permissions[] = "launch-params"',
+    'roles[].permissions[] = "task-declare"',
+    'roles[].permissions[] = "thread-priority"',
+    'roles[].permissions[] = "thread-status"',
+    'roles[].status = "active"',
+    'roles[].status = "paused"',
+    'roles[].status = "planned"',
+    'roles[].status = "retired"',
+    'roles[].wake.mode = "event"',
+    'roles[].wake.mode = "resident"',
+    'roles[].wake.mode = "self"',
+    'roles[].wake.mode = "via-human"',
+    'roles[].wake.mode = "watch"',
+  ],
+};
+
+/**
+ * What a value set that no longer matches its version asks for. Both directions are named,
+ * because they are not the same event: a value ADDED is a config an older build cannot read, a
+ * value REMOVED is a config already on disk that the NEW build cannot read — and the second one
+ * needs a migration step that rewrites the file, not just a number.
+ */
+export const VALUES_REPAIR = [
+  `the set of values the config accepts changed without a new version (R2, protocolVersion ${CURRENT_PROTOCOL_VERSION}).`,
+  "Widening a frozen key is a change of the accepted config by the same letter as adding a field:",
+  "an older build at an equal number meets the new value as an invalid one — 'invalid discriminator',",
+  "'invalid enum value' — instead of 'the config is newer, restart required', which is the one",
+  "sentence that names the repair (2026-07-31: a daemon died of the same class on a KEY).",
+  "Repair: bump CURRENT_PROTOCOL_VERSION, register the migration step for the previous version,",
+  "raise protocolVersion in agent-protocol.json, and APPEND the new value set to CONFIG_VALUES under",
+  "the new number — the entries of released versions are history and are not edited.",
+].join(" ");
+
+/**
+ * The drift itself, spelled out row by row. The refusal has to name WHICH value at WHICH path
+ * moved and WHICH WAY — a reader who is told only that a list changed goes back to the schema to
+ * find out what happened, which is the work the door was supposed to have done.
+ */
+export const describeValueDrift = (
+  frozen: readonly string[],
+  actual: readonly string[],
+): string => {
+  const lines = [
+    ...actual
+      .filter((row) => !frozen.includes(row))
+      .map((row) => `NEWLY ACCEPTED at an unchanged version: ${row}`),
+    ...frozen
+      .filter((row) => !actual.includes(row))
+      .map(
+        (row) =>
+          `NO LONGER ACCEPTED, though version ${CURRENT_PROTOCOL_VERSION} accepted it: ${row} — a config already written with this value stops parsing, so the migration step has to REWRITE it, not only renumber the file`,
+      ),
+  ];
+  return lines.length === 0 ? "" : `\n${lines.join("\n")}`;
+};
