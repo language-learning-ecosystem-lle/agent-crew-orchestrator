@@ -140,7 +140,9 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # else's repository. Exit 2 means a number could not be READ
   agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
   agent-protocol zones check  --ref <ref> [--repo <path>] (--role <id> | --role-from-workspace)
-                              (--staged | --base <ref> | --paths <a,b>)
+                              (--staged | --base <ref> | --paths <a,b> | --paths a b)
+                              # --paths takes BOTH forms and judges EVERY path named (thread 033): the
+                              # space form used to be read as ONE path and answered green about the rest
                               # ZONES WITH AN ENFORCER (thread 020): the changed paths against the
                               # role's 'zones.forbidden' — the pre-commit hook of a role workspace
                               # (--staged --role-from-workspace) and the CI step of a PR (--base)
