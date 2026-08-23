@@ -109,9 +109,16 @@ export type AgentKind = {
   readonly probeArgv: (prompt: string) => readonly string[];
   /**
    * Property 6, the half that is easy to forget: WHAT A HUMAN IS TOLD TO TYPE when the
-   * account has no live credentials. Five places in the package dictate this sentence
-   * (doctor, tick twice, init, notify); a door that advises `claude login` to an
-   * operator holding a Codex key is worse than a door that says nothing.
+   * account has no live credentials. A door that advises `claude login` to an operator
+   * holding a Codex key is worse than a door that says nothing.
+   *
+   * FOUR TEXTS IN THE PACKAGE DICTATE THIS SENTENCE and all four are routed through here
+   * (`doctor`, `tick`, `init`, `auth`). The fifth site named by the statement of work —
+   * the auth alarm of `notify` — is NOT one of them, and the difference is measured, not
+   * assumed: its template names the account and the standstill and no command at all, so
+   * there is nothing there to route. Why it stays that way is written where it stands
+   * (`notify.ts`, above `BOX_ALARM_TEMPLATES.auth`): the alarm is keyed by an account,
+   * and an account carries no kind.
    */
   readonly loginHint: (configDir?: string) => string;
   /** Property 7: levers this kind has no way to honour. Empty for claude-code. */

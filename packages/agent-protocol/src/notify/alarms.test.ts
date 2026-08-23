@@ -41,6 +41,22 @@ describe("the box's own alarms", () => {
     expect(first.lines[1]?.kind).toBe("gh-outage");
   });
 
+  // THE ALARM NAMES THE ACCOUNT AND NO VENDOR'S COMMAND (thread 026). The alarm is keyed by
+  // an account and an account carries no kind, so a command spelled here can only be one
+  // vendor's guess — and the operator of a shelved Codex account would be told to type a
+  // login that cannot lift the shelf. Reasoning in a comment is not a door: this pins it, so
+  // that pasting the repair words back in fails by name instead of shipping.
+  it("names no vendor command: the repair words belong to the kind, and an account has none", () => {
+    const text = plan(NOTHING)
+      .lines.filter((line) => line.kind === "auth")
+      .map((line) => line.text)
+      .join("\n");
+    // Not an empty assertion: the line it is read from is the one that DOES name the account.
+    expect(text).toContain("main");
+    for (const command of ["claude login", "CLAUDE_CONFIG_DIR", "codex login", "CODEX_API_KEY"])
+      expect(text).not.toContain(command);
+  });
+
   it("ONE DELIVERY PER EVENT, not one per tick: an announced shelf is not fresh again", () => {
     const state = renderNotifyState({
       waiting: [],
