@@ -10,6 +10,7 @@ import {
   describeAuthShelf,
   openAuthShelves,
 } from "./auth.js";
+import { CODEX } from "./codex.js";
 import { observeStep } from "./observe.js";
 import { planTick } from "./tick.js";
 
@@ -147,6 +148,12 @@ describe("openAuthShelves — a shelf per account, folded out of the journal", (
     );
     expect(authAlarmDue(twice as NonNullable<typeof twice>)).toBe(true);
     expect(describeAuthShelf(twice as NonNullable<typeof twice>)).toContain("claude login");
+    // THE REPAIR IS THE KIND'S SENTENCE (thread 026, step 3, point 3): the same shelf on a
+    // role raised as codex dictates the codex login, and NOT `claude login` — a command an
+    // operator can type in full while the circuit stays exactly where it was.
+    const onCodex = describeAuthShelf(twice as NonNullable<typeof twice>, CODEX);
+    expect(onCodex).toContain("codex login --with-api-key");
+    expect(onCodex).not.toContain("claude login");
   });
 
   it("writes one journal line per shelf, not one per tick", () => {
