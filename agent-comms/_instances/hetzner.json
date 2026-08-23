@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-23T11:55:38.972Z",
+  "writtenAt": "2026-08-23T11:56:12.645Z",
   "roles": [
     "curator",
     "dev-core"
@@ -11,12 +11,6 @@
       "thread": "033-zones-check-paths-silent",
       "state": "draining",
       "deadline": "2026-08-23T12:54:55Z"
-    },
-    {
-      "role": "curator",
-      "thread": "033-zones-check-paths-silent",
-      "state": "draining",
-      "deadline": "2026-08-23T12:20:13Z"
     }
   ]
 }
