@@ -508,6 +508,7 @@ import { synthesiseMeta } from "./thread/repair.js";
 import {
   describeStaleRunPark,
   judgeRunPark,
+  pendingRunsOf,
   RUN_PARK_TTL_SECONDS,
   type RunParkFacts,
   staleRunParks,
@@ -2484,11 +2485,13 @@ const runParkFacts = (
         .join("; ")}`,
     };
   }
+  const rollup = parsed.data.statusCheckRollup ?? [];
   return {
     facts: {
       headSha: parsed.data.headRefOid,
       mergeable: parsed.data.mergeable,
-      checkRuns: parsed.data.statusCheckRollup?.length ?? 0,
+      checkRuns: rollup.length,
+      pendingRuns: pendingRunsOf(rollup),
     },
   };
 };

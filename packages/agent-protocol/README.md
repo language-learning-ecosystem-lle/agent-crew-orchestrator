@@ -1366,6 +1366,11 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # event landed in another thread as prose, the park stood 8 hours over a
                             # ready head until a human lifted it. The form is legal and unchanged — the
                             # silence about what will NOT lift it is what was the defect
+                            # AND THAT MESSAGE LIFTS IT WHEREVER IT LIES IN THE FEED (thread 032): the
+                            # mail-wide read has compared no dates since 023, and since 2026-08-23 the
+                            # single-thread read compares none either — an announcement of the merge
+                            # written BEFORE the park lifts it too. It used to be the one place where
+                            # one question got two answers depending on which feed the caller held
                             # --parked-on run:<n>: the THIRD (thread 019) — the ROUND running on that PR.
                             # `pr:` waits for the BUTTON, `run:` waits for the VERDICT; the courier is
                             # silent about this one too (a machine is judging, no decision is pending)
@@ -1383,6 +1388,19 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # role is raised to check the outcome of that round itself. Only `run:` is
                             # aged: a person thinks for as long as they think, and a merge button
                             # legitimately waits for days
+                            # THE SAME DOOR REFUSES A ROUND THAT IS ALREADY OVER (thread 032): if every
+                            # run on the head has finished — none queued, none in progress — the outcome
+                            # this park waits for has ALREADY happened, its message lies in the feed
+                            # BEHIND the park, and the lift only ever looks forward. Live on 2026-08-23:
+                            # the outcome of the round on #386 was committed at 05:41:46Z and the letter
+                            # parking on `run:386` at 05:42:06Z — twenty seconds behind its own
+                            # condition, and the pair slept 22 minutes until a human woke it. The window
+                            # between the state a session reads and the commit of the letter it writes
+                            # from that state closes for nobody, so the condition is read at the door
+                            # from the CURRENT state instead of being subscribed to in the future. The
+                            # refusal is said apart from "no run at all" because the repair differs:
+                            # there the round has not been born (wait seconds, park then), here it has
+                            # already died (read the outcome and report it)
                             # ALL THREE PARKS LIFT NARROWLY, by one walk (thread 023; the event ones on
                             # 2026-08-03, the person one on 2026-08-04): the first message that MOVES
                             # somebody, plus — for the event ones only — the merge of that PR announced

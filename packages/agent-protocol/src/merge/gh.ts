@@ -108,7 +108,16 @@ export const ghOpenPullRequestsSchema = z.array(
 export const ghRunParkSchema = z.looseObject({
   headRefOid: z.string().min(1),
   mergeable: z.string(),
-  statusCheckRollup: z.array(z.looseObject({})).nullish(),
+  // `status`/`state` ARE READ, NOT PINNED (thread 032): the door asks not only whether a run
+  // exists on this head but whether one is STILL IN FLIGHT — a park behind a round that has
+  // already finished waits for an event that has already happened. A check run says
+  // `status: QUEUED|IN_PROGRESS|COMPLETED`, a status context says `state: PENDING|SUCCESS|…`,
+  // and the two shapes live in the same array; an entry carrying neither is read as finished,
+  // which is the direction that does not refuse a legal park on a payload we stopped
+  // understanding (see {@link pendingRunsOf}).
+  statusCheckRollup: z
+    .array(z.looseObject({ status: nullableText, state: nullableText }))
+    .nullish(),
 });
 
 /**
