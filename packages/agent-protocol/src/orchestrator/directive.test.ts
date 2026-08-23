@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Message } from "../thread/message.js";
 import { parseLaunchDirective, renderMessageFile } from "../thread/message.js";
 import { resolveThreadDirective } from "./directive.js";
+import { CLAUDE_CODE } from "./kind.js";
 import { ignoredDirective, resolveAgentParams, resolveWorker } from "./launch.js";
 
 const say = (from: string, date: string, launch?: string): Message => ({
@@ -69,6 +70,7 @@ describe("the directive as a layer of the merge (R21 + R15)", () => {
     const resolution = resolveAgentParams({
       flags: {},
       worker,
+      kind: CLAUDE_CODE,
       launch: {
         allowedTools: ["Bash"],
         agent: { kind: "claude-code", model: "sonnet", effort: "medium" },
@@ -86,6 +88,7 @@ describe("the directive as a layer of the merge (R21 + R15)", () => {
     const resolution = resolveAgentParams({
       flags: { model: "haiku" },
       worker,
+      kind: CLAUDE_CODE,
       directive: { model: "opus" },
     });
     expect(resolution.ok).toBe(true);
@@ -97,6 +100,7 @@ describe("the directive as a layer of the merge (R21 + R15)", () => {
     const resolution = resolveAgentParams({
       flags: {},
       worker,
+      kind: CLAUDE_CODE,
       directive: { effort: "ultra" },
     });
     expect(resolution.ok).toBe(true);

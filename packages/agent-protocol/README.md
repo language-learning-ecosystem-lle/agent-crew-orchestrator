@@ -469,6 +469,20 @@ surface afterwards, exactly like a session that obeyed them. A kind this package
 not implement is NOT refused here — `--worker` is free-form provenance, and an unknown
 id is refused at the config door instead.
 
+**`launch.agent.kind` names either tool the package implements.** `claude-code` takes
+`model` and `effort` (the levels are that tool's own: `low`, `medium`, `high`, `xhigh`,
+`max`); `codex` takes `model`, which reaches its run as `-m`. `--model`/`--effort` are
+passed to whichever kind is being raised — the door asks the kind, not the id — and
+`--effort` is refused BY NAME to a kind that declares no lever for it. An id the
+package does not implement is refused with the two it does.
+
+`effort` is deliberately NOT a field of the `codex` member yet: codex has the lever and
+spells it `-c model_reasoning_effort=`, but which levels a card may name — and whether
+this package validates them at all — is a decision about the config, not a reading of
+the vendor, and it is open (thread `026`). Until it is answered a card naming `effort`
+on codex is refused by the key, while `--effort` on a codex run passes through as typed
+and is judged by the tool that owns the list.
+
 ## Notifications: whom, in which words, through what (R4)
 
 The watch wakes an AGENT. The other direction — the turn has passed to a HUMAN — used

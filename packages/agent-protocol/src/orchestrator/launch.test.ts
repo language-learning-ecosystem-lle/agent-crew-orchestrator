@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { Launch, Role } from "../roles/schema.js";
+import { CODEX } from "./codex.js";
 import type { OrchestratorEvent } from "./journal.js";
+import { CLAUDE_CODE } from "./kind.js";
 import {
   buildLaunchArgv,
   buildLaunchPrompt,
@@ -871,6 +873,7 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       const resolved = resolveAgentParams({
         flags: {},
         worker: { value: "claude-code", source: "role" },
+        kind: CLAUDE_CODE,
         launch: profile({ kind: "claude-code", model: "opus", effort: "high" }),
       });
       expect(resolved).toEqual({
@@ -889,6 +892,7 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       const resolved = resolveAgentParams({
         flags: { model: "sonnet" },
         worker: { value: "claude-code", source: "default" },
+        kind: CLAUDE_CODE,
         launch: profile({ kind: "claude-code", model: "opus", effort: "high" }),
       });
       expect(resolved).toMatchObject({
@@ -901,6 +905,7 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       const resolved = resolveAgentParams({
         flags: {},
         worker: { value: "claude-code", source: "default" },
+        kind: CLAUDE_CODE,
         launch: profile(),
       });
       expect(resolved).toEqual({ ok: true, params: {} });
@@ -910,6 +915,7 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       const resolved = resolveAgentParams({
         flags: {},
         worker: { value: "cursor", source: "flag" },
+        kind: undefined,
         launch: profile({ kind: "claude-code", model: "opus" }),
       });
       expect(resolved).toMatchObject({ ok: false });
@@ -920,6 +926,7 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       const resolved = resolveAgentParams({
         flags: { model: "opus" },
         worker: { value: "cursor", source: "flag" },
+        kind: undefined,
       });
       expect(resolved).toMatchObject({ ok: false });
     });
@@ -930,9 +937,100 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       const resolved = resolveAgentParams({
         flags: { effort: "extreme" },
         worker: { value: "claude-code", source: "default" },
+        kind: CLAUDE_CODE,
       });
       expect(resolved).toMatchObject({ ok: false });
       expect((resolved as { reason: string }).reason).toContain("xhigh");
+    });
+
+    /**
+     * THE DOOR ASKS THE KIND NOW, NOT A STRING (thread 026, statement of
+     * `2026-08-23T11-08-25Z`, point 2). Until this the refusal above fired for every id
+     * that was not the literal "claude-code" — written when there was one kind, and by
+     * the time codex could build `-m` and `-c model_reasoning_effort=` in its own argv
+     * it had become the package refusing a tool it had implemented.
+     */
+    it("lets --model/--effort through to a kind that has an argv for them", () => {
+      const resolved = resolveAgentParams({
+        flags: { model: "gpt-5-codex", effort: "high" },
+        worker: { value: "codex", source: "flag" },
+        kind: CODEX,
+      });
+      expect(resolved).toEqual({
+        ok: true,
+        params: {
+          model: { value: "gpt-5-codex", source: "flag" },
+          effort: { value: "high", source: "flag" },
+        },
+      });
+    });
+
+    it("does NOT judge an effort level by the other vendor's vocabulary", () => {
+      // `xhigh` is a `claude-code` level and `minimal` is not — and neither fact is
+      // this package's to state about codex today (the vocabulary is the open question
+      // of thread 026). Refusing here on the claude list would be the same lie in the
+      // other direction: a level the tool accepts, refused in the name of a tool that
+      // is not being raised.
+      const resolved = resolveAgentParams({
+        flags: { effort: "minimal" },
+        worker: { value: "codex", source: "flag" },
+        kind: CODEX,
+      });
+      expect(resolved).toMatchObject({ ok: true, params: { effort: { value: "minimal" } } });
+    });
+
+    it("REFUSES --effort BY NAME to a kind that declares no lever for it", () => {
+      // No such kind exists yet — codex has effort, claude-code has effort — so the
+      // refusal is exercised on a kind built for the test. That is the point: this is
+      // the door for the THIRD tool, and it must not have to be written then.
+      const noEffort = { ...CODEX, id: "toolless", cannot: [...CODEX.cannot, "effort"] } as const;
+      const resolved = resolveAgentParams({
+        flags: { effort: "high" },
+        worker: { value: "toolless", source: "flag" },
+        kind: noEffort,
+      });
+      expect(resolved).toMatchObject({ ok: false });
+      const said = (resolved as { reason: string }).reason;
+      expect(said).toContain("toolless");
+      expect(said).toContain("no lever for effort");
+    });
+
+    it("and they REACH the argv of that kind, as the tokens the vendor spells them with", () => {
+      // THE SEAM, not the mapping (discipline 2): `buildCodexArgv` has been able to
+      // spell `-m` and `-c model_reasoning_effort=` since #71, and neither path
+      // reached it — the schema refused the id and this door refused the flags. What
+      // is asserted is the whole way through, on the concrete tokens.
+      const resolved = resolveAgentParams({
+        flags: { model: "gpt-5-codex", effort: "high" },
+        worker: { value: "codex", source: "flag" },
+        kind: CODEX,
+      });
+      expect(resolved.ok).toBe(true);
+      if (!resolved.ok) return;
+      const argv = CODEX.buildArgv({
+        prompt: "do the thing",
+        params: resolved.params,
+      } as unknown as Parameters<typeof CODEX.buildArgv>[0]);
+      expect(argv).toContain("-m");
+      expect(argv).toContain("gpt-5-codex");
+      expect(argv).toContain("-c");
+      expect(argv).toContain("model_reasoning_effort=high");
+      // The claude-code spellings must NOT appear: they are the flags of the other tool.
+      expect(argv).not.toContain("--model");
+      expect(argv).not.toContain("--effort");
+    });
+
+    it("carries the model a codex CARD declares, with its source", () => {
+      const resolved = resolveAgentParams({
+        flags: {},
+        worker: { value: "codex", source: "role" },
+        kind: CODEX,
+        launch: profile({ kind: "codex", model: "gpt-5-codex" }),
+      });
+      expect(resolved).toEqual({
+        ok: true,
+        params: { model: { value: "gpt-5-codex", source: "role" } },
+      });
     });
   });
 

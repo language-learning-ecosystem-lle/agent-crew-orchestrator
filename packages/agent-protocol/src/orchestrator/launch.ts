@@ -48,6 +48,9 @@ import { DEFAULT_IDLE_MS } from "./activity.js";
 import type { Continuation } from "./continuation.js";
 import { DEFAULT_WAIT_INPUT_SECONDS } from "./interactive.js";
 import { eventTimestamp, MAX_ATTEMPTS, type OrchestratorEvent, type World } from "./journal.js";
+// TYPE-ONLY, AND THAT IS THE WHOLE POINT: `kind.ts` is built on this module, so a value
+// imported from it here would close a runtime cycle. A type is erased at build.
+import type { AgentKind } from "./kind.js";
 import { foldLeases, isDelivery, isLeaseAlive, isSelfTurnDelivery } from "./lease.js";
 
 /**
@@ -547,7 +550,12 @@ export type AgentResolution =
  *  - the role declares parameters for one tool while the run raises another (a
  *    `--worker` override contradicting `launch.agent.kind`) — that is not "this run
  *    is a bit different", it is a different contract;
- *  - `--model`/`--effort` typed for a tool the package cannot pass them to;
+ *  - `--model`/`--effort` typed for a tool the package cannot pass them to — which
+ *    since thread 026 is asked OF THE KIND (`kind.cannot`, `buildArgv`) instead of
+ *    compared against the string "claude-code". The literal comparison was written
+ *    when there was one kind, and it outlived that: codex builds `-m` and
+ *    `-c model_reasoning_effort=` in its own argv, and a door refusing them was the
+ *    package lying about a tool it had already implemented;
  *  - an `--effort` level outside the tool's own vocabulary — the config path is
  *    guarded by the schema, and the flag path has to be guarded here or it would be
  *    the one way in.
@@ -555,6 +563,23 @@ export type AgentResolution =
 export const resolveAgentParams = (input: {
   readonly flags: { readonly model?: string; readonly effort?: string };
   readonly worker: ResolvedWorker;
+  /**
+   * THE KIND BEING RAISED, when the package implements one under that id (thread 026).
+   * Passed in rather than looked up here on purpose: `kind.ts` is built ON this module
+   * (`buildLaunchArgv`, `DEFAULT_WORKER`), so a runtime import back would be a cycle
+   * whose first symptom is an initialisation order bug, not a compile error. The type
+   * costs nothing — it is erased.
+   *
+   * `undefined` MEANS "an id this package does not implement", and that is a real
+   * state: `--worker` has always been free-form provenance. Parameters are refused for
+   * such an id by name, because there is no argv builder to pass them to.
+   *
+   * The key is REQUIRED and the value nullable, rather than an optional key: a caller
+   * who forgets it would otherwise get the refusal meant for an unimplemented tool on
+   * the one that raises this repository, and would get it at runtime instead of from
+   * `tsc`.
+   */
+  readonly kind: AgentKind | undefined;
   readonly launch?: Launch;
   /**
    * THE DIRECTIVE IN FORCE ON THIS THREAD (R21) — already filtered by permission
@@ -575,13 +600,34 @@ export const resolveAgentParams = (input: {
   }
 
   const typed = input.flags.model !== undefined || input.flags.effort !== undefined;
-  if (typed && worker !== "claude-code") {
+  if (typed && input.kind === undefined) {
     return {
       ok: false,
-      reason: `--model/--effort were given, but the run is being raised as '${worker}' — the package knows how to pass those to 'claude-code' only`,
+      reason: `--model/--effort were given, but the run is being raised as '${worker}' — a kind this package does not implement, so there is no argv of its to pass them in`,
     };
   }
+  // THE LEVER, ASKED OF THE KIND. `effort` stands in `cannot` of a tool that has no
+  // such parameter at all; codex is not one of those (it spells effort as a config
+  // override), and the day a kind without it arrives this refusal names the tool and
+  // the flag instead of dropping the value into an argv that has nowhere to put it.
+  if (input.flags.effort !== undefined && input.kind?.cannot.includes("effort") === true) {
+    return {
+      ok: false,
+      reason: `--effort was given, but the run is being raised as '${worker}' (${input.worker.source}), which has no lever for effort — passing it would drop it in silence`,
+    };
+  }
+  // THE VOCABULARY IS THE VENDOR'S, AND THE PACKAGE KNOWS EXACTLY ONE OF THEM. For
+  // `claude-code` the levels are `--effort`'s own and this door has always guarded the
+  // flag path (the config path is guarded by the schema). For codex the levels are an
+  // OPEN QUESTION of thread 026 — what its vocabulary is, and whether the package
+  // validates it or hands the string to the tool that owns it, is a decision about the
+  // form of the config, not a reading. Until that is answered the string is passed as
+  // typed: the refusal then comes from the vendor that has the list, which is a worse
+  // error message and a true one. It is deliberately NOT the config path — a card
+  // cannot name `effort` on codex at all (`launchAgentSchema`), so what passes through
+  // here is a flag somebody can retype.
   if (
+    worker === DEFAULT_WORKER &&
     input.flags.effort !== undefined &&
     !claudeCodeEffortSchema.safeParse(input.flags.effort).success
   ) {
@@ -591,13 +637,25 @@ export const resolveAgentParams = (input: {
     };
   }
 
-  const fromRole = declared?.kind === "claude-code" ? declared : undefined;
+  // The kinds already agree (the mismatch above is fatal), so the role's parameters are
+  // this run's parameters whatever the tool is; `effort` exists on the claude-code
+  // member alone, which is why it is read through a presence check rather than a cast.
+  const fromRole = declared;
+  const roleEffort = fromRole !== undefined && "effort" in fromRole ? fromRole.effort : undefined;
   // A DIRECTIVE ADDRESSED TO ANOTHER TOOL IS DROPPED, NOT REFUSED (R21) — the one
   // asymmetry with the flag path above, and it is deliberate. A flag can be retyped;
   // a message cannot be unwritten, so refusing here would wedge the thread for good:
   // the role could never be raised on it again. The drop is announced by the caller
   // (`ignoredDirective`), so it is never a silent fall-back to something else.
-  const fromThread = worker === "claude-code" ? input.directive : undefined;
+  //
+  // IT STAYS `claude-code`-ONLY WHILE THE FLAG PATH OPENED UP, and the asymmetry is
+  // named rather than inherited: a directive is written as ONE statement (a model and
+  // an effort together, by whoever holds `launch-params`), its effort is checked at the
+  // writing door against the only vocabulary the package knows, and applying half of it
+  // to a tool whose vocabulary is still an open question of thread 026 would be the
+  // silent drop this module exists against. When that question is answered, this line
+  // is where the answer lands.
+  const fromThread = worker === DEFAULT_WORKER ? input.directive : undefined;
   const pick = <T extends string>(
     flagValue: T | undefined,
     threadValue: T | undefined,
@@ -617,7 +675,7 @@ export const resolveAgentParams = (input: {
       ? fromThread.effort
       : undefined;
   const model = pick(input.flags.model, fromThread?.model, fromRole?.model);
-  const effort = pick(input.flags.effort, threadEffort, fromRole?.effort);
+  const effort = pick(input.flags.effort, threadEffort, roleEffort);
   return {
     ok: true,
     params: {
