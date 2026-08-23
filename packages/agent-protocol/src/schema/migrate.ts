@@ -62,6 +62,7 @@ import { LAUNCH_ACCOUNT_STEP } from "./v15-launch-account.js";
 import { INSTANCE_ACCOUNT_STEP } from "./v16-instance-account.js";
 import { IDENTITY_DICTIONARY_STEP } from "./v17-identity-dictionary.js";
 import { POWER_DOCUMENTS_STEP } from "./v18-power-documents.js";
+import { CODEX_KIND_STEP } from "./v19-codex-kind.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -86,6 +87,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   INSTANCE_ACCOUNT_STEP,
   IDENTITY_DICTIONARY_STEP,
   POWER_DOCUMENTS_STEP,
+  CODEX_KIND_STEP,
 ];
 
 export type {
