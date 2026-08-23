@@ -82,6 +82,24 @@ const repoWithHistory = (): string => {
   return repo;
 };
 
+const run = (repo: string, args: readonly string[]): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [CLI, "zones", "check", "--ref", "HEAD", "--repo", repo, ...args],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: sandbox(configHomeInside(repo)),
+      },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? -1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
+
 const check = (repo: string, role = "dev-core"): { code: number; out: string } => {
   try {
     const out = execFileSync(
@@ -279,6 +297,69 @@ describe("zones check — the staged paths of a change against the role's zone",
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("roles");
+  });
+
+  // THE SILENT SCOPE OF `--paths` (thread 033, curator's measurement on 396a260). The
+  // flag was read by `flag`, which takes argv[at + 1] and stops, so the space form
+  // handed the door ONE path and the door answered green about "1 path(s)" — with a
+  // FORBIDDEN path sitting unjudged in second position. These are written against the
+  // outcome, not the parser: what is guarded is that the number in the answer equals
+  // the number of paths named, in either form.
+  describe("--paths judges every path it was named, in both forms", () => {
+    const NAMED = [`${FOREIGN}/main.py`, "packages/agent-protocol/src/own.ts", "biome.json"];
+
+    it("the SPACE form refuses a forbidden path in second position", () => {
+      const repo = repoWithHistory();
+
+      const result = run(repo, [
+        "--role",
+        "curator",
+        "--paths",
+        "PROTOCOL.md",
+        "packages/agent-protocol/src/own.ts",
+        "biome.json",
+      ]);
+
+      // Before the fix: exit 0, "1 path(s) … none under a forbidden prefix".
+      expect(result.code).toBe(1);
+      expect(result.out).toContain("packages/agent-protocol/src/own.ts");
+    });
+
+    it("space and comma give the same verdict, byte for byte — refusing", () => {
+      const repo = repoWithHistory();
+
+      const spaced = run(repo, ["--role", "dev-core", "--paths", ...NAMED]);
+      const commas = run(repo, ["--role", "dev-core", "--paths", NAMED.join(",")]);
+
+      expect(spaced.code).toBe(1);
+      expect(spaced.out).toContain(`${FOREIGN}/main.py`);
+      // The comma form is what the reviewer's reports and curator's guard traces are
+      // read from: it does not move in a single byte.
+      expect(commas).toEqual(spaced);
+    });
+
+    it("space and comma give the same verdict, byte for byte — passing, and count ALL of them", () => {
+      const repo = repoWithHistory();
+      const allowed = ["PROTOCOL.md", "docs/roles/dev-core.md", "biome.json"];
+
+      const spaced = run(repo, ["--role", "curator", "--paths", ...allowed]);
+      const commas = run(repo, ["--role", "curator", "--paths", allowed.join(",")]);
+
+      expect(spaced.code).toBe(0);
+      // The green line used to say "1 path(s)" here, which is the whole defect: a count
+      // that does not match what was named is a door reporting on a scope of its own.
+      expect(spaced.out).toContain("3 path(s) of 'curator'");
+      expect(commas).toEqual(spaced);
+    });
+
+    it("a --paths that names nothing is a refusal, not an empty green list", () => {
+      const repo = repoWithHistory();
+
+      const result = run(repo, ["--role", "dev-core", "--paths"]);
+
+      expect(result.code).toBe(2);
+      expect(result.out).toContain("--paths was given nothing to name");
+    });
   });
 
   it("a role whose zone bans nothing is refused nothing — the stated default", () => {
