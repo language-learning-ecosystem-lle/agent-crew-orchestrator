@@ -373,8 +373,9 @@ export const parkedOnOf = (
  * delivered. Reading the merges of one thread was therefore reading the wrong feed; the mail
  * is one document, and this is the set of PRs it knows to be merged.
  *
- * NO DATE IS COMPARED, unlike the in-thread scan (which gets the ordering for free by walking
- * backwards): a park naming a PR that landed BEFORE it was written is a mistake of the writer,
+ * NO DATE IS COMPARED, and since 2026-08-23 (thread 032) the in-thread scan beside it compares
+ * none either — it used to, and the two answers to one question differed by which feed the
+ * caller happened to hold: a park naming a PR that landed BEFORE it was written is a mistake of the writer,
  * and the two ways of failing are not equal — lifting it costs one raise into a thread whose
  * business is done, holding it costs a thread frozen until a human notices. Same direction the
  * author rule above chose, for the same reason.
@@ -503,9 +504,18 @@ export const parkingOf = (
   // is what a whole-mail caller has, and only that one). Both event parks need it since the
   // lift of both became narrow (023): the announcement carrying `merged-pr` asks nobody for
   // anything, so the walk above steps over it, and the merge would go unseen in its own feed.
-  const merged = thread.messages
-    .slice(declared === undefined ? 0 : declared + 1)
-    .some((message) => message.fields.mergedPr === pr);
+  //
+  // THE WHOLE FEED, NOT THE PART BEHIND THE PARK (thread 032): until 2026-08-23 this scan
+  // started one message after the declaration, so an announcement of the very merge being
+  // waited for lifted nothing if it happened to lie EARLIER in the same thread — which is
+  // exactly the race this thread was opened on, one gap between the snapshot a session reads
+  // and the commit of the letter it writes from it. `mergedElsewhere` above has compared no
+  // dates since 023 and for the reason written there — a park on a PR that landed before it
+  // was declared is a mistake of the writer, and the two ways of being wrong are not equal —
+  // and this line was the one place in the same reading that still did. Now the two halves of
+  // one question (has the mail seen this merge) answer it the same way, whichever feed the
+  // caller happens to hold.
+  const merged = thread.messages.some((message) => message.fields.mergedPr === pr);
   if (merged) return undefined;
   return named.kind === "run"
     ? { kind: "run", pr, since, question, asks }

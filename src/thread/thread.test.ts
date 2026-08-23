@@ -730,10 +730,28 @@ describe("parkingOf — a park on an EVENT (thread 023, variant A)", () => {
     expect(parkingOf(thread([parked, red]))).toBeUndefined();
   });
 
-  it("an announcement BEFORE the park does not lift it — a park is a later statement", () => {
+  // THE RACE OF THE PARK WRITTEN BEHIND ITS OWN CONDITION (thread 032, 2026-08-23). This read
+  // "an announcement BEFORE the park does not lift it — a park is a later statement" until that
+  // day, and the reading disagreed with the mail-wide one beside it: `mergedPrs` compares no
+  // dates (023), and a whole-mail caller — every production reader is one — passes it a set
+  // that already contains this thread's own announcement, so the park did not stand for THEM
+  // and did stand for a caller holding the single thread. One question, two answers. The
+  // window between the state a session reads and the commit of the letter it writes from that
+  // state is minutes wide and closes for nobody, so the answer kept is the one that does not
+  // freeze a pair behind an event that has already happened.
+  it("an announcement BEFORE the park lifts it too — the same answer as the mail-wide read", () => {
     const merged = announcement({ date: "2026-07-31T11:00:00Z", mergedPr: 127 }, "PR #127 merged");
     const parked = message({ parkedOn: "pr:127" });
-    expect(parkingOf(thread([merged, parked]))?.kind).toBe("event");
+    expect(parkingOf(thread([merged, parked]))).toBeUndefined();
+  });
+
+  it("and the regression: a merge announced AFTER the park behaves exactly as before", () => {
+    const parked = message({ parkedOn: "pr:127" });
+    const merged = announcement({ date: "2026-07-31T12:40:00Z", mergedPr: 127 }, "PR #127 merged");
+    expect(parkingOf(thread([parked, merged]))).toBeUndefined();
+    // …and somebody else's merge, before or after, is still not this park's condition.
+    const other = announcement({ date: "2026-07-31T11:00:00Z", mergedPr: 129 }, "PR #129 merged");
+    expect(parkingOf(thread([other, parked]))?.pr).toBe(127);
   });
 
   it("parkedOnOf keeps the raw value, so the skip line can tell the two apart", () => {

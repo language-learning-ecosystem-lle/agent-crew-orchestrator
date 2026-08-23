@@ -19,8 +19,16 @@
  * TWO LAYERS, AND THEY CATCH DIFFERENT THINGS (curator's statement of work, point 3):
  *
  *  1. {@link judgeRunPark} — AT THE DOOR of the park. One `gh` call: is there a run on THIS
- *     head, and is the pull request mergeable at all. Nothing there — the park is refused with
- *     the reason in words. This closes the case above entirely and costs one call.
+ *     head, is the pull request mergeable at all, and — since thread 032 — is any of those runs
+ *     STILL RUNNING. Nothing there — the park is refused with the reason in words. This closes
+ *     the case above entirely and costs one call.
+ *
+ *     The third question is the other end of the same class and was measured a fortnight later
+ *     (thread 032, LLE 2026-08-23): a park whose condition had come true TWENTY SECONDS BEFORE
+ *     it was written. The door is the only place that can see it, because the reader of the
+ *     lift looks forward from the park by construction and the header of an outcome message
+ *     names no run — so "has it already happened" is a question about the world, not about the
+ *     feed, and it is asked once, at the moment the promise is made.
  *  2. {@link staleRunParks} — a CEILING ON THE AGE of a `run:` park, for what layer 1 cannot
  *     see: a run that existed and was lost in flight (a dead runner, a workflow that never
  *     reported, a silent notifier). Past the ceiling the park stops freezing the pair and the
@@ -53,7 +61,40 @@ export type RunParkFacts = {
   readonly mergeable: string;
   /** How many check runs / status contexts GitHub reports ON THAT HEAD. Zero is the defect. */
   readonly checkRuns: number;
+  /**
+   * How many of those are STILL IN FLIGHT — queued or running (thread 032). Zero with
+   * `checkRuns > 0` is the race: the round is over, its outcome is already in the feed or is
+   * being written into it right now, and the park would wait for an event behind its own back.
+   */
+  readonly pendingRuns: number;
 };
+
+/** One entry of `statusCheckRollup`, in the two shapes GitHub puts in that one array. */
+export type RunRollupEntry = {
+  /** A check run: `QUEUED` / `IN_PROGRESS` / `COMPLETED` (and whatever GitHub adds next). */
+  readonly status?: string | null | undefined;
+  /** A status context: `PENDING` / `SUCCESS` / `FAILURE` / `ERROR`. */
+  readonly state?: string | null | undefined;
+};
+
+/**
+ * HOW MANY ROUNDS ARE STILL RUNNING ON THE HEAD — the one fact the race is read from, kept
+ * pure so its edges are a test and not a screenshot of `gh`.
+ *
+ * NOT-COMPLETED IS THE POSITIVE READING, and the asymmetry is deliberate: an entry whose shape
+ * this function does not recognise (no `status`, no `state`, a word GitHub invented after this
+ * was written) is counted as FINISHED — never as pending. Counting it as pending would let a
+ * dead park through, which is the defect being repaired; counting it as finished can at worst
+ * refuse a park whose round is alive, and that refusal is loud, names the head and is repaired
+ * by looking once. The layer that catches a wrongly-standing park is the age ceiling; there is
+ * no layer that catches a wrongly-silent door.
+ */
+export const pendingRunsOf = (entries: readonly RunRollupEntry[]): number =>
+  entries.filter((entry) => {
+    const status = entry.status?.toUpperCase();
+    if (status !== undefined && status !== null && status !== "") return status !== "COMPLETED";
+    return entry.state?.toUpperCase() === "PENDING";
+  }).length;
 
 /** The verdict of the door: the park stands, or it is refused with the reason in words. */
 export type RunParkVerdict =
@@ -115,9 +156,40 @@ export const judgeRunPark = (input: {
       }' — if a push has just landed, the first run appears seconds later and the park is legal then; if the answer stays "no checks reported", find out why the workflow did not start before parking`,
     };
   }
+  // THE ROUND IS OVER BEFORE THE PARK IS WRITTEN (thread 032, the race of the third refusal).
+  // The lift of a `run:` park is a message, and the reader of that lift looks FORWARD from the
+  // park only — so an outcome that landed while the letter was being composed lifts nothing,
+  // ever. It was measured on 2026-08-23 (LLE): the outcome of the round on PR #386 was
+  // committed at 05:41:46Z, the letter parking on `run:386` at 05:42:06Z — twenty seconds
+  // BEHIND its own condition; the pair stood until a human woke it 22 minutes later, the second
+  // such sleep in two days.
+  //
+  // The window is not a mistake of the role and cannot be closed by care: between the snapshot
+  // a session takes ("checks in_progress") and the commit of the letter it writes from that
+  // snapshot there are always minutes, and a fast round ends inside them for anybody. What
+  // closes it is asking the CURRENT state at the door instead of subscribing to the future:
+  // nothing in flight on this head — nothing to wait for, and the park does not stand.
+  //
+  // SAME CLASS AND SAME REMEDY AS "no runs at all" above, said apart because the repair
+  // differs: there the run has not been born yet, here it has already died. A role that has
+  // just pushed or just labelled and finds this refusal is in the first case — the round
+  // appears seconds later and the park is legal then; a role whose round is genuinely over
+  // must read the outcome instead of parking behind it.
+  if (facts.pendingRuns === 0) {
+    return {
+      ok: false,
+      reason: `--parked-on 'run:${input.pr}' — every run on head ${short(
+        facts.headSha,
+      )} of PR #${input.pr} has ALREADY FINISHED (${facts.checkRuns} run${
+        facts.checkRuns === 1 ? "" : "s"
+      }, none queued or in progress), so the outcome this park waits for has already happened: its message is in the feed BEHIND the park, and the lift only ever looks forward (thread 032, the live race of 2026-08-23 — 22 minutes of a frozen pair). Read the outcome and report it, or, if you have just pushed or just put up the label, wait for the round to appear ('gh pr checks ${
+        input.pr
+      }') and park then`,
+    };
+  }
   return {
     ok: true,
-    note: `the park on PR #${input.pr} waits for a run that exists (${facts.checkRuns} on head ${short(
+    note: `the park on PR #${input.pr} waits for a run that is still running (${facts.pendingRuns} of ${facts.checkRuns} on head ${short(
       facts.headSha,
     )})`,
   };

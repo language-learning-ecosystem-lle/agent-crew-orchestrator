@@ -4,6 +4,7 @@ import type { Message } from "./message.js";
 import {
   describeStaleRunPark,
   judgeRunPark,
+  pendingRunsOf,
   RUN_PARK_TTL_SECONDS,
   staleRunParks,
 } from "./run-park.js";
@@ -33,7 +34,7 @@ describe("the door of a run: park (thread 062, layer 1)", () => {
   it("lets the park stand when a run exists on the head", () => {
     const verdict = judgeRunPark({
       pr: 243,
-      facts: { headSha: "6f933b0321ab", mergeable: "MERGEABLE", checkRuns: 3 },
+      facts: { headSha: "6f933b0321ab", mergeable: "MERGEABLE", checkRuns: 3, pendingRuns: 1 },
     });
 
     expect(verdict.ok).toBe(true);
@@ -44,7 +45,7 @@ describe("the door of a run: park (thread 062, layer 1)", () => {
   it("refuses a park on a head with no runs, and names the head and the way to check", () => {
     const verdict = judgeRunPark({
       pr: 243,
-      facts: { headSha: "6f933b0321ab", mergeable: "MERGEABLE", checkRuns: 0 },
+      facts: { headSha: "6f933b0321ab", mergeable: "MERGEABLE", checkRuns: 0, pendingRuns: 0 },
     });
 
     expect(verdict.ok).toBe(false);
@@ -57,7 +58,7 @@ describe("the door of a run: park (thread 062, layer 1)", () => {
   it("refuses a park on a CONFLICTING pull request by its own name", () => {
     const verdict = judgeRunPark({
       pr: 243,
-      facts: { headSha: "6f933b0321ab", mergeable: "CONFLICTING", checkRuns: 0 },
+      facts: { headSha: "6f933b0321ab", mergeable: "CONFLICTING", checkRuns: 0, pendingRuns: 0 },
     });
 
     expect(verdict.ok).toBe(false);
@@ -73,6 +74,71 @@ describe("the door of a run: park (thread 062, layer 1)", () => {
     if (!verdict.ok) return;
     expect(verdict.note).toContain("NOT verified");
     expect(verdict.note).toContain("gh: no token");
+  });
+});
+
+describe("the door of a run: park — the round that is already over (thread 032)", () => {
+  // THE LIVE RACE of 2026-08-23 (LLE): the outcome of the round on #386 was committed at
+  // 05:41:46Z, the letter parking on `run:386` twenty seconds later — the condition lay in the
+  // feed BEHIND the park, the lift looks forward only, and the pair slept until a human woke it.
+  it("refuses a park whose round has already finished, and says the outcome is behind it", () => {
+    const verdict = judgeRunPark({
+      pr: 386,
+      facts: { headSha: "64b331d7ee0", mergeable: "MERGEABLE", checkRuns: 2, pendingRuns: 0 },
+    });
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.reason).toContain("ALREADY FINISHED");
+    expect(verdict.reason).toContain("64b331d7e");
+    expect(verdict.reason).toContain("BEHIND the park");
+    expect(verdict.reason).toContain("gh pr checks 386");
+  });
+
+  // The regression of the class: a round IN FLIGHT is what the form is for, and it is not
+  // touched. The note says which of the runs is the one being waited for.
+  it("lets the park stand while one of the runs is still in flight", () => {
+    const verdict = judgeRunPark({
+      pr: 386,
+      facts: { headSha: "64b331d7ee0", mergeable: "MERGEABLE", checkRuns: 3, pendingRuns: 1 },
+    });
+
+    expect(verdict.ok).toBe(true);
+    if (!verdict.ok) return;
+    expect(verdict.note).toContain("1 of 3");
+  });
+
+  // The refusal of the empty head keeps its own words: nothing has been born there, which is
+  // repaired by waiting, while a finished round is repaired by reading its outcome.
+  it("tells an empty head from a finished round — the two refusals are not one sentence", () => {
+    const empty = judgeRunPark({
+      pr: 386,
+      facts: { headSha: "64b331d7ee0", mergeable: "MERGEABLE", checkRuns: 0, pendingRuns: 0 },
+    });
+
+    expect(empty.ok).toBe(false);
+    if (empty.ok) return;
+    expect(empty.reason).toContain("not one run on head");
+    expect(empty.reason).not.toContain("ALREADY FINISHED");
+  });
+
+  it("counts a check run by its status and a status context by its state", () => {
+    expect(
+      pendingRunsOf([
+        { status: "COMPLETED", state: null },
+        { status: "IN_PROGRESS", state: null },
+        { status: "QUEUED", state: null },
+        { state: "PENDING" },
+        { state: "SUCCESS" },
+      ]),
+    ).toBe(3);
+  });
+
+  // The direction of the doubt, and it is the one the door can afford: an entry this reading
+  // does not understand counts as FINISHED, so a payload that grew a shape refuses a park
+  // loudly instead of letting a dead one through silently.
+  it("counts an entry it cannot read as finished, never as pending", () => {
+    expect(pendingRunsOf([{}, { status: "", state: "" }, { status: null, state: null }])).toBe(0);
   });
 });
 
