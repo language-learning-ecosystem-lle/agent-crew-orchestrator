@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CODEX } from "./codex.js";
 import type { OrchestratorEvent } from "./journal.js";
 import { MAX_CONSECUTIVE_RUNS } from "./launch.js";
 import { type Candidate, describePlan, describeSkip, planTick, type TickDecision } from "./tick.js";
@@ -540,6 +541,17 @@ describe("describeSkip — the line an operator reads", () => {
     expect(line).toContain("exhausted");
     expect(line).toContain("13 failed attempts");
     expect(line).toContain("ceiling 3 (default)");
+  });
+
+  it("the auth skip dictates the login of the role's OWN tool", () => {
+    // Point 3 of step 3, thread 026: this line tells a human what to type, and until now
+    // it typed `claude login` at everybody. The kind answers it; `claude-code` when the
+    // caller has none, which is what every caller meant before the argument existed.
+    const ceiling = { value: 3, source: "default" } as const;
+    expect(describeSkip({ ...skip, reason: "auth" }, ceiling)).toContain("claude login");
+    expect(describeSkip({ ...skip, reason: "auth" }, ceiling, CODEX)).toContain(
+      "codex login --with-api-key",
+    );
   });
 
   it("a flag is reported as a flag — an ignored flag was the whole defect", () => {

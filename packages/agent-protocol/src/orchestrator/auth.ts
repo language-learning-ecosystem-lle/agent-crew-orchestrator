@@ -38,7 +38,7 @@
  * refusals and not every sentence with "auth" in it.
  */
 
-import { CLAUDE_CODE } from "./kind.js";
+import { type AgentKind, CLAUDE_CODE } from "./kind.js";
 import { BOX_ACCOUNT, describeAccount, toolSurfacesOf } from "./quota.js";
 
 /** The verdict for one line: the matched text, trimmed — what the log quotes as evidence. */
@@ -248,10 +248,19 @@ export const AUTH_ALARM_DEATHS = 2;
  */
 export const authAlarmDue = (shelf: AuthShelf): boolean => shelf.deaths >= AUTH_ALARM_DEATHS;
 
-/** The shelf in a line — how long the box has been refused, and what happens next. */
-export const describeAuthShelf = (shelf: AuthShelf): string =>
+/**
+ * The shelf in a line — how long the box has been refused, and what happens next.
+ *
+ * THE REPAIR COMMAND IS THE KIND'S, NOT THIS FILE'S (thread 026, step 3, point 3).
+ * `claude login` advised to an operator holding a Codex key is worse than no advice:
+ * it is a sentence that can be typed in full and changes nothing. The kind of the role
+ * whose run died last is what the caller passes in; `claude-code` when nobody says,
+ * which is the behaviour of every caller that had no kind to give before this argument
+ * existed.
+ */
+export const describeAuthShelf = (shelf: AuthShelf, kind: AgentKind = CLAUDE_CODE): string =>
   `${describeAccount(shelf.account)} could not authenticate — ${shelf.deaths} run(s) in a row died on the vendor's credentials (last at ${shelf.since} on ${shelf.role}); nothing is raised until ${shelf.until}, when ONE pair is raised as the probe. If it dies too, the shelf is set again${
     authAlarmDue(shelf)
-      ? ` — the token is dead and the circuit is standing still: \`${CLAUDE_CODE.loginHint()}\` on this box for ${describeAccount(shelf.account)}`
+      ? ` — the token is dead and the circuit is standing still: \`${kind.loginHint()}\` on this box for ${describeAccount(shelf.account)}`
       : ""
   }.`;

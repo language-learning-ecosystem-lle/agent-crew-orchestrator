@@ -196,3 +196,98 @@ export const execNameOf = (id: string): string => kindOf(id)?.defaultExec ?? id;
  */
 export const unknownKindRefusal = (id: string): string =>
   `agent kind '${id}' is not one this package can raise — known kinds: ${AGENT_KINDS.map((kind) => kind.id).join(", ")}. Name one of them in 'agent.kind' of the role (or in '--worker')`;
+
+/**
+ * ONE LEVER A ROLE ASKS FOR, AND THE FIELD THAT ASKS FOR IT. The second half is not
+ * decoration: a refusal naming only the lever ("this kind has no zone denial") sends
+ * its reader looking, while one naming the field ("the role's 'zones' turns into 3
+ * deny rules") sends them to the line they have to change.
+ */
+export type LeverAsk = {
+  readonly lever: AgentLever;
+  /** Where the ask is written, in the words of the config — printed inside the refusal. */
+  readonly where: string;
+};
+
+/**
+ * WHAT THIS ROLE ASKS OF ITS TOOL, in the closed vocabulary of {@link AgentLever}.
+ *
+ * The inputs are the RESOLVED ones the spawn would have used, not the raw config: a
+ * ceiling reaches a run through three layers (flag, role, package default) and only
+ * the first two are a role ASKING for one. The package's own default is not an ask —
+ * refusing on it would mean no kind without `--max-turns` could ever raise anything,
+ * which is a refusal about us rather than about the config.
+ *
+ * TWO LEVERS OF THE LIST CANNOT APPEAR HERE, and their absence is the answer to the
+ * question left open in thread 026: `quota-signal` and `quota-window` are in
+ * `cannot` of codex, but nothing in a role's card asks for them — they are read from
+ * a stream, not requested at a spawn. So this door never matches them, and they stay
+ * named for the reader of `orchestrator status` and of the inventory. A name in
+ * `cannot` is a statement about the TOOL; a match here is a statement about a ROLE.
+ */
+export const leversAskedFor = (input: {
+  /** `launch.allowedTools` — the permission profile the session is raised with. */
+  readonly allowedTools?: readonly string[];
+  /** The deny rules built out of `zones` (door 1 of thread 020). */
+  readonly denyRules?: readonly string[];
+  /** The step ceiling ONLY when a human or the card set it — never the package default. */
+  readonly maxTurns?: { readonly value: number; readonly source: string };
+  /** The resolved reasoning effort (R15), with the layer that named it. */
+  readonly effort?: { readonly value: string; readonly source: string };
+}): readonly LeverAsk[] => {
+  const asks: LeverAsk[] = [];
+  if (input.allowedTools !== undefined && input.allowedTools.length > 0) {
+    asks.push({
+      lever: "allowed-tools",
+      where: `'launch.allowedTools' names ${input.allowedTools.length} tool(s): ${input.allowedTools.join(", ")}`,
+    });
+  }
+  if (input.denyRules !== undefined && input.denyRules.length > 0) {
+    asks.push({
+      lever: "zone-deny",
+      where: `'zones' of the role turns into ${input.denyRules.length} deny rule(s) the session would be raised with`,
+    });
+  }
+  if (input.maxTurns !== undefined) {
+    asks.push({
+      lever: "max-turns",
+      where: `a ceiling of ${input.maxTurns.value} step(s) is set (${input.maxTurns.source})`,
+    });
+  }
+  if (input.effort !== undefined) {
+    asks.push({
+      lever: "effort",
+      where: `effort '${input.effort.value}' is set (${input.effort.source})`,
+    });
+  }
+  return asks;
+};
+
+/**
+ * THE LAUNCH DOOR OF PROPERTY 7 (thread 026, step 3, point 4). A role asking for a
+ * lever its tool has no way to honour is REFUSED BY NAME — it is not raised with the
+ * ask quietly dropped.
+ *
+ * WHY A REFUSAL AND NOT A WARNING. The three levers of the argv table are the ones a
+ * reviewer reads as granted: `allowedTools` is what a session may touch, `zones` is
+ * door 1 of thread 020, `max-turns` is what stops a run that has lost its way. A
+ * session raised on a tool that silently ignores all three is not "the same run with a
+ * caveat" — it is a run with permissions nobody assigned, and from the outside it
+ * looks exactly like a run that obeyed. That is the same argument `resolveAgentParams`
+ * already makes for model and effort, applied to the levers the kind declares.
+ *
+ * The refusal names the three things its reader needs: WHO asks (the role), WHAT the
+ * tool cannot do (the lever, and the field that asks for it), and the two fields that
+ * end the standstill. Nothing here suggests which of the two to choose — that is a
+ * decision about the project, and it is not ours (R14).
+ */
+export const kindLeverRefusal = (input: {
+  readonly kind: AgentKind;
+  readonly role: string;
+  readonly asks: readonly LeverAsk[];
+}): string | undefined => {
+  const blocked = input.asks.filter((ask) => input.kind.cannot.includes(ask.lever));
+  if (blocked.length === 0) return undefined;
+  const named = blocked.map((ask) => `${ask.lever} (${ask.where})`).join("; ");
+  return `role '${input.role}' would be raised as '${input.kind.id}', which has no lever for ${blocked.length === 1 ? "one thing the role asks for" : `${blocked.length} things the role asks for`}: ${named}. Raising it anyway would drop them in silence — the run would look like one that obeyed. Either raise this role as a kind that has them ('launch.agent.kind' of the role, or '--worker'), or take those fields out of the role`;
+};

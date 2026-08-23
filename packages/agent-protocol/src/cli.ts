@@ -237,7 +237,14 @@ import {
   renderEventLine,
   type World,
 } from "./orchestrator/journal.js";
-import { type AgentKind, CLAUDE_CODE, execNameOf, kindOf } from "./orchestrator/kind.js";
+import {
+  type AgentKind,
+  CLAUDE_CODE,
+  execNameOf,
+  kindLeverRefusal,
+  kindOf,
+  leversAskedFor,
+} from "./orchestrator/kind.js";
 import {
   type AgentParams,
   buildLaunchPrompt,
@@ -4065,6 +4072,42 @@ const agentFor = (
     ...(directive === undefined ? {} : { directive }),
   });
   if (!resolution.ok) return fail(`role '${role.id}': ${resolution.reason}`, 2);
+  // THE LEVERS THE ROLE ASKS FOR AGAINST THE ONES THIS TOOL HAS (thread 026, step 3,
+  // point 4). Fatal beside the two refusals around it and for the same reason: a role
+  // whose permission profile, zones or step ceiling the tool cannot honour would come up
+  // with none of them and look, from every surface afterwards, like a run that obeyed.
+  //
+  // A kind this package does not implement is NOT refused here — `--worker` has always
+  // been free-form provenance, and the door for an unknown id is `unknownKindRefusal` at
+  // the config, not this one. Silence about a tool we know nothing about is honest;
+  // silence about a tool that has declared what it cannot do is not.
+  const askedKind = kindOf(worker.value);
+  if (askedKind !== undefined) {
+    const turnsFlag = flagInt(argv, "--max-turns");
+    const roleTurns = role.launch?.limits?.maxTurns;
+    const refusal = kindLeverRefusal({
+      kind: askedKind,
+      role: role.id,
+      asks: leversAskedFor({
+        ...(role.launch === undefined ? {} : { allowedTools: role.launch.allowedTools }),
+        denyRules: zoneDenyRules(role),
+        ...(turnsFlag !== undefined
+          ? { maxTurns: { value: turnsFlag, source: "flag" } }
+          : roleTurns !== undefined
+            ? { maxTurns: { value: roleTurns, source: "role" } }
+            : {}),
+        ...(resolution.params.effort === undefined
+          ? {}
+          : {
+              effort: {
+                value: resolution.params.effort.value,
+                source: resolution.params.effort.source,
+              },
+            }),
+      }),
+    });
+    if (refusal !== undefined) return fail(refusal, 2);
+  }
   // WHICH ACCOUNT (thread 055) — resolved here, with the tool and its binary, because
   // it keys off the same R14 join and every caller needs the same answer. Fatal for
   // the same reason the parameter refusal above is: an account the machine cannot
@@ -4092,6 +4135,35 @@ const agentFor = (
     ...(account.account === undefined ? {} : { account: account.account }),
     ignored: ignoredDirective({ ...(directive === undefined ? {} : { directive }), worker }),
   };
+};
+
+/**
+ * THE TOOL A ROLE WOULD BE RAISED AS — for the lines that DICTATE A REPAIR TO A HUMAN
+ * (thread 026, step 3, point 3). `claude login` printed at an operator whose role runs
+ * on codex is not a smaller help than the right sentence, it is a wrong one: it can be
+ * typed in full, it succeeds, and the circuit stays exactly where it was.
+ *
+ * Deliberately NOT `agentFor`: that door refuses (and exits) on a contradiction, and
+ * these callers are printing a diagnosis about a circuit that is ALREADY stuck. A
+ * display path that can kill the daemon is worse than one that names the default tool.
+ * An unknown id therefore also falls back to `claude-code` — the same answer this line
+ * gave before the kinds existed.
+ */
+const kindForRole = (
+  argv: readonly string[],
+  registry: RoleRegistry,
+  roleId: string,
+): AgentKind => {
+  const role = registry.isKnown(roleId) ? registry.get(roleId) : undefined;
+  const workerFlag = flag(argv, "--worker");
+  return (
+    kindOf(
+      resolveWorker({
+        ...(workerFlag === undefined ? {} : { flag: workerFlag }),
+        ...(role?.launch === undefined ? {} : { launch: role.launch }),
+      }).value,
+    ) ?? CLAUDE_CODE
+  );
 };
 
 /**
@@ -9430,7 +9502,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // journal of the runs; but the daemon's stream must never be silent about work it
     // is declining to do.
     for (const skip of decision.skipped) {
-      err(`agent-protocol: ${describeSkip(skip, gates.maxAttempts)}`);
+      err(
+        `agent-protocol: ${describeSkip(skip, gates.maxAttempts, kindForRole(argv, registry, skip.role))}`,
+      );
     }
     // 023.2, BESIDE THE SKIPS AND FOR THE SAME REASON: this is the other answer to "why
     // is nothing happening", and the only one the daemon could not give on 2026-08-03.
@@ -9521,7 +9595,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // episode of 2026-08-01 was silent for two hours on this exact state, and silence is
       // what made a human the detector. Once per shelf in the journal, every tick on the
       // stream: the operator's question in front of a still circuit is "is this alive".
-      err(`agent-protocol: daemon — ${describeAuthShelf(decision.shelf)}, ${next}`);
+      err(
+        `agent-protocol: daemon — ${describeAuthShelf(decision.shelf, kindForRole(argv, registry, decision.shelf.role))}, ${next}`,
+      );
       if (decision.cut !== undefined) {
         appendEvent(journalPath, {
           kind: "launch-refused",

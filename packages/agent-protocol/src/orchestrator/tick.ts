@@ -43,7 +43,7 @@ import type { DeliveryMarks } from "../thread/index-doc.js";
 import { parkedOnKind } from "../thread/thread.js";
 import { type AuthShelf, authRefusalRecorded, authShelfAgainst, openAuthShelves } from "./auth.js";
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
-import { CLAUDE_CODE } from "./kind.js";
+import { type AgentKind, CLAUDE_CODE } from "./kind.js";
 import {
   type Ceiling,
   consecutiveLaunchesWithoutDelivery,
@@ -451,7 +451,17 @@ export const planTick = (input: {
  * `--max-attempts` arrived, which is precisely how `--max-runs` looked while it was
  * being ignored.
  */
-export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
+export const describeSkip = (
+  skip: TickSkip,
+  ceiling: Ceiling,
+  /**
+   * THE TOOL OF THE ROLE BEING SKIPPED (thread 026, step 3, point 3) — the auth line
+   * below dictates a login command to a human, and which command that is belongs to the
+   * kind, not to this file. `claude-code` when the caller has no answer, which is what
+   * every caller said implicitly before this argument existed.
+   */
+  kind: AgentKind = CLAUDE_CODE,
+): string => {
   const pair = `${skip.role}×${skip.thread}`;
   switch (skip.reason) {
     case "held":
@@ -488,7 +498,7 @@ export const describeSkip = (skip: TickSkip, ceiling: Ceiling): string => {
     case "quota":
       return `candidate ${pair} skipped: the rate-limit window is closed for ${describeAccount(skip.account ?? BOX_ACCOUNT)} — the window belongs to the ACCOUNT, so a signal from any role standing on it stands down every pair that spends it AND NO OTHER (B.3); it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
     case "auth":
-      return `candidate ${pair} skipped: this box cannot authenticate to the vendor with the credentials of ${describeAccount(skip.account ?? BOX_ACCOUNT)} — a refusal stands down the pairs spending THAT account and no neighbour's (B.3); unlike the window it does NOT end by the clock (a human runs '${CLAUDE_CODE.loginHint("<its dir>")}' here), and the shelf only decides how often one pair is raised to knock (see 'orchestrator status')`;
+      return `candidate ${pair} skipped: this box cannot authenticate to the vendor with the credentials of ${describeAccount(skip.account ?? BOX_ACCOUNT)} — a refusal stands down the pairs spending THAT account and no neighbour's (B.3); unlike the window it does NOT end by the clock (a human runs '${kind.loginHint("<its dir>")}' here), and the shelf only decides how often one pair is raised to knock (see 'orchestrator status')`;
     case "role-busy":
       return `candidate ${pair} skipped: ${skip.role} already has a session (raised on an older thread of this tick, or still running from an earlier one) — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
   }

@@ -448,6 +448,27 @@ for every launchable role. It is not decoration: the two files never mention eac
 other, so nowhere else can "what would actually be started, and who said so" be read
 off in one place.
 
+**A role asking for a lever the resolved tool has no way to honour is REFUSED BY NAME,
+with exit 2** — by `run`, `daemon`, `status` and `preflight` alike, since none of them
+may carry on with a wrong answer to "what would be started". Every kind declares what
+it lacks (`cannot`), and three of those names can be ASKED FOR by a role: the tool
+allow-list (`launch.allowedTools`), zone denial carried into the session (`zones`) and
+the step ceiling (`launch.limits.maxTurns` or `--max-turns`) — a ceiling that fell
+through to the package default is not a role asking for one. The refusal names the
+role, the kind, each lever and the field that asks for it:
+
+```
+agent-protocol: role 'dev-core' would be raised as 'codex', which has no lever for 3 things
+the role asks for: allowed-tools ('launch.allowedTools' names 2 tool(s): Bash, Edit); … .
+Raising it anyway would drop them in silence — the run would look like one that obeyed.
+```
+
+Silently dropping them is the one behaviour that must not exist: a session raised
+without the permissions, the zones and the ceiling its card grants looks, from every
+surface afterwards, exactly like a session that obeyed them. A kind this package does
+not implement is NOT refused here — `--worker` is free-form provenance, and an unknown
+id is refused at the config door instead.
+
 ## Notifications: whom, in which words, through what (R4)
 
 The watch wakes an AGENT. The other direction — the turn has passed to a HUMAN — used

@@ -17,7 +17,15 @@
 import { describe, expect, it } from "vitest";
 
 import { CODEX } from "./codex.js";
-import { AGENT_KINDS, CLAUDE_CODE, execNameOf, kindOf, unknownKindRefusal } from "./kind.js";
+import {
+  AGENT_KINDS,
+  CLAUDE_CODE,
+  execNameOf,
+  kindLeverRefusal,
+  kindOf,
+  leversAskedFor,
+  unknownKindRefusal,
+} from "./kind.js";
 import { buildLaunchArgv, DEFAULT_EXEC, DEFAULT_WORKER } from "./launch.js";
 import { quotaSignalOf, windowBoundaryOf } from "./quota.js";
 import { isAssistantStep, modelOf, runUsageOf, sessionIdOf } from "./transcript.js";
@@ -130,5 +138,73 @@ describe("the registry answers by name and refuses by name", () => {
     expect(execNameOf("claude-code")).toBe("claude");
     // A guess that costs nothing: it is looked up on PATH and a miss asks for `--exec`.
     expect(execNameOf("cursor")).toBe("cursor");
+  });
+});
+
+/**
+ * THE LAUNCH DOOR OF PROPERTY 7 (step 3, point 4). What is pinned here is the ARITHMETIC
+ * of the door — which asks exist and which of them a kind cannot honour; the words of the
+ * real command are pinned by `kind-lever.process.test.ts`.
+ */
+describe("the levers a role asks for against the ones its kind has", () => {
+  const asks = leversAskedFor({
+    allowedTools: ["Bash", "Edit"],
+    denyRules: ["Edit(docs/roles/**)"],
+    maxTurns: { value: 40, source: "role" },
+    effort: { value: "high", source: "role" },
+  });
+
+  it("reads an ask off each field that carries one, and names where it is written", () => {
+    expect(asks.map((ask) => ask.lever)).toEqual([
+      "allowed-tools",
+      "zone-deny",
+      "max-turns",
+      "effort",
+    ]);
+    // The field, not just the lever: this half is what a reader of the refusal acts on.
+    expect(asks[0]?.where).toContain("launch.allowedTools");
+    expect(asks[2]?.where).toContain("40");
+    expect(asks[2]?.where).toContain("role");
+  });
+
+  it("counts an empty field as no ask at all", () => {
+    // A role with no zones does not ask for zone denial, and a package default is not a
+    // role asking for a ceiling — refusing on either would be a refusal about US.
+    expect(leversAskedFor({ allowedTools: [], denyRules: [] })).toEqual([]);
+    expect(leversAskedFor({})).toEqual([]);
+  });
+
+  it("refuses BY NAME on the levers codex has no way to honour, and only on those", () => {
+    const said = kindLeverRefusal({ kind: CODEX, role: "dev-core", asks });
+    expect(said).toContain("role 'dev-core'");
+    expect(said).toContain("'codex'");
+    expect(said).toContain("allowed-tools");
+    expect(said).toContain("zone-deny");
+    expect(said).toContain("max-turns");
+    // EFFORT IS NOT AMONG THEM: codex has it and spells it `-c model_reasoning_effort=`,
+    // so a refusal naming it would be this door lying about the tool.
+    expect(said).not.toContain("effort '");
+  });
+
+  it("says nothing when the kind has every lever asked of it", () => {
+    // `claude-code` has an empty `cannot` — the door is silent, and that silence is the
+    // regression contract of the live circuit.
+    expect(kindLeverRefusal({ kind: CLAUDE_CODE, role: "dev-core", asks })).toBeUndefined();
+    expect(kindLeverRefusal({ kind: CODEX, role: "dev-core", asks: [] })).toBeUndefined();
+  });
+
+  it("never matches the two levers no role can ask for", () => {
+    // `quota-signal` and `quota-window` stand in CODEX.cannot for the human reading
+    // `orchestrator status` — they are read out of a stream, not requested at a spawn,
+    // so `leversAskedFor` has no field that could produce them and this door never fires
+    // on them. That is the answer to the question left open in thread 026: a name in
+    // `cannot` is a statement about the TOOL, a match here is one about a ROLE.
+    expect(CODEX.cannot).toContain("quota-signal");
+    expect(
+      leversAskedFor({
+        allowedTools: ["Bash"],
+        denyRules: [],
+      }).map((ask) => ask.lever),
+    ).not.toContain("quota-signal");
   });
 });
