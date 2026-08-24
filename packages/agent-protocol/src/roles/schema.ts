@@ -245,9 +245,10 @@ export const claudeCodeEffortSchema = z.enum(["low", "medium", "high", "xhigh", 
  * `cursor` member simply will not accept `effort`, and nobody has to remember that.
  *
  * DELIBERATELY NOT THE R8 ABSTRACTION. R8 (connectors) is the general shape of
- * "parameters of any tool"; this is one member of a union with one member in it,
- * written for the single tool that is live. Building the general form now would mean
- * guessing at the second tool's parameters from a repository that has never run one.
+ * "parameters of any tool"; this is a union of exactly the tools the package
+ * implements, and each member carries the parameters that tool actually takes. The
+ * second member arrived when the second kind did (thread 026) — read from the vendor's
+ * declarations rather than guessed, which is why it was not written earlier.
  *
  * `kind` is ALSO the join with the machine config: the tool named here is the key
  * `local.json` maps to a binary path (`config/local.ts`). One id, said once.
@@ -259,6 +260,34 @@ export const launchAgentSchema = z.discriminatedUnion("kind", [
     model: z.string().min(1).optional(),
     /** `--effort`: how hard the session thinks. Unsaid — the tool's own default. */
     effort: claudeCodeEffortSchema.optional(),
+  }),
+  /**
+   * THE SECOND MEMBER, AND WHY IT ARRIVES ONLY NOW (thread 026). Until the package
+   * could actually raise codex, a member here would have been a promise the code did
+   * not keep — `launch.agent.kind: "codex"` accepted by the schema and refused at the
+   * spawn is worse than refused at the door. Since #71 the kind is implemented
+   * (`orchestrator/codex.ts`: argv, stream, probe, repair, `cannot`), so the schema
+   * refusing the id became the last door lying about the tool: the only way to raise
+   * codex was the `--worker` flag, and a card could not say what a card is for.
+   *
+   * `model` IS THE SAME KIND OF STATEMENT AS ABOVE and reaches the run the same way —
+   * `-m <model>` (`utils/cli/src/shared_options.rs`, read in #71 and pinned in
+   * `buildCodexArgv`). Free-form for the same reason: the list belongs to the vendor.
+   *
+   * NO `effort` FIELD HERE, AND THE ABSENCE IS A DECISION IN PROGRESS, NOT AN OVERSIGHT.
+   * Codex HAS the lever — it spells it `-c model_reasoning_effort=<v>` — but the levels
+   * it accepts are a vocabulary, and the one above (`claudeCodeEffortSchema`) is the
+   * other vendor's. Which vocabulary a card may name, and whether the package validates
+   * it at all or passes the string through, is a question about the form of
+   * `agent-protocol.json`, so it goes to the thread and to john before it goes into a
+   * schema (R14). Until it is answered a card naming `effort` on codex is refused by
+   * this strict object BY THE KEY — the honest answer today — while an operator who
+   * needs it types `--effort` on a run they can retype.
+   */
+  z.strictObject({
+    kind: z.literal("codex"),
+    /** `-m`: the model of the run. Free-form — the list is the vendor's. */
+    model: z.string().min(1).optional(),
   }),
 ]);
 

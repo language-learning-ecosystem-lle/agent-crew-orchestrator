@@ -1116,6 +1116,71 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
     expect(result.out).toContain("model opus (role)");
   }, 60_000);
 
+  /**
+   * THE SECOND KIND AT THE REAL CLI (thread 026, reviewer-pr on #74) — and what the
+   * measurement found instead of the argv it went looking for.
+   *
+   * The finding asked for the layer no unit reaches: `--model`/`--effort` read off the
+   * COMMAND LINE and the kind off `--worker`/the card, in `cli.ts`, handed to
+   * `resolveAgentParams` only afterwards. Written against codex, that scenario cannot be
+   * green today, and the reason is a WALL rather than a bug in the parameters:
+   *
+   * - `launch.allowedTools` is REQUIRED by the schema, so a launchable role always asks for
+   *   the allowed-tools lever, and codex declares it `cannot` honour it (#72) — the run is
+   *   refused by name before an argv exists;
+   * - a role WITHOUT a `launch` section is not launched by the orchestrator at all
+   *   (`no-launch-profile`), so removing the ask removes the run.
+   *
+   * Both halves are pinned here, because that pair is the whole state of the card path: the
+   * schema now accepts `kind: "codex"` (#74) and no configuration of a role turns it into a
+   * process. The way out is the question the inventory left open (msg-004: with what does the
+   * circuit hold zones and a step ceiling on codex) and it is not the package's to answer.
+   *
+   * The param door is still exercised end to end by the first case: `resolveAgentParams` runs
+   * BEFORE the lever door, so a run refused with the LEVER's words is a run whose card model
+   * for codex passed the door that used to refuse it by the literal string `claude-code`.
+   */
+  it("a card naming codex passes the parameter door and stops at the lever door, by name", () => {
+    const { repo } = contour();
+    const dump = join(repo, "argv.txt");
+    const exec = stub(repo, `printf '%s\\n' "$@" > ${dump}\nsleep 1`);
+    withLaunch(repo, { agent: { kind: "codex", model: "gpt-5-codex" } });
+
+    const result = runWithout(repo, ["--exec", exec, "--write"]);
+
+    expect(result.code).toBe(2);
+    // The lever door's words — not the parameter door's: the card's model for codex got past
+    // the refusal that used to read "written for another tool".
+    expect(result.out).toContain("role 'dev-core' would be raised as 'codex'");
+    expect(result.out).toContain("allowed-tools");
+    expect(result.out).not.toContain("written for");
+    // And nothing was spawned: no argv file exists to inspect.
+    expect(existsSync(dump)).toBe(false);
+  }, 60_000);
+
+  it("and dropping the ask drops the run: a role with no launch profile is not raised at all", () => {
+    // The other half of the wall, and the reason the flag path is no way round it either.
+    const { repo } = contour({ roles: [{ ...CONFIG.roles[0], launch: undefined }] });
+    const dump = join(repo, "argv.txt");
+    const exec = stub(repo, `printf '%s\\n' "$@" > ${dump}\nsleep 1`);
+
+    const result = runWithout(repo, [
+      "--exec",
+      exec,
+      "--worker",
+      "codex",
+      "--model",
+      "gpt-5-codex",
+      "--effort",
+      "high",
+      "--write",
+    ]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("no-launch-profile");
+    expect(existsSync(dump)).toBe(false);
+  }, 60_000);
+
   it("no parameters declared → the tool's own defaults, not ours", () => {
     const { repo } = contour();
     const dump = join(repo, "argv.txt");

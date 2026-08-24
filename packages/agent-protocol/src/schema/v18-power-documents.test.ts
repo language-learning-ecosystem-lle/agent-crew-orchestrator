@@ -84,8 +84,11 @@ describe("17 → 18: the documents of power become a declaration", () => {
     expect(plan.writes).toHaveLength(0);
   });
 
-  it("is the version this build writes", () => {
-    expect(CURRENT_PROTOCOL_VERSION).toBe(18);
+  it("is a version this build still knows how to reach", () => {
+    // It stopped being the LAST one at v19 (thread `026`), and the claim moved to that step's
+    // test rather than being deleted: what matters here is that a repository sitting at 17 is
+    // still carried through this step by a current build, not that 18 is the end of the chain.
+    expect(CURRENT_PROTOCOL_VERSION).toBeGreaterThanOrEqual(18);
   });
 
   it("answers a v18 config on a v17 build with 'restart required', not with 'invalid'", () => {

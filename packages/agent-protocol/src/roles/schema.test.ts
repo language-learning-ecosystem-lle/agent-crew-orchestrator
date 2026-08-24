@@ -170,11 +170,39 @@ describe("launch.agent — which tool raises the role, and with what (R15)", () 
     ).toBe(false);
   });
 
-  it("REFUSES a tool the package cannot raise — the union has one member today", () => {
+  it("REFUSES a tool the package cannot raise — the union names the ones it can", () => {
     // Honest about the boundary with R8: the general shape of "parameters of any
     // connector" is not built here, so an unknown tool is refused rather than
     // accepted with parameters nobody can pass.
     expect(withLaunch({ allowedTools: ["Bash"], agent: { kind: "cursor" } }).success).toBe(false);
+  });
+
+  it("accepts the SECOND tool the package implements, and its model (thread 026)", () => {
+    // Until #71 the schema had one member and that was true of the package too. It
+    // stopped being true, and a card that could not name a tool the orchestrator can
+    // raise left `--worker` as the only way in — a flag decides one run, a card decides
+    // the role.
+    const result = withLaunch({
+      allowedTools: ["Bash"],
+      agent: { kind: "codex", model: "gpt-5-codex" },
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.roles[0]?.launch?.agent).toEqual({ kind: "codex", model: "gpt-5-codex" });
+  });
+
+  it("REFUSES `effort` on codex BY THE KEY — the vocabulary is not decided yet", () => {
+    // Codex HAS the lever (`-c model_reasoning_effort=`), which is why it is absent
+    // from `CODEX_CANNOT`. What its levels are, and whether this package validates
+    // them or hands the string to the vendor, is a question about the form of the
+    // config (R14) and stands in thread 026. Refused by the strict object until it is
+    // answered — an accepted field nobody validates would decide runs in silence.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", effort: "high" } }).success,
+    ).toBe(false);
+    // And the other vendor's parameters do not leak in through the second member either.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", temperature: 0.7 } }).success,
+    ).toBe(false);
   });
 
   it("the tool must be NAMED: parameters with no owner are not a shape we accept", () => {

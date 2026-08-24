@@ -208,3 +208,49 @@ describe("the levers a role asks for against the ones its kind has", () => {
     ).not.toContain("quota-signal");
   });
 });
+
+/**
+ * THE INVARIANT OF THE REGISTRY (thread 026, statement of `2026-08-23T11-08-25Z`, point 3).
+ *
+ * Every assertion above this one is about an INSTANCE: this is what claude-code does,
+ * this is what codex cannot. Those pin the two kinds that exist and say nothing about
+ * the third, which is exactly where the contract is easiest to break — a kind added
+ * with a `stream` missing `quotaSignalOf` and a `cannot` that forgot to say so is a
+ * tool that answers "no limit was ever signalled" to gate 019, and answers it in the
+ * voice of a measurement.
+ *
+ * So the claim here is quantified over `AGENT_KINDS` and it is an EQUIVALENCE, both
+ * halves of it load-bearing:
+ *
+ *  - a name in `cannot` with a reader present would be a kind slandering itself — the
+ *    shelf it could have built preventively is never built, and nothing says why;
+ *  - a reader absent with nothing in `cannot` is the silent version of the same lie,
+ *    and it is the one that reaches an operator as "your account has no limits".
+ *
+ * It passes today by construction (claude-code has both readers and an empty `cannot`;
+ * codex has neither reader and names both). It exists to fail on the THIRD kind, the
+ * day somebody writes half of it.
+ */
+describe("the invariant of the registry — quantified over every kind, not over two", () => {
+  it.each(AGENT_KINDS.map((kind) => [kind.id, kind] as const))(
+    "'%s' names 'quota-signal' in `cannot` exactly when its stream has no reader for one",
+    (_id, kind) => {
+      expect(kind.cannot.includes("quota-signal")).toBe(kind.stream.quotaSignalOf === undefined);
+    },
+  );
+
+  it.each(AGENT_KINDS.map((kind) => [kind.id, kind] as const))(
+    "'%s' names 'quota-window' in `cannot` exactly when its stream has no reader for one",
+    (_id, kind) => {
+      expect(kind.cannot.includes("quota-window")).toBe(kind.stream.windowBoundaryOf === undefined);
+    },
+  );
+
+  it("registers every kind under its own id, and each id once", () => {
+    // The join `kindOf` makes is what `--worker` and `agent.kind` both walk through; two
+    // kinds sharing an id would make one of them unreachable in silence, and which one
+    // would depend on the order of this array.
+    for (const kind of AGENT_KINDS) expect(kindOf(kind.id)).toBe(kind);
+    expect(new Set(AGENT_KINDS.map((kind) => kind.id)).size).toBe(AGENT_KINDS.length);
+  });
+});
