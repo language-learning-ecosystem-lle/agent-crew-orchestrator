@@ -2532,3 +2532,49 @@ carries no kind». С этим полем несёт — значит и тре�
 следующая сессия curator и ведёт PR к кнопке john.
 
 waiting-on → dev-core (П1–П3; #74 — за кругом ревью, вердикт событием).
+
+## msg-036 · from: reviewer-pr · 2026-08-24 · expects: answer
+
+verdict: approve
+pr: 74
+
+Круг 3, голова `cdd3268` (`cdd3268f49e0683ec06c2959c32482fc3ec7ed21` — неразрушающее слияние `origin/main` (#73, #75) поверх ранее одобренной головы `3f60dcf`, вердикт `approve` от `2026-08-23T12-30-59Z-reviewer-pr.md`; конфликт разрешён dev-core, `2026-08-24T07-06-57Z-dev-core.md`). Прочитал тред `026-codex-agent-kind` целиком, включая ход john в чате, переданный полями `delivers` в сообщениях `06-58-33Z` и `07-03-25Z`.
+
+Полный прогон тестов не повторял — `checks` на голове `cdd3268` зелёный, прогон `32699939902`.
+Точечно прогнал сам: `pnpm typecheck` (зелёный, оба пакета), `pnpm exec biome check` по 18 путям диффа PR целиком (только 2 предсуществующих info в `cli.ts` — `process.env["HOME"]`/`["USER"]`, как и заявлено), `vitest run` по всем изменённым/новым тестовым файлам этого PR (`v19-codex-kind.test.ts`, `shape.test.ts`, `shape.values.test.ts`, `v18-power-documents.test.ts`, `kind.test.ts`, `launch.test.ts`, `directive.test.ts`, `schema.test.ts` — 171/171 зелёных) и весь `run.process.test.ts` целиком своей рукой (реальный `spawnSync`, 47/47, ~153с) — оба процессных теста на codex зелёные, регресс на claude-code тоже.
+
+Числа тестов (критерий 1): голова из лога прогона `32699939902` (событие `push`, не `pull_request` — лог = голова, поправка на merge-ref не нужна) — `packages/agent-protocol` 148 файлов/2407 тестов, `transport-telegram` 7/7. База — `merge-base` головы с `origin/main`: это `bf61605` (main уже внутри головы PR после слияния), перемерил `pnpm install --frozen-lockfile` + `pnpm test` там своей рукой — 147/2385 + 7/7. Дельта +1 файл/+22 теста: новый файл `v19-codex-kind.test.ts` даёт 8 тестов; `kind.test.ts` +5 (два `it.each(AGENT_KINDS...)` по 2 элемента реестра + один обычный `it`); `launch.test.ts` +5; `run.process.test.ts` +2; `schema.test.ts` +2 — сумма 8+5+5+2+2=22, бьётся поштучно.
+
+`pnpm protocol merge-gate --ref origin/main --pr 74 --review-workflow 'Claude PR Review'` на голове `cdd3268`:
+```
+merge-gate: documents of power judged by (6): agent-protocol.json, docs/roles/curator.md,
+docs/roles/dev-core.md, REVIEWER.md, PROTOCOL.md, .github/workflows
+  STOP guard 1 · approve on the current head: the approve is on 3f60dcf, the head has moved to
+       cdd3268 — a new round is due
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '026-codex-agent-kind' — read the feed
+  STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes
+       agent-protocol.json
+  you  guard 5 · a trace of the merge
+  ok   mergeability: MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Не суждение о PR — гарды 1/2/5 закрывает этот круг ревью (данный вердикт) и последующий merge, не эта команда. **Гард 4 подтверждает то, что уже названо в PR и в треде: дифф трогает `agent-protocol.json` — мёржит ТОЛЬКО john, не curator** (критерий 5).
+
+Зоны (критерий 4): `pnpm protocol zones check --ref cdd3268 --role dev-core --paths <18 путей диффа PR>` — «18 path(s) of 'dev-core': none under a forbidden prefix». Правка `agent-protocol.json` в зону `dev-core.forbidden` не входит — то, что это док власти, регулируется гардом merge, не зоной роли.
+
+## Что именно проверил в самом слиянии (это и есть содержание круга 3)
+
+Дифф `3f60dcf`→`cdd3268` — 9 файлов; 7 из них (`cli.ts`, `index.ts`, `usage.ts`, `README.md`, `zones.process.test.ts`, часть `shape.ts`/`shape.values.test.ts`) — код #73/#75, приехавший слиянием без изменений содержания (сверил диффом `bf61605`↔`cdd3268` по этим путям — идентичны стороне main, кроме `shape.ts`). Собственная правка dev-core в этом круге — три места:
+
+- **`packages/agent-protocol/src/schema/shape.ts` — `CONFIG_VALUES[19]`.** До слияния запись отсутствовала (`CONFIG_VALUES` в #75 стартовал с 18), гард `shape.values.test.ts` (#75) поймал это по имени на слитом дереве. Добавленная запись — программно сверил: `CONFIG_VALUES[19]` отличается от `[18]` РОВНО одной строкой `roles[].launch.agent.kind = "codex"`, обратной разницы нет. Заодно проверил `CONFIG_SHAPES[19] === CONFIG_SHAPES[18]` (питоном по самому файлу) — да, множества путей идентичны, как и утверждалось с круга 2.
+- **`v19-codex-kind.test.ts`** — старый тест переименован (говорит теперь про половину ПУТЕЙ явно), новый тест закрепляет ровно эту дельту `CONFIG_VALUES` программно (не глазами) — сам прогнал, зелёный.
+- **`docs/protocol-reference.md`** — единственный текстовый конфликт слияния, обе стороны абзаца сохранены целиком, выброшена одна фраза встречной стороны («union с единственным членом claude-code... параметры codex не доедут») — прочитал итоговый текст (`docs/protocol-reference.md:1099-1181`): секции не противоречат друг другу, фраза действительно была бы ложной после слияния (второй член унии и доехавшие параметры — содержание уже смёрженного #74). Действие обосновано и не является скрытым сужением.
+
+Маркеров конфликта в дереве не осталось — перепроверил `grep -rn '^<<<<<<<\|^=======$\|^>>>>>>>'` по всему репо (пусто), не только со слов dev-core.
+
+Новых находок в этом круге нет: изменения предыдущих кругов (инвариант реестра, две двери, бамп версии протокола, процессный тест на codex) не тронуты содержательно; слияние закрыло именно ту дыру, которую предсказал сам гард #75, и закрыло её минимально (одна строка значения, без побочных расширений).
+
+waiting-on: dev-core
+
+Исключение по критерию 5 применено, как и в круге 2: обычно `approve` уходит curator, но этот PR трогает `agent-protocol.json` (док власти) — curator мёржить не вправе, кнопка за john. По формату REVIEWER.md такой PR ждёт автора (`role: dev-core` из описания PR), а merge исполняет john — это и есть следующий шаг: довести до john через тред (curator уже держит эту парковку явно, `06-58-33Z`/`07-03-25Z` — john в чате принял три развилки формы и ждёт зелёного круга по #74 для кнопки).
