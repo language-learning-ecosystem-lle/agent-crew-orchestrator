@@ -55,6 +55,7 @@ import {
   describeLocalConfig,
   instanceConfigPath,
   type LoadedLocalConfig,
+  type LocalAccount,
   LocalConfigError,
   type ResolvedLocalConfig,
   resolveLocalConfig,
@@ -3717,13 +3718,23 @@ const runNotify = async (input: {
       )[0];
       // THE SHELF ALONE DOES NOT RING — `authAlarmDue` is the predicate, and it is the one
       // written in `auth.ts` for this purpose (#160). It is not re-decided here.
-      if (shelf !== undefined && authAlarmDue(shelf))
+      if (shelf !== undefined && authAlarmDue(shelf)) {
+        // AND WHOSE LOGIN LIFTS IT (thread 026, П3-3). The alarm is keyed by an account
+        // and the box is what says which tool that account belongs to, so the command is
+        // resolved HERE — where the machine config is in hand — and handed to the pure
+        // planner already rendered. An account this box declares no kind for hands
+        // nothing: the line then names the standstill without a command, which is what it
+        // did before the field existed.
+        const declared = declaredAccount(argv, shelf.account);
+        const kind = declared?.kind === undefined ? undefined : kindOf(declared.kind);
         authAlarm = {
           account: shelf.account,
           since: shelf.since,
           deaths: shelf.deaths,
           until: shelf.until,
+          ...(kind === undefined ? {} : { repair: kind.loginHint(declared?.configDir) }),
         };
+      }
     } catch (error) {
       // One journal, two questions (the shelf and the freezes) — and one line when it
       // cannot be read, naming both, rather than a silence about whichever came second.
@@ -4049,6 +4060,38 @@ const localAt = (path: string): ResolvedLocalConfig => {
   }
 };
 
+/**
+ * WHAT THIS BOX SAYS ABOUT ONE ACCOUNT, for a surface that must not die over it
+ * (thread 026, П3-3). The auth alarm and the shelf line are DIAGNOSES about a circuit
+ * that is already stuck; an unreadable machine config there must cost the login hint
+ * and nothing else — killing the notifier over it would silence the very line that was
+ * about to tell a human why nothing is being raised.
+ */
+const declaredAccounts = (
+  argv: readonly string[],
+): Readonly<Record<string, LocalAccount>> | undefined => {
+  try {
+    return resolveLocalConfig({
+      path: flag(argv, "--local-config"),
+      instance: flag(argv, "--instance"),
+      repo: flag(argv, "--repo") ?? homeOfOrCwd(process.cwd()),
+    }).config.accounts;
+  } catch {
+    return undefined;
+  }
+};
+
+const declaredAccount = (argv: readonly string[], id: string): LocalAccount | undefined =>
+  declaredAccounts(argv)?.[id];
+
+/** The same reading as a map of ids to kinds — what the frame carries for `renderAuth`. */
+const declaredAccountKinds = (argv: readonly string[]): Readonly<Record<string, string>> =>
+  Object.fromEntries(
+    Object.entries(declaredAccounts(argv) ?? {}).flatMap(([id, account]) =>
+      account.kind === undefined ? [] : [[id, account.kind] as const],
+    ),
+  );
+
 const localFrom = (argv: readonly string[]): ResolvedLocalConfig => {
   try {
     return resolveLocalConfig({
@@ -4183,6 +4226,10 @@ const agentFor = (
     ...(role.launch === undefined ? {} : { launch: role.launch }),
     local: local.config,
     ...(instanceAccount === undefined ? {} : { instanceAccount }),
+    // AND WHOSE ACCOUNT IT IS, AGAINST WHAT WOULD BE RAISED (thread 026, П3-2). The
+    // worker is already resolved above with its layer, so the door compares the two
+    // halves of the R14 join instead of trusting whichever spoke last.
+    worker,
   });
   if (!account.ok) return fail(`role '${role.id}': ${account.reason}`, 2);
   return {
@@ -5646,31 +5693,35 @@ const doctor = (argv: readonly string[]): void => {
       ...accountChecksWithoutRoles({ reason: noRoles, accounts: accounts.map(([id]) => id) }),
     );
   } else if (accounts.length > 0) {
-    for (const [id, account] of accounts)
+    for (const [id, account] of accounts) {
+      // THE KIND AN ACCOUNT BELONGS TO IS NOW A DECLARED FACT (thread 026, П3): the box
+      // says whose the directory is, and this row asks the binary of THAT tool in its
+      // own words — argv, account variable and the login it dictates on failure. A box
+      // that declares nothing keeps the answer it had, and the fall-back is named here
+      // rather than hidden: silence means "nothing is claimed", and the only probe there
+      // is is the one the package ran before the field existed.
+      const kind = account.kind === undefined ? CLAUDE_CODE : (kindOf(account.kind) ?? CLAUDE_CODE);
       checks.push(
         accountLiveCheck({
           id,
           configDir: account.configDir,
+          kind,
           outcome: offline
             ? skipped
             : resolvedExec === undefined
               ? { skipped: "the binary was not found — there is nothing to run" }
               : probeHeadless({
                   exec: resolvedExec,
-                  // THE KIND AN ACCOUNT BELONGS TO IS NOT DECLARED ANYWHERE YET (thread
-                  // 026): `accounts[]` carries a directory and nothing else, and this row
-                  // runs the binary the loop above resolved first. Named here rather than
-                  // left implicit — a box raising two tools needs the account to say
-                  // whose it is, and that is a config question, not a refactoring.
-                  kind: CLAUDE_CODE,
+                  kind,
                   // THE ONE VARIABLE THAT MAKES THIS A DIFFERENT ACCOUNT (B.1): the store
                   // is per directory — credentials, config and sessions all move with it,
-                  // and its NAME belongs to the kind (`CODEX_HOME` for the next one).
-                  env: { ...env, [CLAUDE_CODE.accountEnv]: account.configDir },
+                  // and its NAME belongs to the kind (`CODEX_HOME` for codex).
+                  env: { ...env, [kind.accountEnv]: account.configDir },
                   timeoutMs: positiveInt(withRef, "--probe-timeout", 120) * 1000,
                 }),
         }),
       );
+    }
   } else checks.push(...accountChecksWithoutAccounts());
 
   // Git: the remote the circuit reads and writes through. The write probe names the
@@ -6087,6 +6138,11 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // disagree about whether the box is standing down.
     quota: openQuotaShelves(events, now),
     auth: openAuthShelves(events, now),
+    // AND WHOSE ACCOUNT EACH OF THEM IS (thread 026, П3-3) — read from the machine
+    // config here, where it is legible, so the pure renderer can dictate the login of
+    // the right vendor. A box that declares nothing hands an empty map and the section
+    // reads exactly as it did before the field existed.
+    accountKinds: declaredAccountKinds(argv),
     // The tier's own health, from the file the daemon writes (thread 051): a frame that
     // showed an empty merge-ready tier and a silently refusing `gh` identically is the
     // defect this section exists to close.

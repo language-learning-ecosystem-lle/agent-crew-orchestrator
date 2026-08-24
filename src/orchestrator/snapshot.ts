@@ -50,6 +50,7 @@ import type { HoldView } from "./hold.js";
 import { renderHolds } from "./hold.js";
 import type { InstanceDigest } from "./instances.js";
 import { renderInstances } from "./instances.js";
+import { kindOf } from "./kind.js";
 import type { LeaseView } from "./lease.js";
 import { describeGhOutage, type GhOutage, ghAlarmDue } from "./outage.js";
 import type { RankedCandidate } from "./priority.js";
@@ -136,6 +137,12 @@ export type OperatorFrame = {
    * of them ends by itself.
    */
   readonly auth?: readonly AuthShelf[] | undefined;
+  /**
+   * WHOSE ACCOUNT EACH DECLARED ID IS (`accounts.<id>.kind`, thread 026, П3-3) — carried
+   * in the frame because the shelf above dictates a repair and the repair belongs to the
+   * kind, while this module holds no config and may not learn to read one.
+   */
+  readonly accountKinds?: Readonly<Record<string, string>> | undefined;
   /**
    * The run of `gh` refusals in the merge-ready tier (thread 051), read from the file the
    * daemon writes. Undefined means the tier answered on the last tick that asked it.
@@ -284,10 +291,26 @@ export const renderQuota = (now: Date, shelves: readonly QuotaShelf[] = []): str
  * are: the reader's question is "why is nothing running", and a section that only appears
  * on bad news teaches them to conclude nothing from its absence.
  */
-export const renderAuth = (shelves: readonly AuthShelf[] = []): string =>
+export const renderAuth = (
+  shelves: readonly AuthShelf[] = [],
+  /**
+   * WHOSE ACCOUNT EACH SHELVED ID IS, as this box declares it (`accounts.<id>.kind`,
+   * thread 026, П3-3) — the shelf line dictates a login, and a login is the kind's
+   * word. An id absent from the map keeps the answer this line gave before the field
+   * existed; the map is never guessed at, because a wrong login reads as the shelf lying.
+   */
+  kinds: Readonly<Record<string, string>> = {},
+): string =>
   shelves.length === 0
     ? "auth:\n  the box authenticates — no run has died on the vendor's credentials since its last delivery"
-    : ["auth:", ...shelves.map((shelf) => `  ⏸ ${describeAuthShelf(shelf)}`)].join("\n");
+    : [
+        "auth:",
+        ...shelves.map((shelf) => {
+          const declared = kinds[shelf.account];
+          const kind = declared === undefined ? undefined : kindOf(declared);
+          return `  ⏸ ${kind === undefined ? describeAuthShelf(shelf) : describeAuthShelf(shelf, kind)}`;
+        }),
+      ].join("\n");
 
 /**
  * THE MERGE-READY TIER, and the ONE section of the frame that is silent when the news is
@@ -392,7 +415,7 @@ export const renderFrame = (frame: OperatorFrame): string =>
     // the merge-ready tier below.
     renderCodeAge(frame.codeAge, frame.now) || undefined,
     renderQuota(frame.now, frame.quota),
-    renderAuth(frame.auth),
+    renderAuth(frame.auth, frame.accountKinds),
     // The empty string a quiet tier renders is dropped here rather than joined as a
     // blank line: the gate is `renderMergeReady`'s alone, so the frame and the section
     // cannot disagree about when the tier is news.

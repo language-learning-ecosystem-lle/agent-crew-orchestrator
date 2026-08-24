@@ -825,6 +825,86 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       });
     });
 
+    describe("and whose account the box says it is (thread 026, П3-2)", () => {
+      // THE JOIN HAS TWO HALVES AND EITHER CAN BE WRONG. `launch.agent.kind` is the
+      // repository's statement about which tool raises a role; `accounts.<id>.kind` is
+      // the machine's about whose credentials a directory holds. Agreement is silent,
+      // disagreement is a refusal, and there is no third answer — a winner picked here
+      // would point one vendor's binary at another's home.
+      const codexAccount = {
+        agents: {},
+        accounts: { pilot: { configDir: "/home/j/.codex", kind: "codex" } },
+      };
+      const claude = { value: "claude-code", source: "role" } as const;
+      const codex = { value: "codex", source: "role" } as const;
+
+      it("the two halves agree → resolved, and the declared kind travels with the answer", () => {
+        expect(resolveAccount({ launch: on("pilot"), local: codexAccount, worker: codex })).toEqual(
+          {
+            ok: true,
+            account: {
+              id: "pilot",
+              configDir: "/home/j/.codex",
+              source: "role",
+              kind: "codex",
+            },
+          },
+        );
+      });
+
+      it("they disagree → refused, and the text names the kind, its LAYER, the account and the directory", () => {
+        const resolved = resolveAccount({
+          launch: on("pilot"),
+          local: codexAccount,
+          worker: claude,
+        });
+        expect(resolved.ok).toBe(false);
+        const reason = resolved.ok === false ? resolved.reason : "";
+        // The three things П3-2 asks for, each checked as a separate fact: a refusal
+        // that named two of them would still send its reader to the wrong file.
+        expect(reason).toContain("'claude-code'");
+        expect(reason).toContain("'launch.agent.kind' of the role's card");
+        expect(reason).toContain("accounts.pilot.kind");
+        expect(reason).toContain("/home/j/.codex");
+      });
+
+      it("…and the LAYER is the flag when the flag is what said it", () => {
+        // Two different files to open, and the operator who typed `--worker` is not
+        // sent hunting through a card that says nothing.
+        const resolved = resolveAccount({
+          launch: on("pilot"),
+          local: codexAccount,
+          worker: { value: "claude-code", source: "flag" },
+        });
+        expect(resolved.ok === false && resolved.reason).toContain("'--worker' on this command");
+      });
+
+      it("the box declares no kind → nothing to disagree with, and the run is unchanged", () => {
+        // Silence means "nothing is claimed", not "claude-code". Every `local.json`
+        // written before this field keeps behaving to the byte.
+        expect(resolveAccount({ launch: on("second"), local, worker: codex })).toEqual({
+          ok: true,
+          account: { id: "second", configDir: "/home/j/.claude-second", source: "role" },
+        });
+      });
+
+      it("nobody passes a worker → the door has nothing to compare and does not invent one", () => {
+        expect(resolveAccount({ launch: on("pilot"), local: codexAccount }).ok).toBe(true);
+      });
+
+      it("the INSTANCE's default lands on a foreign account → refused just the same", () => {
+        // The layer that named the account changes; the half that disagrees does not.
+        const resolved = resolveAccount({
+          launch: { allowedTools: ["Bash"] },
+          local: codexAccount,
+          instanceAccount: "pilot",
+          worker: claude,
+        });
+        expect(resolved.ok).toBe(false);
+        expect(resolved.ok === false && resolved.reason).toContain("accounts.pilot.kind");
+      });
+    });
+
     it("the INSTANCE names one this box does not declare → refused, and the reason names the layer", () => {
       // The refusal has to send the reader to the right file: a role's id is in
       // 'roles[].launch.account', an instance's in 'instances[].account', and being
