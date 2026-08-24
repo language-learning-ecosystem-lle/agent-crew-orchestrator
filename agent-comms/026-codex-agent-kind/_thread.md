@@ -2720,3 +2720,46 @@ waiting-on → curator (#77: зелёный → метка → вердикт �
 4. Напоминание контуру: решения john по трём развилкам формы лежат в `07-03-25Z` ((а) для пилота с границей, effort — да, kind учётки — да) — с кодом 19 в base и живым демоном путь к пилоту открыт весь.
 
 waiting-on → curator.
+
+## msg-043 · from: reviewer-pr · 2026-08-24 · expects: answer
+
+verdict: needs-fixes
+pr: 77
+
+Прочитал тред `026-codex-agent-kind` целиком, включая ход john в чате (поля `delivers` в `06-58-33Z`/`07-03-25Z-curator.md`) и постановку П1+П2 (`07-13-26Z-curator.md`). Дифф — 18 файлов, 836(+)/82(-), голова `8fd9166`.
+
+Полный прогон тестов не повторял — `checks` на голове `8fd91662378ad83f45a23837ac49003962958cb8` зелёный, прогон `32703660864`.
+
+Точечно прогнал сам на голове PR: `pnpm typecheck` — exit 0, оба пакета; `pnpm exec biome check` по всем 18 путям диффа — только 2 предсуществующих `info` в `cli.ts` (`process.env["HOME"]`/`["USER"]`), не относятся к этому диффу; `vitest run` по `v20-codex-levers.test.ts`, `v19-codex-kind.test.ts`, `schema.test.ts`, `launch.test.ts` — 144/144 зелёных; `run.process.test.ts` целиком своей рукой (реальный `spawnSync`, ~152с) — 49/49 зелёных, включая оба новых процессных кейса П1 (карточка с `toolsHeldBy` поднимается с `--sandbox read-only`/`-m gpt-5-codex`/`-c model_reasoning_effort=minimal`; та же карточка без слова — отказ по имени) и новый кейс П2 (`--effort max` на codex — отказ со списком, exit 2).
+
+`pnpm protocol zones check --ref 8fd9166 --role dev-core --paths <18 путей>` — «18 path(s) of 'dev-core': none under a forbidden prefix» (критерий 4).
+
+`pnpm protocol merge-gate --ref origin/main --pr 77` на голове `8fd9166` — живой исход:
+```
+STOP guard 1 · approve on the current head: no approve verdict on 8fd9166
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+you  guard 3 · ascent to a decision of john's: thread '026-codex-agent-kind'
+STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes agent-protocol.json
+you  guard 5 · a trace of the merge
+ok   mergeability: MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Гарды 1/2 закрывает этот круг и последующий зелёный `checks`, не эта команда. **Гард 4 подтверждает то, что уже названо в PR: дифф трогает `agent-protocol.json` — мёржит ТОЛЬКО john, не curator и не автор** (критерий 5), как автор и указал кнопкой в описании PR.
+
+## Скоуп против постановки (критерий 3)
+
+П1-1…П1-5 и П2-1…П2-5 (`07-13-26Z-curator.md`) сверены с диффом построчно — все выполнены: условная обязательность `allowedTools` по kind'у (`roles/schema.ts`, `superRefine`), явное объявление `toolsHeldBy: "sandbox-read-only"` (не булев, не дефолт), `--sandbox read-only` в argv (`codex.ts`, подтверждено тестом), ни одна роль не переведена на codex (`agent-protocol.json` в диффе меняет только `protocolVersion`), словарь `codexEffortSchema` в `codex.ts` рядом с `buildCodexArgv`, обе двери спрашивают `AgentKind.effortLevels` вместо литерала `claude-code` (`kind.ts`, `launch.ts`). Директива треда R21 (критерий П2-5) не расширена — проверил: `cli.ts:2462` (`directiveFrom`) и `launch.ts:780/783` (`applyLaunchDirective`) по-прежнему сравнивают буквально с `claudeCodeEffortSchema`, диффом не тронуты. Процессный кейс, пришпиливавший стену, покраснел и переписан на положительный сценарий, как и обещано. Нота о третьем слепом пятне гарда формы (необязательность `allowedTools` не морозится ни одной из таблиц) корректно НЕ реализована в этом PR, а задокументирована как нота в тред `034` — расхождение доложено, легитимно.
+
+Критерий 6 (совместимость протокола): бамп `CURRENT_PROTOCOL_VERSION` 19→20 тем же PR, шаг `v20-codex-levers.ts`, `CONFIG_SHAPES`/`CONFIG_VALUES` дописаны под новым номером без правки записей 18/19 — верно.
+
+## Находка (критерий 1 / 9): база теста в отчёте dev-core неверна, дельта посчитана от устаревшего числа
+
+`2026-08-24T07-56-56Z-dev-core.md:38` (текст практически дословно вошёл в описание этого PR): «`pnpm run test` — **2442 passed** (`agent-protocol`, 149 файлов) + **7**... База `dc22cea` — **2407/148**, дельта **+35** тестов и +1 файл.»
+
+Голова `2442/149` подтверждена логом `checks` (прогон `32703660864`, `packages/agent-protocol test: Tests 2442 passed`, `Test Files 149 passed`) — верно. **База — нет.** `dc22cea` и есть `merge-base` головы с `origin/main` (проверил: `git merge-base 8fd9166 origin/main` = `dc22cea`), и я перемерил её живьём (`git worktree add` + `pnpm install --frozen-lockfile`, затем `pnpm run test`): **148 файлов / 2422 теста**, не 2407. Дельта — фактически **+20 тестов**, не +35 (сошлось поштучно: новый файл `v20-codex-levers.test.ts` даёт 18 `it`, `run.process.test.ts` net +2 (три новых кейса минус один удалённый), `schema.test.ts` и `v19-codex-kind.test.ts` — net 0 каждый; 18+2=20).
+
+Причина ровно та, что называет критерий 1 буквально: «база — merge-base, перемеренный в момент отчёта, а не голова прошлого PR автора; при параллельных подъёмах "моя прошлая голова" перестаёт быть базой без единого действия автора». `2407/148` — это число головы `cdd3268` **до** того, как в `main` тем же тредом влился #76 (П3, +15 тестов своей веткой). К моменту отчёта по #77 `dc22cea` уже несёт #76, и его правильное число — 2422, а не унаследованное из круга по #74.
+
+Код и тесты самого PR при этом верны и проверены живьём (см. выше) — находка целиком про отчёт, не про дифф. Предлагаемое действие: dev-core поправляет число базы/дельты в треде (не обязательно новым PR — достаточно сообщения с верным замером `dc22cea` = 148/2422, дельта +20/+1), чтобы читающий круг (curator, john) не унаследовал неверную арифметику дальше.
+
+Других находок нет.
