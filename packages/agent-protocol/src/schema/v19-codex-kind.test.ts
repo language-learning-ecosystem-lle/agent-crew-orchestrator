@@ -92,8 +92,11 @@ describe("18 → 19: the card may name codex", () => {
     expect(plan.writes).toHaveLength(0);
   });
 
-  it("is the version this build writes", () => {
-    expect(CURRENT_PROTOCOL_VERSION).toBe(19);
+  it("is a version this build has PASSED — 20 is what it writes now (thread 026, П1/П2)", () => {
+    // The assertion moved rather than being deleted: it said "19 is the head" and the head
+    // moved on, so what is worth pinning here is the ORDER — a step whose `from` is 19 exists
+    // (`v20-codex-levers.ts`) and this number is behind the current one, never ahead of it.
+    expect(CURRENT_PROTOCOL_VERSION).toBeGreaterThan(19);
   });
 
   it("answers a v19 config on a v18 build with 'restart required', not with 'invalid'", () => {

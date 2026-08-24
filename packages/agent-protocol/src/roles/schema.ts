@@ -38,6 +38,9 @@
  */
 import { z } from "zod";
 
+import { codexEffortSchema } from "../orchestrator/codex.js";
+import type { AgentLever } from "../orchestrator/kind.js";
+
 /** Role identifier: the same token appears in `waiting-on` and in a message's `from:`. */
 export const roleIdSchema = z
   .string()
@@ -274,50 +277,115 @@ export const launchAgentSchema = z.discriminatedUnion("kind", [
    * `-m <model>` (`utils/cli/src/shared_options.rs`, read in #71 and pinned in
    * `buildCodexArgv`). Free-form for the same reason: the list belongs to the vendor.
    *
-   * NO `effort` FIELD HERE, AND THE ABSENCE IS A DECISION IN PROGRESS, NOT AN OVERSIGHT.
-   * Codex HAS the lever — it spells it `-c model_reasoning_effort=<v>` — but the levels
-   * it accepts are a vocabulary, and the one above (`claudeCodeEffortSchema`) is the
-   * other vendor's. Which vocabulary a card may name, and whether the package validates
-   * it at all or passes the string through, is a question about the form of
-   * `agent-protocol.json`, so it goes to the thread and to john before it goes into a
-   * schema (R14). Until it is answered a card naming `effort` on codex is refused by
-   * this strict object BY THE KEY — the honest answer today — while an operator who
-   * needs it types `--effort` on a run they can retype.
+   * `effort` ARRIVED WHEN ITS VOCABULARY DID (thread 026, П2; john, 2026-08-24). It was
+   * held back on purpose while the open question was WHICH words a card may name here —
+   * codex has the lever and spells it `-c model_reasoning_effort=<v>`, but its levels are
+   * its own: `minimal` exists there and not next door, `max` exists next door and not
+   * there. The answer is a second vocabulary rather than a shared one, and it lives with
+   * the tool that owns it ({@link codexEffortSchema} in `orchestrator/codex.ts`).
    */
   z.strictObject({
     kind: z.literal("codex"),
     /** `-m`: the model of the run. Free-form — the list is the vendor's. */
     model: z.string().min(1).optional(),
+    /** `-c model_reasoning_effort=<v>`: how hard the run thinks. Unsaid — the tool's own default. */
+    effort: codexEffortSchema.optional(),
+    /**
+     * WHAT HOLDS THE SESSION WHEN THE TOOL HAS NO ALLOW-LIST (thread 026, П1; john's
+     * decision of 2026-08-24, variant (а), FOR A PILOT ROLE).
+     *
+     * Codex has no `--allowedTools` and no settings-borne zone denial (`CODEX_CANNOT`),
+     * so a role raised on it cannot be given the two levers a reviewer reads as granted.
+     * There are exactly two honest states, and this field is the difference between them:
+     *
+     *  - the field is ABSENT — the levers are simply missing, and `kindLeverRefusal`
+     *    stands where it stood: a role asking for them is refused by name rather than
+     *    raised with the ask dropped in silence;
+     *  - the field NAMES what holds them instead — `sandbox-read-only`: the run is
+     *    confined by the vendor's own read-only sandbox (`--sandbox read-only` reaches
+     *    its argv, `buildCodexArgv`) and its zones are held outside the session, by the
+     *    sandbox and by CI. The waiver is then DECLARED, in one word, in a diff a
+     *    reviewer reads — not lost.
+     *
+     * IT IS A SINGLE LITERAL AND NOT A BOOLEAN, and not a default anywhere: `true` would
+     * say "no allow-list" without saying what stands in its place, and a default would
+     * turn every codex card into a waiver by silence. That is the one thing the decision
+     * ruled out — no role moves onto this by inheritance, an empty list or an omission.
+     *
+     * WHAT IT DOES NOT WAIVE: `max-turns`. Nothing outside the session enforces a step
+     * ceiling, so a card that sets one is still refused by name.
+     */
+    toolsHeldBy: z.literal("sandbox-read-only").optional(),
   }),
 ]);
 
-export const launchSchema = z.strictObject({
-  /** Session tools — passed to `--allowedTools` as is, order preserved. */
-  allowedTools: z.array(z.string().min(1)).min(1),
-  /** The ceilings of a run of THIS role; anything unsaid falls through to the package default. */
-  limits: launchLimitsSchema.optional(),
-  /** Which tool raises this role and with which parameters; unsaid — the package default tool. */
-  agent: launchAgentSchema.optional(),
-  /**
-   * WHICH ACCOUNT OF THE TOOL THIS ROLE'S RUNS SPEND (thread 055) — an ID, and the
-   * repository's half of the same join `agent.kind` makes with the binary (R14):
-   * the project says WHICH account a role works on, the machine says WHERE that
-   * account's directory is (`accounts` of the machine config).
-   *
-   * IT IS AN ID AND NOT A PATH, deliberately. A path to a credentials directory is
-   * true of one box and of no other — that is R14's line and `exec` is already on
-   * the far side of it. "Role X works on subscription A", by contrast, is a
-   * statement ABOUT THE PROJECT: it decides whose quota a role burns, and a
-   * reviewer has to be able to see it in a diff.
-   *
-   * THE SUBSCRIPTION IS NAMED IN NEITHER FILE. The id is a label (`main`,
-   * `second`); which account stands behind it is known only to whoever logged in.
-   *
-   * Unsaid — the runs of this role inherit the box's own account, which is the
-   * behaviour of every run before this field existed.
-   */
-  account: z.string().min(1).optional(),
-});
+/**
+ * THE LEVERS A CARD DECLARES AS HELD OUTSIDE THE TOOL — the machine half of the field
+ * above, kept beside the schema so the list cannot drift from the words that admit it.
+ *
+ * Exactly the two the read-only sandbox stands in for. `max-turns` is deliberately not
+ * here (nothing outside the run counts its steps), and the two quota levers cannot appear
+ * — a card does not ask for them at all (`leversAskedFor`).
+ */
+export const leversHeldOutside = (agent: LaunchAgent | undefined): readonly AgentLever[] =>
+  agent?.kind === "codex" && agent.toolsHeldBy !== undefined ? ["allowed-tools", "zone-deny"] : [];
+
+/**
+ * WHAT A ROLE WITHOUT `allowedTools` IS TOLD, and it is told BY NAME (discipline 4). One
+ * text for both halves of the door, because they are one statement: the profile is
+ * required, and the single way to omit it is to say what holds the session instead.
+ */
+export const ALLOWED_TOOLS_REQUIRED = [
+  "'launch.allowedTools' is missing, and the tool this role would be raised with HAS the lever:",
+  "a session raised without it comes up unable to write — the first production run of thread 012",
+  "lived five minutes and wrote nothing for exactly this reason, so a default here would mean",
+  "'raised with permissions nobody assigned'.",
+  "The one way to omit it is a kind with no such lever DECLARING what holds the session instead:",
+  "'launch.agent' with 'kind: \"codex\"' and 'toolsHeldBy: \"sandbox-read-only\"'",
+  "(the run is then confined by the vendor's read-only sandbox, and its zones by the sandbox and CI).",
+].join(" ");
+
+export const launchSchema = z
+  .strictObject({
+    /**
+     * Session tools — passed to `--allowedTools` as is, order preserved.
+     *
+     * OPTIONAL IN THE OBJECT AND REQUIRED BY THE CHECK BELOW (thread 026, П1-1). The
+     * requirement is CONDITIONAL ON THE KIND, not lifted: it stands wherever the tool has
+     * the lever, and it is waived only where the card says what stands in its place. A
+     * flat `.optional()` would have been the quiet version of the same edit — and the
+     * defect it reopens is measured, not imagined.
+     */
+    allowedTools: z.array(z.string().min(1)).min(1).optional(),
+    /** The ceilings of a run of THIS role; anything unsaid falls through to the package default. */
+    limits: launchLimitsSchema.optional(),
+    /** Which tool raises this role and with which parameters; unsaid — the package default tool. */
+    agent: launchAgentSchema.optional(),
+    /**
+     * WHICH ACCOUNT OF THE TOOL THIS ROLE'S RUNS SPEND (thread 055) — an ID, and the
+     * repository's half of the same join `agent.kind` makes with the binary (R14):
+     * the project says WHICH account a role works on, the machine says WHERE that
+     * account's directory is (`accounts` of the machine config).
+     *
+     * IT IS AN ID AND NOT A PATH, deliberately. A path to a credentials directory is
+     * true of one box and of no other — that is R14's line and `exec` is already on
+     * the far side of it. "Role X works on subscription A", by contrast, is a
+     * statement ABOUT THE PROJECT: it decides whose quota a role burns, and a
+     * reviewer has to be able to see it in a diff.
+     *
+     * THE SUBSCRIPTION IS NAMED IN NEITHER FILE. The id is a label (`main`,
+     * `second`); which account stands behind it is known only to whoever logged in.
+     *
+     * Unsaid — the runs of this role inherit the box's own account, which is the
+     * behaviour of every run before this field existed.
+     */
+    account: z.string().min(1).optional(),
+  })
+  .superRefine((launch, ctx) => {
+    if (launch.allowedTools !== undefined) return;
+    if (leversHeldOutside(launch.agent).includes("allowed-tools")) return;
+    ctx.addIssue({ code: "custom", path: ["allowedTools"], message: ALLOWED_TOOLS_REQUIRED });
+  });
 
 export const roleSchema = z.strictObject({
   id: roleIdSchema,

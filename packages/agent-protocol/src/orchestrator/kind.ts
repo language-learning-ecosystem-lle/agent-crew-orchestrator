@@ -34,6 +34,7 @@
  * member below points at the function that already served the live circuit, and the
  * regression test of this step is the existing suite staying green.
  */
+import { claudeCodeEffortSchema } from "../roles/schema.js";
 import { CODEX } from "./codex.js";
 import { buildLaunchArgv, DEFAULT_EXEC, DEFAULT_WORKER, type LaunchArgvInput } from "./launch.js";
 import { type QuotaSignal, quotaSignalOf, type WindowBoundary, windowBoundaryOf } from "./quota.js";
@@ -102,6 +103,19 @@ export type AgentKind = {
    * to the kind and not to two hardcoded spots in `cli.ts` (A1 of the inventory).
    */
   readonly accountEnv: string;
+  /**
+   * THE EFFORT LEVELS THIS TOOL TAKES — its own vocabulary, and the reason there is no
+   * shared one (thread 026, П2): `minimal` exists on codex and not on claude-code, `max`
+   * on claude-code and not on codex. A level outside the list is refused with the list
+   * printed; before this property the flag path compared against the literal id of the
+   * first kind and handed every other tool the string unchecked, which turned a typo into
+   * a spent lease and a vendor's error message.
+   *
+   * `undefined` MEANS "this kind takes effort but names no closed list" — the honest state
+   * for a tool whose vocabulary nobody has read. A kind with no effort lever at all says
+   * so in {@link AgentKind.cannot} instead, and that door refuses first.
+   */
+  readonly effortLevels?: readonly string[];
   /** Property 2: the argv of a run. */
   readonly buildArgv: (input: LaunchArgvInput) => string[];
   /** Properties 3-5. */
@@ -137,6 +151,9 @@ export const CLAUDE_CODE: AgentKind = {
   id: DEFAULT_WORKER,
   defaultExec: DEFAULT_EXEC,
   accountEnv: "CLAUDE_CONFIG_DIR",
+  // `--effort`'s own levels (`claude --help`), the list the schema has always guarded the
+  // config path with — now the flag path asks the kind for it instead of naming this tool.
+  effortLevels: claudeCodeEffortSchema.options,
   buildArgv: buildLaunchArgv,
   stream: {
     pipe: "stdout",
@@ -285,8 +302,25 @@ export const kindLeverRefusal = (input: {
   readonly kind: AgentKind;
   readonly role: string;
   readonly asks: readonly LeverAsk[];
+  /**
+   * THE LEVERS THE CARD DECLARES AS HELD OUTSIDE THE TOOL (thread 026, П1-2; john's
+   * decision of 2026-08-24). A pilot role on codex is confined by the vendor's read-only
+   * sandbox and by CI rather than by an allow-list, and `launch.agent.toolsHeldBy` is
+   * where that is SAID — in the config, by name, in a diff a reviewer reads
+   * (`leversHeldOutside` computes this list from the card).
+   *
+   * WHY A WAIVER MAY NOT BE A DEFAULT, and this parameter is what keeps it from becoming
+   * one: the refusal below is the only thing standing between "the role has no allow-list
+   * because somebody decided so" and "the role has no allow-list because the tool
+   * silently dropped it". Absent this list the door refuses exactly as before — a kind
+   * gaining a lever-less tool changes nothing for any card that did not say the word.
+   */
+  readonly heldOutside?: readonly AgentLever[];
 }): string | undefined => {
-  const blocked = input.asks.filter((ask) => input.kind.cannot.includes(ask.lever));
+  const heldOutside = input.heldOutside ?? [];
+  const blocked = input.asks.filter(
+    (ask) => input.kind.cannot.includes(ask.lever) && !heldOutside.includes(ask.lever),
+  );
   if (blocked.length === 0) return undefined;
   const named = blocked.map((ask) => `${ask.lever} (${ask.where})`).join("; ");
   return `role '${input.role}' would be raised as '${input.kind.id}', which has no lever for ${blocked.length === 1 ? "one thing the role asks for" : `${blocked.length} things the role asks for`}: ${named}. Raising it anyway would drop them in silence — the run would look like one that obeyed. Either raise this role as a kind that has them ('launch.agent.kind' of the role, or '--worker'), or take those fields out of the role`;
