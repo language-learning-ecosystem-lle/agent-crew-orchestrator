@@ -8,15 +8,17 @@
  * number says the config is newer. So the pair (config 19, code 18) is measured here too, in
  * the words the operator will read.
  *
- * AND THE THING THE SHAPE GUARD MISSES IS PINNED HERE RATHER THAN ASSUMED: the key paths of
- * version 19 are IDENTICAL to those of 18, which is why `shape.test.ts` stayed green while the
- * accepted set of values widened. A test asserting that equality turns a blind spot somebody
- * has to remember into a fact somebody would have to delete.
+ * WHICH HALF OF THE SHAPE GUARD DEMANDS THIS NUMBER IS PINNED HERE RATHER THAN ASSUMED: the key
+ * paths of 19 are IDENTICAL to those of 18 — the half that freezes PATHS stayed green across a
+ * change an older build refuses (this diff is what paid for thread `034`) — and the half that
+ * freezes VALUES is the one that fails without the entry. Both are asserted, because the pair is
+ * the statement: a blind spot somebody has to remember becomes a fact somebody would have to
+ * delete, and the door that covers it is named next to it.
  */
 import { describe, expect, it } from "vitest";
 
 import { planMigration } from "./migrate.js";
-import { CONFIG_SHAPES } from "./shape.js";
+import { CONFIG_SHAPES, CONFIG_VALUES } from "./shape.js";
 import type { MigrationContext } from "./step.js";
 import {
   CURRENT_PROTOCOL_VERSION,
@@ -102,10 +104,22 @@ describe("18 → 19: the card may name codex", () => {
     expect(renderVersionVerdict(verdict)).toContain("restart required");
   });
 
-  it("is the version the shape guard could NOT have demanded — the key paths did not move", () => {
+  it("is the version the PATH half of the shape guard could NOT have demanded", () => {
     // Not a curiosity: this equality is why `shape.test.ts` stayed green across a change that
-    // an older build refuses. The guard freezes key paths; a second union member with the same
+    // an older build refuses. That half freezes key paths; a second union member with the same
     // field names is invisible to it, and the ceremony here was performed by hand.
     expect(CONFIG_SHAPES[19]).toEqual(CONFIG_SHAPES[18]);
+  });
+
+  it("is the version the VALUE half DOES demand — and it demands exactly one row", () => {
+    // The other half (thread `034`) freezes the enum/const nodes of the same projection. Without
+    // an entry at 19 it fails by construction; with one, the difference against 18 has to be the
+    // single discriminator value this version exists for — nothing else rode along.
+    const before = CONFIG_VALUES[18] ?? [];
+    const after = CONFIG_VALUES[19] ?? [];
+    expect(after.filter((row) => !before.includes(row))).toEqual([
+      'roles[].launch.agent.kind = "codex"',
+    ]);
+    expect(before.filter((row) => !after.includes(row))).toEqual([]);
   });
 });

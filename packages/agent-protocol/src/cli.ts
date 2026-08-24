@@ -607,6 +607,52 @@ const flagAll = (argv: readonly string[], name: string): string[] => {
   return values;
 };
 
+/**
+ * EVERY WORD A LIST FLAG WAS GIVEN, not the first one (thread 033).
+ *
+ * `flag` reads argv[at + 1] and stops, which is right for a flag carrying ONE value and
+ * silently wrong for a flag carrying a list: `--paths a b c` handed `zones check` one
+ * path out of three, and the door then answered green about "1 path(s)" without a word
+ * about the other two. The measurement is curator's, on 396a260 — a role's FORBIDDEN
+ * path in second position came back as `exit 0`, "none under a forbidden prefix". The
+ * comma form refused the same pair by name; both forms look equally lawful to whoever
+ * types them, and the cost of the mistake is one-sided — a silent green permission on a
+ * path the role may not write. So the words are read to the next `--`, and a list flag
+ * now judges everything it was named.
+ *
+ * The raw words, unsplit: `--waiting-on` needs the empty string to stay an empty string
+ * (that is how a turn is closed), so the trimming half lives in `listFlag` and the
+ * callers that must keep an empty value take this one.
+ */
+const listWords = (argv: readonly string[], name: string): readonly string[] | undefined => {
+  const at = argv.indexOf(name);
+  if (at === -1) return undefined;
+  const words: string[] = [];
+  for (let next = at + 1; next < argv.length; next++) {
+    const word = argv[next] as string;
+    if (word.startsWith("--")) break;
+    words.push(word);
+  }
+  return words;
+};
+
+/**
+ * A LIST FLAG IN BOTH FORMS — `--x a,b` and `--x a b` name the same list, and a flag
+ * that names NOTHING is a refusal rather than an empty list: "not said" and "said and
+ * empty" are different sentences, and the second one is a typo worth reporting.
+ * Absent stays absent, so a caller can still tell "the flag was never passed" apart.
+ */
+const listFlag = (argv: readonly string[], name: string): readonly string[] | undefined => {
+  const words = listWords(argv, name);
+  if (words === undefined) return undefined;
+  const items = words
+    .flatMap((word) => word.split(","))
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+  if (items.length === 0) fail(`${name} was given nothing to name`, 2);
+  return items;
+};
+
 const required = (argv: readonly string[], name: string): string =>
   flag(argv, name) ?? fail(`${name} is not set\n${USAGE}`, 2);
 
@@ -2207,6 +2253,19 @@ const parseExpects = (raw: string): Expects => {
  * unclosed turn evaporated — accepting two and keeping one would reproduce the loss
  * inside the tool that was supposed to end it (pain 2).
  */
+/**
+ * `--waiting-on` READS ALL ITS WORDS (thread 033): the space form used to drop everything
+ * past the first, so `--waiting-on curator dev-core` quietly parked the turn on one role
+ * instead of refusing two by name below. The EMPTY value survives — `--waiting-on ""` is
+ * how a turn is closed — while the flag with nothing after it at all is a typo and says so.
+ */
+const waitingOnFlag = (argv: readonly string[]): string | undefined => {
+  const words = listWords(argv, "--waiting-on");
+  if (words === undefined) return undefined;
+  if (words.length === 0) fail("--waiting-on is given without a value", 2);
+  return words.join(",");
+};
+
 const parseWaitingOn = (raw: string, registry: RoleRegistry): string | null => {
   const trimmed = raw.trim();
   if (trimmed === "—" || trimmed === "") return null;
@@ -2743,7 +2802,7 @@ const newMessage = (argv: readonly string[]): void => {
   const messagesDir = join(threadDir, "messages");
 
   const text = readFile(required(argv, "--body-file"), "message body");
-  const waitingRaw = flag(argv, "--waiting-on");
+  const waitingRaw = waitingOnFlag(argv);
   const waitingOn = waitingRaw === undefined ? undefined : parseWaitingOn(waitingRaw, registry);
   // A RELEASE THAT LIVES ONLY IN THE PROSE IS NOT A RELEASE (thread 042): the body says
   // the header lets the turn go, the header says nothing, and the turn stays with whoever
@@ -2965,10 +3024,8 @@ const newThread = (argv: readonly string[]): void => {
 
   const from = required(argv, "--from");
   if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
-  const participants = required(argv, "--participants")
-    .split(",")
-    .map((r) => r.trim())
-    .filter((r) => r !== "");
+  const participants =
+    listFlag(argv, "--participants") ?? fail(`--participants is not set\n${USAGE}`, 2);
   for (const p of participants) {
     if (!registry.isKnown(p)) fail(`participant '${p}' is not listed in the config`, 2);
   }
@@ -2998,7 +3055,7 @@ const newThread = (argv: readonly string[]): void => {
   const title = required(argv, "--title");
   const provenance = provenanceFrom(argv, { required: true });
   const expects = parseExpects(required(argv, "--expects"));
-  const waitingRaw = flag(argv, "--waiting-on");
+  const waitingRaw = waitingOnFlag(argv);
   const waitingOn = waitingRaw === undefined ? undefined : parseWaitingOn(waitingRaw, registry);
   // The same door as `new-message`'s (thread 042). An opening message that releases the
   // turn in prose only is rarer, but the asymmetry would be the surprise: one command
@@ -4780,17 +4837,9 @@ const launchableRoles = (argv: readonly string[]): Role[] =>
     .active()
     .filter((role) => roleLaunchability(role).launchable);
 
-/** A comma-separated flag: absent stays absent, because "not said" and "empty" differ here. */
-const roleList = (argv: readonly string[], name: string): readonly string[] | undefined => {
-  const raw = flag(argv, name);
-  if (raw === undefined) return undefined;
-  const items = raw
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => item !== "");
-  if (items.length === 0) fail(`${name} was given nothing to name`, 2);
-  return items;
-};
+/** A list of roles: `listFlag` in both forms — absent stays absent, empty is a refusal. */
+const roleList = (argv: readonly string[], name: string): readonly string[] | undefined =>
+  listFlag(argv, name);
 
 /**
  * WHICH ROLES THIS RUN RAISES (R13) — the instance's, narrowed by the operator's flags.
@@ -10589,7 +10638,7 @@ const zonesCheck = (argv: readonly string[]): void => {
   }
 
   const base = flag(argv, "--base");
-  const listed = flag(argv, "--paths");
+  const listed = listFlag(argv, "--paths");
   const staged = argv.includes("--staged");
   const sources = [base !== undefined, listed !== undefined, staged].filter(Boolean).length;
   if (sources !== 1) {
@@ -10603,10 +10652,7 @@ const zonesCheck = (argv: readonly string[]): void => {
       : { kind: "range", base };
   const paths =
     source === undefined
-      ? (listed ?? "")
-          .split(",")
-          .map((entry) => entry.trim())
-          .filter((entry) => entry.length > 0)
+      ? (listed ?? [])
       : parseChangedPaths(
           gitAsk(changedPathsGitArgs({ repo, source }), gitEnvOutsideHook()) ??
             fail(`the changed paths were not read from git (${staged ? "--cached" : base})`, 2),
@@ -10814,11 +10860,7 @@ const mergeGate = (argv: readonly string[]): void => {
     return;
   }
 
-  const list = (name: string): readonly string[] =>
-    (flag(argv, name) ?? "")
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0);
+  const list = (name: string): readonly string[] => listFlag(argv, name) ?? [];
 
   const workingCards = list("--working-cards");
   const powerDocList = powerDocumentList({
