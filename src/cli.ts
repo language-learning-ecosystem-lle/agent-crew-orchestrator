@@ -4165,9 +4165,16 @@ const agentFor = (
   const effort = flag(argv, "--effort");
   if (model !== undefined) flags.model = model;
   if (effort !== undefined) flags.effort = effort;
+  // THE KIND, LOOKED UP ONCE AND HANDED TO BOTH DOORS BELOW. `undefined` here is not a
+  // failure — `--worker` has always been free-form provenance — it is "an id this
+  // package does not implement", and each door answers it in its own way: the parameter
+  // door refuses a `--model`/`--effort` it has no argv for, the lever door stays silent
+  // about a tool that has declared nothing.
+  const askedKind = kindOf(worker.value);
   const resolution = resolveAgentParams({
     flags,
     worker,
+    kind: askedKind,
     ...(role.launch === undefined ? {} : { launch: role.launch }),
     ...(directive === undefined ? {} : { directive }),
   });
@@ -4181,7 +4188,6 @@ const agentFor = (
   // been free-form provenance, and the door for an unknown id is `unknownKindRefusal` at
   // the config, not this one. Silence about a tool we know nothing about is honest;
   // silence about a tool that has declared what it cannot do is not.
-  const askedKind = kindOf(worker.value);
   if (askedKind !== undefined) {
     const turnsFlag = flagInt(argv, "--max-turns");
     const roleTurns = role.launch?.limits?.maxTurns;

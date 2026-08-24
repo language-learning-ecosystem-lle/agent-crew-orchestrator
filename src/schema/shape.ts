@@ -443,6 +443,79 @@ export const CONFIG_SHAPES: Readonly<Record<number, readonly string[]>> = {
     "roles[].zones.forbidden",
     "roles[].zones.writes",
   ],
+  /**
+   * IDENTICAL TO 18 ON PURPOSE, and the equality is the record of what this guard cannot
+   * see. Version 19 (thread `026`) widened `roles[].launch.agent` by a MEMBER — `kind:
+   * "codex"` beside `claude-code` — and the member's field names (`kind`, `model`) have
+   * stood in this table since 14, so the set of key paths did not move. An older build
+   * still refuses such a config (a strict discriminated union), which is exactly the case
+   * the number exists for; catching it is a job for a check on VALUES, which this one is
+   * not (finding of reviewer-pr on #74, homed with the guard rather than with the step).
+   */
+  19: [
+    "announcements",
+    "announcements.force-stop",
+    "identityDictionary",
+    "instances",
+    "instances[].account",
+    "instances[].id",
+    "instances[].note",
+    "instances[].roles",
+    "mail",
+    "mail.branch",
+    "mail.dir",
+    "notifications",
+    "notifications.stalledAfterMinutes",
+    "notifications.templates",
+    "notifications.templates.nudge",
+    "notifications.templates.parked",
+    "notifications.templates.stalled",
+    "notifications.templates.turn",
+    "notifications.templates.turn-with-nudge",
+    "notifications.transport",
+    "notifications.transport.module",
+    "notifications.transport.options",
+    "orchestrator",
+    "orchestrator.env",
+    "orchestrator.mailCheckout",
+    "orchestrator.ref",
+    "orchestrator.state",
+    "orchestrator.workdir",
+    "orchestrator.workdir.branch",
+    "orchestrator.workdir.worktrees",
+    "powerDocuments",
+    "protocolVersion",
+    "roles",
+    "roles[].id",
+    "roles[].instructions",
+    "roles[].instructions[].kind",
+    "roles[].instructions[].note",
+    "roles[].instructions[].path",
+    "roles[].kind",
+    "roles[].launch",
+    "roles[].launch.account",
+    "roles[].launch.agent",
+    "roles[].launch.agent.effort",
+    "roles[].launch.agent.kind",
+    "roles[].launch.agent.model",
+    "roles[].launch.allowedTools",
+    "roles[].launch.limits",
+    "roles[].launch.limits.idleSeconds",
+    "roles[].launch.limits.maxTurns",
+    "roles[].launch.limits.waitInputSeconds",
+    "roles[].launch.limits.wallClockSeconds",
+    "roles[].launch.limits.windDownSeconds",
+    "roles[].permissions",
+    "roles[].status",
+    "roles[].summary",
+    "roles[].wake",
+    "roles[].wake.mode",
+    "roles[].wake.session",
+    "roles[].wake.via",
+    "roles[].zones",
+    "roles[].zones.forbidden",
+    "roles[].zones.writes",
+  ],
 };
 
 /** What a shape that no longer matches its version asks for, in the words of the repair. */
@@ -466,11 +539,12 @@ export const SHAPE_REPAIR = [
  * the next value, not with the last one.
  *
  * (The statement of work proposed 19. It named the logic first and the number second, and on the
- * base this landed on the logic gives 18: the PR that bumps to 19 — #74, thread `026` — was
- * still open. Recording 19 here would have meant carrying the bump, its migration step and the
- * config edit inside a guard's PR. The consequence is stated out loud: once #74 rebases onto
- * this, the value `codex` it adds has no entry at 19 and THIS DOOR is what says so — the diff
- * that paid for the guard becomes the first thing the guard catches.)
+ * base this landed on the logic gave 18: the PR that bumps to 19 — #74, thread `026` — was still
+ * open. Recording 19 there would have meant carrying the bump, its migration step and the config
+ * edit inside a guard's PR. The consequence was stated out loud and then happened: merging that
+ * branch onto this one left the value `codex` without an entry at 19, and THIS DOOR is what said
+ * so, by name, before any human read the diff — the change that paid for the guard became the
+ * first thing the guard caught. Entry 19 below is the answer to that refusal.)
  */
 export const CONFIG_VALUES: Readonly<Record<number, readonly string[]>> = {
   18: [
@@ -482,6 +556,34 @@ export const CONFIG_VALUES: Readonly<Record<number, readonly string[]>> = {
     'roles[].launch.agent.effort = "medium"',
     'roles[].launch.agent.effort = "xhigh"',
     'roles[].launch.agent.kind = "claude-code"',
+    'roles[].permissions[] = "launch-params"',
+    'roles[].permissions[] = "task-declare"',
+    'roles[].permissions[] = "thread-priority"',
+    'roles[].permissions[] = "thread-status"',
+    'roles[].status = "active"',
+    'roles[].status = "paused"',
+    'roles[].status = "planned"',
+    'roles[].status = "retired"',
+    'roles[].wake.mode = "event"',
+    'roles[].wake.mode = "resident"',
+    'roles[].wake.mode = "self"',
+    'roles[].wake.mode = "via-human"',
+    'roles[].wake.mode = "watch"',
+  ],
+  // 19 — thread `026`: `launchAgentSchema` gained a second union member, `codex`. Not one new
+  // path (the member repeats the field names of the first one), one new VALUE of the
+  // discriminator — the exact class this half of the guard was written for, and the first thing
+  // it caught. Everything else is 18 verbatim.
+  19: [
+    'roles[].instructions[].kind = "external"',
+    'roles[].instructions[].kind = "in-repo"',
+    'roles[].launch.agent.effort = "high"',
+    'roles[].launch.agent.effort = "low"',
+    'roles[].launch.agent.effort = "max"',
+    'roles[].launch.agent.effort = "medium"',
+    'roles[].launch.agent.effort = "xhigh"',
+    'roles[].launch.agent.kind = "claude-code"',
+    'roles[].launch.agent.kind = "codex"',
     'roles[].permissions[] = "launch-params"',
     'roles[].permissions[] = "task-declare"',
     'roles[].permissions[] = "thread-priority"',

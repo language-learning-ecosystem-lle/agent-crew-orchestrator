@@ -34,8 +34,15 @@
  * habit and is now a check (`schema/shape.ts`): a field added at an unchanged number is
  * met by an older build as `Unrecognized key` instead of "restart required", which is how
  * a live daemon died on 2026-07-31.
+ *
+ * AND WHENEVER THE SET OF VALUES A FIELD ACCEPTS WIDENS — the same failure with a value
+ * instead of a key, and the half the check does NOT see (v19, thread `026`: a second member
+ * of the strict union `roles[].launch.agent`, whose field names were already in the frozen
+ * table since 14). An older build answers `kind: "codex"` with an invalid discriminator,
+ * which is as accurate and as useless as `Unrecognized key`; the number is what turns it
+ * into "restart what is running on it". Here the ceremony is still discipline, not a door.
  */
-export const CURRENT_PROTOCOL_VERSION = 18;
+export const CURRENT_PROTOCOL_VERSION = 19;
 
 /** The key of the config field. Kept as a constant: the loader's hint quotes it. */
 export const PROTOCOL_VERSION_FIELD = "protocolVersion";
