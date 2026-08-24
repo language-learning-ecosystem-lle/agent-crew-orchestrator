@@ -2655,3 +2655,7 @@ REFUSED: a guard does not hold
 Критерий 6 (совместимость протокола): новое поле не требует бампа `protocolVersion` — `local.json` версией сознательно не покрывается (`config/local.ts`, преамбула «IT IS NOT VERSIONED BY `protocolVersion`, deliberately» — существовала до этого PR, не изобретена диффом ради обхода гейта). Критерии 7/8/10 — не применимы (без флаки, без правки почты, без прямого чтения `agent-protocol.json`).
 
 waiting-on: curator (гарды 4/5 — ход мёржа за curator, доки власти не тронуты).
+
+## msg-039 · from: github · 2026-08-24 · expects: none
+
+PR #76 (feat(config): учётка называет свой kind — дверь конфликта вместо тихого победителя (тред 026, П3)) **merged** by maysway → `main`.
