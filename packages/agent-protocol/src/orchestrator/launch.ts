@@ -467,10 +467,16 @@ export type AccountSource = "role" | "instance";
 export type ResolvedAccount = {
   /** The id as the repository names it — a label, never the account itself. */
   readonly id: string;
-  /** The directory this box keeps it in; goes to the session as `CLAUDE_CONFIG_DIR`. */
+  /** The directory this box keeps it in; goes to the session under the account variable of its kind. */
   readonly configDir: string;
   /** Which of the two layers named it — see above for why this travels with the answer. */
   readonly source: AccountSource;
+  /**
+   * WHOSE ACCOUNT THIS BOX SAYS IT IS (`accounts.<id>.kind`, thread 026, П3), when it
+   * says anything at all. Carried rather than re-read because the four desks that
+   * dictate a repair to a human hold the resolution and not the machine config.
+   */
+  readonly kind?: string;
 };
 
 export type AccountResolution =
@@ -486,6 +492,12 @@ export const resolveAccount = (input: {
    * function is about the join, not about the topology.
    */
   readonly instanceAccount?: string;
+  /**
+   * THE TOOL THIS RUN WOULD BE RAISED AS, with the layer that said so (thread 026, П3).
+   * Optional so that every caller that had no kind to give before this argument existed
+   * behaves as it did: with nothing to compare, there is nothing to disagree about.
+   */
+  readonly worker?: ResolvedWorker;
 }): AccountResolution => {
   const named =
     input.launch?.account !== undefined
@@ -494,7 +506,8 @@ export const resolveAccount = (input: {
         ? ({ id: input.instanceAccount, source: "instance" } as const)
         : undefined;
   if (named === undefined) return { ok: true };
-  const declared = input.local?.accounts?.[named.id]?.configDir;
+  const account = input.local?.accounts?.[named.id];
+  const declared = account?.configDir;
   if (declared === undefined) {
     const who =
       named.source === "role"
@@ -505,8 +518,64 @@ export const resolveAccount = (input: {
       reason: `${who}, and this machine declares no such account — say where it lives ('accounts.${named.id}.configDir' of the machine config) or the run would silently spend the box's own`,
     };
   }
-  return { ok: true, account: { id: named.id, configDir: declared, source: named.source } };
+  if (
+    account?.kind !== undefined &&
+    input.worker !== undefined &&
+    account.kind !== input.worker.value
+  ) {
+    return {
+      ok: false,
+      reason: accountKindConflict({
+        id: named.id,
+        accountKind: account.kind,
+        configDir: declared,
+        worker: input.worker,
+      }),
+    };
+  }
+  return {
+    ok: true,
+    account: {
+      id: named.id,
+      configDir: declared,
+      source: named.source,
+      ...(account?.kind === undefined ? {} : { kind: account.kind }),
+    },
+  };
 };
+
+/** Where a `--worker`/`agent.kind` answer came from, in the words its reader would grep for. */
+const workerSaidBy: Readonly<Record<WorkerSource, string>> = {
+  flag: "'--worker' on this command",
+  role: "'launch.agent.kind' of the role's card",
+  default: "the package default, nobody having named a kind",
+};
+
+/**
+ * THE TWO HALVES OF THE JOIN DISAGREEING (thread 026, П3-2) — refused by name, and
+ * never resolved by picking one.
+ *
+ * A quiet winner here is the same failure the missing-account refusal exists against,
+ * one step further in: the run would be raised as one tool while pointed at the home
+ * directory of another. Both plausible picks are wrong in their own way — obeying the
+ * card spends a directory holding no credentials for that vendor (a run that dies on
+ * auth and reads as a dead token), obeying the machine raises a tool the project never
+ * assigned the role. Neither belongs to this package: WHICH tool raises a role is the
+ * repository's statement, WHOSE account a directory holds is the machine's, and a
+ * contradiction between two authorities is answered by naming both.
+ *
+ * THREE THINGS THE READER NEEDS, and the refusal carries exactly them: the kind the
+ * run would take AND the layer that said so (the card and the flag are two different
+ * files to open), the account with its declared kind, and the directory — which is the
+ * fact that identifies which line of `local.json` is the other side of the argument.
+ */
+export const accountKindConflict = (input: {
+  readonly id: string;
+  readonly accountKind: string;
+  readonly configDir: string;
+  readonly worker: ResolvedWorker;
+}): string =>
+  `would be raised as '${input.worker.value}' (${workerSaidBy[input.worker.source]}) on account '${input.id}', which this machine declares as '${input.accountKind}' ('accounts.${input.id}.kind', directory '${input.configDir}'). The two halves of the join disagree and this box will not pick a winner: raising it would point one tool at another's home. Either name the same kind on both sides, or send the role to an account of its own kind`;
 
 /**
  * THE DEFAULT OF THE BOX THIS IS — the R13 join, and the reason `resolveAccount` takes an

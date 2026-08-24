@@ -140,6 +140,19 @@ describe("what a human is shown", () => {
     expect(line).not.toContain("accounts");
   });
 
+  it("…and names the kind beside the directory once the box says whose account it is", () => {
+    const line = describeLocalConfig({
+      config: {
+        agents: {},
+        accounts: { pilot: { configDir: "/home/j/.codex", kind: "codex" } },
+      },
+      path: "/x/local.json",
+      found: true,
+      explicit: false,
+    });
+    expect(line).toContain("accounts pilot → /home/j/.codex (codex)");
+  });
+
   it("names the operator — a hold carries that signature, so it is shown where it comes from", () => {
     const line = describeLocalConfig({
       config: { agents: {}, operator: "john" },
@@ -300,5 +313,51 @@ describe("which instance's machine config a command is about", () => {
 
   it("'repo' is location, not policy — the machine may say where its checkout is", () => {
     expect(parseLocalConfig({ repo: "/srv/lle" }, "p").repo).toBe("/srv/lle");
+  });
+});
+
+/**
+ * WHOSE ACCOUNT A DIRECTORY HOLDS (thread 026, П3-1). The field is location in R14's
+ * sense — which vendor's credentials sit under a path on THIS disk — and its whole job
+ * is to stop four desks of the package guessing `claude-code` at an operator holding a
+ * Codex key.
+ */
+describe("the kind of an account (thread 026)", () => {
+  it("is optional — every local.json written before it stays valid to the byte", () => {
+    const parsed = parseLocalConfig(
+      { accounts: { second: { configDir: "/home/j/.claude-second" } } },
+      "/x/local.json",
+    );
+    expect(parsed.accounts?.second).toEqual({ configDir: "/home/j/.claude-second" });
+    // Silence is "nothing is claimed", NOT a default of claude-code: a default here
+    // would be this file guessing about somebody else's directory.
+    expect(parsed.accounts?.second?.kind).toBeUndefined();
+  });
+
+  it("a kind this package can raise is accepted", () => {
+    expect(
+      parseLocalConfig(
+        { accounts: { pilot: { configDir: "/home/j/.codex", kind: "codex" } } },
+        "/x/local.json",
+      ).accounts?.pilot,
+    ).toEqual({ configDir: "/home/j/.codex", kind: "codex" });
+  });
+
+  it("a tool this package cannot raise is refused BY NAME, with the vocabulary", () => {
+    // Not "unknown value": the reader needs the list of kinds that exist, the field
+    // that carries the wrong one, and the directory whose ownership is in question.
+    let message = "";
+    try {
+      parseLocalConfig(
+        { accounts: { pilot: { configDir: "/home/j/.cursor", kind: "cursor" } } },
+        "/x/local.json",
+      );
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("accounts.pilot.kind");
+    expect(message).toContain("'cursor'");
+    expect(message).toContain("claude-code");
+    expect(message).toContain("/home/j/.cursor");
   });
 });
