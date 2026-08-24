@@ -161,18 +161,21 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   // what makes the alarm actionable on a box that holds two: repairing the wrong one leaves
   // the shelf exactly where it was and reads as the alarm lying.
   //
-  // The command itself is deliberately NOT spelled here, and this is the one place among the
-  // repair sites of thread 026 where {@link AgentKind.loginHint} is not what the fix is. The
-  // alarm is keyed by an ACCOUNT — {@link AuthAlarm} carries an id, a count and two stamps,
-  // and `planNotifications` is pure, holding no config at all — so nothing at this point
-  // knows which kind that account belongs to. Spelling one vendor's command from here would
-  // be the defect the kind contract exists against, only louder: the operator of a box whose
-  // shelved account is not claude-code would be told to type a login that cannot lift it.
-  // What the line owes such a reader is the account and the standstill, which it says.
+  // THE COMMAND IS SPELLED WHEN, AND ONLY WHEN, THE BOX SAID WHOSE ACCOUNT IT IS (thread
+  // 026, П3-3). This used to be the one repair site of thread 026 where
+  // {@link AgentKind.loginHint} could not be used, and the reason was written here: the
+  // alarm is keyed by an ACCOUNT, and an account carried no kind, so nothing at this point
+  // knew which vendor's login would lift the shelf. `accounts.<id>.kind` is that missing
+  // half; with it declared the sentence names the command, and the operator of a codex box
+  // reads `codex login --with-api-key` rather than a claude command that can be typed in
+  // full and change nothing.
   //
-  // The verb still is one ("logs that account in"), and that is the open half: it belongs to
-  // the step that gives the alarm a kind, not to a rename of a string that names no command.
-  auth: "the box cannot authenticate to the vendor for {account}: {deaths} runs in a row died on its credentials since {since}. Nothing is raised for it until {until}, and nothing will be until somebody logs that account in on the box — the roles that spend it are standing still",
+  // `{repair}` IS EMPTY WHEN NOTHING IS DECLARED, and that is not a regression — it is the
+  // same line this alarm rang before the field existed. The one thing it may not do is
+  // guess: an invented login is worse than a named standstill, because it looks like an
+  // action. `planNotifications` stays pure — the caller resolves the hint and hands it in,
+  // exactly as it hands the account and the stamps.
+  auth: "the box cannot authenticate to the vendor for {account}: {deaths} runs in a row died on its credentials since {since}. Nothing is raised for it until {until}, and nothing will be until somebody logs that account in on the box{repair} — the roles that spend it are standing still",
   "gh-outage":
     "merge-ready has been refused by gh for {ticks} ticks in a row (threshold {threshold}) since {since}: {refusal}. Nothing is broken by it — the queue is ordered as it would be without the tier — but the tier is off until this is fixed",
   // NEITHER LINE ASKS FOR ANYTHING IN THE FIRST CASE AND BOTH SAY WHOSE MOVE IT IS. The
@@ -306,6 +309,13 @@ export type AuthAlarm = {
   readonly deaths: number;
   /** When the box next knocks on the door (one pair raised as the probe). */
   readonly until: string;
+  /**
+   * THE LOGIN THAT LIFTS THIS SHELF, when the box declared whose account it is
+   * (`accounts.<id>.kind`, thread 026, П3-3) — already rendered by the caller, because
+   * this module holds no config and may not learn to. Absent means the box claimed no
+   * kind for that account, and the line then says the standstill without a command.
+   */
+  readonly repair?: string | undefined;
 };
 
 /**
@@ -932,6 +942,7 @@ export const planNotifications = (input: {
         deaths: String(auth.deaths),
         since: auth.since,
         until: auth.until,
+        repair: auth.repair === undefined ? "" : ` (\`${auth.repair}\`)`,
       }),
     });
   if (gh !== undefined)

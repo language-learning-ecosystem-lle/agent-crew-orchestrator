@@ -20,6 +20,7 @@ import {
   type CircuitState,
   type OperatorFrame,
   type Parallelism,
+  renderAuth,
   renderCircuit,
   renderFrame,
   renderFreshness,
@@ -504,5 +505,35 @@ describe("renderMergeReady — the ONE section that is silent when the news is g
     const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));
     expect(at("auth:")).toBeLessThan(at("merge-ready:"));
     expect(at("merge-ready:")).toBeLessThan(at("queue:"));
+  });
+});
+
+/**
+ * THE SHELF LINE DICTATES A LOGIN, AND A LOGIN BELONGS TO A KIND (thread 026, П3-3).
+ * The account map is the box's own statement (`accounts.<id>.kind`); without it the
+ * line keeps the sentence it had, because inventing a vendor is the defect this whole
+ * contract exists against.
+ */
+describe("renderAuth — whose login lifts this shelf", () => {
+  const shelf = {
+    account: "pilot",
+    role: "dev-core",
+    deaths: 2,
+    since: "2026-08-24T07:00:00Z",
+    until: "2026-08-24T07:30:00Z",
+  };
+
+  it("the box says the account is codex → the codex login is what the operator reads", () => {
+    const line = renderAuth([shelf], { pilot: "codex" });
+    expect(line).toContain("codex login --with-api-key");
+    expect(line).not.toContain("claude login");
+  });
+
+  it("the box says nothing → the line is the one it printed before the field existed", () => {
+    expect(renderAuth([shelf])).toContain("claude login");
+  });
+
+  it("a shelved account absent from the map keeps that same answer", () => {
+    expect(renderAuth([shelf], { other: "codex" })).toContain("claude login");
   });
 });

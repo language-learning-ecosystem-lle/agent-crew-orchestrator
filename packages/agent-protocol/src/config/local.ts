@@ -68,6 +68,8 @@ import { join, resolve, sep } from "node:path";
 
 import { z } from "zod";
 
+import { AGENT_KINDS, kindOf } from "../orchestrator/kind.js";
+
 /**
  * WHAT MAY BE SAID ABOUT ONE AGENT TOOL: where its binary is. One field, because
  * exactly one hole has been demonstrated; an object rather than a bare string,
@@ -114,10 +116,37 @@ export const localSecretsSchema = z.strictObject({
 export const localAccountSchema = z.strictObject({
   /**
    * The directory the tool is to keep this account in — absolute, and passed to the
-   * session as `CLAUDE_CONFIG_DIR`. Relative would depend on the cwd of whoever
+   * session under the account variable of its kind (`CLAUDE_CONFIG_DIR` for
+   * claude-code, `CODEX_HOME` for codex). Relative would depend on the cwd of whoever
    * happened to start the daemon.
    */
   configDir: z.string().min(1),
+  /**
+   * WHOSE ACCOUNT THIS DIRECTORY HOLDS (thread 026, П3). Until this field an account
+   * was a path and nothing else, and the package had to guess the vendor at four
+   * separate desks — the login command dictated to an operator, the account variable a
+   * spawn sets, the probe `doctor` runs, the alarm `notify` rings. Every one of those
+   * guesses was `claude-code`, and every one of them is a sentence that can be typed in
+   * full and change nothing on a box holding a Codex key.
+   *
+   * IT IS LOCATION IN R14's SENSE and belongs on this side of the line: WHICH kind
+   * raises a role is policy and is stated in the repository (`launch.agent.kind`);
+   * which vendor the credentials under `~/.codex` on THIS disk happen to belong to is
+   * true of one machine and of no other. The two meet at the launch door, where a
+   * disagreement is a refusal by name and never a quiet pick.
+   *
+   * SILENCE IS "NOTHING IS CLAIMED", NOT "claude-code". No default, deliberately: a
+   * default here would be a guess about somebody else's directory, made by the file
+   * whose entire job is to stop the package guessing. Every `local.json` written before
+   * this field stays valid to the byte and every run it describes is unchanged — the
+   * doors below fall back to the behaviour they had when there was nothing to ask.
+   *
+   * A KIND THIS PACKAGE CANNOT RAISE IS REFUSED BY NAME, and the vocabulary is the one
+   * of {@link AGENT_KINDS} rather than a second list written here: two lists of tool ids
+   * would drift, and the drift would read as "this box declares an account for a tool
+   * that does not exist" only after a run had already spent the wrong one.
+   */
+  kind: z.string().min(1).optional(),
 });
 
 export const localConfigSchema = z.strictObject({
@@ -278,6 +307,18 @@ export const parseLocalConfig = (raw: unknown, path: string): LocalConfig => {
     throw new LocalConfigError(
       `'${path}': ${result.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`).join("; ")}`,
     );
+  }
+  for (const [id, account] of Object.entries(result.data.accounts ?? {})) {
+    // A TOOL NOBODY CAN RAISE IS NOT "AN UNKNOWN VALUE" (thread 026, П3) — it is a box
+    // declaring an account for a vendor this package has no argv, no probe and no login
+    // command for, and the reader of that line needs the vocabulary rather than a
+    // grammar complaint. Checked HERE and not inside the schema for the same reason the
+    // policy keys above are: the refusal names the rule, and `strictObject` names a key.
+    if (account.kind !== undefined && kindOf(account.kind) === undefined) {
+      throw new LocalConfigError(
+        `'${path}': accounts.${id}.kind is '${account.kind}', which is not a tool this package can raise — known kinds: ${AGENT_KINDS.map((kind) => kind.id).join(", ")}. This field says WHOSE account '${account.configDir}' holds, and it is read against 'launch.agent.kind' of the role at the launch door`,
+      );
+    }
   }
   return result.data;
 };
@@ -530,7 +571,16 @@ export const describeLocalConfig = (loaded: LoadedLocalConfig | ResolvedLocalCon
   const declared =
     accounts.length === 0
       ? ""
-      : `; accounts ${accounts.map(([id, account]) => `${id} → ${account.configDir}`).join(", ")}`;
+      : `; accounts ${accounts
+          .map(
+            ([id, account]) =>
+              // WHOSE ACCOUNT, WHEN THE BOX SAYS SO (thread 026, П3). Printed beside the
+              // directory and only when declared: silence here is "nothing is claimed",
+              // and printing `claude-code` for it would be this line inventing the one
+              // fact the field exists to stop being invented.
+              `${id} → ${account.configDir}${account.kind === undefined ? "" : ` (${account.kind})`}`,
+          )
+          .join(", ")}`;
   if (agents.length === 0)
     return `${named}${loaded.path} — no agents declared${secrets}${declared}${operator}`;
   return `${named}${loaded.path} — ${agents

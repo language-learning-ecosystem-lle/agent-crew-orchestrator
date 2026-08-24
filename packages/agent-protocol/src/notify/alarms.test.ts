@@ -123,6 +123,31 @@ describe("the box's own alarms", () => {
     expect(text).toContain("account 'main'");
   });
 
+  it("spells the login of the account's own kind once the box declares one (thread 026, П3-3)", () => {
+    // THE FIFTH REPAIR SITE, CONNECTED. Until `accounts.<id>.kind` existed this line
+    // could name the standstill and nothing else — an alarm keyed by an account, and an
+    // account that carried no vendor. With the box saying whose the directory is, the
+    // operator of a Codex account reads the command that lifts THIS shelf.
+    const withKind = planNotifications({
+      targets: [JOHN],
+      waiting: [],
+      seen: NOTHING,
+      auth: { ...AUTH, repair: "CODEX_HOME=/home/j/.codex codex login --with-api-key" },
+    });
+    expect(withKind.lines[0]?.text).toContain("codex login --with-api-key");
+    expect(withKind.lines[0]?.text).toContain("/home/j/.codex");
+  });
+
+  it("…and spells NO command when the box claimed no kind — a guessed login is worse than none", () => {
+    // The regression half: a claude command printed at a Codex operator can be typed in
+    // full, succeeds, and leaves the circuit exactly where it was.
+    const text = plan(NOTHING)
+      .lines.map((line) => line.text)
+      .join("\n");
+    expect(text).toContain("logs that account in on the box —");
+    expect(text).not.toContain("login");
+  });
+
   it("the box's own account is named in words, not as an empty gap", () => {
     const own = planNotifications({
       targets: [JOHN],
