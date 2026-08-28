@@ -229,7 +229,12 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # a measurement nobody took, with every guard and every test green
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
   agent-protocol index build  --root <mail> --ref <ref> [--write]
-  agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--id <NNN-slug>] [--tail <n>]
+  agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--id <NNN-slug>] [--tail <n>] [--repo <p>] [--no-fetch]
+                              # --repo/--no-fetch: accepted here as everywhere the config is read at a ref,
+                              # and left out of this line until 026. --no-fetch reads the ref WITHOUT
+                              # updating it — the shape a box with no network needs — and it WARNS that it
+                              # did not, which is the whole difference from naming a local branch instead:
+                              # a stale thread printed as a fresh one is the failure this half exists against
                               # --id: THE SAME THREAD, THE OTHER SPELLING — accepted since before the
                               # usage line was written and left out of it; named here because the door
                               # reads THIS TEXT as the list of flags (075), so an alias missing from it
@@ -652,7 +657,8 @@ The strict forms below keep every flag they had.
   agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> [--repo <p>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--journal <p>] [--root <mail>] [--force-flag <p>] [--now <iso>] [--roles <a,b>] [--exclude-roles <a,b>] [--fresh] [--write] [-d|--detach]
                               # attached by default: you watch what you raised. -d puts the supervisor in the background
                               # ceilings: the flag wins over the role's launch.limits, which wins over the package default
-                              # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the machine config
+                              # tool/model/effort: the flag wins over the role's launch.agent; the binary: the flag, then the
+                              # machine config, then the name the role's own kind declares (never one tool's binary for all)
                               # the role works in its own worktree (orchestrator.workdir.worktrees), put at the base per package
                               # --fresh: never resume the previous session, whatever the continuation policy says
                               # --wait-input: the ceiling of a DECLARED wait for input (R19); waiting does not eat the wall clock
