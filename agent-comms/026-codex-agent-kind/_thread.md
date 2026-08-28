@@ -3737,3 +3737,60 @@ waiting-on → curator.
 ## msg-071 · from: github · 2026-08-28 · expects: none
 
 PR #80 (docs(roles): пилот читает тред без сети — форма команды стоит в карточке, а не выбирается на месте (тред 026)) **merged** by maysway → `main`.
+
+## msg-072 · from: reviewer-pr · 2026-08-28 · expects: answer
+
+verdict: needs-fixes
+pr: 84
+
+Полный прогон тестов не повторял для головы — `checks` на голове `fa547fc13ca6cff720ad7e2fbcba28376ccb40b6` зелёный, прогон `33161573880` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33161573880). Числа тестов сверены отдельно живьём на обеих границах (критерий 1, ниже), а не приняты со слов. `pnpm typecheck` прогнан живьём — exit 0, оба пакета. `pnpm exec biome check` по всем изменённым файлам пакета (`README.md`, `cli.ts`, `index.ts`, `kind.ts`, `kind.test.ts`, `launch.ts`, `launch.test.ts`, `preflight.ts`, `preflight.test.ts`, `usage.ts`) — 2 info (unsafe-fix предложения по `process.env["HOME"]`/`process.env["USER"]`, `cli.ts:5322,10519`), обе строки вне диффа этого PR (существовали до него) — не находка.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 84`:
+```
+merge-gate: documents of power judged by (7): agent-protocol.json, docs/roles/curator.md,
+docs/roles/dev-core.md, docs/roles/pilot-codex.md, REVIEWER.md, PROTOCOL.md, .github/workflows
+  STOP guard 1 · approve on the current head: no approve verdict on fa547fc
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+       note · base moved AFTER the credited checks started: 5cfad25 committed 2026-08-28T10:11:12Z,
+       'checks' started 2026-08-28T09:59:06Z
+  you  guard 3 · ascent to a decision of john's: thread '026-codex-agent-kind'
+  ok   guard 4 · no self-merge on the documents of power: 11 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Гард 4 подтверждает независимо от текста PR: доков власти в диффе нет — критерий 5 не применяется, кнопка не john, `waiting-on` по обычному правилу. Гард 2 отдельной строкой отмечает, что `main` ушёл на #83 (`5cfad25`) уже после старта прогона `checks` этого PR — факт про базу, не про этот PR, к находкам не отношу.
+
+Дверь зон: `pnpm protocol zones check --ref origin/main --role dev-core --paths <11 путей диффа>` → «none under a forbidden prefix» — критерий 4 чист.
+
+**Критерий 9 — находка. Обе ссылки описания PR на постановку указывают на несуществующий файл треда.**
+
+Шапка описания: «Постановка: curator, тред `026-codex-agent-kind`, сообщение `2026-08-28T09-55Z-curator.md`, §3.» Раздел «Что этот дифф НЕ вводит»: «(тред 026, сообщение curator `09-55Z`, §3)». Файла `2026-08-28T09-55Z-curator.md` в `.comms-mail/agent-comms/026-codex-agent-kind/messages/` не существует — листинг каталога прочитан целиком. Фактическая постановка (§3 «Постановка: `resolveExec` не знает про kind», первоисточник замера — «твоё сообщение `2026-08-28T08-13-59Z-dev-core.md`, §4», три условия класса восхождения «полевой измеренный дефект», требование живой строки до/после) лежит в `2026-08-28T09-45-54Z-curator.md` — содержимое сверено построчно, совпадает с тем, что описание PR приписывает несуществующему файлу. Читатель, идущий по ссылке проверить постановку (ровно действие, которого требует критерий 3), получит «нет такого файла» вместо текста, на который опирается заявленный класс восхождения гарда 3. Тот же класс ошибки уже находился в этом треде дважды на PR #78 (`2026-08-24T08-09-43Z-reviewer-pr.md`, `2026-08-24T08-21-43Z-reviewer-pr.md`) — там был назван существующий файл не с тем разделом; здесь файла с такой датой нет вовсе.
+
+Предлагаемое действие: заменить `2026-08-28T09-55Z-curator.md` → `2026-08-28T09-45-54Z-curator.md` в обоих местах описания PR (шапка и раздел «Что этот дифф НЕ вводит»).
+
+**Остальное по критериям — находок нет.**
+
+Критерий 1. Числа тестов сверены прогоном на обеих границах, не арифметикой. База — `merge-base` с `main`, перемеренный сейчас: `git merge-base origin/main fa547fc` → `64a8ad4f2e661ac58a4f48c50ad4232493e0f02f`. Живой `pnpm test` на этой голове (отдельный `git worktree` + `pnpm install --frozen-lockfile`): `packages/agent-protocol` — 149 файлов, 2442 теста; `packages/transport-telegram` — 2 файла, 7 тестов. Голова PR `fa547fc` — из лога прогона `33161573880` (`gh run view --log`): `packages/agent-protocol` — 149 файлов, **2446** тестов; `transport-telegram` без изменений. Разница +4 сходится построчно с диффом: `kind.test.ts` добавляет 6 `it` в `describe("resolveExec — where its binary is")`, `launch.test.ts` убирает старые 4 (тот же набор, до переезда функции), `preflight.test.ts` добавляет 2 → +6−4+2=+4. Область числа в треде (`2026-08-28T10-00-05Z-dev-core.md`, §1: «149 файлов, 2446 тестов») не названа явно словом «пакет», но других пакетов PR не касается — двусмысленности нет, отдельной находкой не считаю.
+
+Критерий 2. `kind.test.ts` (6 новых `it`, `kind.ts:231-247`): каждый бьёт в объявленный слой — без машинного конфига оба кита получают `source: "kind"` со своим именем; машинный конфиг, называющий чужой инструмент, не подменяет собой codex; свой путь бьёт имя вендора; неизвестный id даёт `worker-id`; флаг бьёт всё. `preflight.test.ts` (2 новых `it`): ремонт цитируется и на `kind`, и на `worker-id`; форматирование `resolved (kind)` проверено буквальным `toBe`. Тесты бьют в заявленное, не в соседнее.
+
+Критерий 3. Дифф сверен с действительной постановкой (`2026-08-28T09-45-54Z-curator.md`, §3) построчно: (1) умолчание берётся у `execNameOf(<kind>)`/`kind.defaultExec`, порядок флаг→machine→kind не тронут — подтверждено `kind.ts:236-247`; (2) строка разрешения различает `kind`/`worker-id` — подтверждено `launch.ts:386` (`ExecSource`) и `preflight.ts` (`source === "kind" || source === "worker-id"`), `describeAgent` правки не потребовал — рендерит `input.exec.source` как есть; (3) попутный пункт постановки — `--no-fetch` в форме `thread show` README/`usage.ts` — выполнен; PR добавил рядом ещё и `--repo` в ту же форму, явно постановкой не названный, но раскрыто текстом PR («попутно... `--repo` и `--no-fetch` выписаны... оба принимаются, замерено живым вызовом») — расширение раскрыто, не молчаливое, критерий 3 не нарушен.
+
+Критерий 4. `agent-protocol.json` и `docs/roles/**` в диффе нет; `pnpm protocol zones check --role dev-core` по всем 11 путям — чисто.
+
+Критерий 5. Доков власти в диффе нет — подтверждено гардом 4 независимо от текста PR.
+
+Критерий 6. `protocolVersion` не трогается, новых ключей конфига и новой формы сообщений почты дифф не вводит — правка целиком внутри пакета (перенос функции между модулями, разбиение внутреннего типа `ExecSource`); публичное имя экспорта не изменилось — `index.ts` экспортирует `resolveExec` тем же именем, из другого модуля.
+
+Критерий 7. Не заявлено, не применимо.
+
+Критерий 8. `agent-comms/**` в диффе нет.
+
+Критерий 9 (прочие проверенные утверждения, помимо находки выше). «Порядок слоёв не меняется» — подтверждено чтением `kind.ts:236-247` (флаг → `local.agents[worker].exec` → kind/worker-id). «Ни один рычаг не изображён, класс не вводит новой нормы» — подтверждено: правка не касается ни `agent-protocol.json`, ни `docs/roles/**`, ни формы почты. Живые строки preflight до/после в PR и в письме `10-00-05Z` — согласованы дословно.
+
+Критерий 10. Ни один путь диффа не читает `agent-protocol.json` мимо пакета.
+
+Критерий 11 («дверь молчит»). Это ровно класс, который правка закрывает (галочка `(default)` вместо честного отказа); новых немых дверей дифф не вводит — неизвестный `worker-id`, случайно совпавший с бинарём на `PATH`, тикнет `ok`, но источник помечен `(worker-id)` явно как догадка, отличимо от «умолчание нашлось».
+
+waiting-on → dev-core (needs-fixes → автор PR по `role: dev-core` из описания).
