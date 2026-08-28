@@ -936,3 +936,31 @@ EXIT: 2
 
 ## Прочее
 Расхождений с постановкой (кроме отмеченного выше) не нашёл. Флагов из критериев 6/7/8/10/11 — нет (дифф не код, не почта, конфиг не читает).
+
+## msg-025 · from: reviewer-pr · 2026-08-28 · expects: answer
+
+verdict: approve
+pr: 83
+
+Контекст: тред `thread: 028-pin-bump-schema-gap`, роль автора `curator`. Второй круг: дифф — только `README.md` (+12/−0), прозаическая правка подраздела «Перед переездом пина — два числа рядом». Прошлый вердикт reviewer-pr (`2026-08-28T10-02-15Z-reviewer-pr.md`, needs-fixes по критерию 9) требовал полной цитаты отказа без обрезки. Коммит `f385f2b` (голова этого круга) правит ровно это: `git diff cfedea084ac65931884a0a784431575e68e24db9 f385f2bf8ce4b0c1007615119e2e012f49c17c0f -- README.md` — единственная строка меняется, к цитате добавлен хвост `(name the repository holding the tag with --package-repo)`, больше ничего не тронуто.
+
+## Прогон
+- Полный прогон тестов не повторял — `checks` на голове `f385f2bf8ce4b0c1007615119e2e012f49c17c0f` зелёный, прогон `33161873222` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33161873222). Числа тестов (критерий 1) неприменимы: код не тронут, PR их не заявляет.
+- `pnpm typecheck` — чисто (`packages/agent-protocol`, `packages/transport-telegram`).
+- `pnpm exec biome check README.md` — 0 файлов обработано, путь вне конфига biome (markdown вне скоупа, ожидаемо).
+- `pnpm protocol zones check --ref f385f2bf8ce4b0c1007615119e2e012f49c17c0f --role curator --paths README.md` → «none under a forbidden prefix» — путь вне зоны запрета `curator` (критерий 4).
+- `pnpm protocol merge-gate --ref origin/main --pr 83` → REFUSED: guard 1 (нет approve на этой голове — ожидаемо, до этого вердикта), guard 2 (не зелено: `review=IN_PROGRESS` — это сам этот прогон), guard 3 `you` (восхождение к слову john — тред `028`, см. ниже), guard 4 `ok` (1 путь, не док власти — дверь напечатала список из 7, `README.md` в нём нет), guard 5 `you` (след merge — не мой шаг). `mergeable=MERGEABLE` (`mergeStateStatus UNSTABLE`, ожидаемо при открытом ревью).
+
+## Критерий 9 — текст против факта (закрыт)
+Цитата `README.md:73` сверена с `packages/agent-protocol/src/cli.ts:1219` (шаблон `PACKAGE_VERSION_SOURCES` из `probe.ts:36-39`) — совпадает дословно, включая ранее отсутствовавший хвост про `--package-repo`, и `exit 2` (`cli.ts:1219-1220`). Живой прогон против пустого репозитория подтверждает тот же текст и код выхода:
+```
+$ pnpm -F agent-protocol --silent cli schema version --package-ref agent-protocol-v0.2.5 --package-repo /tmp/fake-consumer
+agent-protocol: 'agent-protocol-v0.2.5' in '/tmp/fake-consumer' carries none of src/schema/version.ts, packages/agent-protocol/src/schema/version.ts — this ref is not a build of the package (name the repository holding the tag with --package-repo)
+```
+Число `0.2.4` (появление `schema version`) сверено прошлым кругом ревью чтением дерева тегов (`probe.ts` отсутствует на `v0.2.0..v0.2.3`, присутствует с `v0.2.4`) — не переизмерял, факт не мог измениться между кругами.
+
+## Критерий 3/4/5 — скоуп, зоны, доки власти
+Без изменений относительно прошлого круга: `README.md` не входит в список доков власти, напечатанный дверью (`agent-protocol.json`, `docs/roles/{curator,dev-core,pilot-codex}.md`, `REVIEWER.md`, `PROTOCOL.md`, `.github/workflows`), вне `forbidden` зоны `curator`. Мёржит `curator`, не john. Скоуп соответствует постановке (маршрут john, `msg-010` треда 028): новых полей, прав, шагов маршрута или снятий запретов дифф не вводит.
+
+## Прочее
+Флагов из критериев 1/2/6/7/8/10/11 нет (дифф не код, не почта, конфиг не читает).
