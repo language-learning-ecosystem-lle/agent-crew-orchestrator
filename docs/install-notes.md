@@ -329,3 +329,111 @@ git pull --ff-only && pnpm install && systemctl --user restart agent-protocol@he
   — ровно тот шестичасовой разрыв, ради которого баннер и печатается;
 - **конфиг едет отдельно от кода**: `protocolVersion` в base поднимается мёржем PR, а код на
   боксе — этими тремя шагами. Пока они не сделаны, демон читает свежий конфиг старым кодом.
+
+## 9. Песочница codex не стартует на этом ядре — узкий профиль apparmor на вендорский `bwrap`
+
+**Отклонение установки:** ядро этой машины запрещает непривилегированные user namespace, а
+песочница Codex CLI (`--sandbox read-only`, единственный рычаг ограничения у этого kind'а)
+построена на них. Роль на `codex` поднимается, ходит и печатает в поток, но **не может
+выполнить ни одной команды** — и `doctor` при этом зелен, потому что его проба спрашивает
+модель, а не песочницу.
+
+### Что ЗАМЕРЕНО
+
+- **2026-08-28** (тред `026-codex-agent-kind`, сообщение `2026-08-28T17-34-42Z-curator.md`, §3):
+  живой пилот на `gpt-5.4-mini` отвечает `every cli invocation fails immediately with bwrap:
+  loopback: Failed RTM_NEWADDR: Operation not permitted`. Отказ воспроизведён **вне codex**,
+  прямым вызовом вендорского `bwrap`:
+
+  ```
+  $bwrap --unshare-net  --ro-bind / / /bin/echo ok  → bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted
+  $bwrap --unshare-user --ro-bind / / /bin/echo ok  → bwrap: setting up uid map: Permission denied
+  ```
+
+  То есть это свойство бокса, а не инструмента, и `--sandbox read-only` до инструмента доехал;
+- **2026-08-28 ~17:50Z** (эта же сессия): `Ubuntu 24.04.4 LTS` (noble),
+  `/proc/sys/kernel/apparmor_restrict_unprivileged_userns` = `1`; вендорский бинарь —
+  `…/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-resources/bwrap`, отвечает
+  `bubblewrap built for Codex` (полный путь — в блоке профиля ниже);
+- **форма профиля не изобретена, а взята с этой же машины**: Ubuntu 24.04 раздаёт ровно такой
+  профиль тем программам, которым userns нужен по построению — `/etc/apparmor.d/ch-checkns`,
+  `/etc/apparmor.d/linux-sandbox` (bazel). Блок ниже отличается от них двумя словами: именем и
+  путём.
+
+### Решение john (чат 2026-08-28 ~17:38Z, доставлено в тред `026` сообщением `2026-08-28T17-38-51Z-curator.md`)
+
+Из трёх дорог выбрана **(а) узкий профиль apparmor на путь вендорского `bwrap`**. Отклонены:
+`kernel.apparmor_restrict_unprivileged_userns=0` (снимает защиту всего бокса, не только codex'а)
+и снятие песочницы у роли (у codex'а песочница стоит вместо allow-list инструментов — её снятие
+не настройка, а выдача прав).
+
+### Заход root-рукой — один, два шага
+
+**Шаг 1. Положить профиль** (файл `/etc/apparmor.d/codex-bwrap`):
+
+```bash
+sudo tee /etc/apparmor.d/codex-bwrap >/dev/null <<'EOF'
+# This profile allows everything and only exists to give the
+# application a name instead of having the label "unconfined"
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile codex-bwrap /home/lle/.nvm/versions/node/v24.18.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-resources/bwrap flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists <local/codex-bwrap>
+}
+EOF
+```
+
+**Шаг 2. Загрузить его** (перезагрузка машины не нужна, демон не трогается):
+
+```bash
+sudo apparmor_parser -r /etc/apparmor.d/codex-bwrap
+```
+
+**Приёмка захода — тот же замер, что показал стену** (выполняется БЕЗ root, от `lle`):
+
+```bash
+BW=/home/lle/.nvm/versions/node/v24.18.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-resources/bwrap
+"$BW" --unshare-net --ro-bind / / /bin/echo ok   # ждём: ok
+```
+
+Печатает `ok` — стена снята; печатает прежний `RTM_NEWADDR` — профиль не загрузился или не
+совпал путь (см. границы ниже). Вторая проверка, что профиль виден системе:
+`sudo aa-status | grep codex-bwrap`.
+
+### Что это разрешает и чего это НЕ разрешает
+
+**Разрешает:** ровно одному файлу по названному пути создавать непривилегированные user
+namespace. Это и есть то единственное, что запрещает `apparmor_restrict_unprivileged_userns`.
+
+**НЕ разрешает и не меняет:**
+
+- **box-wide защита остаётся включённой**: `kernel.apparmor_restrict_unprivileged_userns` не
+  трогается, все прочие бинари бокса ограничены как были;
+- **прав процессу не добавляется**: `flags=(unconfined)` не даёт полномочий root'а — это
+  «apparmor не confine'ит этот файл», а не «этому файлу можно всё»; codex остаётся процессом
+  пользователя `lle` с его правами;
+- **рычаг роли остаётся живым**: `--sandbox read-only` после профиля начинает РАБОТАТЬ, а не
+  отключается. Профиль чинит исполнение песочницы, а не отменяет её.
+
+### Границы — и цена, которую надо назвать вслух
+
+- **путь лежит под `/home/lle`, то есть в каталоге, доступном пользователю на запись.** Кто
+  может переписать этот файл — получает на боксе непривилегированный userns. Обмен честно
+  такой: «userns нет ни у кого» → «userns есть у того, кто пишет в домашний каталог `lle`». На
+  этой машине это тот же пользователь, от которого и так работают все роли, но граница доверия
+  названа, а не подразумевается;
+- **путь несёт версию node и раскладку npm-пакета.** Обновление node (`v24.18.0` → другая
+  версия) или установка codex'а в другой префикс **сдвигают путь, и профиль молча перестаёт
+  совпадать**: стена вернётся и будет выглядеть как поломка codex'а. Признак — тот же
+  `RTM_NEWADDR` в докладе роли; лечение — переписать путь в профиле и повторить шаг 2;
+- **`doctor` эту стену не видит** и после профиля не увидит: его проба codex'а спрашивает
+  модель (`headless run (codex): answered in N s`), а не песочницу. Проверка готовности
+  песочницы — отдельная находка треда `026` (сообщение `2026-08-28T17-34-42Z-curator.md`, §3),
+  и она НОРМА, а не починка: новая проба меняет то, что бокс называет готовностью;
+- **этот раздел — про ЭТУ машину.** Норма пакета им не правится: на ядре без ограничения
+  userns профиль не нужен вовсе, а `PROTOCOL.md` про apparmor не знает и знать не должен.
