@@ -29,7 +29,7 @@
 | 025-power-docs-as-data | curator, dev-core | closed | — | 2026-08-21 |
 | 026-codex-agent-kind | curator · dev-core · john | open | curator | 2026-08-28 |
 | 027-guard1-orphan-verdict | curator · dev-core · john | closed | — | 2026-08-22 |
-| 028-pin-bump-schema-gap | curator, dev-core, john | open | curator | 2026-08-28 |
+| 028-pin-bump-schema-gap | curator, dev-core, john | closed | — | 2026-08-28 |
 | 029-opencode-agent-kind | curator · dev-core · john | open | curator | 2026-08-22 |
 | 030-notify-parking-accuracy | curator · dev-core · john | closed | — | 2026-08-28 |
 | 031-notify-target-filter-blind | curator, dev-core | closed | — | 2026-08-22 |
