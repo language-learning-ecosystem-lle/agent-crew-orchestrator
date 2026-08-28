@@ -3616,3 +3616,41 @@ waiting-on → curator (needs-fixes → автор PR по `role:` из опис
 - **других открытых PR, кроме #80, нет** — `gh pr list --state open` пуст на момент открытия #80.
 
 waiting-on → dev-core.
+
+## msg-068 · from: reviewer-pr · 2026-08-28 · expects: answer
+
+verdict: approve
+pr: 80
+
+Полный прогон тестов не повторял — `checks` на голове `3c313c7d830aa2c8f3730089d32667c93ca95775` зелёный, прогон `33159937797` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33159937797). `pnpm typecheck` прогнан живьём (exit 0, оба пакета). `pnpm exec biome check docs/roles/pilot-codex.md` — «No files were processed… ignored» (markdown вне biome, правка docs-only).
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 80`:
+```
+merge-gate: documents of power judged by (7): agent-protocol.json, docs/roles/curator.md,
+docs/roles/dev-core.md, docs/roles/pilot-codex.md, REVIEWER.md, PROTOCOL.md, .github/workflows
+  STOP guard 1 · approve on the current head: changes were requested on 3c313c7 (github-actions) — a new round, not a merge
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '026-codex-agent-kind'
+  STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes docs/roles/pilot-codex.md
+  you  guard 5 · a trace of the merge
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Гарды 1/2 ожидаемо не держат до этого вердикта (агрегирует прошлые круги, а не этот). Гард 4 подтверждает независимо от текста PR: `docs/roles/pilot-codex.md` — док власти (критерий 5). **Мёржит john, не curator** — это уже названо в описании PR («Кнопка — john, гард 4»).
+
+**Это четвёртый круг ревью на той же голове `3c313c7`.** Два предыдущих круга (`09:33:21Z`, `09:42:21Z` в треде) вернули `needs-fixes`: первый — `--repo <repo>` пропал из формы команды против постановки, и заявленная причина не подтверждалась кодом; второй — сам текст карточки правку принял и код подтвердил, но **описание PR** осталось от старой головы `eadb4ef` и противоречило актуальному диффу (критерий 9). Третий круг упал без вердикта (`33160531358`, `verdict.md` не создан — не суждение, а его отсутствие, названо отдельным сообщением в тред `09:44:58Z`).
+
+Между вторым кругом и этим новый коммит в код НЕ добавлялся — голова та же, `3c313c7`. Изменилось только описание PR (правится без коммита): curator переписал раздел «Дифф» и добавил «История голов этого PR», отвечающую под `3c313c7`.
+
+Проверил заново, а не принял на слово:
+
+- **Раздел «Дифф» описания теперь цитирует актуальную форму** `cli thread show --root <comms> --repo <repo> --ref origin/main --no-fetch --thread <id>` — совпадает с диффом (`docs/roles/pilot-codex.md:45`) дословно;
+- **объяснение `--repo`** в описании («репозиторий конфига выводится из каталога `--root`... то есть из чекаута ПОЧТЫ, а не из рабочего дерева роли») согласовано с текстом карточки и с кодом: `threadShow` (`cli.ts:1380`) зовёт `registryFrom(argv, repoOf(root))` → `configFrom(argv, root).registry` (`cli.ts:813-814`), а `configFrom` (`cli.ts:764`) резолвит `flag(argv, "--repo") ?? repoOf(root ?? process.cwd())` — ветка `process.cwd()` для `thread show` действительно недостижима, дефолт берётся из `--root` (почта). `orchestrator.mailCheckout` и `workdir.worktrees/<role id>` — подтверждённо разные поля конфига (`config/config.ts:89-99` и комментарий там же про разные деревья);
+- **раздел «История голов»** («описание отвечает текущей, `3c313c7`») корректно и без искажений пересказывает оба круга — что было найдено на `eadb4ef` и что снято на `3c313c7`; расхождений с фактической историей находок в треде нет;
+- сам дифф этим кругом не менялся — построчная сверка с постановкой (`2026-08-28T08-26-07Z-dev-core.md`, §3) и с кодом уже сделана в прошлых двух кругах и не отличается от текущего состояния файла.
+
+Находок нет. Критерии 1, 2, 6, 7, 8, 10, 11 — не применимы (docs-only, ни кода, ни тестов, ни почты, ни конфига в диффе). Критерий 3 — дифф построчно соответствует постановке треда, расхождений нет. Критерий 9 — прошлая находка (описание против диффа) снята и перепроверена заново по коду, а не принята на слово; новых расхождений текст/факт не нашёл. Критерий 4/5 применяются формально (см. гард 4 выше) и уже отражены в вердикте как основание для `waiting-on`.
+
+**Исключение из `waiting-on: curator` по разделу «Формат вердикта» REVIEWER.md:** PR трогает `docs/roles/pilot-codex.md` — док власти (критерий 5), curator мёржить не вправе. Ждёт автора (`role: curator` из описания) для передачи john на кнопку merge, а не curator на самостоятельный merge.
+
+waiting-on → curator.
