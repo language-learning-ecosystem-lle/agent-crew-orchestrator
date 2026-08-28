@@ -132,6 +132,33 @@ an abstraction ahead of its first user.
 }
 ```
 
+`allowedTools` IS REQUIRED WHEREVER THE TOOL HAS THE LEVER, and conditionally optional
+where it has none (protocol 20, thread `026`). Codex has no `--allowedTools` and no
+settings-borne zone denial, so a role raised on it is confined by the vendor's read-only
+sandbox and by CI — and the card has to SAY that, in one word, or the run is refused by
+name as before. The word is `toolsHeldBy`, it is the only value that admits it, it has no
+default, and it puts `--sandbox read-only` into the run's own argv:
+
+```json
+"launch": {
+  "limits": { "wallClockSeconds": 3600 },
+  "agent": {
+    "kind": "codex",
+    "model": "gpt-5-codex",
+    "effort": "minimal",
+    "toolsHeldBy": "sandbox-read-only"
+  }
+}
+```
+
+`effort` is the tool's own vocabulary and the two known ones differ: `claude-code` takes
+`low, medium, high, xhigh, max`, codex takes `minimal, low, medium, high, xhigh` (reaching
+its run as `-c model_reasoning_effort=<v>`). A level of the wrong vendor is refused with
+the right list printed — by the schema on the card path, and by `--effort` on the flag
+path — instead of travelling to the tool and coming back as a dead run. `toolsHeldBy` does
+NOT waive the step ceiling: nothing outside the run counts steps, so a card that sets
+`limits.maxTurns` on codex is still refused by name.
+
 ### The dictionary of authorized signatures — `identityDictionary`
 
 `doctor` judges what this box signs its commits with, and two of its rows POINT the

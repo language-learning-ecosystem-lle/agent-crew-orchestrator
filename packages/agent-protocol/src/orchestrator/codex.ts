@@ -189,6 +189,38 @@ export const codexRenderLine = (line: string): string[] => {
 };
 
 /**
+ * THE EFFORT LEVELS CODEX ACCEPTS (thread 026, П2; john's decision of 2026-08-24) — a
+ * closed list, and it lives HERE rather than in the schema for the reason the schema's
+ * own `claudeCodeEffortSchema` states about the other vendor: a vocabulary belongs to the
+ * tool that owns it, and this file is the one place that speaks for codex.
+ *
+ * THE SOURCE IS THE VENDOR'S CONFIG REFERENCE, read once by an agent with no network in
+ * the session (`developers.openai.com/codex/config.md`, `model_reasoning_effort`), and
+ * that provenance is stated because it is weaker than a captured run: nothing on this box
+ * has ever seen codex accept or refuse one of these strings.
+ *
+ * FIVE LEVELS, AND TWO NEIGHBOURS DELIBERATELY LEFT OUT:
+ *
+ *  - `minimal` is the one level the other vendor does not have, and `max` is the one the
+ *    other vendor has and codex does not. That asymmetry is the whole argument for two
+ *    vocabularies instead of one shared enum: `--effort max` on codex would otherwise be
+ *    a dead run with a spent lease instead of a refusal that lists what codex takes;
+ *  - `plan_mode_reasoning_effort` and its sixth value `none` are NOT in this list. That
+ *    setting governs a mode this package never raises (`codex exec` is not plan mode), so
+ *    admitting `none` would be accepting a word the run cannot honour.
+ */
+export const codexEffortSchema = z.enum(["minimal", "low", "medium", "high", "xhigh"]);
+
+/**
+ * WHAT `toolsHeldBy: "sandbox-read-only"` PUTS ON THE COMMAND LINE. The card's assertion
+ * is not a comment: the token it names is the token the run carries (thread 026, П1-3).
+ * `--sandbox read-only` is the vendor's own spelling (`exec/src/cli.rs`), already used by
+ * {@link CODEX.probeArgv} for the same reason — a process that can write is a process
+ * whose confinement is a claim rather than a fact.
+ */
+export const CODEX_READ_ONLY_ARGV: readonly string[] = ["--sandbox", "read-only"];
+
+/**
  * THE ARGV OF A CODEX RUN — and four differences from claude-code, each of which would
  * have been a silent misfire if this module did not exist (B2 of the inventory).
  *
@@ -216,6 +248,13 @@ export const codexRenderLine = (line: string): string[] => {
  * so the absences are declared in {@link CODEX_CANNOT}, and the door that reads that
  * list is what refuses a role asking for them BY NAME. This function is not that door:
  * it builds an argv and does not decide who may be raised.
+ *
+ * `--sandbox read-only` IS THE ONE PLACE WHERE A FIELD OF THE CARD BECOMES CONFINEMENT
+ * (thread 026, П1-3). A card that waives the allow-list says WHAT holds the session
+ * instead — `launch.agent.toolsHeldBy: "sandbox-read-only"` — and that assertion is only
+ * true if the run actually carries the flag. Absent the field the argv is what it was:
+ * the vendor's own default mode, and a role that asked for the levers is refused at the
+ * door before it ever reaches this function.
  */
 export const buildCodexArgv = (input: LaunchArgvInput): string[] => [
   "exec",
@@ -224,6 +263,9 @@ export const buildCodexArgv = (input: LaunchArgvInput): string[] => [
   ...(input.resume === undefined ? [] : ["resume", input.resume]),
   "--json",
   "--skip-git-repo-check",
+  ...(input.launch.agent?.kind === CODEX_WORKER && input.launch.agent.toolsHeldBy !== undefined
+    ? CODEX_READ_ONLY_ARGV
+    : []),
   ...(input.params?.model === undefined ? [] : ["-m", input.params.model.value]),
   ...(input.params?.effort === undefined
     ? []
@@ -275,6 +317,10 @@ export const CODEX: AgentKind = {
   // is the whole reason it is a property of the kind (B5: `$CODEX_HOME/auth.json`, and
   // `--ignore-user-config` still reads auth from it — `exec/src/cli.rs:39-41`).
   accountEnv: "CODEX_HOME",
+  // THE LEVELS ARE THE TOOL'S, SO THE DOOR ASKS THE TOOL (thread 026, П2-2). Before this
+  // the flag path compared against the literal `claude-code` and passed anything else
+  // through to the vendor — true, and a lease spent to learn it.
+  effortLevels: codexEffortSchema.options,
   buildArgv: buildCodexArgv,
   stream: {
     // stdout carries the JSONL; the human-readable progress goes to stderr

@@ -685,24 +685,26 @@ export const resolveAgentParams = (input: {
       reason: `--effort was given, but the run is being raised as '${worker}' (${input.worker.source}), which has no lever for effort — passing it would drop it in silence`,
     };
   }
-  // THE VOCABULARY IS THE VENDOR'S, AND THE PACKAGE KNOWS EXACTLY ONE OF THEM. For
-  // `claude-code` the levels are `--effort`'s own and this door has always guarded the
-  // flag path (the config path is guarded by the schema). For codex the levels are an
-  // OPEN QUESTION of thread 026 — what its vocabulary is, and whether the package
-  // validates it or hands the string to the tool that owns it, is a decision about the
-  // form of the config, not a reading. Until that is answered the string is passed as
-  // typed: the refusal then comes from the vendor that has the list, which is a worse
-  // error message and a true one. It is deliberately NOT the config path — a card
-  // cannot name `effort` on codex at all (`launchAgentSchema`), so what passes through
-  // here is a flag somebody can retype.
+  // THE VOCABULARY IS THE VENDOR'S, AND THE PACKAGE NOW KNOWS TWO OF THEM — so the door
+  // asks the KIND for its levels instead of naming one tool (thread 026, П2-2). The
+  // literal comparison against `claude-code` that stood here was written when there was
+  // one vocabulary, and it had a price: `--effort max` on codex — a level of the OTHER
+  // vendor — passed through unchecked and became a dead run with a spent lease, whose
+  // error message came from a tool the operator was not reading. The list is printed, so
+  // the refusal is also the answer.
+  //
+  // A kind that names NO list still passes the string through, and that is the same
+  // honest state as before: the vendor with the list gives the worse message and the true
+  // one. The config path stays guarded by the schema, which now carries both vocabularies.
+  const levels = input.kind?.effortLevels;
   if (
-    worker === DEFAULT_WORKER &&
     input.flags.effort !== undefined &&
-    !claudeCodeEffortSchema.safeParse(input.flags.effort).success
+    levels !== undefined &&
+    !levels.includes(input.flags.effort)
   ) {
     return {
       ok: false,
-      reason: `--effort '${input.flags.effort}' — allowed levels are ${claudeCodeEffortSchema.options.join(", ")}`,
+      reason: `--effort '${input.flags.effort}' — allowed levels of '${worker}' are ${levels.join(", ")}`,
     };
   }
 
@@ -920,6 +922,17 @@ export type LaunchArgvInput = {
  * supervisor: every flag below is a claim about ONE vendor (thread 026, step 2).
  */
 export const buildLaunchArgv = (input: LaunchArgvInput): string[] => {
+  // THE WAIVER OF П1 IS NOT THIS TOOL'S TO TAKE. `launch.allowedTools` became optional in
+  // the schema for kinds that have no such lever (thread 026, П1-1); claude-code has one,
+  // and the doors above (the schema's own check, and the refusal of a card written for
+  // another tool) are what keep an empty profile from arriving here. If one ever does, it
+  // stops here loudly: passing no `--allowedTools` would raise the session that lives five
+  // minutes and writes nothing, which is the defect this argv was pinned against.
+  if (input.launch.allowedTools === undefined) {
+    throw new Error(
+      "a 'claude-code' run was assembled from a launch profile with no 'launch.allowedTools' — the waiver of thread 026 belongs to a kind with no such lever, and this tool has one; the run is refused rather than raised unable to write",
+    );
+  }
   const settings = denySettings(input.denyRules ?? []);
   return [
     ...(input.resume === undefined ? [] : ["--resume", input.resume]),
@@ -947,8 +960,19 @@ export const describeLaunch = (role: Role): string => {
       ? `${role.id}: no launch profile`
       : `${role.id}: not launched by the circuit (${why.reason})`;
   }
-  return `${role.id}: ${profile.allowedTools.join(", ")}`;
+  // A PROFILE WITHOUT AN ALLOW-LIST SAYS SO, AND SAYS WHAT HOLDS IT INSTEAD (thread 026,
+  // П1-2): a blank where the tools go would read as "no tools", which is the opposite of
+  // what the card declares.
+  return profile.allowedTools === undefined
+    ? `${role.id}: no tool allow-list — held by ${leversHeldOutsideOf(profile)}`
+    : `${role.id}: ${profile.allowedTools.join(", ")}`;
 };
+
+/** The words of the waiver for a display: what the card named, or the honest blank. */
+const leversHeldOutsideOf = (profile: Launch): string =>
+  profile.agent?.kind === "codex" && profile.agent.toolsHeldBy !== undefined
+    ? profile.agent.toolsHeldBy
+    : "nothing this config names";
 
 export type InstructionDoc = { readonly path: string; readonly text: string };
 

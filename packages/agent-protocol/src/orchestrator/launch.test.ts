@@ -1090,6 +1090,7 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       const argv = CODEX.buildArgv({
         prompt: "do the thing",
         params: resolved.params,
+        launch: { allowedTools: ["Bash"] },
       } as unknown as Parameters<typeof CODEX.buildArgv>[0]);
       expect(argv).toContain("-m");
       expect(argv).toContain("gpt-5-codex");

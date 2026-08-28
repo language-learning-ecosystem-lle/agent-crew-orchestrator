@@ -445,7 +445,12 @@ import {
 } from "./orchestrator/workspace.js";
 import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
-import { claudeCodeEffortSchema, type Launch, type Role } from "./roles/schema.js";
+import {
+  claudeCodeEffortSchema,
+  type Launch,
+  leversHeldOutside,
+  type Role,
+} from "./roles/schema.js";
 import { renderWake } from "./roles/wake.js";
 import {
   type ChangedPathsSource,
@@ -4194,8 +4199,15 @@ const agentFor = (
     const refusal = kindLeverRefusal({
       kind: askedKind,
       role: role.id,
+      // WHAT THE CARD DECLARES AS HELD OUTSIDE THE TOOL (thread 026, П1-2). Read off the
+      // role's own `launch.agent`, not off the resolved worker: the waiver is a statement
+      // of the project about THIS role, and a `--worker` that contradicts the card is
+      // already refused by the parameter door above.
+      heldOutside: leversHeldOutside(role.launch?.agent),
       asks: leversAskedFor({
-        ...(role.launch === undefined ? {} : { allowedTools: role.launch.allowedTools }),
+        ...(role.launch?.allowedTools === undefined
+          ? {}
+          : { allowedTools: role.launch.allowedTools }),
         denyRules: zoneDenyRules(role),
         ...(turnsFlag !== undefined
           ? { maxTurns: { value: turnsFlag, source: "flag" } }
