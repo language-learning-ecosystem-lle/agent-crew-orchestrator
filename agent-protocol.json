@@ -82,7 +82,8 @@
           "maxTurns": 300
         },
         "agent": {
-          "kind": "claude-code"
+          "kind": "claude-code",
+          "model": "claude-opus-5[1m]"
         },
         "account": "lle-main"
       }
@@ -114,7 +115,8 @@
           "maxTurns": 300
         },
         "agent": {
-          "kind": "claude-code"
+          "kind": "claude-code",
+          "model": "claude-opus-5[1m]"
         },
         "account": "lle-second"
       }
