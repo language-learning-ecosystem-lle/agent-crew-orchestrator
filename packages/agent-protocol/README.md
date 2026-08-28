@@ -820,6 +820,28 @@ text lies in the repository but is EXECUTED outside (a skill on the chat side) �
 the only place where there is no machine guarantee, and we do not promise one. A
 file that is declared but missing at this ref fails `config check`.
 
+**The pair «model × effort», not the level alone (thread `041`).** A `launch.agent` of
+kind `codex` naming both a `model` and an `effort` is checked against the vendor's own
+model list — `$CODEX_HOME/models_cache.json`, default `~/.codex/models_cache.json`,
+written by the vendor's CLI and carrying `supported_reasoning_levels` per model. The
+vocabulary enum can only ask "is this a word codex ever accepts"; `max` is such a word and
+`gpt-5.4-mini` does not carry it, so without this check the config passes and the session
+dies at the vendor with the lease already spent. Three states, told apart on purpose:
+
+- **the list is there and names the model** — a level it does not carry is a REFUSAL by
+  name (exit `1`), printing both halves of the pair, the levels that model does carry, and
+  the source with its `client_version` and `fetched_at`;
+- **the list is there and does not name the model** — `NOT JUDGED`, on stderr, exit
+  unchanged: a cache can be stale and the catalogue changes without us;
+- **there is no readable list** (a CI runner has never run the vendor's CLI) — `NOT
+  CHECKED`, on stderr, naming the path that was looked at, exit unchanged. Neither a
+  silent pass nor a refusal "just in case".
+
+A card naming only one half of the pair is passed over in silence: the unsaid half is the
+vendor's own default and there is no pair to judge. **`claude-code` is not checked this
+way** — measured, not assumed: no per-model level list exists on the box for that tool, so
+the door is one-sided until one does.
+
 Exit codes: `0` — it all matched, `1` — a divergence (listed line by line), `2` —
 the file was not read, is not JSON, or the config is invalid. Every refusal is
 loud: the lesson of the P0 spike — a command that silently depends on the

@@ -146,6 +146,12 @@ import {
   renderCodeVintage,
 } from "./orchestrator/code-age.js";
 import {
+  type CodexCatalogue,
+  codexCataloguePaths,
+  codexPairFindings,
+  readCodexCatalogue,
+} from "./orchestrator/codex-models.js";
+import {
   type Continuation,
   describeContinuation,
   type OwnMessage,
@@ -1177,6 +1183,17 @@ const mailLockFor = (input: {
  * would mean a rule added to one door and not the other — which is the same drift the
  * package refuses everywhere else.
  */
+/**
+ * THE VENDOR'S MODEL LIST AS THIS PROCESS CAN SEE IT (thread `041-model-effort-pair`).
+ * The one place in the package that touches that file: everything downstream of it takes
+ * the catalogue as an argument, so the judgement is a pure function of a list and a card.
+ */
+const codexCatalogueHere = (): CodexCatalogue =>
+  readCodexCatalogue({
+    paths: codexCataloguePaths({ codexHome: process.env.CODEX_HOME, homeDir: homedir() }),
+    read: (path) => (existsSync(path) ? readFileSync(path, "utf8") : undefined),
+  });
+
 const configIssues = (
   // NOT 'ReturnType<typeof loadProtocolConfig>': the loader is about to be OVERLOADED by
   // intent (#134, 'data' | 'policy'), and 'ReturnType' resolves to the LAST signature —
@@ -1184,6 +1201,9 @@ const configIssues = (
   // Naming the type the door actually returns is what keeps this reader honest.
   loaded: import("./config/load.js").LoadedConfig,
   repo: string,
+  // The vendor's list, passed IN rather than read here so that the caller that also has to
+  // print the non-fatal half of the same judgement reads the file once (thread 041).
+  catalogue: CodexCatalogue = codexCatalogueHere(),
 ): readonly string[] => {
   // The declared instructions are checked AT THE SAME ref as the config: checking
   // for the file on disk would mean looking at a different version of the tree.
@@ -1214,13 +1234,32 @@ const configIssues = (
     isKnownRole: (id) => loaded.registry.isKnown(id),
   });
 
-  return [...missing, ...ownership];
+  // R15 + thread 041: a card asking its model for a level THAT MODEL does not carry is a
+  // config that passes the vocabulary and buys a dead run. Only the half backed by the
+  // vendor's own list is fatal here; the two "not judged" states are printed by
+  // `config check` beside its verdict and change no exit code.
+  const pairs = codexPairFindings({ roles: loaded.config.roles, catalogue })
+    .filter((finding) => finding.fatal)
+    .map((finding) => finding.line);
+
+  return [...missing, ...ownership, ...pairs];
 };
 
 const configCheck = (argv: readonly string[]): void => {
   const loaded = configFrom(argv, undefined);
   const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
-  const issues = configIssues(loaded, repo);
+  const catalogue = codexCatalogueHere();
+  const issues = configIssues(loaded, repo, catalogue);
+
+  // THE HALF THAT IS NOT A VERDICT, AND WHY IT IS PRINTED AT ALL (thread 041). "The pair
+  // is wrong" and "there is no list to judge it against" are different facts, and the
+  // second one pretending to be either of the others is the defect: a silent pass hides a
+  // dead run, a refusal turns every runner red over a file CI has no reason to carry. So
+  // it is said, on stderr, before the verdict — and the exit code stays the verdict's.
+  for (const finding of codexPairFindings({ roles: loaded.config.roles, catalogue })) {
+    if (!finding.fatal) err(`agent-protocol: ${finding.line}`);
+  }
+
   if (issues.length === 0) {
     const instances = loaded.config.instances ?? [];
     const topology =
