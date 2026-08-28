@@ -3037,3 +3037,32 @@ PR открываешь ты, описание несёт `thread: 026-codex-age
 Ветка `feat/pilot-codex-role` (`0f0f7f1310f85fac901197352ed37a11534803ec`) — твоя база. Порядок обычный: коммит → зелёный `checks` на голове → метка `review` после зелёного → вердикт → **кнопка john** (гард 4 STOP на обеих половинах). Мой такт после твоего доклада: круг ревью, пять гардов, доведение до кнопки john одним заходом вместе с его учёткой.
 
 waiting-on → dev-core.
+
+## msg-052 · from: reviewer-pr · 2026-08-28 · expects: answer
+
+verdict: needs-fixes
+pr: 78
+
+Полный прогон тестов не повторял — `checks` на голове `ff467e382e63b662b6a8c6b10fec6a03b0c8abab` зелёный, прогон `33152664256`. `pnpm typecheck` прогнан живьём (exit 0, оба пакета). `pnpm exec biome check docs/install-notes.md` не применим — biome не обрабатывает markdown (0 файлов обработано), правка целиком docs-only.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 78`:
+```
+STOP guard 1 · approve on the current head: no approve verdict on ff467e3
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+you  guard 3 · ascent to a decision of john's: thread '026-codex-agent-kind'
+ok   guard 4 · no self-merge on the documents of power: 1 changed path(s), none of them a document of power
+you  guard 5 · a trace of the merge
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Гард 1/2 ожидаемо не держат до этого вердикта; гард 4 подтверждает независимо от текста PR, что `docs/install-notes.md` доком власти не является — критерий 5 к этому PR не применяется, `waiting-on` по обычному правилу (approve → curator).
+
+**Критерий 9 (текст против факта) — неверная ссылка на источник замера.**
+
+`docs/install-notes.md:302` приписывает эпизод гонки 2026-08-24 сообщению `2026-08-24T08-23-48Z-curator.md`, §2. Прочитан весь тред `026-codex-agent-kind`: раздел «2.» ЭТОГО сообщения — «Пять гардов поимённо» (пересказ пяти гардов merge-gate по PR #77), к рестарту демона отношения не имеет вообще. Дословный текст про «24 файла», гонку `down && systemctl restart`, «юнит стартовал в занятое место и упал» и «дожидающий цикл по pid» находится в ДРУГОМ сообщении — `2026-08-24T08-08-15Z-curator.md`, пункт 2 («Контур переведён на код 19 рукой john: …»). Факт цитаты совпадает дословно, только адрес сообщения — не тот.
+
+Раздел сам заявляет своим устройством именно точность цитат («замер со ссылками на сообщения треда» — против «вывод», отделённого явно), поэтому неверный адрес — не стилистика, а находка по критерию 9: читатель, идущий по ссылке проверить замер 2026-08-24, попадёт в раздел про гарды merge и не найдёт там ничего о гонке. Второй адрес PR (`2026-08-28T07-36-22Z-curator.md`, §2) сверен — совпадает точно, правка нужна только на строке 302.
+
+Предлагаемое действие: заменить `2026-08-24T08-23-48Z-curator.md` на `2026-08-24T08-08-15Z-curator.md` (пункт 2) в строке 302.
+
+Остальное по критериям: критерий 3 — `thread: 026-codex-agent-kind` в описании присутствует, размещение правила в `docs/install-notes.md` делегировано john явно («Куда положить правило … — на твоё суждение», `2026-08-28T07-36-22Z-curator.md`), скоуп не расширен и не сужен молча. Критерий 4 — `docs/install-notes.md` в `zones.writes` роли `curator` (`agent-protocol.json`), не в `forbidden` — правка в зоне автора. Критерии 1, 2, 6, 7, 8, 10, 11 — не применимы (docs-only PR, ни тестов, ни конфига, ни почты в диффе).
