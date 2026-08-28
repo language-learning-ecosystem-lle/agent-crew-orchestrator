@@ -91,10 +91,36 @@ describe("agentBinaryVerdict", () => {
     const verdict = agentBinaryVerdict({
       worker: "claude-code",
       exec: "claude",
-      source: "default",
+      source: "kind",
       resolved: null,
     });
     expect(verdict.detail).toContain("agents['claude-code'].exec");
+  });
+
+  it("…and it points there for a GUESSED name too (thread 026)", () => {
+    // `worker-id` is the other layer where nobody named a path: an id this package does
+    // not implement, looked up as a bare word. The dead end is the same one, so the
+    // repair must be quoted there as well.
+    const verdict = agentBinaryVerdict({
+      worker: "cursor",
+      exec: "cursor",
+      source: "worker-id",
+      resolved: null,
+    });
+    expect(verdict.detail).toContain("agents['cursor'].exec");
+  });
+
+  it("the layer is printed as the KIND, not as a nameless default (thread 026)", () => {
+    // The live defect this wording answers: `✓ agent: binary (codex): …/claude
+    // (default)` said neither whose binary that was nor who chose it.
+    expect(
+      agentBinaryVerdict({
+        worker: "codex",
+        exec: "codex",
+        source: "kind",
+        resolved: "/usr/local/bin/codex",
+      }).detail,
+    ).toBe("/usr/local/bin/codex (kind)");
   });
 });
 

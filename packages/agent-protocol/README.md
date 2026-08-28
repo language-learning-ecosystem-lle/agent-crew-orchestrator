@@ -362,9 +362,15 @@ nothing anywhere said so.
   with the rule quoted — a box quietly running with ceilings nobody reviewed is
   precisely what keeping the config in `main` was meant to prevent.
 - **Absence is legitimate.** A machine with the agent on `PATH` says nothing and is
-  right to; the binary then falls through to the bare name. A file the operator NAMED
-  and that cannot be read IS an error — answering an explicit `--local-config` with a
-  silent fallback is how a run ends up using settings nobody chose.
+  right to; the binary then falls through to the bare name — **the name THAT KIND
+  declares, and the line says whose it is** (`… (kind)`; for a `kind` this package does
+  not implement, the worker id used as a guess: `… (worker-id)`). Until thread 026 the
+  last layer was one constant, `claude`, for every tool: a role declaring `kind: codex`
+  on a box that declares no codex path was raised by the claude binary, and preflight
+  printed it as a tick — `✓ agent: binary (codex): …/claude (default)`. A file the
+  operator NAMED and that cannot be read IS an error — answering an explicit
+  `--local-config` with a silent fallback is how a run ends up using settings nobody
+  chose.
 - **It is not versioned by `protocolVersion`.** That number covers data that TRAVELS,
   where two parties can disagree about what they are reading. This file travels
   nowhere: one box, one writer, a human, outside git. What is left of the version's job
@@ -1342,10 +1348,14 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # count, every shape of a delivery is written by a run, and a closed thread
                             # gets no runs — measured 2026-08-19, two accepted threads standing in the
                             # line as `2 exhausted` with advice to raise `--max-attempts` on them
-agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>]
+agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
                                                                            # _thread.md, which lags a push behind
+                                                                           # --no-fetch: read the ref WITHOUT updating it —
+                                                                           # for a box with no network, and it says so out
+                                                                           # loud ("'<ref>' was not updated") rather than
+                                                                           # printing a stale thread as a fresh one
 agent-protocol thread status --root <comms> --ref <ref> --thread <id> --from <role> \
                             --status open|closed [--write]
                             # THE DOOR OF THE PERMISSION `thread-status` (065.1): closing a thread is an
@@ -2872,7 +2882,12 @@ not forget" item.
   up in the PATH of the **child** process, not of our own. Since R14 the line names
   the TOOL and the layer that gave the path, and a binary nobody named at all is
   refused with the repair quoted (`agents['claude-code'].exec` in the machine
-  config) instead of a bare "not found". **The binaries of EVERY launchable role are
+  config) instead of a bare "not found". Since thread 026 that layer is named
+  precisely — `kind` (the name the tool's own kind declares) or `worker-id` (a guess
+  from an id this package does not implement) rather than one nameless `default`, and
+  the row is about the RIGHT binary: a box with no `codex` installed now reads
+  `✗ agent: binary (codex): 'codex' (kind) not found …` instead of a tick on the
+  claude binary. **The binaries of EVERY launchable role are
   probed**, not one of them: the daemon raises several roles and they may name
   different tools, so probing whichever happened to be first would answer a question
   nobody asked.

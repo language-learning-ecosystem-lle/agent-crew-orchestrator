@@ -9,7 +9,6 @@ import {
   buildLaunchPrompt,
   buildResumePrompt,
   consecutiveLaunchesWithoutDelivery,
-  DEFAULT_EXEC,
   DEFAULT_WORKER,
   defaultWindDownSeconds,
   describeAgent,
@@ -22,7 +21,6 @@ import {
   resolveAccount,
   resolveAgentParams,
   resolveCeilings,
-  resolveExec,
   resolveGates,
   resolveWorker,
   roleLaunchability,
@@ -735,37 +733,8 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
     });
   });
 
-  describe("resolveExec — where its binary is", () => {
-    const local = { agents: { "claude-code": { exec: "/home/j/.nvm/bin/claude" } } };
-
-    it("no machine config → the bare name, found on PATH", () => {
-      expect(resolveExec({ worker: "claude-code" })).toEqual({
-        value: DEFAULT_EXEC,
-        source: "default",
-      });
-    });
-
-    it("the machine config answers for the tool it names", () => {
-      expect(resolveExec({ worker: "claude-code", local })).toEqual({
-        value: "/home/j/.nvm/bin/claude",
-        source: "machine",
-      });
-    });
-
-    it("…and only for that tool: another tool falls through, it does not inherit", () => {
-      // The map is keyed on the tool for a reason. Handing `cursor` the path to
-      // `claude` because it happened to be the only entry would be the silent wrong
-      // start this whole layer exists to prevent.
-      expect(resolveExec({ worker: "cursor", local }).source).toBe("default");
-    });
-
-    it("the flag beats the machine — checks aim at a stub, acceptance at the real binary", () => {
-      expect(resolveExec({ flag: "/tmp/stub.sh", worker: "claude-code", local })).toEqual({
-        value: "/tmp/stub.sh",
-        source: "flag",
-      });
-    });
-  });
+  // `resolveExec` — the second resolution of R14 — moved to `kind.ts` in thread 026
+  // (its last layer is the kind's own `defaultExec`), and so did its tests.
 
   describe("resolveAccount — whose quota the run spends (thread 055)", () => {
     const local = {

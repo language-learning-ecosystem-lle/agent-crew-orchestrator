@@ -34,9 +34,16 @@
  * member below points at the function that already served the live circuit, and the
  * regression test of this step is the existing suite staying green.
  */
+import type { LocalConfig } from "../config/local.js";
 import { claudeCodeEffortSchema } from "../roles/schema.js";
 import { CODEX } from "./codex.js";
-import { buildLaunchArgv, DEFAULT_EXEC, DEFAULT_WORKER, type LaunchArgvInput } from "./launch.js";
+import {
+  buildLaunchArgv,
+  DEFAULT_EXEC,
+  DEFAULT_WORKER,
+  type LaunchArgvInput,
+  type ResolvedExec,
+} from "./launch.js";
 import { type QuotaSignal, quotaSignalOf, type WindowBoundary, windowBoundaryOf } from "./quota.js";
 import {
   isAssistantStep,
@@ -203,6 +210,42 @@ export const kindOf = (id: string): AgentKind | undefined =>
  * failure.
  */
 export const execNameOf = (id: string): string => kindOf(id)?.defaultExec ?? id;
+
+/**
+ * WHERE A TOOL'S BINARY IS — the second resolution of R14, and the one this module
+ * owns because its last step is a property of the KIND. The machine layer sits BETWEEN
+ * the flag and that name and nowhere else: the repository is not consulted at all, since
+ * a path in a committed file would be a lie on every other machine.
+ *
+ * THE LAST STEP USED TO BE A CONSTANT, AND THE CONSTANT NAMED ONE VENDOR (thread 026,
+ * measured 2026-08-28). `DEFAULT_EXEC` is the binary of claude-code; handing it to every
+ * tool meant a role declaring `kind: codex` on a box whose machine config says nothing
+ * about codex was raised by the CLAUDE binary — and the door that exists to catch exactly
+ * this printed a tick: `✓ agent: binary (codex): …/claude (default)`. The order of the
+ * layers does not change here; only what closes the last one, and that it now says WHOSE
+ * name it is.
+ *
+ * The declared path still wins over the kind: a machine that keeps codex somewhere no
+ * `PATH` reaches is answering a question the vendor cannot.
+ */
+export const resolveExec = (input: {
+  readonly flag?: string;
+  readonly worker: string;
+  readonly local?: LocalConfig;
+}): ResolvedExec => {
+  if (input.flag !== undefined) return { value: input.flag, source: "flag" };
+  const declared = input.local?.agents[input.worker]?.exec;
+  if (declared !== undefined) return { value: declared, source: "machine" };
+  // A GUESS IS SAID TO BE ONE. For a kind this package implements the name is the
+  // vendor's, declared above; for anything else it is the worker id used as a name —
+  // still the best guess there is, and still cheap to be wrong about (a miss is a row
+  // asking for `--exec`), but a reader chasing a wrong binary must not have to guess
+  // which of the two they are looking at.
+  const kind = kindOf(input.worker);
+  return kind === undefined
+    ? { value: input.worker, source: "worker-id" }
+    : { value: kind.defaultExec, source: "kind" };
+};
 
 /**
  * A KIND THIS PACKAGE DOES NOT IMPLEMENT, REFUSED BY NAME (discipline 4). The refusal

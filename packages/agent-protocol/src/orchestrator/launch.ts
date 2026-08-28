@@ -370,8 +370,20 @@ export const describeGates = (gates: ResolvedGates): string =>
  * nobody did.
  */
 export type WorkerSource = "flag" | "role" | "default";
-/** Where the binary path came from. `machine` is the R14 layer — the only one of the three. */
-export type ExecSource = "flag" | "machine" | "default";
+/**
+ * Where the binary path came from. `machine` is the R14 layer — the only one of the
+ * four that is a path rather than a name.
+ *
+ * THERE IS NO `default` HERE, AND THAT IS THE POINT (thread 026). A package-wide
+ * default named ONE vendor (`claude`), so a role declaring `kind: codex` on a box whose
+ * machine config says nothing about codex was raised by the claude binary, and
+ * preflight printed it as a TICK: `✓ agent: binary (codex): …/claude (default)`. The
+ * last layer is now the KIND's own declaration, and the two answers it can give are
+ * told apart by name, because they are different facts to a reader chasing a wrong
+ * binary: `kind` — this package implements the tool and this is the name it declares;
+ * `worker-id` — it does not, so the worker id itself is the guess being looked up.
+ */
+export type ExecSource = "flag" | "machine" | "kind" | "worker-id";
 /**
  * The layers a launch parameter can come from, in the order they win (R21 adds the
  * middle one). `thread` is a directive from the feed of the thread this run is bound
@@ -391,9 +403,13 @@ export type ResolvedWorker = Resolved<string, WorkerSource>;
 export type ResolvedExec = Resolved<string, ExecSource>;
 
 /**
- * The binary when nobody said anything: the bare name, found on the child's `PATH`.
- * A machine that has the agent installed normally needs no config at all — which is
- * what keeps the machine file honest as an ANSWER to a problem rather than a tax.
+ * THE BINARY OF `claude-code`, and of that kind only — it is what `CLAUDE_CODE.defaultExec`
+ * is built from, not a fallback for tools that named nothing (thread 026: it was both, and
+ * being both is how a codex role got spawned as claude).
+ *
+ * A machine that has the agent installed normally still needs no config at all: a bare
+ * name is found on the child's `PATH`, which is what keeps the machine file honest as an
+ * ANSWER to a problem rather than a tax.
  */
 export const DEFAULT_EXEC = "claude";
 
@@ -416,21 +432,12 @@ export const resolveWorker = (input: {
 };
 
 /**
- * WHERE THAT TOOL'S BINARY IS — the machine layer sits BETWEEN the flag and the
- * default, and nowhere else. The repository is not consulted at all: a path in a
- * committed file would be a lie on every other machine, and the one place it lived
- * until now (a shell history) is not a place.
+ * WHERE THAT TOOL'S BINARY IS — `resolveExec`, and it LIVES IN `kind.ts` (thread 026).
+ * The last layer of that resolution is the KIND's own `defaultExec`, so the function
+ * has to read the kind table; this module is what the kind table builds its argv from,
+ * and importing it back here as a value would close a cycle. The type of its answer
+ * stays here, with the other two resolutions of R14 it is read beside.
  */
-export const resolveExec = (input: {
-  readonly flag?: string;
-  readonly worker: string;
-  readonly local?: LocalConfig;
-}): ResolvedExec => {
-  if (input.flag !== undefined) return { value: input.flag, source: "flag" };
-  const declared = input.local?.agents[input.worker]?.exec;
-  if (declared !== undefined) return { value: declared, source: "machine" };
-  return { value: DEFAULT_EXEC, source: "default" };
-};
 
 /**
  * WHICH ACCOUNT THIS RUN SPENDS, AND WHERE IT LIVES (thread 055) — the second join

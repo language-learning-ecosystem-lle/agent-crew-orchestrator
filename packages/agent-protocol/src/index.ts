@@ -103,6 +103,10 @@ export {
   renderEventLine,
   renderJournal,
 } from "./orchestrator/journal.js";
+// `resolveExec` is re-exported from HERE and not from `launch.js` since thread 026: its
+// last layer is the kind's own `defaultExec`, so the function moved to the module that
+// holds the kinds. The name of the export is unchanged — this is where it lives now.
+export { execNameOf, resolveExec } from "./orchestrator/kind.js";
 export {
   type AgentParams,
   type AgentResolution,
@@ -126,7 +130,6 @@ export {
   type ResolvedGates,
   type ResolvedWorker,
   resolveAgentParams,
-  resolveExec,
   resolveGates,
   resolveWorker,
   roleLaunchability,
