@@ -31,6 +31,10 @@ import { createRoleRegistry } from "./registry.js";
 
 /** This repository's own config — the one the reviewer of this repository is judged by. */
 const CONFIG_PATH = fileURLToPath(new URL("../../../../agent-protocol.json", import.meta.url));
+/** The file that raises this reviewer — GitHub Actions does it, not the circuit. */
+const WORKFLOW_PATH = fileURLToPath(
+  new URL("../../../../.github/workflows/claude-review.yml", import.meta.url),
+);
 
 const config = parseProtocolConfig(JSON.parse(readFileSync(CONFIG_PATH, "utf8")));
 
@@ -49,5 +53,23 @@ describe("the reviewer role of this repository", () => {
     // GitHub Actions raises it, so a launch profile would be a promise nobody keeps.
     expect(role.launch).toBeUndefined();
     expect(roleLaunchability(role)).toEqual({ launchable: false, reason: "wake-not-watch" });
+  });
+
+  // THE OTHER HALF OF `roles/explicit-model.test.ts`, asserted where the reviewer's
+  // launch actually lives (thread `035-explicit-models`). The circuit's roles are raised
+  // from `agent-protocol.json`; this one is raised by `claude-review.yml`, and until this
+  // line it named no model at all — i.e. it ran on `claude-code-action`'s default, a
+  // lever on the vendor's side. Measured on 2026-08-28 (run 33159422402): the default
+  // resolved to `"model": "claude-sonnet-5"`, the same name john measured on 24.08.
+  //
+  // The action declares no `model` input (v1 `action.yml`), so the only parameter is
+  // `--model` inside the `claude_args` passthrough — which is why this asserts the flag
+  // and not a `with:` key. The NAME is deliberately not asserted, for the reason its
+  // sibling gives: models are money, i.e. john's decision, and changing one must be a
+  // reviewable diff rather than a test somebody edits to make green.
+  it("names the model it is raised with, so no vendor default moves the reviews unseen", () => {
+    const workflow = readFileSync(WORKFLOW_PATH, "utf8");
+
+    expect(workflow).toMatch(/^\s*--model\s+\S+$/m);
   });
 });
