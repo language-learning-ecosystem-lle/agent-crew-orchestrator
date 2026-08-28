@@ -100,6 +100,17 @@ describe("the kind of claude-code is the code that was already running", () => {
     ]);
   });
 
+  it("reads the reason of a failed probe off the FIRST line — this tool's rule (thread 039)", () => {
+    // The rule doctor applied to every tool until thread 039, kept here where it is true:
+    // claude-code says why it refused first and alone.
+    expect(CLAUDE_CODE.probeFailure("Not logged in · Please run /login\nsomething after")).toBe(
+      "Not logged in · Please run /login",
+    );
+    // Nothing readable in it is answered as nothing, so the caller can fall back to the
+    // error the spawn itself raised rather than print an empty row.
+    expect(CLAUDE_CODE.probeFailure("\n  \n")).toBe("");
+  });
+
   it("dictates the repair with the directory in it, and without one when there is none", () => {
     expect(CLAUDE_CODE.loginHint("/home/j/.claude-second")).toBe(
       "CLAUDE_CONFIG_DIR=/home/j/.claude-second claude login",

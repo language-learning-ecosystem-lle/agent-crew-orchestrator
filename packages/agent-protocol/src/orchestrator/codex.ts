@@ -221,6 +221,43 @@ export const codexEffortSchema = z.enum(["minimal", "low", "medium", "high", "xh
 export const CODEX_READ_ONLY_ARGV: readonly string[] = ["--sandbox", "read-only"];
 
 /**
+ * WHY A FAILED PROBE OF THIS TOOL FAILED — READ FROM THE END, NOT FROM THE START
+ * (thread 039). Unlike every other reading in this file, this one comes from a stream
+ * CAPTURED ON THIS BOX: `codex exec --skip-git-repo-check --sandbox read-only …` with a
+ * throwaway `CODEX_HOME`, run 2026-08-28, exit 1 after ~10s, 35 lines on stderr and
+ * nothing on stdout. In order, it says:
+ *
+ *     WARNING: proceeding, even though we could not create PATH aliases: …
+ *     Reading additional input from stdin...
+ *     OpenAI Codex v0.150.1
+ *     … banner, prompt, sandbox warnings, per-attempt tracing lines …
+ *     ERROR: Reconnecting... 5/5
+ *     ERROR: unexpected status 401 Unauthorized: Missing bearer or basic authentication
+ *            in header, url: https://api.openai.com/v1/responses, …
+ *
+ * So the FIRST line is progress and the LAST is the verdict — the mirror image of
+ * claude-code, whose reason arrives first and alone. Two lines are taken in preference
+ * order and the order is what the capture dictates: the last line the tool itself
+ * marks `ERROR:` (its own summary, at the end of the retries), and failing that the
+ * last non-empty line, because a tool that ended without marking anything still ended
+ * on the thing that stopped it.
+ *
+ * The retry counters (`ERROR: Reconnecting... 3/5`) are NOT filtered out by name: a
+ * vendor's retry wording is exactly the kind of string that changes under us, and a run
+ * that died mid-retry is better reported as "reconnecting" than as "reading stdin".
+ * The tracing lines (`…Z ERROR codex_api::…`) are not marked `ERROR:` and are passed
+ * over by the same rule rather than by a second one.
+ */
+export const codexProbeFailure = (said: string): string => {
+  const lines = said
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  const marked = lines.filter((line) => line.startsWith("ERROR:"));
+  return marked[marked.length - 1] ?? lines[lines.length - 1] ?? "";
+};
+
+/**
  * THE ARGV OF A CODEX RUN — and four differences from claude-code, each of which would
  * have been a silent misfire if this module did not exist (B2 of the inventory).
  *
@@ -341,6 +378,7 @@ export const CODEX: AgentKind = {
   // ok", and doctor would report the box broken. `--sandbox read-only` because a probe
   // that can write is a probe that can break the box it is diagnosing.
   probeArgv: (prompt) => ["exec", "--skip-git-repo-check", "--sandbox", "read-only", prompt],
+  probeFailure: codexProbeFailure,
   // The one form that is headless AND a single visit of a human (B5): the key arrives
   // on stdin, never as an argument — an argument would stand in the process table and
   // in the shell history of whoever typed it.

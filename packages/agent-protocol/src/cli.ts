@@ -157,6 +157,7 @@ import {
   resolveThreadDirective,
 } from "./orchestrator/directive.js";
 import {
+  accountBinary,
   accountChecksWithoutAccounts,
   accountChecksWithoutRoles,
   accountLiveCheck,
@@ -4986,10 +4987,12 @@ const probeHeadless = (input: {
       };
     }
     const said = `${failure.stderr ?? ""}${failure.stdout ?? ""}`.trim();
-    return {
-      ok: false,
-      detail: said === "" ? (error as Error).message : (said.split("\n")[0] ?? ""),
-    };
+    // WHICH LINE OF THAT IS THE REASON BELONGS TO THE KIND, exactly as the argv above
+    // does (thread 039). Taking the first line is claude-code's rule and was applied to
+    // every tool: codex opens with `Reading additional input from stdin...` and puts its
+    // verdict last, so the row printed progress where a human needed a diagnosis.
+    const reason = said === "" ? "" : input.kind.probeFailure(said);
+    return { ok: false, detail: reason === "" ? (error as Error).message : reason };
   }
 };
 
@@ -5651,23 +5654,27 @@ const doctor = (argv: readonly string[]): void => {
     ...(instanceRoles === undefined ? {} : { roles: instanceRoles }),
   });
   const roles = launchableRoles(withRef);
-  // Kept for the per-account rows below: an account is a home directory, not another tool,
-  // so they run the binary this loop already resolved rather than resolving one again.
-  let resolvedExec: string | undefined;
-  for (const target of noRoles === undefined ? execTargets(withRef, local, roles) : []) {
-    // The binary is looked up IN THE CHILD'S ENVIRONMENT, for preflight's reason: the
-    // daemon's PATH and the session's PATH are different things.
-    let found: string | null = null;
+  // The binary is looked up IN THE CHILD'S ENVIRONMENT, for preflight's reason: the
+  // daemon's PATH and the session's PATH are different things.
+  const lookUpExec = (exec: string): string | null => {
     try {
-      found = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
+      const found = execFileSync("/bin/sh", ["-c", 'command -v "$AGENT_PROTOCOL_EXEC"'], {
         encoding: "utf8",
-        env: { ...env, AGENT_PROTOCOL_EXEC: target.exec.value },
+        env: { ...env, AGENT_PROTOCOL_EXEC: exec },
       }).trim();
-      if (found === "") found = null;
+      return found === "" ? null : found;
     } catch {
-      found = null;
+      return null;
     }
-    if (found !== null) resolvedExec ??= found;
+  };
+  // Kept for the per-account rows below, BY WORKER rather than as one value (thread 039):
+  // an account runs the binary of ITS OWN kind, and this is what has already been looked
+  // up for the kinds this box raises.
+  const resolvedByWorker = new Map<string, string>();
+  for (const target of noRoles === undefined ? execTargets(withRef, local, roles) : []) {
+    const found = lookUpExec(target.exec.value);
+    if (found !== null && !resolvedByWorker.has(target.worker))
+      resolvedByWorker.set(target.worker, found);
     checks.push(
       agentBinaryVerdict({
         worker: target.worker,
@@ -5699,9 +5706,30 @@ const doctor = (argv: readonly string[]): void => {
   }
   if (noRoles !== undefined) checks.push(...agentChecksWithoutRoles(noRoles));
 
-  // THE TOKEN OF EACH DECLARED ACCOUNT (B.4). The binary is the one the rows above
-  // resolved — an account is a home directory, not a different tool — so a box whose
-  // binary was not found is not asked twice about the same absence.
+  // THE TOKEN OF EACH DECLARED ACCOUNT (B.4). The binary is the one of the account's OWN
+  // KIND ({@link accountBinary}, thread 039) — reusing what the rows above resolved where
+  // this box raises that tool, so the same absence is not looked up twice. Handing a codex
+  // account the claude binary is how this row answered `unknown option
+  // '--skip-git-repo-check'` on a live login: red forever, and naming nothing to repair.
+  const accountOutcome = (kind: AgentKind, configDir: string): DoctorOutcome => {
+    const binary = accountBinary({
+      kind,
+      resolved: resolvedByWorker,
+      lookUp: lookUpExec,
+      local: local.config,
+    });
+    return "skipped" in binary
+      ? binary
+      : probeHeadless({
+          exec: binary.exec,
+          kind,
+          // THE ONE VARIABLE THAT MAKES THIS A DIFFERENT ACCOUNT (B.1): the store is per
+          // directory — credentials, config and sessions all move with it — and its NAME
+          // belongs to the kind (`CODEX_HOME` for codex).
+          env: { ...env, [kind.accountEnv]: configDir },
+          timeoutMs: positiveInt(withRef, "--probe-timeout", 120) * 1000,
+        });
+  };
   const accounts = Object.entries(local.config.accounts ?? {});
   if (noRoles !== undefined) {
     // The box raises nothing, so nothing here spends a token — but the section is NAMED
@@ -5724,19 +5752,7 @@ const doctor = (argv: readonly string[]): void => {
           id,
           configDir: account.configDir,
           kind,
-          outcome: offline
-            ? skipped
-            : resolvedExec === undefined
-              ? { skipped: "the binary was not found — there is nothing to run" }
-              : probeHeadless({
-                  exec: resolvedExec,
-                  kind,
-                  // THE ONE VARIABLE THAT MAKES THIS A DIFFERENT ACCOUNT (B.1): the store
-                  // is per directory — credentials, config and sessions all move with it,
-                  // and its NAME belongs to the kind (`CODEX_HOME` for codex).
-                  env: { ...env, [kind.accountEnv]: account.configDir },
-                  timeoutMs: positiveInt(withRef, "--probe-timeout", 120) * 1000,
-                }),
+          outcome: offline ? skipped : accountOutcome(kind, account.configDir),
         }),
       );
     }
