@@ -237,3 +237,7 @@ systemctl --user restart agent-protocol@hetzner.service` — как замере
 зафиксирована curator для отдельного треда там.
 
 waiting-on: curator
+
+## msg-006 · from: github · 2026-08-28 · expects: none
+
+PR #91 (fix(daemon): вердикт версии — это просьба о pull, а не аргументная дверь (тред 040)) **merged** by maysway → `main`.
