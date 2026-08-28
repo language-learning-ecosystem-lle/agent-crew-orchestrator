@@ -143,6 +143,13 @@ const contour = (): string => {
 const homeContour = (options?: {
   /** Leave the HEAD ON ITS BRANCH one commit behind, so `pull --ff-only` can succeed. */
   readonly pullable?: boolean;
+  /**
+   * PUT THE BUMP ON THE REF (thread 040): the commit the loaded code is behind is the one
+   * that moves `protocolVersion` past what this build supports — the shape of every one of
+   * the three outages, and the only fixture in which the version gate fires against a
+   * daemon rather than against a one-shot command.
+   */
+  readonly bumpVersionOnRef?: boolean;
 }): { readonly repo: string; readonly cli: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-selfrestart-home-"));
   const origin = join(base, "origin.git");
@@ -160,7 +167,13 @@ const homeContour = (options?: {
   const loaded = git(repo, "rev-parse", "HEAD").trim();
   git(repo, "push", "-q", "origin", "main");
   seedMail(origin, repo);
-  git(repo, "commit", "-qm", "the ref", "--allow-empty");
+  if (options?.bumpVersionOnRef === true) {
+    writeFileSync(
+      join(repo, "agent-protocol.json"),
+      `${JSON.stringify({ ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION + 1 }, null, 2)}\n`,
+    );
+    git(repo, "commit", "-qam", "the ref bumps the schema");
+  } else git(repo, "commit", "-qm", "the ref", "--allow-empty");
   git(repo, "push", "-q", "origin", "main");
   // THE TWO SHAPES OF THE SAME DRIFT, and which one a case needs is the whole difference
   // between "the decision was taken" and "the repair went through". Detached is the
@@ -481,6 +494,69 @@ describe("a supervised daemon that finds itself behind its ref", () => {
         readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
       );
       expect(memory?.attempts).toBe(1);
+    },
+    2 * HANG_CEILING_MS,
+  );
+});
+
+/**
+ * THE LIVE REHEARSAL OF THE CLASS (thread 040, curator's acceptance): the config on the
+ * ref is AHEAD of the build the daemon is running, which is the state every schema bump
+ * puts this circuit in for as long as the box has not pulled.
+ *
+ * What the field trace of 2026-08-28 19:45Z looked like, and what this reproduces: the
+ * daemon met `restart required: the repository declares protocol version 21, the package
+ * supports only 20` inside an ordinary tick and left with code 2 — the argument door,
+ * which the unit of that box is explicitly told never to raise again
+ * (`RestartPreventExitStatus=2`, measured by john at 20:05Z). One exit, no replacement,
+ * the tree still on the old commit, the circuit dead until a human typed `git pull`.
+ *
+ * So the assertion is in three parts, and each is a separate way the old behaviour failed:
+ * the process does NOT leave by the argument door; it leaves with the code a supervisor
+ * answers; and the tree ACTUALLY MOVED to the ref, because a handback over code that did
+ * not move is the crash loop this thread exists to end.
+ */
+describe("a daemon meeting a config newer than its build", () => {
+  it(
+    "pulls and hands back instead of taking the exit its unit refuses to restart",
+    () => {
+      const { repo, cli } = homeContour({ pullable: true, bumpVersionOnRef: true });
+      const wanted = git(repo, "rev-parse", "origin/main").trim();
+      const ran = tickRun(cli, repo);
+
+      expect(ran.status).not.toBe(2);
+      expect(ran.status).toBe(SELF_RESTART_EXIT_CODE);
+      expect(ran.said).toContain("VERSION VERDICT");
+      expect(ran.said).toContain("git pull --ff-only");
+      expect(git(repo, "rev-parse", "HEAD").trim()).toBe(wanted);
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  /**
+   * AND THE ENDING THAT CANNOT BE REPAIRED IS ONE FALL, NOT FIVE. `contour()` is a box
+   * whose code came from somewhere else entirely, so there is nothing here to pull that
+   * would change this process — the honest answer is the argument door, taken ONCE and
+   * with the command a hand must type printed beside it. That is what keeps
+   * `StartLimitBurst` intact: a supervisor told "2" stops instead of raising four more
+   * processes into the same wall.
+   */
+  it(
+    "falls over once, loudly, when no pull of this tree could fix it",
+    () => {
+      const repo = contour();
+      writeFileSync(
+        join(repo, "agent-protocol.json"),
+        `${JSON.stringify({ ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION + 1 }, null, 2)}\n`,
+      );
+      git(repo, "commit", "-qam", "the schema bump");
+      git(repo, "push", "-q", "origin", "main");
+      const ran = tickRun(codeCheckout().cli, repo);
+
+      expect(ran.status).toBe(2);
+      expect(ran.said).toContain("VERSION VERDICT");
+      expect(ran.said).toContain("A hand is needed");
+      expect(ran.said).toContain("start limit stays intact");
     },
     2 * HANG_CEILING_MS,
   );

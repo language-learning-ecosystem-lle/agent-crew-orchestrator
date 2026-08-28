@@ -1983,6 +1983,22 @@ merge-gate:   PROTOCOL.md — declared by 'powerDocuments' of the config
 A trace that showed only the verdict could not tell a full list from a short one, and a
 short one is exactly what a forgotten flag produced.
 
+**And the door names the work a merge leaves on the boxes** (thread 040). When the diff
+touches the protocol config, the last two lines the command prints are not a guard and
+change no verdict — they say that IF this diff moves `protocolVersion`, the button is not
+the end: every box running the circuit refuses every command until its build is pulled.
+
+```
+merge-gate: this diff touches 'agent-protocol.json' — IF it moves 'protocolVersion', THE
+BUTTON IS NOT THE END: every box running the circuit refuses every command until its build
+is pulled. After the merge, on each box: git pull --ff-only && pnpm install && systemctl
+--user restart agent-protocol@<instance>
+```
+
+The wording is conditional on purpose: the gate reads the NAMES of the changed files and
+not their content, so what it knows is that the file carrying the number was touched. An
+"if" a reader can check beats a claim they cannot.
+
 **But a role's instructions are not always a document of power** (john's decision of
 2026-07-28, on the reviewer's finding against the first version of this command): the
 boundary runs by the NATURE of the document, not by the fact that a role points at it.
@@ -4061,6 +4077,36 @@ zero leases, no stop/force flag, no operator hold, a clean tree and a checkout t
 actually serves, the process repairs itself; anything unmet is S24 verbatim (stand, and say
 why, every tick). The attempt ceiling is keyed by the TARGET SHA, which is what makes it
 self-clearing: a new commit on the ref is a new target with a fresh count.
+
+**A version verdict is that same repair asked for in words, and until thread 040 it killed
+the box instead** (measured on this repository 2026-08-28 19:45Z, the third outage of the
+class in a week). A config declaring a `protocolVersion` this build does not know is a
+refusal on EVERY read, and the daemon's first read of a tick is the courier's — thirty
+lines before the drift block that owns the repair. `configFrom` answered it the way every
+one-shot command does, with `fail(message, 2)`; 2 is this CLI's argument door, and the unit
+of this box carries `RestartPreventExitStatus=2` (`systemctl --user show`, john, 20:05Z),
+because an invocation that is wrong stays wrong however often it is raised. So the daemon
+left once, no replacement was ever raised, the tree never moved, and the circuit lay dead
+until a hand typed `git pull`. The watchdog was the detector, three times.
+
+So the daemon — and only the daemon, every one-shot command keeps the refusal verbatim — now
+carries that verdict out of its tick to `repairOnVersionVerdict`, which decides between
+exactly two endings and neither of them loops:
+
+- **the loaded code is behind the ref, the tree is clean** — pull, install if the pull moved
+  what the installer reads, then leave with `75`, exactly as a drift is repaired. The
+  successor is a fresh process over the pulled code, which is the build the config asked for;
+- **anything else** — the code IS the ref (a pull would move nothing: what fixes it is a
+  NEWER BUILD, not another process over the same one), the tree is dirty, the code cannot be
+  dated, or the pull itself failed — leave with `2`, ONCE, printing the command a hand must
+  type. The argument door is chosen deliberately here: a supervisor told `2` stops instead of
+  raising four more processes into the same wall, so `StartLimitBurst` stays intact.
+
+Live sessions are deliberately NOT a condition of this path, unlike `selfRestartVerdict`'s
+zero-lease rule: a box whose every config read is refusing holds no session that can do any
+protocol work, and the behaviour being replaced took those same sessions down with an exit 2
+that left nothing behind it. The one irreversible step — a pull over somebody's unsaved work
+— IS checked.
 
 **What thread 003 changed is not the rule but the MECHANISM, and it changed because the
 mechanism could not work under a unit.** The 055.2 form spawns `restart --pull` detached and

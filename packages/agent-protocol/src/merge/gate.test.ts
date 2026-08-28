@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   describeMergeGate,
   describePowerDocuments,
+  describeVersionBumpFollowUp,
   evaluateMergeGate,
   latestVerdictPerAuthor,
   type PullRequestFacts,
@@ -1504,5 +1505,43 @@ describe("the base under a credited check — a note beside guard 2", () => {
     expect(refused.baseDrift.state).toBe("drift");
     expect(refused.curatorMayMerge).toBe(false);
     expect(describeMergeGate(refused).at(-1)).toContain("REFUSED");
+  });
+});
+
+/**
+ * THE HALF OF THREAD 040 THAT WORKS BEFORE THE DAEMON'S OWN REPAIR DOES. A merge that
+ * moves `protocolVersion` is the only merge in this repository that leaves work on the
+ * boxes, and it left it silently three times in a week — the gate is where a human is
+ * already looking at the moment the button becomes available.
+ */
+describe("the follow-up a schema bump leaves on the boxes", () => {
+  it("says it when the diff touches the config that carries the number", () => {
+    const lines = describeVersionBumpFollowUp({
+      changedPaths: ["packages/agent-protocol/src/cli.ts", "agent-protocol.json"],
+      configPath: "agent-protocol.json",
+    }).join("\n");
+    expect(lines).toContain("protocolVersion");
+    expect(lines).toContain("git pull --ff-only");
+    expect(lines).toContain("systemctl --user restart");
+    // The claim is what the gate KNOWS — the file was touched — and not a bump it never read.
+    expect(lines).toContain("IF it moves");
+  });
+
+  it("is silent on a diff that leaves the config alone — a warning on every PR is noise", () => {
+    expect(
+      describeVersionBumpFollowUp({
+        changedPaths: ["packages/agent-protocol/src/cli.ts", "docs/protocol-reference.md"],
+        configPath: "agent-protocol.json",
+      }),
+    ).toEqual([]);
+  });
+
+  it("matches the config path however the caller spelled it", () => {
+    expect(
+      describeVersionBumpFollowUp({
+        changedPaths: ["./agent-protocol.json"],
+        configPath: "agent-protocol.json",
+      }).length,
+    ).toBe(2);
   });
 });
