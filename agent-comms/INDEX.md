@@ -31,7 +31,7 @@
 | 027-guard1-orphan-verdict | curator · dev-core · john | closed | — | 2026-08-22 |
 | 028-pin-bump-schema-gap | curator, dev-core, john | open | curator | 2026-08-22 |
 | 029-opencode-agent-kind | curator · dev-core · john | open | curator | 2026-08-22 |
-| 030-notify-parking-accuracy | curator · dev-core · john | closed | — | 2026-08-23 |
+| 030-notify-parking-accuracy | curator · dev-core · john | closed | — | 2026-08-28 |
 | 031-notify-target-filter-blind | curator, dev-core | closed | — | 2026-08-22 |
 | 032-park-event-race | curator · dev-core · john | closed | — | 2026-08-23 |
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | closed | — | 2026-08-23 |
