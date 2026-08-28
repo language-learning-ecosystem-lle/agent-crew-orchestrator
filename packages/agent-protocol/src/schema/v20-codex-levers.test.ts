@@ -187,7 +187,13 @@ describe("П2 — the effort vocabulary belongs to the tool", () => {
     expect(resolved.ok).toBe(false);
     const said = (resolved as { reason: string }).reason;
     expect(said).toContain("--effort 'minimal'");
-    expect(said).toContain(`allowed levels of 'codex' are ${CODEX.effortLevels.join(", ")}`);
+    // The list is optional ON THE TYPE — `undefined` there means "takes effort, names no
+    // closed list", which is the state this very row denies. So it is asserted, not
+    // `?.`-ed away: a codex that stopped naming its levels must fail HERE, by name, and
+    // not slip through as a refusal text compared against an empty join.
+    const levels = CODEX.effortLevels;
+    expect(levels).toBeDefined();
+    expect(said).toContain(`allowed levels of 'codex' are ${(levels ?? []).join(", ")}`);
   });
 
   it("and the other tool's door keeps its own list, asked of the kind rather than of a literal", () => {

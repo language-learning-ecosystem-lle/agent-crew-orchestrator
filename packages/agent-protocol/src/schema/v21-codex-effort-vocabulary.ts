@@ -94,8 +94,11 @@ export const CODEX_EFFORT_VOCABULARY_STEP: MigrationStep = {
         ? "no card names 'minimal': nothing but protocolVersion changes here, and the number still matters — an older build meets 'effort: \"max\"' on a codex card as an invalid enum value instead of 'restart required'"
         : `effort 'minimal' → 'low' on ${roles.length === 1 ? "the codex card" : "the codex cards"} ${roles.join(", ")}: the vendor sells no level below 'low', so this is the cheapest run that EXISTS — review the rendered config before '--write' if the project meant otherwise`;
 
+    // `config` is OMITTED rather than set to `undefined` when there is nothing to rewrite:
+    // under `exactOptionalPropertyTypes` an optional member and a member holding `undefined`
+    // are different types, and the runner reads the absence as "only the number moves".
     return {
-      config: roles.length === 0 ? undefined : config,
+      ...(roles.length === 0 ? {} : { config }),
       notes: [
         rewrite,
         "this is the FIRST step that narrows the accepted values: a config at 20 carrying 'minimal' is refused by this build with an invalid enum value, so the repair is a rewrite of the file and not a bump of the number alone",
