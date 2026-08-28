@@ -447,6 +447,36 @@ export const describePowerDocuments = (documents: readonly PowerDocument[]): rea
   return lines;
 };
 
+/**
+ * THE MERGE THAT NEEDS A HAND AFTER THE BUTTON (thread 040, point 2 of curator's
+ * statement).
+ *
+ * The config and the code of a circuit travel by different roads: `protocolVersion` lands
+ * in the base the instant the button is pressed, while the build running on the box moves
+ * only when somebody pulls it. Between those two moments the version gate refuses, and
+ * three times in a week that gap ended with a dead circuit and a human on the phone
+ * (`self-restart.ts` has the measured mechanism). The daemon now repairs itself across
+ * that gap — this line SHORTENS the gap, which is the cheaper half and the one that keeps
+ * working when the repair cannot (no drift to pull: the config was merged ahead of a build
+ * that does not exist yet).
+ *
+ * WHAT IT DOES AND DOES NOT CLAIM. The gate reads the names of the changed files, not
+ * their content, so what is known here is that the diff TOUCHES the file that carries the
+ * number — and the line says exactly that, conditionally, rather than asserting a bump it
+ * has not read. An "if" the reader can check beats a claim they cannot.
+ */
+export const describeVersionBumpFollowUp = (input: {
+  readonly changedPaths: readonly string[];
+  readonly configPath: string;
+}): readonly string[] => {
+  const config = normalise(input.configPath);
+  if (!input.changedPaths.map(normalise).some((path) => path === config)) return [];
+  return [
+    `merge-gate: this diff touches '${input.configPath}' — IF it moves 'protocolVersion', THE BUTTON IS NOT THE END: every box running the circuit refuses every command until its build is pulled. After the merge, on each box: git pull --ff-only && pnpm install && systemctl --user restart agent-protocol@<instance>`,
+    "merge-gate: say that line in the merge trace of the thread — a bump merged in silence is the one class this circuit cannot notice for itself until the watchdog rings",
+  ];
+};
+
 /** The same list as bare paths — what guard 4 actually matches the changed files against. */
 export const powerDocuments = (input: Parameters<typeof powerDocumentList>[0]): readonly string[] =>
   powerDocumentList(input).map((document) => document.path);

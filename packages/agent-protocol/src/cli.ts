@@ -86,6 +86,7 @@ import { resolveMailRoot } from "./fs/mail-root.js";
 import {
   describeMergeGate,
   describePowerDocuments,
+  describeVersionBumpFollowUp,
   evaluateMergeGate,
   powerDocumentList,
   readD1Reference,
@@ -376,6 +377,9 @@ import {
   describeSelfRestartStepOk,
   describeSelfRestartUnspawned,
   describeSelfRestartWithheld,
+  describeVersionRepair,
+  describeVersionStand,
+  describeVersionVerdictMet,
   INSTALL_INPUTS,
   installNeeded,
   parseSelfRestartMemory,
@@ -387,6 +391,7 @@ import {
   selfRestartForm,
   selfRestartVerdict,
   spawnSelfRestart,
+  versionRepairVerdict,
   workingTreeState,
 } from "./orchestrator/self-restart.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
@@ -707,6 +712,78 @@ const readFile = (path: string, what: string): string => {
 const standing = createStandingConfig();
 
 /**
+ * WHO IS ALLOWED TO SURVIVE A VERSION VERDICT (thread 040). A one-shot command meeting a
+ * config newer than its build has nothing to do but refuse — it was not going to change
+ * anything anyway. A DAEMON is the opposite: the verdict names the repair ("pull and
+ * restart what is running on it") and the daemon owns that repair. `process.exit(2)` in
+ * the middle of a tick took the decision away from it AND, on a unit carrying
+ * `RestartPreventExitStatus=2`, told the supervisor never to raise a replacement — the
+ * measured mechanism of the outage of 2026-08-28 19:45Z (`self-restart.ts`).
+ */
+let versionVerdictsThrow = false;
+const throwVersionVerdicts = (): void => {
+  versionVerdictsThrow = true;
+};
+
+/**
+ * THE TWO STEPS OF THE REPAIR, IN ONE PLACE, because two callers need them and they must
+ * not drift apart (thread 040): the drift block of a tick (thread 003) and a version
+ * verdict met anywhere in the process. It is `restart --pull` minus the restart — the
+ * supervisor is asked for the fresh process by an exit code, not by a child.
+ */
+const repairCheckoutInPlace = (checkout: string): boolean => {
+  const head = (): string =>
+    execFileSync("git", ["-C", checkout, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  const step = (what: string, run: readonly [string, readonly string[]]): boolean => {
+    err(`agent-protocol: daemon — ${describeSelfRestartStep(what, checkout)}`);
+    try {
+      const said = execFileSync(run[0], [...run[1]], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      err(
+        `agent-protocol: daemon — ${describeSelfRestartStepOk(what, said.trim().split("\n").slice(-3).join(" · "))}`,
+      );
+      return true;
+    } catch (error) {
+      const failure = error as { stderr?: string; stdout?: string; status?: number };
+      const why = ((failure.stderr ?? failure.stdout ?? "") as string).replace(/\s+/g, " ").trim();
+      err(
+        `agent-protocol: daemon — ${describeSelfRestartStepFailed(what, why === "" ? `code ${failure.status ?? "?"}` : why)}`,
+      );
+      return false;
+    }
+  };
+  let before: string;
+  try {
+    before = head();
+  } catch (error) {
+    err(
+      `agent-protocol: daemon — ${describeSelfRestartStepFailed("git rev-parse HEAD", (error as Error).message)}`,
+    );
+    return false;
+  }
+  if (!step("git pull --ff-only", ["git", ["-C", checkout, "pull", "--ff-only"]])) return false;
+  let changed: readonly string[] = [];
+  try {
+    changed = execFileSync("git", ["-C", checkout, "diff", "--name-only", before, "HEAD"], {
+      encoding: "utf8",
+    })
+      .split("\n")
+      .filter((line) => line.trim() !== "");
+  } catch {
+    // Unreadable is not "nothing changed": the installer runs, which is the safe side of
+    // this question — a needless install costs seconds, a skipped one costs the process.
+    changed = [...INSTALL_INPUTS];
+  }
+  if (!installNeeded(changed)) {
+    err(`agent-protocol: daemon — ${describeInstallSkipped()}`);
+    return true;
+  }
+  return step("pnpm install", ["pnpm", ["--dir", checkout, "install"]]);
+};
+
+/**
  * The config is read ONLY through the package and ONLY at an explicit ref.
  *
  * `--repo` defaults to the repository `--root` belongs to: mail and code live in
@@ -752,6 +829,73 @@ const freezeConfig = (): void => {
 let repairingConfig = false;
 const repairConfigReads = (): void => {
   repairingConfig = true;
+};
+
+/**
+ * WHAT A DAEMON DOES WITH A VERSION VERDICT INSTEAD OF DYING ON IT (thread 040).
+ *
+ * It is caught at the DISPATCH and not inside the tick, and that is not laziness: the
+ * read that killed the box on 2026-08-28 was the courier's, at the top of the tick and
+ * thirty lines before the drift block — and the startup read is the same verdict about
+ * the same file. One catch around the whole command covers every reader the daemon has,
+ * including the ones added later, which is exactly the property the tick-local `if` this
+ * replaces did not have.
+ *
+ * The decision is pure (`versionRepairVerdict`) and reads no config — the config is what
+ * could not be read. The two endings are the ones curator's statement names, and neither
+ * loops: repair and hand back with `SELF_RESTART_EXIT_CODE`, or fall over ONCE with the
+ * argument door the unit refuses to restart.
+ *
+ * WHAT IS DELIBERATELY NOT CHECKED HERE, and it is a real difference from the tick's
+ * verdict: live sessions. `selfRestartVerdict` stands on zero leases because a graceful
+ * restart of a HEALTHY box may wait an unknown time for them. This box is not healthy —
+ * every config read in it is already refusing, so no session it holds can do any protocol
+ * work, and the alternative on offer is today's `process.exit(2)`, which takes those same
+ * sessions down and leaves the circuit dead. The one irreversible step, a pull over
+ * somebody's unsaved work, IS checked.
+ */
+const repairOnVersionVerdict = (argv: readonly string[], error: ProtocolVersionError): never => {
+  const ref = required(argv, "--ref");
+  err(`agent-protocol: daemon — ${describeVersionVerdictMet(error.message, ref)}`);
+  const read = readCodeVintage({
+    dir: dirname(fileURLToPath(import.meta.url)),
+    startedAt: new Date(),
+    pid: process.pid,
+  });
+  const reading = isVintage(read)
+    ? measureCodeDrift({ vintage: read, ref })
+    : ({ kind: "unknown", problem: (read as { problem: string }).problem } as const);
+  const checkout = isVintage(read) ? read.checkout : "the checkout of the loaded code";
+  const verdict = versionRepairVerdict({
+    code:
+      reading.kind === "drift"
+        ? { kind: "drift", refSha: reading.drift.refSha }
+        : reading.kind === "match"
+          ? { kind: "match" }
+          : { kind: "unknown", problem: reading.problem },
+    tree: isVintage(read)
+      ? workingTreeState(checkout)
+      : { kind: "unreadable", problem: "the loaded code could not be dated" },
+    checkout,
+    ref,
+  });
+  if (verdict.kind === "stand") {
+    err(`agent-protocol: daemon — ${describeVersionStand(verdict.why, checkout)}`);
+    return fail(error.message, 2);
+  }
+  err(`agent-protocol: daemon — ${describeVersionRepair(verdict.target, checkout)}`);
+  // A REPAIR THAT FAILED IS THE STAND, not a handback: leaving for a supervisor over code
+  // that did not move is the crash loop at restart speed this whole thread is about.
+  if (!repairCheckoutInPlace(checkout)) {
+    err(
+      `agent-protocol: daemon — ${describeVersionStand("the repair itself failed (its phases are above)", checkout)}`,
+    );
+    return fail(error.message, 2);
+  }
+  err(
+    `agent-protocol: daemon — ${describeSelfRestartHandback(verdict.target, SELF_RESTART_EXIT_CODE)}`,
+  );
+  process.exit(SELF_RESTART_EXIT_CODE);
 };
 
 const configFrom = (argv: readonly string[], root?: string): LoadedConfig => {
@@ -807,7 +951,14 @@ const configFrom = (argv: readonly string[], root?: string): LoadedConfig => {
   if (error instanceof RoleConfigError) return fail(error.message, 2);
   // A version verdict says its own repair — wrapping it in "was not read" would
   // bury the one sentence that fixes it under a sentence that is not even true.
-  if (error instanceof ProtocolVersionError) return fail(error.message, 2);
+  // AND FOR ONE CALLER IT IS NOT AN ENDING BUT A DECISION (thread 040): a daemon can
+  // perform that repair itself, and `process.exit(2)` here is what stopped it from ever
+  // being asked — see `versionRepairVerdict`. The switch is set by the daemon and by
+  // nothing else, so every one-shot command keeps today's refusal verbatim.
+  if (error instanceof ProtocolVersionError) {
+    if (versionVerdictsThrow) throw error;
+    return fail(error.message, 2);
+  }
   return fail(`the protocol config at '${ref}' was not read: ${error.message}`, 2);
 };
 
@@ -8980,59 +9131,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
    * by THIS process, because under a supervisor there is no child that could outlive it.
    * It answers whether the tree actually moved: only then is leaving worth anything.
    */
-  const repairInPlace = (checkout: string): boolean => {
-    const head = (): string =>
-      execFileSync("git", ["-C", checkout, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-    const step = (what: string, run: readonly [string, readonly string[]]): boolean => {
-      err(`agent-protocol: daemon — ${describeSelfRestartStep(what, checkout)}`);
-      try {
-        const said = execFileSync(run[0], [...run[1]], {
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "pipe"],
-        });
-        err(
-          `agent-protocol: daemon — ${describeSelfRestartStepOk(what, said.trim().split("\n").slice(-3).join(" · "))}`,
-        );
-        return true;
-      } catch (error) {
-        const failure = error as { stderr?: string; stdout?: string; status?: number };
-        const why = ((failure.stderr ?? failure.stdout ?? "") as string)
-          .replace(/\s+/g, " ")
-          .trim();
-        err(
-          `agent-protocol: daemon — ${describeSelfRestartStepFailed(what, why === "" ? `code ${failure.status ?? "?"}` : why)}`,
-        );
-        return false;
-      }
-    };
-    let before: string;
-    try {
-      before = head();
-    } catch (error) {
-      err(
-        `agent-protocol: daemon — ${describeSelfRestartStepFailed("git rev-parse HEAD", (error as Error).message)}`,
-      );
-      return false;
-    }
-    if (!step("git pull --ff-only", ["git", ["-C", checkout, "pull", "--ff-only"]])) return false;
-    let changed: readonly string[] = [];
-    try {
-      changed = execFileSync("git", ["-C", checkout, "diff", "--name-only", before, "HEAD"], {
-        encoding: "utf8",
-      })
-        .split("\n")
-        .filter((line) => line.trim() !== "");
-    } catch {
-      // Unreadable is not "nothing changed": the installer runs, which is the safe side of
-      // this question — a needless install costs seconds, a skipped one costs the process.
-      changed = [...INSTALL_INPUTS];
-    }
-    if (!installNeeded(changed)) {
-      err(`agent-protocol: daemon — ${describeInstallSkipped()}`);
-      return true;
-    }
-    return step("pnpm install", ["pnpm", ["--dir", checkout, "install"]]);
-  };
+  /** The daemon's name for it — the body is module-level, shared with the version path. */
+  const repairInPlace = (checkout: string): boolean => repairCheckoutInPlace(checkout);
 
   const selfRestart = (drift: CodeDrift): SelfRestartOutcome => {
     const memory = existsSync(paths.daemonSelfRestart)
@@ -9246,6 +9346,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     try {
       run = await runNotify({ argv, write: true });
     } catch (error) {
+      // A VERSION VERDICT IS NOT A COURIER FAILURE (thread 040). It is a statement about
+      // this whole process — every config read in it refuses now — and swallowing it here
+      // would leave the box ticking, silent and doing nothing, which is the shape of the
+      // outage one layer down. It goes to the one place that can answer it.
+      if (error instanceof ProtocolVersionError) throw error;
       err(
         `agent-protocol: daemon — the courier THREW and told nobody: ${(error as Error).message}; the box keeps working, the turn stays where it is`,
       );
@@ -11042,6 +11147,14 @@ const mergeGate = (argv: readonly string[]): void => {
   });
 
   for (const line of describeMergeGate(verdict)) out(line);
+  // THE FOLLOW-UP THE BUTTON DOES NOT PERFORM (thread 040). Not a guard and never fatal:
+  // it changes no verdict, it names the thing that has to happen on the boxes AFTER the
+  // merge — and it is printed last so that it is the sentence left on the screen.
+  for (const line of describeVersionBumpFollowUp({
+    changedPaths: parsed.data.files.map((file) => file.path),
+    configPath: loaded.path,
+  }))
+    out(line);
   if (!verdict.curatorMayMerge) process.exit(1);
 };
 
@@ -11137,7 +11250,16 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "orchestrator" && subcommand === "run") {
     await orchestratorRun(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "daemon") {
-    await orchestratorDaemon(argv.slice(2));
+    // THE ONE COMMAND THAT SURVIVES A VERSION VERDICT (thread 040) — see
+    // `repairOnVersionVerdict` and the doc block of `self-restart.ts` for the outage that
+    // made it a decision instead of an exit code.
+    throwVersionVerdicts();
+    try {
+      await orchestratorDaemon(argv.slice(2));
+    } catch (error) {
+      if (!(error instanceof ProtocolVersionError)) throw error;
+      repairOnVersionVerdict(argv.slice(2), error);
+    }
   } else if (command === "orchestrator" && subcommand === "log") {
     orchestratorLog(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "stop") {

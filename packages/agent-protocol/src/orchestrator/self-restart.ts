@@ -481,6 +481,101 @@ export const spawnSelfRestart = (input: {
   return child.pid;
 };
 
+/**
+ * THE VERDICT THAT KILLED THE BOX INSTEAD OF REPAIRING IT (thread 040, measured on this
+ * repository 2026-08-28 ~19:45Z — the third outage of the class in a week).
+ *
+ * WHAT THE LOG SAYS, verbatim and in this order: a whole ordinary tick ("no candidate is
+ * launchable … waiting 30s"), and then one line —
+ *
+ *   agent-protocol: 'agent-protocol.json' at origin/main: restart required: the
+ *   repository declares protocol version 21, the package supports only 20 …
+ *
+ * — and the stream ENDS. No drift line, no `SELF-RESTART`, no handback. That line is
+ * `configFrom` answering a `ProtocolVersionError` with `fail(message, 2)`, i.e.
+ * `process.exit(2)`, from inside the courier read at the TOP of the tick — thirty lines
+ * of tick before the drift block that owns the repair. So the class was never a
+ * supervisor problem at all:
+ *
+ *   - the daemon did not loop and did not burn `StartLimitBurst`; it left ONCE;
+ *   - it left with 2, which is this CLI's argument door — and the unit of this box
+ *     carries `RestartPreventExitStatus=2` (measured by john 2026-08-28 20:05Z), because
+ *     an invocation that is wrong stays wrong however often it is raised. So systemd did
+ *     exactly what it was told: it never raised a replacement;
+ *   - and the tree never moved, which is why the pull was a human's (the observed fact
+ *     curator reports: the checkout stood on `2863d55` until john typed `git pull`).
+ *
+ * A VERSION VERDICT IS THE ONE REFUSAL THAT NAMES ITS OWN REPAIR — "pull and restart what
+ * is running on it" — and that repair is this module. Answering it with the code that
+ * means "do not raise me again" is the defect: the daemon asked a human for the one thing
+ * it can do for itself.
+ *
+ * SO A DAEMON MEETING IT DECIDES BETWEEN EXACTLY TWO ENDINGS, and neither of them is a
+ * loop: repair the tree and hand back for a fresh process over the pulled code, or fall
+ * over ONCE, loudly, naming the command a hand must type. The three facts that choose are
+ * the ones the repair itself stands on, and nothing here reads the config — which is the
+ * point, since the config is precisely what could not be read.
+ */
+export type VersionRepairVerdict =
+  | { readonly kind: "repair"; readonly target: string }
+  | { readonly kind: "stand"; readonly why: string };
+
+export const versionRepairVerdict = (input: {
+  /** How the loaded code stands against the ref the config was read at. */
+  readonly code:
+    | { readonly kind: "drift"; readonly refSha: string }
+    | { readonly kind: "match" }
+    | { readonly kind: "unknown"; readonly problem: string };
+  /** The state of the checkout the loaded code came from — the tree `pull` would move. */
+  readonly tree: WorkingTreeState;
+  readonly checkout: string;
+  readonly ref: string;
+}): VersionRepairVerdict => {
+  if (input.code.kind === "unknown")
+    return {
+      kind: "stand",
+      why: `the loaded code could not be dated (${input.code.problem}), so it is not known whether '${input.ref}' carries a build that would support this config — and a pull decided on nothing is not something to do unattended`,
+    };
+  // THE CASE THAT MUST NOT BE ANSWERED WITH A RESTART, and the reason this is a verdict
+  // rather than an unconditional `git pull`. Code that already IS the ref and still does
+  // not know the declared version is not behind anything: the repair is a NEWER BUILD
+  // (the config was merged ahead of the code that reads it), and a process that kept
+  // exiting for a supervisor here would be the crash loop this thread exists to end.
+  if (input.code.kind === "match")
+    return {
+      kind: "stand",
+      why: `the loaded code IS '${input.ref}' — a pull would move nothing, so this build genuinely does not know the declared version; what fixes it is a NEWER BUILD on the ref, not another process over the same one`,
+    };
+  if (input.tree.kind === "dirty")
+    return {
+      kind: "stand",
+      why: `there is uncommitted work in '${input.checkout}' (${input.tree.paths.slice(0, 5).join(", ")}${input.tree.paths.length > 5 ? ", …" : ""}) — 'git pull' would move that tree, and that is the one irreversible step of the chain`,
+    };
+  if (input.tree.kind === "unreadable")
+    return {
+      kind: "stand",
+      why: `the state of '${input.checkout}' could not be read (${input.tree.problem}) — a pull over an unknown tree is not something to do unattended`,
+    };
+  return { kind: "repair", target: input.code.refSha };
+};
+
+/** The verdict met, named before anything is decided about it — the line that was silent. */
+export const describeVersionVerdictMet = (message: string, ref: string): string =>
+  `VERSION VERDICT while running: ${message} — NOT exiting on the argument door (code 2): a supervisor is told never to raise that again, and this is the one refusal whose repair ('pull and restart') is exactly what this daemon does for itself. Deciding against '${ref}' now`;
+
+/** It can be repaired, and the two steps are the ones a hand would type. */
+export const describeVersionRepair = (target: string, checkout: string): string =>
+  `VERSION VERDICT: the loaded code is behind ${short(target)} — pulling '${checkout}' and leaving for the supervisor, exactly as a drift is repaired`;
+
+/**
+ * IT CANNOT, AND THIS BOX FALLS OVER ONCE (curator's second option, thread 040). The exit
+ * code is deliberately the argument door: `RestartPreventExitStatus=2` means the
+ * supervisor stops here instead of raising four more processes into the same wall — the
+ * start limit stays intact, and what an operator finds is one line naming one command.
+ */
+export const describeVersionStand = (why: string, checkout: string): string =>
+  `VERSION VERDICT: this box CANNOT repair itself — ${why}. Leaving with code 2 so the supervisor stops rather than looping (the start limit stays intact). A hand is needed: cd '${checkout}' && git pull --ff-only && pnpm install && systemctl --user restart agent-protocol@<instance>`;
+
 /** What `git status --porcelain` says about the tree a pull is about to move. */
 export type WorkingTreeState =
   | { readonly kind: "clean" }
