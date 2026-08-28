@@ -30,6 +30,7 @@
  * This module is the pure core: facts in, verdicts out. The probes (git, `which`,
  * running `node --version`) live in the CLI, where they belong.
  */
+import type { ExecSource } from "./launch.js";
 
 /**
  * THREE OUTCOMES, NOT TWO (R12, thread 016). `ok` is a verdict — something was
@@ -122,15 +123,22 @@ export const mailCheckoutVerdict = (facts: CheckoutFacts): PreflightCheck => {
 export const agentBinaryVerdict = (input: {
   readonly worker: string;
   readonly exec: string;
-  /** Which layer named the path: the operator's flag, the machine config, or the default. */
-  readonly source: string;
+  /**
+   * Which layer named the path: the operator's flag, the machine config, or — when
+   * neither did — the name the tool goes by (`kind`, or `worker-id` for an id this
+   * package does not implement; thread 026).
+   */
+  readonly source: ExecSource;
   readonly resolved: string | null;
 }): PreflightCheck => ({
   name: `agent: binary (${input.worker})`,
   status: input.resolved === null ? "fail" : "ok",
   detail:
     input.resolved === null
-      ? `'${input.exec}' (${input.source}) not found in the child process PATH — the spawn would fail with the lease already taken${input.source === "default" ? `; declare it in the machine config as agents['${input.worker}'].exec` : ""}`
+      ? // THE REPAIR IS QUOTED WHENEVER NOBODY NAMED A PATH, and since thread 026 that is
+        // two layers rather than one: a bare vendor name missing from `PATH` is the same
+        // dead end whether the package knew the kind or merely guessed from its id.
+        `'${input.exec}' (${input.source}) not found in the child process PATH — the spawn would fail with the lease already taken${input.source === "kind" || input.source === "worker-id" ? `; declare it in the machine config as agents['${input.worker}'].exec` : ""}`
       : `${input.resolved} (${input.source})`,
 });
 

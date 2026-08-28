@@ -245,6 +245,7 @@ import {
   kindLeverRefusal,
   kindOf,
   leversAskedFor,
+  resolveExec,
 } from "./orchestrator/kind.js";
 import {
   type AgentParams,
@@ -267,7 +268,6 @@ import {
   resolveAccount,
   resolveAgentParams,
   resolveCeilings,
-  resolveExec,
   resolveGates,
   resolveWorker,
   roleLaunchability,

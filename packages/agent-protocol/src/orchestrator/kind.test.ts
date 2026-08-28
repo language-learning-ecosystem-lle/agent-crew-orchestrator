@@ -24,6 +24,7 @@ import {
   kindLeverRefusal,
   kindOf,
   leversAskedFor,
+  resolveExec,
   unknownKindRefusal,
 } from "./kind.js";
 import { buildLaunchArgv, DEFAULT_EXEC, DEFAULT_WORKER } from "./launch.js";
@@ -138,6 +139,70 @@ describe("the registry answers by name and refuses by name", () => {
     expect(execNameOf("claude-code")).toBe("claude");
     // A guess that costs nothing: it is looked up on PATH and a miss asks for `--exec`.
     expect(execNameOf("cursor")).toBe("cursor");
+  });
+});
+
+/**
+ * WHERE A TOOL'S BINARY IS (R14), and the defect thread 026 measured on a live box:
+ * the last layer of this resolution used to be the constant `claude`, so a role
+ * declaring `kind: codex` was raised by the WRONG VENDOR'S binary and preflight printed
+ * it as a tick — `✓ agent: binary (codex): …/claude (default)`.
+ *
+ * The order of the layers is unchanged and is pinned here as such: the flag, then the
+ * machine config, then the name the kind itself declares.
+ */
+describe("resolveExec — where its binary is", () => {
+  const local = { agents: { "claude-code": { exec: "/home/j/.nvm/bin/claude" } } };
+
+  it("no machine config → the name the KIND declares, said to be the kind's", () => {
+    expect(resolveExec({ worker: "claude-code" })).toEqual({
+      value: DEFAULT_EXEC,
+      source: "kind",
+    });
+    // The whole point of the fix: a second kind gets its own vendor's name, not the
+    // first kind's binary under a tick.
+    expect(resolveExec({ worker: "codex" })).toEqual({ value: "codex", source: "kind" });
+  });
+
+  it("a machine config that names other tools does not answer for codex either", () => {
+    // The live shape of the defect: the box declares `claude-code` (and only it), and
+    // the codex role used to fall through to the claude binary.
+    expect(resolveExec({ worker: "codex", local })).toEqual({ value: "codex", source: "kind" });
+  });
+
+  it("the machine config answers for the tool it names", () => {
+    expect(resolveExec({ worker: "claude-code", local })).toEqual({
+      value: "/home/j/.nvm/bin/claude",
+      source: "machine",
+    });
+  });
+
+  it("…and for codex too — the declared path beats the vendor's name", () => {
+    expect(
+      resolveExec({
+        worker: "codex",
+        local: { agents: { codex: { exec: "/opt/codex/bin/codex" } } },
+      }),
+    ).toEqual({ value: "/opt/codex/bin/codex", source: "machine" });
+  });
+
+  it("…and only for that tool: another tool falls through, it does not inherit", () => {
+    // The map is keyed on the tool for a reason. Handing `cursor` the path to
+    // `claude` because it happened to be the only entry would be the silent wrong
+    // start this whole layer exists to prevent.
+    const guess = resolveExec({ worker: "cursor", local });
+    // An id this package does not implement is a GUESS and says so — told apart from
+    // the kind's own declaration, because a reader chasing a wrong binary needs to know
+    // whether anybody ever declared this name.
+    expect(guess).toEqual({ value: "cursor", source: "worker-id" });
+  });
+
+  it("the flag beats the machine — checks aim at a stub, acceptance at the real binary", () => {
+    expect(resolveExec({ flag: "/tmp/stub.sh", worker: "claude-code", local })).toEqual({
+      value: "/tmp/stub.sh",
+      source: "flag",
+    });
+    expect(resolveExec({ flag: "/tmp/stub.sh", worker: "codex" }).source).toBe("flag");
   });
 });
 
