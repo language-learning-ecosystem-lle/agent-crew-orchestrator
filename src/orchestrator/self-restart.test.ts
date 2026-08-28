@@ -21,6 +21,9 @@ import {
   describeSelfRestartStand,
   describeSelfRestartStepFailed,
   describeSelfRestartWithheld,
+  describeVersionRepair,
+  describeVersionStand,
+  describeVersionVerdictMet,
   INSTALL_INPUTS,
   installNeeded,
   parseSelfRestartMemory,
@@ -31,6 +34,7 @@ import {
   selfRestartForm,
   selfRestartVerdict,
   spawnSelfRestart,
+  versionRepairVerdict,
 } from "./self-restart.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -502,5 +506,98 @@ describe("whether a pull needs the installer run after it", () => {
   it("says why it was skipped — silence there reads as 'it ran and said nothing'", () => {
     expect(describeInstallSkipped()).toContain("pnpm install skipped");
     for (const input of INSTALL_INPUTS) expect(describeInstallSkipped()).toContain(input);
+  });
+});
+
+/**
+ * THE VERDICT A DAEMON MEETS WHEN THE CONFIG IS AHEAD OF ITS BUILD (thread 040). Measured
+ * on this repository three times in a week and finally read in the log on 2026-08-28: the
+ * daemon answered it with `process.exit(2)`, which the unit of the box is told never to
+ * restart, so one bump of `protocolVersion` left the circuit dead until a human pulled.
+ * Every case below is the state a box can be in at that exact moment, and the rule that
+ * decides between "repair and hand back" and "fall over once, loudly" needs none of a
+ * process, a config or a clock to be asserted about — which is the point, because the
+ * config is precisely what could not be read.
+ */
+describe("what a daemon does with a config newer than its build", () => {
+  const clean = { kind: "clean" } as const;
+
+  it("repairs when the code is behind the ref and the tree is clean — the pull IS the fix", () => {
+    const verdict = versionRepairVerdict({
+      code: { kind: "drift", refSha: "9f1c2b3d4e5f60718293a4b5c6d7e8f901234567" },
+      tree: clean,
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+    });
+    expect(verdict).toEqual({ kind: "repair", target: "9f1c2b3d4e5f60718293a4b5c6d7e8f901234567" });
+    const said = describeVersionRepair(
+      verdict.kind === "repair" ? verdict.target : "",
+      "/srv/circuit",
+    );
+    expect(said).toContain("9f1c2b3d");
+    expect(said).toContain("/srv/circuit");
+  });
+
+  /**
+   * THE CASE A RESTART CANNOT FIX, and the one a naive "always exit for the supervisor"
+   * would turn into a crash loop: the code already IS the ref. Nothing to pull, so what
+   * the box needs is a newer build on the ref — said in those words, because an operator
+   * reading "restart required" here would type the one command that changes nothing.
+   */
+  it("stands when the loaded code IS the ref — a pull would move nothing", () => {
+    const verdict = versionRepairVerdict({
+      code: { kind: "match" },
+      tree: clean,
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+    });
+    expect(verdict.kind).toBe("stand");
+    if (verdict.kind !== "stand") return;
+    expect(verdict.why).toContain("NEWER BUILD");
+    expect(describeVersionStand(verdict.why, "/srv/circuit")).toContain("git pull --ff-only");
+  });
+
+  it("stands over uncommitted work — a pull there is the one irreversible step", () => {
+    const verdict = versionRepairVerdict({
+      code: { kind: "drift", refSha: "abcdef0123456789" },
+      tree: { kind: "dirty", paths: [" M packages/agent-protocol/src/cli.ts"] },
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+    });
+    expect(verdict.kind).toBe("stand");
+    if (verdict.kind !== "stand") return;
+    expect(verdict.why).toContain("packages/agent-protocol/src/cli.ts");
+  });
+
+  it("stands when the loaded code cannot be dated — a pull decided on nothing", () => {
+    const verdict = versionRepairVerdict({
+      code: { kind: "unknown", problem: "not a git checkout" },
+      tree: clean,
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+    });
+    expect(verdict.kind).toBe("stand");
+    if (verdict.kind !== "stand") return;
+    expect(verdict.why).toContain("not a git checkout");
+  });
+
+  /**
+   * THE TWO LINES AN OPERATOR READS. The first has to say that the process is NOT taking
+   * the argument door — that exit is what the unit is configured never to raise again —
+   * and the second, on the ending that cannot be repaired, has to carry the whole command
+   * a hand must type. A refusal from which the repair cannot be read is the defect this
+   * package calls a silent door.
+   */
+  it("names the exit it is refusing to take, and the command a hand would type", () => {
+    const met = describeVersionVerdictMet(
+      "'agent-protocol.json' at origin/main: restart required: the repository declares protocol version 21, the package supports only 20",
+      "origin/main",
+    );
+    expect(met).toContain("protocol version 21");
+    expect(met).toContain("code 2");
+    const stand = describeVersionStand("the loaded code IS 'origin/main'", "/srv/circuit");
+    expect(stand).toContain("start limit stays intact");
+    expect(stand).toContain("cd '/srv/circuit'");
+    expect(stand).toContain("systemctl --user restart");
   });
 });
