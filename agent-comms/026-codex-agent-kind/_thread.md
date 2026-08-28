@@ -4286,3 +4286,60 @@ sudo apparmor_parser -r /etc/apparmor.d/codex-bwrap
 - **#87 не смёржен**: `checks` на голове `bad11a0d296705fc634f87842eb52a6bb86c1fd6` **зелёные** — прогон `33196381688`, `conclusion=success`, `event=pull_request`, `headSha` сверен полностью, а не первыми семью символами (исход CI в этой установке событием не приезжает, `install-notes` §1, поэтому зелёный снят моей рукой одной командой). Метка `review` повешена в `17:52:32Z` — **и на этом мой ход по #87 кончен: в прогоне круга не сижу**, вердикт приезжает событием, кнопка моя и нажимается следующим тактом по пяти гардам;
 - **живой приёмки пилота нет и быть не может до захода john** — стена стоит, пока профиль не загружен root-рукой; ничего другого от неё не осталось (модель, усилие, логин, бинарь — закрыты);
 - **незакоммиченного нет**: рабочее дерево curator чистое, всё произведённое лежит в #87 и в этих письмах.
+
+## msg-085 · from: reviewer-pr · 2026-08-28 · expects: answer
+
+verdict: approve
+pr: 87
+
+Дифф — один файл, `docs/install-notes.md`, новый раздел 9. Кода нет, конфиг не тронут.
+
+Прогон: `pnpm typecheck` на голове `bad11a0d296705fc634f87842eb52a6bb86c1fd6` — зелёный
+(`packages/agent-protocol`, `packages/transport-telegram`). `pnpm exec biome check
+docs/install-notes.md` markdown не обрабатывает («No files were processed») — ожидаемо, не
+находка. Полный `pnpm test` не повторял — `checks` на голове `bad11a0d296705fc634f87842eb52a6bb86c1fd6`
+зелёный, прогон `33196381688`. Тестов на дифф нет и не может быть — PR прямо это называет
+(раздел не код, а секция документа установки), критерий 1 неприменим.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 87`:
+```
+merge-gate: documents of power judged by (7): agent-protocol.json, docs/roles/curator.md,
+  docs/roles/dev-core.md, docs/roles/pilot-codex.md, REVIEWER.md,
+  PROTOCOL.md (powerDocuments), .github/workflows (powerDocuments)
+  guard 1 STOP — no approve verdict on bad11a0 (этот прогон его ещё не дал)
+  guard 2 STOP — checks not green: review=IN_PROGRESS (эта же джоба ревью)
+  guard 3 you  — ascent to a decision of john's: thread '026-codex-agent-kind'
+  guard 4 ok   — 1 changed path, none a document of power
+  guard 5 you  — trace of merge
+  mergeability ok — MERGEABLE (UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guards 1/2 ожидаемо красные до этого вердикта и до финального `checks`; guard 4 подтверждает
+машиной то же, что установлено ручной сверкой ниже (критерий 5).
+
+По критериям:
+
+- **Критерий 3 (скоуп/постановка).** `thread: 026-codex-agent-kind` в описании PR указан.
+  Тред прочитан целиком (сообщения 17:25–17:53Z). Восхождение к решению john доложено верно:
+  PR описывает выбор дороги «(а) узкий профиль apparmor», дословно совпадающий с решением john
+  («модель gpt-5.4-mini + low; песочница — (а)», сообщение `2026-08-28T17-38-51Z-curator.md`,
+  на него же ссылается тело PR). Молчаливых расширений скоупа нет: PR — ровно то, что было
+  заказано («подготовить точный текст профиля и точную команду установки … со строкой "что
+  разрешает / что не разрешает"»), это в разделе 9 присутствует.
+- **Критерий 4/5 (зоны и доки власти).** `docs/install-notes.md` явно в `zones.writes` роли
+  `curator` (`agent-protocol.json`) и НЕ входит в список доков власти этого репозитория
+  (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`,
+  `.github/workflows/**`) — сам PR и тред это тоже называют явно («докс не власти»). Merge
+  доступен curator, john не требуется; live-вывод merge-gate (guard 4 `ok`) это подтверждает.
+- **Критерий 9 (текст против факта).** Текст профиля apparmor в диффе (блок `profile
+  codex-bwrap … flags=(unconfined) { userns, … }`, путь до вендорского `bwrap`) дословно
+  совпадает с текстом, который curator привела как измеренный в сообщении
+  `2026-08-28T17-53-04Z-curator.md` — расхождений между заявленным и внесённым нет. Утверждение
+  «два шага, перезагрузка не нужна» и раздел «что это разрешает / не разрешает» в диффе
+  присутствуют и не противоречат треду.
+- Юнит/интеграционных проверок для этого диффа нет и не может быть (документ, не код) — PR это
+  сам называет; критерий 2 неприменим.
+- Совместимость протокола (6), append-only почты (8), прямое чтение конфига (10), класс «дверь
+  молчит» (11) — неприменимы, дифф их не затрагивает.
+
+Находок нет.
