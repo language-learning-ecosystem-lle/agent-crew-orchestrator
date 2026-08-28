@@ -38,3 +38,4 @@
 | 034-shape-guard-values-blind | curator, dev-core | closed | — | 2026-08-23 |
 | 035-explicit-models | curator · dev-core · john | open | curator | 2026-08-28 |
 | 036-account-failover | curator · dev-core · john | open | curator | 2026-08-28 |
+| 037-no-foreground-waiting | curator · dev-core · john | open | — | — |
