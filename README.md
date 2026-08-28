@@ -318,6 +318,25 @@ fail  account: 'second' token      Invalid API key · Please run /login — log 
                                    in on the box: CLAUDE_CONFIG_DIR=/home/j/.claude-second claude login
 ```
 
+**Each account is asked in the words of ITS OWN tool** — argv, account variable, login
+command and, since thread 039, THE BINARY. The kind of an account is what the machine
+config declares (`accounts.<id>.kind`; unsaid means `claude-code`), and the binary is
+resolved for that kind through the usual layers — the machine config's
+`agents.<kind>.exec` first, the vendor's own name after it. Handing a codex account the
+claude binary is not a smaller answer but a wrong one: it produced
+`✗ account: 'codex-main' token: error: unknown option '--skip-git-repo-check'` on an
+account that had just been logged in — red forever, and naming nothing to repair. Where
+the binary of that kind is nowhere on the box, the row says so with the kind named
+(`the binary of kind 'codex' ('codex', kind) was not found — there is nothing to run`)
+instead of spending another vendor's.
+
+**And the reason a probe failed is read the way the argv is spelled — by asking the kind.**
+`claude-code` says why it refused on its first line (`Not logged in · Please run /login`);
+`codex` opens with progress (`Reading additional input from stdin...`) and puts its
+verdict last, so the row carries its final `ERROR:` line
+(`unexpected status 401 Unauthorized: Missing bearer or basic authentication in header`)
+rather than the first thing it happened to write.
+
 The row above them (`agent: headless run`) is a different question and stays: it asks
 whether the binary answers at all, in the environment the daemon hands a session — which
 carries no `CLAUDE_CONFIG_DIR` and is therefore about the box's own login. On a one-login

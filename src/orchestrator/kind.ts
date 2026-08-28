@@ -130,6 +130,22 @@ export type AgentKind = {
   /** Property 6: how `doctor` asks the binary to prove it can answer at all. */
   readonly probeArgv: (prompt: string) => readonly string[];
   /**
+   * Property 6, the half the first implementation got for free: WHICH LINE OF A FAILED
+   * PROBE IS THE REASON (thread 039, measured 2026-08-28).
+   *
+   * `doctor` used to take the first line of the output for every tool, and on
+   * claude-code that is the reason (`Not logged in · Please run /login`) — a COINCIDENCE
+   * of one vendor, not a property of the code. Codex opens with progress
+   * (`Reading additional input from stdin...`) and puts its verdict at the end, so the
+   * row printed the progress and the operator learned nothing. The reason is read the
+   * way the argv is spelled: by asking the kind.
+   *
+   * The input is the trimmed output of the failed run (stderr and stdout, as captured);
+   * an empty answer means "nothing here reads as a reason" and the caller falls back to
+   * the error the spawn itself raised.
+   */
+  readonly probeFailure: (said: string) => string;
+  /**
    * Property 6, the half that is easy to forget: WHAT A HUMAN IS TOLD TO TYPE when the
    * account has no live credentials. A door that advises `claude login` to an operator
    * holding a Codex key is worse than a door that says nothing.
@@ -146,6 +162,13 @@ export type AgentKind = {
   /** Property 7: levers this kind has no way to honour. Empty for claude-code. */
   readonly cannot: readonly AgentLever[];
 };
+
+/** The first line that says anything — claude-code's rule for {@link AgentKind.probeFailure}. */
+const firstLine = (said: string): string =>
+  said
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line !== "") ?? "";
 
 /**
  * THE FIRST IMPLEMENTATION, AND A PURE MOVE. Every member here is the function the
@@ -177,6 +200,10 @@ export const CLAUDE_CODE: AgentKind = {
   // named "Answer with the single word: ok". That is the sharpest single argument for
   // this module existing: a flag is not a detail, it is a claim about a vendor.
   probeArgv: (prompt) => ["-p", prompt],
+  // THE FIRST LINE, WHICH IS WHAT THIS COMMAND ALWAYS DID — kept here rather than in the
+  // caller because it is true of THIS tool and of no other: `Not logged in · Please run
+  // /login`, `Invalid API key`, `credit balance is too low` all arrive first and alone.
+  probeFailure: (said) => firstLine(said),
   // WITH the directory wherever the reader has one, WITHOUT it where they do not: a
   // path invented for a sentence is worse than a shorter sentence — `login` typed in
   // the wrong home leaves the shelf exactly where it was and reads as the alarm lying.

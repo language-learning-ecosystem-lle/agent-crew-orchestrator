@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { CODEX } from "./codex.js";
 import {
+  accountBinary,
   accountChecksWithoutAccounts,
   accountChecksWithoutRoles,
   accountLiveCheck,
@@ -22,6 +24,7 @@ import {
   maskedRemote,
   repositoryConfigCheck,
 } from "./doctor.js";
+import { CLAUDE_CODE } from "./kind.js";
 import { agentBinaryVerdict, type PreflightCheck } from "./preflight.js";
 
 describe("the repository config row", () => {
@@ -244,6 +247,65 @@ describe("the headless probe — the moment of truth of a box", () => {
     });
     expect(check.status).toBe("info");
     expect(check.detail).toContain("--offline");
+  });
+});
+
+/**
+ * WHOSE BINARY AN ACCOUNT'S ROW RUNS (thread 039, measured 2026-08-28 on the live box).
+ *
+ * The row used to run the FIRST binary the agent rows had resolved, and the order of
+ * that walk is the whole defect: with a claude worker ahead of a codex one, the codex
+ * account was probed with the claude binary and the box answered `unknown option
+ * '--skip-git-repo-check'` — a row that stays red on a live login and names nothing to
+ * repair. So the claude account is declared FIRST in every case below; a fix that reads
+ * "the last one wins" would pass a test that did not.
+ */
+describe("the binary an account's row is probed with belongs to its kind", () => {
+  const resolved = new Map([
+    ["claude-code", "/usr/local/bin/claude"],
+    ["codex", "/usr/local/bin/codex"],
+  ]);
+  /** A lookup that would answer for anything — so a wrong ANSWER cannot hide behind an absence. */
+  const anywhere = (exec: string): string => `/opt/${exec}`;
+
+  it("hands a codex account the codex binary though claude resolved first", () => {
+    expect(accountBinary({ kind: CODEX, resolved, lookUp: anywhere })).toEqual({
+      exec: "/usr/local/bin/codex",
+    });
+  });
+
+  it("keeps the answer an undeclared kind always had — the box's claude binary", () => {
+    expect(accountBinary({ kind: CLAUDE_CODE, resolved, lookUp: anywhere })).toEqual({
+      exec: "/usr/local/bin/claude",
+    });
+  });
+
+  it("resolves the kind's own binary on a box that raises no role of that kind", () => {
+    // Nothing above looked codex up (this box raises claude only), so the kind's own
+    // name is looked up on PATH — and the machine config still wins over it, which is
+    // the layer thread 026 built and this row must not re-invent.
+    expect(
+      accountBinary({
+        kind: CODEX,
+        resolved: new Map([["claude-code", "/usr/local/bin/claude"]]),
+        lookUp: (exec) => (exec === "/opt/codex-nightly" ? "/opt/codex-nightly" : null),
+        local: { agents: { codex: { exec: "/opt/codex-nightly" } } },
+      }),
+    ).toEqual({ exec: "/opt/codex-nightly" });
+  });
+
+  it("says there is nothing to run, and whose binary is missing, instead of spending another tool's", () => {
+    const answer = accountBinary({
+      kind: CODEX,
+      resolved: new Map([["claude-code", "/usr/local/bin/claude"]]),
+      lookUp: () => null,
+    });
+    expect(answer).not.toHaveProperty("exec");
+    const detail = (answer as { skipped: string }).skipped;
+    expect(detail).toContain("codex");
+    expect(detail).toContain("there is nothing to run");
+    // The row that names the OTHER vendor's binary here is the defect, not the fix.
+    expect(detail).not.toContain("claude");
   });
 });
 
