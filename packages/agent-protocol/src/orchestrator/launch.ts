@@ -1001,11 +1001,24 @@ export type InstructionDoc = { readonly path: string; readonly text: string };
  * that only lists the legal endings leaves that invention untouched, so the illegal one
  * is named in its own words.
  *
+ * WHY THE FOREGROUND ENDING IS NARROWED TO THE SESSION'S OWN WORK (john's hard rule,
+ * 2026-08-28, thread 037: "no role should ever wait for any run that is going to write
+ * into the thread anyway"). The list of legal foreground waits used to read "a watch, a
+ * command you run and wait out" without asking WHOSE job is being waited on — so the
+ * prompt itself authorised the thing the rule forbids, and a session that sat in a CI run
+ * could point at this paragraph. The field case: on 2026-08-28 curator labelled #83 and
+ * stayed in the run; the labels for #81 and #82 — both green and ready — waited behind
+ * that one session, because a role has ONE slot and a foreground wait holds it. The
+ * outcome was going to arrive as an event either way (the norm above, thread 016), so the
+ * wait bought nothing. Wording note: the ban is stated as its own sentence rather than by
+ * deleting the examples, for the same reason the third ending is named out loud — the
+ * sessions that get this wrong have read the legal list and reason by analogy from it.
+ *
  * It is NOT repeated in `buildResumePrompt`: a resumed session already has this prompt
  * in its context (unlike the wind-down norm, whose NUMBER changes with the new lease).
  */
 const runEndsNorm =
-  "ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (`cli await-input` above, a watch, a command you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead.";
+  "ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (`cli await-input` above, or a command of YOUR OWN work you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead. AND THE FOREGROUND ENDING IS NEVER FOR SOMEONE ELSE'S RUN: a CI job, a review round, a verdict on a PR you opened or labelled all report into the thread by themselves, so waiting one out here only burns the clock and holds your role's one slot against the queue. Started one? Say so in the thread, park on it (`--parked-on run:<N>` or `pr:<N>`) when nothing else can move, and pass the turn — the next tick reads the finished verdict.";
 
 /**
  * THE NORM OF WINDING DOWN, in the session's own prompt (R20, john's decision) — the
