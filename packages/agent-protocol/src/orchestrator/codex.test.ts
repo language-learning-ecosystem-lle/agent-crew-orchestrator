@@ -25,6 +25,7 @@ import {
   CODEX,
   codexIsAssistantStep,
   codexModelOf,
+  codexProbeFailure,
   codexRenderLine,
   codexRunUsageOf,
   codexSessionIdOf,
@@ -223,6 +224,38 @@ describe("what this kind cannot say, it does not say", () => {
     // A probe that can write is a probe that can break the box it is diagnosing.
     expect(argv).toContain("--sandbox");
     expect(argv).toContain("read-only");
+  });
+
+  it("reads the reason of a failed probe off the END, not off the first line (thread 039)", () => {
+    // THE ONE FIXTURE IN THIS FILE THAT CAME OUT OF A RUNNING `codex`, and it is here
+    // because the defect it pins was invisible without one: captured on this box
+    // 2026-08-28, `codex exec --skip-git-repo-check --sandbox read-only …` with a
+    // throwaway CODEX_HOME, exit 1, 35 lines of stderr. Trimmed to the shape that
+    // matters — progress first, retries in the middle, the verdict last.
+    const said = [
+      "WARNING: proceeding, even though we could not create PATH aliases: …",
+      "Reading additional input from stdin...",
+      "OpenAI Codex v0.150.1",
+      "2026-08-28T17:38:53.992394Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://api.openai.com/v1/responses",
+      "ERROR: Reconnecting... 5/5",
+      "ERROR: unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses",
+    ].join("\n");
+    expect(codexProbeFailure(said)).toBe(
+      "ERROR: unexpected status 401 Unauthorized: Missing bearer or basic authentication in header, url: https://api.openai.com/v1/responses",
+    );
+    // Positionally the first line is what doctor used to print, and it names nothing a
+    // human can fix — that is the whole of defect №2.
+    expect(codexProbeFailure(said)).not.toContain("Reading additional input from stdin");
+    expect(CODEX.probeFailure(said)).toBe(codexProbeFailure(said));
+  });
+
+  it("keeps the last line when the tool marked nothing an error, and empty when it said nothing", () => {
+    // A run that ended without the vendor's own `ERROR:` marker still ended ON the thing
+    // that stopped it, so the tail is a better answer than the banner.
+    expect(codexProbeFailure("Reading additional input from stdin...\nkilled by the sandbox")).toBe(
+      "killed by the sandbox",
+    );
+    expect(codexProbeFailure("   \n\n")).toBe("");
   });
 
   it("dictates ITS repair, with the key on stdin and never in an argument", () => {

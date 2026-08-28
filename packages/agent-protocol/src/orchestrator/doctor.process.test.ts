@@ -198,3 +198,116 @@ describe("doctor names the accounts of a box even when that box raises nothing",
     expect(said).not.toContain("CLAUDE_CONFIG_DIR=/home/j/.claude-second claude login");
   });
 });
+
+/**
+ * TWO VENDORS ON ONE BOX, WHICH IS THE ONLY PLACE BOTH DEFECTS OF THREAD 039 EXIST.
+ *
+ * Measured on the live box 2026-08-28, `pnpm protocol doctor`:
+ * `✗ account: 'codex-main' token: error: unknown option '--skip-git-repo-check'` — the
+ * argv of the CODEX probe, refused by the CLAUDE binary, on an account that had just
+ * been logged in. Two separate faults met in that one line: the row ran the first
+ * binary the agent rows happened to resolve, and it printed the first line of whatever
+ * came back. Neither is visible to a pure function — the first is a property of the
+ * ORDER this command walks its workers in, and the second of what a real child writes
+ * first — so the seam is measured here, with two fake binaries standing in for the
+ * vendors and a probe that is allowed to run (no `--offline`).
+ */
+describe("doctor asks each account's own tool, and reports why the tool refused", () => {
+  const TWO_KINDS = {
+    ...CONFIG,
+    instances: [{ id: "main", roles: ["dev-core", "pilot"] }],
+    roles: [
+      ...CONFIG.roles,
+      {
+        id: "pilot",
+        kind: "codex",
+        status: "active",
+        wake: { mode: "watch", session: "p" },
+        summary: "the second vendor",
+        instructions: [{ kind: "in-repo", path: CARD }],
+        // No allow-list: this tool has none, and the card says what holds the session
+        // instead (thread 026, П1). Written out because the launch door refuses a codex
+        // role that asks for a lever the tool lacks.
+        launch: { agent: { kind: "codex", toolsHeldBy: "sandbox-read-only" } },
+      },
+    ],
+  };
+
+  /** A binary that refuses the way its vendor refuses — the whole fixture of this case. */
+  const fake = (dir: string, name: string, lines: readonly string[]): string => {
+    const path = join(dir, name);
+    writeFileSync(path, `#!/bin/sh\n${lines.map((l) => `echo '${l}' >&2`).join("\n")}\nexit 1\n`, {
+      mode: 0o755,
+    });
+    return path;
+  };
+
+  const box = (): { readonly repo: string; readonly work: string } => {
+    const { repo, work } = contour(true);
+    // DECLARED IN THIS ORDER ON PURPOSE: claude first, so the row of a codex account is
+    // wrong the moment it takes "the first binary that resolved" for its own.
+    const bin = join(repo, "bin");
+    mkdirSync(bin, { recursive: true });
+    const claude = fake(bin, "claude", ["Not logged in · Please run /login"]);
+    const codex = fake(bin, "codex", [
+      // The vendor's real first line, captured on this box: progress, not a reason.
+      "Reading additional input from stdin...",
+      "ERROR: Reconnecting... 5/5",
+      "ERROR: unexpected status 401 Unauthorized: Missing bearer or basic authentication in header",
+    ]);
+    const dir = join(configHome(repo), "agent-protocol");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "local.json"),
+      `${JSON.stringify(
+        {
+          agents: { "claude-code": { exec: claude }, codex: { exec: codex } },
+          instance: "main",
+          accounts: { "codex-main": { configDir: "/root/.codex-pilot", kind: "codex" } },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    writeFileSync(join(work, "agent-protocol.json"), `${JSON.stringify(TWO_KINDS, null, 2)}\n`);
+    git(work, "add", "-A");
+    git(work, "commit", "-qm", "a box that raises two vendors");
+    return { repo, work };
+  };
+
+  /** The same command as above, but ALLOWED TO SPEND A PROBE: the fakes cost nothing. */
+  const live = (cwd: string, repo: string): string => {
+    const done = spawnSync(TSX, [CLI, "doctor", "--ref", "HEAD"], {
+      cwd,
+      encoding: "utf8",
+      env: {
+        ...sandbox(configHome(repo)),
+        GIT_CONFIG_GLOBAL: "/dev/null",
+        GIT_CONFIG_SYSTEM: "/dev/null",
+      },
+    });
+    return `${done.stdout ?? ""}${done.stderr ?? ""}`;
+  };
+
+  it("runs the codex binary for a codex account, though the claude one resolved first", () => {
+    const { repo, work } = box();
+    const said = live(work, repo);
+    const row = said.split("\n").find((line) => line.includes("account: 'codex-main'")) ?? "";
+    expect(row).toContain("401 Unauthorized");
+    // What the defect printed instead: the words of the OTHER vendor's binary.
+    expect(row).not.toContain("Not logged in");
+  });
+
+  it("names the reason the tool gave, not the first line it happened to write", () => {
+    const { repo, work } = box();
+    const said = live(work, repo);
+    for (const row of said.split("\n").filter((line) => line.includes("(codex)"))) {
+      // The line doctor used to print for this tool — progress, and nothing to repair.
+      expect(row).not.toContain("Reading additional input from stdin");
+    }
+    expect(said).toContain("agent: headless run (codex)");
+    expect(said).toContain("Missing bearer or basic authentication");
+    // And the repair dictated beside the dead account is codex's, with its directory.
+    expect(said).toContain("CODEX_HOME=/root/.codex-pilot");
+  });
+});

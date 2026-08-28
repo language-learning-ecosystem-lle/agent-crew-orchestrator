@@ -38,7 +38,8 @@
  * talking to git, reading the mail checkout) lives in the CLI, where the effects are.
  */
 
-import { type AgentKind, CLAUDE_CODE } from "./kind.js";
+import type { LocalConfig } from "../config/local.js";
+import { type AgentKind, CLAUDE_CODE, resolveExec } from "./kind.js";
 import type { CheckStatus, PreflightCheck } from "./preflight.js";
 
 /**
@@ -254,6 +255,49 @@ export const agentLiveCheck = (input: {
   readonly worker: string;
   readonly outcome: DoctorOutcome;
 }): PreflightCheck => verdict(`agent: headless run (${input.worker})`, input.outcome);
+
+/**
+ * WHICH BINARY AN ACCOUNT'S ROW RUNS (thread 039, measured 2026-08-28).
+ *
+ * The row used to run whatever binary the agent rows above had resolved FIRST, on the
+ * argument that "an account is a home directory, not a different tool". The argument
+ * held while a box ran one vendor and stopped holding the day an account declared
+ * itself a codex one: the row asked the KIND for its argv, its account variable and
+ * its login command, and then handed all three to the claude binary, which answered
+ * `unknown option '--skip-git-repo-check'`. A red row on a live account, whose text
+ * names nothing a human can fix — the same class as the default binary of thread 026,
+ * one floor down.
+ *
+ * So the binary is the kind's own, resolved through the layer that already exists
+ * (`resolveExec`: the machine config first, the vendor's name last) and reusing what
+ * the agent rows resolved a moment ago where the box raises that kind — a box whose
+ * binary was already looked up is not looked up twice.
+ *
+ * AND WHEN THAT BINARY IS NOWHERE, THE ROW SAYS SO instead of spending another tool's:
+ * "there is nothing to run" with the kind named is an answer; a vendor's complaint
+ * about a flag it never had is not.
+ */
+export const accountBinary = (input: {
+  readonly kind: AgentKind;
+  /** What the agent rows resolved, by worker id — the same lookup, already paid for. */
+  readonly resolved: ReadonlyMap<string, string>;
+  /** `command -v` IN THE CHILD'S ENVIRONMENT (the daemon's PATH is not the session's). */
+  readonly lookUp: (exec: string) => string | null;
+  readonly local?: LocalConfig;
+}): { readonly exec: string } | DoctorSkipped => {
+  const already = input.resolved.get(input.kind.id);
+  if (already !== undefined) return { exec: already };
+  const named = resolveExec({
+    worker: input.kind.id,
+    ...(input.local === undefined ? {} : { local: input.local }),
+  });
+  const found = input.lookUp(named.value);
+  return found === null
+    ? {
+        skipped: `the binary of kind '${input.kind.id}' ('${named.value}', ${named.source}) was not found — there is nothing to run`,
+      }
+    : { exec: found };
+};
 
 /**
  * IS THE TOKEN OF ACCOUNT X ALIVE (B.4 of thread 055) — one row per DECLARED account, and
