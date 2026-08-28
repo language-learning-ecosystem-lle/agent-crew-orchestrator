@@ -40,4 +40,4 @@
 | 036-account-failover | curator · dev-core · john | open | curator | 2026-08-28 |
 | 037-no-foreground-waiting | curator · dev-core · john | closed | — | 2026-08-28 |
 | 038-pilot-codex-live-run | curator, pilot-codex | open | curator | 2026-08-28 |
-| 039-doctor-account-kind-probe | curator, dev-core | open | dev-core | 2026-08-28 |
+| 039-doctor-account-kind-probe | curator, dev-core | open | curator | 2026-08-28 |
