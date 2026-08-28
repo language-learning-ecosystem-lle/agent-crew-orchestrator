@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CONFIG_REFLOW_NOTE,
   MIGRATIONS,
   type MigrationContext,
   MigrationRefusedError,
   type MigrationStep,
   planMigration,
   renderMigrationPlan,
+  rendersConfig,
 } from "./migrate.js";
 import { CURRENT_PROTOCOL_VERSION } from "./version.js";
 
@@ -177,5 +179,44 @@ describe("planMigration", () => {
     expect(renderMigrationPlan(plan)).toContain(
       "NOTE (by hand): restart the daemon after the merge",
     );
+  });
+});
+
+describe("the reflow note", () => {
+  const changing: MigrationStep = {
+    from: 1,
+    summary: "changes a value in the config",
+    plan: (context) => ({ config: { ...context.config, mail: { branch: "renamed" } } }),
+  };
+
+  it("is owed by every plan that re-renders the config, whatever the step did", () => {
+    // The property belongs to `renderConfig`, so it is asked of the WRITES: a step
+    // that touches only the config still produces a re-rendered file.
+    const plan = planMigration({
+      declared: 1,
+      target: 2,
+      context: contextWith(),
+      steps: [changing],
+    });
+
+    expect(plan.configPath).toBe(CONFIG_PATH);
+    expect(rendersConfig(plan)).toBe(true);
+  });
+
+  it("is not owed by a plan that writes nothing — an empty plan renders no file", () => {
+    // The other half of the note's worth: one printed on every run is one nobody
+    // reads by the second run.
+    const plan = planMigration({ declared: 1, target: 1, context: contextWith(), steps: [] });
+
+    expect(rendersConfig(plan)).toBe(false);
+  });
+
+  it("names the class of the repair and no vendor's tool", () => {
+    // The package does not know what the consumer formats with, and naming one would
+    // be a rule it has no standing to make. `biome` is this repository's choice, not
+    // the protocol's.
+    expect(CONFIG_REFLOW_NOTE).toContain("formatter");
+    expect(CONFIG_REFLOW_NOTE.toLowerCase()).not.toContain("biome");
+    expect(CONFIG_REFLOW_NOTE.toLowerCase()).not.toContain("prettier");
   });
 });

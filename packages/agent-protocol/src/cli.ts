@@ -462,10 +462,12 @@ import {
   zoneDenyRules,
 } from "./roles/zones.js";
 import {
+  CONFIG_REFLOW_NOTE,
   type MigrationContext,
   MigrationRefusedError,
   planMigration,
   renderMigrationPlan,
+  rendersConfig,
 } from "./schema/migrate.js";
 import {
   PACKAGE_VERSION_SOURCES,
@@ -1180,6 +1182,9 @@ const schemaMigrate = (argv: readonly string[]): void => {
   err(
     "agent-protocol: the files are written but NOT committed — the config goes through a PR, the mail goes straight into its branch (README, 'Compatibility and breaking changes')",
   );
+  // Said only where the file EXISTS to be formatted: the dry run has nothing to run a
+  // formatter over, and a note printed on every plan is one nobody reads by the second.
+  if (rendersConfig(plan)) err(`agent-protocol: ${CONFIG_REFLOW_NOTE}`);
 };
 
 /**

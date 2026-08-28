@@ -210,6 +210,7 @@ export {
   wakeSchema,
 } from "./roles/schema.js";
 export {
+  CONFIG_REFLOW_NOTE,
   MIGRATIONS,
   type MigrationContext,
   type MigrationEffect,
@@ -221,6 +222,7 @@ export {
   planMigration,
   renderConfig,
   renderMigrationPlan,
+  rendersConfig,
 } from "./schema/migrate.js";
 export {
   CONFIG_SHAPES,

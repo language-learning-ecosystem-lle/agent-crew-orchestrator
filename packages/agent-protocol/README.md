@@ -914,6 +914,15 @@ version has to be readable before validation — a config one version behind is 
 config the current schema may legitimately reject, and going through the loader
 would turn "run the migration" into "invalid config".
 
+**After `--write`, whenever the config was among the files written, it also says
+that the file was RE-RENDERED and asks for your project's formatter before the
+commit.** The renderer's JSON shape is not necessarily the one your repository
+enforces, and the note belongs to the writer rather than to the step that happened to
+need it — a step author cannot be expected to remember a property of a function they
+never called. It names the class of the repair and no tool: the package does not know
+what you format with. On the dry run it stays silent, because nothing was written to
+format ("Compatibility and breaking changes" carries the same rule for the landing).
+
 ### The two numbers of a pin, before it moves (thread 028)
 
 ```
@@ -1049,6 +1058,17 @@ and pure noise to every reviewer, so the contract PR edits `protocolVersion` by 
 and the file `--write` produced is thrown away. The step for the DATA is held to a
 stricter standard on purpose (a textual insertion with a byte-exact proof) — the mail
 is somebody's committed words, the config is not.
+
+**Where the step changes a VALUE, the rendered file has to be taken WHOLE — and then
+run through your project's formatter before the commit.** "Carry the number by hand"
+holds only while nothing but the number moves; the first step that narrows an
+accepted value (21, the codex effort vocabulary) ends it, because the rendered file
+is the only place that value exists. What comes back is `JSON.stringify`'s shape, not
+the file's — short arrays one element per line — and a repository that ENFORCES a
+format will fail its own lint on it while blaming formatting rather than the runner
+(measured here on 2026-08-28: 179 lines → 212, `pnpm lint` red). `schema migrate
+--write` says this itself, after the write; the package names no formatter, because
+it does not know yours.
 
 `schema migrate` writes files and does NOT commit them: which commit goes to which
 branch is a decision of the protocol, not of the runner. The plan prints absolute
