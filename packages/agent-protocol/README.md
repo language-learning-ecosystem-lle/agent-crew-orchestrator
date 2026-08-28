@@ -3595,11 +3595,24 @@ later at a dead process. The tail of the second run's log settles the diagnosis 
 session ended it.
 
 **Two endings, and the third is named as forbidden.** Legal: block IN THE FOREGROUND on a call
-that holds the turn open (`await-input` of S13, a watch, any command you run and wait out), or
-report in the thread and pass the turn on, leaving the waking-up to the daemon of S3. Illegal:
-finish the turn intending to come back when something reports. The prompt names the illegal one
-in its own words rather than only listing the legal two, because the failing sessions had read
-the legal two — what they invented reads like a blend of them.
+that holds the turn open (`await-input` of S13, or any command of the session's OWN work it runs
+and waits out), or report in the thread and pass the turn on, leaving the waking-up to the daemon
+of S3. Illegal: finish the turn intending to come back when something reports. The prompt names
+the illegal one in its own words rather than only listing the legal two, because the failing
+sessions had read the legal two — what they invented reads like a blend of them.
+
+**The foreground ending is never for SOMEONE ELSE'S run** (john's hard rule, 2026-08-28, thread
+`037-no-foreground-waiting`: "no role should ever wait for any run that is going to write into
+the thread anyway"; the norm itself lives in the project's `PROTOCOL.md`, «Ожидание чужого
+прогона — не действие»). A CI job, a review round, a verdict on a PR the session opened or
+labelled all report into the thread on their own, and a role has ONE slot: a session waiting one
+out holds the queue behind it. The paragraph used to list "a watch, a command you run and wait
+out" without asking WHOSE job was being waited on — that is, the prompt authorised the very thing
+the rule forbids, and it is narrowed here rather than left to the role cards to contradict. The
+field case that produced the rule: on 2026-08-28 a session labelled one PR and stayed in the run
+while two other green PRs waited for their labels behind it. The prompt states the ban as its own
+sentence and names the exit in the same breath — say what was started, park on it
+(`--parked-on run:<N>` / `pr:<N>`) when nothing else can move, pass the turn. Pinned by a test.
 
 **Why the prompt and not a role card.** It is a property of the runtime every raised session
 lives in, not of one project's way of working (the same argument that put R19 in the package's
