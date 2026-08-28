@@ -192,22 +192,22 @@ describe("launch.agent — which tool raises the role, and with what (R15)", () 
 
   it("takes `effort` on codex — in CODEX'S vocabulary, not the other vendor's (П2)", () => {
     // The question that kept this field out (which levels a card may name) was answered by
-    // john on 2026-08-24: a second vocabulary, owned by the tool. So the level codex has and
-    // claude-code has not is accepted here...
-    expect(
-      withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", effort: "minimal" } }).success,
-    ).toBe(true);
-    // ...and the level claude-code has and codex has not is refused by the member, at the
-    // door, where it can still be retyped — instead of reaching the vendor as a dead run.
+    // john on 2026-08-24: a second vocabulary, owned by the tool. At protocol 21 the vendor's
+    // live list replaced its documented one, so `max` — once refused here as "the other
+    // vendor's level" — is what the member now takes...
     expect(
       withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", effort: "max" } }).success,
+    ).toBe(true);
+    // ...and `minimal`, which no model of that list sells, is refused by the member at the
+    // door, where it can still be retyped — instead of reaching the vendor as a dead run.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", effort: "minimal" } }).success,
     ).toBe(false);
-    // `max` is not refused everywhere — the OTHER member still takes it. The vocabularies
-    // are per tool, which is the whole reason they are two.
+    // The OTHER member is judged by its own list, which is the whole reason they are two —
+    // even now that the two lists carry the same five words.
     expect(
       withLaunch({ allowedTools: ["Bash"], agent: { kind: "claude-code", effort: "max" } }).success,
     ).toBe(true);
-    // And `minimal` does not leak the other way either.
     expect(
       withLaunch({ allowedTools: ["Bash"], agent: { kind: "claude-code", effort: "minimal" } })
         .success,

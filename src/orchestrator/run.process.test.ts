@@ -1159,7 +1159,7 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
       agent: {
         kind: "codex",
         model: "gpt-5-codex",
-        effort: "minimal",
+        effort: "max",
         toolsHeldBy: "sandbox-read-only",
       },
     });
@@ -1174,7 +1174,7 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
     expect(argv).toContain("-m");
     expect(argv).toContain("gpt-5-codex");
     expect(argv).toContain("-c");
-    expect(argv).toContain("model_reasoning_effort=minimal");
+    expect(argv).toContain("model_reasoning_effort=max");
     // And not one flag of the other tool: no allow-list was invented for a tool without one.
     expect(argv).not.toContain("--allowedTools");
     expect(argv).not.toContain("--effort");
@@ -1197,8 +1197,9 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
   }, 60_000);
 
   it("`--effort max` on codex is refused with codex's levels, before the lease is spent", () => {
-    // П2-2 at the real CLI: a level of the OTHER vendor typed on this one used to travel to
-    // the tool and come back as a dead run.
+    // П2-2 at the real CLI: a level the tool does not sell, typed on it, used to travel to the
+    // vendor and come back as a dead run. The word changed at protocol 21 (`max` is codex's
+    // after all, `minimal` is nobody's); the door and its sentence did not.
     const { repo } = contour();
     const result = runWithout(repo, [
       "--exec",
@@ -1206,12 +1207,12 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
       "--worker",
       "codex",
       "--effort",
-      "max",
+      "minimal",
       "--write",
     ]);
 
     expect(result.code).toBe(2);
-    expect(result.out).toContain("allowed levels of 'codex' are minimal, low, medium, high, xhigh");
+    expect(result.out).toContain("allowed levels of 'codex' are low, medium, high, xhigh, max");
   }, 60_000);
 
   it("and dropping the ask drops the run: a role with no launch profile is not raised at all", () => {
