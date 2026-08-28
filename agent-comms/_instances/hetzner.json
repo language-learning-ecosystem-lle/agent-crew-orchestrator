@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-28T10:56:36.148Z",
+  "writtenAt": "2026-08-28T11:01:07.648Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "035-explicit-models",
       "state": "running",
       "deadline": "2026-08-28T11:56:34Z"
-    },
-    {
-      "role": "curator",
-      "thread": "037-no-foreground-waiting",
-      "state": "running",
-      "deadline": "2026-08-28T11:36:31Z"
     }
   ]
 }
