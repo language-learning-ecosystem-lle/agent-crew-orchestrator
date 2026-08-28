@@ -190,14 +190,31 @@ describe("launch.agent — which tool raises the role, and with what (R15)", () 
     expect(result.data?.roles[0]?.launch?.agent).toEqual({ kind: "codex", model: "gpt-5-codex" });
   });
 
-  it("REFUSES `effort` on codex BY THE KEY — the vocabulary is not decided yet", () => {
-    // Codex HAS the lever (`-c model_reasoning_effort=`), which is why it is absent
-    // from `CODEX_CANNOT`. What its levels are, and whether this package validates
-    // them or hands the string to the vendor, is a question about the form of the
-    // config (R14) and stands in thread 026. Refused by the strict object until it is
-    // answered — an accepted field nobody validates would decide runs in silence.
+  it("takes `effort` on codex — in CODEX'S vocabulary, not the other vendor's (П2)", () => {
+    // The question that kept this field out (which levels a card may name) was answered by
+    // john on 2026-08-24: a second vocabulary, owned by the tool. So the level codex has and
+    // claude-code has not is accepted here...
     expect(
-      withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", effort: "high" } }).success,
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", effort: "minimal" } }).success,
+    ).toBe(true);
+    // ...and the level claude-code has and codex has not is refused by the member, at the
+    // door, where it can still be retyped — instead of reaching the vendor as a dead run.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", effort: "max" } }).success,
+    ).toBe(false);
+    // `max` is not refused everywhere — the OTHER member still takes it. The vocabularies
+    // are per tool, which is the whole reason they are two.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "claude-code", effort: "max" } }).success,
+    ).toBe(true);
+    // And `minimal` does not leak the other way either.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "claude-code", effort: "minimal" } })
+        .success,
+    ).toBe(false);
+    // The plan-mode sixth level is not a level of `codex exec` and is refused as one.
+    expect(
+      withLaunch({ allowedTools: ["Bash"], agent: { kind: "codex", effort: "none" } }).success,
     ).toBe(false);
     // And the other vendor's parameters do not leak in through the second member either.
     expect(

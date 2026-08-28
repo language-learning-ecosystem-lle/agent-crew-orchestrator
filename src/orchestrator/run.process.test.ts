@@ -1034,7 +1034,15 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
   const withLaunch = (repo: string, launch: Record<string, unknown>): void => {
     const path = join(repo, "agent-protocol.json");
     const raw = JSON.parse(readFileSync(path, "utf8")) as typeof CONFIG;
-    (raw.roles[0] as { launch: unknown }).launch = { allowedTools: ["Bash"], ...launch };
+    const merged: Record<string, unknown> = { allowedTools: ["Bash"], ...launch };
+    // A card that WAIVES the allow-list has to be expressible here too (thread 026, П1):
+    // the default above is a convenience, and a convenience that cannot be switched off
+    // would make the one scenario this file exists for impossible to write.
+    if (launch.allowedTools === undefined && launch.noAllowedTools === true) {
+      delete merged.allowedTools;
+      delete merged.noAllowedTools;
+    }
+    (raw.roles[0] as { launch: unknown }).launch = merged;
     writeFileSync(path, `${JSON.stringify(raw, null, 2)}\n`);
     git(repo, "commit", "-qam", "launch");
   };
@@ -1131,16 +1139,48 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
    * - a role WITHOUT a `launch` section is not launched by the orchestrator at all
    *   (`no-launch-profile`), so removing the ask removes the run.
    *
-   * Both halves are pinned here, because that pair is the whole state of the card path: the
-   * schema now accepts `kind: "codex"` (#74) and no configuration of a role turns it into a
-   * process. The way out is the question the inventory left open (msg-004: with what does the
-   * circuit hold zones and a step ceiling on codex) and it is not the package's to answer.
+   * THE WALL CAME DOWN ON 2026-08-24 (john's decision, thread 026, П1: variant (а) for a
+   * pilot role) AND THIS CASE IS THE PROMISE KEPT — the measurement that pinned the wall
+   * said "the day a decision arrives, the case that stops being true goes red", and it did.
+   * What stands here now is the positive scenario in its place: a card that WAIVES the
+   * allow-list by naming what holds the session instead is raised, and the argv proves the
+   * assertion rather than restating it.
    *
-   * The param door is still exercised end to end by the first case: `resolveAgentParams` runs
-   * BEFORE the lever door, so a run refused with the LEVER's words is a run whose card model
-   * for codex passed the door that used to refuse it by the literal string `claude-code`.
+   * BOTH SIDES OF THE DOOR ARE STILL HERE. The refusal did not go away — it moved into the
+   * case below, on the same card minus the one word, because "the levers were handed to a
+   * sandbox" and "the levers went missing" must not look alike from any surface.
    */
-  it("a card naming codex passes the parameter door and stops at the lever door, by name", () => {
+  it("a codex card that names what holds it is RAISED — with `--sandbox read-only` in its argv", () => {
+    const { repo } = contour();
+    const dump = join(repo, "argv.txt");
+    const exec = stub(repo, `printf '%s\\n' "$@" > ${dump}\nsleep 1`);
+    withLaunch(repo, {
+      noAllowedTools: true,
+      agent: {
+        kind: "codex",
+        model: "gpt-5-codex",
+        effort: "minimal",
+        toolsHeldBy: "sandbox-read-only",
+      },
+    });
+
+    const result = runWithout(repo, ["--exec", exec, "--worker", "codex", "--write"]);
+    const argv = readFileSync(dump, "utf8").split("\n");
+
+    expect(result.code).toBe(0);
+    // The confinement the card asserts, as the vendor spells it — the whole content of П1-3.
+    expect(argv.join(" ")).toContain("--sandbox read-only");
+    // The parameters of П2, in codex's own spelling and in codex's own vocabulary.
+    expect(argv).toContain("-m");
+    expect(argv).toContain("gpt-5-codex");
+    expect(argv).toContain("-c");
+    expect(argv).toContain("model_reasoning_effort=minimal");
+    // And not one flag of the other tool: no allow-list was invented for a tool without one.
+    expect(argv).not.toContain("--allowedTools");
+    expect(argv).not.toContain("--effort");
+  }, 60_000);
+
+  it("the same card MINUS the word is refused by name — a waiver is never silence", () => {
     const { repo } = contour();
     const dump = join(repo, "argv.txt");
     const exec = stub(repo, `printf '%s\\n' "$@" > ${dump}\nsleep 1`);
@@ -1149,13 +1189,29 @@ describe("the machine says WHERE, the repository says WHAT (R14 + R15)", () => {
     const result = runWithout(repo, ["--exec", exec, "--write"]);
 
     expect(result.code).toBe(2);
-    // The lever door's words — not the parameter door's: the card's model for codex got past
-    // the refusal that used to read "written for another tool".
     expect(result.out).toContain("role 'dev-core' would be raised as 'codex'");
     expect(result.out).toContain("allowed-tools");
     expect(result.out).not.toContain("written for");
     // And nothing was spawned: no argv file exists to inspect.
     expect(existsSync(dump)).toBe(false);
+  }, 60_000);
+
+  it("`--effort max` on codex is refused with codex's levels, before the lease is spent", () => {
+    // П2-2 at the real CLI: a level of the OTHER vendor typed on this one used to travel to
+    // the tool and come back as a dead run.
+    const { repo } = contour();
+    const result = runWithout(repo, [
+      "--exec",
+      "/bin/true",
+      "--worker",
+      "codex",
+      "--effort",
+      "max",
+      "--write",
+    ]);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("allowed levels of 'codex' are minimal, low, medium, high, xhigh");
   }, 60_000);
 
   it("and dropping the ask drops the run: a role with no launch profile is not raised at all", () => {

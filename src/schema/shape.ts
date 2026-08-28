@@ -516,6 +516,82 @@ export const CONFIG_SHAPES: Readonly<Record<number, readonly string[]>> = {
     "roles[].zones.forbidden",
     "roles[].zones.writes",
   ],
+  /**
+   * 20 — thread `026`, П1: `roles[].launch.agent` (member `codex`) gained `toolsHeldBy`, the
+   * field that says WHAT holds a session whose tool has no allow-list. One new key path, and
+   * this time the half above sees it: unlike 19, whose whole change was a value.
+   *
+   * `roles[].launch.allowedTools` DID NOT LEAVE THE TABLE, and the absence of a change is the
+   * point: the field went from required to conditionally optional, and this guard freezes the
+   * set of paths a config may CARRY, not which of them it must. What the two halves of the door
+   * cannot see is REQUIREDNESS — measured on this diff, reported to thread `034` rather than
+   * worked around here.
+   */
+  20: [
+    "announcements",
+    "announcements.force-stop",
+    "identityDictionary",
+    "instances",
+    "instances[].account",
+    "instances[].id",
+    "instances[].note",
+    "instances[].roles",
+    "mail",
+    "mail.branch",
+    "mail.dir",
+    "notifications",
+    "notifications.stalledAfterMinutes",
+    "notifications.templates",
+    "notifications.templates.nudge",
+    "notifications.templates.parked",
+    "notifications.templates.stalled",
+    "notifications.templates.turn",
+    "notifications.templates.turn-with-nudge",
+    "notifications.transport",
+    "notifications.transport.module",
+    "notifications.transport.options",
+    "orchestrator",
+    "orchestrator.env",
+    "orchestrator.mailCheckout",
+    "orchestrator.ref",
+    "orchestrator.state",
+    "orchestrator.workdir",
+    "orchestrator.workdir.branch",
+    "orchestrator.workdir.worktrees",
+    "powerDocuments",
+    "protocolVersion",
+    "roles",
+    "roles[].id",
+    "roles[].instructions",
+    "roles[].instructions[].kind",
+    "roles[].instructions[].note",
+    "roles[].instructions[].path",
+    "roles[].kind",
+    "roles[].launch",
+    "roles[].launch.account",
+    "roles[].launch.agent",
+    "roles[].launch.agent.effort",
+    "roles[].launch.agent.kind",
+    "roles[].launch.agent.model",
+    "roles[].launch.agent.toolsHeldBy",
+    "roles[].launch.allowedTools",
+    "roles[].launch.limits",
+    "roles[].launch.limits.idleSeconds",
+    "roles[].launch.limits.maxTurns",
+    "roles[].launch.limits.waitInputSeconds",
+    "roles[].launch.limits.wallClockSeconds",
+    "roles[].launch.limits.windDownSeconds",
+    "roles[].permissions",
+    "roles[].status",
+    "roles[].summary",
+    "roles[].wake",
+    "roles[].wake.mode",
+    "roles[].wake.session",
+    "roles[].wake.via",
+    "roles[].zones",
+    "roles[].zones.forbidden",
+    "roles[].zones.writes",
+  ],
 };
 
 /** What a shape that no longer matches its version asks for, in the words of the repair. */
@@ -584,6 +660,38 @@ export const CONFIG_VALUES: Readonly<Record<number, readonly string[]>> = {
     'roles[].launch.agent.effort = "xhigh"',
     'roles[].launch.agent.kind = "claude-code"',
     'roles[].launch.agent.kind = "codex"',
+    'roles[].permissions[] = "launch-params"',
+    'roles[].permissions[] = "task-declare"',
+    'roles[].permissions[] = "thread-priority"',
+    'roles[].permissions[] = "thread-status"',
+    'roles[].status = "active"',
+    'roles[].status = "paused"',
+    'roles[].status = "planned"',
+    'roles[].status = "retired"',
+    'roles[].wake.mode = "event"',
+    'roles[].wake.mode = "resident"',
+    'roles[].wake.mode = "self"',
+    'roles[].wake.mode = "via-human"',
+    'roles[].wake.mode = "watch"',
+  ],
+  // 20 — thread `026`, П2 and П1: the `codex` member gained its own `effort` vocabulary and the
+  // waiver `toolsHeldBy`. TWO new rows and no edited one. `minimal` is the level codex has and
+  // claude-code has not; `max` stays in the table because the OTHER member still accepts it —
+  // the paths are shared by the two members of the union, so this row set is their sum, and
+  // "which member accepts which level" is a distinction this projection cannot draw (the schema
+  // draws it: a card naming `max` on codex is refused by the strict member).
+  20: [
+    'roles[].instructions[].kind = "external"',
+    'roles[].instructions[].kind = "in-repo"',
+    'roles[].launch.agent.effort = "high"',
+    'roles[].launch.agent.effort = "low"',
+    'roles[].launch.agent.effort = "max"',
+    'roles[].launch.agent.effort = "medium"',
+    'roles[].launch.agent.effort = "minimal"',
+    'roles[].launch.agent.effort = "xhigh"',
+    'roles[].launch.agent.kind = "claude-code"',
+    'roles[].launch.agent.kind = "codex"',
+    'roles[].launch.agent.toolsHeldBy = "sandbox-read-only"',
     'roles[].permissions[] = "launch-params"',
     'roles[].permissions[] = "task-declare"',
     'roles[].permissions[] = "thread-priority"',

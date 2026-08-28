@@ -42,7 +42,7 @@
  * which is as accurate and as useless as `Unrecognized key`; the number is what turns it
  * into "restart what is running on it". Here the ceremony is still discipline, not a door.
  */
-export const CURRENT_PROTOCOL_VERSION = 19;
+export const CURRENT_PROTOCOL_VERSION = 20;
 
 /** The key of the config field. Kept as a constant: the loader's hint quotes it. */
 export const PROTOCOL_VERSION_FIELD = "protocolVersion";
