@@ -36,5 +36,5 @@
 | 032-park-event-race | curator · dev-core · john | closed | — | 2026-08-23 |
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | closed | — | 2026-08-23 |
 | 034-shape-guard-values-blind | curator, dev-core | closed | — | 2026-08-23 |
-| 035-explicit-models | curator · dev-core · john | open | dev-core | 2026-08-28 |
+| 035-explicit-models | curator · dev-core · john | open | curator | 2026-08-28 |
 | 036-account-failover | curator · dev-core · john | open | curator | 2026-08-28 |
