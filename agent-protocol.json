@@ -33,7 +33,7 @@
   "instances": [
     {
       "id": "hetzner",
-      "roles": ["curator", "dev-core"],
+      "roles": ["curator", "dev-core", "pilot-codex"],
       "note": "выделенный сервер (Hetzner, i5-12500/64 ГБ/2×2 ТБ NVMe RAID1), тот же ящик и тот же пользователь 'lle', что держит инстанс 'lle-hetzner' проекта LLE — два инстанса на одном ящике, каждый со своим машинным конфигом '~/.config/agent-protocol/instances/<name>.json' (форма 055). Заведён 2026-08-18 (LLE-тред 082, день 2 Э-3′): собственный клон, собственная ветка почты, собственный резидентный юнит рядом с LLE-шным. Обе роли живут здесь — инстанс у репозитория пока ровно один"
     }
   ],
@@ -117,6 +117,36 @@
           "kind": "claude-code"
         },
         "account": "lle-second"
+      }
+    },
+    {
+      "id": "pilot-codex",
+      "kind": "codex",
+      "status": "active",
+      "wake": {
+        "mode": "watch",
+        "session": "crew-pilot-codex"
+      },
+      "summary": "Роль-пилот второго инструмента: живая приёмка agent.kind 'codex' и ничего кроме. Один такт — поднялась, прочла названный тред, напечатала ответ в свой поток; письмо в тред за неё доставляет рукой curator, потому что под '--sandbox read-only' записи нет. Временная: после снятой приёмки её судьба — решение john",
+      "permissions": [],
+      "instructions": [
+        {
+          "kind": "in-repo",
+          "path": "docs/roles/pilot-codex.md"
+        }
+      ],
+      "launch": {
+        "limits": {
+          "idleSeconds": 180,
+          "wallClockSeconds": 900
+        },
+        "agent": {
+          "kind": "codex",
+          "model": "gpt-5-codex",
+          "effort": "minimal",
+          "toolsHeldBy": "sandbox-read-only"
+        },
+        "account": "codex-main"
       }
     },
     {
