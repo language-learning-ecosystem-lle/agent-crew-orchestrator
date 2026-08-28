@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-28T18:35:24.702Z",
+  "writtenAt": "2026-08-28T18:35:57.142Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "039-doctor-account-kind-probe",
       "state": "draining",
       "deadline": "2026-08-28T19:33:18Z"
-    },
-    {
-      "role": "curator",
-      "thread": "039-doctor-account-kind-probe",
-      "state": "draining",
-      "deadline": "2026-08-28T19:11:36Z"
     }
   ]
 }
