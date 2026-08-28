@@ -114,6 +114,8 @@ export type MigrationPlan = {
   readonly from: number;
   readonly to: number;
   readonly steps: readonly PlannedStep[];
+  /** The config the plan was built against — the path `rendersConfig` looks for in `writes`. */
+  readonly configPath: string;
   /**
    * The writes folded across the chain: one entry per path with the LAST content,
    * the config file last of all. This is what `--write` applies — applying the
@@ -126,6 +128,37 @@ export type MigrationPlan = {
 /** Two-space JSON with a trailing newline — the shape a config already has in the tree. */
 export const renderConfig = (config: Record<string, unknown>): string =>
   `${JSON.stringify(config, null, 2)}\n`;
+
+/**
+ * WHAT THE WRITER OWES THE OPERATOR, AND WHY IT IS SAID BY THE WRITER RATHER THAN BY
+ * A STEP. `renderConfig` re-renders the whole file from the parsed object, so the
+ * result carries `JSON.stringify`'s shape and not the one the file had: short arrays
+ * come back one element per line, hand-written compact objects come back expanded.
+ * Every reader is indifferent to it; a repository that ENFORCES a format is not — on
+ * this one the rendered config grew 179 lines → 212 and its own lint went red
+ * (measured 2026-08-28, thread `026-codex-agent-kind`).
+ *
+ * The escape used until now — "edit `protocolVersion` by hand and throw the rendered
+ * file away" — holds only while the step changes NOTHING BUT the number. The first
+ * step that changes a VALUE (v21, the effort vocabulary) killed it: there the
+ * rendered file is the only place the new value exists, so it has to be taken whole.
+ *
+ * SO THE NOTE BELONGS TO THE WRITER. Hanging it on the step that happened to need it
+ * would make the next author of a step remember a property of a function they never
+ * called. And it names the CLASS of the repair — "your project's formatter" — not a
+ * tool: the package does not know what the consumer formats with and has no standing
+ * to name one.
+ */
+export const CONFIG_REFLOW_NOTE =
+  "the config was re-rendered from its parsed form, so its JSON shape is the renderer's and not the file's — run your project's formatter over it before committing (this package has no formatter of its own and cannot match your repository's rules)";
+
+/**
+ * Does this plan re-render the config file? Asked of the WRITES rather than of
+ * `steps.length`, so the note follows the file that is actually produced instead of
+ * a coincidence of the current chain.
+ */
+export const rendersConfig = (plan: MigrationPlan): boolean =>
+  plan.writes.some((file) => file.path === plan.configPath);
 
 export type PlanInput = {
   /** The version the repository declares now. */
@@ -198,7 +231,7 @@ export const planMigration = (input: PlanInput): MigrationPlan => {
     writes.push({ path: input.context.configPath, content: renderConfig(config) });
   }
 
-  return { from: declared, to: target, steps, writes };
+  return { from: declared, to: target, configPath: input.context.configPath, steps, writes };
 };
 
 /** The plan as text for the operator: what would happen, step by step, then the files. */

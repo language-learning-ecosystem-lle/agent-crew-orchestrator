@@ -8,7 +8,7 @@
  * expensive defects of this package have always lived in `cli.ts`, in the wiring
  * between the pure core and the disk.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -51,18 +51,19 @@ const repoWith = (config: unknown): { repo: string; path: string } => {
   return { repo, path };
 };
 
+/**
+ * BOTH STREAMS, on every exit code. The command says part of what it did on stderr
+ * (what is written is not committed; the rendered config has to be formatted), and a
+ * helper that returned stdout only would let a note vanish while the test still
+ * passed.
+ */
 const run = (repo: string, ...args: string[]): { code: number; out: string } => {
-  try {
-    const out = execFileSync(TSX, [CLI, "schema", "migrate", "--repo", repo, ...args], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: sandbox(configHomeInside(repo)),
-    });
-    return { code: 0, out };
-  } catch (error) {
-    const failure = error as { status?: number; stdout?: string; stderr?: string };
-    return { code: failure.status ?? -1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
-  }
+  const result = spawnSync(TSX, [CLI, "schema", "migrate", "--repo", repo, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: sandbox(configHomeInside(repo)),
+  });
+  return { code: result.status ?? -1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
 };
 
 describe("schema migrate", () => {
@@ -122,5 +123,39 @@ describe("schema migrate", () => {
     expect(result.code).toBe(2);
     expect(result.out).toContain(`${CURRENT_PROTOCOL_VERSION} → ${beyond}`);
     expect(readFileSync(path, "utf8")).toBe(before);
+  });
+
+  /**
+   * The seam of the reflow note: the unit test knows the plan re-renders the config,
+   * and only the process can say whether the operator was TOLD — and told on the run
+   * that actually left a file on disk.
+   */
+  describe("the rendered config asks for the project's formatter", () => {
+    /** One version behind, so the real chain has exactly the last step to apply. */
+    const behind = { ...CONFIG, protocolVersion: CURRENT_PROTOCOL_VERSION - 1 };
+
+    it("says so after --write, where a file exists to be formatted", () => {
+      const { repo, path } = repoWith(behind);
+
+      const result = run(repo, "--write");
+
+      expect(result.code).toBe(0);
+      expect(result.out).toContain("run your project's formatter over it before committing");
+      // The claim is about the file that was really produced, not about the plan.
+      expect(readFileSync(path, "utf8")).toContain(
+        `"protocolVersion": ${CURRENT_PROTOCOL_VERSION}`,
+      );
+    });
+
+    it("stays quiet on the dry run — nothing was written to format", () => {
+      const { repo, path } = repoWith(behind);
+      const before = readFileSync(path, "utf8");
+
+      const result = run(repo);
+
+      expect(result.code).toBe(0);
+      expect(result.out).not.toContain("formatter");
+      expect(readFileSync(path, "utf8")).toBe(before);
+    });
   });
 });
