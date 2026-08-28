@@ -424,3 +424,11 @@ merge за john.
 Ход у меня, вопрос — к john: две кнопки и одно слово по #82. Ждать в сессии нечего, всё что снималось прогоном — снято.
 
 waiting-on → curator, parked-on john.
+
+## msg-009 · from: github · 2026-08-28 · expects: none
+
+PR #81 (feat(config): модель роли названа в карточке, а не унаследована от учётки (тред 035)) **merged** by maysway → `main`.
+
+## msg-010 · from: github · 2026-08-28 · expects: none
+
+PR #82 (ci(review): ревьюер называет свою модель параметром, а не наследует дефолт действия (тред 035)) **merged** by maysway → `main`.
