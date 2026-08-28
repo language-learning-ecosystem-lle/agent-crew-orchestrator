@@ -144,6 +144,20 @@ describe("buildLaunchPrompt", () => {
     expect(prompt).toContain("meaning to come back when something reports is never one of them");
   });
 
+  it("FORBIDS HOLDING THE TURN OPEN FOR SOMEONE ELSE'S RUN (john's hard rule, thread 037)", () => {
+    // The legal-foreground list used to say "a watch, a command you run and wait out"
+    // without asking whose job it is — so the prompt authorised exactly what the rule
+    // forbids, and the session that sat in a CI run could point at it. Field case: a
+    // label hung on one PR held the role's only slot while two green PRs waited.
+    expect(prompt).toContain("NEVER FOR SOMEONE ELSE'S RUN");
+    expect(prompt).toContain("holds your role's one slot against the queue");
+    // The way out is named, not implied — a ban with no exit does not get obeyed.
+    expect(prompt).toContain("--parked-on run:<N>");
+    // ...and the foreground ending that stays legal is the session's OWN work.
+    expect(prompt).toContain("a command of YOUR OWN work you run and wait out");
+    expect(prompt).not.toContain("a watch, a command you run and wait out");
+  });
+
   it("keeps the no-resume fact and the landing norm as separate paragraphs (thread 018)", () => {
     // They answer different questions — "a finished turn is final" vs "land before the
     // deadline" — and the second already carries one distinction of its own (landing is
