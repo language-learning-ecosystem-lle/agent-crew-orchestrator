@@ -70,7 +70,7 @@ agent-protocol schema version --package-ref agent-protocol-v0.2.3 --repo <реп
 agent-protocol schema version --package-ref <тег-кандидат> --package-repo <чекаут репозитория пакета> --repo . --ref main
 ```
 
-Причина не в удобстве флага: тег живёт в репозитории ПАКЕТА, а в `node_modules` потребителя git'а нет вовсе. Без `--package-repo` команда ищет тег у потребителя и отказывает по имени, `exit 2`: `'agent-protocol-v0.2.5' in '<потребитель>' carries none of src/schema/version.ts, packages/agent-protocol/src/schema/version.ts — this ref is not a build of the package`. Дешёвый чекаут репозитория тега — `git clone --filter=blob:none --no-checkout --branch <тег> --depth 1` во временный каталог; он же независимо подтверждает sha тега.
+Причина не в удобстве флага: тег живёт в репозитории ПАКЕТА, а в `node_modules` потребителя git'а нет вовсе. Без `--package-repo` команда ищет тег у потребителя и отказывает по имени, `exit 2`: `'agent-protocol-v0.2.5' in '<потребитель>' carries none of src/schema/version.ts, packages/agent-protocol/src/schema/version.ts — this ref is not a build of the package (name the repository holding the tag with --package-repo)`. Дешёвый чекаут репозитория тега — `git clone --filter=blob:none --no-checkout --branch <тег> --depth 1` во временный каталог; он же независимо подтверждает sha тега.
 
 **Порядок у потребителя, чей установленный пакет этой команды ещё не несёт: «пин → install → сверка → PR».** `schema version` приехала в `0.2.4`, и контур, запиненный раньше, набрать её из своих `node_modules` не может — там она отвечает полным usage. Сверка при этом всё равно стоит ДО переезда: переезд — это merge, а не строчка в рабочем дереве ветки. Кому нужна сверка ещё раньше правки пина — набирает её из чекаута репозитория пакета.
 
