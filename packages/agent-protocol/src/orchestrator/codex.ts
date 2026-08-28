@@ -189,27 +189,59 @@ export const codexRenderLine = (line: string): string[] => {
 };
 
 /**
- * THE EFFORT LEVELS CODEX ACCEPTS (thread 026, П2; john's decision of 2026-08-24) — a
- * closed list, and it lives HERE rather than in the schema for the reason the schema's
- * own `claudeCodeEffortSchema` states about the other vendor: a vocabulary belongs to the
- * tool that owns it, and this file is the one place that speaks for codex.
+ * THE EFFORT LEVELS CODEX ACCEPTS (thread 026, П2; john's decision of 2026-08-24, corrected
+ * by his decision of 2026-08-28) — a closed list, and it lives HERE rather than in the
+ * schema for the reason the schema's own `claudeCodeEffortSchema` states about the other
+ * vendor: a vocabulary belongs to the tool that owns it, and this file is the one place
+ * that speaks for codex.
  *
- * THE SOURCE IS THE VENDOR'S CONFIG REFERENCE, read once by an agent with no network in
- * the session (`developers.openai.com/codex/config.md`, `model_reasoning_effort`), and
- * that provenance is stated because it is weaker than a captured run: nothing on this box
- * has ever seen codex accept or refuse one of these strings.
+ * THE SOURCE IS NOW THE VENDOR'S LIVE LIST, NOT ITS DOCUMENTATION, and that is the whole
+ * reason this list changed. The first version of it was read out of the vendor's config
+ * reference (`developers.openai.com/codex/config.md`, `model_reasoning_effort`) by a session
+ * with no network, and the provenance was declared weak on the spot: "nothing on this box
+ * has ever seen codex accept or refuse one of these strings". The box has now seen it. The
+ * list below is `supported_reasoning_levels` of `/home/lle/.codex/models_cache.json`
+ * (`client_version 0.150.1`, `fetched_at 2026-08-28T17:46:24Z`), read model by model:
  *
- * FIVE LEVELS, AND TWO NEIGHBOURS DELIBERATELY LEFT OUT:
+ * ```
+ * gpt-5.6-terra      low medium high xhigh max ultra
+ * gpt-5.6-luna       low medium high xhigh max
+ * gpt-reserve        low medium high xhigh max
+ * codex-auto-review  low medium high xhigh max
+ * gpt-5.5            low medium high xhigh
+ * gpt-5.4-mini       low medium high xhigh
+ * ```
  *
- *  - `minimal` is the one level the other vendor does not have, and `max` is the one the
- *    other vendor has and codex does not. That asymmetry is the whole argument for two
- *    vocabularies instead of one shared enum: `--effort max` on codex would otherwise be
- *    a dead run with a spent lease instead of a refusal that lists what codex takes;
- *  - `plan_mode_reasoning_effort` and its sixth value `none` are NOT in this list. That
- *    setting governs a mode this package never raises (`codex exec` is not plan mode), so
- *    admitting `none` would be accepting a word the run cannot honour.
+ * TWO CORRECTIONS, AND THE OLD COMMENT HAD BOTH BACKWARDS:
+ *
+ *  - `minimal` IS GONE. It is not a level the vendor has and the other tool lacks — it is a
+ *    level NO model on the live list carries, so a card naming it buys the dead run the
+ *    enum exists to prevent. Removing it NARROWS what a config may say, which is why it
+ *    arrives with a protocol version and a migration that rewrites the value on disk
+ *    (`schema/v21-codex-effort-vocabulary.ts`), and not as a quiet edit;
+ *  - `max` IS IN. The claim that codex does not have it is refuted by four models of six,
+ *    the flagship among them; refusing the word here would be this package inventing a
+ *    refusal the vendor does not make.
+ *
+ * `ultra` IS LEFT OUT, AND THAT IS A CHOICE RATHER THAN A MEASUREMENT — so it is argued
+ * rather than asserted. This enum is a VOCABULARY door, not a model-compatibility one: it
+ * cannot see which model the card names, so all it can ask is "is this a word codex ever
+ * accepts". `ultra` passes that test as much as `max` does. The tiebreak is reach: `max` is
+ * carried by most of the list and by the other tool's vocabulary, `ultra` by exactly one
+ * model that no card in this repository names. Admitting it today would be widening on
+ * speculation; the price of leaving it out is one refusal-by-name on the day a card names
+ * `gpt-5.6-terra`, and that refusal prints this list.
+ *
+ * WHAT THIS DOOR STILL DOES NOT CATCH, stated instead of implied: `max` on `gpt-5.4-mini`
+ * is a level the vendor knows and THAT MODEL does not, and the enum passes it. Closing that
+ * needs the model list at validation time — a change of what the config is checked against,
+ * not a fix of this enum, and it is named in thread `026` rather than smuggled in here.
+ *
+ * `plan_mode_reasoning_effort` and its value `none` are still NOT in this list. That setting
+ * governs a mode this package never raises (`codex exec` is not plan mode), so admitting
+ * `none` would be accepting a word the run cannot honour.
  */
-export const codexEffortSchema = z.enum(["minimal", "low", "medium", "high", "xhigh"]);
+export const codexEffortSchema = z.enum(["low", "medium", "high", "xhigh", "max"]);
 
 /**
  * WHAT `toolsHeldBy: "sandbox-read-only"` PUTS ON THE COMMAND LINE. The card's assertion

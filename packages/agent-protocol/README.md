@@ -144,16 +144,20 @@ default, and it puts `--sandbox read-only` into the run's own argv:
   "limits": { "wallClockSeconds": 3600 },
   "agent": {
     "kind": "codex",
-    "model": "gpt-5-codex",
-    "effort": "minimal",
+    "model": "gpt-5.4-mini",
+    "effort": "low",
     "toolsHeldBy": "sandbox-read-only"
   }
 }
 ```
 
-`effort` is the tool's own vocabulary and the two known ones differ: `claude-code` takes
-`low, medium, high, xhigh, max`, codex takes `minimal, low, medium, high, xhigh` (reaching
-its run as `-c model_reasoning_effort=<v>`). A level of the wrong vendor is refused with
+`effort` is the tool's own vocabulary: `claude-code` takes `low, medium, high, xhigh, max`
+and codex takes `low, medium, high, xhigh, max` too (reaching its run as `-c
+model_reasoning_effort=<v>`). The two lists COINCIDE as of protocol 21 and are still two:
+each kind answers for its own, so the day one vendor moves its levels, one list moves and
+the other tool's contract does not. `minimal` was in codex's list until 21 and is gone —
+no model of the vendor's live catalogue sells it, so the word bought a dead run; `ultra` is
+not taken, being carried by one model of six. A level of the wrong vendor is refused with
 the right list printed — by the schema on the card path, and by `--effort` on the flag
 path — instead of travelling to the tool and coming back as a dead run. `toolsHeldBy` does
 NOT waive the step ceiling: nothing outside the run counts steps, so a card that sets

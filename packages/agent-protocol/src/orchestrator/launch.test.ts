@@ -1035,11 +1035,11 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       // other direction: a level the tool accepts, refused in the name of a tool that
       // is not being raised.
       const resolved = resolveAgentParams({
-        flags: { effort: "minimal" },
+        flags: { effort: "max" },
         worker: { value: "codex", source: "flag" },
         kind: CODEX,
       });
-      expect(resolved).toMatchObject({ ok: true, params: { effort: { value: "minimal" } } });
+      expect(resolved).toMatchObject({ ok: true, params: { effort: { value: "max" } } });
     });
 
     it("REFUSES --effort BY NAME to a kind that declares no lever for it", () => {
