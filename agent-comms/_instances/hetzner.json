@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-28T20:14:40.961Z",
+  "writtenAt": "2026-08-28T20:15:02.887Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "026-codex-agent-kind",
       "state": "running",
       "deadline": "2026-08-28T20:54:25Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "040-schema-bump-kills-daemon",
+      "state": "running",
+      "deadline": "2026-08-28T21:15:01Z"
     }
   ]
 }
