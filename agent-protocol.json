@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 20,
+  "protocolVersion": 21,
   "mail": {
     "branch": "comms",
     "dir": "agent-comms"
@@ -144,8 +144,8 @@
         },
         "agent": {
           "kind": "codex",
-          "model": "gpt-5-codex",
-          "effort": "minimal",
+          "model": "gpt-5.4-mini",
+          "effort": "low",
           "toolsHeldBy": "sandbox-read-only"
         },
         "account": "codex-main"

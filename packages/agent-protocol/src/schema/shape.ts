@@ -592,6 +592,79 @@ export const CONFIG_SHAPES: Readonly<Record<number, readonly string[]>> = {
     "roles[].zones.forbidden",
     "roles[].zones.writes",
   ],
+
+  /**
+   * 21 — thread `026`: the codex `effort` vocabulary followed the vendor's live list. NO KEY
+   * MOVED, and the entry is a copy of 20 for exactly that reason — this half freezes paths,
+   * and the change was entirely in values (`CONFIG_VALUES[21]`, where `minimal` LEAVES). The
+   * copy is not ceremony: `shape.test.ts` requires an entry at the current version, so a
+   * version whose change the path half cannot see still has to say so in the table.
+   */
+  21: [
+    "announcements",
+    "announcements.force-stop",
+    "identityDictionary",
+    "instances",
+    "instances[].account",
+    "instances[].id",
+    "instances[].note",
+    "instances[].roles",
+    "mail",
+    "mail.branch",
+    "mail.dir",
+    "notifications",
+    "notifications.stalledAfterMinutes",
+    "notifications.templates",
+    "notifications.templates.nudge",
+    "notifications.templates.parked",
+    "notifications.templates.stalled",
+    "notifications.templates.turn",
+    "notifications.templates.turn-with-nudge",
+    "notifications.transport",
+    "notifications.transport.module",
+    "notifications.transport.options",
+    "orchestrator",
+    "orchestrator.env",
+    "orchestrator.mailCheckout",
+    "orchestrator.ref",
+    "orchestrator.state",
+    "orchestrator.workdir",
+    "orchestrator.workdir.branch",
+    "orchestrator.workdir.worktrees",
+    "powerDocuments",
+    "protocolVersion",
+    "roles",
+    "roles[].id",
+    "roles[].instructions",
+    "roles[].instructions[].kind",
+    "roles[].instructions[].note",
+    "roles[].instructions[].path",
+    "roles[].kind",
+    "roles[].launch",
+    "roles[].launch.account",
+    "roles[].launch.agent",
+    "roles[].launch.agent.effort",
+    "roles[].launch.agent.kind",
+    "roles[].launch.agent.model",
+    "roles[].launch.agent.toolsHeldBy",
+    "roles[].launch.allowedTools",
+    "roles[].launch.limits",
+    "roles[].launch.limits.idleSeconds",
+    "roles[].launch.limits.maxTurns",
+    "roles[].launch.limits.waitInputSeconds",
+    "roles[].launch.limits.wallClockSeconds",
+    "roles[].launch.limits.windDownSeconds",
+    "roles[].permissions",
+    "roles[].status",
+    "roles[].summary",
+    "roles[].wake",
+    "roles[].wake.mode",
+    "roles[].wake.session",
+    "roles[].wake.via",
+    "roles[].zones",
+    "roles[].zones.forbidden",
+    "roles[].zones.writes",
+  ],
 };
 
 /** What a shape that no longer matches its version asks for, in the words of the repair. */
@@ -688,6 +761,41 @@ export const CONFIG_VALUES: Readonly<Record<number, readonly string[]>> = {
     'roles[].launch.agent.effort = "max"',
     'roles[].launch.agent.effort = "medium"',
     'roles[].launch.agent.effort = "minimal"',
+    'roles[].launch.agent.effort = "xhigh"',
+    'roles[].launch.agent.kind = "claude-code"',
+    'roles[].launch.agent.kind = "codex"',
+    'roles[].launch.agent.toolsHeldBy = "sandbox-read-only"',
+    'roles[].permissions[] = "launch-params"',
+    'roles[].permissions[] = "task-declare"',
+    'roles[].permissions[] = "thread-priority"',
+    'roles[].permissions[] = "thread-status"',
+    'roles[].status = "active"',
+    'roles[].status = "paused"',
+    'roles[].status = "planned"',
+    'roles[].status = "retired"',
+    'roles[].wake.mode = "event"',
+    'roles[].wake.mode = "resident"',
+    'roles[].wake.mode = "self"',
+    'roles[].wake.mode = "via-human"',
+    'roles[].wake.mode = "watch"',
+  ],
+
+  // 21 — thread `026`, john's decision of 2026-08-28: the codex `effort` vocabulary is the vendor's
+  // LIVE list, and the row `= "minimal"` LEAVES the table. FIRST narrowing in this table, and the
+  // difference from every entry before it is the direction of the damage: a row added breaks an
+  // older build reading a newer file, a row REMOVED breaks THIS build reading a file already on
+  // disk — so the version travels with a step that rewrites the value (`v21-codex-effort-
+  // vocabulary.ts`), not with a note. The row `= "max"` does NOT move: it was already here from
+  // the claude-code member, and this projection is the SUM of the union's members — "which member
+  // takes which level" is the distinction it cannot draw, which is why the codex member gaining
+  // `max` is invisible here and is pinned by `codexEffortSchema.options` in the step's test.
+  21: [
+    'roles[].instructions[].kind = "external"',
+    'roles[].instructions[].kind = "in-repo"',
+    'roles[].launch.agent.effort = "high"',
+    'roles[].launch.agent.effort = "low"',
+    'roles[].launch.agent.effort = "max"',
+    'roles[].launch.agent.effort = "medium"',
     'roles[].launch.agent.effort = "xhigh"',
     'roles[].launch.agent.kind = "claude-code"',
     'roles[].launch.agent.kind = "codex"',

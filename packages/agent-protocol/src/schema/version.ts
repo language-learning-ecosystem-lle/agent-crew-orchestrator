@@ -41,8 +41,16 @@
  * table since 14). An older build answers `kind: "codex"` with an invalid discriminator,
  * which is as accurate and as useless as `Unrecognized key`; the number is what turns it
  * into "restart what is running on it". Here the ceremony is still discipline, not a door.
+ *
+ * AND WHENEVER THAT SET NARROWS — which is NOT the same event, and 21 is the first version
+ * that did it (thread `026`: the codex `effort` vocabulary dropped `minimal`, a level no
+ * model of the vendor's live list sells). A value ADDED breaks an OLDER build reading a
+ * newer file; a value REMOVED breaks THIS build reading a file already on disk, and no
+ * number repairs that by itself. So a narrowing arrives WITH a migration step that rewrites
+ * the data (`v21-codex-effort-vocabulary.ts`) — a bump alone would be a version that lies
+ * about a config it cannot read.
  */
-export const CURRENT_PROTOCOL_VERSION = 20;
+export const CURRENT_PROTOCOL_VERSION = 21;
 
 /** The key of the config field. Kept as a constant: the loader's hint quotes it. */
 export const PROTOCOL_VERSION_FIELD = "protocolVersion";

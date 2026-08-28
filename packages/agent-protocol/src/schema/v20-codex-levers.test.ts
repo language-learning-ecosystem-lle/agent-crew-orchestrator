@@ -158,23 +158,42 @@ describe("П1 — a card may omit the allow-list only by naming what holds the s
 });
 
 describe("П2 — the effort vocabulary belongs to the tool", () => {
-  it("five levels, and the two neighbours that are not codex's", () => {
-    expect(codexEffortSchema.options).toEqual(["minimal", "low", "medium", "high", "xhigh"]);
+  // WHAT THIS BLOCK STILL OWNS AFTER VERSION 21. `minimal` left the codex vocabulary at 21
+  // (`v21-codex-effort-vocabulary.test.ts` — no model of the vendor's live list sells it), so
+  // the LIST itself is pinned there, on the current schema. What version 20 established and
+  // still holds is the other half: that there are TWO lists rather than one shared enum, that
+  // each door asks its own kind for its own, and that a card's level reaches codex spelled as
+  // a config override. Those are asserted here on values that are live at both versions.
+  it("two vocabularies, not one — each door asks its own kind, not a shared literal", () => {
     expect(CODEX.effortLevels).toEqual(codexEffortSchema.options);
-    expect(CLAUDE_CODE.effortLevels).toContain("max");
-    expect(CLAUDE_CODE.effortLevels).not.toContain("minimal");
+    // AND AS OF VERSION 21 THE TWO LISTS COINCIDE, which is worth an assertion rather than a
+    // silence: the argument for two enums was an asymmetry (`minimal` here, `max` there) that
+    // the vendor's live list refuted. What survives it is not the asymmetry but the OWNERSHIP —
+    // each kind answers for its own vocabulary, so the day one vendor moves, one list moves.
+    // A shared enum would make that day a change of the other tool's contract.
+    expect(CLAUDE_CODE.effortLevels).not.toBe(CODEX.effortLevels);
+    expect(CLAUDE_CODE.effortLevels).toEqual(CODEX.effortLevels);
+    // The row version 20 froze, kept as history: the value was accepted then, and the table
+    // of a released version is not edited when a later one retires it.
+    expect(CONFIG_VALUES[20]).toContain('roles[].launch.agent.effort = "minimal"');
   });
 
-  it("`--effort max` on codex is a refusal that LISTS the levels, not a spent lease", () => {
+  it("a level the tool does not take is a refusal that LISTS the levels, not a spent lease", () => {
     const resolved = resolveAgentParams({
-      flags: { effort: "max" },
+      flags: { effort: "minimal" },
       worker: { value: "codex", source: "flag" },
       kind: CODEX,
     });
     expect(resolved.ok).toBe(false);
     const said = (resolved as { reason: string }).reason;
-    expect(said).toContain("--effort 'max'");
-    expect(said).toContain("allowed levels of 'codex' are minimal, low, medium, high, xhigh");
+    expect(said).toContain("--effort 'minimal'");
+    // The list is optional ON THE TYPE — `undefined` there means "takes effort, names no
+    // closed list", which is the state this very row denies. So it is asserted, not
+    // `?.`-ed away: a codex that stopped naming its levels must fail HERE, by name, and
+    // not slip through as a refusal text compared against an empty join.
+    const levels = CODEX.effortLevels;
+    expect(levels).toBeDefined();
+    expect(said).toContain(`allowed levels of 'codex' are ${(levels ?? []).join(", ")}`);
   });
 
   it("and the other tool's door keeps its own list, asked of the kind rather than of a literal", () => {
@@ -189,7 +208,7 @@ describe("П2 — the effort vocabulary belongs to the tool", () => {
 
   it("a card's codex effort reaches `-c model_reasoning_effort=` with its source named", () => {
     const launch = launchSchema.parse({
-      agent: { ...WAIVER, model: "gpt-5-codex", effort: "minimal" },
+      agent: { ...WAIVER, model: "gpt-5.4-mini", effort: "low" },
     }) as Launch;
     const resolved = resolveAgentParams({
       flags: {},
@@ -199,7 +218,7 @@ describe("П2 — the effort vocabulary belongs to the tool", () => {
     });
     expect(resolved).toMatchObject({
       ok: true,
-      params: { effort: { value: "minimal", source: "role" } },
+      params: { effort: { value: "low", source: "role" } },
     });
     if (!resolved.ok) return;
     const argv = buildCodexArgv({
@@ -209,9 +228,9 @@ describe("П2 — the effort vocabulary belongs to the tool", () => {
       params: resolved.params,
     });
     expect(argv).toContain("-c");
-    expect(argv).toContain("model_reasoning_effort=minimal");
+    expect(argv).toContain("model_reasoning_effort=low");
     expect(argv).toContain("-m");
-    expect(argv).toContain("gpt-5-codex");
+    expect(argv).toContain("gpt-5.4-mini");
     // The other tool's spellings are absent — they are flags of another binary.
     expect(argv).not.toContain("--effort");
     expect(argv).not.toContain("--model");
@@ -219,8 +238,11 @@ describe("П2 — the effort vocabulary belongs to the tool", () => {
 });
 
 describe("the version this costs, and the tables that record it", () => {
-  it("is the version this build writes", () => {
-    expect(CURRENT_PROTOCOL_VERSION).toBe(20);
+  it("is a version this build has passed, and never one it has not reached", () => {
+    // Pinned as a floor rather than as equality: 20 is history the moment 21 lands, and a test
+    // that asserted "20 is current" would have to be rewritten by every later version — which
+    // is how a released version's record stops being a record.
+    expect(CURRENT_PROTOCOL_VERSION).toBeGreaterThanOrEqual(20);
   });
 
   it("answers a v20 config on a v19 build with 'restart required', not with 'invalid'", () => {
