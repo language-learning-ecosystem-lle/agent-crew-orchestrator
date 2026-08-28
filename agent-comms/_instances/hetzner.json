@@ -1,10 +1,17 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-28T18:27:24.799Z",
+  "writtenAt": "2026-08-28T18:31:38.371Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "039-doctor-account-kind-probe",
+      "state": "running",
+      "deadline": "2026-08-28T19:11:36Z"
+    }
+  ]
 }
