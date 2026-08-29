@@ -497,8 +497,9 @@ export const parkingOf = (
   if (thread.meta.status === "closed") return undefined;
   // ONE WALK, TWO CRITERIA (thread 023 for the event parks, thread 030 for the person one): an
   // event park is looked for BEHIND the messages that move nobody and lifts on the first one
-  // that moves somebody; a park on a person lifts on the word of that person (`delivers`) and
-  // on nothing else. `status: closed` outranks both, above.
+  // that moves somebody; a park on a person lifts on the word of that person (`delivers`) — and,
+  // since thread 042, stops covering anything when the TURN it was declared on has ended.
+  // `status: closed` outranks both, above.
   const declared = standingParkOf(thread);
   const at = declared === undefined ? undefined : thread.messages[declared];
   const on = at?.fields.parkedOn;
@@ -510,8 +511,9 @@ export const parkingOf = (
   // parks (`answer` and `ack`) require an action of the person; only `none` is mute.
   const asks = at.fields.expects !== "none";
   const named = parkedOnKind(on);
-  // The turn the park was declared on, carried and never re-decided here: whether a pair is
-  // covered by it is a judgement of the reader (`notify.ts`), and the fact is this field.
+  // The turn the park was declared on, carried for the readers that print it (`notify.ts` tells
+  // a pair the park is ABOUT from one that merely stands in the same thread). Whether the park
+  // still covers anything at all is decided one level down, in the walk.
   const holder = at.fields.waitingOn;
   if (named.kind === "person")
     return {
@@ -586,12 +588,84 @@ export const personParksOf = (thread: Thread): readonly Parking[] => {
   });
 };
 
+/** A stretch of wall-clock time a park on a person held a thread frozen. */
+export type ParkSpan = {
+  /** Who it was parked on — carried for the reader of a diagnosis, not used to judge. */
+  readonly person: string;
+  /** The date of the message that DECLARED the park. */
+  readonly from: string;
+  /** The date of the message that LIFTED it; absent — the park is standing now. */
+  readonly to?: string;
+};
+
+/**
+ * WHEN THIS THREAD WAS FROZEN BEHIND A PERSON, as closed intervals (thread 042, the third
+ * false call of the eighth class).
+ *
+ * {@link parkingOf} answers "is it frozen NOW" and {@link personParksOf} "what was ever
+ * declared". Neither answers the question the courier's age needs: FOR HOW LONG was the box
+ * unable to raise this pair. Measured in the field on 2026-08-29 (`daemon.log:19561`): john
+ * was rung about `curator×042-unaccepted-turn-silent` standing `6h 37m, no reason known` —
+ * 6 h 37 m of which were a park on john declared at 03:27:44Z, printed by the box itself on
+ * every one of 703 ticks (`⏸ PARKED behind a decision of john`), and lifted at ~10:05Z by
+ * `delivers: john`. The pair was raised 39 seconds later. The park is not a reason AFTER it
+ * is lifted — nothing in `parkingOf` or in the reasons map says a word about it — so the age
+ * fell out of the freeze whole, exactly as the queue of #101 did one породу earlier.
+ *
+ * THE SPANS ARE READ BY REPLAYING THE FEED, not by a second rule about lifting. Each prefix of
+ * the thread is asked the same question the live reader asks — `standingParkOf`, the one walk
+ * that knows what declares a park and what lifts it — so a park that ends because its TURN
+ * ended (the narrowing of #104) ends here on the same message, and a rule that drifts from the
+ * live one cannot be written twice. The cost is a walk per message, on feeds of tens of
+ * messages, in a command that already parses the whole mail.
+ *
+ * A SPAN OPEN AT THE END IS LEFT OPEN (`to` absent): whether "still parked" means "up to now"
+ * is the caller's clock, and this function has none.
+ */
+export const personParkSpansOf = (thread: Thread): readonly ParkSpan[] => {
+  if (thread.meta.status === "closed") return [];
+  const spans: ParkSpan[] = [];
+  let open: { readonly at: number; readonly person: string; readonly from: string } | undefined;
+  for (let upto = 0; upto < thread.messages.length; upto += 1) {
+    const prefix: Thread = { ...thread, messages: thread.messages.slice(0, upto + 1) };
+    const at = standingParkOf(prefix);
+    const declaring = at === undefined ? undefined : prefix.messages[at];
+    const on = declaring?.fields.parkedOn;
+    const standing =
+      at === undefined || declaring === undefined || on === undefined
+        ? undefined
+        : parkedOnKind(on).kind === "person"
+          ? { at, person: on, from: declaring.fields.date }
+          : undefined;
+    // THE MESSAGE THAT ENDED IT IS THE END OF THE SPAN, and the same message may declare the
+    // next park: a lift and a re-declaration in one letter is two spans meeting at a point,
+    // not one span with a hole in it.
+    const now = thread.messages[upto]?.fields.date;
+    if (open !== undefined && open.at !== standing?.at && now !== undefined) {
+      spans.push({ person: open.person, from: open.from, to: now });
+      open = undefined;
+    }
+    if (standing !== undefined && open === undefined) open = standing;
+  }
+  if (open !== undefined) spans.push({ person: open.person, from: open.from });
+  return spans;
+};
+
 /**
  * WHERE A PARK STILL STANDS — the index of the message that declared it. ONE WALK, and since
  * 2026-08-22 TWO CRITERIA in it: the event parks (`pr:`, `run:`) lift on the first message that
- * MOVES ANYBODY, and the park on a PERSON lifts on `delivers: <that person>` and on nothing
- * else. The walk therefore no longer stops at a moving message — it remembers it, because behind
- * that message there may stand a park the message does not touch.
+ * MOVES ANYBODY, and the park on a PERSON lifts on `delivers: <that person>`. The walk therefore
+ * no longer stops at a moving message — it remembers it, because behind that message there may
+ * stand a park the message does not touch.
+ *
+ * SINCE 2026-08-29 THE PERSON PARK IS ALSO READ AGAINST THE TURN IT WAS DECLARED ON (thread 042,
+ * decision of john, `PROTOCOL.md` "ПАРКОВКА НА ЧЕЛОВЕКЕ ОБЪЯВЛЯЕТСЯ НА ХОД, А НЕ НА ТРЕД
+ * НАВСЕГДА"). The narrowing of 22.08 said WHAT lifts a park and never said WHAT IT WAS SET ON,
+ * so `parked-on` stayed a property of the THREAD and outlived the turn it was declared for. The
+ * park is now the pair "holder × thread", the holder being the `waiting-on` of the declaring
+ * message, and a NEW TURN does not inherit it: a later `waiting-on` naming another role ends it,
+ * and so does an outcome handed to the same holder without a question in it. A park whose
+ * message declared no holder is untouched by all of this — see the walk itself.
  *
  * WHY THE PERSON PARK LEFT THE COMMON WALK (thread 030, defect (в1), decision of john
  * 2026-08-22, `PROTOCOL.md`). The wide lift was defended by an ASYMMETRY of the price: lifting
@@ -667,12 +741,17 @@ export const personParksOf = (thread: Thread): readonly Parking[] => {
  * moves the thread to nobody, so it is skipped like any other announcement.
  */
 const standingParkOf = (thread: Thread): number | undefined => {
-  // What the walk has seen SINCE the park it is about to find — the two facts the two lifts are
-  // made of. They are collected on the way down and read at the park, because which of them
-  // applies is known only when the kind of the park is: the same message lifts an event park and
-  // leaves a person park standing.
+  // What the walk has seen SINCE the park it is about to find — the facts the lifts are made of.
+  // They are collected on the way down and read at the park, because which of them applies is
+  // known only when the kind of the park is: the same message lifts an event park and leaves a
+  // person park standing.
   let moved = false;
   const delivered = new Set<string>();
+  // THE TURNS OPENED SINCE (thread 042): every role a later message HANDED THE TURN TO, and the
+  // ones it handed it to WITHOUT ASKING FOR ANYTHING. The first set answers "did the turn the
+  // park was declared on end", the second "did the turn it was declared on get its outcome".
+  const handedTo = new Set<string>();
+  const outcomeFor = new Set<string>();
   for (let at = thread.messages.length - 1; at >= 0; at -= 1) {
     const message = thread.messages[at];
     if (message === undefined) return undefined;
@@ -682,17 +761,51 @@ const standingParkOf = (thread: Thread): number | undefined => {
     const on = message.fields.parkedOn;
     if (on !== undefined) {
       const named = parkedOnKind(on);
-      // THE PERSON PARK LIFTS ON THE WORD OF THAT PERSON AND ON NOTHING ELSE (thread 030, defect
-      // (в1), decision of john 2026-08-22): `delivers: <the same person>`, said by whoever
-      // carries the word. A park on somebody else is not lifted by it — the state names one
-      // person, and so does the delivery.
-      if (named.kind === "person") return delivered.has(named.person) ? undefined : at;
+      if (named.kind === "person") {
+        // THE PERSON PARK LIFTS ON THE WORD OF THAT PERSON (thread 030, defect (в1), decision of
+        // john 2026-08-22): `delivers: <the same person>`, said by whoever carries the word. A
+        // park on somebody else is not lifted by it — the state names one person, and so does
+        // the delivery. This one lifts the park for the whole thread, whoever holds the turn.
+        if (delivered.has(named.person)) return undefined;
+        const holder = message.fields.waitingOn;
+        // A PARK THAT NAMES NO TURN KEEPS ITS POWER OVER THE WHOLE THREAD (thread 042): the feed
+        // does not say whose turn it was declared on — a declared NULL zeroes the holder and an
+        // absent field inherits one written elsewhere — and guessing would turn the legitimate
+        // MODE park (016, 052) into a raise. This is the pre-042 park, and it behaves as it did.
+        if (typeof holder !== "string") return at;
+        // THE PARK IS ON A TURN, AND A NEW TURN DOES NOT INHERIT IT (thread 042, decision of john
+        // 2026-08-29, `PROTOCOL.md`): a later message naming somebody ELSE in `waiting-on` ended
+        // the turn the park was declared on, and the pair that holds the thread now is not
+        // waiting for a human — it is waiting to be raised. Measured in LLE on 2026-08-28: a
+        // park declared on curator's turn stood over `dev-speech×010-speech-service` for
+        // 4 h 16 m, with 201 ticks of `PARKED behind a decision of john` — true about the thread
+        // and false about the pair. The turn coming BACK to the same role later does not revive
+        // it either: that is a third turn, not the parked one, which is why this is a set of
+        // everything seen and not the last handover alone.
+        for (const to of handedTo) if (to !== holder) return undefined;
+        // AND AT THE SAME HOLDER, THE ACTIONABLE OUTCOME OPENS ONE TOO (same norm, second half):
+        // a message that hands the turn over WITHOUT asking anything is the circuit's outcome —
+        // the red CI, and the green `checks` on a PR that does not yet carry the `review` label
+        // — the same class the event parks lift on, read from the same two header fields. What
+        // it is NOT is the class the narrowing of 22.08 bought: the role's own report asks
+        // (`expects` != none) and the trace of the circuit (`success` echo, merge-notify) hands
+        // the turn to nobody, so neither says the wait is over. The reviewer's verdict is the
+        // third member of the norm's list and is NOT here: by the header it is a letter of a
+        // role with `expects: answer`, indistinguishable from a report, and inventing a sign for
+        // it is forbidden to this net (norm 020, and the fork is john's — thread 042).
+        return outcomeFor.has(holder) ? undefined : at;
+      }
       // The event parks keep the walk exactly as it was: they wait for a machine event, and the
       // first message that MOVES anybody says the wait is over.
       return moved ? undefined : at;
     }
     const delivers = message.fields.delivers;
     if (delivers !== undefined) delivered.add(delivers);
+    const waitingOn = message.fields.waitingOn;
+    if (typeof waitingOn === "string") {
+      handedTo.add(waitingOn);
+      if (message.fields.expects === "none") outcomeFor.add(waitingOn);
+    }
     // The walk does not stop here any more, it REMEMBERS: a message that moves somebody lifts an
     // event park, and behind it there may still stand a park on a person that it does not touch.
     if (movesSomebody(message)) moved = true;

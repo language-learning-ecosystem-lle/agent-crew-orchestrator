@@ -851,6 +851,75 @@ describe("a turn this box never took — notify against the journal (thread 042)
     expect(result.out).not.toContain("this box has not raised it");
   });
 
+  /** A hold file as `orchestrator hold` writes it: `<state>/holds/<role>`, one JSON line. */
+  const heldBy = (contest: ReturnType<typeof contour>, expires: string): void => {
+    const dir = join(contest.repo, ".orchestrator", "holds");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "dev-core"),
+      `${JSON.stringify({ role: "dev-core", by: "john", taken: "2026-07-25T19:00:00Z", expires })}\n`,
+      "utf8",
+    );
+  };
+  /** A journal that says nothing about the pair — the turn is untaken, and the box is on. */
+  const idle = (contest: ReturnType<typeof contour>): void =>
+    box(contest, [
+      {
+        kind: "lease-acquired",
+        ts: "2026-07-25T19:00:00Z",
+        role: "curator",
+        thread: "016-other",
+        deadline: "2026-07-25T20:00:00Z",
+      },
+      {
+        kind: "lease-released",
+        ts: "2026-07-25T19:30:00Z",
+        role: "curator",
+        thread: "016-other",
+        reason: "completed",
+      },
+    ]);
+
+  it("a role HELD by a manual session is a REASON: printed with it, and no call", () => {
+    // S5, and the daemon's own words for the same pair every tick: `candidate … skipped: held
+    // by a manual session of dev-core`. The box is doing what a human told it to do, and a ring
+    // here would send john to look at a daemon for a hold he took himself.
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    idle(contest);
+    heldBy(contest, "2099-01-01T00:00:00Z");
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("dev-core×042-untaken");
+    expect(result.out).toContain("held by a manual session of john");
+    expect(result.out).not.toContain("no reason known");
+    expect(result.out).not.toContain("this box has not raised it");
+  });
+
+  it("an EXPIRED hold is no reason at all — the pair rings", () => {
+    // The other half, and the one that makes the first honest: an expired hold is raised over
+    // by the daemon, so a pair still standing behind one is the standstill nobody was told
+    // about. Curing the false call by going mute would be the worse defect of the two.
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    idle(contest);
+    heldBy(contest, "2026-07-25T20:05:00Z");
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("unaccepted over 10m");
+    expect(result.out).toContain("dev-core×042-untaken");
+    expect(result.out).toContain("no reason known");
+    expect(result.out).toContain("this box has not raised it");
+  });
+
   it("a queue behind the role's OWN other thread does not ring when it ends", () => {
     // THE FIRST FIELD FIRING OF THIS CLASS, END TO END THROUGH THE COMMAND, and it was false:
     // `.orchestrator/daemon.log:30783` of 2026-08-29T02:53:11Z rang about
@@ -917,10 +986,16 @@ describe("a turn this box never took — notify against the journal (thread 042)
     expect(result.out).toContain("dev-core×042-untaken");
   });
 
-  it("a park declared on ANOTHER role's turn does not cover this pair — it rings as stale", () => {
+  it("a park declared on ANOTHER role's turn does not freeze the thread at all (thread 042)", () => {
     // The measured window of 2026-08-28, end to end through the command: a park put up on
     // curator's turn, the turn handed to dev-core two minutes later, and 4 h 16 m of silence
     // while the daemon printed `PARKED behind a decision of john` at every tick.
+    //
+    // UNTIL THE LIFT OF 2026-08-29 THE COURIER WAS THE ONLY ONE WHO KNEW: the park stood, the
+    // scheduler kept skipping the pair, and this line rang about a pair frozen behind a decision
+    // that was not its own. Now the freeze itself is gone — `parkingOf` reads the park against
+    // the turn it was declared on — so the courier has nothing to explain away: the counters say
+    // `0 parked`, and what is left is the plain untaken turn the box owes a raise.
     const contest = contour({});
     raiseable(contest);
     contest.park("010-speech", { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "curator" });
@@ -934,7 +1009,91 @@ describe("a turn this box never took — notify against the journal (thread 042)
     const result = run(contest);
 
     expect(result.out).toContain("dev-core×010-speech");
-    expect(result.out).toContain("declared on another role's turn");
-    expect(result.out).toContain("behind a park on john");
+    expect(result.out).toContain("0 parked, 0 of them asking, 0 of those new");
+    // AND THE SENTENCES OF THE FREEZE ARE ABSENT, both of them: the pair is not behind a park,
+    // and the courier's strap for a park it merely inherited has nothing to fire on here.
+    expect(result.out).not.toContain("behind a park on john");
+    expect(result.out).not.toContain("declared on another role's turn");
+  });
+
+  it("AT THE SAME HOLDER THE PARK STILL FREEZES THE THREAD — the pair is not owed a raise", () => {
+    // The other half of the same door, and the reason it has to be measured through the command:
+    // a park whose turn never left the role that declared it is a legal freeze, and the ten of
+    // them standing in the field on the day this shipped must not become ten calls. The report
+    // of another role at the same holder (`042`, `03-36-47Z-dev-core.md`) is exactly the class
+    // the narrowing of 22.08 bought, and it leaves the park where it is.
+    const contest = contour({});
+    raiseable(contest);
+    contest.park("016-mode", { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "curator" });
+    writeFileSync(
+      join(contest.root, "016-mode", "messages", "2026-07-25T20-00-00Z-dev-core.md"),
+      `---\nfrom: dev-core\nworker: human\ndate: 2026-07-25T20:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nДоклад роли.\n`,
+    );
+    box(contest, []);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.out).toContain("1 parked, 1 of them asking");
+    expect(result.out).toContain("016-mode");
+    // Nothing is owed a raise here: a frozen thread is not an untaken turn.
+    expect(result.out).not.toContain("dev-core×016-mode");
+  });
+  /**
+   * A park DECLARED ON THIS PAIR'S TURN and then LIFTED by the word of john, `ago` ms back.
+   * Both halves are the field's own headers (`042`, 2026-08-29): `parked-on: john` with
+   * `waiting-on: <the pair's role>`, and the courier's lift `delivers: john` that keeps the
+   * turn where it was — the handoff, and therefore the age, stays the park's own stamp.
+   */
+  const liftedPark = (contest: ReturnType<typeof contour>, id: string, ago: number): void => {
+    contest.park(id, { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "dev-core" });
+    const date = stamp(Date.now() - ago);
+    writeFileSync(
+      join(contest.root, id, "messages", `${date.replace(/:/g, "-")}-curator.md`),
+      `---\nfrom: curator\nworker: human\ndate: ${date}\nexpects: none\ndelivers: john\nwaiting-on: dev-core\n---\n\nJohn ответил: вариант D.\n`,
+    );
+  };
+
+  it("a park LIFTED A MINUTE AGO does not ring — the false call of 2026-08-29T10:05Z, end to end", () => {
+    // THE THIRD FALSE FIRING OF THIS CLASS, through the real command. `daemon.log:19561`:
+    // `1 unaccepted over 10m, 1 the box cannot justify, 1 of those new —
+    // curator×042-unaccepted-turn-silent (6h 37m, no reason known)`, rung at ~10:05Z about a
+    // pair that had stood under a park on john since 03:27:44Z — 742 ticks of `skipped: the
+    // turn is parked behind a decision of john` — and was raised 39 seconds later. The park is
+    // in the MAIL and in nothing else, which is why the juncture has to be measured here: the
+    // journal the unit tests fold has never heard of a park.
+    const contest = contour({});
+    raiseable(contest);
+    liftedPark(contest, "042-untaken", 60_000);
+    box(contest, []);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("unaccepted over 10m");
+    expect(result.out).not.toContain("this box has not raised it");
+    // And the park is gone from the composition too — it was lifted, and the silence above is
+    // the subtracted interval, not a park still standing in front of the class.
+    expect(result.out).toContain("0 parked, 0 of them asking");
+  });
+
+  it("…and once the pair has been FREE past the threshold, it rings with the free age", () => {
+    // The other half of the same seam, and the requirement the statement put in bold: curing
+    // the false call by silence would be the worse of the two defects. Thirty minutes after the
+    // lift nobody has raised the pair, and the number in the line is that free part — not the
+    // year of wall-clock standing time the fixture's handoff carries.
+    const contest = contour({});
+    raiseable(contest);
+    liftedPark(contest, "042-untaken", 30 * 60_000 + 30_000);
+    box(contest, []);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("unaccepted over 10m");
+    expect(result.out).toContain("dev-core×042-untaken (30m, no reason known)");
+    expect(result.out).toContain("this box has not raised it");
   });
 });
