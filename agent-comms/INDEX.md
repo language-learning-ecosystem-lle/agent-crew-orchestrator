@@ -51,3 +51,4 @@
 | 047-devops-role | curator · dev-core · john | open | dev-core | 2026-08-29 |
 | 048-box-privileges-today | curator, john | open | curator | 2026-08-29 |
 | 048-session-privileges | curator | closed | — | 2026-08-29 |
+| 049-tsbuildinfo-dirty-tree | curator · dev-core | open | dev-core | 2026-08-29 |
