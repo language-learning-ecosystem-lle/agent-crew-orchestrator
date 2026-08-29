@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T11:20:49.109Z",
+  "writtenAt": "2026-08-29T11:20:52.599Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "040-schema-bump-kills-daemon",
       "state": "running",
       "deadline": "2026-08-29T12:00:47Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "044-selfheal-blind-spots",
+      "state": "running",
+      "deadline": "2026-08-29T12:20:51Z"
     }
   ]
 }
