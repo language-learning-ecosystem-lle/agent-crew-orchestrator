@@ -404,6 +404,38 @@ export const roleSchema = z.strictObject({
    * mean "launched with permissions nobody assigned".
    */
   launch: launchSchema.optional(),
+  /**
+   * WHICH SYSTEM USER THE ROLE'S SESSION RUNS AS — declared, not inherited (thread
+   * `047-devops-role`, john's decision of 2026-08-29).
+   *
+   * Until this field the answer was "whoever the daemon happens to be": `spawn` does not
+   * switch uid/gid and the unit is a user one on purpose, so every role of a box gets the
+   * privileges of that box's user by the mere fact of being raised there. On this box the
+   * measurement was `sudo` in the group list, both git private keys readable and the
+   * transport's `secrets.env` readable — held shut by the absence of a password rather than
+   * by any declaration. That is the "privilege by presence" john's frame rules out for a
+   * role that administers a server: it must reach the box the same way it would reach
+   * somebody else's, and the identity it reaches it as has to be a DECLARED thing that a PR
+   * changes, not a property of where the process was started.
+   *
+   * ABSENT means what it always meant: the session runs as the daemon's own user. Absence is
+   * the whole existing circuit, so the field cannot have a default and cannot be required —
+   * a default here would silently re-answer the question for every role in every project.
+   *
+   * WHAT THE FIELD DOES NOT DO. It does not grant anything on the box: the user, its groups
+   * and what it owns are made by hand, once, outside the protocol (`docs/box-setup.md` §0).
+   * The repository says WHICH identity a role is entitled to; the operating system says what
+   * that identity can do, and it is the only thing that actually holds. A role naming a user
+   * the daemon cannot become is REFUSED by name at the launch door — never silently raised
+   * as the daemon instead, which would be the privilege-by-presence this field exists to end.
+   */
+  systemUser: z
+    .string()
+    .regex(
+      /^[a-z_][a-z0-9_-]*$/,
+      "a system user name is lowercase latin, digits, hyphen and underscore (it is passed to the switch as a name, not resolved by us)",
+    )
+    .optional(),
 });
 
 export type RoleId = string;

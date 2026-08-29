@@ -24,6 +24,7 @@ import {
   resolveGates,
   resolveWorker,
   roleLaunchability,
+  systemUserRefusal,
   WIND_DOWN_MAX_SECONDS,
   WIND_DOWN_MIN_SECONDS,
 } from "./launch.js";
@@ -38,6 +39,30 @@ const role = (over: Partial<Role>): Role => ({
   instructions: [{ kind: "in-repo", path: "CLAUDE.md" }],
   launch: { allowedTools: ["Bash", "Read", "Edit", "Write"] },
   ...over,
+});
+
+describe("systemUserRefusal", () => {
+  it("no declaration → nothing to refuse (every role that runs today)", () => {
+    expect(systemUserRefusal(role({}), "lle")).toBeUndefined();
+  });
+
+  it("the declared user IS the one this process runs as → passes", () => {
+    expect(systemUserRefusal(role({ systemUser: "aco-devops" }), "aco-devops")).toBeUndefined();
+  });
+
+  it("a declared user this process is not → refused, naming role, wanted and actual user", () => {
+    const refusal = systemUserRefusal(role({ id: "devops", systemUser: "aco-devops" }), "lle");
+    expect(refusal).toContain("role 'devops'");
+    expect(refusal).toContain("aco-devops");
+    expect(refusal).toContain("'lle'");
+    // The repair is part of the refusal, not of the reader's memory (discipline 4).
+    expect(refusal).toContain("Repair:");
+  });
+
+  it("a box that cannot name its own user is NOT treated as a match", () => {
+    const refusal = systemUserRefusal(role({ systemUser: "aco-devops" }), undefined);
+    expect(refusal).toContain("(unknown user)");
+  });
 });
 
 describe("roleLaunchability", () => {

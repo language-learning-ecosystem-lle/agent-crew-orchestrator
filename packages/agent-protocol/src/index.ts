@@ -133,6 +133,7 @@ export {
   resolveGates,
   resolveWorker,
   roleLaunchability,
+  systemUserRefusal,
   type WorkerSource,
 } from "./orchestrator/launch.js";
 export {
