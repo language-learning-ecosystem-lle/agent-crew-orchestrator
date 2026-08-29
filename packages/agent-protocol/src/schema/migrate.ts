@@ -65,6 +65,7 @@ import { POWER_DOCUMENTS_STEP } from "./v18-power-documents.js";
 import { CODEX_KIND_STEP } from "./v19-codex-kind.js";
 import { CODEX_LEVERS_STEP } from "./v20-codex-levers.js";
 import { CODEX_EFFORT_VOCABULARY_STEP } from "./v21-codex-effort-vocabulary.js";
+import { ROLE_SYSTEM_USER_STEP } from "./v22-role-system-user.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -92,6 +93,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   CODEX_KIND_STEP,
   CODEX_LEVERS_STEP,
   CODEX_EFFORT_VOCABULARY_STEP,
+  ROLE_SYSTEM_USER_STEP,
 ];
 
 export type {

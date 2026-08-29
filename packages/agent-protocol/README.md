@@ -124,6 +124,20 @@ outright — the general shape of "parameters of any connector" is R8's question
 guessing at it from a repository that has never run a second tool would be inventing
 an abstraction ahead of its first user.
 
+`systemUser` (protocol 22) is a role's SYSTEM identity — which unix user its session runs
+as — and it sits beside `launch` rather than inside it because it answers a different
+question: `launch` says what a run is allowed to be, this says who the run IS to the
+operating system. Optional and without a default: absent means what every role does today,
+the session runs as the daemon's own user. **Declaring it grants nothing.** The user, its
+groups and what it owns are made by hand on the box, once, outside the protocol; the
+repository says which identity a role is entitled to, and the operating system is the only
+thing that holds. Where this build cannot honour the declaration — it does not switch user —
+the role is REFUSED by name at both doors that raise a role (`orchestrator run` and the
+daemon), naming the role, the user it asks for and the user the process actually is. It is
+never raised as the daemon's user instead: a role declared to run as a stripped-down identity
+would then get everything the box has, which is the privilege-by-presence the field exists to
+end.
+
 ```json
 "launch": {
   "allowedTools": ["Bash", "Read", "Edit", "Write"],

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 21,
+  "protocolVersion": 22,
   "mail": {
     "branch": "comms",
     "dir": "agent-comms"
