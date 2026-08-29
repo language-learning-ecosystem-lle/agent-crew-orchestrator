@@ -74,6 +74,14 @@ export type OrchestratorPaths = {
    * everything here — losing it costs one extra attempt, never a decision.
    */
   readonly daemonSelfRestart: string;
+  /**
+   * A DRIFT THIS BOX IS STANDING ON AND WHY (thread 044, `DriftStandoff`): written by the
+   * tick that refuses to repair itself, removed by the tick that finds nothing to repair,
+   * read by the COURIER — which is another process and cannot re-derive the reason (see
+   * the type's doc block). It is the seam that turns "the daemon said it in its log" into
+   * "a human was told".
+   */
+  readonly daemonDrift: string;
   /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
   readonly mailRoot: string;
 };
@@ -89,6 +97,7 @@ const NOTIFY_STATE = "notify.state";
 const MERGE_READY_OUTAGE = "merge-ready-outage.json";
 const DAEMON_CODE = "daemon-code.json";
 const DAEMON_SELF_RESTART = "self-restart.json";
+const DAEMON_DRIFT = "daemon-drift.json";
 const DAEMON_LOG = "daemon.log";
 const DAEMON_PID = "daemon.pid";
 
@@ -119,6 +128,7 @@ export const orchestratorPaths = (input: {
     mergeReadyOutage: join(state, MERGE_READY_OUTAGE),
     daemonCode: join(state, DAEMON_CODE),
     daemonSelfRestart: join(state, DAEMON_SELF_RESTART),
+    daemonDrift: join(state, DAEMON_DRIFT),
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),

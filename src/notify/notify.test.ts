@@ -1336,3 +1336,86 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     expect(parseNotifyState("waiting\tjohn\t016-x\n").unaccepted).toBeUndefined();
   });
 });
+
+/**
+ * THE NINTH CLASS — THE BOX IS NOT RUNNING WHAT WAS MERGED (thread 044).
+ *
+ * The measured case: a repair merged at 03:24:02Z, twenty-seven lease-free windows in the
+ * same day, and the circuit still on the old code in the morning — with the daemon saying
+ * so in `daemon.log` every thirty seconds and nobody reading it. What the courier adds is
+ * not a new measurement (the daemon's is the only one) but a READER.
+ */
+describe("a box behind its own ref — the ninth class of event (thread 044)", () => {
+  const DRIFT = {
+    sha: "a830761a",
+    refSha: "951b7551",
+    ref: "origin/main",
+    size: "3 commit(s) behind, drifting for 6h (since 2026-08-29T03:24:02Z)",
+    why: "no self-restart while sessions are live (curator) — a graceful restart would wait for them, and that wait needs a human",
+    since: "2026-08-29T03:24:02Z",
+  };
+
+  const planDrift = (seen: NotifyState = EMPTY, drift = DRIFT) =>
+    planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen,
+      templates: TEMPLATES,
+      drift,
+    });
+
+  it("rings with the size, the two SHAs and the daemon's own reason", () => {
+    const result = planDrift();
+    expect(result.freshDrift).toBe(true);
+    const line = result.lines.find((entry) => entry.kind === "code-drift");
+    expect(line).toBeDefined();
+    expect(line?.text).toContain("a830761a");
+    expect(line?.text).toContain("951b7551");
+    expect(line?.text).toContain("3 commit(s) behind, drifting for 6h");
+    expect(line?.text).toContain("sessions are live");
+  });
+
+  // The line reports and does not order: what to do about a window that will not open is a
+  // judgement about live work, and the statement of the thread is explicit that a forced
+  // rollout is not invented without john.
+  it("names no command — the person decides what to do about a live session", () => {
+    const line = planDrift().lines.find((entry) => entry.kind === "code-drift");
+    // The daemon's reason is carried VERBATIM and may well contain the word "restart" —
+    // what the courier may not add is an instruction of its own.
+    expect(line?.text.replace(DRIFT.why, "")).not.toContain("--pull");
+    expect(line?.text.replace(DRIFT.why, "")).not.toContain("systemctl");
+    expect(line?.text.replace(DRIFT.why, "")).not.toContain("restart");
+  });
+
+  it("rings ONCE per period of being behind: the same stamp is silent from the second run", () => {
+    const result = planDrift({ ...EMPTY, drift: DRIFT.since });
+    expect(result.freshDrift).toBe(false);
+    expect(result.lines.some((entry) => entry.kind === "code-drift")).toBe(false);
+    // …and the composition survives, so the state keeps saying what stands.
+    expect(result.drift?.since).toBe(DRIFT.since);
+  });
+
+  it("a NEW period rings again — a box that caught up and fell behind is a new event", () => {
+    const result = planDrift({ ...EMPTY, drift: "2026-08-28T01:00:00Z" });
+    expect(result.freshDrift).toBe(true);
+  });
+
+  it("is dropped when nobody human is configured — a chat assistant cannot act on a box", () => {
+    const result = planNotifications({
+      targets: [{ id: "curator", style: "nudge", nudge: "john" }],
+      waiting: [],
+      seen: EMPTY,
+      templates: TEMPLATES,
+      drift: DRIFT,
+    });
+    expect(result.freshDrift).toBe(false);
+    expect(result.lines.some((entry) => entry.kind === "code-drift")).toBe(false);
+  });
+
+  it("the state file carries the stamp, and an old file still parses", () => {
+    const rendered = renderNotifyState({ ...EMPTY, drift: DRIFT.since });
+    expect(rendered).toContain(`drift\t${DRIFT.since}`);
+    expect(parseNotifyState(rendered).drift).toBe(DRIFT.since);
+    expect(parseNotifyState("john\t044-x\n").drift).toBeUndefined();
+  });
+});

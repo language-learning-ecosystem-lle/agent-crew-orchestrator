@@ -65,6 +65,20 @@ export type CodeDrift = {
   readonly refSha: string;
   /** Commits on the ref that the loaded code does not have; absent when uncountable. */
   readonly behind?: number;
+  /**
+   * WHEN THIS DRIFT BEGAN — the commit stamp of the OLDEST commit on the ref that the
+   * loaded code does not have (thread 044). It is not the process's uptime and not the
+   * age of the newest commit: what the reader is owed is "how long has this box been
+   * running code that is not the ref", and that clock starts the moment the FIRST commit
+   * it lacks landed. Measured on the field case of 2026-08-29: #101 was committed at
+   * 03:24:02Z and the circuit ran without it until the morning — six hours the daemon
+   * knew nothing about, because the only age it printed was its own uptime, and a daemon
+   * restarted at 05:00 over old code says "up 1h" while being six hours behind.
+   *
+   * Absent when the stamp cannot be read (a shallow clone, a dropped object) — the same
+   * rule as `behind`: a convenience whose loss costs a number and never a decision.
+   */
+  readonly since?: string;
 };
 
 /** The whole answer of a reading, including the case where there is no answer. */
@@ -118,6 +132,7 @@ export const codeReading = (input: {
   readonly ref: string;
   readonly refSha: string;
   readonly behind?: number;
+  readonly since?: string;
 }): CodeReading =>
   input.vintage.sha === input.refSha
     ? { kind: "match" }
@@ -128,6 +143,7 @@ export const codeReading = (input: {
           ref: input.ref,
           refSha: input.refSha,
           ...(input.behind === undefined ? {} : { behind: input.behind }),
+          ...(input.since === undefined ? {} : { since: input.since }),
         },
       };
 
@@ -158,11 +174,31 @@ export const measureCodeDrift = (input: {
     // dropped object costs the number and nothing else.
     behind = undefined;
   }
+  let since: string | undefined;
+  try {
+    // WHEN THE DRIFT BEGAN, and the LAST line is the answer: `git log` walks newest first,
+    // so the oldest commit this process lacks — the one whose landing made the box stale —
+    // is at the bottom. Committer date rather than author date: the question is when the
+    // commit reached this ref, and a rebased or cherry-picked commit carries an author
+    // date from another day entirely.
+    const stamps = git(input.vintage.checkout, [
+      "log",
+      "--format=%cI",
+      `${input.vintage.sha}..${refSha}`,
+    ])
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+    since = stamps.at(-1);
+  } catch {
+    since = undefined;
+  }
   return codeReading({
     vintage: input.vintage,
     ref: input.ref,
     refSha,
     ...(behind === undefined ? {} : { behind }),
+    ...(since === undefined ? {} : { since }),
   });
 };
 
@@ -174,15 +210,155 @@ const ageWords = (seconds: number): string =>
   seconds < 5400 ? `${Math.max(0, Math.round(seconds / 60))}m` : `${Math.round(seconds / 3600)}h`;
 
 /**
+ * HOW LONG THIS BOX HAS BEEN BEHIND, in whole minutes — the second half of "how big is the
+ * drift", and the one nobody could read before thread 044. Undefined when the drift is
+ * undated ({@link CodeDrift.since}); a caller that needs a number without one is asking a
+ * question the box cannot answer, and inventing a zero would read as "it just happened".
+ */
+export const driftMinutes = (
+  drift: Pick<CodeDrift, "since" | "behind">,
+  now: Date,
+): number | undefined => {
+  if (drift.since === undefined) return undefined;
+  const began = new Date(drift.since).getTime();
+  if (!Number.isFinite(began)) return undefined;
+  return Math.max(0, Math.round((now.getTime() - began) / 60000));
+};
+
+/**
+ * AFTER HOW LONG A DRIFT IS ITSELF AN EVENT — two hours, and the band is the statement's
+ * ("hours, not days", curator, thread 044) taken at its lower edge.
+ *
+ * What it is measured against: this circuit merges its own repairs and then waits for a
+ * window with no live lease to pick them up, and on 28–29.08 twenty-seven such windows
+ * opened in a day — so a box that has not caught a window in two hours is not "between
+ * windows", it is a box whose windows are not being caught. Below that band the number
+ * would ring on the ordinary case (a merge landing mid-session, picked up an hour later);
+ * a day above it is the field case this exists for, where a known false alarm rode in the
+ * courier from 03:24Z until a human noticed in the morning.
+ *
+ * A CONSTANT AND NOT A CONFIG KEY, for the reason `UNACCEPTED_AFTER_MINUTES` is one: a new
+ * key in the config is a new protocol version and a migration for every box in the field,
+ * which is john's decision and not a side effect of this repair.
+ */
+export const CODE_DRIFT_OVERDUE_MINUTES = 120;
+
+/** Whether this drift has stood long enough to be news rather than a state. */
+export const codeDriftOverdue = (
+  drift: Pick<CodeDrift, "since" | "behind">,
+  now: Date,
+): boolean => {
+  const minutes = driftMinutes(drift, now);
+  return minutes !== undefined && minutes >= CODE_DRIFT_OVERDUE_MINUTES;
+};
+
+/**
+ * THE SIZE OF THE DRIFT IN THE TWO UNITS A READER ASKS FOR — commits and time — and ONE
+ * function, because it is said in three places (the daemon's drift line, the refusal that
+ * explains why nothing is being pulled, the operator frame) and three phrasings of the same
+ * measurement is how a reader learns to distrust all three. Each half degrades on its own:
+ * a countless distance and an undated drift are different losses.
+ */
+export const describeDriftSize = (
+  drift: Pick<CodeDrift, "since" | "behind">,
+  now: Date,
+): string => {
+  const distance =
+    drift.behind === undefined ? "distance uncountable" : `${drift.behind} commit(s) behind`;
+  const minutes = driftMinutes(drift, now);
+  return minutes === undefined
+    ? `${distance}, drifting since an unreadable date`
+    : `${distance}, drifting for ${ageWords(minutes * 60)} (since ${drift.since})`;
+};
+
+/**
  * THE LINE. Four facts in the order they are asked for: what is running, what is
  * current, how far apart they are, and how long it has been that way.
+ *
+ * THE AGE IT NAMES IS THE DRIFT'S, NOT THE PROCESS'S (thread 044) — both, in fact, and in
+ * that order. Uptime alone was the wrong clock in the one direction that hides the fault: a
+ * daemon raised five minutes ago from a checkout six hours stale printed "up 5m", and the
+ * reader who was told to judge staleness by that number read a young process as a current
+ * one. The two are now beside each other and cannot be mistaken for one another.
  */
 export const describeCodeDrift = (drift: CodeDrift, now: Date): string => {
   const upFor = Math.round((now.getTime() - new Date(drift.vintage.startedAt).getTime()) / 1000);
-  const distance =
-    drift.behind === undefined ? "distance uncountable" : `${drift.behind} commit(s) behind`;
-  return `the LOADED CODE is not the ref: this process runs ${short(drift.vintage.sha)} from ${drift.vintage.checkout}, ${drift.ref} on disk is ${short(drift.refSha)} — ${distance}; up since ${drift.vintage.startedAt} (${ageWords(upFor)}), and node loads modules once`;
+  return `the LOADED CODE is not the ref: this process runs ${short(drift.vintage.sha)} from ${drift.vintage.checkout}, ${drift.ref} on disk is ${short(drift.refSha)} — ${describeDriftSize(drift, now)}; up since ${drift.vintage.startedAt} (${ageWords(upFor)}), and node loads modules once`;
 };
+
+/**
+ * A DRIFT THE BOX HAS DECIDED NOT TO REPAIR, PUBLISHED WHERE A COURIER CAN READ IT
+ * (thread 044).
+ *
+ * WHY IT IS A FILE AND NOT A SECOND MEASUREMENT. The digest is composed by ANOTHER
+ * PROCESS — `notify`, raised by the tick — and the two facts it needs are of two kinds:
+ * the size of the drift, which it could measure for itself, and THE REASON the box is not
+ * pulling it, which it could not. The reason is a verdict over leases, holds, flags, a
+ * working tree and an attempt count that only the daemon holds, and a courier that
+ * re-derived it would be a second implementation of a safety rule — the exact shape this
+ * package refuses everywhere else ("one function, three surfaces"). So the daemon writes
+ * down the sentence it printed, and the courier carries it verbatim.
+ *
+ * IT IS REMOVED WHEN THE DRIFT ENDS, and that is what stops it from lying: the file is the
+ * standing state of one subject, not a log, so a box that caught its window or repaired
+ * itself leaves nothing behind to ring about. Disposable like everything in the state
+ * directory — losing it costs one digest line, never a decision.
+ */
+export type DriftStandoff = {
+  /** The target: what the ref resolves to. A new target is a new event for the reader. */
+  readonly refSha: string;
+  /** The loaded code, so a reader of the file alone can tell which box this is about. */
+  readonly sha: string;
+  /** The ref the daemon judges by, as it was named on its command line. */
+  readonly ref: string;
+  /** When the drift began — the clock the threshold is judged on; see {@link CodeDrift.since}. */
+  readonly since?: string;
+  readonly behind?: number;
+  /** WHY nothing is being pulled, in the daemon's own words — see the block above. */
+  readonly why: string;
+  /** When the daemon last said it. UTC ISO to the second. */
+  readonly at: string;
+};
+
+export const renderDriftStandoff = (standoff: DriftStandoff): string =>
+  `${JSON.stringify(standoff)}\n`;
+
+export const parseDriftStandoff = (raw: string): DriftStandoff | undefined => {
+  const text = raw.trim();
+  if (text === "") return undefined;
+  try {
+    const value = JSON.parse(text) as Partial<DriftStandoff>;
+    if (
+      typeof value.refSha !== "string" ||
+      typeof value.sha !== "string" ||
+      typeof value.ref !== "string" ||
+      typeof value.why !== "string" ||
+      typeof value.at !== "string"
+    )
+      return undefined;
+    return {
+      refSha: value.refSha,
+      sha: value.sha,
+      ref: value.ref,
+      why: value.why,
+      at: value.at,
+      ...(typeof value.since === "string" ? { since: value.since } : {}),
+      ...(typeof value.behind === "number" && Number.isInteger(value.behind)
+        ? { behind: value.behind }
+        : {}),
+    };
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * THE STANDOFF IS JUDGED BY THE SAME CLOCK AS THE LIVE READING, and that is why it carries
+ * `since`/`behind` under the names {@link CodeDrift} uses: {@link driftMinutes},
+ * {@link codeDriftOverdue} and {@link describeDriftSize} all take the two fields and neither
+ * reader gets a rule of its own. An undated standoff never rings — a drift whose beginning
+ * could not be read is a fact the box states in its log, not a clock it may pretend to have.
+ */
 
 /**
  * THE VINTAGE ON DISK, and why it has to be there at all. The frame is drawn by a
