@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T13:06:26.657Z",
+  "writtenAt": "2026-08-29T13:08:47.602Z",
   "roles": [
     "curator",
     "dev-core",
@@ -10,7 +10,7 @@
     {
       "role": "dev-core",
       "thread": "043-stale-park-reminders",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-29T14:06:25Z"
     },
     {
