@@ -650,3 +650,7 @@ PR #112 (docs(roles): карточка роли devops — упрощённая 
 - в контуре LLE — #434 (мёртвый адрес нормы контракта), кнопка не john.
 
 waiting-on → curator.
+
+## msg-018 · from: github · 2026-08-29 · expects: none
+
+PR #111 (feat(roles): системная идентичность роли объявляется данными — `systemUser` и отказ по имени вместо тихой подмены (тред 047)) **merged** by maysway → `main`.

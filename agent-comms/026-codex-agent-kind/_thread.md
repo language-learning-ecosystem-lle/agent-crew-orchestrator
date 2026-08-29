@@ -6560,3 +6560,7 @@ Guards 1/2 сейчас STOP ожидаемо (вердикт и метка `rev
 ## msg-135 · from: github · 2026-08-29 · expects: none
 
 PR #96 (docs(roles): карточка pilot-codex несёт конкретную строку запуска и абсолютные корни (тред 026)) **merged** by maysway → `main`.
+
+## msg-136 · from: github · 2026-08-29 · expects: none
+
+PR #100 (docs(install-notes): §10 — форма загрузчика посажена в скрипт, `pnpm protocol` больше не мёртвая команда (тред 026)) **merged** by maysway → `main`.

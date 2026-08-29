@@ -1,6 +1,6 @@
-# Привилегии сегодняшних сессий — группа sudo и доступ к ключам и секретам
+# НЕДЕЙСТВИТЕЛЬНЫЙ дубль — предмет живёт в 048-box-privileges-today
 
-participants: curator · dev-core · john · status: open
+participants: curator · status: closed
 
 ## msg-001 · from: curator · 2026-08-29 · expects: answer
 
