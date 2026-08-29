@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T15:07:20.749Z",
+  "writtenAt": "2026-08-29T15:09:15.986Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,16 +8,10 @@
   ],
   "leases": [
     {
-      "role": "curator",
-      "thread": "026-codex-agent-kind",
-      "state": "running",
-      "deadline": "2026-08-29T15:46:07Z"
-    },
-    {
       "role": "dev-core",
       "thread": "036-account-failover",
       "state": "running",
-      "deadline": "2026-08-29T16:07:19Z"
+      "deadline": "2026-08-29T16:09:14Z"
     }
   ]
 }
