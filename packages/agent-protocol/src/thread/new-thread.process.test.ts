@@ -371,13 +371,18 @@ describe("new-thread and the turn parked behind a person (R27, thread 075)", () 
     expect(firstHeader(contest, opened.id).fields.parkedOn).toBe("john");
   });
 
-  it("a park with '--expects none' is legal — the park as a MODE, a line of state that calls nobody", () => {
+  it("a park on a person with '--expects none' is REFUSED here too (thread 050)", () => {
+    // The statement of work named `new-message`; the door stands on both commands for the reason
+    // 075 gave once and 022 repeated — a rule one half of the pair holds and the other swallows
+    // is written silently into an append-only feed. And "I open a thread that stands on john and
+    // want nothing from him" is the same false call as writing it into an existing thread.
     const contest = contour();
 
     const opened = openWith(contest, ["--expects", "none", "--parked-on", "john"]);
 
-    expect(opened.code).toBe(0);
-    expect(firstHeader(contest, opened.id).fields.parkedOn).toBe("john");
+    expect(opened.code).toBe(2);
+    expect(opened.out).toContain("--expects answer");
+    expect(opened.out).toContain("--waiting-on <role>");
   });
 
   // THE EVENT PARK THROUGH THE SECOND ENTRANCE (thread 030, Д-3). `--parked-on pr:N` had no

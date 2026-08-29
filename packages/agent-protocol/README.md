@@ -620,7 +620,11 @@ apart along lines the package already had:
   filters, silence he cannot (curator, 2026-08-03). `none` stays mute, and it is a park
   like any other: the door refused it together with `--parked-on` from 034 until
   2026-08-04 (decision of john, thread 023) — "parks quietly, calls nobody" is the live
-  MODE park of 016 and 052. The park itself stays in the composition and in the state — the
+  MODE park of 016 and 052. **From 2026-08-29 the writing door refuses that combination
+  on a PERSON again (thread 050): a park that asks him nothing is a call with nothing to
+  answer, so the mode park survives only as an EVENT park and in messages written before
+  the door landed.** The reader is not changed by that and does not need to be — it is
+  already mute on `none`, and it keeps that silence for the old headers it still reads. The park itself stays in the composition and in the state — the
   scheduler still skips the thread and the age pass still says nothing about it; only
   the call is not repeated. The pain was john's, measured live on 2026-08-03: 016 (a
   park held as a MODE by his own decision, ringing for days) and 049 (a park over two
@@ -1592,9 +1596,22 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # trace leave it STANDING — until 2026-08-22 all of them lifted it, and that
                             # is the class it is set against. The event parks below keep the wide walk
                             # (the first message that MOVES somebody): they wait for a machine event.
-                            # Only a role the circuit cannot wake (`wake.mode: 'self'`) may be named
-                            # LEGAL together with `--expects none`: the PARK AS A MODE — a line of state
-                            # that calls nobody (016, 052). The door refused it from 034 until 2026-08-04
+                            # Only a role the circuit cannot wake (`wake.mode: 'self'`) may be named.
+                            # AND IT IS DECLARED ONLY WHEN SOMETHING IS WANTED OF HIM (thread 050, word of john
+                            # 2026-08-29): `--parked-on <person>` together with `--expects none` is
+                            # REFUSED BY NAME — a thread declared to be standing on a human it asks
+                            # nothing of is a call with nothing to answer, and ten of them read in one
+                            # list devalue the real questions beside them. It was the PARK AS A MODE
+                            # (legal 2026-08-04 to 2026-08-29, refused before that from 034), used when
+                            # the pause was INTERNAL: `035` waited for a round of review, `045` for a day
+                            # of field in another thread, and neither wanted anything of john. The
+                            # refusal names the exits: `--expects answer|ack` if something IS wanted,
+                            # `--parked-on pr:N`/`run:N` if the pause is a merge or a round, or
+                            # `--waiting-on <role>` with no park if somebody else continues. A pause with
+                            # no form at all is a DEFECT OF THE MECHANISM to be named in the thread, not
+                            # papered over with a human. The event parks below are untouched: they call
+                            # nobody, so `--expects none` beside them stays silent. Judge:
+                            # `judgeHumanPark`, on BOTH doors of the pair (the lesson of 075)
                             # --delivers <person>: THIS MESSAGE CARRIES THE WORD OF THAT PERSON (thread 030,
                             # decision of john 2026-08-22) — the one lift of a park on them, beside
                             # `status: closed`. A person does not write into the mail: the decision arrives

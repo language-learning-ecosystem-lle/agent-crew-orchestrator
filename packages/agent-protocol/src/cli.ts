@@ -513,6 +513,7 @@ import {
   type GitRun,
   type StagedMessage,
 } from "./thread/deliver.js";
+import { judgeHumanPark } from "./thread/human-park.js";
 import {
   closedThreads,
   deliveryMarks,
@@ -3054,6 +3055,13 @@ const newMessage = (argv: readonly string[]): void => {
   const launchDirective = directiveFrom(argv, { from, registry });
   const priority = priorityFrom(argv, { from, registry });
   const parkedOn = parkedOnFrom(argv, { registry });
+  // A PARK ON A PERSON WHO IS ASKED NOTHING (thread 050) — judged here rather than inside
+  // `parkedOnFrom`, because the fact it needs is the OTHER flag: `--expects` says in the
+  // writer's own hand whether anything is wanted of the human, and only the two together
+  // tell a real question from a thread declared to be standing on somebody who is not a
+  // party to the pause at all. The wording lives in `judgeHumanPark`, testable as words.
+  const humanPark = judgeHumanPark({ parkedOn, expects });
+  if (!humanPark.ok) fail(humanPark.reason, 2);
   const delivers = deliversFrom(argv, { registry });
   // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
   // can still be retyped, because the feed is append-only and such a header cannot be taken
@@ -3295,6 +3303,13 @@ const newThread = (argv: readonly string[]): void => {
   // for a person. Nothing about parking is invented here: the values, the checks and the
   // refusals are `parkedOnFrom`'s, unchanged.
   const parkedOn = parkedOnFrom(argv, { registry });
+  // AND THE SAME PARK ON A PERSON WHO IS ASKED NOTHING, by the same judge (thread 050). The
+  // statement of work named `new-message`; it is on both doors for the reason 075 gave once and
+  // 022 repeated — a rule one command of the pair holds and the other swallows is written
+  // silently into an append-only feed, and "I open a thread that stands on john and want
+  // nothing from him" is the same false call as writing it into an existing one.
+  const openingHumanPark = judgeHumanPark({ parkedOn, expects });
+  if (!openingHumanPark.ok) fail(openingHumanPark.reason, 2);
   // AND THE SAME DELIVERY, by the same door (thread 030): a thread can be OPENED by the courier
   // of a decision — the park it lifts stands in another thread, and the field is the message's,
   // not the command's. The lesson of 075 is why this is two lines here and not a scope for

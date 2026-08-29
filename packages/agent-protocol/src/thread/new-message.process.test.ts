@@ -996,25 +996,41 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(direct(contour(), "curator", "--merged-pr", "#127").code).toBe(2);
   });
 
-  it("A PARK ON AN INFORMATIONAL MESSAGE PASSES — the park as a MODE, calling nobody", () => {
-    // Refused from 034 until 2026-08-04 (decision of john, thread 023): the refusal rested on
-    // such a park being one that informational traffic may lift and one that rings at a human
-    // with nothing asked. Both reasons are gone — the lift of a person park became narrow the
-    // same day, and #186 made the courier ring on FRESH parks that ASK. The live parks of 016
-    // and 052 are exactly this shape: a line of state, no call.
+  it("A PARK ON A PERSON WITH NOTHING ASKED IS REFUSED BY NAME (thread 050)", () => {
+    // The combination was refused from 034, made legal on 2026-08-04 as the "park as a MODE"
+    // (decision of john, thread 023) and is refused again from 2026-08-29 by the word of the
+    // person it addressed: «от меня здесь не нужно АБСОЛЮТНО НИЧЕГО — и эта штука встаёт
+    // парковкой на меня». What the mode bought was a thread declared to be standing on a human
+    // who is not a party to the pause — `035` waited for a round of review, `045` for a day of
+    // field in another thread, and neither wanted anything of him. Ten of them read in one list
+    // is what makes it expensive: every false call devalues the real ones beside it.
     const contest = contour();
 
     const result = parkedWithExpects(contest, "none");
 
-    expect(result.code).toBe(0);
-    expect(written(contest.root).fields.parkedOn).toBe("john");
-    expect(written(contest.root).fields.expects).toBe("none");
+    expect(result.code).toBe(2);
+    // The refusal names the exits, because a park refused with no way out is a park retyped by
+    // guesswork: ask him something, park behind the event, or hand the turn on.
+    expect(result.out).toContain("--expects answer");
+    expect(result.out).toContain("--parked-on pr:<number>");
+    expect(result.out).toContain("--waiting-on <role>");
+    // And it is refused where the flags can still be retyped: nothing reaches the append-only feed.
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("the park that ASKS still passes, and the event parks are not touched by the refusal", () => {
+    // The two halves of thread 050's norm, at the door: a person is parked behind only when a
+    // decision, a word or an action is required OF HIM — and an event calls nobody at all, so
+    // `pr:`/`run:` with `--expects none` is the everyday shape and stays silent.
+    expect(parkedWithExpects(contour(), "answer").code).toBe(0);
+    const merge = contour();
+    expect(informational(merge, "--parked-on", "pr:127").code).toBe(0);
+    expect(written(merge.root).fields.parkedOn).toBe("pr:127");
   });
 
   it("the other refusals of the door are untouched by that — only this one combination moved", () => {
     // The guard of 023.5 is narrow by construction: an unknown name, a role the circuit wakes
-    // and the event forms are judged exactly as before, with `--expects none` alongside.
-    expect(parkedWithExpects(contour(), "answer").code).toBe(0);
+    // and the event forms are judged exactly as before.
     const unknown = contour();
     expect(direct(unknown, "curator", "--parked-on", "jonh").code).toBe(2);
     const wakeable = contour();
@@ -1140,6 +1156,53 @@ describe("new-message and a park by MEANING that is not a park by FIELD (thread 
     expect(existsSync(join(contest.root, "018-y"))).toBe(false);
   });
 });
+
+/**
+ * A message that asks for NOTHING, with the park of the caller's choosing (thread 050) — the
+ * half of the door that must stay silent: an event park calls nobody, so `--expects none` beside
+ * it is the everyday "handed the turn over and parked behind the round".
+ */
+const informational = (
+  contest: { repo: string; root: string; body: string },
+  ...extra: readonly string[]
+): { code: number; out: string } => {
+  try {
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-message",
+        "--repo",
+        contest.repo,
+        "--root",
+        contest.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--thread",
+        "016-x",
+        "--from",
+        "curator",
+        "--expects",
+        "none",
+        "--waiting-on",
+        "dev-core",
+        "--body-file",
+        contest.body,
+        "--worker",
+        "human",
+        "--write",
+        "--no-push",
+        ...extra,
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    return { code: 0, out };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+};
 
 /** `--parked-on` with an `--expects` of the caller's choosing — the door under test here. */
 const parkedWithExpects = (

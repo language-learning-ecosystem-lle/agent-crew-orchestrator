@@ -261,6 +261,7 @@ export {
   type MessageEntry,
   type ThreadInput,
 } from "./thread/check.js";
+export { type HumanParkVerdict, judgeHumanPark } from "./thread/human-park.js";
 export { parkedThreads, renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
 export {
   compareMessageEntries,
