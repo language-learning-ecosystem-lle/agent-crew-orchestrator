@@ -137,7 +137,14 @@ export const NOTIFICATION_VARIABLES: Readonly<Record<NotificationKind, readonly 
  *    one, which is terminal from its first second. THIS is the call that means "a human is
  *    needed" — nothing but a delivery into the thread will move that pair again.
  */
-export const BOX_ALARM_KINDS = ["auth", "gh-outage", "exhausted", "frozen"] as const;
+export const BOX_ALARM_KINDS = [
+  "auth",
+  "gh-outage",
+  "exhausted",
+  "frozen",
+  "unaccepted",
+  "unaccepted-stale-park",
+] as const;
 export type BoxAlarmKind = (typeof BOX_ALARM_KINDS)[number];
 
 /**
@@ -190,6 +197,22 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   // letter into the thread — from another role, or from another session of this one —
   // creates no event of the pair at all, and the three that stood on 2026-08-18 stayed
   // frozen through exactly such letters.
+  // AND THE EIGHTH CLASS SPEAKS IN THE BOX'S VOICE TOO (thread 042), for the reason the two
+  // freezes do: what it reports is the CIRCUIT failing to raise a pair, not anything that
+  // happened in the conversation. Nobody in that thread wrote it and nobody in it can answer
+  // it — the reader is whoever can look at the daemon. It says the three facts the reader
+  // needs to skip the whole diagnosis the four cases of 2026-08-28 cost by hand: which pair,
+  // how long, and that the box itself has NOTHING against the pair.
+  unaccepted:
+    "{role}×{thread} has been standing for {age} and this box has not raised it: the role is free, the thread is not parked, the pair is not out of attempts, and the daemon names no reason to skip it. Nothing in the mail is wrong — look at the box (is the daemon up, are launches enabled, is this role in its scope)",
+  // THE SAME STANDSTILL WITH A REASON ON SCREEN THAT IS NOT ABOUT THIS PAIR (thread 042). It
+  // is separate from the line above and not a variant of it, because the reader's move is a
+  // different one: there is nothing to check on the box, the park is simply stale and the
+  // thread needs a letter that moves the turn. The daemon says `PARKED behind a decision of
+  // {person}` at every tick, so a call that said "the daemon names no reason" would send the
+  // reader looking for a fault that is not there — which is the four hours of 2026-08-28.
+  "unaccepted-stale-park":
+    "{role}×{thread} has been standing for {age} behind a park on {person} that was declared on ANOTHER role's turn: the turn has moved to {role} since, and nothing is wanted of {person} by this pair. The daemon skips it every tick as parked — that line is true of the thread and false of the pair, so the move is to lift or re-declare the park, not to look at the box",
   frozen:
     "{role}×{thread} is frozen for good: {detail}. The circuit will not raise this pair again by itself, and no message into that thread lifts it — the move is a run let through by hand (`orchestrator run --max-attempts` above the ceiling), whose handoff zeroes the count",
 };
@@ -236,6 +259,79 @@ export type StalledTurn = {
 };
 
 /**
+ * ONE PAIR WHOSE TURN THE BOX HAS NOT TAKEN (thread 042) — the eighth class, and the one
+ * that produced NO SIGNAL AT ALL until it existed.
+ *
+ * The picture it is built for: `waiting-on` names a role THIS box raises, the role is free,
+ * the thread is not parked and not frozen, the pair is not at the attempt ceiling — and no
+ * session is raised, tick after tick. Nothing in the mail is wrong, so no category above can
+ * see it: it is not a wait on a human, not a park, not a freeze, and the 180-minute stall is
+ * a threshold for a working day, not for a queue whose tick is thirty seconds. Measured on
+ * 2026-08-28/29, four times in one day (1 h 52 m, 4 h 52 m, 19 m, ~7 m), and every one of
+ * them was found by a HUMAN reading the feed.
+ *
+ * `since` is the HANDOFF stamp, exactly as it is for a stall, and it is the identity for the
+ * same reason: a pair raised, released and left standing again is a NEW event, and the key
+ * resets by itself the moment the turn is taken (the raise postdates the handoff, so the pair
+ * leaves the composition) or the turn moves on (a new handoff, a new stamp).
+ *
+ * `reason` IS THE HALF THAT KEEPS THE LINE HONEST. The box knows some reasons for not raising
+ * a pair — the ceiling is spent, the account's window is closed, its credentials are refused,
+ * launches are disabled — and a pair held back by one of those is NOT a defect and must not
+ * ring: it is printed with its reason in the courier's standing line and nothing else. What
+ * rings is the pair with NO reason at all, which is the second and worse defect of the
+ * statement: the box has nothing against this pair and is still not raising it.
+ */
+export type UnacceptedTurn = {
+  readonly role: RoleId;
+  readonly thread: string;
+  /** The handoff this is counted from — the identity of the event. */
+  readonly since: string;
+  /** How long it has stood, already rendered — nobody computes it twice. */
+  readonly age: string;
+  /**
+   * What the box knows is holding the pair back, in its own words. ABSENT IS THE ALARM: the
+   * box named no reason, and a pair nobody has anything against that is still not raised is
+   * the thing a human had to find by eye four times on 2026-08-28.
+   */
+  readonly reason?: string | undefined;
+  /**
+   * THE PERSON OF A PARK THIS PAIR ONLY INHERITED (thread 042, §1 of 2026-08-29). Set when the
+   * thread IS parked on a human but the park was declared on ANOTHER role's turn: the daemon
+   * skips the pair every tick saying "parked behind a decision of {person}", and that sentence
+   * is true about the thread and false about the pair. It is the measured defect — the worst of
+   * the four windows, 4 h 16 m — and it rings with its own words, because "the box names no
+   * reason" would be the wrong instruction: there IS a reason on screen, and it is stale.
+   */
+  readonly staleParkOn?: RoleId | undefined;
+};
+
+/** The identity of one unaccepted turn: the pair and the handoff it has been standing on. */
+export const unacceptedKey = (turn: Pick<UnacceptedTurn, "role" | "thread" | "since">): string =>
+  `${turn.role}\t${turn.thread}\t${turn.since}`;
+
+/**
+ * AFTER HOW LONG AN UNTAKEN TURN IS ITSELF AN EVENT — ten minutes, and the number is a
+ * measurement rather than a taste.
+ *
+ * The daemon's tick is 30 seconds by default (`orchestrator daemon --tick`), and a healthy
+ * raise costs one tick plus the mail fetch — under two minutes on the boxes this runs on. Ten
+ * minutes is twenty ticks: an order of magnitude above a normal acceptance, so a pair that
+ * crosses it is not "slow", it is not being raised at all. The statement of thread 042
+ * proposed 15–20; the band was taken DOWN rather than up because three of its four measured
+ * cases (1 h 52 m, 4 h 52 m, 19 m) are caught either way and the fourth (~7 m) is caught by
+ * neither, while the class only ever fires when the box can name no reason — so the cost of
+ * the lower threshold is not noise, it is an earlier call on a real standstill.
+ *
+ * A CONSTANT AND NOT A CONFIG KEY, deliberately: a new key in `notifications` is a new
+ * protocol version and a migration for every box in the field (R2), which is john's decision
+ * and not a side effect of this repair. It is stated here, in the package's own voice, like
+ * {@link GH_OUTAGE_TICKS} beside it; if a project ever needs its own N, that is a version
+ * bump asked for in the thread.
+ */
+export const UNACCEPTED_AFTER_MINUTES = 10;
+
+/**
  * ONE THREAD FROZEN BEHIND A PERSON (R27), with the question it is frozen on.
  *
  * THE THIRD CLASS OF EVENT, and the one the human actually has to act on (thread 023,
@@ -270,6 +366,14 @@ export type ParkedThread = {
    * a ❓ too many (curator, 2026-08-03) — see `Parking.asks` for the whole reason.
    */
   readonly asks: boolean;
+  /**
+   * WHOSE TURN THE PARK WAS DECLARED ON (thread 042) — {@link Parking.holder}, carried through.
+   * A park covers the pair it was declared about; the pair that inherited it by a later handoff
+   * is NOT parked, it is unraised, and telling the two apart is the whole of check (в).
+   * Undefined reads as "covers whoever holds the turn" — the behaviour of every reader before
+   * this field existed, and what a park declared by a message with no `waiting-on` deserves.
+   */
+  readonly holder?: RoleId | undefined;
 };
 
 /**
@@ -442,6 +546,14 @@ export type NotifyState = {
    * set at every thaw and a composition-shaped memory would forget it there.
    */
   readonly freezes?: readonly string[] | undefined;
+  /**
+   * The unaccepted turns already announced (thread 042) — the composition, like `stalled`
+   * and unlike `freezes`: an untaken turn ends by being taken, and being taken is exactly
+   * what drops it from the composition the caller hands over, so there is nothing to carry
+   * forward. Absent means "this box has never announced one", which is what a state file
+   * written before this class existed says, and it must not read as "everything is new".
+   */
+  readonly unaccepted?: readonly UnacceptedTurn[] | undefined;
 };
 
 export type NotificationPlan = {
@@ -455,6 +567,18 @@ export type NotificationPlan = {
   readonly fresh: readonly WaitingPair[];
   /** Stalls not announced before — a stall that was already reported is not repeated. */
   readonly freshStalled: readonly StalledTurn[];
+  /**
+   * THE UNTAKEN TURNS IN FORCE NOW (thread 042), explained and unexplained alike, ordered —
+   * this is what the state file becomes, and what the courier's standing clause counts.
+   */
+  readonly unaccepted: readonly UnacceptedTurn[];
+  /**
+   * The subset the box can name NO reason for. It is the defect; the rest is the queue
+   * behaving as the operator already knows it behaves, and is printed, not rung.
+   */
+  readonly unexplained: readonly UnacceptedTurn[];
+  /** Unexplained turns not announced before — the ones that ring in this letter. */
+  readonly freshUnaccepted: readonly UnacceptedTurn[];
   /**
    * Parks not announced before AND asking something — the same rule, keyed by the message that
    * parked, and the ONLY parks that produce a line: a park in force but already announced is
@@ -651,6 +775,9 @@ export const renderNotifyState = (state: NotifyState): string => {
     // <thread> <since>`. Sorted so that a diff of the file stays readable when several
     // pairs freeze in one storm — which is what a 529 storm does.
     ...[...(state.freezes ?? [])].sort().map((entry) => `freeze\t${entry}`),
+    // Four columns, like a stall and for the same reasons: the age changes every tick and
+    // the reason is re-read from the box every time, so what is written is the identity.
+    ...(state.unaccepted ?? []).map((turn) => `unaccepted\t${unacceptedKey(turn)}`),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -660,6 +787,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const stalled: StalledTurn[] = [];
   const parked: ParkedThread[] = [];
   const freezes: string[] = [];
+  const unaccepted: UnacceptedTurn[] = [];
   let auth: string | undefined;
   let gh: string | undefined;
   for (const line of raw.split("\n").map((entry) => entry.trim())) {
@@ -682,6 +810,15 @@ export const parseNotifyState = (raw: string): NotifyState => {
       // question ("was this event announced"), and it answers it by the key alone.
       if (person !== undefined && thread !== undefined && since !== undefined) {
         parked.push({ person, thread, since, question: "", asks: false });
+      }
+      continue;
+    }
+    if (columns[0] === "unaccepted") {
+      const [, role, thread, since] = columns;
+      if (role !== undefined && thread !== undefined && since !== undefined) {
+        // Neither the age nor the reason is stored — the first changes every tick and the
+        // second is a fact about the box now, not about the announcement then.
+        unaccepted.push({ role, thread, since, age: "" });
       }
       continue;
     }
@@ -718,7 +855,15 @@ export const parseNotifyState = (raw: string): NotifyState => {
   }
   // An empty set is ABSENT rather than empty: the state of a box that has never frozen a
   // pair must read exactly as it did before this field existed.
-  return { waiting, stalled, parked, auth, gh, ...(freezes.length === 0 ? {} : { freezes }) };
+  return {
+    waiting,
+    stalled,
+    parked,
+    auth,
+    gh,
+    ...(freezes.length === 0 ? {} : { freezes }),
+    ...(unaccepted.length === 0 ? {} : { unaccepted }),
+  };
 };
 
 const ordered = (pairs: readonly WaitingPair[]): readonly WaitingPair[] =>
@@ -781,6 +926,14 @@ export const planNotifications = (input: {
    * every thaw gap and the same series would ring on every round of its backoff.
    */
   readonly exhausted?: readonly ExhaustedPair[];
+  /**
+   * Pairs whose turn this box has been sitting on past {@link UNACCEPTED_AFTER_MINUTES}
+   * (thread 042) — the caller measures the age, reads the leases and names the reason it
+   * knows; this picks which of them ring. Absent means the caller could not read the box's
+   * own state at all (a mail-only invocation), and silence is the honest answer there: with
+   * no journal there is no way to tell an untaken turn from one taken a second ago.
+   */
+  readonly unaccepted?: readonly UnacceptedTurn[];
   readonly templates?: Partial<Record<NotificationKind, string>>;
 }): NotificationPlan => {
   const byRole = new Map(input.targets.map((target) => [target.id, target]));
@@ -861,8 +1014,55 @@ export const planNotifications = (input: {
     ...parked.map((p) => p.thread),
     ...(input.frozen ?? []),
   ]);
+  // AN UNTAKEN TURN IS NOT A PARK AND NOT A FREEZE (thread 042, check (в)): those classes own
+  // their threads, and two lines about one id is the noise thread 023 removed.
+  //
+  // BUT `told` IS THE WRONG SET FOR IT, in both of its halves, and this is the whole finding of
+  // §1 of 2026-08-29:
+  //
+  //  - a thread in `waiting` has been ANNOUNCED TO THE ROLE, which is the opposite of raised.
+  //    "Your turn: 042" going out every tick while no session is ever started is precisely the
+  //    silence measured — the mail is impeccable and the box does nothing — so a class silenced
+  //    by its own turn-notification could never fire in the field;
+  //  - a park covers THE TURN IT WAS DECLARED ON. `parksInForce` rather than `parked` is what
+  //    covers a pair (a park addressed to a person this box cannot call still freezes the
+  //    thread), and a park whose `holder` names another role covers nothing here: the pair that
+  //    inherited it is not waiting for a human, it is waiting to be raised.
+  const parksByThread = new Map<string, ParkedThread[]>();
+  for (const park of parksInForce) {
+    const at = parksByThread.get(park.thread);
+    if (at === undefined) parksByThread.set(park.thread, [park]);
+    else at.push(park);
+  }
+  const frozenIds = new Set(input.frozen ?? []);
+  const unaccepted = [...(input.unaccepted ?? [])]
+    .filter((turn) => !frozenIds.has(turn.thread))
+    .flatMap((turn): UnacceptedTurn[] => {
+      const parks = parksByThread.get(turn.thread) ?? [];
+      if (parks.length === 0) return [turn];
+      // A park with no holder of its own is the pre-042 park and keeps its old power over the
+      // whole thread: nothing in the feed says whose turn it was declared on, and guessing
+      // would turn every legitimate park in the field into an alarm on the day this ships.
+      if (parks.some((park) => park.holder === undefined || park.holder === turn.role)) return [];
+      return [{ ...turn, staleParkOn: parks[0]?.person }];
+    })
+    .sort((a, b) => a.thread.localeCompare(b.thread) || a.role.localeCompare(b.role));
+  const unexplained = unaccepted.filter((turn) => turn.reason === undefined);
+  // THE CLASS CAN ONLY TAKE THE STALL'S PLACE WHERE IT CAN SPEAK (thread 042). Its call is
+  // "go and look at the daemon", which is an instruction only a person at the machine can
+  // carry out, so a box with no `direct` target rings nothing here — and on such a box the
+  // precedence below would REMOVE a line and put none in its stead. Measured on the daemon's
+  // own fixture (`daemon.process.test.ts`, thread 024): a pair standing 34 days lost its
+  // `012-x (stalled 34d 16h)` and gained silence, which is the defect this thread is about.
+  const canSpeak = input.targets.some((target) => target.style === "direct");
+  const unacceptedIds = new Set(canSpeak ? unaccepted.map((turn) => turn.thread) : []);
+  // AND IT TAKES PRECEDENCE OVER THE STALL, rather than standing beside it (thread 042,
+  // check (д)). Both are true of a pair standing three hours untaken — the 180-minute pass
+  // sees exactly the same thread — but "nobody is moving this" is the vaguer of the two
+  // sentences and the one that cost john four hand-found cases: the untaken line names the
+  // role, the age AND the fact that the box has nothing against the pair.
   const stalled = [...(input.stalled ?? [])]
-    .filter((turn) => !told.has(turn.thread))
+    .filter((turn) => !told.has(turn.thread) && !unacceptedIds.has(turn.thread))
     .sort((a, b) => a.thread.localeCompare(b.thread));
   const seenStalls = new Set(input.seen.stalled.map(stalledKey));
   const freshStalled = stalled.filter((turn) => !seenStalls.has(stalledKey(turn)));
@@ -886,6 +1086,14 @@ export const planNotifications = (input: {
   const human = input.targets.some((target) => target.style === "direct");
   const auth = human ? input.auth : undefined;
   const gh = human ? input.gh : undefined;
+  // THE EIGHTH CLASS IS THE BOX'S OWN AND IS DROPPED WITH THE OTHERS WHEN NOBODY HUMAN IS
+  // CONFIGURED (thread 042): "go and look at the daemon" is an instruction only a person at
+  // the machine can carry out. The composition survives the drop — the state still records
+  // what stands — but nothing rings.
+  const seenUnaccepted = new Set((input.seen.unaccepted ?? []).map(unacceptedKey));
+  const freshUnaccepted = human
+    ? unexplained.filter((turn) => !seenUnaccepted.has(unacceptedKey(turn)))
+    : [];
   const freshAuth = auth !== undefined && authAlarmKey(auth) !== input.seen.auth;
   const freshGh = gh !== undefined && gh.since !== input.seen.gh;
 
@@ -975,6 +1183,27 @@ export const planNotifications = (input: {
         thread: event.pair.thread,
         attempts: String(event.pair.attempts ?? ""),
         detail,
+      }),
+    });
+  }
+  // AND THE UNTAKEN TURNS STAND WITH THEM, above the mail, for the identical reason: a
+  // reader who learns "your turn: 042" first and "the box is not raising 042" last has read
+  // the two facts in the wrong order. One line per pair — two stuck pairs are two facts, and
+  // one of them may be the only one the reader can do anything about.
+  for (const turn of freshUnaccepted) {
+    // Two texts, one class: what the reader has to DO differs (look at the box vs. move the
+    // stale park), and a line that names the wrong move costs the same as no line.
+    const kind: BoxAlarmKind =
+      turn.staleParkOn === undefined ? "unaccepted" : "unaccepted-stale-park";
+    lines.push({
+      kind,
+      thread: turn.thread,
+      role: turn.role,
+      text: renderTemplate(BOX_ALARM_TEMPLATES[kind], {
+        role: turn.role,
+        thread: turn.thread,
+        age: turn.age,
+        person: turn.staleParkOn ?? "",
       }),
     });
   }
@@ -1090,6 +1319,9 @@ export const planNotifications = (input: {
     parked,
     fresh,
     freshStalled,
+    unaccepted,
+    unexplained,
+    freshUnaccepted,
     freshParked,
     askingParked,
     unaddressedParked,
@@ -1111,6 +1343,59 @@ export const planNotifications = (input: {
  * How long, in the words a human reads: "3h 20m", "2d 4h", "45m". Rounded down and
  * two units deep on purpose — the number is a reason to look, not a measurement.
  */
+/**
+ * WHICH WAITING PAIRS THE BOX HAS NOT TAKEN (thread 042) — pure, so that the four cases of
+ * 2026-08-28 are fixtures and not a night of watching a live circuit.
+ *
+ * The caller hands over facts and nothing else: the turns standing on roles THIS box raises,
+ * when each pair was last raised, which roles are busy right now, and the reasons the box
+ * already knows. Every judgement is here.
+ *
+ * A ROLE THAT IS BUSY ELSEWHERE IS NOT A DEFECT (check (б) of the statement): one session per
+ * role is the rule the daemon runs on, so a pair queued behind its own role's other thread is
+ * the circuit working, and calling it a standstill would ring on every healthy busy hour.
+ */
+export const unacceptedTurns = (input: {
+  /** One entry per open thread whose `waiting-on` names a role this box raises. */
+  readonly turns: readonly {
+    readonly role: RoleId;
+    readonly thread: string;
+    readonly since: string;
+  }[];
+  /** `role\tthread` → the stamp this pair was last raised at; absent — it never was. */
+  readonly raisedAt: ReadonlyMap<string, string>;
+  /** The roles holding a live lease right now — their queue is legitimate, not a standstill. */
+  readonly busyRoles: ReadonlySet<RoleId>;
+  /** `role\tthread` → what the box knows is holding THIS pair back, in its own words. */
+  readonly reasons?: ReadonlyMap<string, string>;
+  /** What is holding back EVERY pair (launches disabled, the daemon stopped), if anything. */
+  readonly hold?: string | undefined;
+  readonly now: Date;
+  readonly afterMinutes?: number;
+}): readonly UnacceptedTurn[] => {
+  const after = input.afterMinutes ?? UNACCEPTED_AFTER_MINUTES;
+  const out: UnacceptedTurn[] = [];
+  for (const turn of input.turns) {
+    if (input.busyRoles.has(turn.role)) continue;
+    const minutes = (input.now.getTime() - Date.parse(turn.since)) / 60_000;
+    if (!Number.isFinite(minutes) || minutes < after) continue;
+    // THE TURN WAS TAKEN IF A LEASE POSTDATES THE HANDOFF, and by that alone: a pair raised
+    // yesterday, released and left standing since this morning is untaken, and a rule that
+    // asked "was it ever raised" would call it healthy for good.
+    const raised = input.raisedAt.get(`${turn.role}\t${turn.thread}`);
+    if (raised !== undefined && Date.parse(raised) >= Date.parse(turn.since)) continue;
+    const reason = input.reasons?.get(`${turn.role}\t${turn.thread}`) ?? input.hold;
+    out.push({
+      role: turn.role,
+      thread: turn.thread,
+      since: turn.since,
+      age: describeAge(minutes),
+      ...(reason === undefined ? {} : { reason }),
+    });
+  }
+  return out;
+};
+
 export const describeAge = (minutes: number): string => {
   const whole = Math.max(0, Math.floor(minutes));
   if (whole < 60) return `${whole}m`;

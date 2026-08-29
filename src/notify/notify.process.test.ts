@@ -628,3 +628,162 @@ describe("notify as a command", () => {
     expect(existsSync(contest.state)).toBe(false);
   });
 });
+
+/**
+ * THE SEAM OF THE EIGHTH CLASS (thread 042) — the mail says a turn passed, the JOURNAL says
+ * whether a session was ever raised for it, and no unit over either half can check that they
+ * are read as one fact. This is the only category built from both.
+ */
+describe("a turn this box never took — notify against the journal (thread 042)", () => {
+  /** A thread whose last word hands the turn to a role THIS box raises, at `date`. */
+  const handedTo = (contest: ReturnType<typeof contour>, id: string, date: string): void => {
+    mkdirSync(join(contest.root, id, "messages"), { recursive: true });
+    writeFileSync(join(contest.root, id, "_meta.md"), meta("dev-core, curator"));
+    writeFileSync(
+      join(contest.root, id, "messages", `${date.replace(/:/g, "-")}-curator.md`),
+      `---\nfrom: curator\nworker: human\ndate: ${date}\nexpects: answer\nwaiting-on: dev-core\n---\n\nПостановка.\n`,
+    );
+  };
+  /**
+   * The fixture's `dev-core` made RAISEABLE by this box: only a role the box actually launches
+   * can be judged untaken (`launchScopeFrom`), and a turn standing on somebody else's role is
+   * that box's business. The shared ROLES above carry no launch profile on purpose — the rest
+   * of this file tests the courier, which does not care.
+   */
+  const raiseable = (contest: ReturnType<typeof contour>): void => {
+    const path = join(contest.repo, "agent-protocol.json");
+    const config = JSON.parse(readFileSync(path, "utf8")) as {
+      roles: { id: string; instructions?: unknown; launch?: unknown }[];
+    };
+    for (const role of config.roles) {
+      if (role.id !== "dev-core") continue;
+      role.instructions = [{ kind: "in-repo", path: "CARD.md" }];
+      role.launch = { allowedTools: ["Bash"] };
+    }
+    writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+    writeFileSync(join(contest.repo, "CARD.md"), "# dev-core\n");
+  };
+  /** The box's own state: launches ON (so no box-wide reason answers for the pair) and a journal. */
+  const box = (contest: ReturnType<typeof contour>, events: readonly unknown[]): void => {
+    const state = join(contest.repo, ".orchestrator");
+    mkdirSync(state, { recursive: true });
+    writeFileSync(join(state, "enabled"), "", "utf8");
+    writeFileSync(
+      join(state, "journal.jsonl"),
+      events
+        .map((event) => JSON.stringify(event))
+        .join("\n")
+        .concat("\n"),
+      "utf8",
+    );
+  };
+
+  it("no lease for the pair since the handoff — the line names it and the call goes out", () => {
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    box(contest, [
+      // A lease of the SAME role on ANOTHER thread, and one of the same pair from BEFORE the
+      // handoff: neither is this turn being taken, and a rule that asked "was it ever raised"
+      // would call the pair healthy for good.
+      {
+        kind: "lease-acquired",
+        ts: "2026-07-25T19:00:00Z",
+        role: "dev-core",
+        thread: "042-untaken",
+        deadline: "2026-07-25T20:00:00Z",
+      },
+      {
+        kind: "lease-released",
+        ts: "2026-07-25T19:30:00Z",
+        role: "dev-core",
+        thread: "042-untaken",
+        reason: "completed",
+      },
+      {
+        kind: "lease-acquired",
+        ts: "2026-07-26T09:00:00Z",
+        role: "dev-core",
+        thread: "016-other",
+        deadline: "2026-07-26T10:00:00Z",
+      },
+      {
+        kind: "lease-released",
+        ts: "2026-07-26T09:30:00Z",
+        role: "dev-core",
+        thread: "016-other",
+        reason: "completed",
+      },
+    ]);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("unaccepted over 10m");
+    expect(result.out).toContain("dev-core×042-untaken");
+    expect(result.out).toContain("no reason known");
+    // And the call itself — the box's own voice, with the instruction the reader needs.
+    expect(result.out).toContain("this box has not raised it");
+  });
+
+  it("a lease AFTER the handoff is the turn being taken — nothing is said", () => {
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    box(contest, [
+      {
+        kind: "lease-acquired",
+        ts: "2026-07-25T20:00:23Z",
+        role: "dev-core",
+        thread: "042-untaken",
+        deadline: "2026-07-25T21:00:00Z",
+      },
+    ]);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("unaccepted over 10m");
+  });
+
+  it("launches switched off is a REASON: printed with it, and no call", () => {
+    // The box working exactly as its operator set it up. A ring here is the noise that
+    // teaches a reader to stop reading the digest.
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    const state = join(contest.repo, ".orchestrator");
+    mkdirSync(state, { recursive: true });
+    writeFileSync(join(state, "journal.jsonl"), "", "utf8");
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.out).toContain("dev-core×042-untaken");
+    expect(result.out).toContain("launches are disabled on this box");
+    expect(result.out).not.toContain("this box has not raised it");
+  });
+
+  it("a park declared on ANOTHER role's turn does not cover this pair — it rings as stale", () => {
+    // The measured window of 2026-08-28, end to end through the command: a park put up on
+    // curator's turn, the turn handed to dev-core two minutes later, and 4 h 16 m of silence
+    // while the daemon printed `PARKED behind a decision of john` at every tick.
+    const contest = contour({});
+    raiseable(contest);
+    contest.park("010-speech", { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "curator" });
+    writeFileSync(
+      join(contest.root, "010-speech", "messages", "2026-07-25T20-00-00Z-curator.md"),
+      `---\nfrom: curator\nworker: human\ndate: 2026-07-25T20:00:00Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nДержи ход.\n`,
+    );
+    box(contest, []);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.out).toContain("dev-core×010-speech");
+    expect(result.out).toContain("declared on another role's turn");
+    expect(result.out).toContain("behind a park on john");
+  });
+});

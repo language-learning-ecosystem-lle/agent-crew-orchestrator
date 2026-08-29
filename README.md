@@ -1413,6 +1413,34 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # count, every shape of a delivery is written by a run, and a closed thread
                             # gets no runs — measured 2026-08-19, two accepted threads standing in the
                             # line as `2 exhausted` with advice to raise `--max-attempts` on them
+                            # AND THE EIGHTH CLASS: A TURN THIS BOX NEVER TOOK (thread 042). `waiting-on`
+                            # names a role THIS box raises, the role is free, and no session was ever
+                            # started for the pair — the mail is impeccable and nothing happens. Measured
+                            # four times on 2026-08-28/29 (1 h 52 m, 4 h 16 m, 19 m, ~7 m), every one of
+                            # them found by a HUMAN. The line carries it as a standing category and NAMES
+                            # the pairs: `N unaccepted over 10m, K the box cannot justify, M of those new
+                            # — curator×042 (19m, no reason known)`
+                            # THE THRESHOLD IS A CONSTANT, NOT A CONFIG KEY (`UNACCEPTED_AFTER_MINUTES`
+                            # = 10): the daemon's tick is 30 s and a healthy raise costs under two
+                            # minutes, so ten minutes is twenty ticks. A key in `notifications` would be
+                            # a new protocol version and a migration on every box in the field — john's
+                            # decision, not a side effect of this repair
+                            # A REASON THE BOX KNOWS IS PRINTED AND DOES NOT RING (the ceiling is spent,
+                            # the vendor's window is closed, the login is refused, launches are disabled,
+                            # the daemon is stopped): that is the box working as its operator set it up.
+                            # What RINGS is the pair the box has nothing against — and the pair standing
+                            # behind a STALE PARK: a park is declared on a TURN and written on the
+                            # THREAD, so when the turn moves to another role the new pair inherits a
+                            # freeze declared about somebody else. That is the 4 h 16 m of 2026-08-28
+                            # (`dev-speech×010-speech-service` behind a park declared on curator's turn),
+                            # and it gets its own text — the move is to lift the park, not to look at the
+                            # daemon. A park whose message named no `waiting-on` keeps its whole thread
+                            # A BUSY ROLE IS A LEGITIMATE QUEUE and never counts; parks that DO cover the
+                            # pair and freezes stay with their own classes; the 180-minute stall stays
+                            # silent about a pair this class already names — "nobody is moving this" is
+                            # the vaguer of the two sentences. ONLY ON A BOX WITH SOMEBODY TO CALL,
+                            # though: the class rings a `direct` target and nobody else, so where there
+                            # is none the precedence would delete a line and put none in its place
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived

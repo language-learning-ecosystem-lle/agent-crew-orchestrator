@@ -552,6 +552,10 @@ describe("parkingOf — the facts the courier to the human needs (thread 023)", 
       since: "2026-07-31T11:08:20Z",
       question: "Перезапустить демон?",
       asks: true,
+      // WHOSE TURN IT WAS DECLARED ON (thread 042) — the half a park was missing until the
+      // four windows of 2026-08-28: the park is written on the thread and the turn moves on,
+      // so without this the pair that inherited it is indistinguishable from the one it is about.
+      holder: "curator",
     });
   });
 

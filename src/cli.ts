@@ -113,6 +113,9 @@ import {
   renderAnnouncement,
   renderNotification,
   renderNotifyState,
+  UNACCEPTED_AFTER_MINUTES,
+  type UnacceptedTurn,
+  unacceptedTurns,
   type WaitingPair,
 } from "./notify/notify.js";
 import { describeSecrets, type LoadedSecrets, loadSecrets } from "./notify/secrets.js";
@@ -3818,6 +3821,9 @@ const runNotify = async (input: {
             // Whether the human is being CALLED, as opposed to the thread being frozen — the
             // parking message's own `expects` (thread 051). The freeze is the same either way.
             asks: parking.asks,
+            // WHOSE TURN IT WAS DECLARED ON (thread 042): the courier tells a pair the park is
+            // about from a pair that merely inherited it by a later handoff.
+            ...(parking.holder === undefined ? {} : { holder: parking.holder }),
           },
         ]
       : [],
@@ -3859,6 +3865,23 @@ const runNotify = async (input: {
     if (!Number.isFinite(minutes) || minutes < stalledAfter) return [];
     return [{ thread: thread.id, role: holder, since, age: describeAge(minutes) }];
   });
+
+  // THE EIGHTH QUESTION, and the one nothing in the courier could ask (thread 042): "whose
+  // turn has this box simply not taken". It is the only category that needs BOTH halves —
+  // the mail says the turn passed, the journal says whether a session was ever raised for
+  // it — so the candidates are gathered here and judged below, where the journal is open.
+  // Only the roles THIS box raises can be judged: a turn standing on another instance's role
+  // is that box's business, and calling it a standstill here would be a guess.
+  const boxRoles = new Set(
+    launchScopeFrom(argv, localFrom(argv), launchableRoles(argv), false).roles,
+  );
+  const untaken = parsed.flatMap((thread) => {
+    const holder = waitingOnOf(thread);
+    if (holder === undefined || !boxRoles.has(holder)) return [];
+    const since = waitingSince({ messages: thread.messages, role: holder });
+    return since === undefined ? [] : [{ role: holder, thread: thread.id, since }];
+  });
+  let unaccepted: readonly UnacceptedTurn[] = [];
 
   // THE FOURTH AND FIFTH QUESTIONS ARE NOT ABOUT THE MAIL AT ALL (thread 051): "can this
   // box still authenticate" and "is the merge-ready tier being refused". Both are read from
@@ -3918,6 +3941,51 @@ const runNotify = async (input: {
       // The same fold the daemon's stream and the `status` frame stand on — one function,
       // three surfaces, so a pause cannot be visible in one of them and absent in another.
       quotaShelves = openQuotaShelves(events, new Date(now));
+      // THE JUDGEMENT OF THE EIGHTH CLASS (thread 042). Three facts out of the same journal:
+      // when each pair was last RAISED (a lease acquired after the handoff means the turn was
+      // taken), which roles are busy right now (their queue is legitimate — check (б)), and
+      // the reasons the box already knows for holding a pair back. A reason turns the alarm
+      // into a printed line: what rings is the pair the box has NOTHING against.
+      const views = foldLeases(
+        events,
+        new Date(now),
+        gatesFrom(argv).maxAttempts.value,
+        deliveryMarks(parsed),
+      );
+      const raisedAt = new Map<string, string>();
+      for (const event of events) {
+        if (event.kind !== "lease-acquired") continue;
+        raisedAt.set(`${event.role}\t${event.thread}`, event.ts);
+      }
+      const reasons = new Map<string, string>();
+      for (const view of views) {
+        if (view.exhausted)
+          reasons.set(
+            `${view.role}\t${view.thread}`,
+            `the attempt ceiling is spent (${view.attempt} of ${view.ceiling})`,
+          );
+      }
+      // THE BOX-WIDE HOLDS, in the order the operator would check them. Each one is a reason
+      // for EVERY pair at once, and without them a box whose launches are simply switched off
+      // would ring about every thread in the mail — which is the noise that teaches a reader
+      // to stop reading the digest.
+      const hold = existsSync(paths.stopFlag)
+        ? `the daemon is stopped ('${paths.stopFlag}' is there)`
+        : !existsSync(paths.enableFlag)
+          ? `launches are disabled on this box (no '${paths.enableFlag}')`
+          : quotaShelves.length > 0
+            ? "the vendor's rate-limit window is closed for this box"
+            : authAlarm !== undefined
+              ? `this box cannot authenticate for ${describeAccount(authAlarm.account)}`
+              : undefined;
+      unaccepted = unacceptedTurns({
+        turns: untaken,
+        raisedAt,
+        busyRoles: new Set(views.filter((view) => isLeaseAlive(view.state)).map((v) => v.role)),
+        reasons,
+        ...(hold === undefined ? {} : { hold }),
+        now: new Date(now),
+      });
       // THE ALARM RINGS ON THE WORST SHELF (B.3): several accounts can be shelved at once,
       // and the operator's answer — a login — is per account, so the one named is the one
       // with the longest run of deaths behind it.
@@ -3978,6 +4046,7 @@ const runNotify = async (input: {
     declaredParks,
     frozen,
     exhausted: exhaustedPairs,
+    unaccepted,
     auth: authAlarm,
     gh: ghAlarm,
     ...(loaded.config.notifications?.templates === undefined
@@ -4031,6 +4100,27 @@ const runNotify = async (input: {
     }; ` +
     `${plan.waiting.length} waits, ${plan.fresh.length} of them new; ` +
     `${plan.stalled.length} stalled over ${stalledAfter}m, ${plan.freshStalled.length} of them new` +
+    // THE EIGHTH CATEGORY, PRINTED ONLY WHEN IT IS NOT EMPTY and NAMED rather than counted
+    // (thread 042). Named for the reason the exhausted clause is: the reader's next move is
+    // to go and look at that pair, and a bare number leaves them where they were. The reason
+    // rides beside each pair — that is point 2 of the statement, "a door that is silent is
+    // worse than none": a pair held back by a spent ceiling or a closed window is the box
+    // working, and only `no reason known` is the standstill nobody has been told about.
+    `${
+      plan.unaccepted.length === 0
+        ? ""
+        : `; ${plan.unaccepted.length} unaccepted over ${UNACCEPTED_AFTER_MINUTES}m, ${plan.unexplained.length} the box cannot justify, ${plan.freshUnaccepted.length} of those new — ${plan.unaccepted
+            .map(
+              (turn) =>
+                `${turn.role}×${turn.thread} (${turn.age}, ${
+                  turn.reason ??
+                  (turn.staleParkOn === undefined
+                    ? "no reason known"
+                    : `a park on ${turn.staleParkOn} declared on another role's turn`)
+                })`,
+            )
+            .join(", ")}`
+    }` +
     // THE STANDING CATEGORY THAT DID NOT EXIST (thread 013). It prints EVERY tick, news or
     // not, and it names the pairs: the line of 2026-08-18 said `nothing to announce` with
     // three pairs standing at the ceiling, and a count with no names would have left the
@@ -4101,6 +4191,7 @@ const runNotify = async (input: {
       plan.freshStalled.length === 0 &&
       plan.freshParked.length === 0 &&
       plan.freshFreezes.length === 0 &&
+      plan.freshUnaccepted.length === 0 &&
       !plan.freshAuth &&
       !plan.freshGh)
   ) {
@@ -4117,6 +4208,7 @@ const runNotify = async (input: {
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
         freezes: plan.freezeKeys,
+        unaccepted: plan.unaccepted,
       }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
@@ -4143,6 +4235,7 @@ const runNotify = async (input: {
     ...plan.liftedParked.map((park) => `${park.thread} (lifted on ${park.person})`),
     ...plan.fresh.map((pair) => pair.thread),
     ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
+    ...plan.freshUnaccepted.map((turn) => `${turn.role}×${turn.thread} (unaccepted ${turn.age})`),
   ];
   const summary = `${describeWaits} — ${announced.join(", ")}`;
   if (transport === undefined) {
@@ -4161,6 +4254,7 @@ const runNotify = async (input: {
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
         freezes: plan.freezeKeys,
+        unaccepted: plan.unaccepted,
       }),
     );
     return { kind: "sent", summary, lines: said };
@@ -4193,6 +4287,7 @@ const runNotify = async (input: {
       auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
       gh: plan.gh?.since,
       freezes: plan.freezeKeys,
+      unaccepted: plan.unaccepted,
     }),
   );
   say(outcome.detail);
