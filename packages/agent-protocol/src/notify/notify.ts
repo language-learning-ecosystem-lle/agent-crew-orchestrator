@@ -1043,6 +1043,15 @@ export const planNotifications = (input: {
       // A park with no holder of its own is the pre-042 park and keeps its old power over the
       // whole thread: nothing in the feed says whose turn it was declared on, and guessing
       // would turn every legitimate park in the field into an alarm on the day this ships.
+      //
+      // AND SINCE THE LIFT OF 2026-08-29 THIS IS A STRAP, NOT THE FIX (`standingParkOf`,
+      // thread 042): a park whose turn has ended no longer reaches this reader at all —
+      // `parkingOf` stops returning it, so the pair is raised instead of being explained. The
+      // branch is kept and it is REACHABLE ONLY ON THE LIBRARY INPUT: a caller composing a
+      // notification hands `parked` in itself (`notify.test.ts`), and through the command's own
+      // wiring the pair's role IS the current holder (`waitingOnOf`), so a standing park either
+      // names it or names nobody. Measured rather than assumed: the process test of the LLE
+      // window now asserts the ABSENCE of this sentence.
       if (parks.some((park) => park.holder === undefined || park.holder === turn.role)) return [];
       return [{ ...turn, staleParkOn: parks[0]?.person }];
     })
