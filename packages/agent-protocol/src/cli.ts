@@ -419,6 +419,7 @@ import {
   unitNameFor,
   worktreeInstallVerdict,
 } from "./orchestrator/systemd.js";
+import { putGroupDown } from "./orchestrator/takedown.js";
 import {
   type ApiFailureSignal,
   apiFailureSignalOf,
@@ -525,6 +526,7 @@ import type {
   LaunchDirective,
   TaskDeclaration,
   ThreadPriorityValue,
+  VerdictValue,
 } from "./thread/message.js";
 import {
   bodyClaimsTurnRelease,
@@ -539,6 +541,7 @@ import {
   parseTaskDeclaration,
   THREAD_PRIORITY_VALUES,
   taskThreadPrefix,
+  VERDICT_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { describePrPark } from "./thread/pr-park.js";
@@ -2905,6 +2908,45 @@ const deliversFrom = (
 };
 
 /**
+ * THE DOOR OF A VERDICT (thread 042, decision of john 2026-08-29) — `--verdict <approve|
+ * needs-fixes>` together with `--pr <number>`, on both writing commands.
+ *
+ * The pair is what the norm made readable: a park on a person holds the TURN it was declared on,
+ * and the verdict of a round is one of the three outcomes that open a new turn at the same
+ * holder. Until the fields existed the verdict rode in the BODY (`REVIEWER.md`), where the R27
+ * net may not read it (norm 020) — measured in LLE 17:40→17:59Z, where the verdict landed in a
+ * parked thread and was eaten.
+ *
+ * TWO THINGS THIS DOOR DELIBERATELY DOES NOT CHECK. The sender's role against the config — that
+ * is the alternative john rejected by name: the source of truth is the DECLARATION, as it is for
+ * `delivers`, and reading `kind`/`wake.mode` here would break the day the reviewer's tool
+ * changes. And the PR's existence — the number is an address the writer has in hand, checked for
+ * shape the way `--merged-pr` is.
+ *
+ * WHAT IT DOES CHECK is the vocabulary (`REVIEWER.md`'s two words, not a third spelling) and,
+ * in `planNewMessage`, the pair itself. The refusals name the exit rather than the ban alone.
+ */
+const verdictFrom = (
+  argv: readonly string[],
+): { readonly verdict?: VerdictValue; readonly pr?: number } => {
+  const verdictRaw = flag(argv, "--verdict");
+  const prRaw = flag(argv, "--pr");
+  if (verdictRaw !== undefined && !(VERDICT_VALUES as readonly string[]).includes(verdictRaw)) {
+    fail(
+      `--verdict '${verdictRaw}' — a review verdict is one of ${VERDICT_VALUES.join(" | ")}, the vocabulary of REVIEWER.md and no other`,
+      2,
+    );
+  }
+  if (prRaw !== undefined && !/^\d+$/.test(prRaw)) {
+    fail(`--pr '${prRaw}' — expected the number of the PR the verdict is about`, 2);
+  }
+  return {
+    ...(verdictRaw === undefined ? {} : { verdict: verdictRaw as VerdictValue }),
+    ...(prRaw === undefined ? {} : { pr: Number(prRaw) }),
+  };
+};
+
+/**
  * THE DOOR OF A TASK DECLARATION (thread 021) — `--task '<NNN.k> <status>[ · tail]'`,
  * repeatable, checked here and not only in CI.
  *
@@ -3079,6 +3121,9 @@ const newMessage = (argv: readonly string[]): void => {
     fail(`--merged-pr '${mergedPrRaw}' — expected the number of a PR`, 2);
   }
   const mergedPr = mergedPrRaw === undefined ? undefined : Number(mergedPrRaw);
+  // THE VERDICT OF A ROUND (thread 042): the pair that opens a new turn at the same holder. The
+  // halves are judged together in `planNewMessage`, so the refusal is one for both doors.
+  const verdictFields = verdictFrom(argv);
   const tasks = tasksFor(argv, { from, thread: threadId, registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
@@ -3140,6 +3185,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
         ...(mergedPr === undefined ? {} : { mergedPr }),
+        ...verdictFields,
         ...(tasks.length === 0 ? {} : { tasks }),
         text,
         threadHasMessages,
@@ -3301,6 +3347,13 @@ const newThread = (argv: readonly string[]): void => {
   // later: a flag parsed by one command of the pair and swallowed by the other is written
   // without a word into an append-only feed.
   const delivers = deliversFrom(argv, { registry });
+  // AND THE SAME VERDICT, by the same door (thread 042), for the reason `delivers` is here and
+  // not for a use case: the lesson of 075 is that a flag one command of the pair parses and the
+  // other swallows goes into an append-only feed without a word. What the field does in an
+  // OPENING message is nothing — the walk of `standingParkOf` looks for a park EARLIER in the
+  // same thread, and before the first message there is none — but that is a fact about the
+  // reader, not a licence for this door to eat a declared field silently.
+  const verdictFields = verdictFrom(argv);
   // AND THE SAME MISSING PARK, by the same judge (thread 022). The lesson of 075 is the whole
   // reason this is two lines and not a scope for later: a door standing on one command of a
   // pair is a rule nobody can hold in their head, and the shape it catches — a role opening a
@@ -3352,6 +3405,7 @@ const newThread = (argv: readonly string[]): void => {
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
+        ...verdictFields,
         ...(turn === undefined ? {} : { turn }),
         text,
       });
@@ -7770,6 +7824,17 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   let runModel: string | undefined;
   let runUsage: RunUsage | undefined;
 
+  // THE SUPERVISOR'S VOICE FOR A TAKEDOWN THAT DID NOT TAKE (thread 047). Declared HERE,
+  // ahead of `recordSupervisorGone`, because that one is an exit handler: everything it
+  // closes over must already exist by the time a signal can arrive, and the log sink
+  // below is opened later in this function. So the sink is attached to the same voice
+  // once it exists, and a complaint raised before that still reaches stdout.
+  let takedownLog: ((text: string) => void) | undefined;
+  const sayTakedown = (text: string): void => {
+    out(`agent-protocol: ${p.roleId}/${p.thread}: ${text}`);
+    takedownLog?.(`supervisor  ${text}`);
+  };
+
   const recordSupervisorGone = (): void => {
     if (settled || !leased) return;
     settled = true;
@@ -7781,11 +7846,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // the same thread on top of the live first one. This is exactly the class the
     // whole package is built for (reviewer-pr's finding on PR #9).
     if (!exited && childRef?.pid !== undefined) {
-      try {
-        process.kill(-childRef.pid, "SIGTERM");
-      } catch {
-        // the group is already gone — fine
-      }
+      putGroupDown({ pid: childRef.pid, say: sayTakedown });
     }
     // THE WRITE IS NOT HOSTAGE TO A GIT CALL (red main of 2026-07-28, CI 30374788681,
     // thread 032). The kill above is a syscall and cannot stall; the unlock is `git
@@ -7872,6 +7933,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     writeSync(sink, `${stampLine(new Date(), text)}\n`);
   };
   writeLog(`supervisor  ${p.roleId}/${p.thread}  raw stream ${p.sessionStream}`);
+  // The sink exists now, so a takedown complaint lands in the run's own log as well as on
+  // stdout (thread 047): stdout belongs to whoever was watching, this file is what is read
+  // afterwards, and an unkilled session is exactly the thing read about afterwards.
+  takedownLog = writeLog;
 
   // The spawn happens in ITS OWN process group (`detached`): the whole group will
   // have to be put down, not just the direct child — a SIGTERM to a shell/launcher
@@ -8149,11 +8214,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // plus `ts` (when): self-sufficient in the journal.
     if (p.forceFlag !== undefined && existsSync(p.forceFlag)) {
       if (!exited && child.pid !== undefined) {
-        try {
-          process.kill(-child.pid, "SIGTERM");
-        } catch {
-          // the group is already gone — fine
-        }
+        putGroupDown({ pid: child.pid, say: sayTakedown });
       }
       const { by, note } = readForceFlag(p.forceFlag);
       releaseGuards();
@@ -8313,14 +8374,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
 
     // A terminal lease-released. The process is still alive (stuck/finishing up) —
     // we put down the WHOLE group (`-pid`): wall-clock hygiene for a timeout,
-    // clean-up of a hung process for completed. The group is already dead → ESRCH,
-    // swallowed.
+    // clean-up of a hung process for completed. The group is already dead → ESRCH, and
+    // that one stays silent; every OTHER errno is now said out loud (thread 047).
     if (!exited && child.pid !== undefined) {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch {
-        // the group is already gone — fine
-      }
+      putGroupDown({ pid: child.pid, say: sayTakedown });
     }
     releaseGuards();
     // WHAT THIS RUN LEAVES BEHIND ON DISK, ASKED BEFORE THE LEASE IS LET GO (thread 023,

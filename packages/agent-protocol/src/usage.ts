@@ -374,7 +374,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -451,12 +451,28 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # ANYWHERE IN THE MAIL (023): the notifier writes into the thread named in
                               # the PR's description, which is not the thread parked on it — the readers
                               # judge a park against the merges of the WHOLE mail, not of its own feed
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] [--delivers <person>] [--turn <explicit>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                              # --verdict approve|needs-fixes WITH --pr <n>: the verdict of a review round,
+                              # declared in the HEADER (042, decision of john 2026-08-29) — the two lines
+                              # REVIEWER.md already writes in the body, said where the R27 net may read them
+                              # (norm 020 forbids it the body). A PAIR: a header with one of them is refused,
+                              # because a verdict with no address is a remark rather than an outcome
+                              # WHAT IT DOES: opens a NEW TURN at the SAME holder, so a park on a person
+                              # declared on the previous turn no longer reaches this one (LLE 17:40->17:59Z,
+                              # where the verdict landed in a parked thread and was eaten). WHAT IT DOES NOT:
+                              # it lifts no park on a person ('--delivers' does), touches no 'pr:'/'run:' park,
+                              # raises nobody, and replaces no line of the body
+                              # THE SIGN IS THE DECLARATION, not the sender: the role is NOT checked against
+                              # the config — that source of truth breaks when the reviewer's tool changes
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] [--delivers <person>] [--verdict <approve|needs-fixes> --pr <n>] [--turn <explicit>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                               # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
                               # first message go in ONE commit, pushed, with the same replanning retry
                               # --parked-on: THE SAME FIELD AS 'new-message''s, same values, same refusals
                               # --delivers: THE SAME FIELD TOO (030) — a thread is often OPENED by the
                               # courier of a decision, and the park it lifts stands in another thread
+                              # --verdict/--pr: THE SAME PAIR TOO (042), by the same door and the same refusal.
+                              # In an OPENING message it opens nothing — the walk looks for a park EARLIER in
+                              # the thread and there is none — but a flag one command parses and the other
+                              # swallows is what 075 was paid for, so it is written, not eaten
                               # --turn explicit: THE FORM DECLARED AT BIRTH (079) — the same key as
                               # 'thread status --turn', behind the same permission ('thread-status'),
                               # and the first message obeys it at once: without '--waiting-on' the

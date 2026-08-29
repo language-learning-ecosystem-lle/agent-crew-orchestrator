@@ -508,6 +508,66 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     expect(parkedOnOf(feed)).toBeUndefined();
   });
 
+  it("THE VERDICT OF A ROUND OPENS ONE TOO — the 19 minutes of LLE (042, norm of 29.08)", () => {
+    // THE LIVE WINDOW the norm was measured on: LLE 2026-08-28, park at 17:34Z on curator's own
+    // turn, and six minutes later the verdict `17-40-11Z-reviewer-pr.md` — `expects: answer`,
+    // `waiting-on: curator`, no park of its own. The turn never changed holder, so nothing in
+    // the header said the wait was over, and the pair stood until 17:59Z. Since the fields
+    // exist, the DECLARED PAIR says it: the round ended, and this is a new turn.
+    const feed = thread(
+      declared,
+      message("2026-08-28T17:40:11Z", {
+        from: "reviewer-pr",
+        waitingOn: "curator",
+        verdict: "approve",
+        pr: 108,
+      }),
+    );
+    expect(parkedOnOf(feed)).toBeUndefined();
+  });
+
+  it("THE SAME LETTER WITHOUT THE FIELDS OPENS NOTHING — the price the norm named out loud", () => {
+    // Mail written before the fields existed is never back-filled (append-only), and reading the
+    // verdict out of the BODY is forbidden to this net (norm 020). So the old letter behaves
+    // exactly as it did — that is the finite cost stated in `PROTOCOL.md`, not an oversight.
+    const feed = thread(
+      declared,
+      message("2026-08-28T17:40:11Z", { from: "reviewer-pr", waitingOn: "curator" }),
+    );
+    expect(parkedOnOf(feed)).toBe("john");
+  });
+
+  it("HALF A PAIR OPENS NOTHING — an outcome with no address is not an outcome", () => {
+    // The doors refuse this shape and the reader drops both halves, so it cannot arrive from a
+    // normal write; the walk demands both anyway, because a net that opened a turn on half a
+    // declaration would be guessing at exactly the place 042 was paid for.
+    const feed = thread(
+      declared,
+      message("2026-08-28T17:40:11Z", {
+        from: "reviewer-pr",
+        waitingOn: "curator",
+        verdict: "approve",
+      }),
+    );
+    expect(parkedOnOf(feed)).toBe("john");
+  });
+
+  it("A VERDICT DOES NOT LIFT A PARK THAT NAMED NO TURN — the MODE park keeps the thread", () => {
+    // The pair opens a NEW TURN; it is not a second `delivers`. A park declared without
+    // `waiting-on` says nothing about whose turn it was set on, so there is no turn for the
+    // verdict to end, and the park keeps its power over the whole thread (016, 052).
+    const feed = thread(
+      message("2026-08-28T12:11:29Z", { from: "curator", parkedOn: "john", expects: "ack" }),
+      message("2026-08-28T17:40:11Z", {
+        from: "reviewer-pr",
+        waitingOn: "curator",
+        verdict: "needs-fixes",
+        pr: 108,
+      }),
+    );
+    expect(parkedOnOf(feed)).toBe("john");
+  });
+
   it("THE TRACE OF THE CIRCUIT OPENS NOTHING — it hands the turn to nobody", () => {
     // The `success` echo and the merge notifier: `expects: none` and no `waiting-on` at all.
     // This is the class the narrowing of 22.08 was bought for (the notifier of #192, thread
@@ -976,6 +1036,38 @@ describe("parkingOf — a park on the ROUND running on a PR (thread 019)", () =>
       "verdict: approve",
     );
     expect(parkingOf(thread([parked, ci, verdict]))).toBeUndefined();
+  });
+
+  it("THE HEADER FIELDS OF THAT VERDICT CHANGE NOTHING HERE (042) — the event walk is untouched", () => {
+    // The pair of 29.08 belongs to the person park: it opens a new turn at the same holder. An
+    // event park has always lifted on the first message that MOVES anybody, and the verdict does
+    // move somebody with or without the fields — so this is a regression, not a new lift.
+    const parked = message({ parkedOn: "run:163" });
+    const declaredVerdict = message(
+      {
+        from: "reviewer-pr",
+        date: "2026-08-02T09:20:00Z",
+        expects: "answer",
+        verdict: "needs-fixes",
+        pr: 163,
+      },
+      "verdict: needs-fixes",
+    );
+    expect(parkingOf(thread([parked, declaredVerdict]))).toBeUndefined();
+    // Said as a comparison rather than as a constant, because the claim is "nothing changed":
+    // the same letter without the fields answers the same, on the round park and on the button
+    // park alike (both lift on the first message that moves anybody).
+    const undeclared = message(
+      { from: "reviewer-pr", date: "2026-08-02T09:20:00Z", expects: "answer" },
+      "verdict: needs-fixes",
+    );
+    const button = message({ parkedOn: "pr:163", date: "2026-08-02T09:10:00Z" });
+    expect(parkedOnOf(thread([button, declaredVerdict]))).toBe(
+      parkedOnOf(thread([button, undeclared])),
+    );
+    expect(parkedOnOf(thread([parked, declaredVerdict]))).toBe(
+      parkedOnOf(thread([parked, undeclared])),
+    );
   });
 
   it("the merge of THAT PR lifts it, wherever it was announced — the round cannot end twice", () => {

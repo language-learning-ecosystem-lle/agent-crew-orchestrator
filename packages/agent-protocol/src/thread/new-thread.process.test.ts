@@ -421,6 +421,32 @@ describe("new-thread and the turn parked behind a person (R27, thread 075)", () 
     expect(existsSync(join(contest.root, opened.id))).toBe(false);
   });
 
+  it("THE VERDICT PAIR IS PARSED BY THIS DOOR TOO, and refused by it in half (042)", () => {
+    // Both doors of the pair judge it the same way, for the reason `--delivers` and `--parked-on`
+    // are here: what one command swallows it swallows into an append-only feed. In an OPENING
+    // message the fields open no turn — the walk looks for a park EARLIER in the thread, and
+    // there is none — but a declared field is written, not eaten.
+    const contest = contour();
+
+    const opened = openWith(contest, [
+      "--expects",
+      "answer",
+      "--verdict",
+      "needs-fixes",
+      "--pr",
+      "96",
+    ]);
+    expect(opened.code).toBe(0);
+    const header = firstHeader(contest, opened.id).fields;
+    expect([header.verdict, header.pr]).toEqual(["needs-fixes", 96]);
+
+    const half = contour();
+    const refused = openWith(half, ["--expects", "answer", "--pr", "96"]);
+    expect(refused.code).toBe(2);
+    expect(refused.out).toContain("--verdict approve");
+    expect(existsSync(join(half.root, refused.id))).toBe(false);
+  });
+
   it("a role the circuit CAN wake is refused here too — that is a turn to pass, not a person to wait for", () => {
     const contest = contour();
 
