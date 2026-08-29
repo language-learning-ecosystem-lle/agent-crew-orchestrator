@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T17:25:06.089Z",
+  "writtenAt": "2026-08-29T17:25:41.884Z",
   "roles": [
     "curator",
     "dev-core",
@@ -16,7 +16,7 @@
     {
       "role": "curator",
       "thread": "049-tsbuildinfo-dirty-tree",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-29T18:03:52Z"
     }
   ]
