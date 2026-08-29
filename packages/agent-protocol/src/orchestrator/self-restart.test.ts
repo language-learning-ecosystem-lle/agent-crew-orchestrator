@@ -16,6 +16,7 @@ import { daemonArgvFor } from "./restart.js";
 import {
   attemptsFor,
   describeInstallSkipped,
+  describeSelfRestartBlock,
   describeSelfRestartForm,
   describeSelfRestartHandback,
   describeSelfRestartStand,
@@ -30,6 +31,7 @@ import {
   renderSelfRestartMemory,
   SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
+  type SelfRestartBlock,
   selfRestartArgv,
   selfRestartForm,
   selfRestartVerdict,
@@ -122,7 +124,7 @@ describe("selfRestartVerdict", () => {
   });
 
   it("says which two trees they are, so the reason is not a riddle", () => {
-    const said = describeSelfRestartStand({
+    const said = describeSelfRestartBlock({
       kind: "foreign-checkout",
       code: "/box/code",
       served: "/box/served",
@@ -352,15 +354,72 @@ describe("where the child of the repair speaks", () => {
   );
 });
 
+/**
+ * THREAD 044 — A REFUSAL THAT DOES NOT SAY HOW MUCH IT IS REFUSING. The condition was
+ * named ("sessions are live") and the size of the drift lived one line up, in another
+ * sentence, written by another function. Two lines are one line only while nothing
+ * separates them, and `grep`, a frame row and a digest all separate them.
+ */
+describe("the refusal carries its own measurement (thread 044)", () => {
+  const drift = {
+    vintage: {
+      sha: "a830761affffffffffffffffffffffffffffffff",
+      checkout: "/box/repo",
+      startedAt: "2026-08-29T05:13:11Z",
+      pid: 710030,
+    },
+    ref: "origin/main",
+    refSha: "951b7551ffffffffffffffffffffffffffffffff",
+    behind: 3,
+    since: "2026-08-29T03:24:02Z",
+  };
+  const now = new Date("2026-08-29T09:24:02Z");
+
+  // (а) of the statement's «Проверяемость»: live sessions — the line names the drift AND
+  // the condition, and nothing is pulled.
+  it("names the distance, the age and the condition in ONE sentence", () => {
+    const said = describeSelfRestartStand({ kind: "leases", roles: ["curator"] }, drift, now);
+    expect(said).toContain("3 commit(s) behind");
+    expect(said).toContain("6h");
+    expect(said).toContain("curator");
+    expect(said).toContain("sessions are live");
+  });
+
+  // (в): the ceiling is its own reason and keeps saying so — with the size beside it now.
+  it("does the same for every other condition — none of them is a bare state", () => {
+    const blocks: SelfRestartBlock[] = [
+      { kind: "stopping" },
+      { kind: "held", roles: ["dev-core"] },
+      { kind: "dirty", checkout: "/box/repo", paths: ["M a.ts"] },
+      { kind: "tree-unreadable", checkout: "/box/repo", problem: "x" },
+      { kind: "attempts", attempts: 2, ceiling: 2 },
+    ];
+    for (const block of blocks) {
+      const said = describeSelfRestartStand(block, drift, now);
+      expect(said).toContain("3 commit(s) behind");
+      expect(said).toContain("drifting for 6h");
+      expect(said).toContain(describeSelfRestartBlock(block));
+    }
+  });
+
+  it("an undated drift says so rather than pretending to a clock", () => {
+    const { since, ...undated } = drift;
+    expect(since).toBeDefined();
+    const said = describeSelfRestartStand({ kind: "stopping" }, undated, now);
+    expect(said).toContain("unreadable date");
+    expect(said).not.toContain("drifting for");
+  });
+});
+
 describe("the line said instead", () => {
   it("names the blocking fact in every case, and never advises", () => {
     const lines = [
-      describeSelfRestartStand({ kind: "leases", roles: ["dev-core"] }),
-      describeSelfRestartStand({ kind: "stopping" }),
-      describeSelfRestartStand({ kind: "held", roles: ["dev-core"] }),
-      describeSelfRestartStand({ kind: "dirty", checkout: "/box/repo", paths: ["?? a"] }),
-      describeSelfRestartStand({ kind: "tree-unreadable", checkout: "/box/repo", problem: "x" }),
-      describeSelfRestartStand({ kind: "attempts", attempts: 2, ceiling: 2 }),
+      describeSelfRestartBlock({ kind: "leases", roles: ["dev-core"] }),
+      describeSelfRestartBlock({ kind: "stopping" }),
+      describeSelfRestartBlock({ kind: "held", roles: ["dev-core"] }),
+      describeSelfRestartBlock({ kind: "dirty", checkout: "/box/repo", paths: ["?? a"] }),
+      describeSelfRestartBlock({ kind: "tree-unreadable", checkout: "/box/repo", problem: "x" }),
+      describeSelfRestartBlock({ kind: "attempts", attempts: 2, ceiling: 2 }),
     ];
     for (const line of lines) expect(line.startsWith("no self-restart")).toBe(true);
     expect(lines[0]).toContain("dev-core");
@@ -372,7 +431,7 @@ describe("the line said instead", () => {
   // them "uncommitted work" sends the operator of the second one looking for a commit
   // to make. An untracked-only tree is fixed by an ignore rule and by nothing else.
   it("calls an untracked-only tree what it is, and names the repair for it", () => {
-    const said = describeSelfRestartStand({
+    const said = describeSelfRestartBlock({
       kind: "dirty",
       checkout: "/box/repo",
       paths: ["?? .orchestrator/", "?? .worktrees/"],
@@ -386,7 +445,7 @@ describe("the line said instead", () => {
   });
 
   it("still calls a modified tree uncommitted work — one untracked path among them is not the other case", () => {
-    const said = describeSelfRestartStand({
+    const said = describeSelfRestartBlock({
       kind: "dirty",
       checkout: "/box/repo",
       paths: ["M packages/agent-protocol/src/cli.ts", "?? .orchestrator/"],

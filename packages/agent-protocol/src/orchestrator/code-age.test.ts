@@ -11,18 +11,24 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  CODE_DRIFT_OVERDUE_MINUTES,
   type CodeVintage,
   codeAgeView,
+  codeDriftOverdue,
   codeReading,
   describeCodeDrift,
   describeCodeVintage,
+  describeDriftSize,
   describeUnpublishedCode,
   describeUnreadableCodeAge,
+  driftMinutes,
   isVintage,
   measureCodeDrift,
   parseCodeVintage,
+  parseDriftStandoff,
   readCodeVintage,
   renderCodeVintage,
+  renderDriftStandoff,
 } from "./code-age.js";
 
 const vintage = (partial: Partial<CodeVintage> = {}): CodeVintage => ({
@@ -128,6 +134,26 @@ describe("measureCodeDrift — against the ref ON DISK, no network", () => {
     expect(reading.drift.refSha).not.toBe(first);
   });
 
+  it("dates the drift by the OLDEST commit the code lacks (thread 044)", () => {
+    const { root, first } = repoWithTwoCommits();
+    // A third commit on top: the box lacks two, and the clock starts at the FIRST of
+    // them — the moment it fell behind, not the moment of the newest merge.
+    writeFileSync(join(root, "a.txt"), "three\n");
+    git(root, ["commit", "--quiet", "-a", "-m", "three"]);
+    const reading = measureCodeDrift({
+      vintage: vintage({ sha: first, checkout: root }),
+      ref: "main",
+    });
+    expect(reading.kind).toBe("drift");
+    if (reading.kind !== "drift") return;
+    expect(reading.drift.behind).toBe(2);
+    const oldestMissing = git(root, ["log", "--format=%cI", `${first}..main`])
+      .split("\n")
+      .map((line) => line.trim())
+      .at(-1);
+    expect(reading.drift.since).toBe(oldestMissing);
+  });
+
   it("code at the ref: a MATCH, and nothing is printed anywhere", () => {
     const { root } = repoWithTwoCommits();
     const reading = measureCodeDrift({
@@ -144,6 +170,85 @@ describe("measureCodeDrift — against the ref ON DISK, no network", () => {
       ref: "origin/does-not-exist",
     });
     expect(reading.kind).toBe("unknown");
+  });
+});
+
+/**
+ * THREAD 044 — THE DRIFT IS A MEASURED QUANTITY AND NOT A STATE. Uptime was the only clock
+ * the module had, and it answers the wrong question in the one direction that hides the
+ * fault: a daemon raised five minutes ago over six-hour-old code reads as young.
+ */
+describe("how long the box has been behind (thread 044)", () => {
+  const drifted = {
+    vintage: vintage(),
+    ref: "origin/main",
+    refSha: "951b7551ffffffffffffffffffffffffffffffff",
+    behind: 3,
+    since: "2026-08-29T03:24:02Z",
+  };
+  const now = new Date("2026-08-29T09:24:02Z");
+
+  it("counts from the OLDEST commit the code lacks, not from the process's start", () => {
+    // The process came up at 05:13Z and is six hours behind — the two numbers disagree,
+    // and the drift's own clock is the one the threshold is judged on.
+    expect(driftMinutes(drifted, now)).toBe(360);
+  });
+
+  it("an undated drift has no age at all — a zero would read as 'it just happened'", () => {
+    const { since, ...undated } = drifted;
+    expect(since).toBeDefined();
+    expect(driftMinutes(undated, now)).toBeUndefined();
+    expect(codeDriftOverdue(undated, now)).toBe(false);
+  });
+
+  it("the band is crossed at the threshold and not before it", () => {
+    const at = (minutes: number) => new Date(new Date(drifted.since).getTime() + minutes * 60000);
+    expect(codeDriftOverdue(drifted, at(CODE_DRIFT_OVERDUE_MINUTES - 1))).toBe(false);
+    expect(codeDriftOverdue(drifted, at(CODE_DRIFT_OVERDUE_MINUTES))).toBe(true);
+  });
+
+  it("says the size in both units, and degrades on each half on its own", () => {
+    expect(describeDriftSize(drifted, now)).toContain("3 commit(s) behind");
+    expect(describeDriftSize(drifted, now)).toContain("6h");
+    expect(describeDriftSize({ since: drifted.since }, now)).toContain("distance uncountable");
+    expect(describeDriftSize({ behind: 3 }, now)).toContain("unreadable date");
+  });
+
+  it("the daemon's own line now carries the drift's age BESIDE its uptime", () => {
+    const line = describeCodeDrift(drifted, now);
+    // Up for four hours, behind for six: two clocks, both named, neither mistakable for
+    // the other.
+    expect(line).toContain("drifting for 6h");
+    expect(line).toContain("up since 2026-08-03T05:13:11Z");
+  });
+});
+
+describe("the standoff on disk — what the courier reads (thread 044)", () => {
+  const standoff = {
+    refSha: "951b7551ffffffffffffffffffffffffffffffff",
+    sha: "a830761affffffffffffffffffffffffffffffff",
+    ref: "origin/main",
+    behind: 3,
+    since: "2026-08-29T03:24:02Z",
+    why: "no self-restart while sessions are live (curator)",
+    at: "2026-08-29T09:24:02Z",
+  };
+
+  it("round-trips, so the process that measures and the process that tells agree", () => {
+    expect(parseDriftStandoff(renderDriftStandoff(standoff))).toEqual(standoff);
+  });
+
+  it("a record missing the reason is NOT half-read — the reason is why it exists", () => {
+    const { why, ...half } = standoff;
+    expect(why).toBeDefined();
+    expect(parseDriftStandoff(JSON.stringify(half))).toBeUndefined();
+    expect(parseDriftStandoff("")).toBeUndefined();
+    expect(parseDriftStandoff("{not json")).toBeUndefined();
+  });
+
+  it("is judged by the SAME clock as a live reading — one threshold, two readers", () => {
+    expect(codeDriftOverdue(standoff, new Date("2026-08-29T09:24:02Z"))).toBe(true);
+    expect(codeDriftOverdue(standoff, new Date("2026-08-29T04:24:02Z"))).toBe(false);
   });
 });
 
