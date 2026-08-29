@@ -14,14 +14,15 @@
  * with a message, not an empty map. An empty map would mean "nothing changed",
  * i.e. the check would silently turn into its own opposite.
  */
-import { execFileSync } from "node:child_process";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { execFileSyncByExit } from "./exec-sync.js";
 
+// `execFileSyncByExit`, not `execFileSync`: this is the read path, and under the codex
+// sandbox the parent's errno contradicts the child's exit code — see `fs/exec-sync.ts`.
 const git = (root: string, args: readonly string[]): string => {
   try {
-    return execFileSync("git", ["-C", root, ...args], {
-      encoding: "utf8",
+    return execFileSyncByExit("git", ["-C", root, ...args], {
       maxBuffer: 64 * 1024 * 1024,
     });
   } catch (error) {
@@ -71,7 +72,9 @@ export const readFileAtRef = (repo: string, ref: string, path: string): string =
 /** Whether a file exists as of `ref`. Needed to verify the declared role instructions. */
 export const fileExistsAtRef = (repo: string, ref: string, path: string): boolean => {
   try {
-    execFileSync("git", ["-C", repo, "cat-file", "-e", `${ref}:${path}`], { stdio: "ignore" });
+    execFileSyncByExit("git", ["-C", repo, "cat-file", "-e", `${ref}:${path}`], {
+      stdio: "ignore",
+    });
     return true;
   } catch {
     return false;

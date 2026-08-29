@@ -41,15 +41,16 @@
  * doc block so that a second kind of work surface changes one place, not every call
  * site.
  */
-import { execFileSync } from "node:child_process";
 import { basename, dirname, resolve } from "node:path";
+import { execFileSyncByExit } from "../fs/exec-sync.js";
 
 /** The anchor did not resolve to a checkout — the caller refuses out loud. */
 export class CircuitHomeError extends Error {}
 
 const git = (at: string, args: readonly string[]): string => {
   try {
-    return execFileSync("git", ["-C", at, ...args], { encoding: "utf8" }).trim();
+    // Read path: the child's exit code is the verdict — see `fs/exec-sync.ts`.
+    return execFileSyncByExit("git", ["-C", at, ...args]).trim();
   } catch (error) {
     throw new CircuitHomeError(`git ${args.join(" ")} in '${at}': ${(error as Error).message}`);
   }
