@@ -952,7 +952,8 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
    *
    * ```
    * 02:37:45Z lease-acquired curator × 026-codex-agent-kind
-   * 02:39:31Z handoff-detected dev-core × 042-unaccepted-turn-silent   ← the age counts from here
+   * 02:38:57Z the letter that handed the turn to curator — the stamp the age counts from
+   * 02:39:31Z handoff-detected dev-core × 042-unaccepted-turn-silent
    * 02:52:31Z lease-released curator × 026-codex-agent-kind            ← the role frees up
    * 02:52:53Z the daemon self-restarts onto the merged code
    * 02:53:11Z first tick of the new process: `1 unaccepted over 10m, 1 the box cannot justify,
@@ -960,12 +961,16 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
    * 02:53:17Z lease-acquired curator × 042-unaccepted-turn-silent      ← six seconds later
    * ```
    *
+   * The `since` is the MAIL's stamp and not the journal's: the class counts from `waitingSince`,
+   * the first letter of the run that left the turn where it stands (here the reviewer's verdict
+   * at 02:38:57Z), which is what makes the field line say `14m` and not `13m`.
+   *
    * Thirteen of those fourteen minutes were `curator` queueing behind its OWN other thread —
    * check (б) of the statement, the circuit working — and the pair rang one tick before its own
    * raise. Both fixtures below are built from these stamps and nothing else.
    */
   const FIELD = {
-    turn: { role: "curator", thread: "042-unaccepted-turn-silent", since: "2026-08-29T02:39:31Z" },
+    turn: { role: "curator", thread: "042-unaccepted-turn-silent", since: "2026-08-29T02:38:57Z" },
     busy: [{ role: "curator", from: "2026-08-29T02:37:45Z", to: "2026-08-29T02:52:31Z" }],
   } as const;
 
@@ -996,8 +1001,8 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
 
     expect(turns).toHaveLength(1);
     // The AGE stays the whole standing time — the number the reader sees in the feed — while
-    // what crossed the threshold is the free part of it (12 m of the 25).
-    expect(turns[0]?.age).toBe("25m");
+    // what crossed the threshold is the free part of it (12 m of the 26).
+    expect(turns[0]?.age).toBe("26m");
     expect(turns[0]?.reason).toBeUndefined();
   });
 
