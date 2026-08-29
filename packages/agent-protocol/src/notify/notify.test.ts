@@ -1000,10 +1000,125 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     });
 
     expect(turns).toHaveLength(1);
-    // The AGE stays the whole standing time — the number the reader sees in the feed — while
-    // what crossed the threshold is the free part of it (12 m of the 26).
-    expect(turns[0]?.age).toBe("26m");
+    // AND THE AGE IS THE FREE PART OF IT — 12 m of the 26 (changed 2026-08-29, with the park
+    // of (е) below: the age and the threshold say the same thing now, and `26m` about a box
+    // that had the pair raisable for twelve minutes is the number the reader acts on).
+    expect(turns[0]?.age).toBe("12m");
     expect(turns[0]?.reason).toBeUndefined();
+  });
+
+  /**
+   * THE THIRD FALSE FIRING OF THE CLASS, and the same породу as (б2) with another interval —
+   * the line of `.orchestrator/daemon.log:19561` of this box, ~10:05Z on 2026-08-29:
+   *
+   * ```
+   * 03:27:44Z `03-27-44Z-curator.md` — `parked-on: john`, `waiting-on: curator`: the park,
+   *           and the stamp the age counts from (`waiting since` of 703 queue lines)
+   * …         742 ticks of `candidate curator×042… skipped: the turn is parked behind a
+   *           decision of john` — the box saying, every 30 seconds, exactly why it was silent
+   * 10:05:00Z the lift: `delivers: john`
+   * 10:05:0xZ the first tick after it: `1 unaccepted over 10m, 1 the box cannot justify,
+   *           1 of those new — curator×042-unaccepted-turn-silent (6h 37m, no reason known)`
+   * 10:05:39Z lease-acquired curator × 042-unaccepted-turn-silent      ← 39 seconds later
+   * ```
+   *
+   * Six hours and thirty-seven minutes of a legitimate freeze — one §5 of the statement excludes
+   * from this class by name — were counted into the age of a standstill that was 39 seconds old,
+   * and john was rung about a box that had been printing its reason 742 times. The park is
+   * invisible to the reasons map the moment it is lifted, so nothing said the word "park" in the
+   * call; the fix is the interval, not a second reason.
+   */
+  const PARKED = {
+    turn: { role: "curator", thread: "042-unaccepted-turn-silent", since: "2026-08-29T03:27:44Z" },
+    parks: [
+      {
+        thread: "042-unaccepted-turn-silent",
+        from: "2026-08-29T03:27:44Z",
+        to: "2026-08-29T10:05:00Z",
+      },
+    ],
+  } as const;
+
+  it("(е) the park counts for nothing AFTER it is lifted — the false call of 2026-08-29T10:05Z", () => {
+    const turns = unacceptedTurns({
+      turns: [PARKED.turn],
+      raisedAt: new Map(),
+      // The pair is free at the instant of the tick — the park was lifted seconds ago, which is
+      // exactly why it reached the class at all, and why `parkingOf` has nothing left to say.
+      busyRoles: new Set(),
+      parks: PARKED.parks,
+      now: new Date("2026-08-29T10:05:05Z"),
+    });
+
+    expect(turns).toEqual([]);
+  });
+
+  it("(е2) and the park does not blind the class — free past the threshold, it speaks", () => {
+    // The same records, a quarter of an hour later with nobody raising the pair. Curing the
+    // false call by silence would be the worse of the two defects (the statement of #102), so
+    // what is subtracted is the freeze — and what is left is the standstill, named with the
+    // length of its own free part.
+    const turns = unacceptedTurns({
+      turns: [PARKED.turn],
+      raisedAt: new Map(),
+      busyRoles: new Set(),
+      parks: PARKED.parks,
+      now: new Date("2026-08-29T10:20:00Z"),
+    });
+
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.age).toBe("15m");
+    expect(turns[0]?.reason).toBeUndefined();
+  });
+
+  it("(е3) a pair that stood WITHOUT a park rings as it rang — the subtraction eats no class", () => {
+    const turns = unacceptedTurns({
+      turns: [PARKED.turn],
+      raisedAt: new Map(),
+      busyRoles: new Set(),
+      parks: [
+        // A park of ANOTHER thread is none of this pair's business, and neither is one that
+        // ended before the turn was handed over.
+        {
+          thread: "026-codex-agent-kind",
+          from: "2026-08-29T03:27:44Z",
+          to: "2026-08-29T10:05:00Z",
+        },
+        {
+          thread: "042-unaccepted-turn-silent",
+          from: "2026-08-29T01:00:00Z",
+          to: "2026-08-29T03:00:00Z",
+        },
+      ],
+      now: new Date("2026-08-29T10:20:00Z"),
+    });
+
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.age).toBe("6h 52m");
+  });
+
+  it("(е4) a queue INSIDE a park is subtracted once — the two sources are unioned, not summed", () => {
+    // The role holds a lease on its other thread while this thread is frozen: the same hour is
+    // in both lists, and summing them would hand the box an alibi for time it really was free.
+    const turns = unacceptedTurns({
+      turns: [PARKED.turn],
+      raisedAt: new Map(),
+      busyRoles: new Set(),
+      parks: PARKED.parks,
+      busy: [
+        { role: "curator", from: "2026-08-29T04:00:00Z", to: "2026-08-29T09:00:00Z" },
+        // And a span still open at `now` counts only up to `now` — 5 of the 15 free minutes.
+        { role: "curator", from: "2026-08-29T10:15:00Z", to: "2026-08-29T10:20:00Z" },
+      ],
+      now: new Date("2026-08-29T10:20:00Z"),
+    });
+
+    // 6 h 37 m 16 s parked + 5 m of lease inside the free part, each counted once: exactly 10 m
+    // of the 6 h 52 m 16 s are left, the pair speaks and says that number. Summing the two lists
+    // instead would subtract the five hours of the lease TWICE, take the free part below zero
+    // and silence the class — which is the defect this arithmetic exists to avoid.
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.age).toBe("10m");
   });
 
   it("(в) a park DECLARED ON THIS PAIR'S TURN keeps its thread — no second line", () => {

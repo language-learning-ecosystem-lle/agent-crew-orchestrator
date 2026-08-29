@@ -1378,10 +1378,27 @@ export const planNotifications = (input: {
  *
  * So the age is judged on the part of the standing time the role was FREE: `busy` carries the
  * lease spans out of the same journal `raisedAt` is read from, their overlap with the standing
- * window is subtracted, and only what is left is measured against the threshold. The `age` in
- * the line stays the whole wall-clock standing time — that is the number a reader sees in the
- * feed and it must not disagree with it — and what the class asserts is the part underneath it:
- * this box had the pair raisable for over {@link UNACCEPTED_AFTER_MINUTES} and did not raise it.
+ * window is subtracted, and only what is left is measured against the threshold.
+ *
+ * AND THE QUEUE IS NOT THE ONLY THING THAT ACCUMULATES INTO THE AGE — the same породу fired a
+ * second time on 2026-08-29T10:05Z (`daemon.log:19561`), and this time the six and a half
+ * hours were a PARK ON JOHN. While a park stands the class is silent by construction (the pair
+ * is filtered out of the composition below), so nothing rang for 6 h 37 m; the tick that lifted
+ * the park announced the pair with the whole accumulated age and `no reason known`, and the
+ * daemon raised it 39 seconds later. `parks` carries those intervals out of the MAIL — the only
+ * place they exist ({@link personParkSpansOf}; the journal has no record of a park) — and they
+ * are subtracted exactly as the queue is.
+ *
+ * THE TWO SOURCES ARE UNIONED AND NOT SUMMED: a role can hold a lease on its other thread while
+ * this one is parked, and counting that hour twice would credit the box with time it never had.
+ *
+ * THE `age` IS THE FREE PART, and since 2026-08-29 that is the whole of what this class says.
+ * Until the second false call it was the wall-clock standing time, on the reading that the
+ * number must not disagree with the feed; the field says the disagreement is the cheaper of the
+ * two — `6h 37m` about a standstill 39 seconds old reads as an emergency, and the reader acts
+ * on the number, not on the class. What the line asserts now is one sentence with one number
+ * under it: this box had the pair raisable for {age}, over {@link UNACCEPTED_AFTER_MINUTES},
+ * and did not raise it. The wall-clock stamp stays in `since` for whoever needs it.
  */
 export const unacceptedTurns = (input: {
   /** One entry per open thread whose `waiting-on` names a role this box raises. */
@@ -1407,6 +1424,22 @@ export const unacceptedTurns = (input: {
     readonly from: string;
     readonly to: string;
   }[];
+  /**
+   * WHEN EACH THREAD WAS FROZEN BEHIND A PERSON, closed spans out of the MAIL
+   * ({@link personParkSpansOf}). A parked pair cannot be raised — the scheduler skips it every
+   * tick and this class stays silent about it — so the freeze is time the box was not free to
+   * take the turn, and it is subtracted from the age like the queue above. Absent — the caller
+   * has no feed to replay, and the whole standing time is judged as free, which is what this
+   * function did before the false call of 2026-08-29T10:05Z.
+   *
+   * A span with no `to` is still standing; the caller closes it at its own clock or leaves it
+   * open, and an open span is read here as "up to `now`".
+   */
+  readonly parks?: readonly {
+    readonly thread: string;
+    readonly from: string;
+    readonly to?: string;
+  }[];
   /** `role\tthread` → what the box knows is holding THIS pair back, in its own words. */
   readonly reasons?: ReadonlyMap<string, string>;
   /** What is holding back EVERY pair (launches disabled, the daemon stopped), if anything. */
@@ -1420,10 +1453,12 @@ export const unacceptedTurns = (input: {
     if (input.busyRoles.has(turn.role)) continue;
     const minutes = (input.now.getTime() - Date.parse(turn.since)) / 60_000;
     if (!Number.isFinite(minutes)) continue;
-    // THE QUEUE IS SUBTRACTED, NOT JUST CHECKED AT THE TICK: a role that spent the turn's
-    // whole age on its own other thread has queued legitimately, and the fact that the queue
-    // ended a minute ago does not turn it into a standstill.
-    if (minutes - queuedMinutes(input.busy ?? [], turn, input.now) < after) continue;
+    // THE FREEZES ARE SUBTRACTED, NOT JUST CHECKED AT THE TICK: a role that spent the turn's
+    // whole age on its own other thread has queued legitimately, a thread that spent it parked
+    // on a human was frozen legitimately, and the fact that either ended a minute ago does not
+    // turn the pair into a standstill.
+    const free = minutes - blockedMinutes(input, turn, input.now);
+    if (free < after) continue;
     // THE TURN WAS TAKEN IF A LEASE POSTDATES THE HANDOFF, and by that alone: a pair raised
     // yesterday, released and left standing since this morning is untaken, and a rule that
     // asked "was it ever raised" would call it healthy for good.
@@ -1434,7 +1469,10 @@ export const unacceptedTurns = (input: {
       role: turn.role,
       thread: turn.thread,
       since: turn.since,
-      age: describeAge(minutes),
+      // THE FREE PART, not the wall clock (the second false call, 2026-08-29T10:05Z): the age
+      // and the threshold now measure the same thing, and the sentence the reader acts on is
+      // true of the number beside it.
+      age: describeAge(free),
       ...(reason === undefined ? {} : { reason }),
     });
   }
@@ -1442,26 +1480,61 @@ export const unacceptedTurns = (input: {
 };
 
 /**
- * How much of a pair's standing time its role spent holding a lease — the legitimate queue,
- * in minutes. Spans of other roles are none of this pair's business, and a span is clipped to
- * the standing window at both ends: a lease taken before the handoff blocked nothing of this
- * turn, and a lease still open at `now` counts only up to `now`.
+ * How much of a pair's standing time the box could NOT have raised it — in minutes, and it is
+ * two kinds of interval read as one: the role's own leases (the legitimate queue, check (б))
+ * and the freezes of this pair's thread behind a person (the park, `daemon.log:19561`).
+ *
+ * Spans of other roles and of other threads are none of this pair's business, and every span is
+ * clipped to the standing window at both ends: a lease or a park that began before the handoff
+ * blocked nothing of THIS turn, and one still open at `now` counts only up to `now`.
+ *
+ * THE OVERLAP IS COUNTED ONCE. The two sources are independent — a role can be busy on its
+ * other thread while this one is parked — so the clipped spans are merged before they are
+ * measured; summing them would subtract an hour twice and hand the box an alibi for time it
+ * really was free.
  */
-const queuedMinutes = (
-  busy: readonly { readonly role: RoleId; readonly from: string; readonly to: string }[],
-  turn: { readonly role: RoleId; readonly since: string },
+const blockedMinutes = (
+  input: {
+    readonly busy?: readonly {
+      readonly role: RoleId;
+      readonly from: string;
+      readonly to: string;
+    }[];
+    readonly parks?: readonly {
+      readonly thread: string;
+      readonly from: string;
+      readonly to?: string;
+    }[];
+  },
+  turn: { readonly role: RoleId; readonly thread: string; readonly since: string },
   now: Date,
 ): number => {
   const from = Date.parse(turn.since);
   const until = now.getTime();
-  let queued = 0;
-  for (const span of busy) {
-    if (span.role !== turn.role) continue;
-    const start = Math.max(Date.parse(span.from), from);
-    const end = Math.min(Date.parse(span.to), until);
-    if (Number.isFinite(start) && Number.isFinite(end) && end > start) queued += end - start;
+  const clipped: { start: number; end: number }[] = [];
+  const add = (at: string, to: string | undefined): void => {
+    const start = Math.max(Date.parse(at), from);
+    const end = Math.min(to === undefined ? until : Date.parse(to), until);
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start) clipped.push({ start, end });
+  };
+  for (const span of input.busy ?? []) if (span.role === turn.role) add(span.from, span.to);
+  for (const park of input.parks ?? []) if (park.thread === turn.thread) add(park.from, park.to);
+  clipped.sort((a, b) => a.start - b.start);
+  let blocked = 0;
+  let open: { start: number; end: number } | undefined;
+  for (const span of clipped) {
+    if (open === undefined) {
+      open = { ...span };
+      continue;
+    }
+    if (span.start <= open.end) open.end = Math.max(open.end, span.end);
+    else {
+      blocked += open.end - open.start;
+      open = { ...span };
+    }
   }
-  return queued / 60_000;
+  if (open !== undefined) blocked += open.end - open.start;
+  return blocked / 60_000;
 };
 
 export const describeAge = (minutes: number): string => {
