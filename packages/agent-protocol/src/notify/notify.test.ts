@@ -945,6 +945,67 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     expect(turns.map((turn) => turn.role)).toEqual(["dev-core"]);
   });
 
+  /**
+   * THE FIRST FIELD FIRING OF THIS CLASS, AND IT WAS FALSE — the six journal records of
+   * 2026-08-29 (`.orchestrator/journal.jsonl` of this box) and the line they produced
+   * (`.orchestrator/daemon.log:30783`):
+   *
+   * ```
+   * 02:37:45Z lease-acquired curator × 026-codex-agent-kind
+   * 02:38:57Z the letter that handed the turn to curator — the stamp the age counts from
+   * 02:39:31Z handoff-detected dev-core × 042-unaccepted-turn-silent
+   * 02:52:31Z lease-released curator × 026-codex-agent-kind            ← the role frees up
+   * 02:52:53Z the daemon self-restarts onto the merged code
+   * 02:53:11Z first tick of the new process: `1 unaccepted over 10m, 1 the box cannot justify,
+   *           1 of those new — curator×042-unaccepted-turn-silent (14m, no reason known)`
+   * 02:53:17Z lease-acquired curator × 042-unaccepted-turn-silent      ← six seconds later
+   * ```
+   *
+   * The `since` is the MAIL's stamp and not the journal's: the class counts from `waitingSince`,
+   * the first letter of the run that left the turn where it stands (here the reviewer's verdict
+   * at 02:38:57Z), which is what makes the field line say `14m` and not `13m`.
+   *
+   * Thirteen of those fourteen minutes were `curator` queueing behind its OWN other thread —
+   * check (б) of the statement, the circuit working — and the pair rang one tick before its own
+   * raise. Both fixtures below are built from these stamps and nothing else.
+   */
+  const FIELD = {
+    turn: { role: "curator", thread: "042-unaccepted-turn-silent", since: "2026-08-29T02:38:57Z" },
+    busy: [{ role: "curator", from: "2026-08-29T02:37:45Z", to: "2026-08-29T02:52:31Z" }],
+  } as const;
+
+  it("(б2) the queue counts for nothing AFTER it ends — the false call of 2026-08-29T02:53:11Z", () => {
+    const turns = unacceptedTurns({
+      turns: [FIELD.turn],
+      raisedAt: new Map([["curator\t026-codex-agent-kind", "2026-08-29T02:37:45Z"]]),
+      // The role is free at the instant of the tick — that is exactly why the pair reached the
+      // class at all, and why asking only `busyRoles` was not enough.
+      busyRoles: new Set(),
+      busy: FIELD.busy,
+      now: new Date("2026-08-29T02:53:11Z"),
+    });
+
+    expect(turns).toEqual([]);
+  });
+
+  it("(б3) and the queue does not blind the class — free past the threshold, it speaks", () => {
+    // The same six records, twelve minutes later with nobody raising the pair. Subtracting the
+    // queue must not turn the eighth class off; what it removes is the queue, not the standstill.
+    const turns = unacceptedTurns({
+      turns: [FIELD.turn],
+      raisedAt: new Map(),
+      busyRoles: new Set(),
+      busy: FIELD.busy,
+      now: new Date("2026-08-29T03:05:00Z"),
+    });
+
+    expect(turns).toHaveLength(1);
+    // The AGE stays the whole standing time — the number the reader sees in the feed — while
+    // what crossed the threshold is the free part of it (12 m of the 26).
+    expect(turns[0]?.age).toBe("26m");
+    expect(turns[0]?.reason).toBeUndefined();
+  });
+
   it("(в) a park DECLARED ON THIS PAIR'S TURN keeps its thread — no second line", () => {
     const result = untaken({
       parked: [
