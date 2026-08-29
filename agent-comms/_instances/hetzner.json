@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T10:45:26.897Z",
+  "writtenAt": "2026-08-29T10:45:30.367Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "036-account-failover",
       "state": "running",
       "deadline": "2026-08-29T11:25:25Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "044-selfheal-blind-spots",
+      "state": "running",
+      "deadline": "2026-08-29T11:45:28Z"
     }
   ]
 }
