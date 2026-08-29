@@ -43,4 +43,4 @@
 | 039-doctor-account-kind-probe | curator, dev-core | closed | — | 2026-08-28 |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | open | curator | 2026-08-28 |
 | 041-model-effort-pair | curator, dev-core | closed | — | 2026-08-29 |
-| 042-unaccepted-turn-silent | curator · dev-core · john | open | curator | 2026-08-29 |
+| 042-unaccepted-turn-silent | curator · dev-core · john | open | dev-core | 2026-08-29 |
