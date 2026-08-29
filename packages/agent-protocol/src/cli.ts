@@ -4070,6 +4070,10 @@ const runNotify = async (input: {
     unaccepted,
     auth: authAlarm,
     gh: ghAlarm,
+    // THE CLOCK THE REMINDER PASS NEEDS (thread 043): the same `now` every other age in this
+    // command is measured against, so a park cannot be three hours old for the stall pass and
+    // two for the reminder one.
+    now: new Date(now),
     ...(loaded.config.notifications?.templates === undefined
       ? {}
       : { templates: loaded.config.notifications.templates }),
@@ -4090,6 +4094,12 @@ const runNotify = async (input: {
     // rides in someone else's letter is a thing the operator can be surprised by, and a
     // clause printed every tick to say "none" is the noise this thread is spending itself on.
     `${plan.restatedParked.length === 0 ? "" : `, ${plan.restatedParked.length} restated`}` +
+    // AND THE SEVENTH NUMBER, on the same rule as the fourth and the fifth (thread 043): the
+    // reminders that rang this tick. Zero prints nothing — a reminder round happens twice a day
+    // at most, and a clause saying "0 reminded" every few minutes is the noise the neighbouring
+    // repairs were spent removing. It is not a subset of the three numbers before it: a reminder
+    // is by construction a park that is in force, asking, and NOT new.
+    `${plan.remindedParked.length === 0 ? "" : `, ${plan.remindedParked.length} reminded`}` +
     // THE FIFTH NUMBER, on the same rule and for the same reason (thread 030, (в2)): a park
     // that was announced and has been lifted is no longer in the first three numbers at all —
     // it is not parked any more — so without a clause of its own the operator reading this
@@ -4211,6 +4221,13 @@ const runNotify = async (input: {
     (plan.fresh.length === 0 &&
       plan.freshStalled.length === 0 &&
       plan.freshParked.length === 0 &&
+      // A REMINDER RAISES ITS OWN LETTER (thread 043, Д-4), unlike the restatement and the lift
+      // beside it. Those two ride in somebody else's letter because a second call about a
+      // question already asked is Д-2; a reminder is the only line anybody will ever write about
+      // a park that was announced eleven days ago, and a line that waits for another event is
+      // owed to a letter that never comes — on the quietest box, which is the one with ten
+      // decisions standing on its human.
+      plan.remindedParked.length === 0 &&
       plan.freshFreezes.length === 0 &&
       plan.freshUnaccepted.length === 0 &&
       !plan.freshAuth &&
@@ -4230,6 +4247,12 @@ const runNotify = async (input: {
         gh: plan.gh?.since,
         freezes: plan.freezeKeys,
         unaccepted: plan.unaccepted,
+        // NOTHING WENT OUT, SO NOTHING WAS REMINDED (thread 043): `plan.reminded` carries a
+        // fresh stamp only for the parks whose line this letter holds, and this is the branch
+        // where no letter exists — a reminder cannot be due and silent at the same time (the
+        // send condition below reads `remindedParked`), so what is written here is the
+        // surviving clock and nothing else.
+        reminded: plan.reminded,
       }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
@@ -4248,6 +4271,9 @@ const runNotify = async (input: {
         `${event.pair.role}×${event.pair.thread} (${event.kind === "frozen" ? "frozen for good" : "exhausted"})`,
     ),
     ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
+    // A REMINDER IS NAMED AMONG WHAT RANG, not among what rode along: it raises the letter, and
+    // the age is the half of it the operator cannot reconstruct from the thread id.
+    ...plan.remindedParked.map((park) => `${park.thread} (reminded ${park.person}, ${park.age})`),
     // A REPEAT IS NAMED AMONG WHAT WENT OUT, not among what rang: it did not raise this
     // letter, it rode in it — and the operator reading the summary is owed both facts.
     ...plan.restatedParked.map((park) => `${park.thread} (restated on ${park.person})`),
@@ -4276,6 +4302,7 @@ const runNotify = async (input: {
         gh: plan.gh?.since,
         freezes: plan.freezeKeys,
         unaccepted: plan.unaccepted,
+        reminded: plan.reminded,
       }),
     );
     return { kind: "sent", summary, lines: said };
@@ -4309,6 +4336,7 @@ const runNotify = async (input: {
       gh: plan.gh?.since,
       freezes: plan.freezeKeys,
       unaccepted: plan.unaccepted,
+      reminded: plan.reminded,
     }),
   );
   say(outcome.detail);
