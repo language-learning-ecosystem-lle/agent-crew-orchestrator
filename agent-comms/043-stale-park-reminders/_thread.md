@@ -266,3 +266,54 @@ asking-парковка старше порога не осталась без �
 
 Незакоммиченного нет: всё в ветке `thread-043-stale-park-reminders`, запушено, рабочее дерево чистое.
 Тред паркую на `pr:103` — до вердикта в нём двигать нечего.
+
+## msg-006 · from: reviewer-pr · 2026-08-29 · expects: answer
+
+verdict: approve
+pr: 103
+
+Проверки (окружение = CI-джоба `checks`, голова `c70283bdb66c4e1c0c9f415cf5288c3c8b8585cb`):
+
+- `pnpm typecheck` — чисто, оба пакета (`agent-protocol`, `transport-telegram`).
+- `pnpm exec biome check` по 7 путям диффа — 2 `info` (unsafe-fix, `process.env["HOME"]`/`["USER"]` в `packages/agent-protocol/src/cli.ts:5766,10965`), обе вне диффа PR (существовали до него), ошибок нет.
+- Полный прогон тестов не повторял — `checks` на голове `c70283bd` зелёный, прогон `33252824285` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33252824285).
+- Точечно прогнал сам: `pnpm exec vitest run src/notify/notify.test.ts src/notify/notify.process.test.ts` — 131 тест, зелено. Прочитал оба файла целиком и логику `notify.ts` (условия входа в `remindedParked`, часы `reminded`, парный ключ, групповой заголовок) — ассерты бьют в заявленное: возраст, единственность звонка, дедуп с Д-2, снятие часов по `delivers`/закрытию, форма round-trip старого файла состояния.
+- Числа тестов из последнего сообщения треда («2609 + 7 = 2616 тестов, 158 файлов») сверены с логом прогона `33252824285` построчно: `agent-protocol test: Tests 2609 passed (2609)`, `Test Files 156 passed (156)`; `transport-telegram test: Tests 7 passed (7)`, `Test Files 2 passed (2)` — совпадает, область (пакет + сумма) названа верно.
+- `pnpm protocol zones check --ref FETCH_HEAD --role dev-core --paths <7 путей диффа>` → «0 under a forbidden prefix» — зона роли `dev-core` не нарушена (критерий 4).
+- Живой исход `pnpm protocol merge-gate --ref origin/main --pr 103`, дословно:
+
+```
+merge-gate: documents of power judged by (7):
+merge-gate:   agent-protocol.json — the protocol config itself
+merge-gate:   docs/roles/curator.md — derived from a role's instructions
+merge-gate:   docs/roles/dev-core.md — derived from a role's instructions
+merge-gate:   docs/roles/pilot-codex.md — derived from a role's instructions
+merge-gate:   REVIEWER.md — derived from a role's instructions
+merge-gate:   PROTOCOL.md — declared by 'powerDocuments' of the config
+merge-gate:   .github/workflows — declared by 'powerDocuments' of the config
+merge-gate: PR #103 at c70283b
+  STOP guard 1 · approve on the current head: no approve verdict on c70283b
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+       note · base: the base moved AFTER the credited checks started: 0af8868 committed 2026-08-29T12:52:01Z, 'checks' started 2026-08-29T12:34:02Z. [...]
+  you  guard 3 · ascent to a decision of john's: thread '043-stale-park-reminders' — read the feed: a decision of john's, with its source named. Curator does not merge what curator set without one
+  ok   guard 4 · no self-merge on the documents of power: 7 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge: name this merge in your next message in the thread — which verdict, which head, which checks
+  ok   mergeability · not a guard, a fact GitHub answers: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+
+  Guard 1/2 STOP здесь ожидаемо и не находка: approve-вердикта до этого сообщения не существовало, а `review`-чек, который гард 2 требует зелёным, — это сам текущий прогон ревьюера (снимется после публикации этого вердикта и завершения `review`). Guard 3/5 — `you` (не блокирующие): постановка треда явно называет норму-2 («класс полевой, измеренный, новой нормы не вводит ⇒ норма-2, слова john на исполнение не требуется»), источник решения назван; след слияния — дело следующего сообщения curator в тред, не автора и не ревьюера.
+
+Находки:
+
+9. (минор, не блокирует) Описание PR, раздел «## Доки», всё ещё называет класс «Девятым» («`docs/protocol-reference.md` («Девятый класс курьера»)»). После слияния с #106 (тред 044, `c33d7775`) класс стал ДЕСЯТЫМ — и код, и `docs/protocol-reference.md`, и `README.md` в диффе верно говорят «Десятый», и сообщение треда `2026-08-29T12:34:58Z` явно объясняет переномерацию. Расхождение — только в шапке PR на GitHub, дифф ей не противоречит. Предлагаемое действие: поправить фразу в описании PR на «Десятый класс», раз она войдёт в текст squash-коммита.
+
+Остальное по критериям 1–11 — без находок:
+- Критерий 1: числа подтверждены (см. выше), новые/изменённые тесты объяснены пофайлово в треде (в т.ч. правка даты фикстуры треда 051 — названа явно как единственный чужой тест, который правка переписала, с обоснованием).
+- Критерий 2: юниты и process-тесты проверяют именно заявленное (возраст в тексте строки, единственность звонка, снятие часов вместе с парковкой, а не отдельно), не только факт непустого ответа.
+- Критерий 3: скоуп соответствует постановке `043-stale-park-reminders` — все 5 пунктов реализованы и протестированы; переномерация 9→10 — следствие слияния с #106, доложена в треде, не молчаливое расширение.
+- Критерии 4–5: зона роли не нарушена, документов власти дифф не касается (`docs/protocol-reference.md` — не док власти).
+- Критерий 6: новое поле `reminded` — часть локального файла состояния `.orchestrator/notify.state`, не протокольной почты; обратная совместимость чтения старого формата покрыта тестом (round-trip).
+- Критерий 8: `agent-comms/**` диффом не тронут.
+- Критерий 10: конфиг протокола в диффе не читается напрямую.
+- Критерий 11: путь без часов (`input.now === undefined`) не звонит и не имитирует успех — задокументирован и покрыт тестом; единственный вызывающий (`notify`) всегда передаёт `now`.
