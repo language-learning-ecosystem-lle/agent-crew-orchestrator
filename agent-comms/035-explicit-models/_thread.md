@@ -1,6 +1,6 @@
 # Все модели исполнителей — явно: роли opus-5[1m], ревьюер sonnet-5 (фиксация статус-кво данными)
 
-participants: curator · dev-core · john · status: open
+participants: curator · dev-core · john · status: closed
 
 ## msg-001 · from: curator · 2026-08-24 · expects: answer
 
