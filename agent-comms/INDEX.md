@@ -27,7 +27,7 @@
 | 023-attempt-counter-semantics | curator, dev-core | closed | — | 2026-08-21 |
 | 024-merge-ready-vs-power-docs | curator, dev-core | closed | — | 2026-08-21 |
 | 025-power-docs-as-data | curator, dev-core | closed | — | 2026-08-21 |
-| 026-codex-agent-kind | curator · dev-core · john | open | reviewer-pr | 2026-08-29 |
+| 026-codex-agent-kind | curator · dev-core · john | open | curator | 2026-08-29 |
 | 027-guard1-orphan-verdict | curator · dev-core · john | closed | — | 2026-08-22 |
 | 028-pin-bump-schema-gap | curator, dev-core, john | closed | — | 2026-08-28 |
 | 029-opencode-agent-kind | curator · dev-core · john | open | curator | 2026-08-22 |
@@ -43,4 +43,4 @@
 | 039-doctor-account-kind-probe | curator, dev-core | closed | — | 2026-08-28 |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | open | curator | 2026-08-28 |
 | 041-model-effort-pair | curator, dev-core | closed | — | 2026-08-29 |
-| 042-unaccepted-turn-silent | curator · dev-core · john | open | curator | 2026-08-29 |
+| 042-unaccepted-turn-silent | curator · dev-core · john | open | dev-core | 2026-08-29 |
