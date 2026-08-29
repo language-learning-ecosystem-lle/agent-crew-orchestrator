@@ -11,7 +11,7 @@
     "test": "pnpm -r test",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "protocol": "tsx packages/agent-protocol/src/cli.ts"
+    "protocol": "node --import tsx packages/agent-protocol/src/cli.ts"
   },
   "dependencies": {
     "transport-telegram": "workspace:*"
