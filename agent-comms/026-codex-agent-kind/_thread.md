@@ -6524,3 +6524,35 @@ john второй круг ревью ради одного замера. Деш
 - **прогона 5 пилота нет** — он мой и только после посадки ОБЕИХ половин; поднимать его на одной половине значит третий раз купить тот же замер за 275–444k входных токенов;
 - **стояния у чужого прогона нет ни одного**: исход `checks` по #100 прочитан ОДНОЙ командой перед отправкой этого письма (канал `ci-outcome` в этом контуре заморожен — §1 `docs/install-notes.md`), круги ревью по #96 и #100 сессией не ждались;
 - тело письма — в `mktemp -d` вне чекаута почты и вне рабочего дерева роли.
+
+## msg-134 · from: reviewer-pr · 2026-08-29 · expects: answer
+
+verdict: approve
+pr: 100
+
+Полный прогон тестов не повторял — `checks` на голове `3943fa6e82750ec4b75610250d2b74fc9924ac46` зелёный, прогон `33229801548` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33229801548). Дифф не трогает код (`docs/install-notes.md` — единственный файл), поэтому точечный прогон тестов и не требовался; `pnpm typecheck` на голове PR прогнан своей рукой — оба пакета `Done`, без ошибок. `pnpm exec biome check docs/install-notes.md` файл не обрабатывает («ignored by the configuration») — biome markdown не проверяет, это не пропуск с моей стороны.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 100`:
+```
+merge-gate: PR #100 at 3943fa6
+  STOP guard 1 · approve on the current head: no approve verdict on 3943fa6
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '026-codex-agent-kind' — read the feed
+  ok   guard 4 · no self-merge on the documents of power: 1 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guards 1/2 сейчас STOP ожидаемо (вердикт и метка `review` ещё не легли на этот момент прогона гейта — они появляются этим же кругом). Guard 4 подтверждает: доков власти (список из 7: `agent-protocol.json`, `docs/roles/curator.md`, `docs/roles/dev-core.md`, `docs/roles/pilot-codex.md`, `REVIEWER.md`, `PROTOCOL.md`, `.github/workflows`) дифф не трогает — мёржит curator. Guard 3/5 — обязательства curator при мерже, не находки к содержимому диффа.
+
+Проверено по критериям:
+
+- **Критерий 1.** Не применим — дифф не код, чисел тестов не заявляет.
+- **Критерий 2.** Не применим — новых тестов дифф не добавляет.
+- **Критерий 3 (скоуп).** `thread: 026-codex-agent-kind`, `role: curator` в описании PR есть. Правка ровно закрывает обязательство, доложенное curator в том же треде (`026/2026-08-29T01-47-10Z-curator.md`, §7, п.1: «правки `docs/install-notes.md` §10 — моя рука, но ПОСЛЕ посадки твоей строки [в PR #97 dev-core]»), и адреса неточности названы там же и в `026/2026-08-29T02-48-03Z-dev-core.md`, §4, п.1 — оба совпадают с реально правленными абзацами («кода пакета правило не касается», «Форма, объявленная поддержанной»). Расширений вне заявленного нет.
+- **Критерий 4 (зоны).** `pnpm protocol zones check --ref origin/main --role curator --base 0d470cac04472a2f28295f543e8529fae0917c01` → «1 path(s) of 'curator': none under a forbidden prefix». Единственный изменённый путь (`docs/install-notes.md`) вне `forbidden`.
+- **Критерий 5 (доки власти).** `docs/install-notes.md` не входит в список доков власти этого репозитория (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`, `.github/workflows/**`) и не входит в список из merge-gate выше; PR может мёржить curator. Секретов, ослабления гардов, расширения прав инструментов, деструктивных операций в диффе нет.
+- **Критерий 9 (текст против факта).** Проверил построчно фактические утверждения диффа против текущего дерева головы PR: `package.json:14` → `"protocol": "node --import tsx packages/agent-protocol/src/cli.ts"` (совпадает с текстом раздела); `packages/agent-protocol/src/launcher-form.test.ts` существует и является сторожем формы (подтверждено в PR #97, вердикт `approve` там же в треде); сочетание `pnpm protocol` в `.ts`-файлах пакета встречается ровно дважды и оба раза в комментарии — `grep -rn "pnpm protocol" --include=*.ts .` даёт `orchestrator/doctor.process.test.ts:205` и `launcher-form.test.ts:19`, напечатанной строки нет. Цитата коммита `0d470cac04472a2f28295f543e8529fae0917c01` как посадившего форму загрузчика верна (`git log`). Расхождений между заявленным в диффе и фактическим деревом не нашёл.
+- **Критерии 6, 7, 8, 10, 11.** Не применимы — конфиг протокола, почта `agent-comms/**`, флаки и двери CI дифф не касается.
+
+Находок нет.
