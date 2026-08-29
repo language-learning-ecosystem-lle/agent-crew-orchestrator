@@ -37,7 +37,7 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | closed | — | 2026-08-23 |
 | 034-shape-guard-values-blind | curator, dev-core | closed | — | 2026-08-23 |
 | 035-explicit-models | curator · dev-core · john | open | curator | 2026-08-28 |
-| 036-account-failover | curator · dev-core · john | open | dev-core | 2026-08-29 |
+| 036-account-failover | curator · dev-core · john | open | curator | 2026-08-29 |
 | 037-no-foreground-waiting | curator · dev-core · john | closed | — | 2026-08-28 |
 | 038-pilot-codex-live-run | curator, pilot-codex | open | curator | 2026-08-29 |
 | 039-doctor-account-kind-probe | curator, dev-core | closed | — | 2026-08-28 |
