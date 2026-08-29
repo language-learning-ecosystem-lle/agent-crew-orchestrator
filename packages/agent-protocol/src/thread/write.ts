@@ -19,8 +19,9 @@ import type {
   MessageFields,
   TaskDeclaration,
   ThreadPriorityValue,
+  VerdictValue,
 } from "./message.js";
-import { messageFileName, renderMessageFile } from "./message.js";
+import { messageFileName, renderMessageFile, VERDICT_VALUES } from "./message.js";
 import { renderMetaFile, type ThreadMeta, type ThreadTurn } from "./thread.js";
 
 export type PlannedFile = {
@@ -79,6 +80,12 @@ export type NewMessageInput = {
   readonly delivers?: string;
   /** The PR this message announces as merged — it lifts the parks that wait on it (thread 023). */
   readonly mergedPr?: number;
+  /**
+   * The verdict of a review round and the PR it is about (thread 042) — declared and refused as
+   * ONE field, see the refusal in `planNewMessage`.
+   */
+  readonly verdict?: VerdictValue;
+  readonly pr?: number;
   /** Tasks this message declares or moves (thread 021) — the source the board derives from. */
   readonly tasks?: readonly TaskDeclaration[];
   readonly text: string;
@@ -101,6 +108,18 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
   if (input.text.trim() === "") {
     throw new WriteRefusedError("the message body is empty");
   }
+  // THE VERDICT IS DECLARED BY A PAIR (thread 042, `PROTOCOL.md` of 2026-08-29) — and the refusal
+  // stands HERE rather than only at the CLI flags, because both writing commands of the pair come
+  // through this one function and a rule held by one of them is the lesson of 075 all over again.
+  // A verdict without an address is a remark, an address without a verdict says nothing happened;
+  // the reader drops both halves, so a message written with one would be silently ignored.
+  if ((input.verdict === undefined) !== (input.pr === undefined)) {
+    throw new WriteRefusedError(
+      input.verdict === undefined
+        ? `'pr: ${input.pr}' is declared without a verdict: a review verdict is a PAIR of fields. Add the outcome ('--verdict ${VERDICT_VALUES.join("' or '--verdict ")}'), or drop '--pr' — the number of a PR alone opens no turn and is read by nobody`
+        : `'verdict: ${input.verdict}' is declared without the PR it is about: a review verdict is a PAIR of fields. Add the address ('--pr <number>'), or drop '--verdict' — a verdict with no address is a remark rather than an outcome, and the reader of the feed drops both halves`,
+    );
+  }
 
   const fields: MessageFields = {
     from: input.from,
@@ -114,6 +133,8 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
     ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
+    ...(input.verdict === undefined ? {} : { verdict: input.verdict }),
+    ...(input.pr === undefined ? {} : { pr: input.pr }),
     ...(input.tasks === undefined ? {} : { tasks: input.tasks }),
   };
   return {
@@ -166,6 +187,13 @@ export type NewThreadInput = {
    * of a decision just as it can be opened by a question to its owner (075, 074).
    */
   readonly delivers?: string;
+  /**
+   * The verdict of a review round and its PR (thread 042) — passed through for the reason
+   * `delivers` and `parked-on` are: the first message is a message, and a rule held by one
+   * command of the pair is the lesson of 075. The pair is judged in `planNewMessage`, once.
+   */
+  readonly verdict?: VerdictValue;
+  readonly pr?: number;
   /** The form declared for the answers of this thread (079) — see `ThreadTurn`. */
   readonly turn?: ThreadTurn;
   readonly text: string;
@@ -200,6 +228,8 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
+    ...(input.verdict === undefined ? {} : { verdict: input.verdict }),
+    ...(input.pr === undefined ? {} : { pr: input.pr }),
     text: input.text,
     threadHasMessages: true, // a new thread is file-based by construction
   });

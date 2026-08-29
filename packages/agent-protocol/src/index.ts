@@ -277,6 +277,8 @@ export {
   parseMessageFile,
   renderHeading,
   renderMessageFile,
+  VERDICT_VALUES,
+  type VerdictValue,
   WORKER_UNRECORDED,
 } from "./thread/message.js";
 export {

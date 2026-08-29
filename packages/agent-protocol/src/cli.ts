@@ -525,6 +525,7 @@ import type {
   LaunchDirective,
   TaskDeclaration,
   ThreadPriorityValue,
+  VerdictValue,
 } from "./thread/message.js";
 import {
   bodyClaimsTurnRelease,
@@ -539,6 +540,7 @@ import {
   parseTaskDeclaration,
   THREAD_PRIORITY_VALUES,
   taskThreadPrefix,
+  VERDICT_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { describePrPark } from "./thread/pr-park.js";
@@ -2905,6 +2907,45 @@ const deliversFrom = (
 };
 
 /**
+ * THE DOOR OF A VERDICT (thread 042, decision of john 2026-08-29) — `--verdict <approve|
+ * needs-fixes>` together with `--pr <number>`, on both writing commands.
+ *
+ * The pair is what the norm made readable: a park on a person holds the TURN it was declared on,
+ * and the verdict of a round is one of the three outcomes that open a new turn at the same
+ * holder. Until the fields existed the verdict rode in the BODY (`REVIEWER.md`), where the R27
+ * net may not read it (norm 020) — measured in LLE 17:40→17:59Z, where the verdict landed in a
+ * parked thread and was eaten.
+ *
+ * TWO THINGS THIS DOOR DELIBERATELY DOES NOT CHECK. The sender's role against the config — that
+ * is the alternative john rejected by name: the source of truth is the DECLARATION, as it is for
+ * `delivers`, and reading `kind`/`wake.mode` here would break the day the reviewer's tool
+ * changes. And the PR's existence — the number is an address the writer has in hand, checked for
+ * shape the way `--merged-pr` is.
+ *
+ * WHAT IT DOES CHECK is the vocabulary (`REVIEWER.md`'s two words, not a third spelling) and,
+ * in `planNewMessage`, the pair itself. The refusals name the exit rather than the ban alone.
+ */
+const verdictFrom = (
+  argv: readonly string[],
+): { readonly verdict?: VerdictValue; readonly pr?: number } => {
+  const verdictRaw = flag(argv, "--verdict");
+  const prRaw = flag(argv, "--pr");
+  if (verdictRaw !== undefined && !(VERDICT_VALUES as readonly string[]).includes(verdictRaw)) {
+    fail(
+      `--verdict '${verdictRaw}' — a review verdict is one of ${VERDICT_VALUES.join(" | ")}, the vocabulary of REVIEWER.md and no other`,
+      2,
+    );
+  }
+  if (prRaw !== undefined && !/^\d+$/.test(prRaw)) {
+    fail(`--pr '${prRaw}' — expected the number of the PR the verdict is about`, 2);
+  }
+  return {
+    ...(verdictRaw === undefined ? {} : { verdict: verdictRaw as VerdictValue }),
+    ...(prRaw === undefined ? {} : { pr: Number(prRaw) }),
+  };
+};
+
+/**
  * THE DOOR OF A TASK DECLARATION (thread 021) — `--task '<NNN.k> <status>[ · tail]'`,
  * repeatable, checked here and not only in CI.
  *
@@ -3079,6 +3120,9 @@ const newMessage = (argv: readonly string[]): void => {
     fail(`--merged-pr '${mergedPrRaw}' — expected the number of a PR`, 2);
   }
   const mergedPr = mergedPrRaw === undefined ? undefined : Number(mergedPrRaw);
+  // THE VERDICT OF A ROUND (thread 042): the pair that opens a new turn at the same holder. The
+  // halves are judged together in `planNewMessage`, so the refusal is one for both doors.
+  const verdictFields = verdictFrom(argv);
   const tasks = tasksFor(argv, { from, thread: threadId, registry });
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
@@ -3140,6 +3184,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
         ...(mergedPr === undefined ? {} : { mergedPr }),
+        ...verdictFields,
         ...(tasks.length === 0 ? {} : { tasks }),
         text,
         threadHasMessages,
@@ -3301,6 +3346,13 @@ const newThread = (argv: readonly string[]): void => {
   // later: a flag parsed by one command of the pair and swallowed by the other is written
   // without a word into an append-only feed.
   const delivers = deliversFrom(argv, { registry });
+  // AND THE SAME VERDICT, by the same door (thread 042), for the reason `delivers` is here and
+  // not for a use case: the lesson of 075 is that a flag one command of the pair parses and the
+  // other swallows goes into an append-only feed without a word. What the field does in an
+  // OPENING message is nothing — the walk of `standingParkOf` looks for a park EARLIER in the
+  // same thread, and before the first message there is none — but that is a fact about the
+  // reader, not a licence for this door to eat a declared field silently.
+  const verdictFields = verdictFrom(argv);
   // AND THE SAME MISSING PARK, by the same judge (thread 022). The lesson of 075 is the whole
   // reason this is two lines and not a scope for later: a door standing on one command of a
   // pair is a rule nobody can hold in their head, and the shape it catches — a role opening a
@@ -3352,6 +3404,7 @@ const newThread = (argv: readonly string[]): void => {
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
+        ...verdictFields,
         ...(turn === undefined ? {} : { turn }),
         text,
       });
