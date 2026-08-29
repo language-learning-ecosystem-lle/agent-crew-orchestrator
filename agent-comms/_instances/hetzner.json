@@ -1,17 +1,10 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T12:07:15.483Z",
+  "writtenAt": "2026-08-29T12:10:29.875Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "044-selfheal-blind-spots",
-      "state": "running",
-      "deadline": "2026-08-29T12:43:04Z"
-    }
-  ]
+  "leases": []
 }
