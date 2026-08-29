@@ -885,6 +885,43 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
 
+  it("THE VERDICT OF A ROUND goes into the header as a PAIR, and is read back as one (042)", () => {
+    // THE SEAM, not the mapping: the message is written by the REAL command with the real flags
+    // and parsed back off the disk, because a unit over `planNewMessage` would not have caught a
+    // flag the door never reads (the lesson of 075, paid for by `--parked-on` on `new-thread`).
+    const contest = contour();
+
+    // From `dev-core` on purpose as well as for the fixture's sake: no permission gates these
+    // fields and the sender's role is NOT checked against the config — the source of truth is
+    // the DECLARATION, which is the alternative john chose by name.
+    const result = direct(contest, "dev-core", "--verdict", "approve", "--pr", "108");
+
+    expect(result.code).toBe(0);
+    const message = written(contest.root);
+    expect([message.fields.verdict, message.fields.pr]).toEqual(["approve", 108]);
+    expect(message.warnings).toBeUndefined();
+  });
+
+  it("HALF A PAIR IS REFUSED AT THE DOOR, and the refusal names the exit rather than the ban", () => {
+    // The feed is append-only, so this is caught where the flags can still be retyped: a
+    // verdict with no address would be dropped by every reader and the writer would never know.
+    const contest = contour();
+
+    const lonely = direct(contest, "dev-core", "--verdict", "approve");
+    expect(lonely.code).toBe(2);
+    expect(lonely.out).toContain("--pr <number>");
+
+    const addressOnly = direct(contest, "dev-core", "--pr", "108");
+    expect(addressOnly.code).toBe(2);
+    expect(addressOnly.out).toContain("--verdict approve");
+
+    const invented = direct(contest, "dev-core", "--verdict", "lgtm", "--pr", "108");
+    expect(invented.code).toBe(2);
+    expect(invented.out).toContain("approve | needs-fixes");
+
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
   it("--delivers with a name no config knows is refused while the flag can still be retyped", () => {
     const contest = contour();
 
