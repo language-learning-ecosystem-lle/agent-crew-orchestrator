@@ -1500,7 +1500,28 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # the vaguer of the two sentences. ONLY ON A BOX WITH SOMEBODY TO CALL,
                             # though: the class rings a `direct` target and nobody else, so where there
                             # is none the precedence would delete a line and put none in its place
-                            # AND THE NINTH CLASS: A LIVE PARK NOBODY HAS BEEN REMINDED OF (thread 043).
+                            # AND THE NINTH: THIS BOX IS NOT RUNNING WHAT WAS MERGED (thread 044). The
+                            # daemon says at every tick that it is behind its ref and why it is not
+                            # pulling (S25), and that sentence lived in `daemon.log` alone — measured
+                            # 28–29.08: a repair merged at 03:24:02Z, 27 lease-free windows in the same
+                            # day, and the circuit still on the old code in the morning, ringing with a
+                            # false reason it had already fixed. Past `CODE_DRIFT_OVERDUE_MINUTES` (120,
+                            # a constant for the reason the threshold above is one) the standoff the
+                            # daemon published (`daemon-drift.json`) becomes a line: the two SHAs, the
+                            # distance, how long it has stood, and the daemon's OWN refusal verbatim
+                            # THE COURIER COMPOSES AND NEVER RE-DERIVES: the reason is a verdict over
+                            # leases, holds, flags, a working tree and an attempt count that only the
+                            # daemon holds, and a second implementation of a safety rule is the thing
+                            # this package refuses everywhere. It also names NO command — what to do
+                            # about a window that will not open is a judgement about live work, and a
+                            # forced rollout is john's decision, not a courier's
+                            # ONE CALL PER PERIOD OF BEING BEHIND, keyed by WHEN THE DRIFT BEGAN and not
+                            # by the target SHA: on a repository that merges several times an hour the
+                            # target changes at every merge, and a key on it would ring at each one. It
+                            # is silent without a live daemon, for the reason the frame is (the standoff
+                            # file outlives its writer), and silent inside the band, which is a circuit
+                            # working normally
+                            # AND THE TENTH CLASS: A LIVE PARK NOBODY HAS BEEN REMINDED OF (thread 043).
                             # A park rings once, on the message that asked — and until this class that
                             # was the last word ever said about it: ten parks stood on john on
                             # 2026-08-29, the oldest eleven days, none mentioned since its own tick. A
@@ -4321,6 +4342,35 @@ lines and nothing about the runtime, and the live checkout stood at `?? .orchest
 untracked-only tree is no longer reported as "uncommitted work" (there is nothing there to
 commit) but as untracked files, with the repair — an ignore rule in the served repository —
 named in the line.
+
+**And a refusal that nobody was reading is a silence with extra steps (thread 044).** Two
+blind spots of the conjunction above were measured on 28–29.08 and neither is a bug in the
+rule: (1) on an active circuit the zero-lease window may not be caught for hours — 27 windows
+opened that day and the merge of `#101` (03:24:02Z) rode into none of them until a hand pulled
+in the morning; (2) a role raised to ask "did the fix roll out?" holds a lease and BLOCKS the
+very rollout it is measuring. What changed is what the box SAYS, and nothing about when it
+pulls:
+
+- **the refusal states its own size.** It used to name the condition only (`no self-restart
+  while sessions are live (curator)`) while the distance lived one line up, in a sentence
+  written by another function. Two lines are one line only while nothing separates them — and
+  `grep`, a frame row and a digest all separate them. The line is now `the code is 3 commit(s)
+  behind, drifting for 6h (since …) — no self-restart while …`;
+- **the drift has an AGE, and it is not the process's uptime.** The clock starts at the OLDEST
+  commit on the ref the loaded code lacks — the moment the box fell behind. Uptime was the
+  wrong clock in the one direction that hides the fault: a daemon raised five minutes ago over
+  six-hour-old code reads as young. Both numbers are now printed, side by side;
+- **past two hours it becomes a DIGEST LINE** (`CODE_DRIFT_OVERDUE_MINUTES`, R4's ninth class).
+  The daemon publishes the standoff it is standing on — the two SHAs, the distance, the stamp
+  it began at and its own refusal verbatim — to `daemon-drift.json`, and removes that file on
+  the tick that finds no drift; the courier reads it, applies the band and carries the sentence
+  unchanged. It never re-derives the reason: that verdict needs leases, holds, flags, a tree and
+  an attempt count that only the daemon holds;
+- **and nothing was made to pull harder.** No live session is stopped, no window is forced: the
+  statement of the thread reserves that for john, and the line reports rather than orders. Two
+  of the named branches needed no code at all — an expired hold and a leftover stop flag were
+  already answered (`up` clears the stop and force flags and says so), and the attempt ceiling
+  keeps the reason it was given in thread 042.
 
 **What is tested and what is not.** The rule, the form, the exit code and the install
 question are units (`self-restart.test.ts`). The seam — went away, came back — is a process

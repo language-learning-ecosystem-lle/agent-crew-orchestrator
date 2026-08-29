@@ -104,6 +104,7 @@ import {
 import {
   type AuthAlarm,
   authAlarmKey,
+  type CodeDriftAlarm,
   describeAge,
   type ExhaustedPair,
   exhaustedPairsOf,
@@ -140,14 +141,18 @@ import {
   type CodeDrift,
   type CodeVintage,
   codeAgeView,
+  codeDriftOverdue,
   describeCodeDrift,
   describeCodeVintage,
+  describeDriftSize,
   describeUnreadableCodeAge,
   isVintage,
   measureCodeDrift,
   parseCodeVintage,
+  parseDriftStandoff,
   readCodeVintage,
   renderCodeVintage,
+  renderDriftStandoff,
 } from "./orchestrator/code-age.js";
 import {
   type CodexCatalogue,
@@ -377,6 +382,7 @@ import {
 import {
   attemptsFor,
   describeInstallSkipped,
+  describeSelfRestartBlock,
   describeSelfRestartForm,
   describeSelfRestartGo,
   describeSelfRestartHandback,
@@ -3904,6 +3910,8 @@ const runNotify = async (input: {
   // daemon's tick with it, and the whole point of these two is that somebody gets told.
   let authAlarm: AuthAlarm | undefined;
   let ghAlarm: GhAlarm | undefined;
+  /** The box is behind its own ref past the band and has said why (thread 044). */
+  let driftAlarm: CodeDriftAlarm | undefined;
   // THE SIXTH QUESTION, and the one the courier had no category for at all (thread 013):
   // "which pairs has the circuit stopped raising". It is read from the same journal as the
   // shelf — the fold already carries the class of the freeze and the stamp of its series —
@@ -4100,6 +4108,34 @@ const runNotify = async (input: {
     } catch (error) {
       say(`merge-ready — the outage state could not be read: ${(error as Error).message}`);
     }
+    // THE NINTH QUESTION, and the one no category could answer at all (thread 044): "is this
+    // box executing the code that was merged". Everything about it was measured by the daemon
+    // and published (`daemon-drift.json`); this reads it, applies the band and hands the
+    // planner a rendered fact — the courier composes, it never re-derives a safety verdict.
+    //
+    // IT IS SILENT WITHOUT A LIVE DAEMON, and that is the same asymmetry `codeAgeView` guards:
+    // the standoff file outlives the process that wrote it, so a box whose daemon is down would
+    // otherwise ring about a drift nobody is standing on any more — and "the daemon is down" is
+    // a different fact, which this line would be lying about.
+    try {
+      const standoff = existsSync(paths.daemonDrift)
+        ? parseDriftStandoff(readFileSync(paths.daemonDrift, "utf8"))
+        : undefined;
+      const live = runningDaemon(paths.daemonPid) !== undefined;
+      if (standoff !== undefined && live && codeDriftOverdue(standoff, new Date(now)))
+        driftAlarm = {
+          sha: standoff.sha.slice(0, 8),
+          refSha: standoff.refSha.slice(0, 8),
+          ref: standoff.ref,
+          size: describeDriftSize(standoff, new Date(now)),
+          why: standoff.why,
+          // Undefined is unreachable here — `codeDriftOverdue` is false without a stamp —
+          // and the fallback says so rather than inventing a key that would ring forever.
+          since: standoff.since ?? standoff.at,
+        };
+    } catch (error) {
+      say(`code — the drift standoff could not be read: ${(error as Error).message}`);
+    }
   }
 
   const seen = existsSync(statePath)
@@ -4117,6 +4153,7 @@ const runNotify = async (input: {
     unaccepted,
     auth: authAlarm,
     gh: ghAlarm,
+    drift: driftAlarm,
     // THE CLOCK THE REMINDER PASS NEEDS (thread 043): the same `now` every other age in this
     // command is measured against, so a park cannot be three hours old for the stall pass and
     // two for the reminder one.
@@ -4278,7 +4315,11 @@ const runNotify = async (input: {
       plan.freshFreezes.length === 0 &&
       plan.freshUnaccepted.length === 0 &&
       !plan.freshAuth &&
-      !plan.freshGh)
+      !plan.freshGh &&
+      // A DRIFT PAST THE BAND IS WORTH A LETTER OF ITS OWN (thread 044). It rings once per
+      // period of being behind, and the letter is the whole point: the class exists because
+      // the fact was already written in `daemon.log` every thirty seconds and reached nobody.
+      !plan.freshDrift)
   ) {
     writeOut(
       statePath,
@@ -4292,6 +4333,7 @@ const runNotify = async (input: {
         parked: plan.parkedIfSilent,
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
+        drift: plan.drift?.since,
         freezes: plan.freezeKeys,
         unaccepted: plan.unaccepted,
         // NOTHING WENT OUT, SO NOTHING WAS REMINDED (thread 043): `plan.reminded` carries a
@@ -4312,6 +4354,9 @@ const runNotify = async (input: {
       : []),
     ...(plan.freshGh && plan.gh !== undefined
       ? [`gh refuses merge-ready (${plan.gh.ticks} ticks since ${plan.gh.since})`]
+      : []),
+    ...(plan.freshDrift && plan.drift !== undefined
+      ? [`the box is behind its own ref (${plan.drift.size})`]
       : []),
     ...plan.freshFreezes.map(
       (event) =>
@@ -4347,6 +4392,7 @@ const runNotify = async (input: {
         parked: plan.parked,
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
+        drift: plan.drift?.since,
         freezes: plan.freezeKeys,
         unaccepted: plan.unaccepted,
         reminded: plan.reminded,
@@ -4381,6 +4427,7 @@ const runNotify = async (input: {
       parked: plan.parked,
       auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
       gh: plan.gh?.since,
+      drift: plan.drift?.since,
       freezes: plan.freezeKeys,
       unaccepted: plan.unaccepted,
       reminded: plan.reminded,
@@ -9395,7 +9442,32 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       ceiling: SELF_RESTART_MAX_ATTEMPTS,
     });
     if (verdict.kind === "stand") {
-      err(`agent-protocol: daemon — ${describeSelfRestartStand(verdict.block)}`);
+      // THE REFUSAL CARRIES ITS OWN MEASUREMENT (thread 044): how far behind, for how
+      // long, and why nothing is being pulled — one line, so that a reader who greps for
+      // it, or a courier that carries it, has the whole fact and not half of it.
+      err(`agent-protocol: daemon — ${describeSelfRestartStand(verdict.block, drift, new Date())}`);
+      // AND IT IS PUBLISHED WHERE THE COURIER CAN READ IT (thread 044). The log is read by
+      // whoever is already looking at the box, and the whole class this repair comes from is
+      // the drift NOBODY was looking at. A failure to publish costs a digest line and must
+      // not cost the daemon: the tick is not the place a diagnostic may refuse from.
+      try {
+        writeOut(
+          paths.daemonDrift,
+          renderDriftStandoff({
+            refSha: drift.refSha,
+            sha: drift.vintage.sha,
+            ref: drift.ref,
+            ...(drift.behind === undefined ? {} : { behind: drift.behind }),
+            ...(drift.since === undefined ? {} : { since: drift.since }),
+            why: describeSelfRestartBlock(verdict.block),
+            at: eventTimestamp(new Date()),
+          }),
+        );
+      } catch (error) {
+        err(
+          `agent-protocol: daemon — the drift standoff was not published to '${paths.daemonDrift}' (${(error as Error).message}); the digest will not carry it, and only this log will say the box is behind`,
+        );
+      }
       return "stood";
     }
     err(
@@ -10026,6 +10098,18 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         err(`agent-protocol: daemon — ${describeUnreadableCodeAge(reading.problem)}`);
       } else if (reading.kind === "match") {
         codeNote = undefined;
+        // THE STANDOFF IS OVER, SO THE FILE GOES (thread 044). It states a STATE and not an
+        // event, and a state file that outlives its subject is how a courier comes to ring
+        // about a drift that was repaired an hour ago — the false reason of thread 042, in
+        // a different suit. Nothing else clears it: a box that catches up either matches
+        // here or is replaced by a process that never wrote it.
+        try {
+          if (existsSync(paths.daemonDrift)) rmSync(paths.daemonDrift);
+        } catch (error) {
+          err(
+            `agent-protocol: daemon — the drift standoff '${paths.daemonDrift}' could not be removed (${(error as Error).message}); the code is current and the digest may still say otherwise`,
+          );
+        }
       }
     }
     /** What happens after this tick — said in the same breath as what it decided. */

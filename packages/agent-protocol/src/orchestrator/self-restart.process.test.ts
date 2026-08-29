@@ -54,6 +54,7 @@ import { describe, expect, it } from "vitest";
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { HANG_CEILING_MS } from "../testing/wait-for.js";
+import { parseDriftStandoff, renderDriftStandoff } from "./code-age.js";
 import { parseSelfRestartMemory, SELF_RESTART_EXIT_CODE } from "./self-restart.js";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
@@ -150,6 +151,13 @@ const homeContour = (options?: {
    * daemon rather than against a one-shot command.
    */
   readonly bumpVersionOnRef?: boolean;
+  /**
+   * NO DRIFT AT ALL — the box standing exactly on its ref (thread 044). The one shape this
+   * fixture could not make until the standoff file existed: everything else here is built
+   * to provoke a verdict, and the removal of the standoff is the branch that fires when
+   * there is nothing to decide.
+   */
+  readonly current?: boolean;
 }): { readonly repo: string; readonly cli: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-selfrestart-home-"));
   const origin = join(base, "origin.git");
@@ -180,7 +188,10 @@ const homeContour = (options?: {
   // cheaper fixture (its `pull --ff-only` refuses, so the repair dies harmlessly and the
   // test can only assert the DECISION); on the branch the pull fast-forwards, which is
   // what a case about the repair COMPLETING has to have.
-  if (options?.pullable === true) git(repo, "reset", "--hard", "-q", loaded);
+  // The third shape: the HEAD is left ON the ref commit, so `codeAge` reads `match` and the
+  // tick decides nothing — which is precisely the tick that has to clear a standoff.
+  if (options?.current === true) git(repo, "checkout", "-q", "main");
+  else if (options?.pullable === true) git(repo, "reset", "--hard", "-q", loaded);
   else git(repo, "checkout", "-q", loaded);
   return { repo, cli: join(repo, "src", "cli.ts") };
 };
@@ -398,6 +409,64 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       expect(said).not.toContain("SELF-RESTART: the loaded code is behind");
       expect(said).not.toContain("handed over to the restart process");
       expect(existsSync(join(home.repo, ".orchestrator", "self-restart.json"))).toBe(false);
+
+      // THE STANDOFF IS PUBLISHED, AND IT IS A FILE ON THIS DISK (thread 044). The line
+      // above proves the daemon SAID it; only this proves the courier can READ it, and the
+      // two are different failures — a wrong path, a swallowed write, a field renamed on one
+      // side of the bridge all leave the log intact and the digest empty, which is
+      // indistinguishable from "there is no drift" — the very defect this file's PR repairs.
+      const standoff = parseDriftStandoff(
+        readFileSync(join(home.repo, ".orchestrator", "daemon-drift.json"), "utf8"),
+      );
+      // The two SHAs are the ones this fixture built, not "some sha": a standoff about
+      // another pair of commits is a digest line about somebody else's box.
+      expect(standoff?.refSha).toBe(git(home.repo, "rev-parse", "origin/main").trim());
+      expect(standoff?.sha).toBe(git(home.repo, "rev-parse", "HEAD").trim());
+      expect(standoff?.ref).toBe("origin/main");
+      expect(standoff?.behind).toBe(1);
+      // The reason VERBATIM — the courier composes and never re-derives this verdict, so
+      // the sentence the digest will carry has to be the sentence the daemon printed.
+      expect(standoff?.why).toBe(
+        "no self-restart while sessions are live (dev-core/055-x) — a graceful restart would wait for them, and that wait needs a human",
+      );
+      expect(said).toContain(standoff?.why ?? "<unread>");
+      // And the clock the band is judged on: the drift has a beginning, so a reader two
+      // hours later is told about it rather than left with an undated fact.
+      expect(standoff?.since).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  it(
+    "clears the standoff when the drift is over — a state file that outlives its subject lies",
+    () => {
+      // The box is ON its ref, and a standoff from the drift it has since caught up on is
+      // lying on the floor. Nothing else clears it: this is the branch, and until this test
+      // existed no process case executed it at all.
+      const home = homeContour({ current: true });
+      mkdirSync(join(home.repo, ".orchestrator"), { recursive: true });
+      const standoff = join(home.repo, ".orchestrator", "daemon-drift.json");
+      writeFileSync(
+        standoff,
+        renderDriftStandoff({
+          refSha: "f".repeat(40),
+          sha: "e".repeat(40),
+          ref: "origin/main",
+          behind: 3,
+          since: "2026-08-29T03:24:02Z",
+          why: "no self-restart while sessions are live (dev-core/044-x)",
+          at: "2026-08-29T05:24:02Z",
+        }),
+      );
+
+      const said = tick(home.cli, home.repo);
+
+      // The premise, asserted rather than assumed: this tick found no drift. Without it a
+      // fixture that quietly drifted would clear the file down the standing branch's path
+      // — or not clear it at all — and the case would be measuring nothing.
+      expect(said).not.toContain("the LOADED CODE is not the ref");
+      expect(said).not.toContain("no self-restart");
+      expect(existsSync(standoff)).toBe(false);
     },
     2 * HANG_CEILING_MS,
   );
