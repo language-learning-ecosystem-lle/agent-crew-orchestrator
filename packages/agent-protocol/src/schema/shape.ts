@@ -738,6 +738,82 @@ export const CONFIG_SHAPES: Readonly<Record<number, readonly string[]>> = {
     "roles[].zones.forbidden",
     "roles[].zones.writes",
   ],
+
+  /**
+   * 23 — thread `036-account-failover`: one new row, `roles[].launch.fallback` — the ordered
+   * chain of accounts a role's next session is raised on when its own quota window is closed.
+   * Optional and empty everywhere in this repository (john, 2026-08-29: the box's two claude
+   * accounts are one subscription, so there is no true spare to name yet), which is exactly the
+   * case this table exists for: a field that changes nothing today is still a field an older
+   * build meets as `Unrecognized key`. Everything else is 22 verbatim.
+   */
+  23: [
+    "announcements",
+    "announcements.force-stop",
+    "identityDictionary",
+    "instances",
+    "instances[].account",
+    "instances[].id",
+    "instances[].note",
+    "instances[].roles",
+    "mail",
+    "mail.branch",
+    "mail.dir",
+    "notifications",
+    "notifications.stalledAfterMinutes",
+    "notifications.templates",
+    "notifications.templates.nudge",
+    "notifications.templates.parked",
+    "notifications.templates.stalled",
+    "notifications.templates.turn",
+    "notifications.templates.turn-with-nudge",
+    "notifications.transport",
+    "notifications.transport.module",
+    "notifications.transport.options",
+    "orchestrator",
+    "orchestrator.env",
+    "orchestrator.mailCheckout",
+    "orchestrator.ref",
+    "orchestrator.state",
+    "orchestrator.workdir",
+    "orchestrator.workdir.branch",
+    "orchestrator.workdir.worktrees",
+    "powerDocuments",
+    "protocolVersion",
+    "roles",
+    "roles[].id",
+    "roles[].instructions",
+    "roles[].instructions[].kind",
+    "roles[].instructions[].note",
+    "roles[].instructions[].path",
+    "roles[].kind",
+    "roles[].launch",
+    "roles[].launch.account",
+    "roles[].launch.agent",
+    "roles[].launch.agent.effort",
+    "roles[].launch.agent.kind",
+    "roles[].launch.agent.model",
+    "roles[].launch.agent.toolsHeldBy",
+    "roles[].launch.allowedTools",
+    "roles[].launch.fallback",
+    "roles[].launch.limits",
+    "roles[].launch.limits.idleSeconds",
+    "roles[].launch.limits.maxTurns",
+    "roles[].launch.limits.waitInputSeconds",
+    "roles[].launch.limits.wallClockSeconds",
+    "roles[].launch.limits.windDownSeconds",
+    "roles[].permissions",
+    "roles[].status",
+    "roles[].summary",
+    "roles[].systemUser",
+    "roles[].wake",
+    "roles[].wake.mode",
+    "roles[].wake.session",
+    "roles[].wake.via",
+    "roles[].zones",
+    "roles[].zones.forbidden",
+    "roles[].zones.writes",
+  ],
 };
 
 /** What a shape that no longer matches its version asks for, in the words of the repair. */
@@ -893,6 +969,37 @@ export const CONFIG_VALUES: Readonly<Record<number, readonly string[]>> = {
   // `shape.test.ts` requires an entry at the current version: a version whose change one half of
   // the guard cannot see still has to say so, rather than be missing from the table.
   22: [
+    'roles[].instructions[].kind = "external"',
+    'roles[].instructions[].kind = "in-repo"',
+    'roles[].launch.agent.effort = "high"',
+    'roles[].launch.agent.effort = "low"',
+    'roles[].launch.agent.effort = "max"',
+    'roles[].launch.agent.effort = "medium"',
+    'roles[].launch.agent.effort = "xhigh"',
+    'roles[].launch.agent.kind = "claude-code"',
+    'roles[].launch.agent.kind = "codex"',
+    'roles[].launch.agent.toolsHeldBy = "sandbox-read-only"',
+    'roles[].permissions[] = "launch-params"',
+    'roles[].permissions[] = "task-declare"',
+    'roles[].permissions[] = "thread-priority"',
+    'roles[].permissions[] = "thread-status"',
+    'roles[].status = "active"',
+    'roles[].status = "paused"',
+    'roles[].status = "planned"',
+    'roles[].status = "retired"',
+    'roles[].wake.mode = "event"',
+    'roles[].wake.mode = "resident"',
+    'roles[].wake.mode = "self"',
+    'roles[].wake.mode = "via-human"',
+    'roles[].wake.mode = "watch"',
+  ],
+
+  // 23 — thread `036-account-failover`: the new field `roles[].launch.fallback` pins no value
+  // (a list of free-form account ids, judged by the config door and not by the type), so this
+  // half of the guard sees nothing move. The entry is 22 verbatim, and it is written because
+  // `shape.test.ts` requires one at the current version: a version whose change this half
+  // cannot see still has to say so in the table.
+  23: [
     'roles[].instructions[].kind = "external"',
     'roles[].instructions[].kind = "in-repo"',
     'roles[].launch.agent.effort = "high"',

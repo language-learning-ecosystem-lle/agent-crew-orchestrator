@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   type AccountChoice,
+  type AccountRefusal,
+  chainRefusals,
   chooseAccount,
   describeAccountPause,
+  describeChainRefusal,
   describeFailover,
   describeRefusals,
 } from "./failover.js";
@@ -271,5 +274,108 @@ describe("chooseAccount — (д) a spare of another kind is refused BY NAME, nev
       shelves: [shelf("lle-main", "2026-08-29T14:00:00Z")],
     });
     expect(choice.refusals).toHaveLength(1);
+  });
+});
+
+/**
+ * THE DOOR OF THE CONFIG (thread 036, step 2, point 2) — the same chain judged where it is
+ * WRITTEN. `chooseAccount` reaches a fall-back only when the primary is already shelved, so
+ * every one of these defects would otherwise be met at the moment quota runs out; here the
+ * question is asked with nobody waiting, which is the only moment the repair is cheap.
+ */
+describe("chainRefusals — every crooked link refused BY NAME at the moment it is declared", () => {
+  it("an id THIS MACHINE does not declare is refused, and the sentence names the key to write", () => {
+    const found = chainRefusals({
+      primary: "lle-main",
+      fallback: ["lle-thrid"],
+      worker: CLAUDE,
+      accounts,
+    });
+    expect(found).toHaveLength(1);
+    expect(found[0]?.id).toBe("lle-thrid");
+    expect(found[0]?.reason).toContain("declares no such account");
+    expect(found[0]?.reason).toContain("accounts.lle-thrid.configDir");
+    expect(
+      describeChainRefusal({ role: "dev-core", refusal: found[0] as AccountRefusal }),
+    ).toContain("role 'dev-core': the fall-back 'lle-thrid' ('roles[].launch.fallback')");
+  });
+
+  it("an account of ANOTHER KIND is refused with both kinds named", () => {
+    const found = chainRefusals({ primary: "lle-main", fallback: ["codex-main"], worker: CLAUDE });
+    // The machine was not read here, so the kind refusal cannot be made from it…
+    expect(found).toHaveLength(0);
+    const withMachine = chainRefusals({
+      primary: "lle-main",
+      fallback: ["codex-main"],
+      worker: CLAUDE,
+      accounts,
+    });
+    expect(withMachine[0]?.reason).toContain("declares it as 'codex'");
+    expect(withMachine[0]?.reason).toContain("raised as 'claude-code'");
+  });
+
+  it("THE ROLE'S OWN ACCOUNT in its own chain is refused even when the machine was not read", () => {
+    const found = chainRefusals({ primary: "lle-main", fallback: ["lle-main"], worker: CLAUDE });
+    expect(found).toHaveLength(1);
+    expect(found[0]?.reason).toContain("already spends");
+  });
+
+  it("THE SAME ID TWICE is a finding here, though the runtime walks it once in silence", () => {
+    const found = chainRefusals({
+      primary: "lle-main",
+      fallback: ["lle-second", "lle-second"],
+      worker: CLAUDE,
+      accounts,
+    });
+    expect(found).toHaveLength(1);
+    expect(found[0]?.id).toBe("lle-second");
+    expect(found[0]?.reason).toContain("named twice");
+    // …and the runtime says nothing about it, which is the difference being asserted.
+    expect(
+      chooseAccount({
+        primary: "lle-main",
+        fallback: ["lle-second", "lle-second"],
+        worker: CLAUDE,
+        accounts,
+        shelves: [shelf("lle-main", "2026-08-29T14:00:00Z")],
+      }).refusals,
+    ).toHaveLength(0);
+  });
+
+  it("A LIVE LINK BEHIND A CROOKED ONE still stands: the chain is judged, not dropped", () => {
+    const found = chainRefusals({
+      primary: "lle-main",
+      fallback: ["lle-thrid", "lle-second"],
+      worker: CLAUDE,
+      accounts,
+    });
+    expect(found.map((refusal) => refusal.id)).toEqual(["lle-thrid"]);
+    expect(
+      chooseAccount({
+        primary: "lle-main",
+        fallback: ["lle-thrid", "lle-second"],
+        worker: CLAUDE,
+        accounts,
+        shelves: [shelf("lle-main", "2026-08-29T14:00:00Z")],
+      }),
+    ).toMatchObject({ kind: "failover", account: "lle-second" });
+  });
+
+  it("AN ABSENT CHAIN AND AN EMPTY ONE ARE THE SAME ANSWER — the door finds nothing in either", () => {
+    const absent = chainRefusals({ primary: "lle-main", worker: CLAUDE, accounts });
+    const empty = chainRefusals({ primary: "lle-main", fallback: [], worker: CLAUDE, accounts });
+    expect(absent).toEqual([]);
+    expect(empty).toEqual(absent);
+  });
+
+  it("a healthy chain is silent — a door that shouts at a correct config is a door nobody reads", () => {
+    expect(
+      chainRefusals({
+        primary: "lle-main",
+        fallback: ["lle-second"],
+        worker: CLAUDE,
+        accounts,
+      }),
+    ).toEqual([]);
   });
 });
