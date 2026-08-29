@@ -419,6 +419,7 @@ import {
   unitNameFor,
   worktreeInstallVerdict,
 } from "./orchestrator/systemd.js";
+import { putGroupDown } from "./orchestrator/takedown.js";
 import {
   type ApiFailureSignal,
   apiFailureSignalOf,
@@ -7823,6 +7824,17 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   let runModel: string | undefined;
   let runUsage: RunUsage | undefined;
 
+  // THE SUPERVISOR'S VOICE FOR A TAKEDOWN THAT DID NOT TAKE (thread 047). Declared HERE,
+  // ahead of `recordSupervisorGone`, because that one is an exit handler: everything it
+  // closes over must already exist by the time a signal can arrive, and the log sink
+  // below is opened later in this function. So the sink is attached to the same voice
+  // once it exists, and a complaint raised before that still reaches stdout.
+  let takedownLog: ((text: string) => void) | undefined;
+  const sayTakedown = (text: string): void => {
+    out(`agent-protocol: ${p.roleId}/${p.thread}: ${text}`);
+    takedownLog?.(`supervisor  ${text}`);
+  };
+
   const recordSupervisorGone = (): void => {
     if (settled || !leased) return;
     settled = true;
@@ -7834,11 +7846,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // the same thread on top of the live first one. This is exactly the class the
     // whole package is built for (reviewer-pr's finding on PR #9).
     if (!exited && childRef?.pid !== undefined) {
-      try {
-        process.kill(-childRef.pid, "SIGTERM");
-      } catch {
-        // the group is already gone — fine
-      }
+      putGroupDown({ pid: childRef.pid, say: sayTakedown });
     }
     // THE WRITE IS NOT HOSTAGE TO A GIT CALL (red main of 2026-07-28, CI 30374788681,
     // thread 032). The kill above is a syscall and cannot stall; the unlock is `git
@@ -7925,6 +7933,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     writeSync(sink, `${stampLine(new Date(), text)}\n`);
   };
   writeLog(`supervisor  ${p.roleId}/${p.thread}  raw stream ${p.sessionStream}`);
+  // The sink exists now, so a takedown complaint lands in the run's own log as well as on
+  // stdout (thread 047): stdout belongs to whoever was watching, this file is what is read
+  // afterwards, and an unkilled session is exactly the thing read about afterwards.
+  takedownLog = writeLog;
 
   // The spawn happens in ITS OWN process group (`detached`): the whole group will
   // have to be put down, not just the direct child — a SIGTERM to a shell/launcher
@@ -8202,11 +8214,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // plus `ts` (when): self-sufficient in the journal.
     if (p.forceFlag !== undefined && existsSync(p.forceFlag)) {
       if (!exited && child.pid !== undefined) {
-        try {
-          process.kill(-child.pid, "SIGTERM");
-        } catch {
-          // the group is already gone — fine
-        }
+        putGroupDown({ pid: child.pid, say: sayTakedown });
       }
       const { by, note } = readForceFlag(p.forceFlag);
       releaseGuards();
@@ -8366,14 +8374,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
 
     // A terminal lease-released. The process is still alive (stuck/finishing up) —
     // we put down the WHOLE group (`-pid`): wall-clock hygiene for a timeout,
-    // clean-up of a hung process for completed. The group is already dead → ESRCH,
-    // swallowed.
+    // clean-up of a hung process for completed. The group is already dead → ESRCH, and
+    // that one stays silent; every OTHER errno is now said out loud (thread 047).
     if (!exited && child.pid !== undefined) {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch {
-        // the group is already gone — fine
-      }
+      putGroupDown({ pid: child.pid, say: sayTakedown });
     }
     releaseGuards();
     // WHAT THIS RUN LEAVES BEHIND ON DISK, ASKED BEFORE THE LEASE IS LET GO (thread 023,

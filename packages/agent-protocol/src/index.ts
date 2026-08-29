@@ -164,6 +164,12 @@ export {
 } from "./orchestrator/resident.js";
 export { renderLeaseLine, renderStatus } from "./orchestrator/status.js";
 export {
+  ALREADY_GONE,
+  groupTakedownComplaint,
+  putGroupDown,
+  TAKEDOWN_SIGNAL,
+} from "./orchestrator/takedown.js";
+export {
   type Candidate,
   describePlan,
   describeSkip,
