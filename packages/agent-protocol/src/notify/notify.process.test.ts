@@ -768,6 +768,75 @@ describe("a turn this box never took — notify against the journal (thread 042)
     expect(result.out).not.toContain("this box has not raised it");
   });
 
+  /** A hold file as `orchestrator hold` writes it: `<state>/holds/<role>`, one JSON line. */
+  const heldBy = (contest: ReturnType<typeof contour>, expires: string): void => {
+    const dir = join(contest.repo, ".orchestrator", "holds");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "dev-core"),
+      `${JSON.stringify({ role: "dev-core", by: "john", taken: "2026-07-25T19:00:00Z", expires })}\n`,
+      "utf8",
+    );
+  };
+  /** A journal that says nothing about the pair — the turn is untaken, and the box is on. */
+  const idle = (contest: ReturnType<typeof contour>): void =>
+    box(contest, [
+      {
+        kind: "lease-acquired",
+        ts: "2026-07-25T19:00:00Z",
+        role: "curator",
+        thread: "016-other",
+        deadline: "2026-07-25T20:00:00Z",
+      },
+      {
+        kind: "lease-released",
+        ts: "2026-07-25T19:30:00Z",
+        role: "curator",
+        thread: "016-other",
+        reason: "completed",
+      },
+    ]);
+
+  it("a role HELD by a manual session is a REASON: printed with it, and no call", () => {
+    // S5, and the daemon's own words for the same pair every tick: `candidate … skipped: held
+    // by a manual session of dev-core`. The box is doing what a human told it to do, and a ring
+    // here would send john to look at a daemon for a hold he took himself.
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    idle(contest);
+    heldBy(contest, "2099-01-01T00:00:00Z");
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("dev-core×042-untaken");
+    expect(result.out).toContain("held by a manual session of john");
+    expect(result.out).not.toContain("no reason known");
+    expect(result.out).not.toContain("this box has not raised it");
+  });
+
+  it("an EXPIRED hold is no reason at all — the pair rings", () => {
+    // The other half, and the one that makes the first honest: an expired hold is raised over
+    // by the daemon, so a pair still standing behind one is the standstill nobody was told
+    // about. Curing the false call by going mute would be the worse defect of the two.
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    idle(contest);
+    heldBy(contest, "2026-07-25T20:05:00Z");
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("unaccepted over 10m");
+    expect(result.out).toContain("dev-core×042-untaken");
+    expect(result.out).toContain("no reason known");
+    expect(result.out).toContain("this box has not raised it");
+  });
+
   it("a queue behind the role's OWN other thread does not ring when it ends", () => {
     // THE FIRST FIELD FIRING OF THIS CLASS, END TO END THROUGH THE COMMAND, and it was false:
     // `.orchestrator/daemon.log:30783` of 2026-08-29T02:53:11Z rang about

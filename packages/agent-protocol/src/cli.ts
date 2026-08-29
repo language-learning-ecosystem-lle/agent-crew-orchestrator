@@ -3985,6 +3985,39 @@ const runNotify = async (input: {
             `the attempt ceiling is spent (${view.attempt} of ${view.ceiling})`,
           );
       }
+      // AND THE ROLE A HUMAN HAS TAKEN BY HAND (S5, `orchestrator hold`). This is the
+      // daemon's OWN reason for not raising the pair — the tick prints `candidate … skipped:
+      // held by a manual session of <role>` on every one of them — and the courier had no eye
+      // for it: a held role standing over the threshold rang john with `no reason known` and
+      // sent him to look at a daemon that was doing exactly what it had been told, by him. It
+      // is per ROLE and not box-wide (a hold on `dev-core` says nothing about `curator`), so it
+      // is written per pair, like the spent ceiling above.
+      //
+      // AN EXPIRED HOLD IS NOT A REASON: the daemon raises the role again the moment the
+      // deadline passes (`foldHolds`), so a pair still standing behind a dead hold is a
+      // standstill nobody has been told about — which is the whole class.
+      //
+      // A PAIR THAT ALREADY HAS A REASON KEEPS IT: the ceiling stops the pair after the hold
+      // expires too, and naming the shallower of two reasons would send the reader to lift a
+      // hold that changes nothing.
+      try {
+        for (const view of foldHolds(loadHolds(paths.holds), new Date(now))) {
+          if (!view.active) continue;
+          for (const turn of untaken) {
+            const key = `${turn.role}\t${turn.thread}`;
+            if (turn.role !== view.role || reasons.has(key)) continue;
+            reasons.set(
+              key,
+              `the role is held by a manual session of ${view.by} until ${view.expires}`,
+            );
+          }
+        }
+      } catch (error) {
+        // A hold that does not parse is loud and does NOT refuse the courier: this command
+        // exists to make silence impossible, so it says what it could not read and goes on
+        // judging the pairs without it — erring towards the call, never towards the silence.
+        say(`holds — a manual hold could not be read: ${(error as Error).message}`);
+      }
       // THE BOX-WIDE HOLDS, in the order the operator would check them. Each one is a reason
       // for EVERY pair at once, and without them a box whose launches are simply switched off
       // would ring about every thread in the mail — which is the noise that teaches a reader
