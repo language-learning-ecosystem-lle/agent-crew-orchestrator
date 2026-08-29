@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T15:57:45.451Z",
+  "writtenAt": "2026-08-29T16:00:51.032Z",
   "roles": [
     "curator",
     "dev-core",
@@ -16,7 +16,7 @@
     {
       "role": "dev-core",
       "thread": "036-account-failover",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-29T16:57:40Z"
     }
   ]
