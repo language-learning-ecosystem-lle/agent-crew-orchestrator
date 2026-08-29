@@ -3821,6 +3821,9 @@ const runNotify = async (input: {
             // Whether the human is being CALLED, as opposed to the thread being frozen — the
             // parking message's own `expects` (thread 051). The freeze is the same either way.
             asks: parking.asks,
+            // WHOSE TURN IT WAS DECLARED ON (thread 042): the courier tells a pair the park is
+            // about from a pair that merely inherited it by a later handoff.
+            ...(parking.holder === undefined ? {} : { holder: parking.holder }),
           },
         ]
       : [],
@@ -4106,10 +4109,15 @@ const runNotify = async (input: {
     `${
       plan.unaccepted.length === 0
         ? ""
-        : `; ${plan.unaccepted.length} unaccepted over ${UNACCEPTED_AFTER_MINUTES}m, ${plan.unexplained.length} with no reason known, ${plan.freshUnaccepted.length} of those new — ${plan.unaccepted
+        : `; ${plan.unaccepted.length} unaccepted over ${UNACCEPTED_AFTER_MINUTES}m, ${plan.unexplained.length} the box cannot justify, ${plan.freshUnaccepted.length} of those new — ${plan.unaccepted
             .map(
               (turn) =>
-                `${turn.role}×${turn.thread} (${turn.age}, ${turn.reason ?? "no reason known"})`,
+                `${turn.role}×${turn.thread} (${turn.age}, ${
+                  turn.reason ??
+                  (turn.staleParkOn === undefined
+                    ? "no reason known"
+                    : `a park on ${turn.staleParkOn} declared on another role's turn`)
+                })`,
             )
             .join(", ")}`
     }` +

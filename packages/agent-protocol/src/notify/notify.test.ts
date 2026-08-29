@@ -19,6 +19,9 @@ import {
   renderNotification,
   renderNotifyState,
   type StalledTurn,
+  UNACCEPTED_AFTER_MINUTES,
+  type UnacceptedTurn,
+  unacceptedTurns,
   type WaitingPair,
 } from "./notify.js";
 
@@ -853,5 +856,284 @@ describe("exhaustedPairsOf — the closures the journal does not carry", () => {
         attempts: 3,
       },
     ]);
+  });
+});
+
+describe("a turn the box never took — the eighth class of event (thread 042)", () => {
+  // The four windows of 2026-08-28/29 were dug out of two daemon logs by hand; these are the
+  // same facts as fixtures, so nobody has to watch a live circuit for a night again.
+  const untaken = (input: {
+    readonly unaccepted?: readonly UnacceptedTurn[];
+    readonly parked?: readonly ParkedThread[];
+    readonly frozen?: readonly string[];
+    readonly stalled?: readonly StalledTurn[];
+    readonly waiting?: readonly WaitingPair[];
+    readonly seen?: NotifyState;
+  }) =>
+    planNotifications({
+      targets: TARGETS,
+      waiting: input.waiting ?? [],
+      stalled: input.stalled ?? [],
+      parked: input.parked ?? [],
+      frozen: input.frozen ?? [],
+      unaccepted: input.unaccepted ?? [],
+      seen: input.seen ?? EMPTY,
+      templates: TEMPLATES,
+    });
+
+  it("(а) a pair standing with no reason gets ONE line, with its age and its role", () => {
+    const result = untaken({
+      unaccepted: [
+        { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "19m" },
+      ],
+    });
+
+    expect(result.unaccepted).toHaveLength(1);
+    expect(result.unexplained).toHaveLength(1);
+    const lines = result.lines.filter((line) => line.kind === "unaccepted");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.text).toContain("curator×042-unaccepted");
+    expect(lines[0]?.text).toContain("19m");
+  });
+
+  it("(а2) a turn NOTIFIED to its role is not thereby taken — the mail is not the box", () => {
+    // The exact shape of the field silence: `⏳ твой ход` goes out every tick and no session is
+    // ever raised. A class silenced by its own turn-notification could never fire at all.
+    const result = untaken({
+      waiting: [{ role: "curator", thread: "042-unaccepted" }],
+      unaccepted: [
+        { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "19m" },
+      ],
+    });
+
+    expect(result.unexplained).toHaveLength(1);
+    expect(result.lines.some((line) => line.kind === "unaccepted")).toBe(true);
+  });
+
+  it("(а3) a reason the box KNOWS is printed and does not ring", () => {
+    const result = untaken({
+      unaccepted: [
+        {
+          role: "curator",
+          thread: "042-unaccepted",
+          since: "2026-08-29T01:00:00Z",
+          age: "19m",
+          reason: "launches are disabled on this box",
+        },
+      ],
+    });
+
+    expect(result.unaccepted).toHaveLength(1);
+    expect(result.unexplained).toEqual([]);
+    expect(result.freshUnaccepted).toEqual([]);
+    expect(result.lines.some((line) => line.kind === "unaccepted")).toBe(false);
+  });
+
+  it("(б) a role busy on ANOTHER thread is a legitimate queue — nothing reaches the plan", () => {
+    // The selector is where that judgement lives (`unacceptedTurns`); the plan is handed the
+    // survivors, and the pair below never becomes one.
+    const turns = unacceptedTurns({
+      turns: [
+        { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z" },
+        { role: "dev-core", thread: "026-codex", since: "2026-08-29T01:00:00Z" },
+      ],
+      raisedAt: new Map(),
+      busyRoles: new Set(["curator"]),
+      now: new Date("2026-08-29T02:00:00Z"),
+    });
+
+    expect(turns.map((turn) => turn.role)).toEqual(["dev-core"]);
+  });
+
+  it("(в) a park DECLARED ON THIS PAIR'S TURN keeps its thread — no second line", () => {
+    const result = untaken({
+      parked: [
+        {
+          thread: "042-unaccepted",
+          person: "john",
+          since: "2026-08-29T01:00:00Z",
+          question: "A or B?",
+          asks: true,
+          holder: "curator",
+        },
+      ],
+      unaccepted: [
+        { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "19m" },
+      ],
+    });
+
+    expect(result.unaccepted).toEqual([]);
+    expect(result.lines.some((line) => line.kind.startsWith("unaccepted"))).toBe(false);
+  });
+
+  it("(в2) a park that OUTLIVED the turn it was declared on is the standstill, not a park", () => {
+    // The measured window, from `daemon.log.1:15100` of the LLE box: `queue 3/4:
+    // dev-speech×010-speech-service — priority normal, waiting since 2026-08-28T12:14:09Z ·
+    // ⏸ PARKED behind a decision of john (R27)`. The park was declared by `12-11-29Z-curator.md`
+    // on CURATOR's turn; the turn moved to dev-speech two letters later, and the pair stood
+    // 4 h 16 m while the daemon printed a true sentence about the thread and a false one about
+    // the pair. The discrimination is the HOLDER, not the presence of a park.
+    const result = untaken({
+      parked: [
+        {
+          thread: "010-speech-service",
+          person: "john",
+          since: "2026-08-28T12:11:29Z",
+          question: "Какой вариант?",
+          asks: true,
+          holder: "curator",
+        },
+      ],
+      unaccepted: [
+        {
+          role: "dev-speech",
+          thread: "010-speech-service",
+          since: "2026-08-28T12:14:09Z",
+          age: "4h 16m",
+        },
+      ],
+    });
+
+    expect(result.unaccepted).toHaveLength(1);
+    expect(result.unaccepted[0]?.staleParkOn).toBe("john");
+    const lines = result.lines.filter((line) => line.kind === "unaccepted-stale-park");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.text).toContain("dev-speech×010-speech-service");
+    expect(lines[0]?.text).toContain("john");
+    // And it does NOT send the reader to the daemon: the box is innocent here.
+    expect(lines[0]?.text).not.toContain("are launches enabled");
+  });
+
+  it("(в3) a park with NO holder of its own keeps the whole thread — the pre-042 park", () => {
+    const result = untaken({
+      parked: [
+        {
+          thread: "010-speech-service",
+          person: "john",
+          since: "2026-08-28T12:11:29Z",
+          question: "?",
+          asks: true,
+        },
+      ],
+      unaccepted: [
+        {
+          role: "dev-speech",
+          thread: "010-speech-service",
+          since: "2026-08-28T12:14:09Z",
+          age: "4h 16m",
+        },
+      ],
+    });
+
+    expect(result.unaccepted).toEqual([]);
+  });
+
+  it("(в4) a FROZEN thread stays with its own class whoever holds the turn", () => {
+    const result = untaken({
+      frozen: ["019-round"],
+      unaccepted: [
+        { role: "curator", thread: "019-round", since: "2026-08-29T01:00:00Z", age: "19m" },
+      ],
+    });
+
+    expect(result.unaccepted).toEqual([]);
+  });
+
+  it("(г) the turn is taken the moment a lease POSTDATES the handoff", () => {
+    const raised = unacceptedTurns({
+      turns: [{ role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z" }],
+      raisedAt: new Map([["curator\t042-unaccepted", "2026-08-29T01:00:23Z"]]),
+      busyRoles: new Set(),
+      now: new Date("2026-08-29T02:00:00Z"),
+    });
+    // A pair raised YESTERDAY and left standing on a handoff of this morning is untaken — a
+    // rule that asked "was it ever raised" would call it healthy for good.
+    const stale = unacceptedTurns({
+      turns: [{ role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z" }],
+      raisedAt: new Map([["curator\t042-unaccepted", "2026-08-28T01:00:23Z"]]),
+      busyRoles: new Set(),
+      now: new Date("2026-08-29T02:00:00Z"),
+    });
+
+    expect(raised).toEqual([]);
+    expect(stale).toHaveLength(1);
+    expect(stale[0]?.age).toBe("1h");
+  });
+
+  it("(г2) below the threshold nothing is said at all", () => {
+    const turns = unacceptedTurns({
+      turns: [{ role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:55:00Z" }],
+      raisedAt: new Map(),
+      busyRoles: new Set(),
+      now: new Date("2026-08-29T02:00:00Z"),
+    });
+
+    expect(turns).toEqual([]);
+    expect(UNACCEPTED_AFTER_MINUTES).toBe(10);
+  });
+
+  it("(г3) it rings ONCE per handoff, and a new handoff is a new call", () => {
+    const turn: UnacceptedTurn = {
+      role: "curator",
+      thread: "042-unaccepted",
+      since: "2026-08-29T01:00:00Z",
+      age: "19m",
+    };
+    const again = untaken({
+      unaccepted: [turn],
+      seen: { ...EMPTY, unaccepted: [{ ...turn, age: "" }] },
+    });
+    const moved = untaken({
+      unaccepted: [{ ...turn, since: "2026-08-29T01:40:00Z" }],
+      seen: { ...EMPTY, unaccepted: [{ ...turn, age: "" }] },
+    });
+
+    expect(again.freshUnaccepted).toEqual([]);
+    expect(again.unaccepted).toHaveLength(1);
+    expect(moved.freshUnaccepted).toHaveLength(1);
+  });
+
+  it("(д) the 180-minute stall stays silent about a pair this class already names", () => {
+    const result = untaken({
+      stalled: [
+        { thread: "042-unaccepted", role: "curator", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
+      ],
+      unaccepted: [
+        { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
+      ],
+    });
+
+    expect(result.stalled).toEqual([]);
+    expect(result.unaccepted).toHaveLength(1);
+  });
+
+  it("(д2) a stall the class does NOT name is untouched — Д-2 and Д-4 keep their lines", () => {
+    const result = untaken({
+      stalled: [
+        { thread: "007-other", role: "dev-speech", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
+      ],
+      unaccepted: [
+        { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
+      ],
+    });
+
+    expect(result.stalled.map((turn) => turn.thread)).toEqual(["007-other"]);
+    expect(result.freshStalled).toHaveLength(1);
+  });
+
+  it("the state file carries the pair and the handoff, and an old file reads as 'none announced'", () => {
+    const state: NotifyState = {
+      ...EMPTY,
+      unaccepted: [
+        { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "19m" },
+      ],
+    };
+    const round = parseNotifyState(renderNotifyState(state));
+
+    // The age is NOT stored: it changes every tick and the identity does not.
+    expect(round.unaccepted).toEqual([
+      { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "" },
+    ]);
+    expect(parseNotifyState("waiting\tjohn\t016-x\n").unaccepted).toBeUndefined();
   });
 });

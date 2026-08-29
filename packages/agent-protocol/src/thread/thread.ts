@@ -435,6 +435,23 @@ export type Parking = {
   readonly kind: "person" | "event" | "run";
   /** The person of a `kind: "person"` park — the role named in the field. */
   readonly person?: string;
+  /**
+   * WHOSE TURN WAS PARKED — the `waiting-on` of the declaring message, and the half of a park
+   * that nothing above it carried until thread 042.
+   *
+   * A park is declared ON A TURN: "I stand here until this person decides". The turn is a PAIR
+   * (role × thread) and the park is written on the THREAD, so when the turn moves on to another
+   * role the park stays where it was and the new pair inherits a freeze declared about somebody
+   * else. Measured on 2026-08-28: a park declared on curator's turn (`12-11-29Z`) stood over the
+   * pair `dev-speech×010-speech-service`, whose turn arrived two letters later and had nothing
+   * to do with the decision — 4 h 16 m of silence, and the daemon printed `PARKED behind a
+   * decision of john` at every tick, a true sentence about the thread and a false one about the
+   * pair.
+   *
+   * Undefined when the declaring message named no `waiting-on` — the reader must then treat the
+   * park as covering whoever holds the turn, which is what every reader did before this field.
+   */
+  readonly holder?: string;
   /** The PR of a `kind: "event"` or `kind: "run"` park: the merge, or the round, that lifts it. */
   readonly pr?: number;
   /** The stamp of the message that declared it — the identity of the event, not of the thread. */
@@ -493,7 +510,18 @@ export const parkingOf = (
   // parks (`answer` and `ack`) require an action of the person; only `none` is mute.
   const asks = at.fields.expects !== "none";
   const named = parkedOnKind(on);
-  if (named.kind === "person") return { kind: "person", person: on, since, question, asks };
+  // The turn the park was declared on, carried and never re-decided here: whether a pair is
+  // covered by it is a judgement of the reader (`notify.ts`), and the fact is this field.
+  const holder = at.fields.waitingOn;
+  if (named.kind === "person")
+    return {
+      kind: "person",
+      person: on,
+      since,
+      question,
+      asks,
+      ...(typeof holder === "string" ? { holder } : {}),
+    };
   const { pr } = named;
   // THE PARKS THAT LIFT WITH NOBODY WRITING INTO THIS THREAD AT ALL (thread 023): the merge
   // lands and its notifier writes into the PR's OWN thread, which is not this one. Without this
