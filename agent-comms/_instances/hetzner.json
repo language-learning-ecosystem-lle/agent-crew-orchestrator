@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T15:53:08.601Z",
+  "writtenAt": "2026-08-29T15:55:59.643Z",
   "roles": [
     "curator",
     "dev-core",
@@ -16,7 +16,7 @@
     {
       "role": "curator",
       "thread": "048-box-privileges-today",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-29T16:33:07Z"
     }
   ]
