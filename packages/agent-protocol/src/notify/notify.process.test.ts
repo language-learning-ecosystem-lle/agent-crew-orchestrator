@@ -956,4 +956,61 @@ describe("a turn this box never took — notify against the journal (thread 042)
     // Nothing is owed a raise here: a frozen thread is not an untaken turn.
     expect(result.out).not.toContain("dev-core×016-mode");
   });
+  /**
+   * A park DECLARED ON THIS PAIR'S TURN and then LIFTED by the word of john, `ago` ms back.
+   * Both halves are the field's own headers (`042`, 2026-08-29): `parked-on: john` with
+   * `waiting-on: <the pair's role>`, and the courier's lift `delivers: john` that keeps the
+   * turn where it was — the handoff, and therefore the age, stays the park's own stamp.
+   */
+  const liftedPark = (contest: ReturnType<typeof contour>, id: string, ago: number): void => {
+    contest.park(id, { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "dev-core" });
+    const date = stamp(Date.now() - ago);
+    writeFileSync(
+      join(contest.root, id, "messages", `${date.replace(/:/g, "-")}-curator.md`),
+      `---\nfrom: curator\nworker: human\ndate: ${date}\nexpects: none\ndelivers: john\nwaiting-on: dev-core\n---\n\nJohn ответил: вариант D.\n`,
+    );
+  };
+
+  it("a park LIFTED A MINUTE AGO does not ring — the false call of 2026-08-29T10:05Z, end to end", () => {
+    // THE THIRD FALSE FIRING OF THIS CLASS, through the real command. `daemon.log:19561`:
+    // `1 unaccepted over 10m, 1 the box cannot justify, 1 of those new —
+    // curator×042-unaccepted-turn-silent (6h 37m, no reason known)`, rung at ~10:05Z about a
+    // pair that had stood under a park on john since 03:27:44Z — 742 ticks of `skipped: the
+    // turn is parked behind a decision of john` — and was raised 39 seconds later. The park is
+    // in the MAIL and in nothing else, which is why the juncture has to be measured here: the
+    // journal the unit tests fold has never heard of a park.
+    const contest = contour({});
+    raiseable(contest);
+    liftedPark(contest, "042-untaken", 60_000);
+    box(contest, []);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("unaccepted over 10m");
+    expect(result.out).not.toContain("this box has not raised it");
+    // And the park is gone from the composition too — it was lifted, and the silence above is
+    // the subtracted interval, not a park still standing in front of the class.
+    expect(result.out).toContain("0 parked, 0 of them asking");
+  });
+
+  it("…and once the pair has been FREE past the threshold, it rings with the free age", () => {
+    // The other half of the same seam, and the requirement the statement put in bold: curing
+    // the false call by silence would be the worse of the two defects. Thirty minutes after the
+    // lift nobody has raised the pair, and the number in the line is that free part — not the
+    // year of wall-clock standing time the fixture's handoff carries.
+    const contest = contour({});
+    raiseable(contest);
+    liftedPark(contest, "042-untaken", 30 * 60_000 + 30_000);
+    box(contest, []);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("unaccepted over 10m");
+    expect(result.out).toContain("dev-core×042-untaken (30m, no reason known)");
+    expect(result.out).toContain("this box has not raised it");
+  });
 });
