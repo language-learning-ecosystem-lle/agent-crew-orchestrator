@@ -1438,7 +1438,9 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # A BUSY ROLE IS A LEGITIMATE QUEUE and never counts; parks that DO cover the
                             # pair and freezes stay with their own classes; the 180-minute stall stays
                             # silent about a pair this class already names — "nobody is moving this" is
-                            # the vaguer of the two sentences
+                            # the vaguer of the two sentences. ONLY ON A BOX WITH SOMEBODY TO CALL,
+                            # though: the class rings a `direct` target and nobody else, so where there
+                            # is none the precedence would delete a line and put none in its place
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived

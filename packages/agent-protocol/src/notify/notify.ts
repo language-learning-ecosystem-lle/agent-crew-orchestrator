@@ -1048,7 +1048,14 @@ export const planNotifications = (input: {
     })
     .sort((a, b) => a.thread.localeCompare(b.thread) || a.role.localeCompare(b.role));
   const unexplained = unaccepted.filter((turn) => turn.reason === undefined);
-  const unacceptedIds = new Set(unaccepted.map((turn) => turn.thread));
+  // THE CLASS CAN ONLY TAKE THE STALL'S PLACE WHERE IT CAN SPEAK (thread 042). Its call is
+  // "go and look at the daemon", which is an instruction only a person at the machine can
+  // carry out, so a box with no `direct` target rings nothing here — and on such a box the
+  // precedence below would REMOVE a line and put none in its stead. Measured on the daemon's
+  // own fixture (`daemon.process.test.ts`, thread 024): a pair standing 34 days lost its
+  // `012-x (stalled 34d 16h)` and gained silence, which is the defect this thread is about.
+  const canSpeak = input.targets.some((target) => target.style === "direct");
+  const unacceptedIds = new Set(canSpeak ? unaccepted.map((turn) => turn.thread) : []);
   // AND IT TAKES PRECEDENCE OVER THE STALL, rather than standing beside it (thread 042,
   // check (д)). Both are true of a pair standing three hours untaken — the 180-minute pass
   // sees exactly the same thread — but "nobody is moving this" is the vaguer of the two

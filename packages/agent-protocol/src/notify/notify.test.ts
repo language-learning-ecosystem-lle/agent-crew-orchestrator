@@ -1107,6 +1107,29 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     expect(result.unaccepted).toHaveLength(1);
   });
 
+  it("(д3) with nobody to call, the class takes NO line away — the stall keeps its own", () => {
+    // A box whose only targets are nudged (no `direct`) rings nothing about the daemon, so the
+    // precedence above would delete a line and put none in its place. Measured on the daemon's
+    // own fixture of thread 024, where a pair standing 34 days went silent.
+    const result = planNotifications({
+      targets: [{ id: "curator", style: "nudge", nudge: "john" }],
+      waiting: [],
+      stalled: [
+        { thread: "042-unaccepted", role: "curator", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
+      ],
+      parked: [],
+      unaccepted: [
+        { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
+      ],
+      seen: EMPTY,
+      templates: TEMPLATES,
+    });
+
+    expect(result.freshUnaccepted).toEqual([]);
+    expect(result.stalled).toHaveLength(1);
+    expect(result.freshStalled).toHaveLength(1);
+  });
+
   it("(д2) a stall the class does NOT name is untouched — Д-2 and Д-4 keep their lines", () => {
     const result = untaken({
       stalled: [
