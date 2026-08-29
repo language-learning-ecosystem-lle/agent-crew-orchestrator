@@ -152,6 +152,35 @@
       }
     },
     {
+      "id": "devops",
+      "kind": "claude-code",
+      "status": "planned",
+      "wake": {
+        "mode": "watch",
+        "session": "crew-devops"
+      },
+      "summary": "Операционная роль ящика: перезапуск сервиса контура, 'pull'+install в рабочих копиях, хвост логов, статус сервисов, место на диске — список закрыт решением john (тред 047-devops-role, ответ «4 да»), расширение только PR-ом к этому файлу. Объявлена 'planned', а не 'active': перехода в системного пользователя 'aco-devops' этот билд не умеет (systemUserRefusal), а сам пользователь на ящике не заведён — до руки john по 'docs/box-setup.md' §0.1 и пройденной приёмки класса 2 контур роль не поднимает и не жжёт на неё попытки",
+      "permissions": [],
+      "zones": {
+        "writes": ["docs/box-setup.md", "docs/install-notes.md"],
+        "forbidden": [
+          "packages",
+          "docs/roles",
+          "agent-protocol.json",
+          ".github/workflows",
+          "PROTOCOL.md",
+          "REVIEWER.md"
+        ]
+      },
+      "instructions": [
+        {
+          "kind": "in-repo",
+          "path": "docs/roles/devops.md"
+        }
+      ],
+      "systemUser": "aco-devops"
+    },
+    {
       "id": "reviewer-pr",
       "kind": "github-actions",
       "status": "active",
