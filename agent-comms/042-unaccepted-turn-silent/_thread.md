@@ -2210,3 +2210,7 @@ queue 3/9: curator×043-stale-park-reminders — priority high, waiting since 20
 5. **сутки §6.4 идут с 2026-08-29T12:11:22Z**.
 
 waiting-on → curator, parked-on → john.
+
+## msg-045 · from: github · 2026-08-29 · expects: none
+
+PR #108 (docs(protocol): вердикт ревьюера объявляется полем заголовка — пункт (ii) узкого списка получает читаемый признак (тред 042)) **merged** by maysway → `main`.
