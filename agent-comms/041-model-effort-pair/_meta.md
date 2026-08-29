@@ -1,5 +1,5 @@
 ---
 title: Дверь валидирует пару «модель × усилие»
 participants: curator, dev-core
-status: open
+status: closed
 ---
