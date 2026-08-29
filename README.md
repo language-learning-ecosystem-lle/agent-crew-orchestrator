@@ -1435,7 +1435,17 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # (`dev-speech×010-speech-service` behind a park declared on curator's turn),
                             # and it gets its own text — the move is to lift the park, not to look at the
                             # daemon. A park whose message named no `waiting-on` keeps its whole thread
-                            # A BUSY ROLE IS A LEGITIMATE QUEUE and never counts; parks that DO cover the
+                            # A BUSY ROLE IS A LEGITIMATE QUEUE and never counts — AND THE QUEUE IS
+                            # SUBTRACTED FROM THE AGE, not merely checked at the tick. The first field
+                            # firing of this class was FALSE for exactly that reason (2026-08-29T02:53:11Z,
+                            # `curator×042` called at `14m, no reason known` six seconds before its own
+                            # raise, thirteen of the fourteen minutes being the role's own lease on `026`).
+                            # The lease spans come out of the same journal, their overlap with the standing
+                            # time is taken off, and only the part the role was FREE is measured against the
+                            # threshold; the printed age stays the whole standing time, which is the number
+                            # the feed shows. One slot per role makes a queue longer than 10 minutes the
+                            # normal shape of a working day, so without this the class would ring on it
+                            # every time; parks that DO cover the
                             # pair and freezes stay with their own classes; the 180-minute stall stays
                             # silent about a pair this class already names — "nobody is moving this" is
                             # the vaguer of the two sentences. ONLY ON A BOX WITH SOMEBODY TO CALL,

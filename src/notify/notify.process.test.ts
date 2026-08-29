@@ -663,6 +663,8 @@ describe("a turn this box never took — notify against the journal (thread 042)
     writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
     writeFileSync(join(contest.repo, "CARD.md"), "# dev-core\n");
   };
+  /** A journal stamp, as the schema wants it: UTC ISO, no milliseconds. */
+  const stamp = (ms: number): string => `${new Date(ms).toISOString().slice(0, 19)}Z`;
   /** The box's own state: launches ON (so no box-wide reason answers for the pair) and a journal. */
   const box = (contest: ReturnType<typeof contour>, events: readonly unknown[]): void => {
     const state = join(contest.repo, ".orchestrator");
@@ -764,6 +766,72 @@ describe("a turn this box never took — notify against the journal (thread 042)
     expect(result.out).toContain("dev-core×042-untaken");
     expect(result.out).toContain("launches are disabled on this box");
     expect(result.out).not.toContain("this box has not raised it");
+  });
+
+  it("a queue behind the role's OWN other thread does not ring when it ends", () => {
+    // THE FIRST FIELD FIRING OF THIS CLASS, END TO END THROUGH THE COMMAND, and it was false:
+    // `.orchestrator/daemon.log:30783` of 2026-08-29T02:53:11Z rang about
+    // `curator×042-unaccepted-turn-silent (14m, no reason known)` six seconds before that very
+    // pair was raised, because thirteen of the fourteen minutes were the role's own lease on
+    // `026-codex-agent-kind`. The stamps below are those journal records, rebased on the clock
+    // this test runs at: the lease covers the standing time up to a minute ago.
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    box(contest, [
+      {
+        kind: "lease-acquired",
+        ts: "2026-07-25T19:58:14Z",
+        role: "dev-core",
+        thread: "026-other",
+        deadline: "2026-07-26T00:00:00Z",
+      },
+      {
+        kind: "lease-released",
+        ts: stamp(Date.now() - 60_000),
+        role: "dev-core",
+        thread: "026-other",
+        reason: "completed",
+      },
+    ]);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("unaccepted over 10m");
+    expect(result.out).not.toContain("this box has not raised it");
+  });
+
+  it("…and once the role has been free past the threshold, the same pair rings", () => {
+    // The other half of the same seam: the queue is subtracted, not the standstill. Same
+    // fixture, the lease released half an hour ago and nobody raised the pair since.
+    const contest = contour({});
+    raiseable(contest);
+    handedTo(contest, "042-untaken", "2026-07-25T20:00:00Z");
+    box(contest, [
+      {
+        kind: "lease-acquired",
+        ts: "2026-07-25T19:58:14Z",
+        role: "dev-core",
+        thread: "026-other",
+        deadline: "2026-07-26T00:00:00Z",
+      },
+      {
+        kind: "lease-released",
+        ts: stamp(Date.now() - 30 * 60_000),
+        role: "dev-core",
+        thread: "026-other",
+        reason: "completed",
+      },
+    ]);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("unaccepted over 10m");
+    expect(result.out).toContain("dev-core×042-untaken");
   });
 
   it("a park declared on ANOTHER role's turn does not cover this pair — it rings as stale", () => {

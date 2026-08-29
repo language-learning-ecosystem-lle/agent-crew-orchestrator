@@ -1354,6 +1354,25 @@ export const planNotifications = (input: {
  * A ROLE THAT IS BUSY ELSEWHERE IS NOT A DEFECT (check (б) of the statement): one session per
  * role is the rule the daemon runs on, so a pair queued behind its own role's other thread is
  * the circuit working, and calling it a standstill would ring on every healthy busy hour.
+ *
+ * AND THE QUEUE COUNTS FOR NOTHING EVEN AFTER IT ENDS — the first field firing of this class,
+ * 2026-08-29T02:53:11Z, was a FALSE call for exactly that reason. `curator×042` had the turn
+ * from 02:39:31Z; `curator` held a lease on `026-codex-agent-kind` from 02:37:45Z to 02:52:31Z
+ * and was raised on `042` at 02:53:17Z — six seconds after the tick that rang. The box asked
+ * "is the role busy?" at the instant of the tick and "how old is the turn?" from the handoff,
+ * so thirteen of those fourteen minutes were the legitimate queue of check (б) and were counted
+ * anyway: the pair fell out of the queue with its whole age in hand, one tick before its own
+ * raise, and john was told `no reason known` about a box that had two reasons and was doing its
+ * job. Left alone it would ring on EVERY queue longer than the threshold — one slot per role
+ * makes that the normal shape of a working day, and a digest that cries at a working day is the
+ * noise that teaches its reader to stop opening it.
+ *
+ * So the age is judged on the part of the standing time the role was FREE: `busy` carries the
+ * lease spans out of the same journal `raisedAt` is read from, their overlap with the standing
+ * window is subtracted, and only what is left is measured against the threshold. The `age` in
+ * the line stays the whole wall-clock standing time — that is the number a reader sees in the
+ * feed and it must not disagree with it — and what the class asserts is the part underneath it:
+ * this box had the pair raisable for over {@link UNACCEPTED_AFTER_MINUTES} and did not raise it.
  */
 export const unacceptedTurns = (input: {
   /** One entry per open thread whose `waiting-on` names a role this box raises. */
@@ -1366,6 +1385,19 @@ export const unacceptedTurns = (input: {
   readonly raisedAt: ReadonlyMap<string, string>;
   /** The roles holding a live lease right now — their queue is legitimate, not a standstill. */
   readonly busyRoles: ReadonlySet<RoleId>;
+  /**
+   * WHEN EACH ROLE WAS BUSY, closed spans out of the journal (`lease-acquired` → the
+   * `lease-released` that answers it, a still-open lease closed at `now`). A pair cannot be
+   * raised while its role holds a lease anywhere, so this is time the box was NOT free to take
+   * the turn, and it is subtracted from the age before the threshold is applied. Absent — the
+   * caller has no journal to fold, and the whole standing time is judged as free, which is what
+   * this function did before the false call of 2026-08-29T02:53:11Z.
+   */
+  readonly busy?: readonly {
+    readonly role: RoleId;
+    readonly from: string;
+    readonly to: string;
+  }[];
   /** `role\tthread` → what the box knows is holding THIS pair back, in its own words. */
   readonly reasons?: ReadonlyMap<string, string>;
   /** What is holding back EVERY pair (launches disabled, the daemon stopped), if anything. */
@@ -1378,7 +1410,11 @@ export const unacceptedTurns = (input: {
   for (const turn of input.turns) {
     if (input.busyRoles.has(turn.role)) continue;
     const minutes = (input.now.getTime() - Date.parse(turn.since)) / 60_000;
-    if (!Number.isFinite(minutes) || minutes < after) continue;
+    if (!Number.isFinite(minutes)) continue;
+    // THE QUEUE IS SUBTRACTED, NOT JUST CHECKED AT THE TICK: a role that spent the turn's
+    // whole age on its own other thread has queued legitimately, and the fact that the queue
+    // ended a minute ago does not turn it into a standstill.
+    if (minutes - queuedMinutes(input.busy ?? [], turn, input.now) < after) continue;
     // THE TURN WAS TAKEN IF A LEASE POSTDATES THE HANDOFF, and by that alone: a pair raised
     // yesterday, released and left standing since this morning is untaken, and a rule that
     // asked "was it ever raised" would call it healthy for good.
@@ -1394,6 +1430,29 @@ export const unacceptedTurns = (input: {
     });
   }
   return out;
+};
+
+/**
+ * How much of a pair's standing time its role spent holding a lease — the legitimate queue,
+ * in minutes. Spans of other roles are none of this pair's business, and a span is clipped to
+ * the standing window at both ends: a lease taken before the handoff blocked nothing of this
+ * turn, and a lease still open at `now` counts only up to `now`.
+ */
+const queuedMinutes = (
+  busy: readonly { readonly role: RoleId; readonly from: string; readonly to: string }[],
+  turn: { readonly role: RoleId; readonly since: string },
+  now: Date,
+): number => {
+  const from = Date.parse(turn.since);
+  const until = now.getTime();
+  let queued = 0;
+  for (const span of busy) {
+    if (span.role !== turn.role) continue;
+    const start = Math.max(Date.parse(span.from), from);
+    const end = Math.min(Date.parse(span.to), until);
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start) queued += end - start;
+  }
+  return queued / 60_000;
 };
 
 export const describeAge = (minutes: number): string => {
