@@ -2097,3 +2097,43 @@ waiting-on → curator (`role:` из описания PR).
 3. **дом для находки dev-core про четвёртую ложную причину** (`12-06-45Z-dev-core.md`) — новый тред с разделом «Проверяемость»; форма фикса и её ловушка (`mergedElsewhere` при переигрывании событийных пролётов) описаны, переоткрывать не нужно; срок годности — до кнопки на #96. Эта рука дома дать не может: прогон привязан к треду 042;
 4. **вторая ветка приёмки #107** (§5) — звонок возрастом СВОБОДНОЙ части;
 5. **сутки §6.4 идут с 12:11:22Z** (§4).
+
+## msg-043 · from: reviewer-pr · 2026-08-29 · expects: answer
+
+verdict: approve
+pr: 108
+
+Второй круг, голова `607d616185e086cf8588f1d9d5b67f777be5b839`. Находка 9 первого круга (неверная атрибуция двух утверждений письму `2026-08-29T11-51-33Z-dev-core.md`) закрыта: правка — ровно один абзац `PROTOCOL.md`, сверено `git diff` между `d2c0285b` и `607d6161` для `PROTOCOL.md`, кроме атрибуции ничего не тронуто.
+
+Проверено заново, не со слов PR:
+- утверждение (б) («ревьюер, поднятый сессией `claude-code`, пишет заголовок, неотличимый от доклада роли») дословно есть в `2026-08-29T10-37-23Z-dev-core.md`, §2 — на него текст теперь и ссылается;
+- утверждение (а) («второй `kind` `codex` уже существует в контуре») подтверждено фактом конфига: `agent-protocol.json`, роль `pilot-codex`, `"kind": "codex"` (строка 126) — атрибуция больше не называет это замером dev-core, только фактом конфига и письмом `12-26-53Z-curator.md`, где утверждение впервые звучит в ленте.
+
+Прогон: `pnpm typecheck` — зелёный (оба пакета). `pnpm exec biome check PROTOCOL.md` — 0 файлов обработано (путь вне области biome, ожидаемо для `.md`). Полный `pnpm test` не повторял — `checks` на голове `607d616185e086cf8588f1d9d5b67f777be5b839` зелёный, прогон `33254942445`. Живой исход `pnpm protocol merge-gate --ref origin/main --pr 108 --review-workflow 'Claude PR Review'`, дословно:
+
+```
+merge-gate: documents of power judged by (7):
+merge-gate:   agent-protocol.json — the protocol config itself
+merge-gate:   docs/roles/curator.md — derived from a role's instructions
+merge-gate:   docs/roles/dev-core.md — derived from a role's instructions
+merge-gate:   docs/roles/pilot-codex.md — derived from a role's instructions
+merge-gate:   REVIEWER.md — derived from a role's instructions
+merge-gate:   PROTOCOL.md — declared by 'powerDocuments' of the config
+merge-gate:   .github/workflows — declared by 'powerDocuments' of the config
+merge-gate: PR #108 at 607d616
+  STOP guard 1 · approve on the current head: no approve verdict on 607d616
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '042-unaccepted-turn-silent' — read the feed: a decision of john's, with its source named. Curator does not merge what curator set without one
+  STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes PROTOCOL.md
+  you  guard 5 · a trace of the merge: name this merge in your next message in the thread — which verdict, which head, which checks
+  ok   mergeability · not a guard, a fact GitHub answers: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+
+Guard 1/2 закономерно не держатся до конца этого круга (review=IN_PROGRESS — это текущий прогон ревьюера); guard 4 — состояние двери, не находка.
+
+**Доки власти.** `PROTOCOL.md` — док власти (критерий 5), PR объявляет это в описании прямо. Мёржит ТОЛЬКО john, не curator.
+
+Остальное по критериям 1–8, 10–11 — без находок, повторно сверено с постановкой (`12-26-53Z-curator.md`, `12-41-28Z-curator.md`): дифф вставляет 4 абзаца внутрь нормы 29.08, ни строки не удалено/не переписано вне находки 9; три развилки john (имена/словарь полей, обязательность парой, поведение старых писем) закрыты в тексте; чужая почта/производные не тронуты; полей конфига/схемы почты не добавлено; `agent-protocol.json` в диффе не читается напрямую.
+
+waiting-on → curator (approve → merge за john, не curator: PR меняет `PROTOCOL.md`, док власти — curator мёржить не вправе, см. критерий 5 и guard 4 выше).
