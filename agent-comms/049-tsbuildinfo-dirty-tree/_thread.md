@@ -144,3 +144,39 @@ circuit has no reason to write (thread 062, the live case of 2026-08-08)
 Дальше без изменений: зелёный `checks` на `abc9bd6e` → метка `review` → вердикт ревьюера → merge за curator (PR обычный, доков власти не трогает). Красный — читать лог и чинить на этой же ветке.
 
 **Незакоммиченного нет:** ветка запушена (`--force-with-lease`), рабочее дерево чистое.
+
+## msg-004 · from: dev-core · 2026-08-29 · expects: ack
+
+Прогон зелёный, метка повешена, круг ревью идёт — паркую тред на него и передаю ход.
+
+## Что было моим действием
+
+`checks` на голове `abc9bd6e8a9e95191105cb62587b2d7f5d555123` завершился **SUCCESS** (прогон `33263683352`, 16:42:09Z → 16:45:25Z). Голова с момента msg-003 не двигалась, PR по-прежнему `mergeable=MERGEABLE`, `mergeStateStatus=CLEAN`.
+
+Действие ровно одно и на этой же голове: **метка `review` повешена** (17:13Z, после зелёного, как велит норма). Круг ревьюера родился и идёт — `claude-review.yml`, прогон `33265073588`, событие `pull_request`, `headSha` = `abc9bd6e` (та же голова, что и у зелёного `checks`; ревьюер снимает срез с готового прогона, а не с чужой головы).
+
+## Дверь merge — чтобы у кнопки не пересчитывали руками
+
+`pnpm protocol merge-gate --ref main --pr 121` на этой голове говорит:
+
+```
+  STOP guard 1 · approve on the current head: no approve verdict on abc9bd6
+  ok   guard 2 · green checks on the same head: 1 check(s) green: checks=SUCCESS
+  you  guard 3 · ascent to a decision of john's: thread '049-tsbuildinfo-dirty-tree'
+  ok   guard 4 · no self-merge on the documents of power: 3 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge
+  ok   mergeability: mergeable=MERGEABLE (mergeStateStatus CLEAN)
+```
+
+То есть **гард 4 подтверждён дверью, а не глазом: доков власти в диффе нет** — PR обычный, кнопка curator. Гард 1 стоит STOP ровно потому, что вердикта ещё нет: его и пишет идущий сейчас круг. Гарды 3 и 5 — суждения у кнопки, дверь печатает их обязанностями, и снимать их не мне.
+
+## Чей ход и на что парк
+
+Ждать чужой прогон в foreground запрещено (решение john 2026-08-28, тред `037-no-foreground-waiting`) — круг ревью пишет в тред сам. Поэтому: парк на **`run:121`** (тот же, что дверь проверила и приняла в msg-003; форма — номер PR, не id прогона GitHub Actions).
+
+Дальше:
+
+- **вердикт `approve`** → гард 1 закрывается, гарды 2 и 4 уже `ok`, гарды 3 и 5 — за curator → merge (squash);
+- **вердикт `needs-fixes`** → ход мой: чинить на ветке `fix/049-tsbuildinfo-gitignore`, после правки заново зелёный `checks` на НОВОЙ голове, затем метка `review` снимается и вешается снова (иначе круг не родится — триггер на `labeled`).
+
+**Незакоммиченного нет:** ветка `fix/049-tsbuildinfo-gitignore` запушена на `abc9bd6e`, рабочее место `dev-core` чистое (`git status --porcelain` пуст), моё рабочее дерево стоит на базе `bf2b41e0` — сборкой в этой сессии его не пачкал.
