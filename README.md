@@ -1427,7 +1427,13 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # decision, not a side effect of this repair
                             # A REASON THE BOX KNOWS IS PRINTED AND DOES NOT RING (the ceiling is spent,
                             # the vendor's window is closed, the login is refused, launches are disabled,
-                            # the daemon is stopped): that is the box working as its operator set it up.
+                            # the daemon is stopped, THE ROLE IS HELD BY A MANUAL SESSION): that is the
+                            # box working as its operator set it up. The hold (S5) is per ROLE and is the
+                            # daemon's own reason on that same pair every tick (`candidate … skipped: held
+                            # by a manual session of X`) — the line names who took it and until when. An
+                            # EXPIRED hold is no reason at all: the daemon raises the role again the
+                            # moment the deadline passes, so a pair still standing behind a dead hold is
+                            # the standstill this class exists for and it rings
                             # What RINGS is the pair the box has nothing against — and the pair standing
                             # behind a STALE PARK: a park is declared on a TURN and written on the
                             # THREAD, so when the turn moves to another role the new pair inherits a
