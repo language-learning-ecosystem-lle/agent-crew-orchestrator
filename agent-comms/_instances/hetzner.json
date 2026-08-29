@@ -1,18 +1,12 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T11:26:20.716Z",
+  "writtenAt": "2026-08-29T11:27:02.820Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "040-schema-bump-kills-daemon",
-      "state": "draining",
-      "deadline": "2026-08-29T12:00:47Z"
-    },
     {
       "role": "dev-core",
       "thread": "044-selfheal-blind-spots",
