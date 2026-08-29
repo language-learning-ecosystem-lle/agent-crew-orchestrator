@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T11:27:02.820Z",
+  "writtenAt": "2026-08-29T11:29:19.113Z",
   "roles": [
     "curator",
     "dev-core",
@@ -10,7 +10,7 @@
     {
       "role": "dev-core",
       "thread": "044-selfheal-blind-spots",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-29T12:20:51Z"
     }
   ]
