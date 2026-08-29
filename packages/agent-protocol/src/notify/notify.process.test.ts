@@ -924,3 +924,125 @@ describe("a turn this box never took — notify against the journal (thread 042)
     expect(result.out).toContain("behind a park on john");
   });
 });
+
+/**
+ * THE NINTH CLASS THROUGH THE DOOR IT ACTUALLY COMES OUT OF (thread 044).
+ *
+ * `daemon-drift.json` is a BRIDGE BETWEEN TWO PROCESSES — the daemon writes it when it
+ * stands, the courier reads it here — and the units on either side of it cannot see the
+ * bridge: `code-age.test.ts` renders and parses the standoff in memory, `notify.test.ts`
+ * hands `planNotifications` a `CodeDriftAlarm` already built. A wrong path, a swallowed
+ * exception, a `live` test that never holds, a field renamed on one side — every one of
+ * them leaves both unit sets green and the digest empty, and an empty digest is
+ * indistinguishable from "this box is up to date". Which is the exact defect the class was
+ * written against, so the seam gets a case of its own: the file on disk, the command, the
+ * line out.
+ */
+describe("the drift of the box reaches the digest — the standoff read off disk (thread 044)", () => {
+  /** The state the DAEMON leaves behind: a standoff, and optionally the pid of a live one. */
+  const standing = (
+    contest: ReturnType<typeof contour>,
+    options: { readonly since: string; readonly daemon: boolean },
+  ): void => {
+    const state = join(contest.repo, ".orchestrator");
+    mkdirSync(state, { recursive: true });
+    writeFileSync(
+      join(state, "daemon-drift.json"),
+      `${JSON.stringify({
+        refSha: "a27d7cdd366c962a5bd0c0a3492a56f568e2a79d",
+        sha: "8acff3fc1b2c3d4e5f60718293a4b5c6d7e8f901",
+        ref: "origin/main",
+        behind: 3,
+        since: options.since,
+        why: "no self-restart while sessions are live (dev-core/044-selfheal-blind-spots)",
+        at: "2026-07-25T20:00:00Z",
+      })}\n`,
+    );
+    // A LIVE daemon is this very test process: `runningDaemon` asks the operating system
+    // whether the pid is alive, and the one pid on this box that certainly is, is ours.
+    if (options.daemon) writeFileSync(join(state, "daemon.pid"), `${process.pid}\n`);
+  };
+  /** Long past the band — the standoff of a box that has been behind since July. */
+  const OVERDUE = "2026-07-25T20:00:00Z";
+
+  it("a standoff past the band, with the daemon alive, is a line in the digest", () => {
+    const contest = contour({});
+    contest.thread("044-x", "john");
+    standing(contest, { since: OVERDUE, daemon: true });
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    // The class, with the two SHAs and the ref as the file carries them — shortened by the
+    // command, which is the only place that decides how a sha is shown.
+    expect(result.out).toContain("this box is running code 8acff3fc while origin/main is a27d7cdd");
+    expect(result.out).toContain("3 commit(s) behind");
+    // And the daemon's own refusal, VERBATIM: the courier composes and never re-derives a
+    // verdict that stands on leases, holds and flags it cannot see.
+    expect(result.out).toContain(
+      "no self-restart while sessions are live (dev-core/044-selfheal-blind-spots)",
+    );
+    // The mail line is still there and the drift stands ABOVE it: the second fact changes
+    // what the first one means.
+    expect(result.out).toContain("⏳ твой ход: 044-x");
+    expect(result.out.indexOf("this box is running code")).toBeLessThan(
+      result.out.indexOf("⏳ твой ход: 044-x"),
+    );
+  });
+
+  it("it rings ONCE for the period — the same standoff on the next run is not news", () => {
+    const contest = contour({});
+    contest.thread("044-x", "john");
+    standing(contest, { since: OVERDUE, daemon: true });
+    contest.commit();
+
+    run(contest, ["--write"]);
+    // What was DELIVERED, not what was printed: under `--write` the message goes to the
+    // transport and the terminal keeps the summary only.
+    const sent = JSON.parse(readFileSync(contest.delivered, "utf8")) as { text: string };
+    expect(sent.text).toContain("this box is running code");
+
+    rmSync(contest.delivered);
+    const again = run(contest, ["--write"]);
+
+    // A drift does not end by itself while the window stays shut; a line every few minutes
+    // for hours is what teaches a reader to skip the class. The stamp of the period is what
+    // the state remembers, so the second run has nothing to say and sends nothing at all.
+    expect(again.out).toContain("nothing to announce");
+    expect(existsSync(contest.delivered)).toBe(false);
+  });
+
+  it("no daemon on this box is a different fact — the standoff outlives its writer and is silent", () => {
+    // The file is a STATE and the process that stood on it is gone. Ringing here would be a
+    // call about a drift nobody is standing on, in the words of a daemon that is not running.
+    const contest = contour({});
+    contest.thread("044-x", "john");
+    standing(contest, { since: OVERDUE, daemon: false });
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("⏳ твой ход: 044-x");
+    expect(result.out).not.toContain("this box is running code");
+  });
+
+  it("inside the band it is deliberately silent — a merge picked up in an hour is not news", () => {
+    const contest = contour({});
+    contest.thread("044-x", "john");
+    // Minutes old, measured against the clock the command runs on: the ordinary case the
+    // band exists to keep out of somebody's phone.
+    standing(contest, {
+      since: `${new Date(Date.now() - 5 * 60_000).toISOString().slice(0, 19)}Z`,
+      daemon: true,
+    });
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("⏳ твой ход: 044-x");
+    expect(result.out).not.toContain("this box is running code");
+  });
+});
