@@ -34,6 +34,8 @@
  * by `resolveGates`: until 2026-07-26 the first was a constant no flag could reach,
  * and a ceiling nobody can move or attribute is indistinguishable from a bug.
  */
+import { userInfo } from "node:os";
+
 import type { LocalConfig } from "../config/local.js";
 import {
   claudeCodeEffortSchema,
@@ -859,6 +861,60 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  *    in one row: curator was such a role until R22 and was made launchable by
  *    moving the skill-only half OUT of the card, not by weakening this check.
  */
+/**
+ * WHETHER THIS PROCESS MAY RAISE THE ROLE AS THE IDENTITY THE ROLE DECLARES (thread
+ * `047-devops-role`) — a refusal by name, and the only consumer of `roles[].systemUser`
+ * today.
+ *
+ * The field says which system user a role's session runs as. This build cannot SWITCH
+ * user: `spawn` inherits uid/gid, and the narrow entitlement that would let the daemon
+ * become one named user is set up on the box, not here. So there are exactly two honest
+ * outcomes, and the third — the one this door exists to forbid — is raising the session as
+ * the daemon's own user anyway. That third outcome is not a smaller version of the
+ * declaration, it is its opposite: on this box the daemon's user carries the `sudo` group
+ * and reads both git private keys and the transport's `secrets.env`, so a role declared to
+ * run as a stripped-down identity would instead run with everything the box has. Privilege
+ * by presence is the exact thing the declaration is for, and a quiet fallback would hand it
+ * over while the config says otherwise.
+ *
+ * `undefined` means "no declaration" — every role that runs today — and it is passed
+ * through untouched: the session runs as the process's own user, as it always has.
+ *
+ * The refusal names all three things a reader needs: the role, the user it asks for and the
+ * user this process actually is. Whoever reads it in a log can tell "the box was never set
+ * up" from "the daemon runs as the wrong user" without opening the config.
+ */
+/**
+ * The system user THIS process runs as, asked once and in one place. `undefined` when the
+ * box cannot answer (a uid with no passwd entry — containers do this): an unknown user is
+ * not the declared one, so the door above refuses and says so, rather than guessing that
+ * the identity matched.
+ */
+export const currentSystemUser = (): string | undefined => {
+  try {
+    return userInfo().username;
+  } catch {
+    return undefined;
+  }
+};
+
+export const systemUserRefusal = (
+  role: Role,
+  currentUser: string | undefined,
+): string | undefined => {
+  const declared = role.systemUser;
+  if (declared === undefined) return undefined;
+  if (declared === currentUser) return undefined;
+  return [
+    `role '${role.id}' declares systemUser '${declared}',`,
+    `and this process runs as '${currentUser ?? "(unknown user)"}':`,
+    "raising a session as another system user is not implemented in this build, and raising it as",
+    "this user instead would give the role the privileges of the box it happens to run on —",
+    "which is what the declaration exists to end (thread 047-devops-role).",
+    `Repair: run the daemon as '${declared}', or drop the declaration from the role's card in the config.`,
+  ].join(" ");
+};
+
 export const roleLaunchability = (role: Role): Launchability => {
   if (role.status !== "active") return { launchable: false, reason: "inactive" };
   // The resident check comes BEFORE the general one so that the reason a human reads is

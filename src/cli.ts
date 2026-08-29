@@ -268,6 +268,7 @@ import {
   type AgentParams,
   buildLaunchPrompt,
   buildResumePrompt,
+  currentSystemUser,
   DEFAULT_WORKER,
   describeAgent,
   describeCeilings,
@@ -288,6 +289,7 @@ import {
   resolveGates,
   resolveWorker,
   roleLaunchability,
+  systemUserRefusal,
 } from "./orchestrator/launch.js";
 import { foldLeases, isLeaseAlive, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
@@ -8770,6 +8772,14 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     fail(`role '${roleId}' is not launched by the orchestrator: ${can.reason}`, 2);
     return;
   }
+  // THE IDENTITY THE ROLE DECLARES, checked at the hand-typed door as well as the daemon's
+  // (thread 047) — and for the reason every other door here is doubled: a manual `run` is
+  // the way around the topology, and it is typed exactly when something is already wrong.
+  const wrongUser = systemUserRefusal(role, currentSystemUser());
+  if (wrongUser !== undefined) {
+    fail(wrongUser, 2);
+    return;
+  }
   // WHOSE ROLE THIS IS (R13) — the same door as the daemon's, and deliberately the same
   // code. A hand-typed `run` is the one mutator the workspace lock cannot see: the lock
   // keeps a second session off a tree on THIS box, ownership is what keeps this box out
@@ -9707,6 +9717,15 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // through.
     const profile = role?.launch;
     if (role === undefined || profile === undefined) return;
+    // The declared system identity (thread 047). Unlike the profile above this one is NOT
+    // true by construction — `roleLaunchability` is a pure function of the role and cannot
+    // know which user this process is — so it is said out loud rather than returned in
+    // silence: a pair that is never raised and never explained reads as a dead circuit.
+    const wrongUser = systemUserRefusal(role, currentSystemUser());
+    if (wrongUser !== undefined) {
+      pairErr(candidate, wrongUser);
+      return;
+    }
     const key = pairKey(candidate);
     if (live.has(key)) return;
     const startedAt = new Date();
