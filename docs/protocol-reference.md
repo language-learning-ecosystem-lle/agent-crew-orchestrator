@@ -1353,3 +1353,44 @@ selected model (claude-opus-5-typo). It may not exist or you may not have access
 `modelUsage` прогона несёт `claude-opus-5[1m]` с `contextWindow: 1000000` и `canonicalModel:
 claude-opus-5` — расхождение записей («claude-opus-5» в сессионном логе против `claude-opus-5[1m]` в
 журнале запусков) объясняется этой парой полей, а не двумя разными моделями.
+
+## Чтение почты под песочницей вендора: вердикт — код выхода ребёнка, а не errno родителя (тред 026)
+
+**Замер 2026-08-28** под песочницей codex (`codex exec --sandbox read-only`, codex-cli `0.150.1`,
+node 24.18.0), одна и та же коробка, одна и та же команда из node:
+
+```
+spawnSync("git", ["-C", <почта>, "rev-parse", "--show-toplevel"])
+  → { error: Error("spawnSync git EPERM"), status: 0, stdout: "/home/…/.worktrees/comms" }
+spawnSync("/bin/echo", ["hi"])
+  → { error: Error("spawnSync /bin/echo EPERM"), status: 0, stdout: "hi" }
+```
+
+Ребёнок ЗАПУСТИЛСЯ, вышел с кодом 0, вывод снят — и `error` при этом выставлен. Асинхронная форма
+(`child_process.spawn`) на том же вызове не сообщает об ошибке вовсе. `execFileSync` бросает по
+условию «`error` ИЛИ ненулевой статус», поэтому под этой песочницей УСПЕШНЫЙ вызов git превращался в
+исключение, и `thread show` умирал строкой `'…/agent-comms' is not inside a git repository: spawnSync
+git EPERM` — на чекауте, который внутри репозитория. **Измерена именно противоречивая пара (`error`
+выставлен, `status` = 0); какой сисколл отказывает песочнице — не измерено и диагнозом не подаётся.**
+
+**Что из этого следует по коду.** Путь ЧТЕНИЯ (`fs/git.ts`, `repoOf`/`gitAsk`/`checkoutOf` в `cli.ts`,
+`orchestrator/home.ts`) ходит через `execFileSyncByExit` (`fs/exec-sync.ts`): вердикт даёт ребёнок.
+`status === null` — ребёнок не стартовал, это и есть законный смысл `error` у node, и такой вызов
+по-прежнему отказ. Ненулевой код — отказ со ВЛОЖЕННЫМ stderr git'а. Путь ЗАПИСИ (доставка, замки,
+раннер) оставлен на `execFileSync`: он в этот такт не мерился, а сплошная замена была бы правкой,
+которой никто не мерил.
+
+**Отказ `repoOf` перестал называть топологию тем, чего не спросил.** Ребёнок не стартовал — «could
+not run git for '<путь>': …»; git ответил — прежнее «is not inside a git repository», уже со словами
+самого git. Это дисциплина 4: дверь называет ту причину, которая у неё есть.
+
+**Форма запуска под песочницей — загрузчик, а не бинарь `tsx`.** Обёртка `tsx` поднимает
+IPC-слушателя, а песочница не даёт `listen`: node падает в `node:net` с `listen EPERM …
+/tmp/tsx-<uid>/<pid>.pipe` ещё до всякого git. Работающая форма — `node --import tsx
+packages/agent-protocol/src/cli.ts …`; она же стоит в процессном тесте
+(`read-under-sandbox.process.test.ts`).
+
+**Чего CI не удержит, сказано вслух:** самой песочницы на раннере нет — ни codex, ни профиля
+apparmor, ни учётки. Ни один чек не защищает эту починку от регресса под песочницей; сторож там
+один — живой прогон. Тесты держат решение, которое песочница обнажила (`verdictOf` на измеренной
+паре) и слова отказа на настоящем CLI.
