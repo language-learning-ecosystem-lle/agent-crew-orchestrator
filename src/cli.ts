@@ -74,6 +74,7 @@ import {
   renderUnreadThreads,
   type ThreadFailure,
 } from "./fs/comms.js";
+import { execFileSyncByExit, SyncRunError } from "./fs/exec-sync.js";
 import {
   fileExistsAtRef,
   mailCheckoutFreshness,
@@ -1093,11 +1094,17 @@ const gitEnvOutsideHook = (): NodeJS.ProcessEnv => {
  */
 const repoOf = (at: string, env?: NodeJS.ProcessEnv): string => {
   try {
-    return execFileSync("git", ["-C", at, "rev-parse", "--show-toplevel"], {
-      encoding: "utf8",
+    return execFileSyncByExit("git", ["-C", at, "rev-parse", "--show-toplevel"], {
       ...(env === undefined ? {} : { env }),
     }).trim();
   } catch (error) {
+    // TOPOLOGY IS WHAT GIT SAID, NOT WHAT WE COULD NOT ASK. This line used to render
+    // every failure as "is not inside a git repository" — including a refusal to start
+    // git at all, which is how a sandbox denial arrived at the user as a wrong claim
+    // about the directory (discipline 4: a refusal names the cause it actually has).
+    if (error instanceof SyncRunError && !error.ran) {
+      return fail(`could not run git for '${at}': ${error.message}`, 2);
+    }
     return fail(`'${at}' is not inside a git repository: ${(error as Error).message}`, 2);
   }
 };
@@ -4596,8 +4603,9 @@ const gitAsk = (
   timeoutMs?: number,
 ): string | undefined => {
   try {
-    return execFileSync("git", args, {
-      encoding: "utf8",
+    // `execFileSyncByExit`: this call renders its failure as "could not be read", so a
+    // parent-side errno on a call the child ANSWERED would turn a fact into silence.
+    return execFileSyncByExit("git", args, {
       stdio: ["ignore", "pipe", "ignore"],
       maxBuffer: 16 * 1024 * 1024,
       ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
@@ -6918,9 +6926,7 @@ const commandPath = (exec: string): string | undefined => {
 /** `repoOf`/`homeOf` for a path that may not be in a repository at all — see decision 7. */
 const checkoutOf = (at: string): string | undefined => {
   try {
-    return execFileSync("git", ["-C", at, "rev-parse", "--show-toplevel"], {
-      encoding: "utf8",
-    }).trim();
+    return execFileSyncByExit("git", ["-C", at, "rev-parse", "--show-toplevel"]).trim();
   } catch {
     return undefined;
   }
