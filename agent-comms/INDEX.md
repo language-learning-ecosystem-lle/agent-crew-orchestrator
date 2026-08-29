@@ -42,4 +42,4 @@
 | 038-pilot-codex-live-run | curator, pilot-codex | open | curator | 2026-08-28 |
 | 039-doctor-account-kind-probe | curator, dev-core | closed | — | 2026-08-28 |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | open | curator | 2026-08-28 |
-| 041-model-effort-pair | curator, dev-core | open | curator | 2026-08-28 |
+| 041-model-effort-pair | curator, dev-core | open | curator | 2026-08-29 |
