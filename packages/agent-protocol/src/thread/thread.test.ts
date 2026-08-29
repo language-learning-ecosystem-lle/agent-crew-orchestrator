@@ -444,6 +444,127 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
   });
 });
 
+describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", () => {
+  // The fixtures are built from REAL headers, and all of them from the two days the norm was
+  // measured on: the LLE feed of 2026-08-28 named in `PROTOCOL.md` message by message, and this
+  // circuit's own thread `042-unaccepted-turn-silent` of 2026-08-29.
+  const message = (
+    date: string,
+    fields: Partial<Message["fields"]> & { from: string },
+    text = "…",
+  ): Message => ({
+    fields: { expects: "answer", date, ...fields },
+    text,
+  });
+  const thread = (...messages: readonly Message[]): Thread => ({
+    id: "010-speech-service",
+    meta: { title: "t", participants: ["curator", "dev-speech", "github", "john"], status: "open" },
+    messages: [...messages],
+  });
+  // `12-11-29Z-curator.md`: the park declared ON CURATOR'S OWN TURN — the header the whole norm
+  // is read from (`parked-on: john`, `waiting-on: curator`).
+  const declared = message("2026-08-28T12:11:29Z", {
+    from: "curator",
+    parkedOn: "john",
+    waitingOn: "curator",
+  });
+
+  it("THE 4 h 16 m OF LLE: the turn moved to another role, so the park covers nobody", () => {
+    // 2026-08-28, the case the norm was written on. Two letters after the park the turn stood on
+    // `dev-speech`, a role waiting for nothing from john — and the daemon printed
+    // `⏸ PARKED behind a decision of john (R27)` 201 times, a true sentence about the thread and
+    // a false one about the pair. Between `lease-released 12:13:54Z` and `lease-acquired
+    // 16:29:49Z` the journal has not one line.
+    const feed = thread(
+      declared,
+      message("2026-08-28T12:13:16Z", { from: "dev-speech", waitingOn: "curator" }),
+      message("2026-08-28T12:14:09Z", { from: "github", expects: "none", waitingOn: "dev-speech" }),
+    );
+    expect(parkedOnOf(feed)).toBeUndefined();
+  });
+
+  it("AT THE SAME HOLDER A ROLE'S OWN REPORT LEAVES IT STANDING — the narrowing of 22.08 kept", () => {
+    // `042`, 2026-08-29: the park of `03-27-44Z-curator.md` (`expects: ack`, `waiting-on:
+    // curator`) and dev-core's report of `03-36-47Z` (`expects: answer`, `waiting-on: curator`)
+    // — the turn never left curator, and a report is not an answer from john. This is defect
+    // (в1) of thread 030, and it is exactly what the new lift must not undo.
+    const feed = thread(
+      declared,
+      message("2026-08-29T03:36:47Z", { from: "dev-core", waitingOn: "curator" }),
+    );
+    expect(parkedOnOf(feed)).toBe("john");
+  });
+
+  it("AT THE SAME HOLDER AN ACTIONABLE OUTCOME OPENS A NEW TURN — red CI, green `checks`", () => {
+    // The second half of the norm, and the header carries the whole judgement already: the
+    // notifier names the role on `failure`/`timed_out`/… and on a green `checks` over a PR
+    // without the `review` label, and stays silent (no `waiting-on`) on the trace class. So an
+    // outcome is "the turn is handed over WITHOUT a question in it", which no report ever is.
+    const feed = thread(
+      declared,
+      message("2026-08-28T12:20:00Z", { from: "github", expects: "none", waitingOn: "curator" }),
+    );
+    expect(parkedOnOf(feed)).toBeUndefined();
+  });
+
+  it("THE TRACE OF THE CIRCUIT OPENS NOTHING — it hands the turn to nobody", () => {
+    // The `success` echo and the merge notifier: `expects: none` and no `waiting-on` at all.
+    // This is the class the narrowing of 22.08 was bought for (the notifier of #192, thread
+    // 023), and it stays outside both lifts.
+    const feed = thread(
+      declared,
+      message("2026-08-28T12:20:00Z", { from: "github", expects: "none", mergedPr: 192 }),
+    );
+    expect(parkedOnOf(feed)).toBe("john");
+  });
+
+  it("A DECLARED NULL AFTER THE PARK OPENS NOTHING — it moves the thread to nobody", () => {
+    const feed = thread(
+      declared,
+      message("2026-08-28T12:20:00Z", { from: "github", expects: "none", waitingOn: null }),
+    );
+    expect(parkedOnOf(feed)).toBe("john");
+  });
+
+  it("THE TURN COMING BACK DOES NOT REVIVE IT — the third turn is not the parked one", () => {
+    // A park is declared on ONE turn. Once the turn has gone to somebody else that turn is over,
+    // and a later handover back to the same role starts a new one, which inherits no freeze.
+    const feed = thread(
+      declared,
+      message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-speech" }),
+      message("2026-08-28T12:30:00Z", { from: "dev-speech", waitingOn: "curator" }),
+    );
+    expect(parkedOnOf(feed)).toBeUndefined();
+  });
+
+  it("'delivers' STILL LIFTS IT WHOLE — the word of the person outranks whose turn it is", () => {
+    const feed = thread(
+      declared,
+      message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-speech" }),
+      message("2026-08-28T12:30:00Z", {
+        from: "curator",
+        expects: "none",
+        delivers: "john",
+        waitingOn: "dev-speech",
+      }),
+    );
+    expect(parkedOnOf(feed)).toBeUndefined();
+  });
+
+  it("A PARK THAT NAMED NO TURN KEEPS THE WHOLE THREAD — the MODE parks of 016 and 052", () => {
+    // THE REGRESSION WITHOUT WHICH THIS CHANGE MUST NOT BE TAKEN: ten parks stand in the field
+    // today, the oldest eleven days old, and the ones declared without `waiting-on` say nothing
+    // about whose turn they were set on. Guessing would turn every one of them into a raise on
+    // the day this ships, so they behave exactly as they did before 042.
+    const feed = thread(
+      message("2026-08-28T12:11:29Z", { from: "curator", expects: "none", parkedOn: "john" }),
+      message("2026-08-28T12:13:16Z", { from: "dev-speech", waitingOn: "curator" }),
+      message("2026-08-28T12:14:09Z", { from: "github", expects: "none", waitingOn: "dev-speech" }),
+    );
+    expect(parkedOnOf(feed)).toBe("john");
+  });
+});
+
 describe("parkedThreads — what the planner is told (R27)", () => {
   const thread = (id: string, parkedOn?: string): Thread => ({
     id,
