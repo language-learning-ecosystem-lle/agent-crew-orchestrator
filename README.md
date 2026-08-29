@@ -1569,7 +1569,7 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
@@ -1705,17 +1705,42 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # in the PR's description, and the thread parked on that PR is another one —
                             # so a park is judged against the merges of the WHOLE mail (`mergedPrs`), not
                             # against the feed it happens to lie in
+                            # --verdict approve|needs-fixes WITH --pr <n>: THE VERDICT OF A REVIEW ROUND,
+                            # declared in the HEADER (thread 042, decision of john 2026-08-29). The two
+                            # lines `REVIEWER.md` already asks for in the BODY, said where the R27 net is
+                            # allowed to read them — the norm of 020 forbids it the body, so until these
+                            # fields existed the third member of the norm's list was unreadable and the
+                            # verdict of LLE 17:40:11Z landed in a parked thread and was eaten (19 minutes)
+                            # A PAIR, and the door refuses a half: `--verdict` without `--pr` is an outcome
+                            # with no address, `--pr` without `--verdict` says nothing happened. The reader
+                            # of the feed drops a half too, so writing one would be writing to nobody
+                            # WHAT IT DOES: opens a NEW TURN at the SAME holder (the norm of 29.08, point
+                            # (ii)) — a park on a person declared on the previous turn stops reaching this
+                            # one. WHAT IT DOES NOT: it lifts no park on a person (that is `--delivers` and
+                            # `status: closed`), it touches neither `pr:` nor `run:` parks, it raises nobody
+                            # and spends nothing, and it replaces no line of the body — the header is a
+                            # machine-readable duplicate, not a new genre of letter
+                            # NO PERMISSION GATES IT and the sender's ROLE IS NOT CHECKED against the config:
+                            # the source of truth is the DECLARATION, as it is for `--delivers`. Reading the
+                            # reviewer's `kind`/`wake.mode` instead was the alternative john rejected by
+                            # name — it breaks the day the reviewer's tool changes, and a second `kind`
+                            # (`codex`) exists in this circuit already
 agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id> [--timeout <sec>] [--poll <sec>]
                             # blocks until the thread waits on the role again; needs a wait declared
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                             # --delivers: THE SAME FIELD TOO (thread 030), by the same door and with the
                             # same two refusals — a thread is often OPENED by the courier of a decision,
                             # and the park that word lifts stands in ANOTHER thread. Written here on the
                             # day the field is born, because 075 is what a flag parsed by one command of
                             # the pair and swallowed by the other costs in an append-only feed
+                            # --verdict/--pr: THE SAME PAIR TOO (thread 042), by the same door and the same
+                            # refusal on a half. In an OPENING message the pair opens no turn — the walk of
+                            # `standingParkOf` looks for a park EARLIER in the same thread and a first
+                            # message has none — but it is WRITTEN rather than eaten, for the reason 075
+                            # was paid for; the alternative is a flag one command of the pair swallows
                             # --parked-on: THE SAME FIELD AS `new-message`'s, same values and same refusals
                             # (thread 075) — an opening message is a message, and a question to the owner of
                             # a decision is very often what opens a thread (074 is the live case). It was

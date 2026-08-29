@@ -427,6 +427,59 @@ describe("the park of a turn in the header (R27)", () => {
     expect(message.warnings?.[0]).toMatch(/^'delivers: pr:5'/);
   });
 
+  it("THE VERDICT OF A ROUND round-trips as a PAIR (thread 042)", () => {
+    const parsed = parseMessageFile(raw("verdict: approve\npr: 108\n"));
+
+    expect([parsed.fields.verdict, parsed.fields.pr]).toEqual(["approve", 108]);
+    expect(parsed.warnings).toBeUndefined();
+    // An ordinary message otherwise, exactly as the norm says: the reviewer keeps asking for
+    // something and keeps naming who acts next.
+    expect([parsed.fields.expects, parsed.fields.waitingOn]).toEqual(["answer", "curator"]);
+    const rendered = renderMessageFile(parsed);
+    expect(rendered).toContain("verdict: approve\npr: 108");
+    const again = parseMessageFile(rendered);
+    expect([again.fields.verdict, again.fields.pr]).toEqual(["approve", 108]);
+  });
+
+  it("'needs-fixes' is the other half of the vocabulary, and no third word is", () => {
+    expect(parseMessageFile(raw("verdict: needs-fixes\npr: 96\n")).fields.verdict).toBe(
+      "needs-fixes",
+    );
+    const invented = parseMessageFile(raw("verdict: lgtm\npr: 96\n"));
+    expect([invented.fields.verdict, invented.fields.pr]).toEqual([undefined, undefined]);
+    expect(invented.warnings).toEqual([
+      "'verdict: lgtm' — allowed values are approve | needs-fixes",
+    ]);
+  });
+
+  it("HALF A PAIR IS NOT AN OUTCOME — both halves are dropped, and the reason is named", () => {
+    // The feed is append-only: a reader cannot fix a header, and reading `verdict:` alone as an
+    // outcome would open a turn on a message that never said which PR it is about. The writing
+    // door refuses this shape outright; here it is dropped, with the message still read.
+    const lonely = parseMessageFile(raw("verdict: approve\n"));
+    expect([lonely.fields.verdict, lonely.fields.pr]).toEqual([undefined, undefined]);
+    expect(lonely.warnings?.[0]).toMatch(
+      /^'verdict: approve' — a review verdict is declared by BOTH fields/,
+    );
+    const addressOnly = parseMessageFile(raw("pr: 108\n"));
+    expect([addressOnly.fields.verdict, addressOnly.fields.pr]).toEqual([undefined, undefined]);
+    expect(addressOnly.warnings?.[0]).toMatch(/^'pr: 108' — a review verdict is declared by BOTH/);
+    expect(addressOnly.fields.from).toBe("curator");
+  });
+
+  it("an address that is not a number is dropped with its reason, the pair with it", () => {
+    const message = parseMessageFile(raw("verdict: approve\npr: #108\n"));
+    expect([message.fields.verdict, message.fields.pr]).toEqual([undefined, undefined]);
+    expect(message.warnings).toEqual(["'pr: #108' — expected the number of a PR"]);
+  });
+
+  it("absent is the ordinary case here too — the old letters declare no verdict (042)", () => {
+    // The price named in the norm itself: mail written before the fields existed gets none, by
+    // hand or by migration, and is read as "no verdict declared" — which is today's behaviour.
+    expect(parseMessageFile(raw("")).fields.verdict).toBeUndefined();
+    expect(parseMessageFile(raw("")).fields.pr).toBeUndefined();
+  });
+
   it("the four fields of the turn still refuse the file — staleness is worse than a refusal", () => {
     expect(() => parseMessageFile(raw("").replace("expects: answer", "expects: maybe"))).toThrow(
       MessageFormatError,

@@ -200,6 +200,15 @@ export const EXPECTS = ["answer", "ack", "none"] as const;
 export type Expects = (typeof EXPECTS)[number];
 
 /**
+ * `verdict` — the outcome of a review round, and DELIBERATELY the vocabulary of `REVIEWER.md`
+ * word for word rather than a new one: the header field is a machine-readable duplicate of the
+ * two lines the reviewer already writes in the body, so a second spelling of the same two
+ * outcomes would be a second source of truth over one value.
+ */
+export const VERDICT_VALUES = ["approve", "needs-fixes"] as const;
+export type VerdictValue = (typeof VERDICT_VALUES)[number];
+
+/**
  * The worker values in use here. NOT a validation list (see the doc block) — it is
  * what the CLI names in its refusals, so that whoever has to pass `--worker` is told
  * what the neighbours use instead of being left to invent a spelling.
@@ -338,6 +347,45 @@ export type MessageFields = {
    * to be able to trust.
    */
   readonly mergedPr?: number;
+  /**
+   * THE VERDICT OF A REVIEW ROUND, DECLARED IN THE HEADER (thread 042, decision of john
+   * 2026-08-29, `PROTOCOL.md` "ПУНКТ (ii) ПОЛУЧАЕТ ЧИТАЕМЫЙ ПРИЗНАК"), together with
+   * {@link MessageFields.pr}, which says about WHICH pull request it is.
+   *
+   * The norm of 2026-08-29 says a park on a person holds the TURN it was declared on and not the
+   * thread, and it lists three outcomes that open a new turn at the SAME holder. Two of them —
+   * a red CI and a green `checks` on a PR without the `review` label — arrive in a letter of the
+   * notifier that names a role in `waiting-on` with `expects: none`, so `standingParkOf` reads
+   * them out of the header already. The third, the reviewer's verdict, was unreadable there: by
+   * the header it is a letter of a role with `expects: answer` and `waiting-on: curator`,
+   * indistinguishable from any report, and its `verdict:`/`pr:` lines ride in the BODY, which the
+   * R27 net is forbidden to parse (norm 020). The cost was measured in LLE on 2026-08-28,
+   * 17:40→17:59Z: the verdict landed in a thread parked six minutes earlier and was eaten.
+   *
+   * So the same two lines are raised into the header, and the SIGN IS THE DECLARATION rather
+   * than the sender: reading the reviewer's ROLE against the config would buy a permanent second
+   * source of truth that breaks whenever the reviewer's tool changes (a second `kind`, `codex`,
+   * exists in this circuit already) — the alternative john rejected by name.
+   *
+   * WHAT THE PAIR DOES: exactly one thing — it opens a NEW TURN at the same holder, so a park on
+   * a person declared on the previous turn no longer reaches this one. WHAT IT DOES NOT DO: it
+   * does not lift a park on a person (that is `delivers` and `status: closed`), it does not touch
+   * the event parks `pr:`/`run:`, it raises nobody and spends nothing by itself, and it leaves
+   * the message ordinary — `waiting-on` and `expects` are declared and judged in it as always.
+   * No permission gates it, and the body lines are not replaced: the header is a machine-readable
+   * duplicate, not a new genre of letter.
+   */
+  readonly verdict?: VerdictValue;
+  /**
+   * WHICH PULL REQUEST THE VERDICT IS ABOUT — the other half of {@link MessageFields.verdict},
+   * and the two are read and written as ONE field: a header carrying exactly one of them is
+   * refused at the writing door and dropped by this reader, because a verdict without an address
+   * is a remark rather than an outcome.
+   *
+   * Not to be confused with {@link MessageFields.mergedPr}, which says a PR has LANDED and lifts
+   * an event park: this one says a round about it has ENDED.
+   */
+  readonly pr?: number;
   /**
    * TASKS DECLARED OR MOVED by this message (thread 021) — the one source the board is
    * derived from. Repeatable: one message opens and moves several at once.
@@ -761,6 +809,32 @@ export const parseMessageFile = (raw: string): Message => {
     return value === undefined ? undefined : Number(value);
   });
 
+  // THE VERDICT IS ONE FIELD IN TWO LINES (thread 042) — and it is read as one, in a single
+  // `soft`, because half a pair says nothing: `verdict:` without `pr:` is an outcome without an
+  // address, `pr:` alone is an address without an outcome, and either of them alone opening a
+  // new turn would be the net guessing. The writing door refuses half a pair outright; here, in
+  // an append-only feed that cannot be fixed, both halves are DROPPED with the reason named —
+  // the message itself is read, exactly as with every other field of the tolerant half.
+  const verdictPair = soft(() => {
+    const verdictRaw = raws.get("verdict");
+    const prRaw = raws.get("pr");
+    if (verdictRaw === undefined && prRaw === undefined) return undefined;
+    if (verdictRaw === undefined || prRaw === undefined) {
+      throw new MessageFormatError(
+        `'${verdictRaw === undefined ? `pr: ${prRaw}` : `verdict: ${verdictRaw}`}' — a review verdict is declared by BOTH fields ('verdict: ${VERDICT_VALUES.join("|")}' and 'pr: <number>') and this header carries one; a verdict without an address is not an outcome, so neither half is read`,
+      );
+    }
+    if (!(VERDICT_VALUES as readonly string[]).includes(verdictRaw)) {
+      throw new MessageFormatError(
+        `'verdict: ${verdictRaw}' — allowed values are ${VERDICT_VALUES.join(" | ")}`,
+      );
+    }
+    if (!/^\d+$/.test(prRaw)) {
+      throw new MessageFormatError(`'pr: ${prRaw}' — expected the number of a PR`);
+    }
+    return { verdict: verdictRaw as VerdictValue, pr: Number(prRaw) };
+  });
+
   const tasks = (repeated.get("task") ?? []).flatMap((raw) => {
     const task = soft(() => parseTaskDeclaration(raw));
     return task === undefined ? [] : [task];
@@ -780,6 +854,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(parkedOn === undefined ? {} : { parkedOn }),
     ...(delivers === undefined ? {} : { delivers }),
     ...(mergedPr === undefined ? {} : { mergedPr }),
+    ...(verdictPair ?? {}),
     ...(tasks.length === 0 ? {} : { tasks }),
     ...(suffix === undefined ? {} : { suffix }),
   };
@@ -830,6 +905,10 @@ export const renderMessageFile = (message: Message): string => {
     // Beside `parked-on` because it is its counterpart: one freezes a turn behind an event,
     // this one says the event happened.
     ...(fields.mergedPr === undefined ? [] : [`merged-pr: ${fields.mergedPr}`]),
+    // The pair prints as a pair and in this order (thread 042): the outcome first, the address
+    // after it, the way the reviewer has always written the two lines of the body.
+    ...(fields.verdict === undefined ? [] : [`verdict: ${fields.verdict}`]),
+    ...(fields.pr === undefined ? [] : [`pr: ${fields.pr}`]),
     // Last of the meaningful fields and repeatable: the declarations read as a block,
     // and a block that grows downwards leaves every field above it where it was.
     ...(fields.tasks ?? []).map((task) => `task: ${renderTaskDeclaration(task)}`),

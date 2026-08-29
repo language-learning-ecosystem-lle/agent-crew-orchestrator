@@ -789,10 +789,15 @@ const standingParkOf = (thread: Thread): number | undefined => {
         // — the same class the event parks lift on, read from the same two header fields. What
         // it is NOT is the class the narrowing of 22.08 bought: the role's own report asks
         // (`expects` != none) and the trace of the circuit (`success` echo, merge-notify) hands
-        // the turn to nobody, so neither says the wait is over. The reviewer's verdict is the
-        // third member of the norm's list and is NOT here: by the header it is a letter of a
-        // role with `expects: answer`, indistinguishable from a report, and inventing a sign for
-        // it is forbidden to this net (norm 020, and the fork is john's — thread 042).
+        // the turn to nobody, so neither says the wait is over.
+        //
+        // THE THIRD MEMBER OF THE LIST — THE REVIEWER'S VERDICT — reaches this walk since
+        // 2026-08-29 (decision of john, thread 042, `PROTOCOL.md` "ПУНКТ (ii) ПОЛУЧАЕТ ЧИТАЕМЫЙ
+        // ПРИЗНАК"), and it needed a sign of its own because by `expects`/`waiting-on` alone it is
+        // a letter of a role with `expects: answer`, indistinguishable from a report. The sign is
+        // the DECLARED PAIR `verdict:`/`pr:` in the header — the sender's role is deliberately
+        // NOT read against the config — so no body text is parsed here either, and a letter
+        // written before the fields existed carries none and opens nothing, exactly as it did.
         return outcomeFor.has(holder) ? undefined : at;
       }
       // The event parks keep the walk exactly as it was: they wait for a machine event, and the
@@ -804,7 +809,12 @@ const standingParkOf = (thread: Thread): number | undefined => {
     const waitingOn = message.fields.waitingOn;
     if (typeof waitingOn === "string") {
       handedTo.add(waitingOn);
-      if (message.fields.expects === "none") outcomeFor.add(waitingOn);
+      // The outcome is stated in one of two ways, and both are header fields: the circuit hands
+      // the turn over without asking anything (`expects: none`), or a message DECLARES the
+      // verdict of a round (thread 042). The verdict's own `expects` is `answer` and stays that:
+      // the reviewer asks the author for fixes or curator for the button, and the norm of
+      // `REVIEWER.md` does not move a line — what the pair adds is the OUTCOME being readable.
+      if (message.fields.expects === "none" || declaresVerdict(message)) outcomeFor.add(waitingOn);
     }
     // The walk does not stop here any more, it REMEMBERS: a message that moves somebody lifts an
     // event park, and behind it there may still stand a park on a person that it does not touch.
@@ -812,6 +822,14 @@ const standingParkOf = (thread: Thread): number | undefined => {
   }
   return undefined;
 };
+
+/**
+ * Does this message DECLARE the verdict of a review round (thread 042)? Both halves are demanded
+ * here as they are at the writing door: the reader drops a lone half, and a walk that accepted
+ * one would open a turn on a header the feed does not actually carry.
+ */
+const declaresVerdict = (message: Message): boolean =>
+  message.fields.verdict !== undefined && message.fields.pr !== undefined;
 
 /** Does this message move anybody — by asking, or by naming whose turn it now is? */
 const movesSomebody = (message: Message): boolean =>
