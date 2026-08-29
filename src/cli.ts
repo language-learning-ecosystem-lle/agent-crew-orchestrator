@@ -555,6 +555,7 @@ import {
   mergedPrs,
   parkingOf,
   parseMetaFile,
+  personParkSpansOf,
   personParksOf,
   renderMetaFile,
   renderThread,
@@ -3881,6 +3882,18 @@ const runNotify = async (input: {
     const since = waitingSince({ messages: thread.messages, role: holder });
     return since === undefined ? [] : [{ role: holder, thread: thread.id, since }];
   });
+  // AND HOW LONG EACH OF THEM WAS FROZEN BEHIND A PERSON — the half of the eighth class's
+  // arithmetic that lives in the MAIL and nowhere else (thread 042, the third false call). The
+  // journal knows leases and knows nothing about parks: a park is declared and lifted by
+  // letters, so the intervals are replayed out of the feed here, where the whole mail is
+  // already parsed, and handed to the selector beside the lease spans.
+  const parkSpans = parsed.flatMap((thread) =>
+    personParkSpansOf(thread).map((span) => ({
+      thread: thread.id,
+      from: span.from,
+      ...(span.to === undefined ? {} : { to: span.to }),
+    })),
+  );
   let unaccepted: readonly UnacceptedTurn[] = [];
 
   // THE FOURTH AND FIFTH QUESTIONS ARE NOT ABOUT THE MAIL AT ALL (thread 051): "can this
@@ -4036,6 +4049,7 @@ const runNotify = async (input: {
         raisedAt,
         busyRoles: new Set(views.filter((view) => isLeaseAlive(view.state)).map((v) => v.role)),
         busy,
+        parks: parkSpans,
         reasons,
         ...(hold === undefined ? {} : { hold }),
         now: new Date(now),

@@ -588,6 +588,69 @@ export const personParksOf = (thread: Thread): readonly Parking[] => {
   });
 };
 
+/** A stretch of wall-clock time a park on a person held a thread frozen. */
+export type ParkSpan = {
+  /** Who it was parked on — carried for the reader of a diagnosis, not used to judge. */
+  readonly person: string;
+  /** The date of the message that DECLARED the park. */
+  readonly from: string;
+  /** The date of the message that LIFTED it; absent — the park is standing now. */
+  readonly to?: string;
+};
+
+/**
+ * WHEN THIS THREAD WAS FROZEN BEHIND A PERSON, as closed intervals (thread 042, the third
+ * false call of the eighth class).
+ *
+ * {@link parkingOf} answers "is it frozen NOW" and {@link personParksOf} "what was ever
+ * declared". Neither answers the question the courier's age needs: FOR HOW LONG was the box
+ * unable to raise this pair. Measured in the field on 2026-08-29 (`daemon.log:19561`): john
+ * was rung about `curator×042-unaccepted-turn-silent` standing `6h 37m, no reason known` —
+ * 6 h 37 m of which were a park on john declared at 03:27:44Z, printed by the box itself on
+ * every one of 703 ticks (`⏸ PARKED behind a decision of john`), and lifted at ~10:05Z by
+ * `delivers: john`. The pair was raised 39 seconds later. The park is not a reason AFTER it
+ * is lifted — nothing in `parkingOf` or in the reasons map says a word about it — so the age
+ * fell out of the freeze whole, exactly as the queue of #101 did one породу earlier.
+ *
+ * THE SPANS ARE READ BY REPLAYING THE FEED, not by a second rule about lifting. Each prefix of
+ * the thread is asked the same question the live reader asks — `standingParkOf`, the one walk
+ * that knows what declares a park and what lifts it — so a park that ends because its TURN
+ * ended (the narrowing of #104) ends here on the same message, and a rule that drifts from the
+ * live one cannot be written twice. The cost is a walk per message, on feeds of tens of
+ * messages, in a command that already parses the whole mail.
+ *
+ * A SPAN OPEN AT THE END IS LEFT OPEN (`to` absent): whether "still parked" means "up to now"
+ * is the caller's clock, and this function has none.
+ */
+export const personParkSpansOf = (thread: Thread): readonly ParkSpan[] => {
+  if (thread.meta.status === "closed") return [];
+  const spans: ParkSpan[] = [];
+  let open: { readonly at: number; readonly person: string; readonly from: string } | undefined;
+  for (let upto = 0; upto < thread.messages.length; upto += 1) {
+    const prefix: Thread = { ...thread, messages: thread.messages.slice(0, upto + 1) };
+    const at = standingParkOf(prefix);
+    const declaring = at === undefined ? undefined : prefix.messages[at];
+    const on = declaring?.fields.parkedOn;
+    const standing =
+      at === undefined || declaring === undefined || on === undefined
+        ? undefined
+        : parkedOnKind(on).kind === "person"
+          ? { at, person: on, from: declaring.fields.date }
+          : undefined;
+    // THE MESSAGE THAT ENDED IT IS THE END OF THE SPAN, and the same message may declare the
+    // next park: a lift and a re-declaration in one letter is two spans meeting at a point,
+    // not one span with a hole in it.
+    const now = thread.messages[upto]?.fields.date;
+    if (open !== undefined && open.at !== standing?.at && now !== undefined) {
+      spans.push({ person: open.person, from: open.from, to: now });
+      open = undefined;
+    }
+    if (standing !== undefined && open === undefined) open = standing;
+  }
+  if (open !== undefined) spans.push({ person: open.person, from: open.from });
+  return spans;
+};
+
 /**
  * WHERE A PARK STILL STANDS — the index of the message that declared it. ONE WALK, and since
  * 2026-08-22 TWO CRITERIA in it: the event parks (`pr:`, `run:`) lift on the first message that
