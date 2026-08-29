@@ -903,10 +903,16 @@ describe("a turn this box never took — notify against the journal (thread 042)
     expect(result.out).toContain("dev-core×042-untaken");
   });
 
-  it("a park declared on ANOTHER role's turn does not cover this pair — it rings as stale", () => {
+  it("a park declared on ANOTHER role's turn does not freeze the thread at all (thread 042)", () => {
     // The measured window of 2026-08-28, end to end through the command: a park put up on
     // curator's turn, the turn handed to dev-core two minutes later, and 4 h 16 m of silence
     // while the daemon printed `PARKED behind a decision of john` at every tick.
+    //
+    // UNTIL THE LIFT OF 2026-08-29 THE COURIER WAS THE ONLY ONE WHO KNEW: the park stood, the
+    // scheduler kept skipping the pair, and this line rang about a pair frozen behind a decision
+    // that was not its own. Now the freeze itself is gone — `parkingOf` reads the park against
+    // the turn it was declared on — so the courier has nothing to explain away: the counters say
+    // `0 parked`, and what is left is the plain untaken turn the box owes a raise.
     const contest = contour({});
     raiseable(contest);
     contest.park("010-speech", { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "curator" });
@@ -920,7 +926,34 @@ describe("a turn this box never took — notify against the journal (thread 042)
     const result = run(contest);
 
     expect(result.out).toContain("dev-core×010-speech");
-    expect(result.out).toContain("declared on another role's turn");
-    expect(result.out).toContain("behind a park on john");
+    expect(result.out).toContain("0 parked, 0 of them asking, 0 of those new");
+    // AND THE SENTENCES OF THE FREEZE ARE ABSENT, both of them: the pair is not behind a park,
+    // and the courier's strap for a park it merely inherited has nothing to fire on here.
+    expect(result.out).not.toContain("behind a park on john");
+    expect(result.out).not.toContain("declared on another role's turn");
+  });
+
+  it("AT THE SAME HOLDER THE PARK STILL FREEZES THE THREAD — the pair is not owed a raise", () => {
+    // The other half of the same door, and the reason it has to be measured through the command:
+    // a park whose turn never left the role that declared it is a legal freeze, and the ten of
+    // them standing in the field on the day this shipped must not become ten calls. The report
+    // of another role at the same holder (`042`, `03-36-47Z-dev-core.md`) is exactly the class
+    // the narrowing of 22.08 bought, and it leaves the park where it is.
+    const contest = contour({});
+    raiseable(contest);
+    contest.park("016-mode", { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "curator" });
+    writeFileSync(
+      join(contest.root, "016-mode", "messages", "2026-07-25T20-00-00Z-dev-core.md"),
+      `---\nfrom: dev-core\nworker: human\ndate: 2026-07-25T20:00:00Z\nexpects: answer\nwaiting-on: curator\n---\n\nДоклад роли.\n`,
+    );
+    box(contest, []);
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.out).toContain("1 parked, 1 of them asking");
+    expect(result.out).toContain("016-mode");
+    // Nothing is owed a raise here: a frozen thread is not an untaken turn.
+    expect(result.out).not.toContain("dev-core×016-mode");
   });
 });
