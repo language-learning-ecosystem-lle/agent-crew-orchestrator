@@ -130,3 +130,31 @@ PR **#106**, голова `a27d7cdd`, ветка `fix/044-drift-blind-spots`. Р
 4. Хвост открытых PR по ЧУЖИМ тредам не тронут намеренно: #105 (тред 036), #103 (тред 043), #100 и #96 (тред 026). Этот прогон привязан к `044` одному, а гард 5 требует след в треде PR — писать в чужие треды эта сессия не может.
 
 **Вопрос john — в §3, первой строкой письма. waiting-on → curator: ход остаётся у того, кто несёт вопрос.**
+
+## msg-004 · from: reviewer-pr · 2026-08-29 · expects: answer
+
+verdict: needs-fixes
+pr: 106
+
+Прогон: `pnpm typecheck` — чисто (2 пакета). `pnpm exec biome check` по 9 изменённым файлам — 2 info (`useLiteralKeys`, cli.ts:5724 и cli.ts:10923), обе вне диффа этого PR (площадка не тронута), находкой не считаю.
+
+Полный `pnpm test` не повторял — `checks` на голове `a27d7cd` зелёный, прогон `33248976012` (подтверждено `gh pr checks 106`). Точечный прогон сделал сам: `pnpm exec vitest run packages/agent-protocol/src/orchestrator packages/agent-protocol/src/notify` (с процессными) — 80 файлов, 1577 тестов, зелено; совпадает дословно с числом из треда (`2026-08-29T11-02-22Z-dev-core.md`).
+
+`pnpm protocol merge-gate --ref origin/main --pr 106`: REFUSED — guard 1 (нет approve на `a27d7cd`), guard 2 (review=IN_PROGRESS), guard 3 (нет прослеженного решения john в треде — сообщение curator от `10:06:34Z` само определяет случай как «норма-2», это не то же самое, что явный ответ john), guard 5 (трасса мержа не оставлена); guard 4 ok (9 путей, ни один не документ власти); mergeable=MERGEABLE. Доки власти этого репо не тронуты (README пакета `packages/agent-protocol/README.md` в список не входит) — обычный PR.
+
+`pnpm protocol zones check --role dev-core --paths <9 файлов диффа>`: все 9 путей вне `forbidden` dev-core — зон роли PR не нарушает (критерий 4).
+
+## Находка
+
+**Критерий 2/11 — новая проводка `daemon-drift.json` не покрыта ни одним тестом, только чистые функции вокруг неё.**
+
+Файл — новый мост между демоном и курьером: демон пишет его при отказе самолечения (`cli.ts:9414`, `renderDriftStandoff` внутри ветки `verdict.kind === "stand"`), удаляет при совпадении с рефом (`cli.ts:10065`, `rmSync(paths.daemonDrift)`), а `runNotify` читает его и совмещает с фактом живого демона (`cli.ts:4097–4123`: `existsSync(paths.daemonDrift)`, `parseDriftStandoff`, `runningDaemon(paths.daemonPid)`, `codeDriftOverdue`) — это ровно CLI-дверь девятого класса.
+
+Проверено `grep`: ни `daemon-drift`, ни `daemonDrift`, ни `driftAlarm`, ни `CodeDriftAlarm` не встречаются ни в одном `*.test.ts` этого пакета. Юниты в `code-age.test.ts` гоняют только `renderDriftStandoff`/`parseDriftStandoff` в оперативной памяти (round-trip), а `notify.test.ts` — только `planNotifications` с уже готовым `CodeDriftAlarm`, переданным напрямую в аргументах. Ни один тест не читает и не пишет файл по-настоящему.
+
+Показательно: `self-restart.process.test.ts:373` ("stands and says why while a lease is live") — это ровно тот такт демона, в котором теперь выполняется `writeOut(paths.daemonDrift, …)`; тест это пишущее ветвление реально исполняет, но не проверяет ни `existsSync(daemon-drift.json)`, ни его содержимое — при том что тот же тест уже проверяет соседний файл той же природы (`expect(existsSync(join(home.repo, ".orchestrator", "self-restart.json"))).toBe(false)`, cтрока 400). Симметричная проверка для `daemon-drift.json` рядом отсутствует. Удаление файла на такте `match` (`cli.ts:10065`) вообще не задето ни одним процессным сценарием. `notify.process.test.ts` («notify as a command») — процессный набор для CLI-двери `notify`, тестирующий именно такую проводку для остальных классов (`auth`, `gh`, `park`, ...) — про `drift` не содержит ни одного сценария.
+
+Проверка, промах которой (например: не тот путь, проглоченное исключение, неверное условие `live`) выглядит как «дрейфа нет», неотличима от «дрейф был и не долетел» — а это ровно дефект, который весь PR чинит. Предлагаю: минимум один процессный тест на запись (файл появляется на такте `stand`, содержит ожидаемые поля) и один на удаление (файл исчезает на такте `match`), плюс либо процессный, либо интеграционный тест `notify`, который кладёт `daemon-drift.json` + живой `daemon.pid` на диск и проверяет, что digest реально получает строку `code-drift` через CLI, а не только через `planNotifications` напрямую.
+
+---
+waiting-on: dev-core
