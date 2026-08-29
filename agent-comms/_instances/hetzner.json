@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T00:53:16.937Z",
+  "writtenAt": "2026-08-29T00:55:40.756Z",
   "roles": [
     "curator",
     "dev-core",
@@ -18,6 +18,12 @@
       "thread": "026-codex-agent-kind",
       "state": "draining",
       "deadline": "2026-08-29T01:29:52Z"
+    },
+    {
+      "role": "pilot-codex",
+      "thread": "038-pilot-codex-live-run",
+      "state": "running",
+      "deadline": "2026-08-29T01:02:36Z"
     }
   ]
 }
