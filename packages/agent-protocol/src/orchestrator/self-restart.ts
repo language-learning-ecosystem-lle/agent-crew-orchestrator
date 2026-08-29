@@ -83,6 +83,7 @@
 
 import { execFileSync, spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
+import { type CodeDrift, describeDriftSize } from "./code-age.js";
 
 /** How many times one target SHA may be attempted before the box stands and speaks. */
 export const SELF_RESTART_MAX_ATTEMPTS = 2;
@@ -285,8 +286,24 @@ export const describeSelfRestartGo = (input: {
  * THE LINE INSTEAD (condition 5). Every tick, beside the drift line it explains: a box
  * that is behind AND not repairing itself is the state a human has to be able to read at
  * a glance, and it was the silence around exactly this that made john the detector.
+ *
+ * IT CARRIES THE MEASUREMENT ITSELF (thread 044), and that is not decoration. Until this
+ * thread the refusal named only its CONDITION — "no self-restart while sessions are live
+ * (curator)" — and the size of what was being refused lived in a different sentence, one
+ * line up, written by `describeCodeDrift`. Two lines are one line only while nothing
+ * separates them: `daemon.log` is read with `grep`, the frame draws one row per subject,
+ * and the courier would carry one string. So the refusal states the whole fact — how far
+ * behind, for how long, and why nothing is being pulled about it — and a reader who has
+ * only this line has the whole of it.
  */
-export const describeSelfRestartStand = (block: SelfRestartBlock): string => {
+export const describeSelfRestartStand = (
+  block: SelfRestartBlock,
+  drift: CodeDrift,
+  now: Date,
+): string => `the code is ${describeDriftSize(drift, now)} — ${describeSelfRestartBlock(block)}`;
+
+/** The condition alone — the half of the line above that names WHY, and the whole of R4. */
+export const describeSelfRestartBlock = (block: SelfRestartBlock): string => {
   switch (block.kind) {
     case "leases":
       return `no self-restart while sessions are live (${block.roles.join(", ")}) — a graceful restart would wait for them, and that wait needs a human`;

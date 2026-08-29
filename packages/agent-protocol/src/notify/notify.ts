@@ -144,6 +144,7 @@ export const BOX_ALARM_KINDS = [
   "frozen",
   "unaccepted",
   "unaccepted-stale-park",
+  "code-drift",
 ] as const;
 export type BoxAlarmKind = (typeof BOX_ALARM_KINDS)[number];
 
@@ -213,6 +214,19 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   // reader looking for a fault that is not there — which is the four hours of 2026-08-28.
   "unaccepted-stale-park":
     "{role}×{thread} has been standing for {age} behind a park on {person} that was declared on ANOTHER role's turn: the turn has moved to {role} since, and nothing is wanted of {person} by this pair. The daemon skips it every tick as parked — that line is true of the thread and false of the pair, so the move is to lift or re-declare the park, not to look at the box",
+  // THE NINTH CLASS SPEAKS ABOUT THE BOX ITSELF AND NOT ABOUT ANY PAIR (thread 044). The
+  // daemon picks up merged code only in a window with no live lease; on an active circuit
+  // that window can be missed for hours, and until this line the refusal lived in
+  // `daemon.log` alone — measured on 28–29.08, when a repair merged at 03:24Z was carried by
+  // nobody until a human noticed in the morning that the courier was still ringing with a
+  // false reason the box had already fixed.
+  //
+  // IT NAMES THE REASON THE DAEMON GAVE, VERBATIM, and asks for nothing beyond looking: what
+  // to do about a window that is not opening — wait, stop a session, restart by hand — is a
+  // judgement about live work, and the statement of this thread is explicit that no forced
+  // rollout is invented without john. The line reports; the person decides.
+  "code-drift":
+    "this box is running code {sha} while {ref} is {refSha}: {size}, and it has not picked the new code up — {why}. Nothing in the mail is wrong; what the circuit is executing is not what was merged",
   frozen:
     "{role}×{thread} is frozen for good: {detail}. The circuit will not raise this pair again by itself, and no message into that thread lifts it — the move is a run let through by hand (`orchestrator run --max-attempts` above the ceiling), whose handoff zeroes the count",
 };
@@ -529,6 +543,35 @@ const seriesOf = (key: string): string => key.split("\t").slice(1).join("\t");
 /** The series of one pair, in the same three columns — what keeps a key alive. */
 const pairSeries = (pair: ExhaustedPair): string => `${pair.role}\t${pair.thread}\t${pair.since}`;
 
+/**
+ * A DRIFT THE BOX IS STANDING ON, PAST THE BAND, AS THE COURIER CARRIES IT (thread 044).
+ *
+ * Everything here is MEASURED BY THE DAEMON and read off `daemon-drift.json`: the courier
+ * composes, it does not re-derive. `why` is the daemon's own refusal sentence — the reason
+ * lives in a verdict over leases, holds, flags and a working tree that only the daemon holds
+ * (see `DriftStandoff`), and a second implementation of a safety rule in the courier is the
+ * shape this package refuses everywhere else.
+ */
+export type CodeDriftAlarm = {
+  /** The loaded code and what the ref resolves to — the two SHAs, short, as they are shown. */
+  readonly sha: string;
+  readonly refSha: string;
+  /** The ref as it was named on the command line, so the reader knows what is being judged. */
+  readonly ref: string;
+  /** How far behind and for how long, already rendered — one phrase, one author. */
+  readonly size: string;
+  /** The daemon's refusal, verbatim. */
+  readonly why: string;
+  /**
+   * WHEN THE DRIFT BEGAN, AND THE IDENTITY OF THE EVENT. Not the target SHA: on a repository
+   * that merges several times an hour a key of "what the ref is now" would ring at every
+   * merge for as long as the box stayed behind, which is the noise that teaches a reader to
+   * skip the class. What the reader is owed is ONE call per period of being behind, and a box
+   * that catches up and falls behind again begins a new period with a new stamp.
+   */
+  readonly since: string;
+};
+
 /** What was announced last run: the six classes of event in one file. */
 export type NotifyState = {
   readonly waiting: readonly WaitingPair[];
@@ -538,6 +581,8 @@ export type NotifyState = {
   readonly auth?: string | undefined;
   /** The stamp of the merge-ready outage already announced, if any. */
   readonly gh?: string | undefined;
+  /** The {@link CodeDriftAlarm.since} of the drift already announced, if any. */
+  readonly drift?: string | undefined;
   /**
    * The {@link freezeKey}s already announced, for every series that is STILL RUNNING
    * (thread 013). Unlike every other class here this one is not the current composition:
@@ -677,6 +722,8 @@ export type NotificationPlan = {
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready outage in force now, if the predicate rings — also part of the state. */
   readonly gh?: GhAlarm | undefined;
+  /** The overdue drift in force now, if there is one — also part of the state. */
+  readonly drift?: CodeDriftAlarm | undefined;
   /**
    * The pairs standing at the attempt ceiling right now, ordered — the STANDING count of
    * the courier line and of the `status` frame, printed every tick whether it is news or
@@ -692,6 +739,8 @@ export type NotificationPlan = {
   readonly freshAuth: boolean;
   /** True when this run of refusals has not been announced yet — same rule, same reason. */
   readonly freshGh: boolean;
+  /** True when this period of being behind has not been announced yet — one call per period. */
+  readonly freshDrift: boolean;
   /** The message, one line per thread-and-human. Rendered from the FULL composition. */
   readonly lines: readonly NotificationLine[];
 };
@@ -771,6 +820,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     // (account, stamp), so its line is three — see {@link authAlarmKey}.
     ...(state.auth === undefined ? [] : [`auth\t${state.auth}`]),
     ...(state.gh === undefined ? [] : [`gh\t${state.gh}`]),
+    // The drift is one line and carries its stamp only, on the same rule: the size and the
+    // reason are re-read from the box every time, and what identifies the event is when the
+    // box first fell behind.
+    ...(state.drift === undefined ? [] : [`drift\t${state.drift}`]),
     // A freeze line is the announcement itself, not the pair: `freeze <kind> <role>
     // <thread> <since>`. Sorted so that a diff of the file stays readable when several
     // pairs freeze in one storm — which is what a 529 storm does.
@@ -790,6 +843,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const unaccepted: UnacceptedTurn[] = [];
   let auth: string | undefined;
   let gh: string | undefined;
+  let drift: string | undefined;
   for (const line of raw.split("\n").map((entry) => entry.trim())) {
     if (line === "") continue;
     const columns = line.split("\t");
@@ -836,6 +890,10 @@ export const parseNotifyState = (raw: string): NotifyState => {
       if (columns[1] !== undefined) gh = columns[1];
       continue;
     }
+    if (columns[0] === "drift") {
+      if (columns[1] !== undefined) drift = columns[1];
+      continue;
+    }
     if (columns[0] === "freeze") {
       // Four columns exactly (kind, role, thread, since) — a short line is dropped rather
       // than half-read: a key that is not the key announces the same freeze a second time.
@@ -861,6 +919,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
     parked,
     auth,
     gh,
+    drift,
     ...(freezes.length === 0 ? {} : { freezes }),
     ...(unaccepted.length === 0 ? {} : { unaccepted }),
   };
@@ -918,6 +977,14 @@ export const planNotifications = (input: {
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready tier has been refused for a run of ticks past its threshold. */
   readonly gh?: GhAlarm | undefined;
+  /**
+   * The box has been behind its own ref past {@link CODE_DRIFT_OVERDUE_MINUTES} and has
+   * named why it is not pulling (thread 044). The caller reads the daemon's published
+   * standoff and applies the threshold; this picks whether it rings. Absent means either no
+   * drift or one inside the band — and inside the band it is deliberately silent: a box that
+   * is one merge behind for twenty minutes is a working circuit, not an event.
+   */
+  readonly drift?: CodeDriftAlarm | undefined;
   /**
    * Pairs whose attempt counter has reached the ceiling and has not been reset since
    * (thread 013) — the whole series set, INCLUDING the ones currently thawed or running,
@@ -1095,6 +1162,10 @@ export const planNotifications = (input: {
   const human = input.targets.some((target) => target.style === "direct");
   const auth = human ? input.auth : undefined;
   const gh = human ? input.gh : undefined;
+  // AND THE DRIFT GOES WITH THEM. "The circuit is executing something other than what was
+  // merged" is a fact only somebody with access to the machine can act on, and a chat
+  // assistant told about it can do exactly nothing with it.
+  const drift = human ? input.drift : undefined;
   // THE EIGHTH CLASS IS THE BOX'S OWN AND IS DROPPED WITH THE OTHERS WHEN NOBODY HUMAN IS
   // CONFIGURED (thread 042): "go and look at the daemon" is an instruction only a person at
   // the machine can carry out. The composition survives the drop — the state still records
@@ -1105,6 +1176,7 @@ export const planNotifications = (input: {
     : [];
   const freshAuth = auth !== undefined && authAlarmKey(auth) !== input.seen.auth;
   const freshGh = gh !== undefined && gh.since !== input.seen.gh;
+  const freshDrift = drift !== undefined && drift.since !== input.seen.drift;
 
   // THE SIXTH CLASS (thread 013). Two decisions live here and neither is a detail:
   //
@@ -1172,6 +1244,27 @@ export const planNotifications = (input: {
         since: gh.since,
         ticks: String(gh.ticks),
         threshold: String(gh.threshold),
+      }),
+    });
+  // AND THE DRIFT STANDS WITH THE TWO ABOVE, for the reason they are there at all: every
+  // line below this one is about the mail, and a reader who learns "your turn: 044" first
+  // and "this box is not running the code that was merged" last has read them in the wrong
+  // order — the second fact changes what the first one means.
+  //
+  // IT IS THE FRESH ONE THAT PRINTS, like a park and unlike a turn: a drift does not go away
+  // by itself while the window stays shut, and a line repeated every few minutes for hours is
+  // the noise that costs the next real call its reader.
+  if (drift !== undefined && freshDrift)
+    lines.push({
+      kind: "code-drift",
+      thread: "",
+      role: "",
+      text: renderTemplate(BOX_ALARM_TEMPLATES["code-drift"], {
+        sha: drift.sha,
+        refSha: drift.refSha,
+        ref: drift.ref,
+        size: drift.size,
+        why: drift.why,
       }),
     });
   // THE FREEZES COME WITH THE BOX'S OWN LINES, above the mail, for the same reason: a pair
@@ -1342,8 +1435,10 @@ export const planNotifications = (input: {
     freezeKeys,
     auth,
     gh,
+    drift,
     freshAuth,
     freshGh,
+    freshDrift,
     lines,
   };
 };
