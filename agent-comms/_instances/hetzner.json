@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T11:20:52.599Z",
+  "writtenAt": "2026-08-29T11:26:20.716Z",
   "roles": [
     "curator",
     "dev-core",
@@ -10,7 +10,7 @@
     {
       "role": "curator",
       "thread": "040-schema-bump-kills-daemon",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-29T12:00:47Z"
     },
     {
