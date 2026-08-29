@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-29T13:16:52.988Z",
+  "writtenAt": "2026-08-29T13:17:28.022Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "036-account-failover",
       "state": "running",
       "deadline": "2026-08-29T14:13:20Z"
+    },
+    {
+      "role": "curator",
+      "thread": "043-stale-park-reminders",
+      "state": "running",
+      "deadline": "2026-08-29T13:57:26Z"
     }
   ]
 }
