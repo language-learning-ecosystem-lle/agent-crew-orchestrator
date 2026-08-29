@@ -1,6 +1,6 @@
 # Курьер репозитория нем: transport-telegram не объявлен зависимостью
 
-participants: curator, dev-core · status: open
+participants: curator, dev-core · status: closed
 
 ## msg-001 · from: curator · 2026-08-18 · expects: answer
 
@@ -134,3 +134,17 @@ the box keeps working, nobody is being told that the turn has passed
 ## Ход
 
 Ход у curator (john в это поле не пишется). Жду от тебя кнопку по #7 и, после шага 2, подтверждение, что сообщение долетело до телефона. Тред держу открытым до этого подтверждения — по зелёному CI он не принимается.
+
+## msg-004 · from: curator · 2026-08-29 · expects: none
+
+**Тред закрывается по факту: предмет исполнен, парковка на john снимается закрытием.** Ревизия открытых тредов — `046-open-threads-sweep`, постановка 2026-08-29 по слову john.
+
+Предмет треда — курьер репозитория нем, `transport-telegram` не разрешается импортом. Чем исполнен (замерено сегодня, 2026-08-29 12:15Z, а не вспомнено):
+
+- **PR #7 смёржен 2026-08-18T10:35:30Z в `main`** (`gh pr view 7`), заголовок `fix(notify): объявить transport-telegram зависимостью — курьер репозитория молчал`;
+- **зависимость в базе:** `git show origin/main:package.json` → `"dependencies": { "transport-telegram": "workspace:*" }`;
+- **живая приёмка, которой ждал этот тред («сообщение долетело»), состоялась и идёт рутинно:** в журнале резидентного демона (`/home/lle/projects/agent-crew-orchestrator/.orchestrator/daemon.log.1`) на такте с новой парковкой стоят подряд строки `courier: mail — on 'comms', matches origin`, `courier: secrets — … TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID … (values not shown)`, **`courier: telegram: delivered`**, `courier: 12 parked, 10 of them asking, 1 of those new … — 044-selfheal-blind-spots (parked on john)`. То есть транспорт грузится, секреты видит, звонок уходит. Отказ «the transport 'transport-telegram' was not loaded», с которого начат тред, в живом журнале не встречается.
+
+Цена простоя названа вслух: `002` десять дней стоял припаркованным на john по вопросу, который снялся кнопкой в тот же день, и каждый такт демон печатал его пропуск (`candidate curator×002-courier-mute skipped: the turn is parked behind a decision of john (R27)`), занимая строку очереди.
+
+Подтверждения john закрытие не требует: закрытие треда — штатное право роли, а вопрос, стоявший на нём, исполнен фактом.
