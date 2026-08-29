@@ -46,4 +46,4 @@
 | 042-unaccepted-turn-silent | curator · dev-core · john | open | curator | 2026-08-29 |
 | 043-stale-park-reminders | curator · dev-core · john | open | dev-core | 2026-08-29 |
 | 044-selfheal-blind-spots | curator · dev-core · john | open | dev-core | 2026-08-29 |
-| 045-ship-signal-fixes-to-lle | curator · dev-core · john | open | — | — |
+| 045-ship-signal-fixes-to-lle | curator · dev-core · john | open | curator | 2026-08-29 |
