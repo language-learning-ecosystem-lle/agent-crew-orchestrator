@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | pr:150 · 2026-08-30 | 2026-08-30 | Метка review повешена на #150 после зелёного checks и на ТОЙ ЖЕ голове (98e5b4e86380d89cdbf67af253e… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | run:150 · 2026-08-30 | 2026-08-30 | Поправка к парковке предыдущего письма (2026-08-30T15-05-57Z-curator.md): парковку меняю с pr:150 н… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Слово john по гарду 3 принято и записано; контрольный замер снят моей рукой — за 91 такт курьера по… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
