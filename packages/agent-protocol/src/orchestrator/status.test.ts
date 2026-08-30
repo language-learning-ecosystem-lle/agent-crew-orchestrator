@@ -179,6 +179,19 @@ describe("renderStatus", () => {
     expect(line).toContain("deadline 2026-07-24T13:30:00Z");
   });
 
+  // The order of those two is not taste: the observer cuts this line to the terminal's
+  // width, and the cut eats the END of it. The phrase a reader reads must sit ahead of
+  // the stamp an operator copies, or a narrow terminal loses exactly the half john asked
+  // for and the two frames of one fact start disagreeing again.
+  it("the countdown stands BEFORE the stamp, so a cut line loses the stamp and not it", () => {
+    const line = renderStatus(
+      [view({ state: "draining" })],
+      new Set(),
+      new Date("2026-07-24T13:00:00Z"),
+    );
+    expect(line.indexOf("30m left of its window")).toBeLessThan(line.indexOf("deadline 2026-"));
+  });
+
   it("without a now the countdown is dropped rather than computed from a guess", () => {
     expect(renderStatus([view({ state: "draining" })])).not.toContain("left of its window");
   });

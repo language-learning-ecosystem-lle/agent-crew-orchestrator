@@ -96,10 +96,14 @@ export const renderLeaseLine = (view: LeaseView, closed = false, now?: Date): st
     // The count AND what it is judged against: "attempt 13" left an operator to guess
     // both the ceiling and whether their `--max-attempts` had arrived at all.
     attemptWord(view),
-    view.deadline === null ? "deadline —" : `deadline ${view.deadline}`,
     // WHAT THE DEADLINE MEANS IN MINUTES, beside the stamp rather than instead of it: the
     // stamp is what an operator quotes into a thread, the phrase is what they read.
+    // BEFORE the stamp, and that order is load-bearing rather than taste: the observer's
+    // top panel cuts this line to the terminal's width (`tui.ts`), and at eighty or a
+    // hundred columns the cut lands inside these last columns. What survives a cut must be
+    // the half that is READ; the half that is COPIED into a thread is the one to lose.
     now === undefined ? "" : timeLeftWord(view, now),
+    view.deadline === null ? "deadline —" : `deadline ${view.deadline}`,
     // The wait's own clock is shown only while it is the one in force: an empty column
     // in every other state would read as "no wait ceiling exists".
     view.waitDeadline === null ? "" : `awaiting input until ${view.waitDeadline}`,

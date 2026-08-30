@@ -3061,9 +3061,14 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   instead of a bare enum in brackets, and an unknown state (a neighbour on another version)
   is printed as it came rather than guessed at. `timeLeftWord(view, now)` adds the second
   half — `40m left of its window`, `18m left of the wait`, `12m past the end of its window`
-  — on the clock the fold itself judges by, and nothing at all on a terminal lease. The
-  inventory the vocabulary was derived from, including the states still MISSING, is
-  [`docs/state-model.md`](../../docs/state-model.md).
+  — on the clock the fold itself judges by, and nothing at all on a terminal lease. It stands
+  BEFORE the deadline stamp on purpose: the observer's top panel cuts the line to the
+  terminal's width and the cut eats the END, so what survives is the half a reader READS and
+  what is lost is the stamp they COPY. Every human frame carries it, the observer's top panel
+  included — `tui` calls the same `renderLeaseLine` with the frame's `now`, because `status`
+  saying "60m left" about a pair while the observer showed only a stamp is the same
+  two-renderers defect one layer up. The inventory the vocabulary was derived from, including
+  the states still MISSING, is [`docs/state-model.md`](../../docs/state-model.md).
 - **Putting things down covers the whole process group (`-pid`), not just the direct
   child.** A SIGTERM to a launcher does not reach its children (`claude` → its
   subprocesses), and they would be orphaned; the spawn is `detached` and the
