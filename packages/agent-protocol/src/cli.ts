@@ -45,6 +45,7 @@ import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
+import { explainWithCredentials, platformEnvOf } from "./config/credentials.js";
 import {
   type LoadedConfig,
   type LoadedPolicy,
@@ -1193,11 +1194,17 @@ const writeOut = (path: string, content: string): void => {
 const gitIn =
   (checkout: string): GitRun =>
   (args, env) => {
+    // THE PUSH TAKES THE CIRCUIT'S OWN CREDENTIALS TOO (thread 065), and the refusal is
+    // NOT fatal here: a delivery that reads and commits locally needs no token, only the
+    // push does, and git says by name which repository it could not reach. What this
+    // always buys is the end of the prompt — `Username for 'https://github.com'` on the
+    // stdin of a session nobody is watching is a hang, not a failure.
+    const platform = platformEnvOf({ repo: checkout });
     try {
       return execFileSync("git", ["-C", checkout, ...args], {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
-        ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
+        env: { ...platform.env, ...(env ?? {}) },
       });
     } catch (error) {
       const failure = error as { stderr?: string; status?: number };
@@ -2936,6 +2943,11 @@ const runParkFacts = (
   repo: string,
 ): { readonly facts?: RunParkFacts; readonly refusal?: string } => {
   let raw: string;
+  // The circuit's own credentials (thread 065), OFFERED and not demanded: `gh` is asked
+  // even when this module could assemble no token, because `gh` has logins of its own.
+  // Only if `gh` itself refuses does the missing credential join the reason — by name,
+  // with the file it looked in, instead of `populate the GH_TOKEN environment variable`.
+  const platform = platformEnvOf({ repo });
   try {
     raw = execFileSync(
       "gh",
@@ -2943,13 +2955,19 @@ const runParkFacts = (
       {
         cwd: repo,
         encoding: "utf8",
+        env: platform.env,
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 8 * 1024 * 1024,
       },
     );
   } catch (error) {
     const message = (error as Error).message;
-    return { refusal: `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}` };
+    return {
+      refusal: explainWithCredentials(
+        `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}`,
+        platform,
+      ),
+    };
   }
   let parsed: ReturnType<typeof ghRunParkSchema.safeParse>;
   try {
@@ -11179,20 +11197,12 @@ const orchestratorStop = (argv: readonly string[]): void => {
   let delivered = false;
   try {
     const sent = deliverMessage({
-      git: (args) => {
-        try {
-          return execFileSync("git", ["-C", checkout, ...args], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-          });
-        } catch (error) {
-          const failure = error as { stderr?: string; status?: number };
-          const said = (failure.stderr ?? "").trim();
-          throw new DeliveryRefusedError(
-            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
-          );
-        }
-      },
+      // THE SAME GIT AS EVERY OTHER DELIVERY — `gitIn`, not a copy of it. This call site
+      // carried its own inline duplicate of the old form, and so the credentials of the
+      // circuit (thread 065) reached six deliveries out of seven: a force stop announced
+      // from a clean environment pushed with nothing and got the login prompt the whole
+      // change was written to remove. Found by review of #164.
+      git: gitIn(checkout),
       write: writeOut,
       branch: loadedConfig.config.mail.branch,
       subject: deliverySubject({
@@ -12156,13 +12166,29 @@ const zonesCheck = (argv: readonly string[]): void => {
  * queued pull requests, one `gh pr view` each buys nothing worth a second machinery.
  */
 const ghMergeReadySource = (repo: string): MergeReadySource => {
-  const ask = (args: readonly string[]): string =>
-    execFileSync("gh", [...args], {
-      cwd: repo,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      maxBuffer: 16 * 1024 * 1024,
-    });
+  const ask = (args: readonly string[]): string => {
+    // THE CIRCUIT'S OWN CREDENTIALS (thread 065), read PER CALL and not once at start-up:
+    // this source is built when the daemon boots and lives as long as it does, so a token
+    // rotated under a running daemon has to be picked up without a restart — the cost is
+    // one small file read beside a network call.
+    const platform = platformEnvOf({ repo });
+    try {
+      return execFileSync("gh", [...args], {
+        cwd: repo,
+        encoding: "utf8",
+        env: platform.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 16 * 1024 * 1024,
+      });
+    } catch (error) {
+      // `readMergeReady` turns every failure of this source into "no acceleration" with
+      // the reason said out loud. A `gh` that refused while this module had NO token to
+      // give it gets the missing credential named in that same line — that is precisely
+      // what the five blind ticks lacked: the daemon said "refused", not "refused, and
+      // here is the file nobody filled in".
+      throw new Error(explainWithCredentials((error as Error).message, platform));
+    }
+  };
   return {
     open: async () =>
       ghOpenPullRequestsSchema
@@ -12207,6 +12233,16 @@ const mergeGate = (argv: readonly string[]): void => {
   const skew = describePolicySkew(loaded);
   if (skew !== undefined) out(`merge-gate: ${skew}`);
   const repo = flag(argv, "--repo") ?? process.cwd();
+  // THE DOOR TAKES THE CREDENTIALS OF THE CIRCUIT IT STANDS IN (thread 065) — of the
+  // instance the CHECKOUT belongs to, and of no other: a verdict read through somebody
+  // else's login is a verdict about the wrong repository, and the one line that tells the
+  // two apart is the note below. Names and paths only — never a value.
+  //
+  // NOT A GATE. Nothing is refused here even when no token could be assembled: `gh` has
+  // logins this package does not manage, and the missing credential is named only if `gh`
+  // itself then refuses (see `explainWithCredentials`).
+  const platform = platformEnvOf({ repo });
+  out(`merge-gate: credentials — ${platform.note}`);
 
   const ask = (): string =>
     execFileSync(
@@ -12228,6 +12264,7 @@ const mergeGate = (argv: readonly string[]): void => {
       {
         cwd: repo,
         encoding: "utf8",
+        env: platform.env,
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 16 * 1024 * 1024,
       },
@@ -12248,7 +12285,13 @@ const mergeGate = (argv: readonly string[]): void => {
     const message = (error as Error).message;
     // The reason `gh` returned is the fact and is printed whole; the hint is a reading
     // of it and says so (`ghRefusalHint` — why it stopped asserting a scope).
-    fail(`PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`, 2);
+    fail(
+      explainWithCredentials(
+        `PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`,
+        platform,
+      ),
+      2,
+    );
     return;
   }
 
@@ -12308,7 +12351,13 @@ const mergeGate = (argv: readonly string[]): void => {
           "--jq",
           "[.sha, .commit.committer.date] | @tsv",
         ],
-        { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 1024 * 1024 },
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: platform.env,
+          stdio: ["ignore", "pipe", "pipe"],
+          maxBuffer: 1024 * 1024,
+        },
       ).trim();
       const [sha, committedAt] = answer.split(/\s+/);
       // Half an answer is no answer: a SHA with no date, or a date with no SHA, would be
@@ -12347,6 +12396,7 @@ const mergeGate = (argv: readonly string[]): void => {
               {
                 cwd: repo,
                 encoding: "utf8",
+                env: platform.env,
                 stdio: ["ignore", "pipe", "pipe"],
                 maxBuffer: 16 * 1024 * 1024,
               },
