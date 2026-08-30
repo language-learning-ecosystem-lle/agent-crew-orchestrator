@@ -9,9 +9,9 @@ import {
   parkedOnKind,
   parkedOnOf,
   parkingOf,
+  parkSpansOf,
   parseLegacyThread,
   parseMetaFile,
-  personParkSpansOf,
   personParksOf,
   questionOf,
   renderMetaFile,
@@ -1196,7 +1196,7 @@ describe("mergedPrs — the merges the whole mail has seen (thread 023)", () => 
   });
 });
 
-describe("personParkSpansOf — FOR HOW LONG the thread was frozen behind a person (thread 042)", () => {
+describe("parkSpansOf — FOR HOW LONG the thread was frozen behind a park (thread 042)", () => {
   // The fixture is the field, message by message: `042-unaccepted-turn-silent` on 2026-08-29,
   // the feed behind `daemon.log:19561` — the third false call of the eighth class, in which
   // john was told `curator×042-unaccepted-turn-silent (6h 37m, no reason known)` about a pair
@@ -1227,7 +1227,7 @@ describe("personParkSpansOf — FOR HOW LONG the thread was frozen behind a pers
   });
 
   it("THE 6 h 37 m OF THE FIELD: one closed span, from the declaration to the lift", () => {
-    const spans = personParkSpansOf(
+    const spans = parkSpansOf(
       thread(
         message("2026-08-29T03:20:00Z", { from: "dev-core", waitingOn: "curator" }),
         declared,
@@ -1239,16 +1239,16 @@ describe("personParkSpansOf — FOR HOW LONG the thread was frozen behind a pers
     );
 
     expect(spans).toEqual([
-      { person: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T10:05:00Z" },
+      { kind: "person", on: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T10:05:00Z" },
     ]);
   });
 
   it("a park STANDING NOW is left open — this function has no clock of its own", () => {
-    const spans = personParkSpansOf(
+    const spans = parkSpansOf(
       thread(declared, message("2026-08-29T03:36:47Z", { from: "dev-core", waitingOn: "curator" })),
     );
 
-    expect(spans).toEqual([{ person: "john", from: "2026-08-29T03:27:44Z" }]);
+    expect(spans).toEqual([{ kind: "person", on: "john", from: "2026-08-29T03:27:44Z" }]);
   });
 
   it("A PARK WHOSE TURN ENDED ENDS HERE TOO — one walk, not a second rule about lifting", () => {
@@ -1256,7 +1256,7 @@ describe("personParkSpansOf — FOR HOW LONG the thread was frozen behind a pers
     // another role ends it. The spans are replayed through `standingParkOf` for exactly this
     // reason — a rule written twice is a rule that drifts, and the freeze the courier subtracts
     // must be the freeze the scheduler obeyed.
-    const spans = personParkSpansOf(
+    const spans = parkSpansOf(
       thread(
         declared,
         message("2026-08-29T04:00:00Z", { from: "curator", waitingOn: "dev-core" }),
@@ -1265,12 +1265,12 @@ describe("personParkSpansOf — FOR HOW LONG the thread was frozen behind a pers
     );
 
     expect(spans).toEqual([
-      { person: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T04:00:00Z" },
+      { kind: "person", on: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T04:00:00Z" },
     ]);
   });
 
   it("a re-declaration after a lift is a SECOND span, not one span with a hole in it", () => {
-    const spans = personParkSpansOf(
+    const spans = parkSpansOf(
       thread(
         declared,
         lifted,
@@ -1284,23 +1284,35 @@ describe("personParkSpansOf — FOR HOW LONG the thread was frozen behind a pers
     );
 
     expect(spans).toEqual([
-      { person: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T10:05:00Z" },
-      { person: "john", from: "2026-08-29T10:30:00Z" },
+      { kind: "person", on: "john", from: "2026-08-29T03:27:44Z", to: "2026-08-29T10:05:00Z" },
+      { kind: "person", on: "john", from: "2026-08-29T10:30:00Z" },
     ]);
   });
 
-  it("a thread that was never parked has no spans, and an EVENT park is not one", () => {
-    // `run:`/`pr:` parks freeze the thread too, and they are NOT read here: that class owns its
-    // threads in the courier by id (`frozen`), and mixing the two sources would subtract the
-    // same freeze twice on the day the two readers disagree.
-    const spans = personParkSpansOf(
+  it("AN EVENT PARK IS A SPAN TOO — the field window of `curator×051`, 2026-08-30", () => {
+    // The half the third false call was fixed short of. `051-index-shows-parks` stood parked
+    // behind the round on PR #126 from 09:29:02Z; the courier's `frozen` set covered every tick
+    // the park STOOD on and none of the ticks after it lifted at 09:59:02Z, so the pair walked
+    // out of a 30-minute freeze carrying it as time the box was free to raise it in.
+    const spans = parkSpansOf(
       thread(
-        message("2026-08-29T10:37:23Z", {
+        message("2026-08-30T09:29:02Z", {
           from: "dev-core",
           waitingOn: "curator",
-          parkedOn: "run:104",
+          parkedOn: "run:126",
         }),
+        message("2026-08-30T09:59:02Z", { from: "reviewer-pr", waitingOn: "curator" }),
       ),
+    );
+
+    expect(spans).toEqual([
+      { kind: "run", on: "run:126", from: "2026-08-30T09:29:02Z", to: "2026-08-30T09:59:02Z" },
+    ]);
+  });
+
+  it("a thread that was never parked has no spans", () => {
+    const spans = parkSpansOf(
+      thread(message("2026-08-29T10:37:23Z", { from: "dev-core", waitingOn: "curator" })),
     );
 
     expect(spans).toEqual([]);
@@ -1308,7 +1320,7 @@ describe("personParkSpansOf — FOR HOW LONG the thread was frozen behind a pers
 
   it("a CLOSED thread declares nothing — the acceptance, exactly as in parkingOf", () => {
     const feed = thread(declared);
-    expect(personParkSpansOf({ ...feed, meta: { ...feed.meta, status: "closed" } })).toEqual([]);
+    expect(parkSpansOf({ ...feed, meta: { ...feed.meta, status: "closed" } })).toEqual([]);
   });
 });
 

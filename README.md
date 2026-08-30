@@ -1566,15 +1566,19 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # threshold. One slot per role makes a queue longer than 10 minutes the
                             # normal shape of a working day, so without this the class would ring on it
                             # every time
-                            # AND A PARK ON A PERSON IS SUBTRACTED THE SAME WAY — the same породу with
+                            # AND A PARK IS SUBTRACTED THE SAME WAY — the same породу with
                             # another interval, and the class's SECOND false firing (2026-08-29T10:05Z:
                             # `curator×042` called at `6h 37m, no reason known` 39 seconds before its own
                             # raise, every one of those minutes spent under a park on john the box had
                             # printed on 742 ticks). While a park stands the class is silent; the tick
                             # that LIFTS it used to announce the pair with the whole accumulated age. The
-                            # freeze intervals are replayed out of the MAIL (`personParkSpansOf` — the
+                            # freeze intervals are replayed out of the MAIL (`parkSpansOf` — the
                             # journal has no record of a park) and the two sources are UNIONED, not
                             # summed: a role can be busy on its other thread while this one is parked
+                            # EVERY KIND OF PARK, not the person ones alone (measured 2026-08-30 on
+                            # `curator×051`, 30 minutes behind `run:126`): the `frozen` set drops a
+                            # thread only while its event park STANDS, and the age is judged on the
+                            # ticks after the lift
                             # THE PRINTED AGE IS THE FREE PART (changed 2026-08-29 with the above; until
                             # then it was the whole standing time): `6h 37m` about a standstill 39 seconds
                             # old is the number the reader acts on, so the age and the threshold now say
