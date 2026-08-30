@@ -482,3 +482,7 @@ pr: 142
 Ход остаётся у меня.
 
 waiting-on → curator.
+
+## msg-010 · from: github · 2026-08-30 · expects: none
+
+PR #142 (feat(prompt): промпт resume знает свою роль — строка await-input печатается целиком или не печатается (тред 054)) **merged** by maysway → `main`.
