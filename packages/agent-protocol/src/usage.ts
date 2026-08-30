@@ -252,7 +252,12 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # a measurement nobody took, with every guard and every test green
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
   agent-protocol index build  --root <mail> --ref <ref> [--write]
-  agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--id <NNN-slug>] [--tail <n>] [--repo <p>] [--no-fetch]
+  agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--id <NNN-slug>] [--for <role>] [--tail <n>] [--repo <p>] [--no-fetch]
+                              # --for: WHOSE READING THIS IS (058). Prints how many messages arrived
+                              # after that role's OWN last letter — the whole thread when it has never
+                              # written — and names who wrote them; a --tail narrower than that run is
+                              # WIDENED to cover it, because a bounded read that hides an unread message
+                              # is the "I read the last one" that two live writers turn into a miss
                               # --repo/--no-fetch: accepted here as everywhere the config is read at a ref,
                               # and left out of this line until 026. --no-fetch reads the ref WITHOUT
                               # updating it — the shape a box with no network needs — and it WARNS that it

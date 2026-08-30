@@ -1462,7 +1462,7 @@ export const buildLaunchPrompt = (input: {
     ...(mail.writesHeldBy === undefined
       ? [
           "TWO COMMANDS ARE YOUR WHOLE INTERFACE TO THE MAIL (R3) — you never touch its files, its branch or its git yourself:",
-          `- READ: ${mailCall(mail, "thread show", `--thread ${input.thread}`)} — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder;`,
+          `- READ: ${mailCall(mail, "thread show", `--thread ${input.thread} --for ${input.role}`)} — the conversation in order (\`--tail <n>\` if it is long). \`--for\` makes it say how much of it is NEW TO YOU — everything after your own last letter — because a thread can be written into by two roles at once and the last message is then not the state of it. It names any attachments in the folder;`,
           `- SEND: ${mailCall(mail, "new-message", "--thread <id> --from <your role> --expects <e> --waiting-on <who answers> --body-file <p> --write")} — \`--write\` means SENT: the file, the commit and the push are one action, and a concurrent write is retried inside.`,
           "",
           ...undeclared,
@@ -1477,7 +1477,7 @@ export const buildLaunchPrompt = (input: {
         // card's own word — a session that knows WHY it cannot write stops arguing with it.
         [
           "ONE COMMAND IS YOUR WHOLE INTERFACE TO THE MAIL (R3) — reading it; you never touch its files, its branch or its git yourself:",
-          `- READ: ${mailCall(mail, "thread show", `--thread ${input.thread}`)} — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder.`,
+          `- READ: ${mailCall(mail, "thread show", `--thread ${input.thread} --for ${input.role}`)} — the conversation in order (\`--tail <n>\` if it is long). \`--for\` makes it say how much of it is NEW TO YOU — everything after your own last letter — because a thread can be written into by two roles at once and the last message is then not the state of it. It names any attachments in the folder.`,
           "",
           ...undeclared,
           `YOU CANNOT WRITE INTO THE MAIL, AND THIS RUN IS NOT MEANT TO: your card declares this run's tools held by \`${mail.writesHeldBy}\`, and that confinement reaches the process itself — a write is refused by the sandbox, not by your judgement. Do not attempt one, with or without a flag: every attempt is turn spent and nothing delivered.`,
