@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T22:02:17.094Z",
+  "writtenAt": "2026-08-30T22:06:02.511Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "058-concurrent-writers-one-thread",
       "state": "running",
       "deadline": "2026-08-30T23:01:31Z"
-    },
-    {
-      "role": "curator",
-      "thread": "063-state-model-rewrite",
-      "state": "draining",
-      "deadline": "2026-08-30T22:40:44Z"
     }
   ]
 }
