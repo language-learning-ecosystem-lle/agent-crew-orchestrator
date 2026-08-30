@@ -2031,6 +2031,34 @@ agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
 agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--write]
 agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--write]   # the role is taken by a manual session
+agent-protocol metrics      [--ref <ref>] [--root <comms>] [--journal <p>] [--sessions <p>] \
+                            [--since <iso>] [--now <iso>] [--role <id>] [--thread <slug>] \
+                            [--no-streams] [--metrics-cache <p>] [--json]
+                            # WHAT THE CIRCUIT BURNED, HOW MANY ROUNDS A PACKAGE COSTS, AND HOW THE DAY WENT
+                            # — folded out of what is already on the box (the journal and the mail), nothing
+                            # written and nothing reaching the network
+                            # THE DAY REPORT (thread 042) is the last section, and it prints TWO shares side
+                            # by side, because neither is interpretable alone:
+                            #   `role <id> busy <n> %` — the sum of the role's lease spans over the window;
+                            #   `standing <role>×<thread> <t> in all free <t>` — for every pair standing at
+                            #   the right edge, the whole standing time AND its uninterrupted free tail,
+                            #   explicitly `0.0m` where there is none
+                            # THE FREE PART IS THE COURIER'S OWN ARITHMETIC (`freeTailMinutes`, notify.ts),
+                            # called and not copied: two instruments disagreeing on one input turn every
+                            # later reading into "which of them do we believe"
+                            # THE WINDOW NAMES ITS OWN LEFT EDGE AND WHERE IT CAME FROM — `--since`, or the
+                            # earliest event in the journal (the daemon's clock: a live process runs the code
+                            # it started with, so the day begins at the restart, not at the merge)
+                            # `--now <iso>` pins the right edge, so a window measured by hand hours ago can
+                            # be re-measured by the command
+                            # `--role`/`--thread` filter the ROWS, never the arithmetic: a free tail is a
+                            # statement about the role's OTHER threads, and folding a filtered journal would
+                            # be wrong in the direction of the alarm
+                            # NOTHING IS COLOURED AND NO THRESHOLD IS APPLIED: what counts as a significant
+                            # free share is john's to set and is not decided by this command
+                            # A `lease-released` with no `lease-acquired` (a rotated journal) names NO span,
+                            # and their count is a printed row: the busy shares are a lower bound, said out
+                            # loud rather than left to be discovered
 ```
 
 **The agent's whole legal contact with the mail is TWO commands** (R3): `thread show`
