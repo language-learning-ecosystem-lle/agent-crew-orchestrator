@@ -4431,7 +4431,13 @@ const runNotify = async (input: {
       // A DRIFT PAST THE BAND IS WORTH A LETTER OF ITS OWN (thread 044). It rings once per
       // period of being behind, and the letter is the whole point: the class exists because
       // the fact was already written in `daemon.log` every thirty seconds and reached nobody.
-      !plan.freshDrift)
+      !plan.freshDrift &&
+      // AND AN ACCOUNT LINE RAISES ITS OWN LETTER (thread 036, the tail of §4). It is the
+      // half of the fall-over that pays with every chain empty: a role standing behind a
+      // closed quota window is what john spent two days finding by hand, and a line that
+      // waits for somebody else's event is owed to a letter that never comes — the box is
+      // quiet precisely because nothing is being raised.
+      plan.freshAccounts.length === 0)
   ) {
     writeOut(
       statePath,
@@ -4448,6 +4454,8 @@ const runNotify = async (input: {
         drift: plan.drift?.since,
         freezes: plan.freezeKeys,
         unaccepted: plan.unaccepted,
+        // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
+        accounts: plan.accountKeys,
         // NOTHING WENT OUT, SO NOTHING WAS REMINDED (thread 043): `plan.reminded` carries a
         // fresh stamp only for the parks whose line this letter holds, and this is the branch
         // where no letter exists — a reminder cannot be due and silent at the same time (the
@@ -4507,6 +4515,8 @@ const runNotify = async (input: {
         drift: plan.drift?.since,
         freezes: plan.freezeKeys,
         unaccepted: plan.unaccepted,
+        // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
+        accounts: plan.accountKeys,
         reminded: plan.reminded,
       }),
     );
@@ -4542,6 +4552,8 @@ const runNotify = async (input: {
       drift: plan.drift?.since,
       freezes: plan.freezeKeys,
       unaccepted: plan.unaccepted,
+      // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
+      accounts: plan.accountKeys,
       reminded: plan.reminded,
     }),
   );
