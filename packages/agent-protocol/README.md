@@ -321,6 +321,25 @@ every machine and belongs to none of them.
 is read and never printed, while this one is printed on every preflight. Both fields
 say the same kind of thing — where something on this box happens to sit.
 
+**And the commands take their GitHub credentials from it themselves** (thread 065): a
+command standing in the checkout of a circuit resolves that circuit's machine config the
+way every other command does, reads `secrets.envFile`, and hands the variables to the
+child `gh` and `git` it runs. Nothing has to be exported before the call, and no
+`EnvironmentFile=` in a unit repeats what the config already says. Three rules:
+
+- **an already-set variable is never overwritten** — a caller who exported `GH_TOKEN`
+  (the debugging path, and the operator's own) wins over the file;
+- **`GH_TOKEN` or `GITHUB_TOKEN`** is what counts as a login, and every other variable of
+  the file is passed on too;
+- **the refusal names the file**, not the variable: no `secrets.envFile` in the config /
+  the file is absent / it cannot be read / it carries no token are four different
+  messages, each quoting the path it tried to read. A value is never printed, anywhere.
+
+`git` gets the same environment: a credential helper for `github.com` that reads the
+token out of its own environment, and `GIT_TERMINAL_PROMPT=0` — a `Username for
+'https://github.com'` on the stdin of a session nobody is watching is a hang, not a
+failure.
+
 `accounts` is the same kind of thing for the SUBSCRIPTIONS a box holds (thread 055),
 and it is one half of a join that runs across the R14 line in both directions:
 
@@ -2360,7 +2379,9 @@ facts about the pull request and this command answers them in one call: an `appr
 verdict **on the current head**, green checks **on that same head**, and no **document
 of power** in the diff. Exit 0 — nothing in the facts forbids the merge; exit 1 — a
 guard does not hold. The facts come from `gh pr view --json` (the tool a session
-already runs to look at a PR; its authentication is the operator's), and its answer is
+already runs to look at a PR; **the token is taken from the `secrets.envFile` of this
+circuit's machine config** unless the caller already exported one — the first line of the
+output says which file and which variable won, never a value), and its answer is
 validated at the door — a renamed field is a refusal by name, never a silent "no
 reviews, no checks", which for a merge gate would fail open.
 

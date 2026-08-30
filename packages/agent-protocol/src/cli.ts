@@ -45,6 +45,7 @@ import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
+import { platformEnvOf } from "./config/credentials.js";
 import {
   type LoadedConfig,
   type LoadedPolicy,
@@ -1183,11 +1184,17 @@ const writeOut = (path: string, content: string): void => {
 const gitIn =
   (checkout: string): GitRun =>
   (args, env) => {
+    // THE PUSH TAKES THE CIRCUIT'S OWN CREDENTIALS TOO (thread 065), and the refusal is
+    // NOT fatal here: a delivery that reads and commits locally needs no token, only the
+    // push does, and git says by name which repository it could not reach. What this
+    // always buys is the end of the prompt — `Username for 'https://github.com'` on the
+    // stdin of a session nobody is watching is a hang, not a failure.
+    const platform = platformEnvOf({ repo: checkout });
     try {
       return execFileSync("git", ["-C", checkout, ...args], {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
-        ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
+        env: { ...platform.env, ...(env ?? {}) },
       });
     } catch (error) {
       const failure = error as { stderr?: string; status?: number };
@@ -2926,6 +2933,11 @@ const runParkFacts = (
   repo: string,
 ): { readonly facts?: RunParkFacts; readonly refusal?: string } => {
   let raw: string;
+  // The circuit's own credentials (thread 065): the refusal of this door is already a
+  // string that stands the park up with the reason printed, so a missing token joins the
+  // other degradations — by name, with the file it looked in.
+  const platform = platformEnvOf({ repo });
+  if (platform.refusal !== null) return { refusal: platform.refusal };
   try {
     raw = execFileSync(
       "gh",
@@ -2933,6 +2945,7 @@ const runParkFacts = (
       {
         cwd: repo,
         encoding: "utf8",
+        env: platform.env,
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 8 * 1024 * 1024,
       },
@@ -11914,13 +11927,24 @@ const zonesCheck = (argv: readonly string[]): void => {
  * queued pull requests, one `gh pr view` each buys nothing worth a second machinery.
  */
 const ghMergeReadySource = (repo: string): MergeReadySource => {
-  const ask = (args: readonly string[]): string =>
-    execFileSync("gh", [...args], {
+  const ask = (args: readonly string[]): string => {
+    // THE CIRCUIT'S OWN CREDENTIALS (thread 065), read PER CALL and not once at start-up:
+    // this source is built when the daemon boots and lives as long as it does, so a token
+    // rotated under a running daemon has to be picked up without a restart — the cost is
+    // one small file read beside a network call.
+    const platform = platformEnvOf({ repo });
+    // The refusal is thrown, like every other failure of this source: `readMergeReady`
+    // turns all of them into "no acceleration" with the reason said out loud, and a
+    // credential that is missing BY NAME is exactly what the five blind ticks lacked.
+    if (platform.refusal !== null) throw new Error(platform.refusal);
+    return execFileSync("gh", [...args], {
       cwd: repo,
       encoding: "utf8",
+      env: platform.env,
       stdio: ["ignore", "pipe", "pipe"],
       maxBuffer: 16 * 1024 * 1024,
     });
+  };
   return {
     open: async () =>
       ghOpenPullRequestsSchema
@@ -11965,6 +11989,20 @@ const mergeGate = (argv: readonly string[]): void => {
   const skew = describePolicySkew(loaded);
   if (skew !== undefined) out(`merge-gate: ${skew}`);
   const repo = flag(argv, "--repo") ?? process.cwd();
+  // THE DOOR TAKES THE CREDENTIALS OF THE CIRCUIT IT STANDS IN (thread 065). Said out
+  // loud before the first ask, like the list of documents of power below it: a verdict
+  // read through somebody else's login is a verdict about the wrong repository, and the
+  // one line that tells the two apart is this one. Names and paths only — never a value.
+  const platform = platformEnvOf({
+    repo,
+    instance: flag(argv, "--instance"),
+    localConfig: flag(argv, "--local-config"),
+  });
+  out(`merge-gate: credentials — ${platform.note}`);
+  if (platform.refusal !== null) {
+    fail(platform.refusal, 2);
+    return;
+  }
 
   const ask = (): string =>
     execFileSync(
@@ -11986,6 +12024,7 @@ const mergeGate = (argv: readonly string[]): void => {
       {
         cwd: repo,
         encoding: "utf8",
+        env: platform.env,
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 16 * 1024 * 1024,
       },
@@ -12066,7 +12105,13 @@ const mergeGate = (argv: readonly string[]): void => {
           "--jq",
           "[.sha, .commit.committer.date] | @tsv",
         ],
-        { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 1024 * 1024 },
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: platform.env,
+          stdio: ["ignore", "pipe", "pipe"],
+          maxBuffer: 1024 * 1024,
+        },
       ).trim();
       const [sha, committedAt] = answer.split(/\s+/);
       // Half an answer is no answer: a SHA with no date, or a date with no SHA, would be
@@ -12105,6 +12150,7 @@ const mergeGate = (argv: readonly string[]): void => {
               {
                 cwd: repo,
                 encoding: "utf8",
+                env: platform.env,
                 stdio: ["ignore", "pipe", "pipe"],
                 maxBuffer: 16 * 1024 * 1024,
               },

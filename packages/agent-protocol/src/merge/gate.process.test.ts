@@ -910,3 +910,112 @@ describe("merge-gate — the base under a credited check (023.3)", () => {
     expect(result.out).toContain("REFUSED");
   });
 });
+
+/**
+ * THE DOOR TAKES THE CREDENTIALS OF ITS OWN CIRCUIT (thread 065) — the SEAM, which is
+ * the only place this can be seen at all: the unit test of `platformEnvFrom` proves the
+ * rules on a record, and nothing there says the record reaches a real child process.
+ *
+ * So the stub `gh` here REFUSES unless the token arrived in its environment, and the
+ * command is started from an environment that carries none — which is exactly the state
+ * that made john's console answer `Username for 'https://github.com'`.
+ */
+describe("merge-gate takes the token of the instance the checkout belongs to", () => {
+  const SECRET = "ghp_test_only_1234567890";
+
+  /** A `gh` that answers only when the token reached it, and says so when it did not. */
+  const stubGhNeedingToken = (repo: string, json: unknown, expected: string): string => {
+    const bin = join(repo, "stub-bin-token");
+    mkdirSync(bin, { recursive: true });
+    const path = join(bin, "gh");
+    writeFileSync(
+      path,
+      `#!/bin/sh\nif [ "$GH_TOKEN" != ${JSON.stringify(expected)} ]; then\n  echo "gh: no token in the environment" >&2\n  exit 1\nfi\ncat <<'PAYLOAD'\n${JSON.stringify(json)}\nPAYLOAD\n`,
+      "utf8",
+    );
+    chmodSync(path, 0o755);
+    return bin;
+  };
+
+  /** The machine config of this box, naming a secrets file beside it. */
+  const machineConfig = (repo: string, secrets: { write: boolean }): void => {
+    const home = join(configHomeInside(repo), "agent-protocol");
+    mkdirSync(home, { recursive: true });
+    const envFile = join(repo, "secrets.aco.env");
+    writeFileSync(
+      join(home, "local.json"),
+      `${JSON.stringify({ agents: {}, secrets: { envFile } }, null, 2)}\n`,
+      "utf8",
+    );
+    if (secrets.write) writeFileSync(envFile, `GH_TOKEN=${SECRET}\n`, "utf8");
+  };
+
+  /** The command run from a CLEAN environment: no `GH_TOKEN`, no login of `gh`. */
+  const runClean = (repo: string, bin: string): { code: number; out: string } => {
+    const {
+      GH_TOKEN: _mine,
+      GITHUB_TOKEN: _theirs,
+      ...clean
+    } = sandbox(configHomeInside(repo), {
+      PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
+    });
+    try {
+      const out = execFileSync(
+        TSX,
+        [CLI, "merge-gate", "--ref", "HEAD", "--repo", repo, "--pr", "61"],
+        {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+          env: clean,
+        },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? -1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("the config names the file → the token reaches the child `gh`, from a clean environment", () => {
+    const repo = repoWithConfig();
+    machineConfig(repo, { write: true });
+    const result = runClean(repo, stubGhNeedingToken(repo, mergeable(), SECRET));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("token GH_TOKEN ← the secrets file");
+    // The NAME of the variable is printed; the value never is.
+    expect(result.out).toContain("GH_TOKEN (values not shown)");
+    expect(result.out).not.toContain(SECRET);
+  });
+
+  it("the file the config names is not there → a refusal that says WHICH file, not 'populate the GH_TOKEN'", () => {
+    const repo = repoWithConfig();
+    machineConfig(repo, { write: false });
+    const result = runClean(repo, stubGhNeedingToken(repo, mergeable(), SECRET));
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("no credential for GitHub");
+    expect(result.out).toContain(join(repo, "secrets.aco.env"));
+    expect(result.out).toContain("does not exist");
+  });
+
+  it("a token already in the environment WINS over the file — the debug path is not overridden", () => {
+    const repo = repoWithConfig();
+    machineConfig(repo, { write: true });
+    const bin = stubGhNeedingToken(repo, mergeable(), "the-callers-own-token");
+    const out = execFileSync(
+      TSX,
+      [CLI, "merge-gate", "--ref", "HEAD", "--repo", repo, "--pr", "61"],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: sandbox(configHomeInside(repo), {
+          PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
+          GH_TOKEN: "the-callers-own-token",
+        }),
+      },
+    );
+
+    expect(out).toContain("token GH_TOKEN ← the environment of the caller (not overwritten)");
+  });
+});
