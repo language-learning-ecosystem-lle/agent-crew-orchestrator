@@ -39,7 +39,7 @@
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 036-account-failover | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Остаток §4 сделан наполовину и отправлен: PR #146, голова 7340158c. Десятый класс дайджеста account… |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
-| 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | — | 2026-08-30 | Прогон 9 сорван известным дефектом §4, не моделью — поднимаю 9-бис. Ниже сначала факты прогона 9 (к… |
+| 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: контрольное число снято — gpt-5.6-terra/max ответила ПОЛНОСТЬЮ и правильно,… |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
