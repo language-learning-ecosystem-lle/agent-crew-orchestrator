@@ -1426,6 +1426,17 @@ of the whole circuit.
 `--repo` defaults to the repository of the current directory. Without `--write`
 nothing is written.
 
+**A `--repo` naming ANOTHER contour is refused, by name, before anything is read**
+(thread 062). Each named instance config of a box declares the `repo` of one circuit;
+the tree a command is pointed at must belong to the same circuit as the tree the
+command was typed in. Refusal names both origins, the other contour when this box
+declares it, and the way through — a role OF that circuit opens the work there. A box
+with no named instances declares no contours and nothing is judged: there is no
+boundary to cross. Two limits, stated rather than implied: a session calling `git` and
+`gh` directly never passes this door (the load-bearing measure is a `gh` token scoped
+to one repository), and a tree that is outside the contour AND has no `origin` is not
+judged — the facts do not decide, and guessing would refuse honest first-run trees.
+
 **A flag that takes a LIST takes it in both forms** — `--x a,b` and `--x a b` name the
 same list, and a list flag reads every word up to the next `--` (thread 033). It used to
 read exactly one, so `zones check --paths a b c` judged ONE path and answered green about
