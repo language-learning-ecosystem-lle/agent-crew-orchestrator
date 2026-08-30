@@ -8,9 +8,13 @@ import { describe, expect, it } from "vitest";
 import type { LeaseView } from "../orchestrator/lease.js";
 import type { NotificationTarget } from "../roles/registry.js";
 import {
+  type AccountAlarm,
+  accountAlarmKey,
+  announcedOf,
   describeAge,
   type ExhaustedPair,
   exhaustedPairsOf,
+  type NotificationPlan,
   type NotifyState,
   type ParkedThread,
   type ParkReminder,
@@ -1767,5 +1771,205 @@ describe("a box behind its own ref — the ninth class of event (thread 044)", (
     expect(rendered).toContain(`drift\t${DRIFT.since}`);
     expect(parseNotifyState(rendered).drift).toBe(DRIFT.since);
     expect(parseNotifyState("john\t044-x\n").drift).toBeUndefined();
+  });
+});
+
+// THE TENTH CLASS — WHAT THE TICK SAYS ABOUT ACCOUNTS (thread 036, the tail of §4). The three
+// sentences are the planner's own (`describeFailover`, `describeAccountPause`,
+// `describeRefusals`, landed in #105) and are handed over rendered; what is decided here is
+// only which of them RING, and the whole subject is that two of them are STATES and one is an
+// EVENT. The texts below are copied from the live describers rather than imported, so that a
+// re-wording of them is a failing test and not a silent change of what john reads.
+describe("the accounts of the box — the tenth class of event (thread 036)", () => {
+  const HELD = {
+    kind: "held" as const,
+    role: "dev-core",
+    // NO TAB IN THE FACT — the state file is columns, and this fixture is the contract of
+    // `AccountAlarm.about` being kept rather than described: a caller that joined two facts
+    // with `\t` would have its key cut in half by the next parse of the file.
+    about: "lle-main until 2026-08-30T14:00:00Z",
+    text: "account-failover: launches of dev-core are held until 14:00Z — every account of its chain is quota-paused (the first to reopen is lle-main, five_hour window)",
+  };
+  const SWITCH = {
+    kind: "failover" as const,
+    role: "curator",
+    about: "2026-08-30T11:02:00Z",
+    text: "account-failover: curator is raised on lle-second — lle-main is quota-paused until 14:00Z (five_hour window, seen at 2026-08-30T09:00:00Z)",
+  };
+  const CHAIN = {
+    kind: "chain" as const,
+    role: "dev-core",
+    about: "ghost-acct",
+    text: "account-failover: the fall-back 'ghost-acct' of dev-core is NOT spent — this machine declares no such account",
+  };
+
+  const planAccounts = (accounts: readonly AccountAlarm[], seen: NotifyState = EMPTY) =>
+    planNotifications({ targets: TARGETS, waiting: [], seen, templates: TEMPLATES, accounts });
+
+  const accountLines = (plan: NotificationPlan) =>
+    plan.lines.filter((entry) => entry.kind === "account");
+
+  // (а) The half that pays TODAY, with every chain empty: a role standing behind its own
+  // closed window says so, with the clock on it, instead of standing in silence.
+  it("a held role rings exactly once, with the time the window reopens", () => {
+    const lines = accountLines(planAccounts([HELD]));
+    expect(lines).toHaveLength(1);
+    // The sentence is carried verbatim — the courier does not re-word the planner.
+    expect(lines[0]?.text).toBe(HELD.text);
+    expect(lines[0]?.text).toContain("held until 14:00Z");
+    expect(lines[0]?.role).toBe("dev-core");
+  });
+
+  // (б) O2 — the state is said ONCE. The tick runs every thirty seconds and a quota window
+  // stands for hours: a line repeated N times is the noise that teaches its reader to skip.
+  it("the same held state on the next tick is silent — the key is what was announced", () => {
+    const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(HELD)] };
+    expect(accountLines(planAccounts([HELD], seen))).toHaveLength(0);
+    // …and the composition survives the silence, so the state keeps saying what stands.
+    expect(planAccounts([HELD], seen).accountKeys).toEqual([accountAlarmKey(HELD)]);
+  });
+
+  it("a NEW window of the same role rings again — the shelf is part of the identity", () => {
+    const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(HELD)] };
+    const next = { ...HELD, about: "lle-main until 2026-08-30T19:00:00Z" };
+    expect(accountLines(planAccounts([next], seen))).toHaveLength(1);
+  });
+
+  // (в) O3 — the event is NEVER weighed against the memory of the states. A failover moves
+  // the spending of a run onto another subscription, and the owner of both learns it from
+  // the system rather than from a bill (§4 of the statement, 2026-08-28).
+  it("a failover rings even with its own key already in the state — an event, not a state", () => {
+    const seen: NotifyState = {
+      ...EMPTY,
+      accounts: [accountAlarmKey(SWITCH), accountAlarmKey(HELD)],
+    };
+    const lines = accountLines(planAccounts([SWITCH], seen));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.text).toBe(SWITCH.text);
+    // And it leaves NO key behind: what is remembered is the standing states, so a switch
+    // that happened is never mistaken for one that is still standing.
+    expect(planAccounts([SWITCH], seen).accountKeys).toEqual([]);
+  });
+
+  it("a standing pause does not swallow the switch that rides with it", () => {
+    const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(HELD)] };
+    const lines = accountLines(planAccounts([HELD, SWITCH], seen));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.text).toBe(SWITCH.text);
+  });
+
+  // A broken link of a chain is a defect of the config: it stands until somebody edits the
+  // file, so it rings on the run that finds it and not on every tick after it.
+  it("a refused fall-back rings once and is remembered by the link it names", () => {
+    expect(accountLines(planAccounts([CHAIN]))).toHaveLength(1);
+    expect(planAccounts([CHAIN]).accountKeys).toEqual([accountAlarmKey(CHAIN)]);
+    const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(CHAIN)] };
+    expect(accountLines(planAccounts([CHAIN], seen))).toHaveLength(0);
+  });
+
+  // The key is the kind, the role and the fact — in that order, and all three matter: one
+  // role can stand behind a closed chain AND carry a broken link, with two repairs.
+  it("the key tells the two facts of one role apart", () => {
+    expect(accountAlarmKey(HELD)).not.toBe(accountAlarmKey(CHAIN));
+    expect(accountLines(planAccounts([HELD, CHAIN]))).toHaveLength(2);
+  });
+
+  // (г) THE QUIET TICK — every role on its own account, no shelf anywhere. The digest must
+  // be byte-for-byte what it was before this class existed.
+  it("a quiet tick says nothing at all, and an absent field is the same as an empty one", () => {
+    const quiet = planNotifications({
+      targets: TARGETS,
+      waiting: [{ role: "john", thread: "036-account-failover" }],
+      seen: EMPTY,
+      templates: TEMPLATES,
+    });
+    const empty = planNotifications({
+      targets: TARGETS,
+      waiting: [{ role: "john", thread: "036-account-failover" }],
+      seen: EMPTY,
+      templates: TEMPLATES,
+      accounts: [],
+    });
+    expect(accountLines(quiet)).toHaveLength(0);
+    expect(quiet.freshAccounts).toEqual([]);
+    expect(quiet.accountKeys).toEqual([]);
+    expect(renderNotification(empty.lines)).toBe(renderNotification(quiet.lines));
+  });
+
+  it("is dropped when nobody human is configured — a chat assistant pays no bill", () => {
+    const result = planNotifications({
+      targets: [{ id: "curator", style: "nudge", nudge: "john" }],
+      waiting: [],
+      seen: EMPTY,
+      templates: TEMPLATES,
+      accounts: [HELD, SWITCH],
+    });
+    expect(accountLines(result)).toHaveLength(0);
+  });
+
+  it("the state file carries the keys, and a file written before this class still parses", () => {
+    const rendered = renderNotifyState({ ...EMPTY, accounts: [accountAlarmKey(CHAIN)] });
+    expect(rendered).toContain(`account\tchain\tdev-core\tghost-acct`);
+    expect(parseNotifyState(rendered).accounts).toEqual([accountAlarmKey(CHAIN)]);
+    expect(parseNotifyState("john\t036-x\n").accounts).toBeUndefined();
+    // A line that is not one of the three kinds is dropped, on the freeze rule: a key that
+    // is not the key announces the same standstill a second time.
+    expect(parseNotifyState("account\tnonsense\tdev-core\t\n").accounts).toBeUndefined();
+  });
+
+  // THE FACT WITH A SPACE IN IT SURVIVES THE FILE — the round-trip on the state that actually
+  // carries a composed `about` (an account AND the window it reopens at), and the reason the
+  // fixtures above carry no tab: the file is columns, so a tab inside the fact would come back
+  // as a shorter key and the same closed window would ring a second time.
+  it("a held state's key comes back from the file whole, spaces and all", () => {
+    const rendered = renderNotifyState({ ...EMPTY, accounts: [accountAlarmKey(HELD)] });
+    expect(parseNotifyState(rendered).accounts).toEqual([accountAlarmKey(HELD)]);
+    expect(accountAlarmKey(HELD)).toContain("lle-main until 2026-08-30T14:00:00Z");
+  });
+
+  // (д) THE DAEMON'S OWN LOG — the stitch `planNotifications` → the courier's summary, which
+  // the round of `reviewer-pr` on #146 found silent: the letter to john carried the account
+  // line while the log printed an empty tail, and "nothing to report" is exactly how a reader
+  // of the log understands it.
+  it("the operator's log names the class that went out, and names its role and kind", () => {
+    expect(announcedOf(planAccounts([HELD]))).toEqual(["dev-core (account: held)"]);
+    expect(announcedOf(planAccounts([SWITCH]))).toEqual(["curator (account: failover)"]);
+    // Two facts of one role are two entries — two repairs, and the log is where the operator
+    // sees that the letter carried both.
+    expect(announcedOf(planAccounts([HELD, CHAIN]))).toEqual([
+      "dev-core (account: held)",
+      "dev-core (account: chain)",
+    ]);
+  });
+
+  it("a state already announced is not in the log either — it says what WENT OUT", () => {
+    const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(HELD)] };
+    expect(announcedOf(planAccounts([HELD], seen))).toEqual([]);
+    expect(announcedOf(planAccounts([HELD, SWITCH], seen))).toEqual([
+      "curator (account: failover)",
+    ]);
+  });
+
+  it("the account stands in the log where its line stands in the letter — under the drift", () => {
+    const plan = planNotifications({
+      targets: TARGETS,
+      waiting: [{ role: "john", thread: "036-account-failover" }],
+      seen: EMPTY,
+      templates: TEMPLATES,
+      accounts: [SWITCH],
+      drift: {
+        sha: "a830761a",
+        refSha: "951b7551",
+        ref: "origin/main",
+        size: "3 commit(s) behind",
+        why: "no self-restart while sessions are live (curator)",
+        since: "2026-08-29T03:24:02Z",
+      },
+    });
+    expect(announcedOf(plan)).toEqual([
+      "the box is behind its own ref (3 commit(s) behind)",
+      "curator (account: failover)",
+      "036-account-failover",
+    ]);
   });
 });
