@@ -37,7 +37,7 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | normal | closed | — | — | 2026-08-23 | — |
 | 034-shape-guard-values-blind | curator, dev-core | normal | closed | — | — | 2026-08-23 | — |
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 036-account-failover | curator · dev-core · john | high | open | reviewer-pr | run:151 · 2026-08-30 | 2026-08-30 | Остаток §4 сделан ЦЕЛИКОМ и отправлен: PR #151, голова c4c8d9c9bdc79f87effe31f6582259af6ce18bdb. О1… |
+| 036-account-failover | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
 | 038-pilot-codex-live-run | curator, pilot-codex | high | closed | — | — | 2026-08-30 | — |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
