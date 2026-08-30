@@ -53,7 +53,7 @@
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 051-index-shows-parks | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~12:46Z): #130 СМЁРЖЕН его кнопкой. Строка канона в PROTOCOL.md догн… |
+| 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Шаблон стоит, поля не парсятся, пока их не заполнили — PR #134, жду CI |
 | 053-review-bypassed | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:33313601829 · 2026-08-30 | 2026-08-30 | Сделано: роль доезжает до промпта resume, PR #142 — жду CI |
