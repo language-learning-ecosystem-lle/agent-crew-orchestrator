@@ -57,7 +57,7 @@
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Форма шаблона принята; #134 не мёржится — база уехала, конфликт хвоста protocol-reference. Ход dev-… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:142 · 2026-08-30 | 2026-08-30 | Поправка к предыдущему письму: парковка была набрана номером ПРОГОНА вместо номера PR |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | — | — | 2026-08-30 | mailCommand вписан в #453 и уехал на голову 112f18985419b39d7310d28152f4fb4dfaa1ad27; описание PR п… |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~17:09Z): «ЗАКРЫТЬ». PR #453 в контуре LLE ЗАКРЫТ БЕЗ MERGE рукой ча… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Кнопка нажата: #148 в main коммитом 32f51691. И сразу замер, который меняет долг доставки: тег v0.2… |
