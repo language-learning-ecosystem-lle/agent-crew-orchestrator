@@ -40,6 +40,7 @@ import { z } from "zod";
 
 import { codexEffortSchema } from "../orchestrator/codex.js";
 import type { AgentLever } from "../orchestrator/kind.js";
+import { capabilitiesSchema } from "./capabilities.js";
 
 /** Role identifier: the same token appears in `waiting-on` and in a message's `from:`. */
 export const roleIdSchema = z
@@ -462,6 +463,22 @@ export const roleSchema = z.strictObject({
       "a system user name is lowercase latin, digits, hyphen and underscore (it is passed to the switch as a name, not resolved by us)",
     )
     .optional(),
+  /**
+   * WHAT THE ROLE MAY DO TO THE BOX — the closed set of verbs, each with the closed list of
+   * values its one parameter accepts (thread `047-devops-role`, john's «capabilities твои» of
+   * 2026-08-30, composed by curator). The grammar is `roles/capabilities.ts`; the values are
+   * here, in the config, because what may be restarted on THIS box is a fact of this project.
+   *
+   * ABSENT is the whole circuit as it runs today: a role that does nothing to the box. The
+   * field has no default for the reason `permissions` has one and this does not — `[]` there
+   * is "no rights in the mail", a state every role starts from, while `[]` here would be a
+   * declaration about the machine that nobody wrote.
+   *
+   * This says WHAT is entitled, not what happens: the executor that answers a call — and the
+   * trace it leaves — arrives with the system user (`docs/box-setup.md` §0.1), and a call
+   * outside these lists is refused by name there rather than trimmed to fit.
+   */
+  capabilities: capabilitiesSchema.optional(),
 });
 
 export type RoleId = string;

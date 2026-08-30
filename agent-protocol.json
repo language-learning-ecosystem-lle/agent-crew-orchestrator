@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 23,
+  "protocolVersion": 24,
   "mail": {
     "branch": "comms",
     "dir": "agent-comms"
@@ -178,7 +178,27 @@
           "path": "docs/roles/devops.md"
         }
       ],
-      "systemUser": "aco-devops"
+      "systemUser": "aco-devops",
+      "capabilities": [
+        {
+          "name": "log-tail",
+          "logs": [
+            "/home/lle/projects/language-learning-ecosystem/.orchestrator/daemon.log",
+            "/home/lle/projects/agent-crew-orchestrator/.orchestrator/daemon.log"
+          ],
+          "maxLines": 200
+        },
+        {
+          "name": "repo-refresh",
+          "checkouts": [
+            "/home/lle/projects/language-learning-ecosystem",
+            "/home/lle/projects/agent-crew-orchestrator"
+          ]
+        },
+        {
+          "name": "disk-free"
+        }
+      ]
     },
     {
       "id": "reviewer-pr",
