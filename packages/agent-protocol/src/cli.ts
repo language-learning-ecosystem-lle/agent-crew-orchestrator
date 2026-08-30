@@ -3243,11 +3243,25 @@ const declaredTurnOf = (threadDir: string): ThreadTurn | undefined => {
 };
 
 /**
+ * What the writing door learned about the park of a thread: the park as read, or the REASON
+ * it could not be read. The two are not the same answer and are not folded into one value.
+ */
+type StandingPark =
+  | { readonly readable: true; readonly parking: Parking | undefined }
+  | { readonly readable: false; readonly reason: string };
+
+/**
  * THE PARK STANDING ON A THREAD, read from disk for the WRITING door (thread 058, (B.3)).
  *
  * A thread that cannot be read as files parks nobody as far as this door is concerned: the
  * letter must stay writable, and a refusal built on a feed nobody could parse names nothing the
- * writer can fix.
+ * writer can fix. BUT THE FAILED READ IS RETURNED AS ITSELF and not as "no park" (finding 11 of
+ * the review of #170): the caller stands AFTER `existsSync(threadDir)`, so an honest "there is
+ * no such thread" never reaches this `catch` — everything it can catch is "the thread is there
+ * and its feed is unreadable" (half a migration, a message file that does not parse), and in
+ * exactly that state the door of (B.3) used to switch off without a word. The point it was
+ * written for is not "refuse at any cost", it is "do not be silent about what was not checked",
+ * so the reason travels on to `judgeParkSeen`, which says it in words.
  *
  * THE SECOND READ IS ONLY FOR THE EVENT PARKS. A park on `pr:N` / `run:N` is lifted by the merge
  * notifier writing into the PR's OWN thread (thread 023), which this feed cannot see — so the
@@ -3258,17 +3272,20 @@ const standingParkFor = (input: {
   readonly root: string;
   readonly thread: string;
   readonly ids: readonly string[];
-}): Parking | undefined => {
+}): StandingPark => {
   let loaded: LoadedThread;
   try {
     loaded = loadThread(join(input.root, input.thread), input.thread, input.ids);
-  } catch {
-    return undefined;
+  } catch (error) {
+    return { readable: false, reason: error instanceof Error ? error.message : String(error) };
   }
   const parking = parkingOf(loaded.thread);
-  if (parking === undefined || parking.kind === "person") return parking;
+  if (parking === undefined || parking.kind === "person") return { readable: true, parking };
   const { threads } = loadThreads(input.root, input.ids);
-  return parkingOf(loaded.thread, mergedPrs(threads.map((entry) => entry.thread)));
+  return {
+    readable: true,
+    parking: parkingOf(loaded.thread, mergedPrs(threads.map((entry) => entry.thread))),
+  };
 };
 
 const newMessage = (argv: readonly string[]): void => {
@@ -3350,9 +3367,11 @@ const newMessage = (argv: readonly string[]): void => {
   // succeeds where the write refuses is a lie. What lifts a park is not touched — the standing
   // one is READ (`parkingOf`) and the letter is asked what it says about it.
   const parkLifted = flag(argv, "--park-lifted");
+  const standing = standingParkFor({ root, thread: threadId, ids: registry.ids() });
   const parkSeen = judgeParkSeen({
     thread: threadId,
-    parking: standingParkFor({ root, thread: threadId, ids: registry.ids() }),
+    parking: standing.readable ? standing.parking : undefined,
+    ...(standing.readable ? {} : { unreadable: standing.reason }),
     ...(parkedOn === undefined ? {} : { parkedOn }),
     ...(delivers === undefined ? {} : { delivers }),
     ...(mergedPr === undefined ? {} : { mergedPr }),
@@ -3373,9 +3392,25 @@ const newMessage = (argv: readonly string[]): void => {
     const existingTs = threadHasMessages
       ? readdirSync(messagesDir)
           .filter((name) => name.endsWith(".md"))
-          .map(
-            (name) => parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date,
-          )
+          .map((name) => {
+            try {
+              return parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date;
+            } catch (error) {
+              // A STOP THAT NAMES THE FILE IT STOPPED ON (thread 058, alongside finding 11 of
+              // the review of #170). This scan already refused such a feed — by dying on the
+              // parser's own sentence ("a message file must start with a '---' line"), with no
+              // file name, no exit code of a refusal and a stack trace behind it, which is the
+              // very shape `loadThread` was taught out of in thread 016. The OUTCOME is kept:
+              // the stamp of the new letter has to stand strictly after the last one in the
+              // feed, and a file whose date nobody can read makes that unknowable — skipping it
+              // would put the answer before the question it answers. What changes is that the
+              // writer is told WHICH file and WHAT to run.
+              return fail(
+                `messages/${name}: ${(error as Error).message} — this letter cannot be dated against a feed with an unreadable file in it (its stamp must stand strictly after the last one). Repair the thread first: 'thread status --thread ${threadId} --from ${from} --repair --write' rebuilds the head, a message file broken by hand has to be fixed by hand`,
+                2,
+              );
+            }
+          })
           .filter((date) => date.includes("T"))
       : [];
     const date = nextMessageTimestamp(new Date(), existingTs);
