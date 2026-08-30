@@ -102,6 +102,7 @@ import {
   readReviewRuns,
 } from "./merge/gh.js";
 import {
+  type AccountAlarm,
   type AuthAlarm,
   announcedOf,
   authAlarmKey,
@@ -3909,6 +3910,13 @@ type NotifyRun = {
 const runNotify = async (input: {
   readonly argv: readonly string[];
   readonly write: boolean;
+  /**
+   * WHAT THE TICK SAID ABOUT ACCOUNTS (thread 036) — measured by the caller, because only
+   * the caller has a tick. The command run by hand has none and passes nothing, which is
+   * why `notify` on its own never says a word about accounts: it would have to read the
+   * shelves a second time to invent one.
+   */
+  readonly accounts?: readonly AccountAlarm[];
 }): Promise<NotifyRun> => {
   const argv = input.argv;
   const write = input.write;
@@ -4319,6 +4327,7 @@ const runNotify = async (input: {
     auth: authAlarm,
     gh: ghAlarm,
     drift: driftAlarm,
+    ...(input.accounts === undefined ? {} : { accounts: input.accounts }),
     // THE CLOCK THE REMINDER PASS NEEDS (thread 043): the same `now` every other age in this
     // command is measured against, so a park cannot be three hours old for the stall pass and
     // two for the reminder one.
@@ -10055,10 +10064,22 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
    * failed. Repeating all of it every thirty seconds is the same "trains its reader
    * to ignore it" the notifier refuses to do to a human.
    */
+  /**
+   * WHAT THE LAST TICK SAID ABOUT ACCOUNTS, waiting for the next dial of the courier
+   * (thread 036). Held here and not read out of the journal because the journal learns of a
+   * switch only when the run RELEASES its lease — minutes to hours after the switch, and
+   * never at all for a run that died without writing one. The live tick knows it at once.
+   */
+  let pendingAccounts: readonly AccountAlarm[] = [];
   const dialCourier = async (): Promise<void> => {
     let run: NotifyRun;
     try {
-      run = await runNotify({ argv, write: true });
+      run = await runNotify({ argv, write: true, accounts: pendingAccounts });
+      // ONE TICK'S MEASUREMENT, ONE DIAL — and consumed whatever the dial came to, including
+      // a transport that could not deliver. Holding them for a retry would make this buffer
+      // grow for as long as Telegram is down, and the two facts survive that without it: a
+      // `held` is measured again by the very next tick, and a `failover` is in the journal.
+      pendingAccounts = [];
     } catch (error) {
       // A VERSION VERDICT IS NOT A COURIER FAILURE (thread 040). It is a statement about
       // this whole process — every config read in it refuses now — and swallowing it here
@@ -10497,7 +10518,22 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // that every account it may spend is shut and until when. Printed every tick the fact
     // holds, like the skips and for the same reason — a state that was announced once and
     // then went quiet is indistinguishable, hours later, from a circuit that died.
-    for (const line of decision.accountLines ?? []) err(`agent-protocol: ${line}`);
+    for (const alarm of decision.accountAlarms ?? []) err(`agent-protocol: ${alarm.text}`);
+    // …AND THE SAME MEASUREMENT GOES TO THE DIGEST OF THE PERSON WHOSE MONEY IT IS (thread
+    // 036, the remainder of §4). It is HANDED ON rather than re-derived: `notify` can read
+    // the shelves itself, and a second reading of one window is two facts that can disagree.
+    //
+    // IT REACHES THE COURIER ON THE NEXT TICK, and that is measured, not assumed: the raise
+    // is started and NOT awaited (`live.set` below), so a tick no longer sleeps for the
+    // length of the session it raised — the next dial is one tick away (`tickMs`), not one
+    // session. A dial of its own for the loud case would buy seconds and cost a second code
+    // path, so there is not one.
+    //
+    // THE LOSS ON RESTART IS NAMED RATHER THAN HIDDEN: these live in the memory of this
+    // process, so a daemon replaced between the decision and the next dial drops them. A
+    // `held` is a STATE and the next tick measures it again; a `failover` is an event, and it
+    // survives in the journal (`lease-released.account`) unannounced but not lost.
+    pendingAccounts = decision.accountAlarms ?? [];
     // 023.2, BESIDE THE SKIPS AND FOR THE SAME REASON: this is the other answer to "why
     // is nothing happening", and the only one the daemon could not give on 2026-08-03.
     // Silent on a match — a line every tick saying the code is current is the noise that
