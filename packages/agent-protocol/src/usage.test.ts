@@ -683,7 +683,7 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     // and in the README's «Commands», and NOWHERE in the shipped usage text — the
     // command a curator gets when they type `merge-gate` with a missing argument named
     // four flags out of five, and the missing one is the anchor of guard 1 itself. The
-    // corpus above could not see it: `merge-gate` is one of the thirteen commands left
+    // corpus above could not see it: `merge-gate` is one of the sixteen commands left
     // outside `guardArguments` (a swallowed flag there costs a re-run, not a message),
     // so nothing refused and nothing went red.
     //
@@ -709,6 +709,100 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     const spec = specFor("merge-gate");
     const named = [...spec.value, ...spec.boolean];
     expect(read.filter((name) => !named.includes(name))).toEqual([]);
+  });
+
+  /**
+   * THE FOUR DOORLESS COMMANDS WHOSE FORM LIED (thread 042, curator's table printed off
+   * `parseUsage(USAGE)` on the merged tree of #152).
+   *
+   * `zones check`, `capability run`, `config check` and `doctor` stand OUTSIDE
+   * `guardArguments` — neither by name nor through the `orchestrator *` family — so a
+   * flag missing from their form refuses nothing and reddens nothing. It costs the
+   * reader, and the reader of a form is by construction the one who has just mistyped.
+   * That is also why the repair is safe to make here rather than at john's desk: the
+   * door's table is built from this very text, and for these four there is no door.
+   *
+   * Two of the four lied in a second way, which no eye catches and `parseUsage` does:
+   * their flags sat on a CONTINUATION line, and a continuation line does not start with
+   * `agent-protocol`, so the parser never saw it at all.
+   *
+   * The premise of each case — "the handler really reads this flag off the user's argv"
+   * — is asserted separately and off `cli.ts`, so that a flag removed from the code
+   * tomorrow reddens this test BY NAME instead of demanding a form that names something
+   * the command no longer takes.
+   */
+  const bodyOf = (opening: string): string => {
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+    const opens = source.indexOf(opening);
+    expect(opens).toBeGreaterThan(-1);
+    return source.slice(opens, opens + source.slice(opens).indexOf("\n};"));
+  };
+  /** Flags a function body takes off argv, by the same reading the `merge-gate` case makes. */
+  const readsOf = (body: string): readonly string[] => [
+    ...new Set([
+      ...[...body.matchAll(/(?:flag|required|listFlag|list)\(\s*(?:\w+,\s*)?"(--[\w-]+)"/g)].map(
+        (found) => found[1] as string,
+      ),
+      ...[...body.matchAll(/\w+\.includes\("(--[\w-]+)"\)/g)].map((found) => found[1] as string),
+    ]),
+  ];
+
+  it("names both halves of the `zones check` alternative, and without the bracket (042)", () => {
+    const reads = readsOf(bodyOf("const zonesCheck = (argv: readonly string[]): void => {"));
+    // The premise: this command asks argv for the role two ways and for the paths three.
+    for (const name of ["--role", "--role-from-workspace", "--base", "--staged", "--paths"])
+      expect(reads).toContain(name);
+
+    const spec = specFor("zones check");
+    const named = [...spec.value, ...spec.boolean];
+    // `--role` used to be lost COMPLETELY: `(--role` does not begin with `-`, so the dumb
+    // parse skipped it, and the closing bracket rode along on the other half — the table
+    // held a switch spelled `--role-from-workspace)`, which no argv can ever match.
+    expect(named).toContain("--role");
+    expect(named).toContain("--role-from-workspace");
+    expect(named.filter((name) => name.includes(")") || name.includes("("))).toEqual([]);
+    // And the second alternative, which lived on a continuation line the parser skips.
+    for (const name of ["--base", "--staged", "--paths"]) expect(named).toContain(name);
+  });
+
+  it("names the three flags `capability run` reads past the verb (042)", () => {
+    const reads = readsOf(bodyOf("const capabilityRun = (argv: readonly string[]): void => {"));
+    for (const name of ["--target", "--lines", "--write"]) expect(reads).toContain(name);
+
+    const spec = specFor("capability run");
+    const named = [...spec.value, ...spec.boolean];
+    for (const name of ["--target", "--lines", "--write"]) expect(named).toContain(name);
+  });
+
+  it("names the machine config `config check` joins its verdict with (042)", () => {
+    // Two hops, both asserted: the handler goes through `machineAccounts`, and
+    // `machineAccounts` is what puts the operator's two flags to the local loader. A
+    // one-hop claim here would be a guess about the middle of the chain.
+    const handler = bodyOf("const configCheck = (argv: readonly string[]): void => {");
+    expect(handler).toContain("machineAccounts(argv");
+    const reads = readsOf(bodyOf("const machineAccounts = ("));
+    for (const name of ["--local-config", "--instance"]) expect(reads).toContain(name);
+
+    const spec = specFor("config check");
+    const named = [...spec.value, ...spec.boolean];
+    for (const name of ["--local-config", "--instance"]) expect(named).toContain(name);
+  });
+
+  it("names the four agent flags `doctor` probes the box with (042)", () => {
+    // Three hops, each asserted rather than assumed: `doctor` resolves its exec targets,
+    // `execTargets` asks `agentFor` per role, and `agentFor` is where the operator's four
+    // words become the binary the headless probe actually runs.
+    const handler = bodyOf("const doctor = (argv: readonly string[]): void => {");
+    expect(handler).toContain("withOperatorRef(argv)");
+    expect(handler).toContain("execTargets(withRef");
+    const targets = bodyOf("const execTargets = (");
+    expect(targets).toContain("agentFor(argv, local, role)");
+    const reads = readsOf(bodyOf("const agentFor = ("));
+    for (const name of ["--exec", "--worker", "--model", "--effort"]) expect(reads).toContain(name);
+
+    const spec = specFor("doctor");
+    const named = [...spec.value, ...spec.boolean];
+    for (const name of ["--exec", "--worker", "--model", "--effort"]) expect(named).toContain(name);
   });
 
   it("lets `up` pass its own flags through to the daemon it starts", () => {
