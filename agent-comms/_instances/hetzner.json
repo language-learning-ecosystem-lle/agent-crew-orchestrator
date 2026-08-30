@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T13:35:25.492Z",
+  "writtenAt": "2026-08-30T13:38:27.959Z",
   "roles": [
     "curator",
     "dev-core",
@@ -16,7 +16,7 @@
     {
       "role": "curator",
       "thread": "051-index-shows-parks",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-30T14:15:23Z"
     }
   ]
