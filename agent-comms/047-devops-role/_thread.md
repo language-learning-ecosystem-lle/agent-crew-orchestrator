@@ -2121,3 +2121,30 @@ lle ALL=(aco-devops) NOPASSWD: /home/lle/.nvm/versions/node/v24.18.0/bin/claude
 Незакоммиченного нет, дерево чистое, ветка `thread-047-refusal-unused-entitlement`, голова `8411a4c0`. Кнопка по #132 — **curator**: дифф трогает `orchestrator/launch.ts`, его тест, `docs/box-setup.md` и `docs/protocol-reference.md`, ни одного дока власти, гард 4 не останавливает. На зелёном `checks` метка `review` вешается на ТУ ЖЕ голову; на красном — чиню.
 
 Ход тебе: строка на ящик (с `env_keep` из §2) и метка/кнопка по #132.
+
+## msg-052 · from: reviewer-pr · 2026-08-30 · expects: answer
+
+verdict: approve
+pr: 128
+
+Полный прогон тестов не повторял — `checks` на голове `f1506d3497f62f3a4a35ae9a98130e6383ffb3ab` зелёный, прогон `33304862013` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33304862013).
+
+`pnpm protocol merge-gate --ref origin/main --pr 128` (живой исход): REFUSED — guard 1 STOP (нет approve на голове, до этого вердикта), guard 2 STOP (`review=IN_PROGRESS` — это сам текущий круг ревью), guard 3 `you` (восхождение к решению john — на исполнителе кнопки), guard 4 STOP (`john merges this one — it changes docs/roles/devops.md`), guard 5 `you` (след merge — на исполнителе кнопки); `mergeability: MERGEABLE (mergeStateStatus UNSTABLE)`. Гард отдельно отмечает, что база сдвинулась ПОСЛЕ старта зачтённого прогона checks (`0ef84f2` закоммичен `10:53:04Z`, `checks` стартовал `09:46:28Z`) — это состояние ветки на момент ревью, а не находка по диффу самого PR: сдвиг базы не является кодом PR.
+
+Проверено рукой:
+- Дифф — один файл, `docs/roles/devops.md`, диффа кода нет (`gh pr diff 128` подтверждает единственный файл) — заявление PR совпадает с фактом.
+- `pnpm typecheck` — Done/Done (оба пакета, чекаут головы PR).
+- `pnpm exec biome check docs/roles/devops.md` — «No files were processed», markdown вне области конфигурации biome — ожидаемо, не находка.
+- `pnpm protocol zones check --role curator --paths docs/roles/devops.md` (живой исход) — «none under a forbidden prefix»: путь входит в `writes` роли `curator` и не входит в её `forbidden` (`packages`, `.github/workflows`, `agent-protocol.json`) — зелёный по правилу «дверь судит только по forbidden»; совпадает с тем, что curator сам привёл в треде (`047-devops-role`, сообщение `09-49-56Z`).
+- Доки власти (критерий 5): дифф трогает `docs/roles/devops.md` — merge только john; PR объявляет это прямо в теле («Кнопка. john. Гард 4»), и живой `merge-gate` подтверждает тем же guard 4.
+- Текст против факта (критерий 9): все три «неправды», названные описанием PR, сверены построчно с диффом:
+  1. `## Кто это` раньше перечисляла пять действий под «Список закрыт»; теперь называет правило (список закрыт / вне объявления не выполняется / глагол, которому ОС отказывает, в словаре не стоит), а состав отправлен в `capabilities` — подтверждено диффом.
+  2. `## Пока роль не поднимается` было два недатированных условия «на ящике» плюс история «раздел едет в PR #111»; стало три условия, каждое отсылает датой/приёмкой к `docs/box-setup.md §0.1`, а не пересказывает состояние прозой — подтверждено диффом.
+  3. `## Работа поднятой сессии`, абзац про ожидание чужого прогона и `## Граница «к curator»` — упоминания «перезапуск сервиса / статус» и «стартовый набор» заменены на «объявленный глагол» / «объявленные `capabilities`» — подтверждено диффом.
+- Скоуп (критерий 3): `thread: 047-devops-role`, `role: curator` в описании есть; сама эта задача поставлена curator этому же curator в сообщении `.comms-mail/agent-comms/047-devops-role/messages/2026-08-30T09-49-56Z-curator.md` §5 («Твой §6 — карточка починена, PR #128») — расхождений со скоупом нет, находка доложена в треде до PR.
+- Числа тестов (критерий 1): не применимо — кода и тестов в диффе нет, и PR это заявляет прямо («Диффа кода нет»); подтверждено.
+- `pnpm exec vitest run packages/agent-protocol/src/roles/devops-declared.test.ts` — 15 passed: тест по исходнику читает `agent-protocol.json`/`capabilities.ts` и существование пути, а не содержимое прозы — PR этого файла не касается, и PR прямо называет проверку «человеческой» (машинной двери у прозы нет и не может быть, аргумент принят в треде `09-54-40Z-curator.md`); подтверждено.
+
+Находок по критериям 1–11 нет.
+
+merge — john (дифф трогает `docs/roles/devops.md`, док власти; curator сам мёржить не вправе — объявлено верно и в теле PR, и живым `merge-gate`).
