@@ -1855,6 +1855,12 @@ const blockedSpans = (
  * tail at all and the answer is zero, which is the same verdict `busyRoles` gives and the reason
  * the two agree by construction rather than by luck.
  *
+ * AND IT IS THE ONLY COPY OF THIS ARITHMETIC ON THE BOX. The day report (`occupancy.ts`, the
+ * `metrics` command) prints the free part beside the occupancy share, and it calls THIS function
+ * rather than repeating it: two instruments disagreeing on one input turn every later reading
+ * into "which of them do we believe", which is the disease this class has been treated for three
+ * times. `occupancy.test.ts` holds a test whose whole subject is that the two agree.
+ *
  * WHY NOT THE SUM. Summing the free slivers answers "how much idleness has there been since the
  * handoff", and no reader acts on that: what the line tells a human to do is go and look at a box
  * that is doing nothing while a turn stands. A box working through a queue one session at a time
@@ -1862,7 +1868,7 @@ const blockedSpans = (
  * over a busy morning no matter how healthy it is. The tail cannot be collected that way: it only
  * reaches ten minutes when the box really has been idle for ten minutes with the pair standing.
  */
-const freeTailMinutes = (
+export const freeTailMinutes = (
   input: BlockingInput,
   turn: { readonly role: RoleId; readonly thread: string; readonly since: string },
   now: Date,

@@ -316,6 +316,7 @@ import {
 } from "./orchestrator/metrics.js";
 import { hydrateFromStreams } from "./orchestrator/metrics-cache.js";
 import { handoffDetected, type Lifecycle, observeStep, stepEvent } from "./orchestrator/observe.js";
+import { foldDay, type ParkSpan, renderDay, type StandingTurn } from "./orchestrator/occupancy.js";
 import {
   describeGhOutage,
   foldGhOutage,
@@ -2430,14 +2431,39 @@ const STREAM_NAME = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z-/;
 const metricsSources = (
   argv: readonly string[],
   paths: OrchestratorPaths,
-): { verdicts: VerdictRecord[]; merges: MergeRecord[]; streamEraStart?: string } => {
+): {
+  verdicts: VerdictRecord[];
+  merges: MergeRecord[];
+  streamEraStart?: string;
+  turns: StandingTurn[];
+  parks: ParkSpan[];
+} => {
   const root = rootOr(argv, () => paths.mailRoot);
   const verdicts: VerdictRecord[] = [];
   const merges: MergeRecord[] = [];
+  // THE MAIL HALF OF THE DAY REPORT (thread 042): which pair stands right now, and how long
+  // each thread was frozen behind a park. Neither is in the journal — a turn passes by a letter
+  // and a park is declared by one — so both are read here, where the whole mail is already open
+  // for the verdicts above, instead of by a second pass over the same files.
+  const turns: StandingTurn[] = [];
+  const parks: ParkSpan[] = [];
   if (existsSync(root)) {
     const registry = registryFrom(argv, repoOf(root));
     const { threads } = loadThreads(root, registry.ids());
     for (const loaded of threads) {
+      const holder = waitingOnOf(loaded.thread);
+      const since =
+        holder === undefined
+          ? undefined
+          : waitingSince({ messages: loaded.thread.messages, role: holder });
+      if (holder !== undefined && since !== undefined)
+        turns.push({ role: holder, thread: loaded.thread.id, since });
+      for (const span of parkSpansOf(loaded.thread))
+        parks.push({
+          thread: loaded.thread.id,
+          from: span.from,
+          ...(span.to === undefined ? {} : { to: span.to }),
+        });
       for (const message of loaded.thread.messages) {
         const ts = message.fields.date;
         if (message.fields.from === "reviewer-pr") {
@@ -2473,6 +2499,8 @@ const metricsSources = (
   return {
     verdicts,
     merges,
+    turns,
+    parks,
     ...(stamps.length === 0 ? {} : { streamEraStart: stamps[0] as string }),
   };
 };
@@ -2504,11 +2532,35 @@ const metrics = (argv: readonly string[]): void => {
     ...(role === undefined ? {} : { role }),
     ...(thread === undefined ? {} : { thread }),
   });
+  // THE DAY REPORT rides on THIS command and not on a new verb (thread 042, the choice is
+  // dev-core's by the statement): everything the two shares need — the journal for the leases,
+  // the mail for the standing pairs and their parks, `--since`/`--role`/`--thread`/`--json` for
+  // the window — is already open here, and the one requirement on the surface is that it must
+  // not need a live lease of the role it measures. A second verb would be a second door onto the
+  // same two files.
+  //
+  // THE RAW JOURNAL, not `hydrated.events`: the streams are read to price runs, and a lease span
+  // is not something a price recovers.
+  //
+  // THE RIGHT EDGE IS `--now`, the same time injection the rest of the orchestrator uses: a
+  // report that could only ever be run against this second could not be checked against a
+  // measurement taken by hand two hours ago, and the acceptance of this command IS such a
+  // check (the windows of 177 / 187 / 208 minutes in §6.4).
+  const day = foldDay({
+    events,
+    turns: sources.turns,
+    parks: sources.parks,
+    now: orchestratorNow(argv),
+    ...(since === undefined ? {} : { since }),
+    ...(role === undefined ? {} : { role }),
+    ...(thread === undefined ? {} : { thread }),
+  });
   if (argv.includes("--json")) {
-    out(JSON.stringify(folded, null, 2));
+    out(JSON.stringify({ ...folded, day }, null, 2));
     return;
   }
   for (const line of renderMetrics(folded)) out(line);
+  for (const line of renderDay(day)) out(line);
 };
 
 const parseExpects = (raw: string): Expects => {
