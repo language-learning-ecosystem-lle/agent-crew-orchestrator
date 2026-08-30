@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T15:41:29.110Z",
+  "writtenAt": "2026-08-30T15:42:08.666Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "036-account-failover",
       "state": "draining",
       "deadline": "2026-08-30T16:18:23Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "057-circuit-ping-flaps",
+      "state": "running",
+      "deadline": "2026-08-30T16:42:06Z"
     }
   ]
 }
