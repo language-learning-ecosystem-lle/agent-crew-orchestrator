@@ -40,6 +40,8 @@
  * context between harnesses, because nothing can.
  */
 
+import type { AccountAlarm } from "../notify/notify.js";
+import type { RoleId } from "../roles/schema.js";
 import {
   BOX_ACCOUNT,
   describeAccount,
@@ -327,3 +329,71 @@ export const describeRefusals = (input: {
     (refusal) =>
       `account-failover: the fall-back '${refusal.id}' of ${input.role} is NOT spent — ${refusal.reason}`,
   );
+
+/**
+ * THE SEPARATOR OF A COMPOSED `about`, AND WHY IT IS NOT A TAB.
+ *
+ * `AccountAlarm.about` is one COLUMN of the notifier's state file (`accountAlarmKey` joins
+ * the three with tabs), so a tab inside the value would be read back as a column boundary:
+ * the key that comes out of the file after a restart would not be the key that went in, and
+ * a state announced yesterday would ring again as a stranger. The two facts a `held` is
+ * identified by — the account and the moment its window reopens — therefore join with a
+ * WORD, which is also the form a human reads without a decoder.
+ */
+const ABOUT_JOIN = " until ";
+
+/**
+ * THE THREE SENTENCES AS THE DIGEST TAKES THEM (thread 036, the remainder of §4).
+ *
+ * The alarms are built HERE, beside the describers whose words they carry, and not in the
+ * notifier: the notifier decides only whether a fact rings, and re-deriving the fact on its
+ * side would be a second measurement of one thing — two readings that can disagree, which is
+ * the same defect as two texts about one fact. So the tick measures once and hands the
+ * result on: `text` is the planner's own line, verbatim, and `about` is the IDENTITY the
+ * memory of the digest is keyed by.
+ *
+ * WHAT EACH `about` IS, and each one is composed by the reader of the fact:
+ *
+ *  - `held` — the shelf that holds the whole chain shut: its account and the moment it
+ *    reopens. A role held again after its window reopened is a NEW fact and rings again,
+ *    which is exactly what the pair says and what the role alone could not;
+ *  - `chain` — the fall-back id. A config defect stands until somebody edits the file, so
+ *    one broken link is one sentence however many ticks read it;
+ *  - `failover` — the raise that moved, `from` and onto what. It is never weighed against
+ *    the memory ({@link planNotifications} drops it before keying), so this value is what a
+ *    human reads in a log line rather than an identity anything depends on.
+ */
+export const failoverAlarm = (input: {
+  readonly role: RoleId;
+  readonly choice: Extract<AccountChoice, { kind: "failover" }>;
+}): AccountAlarm => ({
+  kind: "failover",
+  role: input.role,
+  text: describeFailover(input),
+  about: `${input.choice.from} → ${input.choice.account}`,
+});
+
+export const accountPauseAlarm = (input: {
+  readonly role: RoleId;
+  readonly choice: Extract<AccountChoice, { kind: "paused" }>;
+}): AccountAlarm => ({
+  kind: "held",
+  role: input.role,
+  text: describeAccountPause(input),
+  about: `${input.choice.until.account}${ABOUT_JOIN}${resumesAt(input.choice.until)}`,
+});
+
+/** One alarm per refused link, in the order of the chain — see {@link describeRefusals}. */
+export const refusalAlarms = (input: {
+  readonly role: RoleId;
+  readonly refusals: readonly AccountRefusal[];
+}): readonly AccountAlarm[] =>
+  input.refusals.map((refusal, at) => ({
+    kind: "chain" as const,
+    role: input.role,
+    // The words come from the describer and are not written a second time here: the log
+    // line and the digest line about one refused link are the same sentence, or they are
+    // two sentences that will drift.
+    text: describeRefusals({ role: input.role, refusals: input.refusals })[at] as string,
+    about: refusal.id,
+  }));

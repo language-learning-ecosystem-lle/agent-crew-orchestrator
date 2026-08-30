@@ -1079,6 +1079,10 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
     { role: "dev-core", thread: "t1", account: "main", fallback, worker: "claude-code" },
   ];
 
+  /** The words of the tick about accounts — what the operator's stream prints. */
+  const said = (decision: TickDecision): string =>
+    (decision.accountAlarms ?? []).map((alarm) => alarm.text).join("\n");
+
   it("the window of the role's own account closed → it is raised ON THE FIRST OPEN SPARE", () => {
     const decision = planTick({
       ...base,
@@ -1105,9 +1109,9 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
       },
     ]);
     // AND IT IS NOT SILENT — the line names all three things a spend is audited by.
-    expect(decision.accountLines?.join("\n")).toContain("account-failover: dev-core is raised on");
-    expect(decision.accountLines?.join("\n")).toContain("second");
-    expect(decision.accountLines?.join("\n")).toContain("quota-paused until");
+    expect(said(decision)).toContain("account-failover: dev-core is raised on");
+    expect(said(decision)).toContain("second");
+    expect(said(decision)).toContain("quota-paused until");
   });
 
   it("a shelved spare is stepped OVER — the chain is walked in the role's own order", () => {
@@ -1172,9 +1176,8 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
     expect(decision.kind === "plan" ? decision.launches[0]?.account : undefined).toBe("second");
     // The refusal is not swallowed by the success behind it: it is a defect of the config
     // and the moment somebody reads why the role moved is the cheap moment to fix it.
-    const said = decision.accountLines?.join("\n") ?? "";
-    expect(said).toContain("the fall-back 'pilot' of dev-core is NOT spent");
-    expect(said).toContain("'accounts.pilot.kind'");
+    expect(said(decision)).toContain("the fall-back 'pilot' of dev-core is NOT spent");
+    expect(said(decision)).toContain("'accounts.pilot.kind'");
   });
 
   it("THE WHOLE CHAIN SHUT → nobody is raised, the attempt is NOT spent, and the line has a clock on it", () => {
@@ -1202,9 +1205,8 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
         worker: "claude-code",
       },
     ]);
-    const said = decision.accountLines?.join("\n") ?? "";
-    expect(said).toContain("launches of dev-core are held until");
-    expect(said).toContain("15:00");
+    expect(said(decision)).toContain("launches of dev-core are held until");
+    expect(said(decision)).toContain("15:00");
   });
 
   it("A NETWORK FAILURE IS NOT A CLOSED WINDOW — no shelf, so the role stays on its own account", () => {
@@ -1228,7 +1230,7 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
       stopped: false,
     });
     expect(decision.kind === "plan" ? decision.launches[0]?.account : undefined).toBe("main");
-    expect(decision.accountLines).toBeUndefined();
+    expect(decision.accountAlarms).toBeUndefined();
   });
 
   it("NO CHAIN AT ALL → the tick behaves exactly as it did before the field existed", () => {
@@ -1252,7 +1254,7 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
     expect(raised(empty)).toEqual([]);
     // The one thing the empty chain DOES add is the visibility john asked for: a shut
     // shelf that used to stand a role down in silence now says so with an hour on it.
-    expect(empty.accountLines?.join("\n")).toContain("launches of dev-core are held until");
+    expect(said(empty)).toContain("launches of dev-core are held until");
   });
 
   it("ONE ROLE, ONE SENTENCE — a role that heads several threads does not announce the switch twice", () => {
@@ -1279,7 +1281,7 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
       enabled: true,
       stopped: false,
     });
-    expect(decision.accountLines).toHaveLength(1);
+    expect(decision.accountAlarms).toHaveLength(1);
   });
 
   it("A BOX THAT DECLARED NOTHING SPENDS NO SPARE — the launch door would refuse it fatally", () => {
@@ -1292,6 +1294,76 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
       stopped: false,
     });
     expect(raised(decision)).toEqual([]);
-    expect(decision.accountLines?.join("\n")).toContain("this machine declares no such account");
+    expect(said(decision)).toContain("this machine declares no such account");
+  });
+
+  // THE MEASUREMENT THAT REACHES THE DIGEST (thread 036, the remainder of §4). The tick is
+  // the one reader with both a clock and the shelves in hand, so it is the one that composes
+  // the identity the notifier's memory is keyed by — these tests are on the ASSEMBLY, not on
+  // whether the notifier later decides to ring.
+  it("the held role hands the digest a kind, a role and the shelf that holds it — composed, not described", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["second"]),
+      accounts: declared,
+      events: [shelved("main"), shelved("second", "2026-07-24T15:00:00Z")],
+      enabled: true,
+      stopped: false,
+    });
+    const held = (decision.accountAlarms ?? [])[0];
+    expect(held?.kind).toBe("held");
+    expect(held?.role).toBe("dev-core");
+    // The identity is the PAIR (account, reopening) and not the role: a role held again
+    // after its window reopened is a new fact and has to ring again.
+    expect(held?.about).toContain("second");
+    expect(held?.about).toContain("15:00");
+  });
+
+  it("NO COMPOSED `about` CARRIES A TAB — the state file is columns, and a tab in a value is a column boundary", () => {
+    // All three kinds in one decision: a shut chain whose spare is also a refused link.
+    const shut = planTick({
+      ...base,
+      candidates: onChain(["pilot", "second"]),
+      accounts: declared,
+      events: [shelved("main"), shelved("second")],
+      enabled: true,
+      stopped: false,
+    });
+    const moved = planTick({
+      ...base,
+      candidates: onChain(["pilot", "second"]),
+      accounts: declared,
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    const alarms = [...(shut.accountAlarms ?? []), ...(moved.accountAlarms ?? [])];
+    // The three kinds are all present — a test that only saw `held` would pass on a
+    // composer that joined the other two with a tab.
+    expect(new Set(alarms.map((alarm) => alarm.kind))).toEqual(
+      new Set(["held", "chain", "failover"]),
+    );
+    for (const alarm of alarms) expect(alarm.about ?? "").not.toContain("\t");
+  });
+
+  it("the refused link is identified by the link, and the switch by where it went", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["pilot", "second"]),
+      accounts: declared,
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    const alarms = decision.accountAlarms ?? [];
+    const failover = alarms.find((alarm) => alarm.kind === "failover");
+    const chain = alarms.find((alarm) => alarm.kind === "chain");
+    expect(failover?.about).toBe("main → second");
+    // A config defect stands until somebody edits the file, so its identity is the link
+    // itself: the same broken entry is one sentence however many ticks read it.
+    expect(chain?.about).toBe("pilot");
+    // And the words are the describers' own — the log line and the digest line about one
+    // fact are the same sentence, or they are two sentences that will drift.
+    expect(chain?.text).toContain("the fall-back 'pilot' of dev-core is NOT spent");
   });
 });
