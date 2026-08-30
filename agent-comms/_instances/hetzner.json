@@ -1,12 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T11:54:59.215Z",
+  "writtenAt": "2026-08-30T11:55:13.189Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "042-unaccepted-turn-silent",
+      "state": "running",
+      "deadline": "2026-08-30T12:35:11Z"
+    },
     {
       "role": "dev-core",
       "thread": "047-devops-role",
