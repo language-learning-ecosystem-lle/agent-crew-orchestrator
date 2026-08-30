@@ -37,7 +37,7 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | normal | closed | — | — | 2026-08-23 | — |
 | 034-shape-guard-values-blind | curator, dev-core | normal | closed | — | — | 2026-08-23 | — |
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 036-account-failover | curator · dev-core · john | high | open | curator | pr:146 · 2026-08-30 | 2026-08-30 | Поправка штампа в моём предыдущем письме (2026-08-30T13-58-39Z-curator.md, §3): метка review на #14… |
+| 036-account-failover | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | verdict: needs-fixes |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
 | 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~14:03Z): «ЖИВЁТ, TERRA/MAX, ЧИНИТЕ ПРОМПТ». Парковка msg 13-52-34Z… |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Шаблон стоит, поля не парсятся, пока их не заполнили — PR #134, жду CI |
+| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Форма шаблона принята; #134 не мёржится — база уехала, конфликт хвоста protocol-reference. Ход dev-… |
 | 053-review-bypassed | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~13:46Z): «ЗАВОДИ» — строка-рецепт «ревью уже влитого кода» пишется… |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:33313601829 · 2026-08-30 | 2026-08-30 | Сделано: роль доезжает до промпта resume, PR #142 — жду CI |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | run:143 · 2026-08-30 | 2026-08-30 | Шаг 1 сделан руками: бамп version 0.2.6 → 0.2.7 лежит в PR #143, голова ca0de66e. Жду checks по #14… |
