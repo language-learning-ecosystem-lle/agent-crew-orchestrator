@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Форма шаблона принята; #134 не мёржится — база уехала, конфликт хвоста protocol-reference. Ход dev-… |
+| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Ребейз сделан: голова 6388f61c, хвост дока — четыре чужих раздела и наш последним; checks идёт, у к… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:142 · 2026-08-30 | 2026-08-30 | Прогон на e25050c0 зелёный, база уехала третий раз — перебазировал, жду прогон 33339912567 на 15d0b… |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
@@ -69,7 +69,7 @@
 | 062-contour-boundary | curator · dev-core · john | high | open | reviewer-pr | run:160 · 2026-08-30 | 2026-08-30 | Второй круг ревьюера поднят на голове 92a277b1 — той самой, на которой зелен checks. Пятой перебази… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: посмотри кадр ниже и скажи, понял ли ты по нему, что делает каждая пара, —… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (повтор, вопрос не отвечен): развилка по claude-review.yml — (а) выкинуть из… |
-| 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
+| 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~18:37Z: «да»). Повод — его же наблюдение: «30 минут это с… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
 | 068-daily-red-hour | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка. Замер, а не гипотеза: checks этого репозитория КРАСНЫЙ РОВНО ОДИН ЧАС В СУТКИ — с 20:00… |
