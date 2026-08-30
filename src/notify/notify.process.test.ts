@@ -416,8 +416,16 @@ describe("notify as a command", () => {
     expect(second.out).toContain("023-x (reminded john,");
     const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
     // The age and the subject, and the question in the words it was asked in — no body.
+    //
+    // The hours are OPTIONAL, because `describeAge` drops a zero remainder by contract
+    // (`notify.test.ts`: `describeAge(60 * 48)` is `"2d"`, not `"2d 0h"`). The park here is
+    // dated against the REAL clock, so for one hour out of every twenty-four its age lands on
+    // a whole day and the reminder legitimately reads `36d`. Demanding `\d+d \d+h` made this
+    // case fail on the wall clock rather than on the behaviour — measured 2026-08-30, run
+    // 33334197543, where it took a green tree down with it. What is asserted is that the age
+    // is WRITTEN, which is the point of the reminder; its spelling is the unit test's business.
     expect(text).toMatch(
-      /^still on you after \d+d \d+h — your decision: 023-x — Чинить ли гард 2\?$/,
+      /^still on you after \d+d( \d+h)? — your decision: 023-x — Чинить ли гард 2\?$/,
     );
     // A single question gets no header: the header is about the SIZE of a queue.
     expect(text.split("\n")).toHaveLength(1);
