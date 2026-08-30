@@ -305,6 +305,7 @@ import {
 import { foldLeases, isLeaseAlive, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
 import { rotateDaemonLog, writeEpochBanner } from "./orchestrator/logsize.js";
+import { memoryIndexAlarm, roleMemoryDirectory } from "./orchestrator/memory.js";
 import {
   createMergeReadyCache,
   type MergeReadySource,
@@ -7891,6 +7892,14 @@ type RunParams = {
   readonly launch: Launch;
   /** The zone deny rules of the role (thread 020) — the tool refuses the edit at the moment it happens. */
   readonly denyRules: readonly string[];
+  /**
+   * THE ROLE'S OWN MEMORY DIRECTORY (LLE thread `116-role-memory-cost`, form D) — derived
+   * from the ROLE and not from the project directory, which is the whole defect being
+   * answered: the vendor keys its notes by project+account, so two roles on one account
+   * share a pile and one role on two accounts has two. Carried into the settings source
+   * beside the deny rules (`orchestrator/memory.ts`).
+   */
+  readonly memoryDirectory: string;
   /** Where to save the session output: silence can be examined without a witness. */
   readonly sessionLog: string;
   /** The raw stream beside it (`.jsonl`) — the primary source a rendering cannot replace. */
@@ -8253,6 +8262,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       launch: p.launch,
       params: p.params,
       denyRules: p.denyRules,
+      memoryDirectory: p.memoryDirectory,
       ...(p.continuation.mode === "resume" ? { resume: p.continuation.session } : {}),
     }),
   });
@@ -9328,6 +9338,15 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   out(`agent-protocol: agent — ${describeAgent(agent)}`);
   for (const line of describeSpawnAs(identity.as)) out(`agent-protocol: ${line}`);
   out(`agent-protocol: ${describeZones(role)}`);
+  // THE CEILING FIRES HERE OR NOWHERE (LLE thread `116-role-memory-cost`, john's third
+  // requirement). The raise is the one moment the index is on disk, cheap to stat and in
+  // front of a human — and it is a LINE, not a refusal: stopping the circuit over a table
+  // of contents costs more than the table of contents does.
+  const memoryAlarm = memoryIndexAlarm({
+    directory: roleMemoryDirectory({ memory: paths.memory, role: role.id }),
+    role: role.id,
+  });
+  if (memoryAlarm !== undefined) err(`agent-protocol: ${memoryAlarm}`);
   for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
   // R13, second half: A MANUAL RUN PUBLISHES ITS STATE TOO (thread
   // `025-stale-instance-digest`, second half). The publisher is created HERE — after the
@@ -9368,6 +9387,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     maxTurns,
     launch: role.launch,
     denyRules: zoneDenyRules(role),
+    memoryDirectory: roleMemoryDirectory({ memory: paths.memory, role: role.id }),
     sessionLog,
     sessionStream: sessionStreamPath(sessionLog),
     sessionIdFile: sessionIdPath(sessionLog),
@@ -10250,6 +10270,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           maxTurns: String(ceilings.maxTurns.value),
           launch: profile,
           denyRules: zoneDenyRules(role),
+          memoryDirectory: roleMemoryDirectory({ memory: paths.memory, role: role.id }),
           env: childEnv,
           sessionLog,
           sessionStream: sessionStreamPath(sessionLog),

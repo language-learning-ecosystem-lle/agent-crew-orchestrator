@@ -43,7 +43,6 @@ import {
   type LaunchLimits,
   type Role,
 } from "../roles/schema.js";
-import { denySettings } from "../roles/zones.js";
 import { type DeliveryMarks, NO_DELIVERY_MARKS, pairKey } from "../thread/index-doc.js";
 import type { LaunchDirective } from "../thread/message.js";
 import { DEFAULT_IDLE_MS } from "./activity.js";
@@ -54,6 +53,7 @@ import { eventTimestamp, MAX_ATTEMPTS, type OrchestratorEvent, type World } from
 // imported from it here would close a runtime cycle. A type is erased at build.
 import type { AgentKind } from "./kind.js";
 import { foldLeases, isDelivery, isLeaseAlive, isSelfTurnDelivery } from "./lease.js";
+import { sessionSettings } from "./memory.js";
 
 /**
  * The ceiling of the global auto loop: how many runs in a row WITHOUT A SINGLE
@@ -1157,6 +1157,14 @@ export type LaunchArgvInput = {
    * source, and it would shadow whatever the workspace configures on its own.
    */
   readonly denyRules?: readonly string[];
+  /**
+   * THE ROLE'S OWN MEMORY DIRECTORY (LLE thread `116-role-memory-cost`, form D) — the
+   * path derived from the ROLE (`memory.ts`), handed to the vendor through
+   * `autoMemoryDirectory` in the same settings source the deny rules ride in. Optional
+   * for the same reason `denyRules` is: a caller that knows nothing about memory passes
+   * nothing and the key is not written at all, rather than written empty.
+   */
+  readonly memoryDirectory?: string;
 };
 
 /**
@@ -1176,7 +1184,13 @@ export const buildLaunchArgv = (input: LaunchArgvInput): string[] => {
       "a 'claude-code' run was assembled from a launch profile with no 'launch.allowedTools' — the waiver of thread 026 belongs to a kind with no such lever, and this tool has one; the run is refused rather than raised unable to write",
     );
   }
-  const settings = denySettings(input.denyRules ?? []);
+  // The settings source is assembled in ONE place (`sessionSettings`) because it now
+  // carries two decisions of ours — the zone deny rules and the memory directory — and
+  // two callers building "the settings" is how one key ends up shadowing the other.
+  const settings = sessionSettings({
+    deny: input.denyRules ?? [],
+    ...(input.memoryDirectory === undefined ? {} : { memoryDirectory: input.memoryDirectory }),
+  });
   return [
     ...(input.resume === undefined ? [] : ["--resume", input.resume]),
     "-p",
