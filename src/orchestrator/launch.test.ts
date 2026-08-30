@@ -370,7 +370,7 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
     expect(prompt).not.toContain("cli ");
     // The subcommands are this package's own words and stay — what is missing is the
     // prefix, and the prompt SAYS it is missing rather than leaving a bare-looking command.
-    expect(prompt).toContain("`thread show --thread 038-pilot`");
+    expect(prompt).toContain("`thread show --thread 038-pilot --for pilot-codex`");
     expect(prompt).toContain("`new-message --thread <id>");
     expect(prompt).toContain("`await-input`");
     expect(prompt).toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
@@ -398,7 +398,7 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
   it("USES THE DECLARED FORM VERBATIM, wherever a command is named", () => {
     const command = "node --import tsx packages/agent-protocol/src/cli.ts";
     const prompt = buildLaunchPrompt({ ...base, mail: { command } });
-    expect(prompt).toContain(`\`${command} thread show --thread 038-pilot\``);
+    expect(prompt).toContain(`\`${command} thread show --thread 038-pilot --for pilot-codex\``);
     expect(prompt).toContain(`\`${command} new-message --thread <id>`);
     expect(prompt).toContain(`\`${command} new-message --await-input\``);
     expect(prompt).toContain(`\`${command} await-input\``);
@@ -430,7 +430,9 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
     } as const;
     const flags = `--root ${form.root} --ref origin/main`;
     const prompt = buildLaunchPrompt({ ...base, mail: form });
-    expect(prompt).toContain(`\`${command} thread show ${flags} --thread 038-pilot\``);
+    expect(prompt).toContain(
+      `\`${command} thread show ${flags} --thread 038-pilot --for pilot-codex\``,
+    );
     expect(prompt).toContain(`\`${command} new-message ${flags} --thread <id>`);
     expect(prompt).toContain(`\`${command} new-message ${flags} --await-input\``);
     expect(prompt).toContain(`\`${command} await-input ${flags}\``);
@@ -456,7 +458,9 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
       ...base,
       mail: { command: "cli", root: "/mail/agent-comms" },
     });
-    expect(prompt).toContain("`cli thread show --root /mail/agent-comms --thread 038-pilot`");
+    expect(prompt).toContain(
+      "`cli thread show --root /mail/agent-comms --thread 038-pilot --for pilot-codex`",
+    );
     expect(prompt).not.toContain("--ref");
   });
 

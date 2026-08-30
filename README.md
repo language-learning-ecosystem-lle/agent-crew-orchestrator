@@ -1716,10 +1716,24 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # lifts the park, and the clock (`remind <person> <thread> <stamp>` in the
                             # state file) is dropped with it, so the next question of that pair starts
                             # its cadence over rather than inheriting an answered one's stamp
-agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>] [--repo <p>] [--no-fetch]
+agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--for <role>] [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
                                                                            # _thread.md, which lags a push behind
+                                                                           # --for: WHOSE READING THIS IS (058). One line
+                                                                           # above the conversation: how many messages
+                                                                           # arrived after THAT ROLE's own last letter
+                                                                           # ("all N" when it has never written here) and
+                                                                           # who wrote them — the mark is the feed's, not
+                                                                           # a cursor file's, so every box reading the same
+                                                                           # branch counts the same. An unknown role is
+                                                                           # refused by name: it has no mark to count from
+                                                                           # AND --tail MAY NOT CUT INTO THAT RUN: a
+                                                                           # narrower bound is widened to it and the
+                                                                           # widening is printed. Two roles legally write
+                                                                           # into one thread within a minute (LLE 110,
+                                                                           # 30.08) and "I read the last message" then
+                                                                           # misses the one that froze the thread
                                                                            # --no-fetch: read the ref WITHOUT updating it —
                                                                            # for a box with no network, and it says so out
                                                                            # loud ("'<ref>' was not updated") rather than

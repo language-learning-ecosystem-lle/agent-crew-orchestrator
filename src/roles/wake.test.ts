@@ -31,7 +31,7 @@ describe("renderWake", () => {
   it("печатает треды в данном порядке и команду чтения — командой пакета, а не путём к файлу", () => {
     const text = renderWake(facts({ threads: ["087-wake-cut", "004-box-identity"] }));
     expect(text.indexOf("087-wake-cut")).toBeLessThan(text.indexOf("004-box-identity"));
-    expect(text).toContain("thread show --thread <id> --ref origin/main");
+    expect(text).toContain("thread show --thread <id> --for dev-core --ref origin/main");
     // Вход из ИСТОЧНИКА: производное имя не должно попасть в шаг чтения (тред 087 §2.3).
     expect(text).not.toContain("_thread.md` и остальные файлы");
   });

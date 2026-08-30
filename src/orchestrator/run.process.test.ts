@@ -1531,7 +1531,7 @@ describe("a session that asks and waits alive (R19)", () => {
     // the prefix reaching the session at all, and the flags have their own case below.
     expect(prompt).toContain(`\`${command} thread show --root `);
     expect(prompt).toContain(`\`${command} new-message --root `);
-    expect(prompt).toContain("--thread 012-x`");
+    expect(prompt).toContain("--thread 012-x --for dev-core`");
     expect(prompt).not.toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
 
     // …and the same circuit with the key absent says so instead of naming a command. The
@@ -1582,7 +1582,7 @@ describe("a session that asks and waits alive (R19)", () => {
     // refusing.
     expect(root.startsWith("/")).toBe(true);
     const flags = `--root ${root} --ref origin/main`;
-    expect(prompt).toContain(`\`${command} thread show ${flags} --thread 012-x\``);
+    expect(prompt).toContain(`\`${command} thread show ${flags} --thread 012-x --for dev-core\``);
     expect(prompt).toContain(`\`${command} new-message ${flags} --thread <id>`);
     expect(prompt).toContain(`\`${command} await-input ${flags}\``);
   }, 60_000);

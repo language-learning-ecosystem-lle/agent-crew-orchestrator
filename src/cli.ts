@@ -593,6 +593,7 @@ import {
   type ThreadTurn,
   waitingOnOf,
 } from "./thread/thread.js";
+import { describeUnread, tailCovering, unreadFor } from "./thread/unread.js";
 import {
   messageTimestamp,
   nextMessageTimestamp,
@@ -1681,6 +1682,14 @@ const threadBuild = (argv: readonly string[]): void => {
  * ATTACHMENTS ARE NAMED, NOT PRINTED: anything in the folder that is neither a
  * message nor a derived file gets listed with its path, so the agent knows what is
  * there without the prompt having to describe the folder.
+ *
+ * `--for <role>` SAYS HOW MUCH OF IT IS NEW TO THAT ROLE (thread 058, B.1) — the count
+ * from the role's own last letter down, and a `--tail` that would cut into that run is
+ * widened to cover it. Two roles writing into one thread within a minute is legal and
+ * happens (LLE thread 110, 2026-08-30), and it turns "read the last message" into a
+ * reading that misses the one that mattered; the cure belongs to the READING TOOL,
+ * because the raised session is a fresh process and remembers nothing. See
+ * `thread/unread.ts` for the incident and for why there is no cursor file.
  */
 const threadShow = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
@@ -1700,13 +1709,35 @@ const threadShow = (argv: readonly string[]): void => {
   for (const line of renderThreadNotices(scan.notices.filter((notice) => notice.id === id))) {
     err(`agent-protocol: ${line}`);
   }
-  const tail = flag(argv, "--tail") === undefined ? undefined : positiveInt(argv, "--tail", 0);
+  // WHOSE READING THIS IS (thread 058, B.1). The role is checked against the config by name:
+  // a typo would otherwise report the whole thread as unread — a true sentence about a role
+  // that does not exist, and a lie to the session that typed its own id wrong.
+  const reader = flag(argv, "--for");
+  if (reader !== undefined && registry.get(reader) === undefined) {
+    fail(
+      `--for '${reader}' — there is no such role in the config; the reading is counted from that role's own last letter, so an unknown name has no mark to count from`,
+      2,
+    );
+  }
+  const unread = reader === undefined ? undefined : unreadFor(thread.messages, reader);
+
+  const asked = flag(argv, "--tail") === undefined ? undefined : positiveInt(argv, "--tail", 0);
+  // A BOUND MAY NOT HIDE AN UNREAD MESSAGE — the widening, and it is announced below.
+  const tail = asked === undefined || unread === undefined ? asked : tailCovering(asked, unread);
   const shown =
     tail === undefined || tail >= thread.messages.length
       ? thread.messages
       : thread.messages.slice(-tail);
   const skipped = thread.messages.length - shown.length;
 
+  if (unread !== undefined) {
+    out(`<!-- agent-protocol: ${describeUnread(unread)} -->`);
+    if (asked !== undefined && tail !== undefined && tail > asked) {
+      out(
+        `<!-- agent-protocol: --tail ${asked} was widened to ${tail}: a bounded read may not hide a message ${reader} has not seen -->`,
+      );
+    }
+  }
   if (skipped > 0) {
     out(
       `<!-- agent-protocol: the last ${shown.length} of ${thread.messages.length} messages; ${skipped} earlier ones are NOT shown (--tail) -->`,
