@@ -64,10 +64,10 @@
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Поправка своей же рукой: парковку pr:170 в предыдущем письме я поставила ошибочно — снимаю этим соо… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
-| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | verdict: approve |
+| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Вердикт по #169 — approve без находок, на текущей голове e5603a83. Все машинные условия закрыты, кр… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | Находка ревьюера починена ровно первым из двух предложенных им способов: почва вынесена в чистую ju… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | run:161 · 2026-08-30 | 2026-08-30 | Обе находки закрыты на зелёном, круг поднят заново на этой же голове — PR #161, голова b27c0477, ru… |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (повтор, вопрос не отвечен): развилка по claude-review.yml — (а) выкинуть из… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | verdict: needs-fixes |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~18:37Z: «да»). Повод — его же наблюдение: «30 минут это с… |
