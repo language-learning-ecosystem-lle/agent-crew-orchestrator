@@ -237,6 +237,30 @@ export const protocolConfigSchema = z.strictObject({
    */
   protocolVersion: z.number().int().min(1),
   mail: mailSchema,
+  /**
+   * HOW THE MAIL IS INVOKED ON THIS BOX — the prefix a raised session types before
+   * `thread show` and `new-message` (v25, thread `038-pilot-codex-live-run`, the norm
+   * «ПРОМПТ ПОДЪЁМА НЕ ПРИДУМЫВАЕТ ФАКТОВ О РОЛИ», john's decision of 2026-08-30).
+   *
+   * THE SUBCOMMANDS ARE THE PACKAGE'S, THE COMMAND IS THE PROJECT'S. `thread show` and
+   * `new-message` are this package's own vocabulary and it may name them anywhere; what
+   * carries them — a binary on `PATH`, a package script, a `node --import tsx …` line —
+   * is a property of one deployment and the package has never known it. Until this field
+   * the launch prompt wrote the literal `cli` anyway, and the literal is false on the box
+   * that pays for this: `cli` is on no live deployment's `PATH` here, so the session that
+   * believed the prompt got `exit 127` — four raises out of five of `pilot-codex`, twice
+   * with the thread never reaching it at all.
+   *
+   * ABSENCE IS SILENCE, NOT A DEFAULT. A project that declares nothing gets a prompt that
+   * names the subcommands and says out loud that the form of the invocation is not
+   * declared here — read it off the role card. That is the whole repair the norm asks for:
+   * silence a session fixes by reading its card, invention walks it into `exit 127`.
+   *
+   * IT IS ONE STRING AND NOT AN ARGV. The value is pasted into prose a session reads and
+   * retypes into a shell, never spawned by this package — an array would promise an
+   * execution contract nothing here honours.
+   */
+  mailCommand: z.string().min(1).optional(),
   orchestrator: orchestratorSchema.optional(),
   notifications: notificationsSchema.optional(),
   announcements: announcementsSchema.optional(),

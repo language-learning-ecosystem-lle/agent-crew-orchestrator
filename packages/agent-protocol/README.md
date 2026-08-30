@@ -252,6 +252,27 @@ the behaviour of protocol version 17 unchanged. `--power-docs` still ADDS to the
 what the config does not know yet. The full reasoning, and why the list is read from the
 BASE of a pull request, is with the command.
 
+### How this box invokes the mail — `mailCommand`
+
+An optional top-level string: the prefix a raised session types before `thread show` and
+`new-message`. The subcommands are this package's own words and it names them itself;
+what carries them — a binary on `PATH`, a package script, a `node --import tsx …` line —
+is a property of one deployment, and the package has never known it.
+
+```json
+"mailCommand": "node --import tsx packages/agent-protocol/src/cli.ts"
+```
+
+The value is pasted verbatim into the launch prompt, everywhere a mail command is named
+(`orchestrator/launch.ts`), and nowhere else — nothing here spawns it, which is why it is
+one string and not an argv.
+
+**Absence is silence, not a default.** Without the key the prompt names the subcommands
+and says out loud that the form is not declared, so the session takes it from its role
+card. Until protocol version 25 it wrote the literal `cli` instead — a name from no
+config, and false on the box that paid for this: four raises of one role out of five ended
+in `exit 127`, twice without the thread ever reaching the session.
+
 ## The machine config (R14)
 
 **The repository says WHAT, the machine says WHERE.** Roles, permissions, ceilings,

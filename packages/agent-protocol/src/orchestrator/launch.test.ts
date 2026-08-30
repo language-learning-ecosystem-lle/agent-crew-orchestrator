@@ -17,6 +17,7 @@ import {
   describeLaunch,
   instanceAccountOf,
   MAX_CONSECUTIVE_RUNS,
+  mailWritesHeldBy,
   planLaunch,
   resolveAccount,
   resolveAgentParams,
@@ -193,6 +194,155 @@ describe("buildLaunchPrompt", () => {
     expect(noResume).toBeGreaterThan(-1);
     expect(noResume).toBeLessThan(landing);
     expect(prompt.slice(noResume, landing)).toContain("\n\n");
+  });
+});
+
+/**
+ * THE PROMPT STOPS INVENTING FACTS ABOUT THE ROLE (`PROTOCOL.md`, john's decision of
+ * 2026-08-30, thread `038-pilot-codex-live-run`).
+ *
+ * WHAT THIS SUITE CLOSES AND WHAT IT DOES NOT, said here because the statement of work says
+ * it: it closes the FORM — no invented literal, the declared form used verbatim, and no
+ * demand to send a letter put in front of a run that cannot send one. It does NOT close the
+ * subject, which is that the role stops going for a write; that is measured by a live raise
+ * and nothing else. A green suite here is a necessary condition, not the acceptance.
+ */
+describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)", () => {
+  const cards = [{ path: "docs/roles/x.md", text: "the card" }];
+  const base = {
+    role: "pilot-codex",
+    thread: "038-pilot",
+    instructions: cards,
+    deadline: "2026-08-30T15:00:00Z",
+    windDownSeconds: 720,
+  } as const;
+
+  it("NAMES NO COMMAND WHEN THE PROJECT DECLARED NONE — all five places, not the four that were known", () => {
+    // `cli` is on no live deployment's PATH on this box, and four raises of `pilot-codex`
+    // out of five died on `exit 127` believing it. The count matters: the fork named four
+    // sites, a grep found five, and a fix by the known four would have left the literal
+    // standing inside the very paragraph the norm of 2026-08-29 had just narrowed.
+    const prompt = buildLaunchPrompt(base);
+    expect(prompt).not.toContain("cli ");
+    // The subcommands are this package's own words and stay — what is missing is the
+    // prefix, and the prompt SAYS it is missing rather than leaving a bare-looking command.
+    expect(prompt).toContain("`thread show --thread 038-pilot`");
+    expect(prompt).toContain("`new-message --thread <id>");
+    expect(prompt).toContain("`await-input`");
+    expect(prompt).toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
+    expect(prompt).toContain("do NOT guess one");
+  });
+
+  it("the resume prompt names no command either — the second, independent place it lived", () => {
+    const prompt = buildResumePrompt({
+      thread: "038-pilot",
+      reason: "supervisor-gone",
+      deadline: "2026-08-30T15:00:00Z",
+      windDownSeconds: 720,
+    });
+    expect(prompt).not.toContain("cli ");
+    expect(prompt).toContain("(`new-message`)");
+  });
+
+  it("USES THE DECLARED FORM VERBATIM, wherever a command is named", () => {
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const prompt = buildLaunchPrompt({ ...base, mail: { command } });
+    expect(prompt).toContain(`\`${command} thread show --thread 038-pilot\``);
+    expect(prompt).toContain(`\`${command} new-message --thread <id>`);
+    expect(prompt).toContain(`\`${command} new-message --await-input\``);
+    expect(prompt).toContain(`\`${command} await-input\``);
+    // Declared means declared: the sentence about an undeclared form is gone.
+    expect(prompt).not.toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
+    expect(prompt).toContain(`\`${command} await-input\` tells you by how much`);
+    expect(
+      buildResumePrompt({
+        thread: "038-pilot",
+        reason: "stalled",
+        deadline: "2026-08-30T15:00:00Z",
+        windDownSeconds: 720,
+        mail: { command },
+      }),
+    ).toContain(`(\`${command} new-message\`)`);
+  });
+
+  it("A RUN THAT CANNOT WRITE IS NOT TOLD TO SEND A LETTER — and is told the ending it has", () => {
+    // Run 7 of thread `038` made four write attempts against its own card AND against the
+    // first line of its statement of work; the sandbox stopped them, discipline did not,
+    // and the asked-for product was printed never. The role obeyed the prompt over the
+    // card, so the prompt is where it is fixed.
+    const prompt = buildLaunchPrompt({
+      ...base,
+      mail: { writesHeldBy: "sandbox-read-only" },
+    });
+    expect(prompt).not.toContain("- SEND:");
+    expect(prompt).not.toContain("passing the turn is what ends the run");
+    expect(prompt).not.toContain("new-message");
+    expect(prompt).not.toContain("--await-input");
+    // The one ending it has, and the reason quoted from the card rather than asserted.
+    expect(prompt).toContain("ONE COMMAND IS YOUR WHOLE INTERFACE TO THE MAIL");
+    expect(prompt).toContain("PRINT YOUR ANSWER TO THE STREAM");
+    expect(prompt).toContain("held by `sandbox-read-only`");
+    expect(prompt).toContain("your run ends in exactly ONE way");
+    // ...including in the landing paragraph, the third place the claim lived.
+    expect(prompt).toContain("commit it AS IT IS");
+    expect(prompt).toContain("PRINT what is done");
+    expect(prompt).not.toContain("and pass the turn");
+    // The card still travels: this narrows the description, not the run.
+    expect(prompt).toContain("the card");
+  });
+
+  it("the resume prompt of a run that cannot write says the same thing", () => {
+    const prompt = buildResumePrompt({
+      thread: "038-pilot",
+      reason: "supervisor-gone",
+      deadline: "2026-08-30T15:00:00Z",
+      windDownSeconds: 720,
+      mail: { writesHeldBy: "sandbox-read-only" },
+    });
+    expect(prompt).not.toContain("The run is over once the reply is written");
+    expect(prompt).not.toContain("new-message");
+    expect(prompt).toContain("once your answer is PRINTED to the stream");
+  });
+
+  it("A ROLE WITHOUT THE MARK KEEPS BOTH ENDINGS, WORD FOR WORD (norm 018 is not narrowed)", () => {
+    // The proof that the fix is a narrowed DESCRIPTION for one declared class and not an
+    // edit of the launch contract: with the form declared and no mark, the prompt differs
+    // from today's only by the command it names.
+    const prompt = buildLaunchPrompt({ ...base, mail: { command: "cli" } });
+    expect(prompt).toContain("TWO COMMANDS ARE YOUR WHOLE INTERFACE TO THE MAIL");
+    expect(prompt).toContain("- SEND: `cli new-message");
+    expect(prompt).toContain("passing the turn is what ends the run");
+    expect(prompt).toContain("a run ends in exactly one of two ways");
+    expect(prompt).toContain("WAIT IN THE FOREGROUND");
+    expect(prompt).toContain("NEVER FOR SOMEONE ELSE'S RUN");
+    expect(prompt).toContain("--parked-on run:<N>");
+    expect(prompt).toContain("say in the thread what is done");
+    expect(prompt).toContain("parking is a pause your own session continues");
+  });
+});
+
+describe("mailWritesHeldBy — the mark is read from what the card already declares", () => {
+  const role = (launch: Launch): Role => ({ id: "r", launch }) as Role;
+
+  it("names the confinement of a codex card that declares one", () => {
+    expect(
+      mailWritesHeldBy(
+        role({ agent: { kind: "codex", model: "gpt-5.4-mini", toolsHeldBy: "sandbox-read-only" } }),
+      ),
+    ).toBe("sandbox-read-only");
+  });
+
+  it("is silent for a card that declares none — absence is not a mark", () => {
+    // No role moves onto this by inheritance, an omission or a default: that is the rule
+    // the field itself was written under (v20), and it holds one level up as well.
+    expect(
+      mailWritesHeldBy(role({ allowedTools: ["Bash"], agent: { kind: "codex", model: "m" } })),
+    ).toBeUndefined();
+    expect(mailWritesHeldBy(role({ allowedTools: ["Bash"] }))).toBeUndefined();
+    expect(
+      mailWritesHeldBy(role({ allowedTools: ["Bash"], agent: { kind: "claude-code" } })),
+    ).toBeUndefined();
+    expect(mailWritesHeldBy({ id: "r" } as Role)).toBeUndefined();
   });
 });
 
