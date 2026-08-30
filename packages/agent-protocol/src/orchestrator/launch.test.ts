@@ -15,6 +15,7 @@ import {
   describeCeilings,
   describeGates,
   describeLaunch,
+  describeSpawnAs,
   instanceAccountOf,
   MAX_CONSECUTIVE_RUNS,
   planLaunch,
@@ -22,8 +23,11 @@ import {
   resolveAgentParams,
   resolveCeilings,
   resolveGates,
+  resolveSpawnIdentity,
   resolveWorker,
   roleLaunchability,
+  spawnAsCommand,
+  switchProbeArgv,
   systemUserRefusal,
   WIND_DOWN_MAX_SECONDS,
   WIND_DOWN_MIN_SECONDS,
@@ -59,32 +63,149 @@ describe("systemUserRefusal", () => {
     expect(refusal).toContain("Repair:");
   });
 
-  it("says the box's narrow entitlement is not consulted — the rule lands before the code", () => {
-    const refusal = systemUserRefusal(role({ id: "devops", systemUser: "aco-devops" }), "lle");
-    // The sudoers rule of `docs/box-setup.md` §0.1a is typed by a hand this repository does
-    // not see, and (thread 047) it is typed BEFORE the launch path that would use it. In
-    // that window the refusal is the only thing standing between an operator and an hour of
-    // debugging `sudo` against a build that never calls it.
+  it("names the entitlement as the only path, and what the box answered about it", () => {
+    const refusal = systemUserRefusal(role({ id: "devops", systemUser: "aco-devops" }), "lle", {
+      allowed: false,
+      detail: "'sudo -n -l -u aco-devops claude' exited 1 — Sorry, user lle may not run",
+    });
     expect(refusal).toContain("sudoers");
     expect(refusal).toContain("docs/box-setup.md §0.1a");
-    expect(refusal).toContain("NOT consulted");
+    // The probe's own words, verbatim: "the rule is missing" and "sudo is not installed" send
+    // the reader to two different repairs, and only the probe can tell them apart.
+    expect(refusal).toContain("Sorry, user lle may not run");
   });
 
-  it("does NOT offer the entitlement as a repair — adding it fixes nothing today", () => {
+  it("a run that never asked the box says SO, rather than blaming the rule", () => {
+    // `status` and the schema tests judge a card without being about to raise it. Reporting
+    // "this box does not grant it" from a probe nobody ran would be the door inventing a
+    // measurement — the exact class of defect discipline 5 is written against.
+    const refusal = systemUserRefusal(role({ id: "devops", systemUser: "aco-devops" }), "lle");
+    expect(refusal).toContain("did not ask the box");
+    expect(refusal).not.toContain("does not grant");
+  });
+
+  it("DOES offer the entitlement as a repair — it is the step that repairs this now", () => {
+    // The mirror of the sentinel #132 left behind. While no code took the path, naming the
+    // rule in `Repair:` would have been an instruction nobody could act on; the path landed,
+    // so the rule became the first thing to try — and the test flipped with it rather than
+    // being deleted.
     const refusal =
       systemUserRefusal(role({ id: "devops", systemUser: "aco-devops" }), "lle") ?? "";
-    // A `Repair:` that names a step which does not repair is the same defect as a summary
-    // that names a verb outside the dictionary: an instruction nobody can act on. The two
-    // exits below are the ones that end this refusal in THIS build.
     const repair = refusal.slice(refusal.indexOf("Repair:"));
+    expect(repair).toContain("docs/box-setup.md §0.1a");
     expect(repair).toContain("run the daemon as 'aco-devops'");
     expect(repair).toContain("drop the declaration");
-    expect(repair).not.toContain("sudoers");
   });
 
   it("a box that cannot name its own user is NOT treated as a match", () => {
     const refusal = systemUserRefusal(role({ systemUser: "aco-devops" }), undefined);
     expect(refusal).toContain("(unknown user)");
+  });
+});
+
+describe("resolveSpawnIdentity — the rule of choice, three branches and no fourth", () => {
+  const devops = role({ id: "devops", systemUser: "aco-devops" });
+
+  it("no declaration → the process's own user, and the box is never asked", () => {
+    // The branch every role of this circuit takes today. Nothing about it changed with the
+    // switch landing: no probe, no `sudo`, no new way to fail.
+    expect(resolveSpawnIdentity({ role: role({}), currentUser: "lle" })).toEqual({
+      ok: true,
+      as: { mode: "self" },
+    });
+  });
+
+  it("the declaration IS the user this process runs as → own user, no switch", () => {
+    expect(resolveSpawnIdentity({ role: devops, currentUser: "aco-devops" })).toEqual({
+      ok: true,
+      as: { mode: "self" },
+    });
+  });
+
+  it("declared, different, the box grants the path → the switch is taken, naming the user", () => {
+    expect(
+      resolveSpawnIdentity({
+        role: devops,
+        currentUser: "lle",
+        probe: { allowed: true, detail: "/home/lle/.nvm/versions/node/v24.18.0/bin/claude" },
+      }),
+    ).toEqual({ ok: true, as: { mode: "sudo", user: "aco-devops" } });
+  });
+
+  it("declared, different, no path → REFUSED by name; the door of #132 is still a door", () => {
+    const resolved = resolveSpawnIdentity({
+      role: devops,
+      currentUser: "lle",
+      probe: { allowed: false, detail: "exited 1" },
+    });
+    expect(resolved.ok).toBe(false);
+    // The fourth branch — falling back to the supervisor's own user — is what the whole row
+    // exists to forbid, so the assertion is on the SHAPE and not only on the words: a
+    // resolution that came back `ok` here would hand the role the box's `sudo` group, its git
+    // keys and its `secrets.env` while the config said otherwise.
+    expect(resolved).not.toHaveProperty("as");
+    expect(resolved.ok === false ? resolved.reason : "").toContain("role 'devops'");
+  });
+
+  it("declared, different, and nobody probed → refused, not silently switched", () => {
+    // A caller that forgot the probe must not get the switch: the absent answer is the
+    // absence of a grant, not a grant.
+    expect(resolveSpawnIdentity({ role: devops, currentUser: "lle" }).ok).toBe(false);
+  });
+});
+
+describe("spawnAsCommand — the form the entitlement is written for", () => {
+  const argv = ["-p", "prompt", "--max-turns", "300"];
+
+  it("own user → the command IS the binary, argv untouched", () => {
+    expect(spawnAsCommand({ as: { mode: "self" }, exec: "claude", argv })).toEqual({
+      command: "claude",
+      argv,
+    });
+  });
+
+  it("a switch → 'sudo -n -u <user> <bin>', the binary itself as the command of the rule", () => {
+    // The rule of `docs/box-setup.md` §0.1a grants NOPASSWD on the BINARY. The shape one
+    // reaches for to carry the environment across — `sudo -u <user> env VAR=… <bin>` — is a
+    // call whose command is `env`, and such a rule rejects it; hence no wrapper here, and
+    // `env_keep` on the box instead. `-n` is not decoration either: without it a box with no
+    // rule turns the launch into a wait for a password nobody is there to type.
+    expect(
+      spawnAsCommand({ as: { mode: "sudo", user: "aco-devops" }, exec: "/opt/claude", argv }),
+    ).toEqual({
+      command: "sudo",
+      argv: ["-n", "-u", "aco-devops", "/opt/claude", ...argv],
+    });
+  });
+
+  it("the probe asks the same box about the same binary, and does not take the path", () => {
+    // `-l` LISTS the rule instead of running it: the answer is an exit code, and no session
+    // is raised by asking.
+    expect(switchProbeArgv({ user: "aco-devops", exec: "/opt/claude" })).toEqual([
+      "-n",
+      "-l",
+      "-u",
+      "aco-devops",
+      "/opt/claude",
+    ]);
+  });
+});
+
+describe("describeSpawnAs — what an operator is told about a switched run", () => {
+  it("own user → nothing is said, because nothing changed", () => {
+    expect(describeSpawnAs({ mode: "self" })).toEqual([]);
+  });
+
+  it("a switch names the user, the env_keep hole, and the takedown as an INFERENCE", () => {
+    const lines = describeSpawnAs({ mode: "sudo", user: "aco-devops" }).join("\n");
+    expect(lines).toContain("aco-devops");
+    expect(lines).toContain("env_keep");
+    // Curator's point 4, third boundary: the EPERM on a cross-user signal is reasoned, not
+    // measured — measuring it needs a live switch. A build that printed it as a fact would be
+    // the class discipline 5 forbids, and the reader would stop looking for the measurement.
+    expect(lines).toContain("EPERM");
+    expect(lines).toContain("inference, not a measurement");
+    expect(lines).not.toContain("measured");
   });
 });
 

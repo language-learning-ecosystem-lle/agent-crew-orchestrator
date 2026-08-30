@@ -131,12 +131,27 @@ operating system. Optional and without a default: absent means what every role d
 the session runs as the daemon's own user. **Declaring it grants nothing.** The user, its
 groups and what it owns are made by hand on the box, once, outside the protocol; the
 repository says which identity a role is entitled to, and the operating system is the only
-thing that holds. Where this build cannot honour the declaration — it does not switch user —
-the role is REFUSED by name at both doors that raise a role (`orchestrator run` and the
-daemon), naming the role, the user it asks for and the user the process actually is. It is
-never raised as the daemon's user instead: a role declared to run as a stripped-down identity
-would then get everything the box has, which is the privilege-by-presence the field exists to
-end.
+thing that holds. Both doors that raise a role (`orchestrator run` and the daemon) resolve it
+the same way, in three branches and no fourth:
+
+- the declaration is absent, or IS the user the process already runs as — the session is
+  spawned exactly as every session before this field existed;
+- it differs, and the box grants the narrow path — the session is spawned as
+  `sudo -n -u <user> <agent binary> …`. The path is asked about before it is taken
+  (`sudo -n -l -u <user> <binary>`, which lists the rule rather than running it), and the
+  rule itself is a hand-typed `sudoers` line for ONE target user and ONE binary
+  (`docs/box-setup.md` §0.1a) — not something this package can grant itself;
+- it differs and there is no such path — REFUSED by name, naming the role, the user it asks
+  for, the user the process actually is, and what the probe answered.
+
+It is never raised as the daemon's user instead: a role declared to run as a stripped-down
+identity would then get everything the box has, which is the privilege-by-presence the field
+exists to end. A switched run says so on its launch line and in its own session log, together
+with the two boundaries this build does NOT hold: the environment crosses the switch only
+through the box's `env_keep` (so adding a variable to the launch contract is also a line on
+the box), and putting such a session down is unverified — a signal from the supervisor's user
+to another user's process group is expected to fail with `EPERM`, which is reasoning and not
+a measurement.
 
 `capabilities` (protocol 24) is the other half of the same question: `systemUser` says who the
 run IS to the operating system, this says WHAT IT MAY DO to the machine. A closed vocabulary of
