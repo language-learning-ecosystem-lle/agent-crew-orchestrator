@@ -61,7 +61,7 @@
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | run:33320575058 · 2026-08-30 | 2026-08-30 | Зелёный был на голове, чью базу уже сдвинули — перебазировал ДО метки, а не после вердикта; новая г… |
-| 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~15:39Z), дословно: «Ничего это не законно — получается, ч… |
+| 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | run:153 · 2026-08-30 | 2026-08-30 | (B.1) сделан и лежит в PR #153; (B.2) не сделан — назван корень и почему это не правка читалки |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~15:53Z: «заводи»). Предмет: ОДИН тред без meta.md роняет… |
