@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T21:32:29.840Z",
+  "writtenAt": "2026-08-30T21:34:21.183Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "054-resume-prompt-role-flag",
       "state": "running",
       "deadline": "2026-08-30T22:19:49Z"
-    },
-    {
-      "role": "curator",
-      "thread": "058-concurrent-writers-one-thread",
-      "state": "draining",
-      "deadline": "2026-08-30T22:06:42Z"
     }
   ]
 }
