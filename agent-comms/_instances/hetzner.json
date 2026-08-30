@@ -1,17 +1,10 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T20:24:55.654Z",
+  "writtenAt": "2026-08-30T20:39:48.970Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "065-cli-loads-its-own-secrets",
-      "state": "running",
-      "deadline": "2026-08-30T21:24:52Z"
-    }
-  ]
+  "leases": []
 }
