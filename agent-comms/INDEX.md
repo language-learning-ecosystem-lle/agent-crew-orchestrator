@@ -57,7 +57,7 @@
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Форма шаблона принята; #134 не мёржится — база уехала, конфликт хвоста protocol-reference. Ход dev-… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:33313601829 · 2026-08-30 | 2026-08-30 | Сделано: роль доезжает до промпта resume, PR #142 — жду CI |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | — | 2026-08-30 | verdict: approve |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | dev-core | — | 2026-08-30 | PR #143 (chore(release): version пакета 0.2.6 → 0.2.7 — имя следующего тега реза (тред 055)) merged… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Зелёный на текущей голове 7e40af91, база не сдвинулась — дверь читает гард 2 БЕЗ примечания. Ход cu… |
