@@ -61,3 +61,4 @@
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | run:33316195117 · 2026-08-30 | 2026-08-30 | Мигание починено повторами; причина — не сеть, а голодание своего же сторожа |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: промпт подъёма печатает непишущей роли форму почты, которая под её песочницей… |
+| 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
