@@ -57,3 +57,4 @@
 | 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Шаблон стоит, поля не парсятся, пока их не заполнили — PR #134, жду CI |
 | 053-review-bypassed | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john (п.3, стоит с 10:37Z): включать ли защиту ветки main — и с каким набором обя… |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core — --role не доезжает до промпта resume, и напечатанная им строка await-input не… |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Предмет: правила, севшие в aco ПОСЛЕ реза agent-protocol-v0.2.6, в контуре LLE не живут. Это следую… |
