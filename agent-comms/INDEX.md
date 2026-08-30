@@ -37,9 +37,9 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | normal | closed | — | — | 2026-08-23 | — |
 | 034-shape-guard-values-blind | curator, dev-core | normal | closed | — | — | 2026-08-23 | — |
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 036-account-failover | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | PR #125 (feat(orchestrator): планировщик спрашивает цепочку запасных учёток — переключение и придер… |
+| 036-account-failover | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос один: три строки про учётки (переключение, придержанный подъём, отка… |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
-| 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | pr:131 · 2026-08-30 | 2026-08-30 | Постановка выполнена, PR #131 открыт, голова 6ddefdda. Обе половины в одном PR; ход по нему мой кон… |
+| 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | — | 2026-08-30 | Поправка к предыдущему письму, одна: снимаю parked-on: pr:131. Она моя, доложена сразу и до того, к… |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
