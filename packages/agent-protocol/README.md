@@ -1343,10 +1343,24 @@ of the whole circuit.
   away the mail we found, that is, bring back the very blindness. No mail was
   found while something is unreadable → "there is no mail" is NOT proven, code
   **2**.
-- **Those who assemble a display refuse**: `index build` and `derive` write nothing
-  when a thread is broken. Assembling the index from part of the threads means
-  publishing the incomplete as complete. `check` reports broken threads in a
-  separate block.
+- **Those who assemble a display assemble the rest and SAY WHAT IS MISSING** (thread
+  060). They used to write nothing at all when one thread was broken — assembling the
+  index from part of the threads means publishing the incomplete as complete, and the
+  refusal was the honest answer to that. The price of it was measured twice in two days:
+  a directory created with a message and without `_meta.md` (`092-consent-and-deletion`
+  29.08, ten red runs in a row; `055-mirror-rules-to-lle` 30.08, two more) froze
+  `INDEX.md`, `TASKS.md` and every `_thread.md` OF BOTH CONTOURS while one file was
+  missing in one thread. The punishment was not the crime's size. So now `index build`
+  and `derive` assemble everything they could read, the unreadable thread enters the
+  register as a MARKER ROW (`| <id> | — | — | не прочитан | — | — | — | тред не собран:
+  <reason> |`) — the display therefore still cannot be read as complete — and the
+  refusal stays: **same exit code 2, said LAST, after the write**, and it NAMES THE
+  DIRECTORIES (`… — 1 unreadable thread: '092-consent-and-deletion'`) instead of
+  counting them. `check` reports broken threads in a separate block.
+- **The exit code being last is load-bearing for the generator's job**: a shell running
+  `derive --write` under `set -e` gets its files written before the process dies, so the
+  step that commits them is reachable. A caller that wants the derived files under a
+  broken thread must not treat 2 as "nothing happened".
 - **The most dangerous place is the run observer.** Should the thread the lease was
   taken for break, it would not be among those being waited on, and "the turn was
   passed" would evaluate to TRUE: the run would close as `completed` although the
@@ -1768,8 +1782,16 @@ agent-protocol index build  --root <comms> --ref <ref> [--write]
                             # `subject` is one line up to 100 characters: the question of the PARK while
                             # one stands, otherwise the first line of the last message. A closed thread
                             # says `—` in all three: closing is the acceptance
+                            # A THREAD THAT COULD NOT BE READ gets a MARKER ROW in id order among the rest
+                            # (060): `не прочитан` in `status`, the reason in `subject`, `—` in every
+                            # column that would have been read from the thread. The register is written,
+                            # the exit code is 2 and the LAST line names the directory
 agent-protocol thread build --root <comms> --ref <ref> --id <NNN-slug> [--write]
 agent-protocol derive       --root <comms> --ref <ref> [--write]           # all derived files
+                            # ONE BROKEN THREAD COSTS ITS OWN ROW, NOT THE BRANCH (060): the readable
+                            # threads are assembled and WRITTEN, the unreadable ones become marker rows
+                            # in `INDEX.md`, and the refusal (exit 2, naming the directories) comes AFTER
+                            # the write — a `set -e` shell still reaches its commit step
 agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \

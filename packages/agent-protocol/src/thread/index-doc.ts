@@ -112,7 +112,27 @@ export type IndexReading = {
    * attention by a queue the circuit does not honour.
    */
   readonly priorityInForce?: (role: string) => boolean;
+
+  /**
+   * THE THREADS THE READER COULD NOT READ AT ALL — one MARKER ROW each, in id order beside
+   * the rest (thread 060).
+   *
+   * Why they are in the table rather than only on stderr: a register assembled from PART of
+   * the threads and printed as a whole register is a display that lies about the composition
+   * of the mail — the caller that has some `failures` has exactly two honest options, refuse
+   * to publish or publish WITH the gap named, and the second one is what stops one broken
+   * directory from freezing the derived files of the entire branch (measured: `092-consent-
+   * and-deletion` 29.08, ten red runs; `055-mirror-rules-to-lle` 30.08, two more).
+   *
+   * The row carries `—` in every column that is READ FROM the thread: nothing was read, and a
+   * plausible-looking cell there would be an invention. What it does carry is the id (the one
+   * fact the directory name gives for free) and the reason.
+   */
+  readonly unreadable?: readonly { readonly id: string; readonly problem: string }[];
 };
+
+/** The status cell of a marker row — a value no `_meta.md` can hold, so it cannot be mistaken. */
+const UNREADABLE_STATUS = "не прочитан";
 
 /**
  * THE COLUMNS, and why these (thread 051, statement of curator on john's word of 2026-08-30).
@@ -135,19 +155,33 @@ export const renderIndex = (threads: readonly Thread[], reading?: IndexReading):
   // lands in N's own thread, which is almost never this one (`mergedPrs`, thread 023).
   const merged = mergedPrs(threads);
   const authorized = reading?.priorityInForce ?? (() => false);
-  const rows = threads.map((thread) => {
+  const read = threads.map((thread) => {
     const waiting = waitingOnOf(thread);
     const parking = parkingOf(thread, merged);
     const priority =
       resolveThreadPriority({ messages: thread.messages, authorized }).effective?.priority ??
       DEFAULT_THREAD_PRIORITY;
-    return `| ${thread.id} | ${thread.meta.participants.join(", ")} | ${priority} | ${
-      thread.meta.status
-    } | ${waiting ?? EMPTY} | ${parkCell(parking)} | ${updatedOf(thread)} | ${subjectOf(
-      thread,
-      parking,
-    )} |`;
+    return {
+      id: thread.id,
+      line: `| ${thread.id} | ${thread.meta.participants.join(", ")} | ${priority} | ${
+        thread.meta.status
+      } | ${waiting ?? EMPTY} | ${parkCell(parking)} | ${updatedOf(thread)} | ${subjectOf(
+        thread,
+        parking,
+      )} |`,
+    };
   });
+  const unread = (reading?.unreadable ?? []).map((failure) => ({
+    id: failure.id,
+    line: `| ${failure.id} | ${EMPTY} | ${EMPTY} | ${UNREADABLE_STATUS} | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${cell(
+      clipped(`тред не собран: ${failure.problem}`),
+    )} |`,
+  }));
+  // IN ID ORDER TOGETHER WITH THE REST, not appended at the bottom: the register is read as
+  // the listing of the mail, and a gap shows where the reader would look for the thread.
+  const rows = [...read, ...unread]
+    .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
+    .map((row) => row.line);
 
   return `${INDEX_HEADING}\n\n| id | participants | priority | status | waiting-on | parked-on | updated | subject |\n|---|---|---|---|---|---|---|---|\n${rows.join(
     "\n",
