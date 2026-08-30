@@ -145,8 +145,8 @@
         },
         "agent": {
           "kind": "codex",
-          "model": "gpt-5.4-mini",
-          "effort": "low",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "toolsHeldBy": "sandbox-read-only"
         },
         "account": "codex-main"
