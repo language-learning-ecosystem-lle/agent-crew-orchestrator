@@ -12,8 +12,18 @@
  * one to one. Hence "is there mail" is computed from the THREADS (`waitingOnOf`),
  * and INDEX stays a display for humans: its drift costs cosmetics.
  */
+import { DEFAULT_THREAD_PRIORITY, resolveThreadPriority } from "../orchestrator/priority.js";
 import { staleRunParks } from "./run-park.js";
-import { mergedPrs, parkedOnOf, type Thread, updatedOf, waitingOnOf } from "./thread.js";
+import {
+  mergedPrs,
+  type Parking,
+  parkedOnOf,
+  parkingOf,
+  questionOf,
+  type Thread,
+  updatedOf,
+  waitingOnOf,
+} from "./thread.js";
 
 const EMPTY = "—";
 
@@ -23,15 +33,123 @@ const EMPTY = "—";
 // — translating it here would rewrite a project artifact on the next rebuild.
 const INDEX_HEADING = "# Реестр разговоров";
 
-export const renderIndex = (threads: readonly Thread[]): string => {
+/** How wide the one-line subject may be before the register stops reading as a table. */
+const SUBJECT_WIDTH = 100;
+
+/**
+ * THE MARK OF A PARK THAT IS CALLING SOMEBODY — `expects` other than `none` on the message
+ * that declared it (`Parking.asks`). It is the same distinction the courier rings by (`N
+ * parked, K of them asking`) and the same one this table exists to make readable: a frozen
+ * thread where nothing is asked is a MODE, a frozen thread with a question in it is a queue
+ * to a person. Only a park on a PERSON carries it — an event park calls nobody by
+ * construction, and a ❓ over `pr:133` would teach the reader to ignore the mark.
+ */
+const ASKS_MARK = "❓";
+
+/**
+ * A cell of the table: the pipe is the column separator, and a question containing one
+ * would silently split a row into two columns — the derived file would still be valid
+ * markdown and would say something else. Escaped rather than dropped: the text is quoted
+ * from a message, and a register that rewrites what was said is the drift it exists against.
+ */
+const cell = (text: string): string => text.replaceAll("|", "\\|");
+
+const clipped = (text: string): string =>
+  text.length > SUBJECT_WIDTH ? `${text.slice(0, SUBJECT_WIDTH - 1).trimEnd()}…` : text;
+
+/**
+ * WHAT FREEZES THE THREAD, IN ONE CELL — whom (or what) it waits for, whether a word is
+ * being asked of them, and SINCE WHEN.
+ *
+ * THE DATE RATHER THAN AN AGE ("11 сут"), and that is a decision (thread 051): the index is
+ * a DERIVED file rebuilt on every push into the mail, so an age cell is a function of the
+ * clock of the rebuild — every row would change on every push, `git diff INDEX.md` would
+ * stop being a signal of what moved, and the number would be a lie exactly when it matters
+ * most (a contour nobody pushes into is a contour whose ages stand still). A date is never
+ * stale, and the column beside it (`updated`) has answered "when" with a date since 006.
+ */
+const parkCell = (parking: Parking | undefined): string => {
+  if (parking === undefined) return EMPTY;
+  // The two event kinds are spelled as the field spells them (`parkedOnKind` is its one
+  // parser): `run:` is the round that is running, `pr:` the merge that has not happened.
+  const on =
+    parking.kind === "person"
+      ? (parking.person ?? EMPTY)
+      : `${parking.kind === "run" ? "run" : "pr"}:${parking.pr}`;
+  const asking = parking.kind === "person" && parking.asks ? `${ASKS_MARK} ` : "";
+  return `${asking}${on} · ${parking.since.slice(0, 10)}`;
+};
+
+/**
+ * THE ONE LINE OF WHAT THIS THREAD IS ABOUT — the question of the PARK when one stands,
+ * otherwise the first line of the last message.
+ *
+ * The park's question rather than the last line whenever there is a park: the message that
+ * froze the thread is very often not the last one (an informational park is not lifted by the
+ * next letter, and a person park lifts only on `delivers`), and the whole point of the cell
+ * is that the row reads as a thing to do.
+ *
+ * A CLOSED THREAD SAYS NOTHING, as it already says nothing in `waiting-on` and `parked-on`:
+ * closing is the acceptance, and a register that is to be read as a list of business has no
+ * business with it.
+ */
+const subjectOf = (thread: Thread, parking: Parking | undefined): string => {
+  if (thread.meta.status === "closed") return EMPTY;
+  const line = parking?.question ?? questionOf(thread.messages.at(-1)?.text ?? "");
+  return line === "" ? EMPTY : cell(clipped(line));
+};
+
+/** What a reader of the index must supply for the columns it cannot compute from the feed alone. */
+export type IndexReading = {
+  /**
+   * Whether a role's `priority:` in the feed IS IN FORCE (R5, `thread-priority`) — the
+   * registry's predicate, injected exactly as `resolveThreadPriority` takes it.
+   *
+   * ABSENT MEANS NOBODY IS AUTHORIZED, and the column then reads `normal` everywhere. That is
+   * the honest answer for a caller with no registry: printing a directive as in force without
+   * having checked who wrote it is the one thing R5 exists to prevent, and a register that
+   * shows `high` on the word of a role that does not hold the permission orders the reader's
+   * attention by a queue the circuit does not honour.
+   */
+  readonly priorityInForce?: (role: string) => boolean;
+};
+
+/**
+ * THE COLUMNS, and why these (thread 051, statement of curator on john's word of 2026-08-30).
+ *
+ * The table showed `waiting-on` — WHOSE TURN — and knew nothing of `parked-on`, so a thread
+ * frozen on a human was byte-identical to one where a role is simply working: both `open |
+ * curator`. Measured cost, on the human: the chatting curator answered john "no parks" or
+ * named a partial list four times over 29–30.08 because the register was the source read, and
+ * `042-notifier-down` (LLE) stood frozen on a small question for NINE DAYS while the failures
+ * of a workflow addressed at it kept landing in a room where nobody works.
+ *
+ * `parked-on` and the ❓ answer "is there a queue to a person, and is a word being asked";
+ * `priority` and `subject` are what turn the rows into a list one reads by importance rather
+ * than an alphabetical table of contents. What deliberately did NOT come in: the state of a PR
+ * and of the guards (that is GitHub's data, and a register built from the feed would lie about
+ * it faster than it rebuilds) and any counter or statistic (metrics do not travel in git).
+ */
+export const renderIndex = (threads: readonly Thread[], reading?: IndexReading): string => {
+  // The merges of the WHOLE mail, once: a park on `pr:N` is lifted by an announcement that
+  // lands in N's own thread, which is almost never this one (`mergedPrs`, thread 023).
+  const merged = mergedPrs(threads);
+  const authorized = reading?.priorityInForce ?? (() => false);
   const rows = threads.map((thread) => {
     const waiting = waitingOnOf(thread);
-    return `| ${thread.id} | ${thread.meta.participants.join(", ")} | ${thread.meta.status} | ${
-      waiting ?? EMPTY
-    } | ${updatedOf(thread)} |`;
+    const parking = parkingOf(thread, merged);
+    const priority =
+      resolveThreadPriority({ messages: thread.messages, authorized }).effective?.priority ??
+      DEFAULT_THREAD_PRIORITY;
+    return `| ${thread.id} | ${thread.meta.participants.join(", ")} | ${priority} | ${
+      thread.meta.status
+    } | ${waiting ?? EMPTY} | ${parkCell(parking)} | ${updatedOf(thread)} | ${subjectOf(
+      thread,
+      parking,
+    )} |`;
   });
 
-  return `${INDEX_HEADING}\n\n| id | participants | status | waiting-on | updated |\n|---|---|---|---|---|\n${rows.join(
+  return `${INDEX_HEADING}\n\n| id | participants | priority | status | waiting-on | parked-on | updated | subject |\n|---|---|---|---|---|---|---|---|\n${rows.join(
     "\n",
   )}\n`;
 };

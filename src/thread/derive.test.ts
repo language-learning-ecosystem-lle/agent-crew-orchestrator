@@ -43,7 +43,7 @@ describe("derive (consistency of the derived files)", () => {
 
     // The last declaration is curator; both the waiting-on column in INDEX and the
     // tail of the assembled thread must say the same thing.
-    expect(index).toContain("| 012-x | curator, dev-core | open | curator |");
+    expect(index).toContain("| 012-x | curator, dev-core | normal | open | curator |");
     expect(renderThread(thread.meta, messages)).toContain(
       "dev-core · 2026-07-23 · expects: answer",
     );
@@ -56,6 +56,8 @@ describe("derive (consistency of the derived files)", () => {
       messages: [msg("curator", "2026-07-23T10:00:00Z", "dev-core")],
     };
 
-    expect(renderIndex([thread])).toContain("| 012-x | curator, dev-core | closed | — |");
+    expect(renderIndex([thread])).toContain(
+      "| 012-x | curator, dev-core | normal | closed | — | — |",
+    );
   });
 });
