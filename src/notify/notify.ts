@@ -1723,12 +1723,14 @@ export const unacceptedTurns = (input: {
     readonly to: string;
   }[];
   /**
-   * WHEN EACH THREAD WAS FROZEN BEHIND A PERSON, closed spans out of the MAIL
-   * ({@link parkSpansOf}). A parked pair cannot be raised — the scheduler skips it every
-   * tick and this class stays silent about it — so the freeze is time the box was not free to
-   * take the turn, and it is subtracted from the age like the queue above. Absent — the caller
-   * has no feed to replay, and the whole standing time is judged as free, which is what this
-   * function did before the false call of 2026-08-29T10:05Z.
+   * WHEN EACH THREAD WAS FROZEN BEHIND A PARK OF ANY KIND — a person, a `pr:` or a `run:` (R27) —
+   * closed spans out of the MAIL ({@link parkSpansOf}). A parked pair cannot be raised — the
+   * scheduler skips it every tick and this class stays silent about it — so the freeze is time
+   * the box was not free to take the turn, and it is subtracted from the age like the queue
+   * above. Absent — the caller has no feed to replay, and the whole standing time is judged as
+   * free, which is what this function did before the false call of 2026-08-29T10:05Z (a person)
+   * and before the near-miss of 2026-08-30T09:59Z (`run:126`, silent only because the raise
+   * landed inside the same tick).
    *
    * A span with no `to` is still standing; the caller closes it at its own clock or leaves it
    * open, and an open span is read here as "up to `now`".
