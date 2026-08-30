@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T09:59:48.807Z",
+  "writtenAt": "2026-08-30T10:00:14.185Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "051-index-shows-parks",
       "state": "running",
       "deadline": "2026-08-30T10:39:35Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "038-pilot-codex-live-run",
+      "state": "running",
+      "deadline": "2026-08-30T11:00:12Z"
     }
   ]
 }
