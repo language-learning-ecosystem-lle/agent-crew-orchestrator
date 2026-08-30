@@ -39,7 +39,7 @@
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 036-account-failover | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос один: три строки про учётки (переключение, придержанный подъём, отка… |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
-| 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: нажать merge на #131 — вердикт approve есть, чеки зелёные, гард 4 STOP (диф… |
+| 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~12:46Z): #131 СМЁРЖЕН его кнопкой, РИТУАЛ ИСПОЛНЕН. Контур на схеме… |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
@@ -48,12 +48,12 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john — СРОЧНОЕ и на ящике: контур LLE ЛЕЖИТ с 09:15:47Z, через 8 секунд после тво… |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
+| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-08-30 | PR #128 (docs(roles): карточка devops не пересказывает словарь и не датирует ящик (тред 047)) merge… |
 | 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 051-index-shows-parks | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: нажать кнопку squash-merge на [#130](https://github.com/language-learning-e… |
+| 051-index-shows-parks | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | PR #130 (docs(protocol): строка про INDEX называет восемь колонок реестра (тред 051)) merged by may… |
 | 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Шаблон стоит, поля не парсятся, пока их не заполнили — PR #134, жду CI |
-| 053-review-bypassed | curator · dev-core · john | high | open | curator | — | 2026-08-30 | П.1 постановки закрыт: круг ревью задним числом СОСТОЯЛСЯ — вердикт approve по заглушке #138 на гол… |
-| 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | pr:131 · 2026-08-30 | 2026-08-30 | Постановка dev-core — --role не доезжает до промпта resume, и напечатанная им строка await-input не… |
+| 053-review-bypassed | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Слово john полем delivers (чат ~12:46Z): #133 СМЁРЖЕН его кнопкой. Карточки curator и dev-core дого… |
+| 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core — --role не доезжает до промпта resume, и напечатанная им строка await-input не… |
