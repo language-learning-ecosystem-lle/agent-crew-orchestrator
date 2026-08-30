@@ -210,6 +210,80 @@ export const chooseAccount = (input: FailoverInput): AccountChoice => {
 };
 
 /**
+ * THE CHAIN JUDGED WHERE IT IS DECLARED, not where it is spent (curator, msg-004 §3).
+ *
+ * `chooseAccount` above reaches a fall-back only when the primary's window is already
+ * closed — which means a typo in a chain would be met at the WORST possible moment: the
+ * one where quota has just run out and the role needs the spare it cannot have. So the
+ * same three refusals are computed a second time, at declaration time, by the doors that
+ * read the config with nobody waiting (`config check`, `doctor`), and a fourth is added
+ * that the runtime deliberately stays silent about:
+ *
+ *  · A REPEATED ID. At runtime it is nothing — the second pass says what the first one
+ *    already said, and refusing it would stand a role down over a harmless duplication.
+ *    In a config it is a defect all the same: a chain of three links two of which are the
+ *    same account is a chain the author believes is longer than it is.
+ *
+ * WHAT THE MACHINE HAS NOT SAID IS NOT A FINDING. `accounts` absent (an unreadable or
+ * missing machine config — the notifier's case, thread 026 П3-3) means the two refusals
+ * that quote the machine are NOT computed: "this box declares no such account" said by a
+ * box that declared nothing at all is a sentence about the reader, not about the config.
+ * The two that are true of the repository alone — the role's own account, and the same id
+ * twice — are computed either way, because they are wrong in every checkout.
+ *
+ * The order of the answers is the order of the chain: a reader repairs the file top down.
+ */
+export const chainRefusals = (input: {
+  /** The account the role spends today — `launch.account`, or the instance's default. */
+  readonly primary?: string | undefined;
+  /** The chain as the card writes it, in its own order. */
+  readonly fallback?: readonly string[] | undefined;
+  /** The tool the role is raised as (`launch.agent.kind`). */
+  readonly worker: string;
+  /** What the machine declares, or `undefined` when this reader could not ask it. */
+  readonly accounts?: Readonly<Record<string, DeclaredAccount>> | undefined;
+}): readonly AccountRefusal[] => {
+  const refusals: AccountRefusal[] = [];
+  const seen = new Set<string>();
+  for (const id of input.fallback ?? []) {
+    if (seen.has(id)) {
+      refusals.push({
+        id,
+        reason: `it is named twice in the same chain — the second entry is dead weight and the chain is one link shorter than it looks; drop the repeat or name the account that was meant`,
+      });
+      continue;
+    }
+    seen.add(id);
+    // The two refusals that quote the machine are the machine's to make: with no reading
+    // of it, `refusalOf` would answer "this box declares no such account" about a box that
+    // declared nothing at all — a sentence about the reader, not about the config.
+    if (id !== input.primary && input.accounts === undefined) continue;
+    const reason = refusalOf({
+      id,
+      ...(input.primary === undefined ? {} : { primary: input.primary }),
+      worker: input.worker,
+      ...(input.accounts === undefined ? {} : { accounts: input.accounts }),
+    });
+    if (reason !== undefined) refusals.push({ id, reason });
+  }
+  return refusals;
+};
+
+/**
+ * A REFUSED LINK AS THE CONFIG DOOR SAYS IT — the role, the key, and the repair.
+ *
+ * The runtime line ({@link describeRefusals}) is read by whoever is looking at a circuit
+ * that did not move; this one is read by whoever is holding the file open, so it names the
+ * KEY rather than the moment: `roles[].launch.fallback` of that role's card is where the
+ * edit goes.
+ */
+export const describeChainRefusal = (input: {
+  readonly role: string;
+  readonly refusal: AccountRefusal;
+}): string =>
+  `role '${input.role}': the fall-back '${input.refusal.id}' ('roles[].launch.fallback') will never be spent — ${input.refusal.reason}`;
+
+/**
  * THE SWITCH IN ONE LINE, FOR THE DIGEST OF THE PERSON WHOSE MONEY IT IS (msg-002 §4).
  *
  * A failover is not a log detail: it moves the spending of a run from one subscription to
