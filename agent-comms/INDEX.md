@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | run:147 · 2026-08-30 | 2026-08-30 | 144 смёржен в main (86e055c606fd67bf0a0ed4dcad8ae9ddb05c168b, 2026-08-30T14:06:25Z), #147 — на зелё… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Слово john по гарду 3 принято и записано; контрольный замер снят моей рукой — за 91 такт курьера по… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
@@ -60,3 +60,4 @@
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | run:143 · 2026-08-30 | 2026-08-30 | Шаг 1 сделан руками: бамп version 0.2.6 → 0.2.7 лежит в PR #143, голова ca0de66e. Жду checks по #14… |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | run:33316195117 · 2026-08-30 | 2026-08-30 | Мигание починено повторами; причина — не сеть, а голодание своего же сторожа |
+| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: промпт подъёма печатает непишущей роли форму почты, которая под её песочницей… |
