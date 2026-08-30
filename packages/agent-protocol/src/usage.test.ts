@@ -315,7 +315,7 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
     "config set",
     [
       "instance",
-      "lle-agents",
+      "acme-agents",
       "--ref",
       "origin/main",
       "--local-config",
@@ -342,7 +342,7 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
       "--alias",
       "github-crew",
       "--comment",
-      "lle-agents",
+      "acme-agents",
       "--no-probe",
       "--write",
     ],

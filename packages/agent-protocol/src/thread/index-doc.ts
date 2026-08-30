@@ -122,7 +122,7 @@ export type IndexReading = {
    * of the mail — the caller that has some `failures` has exactly two honest options, refuse
    * to publish or publish WITH the gap named, and the second one is what stops one broken
    * directory from freezing the derived files of the entire branch (measured: `092-consent-
-   * and-deletion` 29.08, ten red runs; `055-mirror-rules-to-lle` 30.08, two more).
+   * and-deletion` 29.08, ten red runs; `055` 30.08, two more).
    *
    * The row carries `—` in every column that is READ FROM the thread: nothing was read, and a
    * plausible-looking cell there would be an invention. What it does carry is the id (the one
@@ -141,7 +141,7 @@ const UNREADABLE_STATUS = "не прочитан";
  * frozen on a human was byte-identical to one where a role is simply working: both `open |
  * curator`. Measured cost, on the human: the chatting curator answered john "no parks" or
  * named a partial list four times over 29–30.08 because the register was the source read, and
- * `042-notifier-down` (LLE) stood frozen on a small question for NINE DAYS while the failures
+ * `042-notifier-down` (a consumer) stood frozen on a small question for NINE DAYS while the failures
  * of a workflow addressed at it kept landing in a room where nobody works.
  *
  * `parked-on` and the ❓ answer "is there a queue to a person, and is a word being asked";
@@ -311,7 +311,7 @@ export const marksOfSessions = (sessions: ReadonlySet<string>): DeliveryMarks =>
  * MEASURED RATHER THAN ASSUMED (2026-08-21): 13 messages of the current header form carry
  * `worker: claude-code` and no `session:`, all of them inside the era in which the field
  * already existed — two in this repository's mail (`005-comms-derived-untracked`
- * 2026-08-18T11:58:31Z, `017-circuit-watchdog` 2026-08-19T12:28:45Z) and eleven in the LLE
+ * 2026-08-18T11:58:31Z, `017-circuit-watchdog` 2026-08-19T12:28:45Z) and eleven in the consumer
  * mail, the latest `042-notifier-down` 2026-08-21T09:19:58Z. So the window is reachable,
  * and a fold judging by the id alone calls every run that lands in it a failed attempt —
  * three of those close the pair.

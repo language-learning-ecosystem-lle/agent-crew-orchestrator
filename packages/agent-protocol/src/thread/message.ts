@@ -359,7 +359,7 @@ export type MessageFields = {
    * them out of the header already. The third, the reviewer's verdict, was unreadable there: by
    * the header it is a letter of a role with `expects: answer` and `waiting-on: curator`,
    * indistinguishable from any report, and its `verdict:`/`pr:` lines ride in the BODY, which the
-   * R27 net is forbidden to parse (norm 020). The cost was measured in LLE on 2026-08-28,
+   * R27 net is forbidden to parse (norm 020). The cost was measured at a consumer on 2026-08-28,
    * 17:40→17:59Z: the verdict landed in a thread parked six minutes earlier and was eaten.
    *
    * So the same two lines are raised into the header, and the SIGN IS THE DECLARATION rather

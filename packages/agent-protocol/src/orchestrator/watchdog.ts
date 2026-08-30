@@ -167,7 +167,7 @@ export type WatchdogState =
 
 /**
  * The key of a NAMED instance: the bare key plus the name in UPPER_SNAKE
- * (`lle-hetzner` → `HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER`).
+ * (`acme-box` → `HEALTHCHECKS_CIRCUIT_URL_ACME_BOX`).
  *
  * A name that does not become a legal environment key is REFUSED rather than mangled into
  * one. Mangling would be the same class of silence as everything else in this module: two

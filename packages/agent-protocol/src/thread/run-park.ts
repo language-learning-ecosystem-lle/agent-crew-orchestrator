@@ -24,7 +24,7 @@
  *     the case above entirely and costs one call.
  *
  *     The third question is the other end of the same class and was measured a fortnight later
- *     (thread 032, LLE 2026-08-23): a park whose condition had come true TWENTY SECONDS BEFORE
+ *     (thread 032, a consumer, 2026-08-23): a park whose condition had come true TWENTY SECONDS BEFORE
  *     it was written. The door is the only place that can see it, because the reader of the
  *     lift looks forward from the park by construction and the header of an outcome message
  *     names no run — so "has it already happened" is a question about the world, not about the
@@ -159,7 +159,7 @@ export const judgeRunPark = (input: {
   // THE ROUND IS OVER BEFORE THE PARK IS WRITTEN (thread 032, the race of the third refusal).
   // The lift of a `run:` park is a message, and the reader of that lift looks FORWARD from the
   // park only — so an outcome that landed while the letter was being composed lifts nothing,
-  // ever. It was measured on 2026-08-23 (LLE): the outcome of the round on PR #386 was
+  // ever. It was measured on 2026-08-23 (a consumer): the outcome of the round on PR #386 was
   // committed at 05:41:46Z, the letter parking on `run:386` at 05:42:06Z — twenty seconds
   // BEHIND its own condition; the pair stood until a human woke it 22 minutes later, the second
   // such sleep in two days.

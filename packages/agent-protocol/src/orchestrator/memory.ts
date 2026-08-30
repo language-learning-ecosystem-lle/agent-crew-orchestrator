@@ -1,13 +1,13 @@
 /**
- * WHERE A ROLE'S PERSONAL MEMORY LIVES — the first half of form D (LLE thread
+ * WHERE A ROLE'S PERSONAL MEMORY LIVES — the first half of form D (a consumer thread
  * `116-role-memory-cost`, john's word «D, рядом с почтой, с потолком»).
  *
  * THE DEFECT THIS ANSWERS. The vendor keeps a role's notes in the agent profile,
  * and it keys them by PROJECT DIRECTORY AND ACCOUNT rather than by role: a session
  * running in `.worktrees/dev-speech` writes into the pile of the repository root, so
  * two roles on one account share one pile, and one role on two accounts has two piles
- * that never see each other. Measured on 2026-08-30: ACO/`lle-main` 82 notes,
- * ACO/`lle-second` 7, LLE/`lle-second` 2, LLE/`lle-main` 0. A role therefore has no
+ * that never see each other. Measured on 2026-08-30: ACO/`acme-main` 82 notes,
+ * ACO/`acme-second` 7, a consumer/`acme-second` 2, a consumer/`acme-main` 0. A role therefore has no
  * memory of its own and no access to all of its own — it gets a random slice of
  * "which box raised me".
  *
@@ -101,7 +101,7 @@ export const sessionSettings = (input: {
  * WHY BYTES AND NOT NOTES OR AGE. Bytes are what is actually paid — a hundred one-line
  * notes cost less than ten essays, and age says nothing about price. The number is the
  * measured index of the worst circuit today rounded to a round figure: it does not fire
- * on any pile that exists (LLE 267 bytes, ACO 19 294), and it fires on the next
+ * on any pile that exists (a consumer's 267 bytes, ACO 19 294), and it fires on the next
  * doubling. A ceiling that already fires on the day it lands teaches everyone to ignore
  * it.
  */

@@ -371,7 +371,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     const result = run(
       repo,
       stubGh(repo, {
-        failWith: "GraphQL: Could not resolve to a Repository with the name 'lle/lle'.",
+        failWith: "GraphQL: Could not resolve to a Repository with the name 'acme/widgets'.",
       }),
     );
 

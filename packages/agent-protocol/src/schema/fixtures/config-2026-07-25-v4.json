@@ -38,7 +38,7 @@
       "id": "dev-core",
       "kind": "claude-code",
       "status": "active",
-      "wake": { "mode": "watch", "session": "lle-dev-core" },
+      "wake": { "mode": "watch", "session": "acme-dev-core" },
       "summary": "Основной поток: API, web-app, extension, sync, mobile",
       "zones": { "writes": [], "forbidden": ["apps/pronunciation-service"] },
       "instructions": [{ "kind": "in-repo", "path": "CLAUDE.md" }],
@@ -52,7 +52,7 @@
       "id": "dev-speech",
       "kind": "claude-code",
       "status": "active",
-      "wake": { "mode": "watch", "session": "lle-dev-speech" },
+      "wake": { "mode": "watch", "session": "acme-dev-speech" },
       "summary": "Поток произношения: apps/pronunciation-service, свои префиксы очередей",
       "zones": { "writes": ["apps/pronunciation-service"], "forbidden": [] }
     },

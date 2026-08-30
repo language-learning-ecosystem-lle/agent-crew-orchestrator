@@ -1462,7 +1462,7 @@ const schemaMigrate = (argv: readonly string[]): void => {
  * `schema version` — THE TWO NUMBERS OF A PIN, SIDE BY SIDE, BEFORE IT MOVES (thread
  * 028). `config check` answers the same question from the INSTALLED package, which
  * during a pin bump is the old one by definition: the consumer's CI stays green until
- * the pin lands and goes red on a live `main` afterwards (LLE, 2026-08-22, 37 seconds
+ * the pin lands and goes red on a live `main` afterwards (a consumer, 2026-08-22, 37 seconds
  * after the merge). This command asks the CANDIDATE instead — `--package-ref` names a
  * tag, and the number is read out of its source, with nothing installed and nothing
  * checked out.
@@ -1580,7 +1580,7 @@ const roleExists = (argv: readonly string[]): void => {
  * punishment was measured against the wrong crime: one directory created without `_meta.md`
  * froze `INDEX.md`, `TASKS.md` and every `_thread.md` of BOTH contours — `092-consent-and-
  * deletion` on 29.08 (ten red runs in a row, three false hypotheses, three trips of john to
- * the box) and `055-mirror-rules-to-lle` on 30.08 (two more). The repair both times was one
+ * the box) and `055` on 30.08 (two more). The repair both times was one
  * file.
  *
  * So the assembly runs over the threads that DID parse, the unreadable ones enter the register
@@ -1694,7 +1694,7 @@ const threadBuild = (argv: readonly string[]): void => {
  * `--for <role>` SAYS HOW MUCH OF IT IS NEW TO THAT ROLE (thread 058, B.1) — the count
  * from the role's own last letter down, and a `--tail` that would cut into that run is
  * widened to cover it. Two roles writing into one thread within a minute is legal and
- * happens (LLE thread 110, 2026-08-30), and it turns "read the last message" into a
+ * happens (a consumer's thread, 2026-08-30), and it turns "read the last message" into a
  * reading that misses the one that mattered; the cure belongs to the READING TOOL,
  * because the raised session is a fresh process and remembers nothing. See
  * `thread/unread.ts` for the incident and for why there is no cursor file.
@@ -3102,7 +3102,7 @@ const deliversFrom = (
  * The pair is what the norm made readable: a park on a person holds the TURN it was declared on,
  * and the verdict of a round is one of the three outcomes that open a new turn at the same
  * holder. Until the fields existed the verdict rode in the BODY (`REVIEWER.md`), where the R27
- * net may not read it (norm 020) — measured in LLE 17:40→17:59Z, where the verdict landed in a
+ * net may not read it (norm 020) — measured at a consumer, 17:40→17:59Z, where the verdict landed in a
  * parked thread and was eaten.
  *
  * TWO THINGS THIS DOOR DELIBERATELY DOES NOT CHECK. The sender's role against the config — that
@@ -5857,7 +5857,7 @@ const resolveOnPath = (name: string, env: NodeJS.ProcessEnv): string | undefined
  * are the effects, and three of them are worth naming at the place they happen:
  *
  *  - THE MAIL WORKTREE IS CREATED WITH A FETCH FIRST, and that ordering is the defect
- *    this command was written around: the checkout on `lle-agents` was made by hand
+ *    this command was written around: the checkout on `acme-agents` was made by hand
  *    without one, and every frame afterwards said `mail: never pulled`.
  *  - THE MACHINE CONFIG IS WRITTEN WHOLE, from `nextLocalConfig`, and then re-read by
  *    `doctor` through the ordinary loader. Nothing here reports on its own work.
@@ -7592,7 +7592,7 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
     ...(user === undefined ? {} : { user }),
   });
   // WHICH INTERPRETER WENT INTO THE FILE, said out loud in both branches: the live unit
-  // that died on `lle-agents` looked perfectly well-formed, and the one token that was
+  // that died on `acme-agents` looked perfectly well-formed, and the one token that was
   // wrong (bare node on a `.ts` entry) is the one nobody reads twice.
   const interpreter =
     loader === undefined
@@ -7971,7 +7971,7 @@ type RunParams = {
   /** The zone deny rules of the role (thread 020) — the tool refuses the edit at the moment it happens. */
   readonly denyRules: readonly string[];
   /**
-   * THE ROLE'S OWN MEMORY DIRECTORY (LLE thread `116-role-memory-cost`, form D) — derived
+   * THE ROLE'S OWN MEMORY DIRECTORY (a consumer's thread, form D) — derived
    * from the ROLE and not from the project directory, which is the whole defect being
    * answered: the vendor keys its notes by project+account, so two roles on one account
    * share a pile and one role on two accounts has two. Carried into the settings source
@@ -9581,7 +9581,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
 const DIGEST_LOCK_WAIT_MS = 20_000;
 
 /**
- * THE TWO MOMENTS OF A ROLE'S MEMORY, BOUND TO THIS BOX (LLE thread
+ * THE TWO MOMENTS OF A ROLE'S MEMORY, BOUND TO THIS BOX (a consumer thread
  * `116-role-memory-cost`, form D, third third). Both halves are built here, together,
  * because they are one contract: the save can only tell "this session wrote it" from
  * "it was already there" against the snapshot the restore recorded, and two call sites

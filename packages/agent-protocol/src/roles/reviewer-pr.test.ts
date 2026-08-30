@@ -79,7 +79,7 @@ describe("the reviewer role of this repository", () => {
   // A model resolving that disagreement by itself is a bet, not a mechanism, and the
   // bet is invisible when it wins: the verdict simply arrives without the header, the
   // lift does not fire, and the turn sits unaccepted (the window this thread was opened
-  // for — LLE 2026-08-28 17:40→17:59Z, 19 minutes).
+  // for — a consumer, 2026-08-28 17:40→17:59Z, 19 minutes).
   //
   // BOTH HALVES ARE ASSERTED TOGETHER, on the same block and not on the file, because
   // half a pair is the one shape the door refuses outright (exit 2): a template that

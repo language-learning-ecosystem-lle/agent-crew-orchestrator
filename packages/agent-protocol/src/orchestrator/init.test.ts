@@ -15,7 +15,7 @@ import {
 
 describe("instanceStep", () => {
   it("refuses to guess a name when the repository declares instances", () => {
-    const step = instanceStep({ declared: ["main", "lle-agents"] });
+    const step = instanceStep({ declared: ["main", "acme-agents"] });
     expect(step.action).toBe("missing");
     expect(step.detail).toContain("--instance");
     expect(step.detail).toContain("'main'");
@@ -38,10 +38,10 @@ describe("instanceStep", () => {
   });
 
   it("names BOTH sides of an overwrite", () => {
-    const step = instanceStep({ requested: "lle-agents", current: "main", declared: ["main"] });
+    const step = instanceStep({ requested: "acme-agents", current: "main", declared: ["main"] });
     expect(step.action).toBe("change");
     expect(step.detail).toContain("'main'");
-    expect(step.detail).toContain("'lle-agents'");
+    expect(step.detail).toContain("'acme-agents'");
   });
 
   it("calls an undeclared name a bench rather than an error", () => {
@@ -174,9 +174,9 @@ describe("nextLocalConfig", () => {
   it("replaces the values the operator named", () => {
     const next = nextLocalConfig(
       { agents: {}, instance: "main" },
-      { instance: "lle-agents", secretsEnvFile: "/new.env" },
+      { instance: "acme-agents", secretsEnvFile: "/new.env" },
     );
-    expect(next.instance).toBe("lle-agents");
+    expect(next.instance).toBe("acme-agents");
     expect(next.secrets).toEqual({ envFile: "/new.env" });
   });
 });

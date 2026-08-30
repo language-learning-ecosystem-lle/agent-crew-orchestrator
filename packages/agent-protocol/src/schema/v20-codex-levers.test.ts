@@ -31,7 +31,7 @@ const role = (launch: unknown): Record<string, unknown> => ({
   id: "pilot",
   kind: "claude-code",
   status: "active",
-  wake: { mode: "watch", session: "lle-pilot" },
+  wake: { mode: "watch", session: "acme-pilot" },
   summary: "a role that pilots the second kind",
   instructions: [{ kind: "in-repo", path: "docs/roles/pilot.md" }],
   launch,

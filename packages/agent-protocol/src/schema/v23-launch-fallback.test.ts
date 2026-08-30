@@ -32,7 +32,7 @@ const MAIL_ROOT = "/repo/.worktrees/comms/agent-comms";
 const config = (): Record<string, unknown> => ({
   protocolVersion: 22,
   mail: { branch: "comms", dir: "agent-comms" },
-  instances: [{ id: "hetzner", account: "lle-main", roles: ["dev-core"] }],
+  instances: [{ id: "hetzner", account: "acme-main", roles: ["dev-core"] }],
   roles: [
     {
       id: "dev-core",
@@ -40,7 +40,7 @@ const config = (): Record<string, unknown> => ({
       wake: { mode: "watch", session: "s" },
       summary: "the stream",
       launch: {
-        account: "lle-main",
+        account: "acme-main",
         agent: { kind: "claude-code", model: "claude-opus-5[1m]", effort: "high" },
       },
     },

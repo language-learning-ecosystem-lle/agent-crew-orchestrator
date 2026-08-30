@@ -438,7 +438,7 @@ describe("the dead-man ping and the exit that is a repair", () => {
  * no unit test of a mapping would show it: the defect lives exactly in the join.
  *
  * The two configs deliberately name THE SAME `secrets.envFile`, because that is the live
- * box (`instances/hetzner.json` and `instances/lle-hetzner.json`, both pointing at
+ * box (`instances/hetzner.json` and `instances/acme-box.json`, both pointing at
  * `~/.config/agent-protocol/secrets.env`) rather than a shape invented for a test.
  */
 const namedInstances = (
@@ -475,9 +475,9 @@ describe("two instances of one box, one secrets file", () => {
       place,
       {
         [`${CIRCUIT_URL_KEY}_HETZNER`]: at(open, "/ping/aco-circuit"),
-        [`${CIRCUIT_URL_KEY}_LLE_HETZNER`]: at(open, "/ping/lle-circuit"),
+        [`${CIRCUIT_URL_KEY}_ACME_BOX`]: at(open, "/ping/acme-circuit"),
       },
-      ["hetzner", "lle-hetzner"],
+      ["hetzner", "acme-box"],
     );
 
     const aco = await tick(place, { instance: "hetzner" });
@@ -485,11 +485,11 @@ describe("two instances of one box, one secrets file", () => {
     expect(open.paths).toEqual(["/ping/aco-circuit"]);
     expect(raised(place)).toBe(true);
 
-    const lle = await tick(place, { instance: "lle-hetzner" });
-    expect(lle.code).toBe(0);
+    const second = await tick(place, { instance: "acme-box" });
+    expect(second.code).toBe(0);
     // The whole of the change, in one assertion: the second daemon's beat went somewhere
     // the first one never touched, so the death of either is visible on its own monitor.
-    expect(open.paths).toEqual(["/ping/aco-circuit", "/ping/lle-circuit"]);
+    expect(open.paths).toEqual(["/ping/aco-circuit", "/ping/acme-circuit"]);
   }, 240_000);
 
   it("a named instance with only the BARE key beats nothing and says which key it wants", async () => {

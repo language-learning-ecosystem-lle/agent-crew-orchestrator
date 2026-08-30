@@ -223,7 +223,7 @@ describe("renderFrame", () => {
         drift: {
           vintage: {
             sha: "a830761a1c0ffee0000000000000000000000000",
-            checkout: "/home/lle/projects/language-learning-ecosystem",
+            checkout: "/home/lle/projects/acme-app",
             startedAt: "2026-08-03T05:13:11Z",
             pid: 710030,
           },

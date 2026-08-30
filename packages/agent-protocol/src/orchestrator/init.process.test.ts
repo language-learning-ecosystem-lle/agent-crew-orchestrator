@@ -33,7 +33,7 @@ const CONFIG = {
   mail: { branch: "comms", dir: "agent-comms" },
   orchestrator: { state: ".orchestrator", mailCheckout: ".worktrees/comms", ref: "HEAD" },
   instances: [
-    { id: "lle-agents", roles: ["dev-core"] },
+    { id: "acme-agents", roles: ["dev-core"] },
     { id: "spare", roles: ["curator"] },
   ],
   roles: [
@@ -56,7 +56,7 @@ const CONFIG = {
 };
 
 const DIGEST = {
-  instance: "lle-agents",
+  instance: "acme-agents",
   writtenAt: "2026-07-30T11:00:00Z",
   roles: ["dev-core"],
   leases: [],
@@ -79,7 +79,7 @@ const box = (): { readonly repo: string } => {
   execFileSync("git", ["init", "-q", "-b", "comms", origin]);
   mkdirSync(join(origin, "agent-comms", "_instances"), { recursive: true });
   writeFileSync(
-    join(origin, "agent-comms", "_instances", "lle-agents.json"),
+    join(origin, "agent-comms", "_instances", "acme-agents.json"),
     `${JSON.stringify(DIGEST, null, 2)}\n`,
   );
   git(origin, "add", ".");
@@ -104,7 +104,7 @@ const box = (): { readonly repo: string } => {
 const initIn = (repo: string, ...extra: readonly string[]): string => {
   const done = spawnSync(
     TSX,
-    [CLI, "init", "--ref", "HEAD", "--repo", repo, "--instance", "lle-agents", ...extra],
+    [CLI, "init", "--ref", "HEAD", "--repo", repo, "--instance", "acme-agents", ...extra],
     { cwd: repo, encoding: "utf8", env: sandbox(configHome(repo)) },
   );
   return `${done.stdout ?? ""}${done.stderr ?? ""}`;
@@ -126,7 +126,7 @@ describe("init reads occupancy of an instance id from the branch (R13)", () => {
     const said = initIn(repo, "--offline");
     // "No data" and "nobody is there" are different facts, and silence renders as the
     // second one. The id is taken on the branch here — the run just may not read it.
-    expect(said).toContain("occupancy of 'lle-agents' NOT checked");
+    expect(said).toContain("occupancy of 'acme-agents' NOT checked");
     expect(said).not.toContain("already publishes a digest");
   });
 

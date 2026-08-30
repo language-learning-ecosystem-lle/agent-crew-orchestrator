@@ -215,7 +215,7 @@ describe("which instance's machine config a command is about", () => {
 
   it("the checkout answers on its own — that is the layer that removes the ceremony", () => {
     const env = box({
-      lle: { repo: "/srv/lle", agents: { "claude-code": { exec: "/opt/lle" } } },
+      acme: { repo: "/srv/acme", agents: { "claude-code": { exec: "/opt/acme" } } },
       crew: { repo: "/srv/crew", agents: { "claude-code": { exec: "/opt/crew" } } },
     });
     const resolved = resolveLocalConfig({ env, repo: "/srv/crew" });
@@ -226,15 +226,15 @@ describe("which instance's machine config a command is about", () => {
   });
 
   it("a role's worktree answers with the instance of its home checkout", () => {
-    const env = box({ lle: { repo: "/srv/lle" } });
-    expect(resolveLocalConfig({ env, repo: "/srv/lle/.worktrees/dev-core" }).instanceName).toBe(
-      "lle",
+    const env = box({ acme: { repo: "/srv/acme" } });
+    expect(resolveLocalConfig({ env, repo: "/srv/acme/.worktrees/dev-core" }).instanceName).toBe(
+      "acme",
     );
   });
 
   it("the flag wins over the checkout when they agree, and SAYS which layer answered", () => {
-    const env = box({ lle: { repo: "/srv/lle" } });
-    const resolved = resolveLocalConfig({ env, repo: "/srv/lle", instance: "lle" });
+    const env = box({ acme: { repo: "/srv/acme" } });
+    const resolved = resolveLocalConfig({ env, repo: "/srv/acme", instance: "acme" });
     expect(resolved.source).toBe("flag");
     expect(resolved.resolution).toContain("--instance");
   });
@@ -249,56 +249,56 @@ describe("which instance's machine config a command is about", () => {
   it("a NAME that disagrees with the checkout is refused by name, not picked quietly", () => {
     // The failure this shape exists to prevent: one project's roles raised with
     // another project's binaries, with nothing anywhere saying why.
-    const env = box({ lle: { repo: "/srv/lle" }, crew: { repo: "/srv/crew" } });
-    expect(() => resolveLocalConfig({ env, repo: "/srv/lle", instance: "crew" })).toThrow(
+    const env = box({ acme: { repo: "/srv/acme" }, crew: { repo: "/srv/crew" } });
+    expect(() => resolveLocalConfig({ env, repo: "/srv/acme", instance: "crew" })).toThrow(
       LocalConfigError,
     );
-    expect(() => resolveLocalConfig({ env, repo: "/srv/lle", instance: "crew" })).toThrow(
-      /'crew'.*'lle'|'lle'.*'crew'/s,
+    expect(() => resolveLocalConfig({ env, repo: "/srv/acme", instance: "crew" })).toThrow(
+      /'crew'.*'acme'|'acme'.*'crew'/s,
     );
   });
 
   it("two instances claiming the same checkout are a refusal — the box cannot know", () => {
-    const env = box({ a: { repo: "/srv/lle" }, b: { repo: "/srv/lle" } });
-    expect(() => resolveLocalConfig({ env, repo: "/srv/lle" })).toThrow(/--instance/);
+    const env = box({ a: { repo: "/srv/acme" }, b: { repo: "/srv/acme" } });
+    expect(() => resolveLocalConfig({ env, repo: "/srv/acme" })).toThrow(/--instance/);
   });
 
   it("nested checkouts: the LONGER claim wins, being the more specific answer", () => {
-    const env = box({ outer: { repo: "/srv" }, inner: { repo: "/srv/lle" } });
-    expect(resolveLocalConfig({ env, repo: "/srv/lle/apps" }).instanceName).toBe("inner");
+    const env = box({ outer: { repo: "/srv" }, inner: { repo: "/srv/acme" } });
+    expect(resolveLocalConfig({ env, repo: "/srv/acme/apps" }).instanceName).toBe("inner");
   });
 
   it("an unclaimed checkout on a box with named configs and no local.json is refused", () => {
     // Proceeding would mean running with defaults nobody chose.
-    const env = box({ lle: { repo: "/srv/lle" } });
+    const env = box({ acme: { repo: "/srv/acme" } });
     expect(() => resolveLocalConfig({ env, repo: "/srv/other" })).toThrow(/name the instance/);
   });
 
   it("…but an unclaimed checkout falls back to local.json where there is one", () => {
-    const env = box({ lle: { repo: "/srv/lle" } }, { agents: {} });
+    const env = box({ acme: { repo: "/srv/acme" } }, { agents: {} });
     const resolved = resolveLocalConfig({ env, repo: "/srv/other" });
     expect(resolved.source).toBe("default");
-    expect(resolved.resolution).toContain("lle");
+    expect(resolved.resolution).toContain("acme");
   });
 
   it("a named file that is not JSON is SKIPPED and named — one broken sibling blinds nobody", () => {
-    const env = box({ broken: "{ not json", lle: { repo: "/srv/lle" } });
-    const resolved = resolveLocalConfig({ env, repo: "/srv/lle" });
-    expect(resolved.instanceName).toBe("lle");
+    const env = box({ broken: "{ not json", acme: { repo: "/srv/acme" } });
+    const resolved = resolveLocalConfig({ env, repo: "/srv/acme" });
+    expect(resolved.instanceName).toBe("acme");
     expect(resolved.resolution).toContain("broken");
   });
 
   it("a named instance that has no file is a refusal — the operator pointed at one", () => {
-    const env = box({ lle: { repo: "/srv/lle" } });
-    expect(() => resolveLocalConfig({ env, repo: "/srv/lle", instance: "ghost" })).toThrow(
+    const env = box({ acme: { repo: "/srv/acme" } });
+    expect(() => resolveLocalConfig({ env, repo: "/srv/acme", instance: "ghost" })).toThrow(
       LocalConfigError,
     );
   });
 
   it("--local-config still names a path outright and skips the question", () => {
-    const env = box({ lle: { repo: "/srv/lle" } });
+    const env = box({ acme: { repo: "/srv/acme" } });
     const path = withFile(JSON.stringify({ agents: { "claude-code": { exec: "/opt/x" } } }));
-    const resolved = resolveLocalConfig({ env, repo: "/srv/lle", path });
+    const resolved = resolveLocalConfig({ env, repo: "/srv/acme", path });
     expect(resolved.source).toBe("path");
     expect(resolved.instanceName).toBeUndefined();
     expect(resolved.config.agents["claude-code"]?.exec).toBe("/opt/x");
@@ -312,7 +312,7 @@ describe("which instance's machine config a command is about", () => {
   });
 
   it("'repo' is location, not policy — the machine may say where its checkout is", () => {
-    expect(parseLocalConfig({ repo: "/srv/lle" }, "p").repo).toBe("/srv/lle");
+    expect(parseLocalConfig({ repo: "/srv/acme" }, "p").repo).toBe("/srv/acme");
   });
 });
 

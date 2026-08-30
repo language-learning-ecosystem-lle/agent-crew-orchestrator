@@ -25,7 +25,7 @@ const devCore = {
   id: "dev-core",
   kind: "claude-code",
   status: "active",
-  wake: { mode: "watch", session: "lle-dev-core" },
+  wake: { mode: "watch", session: "acme-dev-core" },
   summary: "main stream",
 };
 
@@ -117,11 +117,11 @@ describe("RoleRegistry", () => {
       ...devCore,
       id: "dev-speech",
       status: "paused",
-      wake: { mode: "watch", session: "lle-dev-speech" },
+      wake: { mode: "watch", session: "acme-dev-speech" },
     };
     const registry = registryOf(john, curator, devCore, paused, reviewer);
 
-    expect(registry.watchTargets()).toEqual([{ id: "dev-core", session: "lle-dev-core" }]);
+    expect(registry.watchTargets()).toEqual([{ id: "dev-core", session: "acme-dev-core" }]);
   });
 
   it("hands the notifier a human directly, an assistant through a human, and no agents at all", () => {

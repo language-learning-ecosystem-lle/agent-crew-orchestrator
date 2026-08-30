@@ -5,7 +5,7 @@ import { configSetSummary, planConfigSet } from "./set.js";
 
 const base = {
   path: "/home/op/.config/agent-protocol/local.json",
-  declaredInstances: ["laptop", "lle-agents"],
+  declaredInstances: ["laptop", "acme-agents"],
   knownRoles: ["curator", "dev-core", "dev-speech"],
 } as const;
 
@@ -26,17 +26,17 @@ const refusal = (outcome: ReturnType<typeof planConfigSet>): string => {
 
 describe("planConfigSet — what it writes", () => {
   it("names an instance a box did not have", () => {
-    const result = ok(plan({ key: "instance", value: "lle-agents" }));
+    const result = ok(plan({ key: "instance", value: "acme-agents" }));
     expect(result.step.action).toBe("set");
-    expect(result.next.instance).toBe("lle-agents");
+    expect(result.next.instance).toBe("acme-agents");
   });
 
   it("prints BOTH SIDES of a change — the destructive one is never a one-word answer", () => {
     const result = ok(
-      plan({ current: { agents: {}, instance: "laptop" }, key: "instance", value: "lle-agents" }),
+      plan({ current: { agents: {}, instance: "laptop" }, key: "instance", value: "acme-agents" }),
     );
     expect(result.step.action).toBe("change");
-    expect(result.step.detail).toContain("'laptop' → 'lle-agents'");
+    expect(result.step.detail).toContain("'laptop' → 'acme-agents'");
   });
 
   it("a value already there is a 'keep', so nothing is rewritten", () => {
@@ -114,7 +114,7 @@ describe("planConfigSet — the door", () => {
   });
 
   it("refuses 'instances' — the plural is the topology, and that is policy too", () => {
-    expect(refusal(plan({ key: "instances", value: "lle-agents" }))).toContain("POLICY");
+    expect(refusal(plan({ key: "instances", value: "acme-agents" }))).toContain("POLICY");
   });
 
   it("refuses an unknown key and lists what the machine config holds", () => {
@@ -155,27 +155,27 @@ describe("planConfigSet — the door", () => {
 describe("planConfigSet — accounts (thread 055)", () => {
   it("declares where an account of this box lives", () => {
     const result = ok(
-      plan({ key: "account", value: "lle-second", configDir: "/home/lle/.claude-lle-second" }),
+      plan({ key: "account", value: "acme-second", configDir: "/home/lle/.claude-acme-second" }),
     );
-    expect(result.step.name).toBe("account: lle-second");
+    expect(result.step.name).toBe("account: acme-second");
     expect(result.step.action).toBe("set");
     expect(result.next.accounts).toEqual({
-      "lle-second": { configDir: "/home/lle/.claude-lle-second" },
+      "acme-second": { configDir: "/home/lle/.claude-acme-second" },
     });
   });
 
   it("A SECOND ACCOUNT DOES NOT ERASE THE FIRST — a box declares them one command at a time", () => {
     const result = ok(
       plan({
-        current: { agents: {}, accounts: { "lle-main": { configDir: "/home/lle/.claude" } } },
+        current: { agents: {}, accounts: { "acme-main": { configDir: "/home/lle/.claude" } } },
         key: "account",
-        value: "lle-second",
-        configDir: "/home/lle/.claude-lle-second",
+        value: "acme-second",
+        configDir: "/home/lle/.claude-acme-second",
       }),
     );
     expect(result.next.accounts).toEqual({
-      "lle-main": { configDir: "/home/lle/.claude" },
-      "lle-second": { configDir: "/home/lle/.claude-lle-second" },
+      "acme-main": { configDir: "/home/lle/.claude" },
+      "acme-second": { configDir: "/home/lle/.claude-acme-second" },
     });
   });
 
@@ -183,23 +183,23 @@ describe("planConfigSet — accounts (thread 055)", () => {
     const result = ok(
       plan({
         key: "account",
-        value: "lle-second",
-        configDir: "/home/lle/.claude-lle-second",
+        value: "acme-second",
+        configDir: "/home/lle/.claude-acme-second",
         configDirExists: false,
       }),
     );
     expect(result.step.action).toBe("set");
     expect(result.step.detail).toContain(
-      "CLAUDE_CONFIG_DIR=/home/lle/.claude-lle-second claude login",
+      "CLAUDE_CONFIG_DIR=/home/lle/.claude-acme-second claude login",
     );
   });
 
   it("prints both sides of a moved account directory", () => {
     const result = ok(
       plan({
-        current: { agents: {}, accounts: { "lle-second": { configDir: "/old/dir" } } },
+        current: { agents: {}, accounts: { "acme-second": { configDir: "/old/dir" } } },
         key: "account",
-        value: "lle-second",
+        value: "acme-second",
         configDir: "/new/dir",
         configDirExists: true,
       }),
@@ -211,9 +211,9 @@ describe("planConfigSet — accounts (thread 055)", () => {
   it("the same directory again is a 'keep', so the file is not rewritten", () => {
     const result = ok(
       plan({
-        current: { agents: {}, accounts: { "lle-second": { configDir: "/dir" } } },
+        current: { agents: {}, accounts: { "acme-second": { configDir: "/dir" } } },
         key: "account",
-        value: "lle-second",
+        value: "acme-second",
         configDir: "/dir",
       }),
     );
@@ -221,7 +221,9 @@ describe("planConfigSet — accounts (thread 055)", () => {
   });
 
   it("refuses 'account' without --config-dir: WHERE it lives is all this file says", () => {
-    expect(refusal(plan({ key: "account", value: "lle-second" }))).toContain("--config-dir <path>");
+    expect(refusal(plan({ key: "account", value: "acme-second" }))).toContain(
+      "--config-dir <path>",
+    );
   });
 
   it("refuses 'account' with no account named", () => {
@@ -232,7 +234,7 @@ describe("planConfigSet — accounts (thread 055)", () => {
 
   it("REFUSES A RELATIVE PATH — the daemon that reads it was started somewhere else", () => {
     const said = refusal(
-      plan({ key: "account", value: "lle-second", configDir: ".claude-second" }),
+      plan({ key: "account", value: "acme-second", configDir: ".claude-second" }),
     );
     expect(said).toContain("is relative");
     expect(said).toContain("CLAUDE_CONFIG_DIR");
@@ -245,7 +247,7 @@ describe("planConfigSet — accounts (thread 055)", () => {
   });
 
   it("refuses --exec on an account — the plausible slip, both being 'where it lives'", () => {
-    const said = refusal(plan({ key: "account", value: "lle-second", exec: "/bin/claude" }));
+    const said = refusal(plan({ key: "account", value: "acme-second", exec: "/bin/claude" }));
     expect(said).toContain("--exec belongs to");
     expect(said).toContain("--config-dir <path>");
   });

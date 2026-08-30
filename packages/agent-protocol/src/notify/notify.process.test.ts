@@ -511,7 +511,7 @@ describe("notify as a command", () => {
     // The defect end to end, through the real command: a park is lifted by anybody's later
     // move, the raised role finds its question unanswered and writes it out again, and every
     // repeat used to be a second call on a human's phone. Two about aco-028 and two about
-    // LLE-102 on 2026-08-21/22, one question each.
+    // acme-102 on 2026-08-21/22, one question each.
     const contest = contour({ stalledAfter: 10_000_000 });
     contest.park("023-x", { asks: true });
     contest.commit();

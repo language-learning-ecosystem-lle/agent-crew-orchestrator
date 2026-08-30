@@ -110,7 +110,7 @@ describe("roles[].capabilities — the verb is declared, and so is what it may b
   it("refuses the same verb declared twice — two lists for one verb and no rule which holds", () => {
     const verdict = capabilitiesSchema.safeParse([
       refresh,
-      { name: "repo-refresh", checkouts: ["/home/lle/projects/language-learning-ecosystem"] },
+      { name: "repo-refresh", checkouts: ["/home/lle/projects/acme-app"] },
     ]);
 
     expect(verdict.success).toBe(false);

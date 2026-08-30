@@ -14,14 +14,14 @@ import {
 
 describe("keyStep", () => {
   it("creates a pair the box does not have", () => {
-    const step = keyStep({ path: "/home/a/.ssh/github", present: false, comment: "lle-agents" });
+    const step = keyStep({ path: "/home/a/.ssh/github", present: false, comment: "acme-agents" });
     expect(step.action).toBe("create");
     expect(step.detail).toContain("ed25519");
-    expect(step.detail).toContain("lle-agents");
+    expect(step.detail).toContain("acme-agents");
   });
 
   it("never regenerates an existing key and says how to rotate it", () => {
-    const step = keyStep({ path: "/home/a/.ssh/github", present: true, comment: "lle-agents" });
+    const step = keyStep({ path: "/home/a/.ssh/github", present: true, comment: "acme-agents" });
     expect(step.action).toBe("keep");
     expect(step.detail).toContain("move it aside");
   });
@@ -184,8 +184,8 @@ describe("sshConfigStep", () => {
 
 describe("deployKeyHint", () => {
   it("prints the public half with the four clicks", () => {
-    const hint = deployKeyHint({ pub: "ssh-ed25519 AAAA… lle-agents\n", alias: "github.com" });
-    expect(hint).toContain("ssh-ed25519 AAAA… lle-agents");
+    const hint = deployKeyHint({ pub: "ssh-ed25519 AAAA… acme-agents\n", alias: "github.com" });
+    expect(hint).toContain("ssh-ed25519 AAAA… acme-agents");
     expect(hint).toContain("Deploy keys");
     expect(hint).toContain("Allow write access");
   });
@@ -213,11 +213,11 @@ describe("readSshProbe", () => {
   // even an argument of the function.
   it("reads a deploy key by the repository GitHub names", () => {
     const probe = readSshProbe(
-      "Hi language-learning-ecosystem-lle/language-learning-ecosystem! You've successfully authenticated, but GitHub does not provide shell access.",
+      "Hi acme-org/acme-app! You've successfully authenticated, but GitHub does not provide shell access.",
     );
     expect(probe).toEqual({
       kind: "deploy-key",
-      subject: "language-learning-ecosystem-lle/language-learning-ecosystem",
+      subject: "acme-org/acme-app",
     });
   });
 

@@ -103,13 +103,13 @@ describe("init github --write --no-probe: what lands on the disk", () => {
     // Both halves, because the run reads the public one to print it — a fixture with a
     // private half only would fail for a reason that is not the property under test.
     writeFileSync(key(home), "PRIVATE KEY OF THIS BOX, NOT TO BE REPLACED\n", { mode: 0o600 });
-    writeFileSync(`${key(home)}.pub`, "ssh-ed25519 AAAAOLD lle-agents\n");
+    writeFileSync(`${key(home)}.pub`, "ssh-ed25519 AAAAOLD acme-agents\n");
     const before = readFileSync(key(home));
 
     const said = run({ home, marker }, "--write", "--no-probe");
 
     expect(readFileSync(key(home)).equals(before)).toBe(true);
-    expect(readFileSync(`${key(home)}.pub`, "utf8")).toBe("ssh-ed25519 AAAAOLD lle-agents\n");
+    expect(readFileSync(`${key(home)}.pub`, "utf8")).toBe("ssh-ed25519 AAAAOLD acme-agents\n");
     // The bytes alone would also survive a run that CALLED ssh-keygen and had it refuse
     // the overwrite prompt — an accident of another program, not this command's refusal.
     // So the run has to have succeeded, and to have said the key was kept.

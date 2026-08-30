@@ -38,7 +38,7 @@ const role = (over: Partial<Role>): Role => ({
   id: "dev-core",
   kind: "claude-code",
   status: "active",
-  wake: { mode: "watch", session: "lle-dev-core" },
+  wake: { mode: "watch", session: "acme-dev-core" },
   summary: "…",
   permissions: [],
   instructions: [{ kind: "in-repo", path: "CLAUDE.md" }],
@@ -1327,7 +1327,7 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
 
   describe("instanceAccountOf — the R13 join, and the two silences it keeps (thread 055)", () => {
     const instances = [
-      { id: "lle-agents", account: "main" },
+      { id: "acme-agents", account: "main" },
       { id: "crew", account: "second" },
       { id: "bare" },
     ];

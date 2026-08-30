@@ -914,7 +914,7 @@ const stalledKey = (turn: StalledTurn): string => `${turn.role}\t${turn.thread}\
  * is LIFTED: any later message that moves somebody lifts it ({@link standingParkOf}), so a
  * role raised on a thread with its question still unanswered re-asks it in a new message,
  * the stamp moves, and the same question rang a second time. Measured in the field on
- * 2026-08-21/22: two calls about aco-028 and two about LLE-102, one question each.
+ * 2026-08-21/22: two calls about aco-028 and two about acme-102, one question each.
  *
  * Keying by the pair costs nothing the stamp was buying, and that is a measurement rather
  * than a hope: THE COURIER'S MEMORY OF PARKS IS THE CURRENT COMPOSITION, NOT A JOURNAL
@@ -1390,7 +1390,7 @@ export const planNotifications = (input: {
       // branch is kept and it is REACHABLE ONLY ON THE LIBRARY INPUT: a caller composing a
       // notification hands `parked` in itself (`notify.test.ts`), and through the command's own
       // wiring the pair's role IS the current holder (`waitingOnOf`), so a standing park either
-      // names it or names nobody. Measured rather than assumed: the process test of the LLE
+      // names it or names nobody. Measured rather than assumed: the process test of the consumer
       // window now asserts the ABSENCE of this sentence.
       if (parks.some((park) => park.holder === undefined || park.holder === turn.role)) return [];
       return [{ ...turn, staleParkOn: parks[0]?.person }];

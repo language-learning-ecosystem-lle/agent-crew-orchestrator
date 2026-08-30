@@ -78,7 +78,7 @@ describe("the door of a run: park (thread 062, layer 1)", () => {
 });
 
 describe("the door of a run: park — the round that is already over (thread 032)", () => {
-  // THE LIVE RACE of 2026-08-23 (LLE): the outcome of the round on #386 was committed at
+  // THE LIVE RACE of 2026-08-23 (a consumer): the outcome of the round on #386 was committed at
   // 05:41:46Z, the letter parking on `run:386` twenty seconds later — the condition lay in the
   // feed BEHIND the park, the lift looks forward only, and the pair slept until a human woke it.
   it("refuses a park whose round has already finished, and says the outcome is behind it", () => {

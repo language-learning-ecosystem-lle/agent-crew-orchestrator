@@ -1,7 +1,7 @@
 /**
  * THE TWO NUMBERS OF THE PIN, ON THE NUMBERS THAT PAID FOR THEM (thread 028).
  *
- * The fixtures are 17 and 18 on purpose — the pair of the 2026-08-22 accident in LLE
+ * The fixtures are 17 and 18 on purpose — the pair of the 2026-08-22 accident at a consumer
  * (`v0.2.1` writes 17, `v0.2.2` writes 18, the consumer's config declared 17) — and
  * the source text is the real declaration, not a mock: what this module promises is
  * that a number can be read out of a build NOBODY INSTALLED, and a mock of the

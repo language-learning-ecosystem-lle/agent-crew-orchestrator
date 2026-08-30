@@ -99,7 +99,7 @@ export const SELF_RESTART_MAX_ATTEMPTS = 2;
  * not a new cgroup. Reproduced on a stand of two units differing in that one key
  * (2026-08-18): under `control-group` the child took SIGTERM within a second of the
  * parent's exit — one loop iteration in, mid-phase — while under `process` the same child
- * ran all its phases to the end. That is exactly the field trace of 17.08 on `lle-hetzner`
+ * ran all its phases to the end. That is exactly the field trace of 17.08 on `acme-box`
  * — `stopping pid … gracefully`, `the stop flag is set`, then nothing — and the box stood
  * without a daemon for eleven and a half hours, because the daemon had exited 0 and
  * `Restart=on-failure` is by construction blind to a clean exit.

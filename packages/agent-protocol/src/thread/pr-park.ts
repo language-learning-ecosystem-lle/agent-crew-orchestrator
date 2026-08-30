@@ -7,7 +7,7 @@
  * not the courier. The form reads as "it will unfreeze itself when the merge lands", and that
  * is true only for a merge the circuit itself announces.
  *
- * IT WAS MEASURED (LLE, 2026-08-21): a thread was frozen on `pr:366` at 08:23Z with the words
+ * IT WAS MEASURED (a consumer, 2026-08-21): a thread was frozen on `pr:366` at 08:23Z with the words
  * "разморозится сам, когда #366 закроется" in its own body; #366 was merged at 08:31Z and the
  * event landed in ANOTHER thread as prose, with no `merged-pr` header anywhere. The park stood
  * 8 hours, until a human woke it by hand at 16:36Z — and the cost was a ready head standing

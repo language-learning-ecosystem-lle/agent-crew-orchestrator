@@ -135,14 +135,14 @@ describe("resolveWatchdog", () => {
  * `daemon.watchdog.process.test.ts`; what a unit can hold is the policy.
  */
 describe("resolveWatchdog · one secrets file, several instances", () => {
-  const URL_OF_LLE = "https://hc.example/ping/lle-uuid";
+  const URL_OF_ACME = "https://hc.example/ping/acme-uuid";
   const SUFFIXED = `${CIRCUIT_URL_KEY}_HETZNER`;
   const FILE = "/home/op/.config/agent-protocol/secrets.env";
 
   it("normalises the instance name into the key's suffix, UPPER_SNAKE and '-' → '_'", () => {
-    expect(circuitKeyOf("lle-hetzner")).toEqual({
+    expect(circuitKeyOf("acme-box")).toEqual({
       kind: "key",
-      key: `${CIRCUIT_URL_KEY}_LLE_HETZNER`,
+      key: `${CIRCUIT_URL_KEY}_ACME_BOX`,
     });
     expect(circuitKeyOf("hetzner")).toEqual({ kind: "key", key: SUFFIXED });
   });
@@ -191,7 +191,7 @@ describe("resolveWatchdog · one secrets file, several instances", () => {
 
   it("with BOTH keys the suffixed one wins and the bare one is named as ignored", () => {
     const state = resolveWatchdog({
-      secrets: { [SUFFIXED]: URL_OF_CIRCUIT, [CIRCUIT_URL_KEY]: URL_OF_LLE },
+      secrets: { [SUFFIXED]: URL_OF_CIRCUIT, [CIRCUIT_URL_KEY]: URL_OF_ACME },
       names: [SUFFIXED, CIRCUIT_URL_KEY],
       source: FILE,
       instance: "hetzner",
@@ -220,7 +220,7 @@ describe("resolveWatchdog · one secrets file, several instances", () => {
   });
 
   it("REFUSES a value that another key of the same file already holds, by both NAMES", () => {
-    const other = `${CIRCUIT_URL_KEY}_LLE_HETZNER`;
+    const other = `${CIRCUIT_URL_KEY}_ACME_BOX`;
     const state = resolveWatchdog({
       secrets: { [SUFFIXED]: URL_OF_CIRCUIT, [other]: URL_OF_CIRCUIT },
       names: [SUFFIXED, other],
@@ -248,17 +248,17 @@ describe("resolveWatchdog · one secrets file, several instances", () => {
   });
 
   it("an instance name that is not a legal key suffix is REFUSED, never mangled into one", () => {
-    const bad = circuitKeyOf("lle.hetzner");
+    const bad = circuitKeyOf("acme.box");
     expect(bad.kind).toBe("bad");
     const state = resolveWatchdog({
       secrets: { [CIRCUIT_URL_KEY]: URL_OF_CIRCUIT },
       names: [CIRCUIT_URL_KEY],
       source: FILE,
-      instance: "lle.hetzner",
+      instance: "acme.box",
     });
     expect(state.kind).toBe("off");
     if (state.kind !== "off") throw new Error("unreachable");
-    expect(state.reason).toContain("lle.hetzner");
+    expect(state.reason).toContain("acme.box");
     expect(describeWatchdog(state)).toContain("circuit watchdog OFF");
   });
 });

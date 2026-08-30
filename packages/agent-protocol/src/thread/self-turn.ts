@@ -3,7 +3,7 @@
  *
  * Thread 020 built the whole recognition of a frozen turn on ONE field: a thread carrying
  * `parked-on` raises nobody and spends no attempt of the pair. The net is right, and it was
- * simply NOT FILLED IN where it was needed. The live case (mail of LLE, thread
+ * simply NOT FILLED IN where it was needed. The live case (mail of a consumer, thread
  * `010-speech-service`, six messages of 2026-08-21, `origin/comms` e2d7530):
  *
  *     from: curator / worker: unknown / date: 2026-08-21
@@ -24,7 +24,7 @@
  * WHY `ack` IS REFUSED AND `answer` IS ONLY WARNED ABOUT — a measurement, not a taste (point 1 of
  * curator's statement of work, both mails read on 2026-08-21):
  *
- * | class (self-named turn, no `parked-on`) | ACO mail | LLE mail | of it on 2026-08-21 |
+ * | class (self-named turn, no `parked-on`) | ACO mail | consumer mail | of it on 2026-08-21 |
  * | --- | --- | --- | --- |
  * | `expects: ack`    | 0  | 17  | 6 |
  * | `expects: answer` | 11 | 162 | 9 |

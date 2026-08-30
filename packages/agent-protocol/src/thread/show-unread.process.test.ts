@@ -1,6 +1,6 @@
 /**
  * THE SEAM OF B.1 (thread `058-concurrent-writers-one-thread`): the reading COMMAND, on a
- * thread two roles wrote into within a minute — the shape of LLE thread 110 on 2026-08-30.
+ * thread two roles wrote into within a minute — the shape of a consumer's thread on 2026-08-30.
  *
  * A unit on {@link unreadFor} cannot hold this: what failed in the field was a session
  * TYPING A COMMAND and believing its output, and the two halves that matter — the count

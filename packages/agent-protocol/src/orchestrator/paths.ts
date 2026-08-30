@@ -94,7 +94,7 @@ export type OrchestratorPaths = {
    */
   readonly capabilities: string;
   /**
-   * WHERE THE ROLES' PERSONAL MEMORY LIVES (LLE thread `116-role-memory-cost`, form D).
+   * WHERE THE ROLES' PERSONAL MEMORY LIVES (a consumer's thread, form D).
    * The base only — one directory per role hangs under it, and the role is the key
    * (`memory.ts`, `roleMemoryDirectory`). It lies in the state directory and not in a
    * checkout for a measured reason, spelled out in that module: a note written into the

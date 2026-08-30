@@ -1158,7 +1158,7 @@ export type LaunchArgvInput = {
    */
   readonly denyRules?: readonly string[];
   /**
-   * THE ROLE'S OWN MEMORY DIRECTORY (LLE thread `116-role-memory-cost`, form D) — the
+   * THE ROLE'S OWN MEMORY DIRECTORY (a consumer's thread, form D) — the
    * path derived from the ROLE (`memory.ts`), handed to the vendor through
    * `autoMemoryDirectory` in the same settings source the deny rules ride in. Optional
    * for the same reason `denyRules` is: a caller that knows nothing about memory passes

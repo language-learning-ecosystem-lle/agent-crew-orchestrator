@@ -3,7 +3,7 @@
  * the operator tail: "the commissioning of a box is CLI commands, not a
  * correspondence with curator").
  *
- * The measurement behind it: bringing the VPS `lle-agents` into service took an
+ * The measurement behind it: bringing the VPS `acme-agents` into service took an
  * evening and about a dozen hand steps typed out of a chat. Every step was a
  * question with a yes/no answer — is the binary there, does the token still work, can
  * this box push, is the mail checkout fetched — and not one of them was asked by
@@ -427,7 +427,7 @@ export const gitChecks = (input: {
  *
  * The measurement behind it: the GitHub interface showed "two dev-cores", and a tally
  * over the whole history explained why — beside the canonical `<role>@agents.invalid`
- * there were `dev-core@lle.local`, `@agents.local`, `@agent.local`, `@local` and a
+ * there were `dev-core@acme.local`, `@agents.local`, `@agent.local`, `@local` and a
  * personal address, each a box or an epoch where the signing was set by hand and set
  * differently. Nothing breaks from it, which is exactly why nobody notices: the
  * identity of a commit is read months later, by a human trying to tell a session's
@@ -634,7 +634,7 @@ export const commitIdentityCheck = (input: {
  *
  * WHY AN EMPTY ANSWER IS A CROSS AND NOT A FACT. Unset does not mean "git will refuse";
  * on a box whose hostname carries a domain git derives `<user>@<hostname>` SILENTLY and
- * commits — that is where every `@lle.local`, `@agents.local`, `@agent.local` in this
+ * commits — that is where every `@acme.local`, `@agents.local`, `@agent.local` in this
  * repository's history came from. (On a hostname without a domain git refuses instead,
  * which is why the defect never reproduced on the dev machine.) So the emptiness is the
  * defect itself, seen before it costs anything, and the module's own rule applies: the

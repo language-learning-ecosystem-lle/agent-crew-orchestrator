@@ -154,7 +154,7 @@ describe("orchestrator systemd install", () => {
   });
 
   it("the ExecStart it wrote actually STARTS — no global tsx, no build, nothing on PATH", () => {
-    // THE REGRESSION OF 2026-08-02 (thread 019 msg 4): the first live unit on `lle-agents`
+    // THE REGRESSION OF 2026-08-02 (thread 019 msg 4): the first live unit on `acme-agents`
     // died with `ERR_MODULE_NOT_FOUND … config/config.js imported from … cli.ts`, because
     // the generator wrote bare node in front of a TypeScript entry point. Reading the unit
     // could not catch it — only running its own ExecStart can, and this is that run: the

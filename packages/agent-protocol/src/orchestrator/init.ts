@@ -4,7 +4,7 @@
  *
  * `doctor` answers whether this box is ready. This is the other half of the same
  * evening: the thing that MAKES it ready. The measurement behind both is the same —
- * bringing the VPS `lle-agents` into service took an evening and about a dozen hand
+ * bringing the VPS `acme-agents` into service took an evening and about a dozen hand
  * steps typed out of a chat, and every one of those steps ended in a fact that only
  * this machine can hold: which instance it is, where its agent binary sits, where its
  * transport credentials lie, where the mail checkout is.
@@ -301,7 +301,7 @@ export const secretsStep = (input: {
 
 /**
  * THE MAIL CHECKOUT, CREATED WITH A FETCH. The fetch is not an optimisation, it is the
- * defect this line exists for: the checkout on `lle-agents` was created by hand without
+ * defect this line exists for: the checkout on `acme-agents` was created by hand without
  * one, and the circuit read `mail: never pulled` in every frame afterwards — a box that
  * looks commissioned and works on yesterday's mail.
  */

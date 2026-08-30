@@ -87,16 +87,12 @@ describe("an unreadable thread in the register", () => {
 
   it("stands in id order among the rest, not appended at the bottom", () => {
     const rows = renderIndex([thread("012-x"), thread("100-z")], {
-      unreadable: [{ id: "055-mirror-rules-to-lle", problem: "'_meta.md' is missing" }],
+      unreadable: [{ id: "055", problem: "'_meta.md' is missing" }],
     })
       .split("\n")
       .filter((line) => /^\| \d/.test(line));
 
-    expect(rows.map((row) => row.split(" | ")[0])).toEqual([
-      "| 012-x",
-      "| 055-mirror-rules-to-lle",
-      "| 100-z",
-    ]);
+    expect(rows.map((row) => row.split(" | ")[0])).toEqual(["| 012-x", "| 055", "| 100-z"]);
   });
 
   it("a reason carrying a pipe does not split the row into extra columns", () => {

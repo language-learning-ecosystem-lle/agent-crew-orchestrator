@@ -24,7 +24,7 @@ const registry = createRoleRegistry(
         id: "dev-core",
         kind: "claude-code",
         status: "active",
-        wake: { mode: "watch", session: "lle-dev-core" },
+        wake: { mode: "watch", session: "acme-dev-core" },
         summary: "main stream",
       },
     ],

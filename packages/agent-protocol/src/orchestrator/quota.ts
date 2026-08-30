@@ -394,7 +394,7 @@ const shelfKey = (account: string, window: string): string => `${account}\u0000$
  * THE BOUNDARY THE VENDOR STATES ON EVERY TURN (thread 019) — and the reason the short
  * shelf above is a last resort rather than the answer.
  *
- * Measured on the live journal of the LLE box (2026-08-21, `daemon.log`, 46 events, every
+ * Measured on the live journal of a consumer's box (2026-08-21, `daemon.log`, 46 events, every
  * one of them of this shape): the stream carries a `rate_limit_event` in the first frames
  * of EVERY session, and it carries `resetsAt` whatever the status —
  * `{"status":"allowed","resetsAt":1787305800,"rateLimitType":"five_hour"}`. So the moment

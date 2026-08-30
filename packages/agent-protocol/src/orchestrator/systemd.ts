@@ -44,7 +44,7 @@
  * reads the daemon's argv from beside its pid instead of from memory.
  *
  * 4. "THE INTERPRETER IS THE ONE RUNNING IT" IS NOT `process.execPath` — the defect the
- * first live unit died of (`lle-agents`, 2026-08-02 ~19:23Z, thread 019 msg 4). This CLI
+ * first live unit died of (`acme-agents`, 2026-08-02 ~19:23Z, thread 019 msg 4). This CLI
  * is TypeScript and is started everywhere else through tsx (`pnpm … cli`); `execPath` is
  * the bare node UNDER tsx, and a unit built out of it fails on the first import
  * (`ERR_MODULE_NOT_FOUND: …/config/config.js imported from …/cli.ts` — the `.js` suffixes
@@ -80,7 +80,7 @@
  * go and fix. Without this line systemd re-raises it every `RestartSec` until the start
  * limit, and the operator's first sentence from `status` is "start request repeated too
  * quickly" — the ceiling talking, not the fault. That is how the first live diagnosis on
- * `lle-agents` lost its opening minute. With it, the unit stops on the first refusal and
+ * `acme-agents` lost its opening minute. With it, the unit stops on the first refusal and
  * `status` shows the real exit; a genuine crash (any other code) still restarts.
  *
  * 7. THE UNIT IS NOT GENERATED FROM A ROLE'S WORKSPACE (found while the fixes above were

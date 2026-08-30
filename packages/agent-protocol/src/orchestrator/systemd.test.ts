@@ -10,13 +10,13 @@ import {
   worktreeInstallVerdict,
 } from "./systemd.js";
 
-const LOADER = "/srv/lle/node_modules/tsx/dist/loader.mjs";
+const LOADER = "/srv/acme/node_modules/tsx/dist/loader.mjs";
 
 const plan = (over: Partial<Parameters<typeof planSystemdUnit>[0]> = {}) =>
   planSystemdUnit({
-    repo: "/srv/lle",
+    repo: "/srv/acme",
     node: "/usr/bin/node",
-    cli: "/srv/lle/packages/agent-protocol/src/cli.ts",
+    cli: "/srv/acme/packages/agent-protocol/src/cli.ts",
     loader: LOADER,
     home: "/home/op",
     user: "op",
@@ -28,10 +28,10 @@ describe("the unit is generated from this box", () => {
   it("runs the daemon in the foreground — systemd supervises what it started", () => {
     const unit = plan().unit;
     expect(unit).toContain(
-      `ExecStart=/usr/bin/node --import ${LOADER} /srv/lle/packages/agent-protocol/src/cli.ts orchestrator up --foreground --ref origin/main`,
+      `ExecStart=/usr/bin/node --import ${LOADER} /srv/acme/packages/agent-protocol/src/cli.ts orchestrator up --foreground --ref origin/main`,
     );
     expect(unit).toContain("Type=simple");
-    expect(unit).toContain("WorkingDirectory=/srv/lle");
+    expect(unit).toContain("WorkingDirectory=/srv/acme");
   });
 
   it("goes into the USER unit directory, not a system one", () => {
@@ -47,7 +47,7 @@ describe("the unit is generated from this box", () => {
   });
 
   it("puts the start limit in [Unit] — in [Service] systemd ignores it and says so only in the journal", () => {
-    // The live repro on `lle-agents` (2026-08-02): "Unknown key name StartLimitIntervalSec
+    // The live repro on `acme-agents` (2026-08-02): "Unknown key name StartLimitIntervalSec
     // in section 'Service'". The unit came up, the ceiling did not exist, and nothing in
     // the operator's hands said so.
     const [, service = ""] = plan().unit.split("\n[Service]");
@@ -70,7 +70,7 @@ describe("the unit is generated from this box", () => {
 
   it("quotes a path with a space instead of handing systemd two tokens", () => {
     const unit = plan({ node: "/opt/my node/bin/node" }).unit;
-    expect(unit).toContain('ExecStart="/opt/my node/bin/node" --import /srv/lle/');
+    expect(unit).toContain('ExecStart="/opt/my node/bin/node" --import /srv/acme/');
   });
 
   it("names the human actions, and the self-check is the first of them", () => {
@@ -121,9 +121,9 @@ describe("the unit is generated from this box", () => {
   });
 
   it("takes a name of its own — one box may host more than one contour", () => {
-    const named = plan({ unitName: "lle-staging.service", unitDir: "/tmp/units" });
-    expect(named.path).toBe("/tmp/units/lle-staging.service");
-    expect(named.unit).toContain("SyslogIdentifier=lle-staging");
+    const named = plan({ unitName: "acme-staging.service", unitDir: "/tmp/units" });
+    expect(named.path).toBe("/tmp/units/acme-staging.service");
+    expect(named.unit).toContain("SyslogIdentifier=acme-staging");
   });
 });
 
@@ -191,9 +191,9 @@ describe("the refusal a unit gets", () => {
 });
 
 describe("the install refuses a ROLE'S WORKSPACE, and only that (decision 7)", () => {
-  const HOME = "/srv/lle";
-  const WORKSPACE = "/srv/lle/.worktrees/dev-core";
-  const MAIL = "/srv/lle/.worktrees/comms";
+  const HOME = "/srv/acme";
+  const WORKSPACE = "/srv/acme/.worktrees/dev-core";
+  const MAIL = "/srv/acme/.worktrees/comms";
   const ENTRY = `${WORKSPACE}/packages/agent-protocol/src/cli.ts`;
 
   it("refuses when the command was typed in a role's workspace", () => {
@@ -332,7 +332,7 @@ describe("the unit of one instance (thread 055)", () => {
   });
 
   it("two instances do not collide — which is the whole property asked for", () => {
-    expect(unitNameFor("crew")).not.toBe(unitNameFor("lle"));
+    expect(unitNameFor("crew")).not.toBe(unitNameFor("acme"));
   });
 
   it("the plan puts the instance in the path and in the syslog identifier too", () => {

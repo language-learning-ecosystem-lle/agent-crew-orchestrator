@@ -17,7 +17,7 @@
  *
  * WHY NO ROLE IS GIVEN A CHAIN BY THE MIGRATION, and why that is the point rather than an
  * omission (john, 2026-08-29, `delivers`): the two claude accounts of this box —
- * `lle-main` and `lle-second` — are ONE subscription behind two directories, so a chain
+ * `acme-main` and `acme-second` — are ONE subscription behind two directories, so a chain
  * between them would be a failover in appearance and a second look at the same closed
  * window in fact. The only true spare on this box is of another kind (`codex-main`), and
  * a fall-back of another kind is refused by name — a different TOOL is not a spare key.

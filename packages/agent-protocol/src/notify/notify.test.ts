@@ -351,7 +351,7 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     // THE DEFECT Д-2, MEASURED IN THE FIELD 2026-08-21/22 (thread 030): a park is lifted by
     // anybody's later move, so a role raised on the thread finds its question unanswered and
     // writes it out again — and the stamp in the key made every such repeat a fresh call.
-    // Two calls about aco-028 and two about LLE-102 in one day, one question each.
+    // Two calls about aco-028 and two about acme-102 in one day, one question each.
     const first = withPark([PARKED]);
     const later = withPark([{ ...PARKED, since: "2026-07-31T15:00:00Z", question: "И ещё?" }], {
       waiting: [],
@@ -1497,7 +1497,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
   });
 
   it("(в2) a park that OUTLIVED the turn it was declared on is the standstill, not a park", () => {
-    // The measured window, from `daemon.log.1:15100` of the LLE box: `queue 3/4:
+    // The measured window, from `daemon.log.1:15100` of a consumer's box: `queue 3/4:
     // dev-speech×010-speech-service — priority normal, waiting since 2026-08-28T12:14:09Z ·
     // ⏸ PARKED behind a decision of john (R27)`. The park was declared by `12-11-29Z-curator.md`
     // on CURATOR's turn; the turn moved to dev-speech two letters later, and the pair stood
@@ -1787,14 +1787,14 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
     // NO TAB IN THE FACT — the state file is columns, and this fixture is the contract of
     // `AccountAlarm.about` being kept rather than described: a caller that joined two facts
     // with `\t` would have its key cut in half by the next parse of the file.
-    about: "lle-main until 2026-08-30T14:00:00Z",
-    text: "account-failover: launches of dev-core are held until 14:00Z — every account of its chain is quota-paused (the first to reopen is lle-main, five_hour window)",
+    about: "acme-main until 2026-08-30T14:00:00Z",
+    text: "account-failover: launches of dev-core are held until 14:00Z — every account of its chain is quota-paused (the first to reopen is acme-main, five_hour window)",
   };
   const SWITCH = {
     kind: "failover" as const,
     role: "curator",
     about: "2026-08-30T11:02:00Z",
-    text: "account-failover: curator is raised on lle-second — lle-main is quota-paused until 14:00Z (five_hour window, seen at 2026-08-30T09:00:00Z)",
+    text: "account-failover: curator is raised on acme-second — acme-main is quota-paused until 14:00Z (five_hour window, seen at 2026-08-30T09:00:00Z)",
   };
   const CHAIN = {
     kind: "chain" as const,
@@ -1831,7 +1831,7 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
 
   it("a NEW window of the same role rings again — the shelf is part of the identity", () => {
     const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(HELD)] };
-    const next = { ...HELD, about: "lle-main until 2026-08-30T19:00:00Z" };
+    const next = { ...HELD, about: "acme-main until 2026-08-30T19:00:00Z" };
     expect(accountLines(planAccounts([next], seen))).toHaveLength(1);
   });
 
@@ -1924,7 +1924,7 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
   it("a held state's key comes back from the file whole, spaces and all", () => {
     const rendered = renderNotifyState({ ...EMPTY, accounts: [accountAlarmKey(HELD)] });
     expect(parseNotifyState(rendered).accounts).toEqual([accountAlarmKey(HELD)]);
-    expect(accountAlarmKey(HELD)).toContain("lle-main until 2026-08-30T14:00:00Z");
+    expect(accountAlarmKey(HELD)).toContain("acme-main until 2026-08-30T14:00:00Z");
   });
 
   // (д) THE DAEMON'S OWN LOG — the stitch `planNotifications` → the courier's summary, which
