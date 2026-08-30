@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T19:40:06.285Z",
+  "writtenAt": "2026-08-30T19:40:24.781Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "064-forget-the-consumer",
       "state": "running",
       "deadline": "2026-08-30T20:13:54Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "065-cli-loads-its-own-secrets",
+      "state": "running",
+      "deadline": "2026-08-30T20:40:22Z"
     }
   ]
 }
