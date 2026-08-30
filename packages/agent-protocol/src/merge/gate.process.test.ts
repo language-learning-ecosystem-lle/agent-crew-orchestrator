@@ -988,15 +988,37 @@ describe("merge-gate takes the token of the instance the checkout belongs to", (
     expect(result.out).not.toContain(SECRET);
   });
 
-  it("the file the config names is not there → a refusal that says WHICH file, not 'populate the GH_TOKEN'", () => {
+  it("the file the config names is not there → the refusal of `gh` says WHICH file, not 'populate the GH_TOKEN'", () => {
     const repo = repoWithConfig();
     machineConfig(repo, { write: false });
     const result = runClean(repo, stubGhNeedingToken(repo, mergeable(), SECRET));
 
     expect(result.code).toBe(2);
+    // The reason `gh` gave is the fact, and the missing credential is what makes it
+    // actionable: the path this command read, and the config that named it.
+    expect(result.out).toContain("no token in the environment");
     expect(result.out).toContain("no credential for GitHub");
     expect(result.out).toContain(join(repo, "secrets.aco.env"));
     expect(result.out).toContain("does not exist");
+  });
+
+  /**
+   * THE CREDENTIAL IS AN ENRICHMENT, NEVER A GATE — the case the first shape of this PR
+   * got wrong and CI caught in forty tests at once. `gh` has logins this package does not
+   * manage (`gh auth login` on a human's box, the token an Actions job is handed), and a
+   * door that refused in front of them would be LESS capable than the one it replaced.
+   */
+  it("no secrets file named, but `gh` answers on a login of its own → the door works and says 'no token'", () => {
+    const repo = repoWithConfig();
+    // A machine config exists and names NO secrets file; the stub answers regardless.
+    const home = join(configHomeInside(repo), "agent-protocol");
+    mkdirSync(home, { recursive: true });
+    writeFileSync(join(home, "local.json"), `${JSON.stringify({ agents: {} }, null, 2)}\n`, "utf8");
+    const result = runClean(repo, stubGh(repo, { json: mergeable() }));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("credentials — no secrets file named; no token");
+    expect(result.out).not.toContain("no credential for GitHub");
   });
 
   it("a token already in the environment WINS over the file — the debug path is not overridden", () => {

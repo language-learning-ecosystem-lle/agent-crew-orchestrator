@@ -194,6 +194,22 @@ export const platformEnvFrom = (input: {
   };
 };
 
+/**
+ * A MISSING TOKEN IS NOT A BROKEN CALL, AND THE DIFFERENCE IS THE WHOLE OF THIS FUNCTION.
+ *
+ * The first shape of thread `065` refused BEFORE asking `gh` whenever no token could be
+ * assembled — and that made the command LESS capable than the one it replaced: `gh` has
+ * logins this module knows nothing about (`gh auth login` on a human's box, the token a
+ * GitHub Actions job is handed, a stub standing in for it in a process test), and refusing
+ * in front of them turns a working call into an exit 2. CI said so in forty cases at once.
+ *
+ * So the credential is an ENRICHMENT, never a gate: the child is asked, and only when the
+ * child ITSELF refuses does the diagnosis join the reason — which is exactly when a human
+ * needs it and exactly what `populate the GH_TOKEN environment variable` failed to say.
+ */
+export const explainWithCredentials = (reason: string, platform: PlatformEnv): string =>
+  platform.refusal === null ? reason : `${reason} — ${platform.refusal}`;
+
 /** The operator's line: which file, which NAMES, whose token won. Never a value. */
 export const describePlatformEnv = (input: {
   readonly file: SecretsFileState;

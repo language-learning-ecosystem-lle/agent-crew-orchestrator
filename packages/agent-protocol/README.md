@@ -331,9 +331,13 @@ child `gh` and `git` it runs. Nothing has to be exported before the call, and no
   (the debugging path, and the operator's own) wins over the file;
 - **`GH_TOKEN` or `GITHUB_TOKEN`** is what counts as a login, and every other variable of
   the file is passed on too;
-- **the refusal names the file**, not the variable: no `secrets.envFile` in the config /
-  the file is absent / it cannot be read / it carries no token are four different
-  messages, each quoting the path it tried to read. A value is never printed, anywhere.
+- **the credential is offered, never demanded** — a command whose config names no file
+  still calls `gh`, because `gh` has logins this package does not manage (`gh auth login`
+  on a human's box, the token an Actions job is handed). Only when the child ITSELF
+  refuses does the missing credential join the reason, and there it **names the file**,
+  not the variable: no `secrets.envFile` in the config / the file is absent / it cannot be
+  read / it carries no token are four different messages, each quoting the path it tried
+  to read. A value is never printed, anywhere.
 
 `git` gets the same environment: a credential helper for `github.com` that reads the
 token out of its own environment, and `GIT_TERMINAL_PROMPT=0` — a `Username for

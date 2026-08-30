@@ -45,7 +45,7 @@ import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
-import { platformEnvOf } from "./config/credentials.js";
+import { explainWithCredentials, platformEnvOf } from "./config/credentials.js";
 import {
   type LoadedConfig,
   type LoadedPolicy,
@@ -2933,11 +2933,11 @@ const runParkFacts = (
   repo: string,
 ): { readonly facts?: RunParkFacts; readonly refusal?: string } => {
   let raw: string;
-  // The circuit's own credentials (thread 065): the refusal of this door is already a
-  // string that stands the park up with the reason printed, so a missing token joins the
-  // other degradations — by name, with the file it looked in.
+  // The circuit's own credentials (thread 065), OFFERED and not demanded: `gh` is asked
+  // even when this module could assemble no token, because `gh` has logins of its own.
+  // Only if `gh` itself refuses does the missing credential join the reason — by name,
+  // with the file it looked in, instead of `populate the GH_TOKEN environment variable`.
   const platform = platformEnvOf({ repo });
-  if (platform.refusal !== null) return { refusal: platform.refusal };
   try {
     raw = execFileSync(
       "gh",
@@ -2952,7 +2952,12 @@ const runParkFacts = (
     );
   } catch (error) {
     const message = (error as Error).message;
-    return { refusal: `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}` };
+    return {
+      refusal: explainWithCredentials(
+        `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}`,
+        platform,
+      ),
+    };
   }
   let parsed: ReturnType<typeof ghRunParkSchema.safeParse>;
   try {
@@ -11933,17 +11938,22 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
     // rotated under a running daemon has to be picked up without a restart — the cost is
     // one small file read beside a network call.
     const platform = platformEnvOf({ repo });
-    // The refusal is thrown, like every other failure of this source: `readMergeReady`
-    // turns all of them into "no acceleration" with the reason said out loud, and a
-    // credential that is missing BY NAME is exactly what the five blind ticks lacked.
-    if (platform.refusal !== null) throw new Error(platform.refusal);
-    return execFileSync("gh", [...args], {
-      cwd: repo,
-      encoding: "utf8",
-      env: platform.env,
-      stdio: ["ignore", "pipe", "pipe"],
-      maxBuffer: 16 * 1024 * 1024,
-    });
+    try {
+      return execFileSync("gh", [...args], {
+        cwd: repo,
+        encoding: "utf8",
+        env: platform.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 16 * 1024 * 1024,
+      });
+    } catch (error) {
+      // `readMergeReady` turns every failure of this source into "no acceleration" with
+      // the reason said out loud. A `gh` that refused while this module had NO token to
+      // give it gets the missing credential named in that same line — that is precisely
+      // what the five blind ticks lacked: the daemon said "refused", not "refused, and
+      // here is the file nobody filled in".
+      throw new Error(explainWithCredentials((error as Error).message, platform));
+    }
   };
   return {
     open: async () =>
@@ -11989,20 +11999,16 @@ const mergeGate = (argv: readonly string[]): void => {
   const skew = describePolicySkew(loaded);
   if (skew !== undefined) out(`merge-gate: ${skew}`);
   const repo = flag(argv, "--repo") ?? process.cwd();
-  // THE DOOR TAKES THE CREDENTIALS OF THE CIRCUIT IT STANDS IN (thread 065). Said out
-  // loud before the first ask, like the list of documents of power below it: a verdict
-  // read through somebody else's login is a verdict about the wrong repository, and the
-  // one line that tells the two apart is this one. Names and paths only — never a value.
-  const platform = platformEnvOf({
-    repo,
-    instance: flag(argv, "--instance"),
-    localConfig: flag(argv, "--local-config"),
-  });
+  // THE DOOR TAKES THE CREDENTIALS OF THE CIRCUIT IT STANDS IN (thread 065) — of the
+  // instance the CHECKOUT belongs to, and of no other: a verdict read through somebody
+  // else's login is a verdict about the wrong repository, and the one line that tells the
+  // two apart is the note below. Names and paths only — never a value.
+  //
+  // NOT A GATE. Nothing is refused here even when no token could be assembled: `gh` has
+  // logins this package does not manage, and the missing credential is named only if `gh`
+  // itself then refuses (see `explainWithCredentials`).
+  const platform = platformEnvOf({ repo });
   out(`merge-gate: credentials — ${platform.note}`);
-  if (platform.refusal !== null) {
-    fail(platform.refusal, 2);
-    return;
-  }
 
   const ask = (): string =>
     execFileSync(
@@ -12045,7 +12051,13 @@ const mergeGate = (argv: readonly string[]): void => {
     const message = (error as Error).message;
     // The reason `gh` returned is the fact and is printed whole; the hint is a reading
     // of it and says so (`ghRefusalHint` — why it stopped asserting a scope).
-    fail(`PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`, 2);
+    fail(
+      explainWithCredentials(
+        `PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`,
+        platform,
+      ),
+      2,
+    );
     return;
   }
 
