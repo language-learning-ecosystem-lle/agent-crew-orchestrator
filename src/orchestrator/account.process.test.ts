@@ -42,7 +42,7 @@ const META = "---\ntitle: T\nparticipants: dev-core, curator\nstatus: open\n---\
 const WAITING =
   "---\nfrom: curator\ndate: 2026-07-25T10:00:00Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nThe body.\n";
 
-const configOf = (account?: string): Record<string, unknown> => ({
+const configOf = (account?: string, fallback?: readonly string[]): Record<string, unknown> => ({
   protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   orchestrator: { state: ".orchestrator", mailCheckout: "mailco", ref: "HEAD" },
@@ -54,13 +54,17 @@ const configOf = (account?: string): Record<string, unknown> => ({
       wake: { mode: "watch", session: "s" },
       summary: "the stream",
       instructions: [{ kind: "in-repo", path: "CARD.md" }],
-      launch: { allowedTools: ["Bash"], ...(account === undefined ? {} : { account }) },
+      launch: {
+        allowedTools: ["Bash"],
+        ...(account === undefined ? {} : { account }),
+        ...(fallback === undefined ? {} : { fallback }),
+      },
     },
   ],
 });
 
 /** The same contour every process test of a run needs: origin, checkout, mail branch. */
-const contour = (account?: string): { repo: string } => {
+const contour = (account?: string, fallback?: readonly string[]): { repo: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-account-"));
   const origin = join(base, "origin.git");
   execFileSync("git", ["init", "--bare", "-q", "-b", "main", origin]);
@@ -69,7 +73,7 @@ const contour = (account?: string): { repo: string } => {
   execFileSync("git", ["clone", "-q", origin, repo]);
   writeFileSync(
     join(repo, "agent-protocol.json"),
-    `${JSON.stringify(configOf(account), null, 2)}\n`,
+    `${JSON.stringify(configOf(account, fallback), null, 2)}\n`,
   );
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
   git(repo, "add", ".");
@@ -421,5 +425,63 @@ describe("the account reaches the planner and the journal (thread 055, B.3)", ()
 
     const launched = journalOf(repo).filter((event) => event.kind === "launch");
     expect(launched.map((event) => event.role)).toEqual(["dev-core"]);
+  }, 60_000);
+});
+
+/**
+ * STEP 3 OF THREAD `036-account-failover` — THE CHOSEN ACCOUNT REACHES THE CHILD.
+ *
+ * The planner's own answer is a pure function and is tested as one (`tick.test.ts`,
+ * `failover.test.ts`): given a shut window and a healthy chain, `planTick` hands back a
+ * candidate carrying the spare. What no unit on that side can be asked is whether the
+ * SESSION is raised on it — the launch door resolves an account from the role's CARD, so
+ * a substituted id that travels as a bare string is read by the planner, printed in the
+ * tick's line, and then dropped at the spawn. That failure is louder than the silence the
+ * whole thread exists against: the circuit ANNOUNCES a switch and spends the shut window.
+ *
+ * So it is asked of the child, exactly as B.2 above is: the witness reports the directory
+ * it was actually given, and what the package intended is not evidence.
+ */
+describe("the fall-back account reaches the session it raises (thread 036, step 3)", () => {
+  const twoDirs = {
+    accounts: {
+      main: { configDir: "/home/j/.claude-main" },
+      spare: { configDir: "/home/j/.claude-spare" },
+    },
+  };
+
+  it("the primary's window is shut and the chain is open → the child is pointed at the SPARE", () => {
+    const { repo } = contour("main", ["spare"]);
+    const { exec, seen } = witness(repo);
+    machineConfig(repo, twoDirs);
+    seedClosedWindow(repo, "main");
+
+    const out = daemonOnce(repo, exec);
+
+    // The load-bearing assertion of this file: not the line the tick printed, the
+    // directory the process received.
+    expect(readFileSync(seen, "utf8")).toBe("/home/j/.claude-spare");
+    // …and it is said out loud with the layer that answered, because a switch of
+    // subscription nobody can see in the log is a switch nobody can audit.
+    expect(out).toContain("account spare (failover, /home/j/.claude-spare)");
+  }, 60_000);
+
+  it("the same chain with the primary's window OPEN → the child is pointed at the PRIMARY", () => {
+    // The control. Without it the test above also passes on a launcher that hands every
+    // run the last id it saw: the override has to be conditional on the planner having
+    // actually walked the chain, and the layer printed has to go back to 'role'.
+    const { repo } = contour("main", ["spare"]);
+    const { exec, seen } = witness(repo);
+    machineConfig(repo, twoDirs);
+    // The state dir with `enabled` and nothing shelved — the same start as above minus
+    // the one fact under test.
+    mkdirSync(join(repo, ".orchestrator"), { recursive: true });
+    writeFileSync(join(repo, ".orchestrator", "enabled"), "", "utf8");
+
+    const out = daemonOnce(repo, exec);
+
+    expect(readFileSync(seen, "utf8")).toBe("/home/j/.claude-main");
+    expect(out).toContain("account main (role, /home/j/.claude-main)");
+    expect(out).not.toContain("failover");
   }, 60_000);
 });

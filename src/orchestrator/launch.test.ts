@@ -808,6 +808,52 @@ describe("what is raised, from where and with what (R14 + R15)", () => {
       expect(resolveAccount({ launch: on("second"), local: { agents: {} } }).ok).toBe(false);
     });
 
+    // THE THIRD LAYER, AND IT IS NOT A LAYER OF ANY FILE (thread 036, step 3). When the
+    // planner has already walked `launch.fallback` past a shut window, the account it
+    // reached is the answer here — the card is stale for exactly this launch, and reading
+    // it would point the session at the window the tick just announced it was leaving.
+    describe("and the account the planner picked off the chain (thread 036, step 3)", () => {
+      const both = {
+        agents: {},
+        accounts: {
+          main: { configDir: "/home/j/.claude-main" },
+          second: { configDir: "/home/j/.claude-second" },
+        },
+      };
+
+      it("a chosen account OVERRIDES the card, and says which layer answered", () => {
+        expect(resolveAccount({ launch: on("main"), local: both, chosen: "second" })).toEqual({
+          ok: true,
+          account: { id: "second", configDir: "/home/j/.claude-second", source: "failover" },
+        });
+      });
+
+      it("…and it overrides the instance's default too — the chain is above both", () => {
+        expect(resolveAccount({ local: both, instanceAccount: "main", chosen: "second" })).toEqual({
+          ok: true,
+          account: { id: "second", configDir: "/home/j/.claude-second", source: "failover" },
+        });
+      });
+
+      it("nothing chosen → the card answers exactly as it did before this argument existed", () => {
+        expect(resolveAccount({ launch: on("main"), local: both })).toEqual({
+          ok: true,
+          account: { id: "main", configDir: "/home/j/.claude-main", source: "role" },
+        });
+      });
+
+      it("a chosen account the box does not declare → refused, and the refusal names the CHAIN", () => {
+        // The planner refuses an undeclared link one step earlier (`chainRefusals`), so
+        // this door should never see one. It refuses anyway, and by the layer that named
+        // it: a reader sent to 'launch.account' for an id that came off 'launch.fallback'
+        // opens the wrong line of the card.
+        const resolved = resolveAccount({ launch: on("main"), local: both, chosen: "third" });
+        expect(resolved.ok).toBe(false);
+        expect(resolved.ok === false && resolved.reason).toContain("launch.fallback");
+        expect(resolved.ok === false && resolved.reason).toContain("accounts.third.configDir");
+      });
+    });
+
     it("nobody names one and the instance defaults → the instance's, said as its layer", () => {
       // The case the second half of B.2 exists for: "the crew instance runs on the
       // second subscription" is said ONCE, not once per role.
