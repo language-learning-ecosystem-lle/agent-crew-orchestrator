@@ -22,8 +22,9 @@
  *
  * a token followed by a `<…>` (or by a bare literal, as in `--mode take`) takes a
  * value; anything else that starts with `-` is a switch; alternatives are spelled
- * with `|` in one bracket. Comment lines under a command start with `#` and are
- * skipped, since they do not begin with `agent-protocol`.
+ * with `|` in one bracket — `[…]` when the whole group may be left out, `(…)` when
+ * one of its members is required. Comment lines under a command start with `#` and
+ * are skipped, since they do not begin with `agent-protocol`.
  */
 
 /** What one command accepts: flags that take a value, switches, and how many bare arguments. */
@@ -43,7 +44,14 @@ export type CommandFlags = {
 const GLOBAL_VALUE = ["--repo", "--config-path"] as const;
 const GLOBAL_BOOLEAN = ["--no-fetch"] as const;
 
-const strip = (token: string): string => token.replaceAll(/^\[|]$/g, "");
+/**
+ * The brackets a human reads as grammar, taken off the token so that a machine reads
+ * the flag. `(` and `)` are here for the same reason `[` and `]` are, and their
+ * absence was a measured defect (thread 042): `(--role <id> | --role-from-workspace)`
+ * parsed as ONE switch spelled `--role-from-workspace)` — a token no argv can ever
+ * hold — while `--role`, hidden behind the opening parenthesis, was not read at all.
+ */
+const strip = (token: string): string => token.replaceAll(/^[[(]|[\])]$/g, "");
 const isFlag = (token: string): boolean => token.startsWith("-");
 const isPlaceholder = (token: string): boolean => token.startsWith("<");
 

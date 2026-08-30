@@ -1391,7 +1391,11 @@ declared as a dependency of the root); below the commands are written by the
 binary name.
 
 ```
-agent-protocol config check --ref <ref> [--repo <p>]                       # the config is intact
+agent-protocol config check --ref <ref> [--repo <p>] [--local-config <p>] [--instance <name>]
+                            # the config is intact. The two local flags name the machine config whose
+                            # accounts the verdict joins against (thread 036); an unreadable one costs
+                            # the two refusals that quote it and nothing else
+
 agent-protocol config set   <key> <value> [--exec <p>] [--config-dir <p>] [--ref <ref>] \
                             [--local-config <p>] [--instance <name>] [--write]
                             # ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019) — the commissioned box
@@ -1412,7 +1416,9 @@ agent-protocol config set   <key> <value> [--exec <p>] [--config-dir <p>] [--ref
                             # identity that file claims) are two different questions
                             # a value already there is a `keep` and is not rewritten even with --write
                             # --ref may be left out (the operator's set): `orchestrator.ref` of the tree
-agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
+agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline] \
+                            [--probe-timeout <sec>] [--identity-window <days>] [--identity-all] \
+                            [--exec <path>] [--worker <kind>] [--model <id>] [--effort <level>]
                             # IS THIS BOX COMMISSIONED (thread 019): the checklist of a machine that is
                             # supposed to raise roles unattended — both configs, which instance it is, the
                             # agent binary AND A LIVE HEADLESS RUN of it, git (origin, fetch, write access),
@@ -2240,7 +2246,9 @@ Empty output — there are no non-migrated threads and this refusal is unreachab
 ### `doctor` — is this box commissioned (thread 019, the operator tail)
 
 ```
-agent-protocol doctor [--ref <ref>] [--repo <p>] [--local-config <p>] [--offline] [--probe-timeout <sec>]
+agent-protocol doctor [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline]
+                      [--probe-timeout <sec>] [--identity-window <days>] [--identity-all]
+                      [--exec <path>] [--worker <kind>] [--model <id>] [--effort <level>]
 ```
 
 The measurement behind the command: bringing one VPS into service took an evening and
