@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T23:14:19.079Z",
+  "writtenAt": "2026-08-30T23:14:24.531Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "062-contour-boundary",
       "state": "running",
       "deadline": "2026-08-30T23:54:16Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "058-launch-prompt-mail-form-sandbox",
+      "state": "running",
+      "deadline": "2026-08-31T00:14:21Z"
     }
   ]
 }
