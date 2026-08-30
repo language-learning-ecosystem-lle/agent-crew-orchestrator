@@ -270,7 +270,12 @@ export {
   type MessageEntry,
   type ThreadInput,
 } from "./thread/check.js";
-export { parkedThreads, renderIndex, threadsWaitingOn } from "./thread/index-doc.js";
+export {
+  type IndexReading,
+  parkedThreads,
+  renderIndex,
+  threadsWaitingOn,
+} from "./thread/index-doc.js";
 export {
   compareMessageEntries,
   EXPECTS,

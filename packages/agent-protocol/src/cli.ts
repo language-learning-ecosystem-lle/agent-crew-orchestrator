@@ -1550,7 +1550,12 @@ const indexBuild = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
   const registry = registryFrom(argv, repoOf(root));
   const { threads, failures } = loadThreads(root, registry.ids());
-  const rendered = renderIndex(threads.map((loaded) => loaded.thread));
+  const rendered = renderIndex(
+    threads.map((loaded) => loaded.thread),
+    {
+      priorityInForce: (role) => registry.canSetThreadPriority(role),
+    },
+  );
   const path = join(root, "INDEX.md");
 
   // The index is a display, and assembling it from part of the threads means
@@ -2301,7 +2306,10 @@ const derive = (argv: readonly string[]): void => {
   }
   targets.push({
     path: join(root, "INDEX.md"),
-    rendered: renderIndex(threads.map((l) => l.thread)),
+    rendered: renderIndex(
+      threads.map((l) => l.thread),
+      { priorityInForce: (role) => registry.canSetThreadPriority(role) },
+    ),
   });
   // THE BOARD IS A DERIVED FILE OF THE SAME CLASS AS INDEX (thread 021): nobody edits
   // it by hand, a drift is a red job. The workflow is not touched — it calls `derive
