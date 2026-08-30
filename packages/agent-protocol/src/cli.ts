@@ -103,6 +103,7 @@ import {
 } from "./merge/gh.js";
 import {
   type AuthAlarm,
+  announcedOf,
   authAlarmKey,
   type CodeDriftAlarm,
   describeAge,
@@ -4466,37 +4467,10 @@ const runNotify = async (input: {
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
   }
-  const announced = [
-    ...(plan.freshAuth && plan.auth !== undefined
-      ? [
-          `${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} deaths since ${plan.auth.since})`,
-        ]
-      : []),
-    ...(plan.freshGh && plan.gh !== undefined
-      ? [`gh refuses merge-ready (${plan.gh.ticks} ticks since ${plan.gh.since})`]
-      : []),
-    ...(plan.freshDrift && plan.drift !== undefined
-      ? [`the box is behind its own ref (${plan.drift.size})`]
-      : []),
-    ...plan.freshFreezes.map(
-      (event) =>
-        `${event.pair.role}×${event.pair.thread} (${event.kind === "frozen" ? "frozen for good" : "exhausted"})`,
-    ),
-    ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
-    // A REMINDER IS NAMED AMONG WHAT RANG, not among what rode along: it raises the letter, and
-    // the age is the half of it the operator cannot reconstruct from the thread id.
-    ...plan.remindedParked.map((park) => `${park.thread} (reminded ${park.person}, ${park.age})`),
-    // A REPEAT IS NAMED AMONG WHAT WENT OUT, not among what rang: it did not raise this
-    // letter, it rode in it — and the operator reading the summary is owed both facts.
-    ...plan.restatedParked.map((park) => `${park.thread} (restated on ${park.person})`),
-    // A LIFT IS NAMED THE SAME WAY AND FOR THE SAME REASON: it rode in this letter without
-    // raising it, and the summary is where the operator learns what actually went out.
-    ...plan.liftedParked.map((park) => `${park.thread} (lifted on ${park.person})`),
-    ...plan.fresh.map((pair) => pair.thread),
-    ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
-    ...plan.freshUnaccepted.map((turn) => `${turn.role}×${turn.thread} (unaccepted ${turn.age})`),
-  ];
-  const summary = `${describeWaits} — ${announced.join(", ")}`;
+  // THE LIST OF WHAT WENT OUT IS THE PLANNER'S, not this command's (thread 036): held here it
+  // was out of reach of every test, and the tenth class rode into the letter while the daemon's
+  // own log printed an empty tail. See `announcedOf`.
+  const summary = `${describeWaits} — ${announcedOf(plan).join(", ")}`;
   if (transport === undefined) {
     // A legitimate configuration: no transport means stdout IS the channel — the
     // message is printed, which is a delivery, so the state moves. That is the honest

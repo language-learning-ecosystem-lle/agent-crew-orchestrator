@@ -10,6 +10,7 @@ import type { NotificationTarget } from "../roles/registry.js";
 import {
   type AccountAlarm,
   accountAlarmKey,
+  announcedOf,
   describeAge,
   type ExhaustedPair,
   exhaustedPairsOf,
@@ -1783,7 +1784,10 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
   const HELD = {
     kind: "held" as const,
     role: "dev-core",
-    about: "lle-main\t",
+    // NO TAB IN THE FACT — the state file is columns, and this fixture is the contract of
+    // `AccountAlarm.about` being kept rather than described: a caller that joined two facts
+    // with `\t` would have its key cut in half by the next parse of the file.
+    about: "lle-main until 2026-08-30T14:00:00Z",
     text: "account-failover: launches of dev-core are held until 14:00Z — every account of its chain is quota-paused (the first to reopen is lle-main, five_hour window)",
   };
   const SWITCH = {
@@ -1827,7 +1831,7 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
 
   it("a NEW window of the same role rings again — the shelf is part of the identity", () => {
     const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(HELD)] };
-    const next = { ...HELD, about: "lle-main\t2026-08-30T19:00:00Z" };
+    const next = { ...HELD, about: "lle-main until 2026-08-30T19:00:00Z" };
     expect(accountLines(planAccounts([next], seen))).toHaveLength(1);
   });
 
@@ -1911,5 +1915,61 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
     // A line that is not one of the three kinds is dropped, on the freeze rule: a key that
     // is not the key announces the same standstill a second time.
     expect(parseNotifyState("account\tnonsense\tdev-core\t\n").accounts).toBeUndefined();
+  });
+
+  // THE FACT WITH A SPACE IN IT SURVIVES THE FILE — the round-trip on the state that actually
+  // carries a composed `about` (an account AND the window it reopens at), and the reason the
+  // fixtures above carry no tab: the file is columns, so a tab inside the fact would come back
+  // as a shorter key and the same closed window would ring a second time.
+  it("a held state's key comes back from the file whole, spaces and all", () => {
+    const rendered = renderNotifyState({ ...EMPTY, accounts: [accountAlarmKey(HELD)] });
+    expect(parseNotifyState(rendered).accounts).toEqual([accountAlarmKey(HELD)]);
+    expect(accountAlarmKey(HELD)).toContain("lle-main until 2026-08-30T14:00:00Z");
+  });
+
+  // (д) THE DAEMON'S OWN LOG — the stitch `planNotifications` → the courier's summary, which
+  // the round of `reviewer-pr` on #146 found silent: the letter to john carried the account
+  // line while the log printed an empty tail, and "nothing to report" is exactly how a reader
+  // of the log understands it.
+  it("the operator's log names the class that went out, and names its role and kind", () => {
+    expect(announcedOf(planAccounts([HELD]))).toEqual(["dev-core (account: held)"]);
+    expect(announcedOf(planAccounts([SWITCH]))).toEqual(["curator (account: failover)"]);
+    // Two facts of one role are two entries — two repairs, and the log is where the operator
+    // sees that the letter carried both.
+    expect(announcedOf(planAccounts([HELD, CHAIN]))).toEqual([
+      "dev-core (account: held)",
+      "dev-core (account: chain)",
+    ]);
+  });
+
+  it("a state already announced is not in the log either — it says what WENT OUT", () => {
+    const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(HELD)] };
+    expect(announcedOf(planAccounts([HELD], seen))).toEqual([]);
+    expect(announcedOf(planAccounts([HELD, SWITCH], seen))).toEqual([
+      "curator (account: failover)",
+    ]);
+  });
+
+  it("the account stands in the log where its line stands in the letter — under the drift", () => {
+    const plan = planNotifications({
+      targets: TARGETS,
+      waiting: [{ role: "john", thread: "036-account-failover" }],
+      seen: EMPTY,
+      templates: TEMPLATES,
+      accounts: [SWITCH],
+      drift: {
+        sha: "a830761a",
+        refSha: "951b7551",
+        ref: "origin/main",
+        size: "3 commit(s) behind",
+        why: "no self-restart while sessions are live (curator)",
+        since: "2026-08-29T03:24:02Z",
+      },
+    });
+    expect(announcedOf(plan)).toEqual([
+      "the box is behind its own ref (3 commit(s) behind)",
+      "curator (account: failover)",
+      "036-account-failover",
+    ]);
   });
 });

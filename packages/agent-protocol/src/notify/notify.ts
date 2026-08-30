@@ -2025,6 +2025,55 @@ export const describeAge = (minutes: number): string => {
 export const renderNotification = (lines: readonly NotificationLine[]): string =>
   lines.map((line) => line.text).join("\n");
 
+/**
+ * WHAT THE OPERATOR'S LOG SAYS THIS LETTER CARRIED — one entry per fact that went out, in the
+ * order of the composition. It is not the letter (that is {@link renderNotification}); it is the
+ * line the daemon prints about itself, and the two are read by different people.
+ *
+ * IT LIVES HERE, BESIDE THE PLANNER, BECAUSE IT IS THE SAME LIST TWICE (thread 036, the round of
+ * `reviewer-pr` on #146). It used to be built inside the command, out of reach of every test, and
+ * a class added to the letter without being added here made the daemon print an EMPTY tail — a
+ * tick that delivered a real sentence to john and told its own log "nothing", which is
+ * indistinguishable from "nothing happened" for whoever reads the log afterwards. Held next to
+ * the plan, a new class that forgets this list is a test away, not a field report away.
+ */
+export const announcedOf = (plan: NotificationPlan): readonly string[] => [
+  ...(plan.freshAuth && plan.auth !== undefined
+    ? [
+        `${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} deaths since ${plan.auth.since})`,
+      ]
+    : []),
+  ...(plan.freshGh && plan.gh !== undefined
+    ? [`gh refuses merge-ready (${plan.gh.ticks} ticks since ${plan.gh.since})`]
+    : []),
+  ...(plan.freshDrift && plan.drift !== undefined
+    ? [`the box is behind its own ref (${plan.drift.size})`]
+    : []),
+  // AN ACCOUNT IS NAMED BY ITS KIND AND ITS ROLE, and it stands where its line stands in the
+  // letter — after the drift, above the freezes. The sentence itself is the caller's and can be
+  // a paragraph; the log gets the two facts that make it findable — WHAT happened (a run moved
+  // subscriptions, a role stands behind a shut window, a fall-back that will never be spent) and
+  // to WHOSE launches — and the letter carries the rest.
+  ...plan.freshAccounts.map((alarm) => `${alarm.role} (account: ${alarm.kind})`),
+  ...plan.freshFreezes.map(
+    (event) =>
+      `${event.pair.role}×${event.pair.thread} (${event.kind === "frozen" ? "frozen for good" : "exhausted"})`,
+  ),
+  ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
+  // A REMINDER IS NAMED AMONG WHAT RANG, not among what rode along: it raises the letter, and
+  // the age is the half of it the operator cannot reconstruct from the thread id.
+  ...plan.remindedParked.map((park) => `${park.thread} (reminded ${park.person}, ${park.age})`),
+  // A REPEAT IS NAMED AMONG WHAT WENT OUT, not among what rang: it did not raise this
+  // letter, it rode in it — and the operator reading the summary is owed both facts.
+  ...plan.restatedParked.map((park) => `${park.thread} (restated on ${park.person})`),
+  // A LIFT IS NAMED THE SAME WAY AND FOR THE SAME REASON: it rode in this letter without
+  // raising it, and the summary is where the operator learns what actually went out.
+  ...plan.liftedParked.map((park) => `${park.thread} (lifted on ${park.person})`),
+  ...plan.fresh.map((pair) => pair.thread),
+  ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
+  ...plan.freshUnaccepted.map((turn) => `${turn.role}×${turn.thread} (unaccepted ${turn.age})`),
+];
+
 /** An announcement into a thread — the same templating, the project's language. */
 export const renderAnnouncement = (input: {
   readonly kind: AnnouncementKind;
