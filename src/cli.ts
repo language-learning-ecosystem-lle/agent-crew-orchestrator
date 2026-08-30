@@ -570,6 +570,7 @@ import {
   VERDICT_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import { judgeParkSeen } from "./thread/park-seen.js";
 import { describePrPark } from "./thread/pr-park.js";
 import { synthesiseMeta } from "./thread/repair.js";
 import {
@@ -590,6 +591,7 @@ import {
 } from "./thread/tasks.js";
 import {
   mergedPrs,
+  type Parking,
   parkingOf,
   parkSpansOf,
   parseMetaFile,
@@ -3240,6 +3242,35 @@ const declaredTurnOf = (threadDir: string): ThreadTurn | undefined => {
   }
 };
 
+/**
+ * THE PARK STANDING ON A THREAD, read from disk for the WRITING door (thread 058, (B.3)).
+ *
+ * A thread that cannot be read as files parks nobody as far as this door is concerned: the
+ * letter must stay writable, and a refusal built on a feed nobody could parse names nothing the
+ * writer can fix.
+ *
+ * THE SECOND READ IS ONLY FOR THE EVENT PARKS. A park on `pr:N` / `run:N` is lifted by the merge
+ * notifier writing into the PR's OWN thread (thread 023), which this feed cannot see — so the
+ * whole mail is scanned for the merges, and only then: the everyday write stays off a full scan,
+ * and the one case that needs it pays for it.
+ */
+const standingParkFor = (input: {
+  readonly root: string;
+  readonly thread: string;
+  readonly ids: readonly string[];
+}): Parking | undefined => {
+  let loaded: LoadedThread;
+  try {
+    loaded = loadThread(join(input.root, input.thread), input.thread, input.ids);
+  } catch {
+    return undefined;
+  }
+  const parking = parkingOf(loaded.thread);
+  if (parking === undefined || parking.kind === "person") return parking;
+  const { threads } = loadThreads(input.root, input.ids);
+  return parkingOf(loaded.thread, mergedPrs(threads.map((entry) => entry.thread)));
+};
+
 const newMessage = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
   const threadId = required(argv, "--thread");
@@ -3313,6 +3344,23 @@ const newMessage = (argv: readonly string[]): void => {
   // halves are judged together in `planNewMessage`, so the refusal is one for both doors.
   const verdictFields = verdictFrom(argv);
   const tasks = tasksFor(argv, { from, thread: threadId, registry });
+  // A LETTER INTO A THREAD THAT IS ALREADY PARKED MUST NAME THE PARK (thread 058, (B.3)) —
+  // judged here, where the flags can still be retyped and before `--write` is looked at, for
+  // the reason `provenance` is: a dry run is the preview of the write, and a preview that
+  // succeeds where the write refuses is a lie. What lifts a park is not touched — the standing
+  // one is READ (`parkingOf`) and the letter is asked what it says about it.
+  const parkLifted = flag(argv, "--park-lifted");
+  const parkSeen = judgeParkSeen({
+    thread: threadId,
+    parking: standingParkFor({ root, thread: threadId, ids: registry.ids() }),
+    ...(parkedOn === undefined ? {} : { parkedOn }),
+    ...(delivers === undefined ? {} : { delivers }),
+    ...(mergedPr === undefined ? {} : { mergedPr }),
+    ...(verdictFields.pr === undefined ? {} : { verdictPr: verdictFields.pr }),
+    ...(parkLifted === undefined ? {} : { lifted: parkLifted }),
+  });
+  if (!parkSeen.ok) fail(parkSeen.reason, 2);
+  else if (parkSeen.note !== undefined) out(`agent-protocol: ${parkSeen.note}`);
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying

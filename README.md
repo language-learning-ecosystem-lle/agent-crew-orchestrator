@@ -1816,7 +1816,20 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            # A LETTER INTO A THREAD THAT IS ALREADY PARKED IS REFUSED UNLESS IT SAYS WHAT IT
+                            # DOES ABOUT THE PARK (thread 058, (B.3)): the refusal names the park in full —
+                            # what it waits for, since when, whose turn it was declared on, and the question
+                            # in its own words. It fires at most once per park (the next letter lifts it), it
+                            # changes NOTHING about what lifts a park, and it is a REFUSAL and not a warning
+                            # because `--write` is one action: a warning would be a remark about a letter
+                            # already lying in an append-only feed. Three ways to pass — carry what the park
+                            # waits for (`--delivers` / `--merged-pr` / `--verdict --pr`), carry the park
+                            # forward (`--parked-on <the same value>`), or name the lift:
+                            # --park-lifted <person|pr:N|run:N>: THE PARK IS OVER AND THIS LETTER SAYS WHICH
+                            # ONE IT ENDS. The value must MATCH the standing park; nothing is written to the
+                            # header by it. A stale value — the park was lifted by somebody else between the
+                            # read and the write, which is the very subject of 058 — is a NOTE, not a refusal
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
