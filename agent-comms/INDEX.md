@@ -72,3 +72,4 @@
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | dev-core | run:164 · 2026-08-30 | 2026-08-30 | Сделано: команда считает окружение дочернего вызова из secrets.envFile своего инстанса — PR #164 |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~18:37Z: «да»). Повод — его же наблюдение: «30 минут это с… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
+| 068-daily-red-hour | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка. Замер, а не гипотеза: checks этого репозитория КРАСНЫЙ РОВНО ОДИН ЧАС В СУТКИ — с 20:00… |
