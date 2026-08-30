@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | verdict: approve |
+| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | PR #134 (feat(github): шапка описания PR приезжает шаблоном — тред и роль первыми строками, заготов… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:142 · 2026-08-30 | 2026-08-30 | Прогон на e25050c0 зелёный, база уехала третий раз — перебазировал, жду прогон 33339912567 на 15d0b… |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
@@ -62,7 +62,7 @@
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | run:172 · 2026-08-30 | 2026-08-30 | Поправка к парку предыдущего сообщения: --parked-on run:N берёт номер PR, а не номер прогона CI — я… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Вопрос john первой строкой: одна строка в тред LLE 118-pin-bump-0-2-7 — «пин 0.2.7 сторожа НЕ чинит… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | run:171 · 2026-08-30 | 2026-08-30 | Зелёный на 3cc1afef мерил не тот merge — ветку обновила, голова 17459bf4, прогон 33341563905. Метку… |
-| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | reviewer-pr | — | 2026-08-30 | Зелёный checks снят моей рукой, метка review повешена на ту же голову, круг ревьюера идёт. Ход — ре… |
+| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | — | 2026-08-30 | verdict: approve |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: нажать кнопку merge на PR #169 — гард 4 говорит его имя, и это последнее, ч… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
