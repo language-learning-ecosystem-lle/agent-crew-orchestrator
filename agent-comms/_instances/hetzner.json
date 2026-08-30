@@ -1,10 +1,17 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T21:57:44.185Z",
+  "writtenAt": "2026-08-30T21:58:01.386Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "060-derive-fails-whole-branch",
+      "state": "running",
+      "deadline": "2026-08-30T22:57:58Z"
+    }
+  ]
 }
