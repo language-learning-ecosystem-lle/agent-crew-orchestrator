@@ -1563,6 +1563,36 @@ const roleExists = (argv: readonly string[]): void => {
   process.exit(1);
 };
 
+/**
+ * THE REFUSAL THAT COMES AFTER THE ASSEMBLY, NOT INSTEAD OF IT (thread 060, statement of
+ * curator on john's word of 2026-08-30).
+ *
+ * The generators of the derived files used to stop on the FIRST unreadable thread, and the
+ * punishment was measured against the wrong crime: one directory created without `_meta.md`
+ * froze `INDEX.md`, `TASKS.md` and every `_thread.md` of BOTH contours — `092-consent-and-
+ * deletion` on 29.08 (ten red runs in a row, three false hypotheses, three trips of john to
+ * the box) and `055-mirror-rules-to-lle` on 30.08 (two more). The repair both times was one
+ * file.
+ *
+ * So the assembly runs over the threads that DID parse, the unreadable ones enter the register
+ * as marker rows (`IndexReading.unreadable` — the display never goes silent about them), and
+ * the refusal stays: same exit code 2, said last, AFTER the write. What changed is that a
+ * broken thread now costs its own row instead of the whole branch.
+ *
+ * AND THE LINE NAMES THE DIRECTORY. `unreadable threads: 1` sent the reader to a listing to
+ * find out which one — half the price of the diagnosis, paid twelve times over two days.
+ */
+const refuseUnreadable = (failures: readonly ThreadFailure[], assembled: string): void => {
+  if (failures.length === 0) return;
+  const named = failures.map((failure) => `'${failure.id}'`).join(", ");
+  fail(
+    `${assembled} — ${failures.length} unreadable ${
+      failures.length === 1 ? "thread" : "threads"
+    }: ${named}`,
+    2,
+  );
+};
+
 const indexBuild = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
   const registry = registryFrom(argv, repoOf(root));
@@ -1571,21 +1601,19 @@ const indexBuild = (argv: readonly string[]): void => {
     threads.map((loaded) => loaded.thread),
     {
       priorityInForce: (role) => registry.canSetThreadPriority(role),
+      unreadable: failures,
     },
   );
   const path = join(root, "INDEX.md");
 
-  // The index is a display, and assembling it from part of the threads means
-  // publishing an incomplete index as a complete one. Isolation is NOT applied
-  // here: a broken thread is a refusal.
-  if (failures.length > 0) {
-    for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
-    fail(`INDEX will not be assembled — unreadable threads: ${failures.length}`, 2);
-  }
+  // Said FIRST and in full (one line per thread, with the reason), because `fail` below is
+  // the last thing this process does: the diagnosis has to be readable above the verdict.
+  for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
 
   if (argv.includes("--write")) {
     writeOut(path, rendered);
     out(`agent-protocol: INDEX.md regenerated from ${threads.length} threads`);
+    refuseUnreadable(failures, "INDEX.md was assembled WITHOUT the threads it could not read");
     return;
   }
 
@@ -1597,10 +1625,14 @@ const indexBuild = (argv: readonly string[]): void => {
   }
   if (current === rendered) {
     out("agent-protocol: ok — INDEX.md matches the threads");
+    refuseUnreadable(failures, "INDEX.md matches the threads it could read");
     return;
   }
   err("agent-protocol: INDEX.md has drifted from the threads (--write will overwrite it):");
   err(rendered);
+  // Exit 2 outranks the drift's 1: an unreadable thread is the bigger of the two breakages
+  // and the one whose repair fixes the other.
+  refuseUnreadable(failures, "INDEX.md was assembled WITHOUT the threads it could not read");
   process.exit(1);
 };
 
@@ -2302,13 +2334,11 @@ const derive = (argv: readonly string[]): void => {
   // Said BEFORE the failures and whatever they decide: an assembly that goes through is
   // exactly the run on which nothing else would ever mention the off-canon file (thread 065).
   for (const line of renderThreadNotices(notices)) err(`agent-protocol: ${line}`);
-  // As in `index build`: derived files are a display, and assembling one from part
-  // of the threads means publishing the incomplete as complete. A broken thread
-  // stops the assembly.
-  if (failures.length > 0) {
-    for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
-    fail(`derived files were not assembled — unreadable threads: ${failures.length}`, 2);
-  }
+  // As in `index build`: an incomplete display published as a complete one is the thing to
+  // avoid — but the way out of it is the marker row, not the branch-wide stop (`refuseUnreadable`,
+  // thread 060). The lines are said here, above everything the assembly prints; the refusal
+  // itself is the last thing this process does, and the derived files are written before it.
+  for (const line of renderThreadFailures(failures)) err(`agent-protocol: ${line}`);
 
   const targets: { path: string; rendered: string }[] = [];
   for (const loaded of threads) {
@@ -2325,7 +2355,7 @@ const derive = (argv: readonly string[]): void => {
     path: join(root, "INDEX.md"),
     rendered: renderIndex(
       threads.map((l) => l.thread),
-      { priorityInForce: (role) => registry.canSetThreadPriority(role) },
+      { priorityInForce: (role) => registry.canSetThreadPriority(role), unreadable: failures },
     ),
   });
   // THE BOARD IS A DERIVED FILE OF THE SAME CLASS AS INDEX (thread 021): nobody edits
@@ -2363,15 +2393,25 @@ const derive = (argv: readonly string[]): void => {
         ? "agent-protocol: the derived files already match — nothing to write"
         : `agent-protocol: derived files rebuilt: ${drifted.length}`,
     );
+    refuseUnreadable(
+      failures,
+      "the derived files were rebuilt WITHOUT the threads that could not be read",
+    );
     return;
   }
 
   if (drifted.length === 0) {
     out(`agent-protocol: ok — the derived files match (${targets.length} files checked)`);
+    refuseUnreadable(failures, "the derived files match the threads that could be read");
     return;
   }
   err("agent-protocol: the derived files drifted from the source (--write will rebuild them):");
   for (const path of drifted) err(`- ${path}`);
+  // Exit 2 outranks the drift's 1 — same order as in `index build`.
+  refuseUnreadable(
+    failures,
+    "the derived files were assembled WITHOUT the threads that could not be read",
+  );
   process.exit(1);
 };
 
