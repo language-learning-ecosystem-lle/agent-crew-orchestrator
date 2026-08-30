@@ -46,7 +46,7 @@
 | 042-unaccepted-turn-silent | curator · dev-core · john | open | curator | 2026-08-30 |
 | 043-stale-park-reminders | curator · dev-core · john | open | curator | 2026-08-30 |
 | 044-selfheal-blind-spots | curator · dev-core · john | open | — | 2026-08-29 |
-| 045-ship-signal-fixes-to-lle | curator · dev-core · john | open | — | 2026-08-29 |
+| 045-ship-signal-fixes-to-lle | curator · dev-core · john | open | curator | 2026-08-30 |
 | 046-open-threads-sweep | curator · john | closed | — | 2026-08-29 |
 | 047-devops-role | curator · dev-core · john | open | dev-core | 2026-08-30 |
 | 048-box-privileges-today | curator, john | closed | — | 2026-08-29 |
