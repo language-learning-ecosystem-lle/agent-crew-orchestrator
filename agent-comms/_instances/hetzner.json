@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T18:03:47.271Z",
+  "writtenAt": "2026-08-30T18:13:48.328Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
       "role": "dev-core",
       "thread": "062-contour-boundary",
       "state": "running",
-      "deadline": "2026-08-30T19:03:45Z"
+      "deadline": "2026-08-30T19:13:46Z"
     }
   ]
 }
