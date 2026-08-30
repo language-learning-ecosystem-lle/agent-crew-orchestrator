@@ -9451,10 +9451,36 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     instance: local.config?.instance,
   });
   const roleAccounts = new Map<string, string>();
+  // THREAD 036, STEP 3 — AND THE SPARES BESIDE THE ACCOUNT, off the same card and in the
+  // same pass, because they are one statement of the role: "spend this, and if its window
+  // is shut, these in this order". Read once at startup with everything else the launch
+  // mode is resolved from; a chain that changes wants the daemon restarted exactly as a
+  // changed account does.
+  //
+  // THE KIND TRAVELS WITH THE CHAIN and is not re-derived by the planner: a spare of
+  // another kind is refused by name, and the refusal needs to know what the role is raised
+  // as. It is read off the role's OWN CARD, exactly as the config door reads it: a
+  // `--worker` flag on whoever started this daemon is provenance about the command, and a
+  // chain judged by it would refuse the spares of every role the flag does not describe.
+  const roleChains = new Map<string, { fallback: readonly string[]; worker: string }>();
   for (const roleId of launchable) {
     const named = registry.get(roleId)?.launch?.account ?? instanceAccount;
     if (named !== undefined) roleAccounts.set(roleId, named);
+    const fallback = registry.get(roleId)?.launch?.fallback;
+    if (fallback !== undefined && fallback.length > 0)
+      roleChains.set(roleId, {
+        fallback,
+        worker: resolveWorker({
+          ...(registry.get(roleId)?.launch === undefined
+            ? {}
+            : { launch: registry.get(roleId)?.launch as Launch }),
+        }).value,
+      });
   }
+  // What THIS MACHINE says about its accounts — read once, beside the machine config the
+  // rest of the launch mode comes from. `undefined` when it declared nothing at all, and
+  // the planner is told the difference (see `planTick`'s `accounts`).
+  const declaredForPlan = declaredAccounts(argv);
   // Remembered for the WHOLE LIFE of the daemon, keyed by (PR, head): a head that has
   // not moved is not asked about twice (thread 019, point 5, the price limits).
   const mergeReadyCache = createMergeReadyCache();
@@ -10206,8 +10232,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // the account, so the join is one lookup per candidate.
       candidates: candidates.map((candidate) => {
         const account = roleAccounts.get(candidate.role);
-        return account === undefined ? candidate : { ...candidate, account };
+        // AND THE CHAIN RIDES THE SAME JOIN (thread 036, step 3): the queue knows nothing
+        // about subscriptions, so both halves of "which account does this pair spend" are
+        // attached here, at the one line where the role is in hand.
+        const chain = roleChains.get(candidate.role);
+        return {
+          ...candidate,
+          ...(account === undefined ? {} : { account }),
+          ...(chain === undefined ? {} : { fallback: chain.fallback, worker: chain.worker }),
+        };
       }),
+      ...(declaredForPlan === undefined ? {} : { accounts: declaredForPlan }),
       now: new Date(),
       // The mail is already parsed for the queue above — the set of sessions that
       // wrote is what keeps a run that delivered into its own turn out of the
@@ -10228,6 +10263,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         `agent-protocol: ${describeSkip(skip, gates.maxAttempts, kindForRole(argv, registry, skip.role))}`,
       );
     }
+    // THREAD 036, STEP 3 — WHOSE MONEY THIS TICK SPENT, said ABOVE the skips' own reasons
+    // and never folded into them. A `quota` skip says "this pair was not raised"; these
+    // lines say the thing a skip cannot: that the role moved to another subscription, or
+    // that every account it may spend is shut and until when. Printed every tick the fact
+    // holds, like the skips and for the same reason — a state that was announced once and
+    // then went quiet is indistinguishable, hours later, from a circuit that died.
+    for (const line of decision.accountLines ?? []) err(`agent-protocol: ${line}`);
     // 023.2, BESIDE THE SKIPS AND FOR THE SAME REASON: this is the other answer to "why
     // is nothing happening", and the only one the daemon could not give on 2026-08-03.
     // Silent on a match — a line every tick saying the code is current is the noise that

@@ -1041,3 +1041,217 @@ describe("planTick — a closed window stands down ITS account and nobody else (
     expect(auth).toContain("credentials of the box's own account");
   });
 });
+
+/**
+ * THREAD 036, STEP 3 — THE CHAIN WIRED INTO THE PLANNER, and the acceptance list of the
+ * statement of work (curator, msg-004 §4, "Проверяемость / интеграционный") written as
+ * the control pair every quota test in this file is written as: the same journal, the
+ * same candidates, the only difference being whether the role has a spare and whether it
+ * is open.
+ *
+ * The decision itself (`chooseAccount`) is covered exhaustively in `failover.test.ts`.
+ * What is proved HERE is the joint, which no unit of the decision can prove: that the
+ * account it names actually reaches the candidate, that a shut chain costs no attempt,
+ * and that the switch is never silent.
+ */
+describe("planTick — the fall-back chain of a role (036, step 3)", () => {
+  const shelved = (account: string | undefined, until = "2026-07-24T16:00:00Z") =>
+    ({
+      kind: "lease-released",
+      ts: "2026-07-24T13:50:00Z",
+      role: "dev-core",
+      thread: "t9",
+      reason: "quota-exhausted",
+      until,
+      window: "five_hour",
+      ...(account === undefined ? {} : { account }),
+    }) as OrchestratorEvent;
+
+  /** The machine's own statement about the accounts of the box — `accounts` of `local.json`. */
+  const declared = {
+    main: { kind: "claude-code" },
+    second: { kind: "claude-code" },
+    third: { kind: "claude-code" },
+    pilot: { kind: "codex" },
+  };
+
+  const onChain = (fallback: readonly string[]): Candidate[] => [
+    { role: "dev-core", thread: "t1", account: "main", fallback, worker: "claude-code" },
+  ];
+
+  it("the window of the role's own account closed → it is raised ON THE FIRST OPEN SPARE", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["second"]),
+      accounts: declared,
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind).toBe("plan");
+    // The pair is raised, and — the whole point of the joint — it is raised on the SPARE:
+    // the account travels on the candidate, so the launcher, the journal and both shelves
+    // downstream read one field and no one of them needs to know a switch happened.
+    expect(decision.kind === "plan" ? decision.launches : []).toEqual([
+      {
+        role: "dev-core",
+        thread: "t1",
+        account: "second",
+        fallback: ["second"],
+        worker: "claude-code",
+      },
+    ]);
+    // AND IT IS NOT SILENT — the line names all three things a spend is audited by.
+    expect(decision.accountLines?.join("\n")).toContain("account-failover: dev-core is raised on");
+    expect(decision.accountLines?.join("\n")).toContain("second");
+    expect(decision.accountLines?.join("\n")).toContain("quota-paused until");
+  });
+
+  it("a shelved spare is stepped OVER — the chain is walked in the role's own order", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["second", "third"]),
+      accounts: declared,
+      events: [shelved("main"), shelved("second")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual(["dev-core×t1"]);
+    expect(decision.kind === "plan" ? decision.launches[0]?.account : undefined).toBe("third");
+  });
+
+  it("a link of ANOTHER KIND is refused BY NAME and the live link behind it still answers", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["pilot", "second"]),
+      accounts: declared,
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind === "plan" ? decision.launches[0]?.account : undefined).toBe("second");
+    // The refusal is not swallowed by the success behind it: it is a defect of the config
+    // and the moment somebody reads why the role moved is the cheap moment to fix it.
+    const said = decision.accountLines?.join("\n") ?? "";
+    expect(said).toContain("the fall-back 'pilot' of dev-core is NOT spent");
+    expect(said).toContain("'accounts.pilot.kind'");
+  });
+
+  it("THE WHOLE CHAIN SHUT → nobody is raised, the attempt is NOT spent, and the line has a clock on it", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["second"]),
+      accounts: declared,
+      // `second` reopens FIRST — the time in the line has to be that one, because it is
+      // the first moment anything of this role can be raised at all.
+      events: [shelved("main"), shelved("second", "2026-07-24T15:00:00Z")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual([]);
+    // The pair is SKIPPED, which is what makes "no attempt is spent" true: an attempt is
+    // spent by a launch, and the skip carries the pair's counter untouched.
+    expect(decision.skipped).toEqual([
+      {
+        role: "dev-core",
+        thread: "t1",
+        reason: "quota",
+        attempt: 0,
+        account: "main",
+        fallback: ["second"],
+        worker: "claude-code",
+      },
+    ]);
+    const said = decision.accountLines?.join("\n") ?? "";
+    expect(said).toContain("launches of dev-core are held until");
+    expect(said).toContain("15:00");
+  });
+
+  it("A NETWORK FAILURE IS NOT A CLOSED WINDOW — no shelf, so the role stays on its own account", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["second"]),
+      accounts: declared,
+      // A death with no quota signal opens no shelf (`quota.ts`), and the chain is never
+      // reached: a switch of subscriptions happens on a SHELF and on nothing else.
+      events: [
+        {
+          kind: "lease-released",
+          ts: "2026-07-24T13:50:00Z",
+          role: "dev-core",
+          thread: "t9",
+          reason: "timeout",
+          account: "main",
+        } as OrchestratorEvent,
+      ],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.kind === "plan" ? decision.launches[0]?.account : undefined).toBe("main");
+    expect(decision.accountLines).toBeUndefined();
+  });
+
+  it("NO CHAIN AT ALL → the tick behaves exactly as it did before the field existed", () => {
+    const without = planTick({
+      ...base,
+      candidates: [{ role: "dev-core", thread: "t1", account: "main" }],
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    const empty = planTick({
+      ...base,
+      candidates: onChain([]),
+      accounts: declared,
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(without.kind).toBe("quota");
+    expect(raised(without)).toEqual([]);
+    expect(raised(empty)).toEqual([]);
+    // The one thing the empty chain DOES add is the visibility john asked for: a shut
+    // shelf that used to stand a role down in silence now says so with an hour on it.
+    expect(empty.accountLines?.join("\n")).toContain("launches of dev-core are held until");
+  });
+
+  it("ONE ROLE, ONE SENTENCE — a role that heads several threads does not announce the switch twice", () => {
+    const decision = planTick({
+      ...base,
+      candidates: [
+        {
+          role: "dev-core",
+          thread: "t1",
+          account: "main",
+          fallback: ["second"],
+          worker: "claude-code",
+        },
+        {
+          role: "dev-core",
+          thread: "t2",
+          account: "main",
+          fallback: ["second"],
+          worker: "claude-code",
+        },
+      ],
+      accounts: declared,
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(decision.accountLines).toHaveLength(1);
+  });
+
+  it("A BOX THAT DECLARED NOTHING SPENDS NO SPARE — the launch door would refuse it fatally", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["second"]),
+      // no `accounts` — an unreadable or absent machine config
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    expect(raised(decision)).toEqual([]);
+    expect(decision.accountLines?.join("\n")).toContain("this machine declares no such account");
+  });
+});
