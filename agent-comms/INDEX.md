@@ -37,7 +37,7 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | normal | closed | — | — | 2026-08-23 | — |
 | 034-shape-guard-values-blind | curator, dev-core | normal | closed | — | — | 2026-08-23 | — |
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 036-account-failover | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
+| 036-account-failover | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | PR #151 (feat(orchestrator): демон меряет три факта про учётки и отдаёт их курьеру — носитель живой… |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
 | 038-pilot-codex-live-run | curator, pilot-codex | high | closed | — | — | 2026-08-30 | — |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
@@ -60,5 +60,6 @@
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | run:143 · 2026-08-30 | 2026-08-30 | Шаг 1 сделан руками: бамп version 0.2.6 → 0.2.7 лежит в PR #143, голова ca0de66e. Жду checks по #14… |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | run:33318762324 · 2026-08-30 | 2026-08-30 | Тест починен часами теста, а не подгонкой чисел; голова 8dfcb74cb6cd4c4479c57db338673ff11ee85dd6 |
+| 058-concurrent-writers-one-thread | curator · dev-core · john | normal | open | — | — | — | — |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |

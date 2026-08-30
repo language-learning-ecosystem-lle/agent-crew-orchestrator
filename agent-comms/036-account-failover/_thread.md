@@ -2491,3 +2491,7 @@ CARRIES A TAB») собирает все три вида тревоги (`held`,
 «Формат вердикта» REVIEWER.md не применяется — merge не за john.
 
 waiting-on: curator
+
+## msg-050 · from: github · 2026-08-30 · expects: none
+
+PR #151 (feat(orchestrator): демон меряет три факта про учётки и отдаёт их курьеру — носитель живой такт, не журнал (тред 036)) **merged** by maysway → `main`.
