@@ -2,3 +2,4 @@
 - [Ссылка на письмо — автором и фактом](cite-letters-by-author-and-fact.md) — читалка не даёт имён файлов, а `msg-NNN` едет под `--tail`
 - [Треды, должные после #160](threads-owed-after-160.md) — мера 4, справочник файлом-на-тред, тесты на реальных часах, парк `run:` спрошен как PR — заводит curator после merge
 - [Нота о переезде базы — замером, не ребейзом](base-move-note-answered-by-measure.md) — четыре дешёвых факта на кнопке вместо ребейза за каждым переездом `main`
+- [Приёмка укладывается в объявленный `launch`](acceptance-must-fit-declared-launch-params.md) — прогон приёмки с чужими `--model`/`--effort` = право `launch-params`, которого у curator нет

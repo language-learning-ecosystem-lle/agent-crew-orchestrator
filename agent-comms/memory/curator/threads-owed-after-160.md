@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 60bace63-695d-43dd-ae63-faf41db047ad
-  modified: 2026-08-30T23:27:24.531Z
+  modified: 2026-08-30T23:44:28.406Z
 ---
 
 Объявлено 2026-08-30 в треде `062-contour-boundary` (письмо curator того же дня, разбор отказа
@@ -26,6 +26,14 @@ merge-gate на PR #160): после того как #160 уедет в `main`, 
    при отправке напечатано «the run behind the park on PR #33341760032 was NOT verified: Command
    failed: `gh pr view 33341760032`». Парк устоял (ловит возрастной потолок), но проверка спросила
    не тот объект. Это ВЫВОД из вывода команды, а не чтение кода: до постановки — сверить с кодом.
+
+5. **Копия `comms-derived.yml` в ветке `comms` разошлась с каноном в `main`** — замер
+   2026-08-30T23:4xZ: push-прогон `checks` на `main` красный шагом «comms-derived синхронен с
+   каноном» (прогоны 33342150750 на `ec7c4b79` и 33341138028 на `5f36aca7`; `pnpm test` в них
+   ЗЕЛЁН). `git diff --stat origin/main:.github/workflows/comms-derived.yml
+   origin/comms:.github/workflows/comms-derived.yml` → 53 insertions, 4 deletions. Файл —
+   `.github/workflows/**`: док власти и `forbidden` curator, значит постановка исполнителю, а
+   merge — кнопкой john. В тексте ошибки назван тред `007`.
 
 Пункт 2 подтверждён вторым полем: PR #134 (тред 052) конфликтовал хвостом
 `docs/protocol-reference.md` дважды за сутки — сперва с одним чужим разделом, после ребейза с
