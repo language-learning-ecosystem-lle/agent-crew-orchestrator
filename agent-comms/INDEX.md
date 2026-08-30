@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Вердикт по #169 — approve без находок, на текущей голове e5603a83. Все машинные условия закрыты, кр… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | Находка ревьюера починена ровно первым из двух предложенных им способов: почва вынесена в чистую ju… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: посмотри кадр ниже и скажи, понял ли ты по нему, что делает каждая пара, —… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (повтор, вопрос не отвечен): развилка по claude-review.yml — (а) выкинуть из… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | verdict: needs-fixes |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~18:37Z: «да»). Повод — его же наблюдение: «30 минут это с… |
