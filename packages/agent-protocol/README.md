@@ -1532,6 +1532,9 @@ agent-protocol capability run --ref <ref> [--repo <p>] --role <id> --capability 
                             # which system user, which verb at which target, every command that ran, and how
                             # it ended (a failed call too). Readable without the session transcript, which
                             # is why it is not `daemon.log`: that one interleaves every role and rotates
+                            # the user is ASKED OF THE OS (`userInfo().username`), never of `USER`/`LOGNAME`:
+                            # those are set by the hand that types the command, and a field the caller
+                            # writes cannot answer "who carried this call" for anybody reading it later
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
                             # the ids on stdout; an unreadable thread on stderr, with its own cause
                             # AND the count of what was lost (065.4) — the input is never silently

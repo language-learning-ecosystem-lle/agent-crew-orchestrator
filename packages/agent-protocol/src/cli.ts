@@ -11570,9 +11570,16 @@ const capabilityRun = (argv: readonly string[]): void => {
       mkdirSync(dirname(tracePath), { recursive: true });
       appendFileSync(tracePath, `${line}\n`, "utf8");
     },
-    // READ, never set — the identity arrived with the spawn (`docs/box-setup.md` §0.1a).
-    by: process.env["USER"] ?? process.env["LOGNAME"] ?? "unknown",
-    at: new Date().toISOString().slice(0, 19) + "Z",
+    // READ, never set — the identity arrived with the spawn (`docs/box-setup.md` §0.1a). ASKED OF
+    // THE OS, not of the environment (curator 2026-08-30, carried by the review of #141): the whole
+    // promise of the trace is that an outsider establishes WHO carried the call without the session
+    // transcript, and `USER`/`LOGNAME` are set by the very hand that types the command — a field
+    // whose source the caller writes cannot hold that promise, and a forged value is not
+    // distinguishable from an honest one. `userInfo().username` is the box's own answer, and it is
+    // the same one `launch.ts` already judges a declared `systemUser` against. `undefined` (a uid
+    // with no passwd entry — containers do this) becomes "unknown" rather than a guess.
+    by: currentSystemUser() ?? "unknown",
+    at: `${new Date().toISOString().slice(0, 19)}Z`,
   });
 
   if (!outcome.ok) {
