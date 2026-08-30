@@ -66,6 +66,6 @@
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:154 · 2026-08-30 | 2026-08-30 | Перебазировал #154 второй раз: база съехала снова, пока шёл прогон. Новая голова 757c48e9, CI идёт.… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~16:03Z: «заводи»). Предмет: событийная парковка может жда… |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | ВТОРОЙ СЛУЧАЙ ТОГО ЖЕ КЛАССА ЗА ОДИН ЧАС, и он произошёл ПОСЛЕ того, как класс был назван, запрет о… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Слово john полем delivers (чат ~18:00Z): НЕСУЩАЯ МЕРА ИСПОЛНЕНА НАПОЛОВИНУ — у контура hetzner тепе… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому требованию john (чат 2026-08-30 ~17:26Z), дословно: «Какого хуя это всё назыв… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому слову john (чат 2026-08-30 ~17:48Z), дословно: «Протокол это отдельный пакет,… |
