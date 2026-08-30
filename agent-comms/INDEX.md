@@ -53,6 +53,6 @@
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 051-index-shows-parks | curator · dev-core · john | normal | open | curator | run:130 · 2026-08-30 | 2026-08-30 | Работа принята и #126 влит моей рукой — гарды поимённо в §5. Осталась одна вещь и она за john: кноп… |
+| 051-index-shows-parks | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | verdict: approve |
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~09:12Z: «заводи шаблон»). |
 | 053-review-bypassed | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~09:40Z: «заводи»). Предмет заметил он же: «в #124, которы… |
