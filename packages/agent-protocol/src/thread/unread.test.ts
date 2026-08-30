@@ -59,6 +59,35 @@ describe("unreadFor", () => {
   });
 });
 
+/**
+ * THE SECOND CASE OF THE CLASS, and it has no parallelism in it at all (curator, thread
+ * `058`, msg-003): circuit LLE, 2026-08-30, dev-speech wrote twice in a row 32 seconds apart
+ * (`15:49:21Z` and `15:49:53Z`) — the second letter lifted a parking the first one had
+ * declared by mistake. One role, one session, two letters; a reader of "the last message"
+ * sees the lift and never the thing being lifted. The mark being the reader's OWN last
+ * letter is what makes this the same defect as two live writers, so it is pinned separately:
+ * a fix that only ever looked at "somebody else wrote beside me" would pass the tests above
+ * and lose this one.
+ */
+describe("unreadFor — one role, two letters in a row", () => {
+  const burst: readonly Message[] = [
+    message("john", "2026-08-30T15:40:00Z"),
+    message("dev-speech", "2026-08-30T15:49:21Z"),
+    message("dev-speech", "2026-08-30T15:49:53Z"),
+  ];
+
+  it("counts BOTH letters of one author, and names that author once", () => {
+    const facts = unreadFor(burst, "john");
+    expect(facts.unread).toBe(2);
+    expect(facts.since).toBe("2026-08-30T15:40:00Z");
+    expect(facts.authors).toEqual(["dev-speech"]);
+  });
+
+  it("widens `--tail 1` to both — the lift alone is the reading that lost the first letter", () => {
+    expect(tailCovering(1, unreadFor(burst, "john"))).toBe(2);
+  });
+});
+
 describe("tailCovering", () => {
   it("widens a bound that would cut into the unread run", () => {
     // `--tail 1` on the incident itself: the reader would see the letter that says nothing
