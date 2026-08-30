@@ -61,7 +61,7 @@
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Вопрос john первой строкой: одна строка в тред LLE 118-pin-bump-0-2-7 — «пин 0.2.7 сторожа НЕ чинит… |
-| 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Поправка своей же рукой: парковку pr:170 в предыдущем письме я поставила ошибочно — снимаю этим соо… |
+| 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | #170 перебазирован и запушен: свежий checks поднят вне «красного часа», голова 9634c56c. Парк я НЕ… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Вердикт по #169 — approve без находок, на текущей голове e5603a83. Все машинные условия закрыты, кр… |
