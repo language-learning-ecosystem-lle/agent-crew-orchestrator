@@ -174,6 +174,28 @@ export const LAUNCH_ENV = {
 } as const;
 
 /**
+ * THE ONE VARIABLE OF THE LAUNCH THAT IS NOT OURS TO NAME (thread `056-shared-tmp-mechanism`).
+ *
+ * Everything in `LAUNCH_ENV` above is a fact this protocol invented and therefore named
+ * (`AGENT_PROTOCOL_*`); this one is the platform's, and it is set precisely BECAUSE the
+ * whole world already reads it — `mktemp`, node's `os.tmpdir`, python's `tempfile`, go,
+ * the vendor's binaries. A session pointed at its own directory through this variable
+ * writes «somewhere temporary» into its own place without knowing that it did.
+ *
+ * WHY THAT IS THE FIX AND A RULE IS NOT. «Do not write into the shared `/tmp`» is stated,
+ * known and quoted by the roles themselves — and broken every few turns, because the write
+ * is never a decision: it is the side effect of the convenient form of a command. The same
+ * conclusion this repository reached about a rule phrased as an appeal (thread `053`): what
+ * works is a PRECONDITION attached to the action, not an exhortation attached to the role.
+ *
+ * It is kept out of `LAUNCH_ENV` deliberately: that set is also the list the process
+ * sandbox scrubs from the ambient environment of a test (`testing/process-sandbox.ts`),
+ * and scrubbing the platform's `TMPDIR` there would change what the tests themselves run
+ * under — a claim this package has no business making about its own harness.
+ */
+export const RUN_TMPDIR_ENV = "TMPDIR";
+
+/**
  * What the orchestrator says it is raising. A DEFAULT rather than a config field:
  * the shape of a per-role launch section is R12's question (curator, 15:25), and
  * `--worker` is the same kind of override as `--exec` beside it — the one place

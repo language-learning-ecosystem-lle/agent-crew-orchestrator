@@ -7,6 +7,7 @@ import {
   sessionLogPath,
   sessionStreamPath,
   sessionSupervisorPath,
+  sessionTmpPath,
   sessionWaitPath,
   waitPathFromSessionFile,
 } from "./paths.js";
@@ -75,6 +76,23 @@ describe("sessionSupervisorPath", () => {
     // One run is one name in a directory listing, four extensions apart.
     const names = [log, sessionStreamPath(log), sessionIdPath(log), sessionSupervisorPath(log)];
     expect(new Set(names.map((name) => name.replace(/\.[^.]+$/, ""))).size).toBe(1);
+  });
+});
+
+describe("the run's own TMPDIR (thread 056)", () => {
+  it("is a member of the same family — one run, one name, one more extension", () => {
+    const log = sessionLogPath("/s", "dev-core", "056-x", "2026-08-30T18:00:00Z");
+
+    expect(sessionTmpPath(log)).toBe(log.replace(/\.log$/, ".tmp"));
+    // Per-run BY CONSTRUCTION, which is the whole claim: two runs of the same pair,
+    // taken a moment apart, can never be handed the same «temporary» directory — and a
+    // run's leftovers are therefore attributable to it and to nothing else. In the
+    // shared `/tmp` neither half was true.
+    const other = sessionLogPath("/s", "dev-core", "056-x", "2026-08-30T18:00:01Z");
+    expect(sessionTmpPath(other)).not.toBe(sessionTmpPath(log));
+    // It lies beside the log, i.e. in the state directory — never in the role's
+    // worktree, where a scratch file would be a dirty tree and a refusal to launch (R17).
+    expect(sessionTmpPath(log).startsWith("/s/")).toBe(true);
   });
 });
 

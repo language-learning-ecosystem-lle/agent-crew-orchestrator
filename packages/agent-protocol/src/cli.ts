@@ -290,6 +290,7 @@ import {
   type ResolvedExec,
   type ResolvedGates,
   type ResolvedWorker,
+  RUN_TMPDIR_ENV,
   resolveAccount,
   resolveAgentParams,
   resolveCeilings,
@@ -345,6 +346,7 @@ import {
   sessionLogPath,
   sessionStreamPath,
   sessionSupervisorPath,
+  sessionTmpPath,
   sessionWaitPath,
   waitPathFromSessionFile,
 } from "./orchestrator/paths.js";
@@ -8063,6 +8065,13 @@ type RunParams = {
   readonly sessionIdFile: string;
   /** Where the session DECLARES a wait for input (R19) — written by `new-message --await-input`. */
   readonly waitFlag: string;
+  /**
+   * THIS RUN'S OWN «TEMPORARY» (thread `056-shared-tmp-mechanism`) — created before the
+   * spawn, handed to the child as `TMPDIR`, named-and-removed when the run ends. See
+   * `sessionTmpPath` for why the shared `/tmp` had to stop being the default by
+   * construction rather than by the session's memory of rule №15.
+   */
+  readonly sessionTmp: string;
   /** The child process environment: the inherited one + the project preamble (S8). */
   readonly env: NodeJS.ProcessEnv;
   /** What is being raised, as the session will record it in its messages (R7). */
@@ -8109,6 +8118,47 @@ type RunParams = {
    * unambiguous unconditionally, and it already is: each run has its own log.
    */
   readonly streamPrefix?: string;
+};
+
+/**
+ * HOW MANY LEFTOVERS ARE WORTH NAMING ONE BY ONE. A run that spooled ten thousand chunks
+ * into its own `TMPDIR` is one fact, not ten thousand lines in its log — the names stop,
+ * the count does not.
+ */
+const RUN_TMP_NAMED = 20;
+
+/**
+ * THE END OF THIS RUN'S OWN «TEMPORARY» (thread `056-shared-tmp-mechanism`): name what is
+ * in it, then remove it — and return the lines, because the supervisor's log is where the
+ * class is measured from now on («did a session leave temporary files, and which»).
+ *
+ * NOTHING HERE MAY COST A RUN. It runs at the close of a session that has already
+ * finished; a directory that cannot be read or cannot be removed is reported as such and
+ * the run keeps its outcome. Silence is the answer for the ordinary case — a run that
+ * left nothing says nothing, so a line here always means something was left.
+ */
+const sweepRunTmp = (dir: string): readonly string[] => {
+  let left: string[];
+  try {
+    left = readdirSync(dir, { recursive: true, encoding: "utf8" }).sort();
+  } catch (error) {
+    // ENOENT is not a fault: the directory is removed by whoever closes first, and a
+    // second close finding nothing is exactly the intended shape.
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    return [`the run's own TMPDIR could not be read: ${(error as Error).message}`];
+  }
+  const lines: string[] = [];
+  if (left.length > 0) {
+    lines.push(
+      `the session left ${left.length} temporary ${left.length === 1 ? "entry" : "entries"} in its own TMPDIR (${dir}): ${left.slice(0, RUN_TMP_NAMED).join(", ")}${left.length > RUN_TMP_NAMED ? `, … and ${left.length - RUN_TMP_NAMED} more` : ""}`,
+    );
+  }
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch (error) {
+    lines.push(`the run's own TMPDIR could not be removed: ${(error as Error).message}`);
+  }
+  return lines;
 };
 
 /**
@@ -8366,11 +8416,23 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // the agent speaks on stdout, and the old format spoke only once, at the end of a
   // run that a break never reaches.
   mkdirSync(dirname(p.sessionLog), { recursive: true });
+  // THIS RUN'S OWN «TEMPORARY», BEFORE THE CHILD EXISTS (thread `056-shared-tmp-mechanism`).
+  // It has to be here and not lazily: `TMPDIR` naming a directory that does not exist is
+  // worse than no `TMPDIR` at all — `mktemp` refuses, and the session falls back to typing
+  // `/tmp` by hand, which is the very move this closes.
+  mkdirSync(p.sessionTmp, { recursive: true });
   const sink = openSync(p.sessionLog, "a");
   const rawSink = openSync(p.sessionStream, "a");
   let sinksOpen = true;
   const closeSinks = (): void => {
     if (!sinksOpen) return;
+    // WHAT THE RUN LEFT BEHIND, SAID BY NAME BEFORE IT IS SWEPT — the measurable half of
+    // the same finding. In the shared `/tmp` this class was invisible (a leftover there
+    // belongs to nobody and cannot be attributed on a box running several sessions at
+    // once); in a directory owned by ONE run the attribution is exact and free. So the
+    // log of every run now answers "did this session leave temporary files, and which" —
+    // and the sweep keeps the state directory from growing a run's scratch for ever.
+    for (const line of sweepRunTmp(p.sessionTmp)) writeLog(`supervisor  ${line}`);
     sinksOpen = false;
     closeSync(sink);
     closeSync(rawSink);
@@ -8456,6 +8518,15 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // — this one is here for the shell: a session checking how much is left runs
       // `date`, not a re-read of its own prompt.
       [LAUNCH_ENV.leaseDeadline]: plan.deadline,
+      // WHERE ITS «TEMPORARY» GOES (thread `056-shared-tmp-mechanism`). Not an
+      // `AGENT_PROTOCOL_*` field of the launch contract but the STANDARD variable, and
+      // that is the whole point: the tools already read it (`mktemp`, node, python, go,
+      // the vendor's own binaries), so an ordinary command lands in this run's own
+      // directory without the session having to remember anything. It is set LAST over
+      // the inherited environment on purpose — an operator's exported `TMPDIR` names
+      // their own box's scratch, not this run's, and on Linux `TMPDIR` outranks the
+      // `TMP`/`TEMP` an inherited environment might also carry.
+      [RUN_TMPDIR_ENV]: p.sessionTmp,
       // WHICH ACCOUNT IT SPENDS (thread 055). The whole account — credentials, the
       // tool's config, the transcripts and the session store — hangs off this one
       // directory, so pointing at it is the entire isolation; there is no second
@@ -9573,6 +9644,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     sessionStream: sessionStreamPath(sessionLog),
     sessionIdFile: sessionIdPath(sessionLog),
     waitFlag: sessionWaitPath(sessionLog),
+    sessionTmp: sessionTmpPath(sessionLog),
     worker: agent.worker.value,
     params: agent.params,
     // Thread 055: the account travels with the parameters, being the same resolution.
@@ -10551,6 +10623,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           sessionStream: sessionStreamPath(sessionLog),
           sessionIdFile: sessionIdPath(sessionLog),
           waitFlag: sessionWaitPath(sessionLog),
+          sessionTmp: sessionTmpPath(sessionLog),
           worker: agent.worker.value,
           params: agent.params,
           ...(agent.account === undefined ? {} : { account: agent.account }),
