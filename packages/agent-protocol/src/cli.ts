@@ -566,8 +566,8 @@ import {
 import {
   mergedPrs,
   parkingOf,
+  parkSpansOf,
   parseMetaFile,
-  personParkSpansOf,
   personParksOf,
   renderMetaFile,
   renderThread,
@@ -3985,13 +3985,19 @@ const runNotify = async (input: {
     const since = waitingSince({ messages: thread.messages, role: holder });
     return since === undefined ? [] : [{ role: holder, thread: thread.id, since }];
   });
-  // AND HOW LONG EACH OF THEM WAS FROZEN BEHIND A PERSON — the half of the eighth class's
+  // AND HOW LONG EACH OF THEM WAS FROZEN BEHIND A PARK — the half of the eighth class's
   // arithmetic that lives in the MAIL and nowhere else (thread 042, the third false call). The
   // journal knows leases and knows nothing about parks: a park is declared and lifted by
   // letters, so the intervals are replayed out of the feed here, where the whole mail is
   // already parsed, and handed to the selector beside the lease spans.
+  //
+  // EVERY KIND OF PARK, not the person ones alone (the field measurement of `curator×051`,
+  // 2026-08-30). The `frozen` set above drops a thread parked behind an event while the park
+  // STANDS; it says nothing about the ticks after the lift, and there the freeze has to be
+  // subtracted like any other — otherwise the pair walks out of a half-hour park carrying it
+  // as free time.
   const parkSpans = parsed.flatMap((thread) =>
-    personParkSpansOf(thread).map((span) => ({
+    parkSpansOf(thread).map((span) => ({
       thread: thread.id,
       from: span.from,
       ...(span.to === undefined ? {} : { to: span.to }),
