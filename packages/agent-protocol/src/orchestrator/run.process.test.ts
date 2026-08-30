@@ -1584,7 +1584,12 @@ describe("a session that asks and waits alive (R19)", () => {
     const flags = `--root ${root} --ref origin/main`;
     expect(prompt).toContain(`\`${command} thread show ${flags} --thread 012-x --for dev-core\``);
     expect(prompt).toContain(`\`${command} new-message ${flags} --thread <id>`);
-    expect(prompt).toContain(`\`${command} await-input ${flags}\``);
+    // …AND THE OTHER TWO FLAGS OF THAT SAME LINE (thread `054`): `await-input` refuses
+    // without `--role` and `--thread` just as it refuses without `--root`, and this
+    // assertion used to close its backtick right after the ref — pinning the short form
+    // as if it were correct. The line is printed to be run as written, so the seam is
+    // asserted whole: root, ref, role, thread.
+    expect(prompt).toContain(`\`${command} await-input ${flags} --role dev-core --thread 012-x\``);
   }, 60_000);
 
   it("the landing point is announced in the log, so a timeout can be read for what it is", () => {
