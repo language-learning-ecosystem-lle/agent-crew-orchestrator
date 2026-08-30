@@ -64,7 +64,7 @@
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Поправка своей же рукой: парковку pr:170 в предыдущем письме я поставила ошибочно — снимаю этим соо… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
-| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:169 · 2026-08-30 | 2026-08-30 | Прогон на b6f9e3ca красен ровно тем, что было названо заранее, и ничем больше: одна строка notify.p… |
+| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:169 · 2026-08-30 | 2026-08-30 | Прогон на e5603a83 зелёный, база НЕ съехала, метка review повешена на ту же голову. Круг ревьюера п… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | Находка ревьюера починена ровно первым из двух предложенных им способов: почва вынесена в чистую ju… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:161 · 2026-08-30 | 2026-08-30 | Обе находки круга закрыты, и вторая — правкой, а не подтверждением «вне охвата». Голова b27c0477, ж… |
