@@ -48,6 +48,15 @@ export type ContourInput = {
   readonly ownRepo?: string | undefined;
   /** `origin` of `ownRepo`. */
   readonly ownRemote?: string | undefined;
+  /**
+   * THE CONTOURS THIS BOX DECLARES AT ALL — the names of its instance configs that
+   * carry a `repo`. It is what separates "there is no boundary here" (a fresh clone,
+   * a runner, a laptop: the list is empty) from "there is one and the caller is
+   * standing outside all of it" (the list is not empty and no entry claims the
+   * caller's tree). Without it both read as `unknown`, and the second case is the
+   * very shape of #453/#454: a session working from a checkout made in `/tmp`.
+   */
+  readonly boxContours?: readonly string[] | undefined;
 };
 
 export type ContourVerdict =
@@ -101,6 +110,22 @@ const inside = (parent: string, child: string): boolean => {
  */
 export const judgeContour = (input: ContourInput): ContourVerdict => {
   if (input.ownContour === undefined || input.ownRepo === undefined) {
+    // THE GROUND, and it is judged BEFORE the target. A box that declares contours and
+    // claims the caller's tree with none of them is not a box without a boundary — it is
+    // a session standing outside every boundary it has, which is what a temporary
+    // checkout in `/tmp` is. Refusing here costs the honest case nothing: a role works
+    // in the workspace its own instance declares (R17).
+    const declared = input.boxContours ?? [];
+    if (declared.length > 0) {
+      return {
+        verdict: "foreign",
+        refusal: `this command was typed in a tree that belongs to no contour of this box (declared: ${declared
+          .map((name) => `'${name}'`)
+          .join(
+            ", ",
+          )}) — outside its own checkout a role carries none of what bounds it (zones, its card, its review round, its feed), so nothing here can be judged. Work from the workspace of your own circuit (thread 062)`,
+      };
+    }
     return {
       verdict: "unknown",
       because: `no instance of this box claims the tree this command came from, so there is no contour for '${input.target}' to be outside of`,

@@ -1432,7 +1432,9 @@ the tree a command is pointed at must belong to the same circuit as the tree the
 command was typed in. Refusal names both origins, the other contour when this box
 declares it, and the way through — a role OF that circuit opens the work there. A box
 with no named instances declares no contours and nothing is judged: there is no
-boundary to cross. Two limits, stated rather than implied: a session calling `git` and
+boundary to cross. A box that DOES declare them and claims the caller's tree with none
+of them refuses too, and before the target is looked at — that is a session working
+from a checkout made in `/tmp`, outside every boundary it has. Two limits, stated rather than implied: a session calling `git` and
 `gh` directly never passes this door (the load-bearing measure is a `gh` token scoped
 to one repository), and a tree that is outside the contour AND has no `origin` is not
 judged — the facts do not decide, and guessing would refuse honest first-run trees.
@@ -2475,25 +2477,19 @@ output says which file and which variable won, never a value), and its answer is
 validated at the door — a renamed field is a refusal by name, never a silent "no
 reviews, no checks", which for a merge gate would fail open.
 
-**The contour boundary is asked first, before `gh` (thread 062).** The tree the command
-is invoked FROM must belong to a circuit this box declares (a named machine config with
-`repo`), and the tree it is ABOUT (`--repo`, default: the current directory) must be the
-same repository — the same `origin`, or, when the target declares no `origin` at all,
-inside that circuit's checkout. Otherwise: exit 2, naming both origins and the circuit.
+**The contour boundary is asked first, before `gh` (thread 062).** A `--repo` naming
+another contour's checkout is refused at exit 2 before the pull request is read at all —
+the general door described under the shared flags above, reached here through the config
+this command loads. So a question about another circuit's pull request never leaves the
+box:
 
 ```
-merge-gate: '/tmp/lle-clone' belongs to another circuit: its origin is
-https://github.com/o/language-learning-ecosystem.git, while circuit 'hetzner'
-(/home/lle/projects/aco) is https://github.com/o/aco.git — a role writes only into its
-own repository. What has to be said in another circuit goes through the role OF THAT
-circuit (thread 062, john 2026-08-30)
+agent-protocol: '/tmp/lle-clone' belongs to another contour: its 'origin' is
+github.com/o/language-learning-ecosystem, while this command came from contour
+'hetzner' (github.com/o/agent-crew-orchestrator). A role writes only inside its own
+circuit — what has to happen in another one is opened there by a role OF that circuit,
+through its feed, not from a checkout made here (thread 062)
 ```
-
-A box that declares no instance with `repo` gets no invented boundary: the note says so
-and the target is compared against the invoking tree instead. **This door is the cheap
-half of the measure and it does not pretend otherwise:** it catches the honest mistake
-and explains it, and it is bypassed by any `git`/`gh` call made beside the package. The
-load-bearing half is a token scoped to one repository, which is the operator's hand.
 
 **Two guards are never reported as passed, and that is the point.** Whether the feed
 really holds a decision of the owner of the decision (here: john) behind this PR (guard 3), and whether the merge gets

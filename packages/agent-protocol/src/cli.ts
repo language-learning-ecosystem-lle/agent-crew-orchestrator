@@ -58,6 +58,7 @@ import {
   type LoadedLocalConfig,
   type LocalAccount,
   LocalConfigError,
+  listInstanceConfigs,
   type ResolvedLocalConfig,
   resolveLocalConfig,
 } from "./config/local.js";
@@ -75,7 +76,6 @@ import {
   renderUnreadThreads,
   type ThreadFailure,
 } from "./fs/comms.js";
-import { checkContour, contourReaders } from "./fs/contour.js";
 import { execFileSyncByExit, SyncRunError } from "./fs/exec-sync.js";
 import {
   fileExistsAtRef,
@@ -1196,9 +1196,24 @@ const contourOf = (at: string): { name?: string | undefined; repo?: string | und
  */
 const guardContour = (target: string): string => {
   const caller = contourOf(process.cwd());
+  // WHAT THIS BOX DECLARES AT ALL — and only the instances that name a `repo`, because
+  // an instance claiming no checkout draws no boundary: counting it would refuse every
+  // tree on a box whose single config happens to omit the path. A config that does not
+  // parse is skipped here and NAMED where it matters — `resolveLocalConfig`, at the
+  // commands that need the machine config itself.
+  const boxContours = listInstanceConfigs()
+    .filter((entry) => {
+      try {
+        return typeof JSON.parse(readFileSync(entry.path, "utf8")).repo === "string";
+      } catch {
+        return false;
+      }
+    })
+    .map((entry) => entry.name);
   const targeted = contourOf(target);
   const verdict = judgeContour({
     target,
+    boxContours,
     ...(targeted.name === undefined ? {} : { targetContour: targeted.name }),
     ...(originOf(target) === undefined ? {} : { targetRemote: originOf(target) }),
     ...(caller.name === undefined ? {} : { ownContour: caller.name }),
@@ -12451,16 +12466,6 @@ const mergeGate = (argv: readonly string[]): void => {
   // itself then refuses (see `explainWithCredentials`).
   const platform = platformEnvOf({ repo });
   out(`merge-gate: credentials — ${platform.note}`);
-
-  // THE CONTOUR BOUNDARY (thread 062, john 2026-08-30 17:07Z) — asked BEFORE `gh`, because
-  // a question about another circuit's pull request must not reach GitHub at all. The two
-  // clauses and why they are these two: `fs/contour.ts`. The door is the cheap half of the
-  // measure; the load-bearing half is the per-circuit token, and it is john's hand.
-  const contour = checkContour({ ground: process.cwd(), target: repo, readers: contourReaders() });
-  if (!contour.ok) {
-    fail(`merge-gate: ${contour.refusal}`, 2);
-    return;
-  }
 
   const ask = (): string =>
     execFileSync(

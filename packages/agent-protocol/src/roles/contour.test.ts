@@ -84,3 +84,32 @@ describe("judgeContour", () => {
     expect(verdict.because).toContain("declares no 'origin'");
   });
 });
+
+/**
+ * THE GROUND (thread 062, second half of the same measure). The judge above answers
+ * about the TARGET; these two cases are about where the command was typed, and the
+ * difference between them is the whole point: an empty box has no boundary, a box
+ * with declared contours has one and a caller outside all of them is outside it.
+ */
+describe("judgeContour — the tree the command came from", () => {
+  it("refuses a caller standing in a tree no declared contour claims", () => {
+    const verdict = judgeContour({
+      target: "/tmp/lle-clone",
+      targetRemote: "https://github.com/o/language-learning-ecosystem.git",
+      boxContours: ["hetzner", "lle-hetzner"],
+    });
+    expect(verdict.verdict).toBe("foreign");
+    if (verdict.verdict !== "foreign") return;
+    expect(verdict.refusal).toContain("no contour of this box");
+    expect(verdict.refusal).toContain("'hetzner'");
+  });
+
+  it("judges nothing on a box that declares no contour — and says why", () => {
+    const verdict = judgeContour({
+      target: "/tmp/anywhere",
+      targetRemote: "https://github.com/o/anything.git",
+      boxContours: [],
+    });
+    expect(verdict.verdict).toBe("unknown");
+  });
+});
