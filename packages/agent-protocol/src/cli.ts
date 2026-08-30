@@ -8882,24 +8882,38 @@ const settleRun = (input: {
 };
 
 /**
- * THE TWO FACTS ABOUT THE MAIL A PROMPT IS ALLOWED TO STATE, read from data (thread
- * `038-pilot-codex-live-run`, the norm of 2026-08-30). One comes from the served project's
- * config (`mailCommand`, v25), the other from the role's own card (`toolsHeldBy`, v20).
+ * THE FACTS ABOUT THE MAIL A PROMPT IS ALLOWED TO STATE, read from data (thread
+ * `038-pilot-codex-live-run`, the norm of 2026-08-30). The form comes from the served
+ * project's config (`mailCommand`, v25), the confinement from the role's own card
+ * (`toolsHeldBy`, v20), and the two required flags from the paths this very run is using.
  *
- * BOTH ARE READ HERE AND NOT IN THE BUILDER, for the reason the builder is pure: it is
+ * THEY ARE READ HERE AND NOT IN THE BUILDER, for the reason the builder is pure: it is
  * given a thread and some texts, and a function that went looking for a config would be a
  * second reader of it with a second idea of which ref it is at. `configFrom` is cached and
  * already the door every other command reads through.
  *
+ * `--root` AND `--ref` COME FROM THE RUN, NOT FROM A SECOND DERIVATION. The root passed in
+ * is the same absolute one `runOne` is handed (`rootOr`, so a `--root` typed at the door
+ * wins for the prompt exactly as it wins for the run) — a prompt that computed its own
+ * would be the one line able to disagree with the process it describes. Measured cost of
+ * not printing them at all, on this thread on 2026-08-30: a raised session read a READ
+ * line that exits 2, and spent four commands deriving the root by hand from the config.
+ *
  * AN UNDECLARED FORM STAYS UNDECLARED. There is no fallback to a name — that fallback is
  * exactly the literal this norm removed, and reintroducing it one level down would be the
- * same defect with a longer stack.
+ * same defect with a longer stack. The same holds for `ref`: a config with no
+ * `orchestrator` section declares none, and the flag is then not printed rather than
+ * guessed.
  */
-const mailFormFor = (argv: readonly string[], role: Role): MailForm => {
-  const command = configFrom(argv, undefined).config.mailCommand;
+const mailFormFor = (argv: readonly string[], role: Role, root: string): MailForm => {
+  const loaded = configFrom(argv, undefined).config;
+  const command = loaded.mailCommand;
+  const ref = loaded.orchestrator?.ref;
   const writesHeldBy = mailWritesHeldBy(role);
   return {
     ...(command === undefined ? {} : { command }),
+    root,
+    ...(ref === undefined ? {} : { ref }),
     ...(writesHeldBy === undefined ? {} : { writesHeldBy }),
   };
 };
@@ -9169,7 +9183,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       thread,
       setup,
       windDownSeconds: ceilings.windDown.value,
-      mail: mailFormFor(argv, role),
+      mail: mailFormFor(argv, role, mailRoot),
     }),
     exec,
     maxTurns,
@@ -10001,7 +10015,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             thread: candidate.thread,
             setup,
             windDownSeconds: ceilings.windDown.value,
-            mail: mailFormFor(argv, role),
+            mail: mailFormFor(argv, role, mailRoot),
           }),
           exec: agent.exec.value,
           maxTurns: String(ceilings.maxTurns.value),

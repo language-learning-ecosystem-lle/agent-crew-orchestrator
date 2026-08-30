@@ -1054,6 +1054,23 @@ export type MailForm = {
    */
   readonly command?: string;
   /**
+   * WHERE THE MAIL IS, as an ABSOLUTE path (`orchestrator.mailCheckout` + `mail.dir`,
+   * resolved). Every mail subcommand requires `--root`, and nothing hands it to a raised
+   * session: neither the prompt nor the environment carried it, so the session derived it
+   * by hand from the config (measured on this thread, 2026-08-30: four commands and ~4
+   * minutes before the first `thread show` went through). ABSOLUTE and not relative on
+   * purpose — a relative root resolves against whatever directory the session happens to
+   * stand in, and the failure mode of getting it wrong is a partial write into a wrong
+   * tree, not a refusal.
+   */
+  readonly root?: string;
+  /**
+   * WHICH REF THE CONFIG IS READ AT (`orchestrator.ref`) — the second flag every mail
+   * subcommand requires. Same reason as `root`: the circuit holds this fact and the
+   * prompt used to withhold it.
+   */
+  readonly ref?: string;
+  /**
    * WHAT HOLDS THIS RUN'S TOOLS, when what it holds is the mail itself (`toolsHeldBy`,
    * v20) — the words of the card, quoted. Present means the run CANNOT write into the
    * mail, so the prompt names it one ending instead of two.
@@ -1085,17 +1102,41 @@ export const mailWritesHeldBy = (role: Role): string | undefined => {
   return agent?.kind === "codex" ? agent.toolsHeldBy : undefined;
 };
 
-/** One mail command line, with the declared prefix or with the honest bare subcommand. */
-const mailCall = (form: MailForm, tail: string): string =>
-  form.command === undefined ? `\`${tail}\`` : `\`${form.command} ${tail}\``;
+/**
+ * One mail command line: the declared prefix (or the honest bare subcommand), the
+ * subcommand, then the two flags the circuit knows and the caller's own arguments.
+ *
+ * THE FLAGS GO BETWEEN, and that is why the subcommand is a separate argument rather
+ * than the head of one string: `--root` and `--ref` are required by every mail
+ * subcommand, they are facts of THIS deployment, and a line printed without them exits 2
+ * on the first try. Each is printed only if it is known — an absent fact stays absent
+ * here exactly as `command` does, because a made-up root is worse than a missing one.
+ */
+const mailCall = (form: MailForm, subcommand: string, args?: string): string => {
+  const words = [
+    ...(form.command === undefined ? [] : [form.command]),
+    subcommand,
+    ...(form.root === undefined ? [] : ["--root", form.root]),
+    ...(form.ref === undefined ? [] : ["--ref", form.ref]),
+    ...(args === undefined ? [] : [args]),
+  ];
+  return `\`${words.join(" ")}\``;
+};
 
 /**
  * WHAT IS SAID WHEN THE PROJECT DECLARED NO FORM. It is a sentence and not a blank: a
  * prompt that simply printed `thread show` with no prefix would read as a command, which
  * is the invention this norm removes — one step quieter, but the same class.
+ *
+ * AND IT DOES NOT SEND THE SESSION TO THE CARD. An earlier wording said "take that form
+ * from your role card" — which is a claim about a document nothing guarantees: in this
+ * repository the cards point at the package's own `Commands` section and print no prefix
+ * at all. Promising a fact that may not be there is the same species as inventing one, so
+ * what is left is only what this function can vouch for: the form of this deployment is
+ * not declared, ask for it rather than guess.
  */
 const mailFormUndeclared =
-  "THE FORM OF THE INVOCATION IS NOT DECLARED BY THIS PROJECT'S CONFIG (`mailCommand`) — the subcommands above are this package's own words, the command that carries them is not. Take that form from your role card and do NOT guess one: a guessed name spends the turn on `exit 127`.";
+  "THE FORM OF THE INVOCATION IS NOT DECLARED BY THIS PROJECT'S CONFIG (`mailCommand`) — the subcommands above are this package's own words, the command that carries them is not. ASK for the form instead of guessing one: a guessed name spends the turn on `exit 127`.";
 
 /**
  * A TURN THAT ENDS, ENDS THE SESSION — the fact the runtime never tells the session,
@@ -1241,13 +1282,13 @@ export const buildLaunchPrompt = (input: {
     ...(mail.writesHeldBy === undefined
       ? [
           "TWO COMMANDS ARE YOUR WHOLE INTERFACE TO THE MAIL (R3) — you never touch its files, its branch or its git yourself:",
-          `- READ: ${mailCall(mail, `thread show --thread ${input.thread}`)} — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder;`,
-          `- SEND: ${mailCall(mail, "new-message --thread <id> --from <your role> --expects <e> --waiting-on <who answers> --body-file <p> --write")} — \`--write\` means SENT: the file, the commit and the push are one action, and a concurrent write is retried inside.`,
+          `- READ: ${mailCall(mail, "thread show", `--thread ${input.thread}`)} — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder;`,
+          `- SEND: ${mailCall(mail, "new-message", "--thread <id> --from <your role> --expects <e> --waiting-on <who answers> --body-file <p> --write")} — \`--write\` means SENT: the file, the commit and the push are one action, and a concurrent write is retried inside.`,
           "",
           ...undeclared,
           "Read the thread, carry out the statement of work and reply with a message at the end of it. `--waiting-on` is the FULL set of whoever is expected to act next, and passing the turn is what ends the run.",
           "",
-          `IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Send the question with ${mailCall(mail, "new-message --await-input")} (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), then block on ${mailCall(mail, "await-input")}. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.`,
+          `IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Send the question with ${mailCall(mail, "new-message", "--await-input")} (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), then block on ${mailCall(mail, "await-input")}. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.`,
         ]
       : // ONE COMMAND, AND THE REASON IS QUOTED FROM THE CARD (thread `038`). The old text
         // told this role to send a letter it cannot send, and the role obeyed the prompt
@@ -1256,7 +1297,7 @@ export const buildLaunchPrompt = (input: {
         // card's own word — a session that knows WHY it cannot write stops arguing with it.
         [
           "ONE COMMAND IS YOUR WHOLE INTERFACE TO THE MAIL (R3) — reading it; you never touch its files, its branch or its git yourself:",
-          `- READ: ${mailCall(mail, `thread show --thread ${input.thread}`)} — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder.`,
+          `- READ: ${mailCall(mail, "thread show", `--thread ${input.thread}`)} — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder.`,
           "",
           ...undeclared,
           `YOU CANNOT WRITE INTO THE MAIL, AND THIS RUN IS NOT MEANT TO: your card declares this run's tools held by \`${mail.writesHeldBy}\`, and that confinement reaches the process itself — a write is refused by the sandbox, not by your judgement. Do not attempt one, with or without a flag: every attempt is turn spent and nothing delivered.`,

@@ -230,7 +230,14 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
     expect(prompt).toContain("`new-message --thread <id>");
     expect(prompt).toContain("`await-input`");
     expect(prompt).toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
-    expect(prompt).toContain("do NOT guess one");
+    // What the undeclared branch may say is only what this package can vouch for: it asks
+    // for the form, it does not promise that a role card carries one (the cards in this
+    // repository point at the package's `Commands` section and print no prefix).
+    expect(prompt).toContain("ASK for the form instead of guessing one");
+    expect(prompt).not.toContain("Take that form from your role card");
+    // An undeclared root or ref is likewise absent rather than invented.
+    expect(prompt).not.toContain("--root");
+    expect(prompt).not.toContain("--ref");
   });
 
   it("the resume prompt names no command either — the second, independent place it lived", () => {
@@ -263,6 +270,50 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
         mail: { command },
       }),
     ).toContain(`(\`${command} new-message\`)`);
+  });
+
+  it("PRINTS THE TWO FLAGS THE CIRCUIT KNOWS — a line without them exits 2 before it reads anything", () => {
+    // Measured on this thread on 2026-08-30: a raised session was given `thread show
+    // --thread 038-…`, ran it with the right prefix and got `--root is not set`, exit 2.
+    // Neither flag arrives by environment either (the run exports four variables, none of
+    // them these), so the four commands that followed were spent deriving the root by
+    // hand out of the config. The circuit held both facts the whole time.
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const form = {
+      command,
+      root: "/home/box/repo/.worktrees/comms/agent-comms",
+      ref: "origin/main",
+    } as const;
+    const flags = `--root ${form.root} --ref origin/main`;
+    const prompt = buildLaunchPrompt({ ...base, mail: form });
+    expect(prompt).toContain(`\`${command} thread show ${flags} --thread 038-pilot\``);
+    expect(prompt).toContain(`\`${command} new-message ${flags} --thread <id>`);
+    expect(prompt).toContain(`\`${command} new-message ${flags} --await-input\``);
+    expect(prompt).toContain(`\`${command} await-input ${flags}\``);
+    // The flags stand between the subcommand and its arguments, which is where the CLI
+    // takes them — and the resume prompt, the second independent builder, says it too.
+    expect(
+      buildResumePrompt({
+        thread: "038-pilot",
+        reason: "stalled",
+        deadline: "2026-08-30T15:00:00Z",
+        windDownSeconds: 720,
+        mail: form,
+      }),
+    ).toContain(`(\`${command} new-message ${flags}\`)`);
+  });
+
+  it("the root is printed as given and the ref is optional — neither is invented", () => {
+    // A relative root would resolve against whatever directory the session stands in, and
+    // the price of getting it wrong is a partial write into a wrong tree instead of a
+    // refusal. The builder prints what it is handed; making it absolute is the caller's
+    // job (`rootOr`), and it is the run's own root, not a second derivation of one.
+    const prompt = buildLaunchPrompt({
+      ...base,
+      mail: { command: "cli", root: "/mail/agent-comms" },
+    });
+    expect(prompt).toContain("`cli thread show --root /mail/agent-comms --thread 038-pilot`");
+    expect(prompt).not.toContain("--ref");
   });
 
   it("A RUN THAT CANNOT WRITE IS NOT TOLD TO SEND A LETTER — and is told the ending it has", () => {

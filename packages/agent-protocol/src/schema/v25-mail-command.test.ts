@@ -12,8 +12,8 @@ import { planMigration } from "./migrate.js";
 import { CONFIG_SHAPES, CONFIG_VALUES } from "./shape.js";
 import { MAIL_COMMAND_STEP } from "./v25-mail-command.js";
 import {
-  compareProtocolVersion,
   CURRENT_PROTOCOL_VERSION,
+  compareProtocolVersion,
   renderVersionVerdict,
 } from "./version.js";
 
@@ -93,7 +93,9 @@ describe("the step itself", () => {
   it("declares the value for nobody — the invocation is a fact about one deployment", () => {
     // The reason of v18 verbatim: a migration that filled this in would compile one
     // project's shell line into a package built to travel.
-    expect(MAIL_COMMAND_STEP.plan({} as never).notes.join(" ")).toContain("declares it for nobody");
+    expect((MAIL_COMMAND_STEP.plan({} as never).notes ?? []).join(" ")).toContain(
+      "declares it for nobody",
+    );
   });
 
   it("is registered, so the chain 24 → 25 is planned and not refused as a gap", () => {

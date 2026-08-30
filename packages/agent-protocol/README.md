@@ -268,10 +268,22 @@ The value is pasted verbatim into the launch prompt, everywhere a mail command i
 one string and not an argv.
 
 **Absence is silence, not a default.** Without the key the prompt names the subcommands
-and says out loud that the form is not declared, so the session takes it from its role
-card. Until protocol version 25 it wrote the literal `cli` instead — a name from no
+and says out loud that the form is not declared, and asks the session to ASK for it rather
+than guess — it does not promise that a role card carries one, because nothing guarantees
+that. Until protocol version 25 it wrote the literal `cli` instead — a name from no
 config, and false on the box that paid for this: four raises of one role out of five ended
 in `exit 127`, twice without the thread ever reaching the session.
+
+**The prefix is not the whole line: `--root` and `--ref` are printed with it.** Every mail
+subcommand requires both, and neither reaches a raised session by environment — so a
+prompt that named only the prefix still handed out a line that exits 2 before reading
+anything. They are not new configuration: the root is `orchestrator.mailCheckout` +
+`mail.dir` **as an absolute path** (the same one the run itself is using, so a `--root`
+typed at the door moves both together), and the ref is `orchestrator.ref`. A relative root
+is not printed and not derived — it would resolve against whatever directory the session
+stands in, and the failure of getting it wrong is a partial write into the wrong tree
+rather than a refusal. A config with no `orchestrator` section declares no ref, and then
+the flag is absent rather than invented, exactly as the prefix is.
 
 ## The machine config (R14)
 
