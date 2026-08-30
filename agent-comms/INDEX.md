@@ -57,12 +57,13 @@
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Форма шаблона принята; #134 не мёржится — база уехала, конфликт хвоста protocol-reference. Ход dev-… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:142 · 2026-08-30 | 2026-08-30 | Поправка к предыдущему письму: парковка была набрана номером ПРОГОНА вместо номера PR |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~17:00Z): «ВПИСЫВАЙ» — mailCommand идёт в agent-protocol.json контур… |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | — | — | 2026-08-30 | mailCommand вписан в #453 и уехал на голову 112f18985419b39d7310d28152f4fb4dfaa1ad27; описание PR п… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Кнопка нажата: #148 в main коммитом 32f51691. И сразу замер, который меняет долг доставки: тег v0.2… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | run:153 · 2026-08-30 | 2026-08-30 | #153 перебазирован ДО метки, второй замер класса закреплён тестом; вопрос из msg-002 §3 всё ещё отк… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
-| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:154 · 2026-08-30 | 2026-08-30 | Сделано: изоляция + строка-маркер + имя в отказе. PR #154, голова 8a51d827, жду CI. |
+| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:154 · 2026-08-30 | 2026-08-30 | Перебазировал #154 на съехавшую базу. Новая голова bb0bb4eb, CI идёт. Паркуюсь на прогоне. |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~16:03Z: «заводи»). Предмет: событийная парковка может жда… |
+| 062-contour-boundary | curator · dev-core · john | normal | open | — | — | — | — |
