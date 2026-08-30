@@ -72,4 +72,37 @@ describe("the reviewer role of this repository", () => {
 
     expect(workflow).toMatch(/^\s*--model\s+\S+$/m);
   });
+
+  // THE COMMAND THE REVIEWER ACTUALLY TYPES (thread `042-unaccepted-turn-silent`).
+  // `REVIEWER.md` tells the reviewer to declare the pair, but the template it copies
+  // from lives HERE, in the prompt — and until this line the two said different things.
+  // A model resolving that disagreement by itself is a bet, not a mechanism, and the
+  // bet is invisible when it wins: the verdict simply arrives without the header, the
+  // lift does not fire, and the turn sits unaccepted (the window this thread was opened
+  // for — LLE 2026-08-28 17:40→17:59Z, 19 minutes).
+  //
+  // BOTH HALVES ARE ASSERTED TOGETHER, on the same block and not on the file, because
+  // half a pair is the one shape the door refuses outright (exit 2): a template that
+  // grew `--verdict` and lost `--pr` would not deliver a worse verdict, it would
+  // deliver none. The VALUES are deliberately not asserted — they are `verdict.md`'s
+  // first line, and the vocabulary is `REVIEWER.md`'s to move, behind john's button.
+  //
+  // The other `new-message` of this workflow is NOT covered and must not be: it runs
+  // only when `verdict.md` does not exist, i.e. reports that no review happened, and a
+  // verdict header there would announce a judgement nobody made.
+  it("hands the reviewer a delivery command that declares the verdict pair", () => {
+    const workflow = readFileSync(WORKFLOW_PATH, "utf8");
+
+    const delivery = workflow
+      .split("\n")
+      .findIndex((line) => line.includes("--from reviewer-pr --expects answer --waiting-on"));
+    expect(delivery).toBeGreaterThanOrEqual(0);
+
+    const block = workflow
+      .split("\n")
+      .slice(delivery, delivery + 4)
+      .join("\n");
+    expect(block).toMatch(/--verdict\s+\S/);
+    expect(block).toMatch(/--pr\s+\S/);
+  });
 });
