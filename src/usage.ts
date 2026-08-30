@@ -15,7 +15,9 @@
  * along with it (`usage.test.ts` is what reads it).
  */
 export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor', 'init', 'config set' and the operator's five below; --repo defaults to the repository of the current directory):
-  agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
+  agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch] [--local-config <p>] [--instance <name>]
+                              # the machine's half of the account join (thread 036) is read from the
+                              # SAME two flags every other operator command names it with
   agent-protocol config set   <key> <value> [--exec <path>] [--config-dir <path>] [--ref <ref>] [--local-config <p>] [--instance <name>] [--write]
                               # ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019): the
                               # commissioned box whose agent binary moved, whose operator is
@@ -45,7 +47,10 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # says what identity that file claims — one picks the box, the other
                               # writes into it
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
-  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all]
+  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all] [--exec <path>] [--worker <kind>] [--model <id>] [--effort <level>]
+                              # the four agent flags are the LIVE RUN's, not decoration: the headless
+                              # probe below resolves its binary through the same 'agentFor' the daemon
+                              # uses, so a box is probed with the agent the operator names here
                               # IS THIS BOX COMMISSIONED (thread 019, the operator tail): the
                               # checklist of a machine that is supposed to raise roles unattended —
                               # both configs, which instance it is, the agent binary AND A LIVE
@@ -139,8 +144,10 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # migration then rides in the same PR as the pin), not a door over somebody
                               # else's repository. Exit 2 means a number could not be READ
   agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
-  agent-protocol zones check  --ref <ref> [--repo <path>] (--role <id> | --role-from-workspace)
-                              (--staged | --base <ref> | --paths <a,b> | --paths a b)
+  agent-protocol zones check  --ref <ref> [--repo <path>] (--role <id> | --role-from-workspace) (--staged | --base <ref> | --paths <a,b> | --paths a b)
+                              # both alternatives stand on the command's OWN line (thread 042): a
+                              # continuation line does not begin with 'agent-protocol', so the flags
+                              # it carried were read by no machine — 'parseUsage' skips it entirely
                               # --paths takes BOTH forms and judges EVERY path named (thread 033): the
                               # space form used to be read as ONE path and answered green about the rest
                               # ZONES WITH AN ENFORCER (thread 020): the changed paths against the
@@ -152,8 +159,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # line says so. 'writes' states where the role's work lives, for humans —
                               # reading it as a closed allow-list would deny 'dev-core' (writes: [])
                               # every file in the repository. 'forbidden' is the whole verdict
-  agent-protocol capability run --ref <ref> [--repo <path>] --role <id> --capability <name>
-                              [--target <value>] [--lines <n>] [--write]
+  agent-protocol capability run --ref <ref> [--repo <path>] --role <id> --capability <name> [--target <value>] [--lines <n>] [--write]
                               # A CAPABILITY OF A CARD, CALLED (thread 047): the verb is answered from
                               # 'roles[].capabilities' of the config and NEVER from the caller's words —
                               # --role names whose card is read, not who is running
