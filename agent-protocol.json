@@ -1,9 +1,10 @@
 {
-  "protocolVersion": 24,
+  "protocolVersion": 25,
   "mail": {
     "branch": "comms",
     "dir": "agent-comms"
   },
+  "mailCommand": "node --import tsx packages/agent-protocol/src/cli.ts",
   "orchestrator": {
     "state": ".orchestrator",
     "mailCheckout": ".worktrees/comms",

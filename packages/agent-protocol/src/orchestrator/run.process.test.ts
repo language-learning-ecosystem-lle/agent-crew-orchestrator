@@ -1511,6 +1511,82 @@ describe("a session that asks and waits alive (R19)", () => {
     expect(prompt).toContain("YOUR RUN HAS A DEADLINE");
   }, 60_000);
 
+  /**
+   * THE SEAM, AND IT IS A NEW ONE (thread `038`): the config of the served project now
+   * reaches the text a session reads. A unit on `buildLaunchPrompt` proves the builder
+   * substitutes what it is handed; it cannot prove that the loader, the run and the spawn
+   * hand it the field at all — and that is precisely the half that was missing, because
+   * the old defect was not a wrong substitution, it was a literal nobody had to fetch.
+   */
+  it("THE DECLARED MAIL INVOCATION REACHES THE SPAWNED SESSION, and an undeclared one is not invented", () => {
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const { repo } = contour({ mailCommand: command });
+    const promptDump = join(repo, "prompt.txt");
+    const exec = stub(repo, `printf '%s' "$*" > ${promptDump}\nsleep 1`);
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "30", "--wind-down", "10"]);
+
+    const prompt = readFileSync(promptDump, "utf8");
+    // The prefix carries the flags of this deployment with it; what this case asserts is
+    // the prefix reaching the session at all, and the flags have their own case below.
+    expect(prompt).toContain(`\`${command} thread show --root `);
+    expect(prompt).toContain(`\`${command} new-message --root `);
+    expect(prompt).toContain("--thread 012-x`");
+    expect(prompt).not.toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
+
+    // …and the same circuit with the key absent says so instead of naming a command. The
+    // literal `cli` is what four raises of `pilot-codex` out of five died on (`exit 127`):
+    // it is on no live deployment's PATH here, and the package never had grounds for it.
+    const bare = contour();
+    const bareDump = join(bare.repo, "prompt.txt");
+    runWith(bare.repo, [
+      "--exec",
+      stub(bare.repo, `printf '%s' "$*" > ${bareDump}\nsleep 1`),
+      "--wall-clock",
+      "30",
+      "--wind-down",
+      "10",
+    ]);
+    const barePrompt = readFileSync(bareDump, "utf8");
+    expect(barePrompt).not.toContain("cli ");
+    expect(barePrompt).toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
+    expect(barePrompt).toContain("`thread show");
+  }, 60_000);
+
+  /**
+   * THE SAME SEAM, THE OTHER TWO FACTS (thread `038`, curator's measurement of
+   * 2026-08-30): every mail subcommand requires `--root` and `--ref`, the prompt used to
+   * print neither, and neither arrives by environment — so the line the prompt called
+   * "your whole interface to the mail" exited 2 on the first try and the session spent
+   * four commands deriving the root out of the config by hand. A unit cannot see this: it
+   * is handed a `MailForm` and would only prove that what it was handed is printed.
+   */
+  it("THE ROOT AND THE REF REACH THE SESSION TOO — absolute, and the run's own, not a second derivation", () => {
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const { repo } = contour({
+      mailCommand: command,
+      // The ref is deliberately NOT the one on this run's argv (`--ref HEAD`): what the
+      // prompt must name is the ref the project declares for its own mail, and with the
+      // two equal the test could not tell the two sources apart.
+      orchestrator: { ...CONFIG.orchestrator, ref: "origin/main" },
+    });
+    const promptDump = join(repo, "prompt.txt");
+    const exec = stub(repo, `printf '%s' "$*" > ${promptDump}\nsleep 1`);
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "30", "--wind-down", "10"]);
+
+    const prompt = readFileSync(promptDump, "utf8");
+    const root = join(repo, "mailco", "agent-comms");
+    // ABSOLUTE, and asserted as such: a relative root resolves against whatever directory
+    // the session happens to stand in, and a wrong one writes into a tree instead of
+    // refusing.
+    expect(root.startsWith("/")).toBe(true);
+    const flags = `--root ${root} --ref origin/main`;
+    expect(prompt).toContain(`\`${command} thread show ${flags} --thread 012-x\``);
+    expect(prompt).toContain(`\`${command} new-message ${flags} --thread <id>`);
+    expect(prompt).toContain(`\`${command} await-input ${flags}\``);
+  }, 60_000);
+
   it("the landing point is announced in the log, so a timeout can be read for what it is", () => {
     // Nothing fires at the wind-down point — there is no gesture that makes a session
     // commit. What the supervisor owes is the record: it said so, at this minute, and

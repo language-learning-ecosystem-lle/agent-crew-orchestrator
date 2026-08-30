@@ -279,6 +279,8 @@ import {
   ignoredDirective,
   instanceAccountOf,
   LAUNCH_ENV,
+  type MailForm,
+  mailWritesHeldBy,
   planLaunch,
   type ResolvedAccount,
   type ResolvedCeilings,
@@ -9002,6 +9004,43 @@ const settleRun = (input: {
 };
 
 /**
+ * THE FACTS ABOUT THE MAIL A PROMPT IS ALLOWED TO STATE, read from data (thread
+ * `038-pilot-codex-live-run`, the norm of 2026-08-30). The form comes from the served
+ * project's config (`mailCommand`, v25), the confinement from the role's own card
+ * (`toolsHeldBy`, v20), and the two required flags from the paths this very run is using.
+ *
+ * THEY ARE READ HERE AND NOT IN THE BUILDER, for the reason the builder is pure: it is
+ * given a thread and some texts, and a function that went looking for a config would be a
+ * second reader of it with a second idea of which ref it is at. `configFrom` is cached and
+ * already the door every other command reads through.
+ *
+ * `--root` AND `--ref` COME FROM THE RUN, NOT FROM A SECOND DERIVATION. The root passed in
+ * is the same absolute one `runOne` is handed (`rootOr`, so a `--root` typed at the door
+ * wins for the prompt exactly as it wins for the run) — a prompt that computed its own
+ * would be the one line able to disagree with the process it describes. Measured cost of
+ * not printing them at all, on this thread on 2026-08-30: a raised session read a READ
+ * line that exits 2, and spent four commands deriving the root by hand from the config.
+ *
+ * AN UNDECLARED FORM STAYS UNDECLARED. There is no fallback to a name — that fallback is
+ * exactly the literal this norm removed, and reintroducing it one level down would be the
+ * same defect with a longer stack. The same holds for `ref`: a config with no
+ * `orchestrator` section declares none, and the flag is then not printed rather than
+ * guessed.
+ */
+const mailFormFor = (argv: readonly string[], role: Role, root: string): MailForm => {
+  const loaded = configFrom(argv, undefined).config;
+  const command = loaded.mailCommand;
+  const ref = loaded.orchestrator?.ref;
+  const writesHeldBy = mailWritesHeldBy(role);
+  return {
+    ...(command === undefined ? {} : { command }),
+    root,
+    ...(ref === undefined ? {} : { ref }),
+    ...(writesHeldBy === undefined ? {} : { writesHeldBy }),
+  };
+};
+
+/**
  * The prompt of a run, from the mode it was settled into. Built separately from
  * `settleRun` because a dry run must not read anything off a workspace it has just
  * decided not to create.
@@ -9012,6 +9051,13 @@ const promptForRun = (input: {
   readonly setup: Extract<RunSetup, { ok: true }>;
   /** The landing margin of this run (R20); the deadline arrives per run, from the plan. */
   readonly windDownSeconds: number;
+  /**
+   * WHAT THE PROMPT MAY SAY ABOUT THE MAIL, from data (thread `038`): the invocation the
+   * project declares (`mailCommand`, v25) and, from the card, whether this run can write at
+   * all. Assembled at the CALL SITE because only there is the config in hand; the builder
+   * stays pure, and an undeclared form stays undeclared rather than becoming a literal.
+   */
+  readonly mail: MailForm;
 }): ((context: { readonly deadline: string }) => string) => {
   // THE CARDS ARE READ NOW, THE PROMPT IS ASSEMBLED LATER (R20). Only the deadline has
   // to wait for the plan; an unreadable role card must still refuse HERE, before a
@@ -9034,6 +9080,7 @@ const promptForRun = (input: {
           reason: input.setup.previousReason ?? "an external abort",
           deadline,
           windDownSeconds: input.windDownSeconds,
+          mail: input.mail,
         })
       : buildLaunchPrompt({
           role: input.role.id,
@@ -9041,6 +9088,7 @@ const promptForRun = (input: {
           instructions,
           deadline,
           windDownSeconds: input.windDownSeconds,
+          mail: input.mail,
         });
 };
 
@@ -9253,7 +9301,13 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     mailRoot,
     roleId,
     thread,
-    prompt: promptForRun({ role, thread, setup, windDownSeconds: ceilings.windDown.value }),
+    prompt: promptForRun({
+      role,
+      thread,
+      setup,
+      windDownSeconds: ceilings.windDown.value,
+      mail: mailFormFor(argv, role, mailRoot),
+    }),
     exec,
     // WHO THE SESSION RUNS AS (thread 047, point 3) — `self` for every role that declares
     // nothing, which is every role raised today.
@@ -10120,6 +10174,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             thread: candidate.thread,
             setup,
             windDownSeconds: ceilings.windDown.value,
+            mail: mailFormFor(argv, role, mailRoot),
           }),
           exec: agent.exec.value,
           spawnAs: identity.as,

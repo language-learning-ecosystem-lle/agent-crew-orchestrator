@@ -126,8 +126,12 @@ describe("roles[].capabilities — the verb is declared, and so is what it may b
 });
 
 describe("the version this costs, and the tables that record it", () => {
-  it("is the version this build writes", () => {
-    expect(CURRENT_PROTOCOL_VERSION).toBe(24);
+  // 24 is HISTORY, not the current number: 25 (`mailCommand`, thread `038`) landed after it.
+  // What stays asserted here is what this version's entry claims — the tables moved by exactly
+  // the paths and values of ITS field — and that is a fact about a released shape, which does
+  // not expire when the next one arrives.
+  it("is a version this build still knows how to be behind", () => {
+    expect(CURRENT_PROTOCOL_VERSION).toBeGreaterThanOrEqual(24);
   });
 
   it("answers a v24 config on a v23 build with 'restart required', not with 'invalid'", () => {

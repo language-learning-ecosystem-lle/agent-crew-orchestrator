@@ -68,6 +68,7 @@ import { CODEX_EFFORT_VOCABULARY_STEP } from "./v21-codex-effort-vocabulary.js";
 import { ROLE_SYSTEM_USER_STEP } from "./v22-role-system-user.js";
 import { LAUNCH_FALLBACK_STEP } from "./v23-launch-fallback.js";
 import { ROLE_CAPABILITIES_STEP } from "./v24-role-capabilities.js";
+import { MAIL_COMMAND_STEP } from "./v25-mail-command.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -98,6 +99,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   ROLE_SYSTEM_USER_STEP,
   LAUNCH_FALLBACK_STEP,
   ROLE_CAPABILITIES_STEP,
+  MAIL_COMMAND_STEP,
 ];
 
 export type {
