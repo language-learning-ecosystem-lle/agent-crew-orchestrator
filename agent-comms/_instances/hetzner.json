@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T08:54:34.442Z",
+  "writtenAt": "2026-08-30T08:55:10.725Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "045-ship-signal-fixes-to-lle",
       "state": "running",
       "deadline": "2026-08-30T09:34:30Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "036-account-failover",
-      "state": "draining",
-      "deadline": "2026-08-30T09:42:26Z"
     }
   ]
 }
