@@ -1,0 +1,1 @@
+- [Парк `run:N` — это номер PR](parked-on-run-takes-pr-number.md) — `--parked-on run:421` (номер прогона) дверь не проверит; нужен номер PR.
