@@ -297,8 +297,15 @@ describe("buildLaunchPrompt", () => {
     // session goes on dying with its question, which is the whole failure R19 removes.
     // The threshold is in the same paragraph on purpose — parking at the END of a task
     // is more expensive than answering and letting the run finish.
-    expect(prompt).toContain("new-message --await-input");
-    expect(prompt).toContain("await-input");
+    // AND WITH EVERY FLAG EACH CALL REQUIRES (thread `054`). Both lines used to be printed
+    // as bare subcommands: `new-message --await-input` refuses on `--thread`, `await-input`
+    // refuses on `--role`, and a session already parked is the worst possible reader of an
+    // `exit 2`. Whatever the circuit holds is filled in; only the writer's own choices
+    // stay as placeholders.
+    expect(prompt).toContain(
+      "new-message --thread 014-x --from dev-core --expects answer --waiting-on <who answers> --body-file <p> --await-input --write`",
+    );
+    expect(prompt).toContain("await-input --role dev-core --thread 014-x`");
     expect(prompt).toContain("what is uncommitted");
     expect(prompt).toContain("END of the task");
   });
@@ -372,7 +379,7 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
     // prefix, and the prompt SAYS it is missing rather than leaving a bare-looking command.
     expect(prompt).toContain("`thread show --thread 038-pilot --for pilot-codex`");
     expect(prompt).toContain("`new-message --thread <id>");
-    expect(prompt).toContain("`await-input`");
+    expect(prompt).toContain("`await-input --role pilot-codex --thread 038-pilot`");
     expect(prompt).toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
     // What the undeclared branch may say is only what this package can vouch for: it asks
     // for the form, it does not promise that a role card carries one (the cards in this
@@ -392,7 +399,7 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
       windDownSeconds: 720,
     });
     expect(prompt).not.toContain("cli ");
-    expect(prompt).toContain("(`new-message`)");
+    expect(prompt).toContain("(`new-message --thread 038-pilot --from <your role>");
   });
 
   it("USES THE DECLARED FORM VERBATIM, wherever a command is named", () => {
@@ -400,20 +407,22 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
     const prompt = buildLaunchPrompt({ ...base, mail: { command } });
     expect(prompt).toContain(`\`${command} thread show --thread 038-pilot --for pilot-codex\``);
     expect(prompt).toContain(`\`${command} new-message --thread <id>`);
-    expect(prompt).toContain(`\`${command} new-message --await-input\``);
-    expect(prompt).toContain(`\`${command} await-input\``);
+    expect(prompt).toContain(`\`${command} new-message --thread 038-pilot --from pilot-codex`);
+    const wait = `${command} await-input --role pilot-codex --thread 038-pilot`;
+    expect(prompt).toContain(`\`${wait}\``);
     // Declared means declared: the sentence about an undeclared form is gone.
     expect(prompt).not.toContain("THE FORM OF THE INVOCATION IS NOT DECLARED");
-    expect(prompt).toContain(`\`${command} await-input\` tells you by how much`);
+    expect(prompt).toContain(`\`${wait}\` tells you by how much`);
     expect(
       buildResumePrompt({
         thread: "038-pilot",
+        role: "pilot-codex",
         reason: "stalled",
         deadline: "2026-08-30T15:00:00Z",
         windDownSeconds: 720,
         mail: { command },
       }),
-    ).toContain(`(\`${command} new-message\`)`);
+    ).toContain(`(\`${command} new-message --thread 038-pilot --from pilot-codex`);
   });
 
   it("PRINTS THE TWO FLAGS THE CIRCUIT KNOWS — a line without them exits 2 before it reads anything", () => {
@@ -434,19 +443,72 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
       `\`${command} thread show ${flags} --thread 038-pilot --for pilot-codex\``,
     );
     expect(prompt).toContain(`\`${command} new-message ${flags} --thread <id>`);
-    expect(prompt).toContain(`\`${command} new-message ${flags} --await-input\``);
-    expect(prompt).toContain(`\`${command} await-input ${flags}\``);
+    expect(prompt).toContain(`\`${command} new-message ${flags} --thread 038-pilot --from`);
+    expect(prompt).toContain(
+      `\`${command} await-input ${flags} --role pilot-codex --thread 038-pilot\``,
+    );
     // The flags stand between the subcommand and its arguments, which is where the CLI
     // takes them — and the resume prompt, the second independent builder, says it too.
     expect(
       buildResumePrompt({
         thread: "038-pilot",
+        role: "pilot-codex",
         reason: "stalled",
         deadline: "2026-08-30T15:00:00Z",
         windDownSeconds: 720,
         mail: form,
       }),
-    ).toContain(`(\`${command} new-message ${flags}\`)`);
+    ).toContain(`(\`${command} new-message ${flags} --thread 038-pilot --from pilot-codex`);
+  });
+
+  it("THE RESUME PROMPT PRINTS `await-input` WHOLE — every flag that subcommand requires (thread 054)", () => {
+    // The remainder #131 named and left open: `--root`/`--ref` reached both builders, the
+    // ROLE ID reached neither, and `await-input` refuses on `required(argv, "--role")` just
+    // as hard as on `--root`. The resume prompt is where it hurts most — the card is not
+    // re-sent, so nothing else in that prompt names the role at all.
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const mail = { command, root: "/mail/agent-comms", ref: "origin/main" } as const;
+    const prompt = buildResumePrompt({
+      thread: "054-resume",
+      role: "dev-core",
+      reason: "stalled",
+      deadline: "2026-08-30T15:00:00Z",
+      windDownSeconds: 720,
+      mail,
+    });
+    const line = prompt.match(/`[^`]*await-input[^`]*`/)?.[0];
+    expect(line).toBeDefined();
+    // Asserted flag by flag rather than as one literal: the point is the SET the
+    // subcommand requires, and a line that grows an argument must not stop being checked.
+    for (const required of [
+      command,
+      "await-input",
+      "--root /mail/agent-comms",
+      "--ref origin/main",
+      "--role dev-core",
+      "--thread 054-resume",
+    ])
+      expect(line).toContain(required);
+  });
+
+  it("AND WITHOUT A ROLE IT PRINTS NO LINE AT ALL — silence, not half of one (thread 054)", () => {
+    // The absent fact stays absent, exactly as #131 left the prefix and the ref. But the
+    // choice here is between two absences: a guessed `--role` would park somebody else's
+    // wait, and a line printed without it exits 2 on a command the prompt told the session
+    // to run verbatim. So nothing is printed, and the missing flag is named out loud.
+    const prompt = buildResumePrompt({
+      thread: "054-resume",
+      reason: "stalled",
+      deadline: "2026-08-30T15:00:00Z",
+      windDownSeconds: 720,
+      mail: { command: "cli", root: "/mail/agent-comms" },
+    });
+    expect(prompt).not.toContain("`cli await-input");
+    expect(prompt).toContain("THIS PROMPT WAS NOT GIVEN THE ROLE ID");
+    expect(prompt).toContain("`--role`");
+    // ...and the one place the role IS a placeholder says so in the prompt's own words,
+    // rather than dropping the flag out of a line the session is meant to fill in.
+    expect(prompt).toContain("--from <your role>");
   });
 
   it("the root is printed as given and the ref is optional — neither is invented", () => {
