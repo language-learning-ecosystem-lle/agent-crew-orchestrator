@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | База уехала во второй раз — перебазировал ДО метки. Новая голова fc2f1532, PR #160 снова MERGEABLE,… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | run:161 · 2026-08-30 | 2026-08-30 | Поправка к парковке предыдущего письма: не pr:161, а run:161 |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (повтор, вопрос не отвечен): развилка по claude-review.yml — (а) выкинуть из… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | dev-core | run:164 · 2026-08-30 | 2026-08-30 | Сделано: команда считает окружение дочернего вызова из secrets.envFile своего инстанса — PR #164 |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~18:37Z: «да»). Повод — его же наблюдение: «30 минут это с… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
