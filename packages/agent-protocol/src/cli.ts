@@ -307,6 +307,12 @@ import { renderLog } from "./orchestrator/log.js";
 import { rotateDaemonLog, writeEpochBanner } from "./orchestrator/logsize.js";
 import { memoryIndexAlarm, roleMemoryDirectory } from "./orchestrator/memory.js";
 import {
+  restoreRoleMemory,
+  roleMemorySnapshotFile,
+  saveFailureLine,
+  saveRoleMemory,
+} from "./orchestrator/memory-sync.js";
+import {
   createMergeReadyCache,
   type MergeReadySource,
   readMergeReady,
@@ -7900,6 +7906,17 @@ type RunParams = {
    * beside the deny rules (`orchestrator/memory.ts`).
    */
   readonly memoryDirectory: string;
+  /**
+   * THE TWO MOMENTS OF THAT DIRECTORY (form D, third third): materialise it from the mail
+   * branch before the session exists, carry this session's own changes back after the
+   * child is gone. Both live HERE rather than at the two call sites because the raise and
+   * the release are the two ends of one run, and a daemon that restored but did not save
+   * would be a box whose notes never reach anybody.
+   */
+  readonly memory?: {
+    readonly restore: () => readonly string[];
+    readonly save: () => readonly string[];
+  };
   /** Where to save the session output: silence can be examined without a witness. */
   readonly sessionLog: string;
   /** The raw stream beside it (`.jsonl`) — the primary source a rendering cannot replace. */
@@ -8248,6 +8265,15 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // their messages. The refusal belongs at the door that reads the config, by name
   // ({@link unknownKindRefusal}), and that door is the next step's work.
   const kind = kindOf(p.worker) ?? CLAUDE_CODE;
+  // THE MEMORY IS MATERIALISED BEFORE THE CHILD EXISTS (form D, third third). This is the
+  // one moment the directory can be replaced wholesale without racing the vendor, which
+  // writes into it whenever it pleases — and the branch is the source of truth, so what
+  // the branch no longer has the box no longer keeps. Every word it has is said on both
+  // channels; none of them can stop the raise.
+  for (const line of p.memory?.restore() ?? []) {
+    writeLog(`supervisor  ${line}`);
+    err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
+  }
   // WHO IT RUNS AS (thread 047, point 3). `self` — the command IS the binary, exactly as
   // every run before this field existed; `sudo` — the binary becomes an argument of the
   // narrow entitlement, and NOTHING ELSE about this spawn changes: the same argv, the same
@@ -8826,6 +8852,15 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       writeLog(`supervisor  ${line}`);
       err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
     }
+    // AND THE NOTES GO BACK TO THE BRANCH (form D, third third) — here, after the child is
+    // gone and the release is recorded, and NEVER from `recordSupervisorGone`: that one is
+    // a process-exit handler, where a git push has no time to finish (the same measured
+    // reason the digest is not published from it). A supervisor killed under a run
+    // therefore loses that round's notes, and that is a named cost, not an oversight.
+    for (const line of p.memory?.save() ?? []) {
+      writeLog(`supervisor  ${line}`);
+      err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
+    }
     closeSinks();
     return step.reason;
   }
@@ -9338,15 +9373,6 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   out(`agent-protocol: agent — ${describeAgent(agent)}`);
   for (const line of describeSpawnAs(identity.as)) out(`agent-protocol: ${line}`);
   out(`agent-protocol: ${describeZones(role)}`);
-  // THE CEILING FIRES HERE OR NOWHERE (LLE thread `116-role-memory-cost`, john's third
-  // requirement). The raise is the one moment the index is on disk, cheap to stat and in
-  // front of a human — and it is a LINE, not a refusal: stopping the circuit over a table
-  // of contents costs more than the table of contents does.
-  const memoryAlarm = memoryIndexAlarm({
-    directory: roleMemoryDirectory({ memory: paths.memory, role: role.id }),
-    role: role.id,
-  });
-  if (memoryAlarm !== undefined) err(`agent-protocol: ${memoryAlarm}`);
   for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
   // R13, second half: A MANUAL RUN PUBLISHES ITS STATE TOO (thread
   // `025-stale-instance-digest`, second half). The publisher is created HERE — after the
@@ -9388,6 +9414,13 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     launch: role.launch,
     denyRules: zoneDenyRules(role),
     memoryDirectory: roleMemoryDirectory({ memory: paths.memory, role: role.id }),
+    memory: memorySyncFor({
+      mailRoot: paths.mailRoot,
+      memory: paths.memory,
+      branch: configFrom(argv, undefined).config.mail.branch,
+      mailDir: configFrom(argv, undefined).config.mail.dir,
+      role: role.id,
+    }),
     sessionLog,
     sessionStream: sessionStreamPath(sessionLog),
     sessionIdFile: sessionIdPath(sessionLog),
@@ -9464,6 +9497,78 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
  */
 /** How long the digest waits for the mail checkout before saying it skipped a beat (ms). */
 const DIGEST_LOCK_WAIT_MS = 20_000;
+
+/**
+ * THE TWO MOMENTS OF A ROLE'S MEMORY, BOUND TO THIS BOX (LLE thread
+ * `116-role-memory-cost`, form D, third third). Both halves are built here, together,
+ * because they are one contract: the save can only tell "this session wrote it" from
+ * "it was already there" against the snapshot the restore recorded, and two call sites
+ * assembling the pair separately is how the halves come to disagree about a path.
+ *
+ * They return LINES rather than printing: the caller is `runOne`, which owns the voice
+ * of a run (its stream and its session log), and words printed past it are words missing
+ * from the file a human reads afterwards.
+ *
+ * THE CEILING RIDES ON THE RESTORE and not on the raise in general — that is curator's
+ * §3.3, and it is the only placement that is true: measured before the restore, the
+ * number describes the previous round's copy, which on a box that has just been handed
+ * the role is not the role's memory at all.
+ */
+const memorySyncFor = (input: {
+  readonly mailRoot: string;
+  readonly memory: string;
+  readonly branch: string;
+  readonly mailDir: string;
+  readonly role: string;
+}): { readonly restore: () => readonly string[]; readonly save: () => readonly string[] } => {
+  const checkout = repoOf(input.mailRoot);
+  const directory = roleMemoryDirectory({ memory: input.memory, role: input.role });
+  const common = {
+    git: gitIn(checkout),
+    branch: input.branch,
+    mailDir: input.mailDir,
+    role: input.role,
+    directory,
+    snapshotFile: roleMemorySnapshotFile({ memory: input.memory, role: input.role }),
+  };
+  return {
+    restore: (): readonly string[] => {
+      const done = restoreRoleMemory(common);
+      const alarm = memoryIndexAlarm({ directory, role: input.role });
+      return alarm === undefined ? done.lines : [...done.lines, alarm];
+    },
+    save: (): readonly string[] => {
+      const said: string[] = [];
+      // THE SAME LOCK AND THE SAME PATIENCE AS THE DIGEST, for the same reason: a message
+      // from a role is the work itself, memory is self-service, so it waits a short while
+      // and gives up loudly rather than holding the door on a busy tick.
+      const lock = mailLockFor({
+        checkout,
+        holder: `memory of ${input.role}`,
+        note: (line) => said.push(line),
+        waitMs: DIGEST_LOCK_WAIT_MS,
+      });
+      try {
+        return [
+          ...said,
+          ...saveRoleMemory({
+            ...common,
+            mailRoot: input.mailRoot,
+            identity: roleIdentity(input.role),
+            lock,
+          }),
+        ];
+      } catch (error) {
+        // A BUSY CHECKOUT IS NOT A FAILED RUN. `MailCheckoutBusyError` is raised by the
+        // lock itself, which is outside the delivery `saveRoleMemory` already answers for.
+        return [
+          ...said,
+          saveFailureLine({ role: input.role, reason: (error as Error).message, directory }),
+        ];
+      }
+    },
+  };
+};
 
 const publishDigest = (input: {
   readonly argv: readonly string[];
@@ -10271,6 +10376,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           launch: profile,
           denyRules: zoneDenyRules(role),
           memoryDirectory: roleMemoryDirectory({ memory: paths.memory, role: role.id }),
+          memory: memorySyncFor({
+            mailRoot: paths.mailRoot,
+            memory: paths.memory,
+            branch: configFrom(argv, undefined).config.mail.branch,
+            mailDir: configFrom(argv, undefined).config.mail.dir,
+            role: role.id,
+          }),
           env: childEnv,
           sessionLog,
           sessionStream: sessionStreamPath(sessionLog),
