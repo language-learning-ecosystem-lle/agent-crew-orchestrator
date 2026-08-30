@@ -477,6 +477,7 @@ import {
   workspaceRoleOf,
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
+import { type CheckoutState, runCapabilityCall } from "./roles/capability-run.js";
 import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import {
@@ -11494,6 +11495,95 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
  * belongs to the raised sessions, and a human committing in their own tree is not
  * what it is for.
  */
+/**
+ * THE SURFACE OF A CAPABILITY CALL (thread `047-devops-role`, curator's statement of work of
+ * 2026-08-30 §5). The door is `roles/capability-call.ts`, the execution is `roles/capability-run.ts`
+ * and this is the only place either of them is reached from — a command typed by a raised session
+ * and by a hand alike.
+ *
+ * IT JUDGES THE CONFIG, NEVER THE CALLER. `--role <id>` names WHOSE card is read; it is not a claim
+ * of identity and nothing here checks who is running — «я devops» is not an entitlement, the same
+ * build as `zones check`. And it raises no identity either (curator's §1, condition 1): there is no
+ * `sudo`, no `su`, no `-u` and no reading of `systemUser` on this path — the session was already
+ * spawned as the declared user by `launch.ts`.
+ *
+ * THE OUTPUT OF A READ IS THE COMMAND'S OWN. `stdio: "inherit"` — `tail` and `df` write straight to
+ * the caller's stdout instead of being captured and re-printed by this command: a surface that
+ * buffered them would be free to trim, re-encode or delay them, and the caller asked for the
+ * journal, not for this command's rendering of it.
+ */
+const capabilityRun = (argv: readonly string[]): void => {
+  const roleId = required(argv, "--role");
+  // The REGISTRY, not the loose policy view: what is read here is the card's `capabilities`, and
+  // the door judges the whole `Role`. One loader for both is also why a role the config does not
+  // declare is refused here in the same words as everywhere else.
+  const role = registryFrom(argv, undefined).get(roleId);
+  if (role === undefined) {
+    fail(
+      `--role '${roleId}' — there is no such role in the config, and a capability is a role's`,
+      2,
+    );
+    return;
+  }
+  const name = required(argv, "--capability");
+  const linesFlag = flag(argv, "--lines");
+  // NOT `positiveInt`: a fractional or negative count is the DOOR's refusal (it names the verb, the
+  // ceiling and the repair), and an argument guard that got there first would answer a narrower
+  // question in poorer words. What is refused here is a value that is not a number at all — the
+  // door would receive `NaN` and could say nothing true about it.
+  const lines = linesFlag === undefined ? undefined : Number(linesFlag);
+  if (lines !== undefined && Number.isNaN(lines)) {
+    fail(`--lines '${linesFlag}' is not a number`, 2);
+    return;
+  }
+  const target = flag(argv, "--target");
+  const tracePath = pathsFrom(argv).capabilities;
+
+  const outcome = runCapabilityCall({
+    role,
+    call: {
+      name,
+      ...(target === undefined ? {} : { target }),
+      ...(lines === undefined ? {} : { lines }),
+    },
+    write: argv.includes("--write"),
+    run: (step) => {
+      const said = spawnSync(step.command, [...step.argv], { stdio: "inherit" });
+      if (said.error !== undefined) return { code: -1, error: said.error.message };
+      return { code: said.status ?? -1 };
+    },
+    checkoutState: (checkout): CheckoutState => {
+      const said = spawnSync("git", ["-C", checkout, "status", "--porcelain"], {
+        encoding: "utf8",
+      });
+      if (said.error !== undefined) return { kind: "unreadable", detail: said.error.message };
+      if (said.status !== 0) {
+        return {
+          kind: "unreadable",
+          detail: `'git -C ${checkout} status --porcelain' exited ${said.status ?? -1}: ${(said.stderr ?? "").trim()}`,
+        };
+      }
+      const entries = said.stdout.split("\n").filter((line) => line.trim().length > 0);
+      return entries.length === 0 ? { kind: "clean" } : { kind: "dirty", entries };
+    },
+    trace: (line) => {
+      mkdirSync(dirname(tracePath), { recursive: true });
+      appendFileSync(tracePath, `${line}\n`, "utf8");
+    },
+    // READ, never set — the identity arrived with the spawn (`docs/box-setup.md` §0.1a).
+    by: process.env["USER"] ?? process.env["LOGNAME"] ?? "unknown",
+    at: new Date().toISOString().slice(0, 19) + "Z",
+  });
+
+  if (!outcome.ok) {
+    // THE DOOR'S WORDS, WHOLE. Not summarised into a code, not prefixed into a different sentence.
+    err(outcome.refusal);
+    process.exit(1);
+  }
+  for (const line of outcome.report) out(line);
+  if (outcome.traced) out(`trace: ${tracePath}`);
+};
+
 const zonesCheck = (argv: readonly string[]): void => {
   const repo = repoOf(flag(argv, "--repo") ?? process.cwd(), gitEnvOutsideHook());
   const loaded = policyFrom(argv);
@@ -11914,6 +12004,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     mergeGate(argv.slice(1));
   } else if (command === "zones" && subcommand === "check") {
     zonesCheck(argv.slice(2));
+  } else if (command === "capability" && subcommand === "run") {
+    capabilityRun(argv.slice(2));
   } else if (command === "roles" && subcommand === "list") {
     rolesList(argv.slice(2));
   } else if (command === "role" && subcommand === "exists") {

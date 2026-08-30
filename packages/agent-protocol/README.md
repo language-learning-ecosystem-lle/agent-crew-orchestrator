@@ -1504,6 +1504,34 @@ agent-protocol zones check  --ref <ref> [--repo <p>] (--role <id> | --role-from-
                             # and read as a closed allow-list it would deny 'dev-core' — which declares
                             # writes: [] — every file in the repository. The green line names the criterion,
                             # because "inside its zone" was read as "inside writes" by a role in the field
+agent-protocol capability run --ref <ref> [--repo <p>] --role <id> --capability <name> \
+                            [--target <value>] [--lines <n>] [--write]
+                            # A VERB OF A ROLE'S CARD, CALLED (thread 047) — the surface over the door in
+                            # `roles/capability-call.ts`, and the door is answered from the config:
+                            # `roles[].capabilities` of agent-protocol.json, NEVER from the caller's words
+                            # --role names WHOSE CARD is read, not who is running. «я devops» is not an
+                            # entitlement — the same build as `zones check`, and nothing here checks the
+                            # process's user. The identity is the one the session was ALREADY spawned as
+                            # (`docs/box-setup.md` §0.1a): this command raises none — no sudo, no su, no -u
+                            # EVERY REFUSAL OF THE DOOR IS PRINTED WHOLE, never summarised into an exit
+                            # code: a verb the role does not declare (quoting what it does declare and the
+                            # protocol's vocabulary), a target outside the closed list (membership is
+                            # EQUALITY — not a prefix, not a resolve: a door that argued about paths would
+                            # be an access wearing a verb's name), a call whose target and verb disagree,
+                            # and `log-tail` above the card's `maxLines` — REFUSED, not trimmed, because a
+                            # silently shortened tail reads as a shorter journal instead of a narrower right
+                            # --write is read by the one verb that changes the box (`repo-refresh`): without
+                            # it the plan is printed and NOTHING runs — the checkout is not even looked at.
+                            # `log-tail` and `disk-free` are reads and need no word
+                            # a checkout holding uncommitted work is REFUSED BY NAME and never repaired:
+                            # committing or stashing somebody else's work is the one move nobody can undo
+                            # a non-zero step is a refusal naming the step, the command and the code, and
+                            # the steps after it do NOT run (`pnpm install` after a failed `git pull`
+                            # would report success about a tree nobody produced)
+                            # a state-changing call appends ONE LINE to <state>/capabilities.log — when, by
+                            # which system user, which verb at which target, every command that ran, and how
+                            # it ended (a failed call too). Readable without the session transcript, which
+                            # is why it is not `daemon.log`: that one interleaves every role and rotates
 agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mail FROM THE THREADS
                             # the ids on stdout; an unreadable thread on stderr, with its own cause
                             # AND the count of what was lost (065.4) — the input is never silently
