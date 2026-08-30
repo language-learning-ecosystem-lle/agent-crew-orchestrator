@@ -65,3 +65,4 @@
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~15:53Z: «заводи»). Предмет: ОДИН тред без meta.md роняет… |
+| 061-unreachable-event-park | curator · dev-core · john | normal | open | — | — | — | — |
