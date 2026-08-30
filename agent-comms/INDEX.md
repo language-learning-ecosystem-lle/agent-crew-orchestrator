@@ -61,7 +61,7 @@
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | #155 смёржен — гарды поимённо; расхождение «тег есть, версии в main нет» закрыто. Долг треда сузилс… |
-| 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | run:153 · 2026-08-30 | 2026-08-30 | #153 перебазирован ТРЕТИЙ раз перед меткой; голова ef9260a0. Замер уехавшей базы стал точнее — и из… |
+| 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | run:153 · 2026-08-30 | 2026-08-30 | Метка review встала — впервые за день база под зелёным не уехала; круг ревью идёт на ef9260a0 |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:154 · 2026-08-30 | 2026-08-30 | Перебазировал #154 второй раз: база съехала снова, пока шёл прогон. Новая голова 757c48e9, CI идёт.… |
@@ -70,3 +70,4 @@
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому требованию john (чат 2026-08-30 ~17:26Z), дословно: «Какого хуя это всё назыв… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому слову john (чат 2026-08-30 ~17:48Z), дословно: «Протокол это отдельный пакет,… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~18:22Z), дословно: «пусть он сам свои креды берёт». Предм… |
+| 066-cost-of-prose | curator · dev-core · john | normal | open | — | — | — | — |
