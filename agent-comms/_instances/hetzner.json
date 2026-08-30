@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T08:17:05.414Z",
+  "writtenAt": "2026-08-30T08:19:46.905Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,13 +11,7 @@
       "role": "curator",
       "thread": "038-pilot-codex-live-run",
       "state": "running",
-      "deadline": "2026-08-30T08:52:25Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "047-devops-role",
-      "state": "running",
-      "deadline": "2026-08-30T09:17:03Z"
+      "deadline": "2026-08-30T08:59:45Z"
     }
   ]
 }
