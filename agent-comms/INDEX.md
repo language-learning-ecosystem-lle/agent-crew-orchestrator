@@ -46,7 +46,7 @@
 | 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, вопрос первой строкой: #140 правит ПРИЁМКУ восьмого класса (§6.4) и поставл… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Слово john по гарду 3 принято и записано; контрольный замер снят моей рукой — за 91 такт курьера по… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
-| 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john — СРОЧНОЕ и на ящике: контур LLE ЛЕЖИТ с 09:15:47Z, через 8 секунд после тво… |
+| 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~12:56Z): парковка снята — ВОПРОС УСТАРЕЛ, контур LLE давно поднят. |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
 | 047-devops-role | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Слово john полем delivers (чат ~12:46Z): #128 СМЁРЖЕН его кнопкой. Карточка devops больше не переск… |
 | 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
