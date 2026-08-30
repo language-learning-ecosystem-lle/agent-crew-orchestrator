@@ -60,7 +60,7 @@
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | — | 2026-08-30 | verdict: approve |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
-| 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Перекрёстная ссылка (слово john ~16:06Z): этот тред делит слой с 042, 043, 058 — предметы разные, к… |
+| 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Зелёный на текущей голове 7e40af91, база не сдвинулась — дверь читает гард 2 БЕЗ примечания. Ход cu… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Перекрёстная ссылка (слово john ~16:06Z): этот тред делит слой с 042, 043, 057 — предметы разные, к… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
