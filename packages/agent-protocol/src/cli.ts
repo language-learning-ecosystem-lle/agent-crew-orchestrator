@@ -9521,38 +9521,54 @@ const memorySyncFor = (input: {
   readonly mailDir: string;
   readonly role: string;
 }): { readonly restore: () => readonly string[]; readonly save: () => readonly string[] } => {
-  const checkout = repoOf(input.mailRoot);
   const directory = roleMemoryDirectory({ memory: input.memory, role: input.role });
-  const common = {
-    git: gitIn(checkout),
+  // NOTHING IS ASKED OF GIT UNTIL A MOMENT ASKS (and both moments below answer for
+  // themselves). Resolving the checkout HERE would put a `git rev-parse` between a run
+  // and its spawn, and a box whose mail root is not a repository would lose the RUN over
+  // its notes — the exact inversion of "memory is self-service, not work".
+  const common = () => ({
+    git: gitIn(repoOf(input.mailRoot)),
     branch: input.branch,
     mailDir: input.mailDir,
     role: input.role,
     directory,
     snapshotFile: roleMemorySnapshotFile({ memory: input.memory, role: input.role }),
-  };
+  });
   return {
     restore: (): readonly string[] => {
-      const done = restoreRoleMemory(common);
+      let done: { readonly lines: readonly string[] };
+      try {
+        done = restoreRoleMemory(common());
+      } catch (error) {
+        return [
+          `memory: the notes of '${input.role}' could NOT be restored (${(error as Error).message}) — the session is raised on this box's own copy. Memory is self-service, so the raise is not refused over it.`,
+        ];
+      }
       const alarm = memoryIndexAlarm({ directory, role: input.role });
       return alarm === undefined ? done.lines : [...done.lines, alarm];
     },
     save: (): readonly string[] => {
       const said: string[] = [];
+      let checkout: string;
+      try {
+        checkout = repoOf(input.mailRoot);
+      } catch (error) {
+        return [saveFailureLine({ role: input.role, reason: (error as Error).message, directory })];
+      }
       // THE SAME LOCK AND THE SAME PATIENCE AS THE DIGEST, for the same reason: a message
       // from a role is the work itself, memory is self-service, so it waits a short while
       // and gives up loudly rather than holding the door on a busy tick.
-      const lock = mailLockFor({
-        checkout,
-        holder: `memory of ${input.role}`,
-        note: (line) => said.push(line),
-        waitMs: DIGEST_LOCK_WAIT_MS,
-      });
       try {
+        const lock = mailLockFor({
+          checkout,
+          holder: `memory of ${input.role}`,
+          note: (line) => said.push(line),
+          waitMs: DIGEST_LOCK_WAIT_MS,
+        });
         return [
           ...said,
           ...saveRoleMemory({
-            ...common,
+            ...common(),
             mailRoot: input.mailRoot,
             identity: roleIdentity(input.role),
             lock,
