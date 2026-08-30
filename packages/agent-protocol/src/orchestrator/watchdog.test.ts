@@ -35,6 +35,29 @@ const recorder = (
 
 const ok = (): ReturnType<FetchLike> => Promise.resolve({ ok: true, status: 200 });
 
+/**
+ * A wall clock the test moves by hand, for the cases that assert on the beat's ARITHMETIC —
+ * which retry still fits the budget, how much of an attempt is left, whether the beat outran
+ * what its timeouts allow.
+ *
+ * WHY NOT REAL TIMERS, in the words of the case that taught it (#148, thread
+ * `057-circuit-ping-flaps`): node's timers fire NO EARLIER than their nominal and generally
+ * later, so a case built out of a real 60ms abort plus a real 10ms pause has an elapsed of
+ * "70ms or more" — and an assertion needing "70 or less" passes only on zero drift of both
+ * at once. It passed locally and failed on the runner. Time the test does not control is
+ * not an input; here the fetch itself moves the clock, so the numbers below are the numbers
+ * the code sees, on every machine.
+ */
+const virtualClock = (): { readonly now: () => number; readonly advance: (ms: number) => void } => {
+  let t = 1_000;
+  return {
+    now: () => t,
+    advance: (ms) => {
+      t += ms;
+    },
+  };
+};
+
 describe("resolveWatchdog", () => {
   it("takes the url out of the secrets and says nothing about its value", () => {
     const state = resolveWatchdog({
@@ -419,25 +442,87 @@ describe("the beat retries — a slow answer is not a dead monitor", () => {
   });
 
   it("spends no more than the budget it was given", async () => {
-    const http = recorder(
-      (_url, signal) =>
-        new Promise((_resolve, reject) => {
-          signal.addEventListener("abort", () => reject(new Error("aborted")));
-        }),
-    );
-    const started = Date.now();
+    const clock = virtualClock();
+    // A monitor that never answers: each attempt runs to its own abort. The REAL abort is
+    // what fires (the code's own timer), and what it costs is said to the virtual clock —
+    // 60ms for the first attempt, 40ms for the second, which is all the budget leaves it.
+    const burn = [60, 40];
+    let call = 0;
+    const http = recorder((_url, signal) => {
+      const spent = burn[call] ?? 0;
+      call += 1;
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          clock.advance(spent);
+          reject(new Error("aborted"));
+        });
+      });
+    });
     const outcome = await beat({
       url: URL_OF_CIRCUIT,
       fetch: http.fetch,
       timeoutMs: 60,
-      retryPauseMs: 10,
+      retryPauseMs: 0,
       budgetMs: 100,
+      now: clock.now,
     });
-    expect(Date.now() - started).toBeLessThan(300);
-    // 60ms, a 10ms pause, then 30ms of budget left — a second attempt fits, a third does not.
+    // 60ms spent, 40ms of budget left — more than half an attempt, so a second is made and
+    // CLIPPED to those 40ms; after it the budget is out and a third is not made at all.
     expect(http.calls).toHaveLength(2);
     if (outcome.kind !== "refused") throw new Error("unreachable");
     expect(outcome.attempts).toBe(2);
+    // The clip is not inferred from the count — the refusal says the number it was given.
+    expect(outcome.detail).toBe("no answer in 0.04s");
+    expect(outcome.elapsedMs).toBe(100);
+    // Exactly the budget and no more, so nothing here is the starvation class.
+    expect(outcome.starved).toBe(false);
+  });
+
+  it("charges the pause to the budget too, and stops rather than pause past it", async () => {
+    const clock = virtualClock();
+    const http = recorder(() => {
+      clock.advance(60);
+      return Promise.reject(new Error("aborted"));
+    });
+    const outcome = await beat({
+      url: URL_OF_CIRCUIT,
+      fetch: http.fetch,
+      timeoutMs: 60,
+      // 40ms of budget left after the first attempt is not room for a 50ms pause: the beat
+      // ends there instead of sleeping past its own ceiling into the next tick's launch.
+      retryPauseMs: 50,
+      budgetMs: 100,
+      now: clock.now,
+    });
+    expect(http.calls).toHaveLength(1);
+    if (outcome.kind !== "refused") throw new Error("unreachable");
+    expect(outcome.attempts).toBe(1);
+  });
+
+  /**
+   * The `057` class itself, through the real code path: the wall clock ran far past
+   * everything the timeouts allowed, and nothing but a loop that was not running does that.
+   * The beat must blame THIS PROCESS, not the monitor — that is the sentence that would have
+   * sent john to the right place on 2026-08-30 instead of to a healthy box.
+   */
+  it("says the wait was THIS PROCESS when the beat outran everything its timeouts allow", async () => {
+    const clock = virtualClock();
+    const http = recorder(() => {
+      // A 60ms attempt that took 500ms of wall clock: the blocked tick, reproduced exactly.
+      clock.advance(500);
+      return Promise.reject(new Error("aborted"));
+    });
+    const outcome = await beat({
+      url: URL_OF_CIRCUIT,
+      fetch: http.fetch,
+      timeoutMs: 60,
+      attempts: 1,
+      retryPauseMs: 0,
+      now: clock.now,
+    });
+    if (outcome.kind !== "refused") throw new Error("unreachable");
+    expect(outcome.starved).toBe(true);
+    expect(describeBeat(outcome)).toContain("THAT WAIT WAS THIS PROCESS");
   });
 
   it("clips the budget to the tick — a box that ticks faster than one attempt does not retry", () => {

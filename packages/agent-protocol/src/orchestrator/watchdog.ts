@@ -345,6 +345,17 @@ export type FetchLike = (
  * timeout — comes back as `refused` with a sentence. That is what lets the caller start
  * it without a `catch` and not risk an unhandled rejection taking the daemon down, which
  * would turn the watch into the thing that kills what it watches.
+ *
+ * THE CLOCK IS INJECTED, AND THAT IS NOT A CONVENIENCE — it is this thread's own lesson
+ * applied to the test (curator's finding on #148). Every decision below is arithmetic on
+ * the wall clock: whether a retry still fits the budget, how much of an attempt is left,
+ * whether the beat outran everything its timeouts allowed. A test that drove those
+ * decisions with REAL `setTimeout` would be asserting on timer drift — node's timers fire
+ * no earlier than their nominal, never exactly at it — and the first version of the budget
+ * case did exactly that, with zero margin: it passed locally and failed on the runner. A
+ * red that lies about the code is the same class, one floor up, as a watchdog that blames
+ * the monitor for its own starvation. So the CLOCK is what a test replaces, and the
+ * arithmetic under test is then exact; production passes nothing and reads `Date.now`.
  */
 export const beat = async (input: {
   readonly url: string;
@@ -353,19 +364,22 @@ export const beat = async (input: {
   readonly attempts?: number;
   readonly retryPauseMs?: number;
   readonly budgetMs?: number;
+  /** The wall clock this beat measures itself by. Injected for tests only — see above. */
+  readonly now?: () => number;
 }): Promise<BeatOutcome> => {
   const timeoutMs = input.timeoutMs ?? BEAT_TIMEOUT_MS;
   const limit = Math.max(1, input.attempts ?? BEAT_ATTEMPTS);
   const pauseMs = input.retryPauseMs ?? BEAT_RETRY_PAUSE_MS;
   const budgetMs = input.budgetMs ?? Math.max(timeoutMs, BEAT_BUDGET_MS);
-  const started = Date.now();
+  const now = input.now ?? Date.now;
+  const started = now();
   let last = "";
   /** What the timeouts and pauses ALLOWED — the yardstick the wall clock is judged against. */
   let allowed = 0;
   let made = 0;
 
   for (let attempt = 1; attempt <= limit; attempt += 1) {
-    const left = budgetMs - (Date.now() - started);
+    const left = budgetMs - (now() - started);
     // A retry with less than half an attempt's room left is not made at all: a timeout
     // clipped to a sliver would report "no answer in 0.2s" about a monitor that was never
     // really asked, and a false detail is worse than a missing retry.
@@ -395,7 +409,7 @@ export const beat = async (input: {
 
     if (attempt === limit) break;
     if (pauseMs > 0) {
-      const room = budgetMs - (Date.now() - started);
+      const room = budgetMs - (now() - started);
       if (room <= pauseMs) break;
       allowed += pauseMs;
       await new Promise((resolve) => setTimeout(resolve, pauseMs));
@@ -404,7 +418,7 @@ export const beat = async (input: {
     // failure (a timeout that became a 503) reports what is true now, not what was true first.
   }
 
-  const elapsedMs = Date.now() - started;
+  const elapsedMs = now() - started;
   return {
     kind: "refused",
     detail: last,
