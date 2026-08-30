@@ -275,6 +275,7 @@ import {
   describeCeilings,
   describeGates,
   describeLaunch,
+  describeSpawnAs,
   ignoredDirective,
   instanceAccountOf,
   LAUNCH_ENV,
@@ -288,9 +289,14 @@ import {
   resolveAgentParams,
   resolveCeilings,
   resolveGates,
+  resolveSpawnIdentity,
   resolveWorker,
   roleLaunchability,
-  systemUserRefusal,
+  type SpawnAs,
+  SWITCH_EXEC,
+  type SwitchProbe,
+  spawnAsCommand,
+  switchProbeArgv,
 } from "./orchestrator/launch.js";
 import { foldLeases, isLeaseAlive, unclosedLeases } from "./orchestrator/lease.js";
 import { renderLog } from "./orchestrator/log.js";
@@ -7700,6 +7706,67 @@ const planThreadMessage = (
   return { files: [{ path, content: planned.content }], label: planned.path };
 };
 
+/**
+ * ASKING THE BOX WHETHER IT GRANTS THE SWITCH (thread `047-devops-role`, point 3) — the IO
+ * half of {@link resolveSpawnIdentity}, and the only part of that decision that touches the
+ * world.
+ *
+ * It runs `sudo -n -l -u <user> <bin>`, which LISTS the rule rather than taking it: exit 0
+ * when a rule matches, non-zero when none does. Both are answers; the probe never throws,
+ * because a box with no `sudo` at all (`ENOENT`) is the same fact for the caller as a box
+ * whose rule is missing, and turning it into an exception would replace a refusal that names
+ * three things with a stack trace.
+ *
+ * IT IS RUN ONLY FOR A ROLE WHOSE DECLARATION DIFFERS from the process's own user — that is,
+ * for no role that runs on this circuit today. A launch path that spawned `sudo` on every
+ * tick to learn nothing would be a cost paid by every role for one.
+ */
+const probeSwitch = (input: { readonly user: string; readonly exec: string }): SwitchProbe => {
+  const said = spawnSync(SWITCH_EXEC, [...switchProbeArgv(input)], {
+    encoding: "utf8",
+    // stdin closed: `-n` already forbids the prompt, and an inherited terminal would let a
+    // hand-typed `run` look like it is hanging on a question that was never asked.
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (said.error !== undefined) {
+    return { allowed: false, detail: `'${SWITCH_EXEC}' could not be run — ${said.error.message}` };
+  }
+  const words = `${said.stdout ?? ""}${said.stderr ?? ""}`.trim().split("\n")[0] ?? "";
+  return said.status === 0
+    ? { allowed: true, detail: words }
+    : {
+        allowed: false,
+        detail: `'${SWITCH_EXEC} ${switchProbeArgv(input).join(" ")}' exited ${said.status ?? "on a signal"}${words === "" ? "" : ` — ${words}`}`,
+      };
+};
+
+/**
+ * THE IDENTITY DOOR OF BOTH LIFT POINTS (thread 047) — the probe and the pure rule joined,
+ * so that `run` and the daemon cannot drift apart on WHO a session runs as. It is the same
+ * argument that made `resolveCeilings` a function: the manual launch is the way around the
+ * topology, and it is typed exactly when something is already wrong.
+ */
+const spawnIdentityFor = (input: {
+  readonly role: Role;
+  /**
+   * THE BINARY THE RULE HAS TO NAME — the resolved `exec` of this very run, not a name
+   * guessed here. A probe asking about a different binary than the one about to be spawned
+   * would answer a question nobody asked, and it would answer it green.
+   */
+  readonly exec: string;
+}): ReturnType<typeof resolveSpawnIdentity> => {
+  const currentUser = currentSystemUser();
+  const declared = input.role.systemUser;
+  if (declared === undefined || declared === currentUser) {
+    return resolveSpawnIdentity({ role: input.role, currentUser });
+  }
+  return resolveSpawnIdentity({
+    role: input.role,
+    currentUser,
+    probe: probeSwitch({ user: declared, exec: input.exec }),
+  });
+};
+
 type RunParams = {
   readonly journalPath: string;
   readonly mailRoot: string;
@@ -7714,6 +7781,14 @@ type RunParams = {
    */
   readonly prompt: (context: { readonly deadline: string }) => string;
   readonly exec: string;
+  /**
+   * THE SYSTEM IDENTITY THIS SESSION RUNS AS (thread `047-devops-role`) — already resolved
+   * and already past its door ({@link spawnIdentityFor}), so what arrives here is a decision
+   * somebody was entitled to make. Required rather than optional: a caller that forgot it
+   * would raise the session as the supervisor's own user, which is the one outcome the
+   * declaration exists to forbid — and it would do it in silence. `tsc` refuses instead.
+   */
+  readonly spawnAs: SpawnAs;
   readonly maxTurns: string;
   readonly wallClockMs: number;
   readonly pollMs: number;
@@ -8084,6 +8159,11 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // stdout (thread 047): stdout belongs to whoever was watching, this file is what is read
   // afterwards, and an unkilled session is exactly the thing read about afterwards.
   takedownLog = writeLog;
+  // WHO THIS SESSION RUNS AS, in its own log (thread 047, point 3) — said only when it is
+  // not the supervisor's own user, and said HERE because it is the one fact about a launch
+  // that cannot be recovered afterwards: the process is gone, and its own words were written
+  // by this user either way.
+  for (const line of describeSpawnAs(p.spawnAs)) writeLog(`supervisor  ${line}`);
 
   // The spawn happens in ITS OWN process group (`detached`): the whole group will
   // have to be put down, not just the direct child — a SIGTERM to a shell/launcher
@@ -8098,9 +8178,15 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // their messages. The refusal belongs at the door that reads the config, by name
   // ({@link unknownKindRefusal}), and that door is the next step's work.
   const kind = kindOf(p.worker) ?? CLAUDE_CODE;
-  const child = spawn(
-    p.exec,
-    kind.buildArgv({
+  // WHO IT RUNS AS (thread 047, point 3). `self` — the command IS the binary, exactly as
+  // every run before this field existed; `sudo` — the binary becomes an argument of the
+  // narrow entitlement, and NOTHING ELSE about this spawn changes: the same argv, the same
+  // `cwd`, the same env object. What the env object survives as is the box's business
+  // (`env_keep`, docs/box-setup.md §0.1a), and this supervisor cannot see across it.
+  const spawnCommand = spawnAsCommand({
+    as: p.spawnAs,
+    exec: p.exec,
+    argv: kind.buildArgv({
       prompt: p.prompt({ deadline: plan.deadline }),
       maxTurns: p.maxTurns,
       launch: p.launch,
@@ -8108,44 +8194,44 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       denyRules: p.denyRules,
       ...(p.continuation.mode === "resume" ? { resume: p.continuation.session } : {}),
     }),
-    {
-      // THE SESSION LANDS IN THE ROLE'S OWN TREE (R17) and not in whatever directory
-      // the supervisor happened to be started from. It is also what makes a resume
-      // findable: the tool keeps its conversations per working directory, so a stable
-      // workspace per role is the precondition of `--resume` ever finding anything.
-      cwd: p.workdir,
-      // BOTH streams are piped now. Inheriting stdout used to leave the operator's
-      // terminal as the only place the session's own words existed — that is,
-      // whoever was not watching had nothing to analyse afterwards. The supervisor
-      // relays the same lines to its own stdout, so the live view is not lost.
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: true,
-      // The session is told WHAT it is and WHERE it will find its own id (R7): both
-      // are set here, over the project preamble, because they describe THIS run and
-      // nothing in the config may claim to know them.
-      env: {
-        ...p.env,
-        [LAUNCH_ENV.worker]: p.worker,
-        [LAUNCH_ENV.sessionFile]: p.sessionIdFile,
-        // The ceiling of its own wait (R19): the session defaults `await-input` to this
-        // number, so its clock and the supervisor's cannot disagree.
-        [LAUNCH_ENV.waitSeconds]: String(Math.round(p.waitInputMs / 1000)),
-        // WHEN THIS RUN'S WINDOW ENDS (R20). The same value the prompt states in words
-        // — this one is here for the shell: a session checking how much is left runs
-        // `date`, not a re-read of its own prompt.
-        [LAUNCH_ENV.leaseDeadline]: plan.deadline,
-        // WHICH ACCOUNT IT SPENDS (thread 055). The whole account — credentials, the
-        // tool's config, the transcripts and the session store — hangs off this one
-        // directory, so pointing at it is the entire isolation; there is no second
-        // switch to forget. Absent means the box's own account, and the key is then
-        // not set at all rather than set to the default path: an inherited
-        // `CLAUDE_CONFIG_DIR` (an operator running the daemon with one exported) must
-        // keep working, and writing the default over it would be this package
-        // deciding something it was not asked about.
-        ...(p.account === undefined ? {} : { [kind.accountEnv]: p.account.configDir }),
-      },
+  });
+  const child = spawn(spawnCommand.command, [...spawnCommand.argv], {
+    // THE SESSION LANDS IN THE ROLE'S OWN TREE (R17) and not in whatever directory
+    // the supervisor happened to be started from. It is also what makes a resume
+    // findable: the tool keeps its conversations per working directory, so a stable
+    // workspace per role is the precondition of `--resume` ever finding anything.
+    cwd: p.workdir,
+    // BOTH streams are piped now. Inheriting stdout used to leave the operator's
+    // terminal as the only place the session's own words existed — that is,
+    // whoever was not watching had nothing to analyse afterwards. The supervisor
+    // relays the same lines to its own stdout, so the live view is not lost.
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
+    // The session is told WHAT it is and WHERE it will find its own id (R7): both
+    // are set here, over the project preamble, because they describe THIS run and
+    // nothing in the config may claim to know them.
+    env: {
+      ...p.env,
+      [LAUNCH_ENV.worker]: p.worker,
+      [LAUNCH_ENV.sessionFile]: p.sessionIdFile,
+      // The ceiling of its own wait (R19): the session defaults `await-input` to this
+      // number, so its clock and the supervisor's cannot disagree.
+      [LAUNCH_ENV.waitSeconds]: String(Math.round(p.waitInputMs / 1000)),
+      // WHEN THIS RUN'S WINDOW ENDS (R20). The same value the prompt states in words
+      // — this one is here for the shell: a session checking how much is left runs
+      // `date`, not a re-read of its own prompt.
+      [LAUNCH_ENV.leaseDeadline]: plan.deadline,
+      // WHICH ACCOUNT IT SPENDS (thread 055). The whole account — credentials, the
+      // tool's config, the transcripts and the session store — hangs off this one
+      // directory, so pointing at it is the entire isolation; there is no second
+      // switch to forget. Absent means the box's own account, and the key is then
+      // not set at all rather than set to the default path: an inherited
+      // `CLAUDE_CONFIG_DIR` (an operator running the daemon with one exported) must
+      // keep working, and writing the default over it would be this package
+      // deciding something it was not asked about.
+      ...(p.account === undefined ? {} : { [kind.accountEnv]: p.account.configDir }),
     },
-  );
+  });
   // From here the guard has a group to put down together with the lease.
   childRef = child;
 
@@ -8976,14 +9062,6 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     fail(`role '${roleId}' is not launched by the orchestrator: ${can.reason}`, 2);
     return;
   }
-  // THE IDENTITY THE ROLE DECLARES, checked at the hand-typed door as well as the daemon's
-  // (thread 047) — and for the reason every other door here is doubled: a manual `run` is
-  // the way around the topology, and it is typed exactly when something is already wrong.
-  const wrongUser = systemUserRefusal(role, currentSystemUser());
-  if (wrongUser !== undefined) {
-    fail(wrongUser, 2);
-    return;
-  }
   // WHOSE ROLE THIS IS (R13) — the same door as the daemon's, and deliberately the same
   // code. A hand-typed `run` is the one mutator the workspace lock cannot see: the lock
   // keeps a second session off a tree on THIS box, ownership is what keeps this box out
@@ -9024,6 +9102,16 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     ...(directed.effective === undefined ? {} : { directive: directed.effective.directive }),
   });
   const exec = agent.exec.value;
+  // THE IDENTITY THE ROLE DECLARES, resolved at the hand-typed door as well as the daemon's
+  // (thread 047) — and for the reason every other door here is doubled: a manual `run` is
+  // the way around the topology, and it is typed exactly when something is already wrong.
+  // It comes AFTER `exec` because the entitlement is written for one binary, and the probe
+  // must ask about the one this run would actually spawn.
+  const identity = spawnIdentityFor({ role, exec });
+  if (!identity.ok) {
+    fail(identity.reason, 2);
+    return;
+  }
   const maxTurns = String(ceilings.maxTurns.value);
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
 
@@ -9096,6 +9184,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
     out(`agent-protocol: gates — ${describeGates(gates)}`);
     out(`agent-protocol: agent — ${describeAgent(agent)}`);
+    for (const line of describeSpawnAs(identity.as)) out(`agent-protocol: ${line}`);
     out(`agent-protocol: ${describeZones(role)}`);
     for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
     for (const event of plan.events) out(renderEventLine(event));
@@ -9130,6 +9219,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   out(`agent-protocol: ceilings — ${describeCeilings(ceilings)}`);
   out(`agent-protocol: gates — ${describeGates(gates)}`);
   out(`agent-protocol: agent — ${describeAgent(agent)}`);
+  for (const line of describeSpawnAs(identity.as)) out(`agent-protocol: ${line}`);
   out(`agent-protocol: ${describeZones(role)}`);
   for (const line of directiveLines(directed, agent.ignored)) out(`agent-protocol: ${line}`);
   // R13, second half: A MANUAL RUN PUBLISHES ITS STATE TOO (thread
@@ -9159,6 +9249,9 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     thread,
     prompt: promptForRun({ role, thread, setup, windDownSeconds: ceilings.windDown.value }),
     exec,
+    // WHO THE SESSION RUNS AS (thread 047, point 3) — `self` for every role that declares
+    // nothing, which is every role raised today.
+    spawnAs: identity.as,
     maxTurns,
     launch: role.launch,
     denyRules: zoneDenyRules(role),
@@ -9944,15 +10037,6 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // through.
     const profile = role?.launch;
     if (role === undefined || profile === undefined) return;
-    // The declared system identity (thread 047). Unlike the profile above this one is NOT
-    // true by construction — `roleLaunchability` is a pure function of the role and cannot
-    // know which user this process is — so it is said out loud rather than returned in
-    // silence: a pair that is never raised and never explained reads as a dead circuit.
-    const wrongUser = systemUserRefusal(role, currentSystemUser());
-    if (wrongUser !== undefined) {
-      pairErr(candidate, wrongUser);
-      return;
-    }
     const key = pairKey(candidate);
     if (live.has(key)) return;
     const startedAt = new Date();
@@ -9978,6 +10062,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         ? {}
         : { account: candidate.account }),
     });
+    // THE DECLARED SYSTEM IDENTITY (thread 047), resolved after `agent` because the probe
+    // asks about the binary THIS run would spawn. Unlike the profile above, this one is NOT
+    // true by construction — `roleLaunchability` is a pure function of the role and cannot
+    // know which user this process is, nor what the box grants — so a refusal is said out
+    // loud rather than returned in silence: a pair that is never raised and never explained
+    // reads as a dead circuit.
+    const identity = spawnIdentityFor({ role, exec: agent.exec.value });
+    if (!identity.ok) {
+      pairErr(candidate, identity.reason);
+      return;
+    }
     // The workspace and the continuation are settled PER LAUNCH: both are properties of
     // this (role, thread) pair at this moment, and the daemon lives for days. This half
     // is deliberately SYNCHRONOUS and happens before the registry entry exists — it is
@@ -10005,6 +10100,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     }
     pairOut(candidate, `ceilings: ${describeCeilings(ceilings)}`);
     pairOut(candidate, `agent: ${describeAgent(agent)}`);
+    for (const line of describeSpawnAs(identity.as)) pairOut(candidate, line);
     for (const line of directiveLines(directed, agent.ignored)) pairOut(candidate, line);
     const done = (async (): Promise<void> => {
       try {
@@ -10020,6 +10116,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             windDownSeconds: ceilings.windDown.value,
           }),
           exec: agent.exec.value,
+          spawnAs: identity.as,
           maxTurns: String(ceilings.maxTurns.value),
           launch: profile,
           denyRules: zoneDenyRules(role),

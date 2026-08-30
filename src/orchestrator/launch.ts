@@ -884,9 +884,11 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  * `047-devops-role`) — a refusal by name, and the only consumer of `roles[].systemUser`
  * today.
  *
- * The field says which system user a role's session runs as. This build cannot SWITCH
- * user: `spawn` inherits uid/gid, and the narrow entitlement that would let the daemon
- * become one named user is set up on the box, not here. So there are exactly two honest
+ * The field says which system user a role's session runs as. `spawn` inherits uid/gid, so
+ * the switch is not this process's to make on its own: it needs the narrow entitlement set
+ * up on the box (docs/box-setup.md §0.1a). Since point 3 of thread 047 the build TAKES that
+ * path when the box grants it ({@link resolveSpawnIdentity}); this door is what stands when
+ * it does not. So there are exactly two honest
  * outcomes, and the third — the one this door exists to forbid — is raising the session as
  * the daemon's own user anyway. That third outcome is not a smaller version of the
  * declaration, it is its opposite: on this box the daemon's user carries the `sudo` group
@@ -902,14 +904,12 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  * user this process actually is. Whoever reads it in a log can tell "the box was never set
  * up" from "the daemon runs as the wrong user" without opening the config.
  *
- * AND IT NAMES ONE THING MORE, FOR A READER WHO DOES NOT EXIST YET (thread 047, msg-046):
- * the narrow entitlement above is being materialised on the box BEFORE the code that would
- * take it (a `sudoers` rule for one target user and one binary — `docs/box-setup.md` §0.1a).
- * From the hand that types that rule until the launch path lands, the box carries a right
- * this build never asks for, and the refusal would otherwise read as "the rule did not
- * work". It did; nobody calls it. The door says so by name, because the alternative is an
- * operator debugging `sudo` against a build that never runs it — and it stays out of
- * `Repair:` for the same reason it is worth saying: adding the rule repairs NOTHING today.
+ * AND IT NAMES THE PATH IT DID NOT TAKE, WITH WHAT THE BOX SAID ABOUT IT. Between #132 and
+ * this build the sentence was "the entitlement is not consulted by this build": the rule was
+ * landing on the box (`docs/box-setup.md` §0.1a) before the code that would take it, and an
+ * operator would otherwise have read the refusal as "the rule did not work". It is consulted
+ * now, so the sentence is the probe's own answer instead — and the rule has become a
+ * `Repair:`, which is exactly what it was kept OUT of while it repaired nothing.
  */
 /**
  * The system user THIS process runs as, asked once and in one place. `undefined` when the
@@ -928,23 +928,172 @@ export const currentSystemUser = (): string | undefined => {
 export const systemUserRefusal = (
   role: Role,
   currentUser: string | undefined,
+  /**
+   * WHAT THE BOX ANSWERED WHEN ASKED (thread 047, point 3). Absent means nobody asked —
+   * every caller that judges a card without being about to raise it (`status`, the schema
+   * tests), and the answer is then the same as a refusal, because a path nobody probed is
+   * a path this run will not take.
+   */
+  probe?: SwitchProbe,
 ): string | undefined => {
   const declared = role.systemUser;
   if (declared === undefined) return undefined;
   if (declared === currentUser) return undefined;
+  const said =
+    probe === undefined
+      ? "this run did not ask the box for it"
+      : probe.allowed
+        ? "the box grants it"
+        : `this box does not grant it: ${probe.detail}`;
   return [
     `role '${role.id}' declares systemUser '${declared}',`,
     `and this process runs as '${currentUser ?? "(unknown user)"}':`,
-    "raising a session as another system user is not implemented in this build, and raising it as",
-    "this user instead would give the role the privileges of the box it happens to run on —",
-    "which is what the declaration exists to end (thread 047-devops-role).",
-    `A narrow entitlement on the box (a sudoers rule letting this user become '${declared}' for the`,
-    "agent binary, docs/box-setup.md §0.1a) is NOT consulted by this build either: if one is already",
-    "in place it is not broken, it is unused, and the launch path that would take it is still to be",
-    "written.",
-    `Repair: run the daemon as '${declared}', or drop the declaration from the role's card in the config.`,
+    `the only path from here to '${declared}' is a narrow entitlement on the box — a sudoers rule`,
+    `letting this user run the agent binary as '${declared}' (docs/box-setup.md §0.1a) — and`,
+    `${said}.`,
+    "Raising the session as this user instead is refused rather than done quietly: it would give the",
+    "role the privileges of the box it happens to run on, which is what the declaration exists to end",
+    "(thread 047-devops-role).",
+    `Repair: add the rule of docs/box-setup.md §0.1a for '${declared}' and the agent binary, or run`,
+    `the daemon as '${declared}', or drop the declaration from the role's card in the config.`,
   ].join(" ");
 };
+
+/**
+ * HOW THIS RUN BECOMES THE IDENTITY THE ROLE DECLARES (thread `047-devops-role`, point 3
+ * of curator's statement of work) — one answer, resolved once, carried into the spawn.
+ *
+ * `self` is what every run of this circuit has always done and what every role without a
+ * declaration keeps doing: `spawn` inherits uid/gid, and there is nothing to switch.
+ * `sudo` is the narrow path — ONE target user, ONE binary, no password (`-n`), no `root`
+ * anywhere in it.
+ */
+export type SpawnAs = { readonly mode: "self" } | { readonly mode: "sudo"; readonly user: string };
+
+/**
+ * THE BINARY THAT PERFORMS THE SWITCH. A bare name rather than a path on purpose: it is
+ * resolved on the PARENT's `PATH` (the daemon's user), which is the user the entitlement is
+ * written for. The path inside the rule is the AGENT's, and that one is already resolved by
+ * `resolveExec` — two different questions, two different layers.
+ */
+export const SWITCH_EXEC = "sudo";
+
+/**
+ * ASKING THE BOX WHETHER THE PATH EXISTS, WITHOUT TAKING IT — `sudo -n -l -u <user> <bin>`
+ * lists the rule instead of running the command, exits 0 when it matches and non-zero when
+ * it does not.
+ *
+ * `-n` IS NOT AN OPTIMISATION HERE ANY MORE THAN IT IS ON THE LAUNCH ITSELF: without it a
+ * box with no rule turns the probe into a prompt for a password nobody is at the terminal to
+ * type, and the daemon's tick would hang instead of refusing. The refusal is the point.
+ */
+export const switchProbeArgv = (input: {
+  readonly user: string;
+  readonly exec: string;
+}): readonly string[] => ["-n", "-l", "-u", input.user, input.exec];
+
+/** What the box answered. `detail` is the probe's own words — carried into the refusal verbatim. */
+export type SwitchProbe = {
+  readonly allowed: boolean;
+  readonly detail: string;
+};
+
+/**
+ * THE SPAWN ITSELF, in the FORM the entitlement is written for (curator's point 3): the
+ * rule grants `NOPASSWD` on a BINARY, so the command has to BE that binary. `sudo -u <user>
+ * env VAR=… <bin>` — the shape one reaches for to carry the environment across — is a call
+ * whose command is `env`, and a rule naming the agent binary rejects it. The environment is
+ * carried by `env_keep` on the box instead (docs/box-setup.md §0.1a), which is why adding a
+ * variable to {@link LAUNCH_ENV} is also a line on the box.
+ *
+ * Pure, and pinned by a test, for the same reason `buildLaunchArgv` is: a command assembled
+ * inline at the spawn is a command nothing checks, and this one decides WHICH USER a session
+ * runs as.
+ */
+export const spawnAsCommand = (input: {
+  readonly as: SpawnAs;
+  readonly exec: string;
+  readonly argv: readonly string[];
+}): { readonly command: string; readonly argv: readonly string[] } =>
+  input.as.mode === "self"
+    ? { command: input.exec, argv: input.argv }
+    : {
+        command: SWITCH_EXEC,
+        argv: ["-n", "-u", input.as.user, input.exec, ...input.argv],
+      };
+
+export type SpawnIdentity =
+  | { readonly ok: true; readonly as: SpawnAs }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * THE RULE OF CHOICE, THREE BRANCHES AND NO FOURTH (curator's point 2). The fourth — raising
+ * the session as the daemon's own user because the declared one was out of reach — is the
+ * outcome this whole row exists to forbid, and it is the one a fall-through would produce.
+ *
+ *  1. no declaration, or the declaration IS the user this process runs as → `self`, exactly
+ *     as before this path existed. Every role that runs today takes this branch and nothing
+ *     about it changed: no probe, no `sudo`, no new failure mode;
+ *  2. declared, different, and the box grants the narrow path → `sudo`;
+ *  3. declared, different, and no path → {@link systemUserRefusal} BY NAME. The door of
+ *     #132 stays a door: it did not become an implementation detail of the branch above it.
+ *
+ * The probe is passed IN rather than run here: this module is the pure half of the launch
+ * (it is why the ceilings and the argv can be tested at all), and asking the box is IO. The
+ * caller runs it only on branch 2's precondition — a role whose declaration differs — so a
+ * circuit of roles that declare nothing spawns no `sudo` at all.
+ */
+export const resolveSpawnIdentity = (input: {
+  readonly role: Role;
+  readonly currentUser: string | undefined;
+  readonly probe?: SwitchProbe;
+}): SpawnIdentity => {
+  const declared = input.role.systemUser;
+  if (declared === undefined || declared === input.currentUser) {
+    return { ok: true, as: { mode: "self" } };
+  }
+  if (input.probe?.allowed === true) return { ok: true, as: { mode: "sudo", user: declared } };
+  return {
+    ok: false,
+    // Non-null: `systemUserRefusal` returns a string on exactly the branch reached here.
+    reason: systemUserRefusal(input.role, input.currentUser, input.probe) as string,
+  };
+};
+
+/**
+ * WHAT THE OPERATOR IS TOLD WHEN A RUN CHANGES USER — printed on the launch line beside the
+ * ceilings and the agent, and printed only when there is something to say.
+ *
+ * A run that switches identity is the one fact about a launch that cannot be recovered from
+ * the journal afterwards: the session's own log is written by the supervisor (this user), the
+ * process is gone by the time anyone reads it, and `ps` was hours ago. It also carries the
+ * one boundary this build does NOT check — see the note on the environment below.
+ */
+export const describeSpawnAs = (as: SpawnAs): readonly string[] =>
+  as.mode === "self"
+    ? []
+    : [
+        `identity ${as.user} (sudo -n -u, the entitlement of docs/box-setup.md §0.1a) — the session's environment crosses the switch only through 'env_keep', which this supervisor cannot see and does not check`,
+        // NAMED AS AN INFERENCE, BECAUSE THAT IS WHAT IT IS (curator's point 4, third
+        // boundary). The supervisor puts a session down by signalling its process GROUP, and
+        // a signal to a process of another user is delivered only to a privileged sender
+        // (POSIX: the real/effective uid must match). If `sudo` execs in place, the group
+        // becomes `<user>`'s and the takedown gets `EPERM` — that is, the takedown would stop
+        // working on the very day the switch starts. It is NOT measured: measuring it needs a
+        // live switch, which needs the rule on the box. If it is confirmed, the entitlement
+        // needs a SECOND target (sending the signal), which is a widening of the rule and so
+        // john's word in its own pass — not something this build may grant itself.
+        // BOUNDARY ONE OF THE THREE (curator's point 4), and the one an operator meets
+        // FIRST: `sudo -u` gives the child that user's `HOME`, so the vendor's session store
+        // moves with it and `--resume` stops finding this role's earlier conversations. The
+        // account directory is worse than a lost resume — it is pointed at by
+        // `CLAUDE_CONFIG_DIR`, it belongs to the daemon's user today, and a target user
+        // without write access there fails at a layer that reads as a dead token. Neither is
+        // checked here: both are facts about a box this process cannot inspect across the
+        // switch, and the honest form of that is saying so on every such launch.
+        `identity ${as.user}: 'HOME' becomes that user's, so a '--resume' of this role's earlier sessions is NOT expected to find them, and the account directory ('CLAUDE_CONFIG_DIR') must be one that user may write — neither is checked by this build (docs/box-setup.md §0.1a)`,
+        `identity ${as.user}: takedown of this session is UNVERIFIED — a signal from this user to another user's process group is expected to fail with EPERM (inference, not a measurement); if it does, the entitlement needs a second target and that is john's decision`,
+      ];
 
 export const roleLaunchability = (role: Role): Launchability => {
   if (role.status !== "active") return { launchable: false, reason: "inactive" };
