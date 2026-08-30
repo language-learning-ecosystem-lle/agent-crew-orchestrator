@@ -55,4 +55,4 @@
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | verdict: approve |
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~09:12Z: «заводи шаблон»). |
-| 053-review-bypassed | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
+| 053-review-bypassed | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | П.1 не сделан: круг по влитому срезу #123 отказался судить, потому что PR смёржен — вторая попытка… |
