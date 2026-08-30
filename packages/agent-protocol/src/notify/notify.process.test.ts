@@ -355,8 +355,16 @@ describe("notify as a command", () => {
   it("A PARK RINGS ONCE — the next digest does not repeat the question (thread 051)", () => {
     // john's pain of 2026-08-03, end to end: the ❓ line used to be rendered from the
     // composition, so every digest with anything else in it carried the same question again.
+    //
+    // THE PARK IS DECLARED A MINUTE AGO SINCE THREAD 043, and the fixture date is the whole
+    // reason: this rule is about a question the reader has just been called about, and from
+    // {@link PARK_REMINDER_AFTER_MINUTES} on the same question IS said again on purpose (the
+    // test below). A park dated a month back would be testing the reminder here, not this.
     const contest = contour({ stalledAfter: 10_000_000 });
-    contest.park("023-x", { asks: true });
+    contest.park("023-x", {
+      asks: true,
+      date: `${new Date(Date.now() - 60_000).toISOString().slice(0, 19)}Z`,
+    });
     contest.commit();
 
     run(contest, ["--write"]);
@@ -379,6 +387,81 @@ describe("notify as a command", () => {
     // john, so it is still counted as asking — what is over is the RINGING, and that is the
     // third number. The old line said `0 of them asking` here, about a live question.
     expect(second.out).toContain("1 parked, 1 of them asking, 0 of those new");
+  });
+
+  it("AND IT IS SAID AGAIN WHILE IT STANDS — the reminder, end to end (thread 043, Д-4)", () => {
+    // THE DEFECT THROUGH THE REAL DOOR, in the shape it was measured in on 2026-08-29: ten parks
+    // on john in `.orchestrator/notify.state`, the oldest eleven days, and not one of them
+    // mentioned since the tick it was declared on. The fixture park is dated 2026-07-25 — a
+    // month old against the real clock, which is the whole point: it is the age that speaks.
+    //
+    // Nothing else is in this mail. That is the half no unit test can prove: the reminder must
+    // RAISE its own letter, not ride in somebody else's, because the box with a queue of
+    // standing decisions is by construction the box where nothing else is happening.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("023-x", { asks: true });
+    contest.commit();
+
+    run(contest, ["--write"]);
+    rmSync(contest.delivered);
+    const first = readFileSync(contest.state, "utf8");
+    expect(first).toContain("parked\tjohn\t023-x\t");
+    // Nothing has been reminded yet: the call went out on this very tick.
+    expect(first).not.toContain("remind\t");
+
+    const second = run(contest, ["--write"]);
+
+    expect(second.code).toBe(0);
+    expect(second.out).toContain("1 parked, 1 of them asking, 0 of those new, 1 reminded");
+    expect(second.out).toContain("023-x (reminded john,");
+    const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
+    // The age and the subject, and the question in the words it was asked in — no body.
+    expect(text).toMatch(
+      /^still on you after \d+d \d+h — your decision: 023-x — Чинить ли гард 2\?$/,
+    );
+    // A single question gets no header: the header is about the SIZE of a queue.
+    expect(text.split("\n")).toHaveLength(1);
+    // AND THE CLOCK IS WRITTEN, so the next tick thirty seconds later is silent.
+    expect(readFileSync(contest.state, "utf8")).toContain("remind\tjohn\t023-x\t");
+    rmSync(contest.delivered);
+
+    const third = run(contest, ["--write"]);
+    expect(third.out).toContain("nothing to announce");
+    expect(existsSync(contest.delivered)).toBe(false);
+    // The clock survives the quiet tick — dropping it here is the every-tick buzz.
+    expect(readFileSync(contest.state, "utf8")).toContain("remind\tjohn\t023-x\t");
+  });
+
+  it("an answered park stops reminding in the same tick, and its clock goes with it", () => {
+    // Point 4 of the statement, through the door: a `delivers: john` lifts the person park
+    // (R27), the park leaves the composition — and the reminder entry must leave with it, or
+    // the NEXT question of the same pair would be silent for twelve hours behind a stamp
+    // belonging to a question that has been answered.
+    const contest = contour({ stalledAfter: 10_000_000 });
+    contest.park("023-x", { asks: true });
+    contest.commit();
+
+    run(contest, ["--write"]);
+    run(contest, ["--write"]);
+    expect(readFileSync(contest.state, "utf8")).toContain("remind\tjohn\t023-x\t");
+    rmSync(contest.delivered);
+
+    writeFileSync(
+      join(contest.root, "023-x", "messages", "2026-07-26T10-00-00Z-curator.md"),
+      "---\nfrom: curator\nworker: human\ndate: 2026-07-26T10:00:00Z\nexpects: none\ndelivers: john\nwaiting-on: dev-core\n---\n\nОтвет получен.\n",
+    );
+
+    const after = run(contest, ["--write"]);
+
+    expect(after.code).toBe(0);
+    expect(after.out).not.toContain("reminded");
+    expect(after.out).toContain("0 parked, 0 of them asking, 0 of those new, 1 lifted");
+    const state = readFileSync(contest.state, "utf8");
+    expect(state).not.toContain("remind\t");
+    // The park's own key is still owed a LIFT line (thread 030, (в2)) and stays in the state
+    // until a letter carries it — but the reminder clock is not part of that debt: what is owed
+    // is one sentence about a question that has stopped standing, not a cadence about a live one.
+    expect(state).toContain("parked\tjohn\t023-x\t");
   });
 
   it("A PARK WITH NOBODY TO CALL IS IN THE LINE, THOUGH IT RINGS NOBODY (thread 031)", () => {

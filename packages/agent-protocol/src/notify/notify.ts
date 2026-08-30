@@ -371,6 +371,13 @@ export type ParkedThread = {
   readonly thread: string;
   readonly person: RoleId;
   readonly since: string;
+  /**
+   * How long the question has been standing, already rendered — filled in by the reminder pass
+   * ({@link NotificationPlan.remindedParked}) and absent everywhere else. It is not part of the
+   * declaration a caller reads out of the feed and it is not stored: the age changes every tick,
+   * and what identifies a park is the message that declared it.
+   */
+  readonly age?: string | undefined;
   /** The first line of the parking message — the question, in the words it was asked in. */
   readonly question: string;
   /**
@@ -389,6 +396,52 @@ export type ParkedThread = {
    */
   readonly holder?: RoleId | undefined;
 };
+
+/**
+ * THE LAST REMINDER SENT ABOUT ONE STANDING PARK (thread 043) — state, not composition.
+ *
+ * Keyed by the PAIR, exactly as {@link parkedKey} is and for the same reason: a park re-declared
+ * under an unchanged key is the same question, and a reminder cadence that restarted at every
+ * restatement would be a second call about a question that has already had one.
+ */
+export type ParkReminder = {
+  readonly person: RoleId;
+  readonly thread: string;
+  /** When the reminder went out — what the interval below is measured from. */
+  readonly at: string;
+};
+
+/**
+ * AFTER HOW LONG A LIVE QUESTION ON A PERSON IS SAID AGAIN, AND HOW OFTEN AFTER THAT
+ * (thread 043, defect Д-4) — three hours, then twice a day.
+ *
+ * The class exists because the repair of Д-2 (#63, "a repeat without novelty makes no call")
+ * cured the noise and switched off the reminders with it: measured on this box on 2026-08-29,
+ * `.orchestrator/notify.state` held TEN parks on john, the oldest — `002-courier-mute` — eleven
+ * days old, and not one of them had been mentioned since the tick it was declared on. A park is
+ * the one class of event that does not end by itself: it stands until a person answers, so the
+ * courier that says it once and never again is telling the reader that a question they have not
+ * read has stopped existing.
+ *
+ * THE FIRST THRESHOLD IS THREE HOURS because that is the shortest gap that cannot be the
+ * reader's own tempo: the digest ticks every few minutes, a person answers a call over a working
+ * hour or two, and reminding earlier would ring about questions that are simply being read. It is
+ * also the default `stalledAfterMinutes` of this package — the same "a working half-day has gone
+ * by" the notifier already measures a dead turn with — and choosing a second number for the same
+ * intuition would be a number to explain rather than one to reuse.
+ *
+ * THE INTERVAL IS TWELVE HOURS, and it is chosen against the measured set rather than by taste:
+ * ten standing parks at six hours is forty lines a day, which is the shape of noise that taught
+ * the reader of Д-2 to skip the ❓ altogether. Twelve is morning and evening — two letters a day
+ * in which the whole standing set is repeated once — and the whole set rides in ONE message
+ * (see the header of {@link remindHeader}), so the cost of a reminder round is one buzz, not N.
+ *
+ * CONSTANTS AND NOT CONFIG KEYS, exactly like {@link UNACCEPTED_AFTER_MINUTES} beside them: a
+ * new key in `notifications` is a new protocol version and a migration for every box in the
+ * field (R2), which is john's decision and not a side effect of this repair.
+ */
+export const PARK_REMINDER_AFTER_MINUTES = 180;
+export const PARK_REMINDER_EVERY_MINUTES = 720;
 
 /**
  * THE FOURTH AND FIFTH CLASSES OF EVENT — THE ONES WITH NO THREAD AT ALL (thread
@@ -599,6 +652,14 @@ export type NotifyState = {
    * written before this class existed says, and it must not read as "everything is new".
    */
   readonly unaccepted?: readonly UnacceptedTurn[] | undefined;
+  /**
+   * When each standing park was last REMINDED about (thread 043). Not a composition and not an
+   * "was it announced" flag like the rest of this file: it is a clock, and it is the only thing
+   * in the state that a run writes a fresh value into rather than copying. Absent means this box
+   * has never reminded anybody — which is what a state file written before this class existed
+   * says, and it correctly reads as "every standing park is due".
+   */
+  readonly reminded?: readonly ParkReminder[] | undefined;
 };
 
 export type NotificationPlan = {
@@ -718,6 +779,29 @@ export type NotificationPlan = {
    * makes the line happen exactly once.
    */
   readonly parkedIfSilent: readonly ParkedThread[];
+  /**
+   * THE LIVE QUESTIONS SAID AGAIN BECAUSE NOBODY HAS ANSWERED THEM (thread 043, Д-4) — a call,
+   * unlike {@link restatedParked} and {@link liftedParked}, and that is the whole of the repair:
+   * a line that rides only in somebody else's letter is owed to a letter that never comes on a
+   * box where nothing else is happening, which is exactly the box that has ten parks standing.
+   *
+   * It is not a repeat in the sense Д-2 forbade. Д-2 is "the same question asked twice by two
+   * SESSIONS inside one tick window"; this is the same question said by the CLOCK, at a cadence
+   * the reader can predict ({@link PARK_REMINDER_AFTER_MINUTES}), and it stops the instant the
+   * person answers — a `delivers` lifts the park, the park leaves the composition, the key leaves
+   * the state.
+   */
+  readonly remindedParked: readonly ParkedThread[];
+  /**
+   * The reminder clock as the state must hold it after this run: the entries of parks that are
+   * STILL STANDING, with a fresh stamp for every reminder this letter carries.
+   *
+   * A key whose park has gone (answered, closed, re-parked on somebody else) is dropped here and
+   * not carried forward — that is point 4 of the statement, "the reminders stop in the same
+   * tick", and it is also what makes the NEXT park of the same pair start its cadence over
+   * instead of inheriting a stamp from a question that has been closed for a week.
+   */
+  readonly reminded: readonly ParkReminder[];
   /** The authorisation shelf in force now, if the predicate rings — also part of the state. */
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready outage in force now, if the predicate rings — also part of the state. */
@@ -766,7 +850,8 @@ const stalledKey = (turn: StalledTurn): string => `${turn.role}\t${turn.thread}\
  * fall inside ONE tick window, and even then the question is not lost: it is downgraded to
  * a line ({@link NotificationPlan.restatedParked}) rather than a call.
  */
-const parkedKey = (park: ParkedThread): string => `${park.person}\t${park.thread}`;
+const parkedKey = (park: Pick<ParkedThread, "person" | "thread">): string =>
+  `${park.person}\t${park.thread}`;
 
 /**
  * How a park that has changed its message under an unchanged key is said — the PACKAGE's
@@ -800,6 +885,28 @@ const restatedPrefix = "still standing, asked again (not a new question): ";
 const liftedPrefix = "the park was lifted, the last line about the question: ";
 
 /**
+ * How a reminder is said — the package's own words for the reason the two prefixes above are
+ * the package's, and saying the one fact the project's sentence cannot: WHEN this question was
+ * asked. The age is the whole point of the line (point 2 of thread 043's statement): the reader
+ * of "your decision: 002-courier-mute — …" cannot tell a question asked an hour ago from one
+ * that has been standing for eleven days, and it is the second that they were never told about.
+ *
+ * The question itself is NOT re-stated beyond the one line the `parked` slot already renders: a
+ * reminder that reprints the body is a second copy of a message the reader can open, and what
+ * they need from the digest is which thread and how long.
+ */
+const remindPrefix = (age: string): string => `still on you after ${age} — `;
+
+/**
+ * THE ONE LINE ABOVE A REMINDER ROUND, and the reason the round is a digest rather than N calls
+ * (point 5 of the statement): what a person with ten standing decisions needs first is the SIZE
+ * of the queue, which no per-park line can say. It is printed only from two reminders up — for a
+ * single one it would be a header over its own subject.
+ */
+const remindHeader = (count: number, oldest: string): string =>
+  `${count} decisions are standing on you, the oldest for ${oldest} — these threads move when you answer:`;
+
+/**
  * The state as a file: one event per line, ordered, so a diff of it is readable.
  *
  * A waiting pair keeps the two-column form it has always had, and a stall is a line
@@ -831,6 +938,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     // Four columns, like a stall and for the same reasons: the age changes every tick and
     // the reason is re-read from the box every time, so what is written is the identity.
     ...(state.unaccepted ?? []).map((turn) => `unaccepted\t${unacceptedKey(turn)}`),
+    // A CLOCK AND NOT AN IDENTITY (thread 043): four columns, of which the last is the stamp of
+    // the LAST REMINDER rather than of anything in the mail. It is the one line of this file
+    // whose value a quiet tick may not invent — see {@link NotificationPlan.reminded}.
+    ...(state.reminded ?? []).map((mark) => `remind\t${mark.person}\t${mark.thread}\t${mark.at}`),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -841,6 +952,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const parked: ParkedThread[] = [];
   const freezes: string[] = [];
   const unaccepted: UnacceptedTurn[] = [];
+  const reminded: ParkReminder[] = [];
   let auth: string | undefined;
   let gh: string | undefined;
   let drift: string | undefined;
@@ -865,6 +977,12 @@ export const parseNotifyState = (raw: string): NotifyState => {
       if (person !== undefined && thread !== undefined && since !== undefined) {
         parked.push({ person, thread, since, question: "", asks: false });
       }
+      continue;
+    }
+    if (columns[0] === "remind") {
+      const [, person, thread, at] = columns;
+      if (person !== undefined && thread !== undefined && at !== undefined)
+        reminded.push({ person, thread, at });
       continue;
     }
     if (columns[0] === "unaccepted") {
@@ -922,6 +1040,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
     drift,
     ...(freezes.length === 0 ? {} : { freezes }),
     ...(unaccepted.length === 0 ? {} : { unaccepted }),
+    ...(reminded.length === 0 ? {} : { reminded }),
   };
 };
 
@@ -1001,6 +1120,17 @@ export const planNotifications = (input: {
    * no journal there is no way to tell an untaken turn from one taken a second ago.
    */
   readonly unaccepted?: readonly UnacceptedTurn[];
+  /**
+   * THE CLOCK THE REMINDER PASS IS JUDGED BY (thread 043) — the only class here that measures
+   * time itself instead of being handed a measured age, because it measures two things at once:
+   * how long the question has stood, and how long ago it was last said. Both are cheap and both
+   * are decisions, so they stay in this function with the rest of them.
+   *
+   * ABSENT MEANS NO REMINDERS AT ALL, and it is the honest answer rather than a hidden default:
+   * a caller with no clock cannot be given one that pretends to be `now` — every stamp it wrote
+   * would be a lie in the state file. The one caller in this package (`notify`) always hands it.
+   */
+  readonly now?: Date | undefined;
   readonly templates?: Partial<Record<NotificationKind, string>>;
 }): NotificationPlan => {
   const byRole = new Map(input.targets.map((target) => [target.id, target]));
@@ -1071,6 +1201,48 @@ export const planNotifications = (input: {
     }),
     ...liftedParked,
   ];
+  // THE REMINDER ROUND (thread 043, Д-4). Four conditions, and every one of them is a class this
+  // repository has already paid for:
+  //
+  //  - THE PARK WAS ANNOUNCED — a park nobody has been called about yet is `freshParked`, and it
+  //    rings as a call in this very letter. Reminding about it in the same message would be the
+  //    same question twice under two prefixes;
+  //  - IT IS NOT A RESTATEMENT — Д-2's downgrade already puts a line about this key in this
+  //    letter, and two lines about one question is what Д-2 was spent removing;
+  //  - IT HAS STOOD LONGER THAN THE FIRST THRESHOLD, measured from the message that declared it;
+  //  - AND THE INTERVAL SINCE THE LAST REMINDER HAS RUN OUT. No stamp in the state means it has:
+  //    that is the state of every box upgrading into this class, and the ten parks measured on
+  //    2026-08-29 are exactly the set that must ring on the first tick after it ships.
+  const remindedAt = new Map((input.seen.reminded ?? []).map((mark) => [parkedKey(mark), mark.at]));
+  const remindedParked: ParkedThread[] = [];
+  if (input.now !== undefined) {
+    const at = input.now.getTime();
+    for (const park of askingParked) {
+      const pkey = parkedKey(park);
+      if (!seenParks.has(pkey) || restatedKeys.has(pkey)) continue;
+      const standing = (at - Date.parse(park.since)) / 60_000;
+      if (!Number.isFinite(standing) || standing < PARK_REMINDER_AFTER_MINUTES) continue;
+      const last = remindedAt.get(pkey);
+      if (last !== undefined) {
+        const quiet = (at - Date.parse(last)) / 60_000;
+        // AN UNPARSABLE STAMP IS A REASON TO STAY QUIET, not to ring: a hand-edited state file
+        // must not turn into a call every tick, and the next real reminder repairs the entry.
+        if (!Number.isFinite(quiet) || quiet < PARK_REMINDER_EVERY_MINUTES) continue;
+      }
+      remindedParked.push({ ...park, age: describeAge(standing) });
+    }
+  }
+  // THE CLOCK THAT SURVIVES INTO THE NEXT STATE FILE: the entries of parks still standing, with
+  // this round's stamp over the ones just reminded. A key whose park has gone is dropped here —
+  // an answer or a closure ends the cadence in the same tick (point 4), and it must also not
+  // leave a stamp behind that would silence the NEXT question of the same pair for twelve hours.
+  const remindedNow = new Set(remindedParked.map(parkedKey));
+  const stamp = input.now?.toISOString();
+  const reminded: ParkReminder[] = parked.flatMap((park) => {
+    const pkey = parkedKey(park);
+    const at = remindedNow.has(pkey) ? stamp : remindedAt.get(pkey);
+    return at === undefined ? [] : [{ person: park.person, thread: park.thread, at }];
+  });
 
   // A PARKED THREAD IS NEVER ALSO A STALLED ONE (thread 023). Both would be true of it —
   // the turn is not moving, by construction — but "your decision is wanted, here is the
@@ -1332,6 +1504,35 @@ export const planNotifications = (input: {
       }),
     });
   }
+  // AND THE REMINDERS COME AFTER THE NEW QUESTIONS AND BEFORE EVERYTHING ELSE (thread 043): a
+  // question the reader has not seen outranks one they have, and both outrank the reports about
+  // the circuit. The block opens with its own count when there is more than one of them — the
+  // first thing a person with a queue of decisions needs is its size, and no per-park line can
+  // say it. The header names no thread and no role: it is about the reader's own queue.
+  if (remindedParked.length > 1) {
+    // The oldest is the one the header names, and the ages are already rendered strings, so it
+    // is picked by the standing time rather than by the word: `since` is what was measured.
+    const oldest = [...remindedParked].sort((a, b) => Date.parse(a.since) - Date.parse(b.since))[0];
+    lines.push({
+      kind: "parked",
+      thread: "",
+      role: oldest?.person ?? "",
+      text: remindHeader(remindedParked.length, oldest?.age ?? ""),
+    });
+  }
+  for (const park of remindedParked) {
+    lines.push({
+      kind: "parked",
+      thread: park.thread,
+      role: park.person,
+      text:
+        remindPrefix(park.age ?? "") +
+        renderTemplate(template("parked"), {
+          thread: park.thread,
+          question: park.question,
+        }),
+    });
+  }
   // AND THE REPEATS COME RIGHT AFTER THEM, in the one letter that was going out anyway
   // (thread 030, Д-2): same slot, same question, the package's own words saying it is the
   // same one. A reader who cannot tell a repeat from a new call has been given the noise back.
@@ -1430,6 +1631,8 @@ export const planNotifications = (input: {
     restatedParked,
     liftedParked,
     parkedIfSilent,
+    remindedParked,
+    reminded,
     exhausted,
     freshFreezes,
     freezeKeys,

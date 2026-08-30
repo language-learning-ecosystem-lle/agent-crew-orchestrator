@@ -631,6 +631,35 @@ apart along lines the package already had:
   the digest is a courier of events, and the standing picture is what `cli mail` and the
   operator frame are for.
 
+- **BUT A LIVE QUESTION IS SAID AGAIN, RARELY AND ON A CLOCK** (thread 043, defect Д-4).
+  "Rings once" above is a rule about the CALL, and read as a rule about the whole life of a
+  park it produced the neighbouring silence: the repair of Д-2 cured the noise and switched
+  the reminders off with it. Measured on 2026-08-29: ten parks on john in
+  `.orchestrator/notify.state`, the oldest — `002-courier-mute` — eleven days old, and not
+  one of them mentioned since the tick it was declared on. A park is the one class of event
+  that does not end by itself, so a park that has been **announced**, is still **asking**,
+  and has stood longer than `PARK_REMINDER_AFTER_MINUTES` (**3 hours**) produces one line
+  again, and after that no more often than `PARK_REMINDER_EVERY_MINUTES` (**12 hours** —
+  morning and evening). The line is the project's `parked` sentence prefixed by the
+  package's own `still on you after {age} —`: the age is the half the reader cannot get
+  from the thread id, and the question is NOT repeated beyond the one line the slot already
+  renders. From two reminders up the block opens with one header of the package's own — `N
+  decisions are standing on you, the oldest for {age} — these threads move when you answer:`
+  — because what a person with a queue of decisions needs first is its size, and the whole
+  round rides in ONE message. **A reminder RAISES its own letter**, unlike the restatement
+  and the lift below: those ride in somebody else's because a second call about a question
+  already asked is Д-2, while a reminder is the only line anybody will ever write about a
+  park announced eleven days ago — and the box with a queue of standing decisions is by
+  construction the box where nothing else is happening. It never doubles another line: a
+  park that is fresh, restated, informational, or addressed to somebody the notifier cannot
+  call is never reminded. **It stops in the same tick the person answers**: a `delivers`
+  lifts the park, the park leaves the composition, and the reminder clock — one
+  `remind <person> <thread> <stamp>` line of the state file, holding when each standing park
+  was last said — leaves with it, so the NEXT question of that pair starts its cadence over
+  instead of inheriting a stamp from an answered one. The two thresholds are package
+  constants and not config keys, for the reason `UNACCEPTED_AFTER_MINUTES` is: a new key in
+  `notifications` is a new protocol version and a migration for every box in the field.
+
 - **A question ASKED AGAIN is a line in somebody else's letter, never a letter of its
   own** (thread 030, defect Д-2). A park is lifted by any later message that moves
   somebody, so a role raised on a thread whose question is still unanswered re-asks it in
@@ -646,7 +675,7 @@ apart along lines the package already had:
   quiet tick — the courier runs every few minutes, and a downgrade that turns into a
   disappearance is the trade of 051 made backwards. The courier's line names it as a fourth
   number when there is one: `N parked, K of them asking, M of those new, R restated,
-  L lifted, X with nobody to call: …` (the last three clauses appear only when
+  P reminded, L lifted, X with nobody to call: …` (the last four clauses appear only when
   they are not zero). What
   the pair key costs is stated rather than hidden: if the person answers and a NEW question
   is parked on the same thread before the courier has ticked once, the composition was never
@@ -1506,6 +1535,27 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # is silent without a live daemon, for the reason the frame is (the standoff
                             # file outlives its writer), and silent inside the band, which is a circuit
                             # working normally
+                            # AND THE TENTH CLASS: A LIVE PARK NOBODY HAS BEEN REMINDED OF (thread 043).
+                            # A park rings once, on the message that asked — and until this class that
+                            # was the last word ever said about it: ten parks stood on john on
+                            # 2026-08-29, the oldest eleven days, none mentioned since its own tick. A
+                            # park that was ANNOUNCED, is still ASKING and has stood past
+                            # PARK_REMINDER_AFTER_MINUTES (180) is said again, and after that no more
+                            # often than PARK_REMINDER_EVERY_MINUTES (720 — morning and evening). Both
+                            # are constants and not config keys, for the reason above
+                            # THE LINE NAMES THE AGE AND NOT THE BODY: the project's `parked` sentence
+                            # under the package's `still on you after {age} —`, and from two reminders
+                            # up one header over the block (`N decisions are standing on you, the
+                            # oldest for {age} …`) — the whole round is ONE message
+                            # IT RAISES ITS OWN LETTER, unlike the restatement and the lift: a line
+                            # that waits for somebody else's event is owed to a letter that never
+                            # comes, and the box with a queue of standing decisions is the box where
+                            # nothing else happens. It never doubles a line — a park that is fresh,
+                            # restated, informational or addressed to somebody unreachable is not
+                            # reminded — and it STOPS IN THE SAME TICK the person answers: `delivers`
+                            # lifts the park, and the clock (`remind <person> <thread> <stamp>` in the
+                            # state file) is dropped with it, so the next question of that pair starts
+                            # its cadence over rather than inheriting an answered one's stamp
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
