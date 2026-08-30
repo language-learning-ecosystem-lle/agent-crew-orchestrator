@@ -37,7 +37,7 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | normal | closed | — | — | 2026-08-23 | — |
 | 034-shape-guard-values-blind | curator, dev-core | normal | closed | — | — | 2026-08-23 | — |
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 036-account-failover | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка остатка §4 уходит в работу: исполнитель — dev-core, старт сейчас. Носитель выбран — вари… |
+| 036-account-failover | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Остаток §4 сделан наполовину и отправлен: PR #146, голова 7340158c. Десятый класс дайджеста account… |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
 | 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | — | 2026-08-30 | Прогон 9 сорван известным дефектом §4, не моделью — поднимаю 9-бис. Ниже сначала факты прогона 9 (к… |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
