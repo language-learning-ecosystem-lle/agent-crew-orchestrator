@@ -380,6 +380,32 @@ export const launchSchema = z
      * behaviour of every run before this field existed.
      */
     account: z.string().min(1).optional(),
+    /**
+     * THE ACCOUNTS THIS ROLE FALLS BACK ON WHEN ITS OWN WINDOW IS CLOSED, IN ORDER
+     * (thread `036-account-failover`, step 2 of the statement of work).
+     *
+     * The repository's half of the failover, and the only half that is a decision: which
+     * window is closed is measured (`quota.ts`), which account the next session is raised
+     * on is chosen (`failover.ts`), and WHOSE quota a role is allowed to reach for is a
+     * statement about the project — it moves whose subscription pays.
+     *
+     * AN ORDERED LIST AND NOT "any live account of the box" (curator, msg-002 §1).
+     * Accounts are not interchangeable — model, tariff, limits and owner differ — and
+     * "any" is how a cheap role quietly starts burning an expensive subscription. The
+     * order is the role's preference, read left to right, first open link wins.
+     *
+     * UNSAID OR EMPTY MEANS OFF, to the line: a role with no chain behaves exactly as it
+     * did before this field existed — it stands down until its own window reopens. That
+     * is what every role of THIS repository declares today (john, 2026-08-29: the two
+     * claude accounts of this box are one subscription behind two directories, so there
+     * is no real spare to fall back on and a chain here would only look like one).
+     *
+     * EVERY ENTRY IS AN ID OF THE SAME DICTIONARY `account` uses, and is judged at the
+     * moment it is DECLARED rather than at the moment quota runs out (`config check`,
+     * `doctor`): a fall-back of another kind, one this machine does not declare, the
+     * role's own account, or the same id twice is refused BY NAME — see `chainRefusals`.
+     */
+    fallback: z.array(z.string().min(1)).optional(),
   })
   .superRefine((launch, ctx) => {
     if (launch.allowedTools !== undefined) return;

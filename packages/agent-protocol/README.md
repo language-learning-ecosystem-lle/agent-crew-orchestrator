@@ -283,6 +283,32 @@ A role whose instance defaults to nothing either inherits the box's own account,
 is what every run did before the field existed; the environment variable is then not
 set at all rather than set to the default path, so an operator who exported one keeps it.
 
+#### The fall-back chain of a role (`roles[].launch.fallback`, thread 036)
+
+A third optional field of the same dictionary, and the repository's half of the account
+failover: an ORDERED list of ids the next session of this role is raised on when its own
+quota window is closed. Not "any live account of the box" — accounts differ by model,
+tariff, limits and owner, and "any" is how a cheap role quietly starts burning an
+expensive subscription. Left out or `[]`, the field changes nothing to the line: the role
+stands down until its own window reopens, exactly as before it existed, which is what
+every role of this repository declares today.
+
+**Every link is judged where it is WRITTEN — by `config check` and by the same reading in
+`doctor` — and each refusal names the role, the key and the repair.** Four of them: the
+role's own account (a chain falling back onto the window it is running from), an id this
+machine does not declare (`accounts.<id>.configDir`), an account this machine declares as
+another KIND (a different tool is not a spare key — that door is not negotiable), and the
+same id twice (a chain one link shorter than its author believes). The runtime is more
+forgiving on purpose: `chooseAccount` refuses a crooked link by name and CARRIES ON down
+the chain, because one typo must not stand a role down while a valid link waits behind it.
+The strict door is the config one, and it fires in the PR that writes the chain rather than
+on the day quota runs out — which is the moment the missing spare cannot be repaired.
+
+**Two refusals are the MACHINE's and are not made without it.** A reader that could not
+open the machine config (an unreadable or absent `local.json`) does not say "this box
+declares no such account" — that would be a sentence about the reader. The two that hold in
+any checkout (the role's own account, the repeated id) are still made.
+
 #### Logging an account in, and logging it in again (B.4)
 
 The one step of the whole mechanism that no command can take: an OAuth login is a

@@ -194,6 +194,7 @@ import {
   repositoryConfigCheck,
   type SigningPlace,
 } from "./orchestrator/doctor.js";
+import { chainRefusals, describeChainRefusal } from "./orchestrator/failover.js";
 import {
   deployKeyHint,
   githubSummary,
@@ -1226,6 +1227,17 @@ const configIssues = (
   // The vendor's list, passed IN rather than read here so that the caller that also has to
   // print the non-fatal half of the same judgement reads the file once (thread 041).
   catalogue: CodexCatalogue = codexCatalogueHere(),
+  // WHAT THIS BOX SAYS ABOUT ITS ACCOUNTS, passed IN and optional (thread 036, step 2).
+  // The fall-back chain of a role is the one judgement here that needs the other half of
+  // the R14 join, and it is the caller's to read: `config check` and `doctor` each already
+  // hold a resolved machine config, and a second reading inside this function would be a
+  // door with its own opinion about which file is the machine's. Absent means "not asked"
+  // — the two refusals that quote the machine are then not made at all.
+  machine?: {
+    readonly accounts?: Readonly<Record<string, LocalAccount>> | undefined;
+    /** The instance's default account (`instances[].account`) — the primary of a role that names none. */
+    readonly instanceAccount?: string | undefined;
+  },
 ): readonly string[] => {
   // The declared instructions are checked AT THE SAME ref as the config: checking
   // for the file on disk would mean looking at a different version of the tree.
@@ -1264,14 +1276,35 @@ const configIssues = (
     .filter((finding) => finding.fatal)
     .map((finding) => finding.line);
 
-  return [...missing, ...ownership, ...pairs];
+  // THREAD 036, step 2: THE FALL-BACK CHAIN JUDGED AT THE MOMENT IT IS WRITTEN. At runtime
+  // a bad link is only reached when the role's own window is already closed — the worst
+  // moment to discover a typo, because the spare that would have answered is the thing
+  // that is missing. Here nobody is waiting, so the same refusals are made in the PR that
+  // writes them, by name and with the key to edit.
+  const chains = loaded.config.roles.flatMap((role) => {
+    const primary = role.launch?.account ?? machine?.instanceAccount;
+    return chainRefusals({
+      ...(primary === undefined ? {} : { primary }),
+      ...(role.launch?.fallback === undefined ? {} : { fallback: role.launch.fallback }),
+      // The kind the role would be raised as, off its own card: a `--worker` flag on
+      // whoever typed `config check` is provenance about this command, not about the role.
+      worker: resolveWorker({ ...(role.launch === undefined ? {} : { launch: role.launch }) })
+        .value,
+      ...(machine?.accounts === undefined ? {} : { accounts: machine.accounts }),
+    }).map((refusal) => describeChainRefusal({ role: role.id, refusal }));
+  });
+
+  return [...missing, ...ownership, ...pairs, ...chains];
 };
 
 const configCheck = (argv: readonly string[]): void => {
   const loaded = configFrom(argv, undefined);
   const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
   const catalogue = codexCatalogueHere();
-  const issues = configIssues(loaded, repo, catalogue);
+  // The machine's half of the account join, read through the door that must not die over
+  // an unreadable local config: a box that cannot say what it declares still gets every
+  // verdict this command makes about the repository alone.
+  const issues = configIssues(loaded, repo, catalogue, machineAccounts(argv, loaded.config));
 
   // THE HALF THAT IS NOT A VERDICT, AND WHY IT IS PRINTED AT ALL (thread 041). "The pair
   // is wrong" and "there is no list to judge it against" are different facts, and the
@@ -4586,6 +4619,47 @@ const declaredAccounts = (
 const declaredAccount = (argv: readonly string[], id: string): LocalAccount | undefined =>
   declaredAccounts(argv)?.[id];
 
+/**
+ * THE MACHINE'S HALF OF THE ACCOUNT JOIN, for the door that judges a fall-back chain
+ * (thread 036, step 2) — what this box declares, and which account the instance it calls
+ * itself defaults its roles to.
+ *
+ * Read through the same forgiving reader as everything else about accounts here: a
+ * machine config that cannot be opened costs the two refusals that quote it and nothing
+ * else, and `config check` still answers about the repository.
+ */
+const machineAccounts = (
+  argv: readonly string[],
+  config: {
+    readonly instances?:
+      | readonly { readonly id: string; readonly account?: string | undefined }[]
+      | undefined;
+  },
+): {
+  readonly accounts?: Readonly<Record<string, LocalAccount>>;
+  readonly instanceAccount?: string;
+} => {
+  const accounts = declaredAccounts(argv);
+  let instance: string | undefined;
+  try {
+    instance = resolveLocalConfig({
+      path: flag(argv, "--local-config"),
+      instance: flag(argv, "--instance"),
+      repo: flag(argv, "--repo") ?? homeOfOrCwd(process.cwd()),
+    }).config.instance;
+  } catch {
+    instance = undefined;
+  }
+  const instanceAccount = instanceAccountOf({
+    ...(config.instances === undefined ? {} : { instances: config.instances }),
+    ...(instance === undefined ? {} : { instance }),
+  });
+  return {
+    ...(accounts === undefined ? {} : { accounts }),
+    ...(instanceAccount === undefined ? {} : { instanceAccount }),
+  };
+};
+
 /** The same reading as a map of ids to kinds — what the frame carries for `renderAuth`. */
 const declaredAccountKinds = (argv: readonly string[]): Readonly<Record<string, string>> =>
   Object.fromEntries(
@@ -6122,7 +6196,22 @@ const doctor = (argv: readonly string[]): void => {
       path: loaded.path,
       ref: loaded.ref,
       roles: loaded.registry.ids().length,
-      issues: configIssues(loaded, configRepo),
+      // The same judgement `config check` makes, INCLUDING the fall-back chains (thread
+      // 036): doctor holds the machine config already, so it asks the fuller question
+      // rather than a smaller one — a row that is green here and red there is the drift
+      // this shared function exists against.
+      issues: configIssues(loaded, configRepo, undefined, {
+        ...(local.config.accounts === undefined ? {} : { accounts: local.config.accounts }),
+        ...(() => {
+          const instanceAccount = instanceAccountOf({
+            ...(loaded.config.instances === undefined
+              ? {}
+              : { instances: loaded.config.instances }),
+            ...(local.config.instance === undefined ? {} : { instance: local.config.instance }),
+          });
+          return instanceAccount === undefined ? {} : { instanceAccount };
+        })(),
+      }),
     }),
     machineConfigCheck({
       path: local.path,
