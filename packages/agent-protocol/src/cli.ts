@@ -9336,6 +9336,10 @@ const promptForRun = (input: {
     input.setup.continuation.mode === "resume"
       ? buildResumePrompt({
           thread: input.thread,
+          // The id of the role being resumed — the fact `await-input` asks for and the
+          // resume prompt used to print its line without (thread `054`). It is in hand
+          // here exactly as it is in the fresh branch below; nothing new is resolved.
+          role: input.role.id,
           reason: input.setup.previousReason ?? "an external abort",
           deadline,
           windDownSeconds: input.windDownSeconds,
