@@ -1,12 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T12:59:50.369Z",
+  "writtenAt": "2026-08-30T13:00:16.418Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "045-ship-signal-fixes-to-lle",
+      "state": "running",
+      "deadline": "2026-08-30T13:40:14Z"
+    },
     {
       "role": "dev-core",
       "thread": "047-devops-role",
