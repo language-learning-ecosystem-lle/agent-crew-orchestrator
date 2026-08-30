@@ -75,6 +75,7 @@ import {
   renderUnreadThreads,
   type ThreadFailure,
 } from "./fs/comms.js";
+import { checkContour, contourReaders } from "./fs/contour.js";
 import { execFileSyncByExit, SyncRunError } from "./fs/exec-sync.js";
 import {
   fileExistsAtRef,
@@ -12394,6 +12395,16 @@ const mergeGate = (argv: readonly string[]): void => {
   // itself then refuses (see `explainWithCredentials`).
   const platform = platformEnvOf({ repo });
   out(`merge-gate: credentials — ${platform.note}`);
+
+  // THE CONTOUR BOUNDARY (thread 062, john 2026-08-30 17:07Z) — asked BEFORE `gh`, because
+  // a question about another circuit's pull request must not reach GitHub at all. The two
+  // clauses and why they are these two: `fs/contour.ts`. The door is the cheap half of the
+  // measure; the load-bearing half is the per-circuit token, and it is john's hand.
+  const contour = checkContour({ ground: process.cwd(), target: repo, readers: contourReaders() });
+  if (!contour.ok) {
+    fail(`merge-gate: ${contour.refusal}`, 2);
+    return;
+  }
 
   const ask = (): string =>
     execFileSync(

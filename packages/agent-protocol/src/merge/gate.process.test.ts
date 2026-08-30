@@ -140,6 +140,10 @@ const run = (
       {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
+        // FROM INSIDE THE TREE THE COMMAND IS ABOUT — the shape a session actually has,
+        // and since thread 062 also the shape the contour door judges: the tree the
+        // command is invoked from is what the target is compared against.
+        cwd: repo,
         env: sandbox(configHomeInside(repo), {
           PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
         }),
@@ -1039,5 +1043,52 @@ describe("merge-gate takes the token of the instance the checkout belongs to", (
     );
 
     expect(out).toContain("token GH_TOKEN ← the environment of the caller (not overwritten)");
+  });
+});
+
+/**
+ * THE CONTOUR DOOR AS A PROCESS (thread `062-contour-boundary`). `fs/contour.test.ts`
+ * proves the VERDICT on injected facts; what only the process can prove is that the
+ * refusal happens BEFORE `gh` is asked anything — the stub here answers a perfectly
+ * mergeable pull request, so a door that ran late would exit 0 and this test would
+ * catch nothing else.
+ */
+describe("merge-gate refuses a tree of another circuit", () => {
+  it("names the foreign origin and never reaches gh", () => {
+    const home = repoWithConfig();
+    git(home, "remote", "add", "origin", "https://github.com/o/agent-crew-orchestrator.git");
+    const foreign = repoWithConfig();
+    git(foreign, "remote", "add", "origin", "https://github.com/o/language-learning-ecosystem.git");
+    const bin = stubGh(foreign, { json: mergeable() });
+
+    const result = ((): { code: number; out: string } => {
+      try {
+        const out = execFileSync(
+          TSX,
+          [CLI, "merge-gate", "--ref", "HEAD", "--repo", foreign, "--pr", "61"],
+          {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+            cwd: home,
+            env: sandbox(configHomeInside(home), {
+              PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
+            }),
+          },
+        );
+        return { code: 0, out };
+      } catch (error) {
+        const failure = error as { status?: number; stdout?: string; stderr?: string };
+        return {
+          code: failure.status ?? -1,
+          out: `${failure.stdout ?? ""}${failure.stderr ?? ""}`,
+        };
+      }
+    })();
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("belongs to another circuit");
+    expect(result.out).toContain("language-learning-ecosystem");
+    // The verdict of the payload never appears: the door stopped before the ask.
+    expect(result.out).not.toContain("READY");
   });
 });

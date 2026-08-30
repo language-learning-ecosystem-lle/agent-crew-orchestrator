@@ -2464,6 +2464,26 @@ output says which file and which variable won, never a value), and its answer is
 validated at the door — a renamed field is a refusal by name, never a silent "no
 reviews, no checks", which for a merge gate would fail open.
 
+**The contour boundary is asked first, before `gh` (thread 062).** The tree the command
+is invoked FROM must belong to a circuit this box declares (a named machine config with
+`repo`), and the tree it is ABOUT (`--repo`, default: the current directory) must be the
+same repository — the same `origin`, or, when the target declares no `origin` at all,
+inside that circuit's checkout. Otherwise: exit 2, naming both origins and the circuit.
+
+```
+merge-gate: '/tmp/lle-clone' belongs to another circuit: its origin is
+https://github.com/o/language-learning-ecosystem.git, while circuit 'hetzner'
+(/home/lle/projects/aco) is https://github.com/o/aco.git — a role writes only into its
+own repository. What has to be said in another circuit goes through the role OF THAT
+circuit (thread 062, john 2026-08-30)
+```
+
+A box that declares no instance with `repo` gets no invented boundary: the note says so
+and the target is compared against the invoking tree instead. **This door is the cheap
+half of the measure and it does not pretend otherwise:** it catches the honest mistake
+and explains it, and it is bypassed by any `git`/`gh` call made beside the package. The
+load-bearing half is a token scoped to one repository, which is the operator's hand.
+
 **Two guards are never reported as passed, and that is the point.** Whether the feed
 really holds a decision of the owner of the decision (here: john) behind this PR (guard 3), and whether the merge gets
 written up with its guards afterwards (guard 5), are judgements no JSON answers. They
