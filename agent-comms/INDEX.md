@@ -58,8 +58,9 @@
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:33313601829 · 2026-08-30 | 2026-08-30 | Сделано: роль доезжает до промпта resume, PR #142 — жду CI |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | run:143 · 2026-08-30 | 2026-08-30 | Шаг 1 сделан руками: бамп version 0.2.6 → 0.2.7 лежит в PR #143, голова ca0de66e. Жду checks по #14… |
+| 055-mirror-rules-to-lle | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Слово john полем delivers (чат 2026-08-30 ~15:46Z), дословно: «Так а почему до сих пор не довезли д… |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
-| 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | run:33318762324 · 2026-08-30 | 2026-08-30 | Тест починен часами теста, а не подгонкой чисел; голова 8dfcb74cb6cd4c4479c57db338673ff11ee85dd6 |
+| 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | run:33320575058 · 2026-08-30 | 2026-08-30 | Зелёный был на голове, чью базу уже сдвинули — перебазировал ДО метки, а не после вердикта; новая г… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~15:39Z), дословно: «Ничего это не законно — получается, ч… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
