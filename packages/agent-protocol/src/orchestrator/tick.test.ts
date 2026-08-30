@@ -1089,14 +1089,17 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
       stopped: false,
     });
     expect(decision.kind).toBe("plan");
-    // The pair is raised, and — the whole point of the joint — it is raised on the SPARE:
-    // the account travels on the candidate, so the launcher, the journal and both shelves
-    // downstream read one field and no one of them needs to know a switch happened.
+    // The pair is raised, and — the whole point of the joint — it is raised on the SPARE.
+    // TWO fields say it, not one: the shelves and the skips downstream need only "which
+    // account" and read `account`, while the launch door needs "and it did not come off
+    // the card" and reads the mark — handed a bare id it would re-resolve the shut primary
+    // from the role's card and spend the very window this line announces as left.
     expect(decision.kind === "plan" ? decision.launches : []).toEqual([
       {
         role: "dev-core",
         thread: "t1",
         account: "second",
+        failover: { from: "main" },
         fallback: ["second"],
         worker: "claude-code",
       },
@@ -1118,6 +1121,43 @@ describe("planTick — the fall-back chain of a role (036, step 3)", () => {
     });
     expect(raised(decision)).toEqual(["dev-core×t1"]);
     expect(decision.kind === "plan" ? decision.launches[0]?.account : undefined).toBe("third");
+  });
+
+  // THE ID ALONE IS NOT THE WHOLE ANSWER (found in review of #125). The launch door
+  // resolves an account from the role's CARD, so a candidate that carries only a
+  // substituted string is read here, printed in the tick's line — and then dropped at the
+  // spawn, which raises the session on the primary this tick just announced was shut. The
+  // mark is what the door reads to know the id did not come off the card; the process test
+  // beside `account.process.test.ts` asks the child whether it worked.
+  it("a switched candidate is MARKED as switched, and names the window it left", () => {
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["second"]),
+      accounts: declared,
+      events: [shelved("main")],
+      enabled: true,
+      stopped: false,
+    });
+    const launched = decision.kind === "plan" ? decision.launches[0] : undefined;
+    expect(launched?.account).toBe("second");
+    expect(launched?.failover).toEqual({ from: "main" });
+  });
+
+  it("a candidate that STAYED carries no mark — an ordinary run is not relabelled", () => {
+    // Absence is the key here, not a gap: with the mark set on every launch the door would
+    // read every account as chosen off the chain and the layer that actually named it
+    // ('launch.account' / 'instances[].account') would stop being visible in the log.
+    const decision = planTick({
+      ...base,
+      candidates: onChain(["second"]),
+      accounts: declared,
+      events: [],
+      enabled: true,
+      stopped: false,
+    });
+    const launched = decision.kind === "plan" ? decision.launches[0] : undefined;
+    expect(launched?.account).toBe("main");
+    expect(launched?.failover).toBeUndefined();
   });
 
   it("a link of ANOTHER KIND is refused BY NAME and the live link behind it still answers", () => {

@@ -4712,13 +4712,27 @@ const agentFor = (
   local: LoadedLocalConfig,
   role: Role,
   /**
-   * WHAT THE THREAD SAID (R21) — already filtered by permission, and absent for every
-   * caller that has no thread in hand (`status`, `preflight`): those show what a role
-   * would be raised with IN GENERAL, and a per-thread directive is not part of that
-   * answer. The lines it caused to be dropped are printed by the caller beside the
-   * agent line, so a directive never disappears without a word.
+   * WHAT IS TRUE OF THIS LAUNCH AND OF NO OTHER — absent for every caller that has no
+   * single run in hand (`status`, `preflight`), which is why both halves are optional and
+   * why neither is read off a file here.
    */
-  directive?: LaunchDirective,
+  per?: {
+    /**
+     * WHAT THE THREAD SAID (R21) — already filtered by permission, and absent for every
+     * caller that has no thread in hand: those show what a role would be raised with IN
+     * GENERAL, and a per-thread directive is not part of that answer. The lines it caused
+     * to be dropped are printed by the caller beside the agent line, so a directive never
+     * disappears without a word.
+     */
+    readonly directive?: LaunchDirective;
+    /**
+     * WHICH ACCOUNT THE PLANNER PICKED OFF THE CHAIN for this one launch (thread 036,
+     * step 3) — set only when `planTick` marked the candidate `failover`, and it OVERRIDES
+     * the card. Without it this door would re-read `launch.account` and point the session
+     * at the very window the tick announced it was leaving.
+     */
+    readonly account?: string;
+  },
 ): {
   worker: ResolvedWorker;
   exec: ResolvedExec;
@@ -4752,7 +4766,7 @@ const agentFor = (
     worker,
     kind: askedKind,
     ...(role.launch === undefined ? {} : { launch: role.launch }),
-    ...(directive === undefined ? {} : { directive }),
+    ...(per?.directive === undefined ? {} : { directive: per.directive }),
   });
   if (!resolution.ok) return fail(`role '${role.id}': ${resolution.reason}`, 2);
   // THE LEVERS THE ROLE ASKS FOR AGAINST THE ONES THIS TOOL HAS (thread 026, step 3,
@@ -4819,6 +4833,11 @@ const agentFor = (
     // worker is already resolved above with its layer, so the door compares the two
     // halves of the R14 join instead of trusting whichever spoke last.
     worker,
+    // AND ABOVE BOTH LAYERS, THE CHAIN — when this tick's planner already walked it
+    // (thread 036, step 3). This is the line that makes the announcement true: without
+    // it the door reads `launch.account` off the card, resolves the closed primary, and
+    // the session spends the window the tick just said it was leaving.
+    ...(per?.account === undefined ? {} : { chosen: per.account }),
   });
   if (!account.ok) return fail(`role '${role.id}': ${account.reason}`, 2);
   return {
@@ -4826,7 +4845,10 @@ const agentFor = (
     exec,
     params: resolution.params,
     ...(account.account === undefined ? {} : { account: account.account }),
-    ignored: ignoredDirective({ ...(directive === undefined ? {} : { directive }), worker }),
+    ignored: ignoredDirective({
+      ...(per?.directive === undefined ? {} : { directive: per.directive }),
+      worker,
+    }),
   };
 };
 
@@ -8990,12 +9012,9 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   // WHAT THE THREAD SAID ABOUT ITS RUNS (R21) — read before the parameters are merged,
   // because it is one of the layers they merge from.
   const directed = threadDirectiveFor({ mailRoot, thread, registry });
-  const agent = agentFor(
-    argv,
-    local,
-    role,
-    ...(directed.effective === undefined ? [] : [directed.effective.directive]),
-  );
+  const agent = agentFor(argv, local, role, {
+    ...(directed.effective === undefined ? {} : { directive: directed.effective.directive }),
+  });
   const exec = agent.exec.value;
   const maxTurns = String(ceilings.maxTurns.value);
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
@@ -9941,12 +9960,16 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // that read it once at start-up would keep raising yesterday's decision for
     // days (R21 — a change mid-thread takes effect from the NEXT run).
     const directed = threadDirectiveFor({ mailRoot, thread: candidate.thread, registry });
-    const agent = agentFor(
-      argv,
-      local,
-      role,
-      ...(directed.effective === undefined ? [] : [directed.effective.directive]),
-    );
+    // THE ACCOUNT THE PLANNER CHOSE TRAVELS INTO THE DOOR (thread 036, step 3), and only
+    // when it was chosen: a bare `candidate.account` handed over on every launch would
+    // relabel every ordinary run as a failover and hide which layer of the config named
+    // the account. The mark is the whole condition — see `Candidate.failover`.
+    const agent = agentFor(argv, local, role, {
+      ...(directed.effective === undefined ? {} : { directive: directed.effective.directive }),
+      ...(candidate.failover === undefined || candidate.account === undefined
+        ? {}
+        : { account: candidate.account }),
+    });
     // The workspace and the continuation are settled PER LAUNCH: both are properties of
     // this (role, thread) pair at this moment, and the daemon lives for days. This half
     // is deliberately SYNCHRONOUS and happens before the registry entry exists — it is

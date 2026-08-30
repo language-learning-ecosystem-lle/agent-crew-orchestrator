@@ -473,8 +473,16 @@ export const resolveWorker = (input: {
  * line: a default nobody can see is a default nobody can audit, and this one decides
  * whose money a run spends. The refusal names the layer too — "the role asks for 'x'"
  * and "this instance defaults to 'x'" send whoever reads it to two different files.
+ *
+ * AND A THIRD LAYER ABOVE BOTH, FOR ONE TICK ONLY (thread `036-account-failover`,
+ * step 3). When the planner has already found the role's own window shut and walked its
+ * `launch.fallback` to an open one, THAT account is the answer here — otherwise the door
+ * re-reads the card, resolves the closed primary, and the session is raised on the very
+ * subscription the tick just announced it was leaving. It is a per-launch fact, never a
+ * layer of any file, so it is passed in rather than read: nothing on disk says it, and
+ * the next tick asks the chain again from the top.
  */
-export type AccountSource = "role" | "instance";
+export type AccountSource = "role" | "instance" | "failover";
 
 export type ResolvedAccount = {
   /** The id as the repository names it — a label, never the account itself. */
@@ -510,13 +518,21 @@ export const resolveAccount = (input: {
    * behaves as it did: with nothing to compare, there is nothing to disagree about.
    */
   readonly worker?: ResolvedWorker;
+  /**
+   * THE ACCOUNT THE PLANNER PICKED OFF THE CHAIN for THIS launch (thread 036, step 3) —
+   * absent on every caller that has no tick in hand (`status`, `preflight`, `run`), and
+   * absent on the overwhelming majority of ticks, where the role stays on its own.
+   */
+  readonly chosen?: string;
 }): AccountResolution => {
   const named =
-    input.launch?.account !== undefined
-      ? ({ id: input.launch.account, source: "role" } as const)
-      : input.instanceAccount !== undefined
-        ? ({ id: input.instanceAccount, source: "instance" } as const)
-        : undefined;
+    input.chosen !== undefined
+      ? ({ id: input.chosen, source: "failover" } as const)
+      : input.launch?.account !== undefined
+        ? ({ id: input.launch.account, source: "role" } as const)
+        : input.instanceAccount !== undefined
+          ? ({ id: input.instanceAccount, source: "instance" } as const)
+          : undefined;
   if (named === undefined) return { ok: true };
   const account = input.local?.accounts?.[named.id];
   const declared = account?.configDir;
@@ -524,7 +540,9 @@ export const resolveAccount = (input: {
     const who =
       named.source === "role"
         ? `the role is to be raised on account '${named.id}'`
-        : `this instance defaults its roles to account '${named.id}' ('instances[].account')`;
+        : named.source === "instance"
+          ? `this instance defaults its roles to account '${named.id}' ('instances[].account')`
+          : `the planner moved the role onto fall-back account '${named.id}' ('launch.fallback' of its card), its own window being shut`;
     return {
       ok: false,
       reason: `${who}, and this machine declares no such account — say where it lives ('accounts.${named.id}.configDir' of the machine config) or the run would silently spend the box's own`,

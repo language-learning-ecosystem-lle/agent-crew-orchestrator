@@ -87,6 +87,20 @@ export type Candidate = {
    */
   readonly fallback?: readonly string[];
   /**
+   * THE ACCOUNT ABOVE WAS PICKED OFF THE CHAIN, NOT READ OFF THE CARD (thread 036,
+   * step 3). Never set by the caller that builds a candidate: `planTick` puts it on the
+   * pairs it hands back, and ONLY when `chooseAccount` answered `failover`.
+   *
+   * It exists because `account` alone is not enough downstream. The launch door resolves
+   * the account from the ROLE'S CARD (`resolveAccount`), so a substituted id that travels
+   * as a bare string is read by the planner, printed in the tick's line — and then quietly
+   * dropped at the spawn, which raises the session on the primary the line just announced
+   * was shut. The mark is what tells the door "this one does NOT come from the card, use
+   * it and say so"; `from` is the window the pair is leaving, carried for the log rather
+   * than re-derived from a shelf that will have moved by the time anyone reads it.
+   */
+  readonly failover?: { readonly from: string };
+  /**
    * THE TOOL THIS PAIR WOULD BE RAISED AS (`launch.agent.kind`) — carried because a spare
    * of another kind is refused BY NAME rather than spent (thread 026, john 24.08), and the
    * refusal cannot be made without knowing what the role is. Absent means nobody said, and
@@ -409,12 +423,19 @@ export const planTick = (input: {
       ]);
       continue;
     }
-    // A SPARE ANSWERED. The candidate travels on with the account it will actually spend,
-    // and everything downstream — the credentials shelf below, the launcher, the journal —
-    // reads that one field, so nothing else in the tick needs to know a switch happened.
-    // It is the LOUD case: it moves whose money the run burns.
+    // A SPARE ANSWERED. The candidate travels on with the account it will actually spend
+    // — and WITH THE MARK that says where that id came from, because the two are not the
+    // same fact and only the first of them is enough for the readers INSIDE this file.
+    // The credentials shelf below and the skips only need "which account", so they read
+    // the field. The launch door needs "and it did not come off the card": it resolves the
+    // account from the role's card by default, and handed a bare id it would resolve the
+    // shut primary instead — announcing a switch that never happened, which is worse than
+    // the silence the announcement was written to remove. It is the LOUD case, so it is
+    // the one that must be true.
     const chosen =
-      choice.kind === "failover" ? { ...candidate, account: choice.account } : candidate;
+      choice.kind === "failover"
+        ? { ...candidate, account: choice.account, failover: { from: choice.from } }
+        : candidate;
     if (choice.kind === "failover")
       say(candidate.role, [
         describeFailover({ role: candidate.role, choice }),
