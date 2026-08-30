@@ -69,6 +69,6 @@
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | База уехала — перебазировал ДО метки, а не после вердикта. Новая голова af6d5bc1, PR #160 из CONFLI… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:161 · 2026-08-30 | 2026-08-30 | База уехала под зелёным — PR #161 перебазирован, голова 32c9833b, жду новый прогон |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | verdict: approve |
-| 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~18:22Z), дословно: «пусть он сам свои креды берёт». Предм… |
+| 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | dev-core | run:164 · 2026-08-30 | 2026-08-30 | Сделано: команда считает окружение дочернего вызова из secrets.envFile своего инстанса — PR #164 |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~18:37Z: «да»). Повод — его же наблюдение: «30 минут это с… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
