@@ -126,3 +126,100 @@ describe("the role 'devops' as this repository declares it", () => {
     expect(documents).toContainEqual({ path: "docs/roles/devops.md", source: "role" });
   });
 });
+
+/**
+ * WHAT THE ROW SAYS THE ROLE MAY DO TO THE BOX (protocol 23, curator's composition of 2026-08-30
+ * under john's «capabilities твои»). The grammar is guarded by `v24-role-capabilities.test.ts`;
+ * what is pinned HERE is the content of this repository's own declaration — the three verbs, and
+ * the fact that each of them is aimed by a list somebody wrote down rather than by a free string.
+ *
+ * WHY THREE. The composition carried five until 2026-08-30, when `service-restart` and
+ * `service-status` were struck by john's «(A) сейчас, (B) — если окажется, что рестарт нужен
+ * часто»: the daemons of both circuits are USER units of the user `lle`, and the separate identity
+ * `aco-devops` cannot restart or query another user's units without root, polkit, or a move to the
+ * system level. The three that remain are executable by ownership and a shared group alone — which
+ * is the frame the whole first version stands in.
+ */
+describe("the capabilities the row grants, and their boundaries", () => {
+  const capabilities = devops?.capabilities ?? [];
+  const byName = new Map(capabilities.map((capability) => [capability.name, capability]));
+
+  it("declares exactly the three verbs of the first version — no fourth arrived without a PR", () => {
+    expect(capabilities.map((capability) => capability.name)).toEqual([
+      "log-tail",
+      "repo-refresh",
+      "disk-free",
+    ]);
+  });
+
+  it("claims nothing systemd: the two struck verbs are absent from the row, not merely unused", () => {
+    // Not a restatement of the test above: this one is the claim a future editor would break
+    // silently — a row that names a verb the operating system refuses by construction reads as a
+    // right and is none. They come back with decision (B), at a new schema number.
+    const declared: string[] = capabilities.map((capability) => capability.name);
+
+    expect(declared).not.toContain("service-restart");
+    expect(declared).not.toContain("service-status");
+  });
+
+  it("keeps 'log-tail' a glance: named log FILES only, and a ceiling on one call", () => {
+    // Files, not `journal:` targets, and the reason is measured rather than assumed: a user
+    // journal on this box is `root:systemd-journal 0640` with an ACL naming exactly its own user
+    // and the group `adm` (measured 2026-08-30), so `aco-devops` would need a membership nobody
+    // has granted. The two daemon logs live inside the checkouts the shared group already covers.
+    const tail = byName.get("log-tail");
+
+    expect(tail?.name === "log-tail" ? tail.maxLines : undefined).toBe(200);
+    expect(tail?.name === "log-tail" ? tail.logs : []).toEqual([
+      "/home/lle/projects/language-learning-ecosystem/.orchestrator/daemon.log",
+      "/home/lle/projects/agent-crew-orchestrator/.orchestrator/daemon.log",
+    ]);
+  });
+
+  it("points 'repo-refresh' at the two circuit roots — never at a role's workspace", () => {
+    // The hard boundary of the statement of work: `pull --ff-only` + install in a NAMED checkout,
+    // and nothing that touches a branch, a reset or somebody's uncommitted work. A role's
+    // workspace is `<root>/.worktrees/<role>`, and it is not on this list — the door refuses a
+    // path outside it by name rather than walking down into it.
+    const refresh = byName.get("repo-refresh");
+    const checkouts = refresh?.name === "repo-refresh" ? refresh.checkouts : [];
+
+    expect(checkouts).toEqual([
+      "/home/lle/projects/language-learning-ecosystem",
+      "/home/lle/projects/agent-crew-orchestrator",
+    ]);
+    expect(checkouts.some((path) => path.includes(".worktrees"))).toBe(false);
+  });
+
+  it("aims every list at an ABSOLUTE path — a '~' would resolve to the wrong home", () => {
+    // The identities are split on purpose: the run is `aco-devops`, the files are `lle`'s. A
+    // tilde written here would be expanded against `/home/aco-devops` by whatever executes it and
+    // would miss the target silently — the one failure mode a closed list cannot catch by itself.
+    const targets = capabilities.flatMap((capability) =>
+      capability.name === "log-tail"
+        ? capability.logs
+        : capability.name === "repo-refresh"
+          ? capability.checkouts
+          : [],
+    );
+
+    expect(targets.length).toBeGreaterThan(0);
+    for (const target of targets) expect(target.startsWith("/")).toBe(true);
+  });
+
+  it("grants no verb the config does not spell — and the row still holds no mail permission", () => {
+    // Two different alphabets, deliberately: `permissions` are rights INSIDE the protocol (the
+    // mail, the thread, the launch parameters), `capabilities` are verbs on the machine. The
+    // role that administers the box gets the second set and none of the first.
+    expect(devops?.permissions).toEqual([]);
+    expect(byName.get("disk-free")).toEqual({ name: "disk-free" });
+  });
+
+  it("is a declaration and not a right in use: the role is still 'planned' and unraisable", () => {
+    // The order is the point (thread 047): the verbs are reviewed and merged BEFORE anything can
+    // execute them — the system user they would run as does not exist on the box yet, and no
+    // executor reads this field in this build.
+    expect(devops?.status).toBe("planned");
+    expect(roleLaunchability(devops as Role).launchable).toBe(false);
+  });
+});
