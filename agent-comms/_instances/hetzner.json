@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T14:26:40.825Z",
+  "writtenAt": "2026-08-30T14:31:20.469Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "047-devops-role",
       "state": "running",
       "deadline": "2026-08-30T15:13:35Z"
-    },
-    {
-      "role": "curator",
-      "thread": "053-review-bypassed",
-      "state": "running",
-      "deadline": "2026-08-30T15:06:39Z"
     }
   ]
 }
