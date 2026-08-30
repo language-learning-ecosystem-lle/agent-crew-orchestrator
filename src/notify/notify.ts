@@ -145,6 +145,7 @@ export const BOX_ALARM_KINDS = [
   "unaccepted",
   "unaccepted-stale-park",
   "code-drift",
+  "account",
 ] as const;
 export type BoxAlarmKind = (typeof BOX_ALARM_KINDS)[number];
 
@@ -229,6 +230,16 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
     "this box is running code {sha} while {ref} is {refSha}: {size}, and it has not picked the new code up — {why}. Nothing in the mail is wrong; what the circuit is executing is not what was merged",
   frozen:
     "{role}×{thread} is frozen for good: {detail}. The circuit will not raise this pair again by itself, and no message into that thread lifts it — the move is a run let through by hand (`orchestrator run --max-attempts` above the ceiling), whose handoff zeroes the count",
+  // THE TENTH CLASS IS THE ONE SENTENCE THIS MAP DOES NOT WRITE (thread 036, the tail of §4).
+  // Its three texts already exist and are already the tested ones — `describeFailover`,
+  // `describeAccountPause` and `describeRefusals` of `orchestrator/failover.ts`, landed in
+  // #105 — and john's word on their form was "let them be the ones we have, we will fix them
+  // later if we must" (chat 2026-08-30 ~13:10Z). Re-wording them here would give the reader
+  // TWO texts about one fact: the daemon's stream would say one sentence and the digest
+  // another, and the first question of anybody comparing them is which of the two is stale.
+  // So the slot is the whole line, handed over rendered, and this template says so out loud
+  // rather than pretending the courier composed it.
+  account: "{line}",
 };
 
 /** The announcements the package writes INTO A THREAD; same mechanism, different reader. */
@@ -625,6 +636,55 @@ export type CodeDriftAlarm = {
   readonly since: string;
 };
 
+/**
+ * WHAT THE TICK SAID ABOUT ACCOUNTS, ON ITS WAY TO THE PERSON WHOSE MONEY IT IS (thread 036).
+ *
+ * The facts are the planner's (`chooseAccount` and its three describers) and the caller
+ * measures them; this class decides only whether they RING. Two of the three are STATES and
+ * one is an EVENT, and the difference is the whole reason this type carries a kind:
+ *
+ *  - `held` — every account of a role's chain is quota-paused, so nothing of that role is
+ *    raised until the window reopens. A window stands for HOURS and the tick is thirty
+ *    seconds; said once per closed window it is the fact john spent two days finding by
+ *    hand, said every tick it is the noise that teaches him to skip the digest;
+ *  - `chain` — a named fall-back that will never be spent (a typo, a foreign kind, the
+ *    account the role already spends). A defect of the config: it stands until somebody
+ *    edits the file, so it rings once and not once per tick;
+ *  - `failover` — a run has been moved onto ANOTHER SUBSCRIPTION. An event, not a state,
+ *    and the loud one by the statement of this thread (§4 of 2026-08-28: the owner of both
+ *    subscriptions learns it from the system, not from a bill). It is NEVER weighed against
+ *    the memory below — see {@link planNotifications}.
+ */
+export type AccountAlarm = {
+  readonly kind: "failover" | "held" | "chain";
+  /** Whose launches the sentence is about — every one of the three names a role. */
+  readonly role: RoleId;
+  /**
+   * The sentence, rendered by the caller in the planner's own words. This package does not
+   * re-word it (see {@link BOX_ALARM_TEMPLATES.account}).
+   */
+  readonly text: string;
+  /**
+   * WHAT MAKES IT THE SAME FACT AS THE ONE ALREADY ANNOUNCED — the identity of the state, and
+   * the caller's to name because the caller is what read it: the shelf that holds the chain
+   * shut (its account and the window it reopens at) for `held`, the fall-back id for `chain`,
+   * the raise that moved for `failover`. It must carry no tab — the state file is columns.
+   *
+   * ABSENT MEANS THE ROLE ALONE IS THE IDENTITY, which is the safe direction for a state: a
+   * second closed window of the same role rings again only if the caller can tell the two
+   * apart, and one that cannot must not invent a difference.
+   */
+  readonly about?: string | undefined;
+};
+
+/**
+ * The identity of one account alarm: the kind, the role and the fact — in that order,
+ * because a role can stand behind a closed chain AND carry a broken link at the same time,
+ * and the two are different sentences with different repairs.
+ */
+export const accountAlarmKey = (alarm: AccountAlarm): string =>
+  `${alarm.kind}\t${alarm.role}\t${alarm.about ?? ""}`;
+
 /** What was announced last run: the six classes of event in one file. */
 export type NotifyState = {
   readonly waiting: readonly WaitingPair[];
@@ -660,6 +720,14 @@ export type NotifyState = {
    * says, and it correctly reads as "every standing park is due".
    */
   readonly reminded?: readonly ParkReminder[] | undefined;
+  /**
+   * The {@link accountAlarmKey}s of the account STATES already announced (thread 036) — the
+   * composition, like `unaccepted` and unlike `freezes`: a state ends by the window reopening
+   * or the config being repaired, and both drop the fact from what the caller hands over, so
+   * there is nothing to carry forward. Absent means this box has never announced one, which
+   * is what a state file written before this class existed says.
+   */
+  readonly accounts?: readonly string[] | undefined;
 };
 
 export type NotificationPlan = {
@@ -825,6 +893,12 @@ export type NotificationPlan = {
   readonly freshGh: boolean;
   /** True when this period of being behind has not been announced yet — one call per period. */
   readonly freshDrift: boolean;
+  /** Everything the tick said about accounts and this box can deliver — announced or not. */
+  readonly accountAlarms: readonly AccountAlarm[];
+  /** The ones that ring in this letter: every event, and the states not announced before. */
+  readonly freshAccounts: readonly AccountAlarm[];
+  /** The keys that must survive into the next state file — the STATES only, never an event. */
+  readonly accountKeys: readonly string[];
   /** The message, one line per thread-and-human. Rendered from the FULL composition. */
   readonly lines: readonly NotificationLine[];
 };
@@ -942,6 +1016,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     // the LAST REMINDER rather than of anything in the mail. It is the one line of this file
     // whose value a quiet tick may not invent — see {@link NotificationPlan.reminded}.
     ...(state.reminded ?? []).map((mark) => `remind\t${mark.person}\t${mark.thread}\t${mark.at}`),
+    // Four columns, of which the last may be empty (a caller that named no fact): the key IS
+    // the line, and the sentence is not stored — it is re-rendered from the box every run,
+    // exactly as the age of a stall and the reason of an unaccepted turn are.
+    ...(state.accounts ?? []).map((entry) => `account\t${entry}`),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -953,6 +1031,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const freezes: string[] = [];
   const unaccepted: UnacceptedTurn[] = [];
   const reminded: ParkReminder[] = [];
+  const accounts: string[] = [];
   let auth: string | undefined;
   let gh: string | undefined;
   let drift: string | undefined;
@@ -1012,6 +1091,16 @@ export const parseNotifyState = (raw: string): NotifyState => {
       if (columns[1] !== undefined) drift = columns[1];
       continue;
     }
+    if (columns[0] === "account") {
+      // The kind is checked against the three this class has: a line that is not one of them
+      // is dropped rather than half-read, on the freeze rule — a key that is not the key
+      // announces the same standstill a second time. The fourth column may be empty and the
+      // line then has three, which is why it is read by position and not by count.
+      const [, kind, role, about] = columns;
+      if ((kind === "failover" || kind === "held" || kind === "chain") && role !== undefined)
+        accounts.push(`${kind}\t${role}\t${about ?? ""}`);
+      continue;
+    }
     if (columns[0] === "freeze") {
       // Four columns exactly (kind, role, thread, since) — a short line is dropped rather
       // than half-read: a key that is not the key announces the same freeze a second time.
@@ -1041,6 +1130,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
     ...(freezes.length === 0 ? {} : { freezes }),
     ...(unaccepted.length === 0 ? {} : { unaccepted }),
     ...(reminded.length === 0 ? {} : { reminded }),
+    ...(accounts.length === 0 ? {} : { accounts }),
   };
 };
 
@@ -1120,6 +1210,17 @@ export const planNotifications = (input: {
    * no journal there is no way to tell an untaken turn from one taken a second ago.
    */
   readonly unaccepted?: readonly UnacceptedTurn[];
+  /**
+   * What the tick has to say about accounts (thread 036) — MEASURED BY THE CALLER, exactly as
+   * `auth`, `gh`, `drift` and `exhausted` beside it are, and for the reason all four are: the
+   * facts live in the journal and the machine config, and a courier that re-derived a decision
+   * about subscriptions would be a second implementation of `chooseAccount`.
+   *
+   * ABSENT MEANS SILENT, and it is the honest answer rather than a hidden default: a caller
+   * that could not read the box's own state cannot tell a role standing behind a closed window
+   * from one raised a second ago.
+   */
+  readonly accounts?: readonly AccountAlarm[];
   /**
    * THE CLOCK THE REMINDER PASS IS JUDGED BY (thread 043) — the only class here that measures
    * time itself instead of being handed a measured age, because it measures two things at once:
@@ -1346,6 +1447,27 @@ export const planNotifications = (input: {
   const freshUnaccepted = human
     ? unexplained.filter((turn) => !seenUnaccepted.has(unacceptedKey(turn)))
     : [];
+  // THE TENTH CLASS, AND THE TWO RULES THAT ARE ITS WHOLE SUBJECT (thread 036, О2 and О3):
+  //
+  //  - A STATE IS SAID ONCE. `held` and `chain` are true for hours (a quota window) or until
+  //    somebody edits a file (a broken link), and the tick that reads them runs every thirty
+  //    seconds. The memory is the composition the caller hands over, so a window that reopens
+  //    drops its key by itself and the NEXT closure of the same role rings again;
+  //  - AN EVENT IS NEVER WEIGHED AGAINST IT. A `failover` is a run spending somebody else's
+  //    subscription, and the statement of this thread makes it loud on purpose: it is not
+  //    looked up in `seen` at all, so no standing pause can swallow it. Which raises are new
+  //    is the caller's measurement (it is the caller that reads the journal), and that is the
+  //    one honest place for it — this function cannot tell a second raise from a re-read.
+  const seenAccounts = new Set(input.seen.accounts ?? []);
+  const accountAlarms = human ? (input.accounts ?? []) : [];
+  const freshAccounts = accountAlarms.filter(
+    (alarm) => alarm.kind === "failover" || !seenAccounts.has(accountAlarmKey(alarm)),
+  );
+  // A `failover` is an event and leaves no state to remember: the raise it names happened
+  // once, and a key kept for it would silence the next one of the same role.
+  const accountKeys = accountAlarms
+    .filter((alarm) => alarm.kind !== "failover")
+    .map(accountAlarmKey);
   const freshAuth = auth !== undefined && authAlarmKey(auth) !== input.seen.auth;
   const freshGh = gh !== undefined && gh.since !== input.seen.gh;
   const freshDrift = drift !== undefined && drift.since !== input.seen.drift;
@@ -1439,6 +1561,19 @@ export const planNotifications = (input: {
         why: drift.why,
       }),
     });
+  // AND THE ACCOUNTS STAND WITH THEM, above the mail and after the drift (thread 036): "the
+  // roles of this box are not being raised, and this is until when" changes what every line
+  // below it means, and "your money went onto the other subscription" is the one line here
+  // whose reader is the person who pays rather than the person who operates. One line per
+  // sentence — a held role and a broken link are two facts with two repairs.
+  for (const alarm of freshAccounts) {
+    lines.push({
+      kind: "account",
+      thread: "",
+      role: alarm.role,
+      text: renderTemplate(BOX_ALARM_TEMPLATES.account, { line: alarm.text }),
+    });
+  }
   // THE FREEZES COME WITH THE BOX'S OWN LINES, above the mail, for the same reason: a pair
   // the circuit has stopped raising is not a turn that has passed, and a reader who learns
   // "your turn: 042" first and "nothing is being raised for 042" last has read them in the
@@ -1642,6 +1777,9 @@ export const planNotifications = (input: {
     freshAuth,
     freshGh,
     freshDrift,
+    accountAlarms,
+    freshAccounts,
+    accountKeys,
     lines,
   };
 };
@@ -1886,6 +2024,55 @@ export const describeAge = (minutes: number): string => {
 /** The message as it goes to the transport: one text, the lines in order. */
 export const renderNotification = (lines: readonly NotificationLine[]): string =>
   lines.map((line) => line.text).join("\n");
+
+/**
+ * WHAT THE OPERATOR'S LOG SAYS THIS LETTER CARRIED — one entry per fact that went out, in the
+ * order of the composition. It is not the letter (that is {@link renderNotification}); it is the
+ * line the daemon prints about itself, and the two are read by different people.
+ *
+ * IT LIVES HERE, BESIDE THE PLANNER, BECAUSE IT IS THE SAME LIST TWICE (thread 036, the round of
+ * `reviewer-pr` on #146). It used to be built inside the command, out of reach of every test, and
+ * a class added to the letter without being added here made the daemon print an EMPTY tail — a
+ * tick that delivered a real sentence to john and told its own log "nothing", which is
+ * indistinguishable from "nothing happened" for whoever reads the log afterwards. Held next to
+ * the plan, a new class that forgets this list is a test away, not a field report away.
+ */
+export const announcedOf = (plan: NotificationPlan): readonly string[] => [
+  ...(plan.freshAuth && plan.auth !== undefined
+    ? [
+        `${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} deaths since ${plan.auth.since})`,
+      ]
+    : []),
+  ...(plan.freshGh && plan.gh !== undefined
+    ? [`gh refuses merge-ready (${plan.gh.ticks} ticks since ${plan.gh.since})`]
+    : []),
+  ...(plan.freshDrift && plan.drift !== undefined
+    ? [`the box is behind its own ref (${plan.drift.size})`]
+    : []),
+  // AN ACCOUNT IS NAMED BY ITS KIND AND ITS ROLE, and it stands where its line stands in the
+  // letter — after the drift, above the freezes. The sentence itself is the caller's and can be
+  // a paragraph; the log gets the two facts that make it findable — WHAT happened (a run moved
+  // subscriptions, a role stands behind a shut window, a fall-back that will never be spent) and
+  // to WHOSE launches — and the letter carries the rest.
+  ...plan.freshAccounts.map((alarm) => `${alarm.role} (account: ${alarm.kind})`),
+  ...plan.freshFreezes.map(
+    (event) =>
+      `${event.pair.role}×${event.pair.thread} (${event.kind === "frozen" ? "frozen for good" : "exhausted"})`,
+  ),
+  ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
+  // A REMINDER IS NAMED AMONG WHAT RANG, not among what rode along: it raises the letter, and
+  // the age is the half of it the operator cannot reconstruct from the thread id.
+  ...plan.remindedParked.map((park) => `${park.thread} (reminded ${park.person}, ${park.age})`),
+  // A REPEAT IS NAMED AMONG WHAT WENT OUT, not among what rang: it did not raise this
+  // letter, it rode in it — and the operator reading the summary is owed both facts.
+  ...plan.restatedParked.map((park) => `${park.thread} (restated on ${park.person})`),
+  // A LIFT IS NAMED THE SAME WAY AND FOR THE SAME REASON: it rode in this letter without
+  // raising it, and the summary is where the operator learns what actually went out.
+  ...plan.liftedParked.map((park) => `${park.thread} (lifted on ${park.person})`),
+  ...plan.fresh.map((pair) => pair.thread),
+  ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
+  ...plan.freshUnaccepted.map((turn) => `${turn.role}×${turn.thread} (unaccepted ${turn.age})`),
+];
 
 /** An announcement into a thread — the same templating, the project's language. */
 export const renderAnnouncement = (input: {
