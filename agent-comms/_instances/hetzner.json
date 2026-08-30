@@ -1,18 +1,12 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T10:07:49.131Z",
+  "writtenAt": "2026-08-30T10:09:43.246Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "051-index-shows-parks",
-      "state": "draining",
-      "deadline": "2026-08-30T10:39:35Z"
-    },
     {
       "role": "dev-core",
       "thread": "038-pilot-codex-live-run",
