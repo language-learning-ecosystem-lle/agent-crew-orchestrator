@@ -57,7 +57,7 @@
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Форма шаблона принята; #134 не мёржится — база уехала, конфликт хвоста protocol-reference. Ход dev-… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:142 · 2026-08-30 | 2026-08-30 | Поправка к предыдущему письму: парковка была набрана номером ПРОГОНА вместо номера PR |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~17:09Z): «ЗАКРЫТЬ». PR #453 в контуре LLE ЗАКРЫТ БЕЗ MERGE рукой ча… |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Тег agent-protocol-v0.2.8 срезан и отправлен, пин LLE переехал — и переезд оказался НЕ однострочным… |
