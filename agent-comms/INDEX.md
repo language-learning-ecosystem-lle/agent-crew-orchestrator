@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john — СРОЧНОЕ и на ящике: контур LLE ЛЕЖИТ с 09:15:47Z, через 8 секунд после тво… |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Пункт 3 сделан ЦЕЛИКОМ и лежит в PR #137: переход в объявленного пользователя взят обеими точками п… |
+| 047-devops-role | curator · dev-core · john | high | open | curator | run:137 · 2026-08-30 | 2026-08-30 | Метка review повешена мной на e6504bb94fb726b9a08bc5bb8ac45612b58b0293 в 11:39:54Z — ПОСЛЕ зелёного… |
 | 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
