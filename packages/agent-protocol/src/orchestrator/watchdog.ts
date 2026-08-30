@@ -37,7 +37,7 @@
  *
  * THE DEGRADATION IS ONE-WAY, and it is the load-bearing property rather than a nicety: a
  * failed beat can never become the reason a role was not raised. No exception leaves this
- * module, the beat is bounded by its own timeout, and it is ISSUED at the top of a tick and
+ * module, the beat is bounded by its own budget, and it is ISSUED at the top of a tick and
  * SETTLED at the bottom — so it runs alongside the tick's own work instead of in front of
  * it, and a monitor that hangs spends its timeout out of the idle sleep that follows, never
  * out of a launch. The same rule the merge-ready tier and the digest already live by.
@@ -96,8 +96,62 @@ export const CIRCUIT_URL_KEY = "HEALTHCHECKS_CIRCUIT_URL";
  */
 export const BOX_URL_KEY = "HEALTHCHECKS_URL";
 
-/** How long one beat may take before it is abandoned. Short on purpose — see the header. */
-export const BEAT_TIMEOUT_MS = 5_000;
+/**
+ * How long ONE ATTEMPT may take before it is abandoned, how many attempts a beat makes, the
+ * pause between them, and the ceiling on the whole beat.
+ *
+ * WHY THESE NUMBERS AND NOT THE 5 s THAT STOOD HERE (thread `057-circuit-ping-flaps`,
+ * measured 2026-08-30). The single 5 s attempt with no retry made the watch FLAP: 182 lines
+ * in one daemon log, `NOT delivered` and `answers again` strictly alternating, one pair per
+ * tick or two — and every one of them a false alarm that sent john to a healthy box.
+ *
+ * The measurement refuses the obvious reading. 40 requests from the box to the monitor host:
+ * median 0.49 s, worst 1.18 s, DNS 0.5 ms warm — an order of magnitude under the old 5 s. The
+ * network was never near the threshold, so "the monitor is slow" is not the cause.
+ * What the journal shows instead: the beat is issued at the TOP of a tick, the tick then does
+ * its work through SYNCHRONOUS git (`fs/exec-sync.ts` — the courier, the candidate scan), and
+ * a blocked event loop delivers no socket callback and runs no timer. The 5 s abort therefore
+ * fired on a request whose 0.5 s of network had nowhere to be noticed: the process starved its
+ * own watch, and the tick after it — with less to do — "recovered". `15:03:04` issued,
+ * `15:03:09` NOT delivered, `15:03:44` answers again, on a box whose `curl` answers in half a
+ * second, is that and nothing else.
+ *
+ * SO THE REPAIR IS RETRIES FIRST AND THE TIMEOUT SECOND. A second attempt is made after the
+ * first one is settled — i.e. at the bottom of the tick, where the loop is free again — so it
+ * costs 0.5 s and lands. A longer single timeout alone would only move the flap to whichever
+ * tick blocks for longer than the new number. The form is the box cron's, which never flapped
+ * (`docs/box-setup.md` §7: `curl -fsS -m 10 --retry 3`): ten seconds an attempt, three
+ * attempts, a pause between them.
+ *
+ * AND THE BUDGET IS WHAT KEEPS THE DEGRADATION ONE-WAY. A beat is settled where the tick was
+ * going to sleep, so its cost is the delay before the NEXT tick may raise a role — three full
+ * timeouts would be 30 s of that. The budget bounds the whole beat, the last attempt's own
+ * timeout is clipped to what is left of it, and `beatBudgetFor` clips the budget to the tick
+ * itself: a box that ticks faster than one attempt makes one attempt and no retries.
+ */
+export const BEAT_TIMEOUT_MS = 10_000;
+
+/** How many attempts one beat may make — the cron's `--retry 3` (`docs/box-setup.md` §7). */
+export const BEAT_ATTEMPTS = 3;
+
+/**
+ * The pause between attempts. Not zero: an immediate retry re-runs into whatever was in the
+ * way — the same blocked millisecond, the same reset connection — and proves nothing new.
+ */
+export const BEAT_RETRY_PAUSE_MS = 1_000;
+
+/** The ceiling on a whole beat, retries and pauses included. See the block above. */
+export const BEAT_BUDGET_MS = 20_000;
+
+/**
+ * The budget a daemon of this tick may spend on one beat. The tick is the ceiling because the
+ * beat is settled in front of the sleep: spending longer than a tick on the watch would make
+ * the watch the reason a role waited, which is the one thing this module may never become.
+ * The floor is one attempt — below that a retry cannot happen at all, and that is said here
+ * rather than discovered as a mysteriously non-retrying box.
+ */
+export const beatBudgetFor = (tickMs: number): number =>
+  Math.min(BEAT_BUDGET_MS, Math.max(BEAT_TIMEOUT_MS, tickMs));
 
 export type WatchdogState =
   /** No beat will be sent, and the reason is a sentence an operator can act on. */
@@ -252,8 +306,33 @@ export const describeWatchdog = (state: WatchdogState): string =>
       }`;
 
 export type BeatOutcome =
-  | { readonly kind: "beat"; readonly status: number }
-  | { readonly kind: "refused"; readonly detail: string };
+  | {
+      readonly kind: "beat";
+      readonly status: number;
+      /** How many attempts it took. 1 is the ordinary day; more is a beat that was retried. */
+      readonly attempts: number;
+    }
+  | {
+      readonly kind: "refused";
+      /**
+       * WHY it was refused, and the ONLY field `describeBeat` compares. Stable on purpose:
+       * the counts and the clock below move from beat to beat, and a line that changed with
+       * them would be the every-tick noise this module exists not to print.
+       */
+      readonly detail: string;
+      /** How many attempts were spent before giving up. */
+      readonly attempts: number;
+      /** Wall clock of the whole beat — the evidence for the field below. */
+      readonly elapsedMs: number;
+      /**
+       * THE BEAT WAITED LONGER THAN ITS OWN TIMEOUTS ALLOW, so the time went somewhere no
+       * timeout can account for: this process was not running its loop. That is the
+       * `057-circuit-ping-flaps` class, and the line says it — a watch that reports "the
+       * monitor is silent" when the truth is "I was too busy to listen" sends a human to the
+       * wrong box.
+       */
+      readonly starved: boolean;
+    };
 
 /** The shape of `fetch` this module needs — injected so no test ever reaches a network. */
 export type FetchLike = (
@@ -266,32 +345,89 @@ export type FetchLike = (
  * timeout — comes back as `refused` with a sentence. That is what lets the caller start
  * it without a `catch` and not risk an unhandled rejection taking the daemon down, which
  * would turn the watch into the thing that kills what it watches.
+ *
+ * THE CLOCK IS INJECTED, AND THAT IS NOT A CONVENIENCE — it is this thread's own lesson
+ * applied to the test (curator's finding on #148). Every decision below is arithmetic on
+ * the wall clock: whether a retry still fits the budget, how much of an attempt is left,
+ * whether the beat outran everything its timeouts allowed. A test that drove those
+ * decisions with REAL `setTimeout` would be asserting on timer drift — node's timers fire
+ * no earlier than their nominal, never exactly at it — and the first version of the budget
+ * case did exactly that, with zero margin: it passed locally and failed on the runner. A
+ * red that lies about the code is the same class, one floor up, as a watchdog that blames
+ * the monitor for its own starvation. So the CLOCK is what a test replaces, and the
+ * arithmetic under test is then exact; production passes nothing and reads `Date.now`.
  */
 export const beat = async (input: {
   readonly url: string;
   readonly fetch: FetchLike;
   readonly timeoutMs?: number;
+  readonly attempts?: number;
+  readonly retryPauseMs?: number;
+  readonly budgetMs?: number;
+  /** The wall clock this beat measures itself by. Injected for tests only — see above. */
+  readonly now?: () => number;
 }): Promise<BeatOutcome> => {
   const timeoutMs = input.timeoutMs ?? BEAT_TIMEOUT_MS;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await input.fetch(input.url, { signal: controller.signal });
-    if (!response.ok) return { kind: "refused", detail: `the monitor answered ${response.status}` };
-    return { kind: "beat", status: response.status };
-  } catch (error) {
-    // The URL is a credential and never reaches a log — including through an error
-    // message, which is where `fetch` likes to put the thing it could not reach.
-    const message = (error as Error).message;
-    return {
-      kind: "refused",
-      detail: controller.signal.aborted
-        ? `no answer in ${timeoutMs / 1000}s`
-        : `the request failed (${message.includes(input.url) ? "the reason names the url and is not shown" : message})`,
-    };
-  } finally {
-    clearTimeout(timer);
+  const limit = Math.max(1, input.attempts ?? BEAT_ATTEMPTS);
+  const pauseMs = input.retryPauseMs ?? BEAT_RETRY_PAUSE_MS;
+  const budgetMs = input.budgetMs ?? Math.max(timeoutMs, BEAT_BUDGET_MS);
+  const now = input.now ?? Date.now;
+  const started = now();
+  let last = "";
+  /** What the timeouts and pauses ALLOWED — the yardstick the wall clock is judged against. */
+  let allowed = 0;
+  let made = 0;
+
+  for (let attempt = 1; attempt <= limit; attempt += 1) {
+    const left = budgetMs - (now() - started);
+    // A retry with less than half an attempt's room left is not made at all: a timeout
+    // clipped to a sliver would report "no answer in 0.2s" about a monitor that was never
+    // really asked, and a false detail is worse than a missing retry.
+    if (attempt > 1 && left < timeoutMs / 2) break;
+    const attemptMs = attempt === 1 ? timeoutMs : Math.min(timeoutMs, left);
+    allowed += attemptMs;
+    made = attempt;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), attemptMs);
+    let refusal: string;
+    try {
+      const response = await input.fetch(input.url, { signal: controller.signal });
+      if (response.ok) return { kind: "beat", status: response.status, attempts: attempt };
+      refusal = `the monitor answered ${response.status}`;
+    } catch (error) {
+      // The URL is a credential and never reaches a log — including through an error
+      // message, which is where `fetch` likes to put the thing it could not reach.
+      const message = (error as Error).message;
+      refusal = controller.signal.aborted
+        ? `no answer in ${attemptMs / 1000}s`
+        : `the request failed (${message.includes(input.url) ? "the reason names the url and is not shown" : message})`;
+    } finally {
+      clearTimeout(timer);
+    }
+    last = refusal;
+
+    if (attempt === limit) break;
+    if (pauseMs > 0) {
+      const room = budgetMs - (now() - started);
+      if (room <= pauseMs) break;
+      allowed += pauseMs;
+      await new Promise((resolve) => setTimeout(resolve, pauseMs));
+    }
+    // The detail of the LAST attempt is what the caller is told, so a retry that changed the
+    // failure (a timeout that became a 503) reports what is true now, not what was true first.
   }
+
+  const elapsedMs = now() - started;
+  return {
+    kind: "refused",
+    detail: last,
+    attempts: made,
+    elapsedMs,
+    // A 50 % overrun of everything the timeouts and pauses allowed is not jitter; nothing but
+    // a loop that was not running can produce it.
+    starved: elapsedMs > allowed * 1.5,
+  };
 };
 
 /**
@@ -307,7 +443,16 @@ export const describeBeat = (outcome: BeatOutcome, previous?: BeatOutcome): stri
     return "circuit watchdog — the monitor answers again; the dead-man ping is being delivered";
   }
   if (previous?.kind === "refused" && previous.detail === outcome.detail) return undefined;
-  return `circuit watchdog — the dead-man ping was NOT delivered: ${outcome.detail}. The daemon keeps working and raising roles; what is at risk is the ALARM — if this box dies now, the monitor's silence is the only thing left to notice it`;
+  // The counts and the clock are PRINTED but never compared: they move every time, and a
+  // comparison over them would put a line on the stream each tick of one outage.
+  const tries =
+    outcome.attempts === 1
+      ? "1 attempt"
+      : `${outcome.attempts} attempts, ${outcome.elapsedMs / 1000}s`;
+  const blame = outcome.starved
+    ? ". And THAT WAIT WAS THIS PROCESS, not the monitor: the beat took longer of the wall clock than its own timeouts allow, which only a loop that was not running can do — look at what the tick does synchronously before you look at the network"
+    : "";
+  return `circuit watchdog — the dead-man ping was NOT delivered after ${tries}: ${outcome.detail}. The daemon keeps working and raising roles; what is at risk is the ALARM — if this box dies now, the monitor's silence is the only thing left to notice it${blame}`;
 };
 
 /**
@@ -335,6 +480,9 @@ export const watchdogBeacon = (input: {
   readonly fetch: FetchLike;
   readonly note: (line: string) => void;
   readonly timeoutMs?: number;
+  readonly attempts?: number;
+  readonly retryPauseMs?: number;
+  readonly budgetMs?: number;
 }): Beacon => {
   let inFlight: Promise<BeatOutcome> | undefined;
   let previous: BeatOutcome | undefined;
@@ -345,6 +493,9 @@ export const watchdogBeacon = (input: {
         url: input.state.url,
         fetch: input.fetch,
         ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
+        ...(input.attempts === undefined ? {} : { attempts: input.attempts }),
+        ...(input.retryPauseMs === undefined ? {} : { retryPauseMs: input.retryPauseMs }),
+        ...(input.budgetMs === undefined ? {} : { budgetMs: input.budgetMs }),
       });
     },
     settle: async () => {

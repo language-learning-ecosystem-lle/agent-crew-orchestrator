@@ -354,7 +354,9 @@ describe("the daemon's dead-man ping", () => {
     const place = contour({ [CIRCUIT_URL_KEY]: open.url });
     const run = await tick(place);
     expect(run.code).toBe(0);
-    expect(open.paths).toEqual(["/ping/circuit"]);
+    // Three knocks, not one: a refusal is retried (thread `057-circuit-ping-flaps`) and a
+    // 503 comes back fast enough for the beat to spend all three attempts on it.
+    expect(open.paths).toEqual(["/ping/circuit", "/ping/circuit", "/ping/circuit"]);
     expect(raised(place)).toBe(true);
   }, 120_000);
 
@@ -363,7 +365,10 @@ describe("the daemon's dead-man ping", () => {
     const place = contour({ [CIRCUIT_URL_KEY]: open.url });
     const run = await tick(place);
     expect(run.code).toBe(0);
-    expect(open.paths).toEqual(["/ping/circuit"]);
+    // TWO knocks and not three, and that is the budget doing its job: a full 10 s timeout, a
+    // pause, a second attempt clipped to what is left of the 20 s — and then the beat stops
+    // rather than making the watch the reason the next tick waited.
+    expect(open.paths).toEqual(["/ping/circuit", "/ping/circuit"]);
     expect(raised(place)).toBe(true);
   }, 120_000);
 
@@ -411,11 +416,13 @@ describe("the dead-man ping and the exit that is a repair", () => {
     expect(run.out).toContain("this process is supervised");
     expect(run.code).toBe(SELF_RESTART_EXIT_CODE);
 
-    // The beat left the box...
-    expect(open.paths).toEqual(["/ping/circuit"]);
+    // The beat left the box — three times, because a 503 is retried like any other refusal
+    // (thread `057-circuit-ping-flaps`): a monitor that answers badly once is not an outage.
+    expect(open.paths).toEqual(["/ping/circuit", "/ping/circuit", "/ping/circuit"]);
     // ...and this exit waited for what came back, which is the whole of the finding: the
     // 503 was answered 750ms after the request, long after an unsettled tick would have gone.
-    expect(run.out).toContain("the dead-man ping was NOT delivered: the monitor answered 503");
+    expect(run.out).toContain("the monitor answered 503");
+    expect(run.out).toContain("the dead-man ping was NOT delivered after 3 attempts");
   }, 120_000);
 });
 
