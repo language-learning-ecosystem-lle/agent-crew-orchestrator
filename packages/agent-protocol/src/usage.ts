@@ -402,7 +402,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -468,6 +468,19 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # nothing — that is the case the narrow form was built for; a red one
                               # that froze a pair for 3.5 hours with work in front of it is what
                               # widened it
+                              # A LETTER INTO A THREAD THAT IS ALREADY PARKED IS REFUSED UNLESS IT SAYS WHAT
+                              # IT DOES ABOUT THE PARK (058, (B.3)): the refusal names the park in full —
+                              # what it waits for, since when, whose turn it was declared on, the question in
+                              # its own words. Three ways to pass, three different statements: carry what the
+                              # park waits for ('--delivers'/'--merged-pr'/'--verdict --pr'), carry the park
+                              # forward ('--parked-on <the same value>'), or name the lift:
+                              # --park-lifted <person|pr:N|run:N>: THE PARK IS OVER AND THIS LETTER SAYS WHICH
+                              # ONE IT ENDS. The value must MATCH the standing park — a flag taking any word
+                              # would be a door teaching its reader to type past it. Nothing is written to the
+                              # header by it and no norm of the lift is touched: it is the letter naming what
+                              # it already does. A stale value (the park was lifted by somebody else between
+                              # the read and the write) is a NOTE, not a refusal — two roles write into one
+                              # thread at once, which is the whole subject of 058
                               # --delivers <person>: this message carries the WORD OF THAT PERSON (030) —
                               # the one thing that lifts a park on them, together with 'status: closed'.
                               # Since 2026-08-22 nothing else does: a turn of somebody else's, a report
