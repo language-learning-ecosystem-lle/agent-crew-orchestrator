@@ -901,6 +901,15 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  * The refusal names all three things a reader needs: the role, the user it asks for and the
  * user this process actually is. Whoever reads it in a log can tell "the box was never set
  * up" from "the daemon runs as the wrong user" without opening the config.
+ *
+ * AND IT NAMES ONE THING MORE, FOR A READER WHO DOES NOT EXIST YET (thread 047, msg-046):
+ * the narrow entitlement above is being materialised on the box BEFORE the code that would
+ * take it (a `sudoers` rule for one target user and one binary — `docs/box-setup.md` §0.1a).
+ * From the hand that types that rule until the launch path lands, the box carries a right
+ * this build never asks for, and the refusal would otherwise read as "the rule did not
+ * work". It did; nobody calls it. The door says so by name, because the alternative is an
+ * operator debugging `sudo` against a build that never runs it — and it stays out of
+ * `Repair:` for the same reason it is worth saying: adding the rule repairs NOTHING today.
  */
 /**
  * The system user THIS process runs as, asked once and in one place. `undefined` when the
@@ -929,6 +938,10 @@ export const systemUserRefusal = (
     "raising a session as another system user is not implemented in this build, and raising it as",
     "this user instead would give the role the privileges of the box it happens to run on —",
     "which is what the declaration exists to end (thread 047-devops-role).",
+    `A narrow entitlement on the box (a sudoers rule letting this user become '${declared}' for the`,
+    "agent binary, docs/box-setup.md §0.1a) is NOT consulted by this build either: if one is already",
+    "in place it is not broken, it is unused, and the launch path that would take it is still to be",
+    "written.",
     `Repair: run the daemon as '${declared}', or drop the declaration from the role's card in the config.`,
   ].join(" ");
 };
