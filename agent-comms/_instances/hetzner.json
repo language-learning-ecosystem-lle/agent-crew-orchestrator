@@ -1,12 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T23:18:46.087Z",
+  "writtenAt": "2026-08-30T23:19:00.207Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "058-concurrent-writers-one-thread",
+      "state": "running",
+      "deadline": "2026-08-30T23:58:57Z"
+    },
     {
       "role": "dev-core",
       "thread": "058-launch-prompt-mail-form-sandbox",
