@@ -321,7 +321,10 @@ describe("renderParallelism — the live count and the room left", () => {
 
   it("lists the live pairs with their state, not just a number", () => {
     const text = renderParallelism(p({ live: [running("dev-core", "023-daemon-parallelism")] }));
-    expect(text).toContain("▶ dev-core×023-daemon-parallelism — running");
+    // The word is the frame's, not the machine's (thread 063) — this block used to print
+    // the raw lifecycle while `status` two sections up already translated it, so one frame
+    // said two different things about one pair.
+    expect(text).toContain("▶ dev-core×023-daemon-parallelism — working — nothing reported yet");
   });
 
   it("names the roles that are FREE — 'room for whom' is the question actually asked", () => {
