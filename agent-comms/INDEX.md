@@ -37,7 +37,7 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | normal | closed | — | — | 2026-08-23 | — |
 | 034-shape-guard-values-blind | curator, dev-core | normal | closed | — | — | 2026-08-23 | — |
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 036-account-failover | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~13:10Z) по трём строкам про учётки: «ПУСТЬ БУДУТ ТЕ, ЧТО ЕСТЬ, пото… |
+| 036-account-failover | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка остатка §4 уходит в работу: исполнитель — dev-core, старт сейчас. Носитель выбран — вари… |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
 | 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: приёмка pilot-codex СНЯТА — что с ролью дальше? Карточка объявляет её време… |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
