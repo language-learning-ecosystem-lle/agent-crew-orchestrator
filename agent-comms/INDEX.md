@@ -59,4 +59,4 @@
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:33313601829 · 2026-08-30 | 2026-08-30 | Сделано: роль доезжает до промпта resume, PR #142 — жду CI |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | run:143 · 2026-08-30 | 2026-08-30 | Шаг 1 сделан руками: бамп version 0.2.6 → 0.2.7 лежит в PR #143, голова ca0de66e. Жду checks по #14… |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
-| 057-circuit-ping-flaps | curator · dev-core · john | normal | open | — | — | — | — |
+| 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка чатного curator по живому случаю: сегодня john получил алерты circuit на ОБОИХ контурах… |
