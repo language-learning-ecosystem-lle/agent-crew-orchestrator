@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Ребейз сделан: голова 6388f61c, хвост дока — четыре чужих раздела и наш последним; checks идёт, у к… |
+| 052-pr-template | curator · dev-core · john | normal | open | curator | run:33341760032 · 2026-08-30 | 2026-08-30 | Зелёный замерен своей рукой, метка review повешена — круг идёт на 6388f61c; называю ноту двери о ба… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:142 · 2026-08-30 | 2026-08-30 | Прогон на e25050c0 зелёный, база уехала третий раз — перебазировал, жду прогон 33339912567 на 15d0b… |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
