@@ -15,7 +15,7 @@
  * along with it (`usage.test.ts` is what reads it).
  */
 export const USAGE = `usage (--ref is required everywhere except 'schema migrate', 'doctor', 'init', 'config set' and the operator's five below; --repo defaults to the repository of the current directory):
-  agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--no-fetch]
+  agent-protocol config check --ref <ref> [--repo <path>] [--config-path <p>] [--local-config <p>] [--instance <name>] [--no-fetch]
   agent-protocol config set   <key> <value> [--exec <path>] [--config-dir <path>] [--ref <ref>] [--local-config <p>] [--instance <name>] [--write]
                               # ONE FACT OF THE MACHINE CONFIG, CHANGED (thread 019): the
                               # commissioned box whose agent binary moved, whose operator is
@@ -45,7 +45,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # says what identity that file claims — one picks the box, the other
                               # writes into it
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
-  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all]
+  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all]
                               # IS THIS BOX COMMISSIONED (thread 019, the operator tail): the
                               # checklist of a machine that is supposed to raise roles unattended —
                               # both configs, which instance it is, the agent binary AND A LIVE
@@ -55,6 +55,9 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # it REACHES THE NETWORK and SPENDS ONE AGENT CALL, which is the
                               # point — those facts are in no file. --offline leaves them unasked
                               # and says so in the rows, never passes them
+                              # --exec/--worker/--model/--effort: WHICH agent the rows probe and with
+                              # what — the same parameter door the launcher passes through, so a pair
+                              # this tool has no argv for is refused HERE too, by name and exit 2
                               # WHO SIGNED THE COMMITS is asked too, of this disk and for free:
                               # roles sign '<role>@agents.invalid', the machinery
                               # 'orchestrator@agents.invalid', GitHub its own — anything else is
@@ -139,8 +142,13 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # migration then rides in the same PR as the pin), not a door over somebody
                               # else's repository. Exit 2 means a number could not be READ
   agent-protocol role exists  --ref <ref> --role <id> [--repo <path>]
-  agent-protocol zones check  --ref <ref> [--repo <path>] (--role <id> | --role-from-workspace)
-                              (--staged | --base <ref> | --paths <a,b> | --paths a b)
+  agent-protocol zones check  --ref <ref> [--repo <path>] [--role <id>] [--role-from-workspace] [--staged] [--base <ref>] [--paths <a,b>]
+                              # EXACTLY ONE of --role/--role-from-workspace and EXACTLY ONE source of
+                              # paths (--staged | --base <ref> | --paths) — the command refuses either
+                              # choice made twice or not at all, BY NAME. Written flag by flag because
+                              # this line is also read by machine (thread 042): spelled as one bracketed
+                              # alternative, '--role-from-workspace)' carried the parenthesis into the
+                              # table of legal flags and '--role' was lost from it altogether
                               # --paths takes BOTH forms and judges EVERY path named (thread 033): the
                               # space form used to be read as ONE path and answered green about the rest
                               # ZONES WITH AN ENFORCER (thread 020): the changed paths against the
@@ -152,8 +160,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # line says so. 'writes' states where the role's work lives, for humans —
                               # reading it as a closed allow-list would deny 'dev-core' (writes: [])
                               # every file in the repository. 'forbidden' is the whole verdict
-  agent-protocol capability run --ref <ref> [--repo <path>] --role <id> --capability <name>
-                              [--target <value>] [--lines <n>] [--write]
+  agent-protocol capability run --ref <ref> [--repo <path>] --role <id> --capability <name> [--target <value>] [--lines <n>] [--write]
                               # A CAPABILITY OF A CARD, CALLED (thread 047): the verb is answered from
                               # 'roles[].capabilities' of the config and NEVER from the caller's words —
                               # --role names whose card is read, not who is running

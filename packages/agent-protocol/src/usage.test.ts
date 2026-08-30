@@ -683,7 +683,7 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     // and in the README's «Commands», and NOWHERE in the shipped usage text — the
     // command a curator gets when they type `merge-gate` with a missing argument named
     // four flags out of five, and the missing one is the anchor of guard 1 itself. The
-    // corpus above could not see it: `merge-gate` is one of the thirteen commands left
+    // corpus above could not see it: `merge-gate` is one of the sixteen commands left
     // outside `guardArguments` (a swallowed flag there costs a re-run, not a message),
     // so nothing refused and nothing went red.
     //
@@ -709,6 +709,106 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     const spec = specFor("merge-gate");
     const named = [...spec.value, ...spec.boolean];
     expect(read.filter((name) => !named.includes(name))).toEqual([]);
+  });
+
+  // THE FOUR DOORLESS COMMANDS WHOSE FORM SAID LESS THAN THE COMMAND READS (thread 042,
+  // curator's table of 2026-08-30, printed from `parseUsage(USAGE)` on the merged tree of
+  // #152). `config check`, `doctor`, `zones check` and `capability run` stand OUTSIDE
+  // `guardArguments` — neither by name nor through the `orchestrator *` family — so a flag
+  // missing from their line refuses nothing and reddens nothing. It costs the reader who
+  // takes the printed form for the truth about the command, and that reader is by
+  // construction the one who has just mistyped it: the same defect as `metrics --now` above,
+  // four more times.
+  //
+  // Each case asserts its PREMISE first — that the handler (or the helper it hands `argv`
+  // to) really performs that read — so tomorrow's removal of a flag reddens this file by the
+  // flag's own name instead of demanding a usage line for something the command no longer
+  // takes. And each reads the form through `parseUsage`, the reading the argument door
+  // performs, rather than as a substring of the file: `zones check` is in this list precisely
+  // because a substring said `--role` while the machine read `--role-from-workspace)`.
+  const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+  /** The body of a top-level `const <name> = (` binding in `cli.ts`, up to its `\n};`. */
+  const bodyOf = (name: string): string => {
+    const opens = source.indexOf(`const ${name} = (`);
+    if (opens === -1) throw new Error(`'${name}' is no longer a top-level binding of cli.ts`);
+    return source.slice(opens, opens + source.slice(opens).indexOf("\n};"));
+  };
+  /** Every flag a body names to `flag`/`required`/`positiveInt`/… or to `includes`. */
+  const flagsReadBy = (name: string): readonly string[] => {
+    const body = bodyOf(name);
+    return [
+      ...new Set([
+        ...[
+          ...body.matchAll(
+            /(?:flag|flagInt|required|list|listFlag|positiveInt)\(\s*\w+,\s*"(--[\w-]+)"/g,
+          ),
+        ].map((found) => found[1] as string),
+        ...[...body.matchAll(/\w+\.includes\("(--[\w-]+)"\)/g)].map((found) => found[1] as string),
+        ...[...body.matchAll(/path: flag\(\w+, "(--[\w-]+)"\)/g)].map(
+          (found) => found[1] as string,
+        ),
+      ]),
+    ];
+  };
+  const namedBy = (key: string): readonly string[] => {
+    const spec = specFor(key);
+    return [...spec.value, ...spec.boolean];
+  };
+
+  it("spells the machine-config flags `config check` reads (042)", () => {
+    // The premise is a chain, and it is asserted as one: `configCheck` hands its own argv
+    // to `machineAccounts`, and that is where `--local-config` and `--instance` are read —
+    // the machine's half of the account join. A test that only looked at `configCheck`
+    // would see no flag at all and conclude the line is honest.
+    expect(bodyOf("configCheck")).toContain("machineAccounts(argv");
+    const read = flagsReadBy("machineAccounts");
+    expect(read).toContain("--local-config");
+    expect(read).toContain("--instance");
+
+    const named = namedBy("config check");
+    expect(named).toContain("--local-config");
+    expect(named).toContain("--instance");
+  });
+
+  it("spells the agent flags `doctor` reads (042)", () => {
+    // The same chain, one link longer: `doctor` → `execTargets` (`--worker`, `--exec`)
+    // → `agentFor` (`--model`, `--effort`). The last two are not decoration in a
+    // checklist command: `resolveAgentParams` REFUSES a pair the worker's kind has no
+    // argv for, and that refusal exits 2 — a flag that can stop the command dead was
+    // missing from the command's own form.
+    expect(bodyOf("doctor")).toContain("execTargets(withRef");
+    expect(bodyOf("execTargets")).toContain("agentFor(argv");
+    const read = [...flagsReadBy("execTargets"), ...flagsReadBy("agentFor")];
+    for (const flag of ["--worker", "--exec", "--model", "--effort"]) expect(read).toContain(flag);
+
+    const named = namedBy("doctor");
+    for (const flag of ["--worker", "--exec", "--model", "--effort"]) expect(named).toContain(flag);
+  });
+
+  it("spells both halves of the `zones check` alternative, brackets and all (042)", () => {
+    // The one case where the form was not merely SHORT but unreadable: the line spelled
+    // `(--role <id> | --role-from-workspace)`, and `parseUsage` — which strips brackets and
+    // nothing else — took `--role-from-workspace)` WITH the parenthesis and lost `--role`
+    // altogether. Two flags of a door-facing command, one mangled and one absent, in a line
+    // written to be the specification.
+    const read = flagsReadBy("zonesCheck");
+    for (const flag of ["--role", "--role-from-workspace", "--base", "--staged", "--paths"])
+      expect(read).toContain(flag);
+
+    const named = namedBy("zones check");
+    for (const flag of ["--role", "--role-from-workspace", "--base", "--staged", "--paths"])
+      expect(named).toContain(flag);
+    // And no token carries punctuation the parser does not strip: a flag the table holds
+    // under a name no argv can ever equal is worse than a missing one — it looks accounted for.
+    expect(named.filter((name) => !/^--?[\w-]+$/.test(name))).toEqual([]);
+  });
+
+  it("spells the call flags `capability run` reads (042)", () => {
+    const read = flagsReadBy("capabilityRun");
+    for (const flag of ["--target", "--lines", "--write"]) expect(read).toContain(flag);
+
+    const named = namedBy("capability run");
+    for (const flag of ["--target", "--lines", "--write"]) expect(named).toContain(flag);
   });
 
   it("lets `up` pass its own flags through to the daemon it starts", () => {
