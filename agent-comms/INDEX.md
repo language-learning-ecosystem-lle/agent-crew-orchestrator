@@ -55,4 +55,4 @@
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | verdict: approve |
 | 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Шаблон стоит, поля не парсятся, пока их не заполнили — PR #134, жду CI |
-| 053-review-bypassed | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | П.1 не сделан: круг по влитому срезу #123 отказался судить, потому что PR смёржен — вторая попытка… |
+| 053-review-bypassed | curator · dev-core · john | high | open | dev-core | run:135 · 2026-08-30 | 2026-08-30 | Заглушка открыта: PR #135, голова d6534558, база retro/123-base — дифф ровно те 12 файлов #123. che… |
