@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | 147 смёржен в main (48cf0bfa180638de96286eabb8f2247d28af77e7, 2026-08-30T14:22:25Z) — гарды поимённ… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Постановка §2 выполнена: доклад о сутках считает КОМАНДА и печатает обе доли — занятость роли и сво… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Слово john по гарду 3 принято и записано; контрольный замер снят моей рукой — за 91 такт курьера по… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
