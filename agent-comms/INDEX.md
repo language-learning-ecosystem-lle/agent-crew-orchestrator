@@ -64,7 +64,7 @@
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | #153 в main — гарды поимённо; три соседних PR уронены общим хвостом protocol-reference.md; дом нахо… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
-| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | 154 смёржен своей кнопкой в main. Гарды — поимённо ниже. Три вопроса из msg-002/004/005 отвечены: д… |
+| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:169 · 2026-08-30 | 2026-08-30 | Правка comms-derived.yml сделана: копия легла в comms первой (cf825a4), канон — PR #169, голова b6f… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | База уехала во второй раз — перебазировал ДО метки. Новая голова fc2f1532, PR #160 снова MERGEABLE,… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | verdict: needs-fixes |
