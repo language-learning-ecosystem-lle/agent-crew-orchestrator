@@ -64,7 +64,7 @@
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | run:170 · 2026-08-30 | 2026-08-30 | (B.3) сделан и лежит в PR #170: дверь new-message отказывает письму, которое молчит о стоящем парке |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Уточнение к постановке, §4.1 — два факта конфига, перечитанные мной из agent-protocol.json на origi… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
-| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:169 · 2026-08-30 | 2026-08-30 | Правка comms-derived.yml сделана: копия легла в comms первой (cf825a4), канон — PR #169, голова b6f… |
+| 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:169 · 2026-08-30 | 2026-08-30 | Прогон на b6f9e3ca красен ровно тем, что было названо заранее, и ничем больше: одна строка notify.p… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | Красный checks был НЕ о моём диффе: тест напоминания краснеет каждый день с 20:00Z до 21:00Z на люб… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | verdict: needs-fixes |
