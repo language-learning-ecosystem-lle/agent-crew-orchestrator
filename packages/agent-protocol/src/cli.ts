@@ -461,7 +461,12 @@ import {
   subjectOf,
   type TuiAction,
 } from "./orchestrator/tui.js";
-import { describeWatchdog, resolveWatchdog, watchdogBeacon } from "./orchestrator/watchdog.js";
+import {
+  beatBudgetFor,
+  describeWatchdog,
+  resolveWatchdog,
+  watchdogBeacon,
+} from "./orchestrator/watchdog.js";
 import {
   checkWorkspaceSignature,
   createWorkspaceLocks,
@@ -9994,6 +9999,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // from the outside (a server on loopback) or replaces it (the unit tests).
     fetch: (url, init) => fetch(url, { method: "GET", signal: init.signal, redirect: "follow" }),
     note: (line) => err(`agent-protocol: daemon — ${line}`),
+    // THE TICK IS THE CEILING ON THE BEAT (thread `057-circuit-ping-flaps`): the beat is
+    // settled where this loop was going to sleep, so anything it spends is delay in front of
+    // the next launch. `beatBudgetFor` is where that trade is written down.
+    budgetMs: beatBudgetFor(tickMs),
   });
   out(`agent-protocol: daemon — ${describeWatchdog(watchdogState)}`);
 

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BEAT_BUDGET_MS,
+  BEAT_TIMEOUT_MS,
   type BeatOutcome,
   BOX_URL_KEY,
+  beat,
+  beatBudgetFor,
   CIRCUIT_URL_KEY,
   circuitKeyOf,
   describeBeat,
@@ -289,6 +293,7 @@ describe("watchdogBeacon", () => {
       state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
       fetch: http.fetch,
       note: (line) => notes.push(line),
+      retryPauseMs: 0,
     });
     beacon.start();
     await expect(beacon.settle()).resolves.toBeUndefined();
@@ -304,6 +309,7 @@ describe("watchdogBeacon", () => {
       state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
       fetch: http.fetch,
       note: (line) => notes.push(line),
+      retryPauseMs: 0,
     });
     beacon.start();
     await beacon.settle();
@@ -323,6 +329,7 @@ describe("watchdogBeacon", () => {
       fetch: http.fetch,
       note: (line) => notes.push(line),
       timeoutMs: 10,
+      retryPauseMs: 0,
     });
     beacon.start();
     await beacon.settle();
@@ -338,6 +345,7 @@ describe("watchdogBeacon", () => {
       state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
       fetch: http.fetch,
       note: (line) => notes.push(line),
+      retryPauseMs: 0,
     });
     beacon.start();
     await beacon.settle();
@@ -346,9 +354,110 @@ describe("watchdogBeacon", () => {
   });
 });
 
+/**
+ * THE FLAP (thread `057-circuit-ping-flaps`, measured 2026-08-30): one 5 s attempt with no
+ * retry, a tick that blocks its own event loop with synchronous git, and 182 alternating
+ * lines in one log — every one of them a false alarm about a healthy box.
+ *
+ * These cases are the "Проверяемость" section of the statement of work, word for word: an
+ * answer slower than one attempt but inside the beat as a whole is a DELIVERY and prints
+ * NOTHING, and a monitor that never answers at all still prints — ONE line. The threshold
+ * moves; the class does not.
+ */
+describe("the beat retries — a slow answer is not a dead monitor", () => {
+  it("counts a delivery when the FIRST attempt times out and the second answers", async () => {
+    const notes: string[] = [];
+    let call = 0;
+    const http = recorder((_url, signal) => {
+      call += 1;
+      // The first attempt is the blocked tick: nothing comes back until its abort fires.
+      if (call === 1)
+        return new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")));
+        });
+      return Promise.resolve({ ok: true, status: 204 });
+    });
+    const beacon = watchdogBeacon({
+      state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
+      fetch: http.fetch,
+      note: (line) => notes.push(line),
+      timeoutMs: 20,
+      retryPauseMs: 0,
+    });
+    beacon.start();
+    await beacon.settle();
+    expect(http.calls).toHaveLength(2);
+    // The whole of the repair: no line at all. Before this, the tick above was an alarm.
+    expect(notes).toEqual([]);
+  });
+
+  it("still says it — ONCE — when no attempt is answered, and names how many were spent", async () => {
+    const notes: string[] = [];
+    const http = recorder(
+      (_url, signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")));
+        }),
+    );
+    const beacon = watchdogBeacon({
+      state: { kind: "on", url: URL_OF_CIRCUIT, key: CIRCUIT_URL_KEY },
+      fetch: http.fetch,
+      note: (line) => notes.push(line),
+      timeoutMs: 20,
+      retryPauseMs: 0,
+    });
+    beacon.start();
+    await beacon.settle();
+    // Silence is not bought with silence: the real failure keeps its line...
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toContain("3 attempts");
+    // ...and the tick after it does not repeat it.
+    beacon.start();
+    await beacon.settle();
+    expect(notes).toHaveLength(1);
+    expect(http.calls).toHaveLength(6);
+  });
+
+  it("spends no more than the budget it was given", async () => {
+    const http = recorder(
+      (_url, signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")));
+        }),
+    );
+    const started = Date.now();
+    const outcome = await beat({
+      url: URL_OF_CIRCUIT,
+      fetch: http.fetch,
+      timeoutMs: 60,
+      retryPauseMs: 10,
+      budgetMs: 100,
+    });
+    expect(Date.now() - started).toBeLessThan(300);
+    // 60ms, a 10ms pause, then 30ms of budget left — a second attempt fits, a third does not.
+    expect(http.calls).toHaveLength(2);
+    if (outcome.kind !== "refused") throw new Error("unreachable");
+    expect(outcome.attempts).toBe(2);
+  });
+
+  it("clips the budget to the tick — a box that ticks faster than one attempt does not retry", () => {
+    expect(beatBudgetFor(30_000)).toBe(BEAT_BUDGET_MS);
+    expect(beatBudgetFor(15_000)).toBe(15_000);
+    // Below one attempt the floor holds: a shorter budget could only clip an attempt to a
+    // number the monitor was never given a chance to answer in.
+    expect(beatBudgetFor(5_000)).toBe(BEAT_TIMEOUT_MS);
+  });
+});
+
 describe("describeBeat", () => {
-  const good: BeatOutcome = { kind: "beat", status: 200 };
-  const bad: BeatOutcome = { kind: "refused", detail: "the monitor answered 503" };
+  const good: BeatOutcome = { kind: "beat", status: 200, attempts: 1 };
+  const bad: BeatOutcome = {
+    kind: "refused",
+    detail: "the monitor answered 503",
+    attempts: 3,
+    elapsedMs: 1_200,
+    starved: false,
+  };
 
   it("says nothing on a routine success", () => {
     expect(describeBeat(good)).toBeUndefined();
@@ -358,7 +467,38 @@ describe("describeBeat", () => {
   it("says a failure once, not every tick", () => {
     expect(describeBeat(bad)).toBeDefined();
     expect(describeBeat(bad, bad)).toBeUndefined();
-    expect(describeBeat(bad, { kind: "refused", detail: "no answer in 5s" })).toBeDefined();
+    expect(
+      describeBeat(bad, {
+        kind: "refused",
+        detail: "no answer in 10s",
+        attempts: 2,
+        elapsedMs: 21_000,
+        starved: false,
+      }),
+    ).toBeDefined();
+  });
+
+  /**
+   * THE COUNTS ARE PRINTED AND NOT COMPARED. A beat that fails the same way with a different
+   * number of attempts is the SAME outage, and comparing over the moving parts would put a
+   * line on the stream every tick of it — the noise `describeBeat` exists to refuse.
+   */
+  it("does not repeat itself when only the attempts and the clock moved", () => {
+    expect(
+      describeBeat({ ...bad, attempts: 2, elapsedMs: 9_000 }, { ...bad, attempts: 3 }),
+    ).toBeUndefined();
+  });
+
+  /**
+   * The `057-circuit-ping-flaps` class, named IN THE LINE: a beat that outran its own
+   * timeouts on the wall clock was starved by this process, and the operator is told to look
+   * at the tick rather than at the monitor.
+   */
+  it("blames the process, not the monitor, when the beat outran its own timeouts", () => {
+    const line = describeBeat({ ...bad, detail: "no answer in 10s", starved: true });
+    expect(line).toContain("THIS PROCESS");
+    expect(line).toContain("synchronously");
+    expect(describeBeat(bad)).not.toContain("THIS PROCESS");
   });
 
   it("says the recovery — an outage nobody saw end is an outage nobody believes", () => {
