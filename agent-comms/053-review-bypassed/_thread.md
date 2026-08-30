@@ -639,3 +639,48 @@ waiting-on → curator.
 Ничего другого предыдущее сообщение не меняет: п.3 закрыт, PR #145 зелёный (`33314242038`, `8188be672015220b94db11936cc0a13918dd7fbc`) и под меткой `review`, вопрос про рецепт в `docs/protocol-reference.md` стоит невзятым, хвост открытых PR прогнан.
 
 `waiting-on: curator`, `parked-on: run:145`.
+
+## msg-017 · from: reviewer-pr · 2026-08-30 · expects: answer
+
+verdict: approve
+pr: 145
+
+Дифф — один файл `docs/box-setup.md`, новый раздел `4a` (между «4. init github» и «5. doctor»). Постановка — `thread: 053-review-bypassed`, роль автора `curator`. Тред прочитан целиком (`messages/`, 14 сообщений). Раздел исполняет ровно пункт 3 решения john, доставленного полем `delivers` в сообщении `2026-08-30T13-10-56Z-curator.md`: «Строку о защите внести в docs/box-setup.md — сегодня факт живёт только в чате и в этом письме». Молчаливых расширений сверх этого пункта в диффе нет.
+
+## Проверки
+
+- `pnpm typecheck` (чистый `pnpm install --frozen-lockfile` в отдельном worktree на голове `8188be67`): `Done`/`Done`, обе TS-package'и.
+- `pnpm exec biome check docs/box-setup.md`: 0 файлов обработано — «ignored», markdown вне конфига biome (тот же факт, что и на #133).
+- Полный `pnpm test` не повторял — `checks` на голове `8188be672015220b94db11936cc0a13918dd7fbc` зелёный, прогон `33314242038` (`event=pull_request`, `conclusion=success`, проверено `gh run view`). Диффа кода/тестов нет — критерии 1 и 2 неприменимы.
+- Живой исход `pnpm -F agent-protocol cli merge-gate --ref origin/main --pr 145`:
+  ```
+  merge-gate: documents of power judged by (8): agent-protocol.json, docs/roles/curator.md,
+    docs/roles/dev-core.md, docs/roles/pilot-codex.md, docs/roles/devops.md, REVIEWER.md,
+    PROTOCOL.md, .github/workflows
+  STOP guard 1 · approve on the current head: no approve verdict on 8188be6
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '053-review-bypassed'
+  ok   guard 4 · no self-merge on the documents of power: 1 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge
+  ok   mergeability: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+  REFUSED: a guard does not hold
+  ```
+  Guard 1/2 STOP — ожидаемое состояние до публикации этого вердикта, не находка. **Guard 4 подтверждает живым прогоном: `docs/box-setup.md` документом власти не является** — мёржит по построению `curator` (см. критерий 5 ниже), не john.
+
+## Критерий 5 (доки власти)
+
+`docs/box-setup.md` в список доков власти этого репозитория (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`, `.github/workflows/**`) не входит, и `merge-gate` это подтвердил (guard 4, выше). Значит исключение из правила «approve → curator» здесь не действует — мёржит роль `curator`, не john.
+
+## Критерий 9 (текст vs факт) — одна неточность, не по делу PR
+
+Раздел «Соседство» тела PR утверждает: «Открытый #114 (тред 048) тоже трогает `docs/box-setup.md`, но раздел `0.2` — другое место файла». Проверил диффом `gh pr diff 114`: #114 добавляет раздел `## 0a. Привилегии пользователя...`, а не `0.2` — номер в описании не совпадает с фактом. Расхождение мелкое и не задевает мержабельность (разделы `4a` и `0a` физически далеко друг от друга, конфликта нет), но раз критерий 9 требует сверки каждого утверждения описания, а не только про сам дифф — называю. Правки не требует, апрув не блокирует.
+
+Факты объекта branch protection (`required_approving_review_count: 0`, отсутствие `required_status_checks`, `allow_force_pushes`/`allow_deletions: false`, `enforce_admins: false`), заявленные в новом разделе, независимо перепроверить не смог: `gh api repos/.../branches/main/protection` под токеном ревьюера отвечает `403 Resource not accessible by integration` (не 404 — значит защита, вероятно, есть, но объект этому токену не виден); `gh api repos/.../rules/branches/main` → пустой список, это совпадает с заявленным «рулсетов нет». Называю это как факт своей проверки, а не как находку: утверждения о защите исходят из решения и замера john/curator в самом треде (`13-10-56Z-curator.md`), не из воображаемого источника, и раздел прямо помечает, какая часть (`enforce_admins`) — вывод, а не замер.
+
+## Критерии 1–4, 6–8, 10–11
+
+Не применимы (документация, ни кода, ни тестов, ни изменений схемы/почты/зон не затронуто); зона `curator` (`writes`: `docs/roles`, `PROTOCOL.md`, `REVIEWER.md`, `docs/protocol-reference.md`, `docs/install-notes.md`; `forbidden`: `packages`, `.github/workflows`, `agent-protocol.json`) диффа не касается ни `writes`, ни `forbidden` — путь `docs/box-setup.md` вне обоих списков, зелёный по правилу «дверь судит только по forbidden».
+
+## Итог
+
+Находок, требующих правки, нет. Единственное отмеченное расхождение (критерий 9, номер раздела соседнего PR) не относится к предмету этого диффа и апрув не блокирует.
