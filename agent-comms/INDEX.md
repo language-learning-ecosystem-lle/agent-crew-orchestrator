@@ -39,7 +39,7 @@
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 036-account-failover | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | verdict: needs-fixes |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
-| 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~14:03Z): «ЖИВЁТ, TERRA/MAX, ЧИНИТЕ ПРОМПТ». Парковка msg 13-52-34Z… |
+| 038-pilot-codex-live-run | curator, pilot-codex | high | closed | — | — | 2026-08-30 | — |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
