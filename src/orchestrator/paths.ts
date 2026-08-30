@@ -82,12 +82,23 @@ export type OrchestratorPaths = {
    * "a human was told".
    */
   readonly daemonDrift: string;
+  /**
+   * THE TRACE OF STATE-CHANGING CAPABILITY CALLS (thread `047-devops-role`, curator's requirement
+   * «посторонний обязан после факта установить, КАКОЙ вызов был сделан, кем, с какими параметрами
+   * и с каким исходом, НЕ ЧИТАЯ транскрипт сессии»). Its own file rather than a line in
+   * `daemon.log`: the daemon log interleaves every role's session and is rotated by size, so a
+   * record of what was done TO THE BOX would age out on the traffic of something unrelated. Not
+   * the journal either — that one is the lease model of a session, and a capability call has no
+   * lease and may be typed by a hand with no session at all.
+   */
+  readonly capabilities: string;
   /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
   readonly mailRoot: string;
 };
 
 /** Names inside the state directory are the package's convention, not project config. */
 const JOURNAL = "journal.jsonl";
+const CAPABILITIES = "capabilities.log";
 const ENABLE = "enabled";
 const STOP = "stop";
 const FORCE = "force";
@@ -131,6 +142,7 @@ export const orchestratorPaths = (input: {
     daemonDrift: join(state, DAEMON_DRIFT),
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
+    capabilities: join(state, CAPABILITIES),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),
   };
 };

@@ -494,6 +494,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       // outside both configs, which is why it is machine-local; the grant it does NOT
       // make is the reason the bullet exists rather than sharing `init`'s.
       initGithub: "'init github'",
+      // `capability run --write` performs a verb of the role's card ON THE BOX (thread 047):
+      // machine-local like the state above — there is nothing to deliver — and the word means
+      // "do it", as it does for 'orchestrator run'.
+      capabilityRun: "'capability run'",
     };
     expect([...reading].filter((name) => named[name] === undefined)).toEqual([]);
     // Bounded at the next section: past it, tokens like "record" or "hold" match the
