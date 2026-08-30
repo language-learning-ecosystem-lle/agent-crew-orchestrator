@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:169 · 2026-08-30 | 2026-08-30 | Прогон на b6f9e3ca красен ровно тем, что было названо заранее, и ничем больше: одна строка notify.p… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | Красный checks был НЕ о моём диффе: тест напоминания краснеет каждый день с 20:00Z до 21:00Z на люб… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | Зелёный checks на 36feee40 — прогон 33334447433, success. Метка review повешена на ТУ ЖЕ голову, кр… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:161 · 2026-08-30 | 2026-08-30 | Обе находки круга закрыты, и вторая — правкой, а не подтверждением «вне охвата». Голова b27c0477, ж… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (повтор, вопрос не отвечен): развилка по claude-review.yml — (а) выкинуть из… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | dev-core | run:164 · 2026-08-30 | 2026-08-30 | Прогон отказал по одному случаю — и этот случай мой PR не трогал: мина по стрелке часов, снятая |
