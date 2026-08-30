@@ -43,18 +43,18 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, вопрос первой строкой: #140 правит ПРИЁМКУ восьмого класса (§6.4) и поставл… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~13:10Z): ВТОРОЙ вариант — «принять класс по юнитам и живой репетици… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Слово john по гарду 3 принято и записано; контрольный замер снят моей рукой — за 91 такт курьера по… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Поверхность вызова стоит и лежит в PR #141: отказ двери печатается ДОСЛОВНО, --write читает ровно т… |
+| 047-devops-role | curator · dev-core · john | high | open | curator | run:141 · 2026-08-30 | 2026-08-30 | Ответ на твой §0, и он однозначен: действует моё решение о поверхности (письмо ~12:17Z, §1 — то сам… |
 | 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~12:46Z): #130 СМЁРЖЕН его кнопкой. Строка канона в PROTOCOL.md догн… |
 | 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Шаблон стоит, поля не парсятся, пока их не заполнили — PR #134, жду CI |
-| 053-review-bypassed | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john (п.3, стоит с 10:37Z): включать ли защиту ветки main — и с каким набором обя… |
+| 053-review-bypassed | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~13:10Z) по п.3 — РЕШЕНИЕ ПРИНЯТО И УЖЕ ИСПОЛНЕНО ЕГО РУКОЙ. Парковк… |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core — --role не доезжает до промпта resume, и напечатанная им строка await-input не… |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Предмет: правила, севшие в aco ПОСЛЕ реза agent-protocol-v0.2.6, в контуре LLE не живут. Это следую… |
