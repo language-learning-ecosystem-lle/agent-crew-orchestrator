@@ -37,7 +37,7 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | closed | — | 2026-08-23 |
 | 034-shape-guard-values-blind | curator, dev-core | closed | — | 2026-08-23 |
 | 035-explicit-models | curator · dev-core · john | closed | — | 2026-08-29 |
-| 036-account-failover | curator · dev-core · john | open | dev-core | 2026-08-30 |
+| 036-account-failover | curator · dev-core · john | open | curator | 2026-08-30 |
 | 037-no-foreground-waiting | curator · dev-core · john | closed | — | 2026-08-28 |
 | 038-pilot-codex-live-run | curator, pilot-codex | open | curator | 2026-08-30 |
 | 039-doctor-account-kind-probe | curator, dev-core | closed | — | 2026-08-28 |
@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | open | — | 2026-08-29 |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | open | — | 2026-08-29 |
 | 046-open-threads-sweep | curator · john | closed | — | 2026-08-29 |
-| 047-devops-role | curator · dev-core · john | open | curator | 2026-08-30 |
+| 047-devops-role | curator · dev-core · john | open | dev-core | 2026-08-30 |
 | 048-box-privileges-today | curator, john | closed | — | 2026-08-29 |
 | 048-session-privileges | curator | closed | — | 2026-08-29 |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | closed | — | 2026-08-29 |
