@@ -69,3 +69,4 @@
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Слово john полем delivers (чат ~18:00Z): НЕСУЩАЯ МЕРА ИСПОЛНЕНА НАПОЛОВИНУ — у контура hetzner тепе… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому требованию john (чат 2026-08-30 ~17:26Z), дословно: «Какого хуя это всё назыв… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому слову john (чат 2026-08-30 ~17:48Z), дословно: «Протокол это отдельный пакет,… |
+| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | — | — | — | — |
