@@ -34,6 +34,7 @@ import { parseProtocolConfig } from "../config/config.js";
 import { powerDocumentList } from "../merge/gate.js";
 import { roleLaunchability, systemUserRefusal } from "../orchestrator/launch.js";
 import { ownershipIssues } from "../orchestrator/scope.js";
+import { CAPABILITY_NAMES } from "./capabilities.js";
 import type { Role } from "./schema.js";
 import { forbiddenPrefixes } from "./zones.js";
 
@@ -128,7 +129,7 @@ describe("the role 'devops' as this repository declares it", () => {
 });
 
 /**
- * WHAT THE ROW SAYS THE ROLE MAY DO TO THE BOX (protocol 23, curator's composition of 2026-08-30
+ * WHAT THE ROW SAYS THE ROLE MAY DO TO THE BOX (protocol 24, curator's composition of 2026-08-30
  * under john's «capabilities твои»). The grammar is guarded by `v24-role-capabilities.test.ts`;
  * what is pinned HERE is the content of this repository's own declaration — the three verbs, and
  * the fact that each of them is aimed by a list somebody wrote down rather than by a free string.
@@ -217,9 +218,66 @@ describe("the capabilities the row grants, and their boundaries", () => {
 
   it("is a declaration and not a right in use: the role is still 'planned' and unraisable", () => {
     // The order is the point (thread 047): the verbs are reviewed and merged BEFORE anything can
-    // execute them — the system user they would run as does not exist on the box yet, and no
-    // executor reads this field in this build.
+    // execute them. What is missing is no longer the identity — `aco-devops` is on the box since
+    // 2026-08-30 ~08:20Z — but the executor: no code in this build reads `capabilities` at all.
     expect(devops?.status).toBe("planned");
     expect(roleLaunchability(devops as Role).launchable).toBe(false);
+  });
+});
+
+/**
+ * THE PROSE OF THE ROW MAY NOT OUTLIVE THE DATA UNDER IT (thread `047-devops-role`, 2026-08-30).
+ *
+ * `summary` is the only free text in a role's row, and the day john's hand landed on the box it
+ * became the row's least true field: it still named FIVE verbs after two were struck from the
+ * vocabulary, and still said the system user was absent some twenty hours after `useradd`. Both
+ * halves are the failure `capabilities.ts` is built against — «a declaration that lies» — arriving
+ * through the one field no door was watching, and neither half is visible in a diff of the data:
+ * the `capabilities` array below the sentence was already correct.
+ *
+ * SO THE PROSE IS PINNED TO THE VOCABULARY, NOT PROOFREAD. Two rules, and both are machine-checked
+ * here rather than in `config check`: a general door would have to refuse a summary that MENTIONS
+ * `service-restart` — and the honest way to explain an exclusion is to name the excluded thing, so
+ * such a door would refuse correct prose. What is claimed here is narrower and checkable: this
+ * repository's own row names the verbs it declares, names no others, and restates no state of the
+ * box, because the box changes under a hand this repository cannot see.
+ */
+describe("the prose of the row and the data under it", () => {
+  const summary = devops?.summary ?? "";
+  const declared = new Set((devops?.capabilities ?? []).map((capability) => capability.name));
+
+  it("names every verb it declares, by the name the vocabulary uses", () => {
+    // By the vocabulary name, not by a Russian paraphrase: «хвост логов» and «место на диске» are
+    // what the row said while it also said «перезапуск сервиса контура», and a paraphrase is
+    // exactly what cannot be compared to the array below it.
+    expect(declared.size).toBeGreaterThan(0);
+    for (const name of declared) expect(summary).toContain(name);
+  });
+
+  it("names no verb it does not declare — including the two the vocabulary no longer has", () => {
+    // The struck pair is checked by name and not by the loop above: `service-restart` and
+    // `service-status` are outside `CAPABILITY_NAMES` entirely, so a sweep over declared names
+    // could never see them return in prose while the array stays honest.
+    for (const name of CAPABILITY_NAMES) {
+      if (!declared.has(name)) expect(summary).not.toContain(name);
+    }
+    expect(summary).not.toContain("service-restart");
+    expect(summary).not.toContain("service-status");
+  });
+
+  it("restates no state of the box: the claim that went stale in a day is gone and stays gone", () => {
+    // The exact sentence that rotted: «сам пользователь на ящике не заведён». It was true when
+    // written on 2026-08-29 and false by 2026-08-30 ~08:20Z, and nothing in a CI run can notice —
+    // the box is not the repository. The state lives in `docs/box-setup.md` §0.1, which carries
+    // dates and a taken acceptance; the row points there instead of copying it.
+    expect(summary).not.toContain("не заведён");
+    expect(summary).toContain("docs/box-setup.md");
+  });
+
+  it("gives the reason for 'planned' that this build can be held to", () => {
+    // A reason that lives in the code outlives a reason that lives on the box: the door is here,
+    // named, and a future editor who deletes it breaks a test rather than a sentence.
+    expect(summary).toContain("systemUserRefusal");
+    expect(devops?.status).toBe("planned");
   });
 });
