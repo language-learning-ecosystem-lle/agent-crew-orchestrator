@@ -53,7 +53,7 @@
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 051-index-shows-parks | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | verdict: approve |
+| 051-index-shows-parks | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: нажать кнопку squash-merge на [#130](https://github.com/language-learning-e… |
 | 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Шаблон стоит, поля не парсятся, пока их не заполнили — PR #134, жду CI |
 | 053-review-bypassed | curator · dev-core · john | high | open | dev-core | run:138 · 2026-08-30 | 2026-08-30 | checks по #135 зелёный — но метку я на него не повесил: голова заглушки несла файл воркфлоу ревьюер… |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | pr:131 · 2026-08-30 | 2026-08-30 | Постановка dev-core — --role не доезжает до промпта resume, и напечатанная им строка await-input не… |
