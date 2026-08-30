@@ -1356,8 +1356,11 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     ] as const;
     const now = new Date("2026-08-30T09:59:32Z");
 
-    // What the courier did before this change: the event park was read by nobody, so the stand
-    // was judged on the queue alone and the pair crossed the threshold on this very tick.
+    // Reading the queue alone — what the courier did before the park became an interval — used
+    // to leave 13.0 SUMMED free minutes and ring on this very tick. Since the free part became
+    // the uninterrupted tail (the false call of 2026-08-30, §6.4) this reading is silent too: the
+    // role's last lease ended at 09:56:42Z, two minutes and fifty seconds before the tick, and
+    // that is the whole of the idleness this box can be accused of.
     const withoutThePark = unacceptedTurns({
       turns: [turn],
       raisedAt: new Map(),
@@ -1365,9 +1368,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
       busy,
       now,
     });
-    expect(withoutThePark).toHaveLength(1);
-    expect(withoutThePark[0]?.age).toBe("13m");
-    expect(withoutThePark[0]?.reason).toBeUndefined();
+    expect(withoutThePark).toEqual([]);
 
     const withThePark = unacceptedTurns({
       turns: [turn],
@@ -1394,20 +1395,80 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
       raisedAt: new Map(),
       busyRoles: new Set(),
       parks: PARKED.parks,
-      busy: [
-        { role: "curator", from: "2026-08-29T04:00:00Z", to: "2026-08-29T09:00:00Z" },
-        // And a span still open at `now` counts only up to `now` — 5 of the 15 free minutes.
-        { role: "curator", from: "2026-08-29T10:15:00Z", to: "2026-08-29T10:20:00Z" },
-      ],
+      busy: [{ role: "curator", from: "2026-08-29T04:00:00Z", to: "2026-08-29T09:00:00Z" }],
       now: new Date("2026-08-29T10:20:00Z"),
     });
 
-    // 6 h 37 m 16 s parked + 5 m of lease inside the free part, each counted once: exactly 10 m
-    // of the 6 h 52 m 16 s are left, the pair speaks and says that number. Summing the two lists
-    // instead would subtract the five hours of the lease TWICE, take the free part below zero
-    // and silence the class — which is the defect this arithmetic exists to avoid.
+    // The lease lies INSIDE the park, so the merged block ends where the park lifted (10:05:00Z)
+    // and the tail is the fifteen minutes since — the lease adds nothing to it and takes nothing
+    // from it. Summing the two lists would subtract the five hours twice, take the free part
+    // below zero and silence the class; overlapping the ends would move the lift back to 09:00
+    // and add an hour of idleness the box never had.
     expect(turns).toHaveLength(1);
-    expect(turns[0]?.age).toBe("10m");
+    expect(turns[0]?.age).toBe("15m");
+  });
+
+  it("(е6) THE THIRD FALSE CALL, 2026-08-30 — free slivers between sessions are not free time", () => {
+    // The line john got: `curator×052-pr-template has been standing for 20m and this box has not
+    // raised it: the role is free …`. His own check a minute later: the daemon up, no flags, and
+    // `2 of 3 role(s) live` — `curator` running `053` since 13:25:33Z. The journal says how the
+    // twenty minutes were collected: `curator` worked its queue one session at a time all
+    // morning (`045`, `047`, `042`, `036`, `053` …) and the gaps between those sessions are 25
+    // and 26 seconds. `052` was sixth in that queue on every tick of it — the daemon printed
+    // `candidate curator×052-pr-template skipped: curator already has a session … this pair is
+    // first in line for curator next tick` — so no sliver of that morning was time the box could
+    // have raised the pair and didn't.
+    //
+    // The stamps are the live journal of 2026-08-30; `since` is the queue line's `waiting since`.
+    const turn = { role: "curator", thread: "052-pr-template", since: "2026-08-30T10:59:57Z" };
+    const busy = [
+      { role: "curator", from: "2026-08-30T13:00:14Z", to: "2026-08-30T13:06:37Z" },
+      { role: "curator", from: "2026-08-30T13:07:10Z", to: "2026-08-30T13:12:31Z" },
+      { role: "curator", from: "2026-08-30T13:13:00Z", to: "2026-08-30T13:20:56Z" },
+      { role: "curator", from: "2026-08-30T13:21:21Z", to: "2026-08-30T13:25:06Z" },
+    ];
+
+    // The tick inside a gap between two sessions — the only kind of moment on which this pair
+    // ever reached the class, and the moment the line was composed on.
+    expect(
+      unacceptedTurns({
+        turns: [turn],
+        raisedAt: new Map(),
+        busyRoles: new Set(),
+        busy,
+        now: new Date("2026-08-30T13:25:20Z"),
+      }),
+    ).toEqual([]);
+
+    // And the same instant with the next session running — what john saw when he read the line.
+    // Both readings agree now, which is the point: a sentence that is true for fourteen seconds
+    // and false when it is read is the thing this rule removes.
+    expect(
+      unacceptedTurns({
+        turns: [turn],
+        raisedAt: new Map(),
+        busyRoles: new Set(["curator"]),
+        busy: [
+          ...busy,
+          { role: "curator", from: "2026-08-30T13:25:32Z", to: "2026-08-30T13:35:07Z" },
+        ],
+        now: new Date("2026-08-30T13:26:30Z"),
+      }),
+    ).toEqual([]);
+
+    // THE CLASS IS NOT WEAKENED — the same pair on a box that then went quiet. Eleven minutes
+    // after the last session ended, with nobody raising it, the standstill is real and the line
+    // is true of every word it says: this is `051` standing 3 h 16 m, the call john kept.
+    const quiet = unacceptedTurns({
+      turns: [turn],
+      raisedAt: new Map(),
+      busyRoles: new Set(),
+      busy,
+      now: new Date("2026-08-30T13:36:30Z"),
+    });
+    expect(quiet).toHaveLength(1);
+    expect(quiet[0]?.age).toBe("11m");
+    expect(quiet[0]?.reason).toBeUndefined();
   });
 
   it("(в) a park DECLARED ON THIS PAIR'S TURN keeps its thread — no second line", () => {
