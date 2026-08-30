@@ -50,7 +50,7 @@
  * the data (`v21-codex-effort-vocabulary.ts`) — a bump alone would be a version that lies
  * about a config it cannot read.
  */
-export const CURRENT_PROTOCOL_VERSION = 24;
+export const CURRENT_PROTOCOL_VERSION = 25;
 
 /** The key of the config field. Kept as a constant: the loader's hint quotes it. */
 export const PROTOCOL_VERSION_FIELD = "protocolVersion";

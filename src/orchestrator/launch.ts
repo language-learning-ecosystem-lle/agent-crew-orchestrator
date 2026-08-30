@@ -1220,6 +1220,105 @@ const leversHeldOutsideOf = (profile: Launch): string =>
 export type InstructionDoc = { readonly path: string; readonly text: string };
 
 /**
+ * WHAT THE PROMPT IS ALLOWED TO SAY ABOUT THE MAIL — the two facts the norm «ПРОМПТ
+ * ПОДЪЁМА НЕ ПРИДУМЫВАЕТ ФАКТОВ О РОЛИ» (`PROTOCOL.md`, john's decision of 2026-08-30,
+ * thread `038-pilot-codex-live-run`) moved out of this file and into data. Both are
+ * OPTIONAL and their absence is the honest state, not a default: the prompt says less,
+ * and a session repairs less by reading its card.
+ */
+export type MailForm = {
+  /**
+   * The invocation the served project declares (`mailCommand`, v25) — the prefix before
+   * `thread show` and `new-message`. Absent: the prompt names the subcommands and says
+   * the form is not declared here, instead of writing a command nobody promised exists.
+   */
+  readonly command?: string;
+  /**
+   * WHERE THE MAIL IS, as an ABSOLUTE path (`orchestrator.mailCheckout` + `mail.dir`,
+   * resolved). Every mail subcommand requires `--root`, and nothing hands it to a raised
+   * session: neither the prompt nor the environment carried it, so the session derived it
+   * by hand from the config (measured on this thread, 2026-08-30: four commands and ~4
+   * minutes before the first `thread show` went through). ABSOLUTE and not relative on
+   * purpose — a relative root resolves against whatever directory the session happens to
+   * stand in, and the failure mode of getting it wrong is a partial write into a wrong
+   * tree, not a refusal.
+   */
+  readonly root?: string;
+  /**
+   * WHICH REF THE CONFIG IS READ AT (`orchestrator.ref`) — the second flag every mail
+   * subcommand requires. Same reason as `root`: the circuit holds this fact and the
+   * prompt used to withhold it.
+   */
+  readonly ref?: string;
+  /**
+   * WHAT HOLDS THIS RUN'S TOOLS, when what it holds is the mail itself (`toolsHeldBy`,
+   * v20) — the words of the card, quoted. Present means the run CANNOT write into the
+   * mail, so the prompt names it one ending instead of two.
+   */
+  readonly writesHeldBy?: string;
+};
+
+/**
+ * WHETHER A ROLE'S RUN CAN WRITE INTO THE MAIL AT ALL — read from what the card already
+ * declares, and named in the card's own word.
+ *
+ * DERIVED, NOT A NEW FIELD, and the choice is deliberate. The norm says the property is
+ * DECLARED rather than inferred and leaves the form to this package; a config already
+ * declares it. `toolsHeldBy: "sandbox-read-only"` is the one place where a field of the
+ * card becomes confinement (`codex.ts`): it reaches the vendor's argv as `--sandbox
+ * read-only`, and a process so confined cannot commit and push the mail — measured, not
+ * assumed (thread `038` run 7: four attempts, all stopped by the sandbox at `spawnSync git
+ * EPERM`). A second field beside it would be a second way to say one thing, and the one
+ * that drifts is always the one nothing enforces.
+ *
+ * THE HONEST LIMIT OF THAT DERIVATION, said out loud rather than discovered later:
+ * `toolsHeldBy` lives on the `codex` member of the launch union, so a non-writing role of
+ * ANOTHER kind is not expressible this way. Today there is no such role. The day there is,
+ * the answer is a declared field of its own, with its own version and its own button — not
+ * a widening of this function's guesswork.
+ */
+export const mailWritesHeldBy = (role: Role): string | undefined => {
+  const agent = role.launch?.agent;
+  return agent?.kind === "codex" ? agent.toolsHeldBy : undefined;
+};
+
+/**
+ * One mail command line: the declared prefix (or the honest bare subcommand), the
+ * subcommand, then the two flags the circuit knows and the caller's own arguments.
+ *
+ * THE FLAGS GO BETWEEN, and that is why the subcommand is a separate argument rather
+ * than the head of one string: `--root` and `--ref` are required by every mail
+ * subcommand, they are facts of THIS deployment, and a line printed without them exits 2
+ * on the first try. Each is printed only if it is known — an absent fact stays absent
+ * here exactly as `command` does, because a made-up root is worse than a missing one.
+ */
+const mailCall = (form: MailForm, subcommand: string, args?: string): string => {
+  const words = [
+    ...(form.command === undefined ? [] : [form.command]),
+    subcommand,
+    ...(form.root === undefined ? [] : ["--root", form.root]),
+    ...(form.ref === undefined ? [] : ["--ref", form.ref]),
+    ...(args === undefined ? [] : [args]),
+  ];
+  return `\`${words.join(" ")}\``;
+};
+
+/**
+ * WHAT IS SAID WHEN THE PROJECT DECLARED NO FORM. It is a sentence and not a blank: a
+ * prompt that simply printed `thread show` with no prefix would read as a command, which
+ * is the invention this norm removes — one step quieter, but the same class.
+ *
+ * AND IT DOES NOT SEND THE SESSION TO THE CARD. An earlier wording said "take that form
+ * from your role card" — which is a claim about a document nothing guarantees: in this
+ * repository the cards point at the package's own `Commands` section and print no prefix
+ * at all. Promising a fact that may not be there is the same species as inventing one, so
+ * what is left is only what this function can vouch for: the form of this deployment is
+ * not declared, ask for it rather than guess.
+ */
+const mailFormUndeclared =
+  "THE FORM OF THE INVOCATION IS NOT DECLARED BY THIS PROJECT'S CONFIG (`mailCommand`) — the subcommands above are this package's own words, the command that carries them is not. ASK for the form instead of guessing one: a guessed name spends the turn on `exit 127`.";
+
+/**
  * A TURN THAT ENDS, ENDS THE SESSION — the fact the runtime never tells the session,
  * stated in its prompt (curator's statement of work, thread 018).
  *
@@ -1259,9 +1358,18 @@ export type InstructionDoc = { readonly path: string; readonly text: string };
  *
  * It is NOT repeated in `buildResumePrompt`: a resumed session already has this prompt
  * in its context (unlike the wind-down norm, whose NUMBER changes with the new lease).
+ *
+ * AND A RUN THAT CANNOT WRITE IS TOLD ITS OWN COUNT (thread `038`, the norm of 2026-08-30).
+ * Both legal endings above are writes into the mail — parking sends a question, passing the
+ * turn sends a reply — so for a run held to read-only tools this paragraph as written names
+ * two endings it does not have, and the measured consequence is that the session attempts
+ * them anyway. The 018 norm is not narrowed for anybody else: what narrows is the
+ * DESCRIPTION handed to the one role whose second exit is closed by construction.
  */
-const runEndsNorm =
-  "ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (`cli await-input` above, or a command of YOUR OWN work you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead. AND THE FOREGROUND ENDING IS NEVER FOR SOMEONE ELSE'S RUN: a CI job, a review round, a verdict on a PR you opened or labelled all report into the thread by themselves, so waiting one out here only burns the clock and holds your role's one slot against the queue. Started one? Say so in the thread, park on it (`--parked-on run:<N>` or `pr:<N>`) when nothing else can move, and pass the turn — the next tick reads the finished verdict.";
+const runEndsNorm = (form: MailForm): string =>
+  form.writesHeldBy !== undefined
+    ? "ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So your run ends in exactly ONE way: you PRINT your answer and stop. There is no second ending for you — parking for input and passing the turn are both writes into the mail, and this run cannot make one. Never sit in the foreground waiting a run out — a CI job, a review round, a verdict on a pull request: none of them can report back into this process, and the wait only burns the clock and holds your role's one slot against the queue. If the work does not fit inside this run, print what you have and say plainly what is missing: a printed partial answer is delivered, an unprinted perfect one dies with the process."
+    : `ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (${mailCall(form, "await-input")} above, or a command of YOUR OWN work you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead. AND THE FOREGROUND ENDING IS NEVER FOR SOMEONE ELSE'S RUN: a CI job, a review round, a verdict on a PR you opened or labelled all report into the thread by themselves, so waiting one out here only burns the clock and holds your role's one slot against the queue. Started one? Say so in the thread, park on it (\`--parked-on run:<N>\` or \`pr:<N>\`) when nothing else can move, and pass the turn — the next tick reads the finished verdict.`;
 
 /**
  * THE NORM OF WINDING DOWN, in the session's own prompt (R20, john's decision) — the
@@ -1288,13 +1396,30 @@ const runEndsNorm =
 const windDownNorm = (input: {
   readonly deadline: string;
   readonly windDownSeconds: number;
-}): string =>
-  [
-    `YOUR RUN HAS A DEADLINE: ${input.deadline} (UTC; also in \`$${LAUNCH_ENV.leaseDeadline}\`, and \`date -u +%FT%TZ\` tells you the time now).`,
-    `WINDING DOWN IS PART OF THE WORK: about ${Math.round(input.windDownSeconds / 60)} minutes before it, stop digging and land what you have — commit it AS IT IS (a partial commit beats a perfect tree that dies with the process), say in the thread what is done, what is not and what the next session should pick up, and pass the turn.`,
-    "Being cut off at the deadline is a FAILURE, not a normal ending: everything uncommitted at that moment belongs to nobody. If your run parks for input, the window moves later by the time spent waiting — `await-input` tells you by how much when the answer arrives.",
+  /** The same two facts the rest of the prompt is built from (thread `038`). */
+  readonly mail: MailForm;
+}): string => {
+  const minutes = Math.round(input.windDownSeconds / 60);
+  const deadline = `YOUR RUN HAS A DEADLINE: ${input.deadline} (UTC; also in \`$${LAUNCH_ENV.leaseDeadline}\`, and \`date -u +%FT%TZ\` tells you the time now).`;
+  // THE LANDING IS TOLD IN THE ENDING THE RUN ACTUALLY HAS (thread `038`). "Say it in the
+  // thread and pass the turn" is the second half of the same false claim the norm of
+  // 2026-08-30 removes — a run held to read-only tools cannot do either, and this is the
+  // third place the prompt said it. Everything else about the norm is unchanged, including
+  // for that run: the clock, the commit, and that being cut off is a failure.
+  if (input.mail.writesHeldBy !== undefined) {
+    return [
+      deadline,
+      `WINDING DOWN IS PART OF THE WORK: about ${minutes} minutes before it, stop digging and land what you have — commit it AS IT IS (a partial commit beats a perfect tree that dies with the process), then PRINT what is done, what is not and what the next session should pick up.`,
+      "Being cut off at the deadline is a FAILURE, not a normal ending: everything uncommitted and everything unprinted at that moment belongs to nobody.",
+    ].join(" ");
+  }
+  return [
+    deadline,
+    `WINDING DOWN IS PART OF THE WORK: about ${minutes} minutes before it, stop digging and land what you have — commit it AS IT IS (a partial commit beats a perfect tree that dies with the process), say in the thread what is done, what is not and what the next session should pick up, and pass the turn.`,
+    `Being cut off at the deadline is a FAILURE, not a normal ending: everything uncommitted at that moment belongs to nobody. If your run parks for input, the window moves later by the time spent waiting — ${mailCall(input.mail, "await-input")} tells you by how much when the answer arrives.`,
     "This is not the same thing as parking for input above: parking is a pause your own session continues, winding down ends the run and passes the turn.",
   ].join(" ");
+};
 
 /**
  * The prompt for `claude -p` — from the role card (its `instructions`) and ONE
@@ -1319,24 +1444,50 @@ export const buildLaunchPrompt = (input: {
   readonly deadline: string;
   /** How long before it the session is expected to start landing (R20). */
   readonly windDownSeconds: number;
+  /**
+   * The two facts about the mail this prompt is NOT allowed to invent (thread `038`):
+   * how it is invoked here, and whether this run can write into it at all. Both optional
+   * — absent is silence, and silence is what a role card repairs.
+   */
+  readonly mail?: MailForm;
 }): string => {
   const cards = input.instructions.map((doc) => `# ${doc.path}\n\n${doc.text}`).join("\n\n---\n\n");
+  const mail = input.mail ?? {};
+  const undeclared = mail.command === undefined ? [mailFormUndeclared, ""] : [];
   return [
     `You are the \`${input.role}\` role of the agent-crew-orchestrator protocol. Your role card is below.`,
     "",
     `The turn was passed to you on thread \`${input.thread}\` — AND ON THAT ONE ONLY. Do NOT handle the rest of your mail: this run is bound to exactly one thread.`,
     "",
-    "TWO COMMANDS ARE YOUR WHOLE INTERFACE TO THE MAIL (R3) — you never touch its files, its branch or its git yourself:",
-    `- READ: \`cli thread show --thread ${input.thread}\` — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder;`,
-    "- SEND: `cli new-message --thread <id> --from <your role> --expects <e> --waiting-on <who answers> --body-file <p> --write` — `--write` means SENT: the file, the commit and the push are one action, and a concurrent write is retried inside.",
+    ...(mail.writesHeldBy === undefined
+      ? [
+          "TWO COMMANDS ARE YOUR WHOLE INTERFACE TO THE MAIL (R3) — you never touch its files, its branch or its git yourself:",
+          `- READ: ${mailCall(mail, "thread show", `--thread ${input.thread}`)} — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder;`,
+          `- SEND: ${mailCall(mail, "new-message", "--thread <id> --from <your role> --expects <e> --waiting-on <who answers> --body-file <p> --write")} — \`--write\` means SENT: the file, the commit and the push are one action, and a concurrent write is retried inside.`,
+          "",
+          ...undeclared,
+          "Read the thread, carry out the statement of work and reply with a message at the end of it. `--waiting-on` is the FULL set of whoever is expected to act next, and passing the turn is what ends the run.",
+          "",
+          `IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Send the question with ${mailCall(mail, "new-message", "--await-input")} (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), then block on ${mailCall(mail, "await-input")}. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.`,
+        ]
+      : // ONE COMMAND, AND THE REASON IS QUOTED FROM THE CARD (thread `038`). The old text
+        // told this role to send a letter it cannot send, and the role obeyed the prompt
+        // over its card: four write attempts in one run, all stopped by the sandbox, the
+        // asked-for product printed never. What replaces it names the confinement in the
+        // card's own word — a session that knows WHY it cannot write stops arguing with it.
+        [
+          "ONE COMMAND IS YOUR WHOLE INTERFACE TO THE MAIL (R3) — reading it; you never touch its files, its branch or its git yourself:",
+          `- READ: ${mailCall(mail, "thread show", `--thread ${input.thread}`)} — the conversation in order (\`--tail <n>\` if it is long). It names any attachments in the folder.`,
+          "",
+          ...undeclared,
+          `YOU CANNOT WRITE INTO THE MAIL, AND THIS RUN IS NOT MEANT TO: your card declares this run's tools held by \`${mail.writesHeldBy}\`, and that confinement reaches the process itself — a write is refused by the sandbox, not by your judgement. Do not attempt one, with or without a flag: every attempt is turn spent and nothing delivered.`,
+          "",
+          "Read the thread, carry out the statement of work, and PRINT YOUR ANSWER TO THE STREAM as the last thing you do. That printed text IS the delivery — a coordinator carries it into the thread by hand — and printing it is what ends your run.",
+        ]),
     "",
-    "Read the thread, carry out the statement of work and reply with a message at the end of it. `--waiting-on` is the FULL set of whoever is expected to act next, and passing the turn is what ends the run.",
+    runEndsNorm(mail),
     "",
-    "IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Send the question with `cli new-message --await-input` (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), then block on `cli await-input`. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.",
-    "",
-    runEndsNorm,
-    "",
-    windDownNorm(input),
+    windDownNorm({ ...input, mail }),
     "",
     "--- ROLE CARD ---",
     "",
@@ -1373,8 +1524,11 @@ export const buildResumePrompt = (input: {
   /** The deadline of THE NEW lease (R20) — a resumed run gets a fresh window, and its own landing. */
   readonly deadline: string;
   readonly windDownSeconds: number;
-}): string =>
-  [
+  /** The same two facts as the fresh prompt (thread `038`) — a resume states them again. */
+  readonly mail?: MailForm;
+}): string => {
+  const mail = input.mail ?? {};
+  return [
     `Your previous session on thread \`${input.thread}\` was interrupted from the outside (${input.reason}) — this is that same session, resumed.`,
     "",
     "Your working directory is exactly as you left it, your base branch has not moved, and nobody has written in your place. THE THREAD MAY HAVE MOVED: read its tail before you carry on — a reply may have arrived while you were down, and acting on it is the work. Then carry on from where you stopped — do not start the work again, and do not take on the rest of your mail.",
@@ -1383,10 +1537,17 @@ export const buildResumePrompt = (input: {
     // deadline is a NEW one — this lease is not the interrupted lease — and a resumed
     // session that lands by the old number would either stop far too early or, worse,
     // trust a moment that has already passed.
-    windDownNorm(input),
+    windDownNorm({ ...input, mail }),
     "",
-    "The run is over once the reply is written at the end of the thread (`cli new-message`) and the turn is passed on.",
+    // THE LAST SENTENCE IS THE SECOND PLACE THE FALSE CLAIM LIVED (thread `038`): the fresh
+    // prompt's ending is repeated here on purpose, so a fix applied only there would have
+    // closed half of it — a resumed run of a role that cannot write would still be told its
+    // turn ends by sending a letter, and the resume is exactly when it is least able to.
+    mail.writesHeldBy === undefined
+      ? `The run is over once the reply is written at the end of the thread (${mailCall(mail, "new-message")}) and the turn is passed on.`
+      : "The run is over once your answer is PRINTED to the stream. You cannot write into the mail from this run, and nothing is expected of you there: the printed text is the delivery.",
   ].join("\n");
+};
 
 /**
  * Launches in a row without a single DELIVERY. Every `launch` increments the counter,
