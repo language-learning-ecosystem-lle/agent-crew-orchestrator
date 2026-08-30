@@ -1,20 +1,10 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T17:29:35.208Z",
+  "writtenAt": "2026-08-30T17:40:11.378Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
-  ],
-  "quota": [
-    {
-      "account": "lle-second",
-      "window": "five_hour",
-      "since": "2026-08-30T17:29:35Z",
-      "role": "dev-core",
-      "until": "2026-08-30T17:40:00Z",
-      "stated": true
-    }
   ],
   "leases": []
 }
