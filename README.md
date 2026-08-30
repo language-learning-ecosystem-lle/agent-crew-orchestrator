@@ -138,6 +138,37 @@ never raised as the daemon's user instead: a role declared to run as a stripped-
 would then get everything the box has, which is the privilege-by-presence the field exists to
 end.
 
+`capabilities` (protocol 24) is the other half of the same question: `systemUser` says who the
+run IS to the operating system, this says WHAT IT MAY DO to the machine. A closed vocabulary of
+three verbs — `log-tail`, `repo-refresh`, `disk-free` — and every one of them carries the closed
+LIST of values its single parameter accepts (`logs` + `maxLines`, `checkouts`; `disk-free` takes
+nothing and its object refuses every key). The list lives in the config and not in the package
+because what may be refreshed on a given box is a fact of that project, and its entries are
+ABSOLUTE paths: the run is one user and the files belong to another, so a `~` would expand
+against the wrong home. There is deliberately no verb that takes a free string: a capability
+whose argument is arbitrary text is a shell wearing a verb's name, and every door built above it
+is decoration. An empty list is refused BY NAME for the same reason — it is not "nothing
+allowed", it is a declaration that says nothing and would later be read as either. Optional and
+without a default: absent means a role that does nothing to the box, which is every role that
+runs today. **Declaring a capability executes nothing** — no executor reads this field in this
+build; the field is the thing a review can hold before anything can act on it, and widening the
+set costs a PR to a document of power.
+
+The vocabulary carries no verb that needs root, and that is why `service-restart` and
+`service-status` are not in it: a circuit's daemons are USER units of the user that owns them,
+and a separate identity cannot restart or query another user's units without root, polkit, or a
+move to the system level. They arrive as new members of the union, at a new version, if and when
+that price is paid — a verb the operating system refuses by construction would otherwise sit in
+the config looking like a right.
+
+```json
+"capabilities": [
+  { "name": "log-tail", "logs": ["/home/lle/projects/x/.orchestrator/daemon.log"], "maxLines": 200 },
+  { "name": "repo-refresh", "checkouts": ["/home/lle/projects/x"] },
+  { "name": "disk-free" }
+]
+```
+
 ```json
 "launch": {
   "allowedTools": ["Bash", "Read", "Edit", "Write"],
