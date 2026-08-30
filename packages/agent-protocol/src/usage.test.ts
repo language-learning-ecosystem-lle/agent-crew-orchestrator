@@ -636,6 +636,48 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     expect(strayArguments(words.slice(2), specFor("orchestrator restart"))).toEqual([]);
   });
 
+  it("names `--now` in the printed form of `metrics`, where the README puts it (042)", () => {
+    // MEASURED, NOT SUPPOSED (thread 042, curator's measurement on `main` after
+    // 223aa3b6): `metrics` ACCEPTS `--now` — it calls `orchestratorNow`, which is the
+    // same `flag(argv, "--now")` that `status`, `record`, `run` and `hold` call, and the
+    // acceptance of the day report was driven through it — and the README's «Commands»
+    // DESCRIBES it. The line the package prints as its own form named every other flag
+    // of the command and not that one. Four of the five callers of `orchestratorNow`
+    // spell their `--now`; `metrics` was the fifth.
+    //
+    // Nothing refused and nothing went red, and that is the shape of the defect rather
+    // than an excuse for it: `metrics` is one of the commands left outside
+    // `guardArguments`, so the gap costs no failed call — it costs a human reading the
+    // printed form as the truth about the command, and that reader is by construction
+    // the one who has just mistyped it. A box that says less about itself than the
+    // truth is the thread's own subject.
+    //
+    // Computed off the handler for the same reason `mergeGate`'s guard below is: the
+    // claim is about the command's real reading, not about a word someone typed here.
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+    const opens = source.indexOf("const metrics = (argv: readonly string[]): void => {");
+    expect(opens).toBeGreaterThan(-1);
+    const body = source.slice(opens, opens + source.slice(opens).indexOf("\n};"));
+    // The premise of the claim, asserted rather than assumed: if the handler ever stops
+    // reading the right edge, this test must fail loudly instead of demanding a usage
+    // line for a flag the command no longer takes.
+    expect(body).toContain("orchestratorNow(argv)");
+
+    // Read through `parseUsage` — the same reading the argument door performs — so what
+    // is asserted is the line as a MACHINE resolves it, not a substring of the file.
+    const spec = specFor("metrics");
+    expect([...spec.value, ...spec.boolean]).toContain("--now");
+
+    // And in the README's place: right after `--since`, the other edge of the same
+    // window. Two texts describing one command drift apart in whichever of them nobody
+    // is looking at (the three passages of `init`, thread 019).
+    const form = passagesOf(USAGE)
+      .find((passage) => passage.where === "command 'metrics'")
+      ?.text.split("\n")[0];
+    if (form === undefined) throw new Error("no usage block for 'metrics'");
+    expect(form.indexOf("--now")).toBeGreaterThan(form.indexOf("--since"));
+  });
+
   it("spells every flag the merge door reads (027)", () => {
     // MEASURED, NOT SUPPOSED: `--review-workflow` landed in `mergeGate` with thread 027
     // and in the README's «Commands», and NOWHERE in the shipped usage text — the
