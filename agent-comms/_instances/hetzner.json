@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T09:59:21.518Z",
+  "writtenAt": "2026-08-30T09:59:36.782Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "042-unaccepted-turn-silent",
       "state": "draining",
       "deadline": "2026-08-30T10:51:23Z"
+    },
+    {
+      "role": "curator",
+      "thread": "051-index-shows-parks",
+      "state": "running",
+      "deadline": "2026-08-30T10:39:35Z"
     }
   ]
 }
