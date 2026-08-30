@@ -1054,8 +1054,9 @@ describe("merge-gate takes the token of the instance the checkout belongs to", (
  * asked anything. The stub here answers a perfectly mergeable pull request, so a door
  * that ran late would exit 0 and this test would be measuring nothing.
  */
-describe("merge-gate refuses a --repo of another contour", () => {
-  it("names the foreign origin and never reaches gh", () => {
+describe("merge-gate refuses a tree of another contour", () => {
+  /** A box that declares one contour and the checkout it owns, plus a foreign checkout. */
+  const twoTrees = (): { home: string; foreign: string; configHome: string } => {
     const home = repoWithConfig();
     git(home, "remote", "add", "origin", "https://github.com/o/agent-crew-orchestrator.git");
     const foreign = repoWithConfig();
@@ -1069,34 +1070,64 @@ describe("merge-gate refuses a --repo of another contour", () => {
       `${JSON.stringify({ instance: "hetzner", repo: home }, null, 2)}\n`,
       "utf8",
     );
+    return { home, foreign, configHome };
+  };
+
+  const runGate = (
+    argv: readonly string[],
+    where: { cwd: string; configHome: string; bin: string },
+  ): { code: number; out: string } => {
+    try {
+      const out = execFileSync(TSX, [CLI, "merge-gate", ...argv], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        cwd: where.cwd,
+        env: sandbox(where.configHome, {
+          PATH: `${where.bin}${delimiter}${process.env.PATH ?? ""}`,
+        }),
+      });
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? -1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("names the foreign origin and never reaches gh", () => {
+    const { home, foreign, configHome } = twoTrees();
     const bin = stubGh(foreign, { json: mergeable() });
 
-    const result = ((): { code: number; out: string } => {
-      try {
-        const out = execFileSync(
-          TSX,
-          [CLI, "merge-gate", "--ref", "HEAD", "--repo", foreign, "--pr", "61"],
-          {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-            cwd: home,
-            env: sandbox(configHome, { PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` }),
-          },
-        );
-        return { code: 0, out };
-      } catch (error) {
-        const failure = error as { status?: number; stdout?: string; stderr?: string };
-        return {
-          code: failure.status ?? -1,
-          out: `${failure.stdout ?? ""}${failure.stderr ?? ""}`,
-        };
-      }
-    })();
+    const result = runGate(["--ref", "HEAD", "--repo", foreign, "--pr", "61"], {
+      cwd: home,
+      configHome,
+      bin,
+    });
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("belongs to another contour");
     expect(result.out).toContain("language-learning-ecosystem");
     // The verdict of the payload never appears: the door stopped before the ask.
+    expect(result.out).not.toContain("READY");
+  });
+
+  /**
+   * THE FORM THE DOOR WAS MISSING (the reviewer's finding on PR #160). `--repo` is the
+   * RARE way to call this command: `REVIEWER.md` itself writes `merge-gate --ref
+   * origin/main --pr <n>` and nothing else, so the tree is the caller's own. While the
+   * ground was judged only inside the `--repo` branch, a session standing in a checkout
+   * no contour of the box claims — the shape of #453/#454 — asked nothing, reached `gh`
+   * and got a verdict about another circuit's pull request. The stub again answers a
+   * perfectly mergeable PR, so a door that does not fire here exits 0.
+   */
+  it("refuses the ordinary form too — no --repo, called from a checkout of nobody", () => {
+    const { foreign, configHome } = twoTrees();
+    const bin = stubGh(foreign, { json: mergeable() });
+
+    const result = runGate(["--ref", "HEAD", "--pr", "61"], { cwd: foreign, configHome, bin });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("no contour of this box");
+    expect(result.out).toContain("'hetzner'");
     expect(result.out).not.toContain("READY");
   });
 });

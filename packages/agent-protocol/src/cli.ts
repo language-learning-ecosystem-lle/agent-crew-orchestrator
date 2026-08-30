@@ -498,7 +498,7 @@ import {
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
 import { type CheckoutState, runCapabilityCall } from "./roles/capability-run.js";
-import { judgeContour } from "./roles/contour.js";
+import { judgeContour, judgeGround } from "./roles/contour.js";
 import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import {
@@ -1184,24 +1184,27 @@ const contourOf = (at: string): { name?: string | undefined; repo?: string | und
 };
 
 /**
- * THE DOOR OF THE CONTOUR (thread 062). The tree a command is pointed at must belong
- * to the circuit the command came from; a `--repo` naming ANOTHER circuit's checkout
- * is refused here, before anything is read, written or opened.
+ * THE DOOR OF THE CONTOUR (thread 062), in two guards below. The tree a command was
+ * typed in — and the tree it is pointed at, when `--repo` names one — must belong to
+ * the circuit the caller belongs to; anything else is refused before it is read,
+ * written or opened.
  *
- * The judgement is in `roles/contour.ts` and so is the reasoning; this is its two
- * facts — who claims the caller's tree, who claims the target — and the exit. It is
- * the cheap half of the measure, and the report says so: a session that calls `git`
- * and `gh` directly never comes past this line, which is why the load-bearing half is
- * a token scoped to one repository.
+ * The judgement is in `roles/contour.ts` and so is the reasoning; these are its facts
+ * — who claims the caller's tree, who claims the target — and the exit. It is the
+ * cheap half of the measure, and the report says so: a session that calls `git` and
+ * `gh` directly never comes past this line, which is why the load-bearing half is a
+ * token scoped to one repository.
  */
-const guardContour = (target: string): string => {
-  const caller = contourOf(process.cwd());
-  // WHAT THIS BOX DECLARES AT ALL — and only the instances that name a `repo`, because
-  // an instance claiming no checkout draws no boundary: counting it would refuse every
-  // tree on a box whose single config happens to omit the path. A config that does not
-  // parse is skipped here and NAMED where it matters — `resolveLocalConfig`, at the
-  // commands that need the machine config itself.
-  const boxContours = listInstanceConfigs()
+
+/**
+ * WHAT THIS BOX DECLARES AT ALL — and only the instances that name a `repo`, because
+ * an instance claiming no checkout draws no boundary: counting it would refuse every
+ * tree on a box whose single config happens to omit the path. A config that does not
+ * parse is skipped here and NAMED where it matters — `resolveLocalConfig`, at the
+ * commands that need the machine config itself.
+ */
+const boxContours = (): readonly string[] =>
+  listInstanceConfigs()
     .filter((entry) => {
       try {
         return typeof JSON.parse(readFileSync(entry.path, "utf8")).repo === "string";
@@ -1210,10 +1213,33 @@ const guardContour = (target: string): string => {
       }
     })
     .map((entry) => entry.name);
+
+/**
+ * THE GROUND, ASKED WITHOUT A TARGET — and asked on every command that resolves a
+ * repository, which is what makes the door a door. The reviewer's finding on PR #160:
+ * while this lived inside `guardContour`, it ran only when `--repo` was named, so the
+ * documented form (`merge-gate --ref origin/main --pr N`, `REVIEWER.md`) asked nothing
+ * and a session in a checkout of another circuit passed in silence — the very shape of
+ * #453/#454. The judgement itself is unchanged; what changed is WHEN it is requested.
+ */
+const guardGround = (): void => {
+  const caller = contourOf(process.cwd());
+  const verdict = judgeGround({
+    at: process.cwd(),
+    boxContours: boxContours(),
+    // A contour that claims the caller but declares no checkout is no ground to stand
+    // on — the same pairing `judgeContour` makes, so both doors answer alike.
+    ...(caller.name === undefined || caller.repo === undefined ? {} : { ownContour: caller.name }),
+  });
+  if (verdict.verdict === "foreign") fail(verdict.refusal, 2);
+};
+
+const guardContour = (target: string): string => {
+  const caller = contourOf(process.cwd());
   const targeted = contourOf(target);
   const verdict = judgeContour({
     target,
-    boxContours,
+    boxContours: boxContours(),
     ...(targeted.name === undefined ? {} : { targetContour: targeted.name }),
     ...(originOf(target) === undefined ? {} : { targetRemote: originOf(target) }),
     ...(caller.name === undefined ? {} : { ownContour: caller.name }),
@@ -1224,10 +1250,18 @@ const guardContour = (target: string): string => {
   return target;
 };
 
-/** `--repo`, judged against the contour the command came from, or the caller's own tree. */
+/**
+ * `--repo`, judged against the contour the command came from, or the caller's own tree
+ * — and the GROUND is judged either way. Without `--repo` there is no target to judge
+ * beyond the caller's own tree, but the caller still has to be standing somewhere this
+ * box declares: that half costs one config read and is what closes the ordinary form of
+ * every command (`merge-gate --ref origin/main --pr N`) against a foreign checkout.
+ */
 const repoArg = (argv: readonly string[], at: string): string => {
   const named = flag(argv, "--repo");
-  return named === undefined ? repoOf(at) : guardContour(named);
+  if (named !== undefined) return guardContour(named);
+  guardGround();
+  return repoOf(at);
 };
 
 /**

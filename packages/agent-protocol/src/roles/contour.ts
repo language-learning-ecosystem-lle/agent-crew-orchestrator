@@ -17,6 +17,16 @@
  * the box: the named instance configs, each of which declares the `repo` of one
  * circuit (`config/local.ts`), and the `origin` of the trees themselves.
  *
+ * IT IS ASKED IN TWO HALVES, AND THEY ARE NOT ASKED AT THE SAME MOMENTS. The GROUND
+ * (`judgeGround`) is about the tree the command was TYPED IN, needs no target and is
+ * therefore asked on EVERY command that resolves a repository at all — with `--repo`
+ * or without it. The TARGET (`judgeContour`) is about the tree a command was POINTED
+ * AT and only exists when `--repo` names one. The split is the reviewer's finding on
+ * PR #160: while the ground was reachable only through the target, `merge-gate --ref
+ * origin/main --pr N` — the form written in `REVIEWER.md`, without `--repo` — asked
+ * nothing at all, so a session in a foreign checkout passed silently. A door that is
+ * only asked when the caller volunteers a flag is not a door (discipline 4).
+ *
  * WHAT IT IS NOT. It is not the load-bearing measure and must not be read as one: a
  * conscious `git clone` plus `gh pr create` never passes through this package, so a
  * door here is bypassed by not using the door. The load-bearing measure is a token
@@ -98,9 +108,54 @@ const inside = (parent: string, child: string): boolean => {
   return c === p || c.startsWith(p.endsWith(sep) ? p : p + sep);
 };
 
+/** Facts about the tree a command was TYPED IN — the ground, judged without a target. */
+export type GroundInput = {
+  /** The tree the command came from (the caller's working directory's repository). */
+  readonly at: string;
+  /** Which contour claims `at` — an instance name, or nothing if none does. */
+  readonly ownContour?: string | undefined;
+  /** THE CONTOURS THIS BOX DECLARES AT ALL — see `ContourInput.boxContours`. */
+  readonly boxContours?: readonly string[] | undefined;
+};
+
 /**
- * THE JUDGEMENT. Pure: everything it knows is in `input`, so the refusal it produces
- * can be tested without a git tree, and the reading of git lives at the call site.
+ * THE GROUND — and it is judged with no target in hand, which is the whole reason it
+ * is its own function. A box that declares contours and claims the caller's tree with
+ * NONE of them is not a box without a boundary: it is a session standing outside every
+ * boundary it has, which is exactly what a temporary checkout in `/tmp` is (#453/#454).
+ * Refusing there costs the honest case nothing — a role works in the workspace its own
+ * instance declares (R17) — and it costs the dishonest case the first command it types,
+ * whether or not that command was kind enough to name `--repo`.
+ */
+export const judgeGround = (input: GroundInput): ContourVerdict => {
+  if (input.ownContour !== undefined) {
+    return {
+      verdict: "own",
+      because: `'${input.at}' is claimed by contour '${input.ownContour}' of this box`,
+    };
+  }
+  const declared = input.boxContours ?? [];
+  if (declared.length > 0) {
+    return {
+      verdict: "foreign",
+      refusal: `this command was typed in a tree that belongs to no contour of this box (declared: ${declared
+        .map((name) => `'${name}'`)
+        .join(
+          ", ",
+        )}) — outside its own checkout a role carries none of what bounds it (zones, its card, its review round, its feed), so nothing here can be judged. Work from the workspace of your own circuit (thread 062)`,
+    };
+  }
+  return {
+    verdict: "unknown",
+    because: `no instance of this box claims the tree this command came from ('${input.at}'), and the box declares no contour at all, so there is no boundary here to cross`,
+  };
+};
+
+/**
+ * THE JUDGEMENT ABOUT THE TARGET. Pure: everything it knows is in `input`, so the
+ * refusal it produces can be tested without a git tree, and the reading of git lives at
+ * the call site. The ground comes first here too — a caller standing nowhere cannot be
+ * asked about a destination — and it is the same `judgeGround` above, not a copy.
  *
  * The order of the tests is the order of certainty. The PATH decides first — a tree
  * inside the contour's own checkout is its own tree even when git cannot be asked at
@@ -110,26 +165,13 @@ const inside = (parent: string, child: string): boolean => {
  */
 export const judgeContour = (input: ContourInput): ContourVerdict => {
   if (input.ownContour === undefined || input.ownRepo === undefined) {
-    // THE GROUND, and it is judged BEFORE the target. A box that declares contours and
-    // claims the caller's tree with none of them is not a box without a boundary — it is
-    // a session standing outside every boundary it has, which is what a temporary
-    // checkout in `/tmp` is. Refusing here costs the honest case nothing: a role works
-    // in the workspace its own instance declares (R17).
-    const declared = input.boxContours ?? [];
-    if (declared.length > 0) {
-      return {
-        verdict: "foreign",
-        refusal: `this command was typed in a tree that belongs to no contour of this box (declared: ${declared
-          .map((name) => `'${name}'`)
-          .join(
-            ", ",
-          )}) — outside its own checkout a role carries none of what bounds it (zones, its card, its review round, its feed), so nothing here can be judged. Work from the workspace of your own circuit (thread 062)`,
-      };
-    }
-    return {
-      verdict: "unknown",
-      because: `no instance of this box claims the tree this command came from, so there is no contour for '${input.target}' to be outside of`,
-    };
+    // A contour that names no checkout draws no boundary either, so the pair is judged
+    // as a whole: `ownContour` without `ownRepo` reaches the ground as "nobody claims
+    // the caller", which is what it means for a judgement made of paths and origins.
+    return judgeGround({
+      at: input.target,
+      ...(input.boxContours === undefined ? {} : { boxContours: input.boxContours }),
+    });
   }
   if (inside(input.ownRepo, input.target)) {
     return {

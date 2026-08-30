@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { judgeContour, remoteIdentity } from "./contour.js";
+import { judgeContour, judgeGround, remoteIdentity } from "./contour.js";
 
 const own = {
   ownContour: "hetzner",
@@ -111,5 +111,45 @@ describe("judgeContour — the tree the command came from", () => {
       boxContours: [],
     });
     expect(verdict.verdict).toBe("unknown");
+  });
+});
+
+/**
+ * THE GROUND ON ITS OWN (the reviewer's finding on PR #160). The three cases below are
+ * the whole of what a command without `--repo` can be asked: the caller is claimed, the
+ * caller is claimed by nobody on a box that declares contours, or the box declares none
+ * at all. They are here rather than folded into the cases above because that is exactly
+ * the shape the defect had — the ground was only reachable THROUGH a target, so the
+ * ordinary form of every command asked nothing.
+ */
+describe("judgeGround", () => {
+  it("passes a caller standing in the checkout its contour declares", () => {
+    const verdict = judgeGround({
+      at: "/home/lle/projects/agent-crew-orchestrator/.worktrees/dev-core",
+      ownContour: "hetzner",
+      boxContours: ["hetzner", "lle-hetzner"],
+    });
+    if (verdict.verdict !== "own") throw new Error(`expected 'own', got ${verdict.verdict}`);
+    expect(verdict.because).toContain("hetzner");
+  });
+
+  it("refuses a caller no declared contour claims — with no target in hand at all", () => {
+    const verdict = judgeGround({
+      at: "/tmp/lle-clone",
+      boxContours: ["hetzner", "lle-hetzner"],
+    });
+    if (verdict.verdict !== "foreign")
+      throw new Error(`expected a refusal, got ${verdict.verdict}`);
+    expect(verdict.refusal).toContain("no contour of this box");
+    expect(verdict.refusal).toContain("'lle-hetzner'");
+    expect(verdict.refusal).toContain("workspace of your own circuit");
+  });
+
+  it("judges nothing on a box that declares no contour — and names that as the reason", () => {
+    const verdict = judgeGround({ at: "/tmp/fresh-clone", boxContours: [] });
+    if (verdict.verdict !== "unknown")
+      throw new Error(`expected 'unknown', got ${verdict.verdict}`);
+    expect(verdict.because).toContain("/tmp/fresh-clone");
+    expect(verdict.because).toContain("declares no contour at all");
   });
 });
