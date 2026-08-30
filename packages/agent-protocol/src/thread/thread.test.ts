@@ -192,10 +192,10 @@ describe("renderIndex / threadsWaitingOn", () => {
     expect(renderIndex([closed, open])).toBe(
       `# Реестр разговоров
 
-| id | participants | status | waiting-on | updated |
-|---|---|---|---|---|
-| 001-y | curator, dev-core, john | closed | — | 2026-07-23 |
-| 012-x | curator, dev-core, john | open | john | 2026-07-23 |
+| id | participants | priority | status | waiting-on | parked-on | updated | subject |
+|---|---|---|---|---|---|---|---|
+| 001-y | curator, dev-core, john | normal | closed | — | — | 2026-07-23 | — |
+| 012-x | curator, dev-core, john | normal | open | john | — | 2026-07-23 | Done, the PR is open. |
 `,
     );
   });
@@ -1309,5 +1309,129 @@ describe("personParkSpansOf — FOR HOW LONG the thread was frozen behind a pers
   it("a CLOSED thread declares nothing — the acceptance, exactly as in parkingOf", () => {
     const feed = thread(declared);
     expect(personParkSpansOf({ ...feed, meta: { ...feed.meta, status: "closed" } })).toEqual([]);
+  });
+});
+
+describe("renderIndex — the register shows the parks (thread 051)", () => {
+  const feed = (
+    id: string,
+    messages: readonly Message[],
+    status: "open" | "closed" = "open",
+  ): Thread => ({
+    id,
+    meta: { title: "t", participants: ["curator", "john"], status },
+    messages,
+  });
+
+  const say = (fields: Partial<Message["fields"]>, text = "Чинить ли гард 2?"): Message => ({
+    fields: {
+      from: "curator",
+      date: "2026-08-19T11:08:20Z",
+      expects: "answer",
+      waitingOn: "curator",
+      ...fields,
+    },
+    text,
+  });
+
+  /** The row of one thread — the table is asserted whole in the test above; here one line at a time. */
+  const row = (thread: Thread, reading?: Parameters<typeof renderIndex>[1]): string => {
+    const line = renderIndex([thread], reading)
+      .split("\n")
+      .find((at) => at.startsWith(`| ${thread.id} `));
+    return line ?? "";
+  };
+
+  it("a thread with no park says so — the column is empty, not guessed from waiting-on", () => {
+    expect(row(feed("012-x", [say({})]))).toBe(
+      "| 012-x | curator, john | normal | open | curator | — | 2026-08-19 | Чинить ли гард 2? |",
+    );
+  });
+
+  it("a park on a person WITH a question carries the mark, the person and the day", () => {
+    expect(row(feed("023-x", [say({ parkedOn: "john" })]))).toContain("| ❓ john · 2026-08-19 |");
+  });
+
+  it("a park on a person asking NOTHING is a mode: the freeze is shown, the mark is not", () => {
+    // `expects: none` says in the author's own words that nobody is being called — the thread
+    // is frozen all the same, and a ❓ over it teaches the reader to ignore the mark (016, 052).
+    const line = row(feed("016-x", [say({ parkedOn: "john", expects: "none" }, "режимная пауза")]));
+
+    expect(line).toContain("| john · 2026-08-19 |");
+    expect(line).not.toContain("❓");
+  });
+
+  it("an EVENT park shows the event, never a person", () => {
+    expect(row(feed("042-x", [say({ parkedOn: "pr:133" })]))).toContain("| pr:133 · 2026-08-19 |");
+    expect(row(feed("019-x", [say({ parkedOn: "run:163" })]))).toContain(
+      "| run:163 · 2026-08-19 |",
+    );
+    expect(row(feed("019-x", [say({ parkedOn: "run:163" })]))).not.toContain("❓");
+  });
+
+  it("a CLOSED thread awaits nobody and asks nothing — the acceptance outranks the park", () => {
+    expect(row(feed("001-y", [say({ parkedOn: "john" })], "closed"))).toBe(
+      "| 001-y | curator, john | normal | closed | — | — | 2026-08-19 | — |",
+    );
+  });
+
+  it("the subject is the question of the PARK, not the last line of the feed", () => {
+    // The message that froze the thread is very often not the last one: a person park lifts
+    // only on `delivers`, so an informational letter behind it leaves the freeze standing.
+    const line = row(
+      feed("023-x", [
+        say({ parkedOn: "john" }, "Перезапустить демон?"),
+        {
+          fields: { from: "github", date: "2026-08-20T09:00:00Z", expects: "none" as const },
+          text: "CI по #133 — success",
+        },
+      ]),
+    );
+
+    expect(line).toContain("| Перезапустить демон? |");
+    expect(line).toContain("| ❓ john · 2026-08-19 |");
+  });
+
+  it("a pipe in the quoted line is escaped — a cell may not split the row it lives in", () => {
+    expect(row(feed("012-x", [say({}, "id | participants — какие колонки?")]))).toContain(
+      "| id \\| participants — какие колонки? |",
+    );
+  });
+
+  it("the priority is printed only when it is IN FORCE (R5)", () => {
+    const declared = feed("012-x", [say({ priority: "high" })]);
+
+    expect(row(declared, { priorityInForce: (role) => role === "curator" })).toContain(
+      "| high | open |",
+    );
+    // The same feed read by somebody who does not honour that role: the queue the circuit
+    // actually runs is the one the register must show.
+    expect(row(declared, { priorityInForce: () => false })).toContain("| normal | open |");
+    expect(row(declared)).toContain("| normal | open |");
+  });
+
+  it("the register and the courier count the same parks — the acceptance of thread 051", () => {
+    // The расхождение this thread was opened on: the chatting curator read the register and
+    // answered "no parks" while the box printed `N parked, K of them asking`. The two numbers
+    // are now one reading — `parkingOf` — and the ❓ rows are exactly the asking person parks.
+    const threads = [
+      feed("012-x", [say({})]),
+      feed("016-x", [say({ parkedOn: "john", expects: "none" }, "режим")]),
+      feed("023-x", [say({ parkedOn: "john" })]),
+      feed("042-x", [say({ parkedOn: "pr:133" })]),
+      feed("001-y", [say({ parkedOn: "john" })], "closed"),
+    ];
+    const merged = mergedPrs(threads);
+    const asking = threads.filter((thread) => {
+      const parking = parkingOf(thread, merged);
+      return parking?.kind === "person" && parking.asks;
+    });
+    const marked = renderIndex(threads)
+      .split("\n")
+      .filter((line) => line.includes("❓"));
+
+    expect(asking).toHaveLength(1);
+    expect(marked).toHaveLength(asking.length);
+    expect(marked[0]).toContain("| 023-x |");
   });
 });

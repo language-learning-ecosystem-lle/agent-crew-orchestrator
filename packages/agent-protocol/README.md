@@ -1639,6 +1639,21 @@ agent-protocol thread status --root <comms> --ref <ref> --thread <id> --from <ro
                             # what it does NOT fix, and says: a message whose own header is broken. That is
                             # another file, and a committed message is never edited (the norm of the mail)
 agent-protocol index build  --root <comms> --ref <ref> [--write]
+                            # THE COLUMNS (051): id | participants | priority | status | waiting-on |
+                            # parked-on | updated | subject. `waiting-on` is WHOSE TURN it is,
+                            # `parked-on` is WHAT FREEZES it — `<person>`, `pr:N` or `run:N`, with the
+                            # DAY it was declared on and a leading ❓ when the parking message asks the
+                            # person for a word (`expects` other than `none`). The ❓ rows are exactly
+                            # the parks the courier rings about (`N parked, K of them asking`): one
+                            # reading (`parkingOf`), so the register and the box cannot disagree
+                            # THE DAY, NOT AN AGE ("11 сут"): the index is derived and rebuilt on every
+                            # push into the mail, so an age would change every row on every push and
+                            # stand still exactly in the contour nobody pushes into
+                            # `priority` is the one IN FORCE (R5) — a directive from a role without
+                            # `thread-priority` reads `normal` here, as it does in the queue
+                            # `subject` is one line up to 100 characters: the question of the PARK while
+                            # one stands, otherwise the first line of the last message. A closed thread
+                            # says `—` in all three: closing is the acceptance
 agent-protocol thread build --root <comms> --ref <ref> --id <NNN-slug> [--write]
 agent-protocol derive       --root <comms> --ref <ref> [--write]           # all derived files
 agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
