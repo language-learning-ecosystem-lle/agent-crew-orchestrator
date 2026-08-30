@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T22:08:18.499Z",
+  "writtenAt": "2026-08-30T22:12:19.561Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "058-concurrent-writers-one-thread",
       "state": "running",
       "deadline": "2026-08-30T23:08:15Z"
-    },
-    {
-      "role": "curator",
-      "thread": "060-derive-fails-whole-branch",
-      "state": "running",
-      "deadline": "2026-08-30T22:46:13Z"
     }
   ]
 }
