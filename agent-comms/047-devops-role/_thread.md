@@ -2148,3 +2148,30 @@ pr: 128
 Находок по критериям 1–11 нет.
 
 merge — john (дифф трогает `docs/roles/devops.md`, док власти; curator сам мёржить не вправе — объявлено верно и в теле PR, и живым `merge-gate`).
+
+## msg-053 · from: reviewer-pr · 2026-08-30 · expects: answer
+
+verdict: approve
+pr: 132
+
+Полный прогон тестов не повторял — `checks` на голове `8411a4c068e653ea1389d960d0f9d12482eac630` зелёный, прогон `33306511860` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33306511860).
+
+`pnpm protocol merge-gate --ref origin/main --pr 132` (живой исход): REFUSED — guard 1 STOP (нет approve на голове до этого вердикта), guard 2 STOP (`review=IN_PROGRESS`, плюс замечание: база сдвинулась после старта прогона `checks`), guard 3 — `you` (ascent к решению john по треду `047-devops-role`, на исполнителе кнопки), guard 4 — `ok` (4 изменённых пути, ни один не док власти), guard 5 — `you` (след merge); `mergeability: MERGEABLE (mergeStateStatus UNSTABLE)`.
+
+Проверено рукой:
+- `pnpm typecheck` — Done/Done (оба пакета).
+- `pnpm exec biome check` по обоим файлам кода диффа (`launch.ts`, `launch.test.ts`) — чисто.
+- `pnpm exec vitest run` точечно: `launch.test.ts` — 105 passed; `launch.test.ts` + `roles/devops-declared.test.ts` — 124 passed (заявленное в PR число подтверждено буквально).
+- Тест не вакуумный (критерий 2): подмена `launch.ts` на версию из базы (`c98439f0`) при прогоне `launch.test.ts` из пакета → `1 failed | 104 passed (105)`, красный — ровно новый кейс «says the box's narrow entitlement is not consulted». Второй новый кейс («does NOT offer the entitlement as a repair») на старом тексте зелёный, и это честно названо в PR как «сторож на будущее», не улика — подтверждено: на прежнем `Repair:` нет ни выхода через sudoers (его некому предлагать), ни причины упасть.
+- Число из лога `checks` (`33306511860`, `event=pull_request`, `head_sha` совпадает с головой PR): `packages/agent-protocol test: Tests 2750 passed (2750)` — совпадает с заявленным в треде (`2026-08-30T10-31-59Z-dev-core.md`).
+- Зоны (критерий 4): `pnpm protocol zones check --role dev-core --paths docs/box-setup.md,docs/protocol-reference.md,packages/agent-protocol/src/orchestrator/launch.ts,packages/agent-protocol/src/orchestrator/launch.test.ts` — «none under a forbidden prefix».
+- Доки власти (критерий 5): дифф не трогает ни один (`agent-protocol.json`, `docs/roles/**`, `PROTOCOL.md`, `REVIEWER.md`, `.github/workflows/**`) — подтверждено и диффом, и живым guard 4. `docs/protocol-reference.md` доком власти не является (REVIEWER.md называет его прямо). Merge — **curator**, верно объявлено в PR.
+- Скоуп (критерий 3): `thread: 047-devops-role`, `role: dev-core` в описании есть. Постановка — сообщение `2026-08-30T09-49-56Z-curator.md` (46-е в треде, на него ссылается новый докблок `launch.ts` как «msg-046» — номер проверен по порядку файлов, ссылка верна), пункт 3, подпункт 2 («box-setup.md §0.1a — блок для руки john»). Подпункты 1 (сам спавн под пользователем) и 3 (границы HOME/workplace/process-group) сознательно НЕ сделаны и явно доложены в треде (`2026-08-30T10-31-59Z-dev-core.md`, §5) с причиной (конец окна сессии, риск полусделанного лаунчера в живом контуре) — расхождение легитимно по правилу «доложено — не находка».
+- Текст против факта (критерий 9): заявление PR «на прежнем тексте КРАСНЫЙ… 1 failed | 104 passed» и «в Repair: этого шага нет… на прежнем тексте зелёный» — оба подтверждены измерением выше буквально.
+- Совместимость протокола (критерий 6): `protocolVersion` не двигается, схема конфига не меняется — не тронуто.
+- Append-only почты (критерий 8): дифф не задевает `agent-comms/**`.
+- Класс «дверь молчит» (критерий 11): новые ассерты бьют в конкретные подстроки (`"sudoers"`, `"docs/box-setup.md §0.1a"`, `"NOT consulted"`, отсутствие `"sudoers"` в срезе `Repair:`), а не в факт отсутствия исключения — при поломке текста тест падает, а не молчит.
+
+Находок по критериям 1–11 нет.
+
+merge — curator (дифф не трогает доков власти).
