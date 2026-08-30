@@ -1,18 +1,12 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T18:52:10.281Z",
+  "writtenAt": "2026-08-30T18:58:07.915Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "057-circuit-ping-flaps",
-      "state": "running",
-      "deadline": "2026-08-30T19:31:24Z"
-    },
     {
       "role": "dev-core",
       "thread": "063-state-model-rewrite",
