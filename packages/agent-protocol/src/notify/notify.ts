@@ -1757,7 +1757,20 @@ export const unacceptedTurns = (input: {
     // whole age on its own other thread has queued legitimately, a thread that spent it parked
     // on a human was frozen legitimately, and the fact that either ended a minute ago does not
     // turn the pair into a standstill.
-    const free = minutes - blockedMinutes(input, turn, input.now);
+    // AND THE FREE PART IS THE UNINTERRUPTED TAIL, NOT THE SUM OF THE SLIVERS (the third false
+    // call, 2026-08-30T13:2xZ, thread 042). `curator×052` rang `20m, no reason known` while the
+    // role was running another thread: the twenty minutes were collected out of the gaps
+    // BETWEEN sessions — the two the journal shows around that minute are 25 and 26 seconds —
+    // and in every one of them the pair was sixth in a queue the daemon was working through, one
+    // session per role. john read the line a minute later, found `2 of 3 role(s) live`, and spent
+    // three passes over a healthy box. The sentence the line makes is "this box had the pair
+    // raisable for {age} and did not raise it", and it is only true of the stretch that is still
+    // running at the moment of printing: a sum of slivers asserts an idleness that never
+    // happened, and it goes stale the instant the next session starts. So the age is measured
+    // from the end of the last thing that blocked the pair — and a box that never idles longer
+    // than the threshold with the pair standing says nothing at all, which is what a saturated
+    // queue is.
+    const free = freeTailMinutes(input, turn, input.now);
     if (free < after) continue;
     // THE TURN WAS TAKEN IF A LEASE POSTDATES THE HANDOFF, and by that alone: a pair raised
     // yesterday, released and left standing since this morning is untaken, and a rule that
@@ -1769,9 +1782,9 @@ export const unacceptedTurns = (input: {
       role: turn.role,
       thread: turn.thread,
       since: turn.since,
-      // THE FREE PART, not the wall clock (the second false call, 2026-08-29T10:05Z): the age
-      // and the threshold now measure the same thing, and the sentence the reader acts on is
-      // true of the number beside it.
+      // THE FREE PART, not the wall clock (the second false call, 2026-08-29T10:05Z), and since
+      // the third one its UNINTERRUPTED tail: the age and the threshold measure the same thing,
+      // and the sentence the reader acts on is true of the number beside it.
       age: describeAge(free),
       ...(reason === undefined ? {} : { reason }),
     });
@@ -1779,36 +1792,39 @@ export const unacceptedTurns = (input: {
   return out;
 };
 
+type BlockingInput = {
+  readonly busy?: readonly {
+    readonly role: RoleId;
+    readonly from: string;
+    readonly to: string;
+  }[];
+  readonly parks?: readonly {
+    readonly thread: string;
+    readonly from: string;
+    readonly to?: string;
+  }[];
+};
+
 /**
- * How much of a pair's standing time the box could NOT have raised it — in minutes, and it is
- * two kinds of interval read as one: the role's own leases (the legitimate queue, check (б))
- * and the freezes of this pair's thread behind a person (the park, `daemon.log:19561`).
+ * WHEN the box could NOT have raised the pair, as merged intervals, and it is two kinds of
+ * interval read as one: the role's own leases (the legitimate queue, check (б)) and the freezes
+ * of this pair's thread behind a park of any kind (`daemon.log:19561`).
  *
  * Spans of other roles and of other threads are none of this pair's business, and every span is
  * clipped to the standing window at both ends: a lease or a park that began before the handoff
  * blocked nothing of THIS turn, and one still open at `now` counts only up to `now`.
  *
- * THE OVERLAP IS COUNTED ONCE. The two sources are independent — a role can be busy on its
- * other thread while this one is parked — so the clipped spans are merged before they are
- * measured; summing them would subtract an hour twice and hand the box an alibi for time it
- * really was free.
+ * THE OVERLAP IS COUNTED ONCE — the two sources are independent (a role can be busy on its other
+ * thread while this one is parked), so the clipped spans are merged rather than summed. Since the
+ * false call of 2026-08-30 the merge earns a second keep: what the class reads off these spans is
+ * not their total but the END of the last of them ({@link freeTailMinutes}), and two overlapping
+ * spans would otherwise hand back an end that neither of them has.
  */
-const blockedMinutes = (
-  input: {
-    readonly busy?: readonly {
-      readonly role: RoleId;
-      readonly from: string;
-      readonly to: string;
-    }[];
-    readonly parks?: readonly {
-      readonly thread: string;
-      readonly from: string;
-      readonly to?: string;
-    }[];
-  },
+const blockedSpans = (
+  input: BlockingInput,
   turn: { readonly role: RoleId; readonly thread: string; readonly since: string },
   now: Date,
-): number => {
+): { start: number; end: number }[] => {
   const from = Date.parse(turn.since);
   const until = now.getTime();
   const clipped: { start: number; end: number }[] = [];
@@ -1820,21 +1836,42 @@ const blockedMinutes = (
   for (const span of input.busy ?? []) if (span.role === turn.role) add(span.from, span.to);
   for (const park of input.parks ?? []) if (park.thread === turn.thread) add(park.from, park.to);
   clipped.sort((a, b) => a.start - b.start);
-  let blocked = 0;
-  let open: { start: number; end: number } | undefined;
+  const merged: { start: number; end: number }[] = [];
   for (const span of clipped) {
-    if (open === undefined) {
-      open = { ...span };
-      continue;
-    }
-    if (span.start <= open.end) open.end = Math.max(open.end, span.end);
-    else {
-      blocked += open.end - open.start;
-      open = { ...span };
-    }
+    const open = merged[merged.length - 1];
+    if (open !== undefined && span.start <= open.end) open.end = Math.max(open.end, span.end);
+    else merged.push({ ...span });
   }
-  if (open !== undefined) blocked += open.end - open.start;
-  return blocked / 60_000;
+  return merged;
+};
+
+/**
+ * HOW LONG THE PAIR HAS BEEN RAISABLE WITHOUT INTERRUPTION, ending at `now` — the number the
+ * untaken line asserts, and the one it was not asserting when it woke john on 2026-08-30.
+ *
+ * The stretch starts at the end of the last thing that blocked the pair (the role's own lease on
+ * another thread, a park over this thread) or at the handoff if nothing ever did, and it ends at
+ * `now`. A span still open at `now` — the role is running something this very minute — leaves no
+ * tail at all and the answer is zero, which is the same verdict `busyRoles` gives and the reason
+ * the two agree by construction rather than by luck.
+ *
+ * WHY NOT THE SUM. Summing the free slivers answers "how much idleness has there been since the
+ * handoff", and no reader acts on that: what the line tells a human to do is go and look at a box
+ * that is doing nothing while a turn stands. A box working through a queue one session at a time
+ * is doing the opposite, and its gaps — half a minute between sessions — add up to the threshold
+ * over a busy morning no matter how healthy it is. The tail cannot be collected that way: it only
+ * reaches ten minutes when the box really has been idle for ten minutes with the pair standing.
+ */
+const freeTailMinutes = (
+  input: BlockingInput,
+  turn: { readonly role: RoleId; readonly thread: string; readonly since: string },
+  now: Date,
+): number => {
+  const until = now.getTime();
+  const spans = blockedSpans(input, turn, now);
+  const last = spans[spans.length - 1];
+  const freeSince = last === undefined ? Date.parse(turn.since) : last.end;
+  return Math.max(0, until - freeSince) / 60_000;
 };
 
 export const describeAge = (minutes: number): string => {
