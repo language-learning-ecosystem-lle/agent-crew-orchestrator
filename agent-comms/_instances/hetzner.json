@@ -1,18 +1,12 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T10:17:38.561Z",
+  "writtenAt": "2026-08-30T10:17:50.597Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "036-account-failover",
-      "state": "draining",
-      "deadline": "2026-08-30T10:50:06Z"
-    },
     {
       "role": "dev-core",
       "thread": "053-review-bypassed",
