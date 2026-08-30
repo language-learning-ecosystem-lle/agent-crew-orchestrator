@@ -1684,7 +1684,7 @@ export const planNotifications = (input: {
  * is filtered out of the composition below), so nothing rang for 6 h 37 m; the tick that lifted
  * the park announced the pair with the whole accumulated age and `no reason known`, and the
  * daemon raised it 39 seconds later. `parks` carries those intervals out of the MAIL — the only
- * place they exist ({@link personParkSpansOf}; the journal has no record of a park) — and they
+ * place they exist ({@link parkSpansOf}; the journal has no record of a park) — and they
  * are subtracted exactly as the queue is.
  *
  * THE TWO SOURCES ARE UNIONED AND NOT SUMMED: a role can hold a lease on its other thread while
@@ -1724,7 +1724,7 @@ export const unacceptedTurns = (input: {
   }[];
   /**
    * WHEN EACH THREAD WAS FROZEN BEHIND A PERSON, closed spans out of the MAIL
-   * ({@link personParkSpansOf}). A parked pair cannot be raised — the scheduler skips it every
+   * ({@link parkSpansOf}). A parked pair cannot be raised — the scheduler skips it every
    * tick and this class stays silent about it — so the freeze is time the box was not free to
    * take the turn, and it is subtracted from the age like the queue above. Absent — the caller
    * has no feed to replay, and the whole standing time is judged as free, which is what this

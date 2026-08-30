@@ -588,10 +588,12 @@ export const personParksOf = (thread: Thread): readonly Parking[] => {
   });
 };
 
-/** A stretch of wall-clock time a park on a person held a thread frozen. */
+/** A stretch of wall-clock time a park held a thread frozen. */
 export type ParkSpan = {
-  /** Who it was parked on — carried for the reader of a diagnosis, not used to judge. */
-  readonly person: string;
+  /** WHICH KIND of park it was — a person's decision, the merge of a PR, or a round on one. */
+  readonly kind: ParkedOn["kind"];
+  /** What it was parked on — carried for the reader of a diagnosis, not used to judge. */
+  readonly on: string;
   /** The date of the message that DECLARED the park. */
   readonly from: string;
   /** The date of the message that LIFTED it; absent — the park is standing now. */
@@ -599,8 +601,8 @@ export type ParkSpan = {
 };
 
 /**
- * WHEN THIS THREAD WAS FROZEN BEHIND A PERSON, as closed intervals (thread 042, the third
- * false call of the eighth class).
+ * WHEN THIS THREAD WAS FROZEN BY A PARK OF ANY KIND, as closed intervals (thread 042, the
+ * third false call of the eighth class and the fourth one it was measured half a fix short of).
  *
  * {@link parkingOf} answers "is it frozen NOW" and {@link personParksOf} "what was ever
  * declared". Neither answers the question the courier's age needs: FOR HOW LONG was the box
@@ -621,11 +623,31 @@ export type ParkSpan = {
  *
  * A SPAN OPEN AT THE END IS LEFT OPEN (`to` absent): whether "still parked" means "up to now"
  * is the caller's clock, and this function has none.
+ *
+ * AND THE EVENT PARKS (`pr:`, `run:`) ARE READ HERE TOO, which they were not until the field
+ * measurement of 2026-08-30 (`curator×051-index-shows-parks`, 09:29:02Z→09:59:35Z). The reason
+ * they were left out was that the courier already drops a thread frozen behind an event by id
+ * (`frozen`), and reading them twice looked like subtracting the same freeze twice. It is not:
+ * the two are a FILTER and a HISTORY, and they answer different ticks. The filter covers only
+ * the ticks the park STANDS on; the age is judged on the ticks AFTER it lifts, and there the
+ * event park was invisible — exactly the hole the person park was measured in on 2026-08-29.
+ * `051` stood 30 m 33 s parked behind the round on PR #126, of which 17.5 m were also
+ * `curator`'s own queue: on the first tick after the lift the pair carried ~12.9 m of "free"
+ * time it never had. It did not ring only because the daemon raised it inside the same tick.
+ * Subtracting is safe where the filter already holds — {@link ParkSpan}s are merged, not
+ * summed, before they are measured.
  */
-export const personParkSpansOf = (thread: Thread): readonly ParkSpan[] => {
+export const parkSpansOf = (thread: Thread): readonly ParkSpan[] => {
   if (thread.meta.status === "closed") return [];
   const spans: ParkSpan[] = [];
-  let open: { readonly at: number; readonly person: string; readonly from: string } | undefined;
+  let open:
+    | {
+        readonly at: number;
+        readonly kind: ParkedOn["kind"];
+        readonly on: string;
+        readonly from: string;
+      }
+    | undefined;
   for (let upto = 0; upto < thread.messages.length; upto += 1) {
     const prefix: Thread = { ...thread, messages: thread.messages.slice(0, upto + 1) };
     const at = standingParkOf(prefix);
@@ -634,20 +656,18 @@ export const personParkSpansOf = (thread: Thread): readonly ParkSpan[] => {
     const standing =
       at === undefined || declaring === undefined || on === undefined
         ? undefined
-        : parkedOnKind(on).kind === "person"
-          ? { at, person: on, from: declaring.fields.date }
-          : undefined;
+        : { at, kind: parkedOnKind(on).kind, on, from: declaring.fields.date };
     // THE MESSAGE THAT ENDED IT IS THE END OF THE SPAN, and the same message may declare the
     // next park: a lift and a re-declaration in one letter is two spans meeting at a point,
     // not one span with a hole in it.
     const now = thread.messages[upto]?.fields.date;
     if (open !== undefined && open.at !== standing?.at && now !== undefined) {
-      spans.push({ person: open.person, from: open.from, to: now });
+      spans.push({ kind: open.kind, on: open.on, from: open.from, to: now });
       open = undefined;
     }
     if (standing !== undefined && open === undefined) open = standing;
   }
-  if (open !== undefined) spans.push({ person: open.person, from: open.from });
+  if (open !== undefined) spans.push({ kind: open.kind, on: open.on, from: open.from });
   return spans;
 };
 

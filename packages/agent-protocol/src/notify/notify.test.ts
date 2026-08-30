@@ -1328,6 +1328,64 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     expect(turns[0]?.age).toBe("6h 52m");
   });
 
+  it("(е5) THE FIELD WINDOW OF `curator×051`, 2026-08-30 — an event park is a freeze like any other", () => {
+    // The candidate curator measured over the threshold by hand (12.9 free minutes of a 30.4
+    // minute stand) and asked to be re-judged by the class's own arithmetic. The numbers are the
+    // live journal of this box and the live feed of `051-index-shows-parks`:
+    //
+    //  - the turn passed to `curator` at 09:29:02Z (the stamp of the letter; the journal's
+    //    `handoff-detected` is eight seconds later) and was raised at 09:59:35Z;
+    //  - the letter carried `parked-on: run:126` — the daemon printed `⏸ PARKED behind the round
+    //    running on PR #126 (R27)` on every tick of the stand — and the park lifted at 09:59:02Z;
+    //  - `curator`'s own leases inside the window: `038` 09:32:39→09:36:31, `047`
+    //    09:42:27→09:50:48, `036` 09:51:26→09:56:42 — 17.5 minutes of legitimate queue.
+    //
+    // The tick asked about is the one AFTER the lift and BEFORE the raise, the only one on which
+    // this pair could have reached the class at all. Subtracting only the queue leaves 13.0 free
+    // minutes and rings; subtracting the park too leaves nothing, which is the truth: the box was
+    // never free to raise this pair for a single minute of those thirty.
+    const turn = {
+      role: "curator",
+      thread: "051-index-shows-parks",
+      since: "2026-08-30T09:29:02Z",
+    } as const;
+    const busy = [
+      { role: "curator", from: "2026-08-30T09:32:39Z", to: "2026-08-30T09:36:31Z" },
+      { role: "curator", from: "2026-08-30T09:42:27Z", to: "2026-08-30T09:50:48Z" },
+      { role: "curator", from: "2026-08-30T09:51:26Z", to: "2026-08-30T09:56:42Z" },
+    ] as const;
+    const now = new Date("2026-08-30T09:59:32Z");
+
+    // What the courier did before this change: the event park was read by nobody, so the stand
+    // was judged on the queue alone and the pair crossed the threshold on this very tick.
+    const withoutThePark = unacceptedTurns({
+      turns: [turn],
+      raisedAt: new Map(),
+      busyRoles: new Set(),
+      busy,
+      now,
+    });
+    expect(withoutThePark).toHaveLength(1);
+    expect(withoutThePark[0]?.age).toBe("13m");
+    expect(withoutThePark[0]?.reason).toBeUndefined();
+
+    const withThePark = unacceptedTurns({
+      turns: [turn],
+      raisedAt: new Map(),
+      busyRoles: new Set(),
+      busy,
+      parks: [
+        {
+          thread: "051-index-shows-parks",
+          from: "2026-08-30T09:29:02Z",
+          to: "2026-08-30T09:59:02Z",
+        },
+      ],
+      now,
+    });
+    expect(withThePark).toEqual([]);
+  });
+
   it("(е4) a queue INSIDE a park is subtracted once — the two sources are unioned, not summed", () => {
     // The role holds a lease on its other thread while this thread is frozen: the same hour is
     // in both lists, and summing them would hand the box an alibi for time it really was free.
