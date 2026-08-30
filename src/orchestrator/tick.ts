@@ -39,15 +39,16 @@
  * the entrance.
  */
 
+import type { AccountAlarm } from "../notify/notify.js";
 import type { DeliveryMarks } from "../thread/index-doc.js";
 import { parkedOnKind } from "../thread/thread.js";
 import { type AuthShelf, authRefusalRecorded, authShelfAgainst, openAuthShelves } from "./auth.js";
 import {
+  accountPauseAlarm,
   chooseAccount,
   type DeclaredAccount,
-  describeAccountPause,
-  describeFailover,
-  describeRefusals,
+  failoverAlarm,
+  refusalAlarms,
 } from "./failover.js";
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
 import { type AgentKind, CLAUDE_CODE } from "./kind.js";
@@ -202,8 +203,14 @@ type Skipped = {
    * own account, and no account is shelved" — the state before this field existed, said
    * the way `cut` says its own absence: a field that is there when there is something to
    * say and gone when there is not, rather than an empty array on every quiet tick.
+   *
+   * IT CARRIES ALARMS AND NOT BARE LINES since the remainder of §4: the same sentence is
+   * read by two readers — the operator's stream, which wants the words, and the digest of
+   * the person whose money it is, which wants an identity to remember it by. One
+   * measurement, two readers; a second reading of the shelves on the notifier's side would
+   * be two facts that can disagree about one window.
    */
-  readonly accountLines?: readonly string[];
+  readonly accountAlarms?: readonly AccountAlarm[];
 };
 
 /**
@@ -344,16 +351,16 @@ export const planTick = (input: {
   const authShelves = openAuthShelves(input.events, input.now);
   const skipped: TickSkip[] = [];
   const eligible: Candidate[] = [];
-  const accountLines: string[] = [];
+  const accountAlarms: AccountAlarm[] = [];
   // ONE ROLE, ONE ANSWER PER TICK. Under a scalar `waiting-on` a role is routinely the
   // head of several threads, and every one of them would otherwise reach `chooseAccount`
   // with the same chain and produce the same sentence — the switch of a subscription said
   // three times reads as three switches. The pair is not what moves accounts; the role is.
   const saidFor = new Set<string>();
-  const say = (role: string, lines: readonly string[]): void => {
+  const say = (role: string, alarms: readonly AccountAlarm[]): void => {
     if (saidFor.has(role)) return;
     saidFor.add(role);
-    accountLines.push(...lines);
+    accountAlarms.push(...alarms);
   };
   // Seeded with the roles this process is ALREADY running (D-2): "one session per role"
   // is one rule, and a role busy since an earlier tick is busy in exactly the same sense
@@ -418,8 +425,8 @@ export const planTick = (input: {
       // is the state an operator cannot tell from a dead circuit.
       skipped.push({ ...candidate, reason: "quota", attempt });
       say(candidate.role, [
-        describeAccountPause({ role: candidate.role, choice }),
-        ...describeRefusals({ role: candidate.role, refusals: choice.refusals }),
+        accountPauseAlarm({ role: candidate.role, choice }),
+        ...refusalAlarms({ role: candidate.role, refusals: choice.refusals }),
       ]);
       continue;
     }
@@ -438,8 +445,8 @@ export const planTick = (input: {
         : candidate;
     if (choice.kind === "failover")
       say(candidate.role, [
-        describeFailover({ role: candidate.role, choice }),
-        ...describeRefusals({ role: candidate.role, refusals: choice.refusals }),
+        failoverAlarm({ role: candidate.role, choice }),
+        ...refusalAlarms({ role: candidate.role, refusals: choice.refusals }),
       ]);
     // THE REFUSED CREDENTIALS SIT BESIDE THE CLOSED WINDOW, and after it: when both are
     // true the window is the fact with a clock on it, and a box that cannot authenticate
@@ -466,7 +473,7 @@ export const planTick = (input: {
   // Present when there is something to say and absent when there is not — the same shape
   // `cut` uses, and for the same reason: an empty array on every quiet tick is a field
   // that teaches its reader to stop looking at it.
-  const said = accountLines.length === 0 ? {} : { accountLines };
+  const said = accountAlarms.length === 0 ? {} : { accountAlarms };
 
   // A CLOSED WINDOW WITH WORK BEHIND IT IS ITS OWN STATE, not `idle`. The journal record
   // is written against the head of what the shelf refused, once per DARK SPELL of the box
