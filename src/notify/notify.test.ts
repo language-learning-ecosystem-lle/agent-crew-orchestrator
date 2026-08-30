@@ -13,6 +13,7 @@ import {
   exhaustedPairsOf,
   type NotifyState,
   type ParkedThread,
+  type ParkReminder,
   parseNotifyState,
   planNotifications,
   renderAnnouncement,
@@ -631,6 +632,236 @@ describe("a park ANNOUNCED AND LIFTED — a line, never a call (thread 030, (в2
 
     expect(result.fresh).toEqual([{ role: "john", thread: "016-y" }]);
     expect(result.lines.map((line) => line.kind)).toEqual(["parked", "turn"]);
+  });
+});
+
+describe("a live park REMINDED about — the ninth class of event (thread 043, Д-4)", () => {
+  // The measured picture: ten parks on john in `.orchestrator/notify.state` on 2026-08-29, the
+  // oldest eleven days old, and not one of them mentioned since the tick it was declared on.
+  const PARK: ParkedThread = {
+    thread: "002-courier-mute",
+    person: "john",
+    since: "2026-08-18T09:00:00Z",
+    question: "Гасим ли курьера на время починки?",
+    asks: true,
+  };
+  const PARK_TEMPLATE = { ...TEMPLATES, parked: "❓ {thread} ждёт твоего решения: {question}" };
+  const announced = (
+    parks: readonly ParkedThread[],
+    reminded?: readonly ParkReminder[],
+  ): NotifyState => ({
+    waiting: [],
+    stalled: [],
+    parked: parks.map((park) => ({ ...park, question: "", asks: false })),
+    ...(reminded === undefined ? {} : { reminded }),
+  });
+  const at = (
+    now: string,
+    parked: readonly ParkedThread[] = [PARK],
+    seen: NotifyState = announced([PARK]),
+    rest = {},
+  ) =>
+    planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen,
+      parked,
+      now: new Date(now),
+      templates: PARK_TEMPLATE,
+      ...rest,
+    });
+
+  it("(а) a park younger than the threshold is silent — the reader is simply reading it", () => {
+    const result = at("2026-08-18T11:59:00Z");
+
+    expect(result.remindedParked).toEqual([]);
+    expect(result.lines).toEqual([]);
+    // And the clock is untouched: nothing was said, so nothing is recorded as said.
+    expect(result.reminded).toEqual([]);
+  });
+
+  it("(б) past the threshold it is ONE line, and the line names the age", () => {
+    const result = at("2026-08-29T09:00:00Z");
+
+    expect(result.remindedParked).toHaveLength(1);
+    expect(result.remindedParked[0]?.age).toBe("11d");
+    // One line, not a header and a line: the header is for a queue, and this is one question.
+    expect(result.lines.map((line) => line.text)).toEqual([
+      "still on you after 11d — ❓ 002-courier-mute ждёт твоего решения: Гасим ли курьера на время починки?",
+    ]);
+    // The question is said in the words it was asked in and NOT repeated beyond the one line
+    // the project's slot renders — point 2 of the statement.
+    expect(result.reminded).toEqual([
+      { person: "john", thread: "002-courier-mute", at: "2026-08-29T09:00:00.000Z" },
+    ]);
+  });
+
+  it("(в) the next tick after a reminder is silent, and the tick past the interval is not", () => {
+    const first = at("2026-08-29T09:00:00Z");
+    const soon = at("2026-08-29T09:00:30Z", [PARK], announced([PARK], first.reminded));
+
+    expect(soon.remindedParked).toEqual([]);
+    expect(soon.lines).toEqual([]);
+    // THE CLOCK SURVIVES THE QUIET TICK. Dropping it here would make the next tick a reminder
+    // again, which is the every-thirty-seconds buzz this class exists to not become.
+    expect(soon.reminded).toEqual(first.reminded);
+
+    const later = at("2026-08-29T21:00:00Z", [PARK], announced([PARK], first.reminded));
+    expect(later.remindedParked).toHaveLength(1);
+    expect(later.reminded).toEqual([
+      { person: "john", thread: "002-courier-mute", at: "2026-08-29T21:00:00.000Z" },
+    ]);
+  });
+
+  it("(г) an answer stops the reminders in the same tick, and takes the clock with it", () => {
+    // A `delivers: john` lifts the person park (R27), so the park leaves the composition the
+    // caller hands over — and with it the entry that would otherwise silence the NEXT question
+    // of the same pair for twelve hours.
+    const first = at("2026-08-29T09:00:00Z");
+    const answered = at("2026-08-29T21:00:00Z", [], announced([PARK], first.reminded));
+
+    expect(answered.remindedParked).toEqual([]);
+    expect(answered.lines.map((line) => line.kind)).not.toContain("parked");
+    expect(answered.reminded).toEqual([]);
+  });
+
+  it("(г2) a closed thread is the same — the caller stops declaring the park, the clock clears", () => {
+    // Closing IS the acceptance (thread 016): a closed thread contributes no park and no
+    // declaration, so the class cannot speak about it even by accident.
+    const first = at("2026-08-29T09:00:00Z");
+    const closed = at("2026-08-30T09:00:00Z", [], announced([PARK], first.reminded), {
+      declaredParks: [],
+    });
+
+    expect(closed.remindedParked).toEqual([]);
+    expect(closed.reminded).toEqual([]);
+  });
+
+  it("(д) the dedup of Д-2 is untouched: a park announced once still rings only once", () => {
+    // The regression this repair could plausibly cause: reminders are a SEPARATE class, so a
+    // second tick inside the first three hours must still be the silence #63 bought.
+    const first = at("2026-08-18T09:00:10Z", [PARK], EMPTY);
+    const second = at("2026-08-18T09:00:40Z", [PARK], announced([PARK]));
+
+    expect(first.freshParked).toHaveLength(1);
+    expect(second.freshParked).toEqual([]);
+    expect(second.remindedParked).toEqual([]);
+    expect(second.lines).toEqual([]);
+  });
+
+  it("(д2) a park that has NEVER been announced is a call, not a reminder, however old", () => {
+    // Otherwise the first tick of a box would say "still on you after 11d" about a question
+    // nobody has been told about once — a reminder is by construction the second telling.
+    const result = at("2026-08-29T09:00:00Z", [PARK], EMPTY);
+
+    expect(result.freshParked).toHaveLength(1);
+    expect(result.remindedParked).toEqual([]);
+    // AND THE FRESH CALL SETS THE CLOCK GOING: without a stamp the very next tick past the
+    // threshold would remind about a question that has just rung.
+    expect(result.reminded).toEqual([]);
+  });
+
+  it("(д3) the eighth class keeps its own words beside a reminder — one fact each", () => {
+    // Д-5 (thread 042): a park declared on ANOTHER role's turn leaves the pair unraised rather
+    // than parked, and that pair has its own line. The reminder speaks to the person about the
+    // question; the stale-park alarm speaks to the operator about the box. Two facts, two lines,
+    // and neither may swallow the other.
+    const inherited: ParkedThread = { ...PARK, thread: "042-x", holder: "curator" };
+    const result = at("2026-08-29T09:00:00Z", [inherited], announced([inherited]), {
+      unaccepted: [
+        { role: "dev-core", thread: "042-x", since: "2026-08-29T08:00:00Z", age: "1h" },
+      ] satisfies readonly UnacceptedTurn[],
+    });
+
+    expect(result.remindedParked).toHaveLength(1);
+    expect(result.freshUnaccepted).toHaveLength(1);
+    expect(result.lines.map((line) => line.kind)).toEqual(["unaccepted-stale-park", "parked"]);
+  });
+
+  it("a restatement and a reminder are never two lines about one question", () => {
+    // Д-2's downgrade already puts a line about this key in this letter; a reminder beside it
+    // is the two-lines-about-one-id noise thread 023 removed.
+    const restated = at(
+      "2026-08-29T09:00:00Z",
+      [{ ...PARK, since: "2026-08-29T02:00:00Z", question: "Ну так гасим?" }],
+      announced([PARK]),
+    );
+
+    expect(restated.restatedParked).toHaveLength(1);
+    expect(restated.remindedParked).toEqual([]);
+  });
+
+  it("a park that asks nothing is never reminded — `asks` is the message's own word", () => {
+    // 016 exactly: a park held as a MODE, re-declared day after day, asking nobody anything.
+    // A reminder about it would be a call whose only honest text is "do nothing".
+    const result = at("2026-08-29T09:00:00Z", [{ ...PARK, asks: false }], announced([PARK]));
+
+    expect(result.remindedParked).toEqual([]);
+    expect(result.reminded).toEqual([]);
+  });
+
+  it("a park on somebody the notifier cannot call is not reminded either", () => {
+    // Thread 031: whom to ring instead of the named person is a decision about the norm, and
+    // no reminder may take it. Such a park is never written as announced, so it never reminds.
+    const result = at("2026-08-29T09:00:00Z", [{ ...PARK, person: "curator" }], {
+      waiting: [],
+      stalled: [],
+      parked: [{ ...PARK, person: "curator", question: "", asks: false }],
+    });
+
+    expect(result.remindedParked).toEqual([]);
+    expect(result.unaddressedParked).toHaveLength(1);
+  });
+
+  it("a queue of decisions opens with its size and the age of the oldest — the digest form", () => {
+    // Point 5 of the statement: what a person with ten standing decisions needs FIRST is the
+    // size of the queue, which no per-park line can say. One letter, one header, N lines.
+    const second: ParkedThread = {
+      thread: "037-no-foreground-waiting",
+      person: "john",
+      since: "2026-08-28T09:00:00Z",
+      question: "Правило шире моего PR?",
+      asks: true,
+    };
+    const result = at("2026-08-29T09:00:00Z", [PARK, second], announced([PARK, second]));
+
+    expect(result.remindedParked).toHaveLength(2);
+    expect(result.lines.map((line) => line.text)).toEqual([
+      "2 decisions are standing on you, the oldest for 11d — these threads move when you answer:",
+      "still on you after 11d — ❓ 002-courier-mute ждёт твоего решения: Гасим ли курьера на время починки?",
+      "still on you after 1d — ❓ 037-no-foreground-waiting ждёт твоего решения: Правило шире моего PR?",
+    ]);
+  });
+
+  it("no clock, no reminders — a caller that cannot say `now` writes no stamps", () => {
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: announced([PARK]),
+      parked: [PARK],
+      templates: PARK_TEMPLATE,
+    });
+
+    expect(result.remindedParked).toEqual([]);
+    expect(result.lines).toEqual([]);
+    expect(result.reminded).toEqual([]);
+  });
+
+  it("the clock survives a round trip through the state file, beside the parks", () => {
+    const state: NotifyState = {
+      waiting: [],
+      stalled: [],
+      parked: [{ ...PARK, question: "", asks: false }],
+      reminded: [{ person: "john", thread: "002-courier-mute", at: "2026-08-29T09:00:00.000Z" }],
+    };
+
+    expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
+    // AND A FILE WRITTEN BEFORE THIS CLASS EXISTED READS AS "nobody has been reminded" rather
+    // than as an unparsable line — which is what makes the ten standing parks ring on the first
+    // tick after this ships.
+    expect(
+      parseNotifyState("parked\tjohn\t002-courier-mute\t2026-08-18T09:00:00Z\n").reminded,
+    ).toBe(undefined);
   });
 });
 
