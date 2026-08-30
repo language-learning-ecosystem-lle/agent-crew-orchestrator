@@ -42,6 +42,13 @@
 import type { DeliveryMarks } from "../thread/index-doc.js";
 import { parkedOnKind } from "../thread/thread.js";
 import { type AuthShelf, authRefusalRecorded, authShelfAgainst, openAuthShelves } from "./auth.js";
+import {
+  chooseAccount,
+  type DeclaredAccount,
+  describeAccountPause,
+  describeFailover,
+  describeRefusals,
+} from "./failover.js";
 import type { OrchestratorEvent, RefusalReason } from "./journal.js";
 import { type AgentKind, CLAUDE_CODE } from "./kind.js";
 import {
@@ -71,6 +78,36 @@ export type Candidate = {
    * to remove. Absent is a KEY, not a gap — see `BOX_ACCOUNT`.
    */
   readonly account?: string;
+  /**
+   * THE ORDERED SPARES OF THIS ROLE (thread 036, step 3) — `roles[].launch.fallback`,
+   * joined onto the pair by the same caller and in the same breath as `account` above,
+   * because it is the same fact about the role and reading it in two places is how the
+   * two readings drift apart. Absent or empty means failover is OFF for this role and the
+   * planner behaves exactly as it did before the field existed.
+   */
+  readonly fallback?: readonly string[];
+  /**
+   * THE ACCOUNT ABOVE WAS PICKED OFF THE CHAIN, NOT READ OFF THE CARD (thread 036,
+   * step 3). Never set by the caller that builds a candidate: `planTick` puts it on the
+   * pairs it hands back, and ONLY when `chooseAccount` answered `failover`.
+   *
+   * It exists because `account` alone is not enough downstream. The launch door resolves
+   * the account from the ROLE'S CARD (`resolveAccount`), so a substituted id that travels
+   * as a bare string is read by the planner, printed in the tick's line — and then quietly
+   * dropped at the spawn, which raises the session on the primary the line just announced
+   * was shut. The mark is what tells the door "this one does NOT come from the card, use
+   * it and say so"; `from` is the window the pair is leaving, carried for the log rather
+   * than re-derived from a shelf that will have moved by the time anyone reads it.
+   */
+  readonly failover?: { readonly from: string };
+  /**
+   * THE TOOL THIS PAIR WOULD BE RAISED AS (`launch.agent.kind`) — carried because a spare
+   * of another kind is refused BY NAME rather than spent (thread 026, john 24.08), and the
+   * refusal cannot be made without knowing what the role is. Absent means nobody said, and
+   * the chain is then judged against {@link CLAUDE_CODE}'s id, the package default the
+   * launch door itself falls back to.
+   */
+  readonly worker?: string;
 };
 
 /**
@@ -145,8 +182,29 @@ export type TickSkip = {
   readonly account?: string;
 };
 
-/** Everything the tick refused to raise, whatever it decided to do instead. */
-type Skipped = { readonly skipped: readonly TickSkip[] };
+/**
+ * Everything the tick refused to raise, whatever it decided to do instead — and, since
+ * thread 036 step 3, everything it has to SAY about whose account it spent.
+ */
+type Skipped = {
+  readonly skipped: readonly TickSkip[];
+  /**
+   * WHAT THE FAIL-OVER DID THIS TICK, one sentence per fact, in candidate order.
+   *
+   * It is a field of the decision rather than a `console.error` inside the fold for the
+   * reason every other reason here is: `planTick` is pure, and the one thing that must
+   * never be true of a switch of subscriptions is that it happened without a line. Three
+   * kinds of sentence land here — a role moved onto a spare (`describeFailover`), a role
+   * is held because every link of its chain is shelved (`describeAccountPause`), and a
+   * named spare that will not be spent with the repair for it (`describeRefusals`).
+   *
+   * ABSENT IS THE OVERWHELMING MAJORITY OF TICKS and means exactly "every role is on its
+   * own account, and no account is shelved" — the state before this field existed, said
+   * the way `cut` says its own absence: a field that is there when there is something to
+   * say and gone when there is not, rather than an empty array on every quiet tick.
+   */
+  readonly accountLines?: readonly string[];
+};
 
 /**
  * The tail of the plan the GLOBAL budget refused, and the one reason all of it shares.
@@ -244,6 +302,18 @@ export const planTick = (input: {
    * fold judges by the journal alone and counts such a run a failed attempt.
    */
   readonly deliveryMarks?: DeliveryMarks;
+  /**
+   * WHAT THIS MACHINE DECLARES ABOUT ITS ACCOUNTS (`accounts` of the machine config,
+   * thread 036 step 3) — one fact about the box, handed in once, exactly like the events.
+   *
+   * A BOX THAT DECLARED NOTHING SPENDS NO SPARE, and that is deliberate rather than an
+   * oversight of the absent case: an id this machine cannot place is refused BY THE LAUNCH
+   * DOOR (`resolveAccount`) a moment later and fatally, so a planner that handed the pair
+   * such an account would buy a burnt attempt instead of a held one. The declaration-time
+   * door (`chainRefusals`) is the one that stays silent about an unread machine, because
+   * there nobody is waiting and the sentence would be about the reader.
+   */
+  readonly accounts?: Readonly<Record<string, DeclaredAccount>>;
 }): TickDecision => {
   const maxConsecutive = input.maxConsecutive ?? MAX_CONSECUTIVE_RUNS;
   const held = input.held ?? [];
@@ -274,6 +344,17 @@ export const planTick = (input: {
   const authShelves = openAuthShelves(input.events, input.now);
   const skipped: TickSkip[] = [];
   const eligible: Candidate[] = [];
+  const accountLines: string[] = [];
+  // ONE ROLE, ONE ANSWER PER TICK. Under a scalar `waiting-on` a role is routinely the
+  // head of several threads, and every one of them would otherwise reach `chooseAccount`
+  // with the same chain and produce the same sentence — the switch of a subscription said
+  // three times reads as three switches. The pair is not what moves accounts; the role is.
+  const saidFor = new Set<string>();
+  const say = (role: string, lines: readonly string[]): void => {
+    if (saidFor.has(role)) return;
+    saidFor.add(role);
+    accountLines.push(...lines);
+  };
   // Seeded with the roles this process is ALREADY running (D-2): "one session per role"
   // is one rule, and a role busy since an earlier tick is busy in exactly the same sense
   // as one taken by the head of this plan.
@@ -315,15 +396,60 @@ export const planTick = (input: {
     // …AND THE WINDOW THAT COUNTS IS THIS CANDIDATE'S ACCOUNT'S (B.3), never any closed
     // window of the box: on a machine raising roles on two subscriptions the second reading
     // stands a healthy account down for the five hours of a neighbour's.
-    if (shelvesAgainst(shelves, candidate.account).length > 0) {
+    //
+    // THREAD 036, STEP 3 — AND THE CLOSED WINDOW IS NO LONGER THE END OF THE SENTENCE. The
+    // question the planner asks is not "is this account shelved" any more but "which
+    // account is this role's next session raised on", and `chooseAccount` is the whole of
+    // the answer: pure, ordered, and reading the very shelves folded above, so the planner
+    // and the operator's frame cannot disagree about a window. The three answers are the
+    // three states of the box and each is acted on differently.
+    const choice = chooseAccount({
+      ...(candidate.account === undefined ? {} : { primary: candidate.account }),
+      ...(candidate.fallback === undefined ? {} : { fallback: candidate.fallback }),
+      worker: candidate.worker ?? CLAUDE_CODE.id,
+      ...(input.accounts === undefined ? {} : { accounts: input.accounts }),
+      shelves,
+    });
+    if (choice.kind === "paused") {
+      // EVERY LINK IS SHUT — the pair is skipped exactly as a shelved account was skipped
+      // before this existed, which is what makes "the attempt is NOT spent" true here: an
+      // attempt is spent by a LAUNCH, and a skip raises nothing. The difference from the
+      // old behaviour is the line, not the fate: standing down for five hours in silence
+      // is the state an operator cannot tell from a dead circuit.
       skipped.push({ ...candidate, reason: "quota", attempt });
+      say(candidate.role, [
+        describeAccountPause({ role: candidate.role, choice }),
+        ...describeRefusals({ role: candidate.role, refusals: choice.refusals }),
+      ]);
       continue;
     }
+    // A SPARE ANSWERED. The candidate travels on with the account it will actually spend
+    // — and WITH THE MARK that says where that id came from, because the two are not the
+    // same fact and only the first of them is enough for the readers INSIDE this file.
+    // The credentials shelf below and the skips only need "which account", so they read
+    // the field. The launch door needs "and it did not come off the card": it resolves the
+    // account from the role's card by default, and handed a bare id it would resolve the
+    // shut primary instead — announcing a switch that never happened, which is worse than
+    // the silence the announcement was written to remove. It is the LOUD case, so it is
+    // the one that must be true.
+    const chosen =
+      choice.kind === "failover"
+        ? { ...candidate, account: choice.account, failover: { from: choice.from } }
+        : candidate;
+    if (choice.kind === "failover")
+      say(candidate.role, [
+        describeFailover({ role: candidate.role, choice }),
+        ...describeRefusals({ role: candidate.role, refusals: choice.refusals }),
+      ]);
     // THE REFUSED CREDENTIALS SIT BESIDE THE CLOSED WINDOW, and after it: when both are
     // true the window is the fact with a clock on it, and a box that cannot authenticate
     // will say so again the moment the window reopens.
-    if (authShelfAgainst(authShelves, candidate.account) !== undefined) {
-      skipped.push({ ...candidate, reason: "auth", attempt });
+    //
+    // IT IS ASKED OF THE CHOSEN ACCOUNT, not of the role's own: a pair moved onto a spare
+    // spends the spare's token, and judging it by the dead credentials of the subscription
+    // it just left would hold the one account that could still work.
+    if (authShelfAgainst(authShelves, chosen.account) !== undefined) {
+      skipped.push({ ...chosen, reason: "auth", attempt });
       continue;
     }
     // ONE PAIR PER ROLE, and the ceiling is not a policy choice: the role has one
@@ -331,12 +457,16 @@ export const planTick = (input: {
     // planner refuses it HERE, by name, instead of raising a pair that would die on the
     // door. The pair is not lost — it is the next tick's head for that role.
     if (planned.has(candidate.role)) {
-      skipped.push({ ...candidate, reason: "role-busy", attempt });
+      skipped.push({ ...chosen, reason: "role-busy", attempt });
       continue;
     }
-    eligible.push(candidate);
+    eligible.push(chosen);
     planned.add(candidate.role);
   }
+  // Present when there is something to say and absent when there is not — the same shape
+  // `cut` uses, and for the same reason: an empty array on every quiet tick is a field
+  // that teaches its reader to stop looking at it.
+  const said = accountLines.length === 0 ? {} : { accountLines };
 
   // A CLOSED WINDOW WITH WORK BEHIND IT IS ITS OWN STATE, not `idle`. The journal record
   // is written against the head of what the shelf refused, once per DARK SPELL of the box
@@ -368,6 +498,7 @@ export const planTick = (input: {
     return {
       kind: "quota",
       shelves: quotaShelves,
+      ...said,
       ...(announced
         ? {}
         : {
@@ -408,6 +539,7 @@ export const planTick = (input: {
             },
           }),
       skipped,
+      ...said,
     };
   }
 
@@ -418,8 +550,8 @@ export const planTick = (input: {
       ...new Set(skipped.filter((skip) => skip.reason === "held").map((skip) => skip.role)),
     ];
     return heldWithWork.length === 0
-      ? { kind: "idle", skipped }
-      : { kind: "held", roles: heldWithWork, skipped };
+      ? { kind: "idle", skipped, ...said }
+      : { kind: "held", roles: heldWithWork, skipped, ...said };
   }
 
   // THE GLOBAL CEILING — READ ONCE PER TICK, AND IT CUTS THE TAIL (D-1). It is a budget
@@ -442,6 +574,7 @@ export const planTick = (input: {
       ? {}
       : { cut: { reason: "run-budget" as const, candidates: cutCandidates, recorded: head } }),
     skipped,
+    ...said,
   };
 };
 

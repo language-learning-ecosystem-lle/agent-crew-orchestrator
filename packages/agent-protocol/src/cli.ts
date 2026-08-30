@@ -4720,13 +4720,27 @@ const agentFor = (
   local: LoadedLocalConfig,
   role: Role,
   /**
-   * WHAT THE THREAD SAID (R21) — already filtered by permission, and absent for every
-   * caller that has no thread in hand (`status`, `preflight`): those show what a role
-   * would be raised with IN GENERAL, and a per-thread directive is not part of that
-   * answer. The lines it caused to be dropped are printed by the caller beside the
-   * agent line, so a directive never disappears without a word.
+   * WHAT IS TRUE OF THIS LAUNCH AND OF NO OTHER — absent for every caller that has no
+   * single run in hand (`status`, `preflight`), which is why both halves are optional and
+   * why neither is read off a file here.
    */
-  directive?: LaunchDirective,
+  per?: {
+    /**
+     * WHAT THE THREAD SAID (R21) — already filtered by permission, and absent for every
+     * caller that has no thread in hand: those show what a role would be raised with IN
+     * GENERAL, and a per-thread directive is not part of that answer. The lines it caused
+     * to be dropped are printed by the caller beside the agent line, so a directive never
+     * disappears without a word.
+     */
+    readonly directive?: LaunchDirective;
+    /**
+     * WHICH ACCOUNT THE PLANNER PICKED OFF THE CHAIN for this one launch (thread 036,
+     * step 3) — set only when `planTick` marked the candidate `failover`, and it OVERRIDES
+     * the card. Without it this door would re-read `launch.account` and point the session
+     * at the very window the tick announced it was leaving.
+     */
+    readonly account?: string;
+  },
 ): {
   worker: ResolvedWorker;
   exec: ResolvedExec;
@@ -4760,7 +4774,7 @@ const agentFor = (
     worker,
     kind: askedKind,
     ...(role.launch === undefined ? {} : { launch: role.launch }),
-    ...(directive === undefined ? {} : { directive }),
+    ...(per?.directive === undefined ? {} : { directive: per.directive }),
   });
   if (!resolution.ok) return fail(`role '${role.id}': ${resolution.reason}`, 2);
   // THE LEVERS THE ROLE ASKS FOR AGAINST THE ONES THIS TOOL HAS (thread 026, step 3,
@@ -4827,6 +4841,11 @@ const agentFor = (
     // worker is already resolved above with its layer, so the door compares the two
     // halves of the R14 join instead of trusting whichever spoke last.
     worker,
+    // AND ABOVE BOTH LAYERS, THE CHAIN — when this tick's planner already walked it
+    // (thread 036, step 3). This is the line that makes the announcement true: without
+    // it the door reads `launch.account` off the card, resolves the closed primary, and
+    // the session spends the window the tick just said it was leaving.
+    ...(per?.account === undefined ? {} : { chosen: per.account }),
   });
   if (!account.ok) return fail(`role '${role.id}': ${account.reason}`, 2);
   return {
@@ -4834,7 +4853,10 @@ const agentFor = (
     exec,
     params: resolution.params,
     ...(account.account === undefined ? {} : { account: account.account }),
-    ignored: ignoredDirective({ ...(directive === undefined ? {} : { directive }), worker }),
+    ignored: ignoredDirective({
+      ...(per?.directive === undefined ? {} : { directive: per.directive }),
+      worker,
+    }),
   };
 };
 
@@ -8998,12 +9020,9 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
   // WHAT THE THREAD SAID ABOUT ITS RUNS (R21) — read before the parameters are merged,
   // because it is one of the layers they merge from.
   const directed = threadDirectiveFor({ mailRoot, thread, registry });
-  const agent = agentFor(
-    argv,
-    local,
-    role,
-    ...(directed.effective === undefined ? [] : [directed.effective.directive]),
-  );
+  const agent = agentFor(argv, local, role, {
+    ...(directed.effective === undefined ? {} : { directive: directed.effective.directive }),
+  });
   const exec = agent.exec.value;
   const maxTurns = String(ceilings.maxTurns.value);
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
@@ -9459,10 +9478,36 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     instance: local.config?.instance,
   });
   const roleAccounts = new Map<string, string>();
+  // THREAD 036, STEP 3 — AND THE SPARES BESIDE THE ACCOUNT, off the same card and in the
+  // same pass, because they are one statement of the role: "spend this, and if its window
+  // is shut, these in this order". Read once at startup with everything else the launch
+  // mode is resolved from; a chain that changes wants the daemon restarted exactly as a
+  // changed account does.
+  //
+  // THE KIND TRAVELS WITH THE CHAIN and is not re-derived by the planner: a spare of
+  // another kind is refused by name, and the refusal needs to know what the role is raised
+  // as. It is read off the role's OWN CARD, exactly as the config door reads it: a
+  // `--worker` flag on whoever started this daemon is provenance about the command, and a
+  // chain judged by it would refuse the spares of every role the flag does not describe.
+  const roleChains = new Map<string, { fallback: readonly string[]; worker: string }>();
   for (const roleId of launchable) {
     const named = registry.get(roleId)?.launch?.account ?? instanceAccount;
     if (named !== undefined) roleAccounts.set(roleId, named);
+    const fallback = registry.get(roleId)?.launch?.fallback;
+    if (fallback !== undefined && fallback.length > 0)
+      roleChains.set(roleId, {
+        fallback,
+        worker: resolveWorker({
+          ...(registry.get(roleId)?.launch === undefined
+            ? {}
+            : { launch: registry.get(roleId)?.launch as Launch }),
+        }).value,
+      });
   }
+  // What THIS MACHINE says about its accounts — read once, beside the machine config the
+  // rest of the launch mode comes from. `undefined` when it declared nothing at all, and
+  // the planner is told the difference (see `planTick`'s `accounts`).
+  const declaredForPlan = declaredAccounts(argv);
   // Remembered for the WHOLE LIFE of the daemon, keyed by (PR, head): a head that has
   // not moved is not asked about twice (thread 019, point 5, the price limits).
   const mergeReadyCache = createMergeReadyCache();
@@ -9923,12 +9968,16 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // that read it once at start-up would keep raising yesterday's decision for
     // days (R21 — a change mid-thread takes effect from the NEXT run).
     const directed = threadDirectiveFor({ mailRoot, thread: candidate.thread, registry });
-    const agent = agentFor(
-      argv,
-      local,
-      role,
-      ...(directed.effective === undefined ? [] : [directed.effective.directive]),
-    );
+    // THE ACCOUNT THE PLANNER CHOSE TRAVELS INTO THE DOOR (thread 036, step 3), and only
+    // when it was chosen: a bare `candidate.account` handed over on every launch would
+    // relabel every ordinary run as a failover and hide which layer of the config named
+    // the account. The mark is the whole condition — see `Candidate.failover`.
+    const agent = agentFor(argv, local, role, {
+      ...(directed.effective === undefined ? {} : { directive: directed.effective.directive }),
+      ...(candidate.failover === undefined || candidate.account === undefined
+        ? {}
+        : { account: candidate.account }),
+    });
     // The workspace and the continuation are settled PER LAUNCH: both are properties of
     // this (role, thread) pair at this moment, and the daemon lives for days. This half
     // is deliberately SYNCHRONOUS and happens before the registry entry exists — it is
@@ -10214,8 +10263,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // the account, so the join is one lookup per candidate.
       candidates: candidates.map((candidate) => {
         const account = roleAccounts.get(candidate.role);
-        return account === undefined ? candidate : { ...candidate, account };
+        // AND THE CHAIN RIDES THE SAME JOIN (thread 036, step 3): the queue knows nothing
+        // about subscriptions, so both halves of "which account does this pair spend" are
+        // attached here, at the one line where the role is in hand.
+        const chain = roleChains.get(candidate.role);
+        return {
+          ...candidate,
+          ...(account === undefined ? {} : { account }),
+          ...(chain === undefined ? {} : { fallback: chain.fallback, worker: chain.worker }),
+        };
       }),
+      ...(declaredForPlan === undefined ? {} : { accounts: declaredForPlan }),
       now: new Date(),
       // The mail is already parsed for the queue above — the set of sessions that
       // wrote is what keeps a run that delivered into its own turn out of the
@@ -10236,6 +10294,13 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         `agent-protocol: ${describeSkip(skip, gates.maxAttempts, kindForRole(argv, registry, skip.role))}`,
       );
     }
+    // THREAD 036, STEP 3 — WHOSE MONEY THIS TICK SPENT, said ABOVE the skips' own reasons
+    // and never folded into them. A `quota` skip says "this pair was not raised"; these
+    // lines say the thing a skip cannot: that the role moved to another subscription, or
+    // that every account it may spend is shut and until when. Printed every tick the fact
+    // holds, like the skips and for the same reason — a state that was announced once and
+    // then went quiet is indistinguishable, hours later, from a circuit that died.
+    for (const line of decision.accountLines ?? []) err(`agent-protocol: ${line}`);
     // 023.2, BESIDE THE SKIPS AND FOR THE SAME REASON: this is the other answer to "why
     // is nothing happening", and the only one the daemon could not give on 2026-08-03.
     // Silent on a match — a line every tick saying the code is current is the noise that
