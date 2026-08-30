@@ -59,6 +59,29 @@ describe("systemUserRefusal", () => {
     expect(refusal).toContain("Repair:");
   });
 
+  it("says the box's narrow entitlement is not consulted — the rule lands before the code", () => {
+    const refusal = systemUserRefusal(role({ id: "devops", systemUser: "aco-devops" }), "lle");
+    // The sudoers rule of `docs/box-setup.md` §0.1a is typed by a hand this repository does
+    // not see, and (thread 047) it is typed BEFORE the launch path that would use it. In
+    // that window the refusal is the only thing standing between an operator and an hour of
+    // debugging `sudo` against a build that never calls it.
+    expect(refusal).toContain("sudoers");
+    expect(refusal).toContain("docs/box-setup.md §0.1a");
+    expect(refusal).toContain("NOT consulted");
+  });
+
+  it("does NOT offer the entitlement as a repair — adding it fixes nothing today", () => {
+    const refusal =
+      systemUserRefusal(role({ id: "devops", systemUser: "aco-devops" }), "lle") ?? "";
+    // A `Repair:` that names a step which does not repair is the same defect as a summary
+    // that names a verb outside the dictionary: an instruction nobody can act on. The two
+    // exits below are the ones that end this refusal in THIS build.
+    const repair = refusal.slice(refusal.indexOf("Repair:"));
+    expect(repair).toContain("run the daemon as 'aco-devops'");
+    expect(repair).toContain("drop the declaration");
+    expect(repair).not.toContain("sudoers");
+  });
+
   it("a box that cannot name its own user is NOT treated as a match", () => {
     const refusal = systemUserRefusal(role({ systemUser: "aco-devops" }), undefined);
     expect(refusal).toContain("(unknown user)");
