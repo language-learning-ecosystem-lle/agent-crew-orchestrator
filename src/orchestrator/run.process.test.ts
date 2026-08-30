@@ -1587,6 +1587,88 @@ describe("a session that asks and waits alive (R19)", () => {
     expect(prompt).toContain(`\`${command} await-input ${flags}\``);
   }, 60_000);
 
+  /**
+   * THE SAME SEAM AGAIN, FOR THE RUN THAT CANNOT AFFORD IT TO BE WRONG (thread
+   * `058-launch-prompt-mail-form-sandbox`). Under `toolsHeldBy: "sandbox-read-only"` the
+   * line the prompt calls "your whole interface to the mail" is the run's ONLY command,
+   * and without `--no-fetch` it exits 2 on the `origin/` fetch before reading anything:
+   * measured 30.08 on thread `038`, run 9 — one command, `exit 2`, zero of five points
+   * delivered.
+   *
+   * IT IS A SEAM AND NOT A UNIT because the two values come from two places a unit never
+   * touches: the mark off the ROLE CARD in the config, and the path off the WORKSPACE this
+   * very run planned (`workdir.worktrees` + role id, resolved by `settleRun`). The unit is
+   * handed a `MailForm` and can only prove that what it was handed is printed — the same
+   * half that was missing for `mailCommand`.
+   */
+  it("A RUN HELD BY THE SANDBOX IS GIVEN `--no-fetch` AND THE `--repo` OF ITS OWN WORKING TREE", () => {
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const { repo } = contour({
+      mailCommand: command,
+      // The workspaces are DECLARED here and that is load-bearing: without them the
+      // session inherits the operator's checkout, there is no role tree to name, and the
+      // case would assert nothing about where `--repo` came from.
+      orchestrator: {
+        ...CONFIG.orchestrator,
+        ref: "origin/main",
+        workdir: { branch: "main", worktrees: ".worktrees" },
+      },
+      // The card that waives the allow-list by naming what holds the session instead —
+      // the one shape in which a role declares that its run cannot write (v20, thread 026).
+      roles: [
+        {
+          ...CONFIG.roles[0],
+          launch: {
+            agent: { kind: "codex", model: "gpt-5-codex", toolsHeldBy: "sandbox-read-only" },
+          },
+        },
+      ],
+    });
+    const promptDump = join(repo, "prompt.txt");
+    const exec = stub(repo, `printf '%s' "$*" > ${promptDump}\nsleep 1`);
+
+    runWith(repo, ["--exec", exec, "--worker", "codex", "--wall-clock", "20", "--write"]);
+
+    const prompt = readFileSync(promptDump, "utf8");
+    const root = join(repo, "mailco", "agent-comms");
+    const workspace = join(repo, ".worktrees", "dev-core");
+    // The path is the ROLE'S tree and not the mail checkout `--root` would have been
+    // resolved against (`configFrom` → `repoOf(root)`), and it is absolute for the same
+    // reason `--root` is: the session types the line as it stands.
+    expect(workspace.startsWith("/")).toBe(true);
+    expect(prompt).toContain(
+      `\`${command} thread show --root ${root} --ref origin/main --no-fetch --repo ${workspace} --thread 012-x --for dev-core\``,
+    );
+  }, 60_000);
+
+  it("the SAME circuit without the mark prints neither flag — the writing roles are untouched", () => {
+    // The regression named in the statement of work (§4.2): a `claude-code` role does go
+    // to the network, `--no-fetch` would hand it a config that is stale behind a warning,
+    // and its `--repo` is already right by derivation. Same config, same workspaces, one
+    // word of the card less.
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const { repo } = contour({
+      mailCommand: command,
+      orchestrator: {
+        ...CONFIG.orchestrator,
+        ref: "origin/main",
+        workdir: { branch: "main", worktrees: ".worktrees" },
+      },
+    });
+    const promptDump = join(repo, "prompt.txt");
+    const exec = stub(repo, `printf '%s' "$*" > ${promptDump}\nsleep 1`);
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "20", "--write"]);
+
+    const prompt = readFileSync(promptDump, "utf8");
+    const root = join(repo, "mailco", "agent-comms");
+    expect(prompt).toContain(
+      `\`${command} thread show --root ${root} --ref origin/main --thread 012-x --for dev-core\``,
+    );
+    expect(prompt).not.toContain("--no-fetch");
+    expect(prompt).not.toContain("--repo");
+  }, 60_000);
+
   it("the landing point is announced in the log, so a timeout can be read for what it is", () => {
     // Nothing fires at the wind-down point — there is no gesture that makes a session
     // commit. What the supervisor owes is the record: it said so, at this minute, and

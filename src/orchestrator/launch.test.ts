@@ -520,6 +520,82 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
   });
 });
 
+/**
+ * THE LINE PRINTED TO A RUN UNDER A READ-ONLY SANDBOX HAS TO WORK UNDER IT (thread
+ * `058-launch-prompt-mail-form-sandbox`).
+ *
+ * The defect these tests close is field-measured, not reasoned: the READ line went out
+ * without `--no-fetch` and without `--repo`, so for a role held by `toolsHeldBy:
+ * "sandbox-read-only"` it exited 2 on the `origin/` fetch before reading anything. Run 9
+ * of thread `038` (2026-08-30, 13:46:44Z → 13:47:34Z, `gpt-5.6-terra`/`max`) issued that
+ * one command, got the refusal and delivered zero of five points; run 9-бис delivered
+ * five of five only because the statement of work had spelled the working form out by
+ * hand. Which is the acceptance limit stated out loud: a green suite here is necessary
+ * and not sufficient — the number that closes the subject is «commands before the first
+ * successful print of the thread = 1», and only a live raise produces it.
+ */
+describe("the mail line of a run whose tools are held (thread 058)", () => {
+  const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+  const base = {
+    role: "pilot-codex",
+    thread: "058-launch",
+    instructions: [{ path: "docs/roles/x.md", text: "the card" }],
+    deadline: "2026-08-30T15:00:00Z",
+    windDownSeconds: 720,
+  } as const;
+  const form = {
+    command,
+    root: "/home/box/repo/.worktrees/comms/agent-comms",
+    ref: "origin/main",
+    writesHeldBy: "sandbox-read-only",
+    repo: "/home/box/repo/.worktrees/pilot-codex",
+  } as const;
+
+  it("PRINTS `--no-fetch` AND `--repo` — the two flags without which it exits 2 by construction", () => {
+    const prompt = buildLaunchPrompt({ ...base, mail: form });
+    expect(prompt).toContain(
+      `\`${command} thread show --root ${form.root} --ref origin/main --no-fetch --repo ${form.repo} --thread 058-launch --for pilot-codex\``,
+    );
+  });
+
+  it("takes `--repo` from the DECLARED working tree of THIS role, not from `--root`", () => {
+    // The two paths are different on purpose: `configFrom` derives the config repository
+    // from the directory of `--root` when the flag is absent, i.e. from the mail checkout.
+    // On this box both happen to answer the same `origin/main`; the prompt must not lean
+    // on that, so the test states the two paths apart and reads which one arrived.
+    const prompt = buildLaunchPrompt({ ...base, mail: form });
+    expect(prompt).toContain(`--repo ${form.repo}`);
+    expect(prompt).not.toContain(`--repo ${form.root}`);
+  });
+
+  it("A ROLE WITHOUT THE MARK GETS TODAY'S LINE, NOT ONE CHARACTER MORE", () => {
+    // The regression the statement of work names explicitly (§4.2): the `claude-code`
+    // roles do reach the network, `--no-fetch` would hand them a stale config behind a
+    // warning, and their `--repo` is already correct by derivation. Compared against a
+    // prompt built with the two new facts absent — an equality, not a set of `not.toContain`s.
+    const writing = { command, root: form.root, ref: form.ref } as const;
+    const before = buildLaunchPrompt({ ...base, mail: writing });
+    expect(buildLaunchPrompt({ ...base, mail: { ...writing, repo: form.repo } })).toBe(before);
+    expect(before).not.toContain("--no-fetch");
+    expect(before).not.toContain("--repo");
+  });
+
+  it("a declared mark with NO declared working tree prints no invented path", () => {
+    // `orchestrator.workdir.worktrees` is optional (the pre-R17 mode), and an absent fact
+    // stays absent exactly as `command`, `root` and `ref` already do here. `--no-fetch`
+    // does not depend on that path and is still printed: it is the flag that decides
+    // whether the line runs at all.
+    const prompt = buildLaunchPrompt({
+      ...base,
+      mail: { command, root: form.root, ref: form.ref, writesHeldBy: form.writesHeldBy },
+    });
+    expect(prompt).toContain(
+      `\`${command} thread show --root ${form.root} --ref origin/main --no-fetch --thread 058-launch --for pilot-codex\``,
+    );
+    expect(prompt).not.toContain("--repo");
+  });
+});
+
 describe("mailWritesHeldBy — the mark is read from what the card already declares", () => {
   const role = (launch: Launch): Role => ({ id: "r", launch }) as Role;
 

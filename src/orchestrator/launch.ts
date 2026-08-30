@@ -1270,6 +1270,22 @@ export type MailForm = {
    * mail, so the prompt names it one ending instead of two.
    */
   readonly writesHeldBy?: string;
+  /**
+   * WHERE THE CONFIG IS READ FROM for this role — the ABSOLUTE path of its own working
+   * tree (`orchestrator.workdir.worktrees` + role id, resolved). Printed only for a run
+   * whose tools are held (`writesHeldBy`), and for one reason: without `--repo` the
+   * config's repository is derived from the directory of `--root`, that is FROM THE MAIL
+   * CHECKOUT rather than from the tree the role works in (`configFrom` → `repoOf(root)`,
+   * `cli.ts`). On this box the two happen to answer the same `origin/main`; a role is not
+   * obliged to know that, and a prompt is not allowed to lean on a coincidence.
+   *
+   * ABSOLUTE for the same reason `root` is: the session types the line as it stands and
+   * is not told which directory a relative path would be relative to.
+   *
+   * Absent is the honest state — a project that declares no role worktrees declares no
+   * path, and the flag is then not printed rather than invented.
+   */
+  readonly repo?: string;
 };
 
 /**
@@ -1305,13 +1321,41 @@ export const mailWritesHeldBy = (role: Role): string | undefined => {
  * subcommand, they are facts of THIS deployment, and a line printed without them exits 2
  * on the first try. Each is printed only if it is known — an absent fact stays absent
  * here exactly as `command` does, because a made-up root is worse than a missing one.
+ *
+ * AND A RUN WHOSE TOOLS ARE HELD GETS TWO FLAGS MORE, for the same reason and from the
+ * same source — `writesHeldBy` is `toolsHeldBy: "sandbox-read-only"` quoted, and that
+ * word reaches the vendor's argv as `--sandbox read-only`. Under it the line printed for
+ * every other role fails BY CONSTRUCTION, not by luck:
+ *
+ *  - `--no-fetch`, because a `--ref` with an `origin/` prefix updates the ref before it
+ *    reads (`fetchRef`, `fs/git.ts`) and a sandbox with no network and no write turns
+ *    that into `exit 2` — a refusal, not a staleness;
+ *  - `--repo`, because without it the config's repository is `repoOf` the directory of
+ *    `--root`, i.e. the MAIL CHECKOUT and not this role's working tree.
+ *
+ * MEASURED, TWICE, ON 2026-08-30 (thread `038-pilot-codex-live-run`, letter
+ * `2026-08-30T13-52-34Z-curator.md` §2, §6): run 9 (`gpt-5.6-terra`/`max`, 13:46:44Z →
+ * 13:47:34Z) issued ONE command — this line, out of the prompt — got `exit 2`, and read
+ * the thread never: zero of five asked-for points. Run 9-бис, same model, differed only
+ * in that the statement of work spelled the working form out by hand: two commands, then
+ * five points of five. On a weaker model the same defect had cost a third of a run; on a
+ * stronger one it costs the whole run, because a session that follows its prompt exactly
+ * stops where the prompt breaks.
+ *
+ * A ROLE WITHOUT THE MARK IS UNTOUCHED, and that is a requirement rather than a
+ * side-effect: the `claude-code` roles do go to the network, `--no-fetch` would hand them
+ * a stale config with a warning instead of the current one, and their `--repo` is already
+ * right by the derivation above.
  */
 const mailCall = (form: MailForm, subcommand: string, args?: string): string => {
+  const held = form.writesHeldBy !== undefined;
   const words = [
     ...(form.command === undefined ? [] : [form.command]),
     subcommand,
     ...(form.root === undefined ? [] : ["--root", form.root]),
     ...(form.ref === undefined ? [] : ["--ref", form.ref]),
+    ...(held ? ["--no-fetch"] : []),
+    ...(held && form.repo !== undefined ? ["--repo", form.repo] : []),
     ...(args === undefined ? [] : [args]),
   ];
   return `\`${words.join(" ")}\``;
