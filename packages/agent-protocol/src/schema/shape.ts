@@ -814,6 +814,90 @@ export const CONFIG_SHAPES: Readonly<Record<number, readonly string[]>> = {
     "roles[].zones.forbidden",
     "roles[].zones.writes",
   ],
+
+  /**
+   * 24 — thread `047-devops-role`: a role may declare WHAT IT MAY DO TO THE BOX
+   * (`roles[].capabilities`) — three named verbs, each with the closed list of values its one
+   * parameter accepts. Five new key paths: the field itself and the fields of the union's
+   * members. Unlike 22, the VALUE half moves too — the verb is a pinned literal, see below.
+   *
+   * (The number was 23 while this branch was open. 23 went to `roles[].launch.fallback` — thread
+   * `036-account-failover`, merged first — and the step was renumbered rather than squeezed in:
+   * two steps declaring `from: 22` is a broken chain, and which of two open branches lands first
+   * is not something either of them gets to assume.)
+   */
+  24: [
+    "announcements",
+    "announcements.force-stop",
+    "identityDictionary",
+    "instances",
+    "instances[].account",
+    "instances[].id",
+    "instances[].note",
+    "instances[].roles",
+    "mail",
+    "mail.branch",
+    "mail.dir",
+    "notifications",
+    "notifications.stalledAfterMinutes",
+    "notifications.templates",
+    "notifications.templates.nudge",
+    "notifications.templates.parked",
+    "notifications.templates.stalled",
+    "notifications.templates.turn",
+    "notifications.templates.turn-with-nudge",
+    "notifications.transport",
+    "notifications.transport.module",
+    "notifications.transport.options",
+    "orchestrator",
+    "orchestrator.env",
+    "orchestrator.mailCheckout",
+    "orchestrator.ref",
+    "orchestrator.state",
+    "orchestrator.workdir",
+    "orchestrator.workdir.branch",
+    "orchestrator.workdir.worktrees",
+    "powerDocuments",
+    "protocolVersion",
+    "roles",
+    "roles[].capabilities",
+    "roles[].capabilities[].checkouts",
+    "roles[].capabilities[].logs",
+    "roles[].capabilities[].maxLines",
+    "roles[].capabilities[].name",
+    "roles[].id",
+    "roles[].instructions",
+    "roles[].instructions[].kind",
+    "roles[].instructions[].note",
+    "roles[].instructions[].path",
+    "roles[].kind",
+    "roles[].launch",
+    "roles[].launch.account",
+    "roles[].launch.agent",
+    "roles[].launch.agent.effort",
+    "roles[].launch.agent.kind",
+    "roles[].launch.agent.model",
+    "roles[].launch.agent.toolsHeldBy",
+    "roles[].launch.allowedTools",
+    "roles[].launch.fallback",
+    "roles[].launch.limits",
+    "roles[].launch.limits.idleSeconds",
+    "roles[].launch.limits.maxTurns",
+    "roles[].launch.limits.waitInputSeconds",
+    "roles[].launch.limits.wallClockSeconds",
+    "roles[].launch.limits.windDownSeconds",
+    "roles[].permissions",
+    "roles[].status",
+    "roles[].summary",
+    "roles[].systemUser",
+    "roles[].wake",
+    "roles[].wake.mode",
+    "roles[].wake.session",
+    "roles[].wake.via",
+    "roles[].zones",
+    "roles[].zones.forbidden",
+    "roles[].zones.writes",
+  ],
 };
 
 /** What a shape that no longer matches its version asks for, in the words of the repair. */
@@ -1000,6 +1084,42 @@ export const CONFIG_VALUES: Readonly<Record<number, readonly string[]>> = {
   // `shape.test.ts` requires one at the current version: a version whose change this half
   // cannot see still has to say so in the table.
   23: [
+    'roles[].instructions[].kind = "external"',
+    'roles[].instructions[].kind = "in-repo"',
+    'roles[].launch.agent.effort = "high"',
+    'roles[].launch.agent.effort = "low"',
+    'roles[].launch.agent.effort = "max"',
+    'roles[].launch.agent.effort = "medium"',
+    'roles[].launch.agent.effort = "xhigh"',
+    'roles[].launch.agent.kind = "claude-code"',
+    'roles[].launch.agent.kind = "codex"',
+    'roles[].launch.agent.toolsHeldBy = "sandbox-read-only"',
+    'roles[].permissions[] = "launch-params"',
+    'roles[].permissions[] = "task-declare"',
+    'roles[].permissions[] = "thread-priority"',
+    'roles[].permissions[] = "thread-status"',
+    'roles[].status = "active"',
+    'roles[].status = "paused"',
+    'roles[].status = "planned"',
+    'roles[].status = "retired"',
+    'roles[].wake.mode = "event"',
+    'roles[].wake.mode = "resident"',
+    'roles[].wake.mode = "self"',
+    'roles[].wake.mode = "via-human"',
+    'roles[].wake.mode = "watch"',
+  ],
+
+  // 24 — thread `047-devops-role`: `roles[].capabilities[].name` is the discriminator of the
+  // capability union, so THIS half sees the three verbs arrive by name. That is the half that was
+  // blind on #74 and is not blind here: a fourth verb added later at an unchanged number would be
+  // met by an older build as an invalid discriminator, and this table is what refuses to let it
+  // in without the bump. `service-restart` and `service-status` are the concrete case, not a
+  // hypothetical: they are struck from the first set (john, 2026-08-30) and return with decision
+  // (B) — which this table turns into a bump they cannot skip.
+  24: [
+    'roles[].capabilities[].name = "disk-free"',
+    'roles[].capabilities[].name = "log-tail"',
+    'roles[].capabilities[].name = "repo-refresh"',
     'roles[].instructions[].kind = "external"',
     'roles[].instructions[].kind = "in-repo"',
     'roles[].launch.agent.effort = "high"',
