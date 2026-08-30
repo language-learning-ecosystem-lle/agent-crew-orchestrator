@@ -57,6 +57,7 @@ import type { RankedCandidate } from "./priority.js";
 import { describeOrder } from "./priority.js";
 import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
 import { type ResidentWait, renderResidentWaits } from "./resident.js";
+import { stateWord, timeLeftWord } from "./state-word.js";
 import { renderStatus } from "./status.js";
 
 /** Is the circuit able to raise anybody at all, and is anybody watching it. */
@@ -239,7 +240,7 @@ export const renderQueue = (
  * names answer the question actually asked in front of a stalled contour — "room for
  * WHOM" — and that is the one that gets acted on.
  */
-export const renderParallelism = (p: Parallelism): string => {
+export const renderParallelism = (p: Parallelism, now?: Date): string => {
   const capacity = p.raisable.length;
   const busy = new Set(p.live.map((view) => view.role));
   const heldHere = p.raisable.filter((role) => p.held.includes(role));
@@ -256,7 +257,14 @@ export const renderParallelism = (p: Parallelism): string => {
         : `parallelism: nobody is live — ${capacity} role(s) this box raises, ${free.length} free, ${heldHere.length} held by a human`;
   const lines = [head];
   for (const view of p.live) {
-    lines.push(`  ▶ ${view.role}×${view.thread} — ${view.state}`);
+    // THE SAME VOCABULARY AS THE LINE ABOVE THIS BLOCK (thread 063). This renderer printed
+    // the raw lifecycle word while `status` two sections up already translated it, so one
+    // frame said `draining` and `working past handoff` about one pair — and the list john
+    // read the word in on 2026-08-30 was this one.
+    const left = now === undefined ? "" : timeLeftWord(view, now);
+    lines.push(
+      `  ▶ ${view.role}×${view.thread} — ${stateWord(view.state, view.reason)}${left === "" ? "" : `, ${left}`}`,
+    );
   }
   if (p.live.length > 0 || heldHere.length > 0) {
     // Where the room went is named, not implied: busy, held, or both.
@@ -406,8 +414,8 @@ export const renderFreshness = (
  */
 export const renderFrame = (frame: OperatorFrame): string =>
   [
-    renderStatus(frame.leases, frame.closedThreads),
-    renderParallelism(frame.parallelism),
+    renderStatus(frame.leases, frame.closedThreads, frame.now),
+    renderParallelism(frame.parallelism, frame.now),
     renderHolds(frame.holds),
     renderCircuit(frame.circuit),
     // Beside the circuit, because it is a fact ABOUT the daemon named just above — and

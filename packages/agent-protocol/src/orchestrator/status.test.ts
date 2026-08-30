@@ -29,7 +29,10 @@ describe("renderStatus", () => {
     const line = renderStatus([view({})]);
     expect(line).toContain("dev-core");
     expect(line).toContain("014-reviewer-verdict-delivery");
-    expect(line).toContain("running");
+    // The state column is the SENTENCE, not the machine word (thread 063) — the words a
+    // frame is read in live in `state-word.ts`, and this line only proves the column is
+    // there and comes from them.
+    expect(line).toContain("working — nothing reported yet");
     // The ceiling travels with the count — the number alone said nothing about how
     // close the pair was to dropping out.
     expect(line).toContain("attempt 1/3");
@@ -130,19 +133,67 @@ describe("renderStatus", () => {
 
   it("draining reads as work, not as shutdown, and keeps its landing point (thread 019)", () => {
     // The lifecycle word says "shutting down" to a reader who did not write the state
-    // machine — john asked twice why a pair marked `draining` was working. The frame
-    // answers in words; the deadline column beside it is the "until when".
+    // machine — john asked twice why a pair marked `draining` was working, and a third
+    // time on 2026-08-30 (thread 063). The frame answers in words; the deadline column
+    // beside it is the "until when".
     const line = renderStatus([view({ state: "draining" })]);
-    expect(line).toContain("working past handoff");
+    expect(line).toContain("already reported");
     expect(line).not.toContain("draining");
     expect(line).toContain("deadline 2026-07-24T13:30:00Z");
   });
 
-  it("the translation touches draining only — every other state reads as itself", () => {
-    expect(renderStatus([view({ state: "running" })])).toContain("running");
-    expect(renderStatus([view({ state: "waiting" })])).toContain("waiting");
-    expect(renderStatus([view({ state: "released", reason: "completed" })])).toContain("released");
-    expect(renderStatus([view({ state: "stopped", reason: "forced" })])).toContain("stopped");
+  // THE POLICY OF THREAD 019 IS SUPERSEDED BY 063, and this test is where it says so: the
+  // translation used to touch `draining` alone, on the argument that every other state
+  // "reads as itself". It does not — `released (exited-without-handoff)` is a machine word
+  // in brackets, and no state column is left carrying one.
+  it("no state column carries a machine word any more (thread 063)", () => {
+    // The COLUMN, not the line: a phrase may legitimately contain a machine word ("parked
+    // — waiting for a person"), and what must not happen is the column BEING one.
+    const machine = new Set(["running", "draining", "waiting", "released", "stopped"]);
+    const column = (v: Partial<LeaseView>): string =>
+      renderStatus([view(v)]).split("  ·  ")[2] ?? "";
+    for (const v of [
+      { state: "running" as const },
+      { state: "waiting" as const },
+      { state: "released" as const, reason: "completed" as const },
+      { state: "released" as const, reason: "exited-without-handoff" as const },
+      { state: "stopped" as const, reason: "forced" as const },
+    ]) {
+      expect(machine.has(column(v))).toBe(false);
+    }
+    // And the reason no longer trails the line as a bare enum in brackets.
+    expect(
+      renderStatus([view({ state: "released", reason: "exited-without-handoff" })]),
+    ).not.toContain("(exited-without-handoff)");
+  });
+
+  // john's requirement 5: the frame shows a word and a deadline, and the reader subtracts
+  // two ISO stamps in their head to learn whether a role has forty minutes or four.
+  it("given a now, the line says how much is left in minutes as well as in stamps", () => {
+    const line = renderStatus(
+      [view({ state: "draining" })],
+      new Set(),
+      new Date("2026-07-24T13:00:00Z"),
+    );
+    expect(line).toContain("30m left of its window");
+    expect(line).toContain("deadline 2026-07-24T13:30:00Z");
+  });
+
+  // The order of those two is not taste: the observer cuts this line to the terminal's
+  // width, and the cut eats the END of it. The phrase a reader reads must sit ahead of
+  // the stamp an operator copies, or a narrow terminal loses exactly the half john asked
+  // for and the two frames of one fact start disagreeing again.
+  it("the countdown stands BEFORE the stamp, so a cut line loses the stamp and not it", () => {
+    const line = renderStatus(
+      [view({ state: "draining" })],
+      new Set(),
+      new Date("2026-07-24T13:00:00Z"),
+    );
+    expect(line.indexOf("30m left of its window")).toBeLessThan(line.indexOf("deadline 2026-"));
+  });
+
+  it("without a now the countdown is dropped rather than computed from a guess", () => {
+    expect(renderStatus([view({ state: "draining" })])).not.toContain("left of its window");
   });
 
   it("a null deadline is printed as a dash", () => {

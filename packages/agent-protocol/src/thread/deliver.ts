@@ -52,7 +52,7 @@
  * attempt therefore undoes itself: the files it wrote are removed and the checkout is put
  * back on the feed, on the retry path and on the way out of a refusal alike.
  */
-import { rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { type GitIdentity, identityEnv } from "../roles/identity.js";
 import type { MailLock } from "./checkout-lock.js";
 
@@ -72,6 +72,20 @@ export type StagedMessage = {
    * replanning it beside a meta that is already pushed.
    */
   readonly files: readonly { readonly path: string; readonly content: string }[];
+  /**
+   * PATHS THIS ATTEMPT DELETES, absolute like the writes. Empty for every message the
+   * mail sends — the feed is append-only — and non-empty for the one writer that carries
+   * a DIRECTORY rather than a message: a role's memory, where a note deleted in the
+   * branch has to stay deleted or the death of a note is a decoration (LLE thread
+   * `116-role-memory-cost`, constraint К-3).
+   *
+   * They are planned against the state fetched inside the attempt, like the writes, so a
+   * path listed here is one the feed still has. One that has already gone is dropped
+   * rather than handed to `git add`, which answers a vanished untracked path with
+   * `pathspec did not match` — the same shape of failure for "somebody deleted it first"
+   * as for a typo, and the first of those is not an error.
+   */
+  readonly removals?: readonly string[];
   /** What is said about the write in the output — the thread-relative path. */
   readonly label: string;
 };
@@ -204,7 +218,13 @@ const deliverUnderLock = (input: UnderLock): Delivered => {
     }
 
     const staged = input.stage();
-    const paths = staged.files.map((file) => file.path);
+    // A DELETION IS STAGED THE SAME WAY A WRITE IS — the file leaves the tree and the path
+    // goes into the same `git add`, which is how git is told a tracked file is gone. The
+    // filter is the one asymmetry and it is deliberate: a path already absent is nothing to
+    // delete, and handing it to `git add` would turn "somebody deleted it first" into a
+    // hard failure of the whole delivery.
+    const deletions = (staged.removals ?? []).filter((path) => existsSync(path));
+    const paths = [...staged.files.map((file) => file.path), ...deletions];
     // FROM HERE ON THE ATTEMPT OWNS DIRT, so from here on it is obliged to clean up after
     // itself whichever way it leaves (thread 015): what it wrote is tracked in `wrote` as
     // it is written, because a write that failed halfway through a two-file thread still
@@ -216,6 +236,11 @@ const deliverUnderLock = (input: UnderLock): Delivered => {
         input.write(file.path, file.content);
         wrote.push(file.path);
       }
+      // The deletions are NOT tracked in `wrote`: `undoAttempt` removes what was written
+      // and then resets hard, and the reset is what puts a deleted TRACKED file back —
+      // adding it to `wrote` would ask the cleanup to delete an already deleted path.
+      for (const path of deletions)
+        (input.remove ?? ((at: string) => rmSync(at, { force: true })))(path);
       input.git(["add", "--", ...paths]);
       // NOTHING TO COMMIT IS AN ANSWER, NOT A FAILURE (see `Delivered`). The plan is made
       // against the state fetched inside THIS attempt, so an empty index means the feed

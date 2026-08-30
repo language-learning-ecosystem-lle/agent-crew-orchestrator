@@ -1630,3 +1630,80 @@ describe("new-thread and the same claim (thread 042)", () => {
     expect(existsSync(join(contest.root, "018-y"))).toBe(false);
   });
 });
+
+/**
+ * THE STACK of point (B.3) of thread 058: the feed on disk → `parkingOf` → the writing door.
+ * The unit cases of `park-seen.ts` judge a `Parking` handed to them; only this one shows that
+ * the door READS the park standing in the thread it is writing into — the step the incident of
+ * LLE 110 went through without anybody noticing.
+ */
+describe("a letter into a thread that is already parked (thread 058)", () => {
+  /** The park of the incident: curator asks john and freezes the thread, on its own turn. */
+  const park = (contest: { root: string }): void =>
+    writeFileSync(
+      join(contest.root, "016-x", "messages", "2026-08-30T14-24-50Z-curator.md"),
+      "---\nfrom: curator\ndate: 2026-08-30T14:24:50Z\nexpects: answer\nwaiting-on: curator\nparked-on: john\n---\n\nМожно ли сузить лифт person-парка?\n",
+    );
+
+  it("REFUSES the letter that says nothing about the park, and names it in full", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(result.out).toContain("2026-08-30T14:24:50Z");
+    expect(result.out).toContain("curator's turn");
+    expect(result.out).toContain("Можно ли сузить лифт person-парка?");
+    expect(result.out).toContain("--park-lifted john");
+    // Refused BEFORE the write: the feed is append-only, so a letter caught after it is
+    // committed is not caught at all.
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(1);
+  });
+
+  it("refuses BEFORE --write too — a dry run that succeeds where the write refuses is a lie", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = run(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }, []);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+  });
+
+  it("WRITES the letter that names the lift", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = write(
+      contest,
+      { AGENT_PROTOCOL_WORKER: "claude-code" },
+      "--park-lifted",
+      "john",
+    );
+
+    expect(result.code).toBe(0);
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+  });
+
+  it("WRITES the letter that carries the park forward, and the one that carries john's word", () => {
+    const forward = contour();
+    park(forward);
+    expect(
+      write(forward, { AGENT_PROTOCOL_WORKER: "claude-code" }, "--parked-on", "john").code,
+    ).toBe(0);
+
+    const courier = contour();
+    park(courier);
+    expect(
+      write(courier, { AGENT_PROTOCOL_WORKER: "claude-code" }, "--delivers", "john").code,
+    ).toBe(0);
+  });
+
+  it("an unparked thread is untouched by the door — the everyday letter needs no flag", () => {
+    const contest = contour();
+
+    expect(write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }).code).toBe(0);
+  });
+});

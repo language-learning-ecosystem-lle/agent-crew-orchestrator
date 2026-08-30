@@ -17,6 +17,7 @@
 import { join } from "node:path";
 
 import type { Mail, Orchestrator } from "../config/config.js";
+import { MEMORY_DIR } from "./memory.js";
 
 export type OrchestratorPaths = {
   /** The whole operational-state directory — created by a command, not by a human. */
@@ -92,6 +93,15 @@ export type OrchestratorPaths = {
    * lease and may be typed by a hand with no session at all.
    */
   readonly capabilities: string;
+  /**
+   * WHERE THE ROLES' PERSONAL MEMORY LIVES (LLE thread `116-role-memory-cost`, form D).
+   * The base only — one directory per role hangs under it, and the role is the key
+   * (`memory.ts`, `roleMemoryDirectory`). It lies in the state directory and not in a
+   * checkout for a measured reason, spelled out in that module: a note written into the
+   * MAIL checkout would block the next delivery of any role on the box (delivery refuses
+   * on a dirty tree, untracked included) and then be wiped by its `reset --hard` retry.
+   */
+  readonly memory: string;
   /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
   readonly mailRoot: string;
 };
@@ -143,6 +153,7 @@ export const orchestratorPaths = (input: {
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
     capabilities: join(state, CAPABILITIES),
+    memory: join(state, MEMORY_DIR),
     mailRoot: join(input.repo, input.orchestrator.mailCheckout, input.mail.dir),
   };
 };

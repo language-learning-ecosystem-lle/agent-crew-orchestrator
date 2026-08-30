@@ -1839,7 +1839,20 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            # A LETTER INTO A THREAD THAT IS ALREADY PARKED IS REFUSED UNLESS IT SAYS WHAT IT
+                            # DOES ABOUT THE PARK (thread 058, (B.3)): the refusal names the park in full —
+                            # what it waits for, since when, whose turn it was declared on, and the question
+                            # in its own words. It fires at most once per park (the next letter lifts it), it
+                            # changes NOTHING about what lifts a park, and it is a REFUSAL and not a warning
+                            # because `--write` is one action: a warning would be a remark about a letter
+                            # already lying in an append-only feed. Three ways to pass — carry what the park
+                            # waits for (`--delivers` / `--merged-pr` / `--verdict --pr`), carry the park
+                            # forward (`--parked-on <the same value>`), or name the lift:
+                            # --park-lifted <person|pr:N|run:N>: THE PARK IS OVER AND THIS LETTER SAYS WHICH
+                            # ONE IT ENDS. The value must MATCH the standing park; nothing is written to the
+                            # header by it. A stale value — the park was lifted by somebody else between the
+                            # read and the write, which is the very subject of 058 — is a NOTE, not a refusal
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
@@ -3071,12 +3084,29 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   we wait for the process to exit naturally → `completed`. The deadline without a
   passed turn → `timeout`, and the role does not hang forever. `handedOff`
   outweighs `overdue`: a success noticed at the deadline is still a success.
-  **In the operator frame that state is printed `working past handoff`** (thread 019):
-  `draining` is the machine's word and reads as "shutting down", while the session is
-  in fact still working inside the same window — john read the frame twice and asked
-  both times. The translation lives in the renderer only; `state` stays `draining`
-  wherever it is data (the journal, the digest a box publishes), and the deadline
-  column beside it is the "until when".
+  **In every frame a human reads, that state is printed `working on — already reported,
+  turn passed`** (thread 019, widened by thread 063): `draining` is the machine's word and
+  reads as "shutting down", while the session is in fact still working inside the same
+  window — john read the frame three times and asked all three. The translation lives in
+  the renderer only; `state` stays `draining` wherever it is data (the journal, the digest
+  a box publishes), and the deadline column beside it is the "until when".
+- **One vocabulary for every state a human reads — `orchestrator/state-word.ts`** (thread
+  063). The translation of thread 019 covered `draining` in `status` alone, and the two
+  OTHER renderers of the same fact — the parallelism block of the frame and the line about
+  a neighbouring box — kept printing the raw machine word beside it; that is the list john
+  read `draining` in on 2026-08-30. Now `stateWord(state, reason)` is the single source of
+  the display phrase for all three, each of the eleven release reasons has its own sentence
+  instead of a bare enum in brackets, and an unknown state (a neighbour on another version)
+  is printed as it came rather than guessed at. `timeLeftWord(view, now)` adds the second
+  half — `40m left of its window`, `18m left of the wait`, `12m past the end of its window`
+  — on the clock the fold itself judges by, and nothing at all on a terminal lease. It stands
+  BEFORE the deadline stamp on purpose: the observer's top panel cuts the line to the
+  terminal's width and the cut eats the END, so what survives is the half a reader READS and
+  what is lost is the stamp they COPY. Every human frame carries it, the observer's top panel
+  included — `tui` calls the same `renderLeaseLine` with the frame's `now`, because `status`
+  saying "60m left" about a pair while the observer showed only a stamp is the same
+  two-renderers defect one layer up. The inventory the vocabulary was derived from, including
+  the states still MISSING, is [`docs/state-model.md`](../../docs/state-model.md).
 - **Putting things down covers the whole process group (`-pid`), not just the direct
   child.** A SIGTERM to a launcher does not reach its children (`claude` → its
   subprocesses), and they would be orphaned; the spawn is `detached` and the
