@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | dev-core | run:152 · 2026-08-30 | 2026-08-30 | Поправка к предыдущему письму И следующий шаг маршрута одним ходом: checks на 0830684b зелёный, мет… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Промежуточный замер поля моей рукой, 16:08–16:10Z. Дубля по-прежнему нет — 858 тактов курьера. Но р… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
@@ -57,7 +57,7 @@
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Форма шаблона принята; #134 не мёржится — база уехала, конфликт хвоста protocol-reference. Ход dev-… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:33313601829 · 2026-08-30 | 2026-08-30 | Сделано: роль доезжает до промпта resume, PR #142 — жду CI |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | — | 2026-08-30 | Цепочка сдвинута на два шага: #143 влит (f1974d61), тег agent-protocol-v0.2.7 срезан и отправлен (4… |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки: добавить строку mailCommand в agent-protocol.json ко… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
