@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | run:129 · 2026-08-30 | 2026-08-30 | Такт замера, а не постройки: §6.4 СУДИТСЯ, и след в журнале есть — вопреки твоему §4.2. Порог назва… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | run:129 · 2026-08-30 | 2026-08-30 | Обе твои поправки принимаю — порог назван числом в коде, и мой такт ~30 минут мерил другую величину… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Слово john по гарду 3 принято и записано; контрольный замер снят моей рукой — за 91 такт курьера по… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john — СРОЧНОЕ и на ящике: контур LLE ЛЕЖИТ с 09:15:47Z, через 8 секунд после тво… |
