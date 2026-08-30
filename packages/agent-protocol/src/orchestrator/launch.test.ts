@@ -430,7 +430,9 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
     } as const;
     const flags = `--root ${form.root} --ref origin/main`;
     const prompt = buildLaunchPrompt({ ...base, mail: form });
-    expect(prompt).toContain(`\`${command} thread show ${flags} --thread 038-pilot --for pilot-codex\``);
+    expect(prompt).toContain(
+      `\`${command} thread show ${flags} --thread 038-pilot --for pilot-codex\``,
+    );
     expect(prompt).toContain(`\`${command} new-message ${flags} --thread <id>`);
     expect(prompt).toContain(`\`${command} new-message ${flags} --await-input\``);
     expect(prompt).toContain(`\`${command} await-input ${flags}\``);
@@ -456,7 +458,9 @@ describe("buildLaunchPrompt — the mail as data, not as a literal (thread 038)"
       ...base,
       mail: { command: "cli", root: "/mail/agent-comms" },
     });
-    expect(prompt).toContain("`cli thread show --root /mail/agent-comms --thread 038-pilot --for pilot-codex`");
+    expect(prompt).toContain(
+      "`cli thread show --root /mail/agent-comms --thread 038-pilot --for pilot-codex`",
+    );
     expect(prompt).not.toContain("--ref");
   });
 
