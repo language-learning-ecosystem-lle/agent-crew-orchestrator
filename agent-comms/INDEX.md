@@ -66,5 +66,5 @@
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка dev-core: постоянная конфигурация роли pilot-codex — gpt-5.6-terra + effort: max. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | run:154 · 2026-08-30 | 2026-08-30 | Перебазировал #154 на съехавшую базу. Новая голова bb0bb4eb, CI идёт. Паркуюсь на прогоне. |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~16:03Z: «заводи»). Предмет: событийная парковка может жда… |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому требованию john (чат 2026-08-30 ~17:06Z): роль одного контура НЕ ДОЛЖНА иметь… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | ВТОРОЙ СЛУЧАЙ ТОГО ЖЕ КЛАССА ЗА ОДИН ЧАС, и он произошёл ПОСЛЕ того, как класс был назван, запрет о… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому требованию john (чат 2026-08-30 ~17:26Z), дословно: «Какого хуя это всё назыв… |
