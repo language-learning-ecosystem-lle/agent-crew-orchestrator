@@ -308,6 +308,7 @@ export {
   migrateLegacyThread,
   verifyMigration,
 } from "./thread/migrate.js";
+export { judgeParkSeen, type ParkSeenVerdict } from "./thread/park-seen.js";
 export {
   describeStaleRunPark,
   judgeRunPark,
