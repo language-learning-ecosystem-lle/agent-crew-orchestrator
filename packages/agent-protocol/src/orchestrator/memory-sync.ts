@@ -188,6 +188,41 @@ export const saveFailureLine = (input: {
 }): string =>
   `memory: the notes of '${input.role}' could not be saved to the mail branch (${input.reason}) — they are still in ${input.directory}, and the next raise of this role will replace that directory with the branch's copy. Memory is self-service, so the run is not failed over it.`;
 
+/** The loud line of a restore that could not read the branch at all. */
+export const restoreFailureLine = (input: {
+  readonly role: string;
+  readonly reason: string;
+}): string =>
+  `memory: the notes of '${input.role}' could NOT be restored (${input.reason}) — the session is raised on this box's own copy. Memory is self-service, so the raise is not refused over it.`;
+
+/**
+ * WHAT A RESTORE SAYS, DECIDED AWAY FROM GIT (reviewer's finding on PR #159). The wiring
+ * in `cli.ts` holds the git handles and nothing else; the rule lives here, where it can
+ * be asked questions:
+ *
+ *  - a restore that THREW still measures the ceiling. The alarm asks nothing of the
+ *    branch — only of the directory the session is about to read — and a failed restore
+ *    is exactly when that directory is the previous round's copy: unreplaced, and now
+ *    unmeasured too. Silence there is indistinguishable from "the ceiling holds", which
+ *    is the one thing a loud ceiling exists not to be;
+ *  - neither half can refuse the raise: memory is self-service, so both are only lines.
+ */
+export const restoreLines = (input: {
+  readonly role: string;
+  readonly restore: () => { readonly lines: readonly string[] };
+  readonly alarm: () => string | undefined;
+}): readonly string[] => {
+  const said = ((): readonly string[] => {
+    try {
+      return input.restore().lines;
+    } catch (error) {
+      return [restoreFailureLine({ role: input.role, reason: (error as Error).message })];
+    }
+  })();
+  const alarm = input.alarm();
+  return alarm === undefined ? said : [...said, alarm];
+};
+
 /** Reading a directory of notes: every file under it, by path relative to it. */
 export const readSnapshot = (directory: string): MemorySnapshot => {
   const files = new Map<string, string>();

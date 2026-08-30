@@ -13,6 +13,7 @@ import {
   planRestore,
   planSave,
   readSnapshot,
+  restoreLines,
   restoreRoleMemory,
   roleMemorySnapshotFile,
   saveRoleMemory,
@@ -300,5 +301,48 @@ describe("the seam: a note goes to the branch and comes back, and the mail check
     const said = restoreRoleMemory({ ...sync(c), git: gitIn(c.mail), branch: "no-such-branch" });
     expect(said.lines.join("\n")).toContain("could NOT be restored");
     expect(readSnapshot(c.live).get("left.md")).toBe("from the previous round\n");
+  });
+});
+
+describe("what a restore says — the ceiling does not depend on git", () => {
+  it("a restore that THREW still measures the ceiling: the failure is loud and the alarm follows it", () => {
+    const said = restoreLines({
+      role: "dev-core",
+      restore: () => {
+        throw new Error("'/box/mail' is not a git repository");
+      },
+      alarm: () => "memory: the index of 'dev-core' is over the ceiling",
+    });
+    expect(said).toHaveLength(2);
+    expect(said[0]).toContain("could NOT be restored");
+    expect(said[0]).toContain("not a git repository");
+    expect(said[1]).toContain("over the ceiling");
+  });
+
+  it("the ceiling rides on a restore that worked too, after its own lines", () => {
+    const said = restoreLines({
+      role: "dev-core",
+      restore: () => ({ lines: ["memory: 3 note(s) restored"] }),
+      alarm: () => "memory: the index of 'dev-core' is over the ceiling",
+    });
+    expect(said).toEqual([
+      "memory: 3 note(s) restored",
+      "memory: the index of 'dev-core' is over the ceiling",
+    ]);
+  });
+
+  it("a ceiling that holds adds nothing — on either path", () => {
+    expect(
+      restoreLines({ role: "dev-core", restore: () => ({ lines: [] }), alarm: () => undefined }),
+    ).toEqual([]);
+    const failed = restoreLines({
+      role: "dev-core",
+      restore: () => {
+        throw new Error("boom");
+      },
+      alarm: () => undefined,
+    });
+    expect(failed).toHaveLength(1);
+    expect(failed[0]).toContain("could NOT be restored");
   });
 });

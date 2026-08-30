@@ -307,6 +307,7 @@ import { renderLog } from "./orchestrator/log.js";
 import { rotateDaemonLog, writeEpochBanner } from "./orchestrator/logsize.js";
 import { memoryIndexAlarm, roleMemoryDirectory } from "./orchestrator/memory.js";
 import {
+  restoreLines,
   restoreRoleMemory,
   roleMemorySnapshotFile,
   saveFailureLine,
@@ -8561,6 +8562,16 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       writeLog(
         `supervisor  the session was stopped by force${by === undefined ? "" : ` by ${by}`}`,
       );
+      // AND THE NOTES GO BACK TO THE BRANCH ON THIS PATH TOO (reviewer's finding on #159).
+      // A force stop is a path an OPERATOR takes deliberately, not a crash, and the child
+      // is already down by the SIGTERM above — the very state the normal release saves
+      // from. The one named cost of this form stays exactly one (`recordSupervisorGone`,
+      // a process-exit handler where a push has no time to finish); widening it silently
+      // to every `--force` would lose a session's notes on a path nobody was told about.
+      for (const line of p.memory?.save() ?? []) {
+        writeLog(`supervisor  ${line}`);
+        err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
+      }
       closeSinks();
       return "forced";
     }
@@ -9535,18 +9546,17 @@ const memorySyncFor = (input: {
     snapshotFile: roleMemorySnapshotFile({ memory: input.memory, role: input.role }),
   });
   return {
-    restore: (): readonly string[] => {
-      let done: { readonly lines: readonly string[] };
-      try {
-        done = restoreRoleMemory(common());
-      } catch (error) {
-        return [
-          `memory: the notes of '${input.role}' could NOT be restored (${(error as Error).message}) — the session is raised on this box's own copy. Memory is self-service, so the raise is not refused over it.`,
-        ];
-      }
-      const alarm = memoryIndexAlarm({ directory, role: input.role });
-      return alarm === undefined ? done.lines : [...done.lines, alarm];
-    },
+    // THE RULE ITSELF LIVES IN `memory-sync.ts` ({@link restoreLines}) and this is only
+    // the wiring: what is held here is the git handle, which is the one thing a unit test
+    // cannot be given cheaply. The ceiling therefore speaks even when the restore threw —
+    // it asks nothing of git, and the reviewer's finding on #159 was that this seam
+    // returned early and swallowed it.
+    restore: (): readonly string[] =>
+      restoreLines({
+        role: input.role,
+        restore: () => restoreRoleMemory(common()),
+        alarm: () => memoryIndexAlarm({ directory, role: input.role }),
+      }),
     save: (): readonly string[] => {
       const said: string[] = [];
       let checkout: string;
