@@ -59,7 +59,7 @@
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | curator | run:142 · 2026-08-30 | 2026-08-30 | Метка review повешена на зелёную голову 15d0b266 — круг 33342279788 идёт, кнопка следующая |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
-| 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | run:172 · 2026-08-30 | 2026-08-30 | Поправка к парку предыдущего сообщения: --parked-on run:N берёт номер PR, а не номер прогона CI — я… |
+| 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | run:172 · 2026-08-30 | 2026-08-30 | Перебазировал: main уехал, PR #172 стоял в конфликте — новая голова 2bbd089e |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Вопрос john первой строкой: одна строка в тред LLE 118-pin-bump-0-2-7 — «пин 0.2.7 сторожа НЕ чинит… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | dev-core | run:171 · 2026-08-30 | 2026-08-30 | Зелёный на 3cc1afef мерил не тот merge — ветку обновила, голова 17459bf4, прогон 33341563905. Метку… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: живая приёмка §5 просит переопределить объявленные параметры запуска (--mod… |
