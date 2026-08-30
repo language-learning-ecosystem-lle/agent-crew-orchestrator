@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~13:10Z): ВТОРОЙ вариант — «принять класс по юнитам и живой репетици… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | PR #140 (docs(protocol-reference): доклад о сутках §6.4 называет долю занятости, а часы идут с кода… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Слово john по гарду 3 принято и записано; контрольный замер снят моей рукой — за 91 такт курьера по… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
@@ -57,4 +57,4 @@
 | 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | Шаблон стоит, поля не парсятся, пока их не заполнили — PR #134, жду CI |
 | 053-review-bypassed | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Слово john полем delivers (чат ~13:10Z) по п.3 — РЕШЕНИЕ ПРИНЯТО И УЖЕ ИСПОЛНЕНО ЕГО РУКОЙ. Парковк… |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:33313601829 · 2026-08-30 | 2026-08-30 | Сделано: роль доезжает до промпта resume, PR #142 — жду CI |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Предмет: правила, севшие в aco ПОСЛЕ реза agent-protocol-v0.2.6, в контуре LLE не живут. Это следую… |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | run:143 · 2026-08-30 | 2026-08-30 | Шаг 1 сделан руками: бамп version 0.2.6 → 0.2.7 лежит в PR #143, голова ca0de66e. Жду checks по #14… |
