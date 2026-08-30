@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | run:150 · 2026-08-30 | 2026-08-30 | Поправка к парковке предыдущего письма (2026-08-30T15-05-57Z-curator.md): парковку меняю с pr:150 н… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-08-30 | verdict: approve |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Слово john по гарду 3 принято и записано; контрольный замер снят моей рукой — за 91 такт курьера по… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
@@ -55,7 +55,7 @@
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Форма шаблона принята; #134 не мёржится — база уехала, конфликт хвоста protocol-reference. Ход dev-… |
-| 053-review-bypassed | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | verdict: approve |
+| 053-review-bypassed | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | PR #149 (docs(protocol-reference): рецепт ревью уже влитого кода — заглушка на родителе squash-комм… |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | open | dev-core | run:33313601829 · 2026-08-30 | 2026-08-30 | Сделано: роль доезжает до промпта resume, PR #142 — жду CI |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | dev-core | run:143 · 2026-08-30 | 2026-08-30 | Шаг 1 сделан руками: бамп version 0.2.6 → 0.2.7 лежит в PR #143, голова ca0de66e. Жду checks по #14… |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~13:42Z: «заводи»). Предмет назвал не я — его назвала сама… |
