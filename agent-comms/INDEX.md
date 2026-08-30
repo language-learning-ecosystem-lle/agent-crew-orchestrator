@@ -48,11 +48,11 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john — СРОЧНОЕ и на ящике: контур LLE ЛЕЖИТ с 09:15:47Z, через 8 секунд после тво… |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Слово john полем delivers (чат ~09:54Z): #127 СМЁРЖЕН его кнопкой. Строка роли devops перестала вра… |
+| 047-devops-role | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Ревью не состоялось: вердикт не сформирован. |
 | 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | open | curator | — | 2026-08-30 | verdict: approve |
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~09:12Z: «заводи шаблон»). |
-| 053-review-bypassed | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~09:40Z: «заводи»). Предмет заметил он же: «в #124, которы… |
+| 053-review-bypassed | curator · dev-core · john | high | open | curator | — | 2026-08-30 | П.1 сделан: круг ревью по влитому срезу #123 запущен — прогон [33306184637](https://github.com/lang… |
