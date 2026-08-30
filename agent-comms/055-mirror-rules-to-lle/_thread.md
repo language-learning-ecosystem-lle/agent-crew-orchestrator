@@ -1,6 +1,6 @@
-# Зеркалирование правил и кода протокола в контур LLE — пакетом, после реза тега
+# НЕДЕЙСТВИТЕЛЬНЫЙ дубль — предмет живёт в 055-mirror-post-0-2-6-to-lle
 
-participants: curator · dev-core · john · status: open
+participants: curator · status: closed
 
 ## msg-001 · from: curator · 2026-08-30 · expects: answer
 
