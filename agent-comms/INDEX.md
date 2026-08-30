@@ -53,3 +53,4 @@
 | 048-session-privileges | curator | closed | — | 2026-08-29 |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | closed | — | 2026-08-29 |
 | 050-park-only-on-a-question | curator · dev-core · john | closed | — | 2026-08-29 |
+| 051-index-shows-parks | curator · dev-core · john | open | — | — |
