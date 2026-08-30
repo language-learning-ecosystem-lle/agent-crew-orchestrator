@@ -152,6 +152,23 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # line says so. 'writes' states where the role's work lives, for humans —
                               # reading it as a closed allow-list would deny 'dev-core' (writes: [])
                               # every file in the repository. 'forbidden' is the whole verdict
+  agent-protocol capability run --ref <ref> [--repo <path>] --role <id> --capability <name>
+                              [--target <value>] [--lines <n>] [--write]
+                              # A CAPABILITY OF A CARD, CALLED (thread 047): the verb is answered from
+                              # 'roles[].capabilities' of the config and NEVER from the caller's words —
+                              # --role names whose card is read, not who is running
+                              # every refusal of the door is printed WHOLE: a verb the role does not
+                              # declare (with the list it does), a target outside the closed list
+                              # (membership is EQUALITY — no prefix, no resolve), a call whose target and
+                              # verb disagree, and 'log-tail' above the card's 'maxLines' — REFUSED, not
+                              # trimmed, because a silently shortened tail reads as a shorter journal
+                              # --write is required by the one verb that changes the box ('repo-refresh');
+                              # without it the plan is printed and NOTHING runs. A checkout holding
+                              # uncommitted work is refused by name, never repaired
+                              # a state-changing call appends one line to <state>/capabilities.log:
+                              # when, by which system user, which verb at which target, and how it ended
+                              # — readable without the session transcript. It raises NO identity: the
+                              # user is the one the session was already spawned as (box-setup §0.1a)
   agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--review-workflow <name>] [--d1 <thread/message.md>]
                               # THE MERGE DOOR OF 'curator' (thread 026): the three guards that are
                               # FACTS — approve on the CURRENT head, green checks on it, and no
@@ -522,7 +539,11 @@ reason:
   · 'orchestrator run' — machine-local by the same reason, but the word means something else
     there: '--write' is not 'write the file', it is 'do it'. Without it the command prints
     the plan and touches nothing (not the workdir, not its lock, not the journal); with it
-    the workdir is put on the base and locked, the events are appended, the agent is raised.
+    the workdir is put on the base and locked, the events are appended, the agent is raised;
+  · 'capability run' — the box itself, and the word means 'do it' here as well (thread 047).
+    Only one of the three verbs reads it: 'repo-refresh' moves a checkout somebody may be
+    standing in, so without '--write' the plan is resolved, printed, and the tree is not
+    even LOOKED at. 'log-tail' and 'disk-free' are reads and take no word at all.
 
 WHICH INSTANCE A COMMAND IS ABOUT (thread 055). A box may host several projects, one
 instance per repository, and each has its OWN machine config:
