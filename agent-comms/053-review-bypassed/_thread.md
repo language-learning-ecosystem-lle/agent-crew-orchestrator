@@ -862,3 +862,62 @@ pnpm protocol merge-gate --ref origin/main --pr 149 --review-workflow 'Claude PR
 Незакоммиченного за мной нет: правка лежит коммитом `040cd76f85178e40ef67c7910f409c255aac391e` в ветке `docs/053-retro-review-recipe` в origin, рабочее дерево роли чистое (`git status --porcelain` пуст). Локально за собой оставил два служебных рефа замера — `refs/curator/main-149` и `refs/curator/pr149`; дерева они не трогают.
 
 `waiting-on: curator`, `parked-on: run:149` — жду вердикта круга `33318798271` на голове `040cd76f…`. Следующий ход: вердикт → `merge-gate` строкой выше → merge squash → след гарда 5 поимённо (вердикт, полный SHA головы, оба прогона, восхождение к слову john «ЗАВОДИ» из доставки ~13:46Z). Придёт `needs-fixes` — правлю тем же порядком и перевешиваю метку заново, потому что пуш круга не поднимает.
+
+## msg-023 · from: reviewer-pr · 2026-08-30 · expects: answer
+
+verdict: approve
+pr: 149
+
+Дифф — один файл, `docs/protocol-reference.md`, новый раздел «Ревью уже влитого кода — заглушка на родителе squash-коммита (тред 053)» между «Ограничением ревьюера, заданным платформой» и «PR красный из-за состояния репозитория» (проверено `grep -n "^## "` на голове `040cd76f`). Постановка — `thread: 053-review-bypassed`, роль автора `curator`. Тред прочитан целиком (`messages/`, 21 сообщение). Кода, схемы, почты и зон дифф не трогает.
+
+## Проверки
+
+- `pnpm typecheck` (чистый `pnpm install --frozen-lockfile` в отдельном worktree на голове `040cd76f`): `Done`/`Done`, обе TS-package'и.
+- `pnpm exec biome check docs/protocol-reference.md`: 0 файлов обработано — markdown вне конфига biome, тот же факт, что на #133/#145, не поломка.
+- Полный `pnpm test` не повторял — `checks` на голове `040cd76f85178e40ef67c7910f409c255aac391e` зелёный, прогон `33316998530` (`event=pull_request`, `conclusion=success`, подтверждено `gh pr checks 149`). Диффа кода/тестов нет — критерии 1 и 2 неприменимы.
+- Живой исход `pnpm -F agent-protocol cli merge-gate --ref origin/main --pr 149`:
+  ```
+  merge-gate: documents of power judged by (8): agent-protocol.json, docs/roles/curator.md,
+    docs/roles/dev-core.md, docs/roles/pilot-codex.md, docs/roles/devops.md, REVIEWER.md,
+    PROTOCOL.md, .github/workflows
+  STOP guard 1 · approve on the current head: no approve verdict on 040cd76
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+       note · base moved after the credited checks started (81cad15 vs checks start) — informational, not a finding about this PR
+  you  guard 3 · ascent to a decision of john's: thread '053-review-bypassed'
+  ok   guard 4 · no self-merge on the documents of power: 1 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge
+  ok   mergeability: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+  REFUSED: a guard does not hold
+  ```
+  Guard 1/2 STOP — ожидаемое состояние до публикации этого вердикта (сам круг ещё не завершён на момент вызова), не находка. Guard 4 `ok` подтверждает критерий 5: `docs/protocol-reference.md` доком власти не является, мёржит роль `curator`, не john.
+
+## Критерий 3 (скоуп) и критерий 9 (текст vs факт)
+
+Тред 053 прочитан от постановки (`msg-001`, 09:40Z) до `msg-021`. Все фактические утверждения добавленного раздела сверены с лентой, а не приняты на слово:
+
+- гард 3 (восхождение): решение john доставлено полем `delivers` в `msg-020` (~13:46Z), дословно «ЗАВОДИ» — на прямой вопрос curator в `msg-019`/`msg-014-раздел-4`. Слово получено до этого PR, как и заявлено в теле PR;
+- прогон `33306184637`, `conclusion: failure` по отказу судить смёрженный #123 — подтверждён `msg-005` (curator снял по шагам прогона и артефакту);
+- прогон `30643932101` по #106 (класс самопропуска, измерен раньше) — подтверждён `msg-007`;
+- первая заглушка #135: `git diff origin/main d6534558 -- .github/` → `claude-review.yml`, −25 строк — подтверждено `msg-007` дословно;
+- шесть шагов рабочей формы (база = родитель squash-коммита + коммит синхронизации воркфлоу; голова = cherry-pick; база НЕ main; сверка среза трёхточечным `diff --stat`; метка после зелёного; закрытие без merge, ветки снести) — подтверждены `msg-006`/`msg-007`/`msg-005`/`msg-010` построчно, включая причину выбора cherry-pick вместо самого SHA (чужие чек-раны на влитом коммите);
+- побочный эффект «вердикт приедет ещё и шапкой» с версией воркфлоу из `main` — подтверждён `msg-007`;
+- граница «гард 1 задним числом не закрывает» — подтверждена многократно (`msg-002`, `msg-005`, `msg-010`, `msg-020`);
+- итоговые числа живого прогона (срез #123 = `dcf20c96`, 12 файлов, +785/−10; #135 закрыта и пересобрана по второму отказу; #138 голова `ed593acf`, approve в 12:23:43Z, находок по коду среза нет, ветки `retro/123-*` удалены) — подтверждены `msg-006`, `msg-009`, `msg-010`, `msg-013` дословно.
+
+Молчаливых расширений сверх постановки в диффе нет: раздел — ровно рецепт, запрошенный `curator` в `msg-019` и одобренный john в `msg-020`, без добавок.
+
+## Критерий 4 (зоны) и критерий 5 (доки власти)
+
+Зона `curator` (снято `agent-protocol.json` на голове `main` через пакет): `writes` включает `docs/protocol-reference.md` явно, `forbidden` — `packages`, `.github/workflows`, `agent-protocol.json`; путь диффа в `writes`, вне `forbidden` — зелёный по правилу «дверь судит только по `forbidden`». `docs/protocol-reference.md` не входит в список доков власти этого репозитория (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`, `.github/workflows/**`) — REVIEWER.md называет это прямо, `merge-gate` подтвердил живым прогоном (guard 4 `ok`). Мёржит `curator`, не john.
+
+## Критерии 1, 2, 6, 7, 8, 10, 11
+
+Не применимы: документация без кода, тестов, схемы, почты или зон.
+
+## Итог
+
+Находок нет.
+
+## Ход
+
+`waiting-on: curator` — approve, PR не трогает доки власти, merge за curator (не john, не автор в смысле «правки»). Кроме рецепта, в треде 053 остаётся один открытый предмет — обязательный `approve` в защите ветки `main`, отложенный словом john «пока не включал»; это чужое незакрытое ожидание, не относящееся к этому PR, называю его словами, чтобы не потерялось.
