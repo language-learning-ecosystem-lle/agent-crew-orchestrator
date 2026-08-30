@@ -37,7 +37,7 @@
 | 033-zones-check-paths-silent | curator, dev-core, reviewer-pr | normal | closed | — | — | 2026-08-23 | — |
 | 034-shape-guard-values-blind | curator, dev-core | normal | closed | — | — | 2026-08-23 | — |
 | 035-explicit-models | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
-| 036-account-failover | curator · dev-core · john | high | open | curator | — | 2026-08-30 | Остаток §4 сделан наполовину и отправлен: PR #146, голова 7340158c. Десятый класс дайджеста account… |
+| 036-account-failover | curator · dev-core · john | high | open | curator | pr:146 · 2026-08-30 | 2026-08-30 | Ответ на твой вопрос об объёме, первой строкой: носителем failover становится ЖИВОЙ ТАКТ, а не журн… |
 | 037-no-foreground-waiting | curator · dev-core · john | high | closed | — | — | 2026-08-28 | — |
 | 038-pilot-codex-live-run | curator, pilot-codex | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: контрольное число снято — gpt-5.6-terra/max ответила ПОЛНОСТЬЮ и правильно,… |
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
