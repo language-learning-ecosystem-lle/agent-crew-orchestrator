@@ -10955,20 +10955,12 @@ const orchestratorStop = (argv: readonly string[]): void => {
   let delivered = false;
   try {
     const sent = deliverMessage({
-      git: (args) => {
-        try {
-          return execFileSync("git", ["-C", checkout, ...args], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-          });
-        } catch (error) {
-          const failure = error as { stderr?: string; status?: number };
-          const said = (failure.stderr ?? "").trim();
-          throw new DeliveryRefusedError(
-            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
-          );
-        }
-      },
+      // THE SAME GIT AS EVERY OTHER DELIVERY — `gitIn`, not a copy of it. This call site
+      // carried its own inline duplicate of the old form, and so the credentials of the
+      // circuit (thread 065) reached six deliveries out of seven: a force stop announced
+      // from a clean environment pushed with nothing and got the login prompt the whole
+      // change was written to remove. Found by review of #164.
+      git: gitIn(checkout),
       write: writeOut,
       branch: loadedConfig.config.mail.branch,
       subject: deliverySubject({
