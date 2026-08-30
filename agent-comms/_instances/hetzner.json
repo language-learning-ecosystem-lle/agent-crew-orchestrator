@@ -1,17 +1,20 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-30T17:27:54.782Z",
+  "writtenAt": "2026-08-30T17:29:35.208Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
-  "leases": [
+  "quota": [
     {
+      "account": "lle-second",
+      "window": "five_hour",
+      "since": "2026-08-30T17:29:35Z",
       "role": "dev-core",
-      "thread": "042-unaccepted-turn-silent",
-      "state": "running",
-      "deadline": "2026-08-30T18:21:01Z"
+      "until": "2026-08-30T17:40:00Z",
+      "stated": true
     }
-  ]
+  ],
+  "leases": []
 }
