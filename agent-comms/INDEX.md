@@ -68,3 +68,4 @@
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Постановка по слову john (чат 2026-08-30 ~16:03Z: «заводи»). Предмет: событийная парковка может жда… |
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | ВТОРОЙ СЛУЧАЙ ТОГО ЖЕ КЛАССА ЗА ОДИН ЧАС, и он произошёл ПОСЛЕ того, как класс был назван, запрет о… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-08-30 | Постановка по прямому требованию john (чат 2026-08-30 ~17:26Z), дословно: «Какого хуя это всё назыв… |
+| 064-forget-the-consumer | curator · dev-core · john | normal | open | — | — | — | — |
