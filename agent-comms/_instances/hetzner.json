@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-31T00:43:31.383Z",
+  "writtenAt": "2026-08-31T00:49:13.839Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "066-cost-of-prose",
       "state": "running",
       "deadline": "2026-08-31T01:42:45Z"
+    },
+    {
+      "role": "curator",
+      "thread": "056-shared-tmp-mechanism",
+      "state": "running",
+      "deadline": "2026-08-31T01:29:10Z"
     }
   ]
 }
