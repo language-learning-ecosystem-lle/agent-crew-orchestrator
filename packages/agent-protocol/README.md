@@ -4754,3 +4754,49 @@ with the systemd taken out: see a non-zero code, raise it again) ticks with no d
 report. What a CI runner cannot reproduce is the other half — that THIS box's unit answers a
 75 with a fresh process — because it has neither this systemd nor this unit; that half is a
 live acceptance on the box and is named as one rather than assumed.
+
+### S26 — the run's own «temporary»: `TMPDIR` per session (thread 056)
+
+**The rule was not being broken by carelessness, it was being broken by the shape of a
+command.** «Do not write into the shared `/tmp`, work in your own `mktemp -d`» is stated,
+known and quoted by the roles themselves — and broken every few turns. curator caught
+herself three turns running inside one thread (LLE `111`, 2026-08-30T09:30:36Z) and named
+the class correctly: a write into `/tmp` is never a decision, it is the side effect of the
+convenient form of a command (a marker file, a redirect into a scratch file, a tool's own
+spool). The damage in that case was nil; what separated it from a dump into `/tmp/run.log`
+painting somebody else's CI was luck, not construction. The repository's own conclusion
+from thread `053` applies verbatim: a rule phrased as an appeal does not work, a
+precondition attached to the action does.
+
+- **Every run is spawned with its own `TMPDIR`** — `<state>/sessions/<run>.tmp`, created
+  before the child exists and set over the inherited environment. It is the sixth file of
+  the family already named per run (`.log`, `.jsonl`, `.session`, `.supervisor`,
+  `.waiting`), so one run stays one name in a directory listing.
+- **It is the PLATFORM's variable and that is the entire point.** Everything the world
+  runs already reads it — `mktemp`, node's `os.tmpdir`, python's `tempfile`, go, the
+  vendor's binaries — so a command written in the ordinary shape lands in this run's own
+  directory without the session knowing that it did. It is deliberately not part of the
+  `AGENT_PROTOCOL_*` launch contract: that set is also what the process sandbox scrubs
+  from a test's ambient environment, and scrubbing the platform's `TMPDIR` there would
+  change what the tests themselves run under.
+- **It is never the role's worktree.** A scratch file there is a dirty tree, that is, a
+  refusal to launch on the next tick (R17) — the state directory is the only place a
+  run's leavings can be both private and harmless.
+- **What the run left is NAMED, then swept.** At the close of a session the supervisor
+  lists what is in that directory (up to twenty entries, then a count) into the run's own
+  log and removes it. A run that left nothing says nothing, so a line there always means
+  something was left — and the class curator asked to make measurable is measurable from
+  the session logs, per run, with no ambiguity about whose leftovers they are.
+- **Why not a before/after listing of the shared `/tmp`**, the cheapest candidate in the
+  statement of work: on a box running several sessions at once (and in this package's own
+  test suite, which mints `mkdtemp` from many files in parallel) that listing is full of
+  other processes' entries and can attribute none of them. The private directory gives the
+  same measurement with exact attribution and no race. What it does NOT cover is a session
+  that types the literal path `/tmp/x` — no environment variable can intercept that, and
+  the only mechanism that would is `PrivateTmp=yes` on the unit, which is john's to decide.
+
+**What is tested.** The name is a unit (`paths.test.ts`); the seam is a process test
+(`run.process.test.ts`) — a stub session runs `mktemp -d` and `mktemp` naming no
+destination, and what is asserted is that `TMPDIR` is this run's directory, that both
+landed inside it, that the directory is gone after the run and that the log named what was
+left in it.
