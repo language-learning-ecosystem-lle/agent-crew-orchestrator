@@ -58,6 +58,7 @@ import {
   type LoadedLocalConfig,
   type LocalAccount,
   LocalConfigError,
+  listInstanceConfigs,
   type ResolvedLocalConfig,
   resolveLocalConfig,
 } from "./config/local.js";
@@ -497,6 +498,7 @@ import {
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
 import { type CheckoutState, runCapabilityCall } from "./roles/capability-run.js";
+import { judgeContour, judgeGround } from "./roles/contour.js";
 import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import {
@@ -964,7 +966,7 @@ const configFrom = (argv: readonly string[], root?: string): LoadedConfig => {
   // the place where the mail lies). Demanding it explicitly meant breaking every
   // example in the documentation — which is what happened (the reviewer's finding
   // on PR #21).
-  const repo = flag(argv, "--repo") ?? repoOf(root ?? process.cwd());
+  const repo = repoArg(argv, root ?? process.cwd());
   const noFetch = argv.includes("--no-fetch");
 
   if (noFetch && ref.startsWith("origin/")) {
@@ -1039,7 +1041,7 @@ const registryFrom = (argv: readonly string[], root?: string): RoleRegistry =>
  */
 const policyFrom = (argv: readonly string[], root?: string): LoadedPolicy => {
   const ref = required(argv, "--ref");
-  const repo = flag(argv, "--repo") ?? repoOf(root ?? process.cwd());
+  const repo = repoArg(argv, root ?? process.cwd());
   const noFetch = argv.includes("--no-fetch");
   if (noFetch && ref.startsWith("origin/")) {
     err(`agent-protocol: WARNING — '${ref}' was not updated (--no-fetch), the config may be stale`);
@@ -1088,7 +1090,7 @@ const repairSkew = createSkewVoice();
 
 const repairFrom = (argv: readonly string[]): LoadedRepair => {
   const ref = required(argv, "--ref");
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = repoArg(argv, process.cwd());
   const noFetch = argv.includes("--no-fetch");
   const path = flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH;
   const key = standingKey({ repo, ref, path });
@@ -1156,6 +1158,110 @@ const repoOf = (at: string, env?: NodeJS.ProcessEnv): string => {
     }
     return fail(`'${at}' is not inside a git repository: ${(error as Error).message}`, 2);
   }
+};
+
+/** `origin` of a tree, or nothing: a tree without a remote is a fact, not an error. */
+const originOf = (at: string): string | undefined => {
+  try {
+    return execFileSyncByExit("git", ["-C", at, "remote", "get-url", "origin"], {
+      env: gitEnvOutsideHook(),
+    }).trim();
+  } catch {
+    return undefined;
+  }
+};
+
+/** Which contour of this box claims a tree, and which checkout that contour declares. */
+const contourOf = (at: string): { name?: string | undefined; repo?: string | undefined } => {
+  try {
+    const resolved = resolveLocalConfig({ repo: at });
+    return { name: resolved.instanceName, repo: resolved.config.repo };
+  } catch {
+    // A box that cannot resolve an instance has no boundary to enforce — and it already
+    // says so, by name, at every command that actually needs the machine config.
+    return {};
+  }
+};
+
+/**
+ * THE DOOR OF THE CONTOUR (thread 062), in two guards below. The tree a command was
+ * typed in — and the tree it is pointed at, when `--repo` names one — must belong to
+ * the circuit the caller belongs to; anything else is refused before it is read,
+ * written or opened.
+ *
+ * The judgement is in `roles/contour.ts` and so is the reasoning; these are its facts
+ * — who claims the caller's tree, who claims the target — and the exit. It is the
+ * cheap half of the measure, and the report says so: a session that calls `git` and
+ * `gh` directly never comes past this line, which is why the load-bearing half is a
+ * token scoped to one repository.
+ */
+
+/**
+ * WHAT THIS BOX DECLARES AT ALL — and only the instances that name a `repo`, because
+ * an instance claiming no checkout draws no boundary: counting it would refuse every
+ * tree on a box whose single config happens to omit the path. A config that does not
+ * parse is skipped here and NAMED where it matters — `resolveLocalConfig`, at the
+ * commands that need the machine config itself.
+ */
+const boxContours = (): readonly string[] =>
+  listInstanceConfigs()
+    .filter((entry) => {
+      try {
+        return typeof JSON.parse(readFileSync(entry.path, "utf8")).repo === "string";
+      } catch {
+        return false;
+      }
+    })
+    .map((entry) => entry.name);
+
+/**
+ * THE GROUND, ASKED WITHOUT A TARGET — and asked on every command that resolves a
+ * repository, which is what makes the door a door. The reviewer's finding on PR #160:
+ * while this lived inside `guardContour`, it ran only when `--repo` was named, so the
+ * documented form (`merge-gate --ref origin/main --pr N`, `REVIEWER.md`) asked nothing
+ * and a session in a checkout of another circuit passed in silence — the very shape of
+ * #453/#454. The judgement itself is unchanged; what changed is WHEN it is requested.
+ */
+const guardGround = (): void => {
+  const caller = contourOf(process.cwd());
+  const verdict = judgeGround({
+    at: process.cwd(),
+    boxContours: boxContours(),
+    // A contour that claims the caller but declares no checkout is no ground to stand
+    // on — the same pairing `judgeContour` makes, so both doors answer alike.
+    ...(caller.name === undefined || caller.repo === undefined ? {} : { ownContour: caller.name }),
+  });
+  if (verdict.verdict === "foreign") fail(verdict.refusal, 2);
+};
+
+const guardContour = (target: string): string => {
+  const caller = contourOf(process.cwd());
+  const targeted = contourOf(target);
+  const verdict = judgeContour({
+    target,
+    boxContours: boxContours(),
+    ...(targeted.name === undefined ? {} : { targetContour: targeted.name }),
+    ...(originOf(target) === undefined ? {} : { targetRemote: originOf(target) }),
+    ...(caller.name === undefined ? {} : { ownContour: caller.name }),
+    ...(caller.repo === undefined ? {} : { ownRepo: caller.repo }),
+    ...(caller.repo === undefined ? {} : { ownRemote: originOf(caller.repo) }),
+  });
+  if (verdict.verdict === "foreign") return fail(verdict.refusal, 2);
+  return target;
+};
+
+/**
+ * `--repo`, judged against the contour the command came from, or the caller's own tree
+ * — and the GROUND is judged either way. Without `--repo` there is no target to judge
+ * beyond the caller's own tree, but the caller still has to be standing somewhere this
+ * box declares: that half costs one config read and is what closes the ordinary form of
+ * every command (`merge-gate --ref origin/main --pr N`) against a foreign checkout.
+ */
+const repoArg = (argv: readonly string[], at: string): string => {
+  const named = flag(argv, "--repo");
+  if (named !== undefined) return guardContour(named);
+  guardGround();
+  return repoOf(at);
 };
 
 /**
@@ -1338,7 +1444,7 @@ const configIssues = (
 
 const configCheck = (argv: readonly string[]): void => {
   const loaded = configFrom(argv, undefined);
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = repoArg(argv, process.cwd());
   const catalogue = codexCatalogueHere();
   // The machine's half of the account join, read through the door that must not die over
   // an unreadable local config: a box that cannot say what it declares still gets every
@@ -1389,7 +1495,7 @@ const configCheck = (argv: readonly string[]): void => {
  * read and the version it found before doing anything else.
  */
 const schemaMigrate = (argv: readonly string[]): void => {
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = repoArg(argv, process.cwd());
   const configPath = join(repo, flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH);
   const raw = readFile(configPath, "protocol config");
 
@@ -11523,7 +11629,7 @@ const orchestratorHold = (argv: readonly string[]): void => {
  */
 const withOperatorRef = (argv: readonly string[]): readonly string[] => {
   if (flag(argv, "--ref") !== undefined) return argv;
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = repoArg(argv, process.cwd());
   const path = join(repo, flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH);
   let parsed: unknown;
   try {
