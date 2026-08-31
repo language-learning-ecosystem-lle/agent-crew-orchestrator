@@ -4,6 +4,7 @@ import type { Message } from "./message.js";
 import {
   describeStaleRunPark,
   judgeRunPark,
+  looksLikeAbsentPr,
   pendingRunsOf,
   RUN_PARK_TTL_SECONDS,
   staleRunParks,
@@ -74,6 +75,36 @@ describe("the door of a run: park (thread 062, layer 1)", () => {
     if (!verdict.ok) return;
     expect(verdict.note).toContain("NOT verified");
     expect(verdict.note).toContain("gh: no token");
+  });
+});
+
+// THREAD 061, msg-002 — the OTHER thing `gh` can say, and the one sentence of its that is a fact
+// about the world rather than a blink of the network.
+describe("the door of a run: park — the pull request that is not there (thread 061)", () => {
+  it("refuses when gh says there is no such pull request, and names where it asked", () => {
+    const verdict = judgeRunPark({ pr: 33328290131, absent: { where: "/srv/repo" } });
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.reason).toContain("THERE IS NO PULL REQUEST #33328290131");
+    expect(verdict.reason).toContain("/srv/repo");
+    // The form wants the number of a PR, and the refusal says so — the whole confusion is that
+    // `run:` reads as "an id of a run".
+    expect(verdict.reason).toContain("NUMBER OF A PULL REQUEST");
+  });
+
+  it("reads that sentence out of gh's own words, and out of nothing else", () => {
+    expect(
+      looksLikeAbsentPr(
+        "GraphQL: Could not resolve to a PullRequest with the number of 33328290131. (repository.pullRequest)",
+      ),
+    ).toBe(true);
+    expect(looksLikeAbsentPr('no pull requests found for branch "feature/x"')).toBe(true);
+    // NOT this: a missing token, a missing binary, a repository gh cannot see. Those must keep
+    // leaving the park standing — a network that blinks may not cost a role its turn.
+    expect(looksLikeAbsentPr("gh: no token")).toBe(false);
+    expect(looksLikeAbsentPr("Could not resolve to a Repository with the name 'x/y'")).toBe(false);
+    expect(looksLikeAbsentPr("gh: command not found")).toBe(false);
   });
 });
 

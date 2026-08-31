@@ -78,6 +78,8 @@ export type NewMessageInput = {
   readonly parkedOn?: string;
   /** Whose word this message carries — the one lift of a park on that person (thread 030). */
   readonly delivers?: string;
+  /** Who will move the event this turn is parked behind (thread 061, form (B)). */
+  readonly parkMover?: string;
   /** The PR this message announces as merged — it lifts the parks that wait on it (thread 023). */
   readonly mergedPr?: number;
   /**
@@ -91,6 +93,41 @@ export type NewMessageInput = {
   readonly text: string;
   /** true — the thread has `messages/` (migrated / file-based). false — legacy. */
   readonly threadHasMessages: boolean;
+};
+
+/**
+ * A PARK ON A MERGE MUST NAME WHO WILL MOVE IT (thread 061, form (B) of curator's statement, by
+ * the word of john 2026-08-30) — the refusal that both writing commands share, for the reason
+ * the verdict pair is refused here: a rule held by one of the two is the lesson of 075 again.
+ *
+ * IT IS DEMANDED ON `pr:` AND NOT ON `run:`, and the asymmetry is the point. A `pr:` park waits
+ * for A HAND on a button, and whose hand it is is a judgement no field expresses — that is the
+ * whole finding of the thread: `dev-speech` parked on the merge of its own PR, whose label and
+ * verdict needed the curator of the same thread, and a parked thread raises nobody. A `run:`
+ * park names its mover already: the round the door has just verified to be alive and running.
+ *
+ * WHAT THE FIELD BUYS is not a computed verdict of reachability (form (A), refused as a first
+ * step: it would refuse honest parks whose event another thread or a human hand moves) but the
+ * QUESTION being asked at all. The parker who has to write "the label goes up by curator" is the
+ * parker who has just checked that somebody can. The machine judges nothing about the name.
+ */
+const requireParkMover = (input: {
+  readonly parkedOn?: string;
+  readonly parkMover?: string;
+}): void => {
+  const isMergePark = input.parkedOn !== undefined && /^pr:\d+$/.test(input.parkedOn);
+  if (isMergePark && input.parkMover === undefined) {
+    throw new WriteRefusedError(
+      `'parked-on: ${input.parkedOn}' is declared without naming who will move that merge: this park waits for A HAND on a button, and a thread that is parked raises nobody — so a park behind an event that needs THIS thread's own next step is a door locked from the inside (thread 061, live case: a role parked on the merge of its own PR, whose label and verdict were its own curator's next move). Add '--park-mover <participant>' — the role or person who will make the merge happen (it may be you, coming back with another run). A 'run:' park needs no such name: the round it waits for is already running`,
+    );
+  }
+  if (!isMergePark && input.parkMover !== undefined) {
+    throw new WriteRefusedError(
+      `'park-mover: ${input.parkMover}' names who moves an event, and this message parks behind ${
+        input.parkedOn === undefined ? "no event at all" : `'${input.parkedOn}'`
+      }: the field qualifies a park on a merge ('--parked-on pr:<n>') and nothing else. Drop it, or declare the park it belongs to`,
+    );
+  }
 };
 
 /**
@@ -121,6 +158,8 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     );
   }
 
+  requireParkMover(input);
+
   const fields: MessageFields = {
     from: input.from,
     ...(input.worker === undefined ? {} : { worker: input.worker }),
@@ -132,6 +171,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.priority === undefined ? {} : { priority: input.priority }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
+    ...(input.parkMover === undefined ? {} : { parkMover: input.parkMover }),
     ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
     ...(input.verdict === undefined ? {} : { verdict: input.verdict }),
     ...(input.pr === undefined ? {} : { pr: input.pr }),
@@ -188,6 +228,11 @@ export type NewThreadInput = {
    */
   readonly delivers?: string;
   /**
+   * Who moves the event the first message parks behind (thread 061) — passed through for the
+   * same reason, and judged in `planNewMessage` with everything else about the pair.
+   */
+  readonly parkMover?: string;
+  /**
    * The verdict of a review round and its PR (thread 042) — passed through for the reason
    * `delivers` and `parked-on` are: the first message is a message, and a rule held by one
    * command of the pair is the lesson of 075. The pair is judged in `planNewMessage`, once.
@@ -228,6 +273,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
+    ...(input.parkMover === undefined ? {} : { parkMover: input.parkMover }),
     ...(input.verdict === undefined ? {} : { verdict: input.verdict }),
     ...(input.pr === undefined ? {} : { pr: input.pr }),
     text: input.text,
