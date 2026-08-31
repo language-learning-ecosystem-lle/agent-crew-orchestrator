@@ -5,3 +5,4 @@
 - [Подмена часов процессному тесту](clock-shift-for-process-tests.md) — `faketime` на ящике нет; `--import` через NODE_OPTIONS, и оффсет ОБЯЗАН быть общим для родителя и дочернего CLI.
 - [Номер тега реза не говорит, что в нём](release-tag-number-does-not-say-what-it-carries.md) — `v0.2.8` срезан за 14 минут ДО мержа своего бампа; мерить коммиты против `main`, не имена.
 - [Локальный прогон — с `TMPDIR=/tmp`](local-suite-needs-short-tmpdir.md) — сессионный TMPDIR роняет процессные тесты по `listen EINVAL`; и красный `daemon.watchdog` есть на чистом main.
+- [Почву двери контура из `mktemp -d` не проверить](contour-ground-check-needs-tmp.md) — сессионный TMPDIR внутри чекаута контура даёт ложно-зелёный; стенд — `TMPDIR=/tmp` + tsx-лоадер абсолютным путём.
