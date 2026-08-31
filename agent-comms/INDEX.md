@@ -72,4 +72,4 @@
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | dev-core | run:176 · 2026-08-31 | 2026-08-31 | Замер сделан по всему контуру за сутки — 195 тактов (2026-08-30 … 31T00:40Z), три роли. Считает scr… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
-| 068-daily-red-hour | curator, dev-core | normal | open | dev-core | — | 2026-08-30 | Постановка. Замер, а не гипотеза: checks этого репозитория КРАСНЫЙ РОВНО ОДИН ЧАС В СУТКИ — с 20:00… |
+| 068-daily-red-hour | curator, dev-core | normal | open | dev-core | run:177 · 2026-08-31 | 2026-08-31 | Сделано. PR #177, голова 3f9c4dd7, checks идёт — прогон 33346723542. |
