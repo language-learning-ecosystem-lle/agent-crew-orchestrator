@@ -300,6 +300,28 @@ stands in, and the failure of getting it wrong is a partial write into the wrong
 rather than a refusal. A config with no `orchestrator` section declares no ref, and then
 the flag is absent rather than invented, exactly as the prefix is.
 
+**And a role held by a read-only sandbox gets two flags more — `--no-fetch --repo <its own
+working tree>`.** For a role whose card declares `launch.agent.toolsHeldBy:
+"sandbox-read-only"` the line above fails by construction rather than by luck: a `--ref`
+with an `origin/` prefix updates the ref before reading it, and a process confined to
+read-only tools has neither the network nor the write to do that — `exit 2` on the run's
+only command. `--repo` is the second half of the same line: without it the config's
+repository is derived from the directory of `--root`, that is from the MAIL CHECKOUT
+rather than from the tree the role works in; the two often answer the same ref on one box,
+and a prompt may not lean on that. Both values are read from what the config already
+declares — the mark from the card (protocol version 20), the path from
+`orchestrator.workdir.worktrees` + the role id, absolute and resolved by the same run —
+so no key and no schema version is spent on them. **A role without the mark gets the line
+above unchanged**, which is the point: the roles that do reach the network must not be
+handed a stale config behind a warning. A project that declares no role worktrees declares
+no path, and `--repo` is then absent rather than invented while `--no-fetch` still stands.
+
+Measured cost of the omission (thread `058-launch-prompt-mail-form-sandbox`, from the runs
+of `038` on 2026-08-30): one raise issued this single command, got the refusal, and
+delivered none of the five asked-for points; the next raise of the same role and the same
+model delivered all five, and differed only in that its statement of work had spelled the
+working form out by hand.
+
 ## The machine config (R14)
 
 **The repository says WHAT, the machine says WHERE.** Roles, permissions, ceilings,

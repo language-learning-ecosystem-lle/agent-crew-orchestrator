@@ -1270,6 +1270,22 @@ export type MailForm = {
    * mail, so the prompt names it one ending instead of two.
    */
   readonly writesHeldBy?: string;
+  /**
+   * WHERE THE CONFIG IS READ FROM for this role — the ABSOLUTE path of its own working
+   * tree (`orchestrator.workdir.worktrees` + role id, resolved). Printed only for a run
+   * whose tools are held (`writesHeldBy`), and for one reason: without `--repo` the
+   * config's repository is derived from the directory of `--root`, that is FROM THE MAIL
+   * CHECKOUT rather than from the tree the role works in (`configFrom` → `repoOf(root)`,
+   * `cli.ts`). On this box the two happen to answer the same `origin/main`; a role is not
+   * obliged to know that, and a prompt is not allowed to lean on a coincidence.
+   *
+   * ABSOLUTE for the same reason `root` is: the session types the line as it stands and
+   * is not told which directory a relative path would be relative to.
+   *
+   * Absent is the honest state — a project that declares no role worktrees declares no
+   * path, and the flag is then not printed rather than invented.
+   */
+  readonly repo?: string;
 };
 
 /**
@@ -1305,17 +1321,84 @@ export const mailWritesHeldBy = (role: Role): string | undefined => {
  * subcommand, they are facts of THIS deployment, and a line printed without them exits 2
  * on the first try. Each is printed only if it is known — an absent fact stays absent
  * here exactly as `command` does, because a made-up root is worse than a missing one.
+ *
+ * AND A RUN WHOSE TOOLS ARE HELD GETS TWO FLAGS MORE, for the same reason and from the
+ * same source — `writesHeldBy` is `toolsHeldBy: "sandbox-read-only"` quoted, and that
+ * word reaches the vendor's argv as `--sandbox read-only`. Under it the line printed for
+ * every other role fails BY CONSTRUCTION, not by luck:
+ *
+ *  - `--no-fetch`, because a `--ref` with an `origin/` prefix updates the ref before it
+ *    reads (`fetchRef`, `fs/git.ts`) and a sandbox with no network and no write turns
+ *    that into `exit 2` — a refusal, not a staleness;
+ *  - `--repo`, because without it the config's repository is `repoOf` the directory of
+ *    `--root`, i.e. the MAIL CHECKOUT and not this role's working tree.
+ *
+ * MEASURED, TWICE, ON 2026-08-30 (thread `038-pilot-codex-live-run`, letter
+ * `2026-08-30T13-52-34Z-curator.md` §2, §6): run 9 (`gpt-5.6-terra`/`max`, 13:46:44Z →
+ * 13:47:34Z) issued ONE command — this line, out of the prompt — got `exit 2`, and read
+ * the thread never: zero of five asked-for points. Run 9-бис, same model, differed only
+ * in that the statement of work spelled the working form out by hand: two commands, then
+ * five points of five. On a weaker model the same defect had cost a third of a run; on a
+ * stronger one it costs the whole run, because a session that follows its prompt exactly
+ * stops where the prompt breaks.
+ *
+ * A ROLE WITHOUT THE MARK IS UNTOUCHED, and that is a requirement rather than a
+ * side-effect: the `claude-code` roles do go to the network, `--no-fetch` would hand them
+ * a stale config with a warning instead of the current one, and their `--repo` is already
+ * right by the derivation above.
  */
 const mailCall = (form: MailForm, subcommand: string, args?: string): string => {
+  const held = form.writesHeldBy !== undefined;
   const words = [
     ...(form.command === undefined ? [] : [form.command]),
     subcommand,
     ...(form.root === undefined ? [] : ["--root", form.root]),
     ...(form.ref === undefined ? [] : ["--ref", form.ref]),
+    ...(held ? ["--no-fetch"] : []),
+    ...(held && form.repo !== undefined ? ["--repo", form.repo] : []),
     ...(args === undefined ? [] : [args]),
   ];
   return `\`${words.join(" ")}\``;
 };
+
+/**
+ * THE FACTS OF *THIS RUN* THE MAIL'S OWN FLAGS ASK FOR. `--root` and `--ref` say where the
+ * mail is; these two say who is calling and about what, and `await-input` refuses without
+ * them exactly as it refuses without a root (`cli.ts`: `required(argv, "--role")`,
+ * `required(argv, "--thread")`).
+ */
+type RunFacts = {
+  /**
+   * The id of the role this prompt is for. Optional for the same reason `command` is —
+   * absent is silence, not a default — but unlike `command` it is not a property of the
+   * deployment: every caller in this package HAS it, and the option exists so that a
+   * caller which does not cannot be made to invent one.
+   */
+  readonly role?: string;
+  /** The thread this run is bound to; both builders take it as a required input. */
+  readonly thread: string;
+};
+
+/**
+ * THE ONE MAIL CALL A PROMPT PRINTS AS A RECIPE RATHER THAN A TEMPLATE — and therefore
+ * the one that has to be complete. `thread show` and `new-message` are printed with
+ * `<placeholders>` a session fills in; `await-input` is printed to be RUN AS WRITTEN, at
+ * the moment the session has already parked and has the least room to debug a refusal.
+ *
+ * WHY IT IS A FUNCTION AND NOT TWO MORE ARGUMENTS AT THE CALL SITES. It is printed in
+ * three places (two norms and the R19 paragraph) and was wrong in all three the same way:
+ * the flags this subcommand requires belong to the subcommand, not to whoever quotes it.
+ *
+ * AND AN ABSENT ROLE DOES NOT BECOME HALF A LINE. The rule of thread `038` — the prompt
+ * states facts it was given and invents none — cuts both ways here: a made-up `--role`
+ * writes into somebody else's wait, and a line printed WITHOUT it exits 2 on a command the
+ * session was told to run verbatim. So the invocation is printed only when it is whole,
+ * and what replaces it names the missing flag instead of a guess at its value.
+ */
+const awaitInputCall = (form: MailForm, run: RunFacts): string =>
+  run.role === undefined
+    ? "the mail's `await-input` — THIS PROMPT WAS NOT GIVEN THE ROLE ID that call requires (`--role`), so the line is not written out here rather than written out short: ask for the form of the call instead of guessing one"
+    : mailCall(form, "await-input", `--role ${run.role} --thread ${run.thread}`);
 
 /**
  * WHAT IS SAID WHEN THE PROJECT DECLARED NO FORM. It is a sentence and not a blank: a
@@ -1380,10 +1463,10 @@ const mailFormUndeclared =
  * them anyway. The 018 norm is not narrowed for anybody else: what narrows is the
  * DESCRIPTION handed to the one role whose second exit is closed by construction.
  */
-const runEndsNorm = (form: MailForm): string =>
+const runEndsNorm = (form: MailForm, run: RunFacts): string =>
   form.writesHeldBy !== undefined
     ? "ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So your run ends in exactly ONE way: you PRINT your answer and stop. There is no second ending for you — parking for input and passing the turn are both writes into the mail, and this run cannot make one. Never sit in the foreground waiting a run out — a CI job, a review round, a verdict on a pull request: none of them can report back into this process, and the wait only burns the clock and holds your role's one slot against the queue. If the work does not fit inside this run, print what you have and say plainly what is missing: a printed partial answer is delivered, an unprinted perfect one dies with the process."
-    : `ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (${mailCall(form, "await-input")} above, or a command of YOUR OWN work you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead. AND THE FOREGROUND ENDING IS NEVER FOR SOMEONE ELSE'S RUN: a CI job, a review round, a verdict on a PR you opened or labelled all report into the thread by themselves, so waiting one out here only burns the clock and holds your role's one slot against the queue. Started one? Say so in the thread, park on it (\`--parked-on run:<N>\` or \`pr:<N>\`) when nothing else can move, and pass the turn — the next tick reads the finished verdict.`;
+    : `ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (${awaitInputCall(form, run)} above, or a command of YOUR OWN work you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead. AND THE FOREGROUND ENDING IS NEVER FOR SOMEONE ELSE'S RUN: a CI job, a review round, a verdict on a PR you opened or labelled all report into the thread by themselves, so waiting one out here only burns the clock and holds your role's one slot against the queue. Started one? Say so in the thread, park on it (\`--parked-on run:<N>\` or \`pr:<N>\`) when nothing else can move, and pass the turn — the next tick reads the finished verdict.`;
 
 /**
  * THE NORM OF WINDING DOWN, in the session's own prompt (R20, john's decision) — the
@@ -1407,12 +1490,14 @@ const runEndsNorm = (form: MailForm): string =>
  * for input is a PAUSE that the same session continues; winding down is an ENDING with
  * the turn passed on. Sharing a paragraph would blur the one difference that matters.
  */
-const windDownNorm = (input: {
-  readonly deadline: string;
-  readonly windDownSeconds: number;
-  /** The same two facts the rest of the prompt is built from (thread `038`). */
-  readonly mail: MailForm;
-}): string => {
+const windDownNorm = (
+  input: {
+    readonly deadline: string;
+    readonly windDownSeconds: number;
+    /** The same two facts the rest of the prompt is built from (thread `038`). */
+    readonly mail: MailForm;
+  } & RunFacts,
+): string => {
   const minutes = Math.round(input.windDownSeconds / 60);
   const deadline = `YOUR RUN HAS A DEADLINE: ${input.deadline} (UTC; also in \`$${LAUNCH_ENV.leaseDeadline}\`, and \`date -u +%FT%TZ\` tells you the time now).`;
   // THE LANDING IS TOLD IN THE ENDING THE RUN ACTUALLY HAS (thread `038`). "Say it in the
@@ -1430,7 +1515,7 @@ const windDownNorm = (input: {
   return [
     deadline,
     `WINDING DOWN IS PART OF THE WORK: about ${minutes} minutes before it, stop digging and land what you have — commit it AS IT IS (a partial commit beats a perfect tree that dies with the process), say in the thread what is done, what is not and what the next session should pick up, and pass the turn.`,
-    `Being cut off at the deadline is a FAILURE, not a normal ending: everything uncommitted at that moment belongs to nobody. If your run parks for input, the window moves later by the time spent waiting — ${mailCall(input.mail, "await-input")} tells you by how much when the answer arrives.`,
+    `Being cut off at the deadline is a FAILURE, not a normal ending: everything uncommitted at that moment belongs to nobody. If your run parks for input, the window moves later by the time spent waiting — ${awaitInputCall(input.mail, input)} tells you by how much when the answer arrives.`,
     "This is not the same thing as parking for input above: parking is a pause your own session continues, winding down ends the run and passes the turn.",
   ].join(" ");
 };
@@ -1482,7 +1567,7 @@ export const buildLaunchPrompt = (input: {
           ...undeclared,
           "Read the thread, carry out the statement of work and reply with a message at the end of it. `--waiting-on` is the FULL set of whoever is expected to act next, and passing the turn is what ends the run.",
           "",
-          `IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Send the question with ${mailCall(mail, "new-message", "--await-input")} (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), then block on ${mailCall(mail, "await-input")}. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.`,
+          `IF YOU NEED INPUT IN THE MIDDLE OF THE TASK, SAY SO AND WAIT — do not die with the question. Send the question with ${mailCall(mail, "new-message", `--thread ${input.thread} --from ${input.role} --expects answer --waiting-on <who answers> --body-file <p> --await-input --write`)} (name what is uncommitted and where exactly you stopped: the thread must stand on its own even if this session does not survive), then block on ${awaitInputCall(mail, input)}. Your session stays alive with its context, and your working tree is untouched: you read the answer yourself and carry on. For a question at the END of the task this is NOT the cheaper path — there, answer, pass the turn and let the run finish.`,
         ]
       : // ONE COMMAND, AND THE REASON IS QUOTED FROM THE CARD (thread `038`). The old text
         // told this role to send a letter it cannot send, and the role obeyed the prompt
@@ -1499,7 +1584,7 @@ export const buildLaunchPrompt = (input: {
           "Read the thread, carry out the statement of work, and PRINT YOUR ANSWER TO THE STREAM as the last thing you do. That printed text IS the delivery — a coordinator carries it into the thread by hand — and printing it is what ends your run.",
         ]),
     "",
-    runEndsNorm(mail),
+    runEndsNorm(mail, input),
     "",
     windDownNorm({ ...input, mail }),
     "",
@@ -1533,6 +1618,15 @@ export const buildLaunchPrompt = (input: {
  */
 export const buildResumePrompt = (input: {
   readonly thread: string;
+  /**
+   * WHOSE RUN THIS IS (`--role`) — the fact the resume prompt did not take at all, and the
+   * defect that closes: `await-input` requires it, so the line this prompt printed for a
+   * parked session exited 2 on a flag the circuit was holding all along (measured on thread
+   * `038`, 2026-08-30). Optional, and absent means the line is not printed — see
+   * `awaitInputCall`. The role card is NOT re-sent on a resume, so unlike the fresh prompt
+   * there is nothing else here a session could read the id off.
+   */
+  readonly role?: string;
   /** How the previous attempt ended, in the journal's own vocabulary. */
   readonly reason: string;
   /** The deadline of THE NEW lease (R20) — a resumed run gets a fresh window, and its own landing. */
@@ -1558,7 +1652,12 @@ export const buildResumePrompt = (input: {
     // closed half of it — a resumed run of a role that cannot write would still be told its
     // turn ends by sending a letter, and the resume is exactly when it is least able to.
     mail.writesHeldBy === undefined
-      ? `The run is over once the reply is written at the end of the thread (${mailCall(mail, "new-message")}) and the turn is passed on.`
+      ? // THE SAME CLASS, ONE SENTENCE LATER (thread `054`): a bare `new-message` is not a
+        // call — the subcommand requires `--thread`, `--from` and `--body-file`, and the
+        // line as printed exited 2 on the first of them. It is written out as the fresh
+        // prompt writes it, with the facts the circuit holds filled in and only the
+        // writer's own choices left as placeholders.
+        `The run is over once the reply is written at the end of the thread (${mailCall(mail, "new-message", `--thread ${input.thread} --from ${input.role ?? "<your role>"} --expects <e> --waiting-on <who answers> --body-file <p> --write`)}) and the turn is passed on.`
       : "The run is over once your answer is PRINTED to the stream. You cannot write into the mail from this run, and nothing is expected of you there: the printed text is the delivery.",
   ].join("\n");
 };

@@ -461,6 +461,37 @@ describe("continuing the previous session (R18)", () => {
     });
   });
 
+  /**
+   * THE SEAM OF THE RESUME PROMPT (thread `054`): config → prompt → the argv of the raised
+   * process, for the branch a unit cannot reach. `buildResumePrompt` only proves that what
+   * it is HANDED is printed, and the defect was the opposite kind — the role id was never
+   * handed to it, so the `await-input` line the prompt gave a parked session refused on
+   * `--role` before reading anything. It lives beside the resume cases rather than in
+   * `run.process.test.ts` (where curator's statement of work put it) because the resume
+   * branch is only reachable through a seeded broken run, and that machinery is here.
+   */
+  it("THE RESUMED SESSION IS TOLD ITS OWN ROLE — `await-input` refuses without it", () => {
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "-b", "pkg/in-flight", workspace(repo));
+    seedBrokenRun(repo);
+
+    run(repo);
+
+    const argv = argvOf(repo);
+    expect(argv.slice(0, 2)).toEqual(["--resume", "8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b"]);
+    const prompt = argv.join("\n");
+    // The resume prompt is the SHORT one — no role card travels with it, so this line is
+    // the only place the session's own id appears at all.
+    expect(prompt).toContain("resumed");
+    const wait = prompt.match(/`[^`]*await-input[^`]*`/)?.[0];
+    expect(wait).toBeDefined();
+    expect(wait).toContain("--role dev-core");
+    expect(wait).toContain("--thread 012-x");
+    // …and the reply that ends the run is a whole call too, not a bare subcommand.
+    expect(prompt).toContain("--thread 012-x --from dev-core --expects <e>");
+  });
+
   it("AN ANSWER ARRIVED while it was down → still a resume: that is the input it waited for", () => {
     // john's narrowing of condition 2 (2026-07-25), end to end. The first version
     // compared the thread's tree id and refused here — burning a whole run on the most

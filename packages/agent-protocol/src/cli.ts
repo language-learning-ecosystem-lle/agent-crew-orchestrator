@@ -9308,7 +9308,19 @@ const settleRun = (input: {
  * `orchestrator` section declares none, and the flag is then not printed rather than
  * guessed.
  */
-const mailFormFor = (argv: readonly string[], role: Role, root: string): MailForm => {
+const mailFormFor = (
+  argv: readonly string[],
+  role: Role,
+  root: string,
+  /**
+   * THE ROLE'S OWN WORKING TREE, absolute — `settleRun`'s `workspace`, which is the ONE
+   * place this path is resolved for this run (`workspacePath`, R17). It is passed in
+   * rather than recomputed for the reason `--root` is: a second derivation is the one
+   * line able to disagree with the tree the session is actually standing in. Absent in
+   * the pre-R17 mode (no `orchestrator.workdir.worktrees`), and absent stays absent.
+   */
+  workspace?: string,
+): MailForm => {
   const loaded = configFrom(argv, undefined).config;
   const command = loaded.mailCommand;
   const ref = loaded.orchestrator?.ref;
@@ -9318,6 +9330,7 @@ const mailFormFor = (argv: readonly string[], role: Role, root: string): MailFor
     root,
     ...(ref === undefined ? {} : { ref }),
     ...(writesHeldBy === undefined ? {} : { writesHeldBy }),
+    ...(workspace === undefined ? {} : { repo: workspace }),
   };
 };
 
@@ -9358,6 +9371,10 @@ const promptForRun = (input: {
     input.setup.continuation.mode === "resume"
       ? buildResumePrompt({
           thread: input.thread,
+          // The id of the role being resumed — the fact `await-input` asks for and the
+          // resume prompt used to print its line without (thread `054`). It is in hand
+          // here exactly as it is in the fresh branch below; nothing new is resolved.
+          role: input.role.id,
           reason: input.setup.previousReason ?? "an external abort",
           deadline,
           windDownSeconds: input.windDownSeconds,
@@ -9587,7 +9604,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       thread,
       setup,
       windDownSeconds: ceilings.windDown.value,
-      mail: mailFormFor(argv, role, mailRoot),
+      mail: mailFormFor(argv, role, mailRoot, setup.workspace),
     }),
     exec,
     // WHO THE SESSION RUNS AS (thread 047, point 3) — `self` for every role that declares
@@ -10566,7 +10583,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             thread: candidate.thread,
             setup,
             windDownSeconds: ceilings.windDown.value,
-            mail: mailFormFor(argv, role, mailRoot),
+            mail: mailFormFor(argv, role, mailRoot, setup.workspace),
           }),
           exec: agent.exec.value,
           spawnAs: identity.as,
