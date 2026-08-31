@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-31T00:28:32.937Z",
+  "writtenAt": "2026-08-31T00:32:03.595Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "061-unreachable-event-park",
       "state": "running",
       "deadline": "2026-08-31T01:14:24Z"
-    },
-    {
-      "role": "curator",
-      "thread": "059-pilot-codex-terra-max",
-      "state": "running",
-      "deadline": "2026-08-31T01:08:30Z"
     }
   ]
 }
