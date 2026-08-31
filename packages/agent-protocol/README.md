@@ -1761,6 +1761,26 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # lifts the park, and the clock (`remind <person> <thread> <stamp>` in the
                             # state file) is dropped with it, so the next question of that pair starts
                             # its cadence over rather than inheriting an answered one's stamp
+                            # AND THE ELEVENTH: AN EVENT PARK THE CIRCUIT CANNOT REACH (thread 061).
+                            # A park on `pr:`/`run:` is deliberately mute in every pass above — it is
+                            # not a call and not a stall — and that silence cannot tell a working
+                            # circuit from a merge that landed with no `merged-pr` header (thread 030:
+                            # 8 hours, woken by a human's hand) or from a park whose event needs a move
+                            # by the very role the park keeps unraised (the deadlock of 061). Past
+                            # EVENT_PARK_STALE_AFTER_MINUTES (360 — a constant, for the reason the two
+                            # thresholds above are) the park rings ONCE: the thread, the age, the PR and
+                            # WHAT WOULD LIFT IT, which differs between the forms (`merged-pr: N` in a
+                            # header for `pr:`, the round reporting into the thread for `run:`)
+                            # IT NAMES NO DIAGNOSIS: whether the event is still reachable is a fact
+                            # about GitHub, and reading it here would poll the vendor on every tick for
+                            # the one class of park that legitimately lasts days. The line carries what
+                            # the box KNOWS — how long, behind what, what lifts it — and the reader
+                            # decides. Keyed by thread + PR + the stamp of the declaring message
+                            # (`event-park` in the state file), and the key lives only while the park
+                            # does: a lifted park forgets itself on the next tick, so the NEXT promise
+                            # of the same thread rings again. It raises its own letter, for the reason
+                            # the reminder does; with no clock and on a box with no `direct` target
+                            # there is no watchdog at all, which is the honest answer, not a default
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--for <role>] [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
