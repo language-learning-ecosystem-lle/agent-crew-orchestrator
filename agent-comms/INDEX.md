@@ -61,7 +61,7 @@
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | run:172 · 2026-08-30 | 2026-08-30 | Перебазировал: main уехал, PR #172 стоял в конфликте — новая голова 2bbd089e |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Вопрос john первой строкой: одна строка в тред LLE 118-pin-bump-0-2-7 — «пин 0.2.7 сторожа НЕ чинит… |
-| 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | — | 2026-08-31 | verdict: approve |
+| 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: живая приёмка §5 просит переопределить объявленные параметры запуска (--mod… |
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | curator | run:174 · 2026-08-30 | 2026-08-30 | Поправка своей же рукой: парк был не тот. pr:174 снят, стои́т run:174 — ждём ВЕРДИКТ прогона, а не… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: нажать кнопку merge на PR #169 — гард 4 говорит его имя, и это последнее, ч… |
