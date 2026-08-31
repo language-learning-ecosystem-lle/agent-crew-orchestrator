@@ -943,7 +943,7 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     // number exists is not the door's business, and the park lifts on the notifier's word.
     const contest = contour();
 
-    const result = direct(contest, "dev-core", "--parked-on", "pr:127");
+    const result = direct(contest, "dev-core", "--parked-on", "pr:127", "--park-mover", "curator");
 
     expect(result.code).toBe(0);
     expect(written(contest.root).fields.parkedOn).toBe("pr:127");
@@ -956,6 +956,66 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(result.out).toContain("lifts on ONE thing");
     expect(result.out).toContain("'merged-pr: 127'");
     expect(result.out).toContain("NOTHING WATCHES THE STATE OF #127");
+    // Form (B) of thread 061: the mover is written down beside the park it qualifies.
+    expect(written(contest.root).fields.parkMover).toBe("curator");
+  });
+
+  // THREAD 061, form (B) — THE PARK BEHIND A DOOR IT LOCKED ITSELF. `dev-speech` parked on the
+  // merge of its own PR, whose label and verdict were the next move of its own curator, and a
+  // parked thread raises nobody. The machine cannot judge reachability, so it demands the NAME:
+  // the parker who has to write who moves the merge is the parker who has just checked.
+  it("a park on a merge without a named mover is refused, and nothing is written", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:451");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--park-mover");
+    expect(result.out).toContain("A HAND on a button");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("a mover with no merge park to qualify is refused too — the field means nothing alone", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--park-mover", "curator");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("no event at all");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("a mover the config does not know is refused while the flag can still be retyped", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:451", "--park-mover", "curatr");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("not listed in the config");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  // A WAKEABLE ROLE IS THE COMMONEST TRUE ANSWER, and the door must not repeat `--delivers`'s
+  // refusal here: "the label goes up by curator" is exactly what the field is for.
+  it("a role the circuit CAN wake is a legal mover — that is the usual answer", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:451", "--park-mover", "dev-core");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkMover).toBe("dev-core");
+  });
+
+  // A `run:` park names its mover already: the round the door has just verified to be alive.
+  it("a run: park needs no mover — its event is a machine that is already running", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:163", {
+      PATH: `${ghShim(contest.repo, { headSha: "6f933b0321ab", mergeable: "MERGEABLE", runs: 3 })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkMover).toBeUndefined();
   });
 
   it("the refusal of an unknown name names the event form — it is the other legal value", () => {
@@ -1073,7 +1133,7 @@ describe("new-message and the turn parked behind a person (R27)", () => {
   it("a pr: park on a number that does not exist yet still passes — the PR may be minutes away", () => {
     const contest = contour();
 
-    const result = direct(contest, "dev-core", "--parked-on", "pr:999", {
+    const result = direct(contest, "dev-core", "--parked-on", "pr:999", "--park-mover", "curator", {
       PATH: `${ghShim(contest.repo, { absent: true })}:${process.env.PATH ?? ""}`,
     });
 

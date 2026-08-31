@@ -3145,6 +3145,34 @@ const deliversFrom = (
 };
 
 /**
+ * THE DOOR OF A NAMED MOVER (thread 061, form (B)) — `--park-mover <participant>` on both
+ * writing commands: WHO makes the merge this turn is parked behind actually happen.
+ *
+ * The one check here is that the config knows the name, and it is the whole of what a machine
+ * may judge about it: whether that participant will in fact act is a question about the world.
+ * Unlike `--delivers`, a WAKEABLE role is perfectly legal here — "the label goes up by curator"
+ * is the commonest true answer there is, and the point of the field is that the parker had to
+ * write it down. The PAIRING rules (a merge park demands a mover, a mover demands a merge park)
+ * live in `planNewMessage`, where both writing commands pass and neither can hold them alone.
+ *
+ * No permission gates it, for the reason none gates a park.
+ */
+const parkMoverFrom = (
+  argv: readonly string[],
+  input: { readonly registry: RoleRegistry },
+): string | undefined => {
+  const value = flag(argv, "--park-mover");
+  if (value === undefined) return undefined;
+  if (!input.registry.isKnown(value)) {
+    return fail(
+      `--park-mover '${value}' is not listed in the config: this field names the participant who will move the event this turn is parked behind, and a name nobody knows names nobody. Any participant is legal here — the role that will label and merge, the person who presses the button, or yourself coming back with another run`,
+      2,
+    );
+  }
+  return value;
+};
+
+/**
  * THE DOOR OF A VERDICT (thread 042, decision of john 2026-08-29) — `--verdict <approve|
  * needs-fixes>` together with `--pr <number>`, on both writing commands.
  *
@@ -3363,6 +3391,7 @@ const newMessage = (argv: readonly string[]): void => {
   const priority = priorityFrom(argv, { from, registry });
   const parkedOn = parkedOnFrom(argv, { registry });
   const delivers = deliversFrom(argv, { registry });
+  const parkMover = parkMoverFrom(argv, { registry });
   // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
   // can still be retyped, because the feed is append-only and such a header cannot be taken
   // back: it names its own author as the one who acts next, asks for something, and says
@@ -3467,6 +3496,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(priority === undefined ? {} : { priority }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
+        ...(parkMover === undefined ? {} : { parkMover }),
         ...(mergedPr === undefined ? {} : { mergedPr }),
         ...verdictFields,
         ...(tasks.length === 0 ? {} : { tasks }),
@@ -3630,6 +3660,7 @@ const newThread = (argv: readonly string[]): void => {
   // later: a flag parsed by one command of the pair and swallowed by the other is written
   // without a word into an append-only feed.
   const delivers = deliversFrom(argv, { registry });
+  const parkMover = parkMoverFrom(argv, { registry });
   // AND THE SAME VERDICT, by the same door (thread 042), for the reason `delivers` is here and
   // not for a use case: the lesson of 075 is that a flag one command of the pair parses and the
   // other swallows goes into an append-only feed without a word. What the field does in an
@@ -3688,6 +3719,7 @@ const newThread = (argv: readonly string[]): void => {
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
+        ...(parkMover === undefined ? {} : { parkMover }),
         ...verdictFields,
         ...(turn === undefined ? {} : { turn }),
         text,

@@ -1861,7 +1861,7 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
                             # A LETTER INTO A THREAD THAT IS ALREADY PARKED IS REFUSED UNLESS IT SAYS WHAT IT
                             # DOES ABOUT THE PARK (thread 058, (B.3)): the refusal names the park in full —
                             # what it waits for, since when, whose turn it was declared on, and the question
@@ -1964,6 +1964,22 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # refusal is said apart from "no run at all" because the repair differs:
                             # there the round has not been born (wait seconds, park then), here it has
                             # already died (read the outcome and report it)
+                            # --park-mover <participant>: WHO MAKES THAT MERGE HAPPEN (thread 061, by the
+                            # word of john 2026-08-30) — DEMANDED on `--parked-on pr:<n>`, refused with
+                            # anything else. A merge park waits for A HAND on a button, and a parked
+                            # thread raises nobody: park behind an event that needs THIS thread's own
+                            # next step and the door is locked from the inside. Live on 2026-08-30: a
+                            # role parked on the merge of its own PR, whose label and verdict were its
+                            # own curator's next move; caught by its author in 32 seconds, by reading a
+                            # note — a защита that holds only while somebody reads. The machine judges
+                            # NOTHING about the name (whether that participant will act is a question
+                            # about the world, and computed reachability was refused for the false
+                            # refusals it would cost): what the field buys is that the question gets
+                            # asked, and the parker who must write "the label goes up by curator" has
+                            # just checked that somebody can. Any participant the config knows is legal,
+                            # a wakeable role above all — unlike `--delivers`, which names a person the
+                            # circuit cannot move. A `run:` park needs no mover: the round it waits for
+                            # is a machine the door has just verified to be running
                             # BOTH EVENT FORMS TAKE THE NUMBER OF A PULL REQUEST, AND THE DOOR CHECKS
                             # THAT IT IS ONE (thread 061): `run:<n>` waits for the round ON PR n — it is
                             # NOT an id of a workflow run, and the two are indistinguishable to the eye
@@ -2052,7 +2068,7 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                             # --delivers: THE SAME FIELD TOO (thread 030), by the same door and with the
                             # same two refusals — a thread is often OPENED by the courier of a decision,
                             # and the park that word lifts stands in ANOTHER thread. Written here on the
