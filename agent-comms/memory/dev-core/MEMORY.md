@@ -3,4 +3,5 @@
 - [Метка идёт за нотой о базе, не за `CLEAN`](label-follows-base-note-not-clean.md) — `mergeable=CLEAN` и нота гарда 2 отвечают на разные вопросы; метку решает нота.
 - [Ассерт не читает стенные часы](assert-must-not-read-the-wall-clock.md) — фиксированная дата фикстуры + ассерт на возраст = красный час в сутки; датировать от «сейчас».
 - [Подмена часов процессному тесту](clock-shift-for-process-tests.md) — `faketime` на ящике нет; `--import` через NODE_OPTIONS, и оффсет ОБЯЗАН быть общим для родителя и дочернего CLI.
+- [Номер тега реза не говорит, что в нём](release-tag-number-does-not-say-what-it-carries.md) — `v0.2.8` срезан за 14 минут ДО мержа своего бампа; мерить коммиты против `main`, не имена.
 - [Локальный прогон — с `TMPDIR=/tmp`](local-suite-needs-short-tmpdir.md) — сессионный TMPDIR роняет процессные тесты по `listen EINVAL`; и красный `daemon.watchdog` есть на чистом main.
