@@ -1706,4 +1706,80 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
 
     expect(write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }).code).toBe(0);
   });
+
+  /**
+   * AND THE DOOR THAT COULD NOT LOOK SAYS SO (finding 11 of the review of #170, measured by
+   * curator against `main`). `standingParkFor` stands AFTER the `existsSync` refusal of
+   * `new-message`, so the only thing its `catch` ever sees is "the thread is there and its feed
+   * is unreadable" — and there the door of (B.3) used to switch off in silence, letting the
+   * letter through with the writer believing the park had been checked.
+   *
+   * TWO CLASSES, ONE CASE EACH, and no third: "the structure is not there" and "a file does not
+   * parse" are the two ways `loadThread` can throw; enumerating more ways to break a feed walks
+   * the same branch of code again. The unit level cannot hold either of them — `judgeParkSeen`
+   * is handed a `Parking` and never meets the reader.
+   */
+  describe("and the feed that could not be read at all", () => {
+    /** Class one: `messages/` without `_meta.md` — half a migration, or a head never written. */
+    const headless = (contest: { root: string }): void => {
+      park(contest);
+      rmSync(join(contest.root, "016-x", "_meta.md"));
+    };
+
+    /** Class two: the head is there, and one message file is not a message. */
+    const unparsable = (contest: { root: string }): void => {
+      park(contest);
+      writeFileSync(
+        join(contest.root, "016-x", "messages", "2026-08-30T14-25-00Z-dev-core.md"),
+        "no front matter here, just prose\n",
+      );
+    };
+
+    it("names the failed read instead of answering 'nothing is parked' (structure missing)", () => {
+      const contest = contour();
+      headless(contest);
+
+      const result = run(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }, []);
+
+      expect(result.out).toContain("could NOT be checked");
+      expect(result.out).toContain("nobody could tell");
+      // The reason travels in the words of the reader, which are the ones naming the cure.
+      expect(result.out).toContain("_meta.md");
+      expect(result.out).toContain("--repair");
+    });
+
+    it("names the failed read instead of answering 'nothing is parked' (a file does not parse)", () => {
+      const contest = contour();
+      unparsable(contest);
+
+      const result = run(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }, []);
+
+      expect(result.out).toContain("could NOT be checked");
+      // WHICH file killed the read — the reader names it, and the note carries that through.
+      expect(result.out).toContain("messages/2026-08-30T14-25-00Z-dev-core.md");
+      // AND THE STOP THAT FOLLOWS IS A REFUSAL WITH A NAME, not a stack trace. The dating of
+      // the new letter reads the same files and cannot read this one either; before this tact
+      // it died on the parser's bare sentence with no file name and the exit code of a crash
+      // (measured on `main`, 550c0266: `CODE=1`, "uncaught error: a message file must start
+      // with a '---' line"). The outcome is unchanged — the letter is not written — but the
+      // writer now learns which file and what to run.
+      expect(result.code).toBe(2);
+      expect(result.out).toContain("cannot be dated against a feed with an unreadable file");
+      expect(result.out).toContain("--repair");
+      expect(result.out).not.toContain("uncaught error");
+    });
+
+    it("the preview does not lie: --write says the same thing, and the letter still goes out", () => {
+      const contest = contour();
+      headless(contest);
+
+      const result = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+
+      // Sent, not refused: a refusal built on a feed nobody could parse names the writer
+      // nothing they can fix, and the mail has to stay writable while it is being repaired.
+      expect(result.code).toBe(0);
+      expect(result.out).toContain("could NOT be checked");
+      expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+    });
+  });
 });
