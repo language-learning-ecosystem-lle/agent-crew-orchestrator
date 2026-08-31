@@ -1,18 +1,12 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-31T00:42:48.258Z",
+  "writtenAt": "2026-08-31T00:43:31.383Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "059-pilot-codex-terra-max",
-      "state": "running",
-      "deadline": "2026-08-31T01:19:23Z"
-    },
     {
       "role": "dev-core",
       "thread": "066-cost-of-prose",
