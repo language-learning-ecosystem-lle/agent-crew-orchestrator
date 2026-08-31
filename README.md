@@ -1426,6 +1426,21 @@ of the whole circuit.
 `--repo` defaults to the repository of the current directory. Without `--write`
 nothing is written.
 
+**A command typed in a tree of ANOTHER contour is refused, by name, before anything is
+read** (thread 062). Each named instance config of a box declares the `repo` of one
+circuit, and the door is asked in two halves. The GROUND — the tree the command was
+typed in — is judged on **every** call, `--repo` or no `--repo`: a box that declares
+contours and claims the caller's tree with none of them refuses at once, because that
+is a session working from a checkout made in `/tmp`, outside every boundary it has
+(zones, its card, its review round, its feed). The TARGET is judged when `--repo` names
+one: it must belong to the same circuit, and the refusal names both origins, the other
+contour when this box declares it, and the way through — a role OF that circuit opens
+the work there. A box with no named instances declares no contours and nothing is
+judged: there is no boundary to cross. Two limits, stated rather than implied: a session calling `git` and
+`gh` directly never passes this door (the load-bearing measure is a `gh` token scoped
+to one repository), and a tree that is outside the contour AND has no `origin` is not
+judged — the facts do not decide, and guessing would refuse honest first-run trees.
+
 **A flag that takes a LIST takes it in both forms** — `--x a,b` and `--x a b` name the
 same list, and a list flag reads every word up to the next `--` (thread 033). It used to
 read exactly one, so `zones check --paths a b c` judged ONE path and answered green about
@@ -2483,6 +2498,23 @@ circuit's machine config** unless the caller already exported one — the first 
 output says which file and which variable won, never a value), and its answer is
 validated at the door — a renamed field is a refusal by name, never a silent "no
 reviews, no checks", which for a merge gate would fail open.
+
+**The contour boundary is asked first, before `gh` (thread 062).** Both halves apply at
+exit 2 before the pull request is read at all — the general door described under the
+shared flags above, reached here through the config this command loads. The ordinary
+form (`merge-gate --ref origin/main --pr <n>`, the one written in `REVIEWER.md`) is
+judged by its GROUND: called from a checkout no contour of the box claims, it refuses
+without asking `gh` anything. A `--repo` naming another contour's checkout is refused by
+the second half. So a question about another circuit's pull request never leaves the
+box:
+
+```
+agent-protocol: '/tmp/lle-clone' belongs to another contour: its 'origin' is
+github.com/o/language-learning-ecosystem, while this command came from contour
+'hetzner' (github.com/o/agent-crew-orchestrator). A role writes only inside its own
+circuit — what has to happen in another one is opened there by a role OF that circuit,
+through its feed, not from a checkout made here (thread 062)
+```
 
 **Two guards are never reported as passed, and that is the point.** Whether the feed
 really holds a decision of the owner of the decision (here: john) behind this PR (guard 3), and whether the merge gets
