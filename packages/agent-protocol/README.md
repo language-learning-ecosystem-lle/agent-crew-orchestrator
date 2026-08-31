@@ -1875,6 +1875,13 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # ONE IT ENDS. The value must MATCH the standing park; nothing is written to the
                             # header by it. A stale value — the park was lifted by somebody else between the
                             # read and the write, which is the very subject of 058 — is a NOTE, not a refusal
+                            # AND IF THE FEED OF THE THREAD DOES NOT READ AT ALL (half a migration, a message
+                            # file that does not parse), the door SAYS SO instead of passing its own blindness
+                            # off as "nothing is parked": a note naming the failed read and its reason. It does
+                            # not refuse — a refusal built on a feed nobody could parse names the writer
+                            # nothing they can fix — but it never stays silent about a check that did not run.
+                            # The dating of the letter reads the same files and REFUSES by name when one of
+                            # them is unparsable (the stamp must stand strictly after the last in the feed)
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout

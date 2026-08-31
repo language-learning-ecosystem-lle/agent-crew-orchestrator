@@ -118,6 +118,39 @@ describe("judgeParkSeen", () => {
     expect(verdict.note).toContain("nothing is parked on '058-x' any more");
   });
 
+  it("an unreadable feed is NOT reported as 'nothing is parked' — the note says the check did not happen", () => {
+    // Finding 11 of the review of #170: the reader of the feed can fail on a thread that IS
+    // there, and the door of (B.3) then answered "no park" — silence about a check that never
+    // ran, which is the class the point was written against.
+    const verdict = judgeParkSeen({
+      thread: "058-x",
+      parking: undefined,
+      unreadable:
+        "half-migrated thread: 'messages/' is present but '_meta.md' is missing — 'thread status --thread <id> --from <role> --repair --write' synthesises a head from the messages",
+    });
+    expect(verdict.ok).toBe(true);
+    if (!verdict.ok) return;
+    expect(verdict.note).toContain("could NOT be checked");
+    // The reason travels in the words of the reader — it is the one that names the cure.
+    expect(verdict.note).toContain("half-migrated thread");
+    expect(verdict.note).toContain("--repair");
+    // And it must not read as the OTHER answer.
+    expect(verdict.note).not.toContain("nothing is parked on '058-x' any more");
+  });
+
+  it("an unreadable feed silences the stale --park-lifted note — nobody could tell it is stale", () => {
+    const verdict = judgeParkSeen({
+      thread: "058-x",
+      parking: undefined,
+      lifted: "john",
+      unreadable: "messages/2026-08-30T14-24-50Z-curator.md: 'worker: …' — unknown field",
+    });
+    expect(verdict.ok).toBe(true);
+    if (!verdict.ok) return;
+    expect(verdict.note).toContain("could NOT be checked");
+    expect(verdict.note).not.toContain("lifted before this write");
+  });
+
   it("a park declared with no waiting-on names no turn and still refuses by name", () => {
     const verdict = judgeParkSeen({
       thread: "016-mode",

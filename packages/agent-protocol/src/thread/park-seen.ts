@@ -87,8 +87,33 @@ export const judgeParkSeen = (input: {
   readonly mergedPr?: number;
   readonly verdictPr?: number;
   readonly lifted?: string;
+  /**
+   * WHY THE PARK IS UNKNOWN, when the feed of the thread could not be read at all — the
+   * reason in the words of the reader (`loadThread`), which already name the cure.
+   * `undefined` means the feed WAS read and `parking` is what it says.
+   */
+  readonly unreadable?: string;
 }): ParkSeenVerdict => {
   const { parking, lifted } = input;
+  // A DOOR THAT COULD NOT LOOK SAYS SO — it does not report its own blindness as "clear"
+  // (thread 058, finding 11 of the review of #170, measured by curator against `main`).
+  // The reader of the feed can fail on a thread that IS there: half a migration
+  // (`messages/` without `_meta.md`), a message file nobody can parse. The letter still
+  // goes out — a refusal built on a feed nobody could parse names the writer nothing they
+  // can fix, and the mail must stay writable while it is being repaired. What must not
+  // happen is the silent answer "nothing is parked", because that is the very class this
+  // point exists against: not "refuse at any cost" but NEVER BE SILENT ABOUT WHAT WAS NOT
+  // CHECKED. The note is printed before the write and says which of the two it is.
+  //
+  // It comes FIRST, before the stale `--park-lifted` note below: with the feed unread we
+  // do not know that the park is gone, and "it was lifted before this write" would be a
+  // second sentence stating as fact the thing nobody could establish.
+  if (input.unreadable !== undefined) {
+    return {
+      ok: true,
+      note: `the park standing on '${input.thread}' could NOT be checked — the feed of this thread did not read: ${input.unreadable}. This is not "nothing is parked", it is "nobody could tell": THIS door does not stop the letter, so it may be landing into a standing park. Repair the thread and re-read it`,
+    };
+  }
   if (parking === undefined) {
     if (lifted === undefined) return { ok: true };
     // A STALE `--park-lifted` IS A NOTE, NOT A REFUSAL — and the reason is this thread's own
