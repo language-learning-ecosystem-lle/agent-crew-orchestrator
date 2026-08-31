@@ -97,24 +97,22 @@ function readSession(path) {
           (b.name === "Write" || b.name === "Edit") &&
           String(input.file_path ?? "").startsWith("/tmp")
         ) {
-          tmpFiles.set(
-            String(input.file_path),
-            String(input.content ?? input.new_string ?? "").length,
-          );
+          tmpFiles.set(String(input.file_path), String(input.content ?? input.new_string ?? ""));
         }
         let bodyChars = 0;
+        let body = "";
         let thread = null;
         let awaits = false;
         if (cat === "mail-send" && b.name === "Bash") {
           const heredoc = heredocBody(cmd);
           const viaFile = cmd.match(/--body-file\s+"?([^\s"]+)"?/);
           const resolved = viaFile ? tmpFiles.get(viaFile[1].replace("$TMP", "")) : undefined;
-          bodyChars = heredoc.length || resolved || 0;
-          if (!bodyChars && viaFile) {
+          body = heredoc || resolved || "";
+          if (!body && viaFile) {
             // тело писалось в файл, чьё имя собрано в шелле: берём последний записанный /tmp-файл
-            const last = [...tmpFiles.values()].pop();
-            bodyChars = last ?? 0;
+            body = [...tmpFiles.values()].pop() ?? "";
           }
+          bodyChars = body.length;
           thread = (cmd.match(/--thread\s+([\w.-]+)/) ?? [])[1] ?? null;
           awaits = /--await-input/.test(cmd);
         }
@@ -125,6 +123,7 @@ function readSession(path) {
           cat,
           chars: raw.length,
           bodyChars,
+          body,
           thread,
           awaits,
         });
@@ -205,6 +204,7 @@ for (const t of ticks) {
     plainLetters: letters.filter((c) => !c.awaits).length,
     letterChars,
     letterSizes: letters.map((c) => c.bodyChars),
+    letterBodies: letters.map((c) => c.body ?? ""),
     producedChars,
     proseChars,
     outTokens: t.usage?.tokens?.out ?? 0,
@@ -279,16 +279,65 @@ for (const c of CATS)
     `| ${c} | ${f1(byCat[c])} | ${f1(byExec[c])} | ${pct(byCat[c] + byExec[c], totalMin)} |`,
   );
 
+// --- письма одного такта: дублирует ли второе письмо первое, и насколько письмо фактично ---
+const normLine = (l) =>
+  l
+    .toLowerCase()
+    .replace(/[`*_>#|]/g, "")
+    .replace(/^\s*[-–—•\d.]+\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+const contentLines = (text) =>
+  text
+    .split("\n")
+    .map(normLine)
+    .filter((l) => l.length >= 40);
+/** Строка «несёт факт», если в ней есть число, путь/идентификатор в бэктиках, ссылка на PR/тред. */
+const factual = (raw) => /\d|`|#\d+|PR |SHA|тред/.test(raw);
+
+let sibLines = 0;
+let sibDup = 0;
+const sibTicks = [];
+for (const r of rows) {
+  const bodies = r.letterBodies.filter((b) => b.length > 0);
+  if (bodies.length < 2) continue;
+  const seen = new Set(contentLines(bodies[0]));
+  let lines = 0;
+  let dup = 0;
+  for (const b of bodies.slice(1)) {
+    for (const l of contentLines(b)) {
+      lines++;
+      if (seen.has(l)) dup++;
+      seen.add(l);
+    }
+  }
+  sibLines += lines;
+  sibDup += dup;
+  if (lines) sibTicks.push({ r, lines, dup });
+}
+console.log("\n## Второе письмо в такте: повторяет ли первое\n");
+console.log(
+  `- тактов, где сравнивать есть что (2+ письма с прочитанным телом): ${sibTicks.length}; строк во вторых и последующих письмах: ${sibLines}, из них дословно из первого: **${sibDup} (${pct(sibDup, sibLines)})**;`,
+);
+
+const allBodies = rows.flatMap((r) => r.letterBodies).filter((b) => b.length > 0);
+let fact = 0;
+let plain = 0;
+for (const b of allBodies) {
+  for (const raw of b.split("\n")) {
+    if (normLine(raw).length < 40) continue;
+    if (factual(raw)) fact++;
+    else plain++;
+  }
+}
+console.log(
+  `- фактическая плотность писем: строк с числом/идентификатором/ссылкой ${fact}, строк чистой прозы ${plain} — ядро занимает ${pct(fact, fact + plain)} содержательных строк, а не десятую часть;`,
+);
+
 // --- повторы: сколько текста письма уже стояло в этом же треде выше ---
 const dumps = flag("threads", null);
 if (dumps) {
-  const norm = (l) =>
-    l
-      .toLowerCase()
-      .replace(/[`*_>#|]/g, "")
-      .replace(/^\s*[-–—•\d.]+\s*/, "")
-      .replace(/\s+/g, " ")
-      .trim();
+  const norm = normLine;
   const repeats = [];
   for (const file of readdirSync(dumps).filter((f) => f.endsWith(".txt"))) {
     const text = readFileSync(join(dumps, file), "utf8");
