@@ -1,11 +1,11 @@
 ---
 name: parked-on-freezes-the-turn
-description: "--parked-on on a message that also hands work to a role freezes that very turn; never park and assign in one letter"
+description: "--parked-on freezes the turn: never park on the addressee's own move, and match the park TYPE to what is awaited (pr: = the button, run: = the verdict)"
 metadata: 
   node_type: memory
   type: feedback
   originSessionId: 1a13dd6b-f15e-4ffa-8feb-7f0864d8138a
-  modified: 2026-08-30T23:23:29.936Z
+  modified: 2026-08-31T00:11:57.747Z
 ---
 
 `--parked-on pr:N` / `run:N` в письме, которым ход передаётся роли, ЗАМОРАЖИВАЕТ этот ход: пара не
@@ -24,3 +24,13 @@ metadata:
 ход передан». Ошибка чинится следующим письмом БЕЗ `--parked-on` (событийный
 парк снимается первым письмом, которое кого-то двигает), и снятие проверяется контрольным чтением:
 `cli mail --role <та роль>` должен снова показать тред.
+
+**Вторая дисциплина того же флага — ТИП парка обязан совпасть с тем, чего ждёшь.** `pr:N` ждёт
+КНОПКУ и снимается РОВНО заголовком `merged-pr: N`; прозой о merge — нет. `run:N` ждёт ВЕРДИКТ
+круга на PR N (и там, и там номер PR, а не id прогона). 2026-08-31, тред `058`: я объявила
+`--parked-on pr:171`, назвав вопросом вердикт ревьюера, — то есть заморозила тред до кнопки,
+которую держу сама, и приехавший вердикт застал бы тред мёртвым (класс треда `030`: 8 часов
+заморозки при живой готовой голове). Дверь предупредила на записи; починила следующим письмом
+`--park-lifted pr:171 --parked-on run:171` в свой же ход, и дверь подтвердила замером
+(«waits for a run that is still running»). Проверка перед `--write` одной фразой: **кнопки я жду
+или машину?**
