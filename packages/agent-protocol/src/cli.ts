@@ -573,12 +573,14 @@ import {
   VERDICT_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import { judgeParkNumber } from "./thread/park-number.js";
 import { judgeParkSeen } from "./thread/park-seen.js";
 import { describePrPark } from "./thread/pr-park.js";
 import { synthesiseMeta } from "./thread/repair.js";
 import {
   describeStaleRunPark,
   judgeRunPark,
+  looksLikeAbsentPr,
   pendingRunsOf,
   RUN_PARK_TTL_SECONDS,
   type RunParkFacts,
@@ -2943,7 +2945,11 @@ const priorityFrom = (
 const runParkFacts = (
   pr: number,
   repo: string,
-): { readonly facts?: RunParkFacts; readonly refusal?: string } => {
+): {
+  readonly facts?: RunParkFacts;
+  readonly refusal?: string;
+  readonly absent?: { readonly where: string };
+} => {
   let raw: string;
   // The circuit's own credentials (thread 065), OFFERED and not demanded: `gh` is asked
   // even when this module could assemble no token, because `gh` has logins of its own.
@@ -2964,6 +2970,11 @@ const runParkFacts = (
     );
   } catch (error) {
     const message = (error as Error).message;
+    // ONE OF `gh`'s REFUSALS IS A FACT AND NOT A BLINK (thread 061): "there is no pull request
+    // with this number". It is told apart here, at the only place that has the vendor's own
+    // sentence, and handed to the judge as a separate input — everything else keeps degrading
+    // into a note, exactly as before.
+    if (looksLikeAbsentPr(message)) return { absent: { where: repo } };
     return {
       refusal: explainWithCredentials(
         `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}`,
@@ -3044,9 +3055,22 @@ const parkedOnFrom = (
   // eight hours. The form is not narrowed and no watcher of PR state is added — the cheap and
   // honest half of the repair is that nobody may declare this park without being told what
   // will not lift it.
+  //
+  // AND BEFORE EITHER OF THEM, THE NUMBER ITSELF (thread 061, msg-002): both forms take the
+  // NUMBER OF A PULL REQUEST, and the door used to accept any integer — so an id of a workflow
+  // run went in silently three times in one day and each author spent a second letter undoing
+  // it. `judgeParkNumber` costs nothing and needs nobody: it reads the order of magnitude.
   const merge = /^pr:(\d+)$/.exec(value);
   if (merge !== null) {
-    out(`agent-protocol: ${describePrPark(Number(merge[1]))}`);
+    const pr = Number(merge[1]);
+    // A `pr:` PARK IS CHECKED BY MAGNITUDE AND NOTHING ELSE, and that is a choice named in the
+    // statement of work (point 4): parking on a pull request that is being created in this very
+    // tick is legal and common, and an existence check would refuse it. The weaker form catches
+    // the measured defect — a number that is not a PR number in ANY repository — without
+    // refusing anything honest.
+    const number = judgeParkNumber({ kind: "pr", value: pr });
+    if (!number.ok) return fail(number.reason, 2);
+    out(`agent-protocol: ${describePrPark(pr)}`);
     return value;
   }
   // `run:N` IS THE ONE PARK WHOSE SOURCE THE DOOR ASKS ABOUT (thread 062, layer 1). It was the
@@ -3059,6 +3083,11 @@ const parkedOnFrom = (
   const round = /^run:(\d+)$/.exec(value);
   if (round !== null) {
     const pr = Number(round[1]);
+    // The magnitude first and the vendor second: an id of a workflow run is refused BEFORE `gh`
+    // is asked about it, because the answer would be a confusing "could not resolve" about a
+    // number the author never meant as a PR.
+    const number = judgeParkNumber({ kind: "run", value: pr });
+    if (!number.ok) return fail(number.reason, 2);
     const verdict = judgeRunPark({ pr, ...runParkFacts(pr, process.cwd()) });
     if (!verdict.ok) return fail(verdict.reason, 2);
     if (verdict.note !== undefined) out(`agent-protocol: ${verdict.note}`);
@@ -3111,6 +3140,34 @@ const deliversFrom = (
   if (input.registry.canHoldTurn(value)) {
     return fail(
       `--delivers '${value}' — that role CAN be woken, so it speaks for itself in the feed and no turn is ever parked behind it. This field names a person the circuit cannot move (wake.mode='self'); to hand the turn to a role use '--waiting-on ${value}'`,
+      2,
+    );
+  }
+  return value;
+};
+
+/**
+ * THE DOOR OF A NAMED MOVER (thread 061, form (B)) — `--park-mover <participant>` on both
+ * writing commands: WHO makes the merge this turn is parked behind actually happen.
+ *
+ * The one check here is that the config knows the name, and it is the whole of what a machine
+ * may judge about it: whether that participant will in fact act is a question about the world.
+ * Unlike `--delivers`, a WAKEABLE role is perfectly legal here — "the label goes up by curator"
+ * is the commonest true answer there is, and the point of the field is that the parker had to
+ * write it down. The PAIRING rules (a merge park demands a mover, a mover demands a merge park)
+ * live in `planNewMessage`, where both writing commands pass and neither can hold them alone.
+ *
+ * No permission gates it, for the reason none gates a park.
+ */
+const parkMoverFrom = (
+  argv: readonly string[],
+  input: { readonly registry: RoleRegistry },
+): string | undefined => {
+  const value = flag(argv, "--park-mover");
+  if (value === undefined) return undefined;
+  if (!input.registry.isKnown(value)) {
+    return fail(
+      `--park-mover '${value}' is not listed in the config: this field names the participant who will move the event this turn is parked behind, and a name nobody knows names nobody. Any participant is legal here — the role that will label and merge, the person who presses the button, or yourself coming back with another run`,
       2,
     );
   }
@@ -3353,6 +3410,7 @@ const newMessage = (argv: readonly string[]): void => {
   const priority = priorityFrom(argv, { from, registry });
   const parkedOn = parkedOnFrom(argv, { registry });
   const delivers = deliversFrom(argv, { registry });
+  const parkMover = parkMoverFrom(argv, { registry });
   // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
   // can still be retyped, because the feed is append-only and such a header cannot be taken
   // back: it names its own author as the one who acts next, asks for something, and says
@@ -3475,6 +3533,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(priority === undefined ? {} : { priority }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
+        ...(parkMover === undefined ? {} : { parkMover }),
         ...(mergedPr === undefined ? {} : { mergedPr }),
         ...verdictFields,
         ...(tasks.length === 0 ? {} : { tasks }),
@@ -3638,6 +3697,7 @@ const newThread = (argv: readonly string[]): void => {
   // later: a flag parsed by one command of the pair and swallowed by the other is written
   // without a word into an append-only feed.
   const delivers = deliversFrom(argv, { registry });
+  const parkMover = parkMoverFrom(argv, { registry });
   // AND THE SAME VERDICT, by the same door (thread 042), for the reason `delivers` is here and
   // not for a use case: the lesson of 075 is that a flag one command of the pair parses and the
   // other swallows goes into an append-only feed without a word. What the field does in an
@@ -3696,6 +3756,7 @@ const newThread = (argv: readonly string[]): void => {
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
+        ...(parkMover === undefined ? {} : { parkMover }),
         ...verdictFields,
         ...(turn === undefined ? {} : { turn }),
         text,
