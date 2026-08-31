@@ -1099,3 +1099,7 @@ curator, не находка ревью), guard 4 `ok` — «6 changed path(s), 
 Находок нет.
 
 waiting-on: curator
+
+## msg-022 · from: github · 2026-08-31 · expects: none
+
+PR #160 (feat(cli): дверь контура — --repo, назвавший чужой круг, отказывает по имени до всякого чтения (тред 062)) **merged** by maysway → `main`.
