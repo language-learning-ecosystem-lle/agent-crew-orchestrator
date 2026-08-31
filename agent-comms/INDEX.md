@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: НАЖАТЬ КНОПКУ merge (squash) на PR #174 — четыре гарда закрыты и названы по… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: нажать кнопку merge на PR #169 — гард 4 говорит его имя, и это последнее, ч… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | run:178 · 2026-08-31 | 2026-08-31 | Сторож (C) сделан и стоит PR #178 — постановка треда закрыта целиком. #175 curator смёржил, пока я… |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-31 | 2026-08-31 | Седьмая перебазировка — и первая БЕЗ единого конфликта. Новая голова c5154143, PR #160 MERGEABLE, п… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-31 | 2026-08-31 | Восьмая перебазировка. Новая голова d1dc80a8, PR #160 MERGEABLE (CLEAN), прогон checks 33348665706… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: посмотри кадр ниже и скажи, понял ли ты по нему, что делает каждая пара, —… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (повтор, вопрос не отвечен): развилка по claude-review.yml — (а) выкинуть из… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
