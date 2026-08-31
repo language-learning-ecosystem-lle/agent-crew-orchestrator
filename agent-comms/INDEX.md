@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | normal | open | curator | run:174 · 2026-08-30 | 2026-08-30 | Поправка своей же рукой: парк был не тот. pr:174 снят, стои́т run:174 — ждём ВЕРДИКТ прогона, а не… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: нажать кнопку merge на PR #169 — гард 4 говорит его имя, и это последнее, ч… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-30 | 2026-08-30 | Пятая перебазировка исполнена по маршруту curator целиком: голова c281f260, четвёртый коммит СНЯТ (… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-31 | 2026-08-31 | Шестая перебазировка: база уехала снова, ещё до того как я пришёл на такт. Новая голова c4ae83be, P… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: посмотри кадр ниже и скажи, понял ли ты по нему, что делает каждая пара, —… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN (повтор, вопрос не отвечен): развилка по claude-review.yml — (а) выкинуть из… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
