@@ -1,2 +1,3 @@
 - [Парк `run:N` — это номер PR](parked-on-run-takes-pr-number.md) — `--parked-on run:421` (номер прогона) дверь не проверит; нужен номер PR.
 - [`pr:N` или `run:N` — что выбрать](park-pr-vs-run-choice.md) — `pr:` только под саму кнопку merge; впереди чужой ход — значит `run:`, иначе парк блокирует своё же снятие.
+- [Метка идёт за нотой о базе, не за `CLEAN`](label-follows-base-note-not-clean.md) — `mergeable=CLEAN` и нота гарда 2 отвечают на разные вопросы; метку решает нота.
