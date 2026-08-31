@@ -1512,6 +1512,58 @@ describe("a session that asks and waits alive (R19)", () => {
   }, 60_000);
 
   /**
+   * THE SEAM OF THE «TEMPORARY» (thread `056-shared-tmp-mechanism`), and it is the only
+   * place the claim can be made at all: a unit proves `sessionTmpPath` composes a name,
+   * and nothing about a name proves that a REAL command, typed in the ordinary shape,
+   * lands anywhere in particular. What is measured here is exactly the class curator
+   * named — the session does nothing special, does not know the rule, and still does not
+   * touch the shared `/tmp`, because the environment it was raised in makes «somewhere
+   * temporary» mean «this run's own directory».
+   *
+   * WHY THE TEST DOES NOT DIFF THE SHARED `/tmp` BEFORE AND AFTER, said out loud because
+   * that was the cheapest candidate in the statement of work: this very suite runs in
+   * parallel with the rest of the package, each file minting its own `mkdtemp` under the
+   * shared `/tmp` — a listing taken here would be full of other people's directories and
+   * could attribute none of them. That is not an accident of the harness, it is the
+   * property of the shared directory on any box running more than one session, and it is
+   * why the leftovers are named from the run's OWN directory instead (below).
+   */
+  it("the session's «temporary» IS this run's own directory — the shared /tmp is not the default any more", () => {
+    const { repo } = contour();
+    const envDump = join(repo, "tmpdir-env.txt");
+    const madeDump = join(repo, "tmpdir-made.txt");
+    // Two ordinary shapes, neither of which mentions where it writes: the one every role
+    // is told to use (`mktemp -d`) and the one that slips out by itself (a redirect into
+    // «a scratch file»). Both are resolved by the environment, not by the session.
+    const exec = stub(
+      repo,
+      [
+        `printf '%s' "$TMPDIR" > ${envDump}`,
+        `printf '%s' "$(mktemp -d)" > ${madeDump}`,
+        `printf 'x' > "$(mktemp)"`,
+        "sleep 1",
+      ].join("\n"),
+    );
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "30"]);
+
+    const sessions = join(repo, ".orchestrator", "sessions");
+    const logName = readdirSync(sessions).find((name) => name.endsWith(".log")) as string;
+    const own = join(sessions, logName.replace(/\.log$/, ".tmp"));
+    // The variable the whole world already reads names THIS run's directory…
+    expect(readFileSync(envDump, "utf8")).toBe(own);
+    expect(readFileSync(envDump, "utf8")).not.toBe(tmpdir());
+    // …so a `mktemp -d` that names no destination lands inside it by construction.
+    expect(readFileSync(madeDump, "utf8").startsWith(`${own}/`)).toBe(true);
+    // AND THE RUN DOES NOT LEAVE IT LYING ABOUT: swept at the close of the session, with
+    // what was in it named first — the measurable half. A run that left nothing says
+    // nothing, so this line in a log always means something was left.
+    expect(existsSync(own)).toBe(false);
+    expect(sessionLog(repo)).toContain("temporary");
+    expect(sessionLog(repo)).toContain(own);
+  }, 60_000);
+
+  /**
    * THE SEAM, AND IT IS A NEW ONE (thread `038`): the config of the served project now
    * reaches the text a session reads. A unit on `buildLaunchPrompt` proves the builder
    * substitutes what it is handed; it cannot prove that the loader, the run and the spawn
