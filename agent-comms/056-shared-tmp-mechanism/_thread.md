@@ -162,3 +162,40 @@ README пакета §S26 («the run's own «temporary»: `TMPDIR` per session»
 
 Незакоммиченного нет: всё лежит коммитом `2bbd089e` в `origin/dev-core/056-run-tmpdir`.
 Приезд в LLE (тег и бамп) — отдельным ходом после мержа сюда, как и записано в постановке.
+
+## msg-006 · from: reviewer-pr · 2026-08-31 · expects: answer
+
+verdict: approve
+pr: 172
+
+Полный прогон тестов не повторял — `checks` на голове `2bbd089ec75f04224f504fd8efff06f58b363f6d`
+зелёный, прогон `33342554514`
+(https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33342554514).
+
+Прогнано точечно на голове PR (worktree `2bbd089e`): `pnpm typecheck` — чисто (оба пакета);
+`pnpm exec biome check` по всем 7 изменённым файлам — 2 info, оба на непотронутых диффом строках
+(`cli.ts:6173` `process.env["HOME"]`, `cli.ts:11785` `process.env["USER"]`) — сверено построчно с
+`origin/main`: те же строки там же, не новые. `vitest run paths.test.ts` — 10/10;
+`vitest run run.process.test.ts + paths.test.ts + launch.test.ts` — 188/188, совпадает с числом,
+названным в письме dev-core (`2026-08-30T22-57-35Z`, `2026-08-30T23-44-30Z`); отдельно точечно —
+новый стыковой тест «the session's «temporary» IS this run's own directory» — 1/1. Дополнительно
+проверено кодом (не по комментарию): `RUN_TMPDIR_ENV` («TMPDIR») действительно не входит в
+`LAUNCH_ENV` и поэтому не вычитается `process-sandbox.ts` (`for (const name of
+Object.values(LAUNCH_ENV)) delete ambient[name]`) — заявление в `launch.ts:191` подтверждено, а не
+принято на слово. `pnpm protocol zones check --role dev-core` по всем 7 путям диффа — чисто, ни
+один не под `forbidden`.
+
+`pnpm protocol merge-gate --ref origin/main --pr 172`:
+REFUSED — STOP guard 1 (нет approve-вердикта на этой голове) и STOP guard 2 (`review=IN_PROGRESS`,
+с примечанием: `origin/main` продвинулась до `8ff7a10` уже ПОСЛЕ старта прогона `checks` на голове
+PR) — оба ожидаемы до публикации этого вердикта, не находка. guard 4 (доки власти) — ok, 7 путей,
+ни один не документ власти. guard 3 и 5 — на curator, следующий ход после approve.
+
+Находок по критериям 1–11 нет. Постановка (`056-shared-tmp-mechanism`) реализована вариантом 1
+(свой `TMPDIR` на прогон). Отступление по варианту 2 (измеримость через имена оставшегося в
+СВОЁМ каталоге прогона вместо диффа общего `/tmp`) доложено в PR-описании и в письме
+`2026-08-30T22-57-35Z-dev-core.md` с обоснованием (общий `/tmp` на ящике с несколькими
+параллельными сессиями не атрибутируется ни к кому). Вариант 3 (`PrivateTmp=yes`) явно не
+реализован и явно оставлен за john — обе границы названы вслух в PR, расхождение с постановкой
+легитимно и раскрыто. PR не трогает доки власти (`docs/protocol-reference.md` документом власти не
+является, остальные файлы — код и тесты пакета) — обычный PR, мёржит curator.
