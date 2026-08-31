@@ -4277,7 +4277,17 @@ const runNotify = async (input: {
   // a decision that somebody is now sitting on — a machine is judging, and the pair moves the
   // moment it answers (thread 019). It joins the frozen for the same purpose: to keep the age
   // pass quiet about a thread that is behaving exactly as intended.
-  const frozen = parkings.flatMap(({ id, parking }) => (parking.kind === "person" ? [] : [id]));
+  //
+  // IT CARRIES THE FACTS AND NOT THE IDS ALONE SINCE THREAD 061: past
+  // `EVENT_PARK_STALE_AFTER_MINUTES` the same set is what the watchdog rings on, and the three
+  // things its line needs — which PR, which of the two forms, and since when — are readable here
+  // and nowhere downstream. The threshold is NOT applied here on purpose: the set has to arrive
+  // whole, or the age pass would start calling young event parks stalled.
+  const frozen = parkings.flatMap(({ id, parking }) =>
+    parking.kind === "person" || parking.pr === undefined
+      ? []
+      : [{ thread: id, pr: parking.pr, kind: parking.kind, since: parking.since }],
+  );
   const stalled = parsed.flatMap((thread) => {
     const holder = waitingOnOf(thread);
     if (holder === undefined) return [];
@@ -4736,6 +4746,12 @@ const runNotify = async (input: {
       plan.remindedParked.length === 0 &&
       plan.freshFreezes.length === 0 &&
       plan.freshUnaccepted.length === 0 &&
+      // AND AN OVERDUE EVENT PARK RAISES ITS OWN LETTER (thread 061, form (C)), for the reason
+      // the reminder does: it is the ONLY line anybody will ever write about a thread that has
+      // stood six hours behind an event, and the box holding it is quiet precisely because that
+      // thread raises nobody. A line that waits for somebody else's letter is owed to one that
+      // never comes.
+      plan.staleEventParks.length === 0 &&
       !plan.freshAuth &&
       !plan.freshGh &&
       // A DRIFT PAST THE BAND IS WORTH A LETTER OF ITS OWN (thread 044). It rings once per
@@ -4772,6 +4788,10 @@ const runNotify = async (input: {
         // send condition below reads `remindedParked`), so what is written here is the
         // surviving clock and nothing else.
         reminded: plan.reminded,
+        // NOTHING WENT OUT, AND NOTHING NEEDS SUPPRESSING HERE (thread 061): this branch is
+        // reachable only with `staleEventParks` empty — an overdue park raises its own letter
+        // above — so the keys are the surviving ones alone, and no park is recorded as told.
+        eventParks: plan.eventParkKeys,
       }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
@@ -4801,6 +4821,7 @@ const runNotify = async (input: {
         // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
         accounts: plan.accountKeys,
         reminded: plan.reminded,
+        eventParks: plan.eventParkKeys,
       }),
     );
     return { kind: "sent", summary, lines: said };
@@ -4838,6 +4859,7 @@ const runNotify = async (input: {
       // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
       accounts: plan.accountKeys,
       reminded: plan.reminded,
+      eventParks: plan.eventParkKeys,
     }),
   );
   say(outcome.detail);
