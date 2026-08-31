@@ -571,12 +571,14 @@ import {
   VERDICT_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import { judgeParkNumber } from "./thread/park-number.js";
 import { judgeParkSeen } from "./thread/park-seen.js";
 import { describePrPark } from "./thread/pr-park.js";
 import { synthesiseMeta } from "./thread/repair.js";
 import {
   describeStaleRunPark,
   judgeRunPark,
+  looksLikeAbsentPr,
   pendingRunsOf,
   RUN_PARK_TTL_SECONDS,
   type RunParkFacts,
@@ -2941,7 +2943,11 @@ const priorityFrom = (
 const runParkFacts = (
   pr: number,
   repo: string,
-): { readonly facts?: RunParkFacts; readonly refusal?: string } => {
+): {
+  readonly facts?: RunParkFacts;
+  readonly refusal?: string;
+  readonly absent?: { readonly where: string };
+} => {
   let raw: string;
   // The circuit's own credentials (thread 065), OFFERED and not demanded: `gh` is asked
   // even when this module could assemble no token, because `gh` has logins of its own.
@@ -2962,6 +2968,11 @@ const runParkFacts = (
     );
   } catch (error) {
     const message = (error as Error).message;
+    // ONE OF `gh`'s REFUSALS IS A FACT AND NOT A BLINK (thread 061): "there is no pull request
+    // with this number". It is told apart here, at the only place that has the vendor's own
+    // sentence, and handed to the judge as a separate input — everything else keeps degrading
+    // into a note, exactly as before.
+    if (looksLikeAbsentPr(message)) return { absent: { where: repo } };
     return {
       refusal: explainWithCredentials(
         `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}`,
@@ -3042,9 +3053,22 @@ const parkedOnFrom = (
   // eight hours. The form is not narrowed and no watcher of PR state is added — the cheap and
   // honest half of the repair is that nobody may declare this park without being told what
   // will not lift it.
+  //
+  // AND BEFORE EITHER OF THEM, THE NUMBER ITSELF (thread 061, msg-002): both forms take the
+  // NUMBER OF A PULL REQUEST, and the door used to accept any integer — so an id of a workflow
+  // run went in silently three times in one day and each author spent a second letter undoing
+  // it. `judgeParkNumber` costs nothing and needs nobody: it reads the order of magnitude.
   const merge = /^pr:(\d+)$/.exec(value);
   if (merge !== null) {
-    out(`agent-protocol: ${describePrPark(Number(merge[1]))}`);
+    const pr = Number(merge[1]);
+    // A `pr:` PARK IS CHECKED BY MAGNITUDE AND NOTHING ELSE, and that is a choice named in the
+    // statement of work (point 4): parking on a pull request that is being created in this very
+    // tick is legal and common, and an existence check would refuse it. The weaker form catches
+    // the measured defect — a number that is not a PR number in ANY repository — without
+    // refusing anything honest.
+    const number = judgeParkNumber({ kind: "pr", value: pr });
+    if (!number.ok) return fail(number.reason, 2);
+    out(`agent-protocol: ${describePrPark(pr)}`);
     return value;
   }
   // `run:N` IS THE ONE PARK WHOSE SOURCE THE DOOR ASKS ABOUT (thread 062, layer 1). It was the
@@ -3057,6 +3081,11 @@ const parkedOnFrom = (
   const round = /^run:(\d+)$/.exec(value);
   if (round !== null) {
     const pr = Number(round[1]);
+    // The magnitude first and the vendor second: an id of a workflow run is refused BEFORE `gh`
+    // is asked about it, because the answer would be a confusing "could not resolve" about a
+    // number the author never meant as a PR.
+    const number = judgeParkNumber({ kind: "run", value: pr });
+    if (!number.ok) return fail(number.reason, 2);
     const verdict = judgeRunPark({ pr, ...runParkFacts(pr, process.cwd()) });
     if (!verdict.ok) return fail(verdict.reason, 2);
     if (verdict.note !== undefined) out(`agent-protocol: ${verdict.note}`);

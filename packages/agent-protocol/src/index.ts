@@ -308,10 +308,16 @@ export {
   migrateLegacyThread,
   verifyMigration,
 } from "./thread/migrate.js";
+export {
+  judgeParkNumber,
+  MAX_PR_NUMBER,
+  type ParkNumberVerdict,
+} from "./thread/park-number.js";
 export { judgeParkSeen, type ParkSeenVerdict } from "./thread/park-seen.js";
 export {
   describeStaleRunPark,
   judgeRunPark,
+  looksLikeAbsentPr,
   RUN_PARK_TTL_SECONDS,
   type RunParkFacts,
   type RunParkVerdict,

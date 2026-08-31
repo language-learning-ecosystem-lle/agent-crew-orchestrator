@@ -1964,6 +1964,23 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # refusal is said apart from "no run at all" because the repair differs:
                             # there the round has not been born (wait seconds, park then), here it has
                             # already died (read the outcome and report it)
+                            # BOTH EVENT FORMS TAKE THE NUMBER OF A PULL REQUEST, AND THE DOOR CHECKS
+                            # THAT IT IS ONE (thread 061): `run:<n>` waits for the round ON PR n — it is
+                            # NOT an id of a workflow run, and the two are indistinguishable to the eye
+                            # (`160` and `33328290131` are both integers). A number of six digits or more
+                            # is refused by MAGNITUDE alone, with no vendor asked: PR numbers are a
+                            # counter inside one repository and reach 1000000 nowhere, so the refusal
+                            # says what it read the number for, and — when the number has the shape of a
+                            # run id — names that as the likely cause and where to read the right number
+                            # (`gh pr view --json number`). On `run:` there is a second refusal from the
+                            # vendor: `gh` answering that THERE IS NO SUCH PULL REQUEST is the one of its
+                            # refusals that is a fact and not a blink, so it refuses the park by name
+                            # instead of degrading into a note. `pr:` is deliberately NOT asked about —
+                            # parking on a pull request being created in this very tick is legal, and an
+                            # existence check would refuse it; magnitude is the whole check there.
+                            # Measured 2026-08-30: three parks in one day took somebody else's number,
+                            # every one caught by its own author and every one AFTER the record — a
+                            # correction letter each, in a feed that keeps both
                             # ALL THREE PARKS LIFT NARROWLY, by one walk (thread 023; the event ones on
                             # 2026-08-03, the person one on 2026-08-04): the first message that MOVES
                             # somebody, plus — for the event ones only — the merge of that PR announced

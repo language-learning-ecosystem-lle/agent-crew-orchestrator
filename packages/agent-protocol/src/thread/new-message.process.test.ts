@@ -704,21 +704,26 @@ const ghShim = (
   repo: string,
   answer:
     | { readonly headSha: string; readonly mergeable: string; readonly runs: number }
-    | { readonly refuse: true },
+    | { readonly refuse: true }
+    // The vendor's own sentence about a pull request that is not there (thread 061), copied
+    // from what `gh pr view 33328290131` actually printed on 2026-08-30.
+    | { readonly absent: true },
 ): string => {
   const dir = join(repo, `gh-shim-${randomUUID().slice(0, 8)}`);
   mkdirSync(dir, { recursive: true });
   const body =
     "refuse" in answer
       ? 'echo "gh: no token" >&2; exit 1'
-      : `cat <<'JSON'\n${JSON.stringify({
-          headRefOid: answer.headSha,
-          mergeable: answer.mergeable,
-          statusCheckRollup: Array.from({ length: answer.runs }, (_, at) => ({
-            name: `check-${at}`,
-            status: "IN_PROGRESS",
-          })),
-        })}\nJSON`;
+      : "absent" in answer
+        ? 'echo "GraphQL: Could not resolve to a PullRequest with the number of 999999. (repository.pullRequest)" >&2; exit 1'
+        : `cat <<'JSON'\n${JSON.stringify({
+            headRefOid: answer.headSha,
+            mergeable: answer.mergeable,
+            statusCheckRollup: Array.from({ length: answer.runs }, (_, at) => ({
+              name: `check-${at}`,
+              status: "IN_PROGRESS",
+            })),
+          })}\nJSON`;
   const bin = join(dir, "gh");
   writeFileSync(bin, `#!/bin/sh\n${body}\n`, { mode: 0o755 });
   return dir;
@@ -1014,6 +1019,66 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(result.code).toBe(0);
     expect(result.out).toContain("NOT verified");
     expect(written(contest.root).fields.parkedOn).toBe("run:243");
+  });
+
+  // THREAD 061, msg-002 — THE NUMBER ITSELF. Three parks in one day took somebody else's
+  // number (an id of a workflow run where the form wants the number of a PR); the door accepted
+  // every one and every author spent a second letter undoing the record.
+  it("an id of a workflow run is refused BEFORE gh is asked, and nothing is written", () => {
+    const contest = contour();
+
+    // The vendor IS on PATH and would refuse with its own sentence ("could not resolve to a
+    // PullRequest"); the assertion is that the door never got that far — the magnitude answered
+    // first, and it answers with no token, no network and no `gh` at all.
+    const result = direct(contest, "dev-core", "--parked-on", "run:33328290131", {
+      PATH: `${ghShim(contest.repo, { absent: true })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("NUMBER OF A PULL REQUEST");
+    expect(result.out).toContain("ID OF A WORKFLOW RUN");
+    expect(result.out).not.toContain("gh answers");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("the same guard stands on the pr: form, where no vendor is asked at all", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:33328290131");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("pr:33328290131");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  // A number that IS of PR magnitude but names no pull request here: only the `run:` form asks,
+  // and only this one refusal of `gh` is a fact rather than a blink.
+  it("a run: park on a PR that does not exist is refused, naming what was asked", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:999", {
+      PATH: `${ghShim(contest.repo, { absent: true })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("THERE IS NO PULL REQUEST #999");
+    // The refusal names WHERE the question was asked, so the same question can be repeated by
+    // hand — `gh` is asked in the working directory of the command, and that path is quoted.
+    expect(result.out).toContain("the repository it was asked about (");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  // AND THE WEAKER FORM ON `pr:` IS DELIBERATE (statement of work, point 4): a park on a pull
+  // request being created in this very tick stays legal, so `pr:` is never asked about.
+  it("a pr: park on a number that does not exist yet still passes — the PR may be minutes away", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:999", {
+      PATH: `${ghShim(contest.repo, { absent: true })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkedOn).toBe("pr:999");
   });
 
   it("'run' without a number is a name, and is refused as one", () => {
