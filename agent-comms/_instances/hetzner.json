@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-08-31T01:21:16.371Z",
+  "writtenAt": "2026-08-31T01:32:39.705Z",
   "roles": [
     "curator",
     "dev-core",
@@ -16,7 +16,7 @@
     {
       "role": "curator",
       "thread": "061-unreachable-event-park",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-08-31T02:01:10Z"
     }
   ]
