@@ -46,6 +46,25 @@ const meta = (participants: string): string =>
 const message = (from: string, waitingOn: string): string =>
   `---\nfrom: ${from}\nworker: human\ndate: 2026-07-25T20:00:00Z\nexpects: answer\nwaiting-on: ${waitingOn}\n---\n\nThe body.\n`;
 
+/**
+ * A FIXTURE DATE OF A KNOWN AGE — the only honest way to write an expectation about an age in a
+ * process test, where the command reads the real clock through a real process and no unit-test
+ * door can pin `now`.
+ *
+ * The rule it enforces is the one thread 068 was opened by: an expectation must not depend on
+ * the WALL CLOCK. A fixed date in the fixture makes the age a moving number, and any assert
+ * about how that number is SPELLED then holds only for part of the day — the notifier drops a
+ * zero hour remainder, so `2026-07-25T20:00:00Z` produced `36d` for one hour out of twenty-four
+ * and `36d 7h` for the rest. An offset from now produces the same spelling always.
+ *
+ * The milliseconds are dropped to the second the mail writes its dates in, the same way the
+ * neighbouring fixture above does it. The drift between writing the fixture and running the
+ * command is seconds, and seconds cannot move a whole-hour remainder — the age is stable for
+ * the length of any run.
+ */
+const agedBy = (days: number, hours: number): string =>
+  `${new Date(Date.now() - (days * 24 + hours) * 3_600_000).toISOString().slice(0, 19)}Z`;
+
 /** A repository with a committed config, a mail root and a stub transport module. */
 const contour = (options: {
   transport?: boolean;
@@ -392,14 +411,28 @@ describe("notify as a command", () => {
   it("AND IT IS SAID AGAIN WHILE IT STANDS — the reminder, end to end (thread 043, Д-4)", () => {
     // THE DEFECT THROUGH THE REAL DOOR, in the shape it was measured in on 2026-08-29: ten parks
     // on john in `.orchestrator/notify.state`, the oldest eleven days, and not one of them
-    // mentioned since the tick it was declared on. The fixture park is dated 2026-07-25 — a
-    // month old against the real clock, which is the whole point: it is the age that speaks.
+    // mentioned since the tick it was declared on. The park is a month old, which is the whole
+    // point: it is the age that speaks.
     //
     // Nothing else is in this mail. That is the half no unit test can prove: the reminder must
     // RAISE its own letter, not ride in somebody else's, because the box with a queue of
     // standing decisions is by construction the box where nothing else is happening.
+    //
+    // AND THE AGE IS SET, NOT INHERITED FROM THE CALENDAR (thread 068, 2026-08-31). The park
+    // used to carry the fixture's own fixed date, `2026-07-25T20:00:00Z`, so its age was "the
+    // real clock minus a constant" — and `describeAge` drops a zero hour remainder by contract
+    // (`notify.test.ts`: `describeAge(60 * 48)` is `"2d"`, not `"2d 0h"`). Those two together
+    // gave a calendar: every day from 20:00:00Z to 20:59:59Z the age landed on a whole number
+    // of days, the reminder read `36d`, and an assert spelled `\d+d \d+h` went red on any
+    // branch, `main` included. Measured 2026-08-30 — runs 33332529897 (#166) and 33332581581
+    // (#167), plus a hand run on clean `main` 9d015fd6 at 20:08Z. One hour a day, three PRs.
+    //
+    // Dating the park RELATIVE TO NOW takes the wall clock out: `36d 7h` back is `36d 7h` old
+    // at any hour of any day, so the remainder is 7 by construction and never 0. The assert can
+    // therefore stay EXACT — which is the half the permissive `( \d+h)?` gave up: it would
+    // have kept passing if the form itself had gone.
     const contest = contour({ stalledAfter: 10_000_000 });
-    contest.park("023-x", { asks: true });
+    contest.park("023-x", { asks: true, date: agedBy(36, 7) });
     contest.commit();
 
     run(contest, ["--write"]);
@@ -415,18 +448,10 @@ describe("notify as a command", () => {
     expect(second.out).toContain("1 parked, 1 of them asking, 0 of those new, 1 reminded");
     expect(second.out).toContain("023-x (reminded john,");
     const text = JSON.parse(readFileSync(contest.delivered, "utf8")).text as string;
-    // The age and the subject, and the question in the words it was asked in — no body.
-    //
-    // The hours are OPTIONAL, because `describeAge` drops a zero remainder by contract
-    // (`notify.test.ts`: `describeAge(60 * 48)` is `"2d"`, not `"2d 0h"`). The park here is
-    // dated against the REAL clock, so for one hour out of every twenty-four its age lands on
-    // a whole day and the reminder legitimately reads `36d`. Demanding `\d+d \d+h` made this
-    // case fail on the wall clock rather than on the behaviour — measured 2026-08-30, run
-    // 33334197543, where it took a green tree down with it. What is asserted is that the age
-    // is WRITTEN, which is the point of the reminder; its spelling is the unit test's business.
-    expect(text).toMatch(
-      /^still on you after \d+d( \d+h)? — your decision: 023-x — Чинить ли гард 2\?$/,
-    );
+    // The age and the subject, and the question in the words it was asked in — no body. The age
+    // is spelled out in full because the fixture fixed it: `agedBy(36, 7)` is `36d 7h` on every
+    // box at every hour, so this line reads the FORM of the reminder and not the calendar.
+    expect(text).toBe("still on you after 36d 7h — your decision: 023-x — Чинить ли гард 2?");
     // A single question gets no header: the header is about the SIZE of a queue.
     expect(text.split("\n")).toHaveLength(1);
     // AND THE CLOCK IS WRITTEN, so the next tick thirty seconds later is silent.
