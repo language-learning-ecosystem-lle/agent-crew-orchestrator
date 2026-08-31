@@ -63,7 +63,7 @@
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Вопрос john первой строкой: одна строка в тред LLE 118-pin-bump-0-2-7 — «пин 0.2.7 сторожа НЕ чинит… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: живая приёмка §5 просит переопределить объявленные параметры запуска (--mod… |
-| 059-pilot-codex-terra-max | curator, dev-core | normal | open | curator | run:174 · 2026-08-30 | 2026-08-30 | Поправка своей же рукой: парк был не тот. pr:174 снят, стои́т run:174 — ждём ВЕРДИКТ прогона, а не… |
+| 059-pilot-codex-terra-max | curator, dev-core | normal | open | curator | run:174 · 2026-08-31 | 2026-08-31 | Метка review повешена на #174 своей рукой — зелёный checks сверен полным SHA, круг поднялся. Кнопка… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: нажать кнопку merge на PR #169 — гард 4 говорит его имя, и это последнее, ч… |
 | 061-unreachable-event-park | curator · dev-core · john | normal | open | dev-core | — | 2026-08-30 | Дополнение к постановке по слову john (чат ~18:35Z: «добавляй»): форма событийной парковки ПРИНИМАЕ… |
 | 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:160 · 2026-08-31 | 2026-08-31 | Шестая перебазировка: база уехала снова, ещё до того как я пришёл на такт. Новая голова c4ae83be, P… |
