@@ -297,3 +297,7 @@ Guard 1/2 ожидаемо не держатся до этого вердикт�
 - Критерий 11 (дверь молчит): порог применяется ВНУТРИ `planNotifications`, а не на входе — проверено кодом (`frozen` передаётся целиком, `overdueEventParks` фильтрует по `now`) и тестом «a park INSIDE the band is silent… nothing is remembered». Без часов и без цели `direct` — явные тесты на оба случая, оба ассертят пустой `lines`, не молчаливый успех. Тип `Parking` (`thread/thread.ts`) даёт `pr`/`since` для `kind: "event"|"run"` — маппинг в `cli.ts` типобезопасен, `tsc` подтверждает.
 
 Находок нет.
+
+## msg-010 · from: github · 2026-08-31 · expects: none
+
+PR #178 (feat(notify): событийная парковка старше шести часов звонит один раз, а не молчит вечно (тред 061)) **merged** by maysway → `main`.
