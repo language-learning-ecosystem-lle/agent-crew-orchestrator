@@ -1,6 +1,6 @@
 /**
  * WHERE A ROLE'S PERSONAL MEMORY LIVES — the first half of form D (a consumer thread
- * `116-role-memory-cost`, john's word «D, рядом с почтой, с потолком»).
+ * on the cost of a role's memory, john's word «D, рядом с почтой, с потолком»).
  *
  * THE DEFECT THIS ANSWERS. The vendor keeps a role's notes in the agent profile,
  * and it keys them by PROJECT DIRECTORY AND ACCOUNT rather than by role: a session

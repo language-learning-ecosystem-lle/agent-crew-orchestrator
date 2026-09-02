@@ -1,6 +1,6 @@
 /**
  * MIGRATION 16 → 17: the dictionary of authorized signatures is DECLARED, not known
- * (thread `080-extraction-prep`, 080.9).
+ * (the package-extraction thread of the parent contour, point 9).
  *
  * Version 17 gives the config one optional top-level key — `identityDictionary` — and takes
  * the matching constant out of the package. Until now `doctor` pointed the operator at

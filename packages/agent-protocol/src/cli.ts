@@ -9985,8 +9985,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
 const DIGEST_LOCK_WAIT_MS = 20_000;
 
 /**
- * THE TWO MOMENTS OF A ROLE'S MEMORY, BOUND TO THIS BOX (a consumer thread
- * `116-role-memory-cost`, form D, third third). Both halves are built here, together,
+ * THE TWO MOMENTS OF A ROLE'S MEMORY, BOUND TO THIS BOX (a consumer thread on the cost
+ * of a role's memory, form D, third third). Both halves are built here, together,
  * because they are one contract: the save can only tell "this session wrote it" from
  * "it was already there" against the snapshot the restore recorded, and two call sites
  * assembling the pair separately is how the halves come to disagree about a path.

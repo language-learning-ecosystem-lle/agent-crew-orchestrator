@@ -1,7 +1,7 @@
 /**
  * A ROLE'S MEMORY TRAVELS WITH THE MAIL — the third third of form D (a consumer thread
- * `116-role-memory-cost`, curator's postановка msg-008 §3, john's word «D, рядом с
- * почтой, с потолком»).
+ * on the cost of a role's memory, curator's postановка msg-008 §3, john's word «D, рядом
+ * с почтой, с потолком»).
  *
  * WHAT WAS MISSING WITHOUT IT. `memory.ts` answered WHICH directory a session is
  * pointed at and put the ceiling on the index, but the directory it named lives in the

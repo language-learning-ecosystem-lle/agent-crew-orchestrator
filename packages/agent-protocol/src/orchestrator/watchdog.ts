@@ -1,8 +1,7 @@
 /**
  * THE WATCHDOG OF THE CIRCUIT — an outgoing dead-man's switch on the daemon PROCESS
  * (thread `017-circuit-watchdog`, curator's statement of work; john's decision of
- * 2026-08-19, `agent-comms/082-hetzner-migration/messages/2026-08-19T12-22-08Z-curator.md`,
- * step 5 of the move to hetzner).
+ * 2026-08-19, step 5 of the move to hetzner announced in the parent contour).
  *
  * THE PRICE WAS PAID BEFORE THE CODE WAS WRITTEN: on 2026-08-18 the circuit stood dead
  * for 2 h 50 min behind a fully green dashboard. Everything that watches this project

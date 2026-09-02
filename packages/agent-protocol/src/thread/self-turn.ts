@@ -30,10 +30,10 @@
  * | `expects: answer` | 11 | 162 | 9 |
  *
  * The `ack` class is rare and, read by eye, has no lawful member: six of the seventeen are the
- * live freeze of 010 itself; `074-parked-on-norm` and `082-hetzner-migration` (08:30:53Z) ask
- * john for a decision and for his hands; the remaining eight report a pull request and wait for
- * a round or a button — which today is `--parked-on pr:N` / `run:N`. Asking for an acknowledgement
- * while holding one's own turn is the shape of the defect, so the door refuses it.
+ * live freeze of 010 itself; two more of them (08:30:53Z) ask john for a decision and for his
+ * hands; the remaining eight report a pull request and wait for a round or a button — which today
+ * is `--parked-on pr:N` / `run:N`. Asking for an acknowledgement while holding one's own turn is
+ * the shape of the defect, so the door refuses it.
  *
  * The `answer` class is 173 messages across both mails and is the everyday middle of a working
  * thread — a role writing down where it got to while keeping its turn. Refusing it would block a
