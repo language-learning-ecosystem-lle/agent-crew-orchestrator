@@ -1512,6 +1512,142 @@ describe("a session that asks and waits alive (R19)", () => {
   }, 60_000);
 
   /**
+   * THE SEAM OF THE «TEMPORARY» (thread `056-shared-tmp-mechanism`), and it is the only
+   * place the claim can be made at all: a unit proves `sessionTmpPath` composes a name,
+   * and nothing about a name proves that a REAL command, typed in the ordinary shape,
+   * lands anywhere in particular. What is measured here is exactly the class curator
+   * named — the session does nothing special, does not know the rule, and still does not
+   * touch the shared `/tmp`, because the environment it was raised in makes «somewhere
+   * temporary» mean «this run's own directory».
+   *
+   * WHY THE TEST DOES NOT DIFF THE SHARED `/tmp` BEFORE AND AFTER, said out loud because
+   * that was the cheapest candidate in the statement of work: this very suite runs in
+   * parallel with the rest of the package, each file minting its own `mkdtemp` under the
+   * shared `/tmp` — a listing taken here would be full of other people's directories and
+   * could attribute none of them. That is not an accident of the harness, it is the
+   * property of the shared directory on any box running more than one session, and it is
+   * why the leftovers are named from the run's OWN directory instead (below).
+   */
+  it("the session's «temporary» IS this run's own directory — the shared /tmp is not the default any more", () => {
+    const { repo } = contour();
+    const envDump = join(repo, "tmpdir-env.txt");
+    const madeDump = join(repo, "tmpdir-made.txt");
+    // Two ordinary shapes, neither of which mentions where it writes: the one every role
+    // is told to use (`mktemp -d`) and the one that slips out by itself (a redirect into
+    // «a scratch file»). Both are resolved by the environment, not by the session.
+    const exec = stub(
+      repo,
+      [
+        `printf '%s' "$TMPDIR" > ${envDump}`,
+        `printf '%s' "$(mktemp -d)" > ${madeDump}`,
+        `printf 'x' > "$(mktemp)"`,
+        "sleep 1",
+      ].join("\n"),
+    );
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "30"]);
+
+    const sessions = join(repo, ".orchestrator", "sessions");
+    const logName = readdirSync(sessions).find((name) => name.endsWith(".log")) as string;
+    const own = join(sessions, logName.replace(/\.log$/, ".tmp"));
+    // The variable the whole world already reads names THIS run's directory…
+    expect(readFileSync(envDump, "utf8")).toBe(own);
+    expect(readFileSync(envDump, "utf8")).not.toBe(tmpdir());
+    // …so a `mktemp -d` that names no destination lands inside it by construction.
+    expect(readFileSync(madeDump, "utf8").startsWith(`${own}/`)).toBe(true);
+    // AND THE RUN DOES NOT LEAVE IT LYING ABOUT: swept at the close of the session, with
+    // what was in it named first — the measurable half. A run that left nothing says
+    // nothing, so this line in a log always means something was left.
+    expect(existsSync(own)).toBe(false);
+    expect(sessionLog(repo)).toContain("temporary");
+    expect(sessionLog(repo)).toContain(own);
+  }, 60_000);
+
+  /**
+   * THE SEAM OF THE `PATH` (thread `069-session-path`), and like the one above it is the
+   * only place the claim can be made: a unit proves `sessionPathValue` composes a string,
+   * and no string proves that a REAL session, typing a tool's bare name the way a role
+   * types it, finds the file. What is measured here is the tax the finding named — a
+   * command dead with `No such file or directory` while the same binary sits on the
+   * operator's own `PATH` — and its absence afterwards.
+   *
+   * THE BOX IS THE TEST'S OWN, `HOME` AND ALL: the tool is minted inside `HOME/.local/bin`
+   * of a home this test owns, so the case measures the mechanism and not whether the
+   * developer running the suite happens to have `uv` installed. `HOME` is passed through
+   * `extra` and said out loud here, which is the same discipline `process-sandbox.ts`
+   * states for every other ambient variable a case is ABOUT.
+   */
+  it("A TOOL IN THE USER'S OWN bin IS FOUND BY THE SESSION BY ITS BARE NAME — and the inherited PATH still answers first", () => {
+    const { repo } = contour();
+    const home = join(repo, "home");
+    const userBin = join(home, ".local", "bin");
+    mkdirSync(userBin, { recursive: true });
+    // A tool installed the ordinary way — the class `uv`, `pipx` and `pip --user` belong
+    // to. Nothing about it is declared anywhere in this circuit's config.
+    const tool = join(userBin, "tool069");
+    writeFileSync(tool, "#!/bin/sh\nprintf 'the user tool ran'\n");
+    chmodSync(tool, 0o755);
+
+    const pathDump = join(repo, "path-env.txt");
+    const toolDump = join(repo, "tool-out.txt");
+    const exec = stub(
+      repo,
+      [
+        `printf '%s' "$PATH" > ${pathDump}`,
+        // The bare name, exactly as a role would type it, with the failure captured
+        // rather than swallowed: a missing tool must show up as a value, not as a
+        // silent empty file that any assertion could be written around.
+        `tool069 > ${toolDump} 2>&1 || printf 'NOT FOUND' > ${toolDump}`,
+        "sleep 1",
+      ].join("\n"),
+    );
+
+    execFileSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--poll",
+        "1",
+        "--exec",
+        exec,
+        "--wall-clock",
+        "30",
+        "--write",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        stdio: "pipe",
+        env: sandbox(configHome(repo), { HOME: home }),
+      },
+    );
+
+    // The session did nothing special and still ran the tool.
+    expect(readFileSync(toolDump, "utf8")).toBe("the user tool ran");
+    // …because the directory was APPENDED to what the supervisor inherited: everything
+    // that resolved before this mechanism existed still resolves to the same file, the
+    // agent binary first among them (R14).
+    const seen = readFileSync(pathDump, "utf8").split(":");
+    expect(seen.at(-1)).toBe(userBin);
+    expect(seen.filter((dir) => dir === userBin)).toHaveLength(1);
+    expect(seen.slice(0, -1).join(":")).toBe(process.env.PATH);
+    // AND THE COMPOSITION IS SAID, not done silently — the run's own log is where an
+    // operator finds out what the session could see.
+    expect(sessionLog(repo)).toContain(`session PATH ${seen.join(":")}`);
+  }, 60_000);
+
+  /**
    * THE SEAM, AND IT IS A NEW ONE (thread `038`): the config of the served project now
    * reaches the text a session reads. A unit on `buildLaunchPrompt` proves the builder
    * substitutes what it is handed; it cannot prove that the loader, the run and the spawn
@@ -1584,7 +1720,94 @@ describe("a session that asks and waits alive (R19)", () => {
     const flags = `--root ${root} --ref origin/main`;
     expect(prompt).toContain(`\`${command} thread show ${flags} --thread 012-x --for dev-core\``);
     expect(prompt).toContain(`\`${command} new-message ${flags} --thread <id>`);
-    expect(prompt).toContain(`\`${command} await-input ${flags}\``);
+    // …AND THE OTHER TWO FLAGS OF THAT SAME LINE (thread `054`): `await-input` refuses
+    // without `--role` and `--thread` just as it refuses without `--root`, and this
+    // assertion used to close its backtick right after the ref — pinning the short form
+    // as if it were correct. The line is printed to be run as written, so the seam is
+    // asserted whole: root, ref, role, thread.
+    expect(prompt).toContain(`\`${command} await-input ${flags} --role dev-core --thread 012-x\``);
+  }, 60_000);
+
+  /**
+   * THE SAME SEAM AGAIN, FOR THE RUN THAT CANNOT AFFORD IT TO BE WRONG (thread
+   * `058-launch-prompt-mail-form-sandbox`). Under `toolsHeldBy: "sandbox-read-only"` the
+   * line the prompt calls "your whole interface to the mail" is the run's ONLY command,
+   * and without `--no-fetch` it exits 2 on the `origin/` fetch before reading anything:
+   * measured 30.08 on thread `038`, run 9 — one command, `exit 2`, zero of five points
+   * delivered.
+   *
+   * IT IS A SEAM AND NOT A UNIT because the two values come from two places a unit never
+   * touches: the mark off the ROLE CARD in the config, and the path off the WORKSPACE this
+   * very run planned (`workdir.worktrees` + role id, resolved by `settleRun`). The unit is
+   * handed a `MailForm` and can only prove that what it was handed is printed — the same
+   * half that was missing for `mailCommand`.
+   */
+  it("A RUN HELD BY THE SANDBOX IS GIVEN `--no-fetch` AND THE `--repo` OF ITS OWN WORKING TREE", () => {
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const { repo } = contour({
+      mailCommand: command,
+      // The workspaces are DECLARED here and that is load-bearing: without them the
+      // session inherits the operator's checkout, there is no role tree to name, and the
+      // case would assert nothing about where `--repo` came from.
+      orchestrator: {
+        ...CONFIG.orchestrator,
+        ref: "origin/main",
+        workdir: { branch: "main", worktrees: ".worktrees" },
+      },
+      // The card that waives the allow-list by naming what holds the session instead —
+      // the one shape in which a role declares that its run cannot write (v20, thread 026).
+      roles: [
+        {
+          ...CONFIG.roles[0],
+          launch: {
+            agent: { kind: "codex", model: "gpt-5-codex", toolsHeldBy: "sandbox-read-only" },
+          },
+        },
+      ],
+    });
+    const promptDump = join(repo, "prompt.txt");
+    const exec = stub(repo, `printf '%s' "$*" > ${promptDump}\nsleep 1`);
+
+    runWith(repo, ["--exec", exec, "--worker", "codex", "--wall-clock", "20", "--write"]);
+
+    const prompt = readFileSync(promptDump, "utf8");
+    const root = join(repo, "mailco", "agent-comms");
+    const workspace = join(repo, ".worktrees", "dev-core");
+    // The path is the ROLE'S tree and not the mail checkout `--root` would have been
+    // resolved against (`configFrom` → `repoOf(root)`), and it is absolute for the same
+    // reason `--root` is: the session types the line as it stands.
+    expect(workspace.startsWith("/")).toBe(true);
+    expect(prompt).toContain(
+      `\`${command} thread show --root ${root} --ref origin/main --no-fetch --repo ${workspace} --thread 012-x --for dev-core\``,
+    );
+  }, 60_000);
+
+  it("the SAME circuit without the mark prints neither flag — the writing roles are untouched", () => {
+    // The regression named in the statement of work (§4.2): a `claude-code` role does go
+    // to the network, `--no-fetch` would hand it a config that is stale behind a warning,
+    // and its `--repo` is already right by derivation. Same config, same workspaces, one
+    // word of the card less.
+    const command = "node --import tsx packages/agent-protocol/src/cli.ts";
+    const { repo } = contour({
+      mailCommand: command,
+      orchestrator: {
+        ...CONFIG.orchestrator,
+        ref: "origin/main",
+        workdir: { branch: "main", worktrees: ".worktrees" },
+      },
+    });
+    const promptDump = join(repo, "prompt.txt");
+    const exec = stub(repo, `printf '%s' "$*" > ${promptDump}\nsleep 1`);
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "20", "--write"]);
+
+    const prompt = readFileSync(promptDump, "utf8");
+    const root = join(repo, "mailco", "agent-comms");
+    expect(prompt).toContain(
+      `\`${command} thread show --root ${root} --ref origin/main --thread 012-x --for dev-core\``,
+    );
+    expect(prompt).not.toContain("--no-fetch");
+    expect(prompt).not.toContain("--repo");
   }, 60_000);
 
   it("the landing point is announced in the log, so a timeout can be read for what it is", () => {

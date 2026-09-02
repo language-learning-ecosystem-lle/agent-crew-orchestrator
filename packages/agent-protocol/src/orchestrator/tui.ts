@@ -413,9 +413,12 @@ export const renderTui = (input: {
 
   const pairs = frame.leases.map((view, index) => {
     // The observer and `status` are one frame (T-1), the closures included: a pair whose
-    // thread is closed loses its mark here for the same reason it loses it there.
+    // thread is closed loses its mark here for the same reason it loses it there. The
+    // frame's `now` goes with it: without it the top panel dropped the "how much is left"
+    // phrase while `status` printed it (thread 063, john's requirement 5), and two frames
+    // of one fact saying different things is the very defect this thread is about.
     const line = cutTo(
-      renderLeaseLine(view, frame.closedThreads?.has(view.thread) ?? false).split(
+      renderLeaseLine(view, frame.closedThreads?.has(view.thread) ?? false, frame.now).split(
         "\n",
       )[0] as string,
       cols - 2,

@@ -389,7 +389,14 @@ describe("new-thread and the turn parked behind a person (R27, thread 075)", () 
   it("a thread OPENED behind a merge carries the park and is told what lifts it", () => {
     const contest = contour();
 
-    const opened = openWith(contest, ["--expects", "none", "--parked-on", "pr:366"]);
+    const opened = openWith(contest, [
+      "--expects",
+      "none",
+      "--parked-on",
+      "pr:366",
+      "--park-mover",
+      "curator",
+    ]);
 
     expect(opened.code).toBe(0);
     expect(firstHeader(contest, opened.id).fields.parkedOn).toBe("pr:366");
