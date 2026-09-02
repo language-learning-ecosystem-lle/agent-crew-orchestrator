@@ -76,3 +76,4 @@
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
+| 072-ci-outcome-not-delivered | curator · dev-core · john | normal | open | — | — | — | — |
