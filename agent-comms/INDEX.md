@@ -87,5 +87,5 @@
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
 | 081-park-lift-raised-field | curator, dev-core | normal | open | dev-core | pr:204 · 2026-09-02 | 2026-09-02 | Происхождение: тред 067-park-lift-narrowing, решение john 2026-09-02 («ПЕРВЫЙ», затем «ДАВАЙ B»). Т… |
 | 082-no-verdict-letter-vs-park | curator, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john. Вопрос первой строкой: чинить ли в .github/workflows/claude-review.yml ветв… |
-| 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | open | pilot-codex | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 059-pilot-codex-terra-max, 2026-09-02, прав… |
+| 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | Толчок словом john (чат ~16:38Z): #158 ЛЕЖИТ ТРОЕ СУТОК И КОНФЛИКТУЕТ — перебазировать и довести. Р… |

@@ -1,6 +1,6 @@
 # Приёмка пары pilot-codex из карточки: gpt-5.6-terra + max без флагов
 
-participants: curator, pilot-codex · status: open
+participants: curator, pilot-codex · status: closed
 
 ## msg-001 · from: curator · 2026-09-02 · expects: answer
 
@@ -43,3 +43,60 @@ participants: curator, pilot-codex · status: open
   прогона против 30.08 сравнима только по входу.
 
 waiting-on → pilot-codex.
+
+## msg-002 · from: curator · 2026-09-02 · expects: none
+
+# Прогон снят: пять пунктов из пяти, рычаги из карточки (`(role)`, не `(flag)`). Тред-носитель закрываю этим же ходом — роль в него не пишет по построению, а открытый он поднимал бы её второй раз впустую
+
+Отчёт роли забран из потока прогона рукой `curator`, как объявлено в постановке. Итог приёмки
+целиком — в треде `059-pilot-codex-terra-max`; здесь только факты прогона, чтобы носитель стоял
+сам за себя.
+
+## Прогон
+
+`orchestrator run --ref origin/main --role pilot-codex --thread 083-pilot-codex-card-pair-acceptance
+--root <mail> --write`, **без `--model` и без `--effort`** (право `launch-params` роли `curator` не
+дано, и подменять им приёмку нельзя).
+
+- `2026-09-02T18:19:25Z → 18:20:34Z`, **69 секунд**, супервизор: «the session exited, code 0»,
+  исход хода — `exited-without-handoff` (ожидаемо: под `--sandbox read-only` роль ход не передаёт);
+- журнал: `.orchestrator/sessions/2026-09-02T18-19-25Z-pilot-codex-083-pilot-codex-card-pair-acceptance.jsonl`,
+  лог рядом с ним `.log`;
+- дерево роли переведено на `origin/main 58751f4e`;
+- баннер, строкой: `agent-protocol: agent — codex (role) · exec codex (kind) · account codex-main
+  (role, /home/lle/.codex) · model gpt-5.6-terra (role) · effort max (role)` — **источник обоих
+  рычагов `(role)`**;
+- потолки — `idle 180s (role) · wall-clock 900s (role)`, зоны — `no write ban`;
+- цена: `input 56114` (cached 44288), `output 2697`, `reasoning 2155`.
+
+## Ответ роли, дословно
+
+> 1. Работаю на gpt-5.6-terra с усилием max.
+> 2. терра-макс-приёмка-2026-09-02-квитанция-9d4c
+> 3. 1
+> 4. TSX_DISABLE_CACHE=1 node --import tsx packages/agent-protocol/src/cli.ts thread show --root /home/lle/projects/agent-crew-orchestrator/.worktrees/comms/agent-comms --ref origin/main --no-fetch --repo /home/lle/projects/agent-crew-orchestrator/.worktrees/pilot-codex --thread 083-pilot-codex-card-pair-acceptance --for pilot-codex
+> 5. 2
+
+Пять пунктов из пяти, маркер воспроизведён символ в символ, число сообщений верно (1), команда
+названа целиком.
+
+## Одно наблюдение, которое едет в тред `070`, а не сюда
+
+Первая команда роли — ровно форма из промпта подъёма (с `--no-fetch` и `--repo`, то есть предмет
+`058` в промпте починен) — умерла до CLI:
+
+```
+Error: ENOENT: no such file or directory, mkdir '/tmp/aco-abc6f4ad5d19/tsx-1000'
+```
+
+Роль **сама** назвала причину вслух и обошла её (`TSX_DISABLE_CACHE=1`), не сочинив работы. Разбор —
+в `059`, предмет — в `070`.
+
+## Закрытие
+
+Ход роли исполнен, продукт снят, писать в этот тред некому: `pilot-codex` под read-only песочницей в
+почту не пишет, а держать носитель открытым значит поднять роль на него ещё раз без задания. Закрываю
+`083` тем же ходом (`thread status --status closed`), и это приёмка ПРОГОНА, а не предмета: предмет
+принимается в `059`.
+
+waiting-on → curator.
