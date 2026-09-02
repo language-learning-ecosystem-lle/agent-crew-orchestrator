@@ -3455,3 +3455,95 @@ $ git diff --stat a945e56f f7fac1a9 -- docs/protocol-reference.md
 Ход — **curator**: PR готов машинно (гарды 1, 2, 3, 5 закрыты или мои, гард 4 — john), обе находки ревьюера сняты, и от протокола дальше нужен один ход — донести до john строку `sudoers` и кнопку, в этом порядке. Не паркуюсь: своего прогона я не поднимал и ничего не жду — ждать тут нечего, кроме чужой руки.
 
 Если база уедет ещё раз до кнопки — замер из §4 повторяется одной строкой (`git diff --name-only origin/main $(git merge-tree --write-tree origin/main f7fac1a9)`): пока он печатает ровно те же восемь путей, сдвиг инертен и перебазировка не нужна. Если он однажды напечатает девятый путь — это уже другой разговор, и тогда голова уедет, метку надо будет снять и повесить заново после нового зелёного `checks`.
+
+## msg-082 · from: curator · 2026-09-02 · expects: ack
+
+**Требуется решение john: две руки, в этом порядке — (1) строка `/etc/sudoers.d/aco-devops-spawn` на ящике, (2) кнопка merge на #185. Обе готовы к исполнению прямо сейчас, всё остальное в треде закрыто: вердикт `approve` лежит, четыре гарда из пяти закрыты, пятый — гард 4 на доках власти — не открывается ничьей рукой, кроме твоей. Тред паркую на тебе: живой работы в нём больше нет, двигать его до твоего слова некому.**
+
+## 1. Рука первая — строка на ящике. Я замерил её ОТСУТСТВИЕ сам, сейчас, а не принял с прошлого такта
+
+```
+$ ls -l /etc/sudoers.d/aco-devops-spawn
+ls: cannot access '/etc/sudoers.d/aco-devops-spawn': No such file or directory
+$ sudo -n -l -u aco-devops /home/lle/.nvm/versions/node/v24.18.0/bin/claude
+sudo: a password is required
+$ id aco-devops
+uid=1001(aco-devops) gid=1001(aco-devops) groups=1001(aco-devops),1002(contour)
+```
+
+Пользователь §0.1 на месте с 2026-08-30; правила §0.1a нет. Отказ «a password is required» — это и есть доказательство отсутствия: `NOPASSWD` на этот путь не выдан.
+
+Ставится (`docs/box-setup.md` §0.1a, дословно; файл в диффе #185 не меняется — раздел уже в `main`):
+
+```
+# visudo -f /etc/sudoers.d/aco-devops-spawn
+Defaults:lle env_keep += "AGENT_PROTOCOL_WORKER AGENT_PROTOCOL_SESSION_FILE AGENT_PROTOCOL_WAIT_SECONDS AGENT_PROTOCOL_LEASE_DEADLINE CLAUDE_CONFIG_DIR"
+lle ALL=(aco-devops) NOPASSWD: /home/lle/.nvm/versions/node/v24.18.0/bin/claude
+```
+
+Откат — `sudo rm /etc/sudoers.d/aco-devops-spawn`, дешевле и быстрее отката одним PR. Узость правила: цель ровно одна (`(aco-devops)`, не `ALL`), команда ровно одна, `root` целью не является, пароля нет ⇒ подсматривать нечего. Вторая строка не украшение: у `sudo` включён `env_reset`, и без `env_keep` сессия под `aco-devops` молча теряет свой id, файл сессии, дедлайн и каталог аккаунта — поднялась бы без окна и писала бы в аккаунт ящика.
+
+Приёмка (пять строк таблицы §0.1a) исполняется на ящике после установки правила: правило показано без пароля → `--version` печатается → `sudo -n -u aco-devops -- env` и `-u root true` ОТКАЗЫВАЮТ → переменная `env_keep` доехала → под `aco-devops` нет `sudo` и не читаются ключи.
+
+## 2. Рука вторая — кнопка на #185. Гарды замерены мной, не пересказаны
+
+`pnpm protocol merge-gate --ref origin/main --pr 185 --review-workflow 'Claude PR Review'`, мой прогон 2026-09-02 ~13:59Z, дословно:
+
+```
+  ok   guard 1 · approve on the current head: approved on f7fac1a by github-actions — inside the round
+       33632369545 of 'Claude PR Review' on this head (2026-09-02T12:52:17Z…2026-09-02T12:59:38Z)
+  ok   guard 2 · green checks on the same head: 2 check(s) green: review=SUCCESS, checks=SUCCESS
+  you  guard 3 · ascent to a decision of john's: thread '047-devops-role'
+  STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes agent-protocol.json, docs/roles/devops.md
+  you  guard 5 · a trace of the merge
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus CLEAN)
+```
+
+- **гард 1** — закрыт: вердикт лежит ВНУТРИ окна закрытого круга `33632369545` (`Claude PR Review`, событие `pull_request`) на той же голове; сироты нет;
+- **гард 2** — закрыт на той же голове `f7fac1a92c25a1c0038e393b2ab2144eead2d7dc`;
+- **гард 3** — восхождение: твоё слово 2026-09-02 («ВКЛЮЧАЕМ, стоит начать с последнего Sonnet»), доставленное письмом curator `msg-075` полем `delivers`; строка `thread: 047-devops-role` в описании PR есть, `role: dev-core` тоже;
+- **гард 4** — STOP, и он твой: дифф трогает `agent-protocol.json` и `docs/roles/devops.md`, оба дока власти (дверь вывела восемь сама). Ни dev-core, ни я эту дверь не открываем — в этом весь смысл гарда;
+- **гард 5** — след с поимёнными гардами я запишу в этот тред первым же ходом после твоей кнопки.
+
+Восемь доков власти двери: `agent-protocol.json`, четыре карточки ролей (`curator`, `dev-core`, `pilot-codex`, `devops`), `REVIEWER.md`, `PROTOCOL.md`, `.github/workflows`.
+
+**Ритуала рестарта ящиков этот merge НЕ требует.** Дверь печатает предупреждение про `protocolVersion` условно; мой замер против ТЕКУЩЕЙ базы: `git diff origin/main f7fac1a9 -- agent-protocol.json | grep -c protocolVersion` → `0`. Схема не двигается, новых полей нет, `git pull && pnpm install && systemctl --user restart` после кнопки не нужен — живой демон подхватит дрейф конфига сам.
+
+## 3. База уехала пятый раз (`ca6c1c17`) — сдвиг инертен, замер мой
+
+Нота двери о базе консервативна по построению — она называет и тот сдвиг, который слияние изменить не может. Проверил рукой, не поверив докладу прошлого такта:
+
+```
+$ git diff --name-only origin/main $(git merge-tree --write-tree origin/main f7fac1a9)
+agent-protocol.json
+docs/box-setup.md
+docs/protocol-reference.md
+docs/roles/devops.md
+packages/agent-protocol/src/roles/capabilities.ts
+packages/agent-protocol/src/roles/capability-call.ts
+packages/agent-protocol/src/roles/devops-declared.test.ts
+packages/agent-protocol/src/roles/explicit-model.test.ts
+```
+
+Ровно восемь путей диффа #185 и ни одного лишнего: слияние с новой базой не вносит в `main` ничего, кроме этой правки. `merge-tree` код 0, `mergeStateStatus CLEAN`. Перебазировка купила бы ноль изменений в судимом дереве и стоила бы нового `checks` и нового круга — расход без покупки. Если база уедет ещё раз до кнопки, замер повторяется этой же строкой; девятый путь в выводе означал бы другой разговор.
+
+## 4. Почему ПОРЯДОК, а не «обе как получится»
+
+Сначала строка, потом кнопка. Обратный порядок ничего не ломает необратимо, но открывает окно, в котором конфиг уже говорит `active`, а единственный путь подъёма отказывает по имени (`systemUserRefusal`) — контур бьётся в отказ каждый такт и жжёт попытки. Прямой порядок такого окна не имеет: правило на ящике без `active` в конфиге не делает ничего и никого не поднимает.
+
+И то, ради чего порядок: **живой приёмки включения роли — три глагола (`log-tail`, `repo-refresh`, `disk-free`), отказ ПО ИМЕНИ на неразрешённом глаголе, отказ ОС мимо канала — не существует без обеих рук.** Пока их нет, роль проверена только юнитами и интеграционно; рамка «локальность не даёт лазейки» замерена не будет.
+
+## 5. Состояние на сейчас — фактами
+
+- `origin/main` — `ca6c1c17`, `devops.status` в нём — `planned` (прочитал из `git show origin/main:agent-protocol.json`, а не из памяти);
+- PR #185 — `OPEN`, база `main`, голова `f7fac1a92c25a1c0038e393b2ab2144eead2d7dc`, метка `review` висит на этой же голове, четыре коммита;
+- обе находки ревьюера (тело PR отстало от диффа; число 55 с неверно названным набором файлов) закрыты dev-core без коммита — голова не двигалась, якоря гардов 1 и 2 целы; правку тела PR я считаю законной ровно потому, что она не создаёт коммита;
+- незакоммиченного у меня нет, своей рукой в этот такт я не менял ничего — только читал и мерил.
+
+## 6. Парковка: цену называю вслух
+
+`parked-on john` морозит тред целиком — доклад роли его больше не разморозит, снимет только твоё слово. Ставлю именно сейчас и именно здесь, а не отдельным домом, по двум причинам: круг ревью закрыт и вердикт доставлен, живого PR-события тред больше не ждёт (значит парк ничьего письма не съест), а восхождение — разбор, замеры и корень — лежит в этом треде, и отдельный дом его разорвал бы.
+
+Что НЕ сделано в этот такт и почему: хвост открытых PR соседних тредов (#186, #167, #114 — с меткой `review`; #189, #183, #181, #158 — без) я не трогал. Прогон бинден на тред `047-devops-role` одним тредом, а гард 5 требует след в треде-владельце PR, то есть запись в чужую ленту. Это работа следующего такта соответствующих тредов, не пропуск по забывчивости.
+
+Ход — **curator** (формально), фактически двигать тред может только твоя рука. `--expects ack`, `--parked-on john`.
