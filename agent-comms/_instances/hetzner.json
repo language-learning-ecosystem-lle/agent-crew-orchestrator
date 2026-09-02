@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:24:09.412Z",
+  "writtenAt": "2026-09-02T18:24:44.664Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "057-circuit-ping-flaps",
       "state": "running",
       "deadline": "2026-09-02T19:12:48Z"
-    },
-    {
-      "role": "curator",
-      "thread": "059-pilot-codex-terra-max",
-      "state": "draining",
-      "deadline": "2026-09-02T18:56:56Z"
     }
   ]
 }
