@@ -35,19 +35,22 @@
  * members of this union at a new schema number, when the count of restarts john does by hand
  * makes the price of the root path visible — and the count is kept in the thread, not felt.
  *
- * WHAT THIS FILE IS NOT. It is not the door that answers a CALL. The role is `planned` and
- * nothing in this build reads the field, so there is no call surface to refuse anything at — the
- * refusals here are the ones a DECLARATION can get wrong (a capability nobody declared, an empty
- * list, a parameter that belongs to another capability). The refusals of a call — «возможность
- * не объявлена», «параметр вне списка», «цель не объявлена» — and the trace every state-changing
- * call leaves are the executor's, and the executor is a later tact.
+ * WHAT THIS FILE IS NOT. It is not the door that answers a CALL. The refusals here are the ones a
+ * DECLARATION can get wrong (a capability nobody declared, an empty list, a parameter that belongs
+ * to another capability). The refusals of a call — «возможность не объявлена», «параметр вне
+ * списка», «цель не объявлена» — and the trace every state-changing call leaves belong to the
+ * executor, which is `capability-call.ts` (the door) and `capability-run.ts` (the surface that
+ * raises one and runs the plan). Both arrived after this file and through their own review: the
+ * order was declaration first, door second, on purpose — a door written before anyone agreed what
+ * the rights are is a door written to no agreement.
  *
- * The system user `aco-devops` DOES exist on the box now (john's hand of 2026-08-30 ~08:20Z, the
- * class-2 acceptance of `docs/box-setup.md` §0.1 taken under it and passed whole) — so what is
- * missing is no longer an identity but an executor, and this file says so rather than repeating
- * a state of the box. That distinction is the reason the sentence above was rewritten within a
- * day of being written: prose that restates the box goes stale the moment a hand touches it, and
- * a stale declaration reads exactly like a current one.
+ * WHAT THIS FILE DOES NOT RESTATE, and the reason is a measured one. The state of the box —
+ * whether the system user exists, whether the `sudoers` line of `docs/box-setup.md` §0.1a is in
+ * place, whether the row is switched on — is not repeated here. It lives in the config and in
+ * `docs/box-setup.md`, which carry dates and a taken acceptance; prose that restates the box goes
+ * stale the moment a hand touches it, and a stale declaration reads exactly like a current one.
+ * That is not a caution but a field case: the sentence that stood here was rewritten within a day
+ * of being written, because john's hand made it false overnight.
  */
 import { z } from "zod";
 
