@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:00:32.140Z",
+  "writtenAt": "2026-09-02T18:00:38.175Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "052-pr-template",
+      "state": "running",
+      "deadline": "2026-09-02T18:40:34Z"
+    },
     {
       "role": "dev-core",
       "thread": "064-forget-the-consumer",
