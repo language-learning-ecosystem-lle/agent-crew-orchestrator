@@ -140,7 +140,7 @@ import {
   idleStep,
   startWatch,
 } from "./orchestrator/activity.js";
-import { parseUsage, strayArguments } from "./orchestrator/argv.js";
+import { parseUsage, strayArguments, usageFor } from "./orchestrator/argv.js";
 import {
   type AuthSignal,
   authAlarmDue,
@@ -11955,6 +11955,36 @@ const orchestratorStop = (argv: readonly string[]): void => {
 };
 
 /**
+ * WHAT A REFUSAL OF `hold`/`resume` SHOWS — the two forms of THIS command, and nothing
+ * else (thread 087).
+ *
+ * The refusal it replaces printed `${name} is not set` and then the whole usage block,
+ * which opens on `config check` and `config set`: the first thing a human saw after
+ * being told about `--mode` was two commands they had not typed. The form they were
+ * reaching for — `hold <role>` — was not in the first screen at all, and the command
+ * read as broken (john, thread 047, 2026-09-02).
+ *
+ * THE SHORT FORM COMES FIRST because it is the one being reached for, and the asymmetry
+ * is said in words rather than left to be noticed: it ACTS, with no `--write` behind it.
+ * A refusal that offers a state-changing command has to say that it changes state in the
+ * same breath — a reader who takes it for a dry run has been told a false thing by this
+ * text, not by their own carelessness.
+ *
+ * The lines are CUT from `USAGE`, never retyped: see `usageFor`.
+ */
+const HOLD_USAGE = `usage — 'orchestrator hold' has two forms, and the SHORT one (first below, 'resume' lifts it) acts at once: there is no --write on it, typing it IS the decision.
+${usageFor(USAGE, ["orchestrator hold", "orchestrator resume"])}`;
+
+/**
+ * `required`, answering with the command's own two forms instead of the package's help
+ * text. Every flag of the strict form goes through it — `--mode`, `--role` and `--by`
+ * were the same blind refusal, and a door fixed for one of its three flags is a door
+ * that still sends the next hand to `config check`.
+ */
+const holdRequired = (argv: readonly string[], name: string): string =>
+  flag(argv, name) ?? fail(`${name} is not set\n${HOLD_USAGE}`, 2);
+
+/**
  * A hold on a manual session (S5): `take` declares the role taken until a
  * deadline, `release` removes it. The deadline is written INTO THE FILE
  * (`expires`) rather than taken from the daemon settings: that way the holder and
@@ -11967,13 +11997,13 @@ const orchestratorStop = (argv: readonly string[]): void => {
  * to fire is the worst kind).
  */
 const orchestratorHold = (argv: readonly string[]): void => {
-  const mode = required(argv, "--mode");
+  const mode = holdRequired(argv, "--mode");
   if (mode !== "take" && mode !== "release") {
     fail(`--mode '${mode}' — allowed values are take | release`, 2);
     return;
   }
   const holds = flag(argv, "--holds") ?? pathsFrom(argv).holds;
-  const roleId = required(argv, "--role");
+  const roleId = holdRequired(argv, "--role");
   const write = argv.includes("--write");
   const path = join(holds, roleId);
 
@@ -11991,7 +12021,7 @@ const orchestratorHold = (argv: readonly string[]): void => {
     return;
   }
 
-  const by = required(argv, "--by");
+  const by = holdRequired(argv, "--by");
   const registry = registryFrom(argv, undefined);
   if (!registry.isKnown(roleId)) {
     fail(
@@ -12509,8 +12539,22 @@ const orchestratorHoldShort = (argv: readonly string[]): void => {
 };
 
 const orchestratorResumeShort = (argv: readonly string[]): void => {
+  // `resume` HAS ONLY THE SHORT FORM, and the role is the BARE WORD in front of it. Two
+  // ways of not saying it were answered by anything but this command (thread 087): with
+  // nothing at all it walked into the strict handler as `--role undefined` and refused
+  // about a flag `resume` does not even spell; with a flag first (`resume --ref HEAD`)
+  // it took the flag's NAME for the role and reported `there is no hold on '--ref' —
+  // nothing to release` and exit 0, which is the silent swallow wearing a green answer.
+  const role = argv[0];
+  if (role === undefined || role.startsWith("-")) {
+    fail(
+      `'orchestrator resume' names the role whose hold is lifted, as a bare word${role === undefined ? " — nothing was given" : ` — '${role}' is a flag, not a role`}\n${HOLD_USAGE}`,
+      2,
+    );
+    return;
+  }
   const args = withOperatorRef(argv.slice(1));
-  orchestratorHold([...args, "--mode", "release", "--role", argv[0] as string, "--write"]);
+  orchestratorHold([...args, "--mode", "release", "--role", role, "--write"]);
 };
 
 /**
