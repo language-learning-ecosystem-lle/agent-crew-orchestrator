@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T17:16:11.150Z",
+  "writtenAt": "2026-09-02T17:16:17.186Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "064-forget-the-consumer",
       "state": "running",
       "deadline": "2026-09-02T18:16:08Z"
+    },
+    {
+      "role": "devops",
+      "thread": "070-session-tmpdir-breaks-tests",
+      "state": "running",
+      "deadline": "2026-09-02T17:36:14Z"
     },
     {
       "role": "curator",
