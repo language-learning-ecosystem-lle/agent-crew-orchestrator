@@ -28,10 +28,17 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import type { MessageEntry, ThreadInput } from "../thread/check.js";
+import { THREAD_ID } from "../thread/id.js";
 import { compareMessageEntries, parseMessageFile } from "../thread/message.js";
 import { parseLegacyThread, parseMetaFile, type Thread } from "../thread/thread.js";
 
-const THREAD_DIR = /^\d{3}-/;
+/**
+ * WHAT THIS READER SEES AS A THREAD — and the doors that WRITE one ask the very same
+ * value, from `thread/id.ts`. It used to be a literal here, and the write doors did not
+ * ask it at all: a thread could be created under an id this walk never visits, which is
+ * the whole of thread 086.
+ */
+const THREAD_DIR = THREAD_ID;
 
 export type LoadedThread = {
   readonly thread: Thread;

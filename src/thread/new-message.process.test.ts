@@ -2064,3 +2064,96 @@ describe("new-message writes `raised:` (thread 081)", () => {
     expect(refused.out).toContain("2026-09-02T14:24:19Z");
   });
 });
+
+/**
+ * A LETTER INTO A THREAD NOTHING READS (thread 086, measured in 047).
+ *
+ * The harder half of the class. `new-thread` now refuses the id outright — but a directory
+ * under such an id is ALREADY lying in `origin/comms` from before that door existed, and
+ * `git rm` in the mail branch is not this package's move. So the second door has to stand
+ * here: appending into a directory the walker never visits writes a message no reader ever
+ * walks past, and `--write` would report a delivery that reached nobody.
+ *
+ * "Not found" is the WRONG sentence for it and that is the point of the test — the
+ * directory is there, on disk and in the branch. What is missing is a reader.
+ */
+describe("new-message refuses an id the mail cannot read (thread 086)", () => {
+  /** The delivery contour plus a thread directory under an id the walker does not visit. */
+  const withUnreadableThread = (id: string): ReturnType<typeof delivery> => {
+    const contest = delivery();
+    const thread = join(contest.root, id);
+    mkdirSync(join(thread, "messages"), { recursive: true });
+    writeFileSync(join(thread, "_meta.md"), META);
+    for (const args of [
+      ["add", "."],
+      ["commit", "-qm", "a thread from before the door"],
+      ["push", "-q", "origin", "comms"],
+    ]) {
+      execFileSync("git", [
+        "-C",
+        contest.repo,
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@e",
+        ...args,
+      ]);
+    }
+    return contest;
+  };
+
+  it("names the id, the form and the reason — and adds nothing to the branch", () => {
+    const id = "047.1-devops-enablement-acceptance";
+    const contest = withUnreadableThread(id);
+    const before = execFileSync("git", ["-C", contest.remote, "rev-parse", "comms"], {
+      encoding: "utf8",
+    });
+
+    let result: { code: number; out: string };
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "new-message",
+          "--repo",
+          contest.repo,
+          "--root",
+          contest.root,
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--thread",
+          id,
+          "--from",
+          "dev-core",
+          "--expects",
+          "answer",
+          "--waiting-on",
+          "curator",
+          "--body-file",
+          contest.body,
+          "--worker",
+          "claude-code",
+          "--write",
+        ],
+        { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo), IDENTITY) },
+      );
+      result = { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      result = { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain(id);
+    expect(result.out).toContain("<NNN>-<slug>");
+    // And explicitly NOT the sentence that would send the writer hunting for a typo.
+    expect(result.out).not.toContain("not found in");
+    // The message was not written, not committed and not pushed.
+    expect(readdirSync(join(contest.root, id, "messages"))).toHaveLength(0);
+    expect(
+      execFileSync("git", ["-C", contest.remote, "rev-parse", "comms"], { encoding: "utf8" }),
+    ).toBe(before);
+  });
+});

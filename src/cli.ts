@@ -575,6 +575,7 @@ import {
   type GitRun,
   type StagedMessage,
 } from "./thread/deliver.js";
+import { unreadableThreadId } from "./thread/id.js";
 import {
   closedThreads,
   deliveryMarks,
@@ -1797,6 +1798,31 @@ const indexBuild = (argv: readonly string[]): void => {
   process.exit(1);
 };
 
+/**
+ * THE DOOR OF EVERY WRITING COMMAND ON THE ID ITSELF (thread 086, measured in 047).
+ *
+ * The id a write accepted and the id a read can see were two different sets, and they
+ * parted company WITHOUT A WORD: `new-thread --id 047.1-…` reported "committed and pushed",
+ * the directory went into the branch, and `thread show` answered "not found" — because the
+ * walker only visits `^\d{3}-`. A statement of work sent that way reaches nobody and nobody
+ * is told; it is the exact shape a mail command must never have.
+ *
+ * It stands in FRONT of the write — before the files, before the commit, before the push —
+ * and not as an undo after one, for the reason every refusal in this package is a refusal
+ * and not a rollback: the feed is append-only and a pushed mistake is not taken back. The
+ * form itself is asked of `thread/id.ts`, which is also what the walker asks; this door
+ * owns no copy of it.
+ *
+ * The commands are the ones that can reach an id the reader cannot: `new-thread` (creates
+ * the directory), `new-message` and the force-stop announcement (append into one), and
+ * `thread status` (writes the head of one). The readers refuse such an id already, by
+ * simply not finding it.
+ */
+const refuseUnreadableThreadId = (id: string): void => {
+  const problem = unreadableThreadId(id);
+  if (problem !== undefined) fail(problem, 2);
+};
+
 const threadBuild = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
   const id = required(argv, "--id");
@@ -2200,6 +2226,10 @@ const threadTurnKey = (
 const threadStatus = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
   const id = required(argv, "--thread");
+  // Also a writing door on an id (thread 086): both its modes put a `_meta.md` into the
+  // branch. Synthesising or flipping the head of a conversation nothing reads is work that
+  // cannot have an effect, and the answer to it is the name of the real problem.
+  refuseUnreadableThreadId(id);
   const from = required(argv, "--from");
   const loaded = configFrom(argv, repoOf(root));
   const registry = loaded.registry;
@@ -3524,6 +3554,11 @@ const standingParkFor = (input: {
 const newMessage = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
   const threadId = required(argv, "--thread");
+  // The same door as `new-thread`'s (thread 086), and for the harder half of the case: a
+  // directory under such an id may already be lying in the branch from before the refusal
+  // existed, and appending into it would be writing a message no reader ever walks past.
+  // "Not found" would be the wrong sentence for it — the directory IS there.
+  refuseUnreadableThreadId(threadId);
   const from = required(argv, "--from");
   const loaded = configFrom(argv, repoOf(root));
   const registry = loaded.registry;
@@ -3796,6 +3831,9 @@ const newMessage = (argv: readonly string[]): void => {
 const newThread = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
   const id = required(argv, "--id");
+  // THE ID THE READER WILL NEVER SEE IS REFUSED HERE (thread 086) — this is the door the
+  // class was measured on, and it is asked before anything is read, planned or written.
+  refuseUnreadableThreadId(id);
   const loaded = configFrom(argv, repoOf(root));
   const registry = loaded.registry;
 
@@ -8325,6 +8363,9 @@ const planThreadMessage = (
   input: { from: string; expects: Expects; waitingOn?: string | null; text: string },
 ): StagedMessage => {
   if (!registry.isKnown(input.from)) fail(`role '${input.from}' is not listed in the config`, 2);
+  // The package's own message goes through the same door on the id (thread 086): the one
+  // trace of a forced stop must not land where no reader walks.
+  refuseUnreadableThreadId(threadId);
   const threadDir = join(root, threadId);
   if (!existsSync(threadDir)) fail(`thread '${threadId}' not found in '${root}'`, 2);
   const messagesDir = join(threadDir, "messages");
