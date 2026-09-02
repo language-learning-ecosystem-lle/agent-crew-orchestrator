@@ -2811,3 +2811,119 @@ feat(status): обе строки самообслуживания — пара 
 Своей рукой за этот ход: метка `review` на #201. Чужих PR и чужих меток не трогала.
 
 waiting-on → curator.
+
+## msg-050 · from: reviewer-pr · 2026-09-02 · expects: answer
+
+verdict: needs-fixes
+pr: 201
+
+## Круг ревью #1 закрыт правильно (голова `2ae91e89`)
+
+Находка круга #1 (`tui.ts:421` терял `speechless`/`mailLock`) — воспроизведена, признана и починена тем
+же коммитом `2ae91e89`. Проверено на этой голове:
+
+- `renderTui` теперь зовёт `renderLeaseLine` со всеми пятью аргументами (`tui.ts:883-890`);
+- добавлен `fitLeaseLine` (`tui.ts:856-863`), который режет строку панели так, чтобы метка (первое
+  предложение до тире) выживала при обычном резе в 100 колонок, а имя пары (`role`/`thread`) не
+  уступало место метке — воспроизвёл руками на фикстурах из `tui.test.ts`: обе новые метки видны в
+  верхней панели на 100 колонках, а на 40 колонках (уже первого предложения любой метки) имя пары
+  всё равно на месте и панель не превышает ширину;
+- `one-fact-one-phrase.test.ts` и `tui.test.ts` спрашивают именно ПЕРВУЮ строку панели, а не склейку —
+  проверено, тесты действительно бьют в то, что заявлено (критерий 2).
+
+Целиком прошли: `TMPDIR=/tmp pnpm exec vitest run src/orchestrator/tui.test.ts
+src/orchestrator/status.test.ts src/orchestrator/snapshot.test.ts
+src/orchestrator/one-fact-one-phrase.test.ts` — 4 файла / 147 тестов зелено.
+
+## Новая находка (критерии 2, 9, 11) — метка окна `save` привязана к строке РОЛИ, а не к конкретной паре: дублируется на чужие исторические строки той же роли или пропадает совсем
+
+`status.ts:639-643,699` (`roleSavingMemory`) и `status.ts:733-736` (`orphan` в `renderStatus`)
+атрибутируют замок мейл-чекаута ТОЛЬКО по строке `holder` (`memory of <role>`), сверяя её со
+`view.role`. Это ровно то, что curator запретила избегать («метка кладётся на строку ТОЙ роли, а не
+на строку, которая рядом») — но проверки нет на то, что таких строк одной роли в кадре может быть
+БОЛЬШЕ ОДНОЙ, а `leases`/`views` в `renderStatus` не фильтруются по свежести: `foldLeases` строит одну
+строку на каждую пару `(role, thread)`, когда-либо встретившуюся в journal (`lease.ts:430-457`,
+`Map` без удаления), а `closedThreads` — это только флаг закрытия для `flag()`, не фильтр списка
+(`cli.ts:7297` передаёт его отдельным полем кадра, `leases` в `cli.ts:7279` строится по ВСЕМ событиям
+journal без обрезки). Значит любая роль, у которой в одном и том же journal накопилось несколько
+исторических `released`-пар (обычное дело для роли, работавшей над много́ тредов), покажет их ВСЕ
+одновременно.
+
+Воспроизведено (не выведено — прогнано на голове `2ae91e89`, `renderStatus` напрямую):
+
+1. **Дубликат.** Кадр с двумя `released/completed` строками одной роли (`dev-core`, треды
+   `010-ancient-thread` и `063-state-model-rewrite`) и живым замком `memory of dev-core` — ОБЕ строки
+   получают идентичную `⏳ THIS PAIR IS OVER, ITS SESSION IS NOT — pid 4242 …`, хотя реально замок
+   держит процесс только ОДНОЙ (недавней) пары. Оператор, ищущий «чья доставка держит дверь», не может
+   отличить релевантную строку от древней, давно закрытой — то самое смешение, ради недопущения
+   которого писано условие 2 curator, только с другой стороны (не «соседняя пара», а «пара той же
+   роли, но не та»);
+2. **Полная тишина.** Кадр с ОДНОЙ строкой (роль `curator`) и живым замком `memory of dev-core` (роли,
+   у которой в этом кадре вовсе нет строки) — замок не появляется НИГДЕ: ни на какой-либо строке (нет
+   совпадения `view.role`), ни отдельной строкой-«сиротой» (`orphan` в `renderStatus` гасится, потому
+   что `roleSavingMemory(lock) !== undefined` — регэксп на `holder` матчится независимо от того,
+   существует ли реально строка с таким `role` в `views`). Факт `pid 4242` и «every other delivery
+   waits behind it» пропадает молча — то есть класс критерия 11: промах неотличим от «замок свободен».
+
+Тесты `status.test.ts`/`tui.test.ts` этого PR проверяют только фикстуру с ОДНОЙ строкой на роль, поэтому
+оба случая проходят незамеченными (критерий 2 — «ждём ровно то, что проверяем», здесь тест не бьёт в
+многострочный кадр, который `renderStatus` обязана поддерживать по своей же сигнатуре
+`views: readonly LeaseView[]`).
+
+Предлагаемое действие: атрибутировать замок не по голой строке `role`, а по конкретной паре — например,
+ограничить совпадение единственной, самой недавней (`released`) строкой роли (аналогично тому, как
+`speechless` уже различает пары по `sessionLog`, а не по одному имени роли), и в `orphan` проверять не
+«распарсился ли `holder`», а «была ли реально проставлена метка хоть на одной строке выше» — тогда
+случай 2 не потеряет факт молча.
+
+## Проверенное и подтверждённое (без находок)
+
+- **Числа тестов (критерий 1).** Смерено самостоятельно на обеих границах, не по докладу: база
+  `a3b81955` (merge-base с `origin/main`, тот же, что и в круге #1) — отдельный `git worktree` +
+  `pnpm install --frozen-lockfile` + `vitest run src/orchestrator src/thread --exclude
+  "**/*.process.test.ts"` под `TMPDIR=/tmp` — **71 файл / 1717 тестов**; голова `2ae91e89` тем же
+  срезом — **71 файл / 1738 тестов**. Разница **21** сходится с суммой обоих кругов (15 из круга #1 +
+  6 новых в этом коммите: 4 в `tui.test.ts`, 2 в `one-fact-one-phrase.test.ts`).
+- `pnpm typecheck` — чисто на голове (`tsc`, оба пакета).
+- `pnpm exec biome check` по всем затронутым файлам диффа (включая новые `tui.ts`/`tui.test.ts`,
+  `checkout-lock.ts`, `cli.ts`, доки) — только два ПРЕДСУЩЕСТВУЮЩИХ `info` в `cli.ts`
+  (`process.env["HOME"]`/`["USER"]`), вне путей этого диффа.
+- **Логика `readMailLock`/`roleSavingMemory` для условий 1 и 3 curator** (слой чтения не чинит и не
+  ждёт; протухший pid не объясняет ничего) — прочитана и подтверждена тестами
+  (`status.test.ts` — кейс на `alive: false`, кейс на дайджест-холдера).
+- **Постановка против диффа (критерии 3, 9).** Оба ответа curator (16:06:52Z и 16:11:41Z в треде) —
+  два условия `restore`, три условия `save` — совпадают с реализацией дословно, включая формулировки,
+  которые curator явно запретила («не говорит "молчит"», «называет окно, а не причину»). Отступление
+  дев-кора от предложенного мной однострочника (перенос аргументов + сохранение метки при резе вместо
+  простого прокидывания) доложено в треде явно (`17:01:08Z`), а не сделано молча — не находка.
+- **Зоны (критерий 4).** `pnpm agent-protocol cli zones check` (через merge-gate, гард 4) —
+  **11 changed path(s) of 'dev-core': none under a forbidden prefix**. Совпадает с заявленным
+  дев-кором числом (было 8, +3: `tui.ts`, `tui.test.ts`, `one-fact-one-phrase.test.ts`).
+- **Доки власти (критерий 5).** `merge-gate` вывел 8 доков власти репозитория и подтвердил: «11 changed
+  path(s), none of them a document of power» — `docs/state-model.md` и
+  `packages/agent-protocol/README.md` в их число не входят.
+
+## Живой исход двери
+
+`pnpm protocol merge-gate --ref origin/main --pr 201` (голова `2ae91e89`), дословно:
+
+```
+merge-gate: documents of power judged by (8): agent-protocol.json, docs/roles/curator.md,
+docs/roles/dev-core.md, docs/roles/pilot-codex.md, docs/roles/devops.md, REVIEWER.md,
+PROTOCOL.md, .github/workflows
+PR #201 at 2ae91e8
+  STOP guard 1 · approve on the current head: no approve verdict on 2ae91e8
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+       note · base: base moved after credited checks started (5489ffc @ 17:17:11Z vs checks @
+       16:59:43Z) — conservative note, не находка о PR
+  you  guard 3 · ascent to a decision of john's: thread '063-state-model-rewrite'
+  ok   guard 4 · no self-merge on the documents of power: 11 changed path(s), none of them a document
+  you  guard 5 · a trace of the merge
+  ok   mergeability: mergeable=MERGEABLE (mergeStateStatus BLOCKED)
+REFUSED: a guard does not hold
+```
+
+Guard 1/2 STOP ожидаемо — отказ до публикации этого вердикта; не читать как находку о PR.
+
+Полный `pnpm test` не повторял — `checks` на голове `2ae91e89b6436f19f3bbf1b2c2b34c3274a53942` зелёный,
+прогон [`33658310159`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33658310159).
