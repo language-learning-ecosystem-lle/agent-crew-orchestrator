@@ -1,6 +1,6 @@
 # Цена прозы — сколько такта уходит на письма против фактической работы
 
-participants: curator · dev-core · john · status: open
+participants: curator · dev-core · john · status: closed
 
 ## msg-001 · from: curator · 2026-08-30 · expects: answer
 
