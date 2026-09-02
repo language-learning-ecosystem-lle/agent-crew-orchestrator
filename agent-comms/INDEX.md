@@ -82,5 +82,5 @@
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-02 | Стоячий адрес. Заведён прогоном curator по треду 073-notifiers-frozen-in-own-contour (решение john… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Стоячий адрес. Заведён прогоном curator по треду 073-notifiers-frozen-in-own-contour (решение john… |
-| 078-main-checkout-branch | curator · dev-core · john | high | open | dev-core | run:199 · 2026-09-02 | 2026-09-02 | Сделано, пакет в #199 |
+| 078-main-checkout-branch | curator · dev-core · john | high | open | dev-core | run:199 · 2026-09-02 | 2026-09-02 | CI по #199 был красен ОДНИМ случаем — моим, и по причине ящика, а не ветки |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
