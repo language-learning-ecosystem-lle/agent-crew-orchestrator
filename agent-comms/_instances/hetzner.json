@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T16:38:40.572Z",
+  "writtenAt": "2026-09-02T16:38:58.346Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "063-state-model-rewrite",
+      "state": "running",
+      "deadline": "2026-09-02T17:38:55Z"
+    },
     {
       "role": "curator",
       "thread": "073-notifiers-frozen-in-own-contour",
