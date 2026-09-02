@@ -607,3 +607,13 @@ feat(pr): поле role обязательно — отказ при откры�
 Границы постановки (§3 `2026-09-02T18-04-02Z-curator.md`) соблюдены и ребейзом не сдвинуты: воркфлоу не тронуты, `.github/pull_request_template.md` не тронут, карточки ролей не тронуты, `thread:` не тронут, норм за пределами решения john не введено. Доков власти в диффе нет.
 
 **Имя команды для §4 постановки — по-прежнему `pr open`;** этот PR открыт ею, ребейз имени не менял.
+
+## msg-015 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #216: `success`.**
+
+feat(pr): поле role обязательно — отказ при открытии PR и на merge (тред 052) · голова `bf704ce5ebe3c3f2e80f212ce495541aa94e4364` · попытка 1 · прогон [`33695158737`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33695158737)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
