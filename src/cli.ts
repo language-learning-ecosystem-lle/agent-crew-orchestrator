@@ -1125,9 +1125,10 @@ const repairFrom = (argv: readonly string[]): LoadedRepair => {
  * stops answering "the root of the repository" and answers "the current directory" —
  * so a guard that resolves the repository from its cwd resolves it to whatever
  * directory the hook's command happened to run in. That is not a hypothetical: the
- * zones guard of thread 020 let a commit into `apps/pronunciation-service` through on
- * its first live test, because `pnpm -F agent-protocol` runs in the package directory
- * and the inherited `GIT_DIR` made that directory look like the repository root — the
+ * zones guard of thread 020 let a commit into a path under a prefix FORBIDDEN to the
+ * committing role through on its first live test, because `pnpm -F agent-protocol`
+ * runs in the package directory and the inherited `GIT_DIR` made that directory look
+ * like the repository root — the
  * guard concluded "not a role workspace" and stood aside, silently, in exactly the
  * situation it exists for.
  */

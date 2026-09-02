@@ -39,8 +39,8 @@
       "kind": "claude-code",
       "status": "active",
       "wake": { "mode": "watch", "session": "acme-dev-core" },
-      "summary": "Основной поток: ядро, API, синхронизация — всё, кроме apps/pronunciation-service",
-      "zones": { "writes": [], "forbidden": ["apps/pronunciation-service"] },
+      "summary": "Основной поток: ядро, API, синхронизация — всё, кроме apps/acme-service",
+      "zones": { "writes": [], "forbidden": ["apps/acme-service"] },
       "instructions": [{ "kind": "in-repo", "path": "CLAUDE.md" }],
       "launch": {
         "allowedTools": ["Bash", "Read", "Edit", "Write"],
@@ -52,8 +52,8 @@
       "kind": "claude-code",
       "status": "active",
       "wake": { "mode": "watch", "session": "acme-dev-acme" },
-      "summary": "Поток произношения: apps/pronunciation-service, свои префиксы очередей",
-      "zones": { "writes": ["apps/pronunciation-service"], "forbidden": [] }
+      "summary": "Поток acme: apps/acme-service, свои префиксы очередей",
+      "zones": { "writes": ["apps/acme-service"], "forbidden": [] }
     },
     {
       "id": "reviewer-pr",
