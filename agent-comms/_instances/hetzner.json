@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T17:28:54.385Z",
+  "writtenAt": "2026-09-02T17:30:21.124Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "064-forget-the-consumer",
-      "state": "draining",
-      "deadline": "2026-09-02T18:00:43Z"
-    },
     {
       "role": "dev-core",
       "thread": "073-notifiers-frozen-in-own-contour",
