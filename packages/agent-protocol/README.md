@@ -2201,6 +2201,19 @@ agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <
                             # the NUMBER is refused if a thread already holds it (029): `NNN` is a short
                             # address, and `029` handed out twice made "тред 029" mean two things.
                             # nothing is renamed after the fact — the full id stays unique, the door changes
+                            # AND THE FORM of the id is refused BY NAME (086): the id must be `NNN-<slug>` —
+                            # three digits and a dash — because that is the only shape the walker of the mail
+                            # reads. `--id 047.1-…` used to be accepted, pushed and reported as delivered,
+                            # while `thread show` answered "not found": the thread was in the branch and
+                            # invisible to every reader, so what was sent into it reached nobody and nobody
+                            # was told. The refusal stands in FRONT of the write and asks the walker's own
+                            # pattern (`thread/id.ts`) — the feed is append-only and a pushed id is not
+                            # taken back. Sub-thread numbers (`NNN.M`) are not a form this protocol has;
+                            # a new form of address is a change of the norm, and the norm is john's
+                            # THE SAME DOOR ON `new-message` AND `thread status`: a directory under such an
+                            # id may already be lying in the branch from before this refusal, and a letter
+                            # into it is a letter no reader ever walks past — refused by the id, not by a
+                            # "not found" (the directory IS there; what is missing is a reader)
 # the orchestrator: the paths come from the config (section `orchestrator`), operation needs only --ref;
 # the path flags below are omitted — they remain an override for checks on a copy of the mail
 # the agent binaries come from the MACHINE config (~/.config/agent-protocol/local.json, or --local-config <p>)

@@ -558,3 +558,94 @@ describe("new-thread writes `raised:` (thread 081)", () => {
     expect(refused.out).toContain("AGENT_PROTOCOL_RAISED_AT");
   });
 });
+
+/**
+ * THE WRITING DOOR AND THE READING DOOR NOW ASK THE SAME ID (thread 086, measured in 047).
+ *
+ * The case as it happened: `--id 047.1-devops-enablement-acceptance` was accepted, the
+ * directory went into `origin/comms` with a "committed and pushed", and `thread show`
+ * answered "not found" — the walker only visits `^\d{3}-`. The statement of work sent that
+ * way reached nobody and raised nobody, and nothing said so.
+ *
+ * The assertion that matters is the LAST one of each case: the branch in `origin` is
+ * untouched. The refusal has to stand in FRONT of the write, not undo one — the feed is
+ * append-only, and a pushed directory is not taken back by this or any command.
+ */
+describe("new-thread refuses an id the mail cannot read (thread 086)", () => {
+  /** The same command as `open`, with the id typed by the case: `--id` is read by indexOf. */
+  const openId = (contest: Contour, id: string): { code: number; out: string } => {
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "new-thread",
+          "--repo",
+          contest.repo,
+          "--root",
+          contest.root,
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--id",
+          id,
+          "--title",
+          "A new conversation",
+          "--participants",
+          "dev-core,curator",
+          "--from",
+          "dev-core",
+          "--expects",
+          "answer",
+          "--waiting-on",
+          "curator",
+          "--worker",
+          "claude-code",
+          "--body-file",
+          contest.body,
+          "--write",
+        ],
+        { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo), IDENTITY) },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("the sub-thread number is refused BY NAME, with the form and the reason", () => {
+    const contest = contour();
+    const id = "047.1-devops-enablement-acceptance";
+
+    const result = openId(contest, id);
+
+    expect(result.code).toBe(2);
+    // Pinned by MEANING — what the refusal names — and not by the whole sentence.
+    expect(result.out).toContain(id);
+    expect(result.out).toContain("<NNN>-<slug>");
+    expect(result.out).toMatch(/thread show/);
+    // Nothing was written, committed or pushed: the door is in front of the write. Asked
+    // of the checkout and of the branch, not of the output — the refusal's own prose says
+    // the words "committed and pushed" about the thread it is refusing to create.
+    expect(existsSync(join(contest.root, id))).toBe(false);
+    expect(inOrigin(contest)).not.toContain(id);
+  });
+
+  it("the boundary: 47-, 0471- and _ are refused, and NNN- goes through", () => {
+    for (const id of ["47-foo", "0471-foo", "_foo"]) {
+      const contest = contour();
+
+      const result = openId(contest, id);
+
+      expect(result.code, id).toBe(2);
+      expect(result.out, id).toContain(id);
+      expect(inOrigin(contest), id).not.toContain(id);
+    }
+
+    const legal = contour();
+    const passed = openId(legal, "047-devops-role");
+    expect(passed.code).toBe(0);
+    expect(inOrigin(legal)).toContain("agent-comms/047-devops-role/_meta.md");
+  });
+});
