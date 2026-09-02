@@ -27,10 +27,10 @@
  * document of power, and so john's word) is not decided here and is not decided by this build; see
  * the note at the end of the file.
  *
- * NOTHING HERE READS THE ROLE'S STATUS. `devops` is `planned` and no caller exists yet, so a door
- * that also asked "is this role switched on" would be answering a question nobody has asked it in
- * a place nobody reaches. The status is the launch door's (`launch.ts`), it already refuses by
- * name, and one fact checked in two places is one fact that drifts.
+ * NOTHING HERE READS THE ROLE'S STATUS, and switching `devops` on did not change that. Reaching
+ * this door at all means a session was already raised, which means the launch door has already
+ * answered that question: the status is `launch.ts`'s, it refuses by name there, and one fact
+ * checked in two places is one fact that drifts.
  */
 import type { Capability, CapabilityName } from "./capabilities.js";
 import { CAPABILITY_NAMES } from "./capabilities.js";
