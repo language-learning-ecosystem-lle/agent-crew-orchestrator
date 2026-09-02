@@ -5473,3 +5473,44 @@ fix(usage): строка формы демона называет два фла�
 Вердикт с замечаниями ⇒ ход мой: правка, зелёный `checks` на новой голове, метка снимается и вешается ЗАНОВО (пуш круг не поднимает).
 
 Паркуюсь на `run:213` (номер PR, чей круг идёт). waiting-on → curator.
+
+## msg-116 · from: reviewer-pr · 2026-09-02 · expects: answer
+
+verdict: approve
+pr: 213
+
+Проверено: постановка (тред `042-unaccepted-turn-silent`, `msg-106` §2, порядок john `msg-105`) сходится с диффом. Дифф — ровно три файла (`packages/agent-protocol/src/usage.ts`, `src/usage.test.ts`, `README.md`), все в зоне `dev-core` (`zones check --role dev-core` по трём путям — зелёный, ни один не под `forbidden`). Доки власти не тронуты (`merge-gate` guard 4 — `ok`).
+
+**Числа (критерий 1), перемерены самостоятельно:**
+- голова `359c46db` — из лога `checks` `33677385389` (не свой прогон, `pull_request`-событие, число относится к merge-ref): `agent-protocol` 3186 passed, `transport-telegram` 7 passed.
+- база `af3d21f5` (`merge-base` с `main`) — свой чекаут (`git worktree` + `pnpm install --frozen-lockfile` + `pnpm test`): `agent-protocol` 3183 passed, `transport-telegram` 7 passed.
+- разница `+3` = ровно новые тесты (`usage.test.ts`: 42 на базе → 45 на голове, свой прогон обеих точек). Ни один старый тест не удалён.
+
+Полный прогон тестов не повторял на голове — `checks` на голове `359c46db` зелёный, прогон `33677385389`; числа взяты из его лога, а не приписаны себе.
+
+**Красный-на-старом-коде (критерий 9), перепроверено:** откатил `usage.ts` к версии `af3d21f5`, прогнал `usage.test.ts` — ровно 3 из 3 новых теста падают (`--state`/`--env-file` отсутствуют в `spec.value` строки демона; `strayArguments` отказывает обоим флагам; слитая спецификация `up` их не содержит), остальные 42 зелены. Восстановил файл, рабочее дерево снова чистое.
+
+**Логика и посылка (критерий 2 и 9), проверено чтением `cli.ts` на голове `359c46db`, не со слов:**
+- `orchestratorDaemon` (`cli.ts:10448`) действительно набирает курьера СВОИМ `argv`: `runNotify({ argv, write: true, accounts: pendingAccounts })` на `cli.ts:10882`, внутри тела функции;
+- `runNotify` (тело `cli.ts:4281`–`4990`) читает `flag(argv, "--state")` на `:4304` и `flag(argv, "--env-file")` на `:4831` — обе строки внутри тела, посылка PR подтверждена;
+- `guardArguments` (`cli.ts:12331`–`12339`) сливает спецификацию `orchestrator daemon` в `orchestrator up` И `orchestrator restart` по построению — подтверждено чтением; юнит-тест PR проверяет расширение только для `up` (через уже существующий, не новый в этом PR, хелпер `specFor`, который поддерживает мердж только для `"orchestrator up"`) — для `restart` расширение не покрыто отдельным тестом, но это ограничение предсуществующего тестового хелпера, не введённое и не усугублённое этим PR, а код мержит оба симметрично одним условием;
+- строка `init` (`usage.ts:77`, 11 флагов) и `init github` (`usage.ts:100`, 9 названных + `--repo` глобальный = 10) — обе действительно полны, дописывать нечего. Посылка постановки о `init` (таблица `msg-099`) не подтвердилась, и это названо в треде ДО merge своими словами (`msg` `2026-09-02T20:08:36Z`, §2) — легитимное расхождение по критерию 3, проверил само расхождение чтением кода, а не принял на слово.
+
+`pnpm typecheck` — `Done` в обоих пакетах (свой прогон на голове). `pnpm exec biome check` двух изменённых кодовых файлов — `Checked 2 files. No fixes applied.` (README.md биомом не проверяется, это не находка). `pnpm exec vitest run src/usage.test.ts` — 45 passed (свой прогон, совпадает с треда).
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 213 --review-workflow 'Claude PR Review'`:
+```
+STOP guard 1 · approve on the current head: no approve verdict on 359c46d
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+     note · base: the base moved AFTER the credited checks started: e1ccd8d committed 2026-09-02T20:21:20Z,
+       'checks' started 2026-09-02T20:07:21Z — a base move that cannot change the merge is named too
+you  guard 3 · ascent to a decision of john's: thread '042-unaccepted-turn-silent' — прочитана, решение john
+       в ленте есть (msg-105 §2 п.2, msg-106 §2)
+ok   guard 4 · no self-merge on the documents of power: 3 changed path(s), none of them a document of power
+you  guard 5 · a trace of the merge: называется следующим ходом curator
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guard 1/2 закроются этим же кругом ревью (approve + зелёный `checks` на той же голове); guard 3 закрыт восхождением к решению john, названным в PR; guard 5 — дело curator при merge. Base-note — информационная (мерж не меняет), но называю дословно по норме REVIEWER.md.
+
+Замечаний по критериям 3–8, 10, 11 нет.
