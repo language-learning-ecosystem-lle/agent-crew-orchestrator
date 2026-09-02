@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T21:20:18.365Z",
+  "writtenAt": "2026-09-02T21:21:52.602Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "074-parallelism-and-domains",
-      "state": "draining",
-      "deadline": "2026-09-02T21:54:26Z"
-    },
     {
       "role": "dev-core",
       "thread": "081-park-lift-raised-field",
