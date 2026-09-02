@@ -256,19 +256,25 @@ export const USER_BIN_DIRS: readonly string[] = [".local/bin"];
  * dress that fault as a working environment. `preflight` names that one by itself.
  */
 export const sessionPathValue = (input: {
-  /** The inherited `PATH`, as the supervisor's own environment carries it. */
-  readonly path?: string;
+  /**
+   * The inherited `PATH`, as the supervisor's own environment carries it. Explicitly
+   * `| undefined` and not merely optional: under `exactOptionalPropertyTypes` those are
+   * different types, and the caller reads `process.env`, where a missing variable IS the
+   * value `undefined` rather than an absent key.
+   */
+  readonly path?: string | undefined;
   /** The user's home; absent (an environment without `HOME`) means nothing is added. */
-  readonly home?: string;
+  readonly home?: string | undefined;
   /** Does this directory exist on the box — injected, so the rule stays testable. */
   readonly exists: (dir: string) => boolean;
   /** The candidates, relative to `home`; defaults to {@link USER_BIN_DIRS}. */
   readonly dirs?: readonly string[];
 }): string | undefined => {
-  if (!input.path || !input.home) return undefined;
+  const home = input.home;
+  if (!input.path || !home) return undefined;
   const present = input.path.split(":").filter((entry) => entry.length > 0);
   const added = (input.dirs ?? USER_BIN_DIRS)
-    .map((dir) => join(input.home as string, dir))
+    .map((dir) => join(home, dir))
     .filter((dir) => !present.includes(dir) && input.exists(dir))
     .filter((dir, index, all) => all.indexOf(dir) === index);
   return added.length === 0 ? undefined : [...present, ...added].join(":");
