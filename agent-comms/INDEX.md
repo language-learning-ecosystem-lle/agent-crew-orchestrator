@@ -77,7 +77,7 @@
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Слово john полем delivers (чат ~21:14Z): #206 СМЁРЖЕН его кнопкой. Петля усиления отказов уведомите… |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | curator | — | 2026-09-02 | Гард 5 — след merge #206, поимённо; и новый замер: правило глушения прогнано на РЕАЛЬНОЙ ленте 077… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | verdict: approve |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~18:44Z). Предмет ПЕРЕФОРМУЛИРОВАН: чиним не проверку, а… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
