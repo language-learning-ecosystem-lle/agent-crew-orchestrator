@@ -180,7 +180,7 @@ const mergeable = (over: Record<string, unknown> = {}): unknown => ({
       conclusion: "SUCCESS",
       completedAt: "2026-07-30T00:04:05Z",
     },
-    { context: "pronunciation", state: "SUCCESS" },
+    { context: "acme-e2e", state: "SUCCESS" },
   ],
   files: [{ path: "packages/agent-protocol/src/merge/gate.ts" }],
   mergeable: "MERGEABLE",
@@ -220,7 +220,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(result.code).toBe(0);
     expect(result.out).toContain("ok   guard 1");
     // The status CONTEXT half of the rollup arrives as a name, not as "?".
-    expect(result.out).toContain("pronunciation=SUCCESS");
+    expect(result.out).toContain("acme-e2e=SUCCESS");
     expect(result.out).toContain("guards 3 and 5 are yours to answer");
   });
 
@@ -450,7 +450,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
               completedAt: "2026-07-30T00:20:41Z",
             },
             {
-              name: "pronunciation",
+              name: "acme-e2e",
               status: "COMPLETED",
               conclusion: "SUCCESS",
               completedAt: "2026-07-29T23:58:09Z",
@@ -515,7 +515,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
               completedAt: "2026-07-31T03:33:11Z",
             },
             {
-              name: "pronunciation",
+              name: "acme-e2e",
               status: "COMPLETED",
               conclusion: "SUCCESS",
               completedAt: "2026-07-31T02:46:03Z",

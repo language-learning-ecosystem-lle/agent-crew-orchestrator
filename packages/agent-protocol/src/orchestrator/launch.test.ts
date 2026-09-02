@@ -969,7 +969,7 @@ describe("the permission profile — part of the launch contract (S7)", () => {
       prompt: "p",
       maxTurns: "25",
       launch: { allowedTools: ["Bash", "Edit"] },
-      denyRules: ["Edit(apps/pronunciation-service)", "Edit(apps/pronunciation-service/**)"],
+      denyRules: ["Edit(apps/acme-service)", "Edit(apps/acme-service/**)"],
     });
     expect(argv).toEqual([
       "-p",
@@ -979,7 +979,7 @@ describe("the permission profile — part of the launch contract (S7)", () => {
       "--settings",
       JSON.stringify({
         permissions: {
-          deny: ["Edit(apps/pronunciation-service)", "Edit(apps/pronunciation-service/**)"],
+          deny: ["Edit(apps/acme-service)", "Edit(apps/acme-service/**)"],
         },
       }),
       "--max-turns",
