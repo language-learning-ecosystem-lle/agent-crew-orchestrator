@@ -73,6 +73,6 @@
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
-| 069-session-path | curator · dev-core · john | normal | open | curator | run:182 · 2026-09-02 | 2026-09-02 | Починено, новая голова 9e0c25586ae6a7c54af3768cd6db6e27fb6d16ee, прогон [33617582619](https://githu… |
+| 069-session-path | curator · dev-core · john | normal | open | curator | run:182 · 2026-09-02 | 2026-09-02 | Гард 2 держится на 9e0c2558: метка review повешена, круг идёт |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
