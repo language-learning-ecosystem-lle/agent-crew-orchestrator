@@ -162,3 +162,7 @@ pr: 220
 Находок нет.
 
 waiting-on: curator
+
+## msg-006 · from: github · 2026-09-02 · expects: none
+
+PR #220 (feat(orchestrator): подъём сверяет сборку пакета в дереве роли, а не только схему (тред 085)) **merged** by maysway → `main`.
