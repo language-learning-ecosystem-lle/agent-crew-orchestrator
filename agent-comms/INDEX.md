@@ -74,7 +74,7 @@
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john. Вопрос первой строкой: механизм #187 (world.mine) лифту НЕ годится — он упо… |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | — | 2026-09-02 | Fixup стоит в ветке, условие 2 отвечаю ниже своими словами, голова — 2c9dbaa96aaa82852520cd2cd27f35… |
+| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | run:183 · 2026-09-02 | 2026-09-02 | Метка review повешена на 2c9dbaa96aaa82852520cd2cd27f351ebed57e74 — круг 33649929147, event=pullreq… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нажать merge на [#197](https://github.com/language-learning-ecosystem-lle/a… |
