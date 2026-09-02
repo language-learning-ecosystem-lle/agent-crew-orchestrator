@@ -71,7 +71,7 @@ const contour = (): { repo: string; mail: string } => {
   execFileSync("git", ["clone", "-q", origin, repo]);
   writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
   writeFileSync(join(repo, "CARD.md"), "the role card\n");
-  writeFileSync(join(repo, ".gitignore"), ".worktrees/\n.orchestrator/\nmailco/\n");
+  writeFileSync(join(repo, ".gitignore"), ".worktrees/\n.orchestrator/\nmailco/\nnode_modules/\n");
   git(repo, "add", ".");
   git(repo, "commit", "-qm", "config");
   git(repo, "push", "-q", "origin", "main");
@@ -768,5 +768,102 @@ describe("the main checkout on a foreign branch is a refusal, not an inventory l
     expect(result.out).toContain("2 commit(s) of 'origin/main' are missing from it");
     // The stub records its own start; the absence of the file is the absence of a session.
     expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+});
+
+/**
+ * THE BUILD THE TREE RUNS (thread `085-stale-workspace-package`) — through the real frame,
+ * because the whole defect lives outside the process: two manifests on a disk, one of them
+ * in a directory a human forgot to install into.
+ *
+ * WHY IT CANNOT BE A UNIT. The pure function is already held by
+ * `workspace-package.test.ts`; what is unproven there is the JOINT — that the door stands
+ * in the launch at all, that it reads the two manifests of THESE two trees, and that the
+ * refusal happens before a lease is taken. The field case had a passing version gate right
+ * beside it, so "a check exists" and "a launch is refused" are two different claims.
+ */
+describe("the workspace runs the build the circuit runs (thread 085)", () => {
+  /** An installed copy of the package, as pnpm would leave it: one manifest, one version. */
+  const install = (root: string, version: string): void => {
+    const dir = join(root, "node_modules", "agent-protocol");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "package.json"),
+      `${JSON.stringify({ name: "agent-protocol", version }, null, 2)}\n`,
+    );
+  };
+
+  /** The home checkout of a CONSUMING contour: it depends on the package by a pinned tag. */
+  const consumer = (repo: string, pin: string): void => {
+    writeFileSync(
+      join(repo, "package.json"),
+      `${JSON.stringify({ name: "consumer", dependencies: { "agent-protocol": pin } }, null, 2)}\n`,
+    );
+  };
+
+  it("the field case: the tree is on an older build than the home checkout → REFUSED by name, no lease", () => {
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+    consumer(repo, "github:lle/agent-crew-orchestrator#agent-protocol-v0.2.9");
+    install(repo, "0.2.9");
+    install(workspace(repo), "0.2.7");
+
+    const result = run(repo);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("0.2.7");
+    expect(result.out).toContain("0.2.9");
+    expect(result.out).toContain("agent-protocol-v0.2.9");
+    expect(result.out).toContain(`pnpm --dir ${workspace(repo)} install --frozen-lockfile`);
+    // AND THE ATTEMPT IS NOT SPENT: this is a defect of the environment, not of the pair —
+    // the same shape as the credentials refusal. No journal means no lease and no launch.
+    expect(existsSync(journalPath(repo))).toBe(false);
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+
+  it("a tree that was never installed into → refused, and the missing path is named", () => {
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+    consumer(repo, "github:lle/agent-crew-orchestrator#agent-protocol-v0.2.9");
+    install(repo, "0.2.9");
+
+    const result = run(repo);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain(join(workspace(repo), "node_modules", "agent-protocol"));
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+
+  it("the two builds agree → the session starts, and the line says which build it stands on", () => {
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+    consumer(repo, "github:lle/agent-crew-orchestrator#agent-protocol-v0.2.9");
+    install(repo, "0.2.9");
+    install(workspace(repo), "0.2.9");
+
+    const result = run(repo);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("package — ");
+    expect(result.out).toContain("agent-protocol 0.2.9");
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(true);
+  });
+
+  it("this contour installs no copy of itself → the door says NOTHING and the launch goes on", () => {
+    // The protocol's own repository: `node_modules/agent-protocol` exists in neither tree,
+    // so there is no expectation to compare against. A door that invented one here would
+    // refuse every role of the repository it is written in — which is this test.
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+
+    const result = run(repo);
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("package — ");
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(true);
   });
 });

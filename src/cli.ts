@@ -514,6 +514,13 @@ import {
   workspaceRoleOf,
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
+import {
+  checkWorkspacePackage,
+  manifestPin,
+  manifestVersion,
+  WORKSPACE_PACKAGE,
+  type WorkspacePackageFacts,
+} from "./orchestrator/workspace-package.js";
 import { type CheckoutState, runCapabilityCall } from "./roles/capability-run.js";
 import { judgeContour, judgeGround } from "./roles/contour.js";
 import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
@@ -5615,6 +5622,44 @@ const workspaceFacts = (path: string): WorkspaceFacts => {
 };
 
 /**
+ * THE IO HALF OF THE PACKAGE CHECK (thread 085) — three file reads and no network, which
+ * is the requirement: this runs at every launch of every role.
+ *
+ * A MANIFEST THAT DOES NOT PARSE IS READ AS ABSENT, deliberately. The alternative is a
+ * door that dies on somebody's broken `package.json` in a tree it was only asked to
+ * measure — and "absent" already has a meaning here that a human acts on ("install it"),
+ * while an exception would take the whole tick with it.
+ */
+const manifestText = (file: string): string | undefined => {
+  if (!existsSync(file)) return undefined;
+  try {
+    return readFileSync(file, "utf8");
+  } catch {
+    return undefined;
+  }
+};
+
+const installedVersionIn = (root: string): string | undefined => {
+  const text = manifestText(join(root, "node_modules", WORKSPACE_PACKAGE, "package.json"));
+  return text === undefined ? undefined : manifestVersion(text);
+};
+
+const workspacePackageFacts = (input: {
+  readonly repo: string;
+  readonly path: string;
+}): WorkspacePackageFacts => {
+  const installed = installedVersionIn(input.path);
+  const reference = installedVersionIn(input.repo);
+  const home = manifestText(join(input.repo, "package.json"));
+  const pin = home === undefined ? undefined : manifestPin(home);
+  return {
+    ...(installed === undefined ? {} : { installed }),
+    ...(reference === undefined ? {} : { reference }),
+    ...(pin === undefined ? {} : { pin }),
+  };
+};
+
+/**
  * IS THE WORKTREE LOCKED, AND BY WHOM — read through `git worktree list --porcelain`
  * rather than off the `locked` file inside the admin directory: the listing is the
  * public interface, and the file is an implementation detail we would be betting on.
@@ -9807,12 +9852,31 @@ const settleRun = (input: {
   }
 
   const path = workspacePath({ repo, worktrees: workdirSection.worktrees, role: role.id });
+  // WHICH BUILD THAT TREE RUNS (thread 085) — BEFORE the lock is taken and before the tree
+  // is touched, because this refusal is about the tree's CONTENTS and not about its head:
+  // nothing here needs the worktree to have been moved to the base, and a refusal after
+  // the lock would leave a lock behind for a fault a human repairs by hand.
+  //
+  // ONLY FOR A TREE THAT ALREADY EXISTS. A workspace that is about to be created is empty
+  // by construction, and installing into it is the ritual's step, not this door's — a
+  // check that refused every first launch of a new role would be a door against itself.
+  const facts = workspaceFacts(path);
+  if (facts.exists) {
+    const build = checkWorkspacePackage({
+      role: role.id,
+      path,
+      repo,
+      facts: workspacePackageFacts({ repo, path }),
+    });
+    if (!build.ok) return { ok: false, reason: build.reason, lines };
+    if (build.note !== undefined) lines.push(`package — ${build.note}`);
+  }
   // WHOSE DIRT IT IS, ANSWERED FROM WHAT WAS ALREADY READ (thread 023, requirement 5):
   // the release reason of the previous run is two lines above, on its way to the resume
   // prompt. No new event, no second read of the disk — the same move as the self-turn
   // delivery: judge by what is already in hand.
   const plan = planWorkspace({
-    facts: workspaceFacts(path),
+    facts,
     base: base.commit,
     resuming: continuation.mode === "resume",
     thread,

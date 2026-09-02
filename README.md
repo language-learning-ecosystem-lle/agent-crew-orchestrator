@@ -3902,6 +3902,35 @@ daemon's modules are resolved from it once, at start, so it must stay on
 - **What the package does NOT do in a new workspace: install anything.** A fresh
   worktree has no `node_modules`, and toolchain management has never been handed to
   the package (S8). The project runs its own install there, once.
+- **But it does SAY which build that tree runs, before the spawn** (thread
+  `085-stale-workspace-package`). The install above is a human's step, and on 2026-09-02
+  it missed one directory out of four: a role's workspace stood on `agent-protocol`
+  0.2.7 while its repository pinned 0.2.9. **The protocol version could not see it** —
+  the schema number is the same in both builds, so the version gate agreed and the
+  launch was legal by its criterion; the session paid instead, on its first mail command
+  (`--for` exists only in 0.2.9 → `exit 2` plus seven hundred lines of usage in its
+  context). So the launch now compares two MANIFESTS of the same package before it
+  spawns anything: `<workspace>/node_modules/agent-protocol/package.json` against the one
+  in the home checkout, which is where the pin resolved and, since thread 078, the tree
+  the daemon itself loads from. Different versions, or none installed in a workspace
+  that exists — **a refusal by name**: the role, the tree, the version found, the version
+  expected, the pin quoted as the repository wrote it, and `pnpm --dir <tree> install
+  --frozen-lockfile`. It reads three files and asks the network nothing.
+  - The dependency SPECIFIER is quoted, never parsed. A pin is a git tag in one contour,
+    a range or a workspace link in the next; deriving a version from it would be a
+    second resolver disagreeing with pnpm's.
+  - **Where it stays silent, and both cases are deliberate:** a home checkout that
+    installs no copy of the package (the protocol's own contour, where the package IS
+    the repository) has no reference version, and nothing is invented for it; a
+    workspace that does not exist yet is created empty a moment later, and refusing
+    every first launch of a new role over the install it has not had yet would be a door
+    against its own circuit.
+  - **It costs the pair no attempt** — the refusal happens in `settleRun`, before the
+    lock, before the lease and before any launch event, exactly as a dirty tree does.
+    This is a defect of the environment, not of the pair's work.
+  - **It does not repair.** Running an install into a role's tree from the daemon's
+    process would be a write into somebody's workspace on a guess; the ritual step is
+    what fixes, this door only names.
 
 ### S12 — continuing a session instead of starting one (R18)
 
