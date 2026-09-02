@@ -1312,7 +1312,26 @@ describe("new-message and a park by MEANING that is not a park by FIELD (thread 
   });
 });
 
-/** `--parked-on` with an `--expects` of the caller's choosing — the door under test here. */
+/**
+ * `--parked-on` with an `--expects` of the caller's choosing — the door under test here.
+ *
+ * THE SANDBOX IS NOT DECORATION HERE, AND THIS HELPER IS THE ONE THAT LEARNED IT: it was
+ * the only child in this file spawned with the AMBIENT environment, so the CLI it raised
+ * read the real box's instance configs instead of the contour built for the case. The
+ * ground door of thread 062 (`roles/contour.ts`) then judged the tree the RUNNER was
+ * standing in — and refused with code 2 («belongs to no contour of this box») whenever
+ * the checkout under test lived outside a declared contour. Measured 2026-09-02, thread
+ * 064: the same commit `a945e56f` gives 91/91 from a contour checkout and 89/91 from a
+ * `git worktree` in `/tmp`, the two failures being the park cases below. CI never saw it
+ * because a runner declares no instances at all, which the door reads as `unknown` and
+ * passes — so the fixture and the box agreed only by accident.
+ *
+ * `configHomeInside` puts `XDG_CONFIG_HOME` inside the case's own repository, where no
+ * instance is declared. What is bought is not tidiness: a process test that reads the
+ * machine it runs on measures the machine, and its verdict cannot be carried between two
+ * checkouts — which is exactly how a green tree and a red tree came to be reported for
+ * one merge.
+ */
 const parkedWithExpects = (
   contest: { repo: string; root: string; body: string },
   expects: string,
@@ -1349,7 +1368,11 @@ const parkedWithExpects = (
         // the body file lives inside the checkout, which delivery refuses to touch.
         "--no-push",
       ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: sandbox(configHomeInside(contest.repo)),
+      },
     );
     return { code: 0, out };
   } catch (error) {
