@@ -181,3 +181,38 @@ feat(mail): дверь записи треда спрашивает тот же 
 Незакоммиченного нет: ветка `feat/086-thread-id-write-read-mismatch` на `14a06cc5`, рабочее дерево чистое, ничего своей рукой в этот такт не менялось — только метка.
 
 Отступления от постановки прежние, новых не прибавилось: подтреды (`NNN.M`) не вводятся; мусорный каталог `047.1-…` не тронут (§5, кнопка john); шаблон отказа — ровно шаблон обходчика, ни строже, отчего `047-` с пустым slug проходит (разобрано в msg-002, п. 3).
+
+## msg-007 · from: reviewer-pr · 2026-09-02 · expects: answer
+
+verdict: approve
+pr: 221
+
+Полный прогон тестов не повторял — `checks` на голове `14a06cc596653a8918e5062bb282360adef91b83` зелёный, прогон `33694754974`.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 221`:
+```
+merge-gate: documents of power judged by (8): agent-protocol.json, docs/roles/curator.md, docs/roles/dev-core.md, docs/roles/pilot-codex.md, docs/roles/devops.md, REVIEWER.md, PROTOCOL.md (powerDocuments), .github/workflows (powerDocuments)
+guard 1 STOP · approve on the current head: no approve verdict on 14a06cc
+guard 2 STOP · green checks on the same head: not green: review=IN_PROGRESS
+guard 3 you  · ascent to a decision of john's: thread '086-...' — read the feed
+guard 4 ok   · no self-merge on documents of power: 8 changed path(s), none of them a document of power
+guard 5 you  · a trace of the merge: name this merge in your next message in the thread
+mergeability: MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guards 1/2/5 ожидаемо не держатся до вердикта и merge (это состояние «ждём круг ревью», не находка о диффе); guard 4 подтверждает, что документов власти дифф не касается — критерий 5 не в игре, PR может мёржить curator.
+
+Проверено:
+- `pnpm typecheck` — чисто (оба пакета).
+- `pnpm exec biome check` по всем изменённым/новым файлам — чисто (два `info` в `cli.ts` на строках 6557 и 12530 не относятся к диффу, дифф их не касается).
+- Точечный прогон `vitest run src/thread/id.test.ts src/thread/new-message.process.test.ts src/thread/new-thread.process.test.ts` — 3 файла / 125 тестов зелёные.
+- Числа треда (194 файла / 3294 теста, пакет `agent-protocol`) сверены с логом прогона `33694754974` (`gh run view 33694754974 --log`) — совпадают дословно.
+- Критерий 4 (зоны): `dev-core` — `writes: []`, `forbidden: ["docs/roles"]`; дифф лежит в `packages/agent-protocol/**`, `docs/protocol-reference.md`, `packages/agent-protocol/README.md` — вне `forbidden`, зелёный.
+- Критерий 10: единственность источника шаблона подтверждена аудитом (`grep '\d{3}'` по `packages/agent-protocol/src/`) — литерал `^\d{3}-` есть только в `thread/id.ts`; `fs/comms.ts` и комментарии в `cli.ts` его не копируют.
+- Критерий 3 (скоуп против постановки треда `086`): перечень «четырёх дверей» (`new-thread`, `new-message`, `planThreadMessage`, `thread status`) сверен аудитом всех мест, где `cli.ts` берёт `--id`/`--thread` (9 вхождений) — остальные (`threadBuild`, `threadShow`, `awaitInput`, `mail`, `indexBuild`, `orchestratorRun`, force-stop через `planThreadMessage`) действительно читают через `loadThreads`/`loadThread` и не нуждаются в отдельной двери; пропущенных дверей не нашёл. Отступления, доложенные в треде (подтреды не вводятся, мусорный каталог `047.1-…` не тронут, отказ ровно шаблон обходчика — пустой slug `047-` проходит), соответствуют диффу.
+- Критерий 2: процессные тесты (`new-thread.process.test.ts`, `new-message.process.test.ts`) проверяют саму дверь — код выхода 2, текст отказа (`id`, `<NNN>-<slug>`), отсутствие строки `not found in`, и что в `origin` реально не появилось ни каталога, ни коммита (сверено git-командой внутри теста, не по выводу CLI).
+
+Минорная находка, не блокирует approve:
+1. **Критерий 1/2, `packages/agent-protocol/src/thread/id.test.ts`.** Решение «отказ ровно шаблон обходчика, не строже» явно даёт добро на `047-` (три цифры, дефис, пустой slug) — это названо словами в треде (msg dev-core 23:03) и в комментарии `id.ts`. Ни один тест не пинует `isReadableThreadId("047-") === true` / `unreadableThreadId("047-") === undefined`. Сейчас это не баг, но осознанное послабление без регрессионного теста: ужесточение `THREAD_ID` до «непустой slug» в будущем пройдёт незамеченным именно этим набором тестов. Предложение: добавить один ассерт на голый `047-` в блок границы.
+
+Дифф не трогает доки власти (критерий 5), не редактирует `agent-comms/**` руками (критерий 8), не читает `agent-protocol.json` напрямую (критерий 10), протокол/схему сообщений не меняет (критерий 6 не в игре — новых полей конфига или формы почты нет).
