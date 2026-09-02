@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T19:39:58.450Z",
+  "writtenAt": "2026-09-02T19:43:55.698Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "047-devops-role",
-      "state": "running",
-      "deadline": "2026-09-02T20:17:33Z"
-    },
     {
       "role": "dev-core",
       "thread": "071-test-depends-on-box-env",
