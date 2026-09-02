@@ -78,6 +78,7 @@ import {
 } from "./fs/comms.js";
 import { execFileSyncByExit, SyncRunError } from "./fs/exec-sync.js";
 import {
+  commitsBehindRef,
   fileExistsAtRef,
   mailCheckoutFreshness,
   mailCheckoutState,
@@ -5948,7 +5949,19 @@ const runPreflight = (
       );
     } else {
       const base = baseCommitOf(repo, section.workdir.branch);
-      workdirChecks.push(mainCheckoutVerdict({ repo, ...state }));
+      // The main checkout is judged against the PROJECT'S branch and its distance is
+      // measured to `origin/<that branch>` (thread 078) — the tree nobody works in is
+      // still the tree node loads the daemon's modules from, so "on the wrong branch"
+      // means "the circuit executes code that was never merged".
+      const behind = commitsBehindRef(repo, `origin/${section.workdir.branch}`);
+      workdirChecks.push(
+        mainCheckoutVerdict({
+          repo,
+          ...state,
+          expectedBranch: section.workdir.branch,
+          ...(behind === undefined ? {} : { behind }),
+        }),
+      );
       for (const role of roles) {
         const path = workspacePath({ repo, worktrees, role: role.id });
         workdirChecks.push(
