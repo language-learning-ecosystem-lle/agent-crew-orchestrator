@@ -489,3 +489,47 @@ describe("the park of a turn in the header (R27)", () => {
     ).toThrow(MessageFormatError);
   });
 });
+
+describe("`raised:` — the third field of provenance (thread 081)", () => {
+  const file = [
+    "---",
+    "from: dev-core",
+    "worker: claude-code",
+    "session: 0f2c1a9e",
+    "raised: 2026-08-30T14:24:19Z",
+    "date: 2026-08-30T14:26:53Z",
+    "expects: answer",
+    "waiting-on: curator",
+    "---",
+    "",
+    "Тело письма.",
+    "",
+  ].join("\n");
+
+  it("is parsed, and stands in the provenance block above `date`", () => {
+    expect(parseMessageFile(file).fields.raised).toBe("2026-08-30T14:24:19Z");
+  });
+
+  it("survives a round trip byte for byte", () => {
+    // The whole feed is assembled from these files, so a field that re-renders differently
+    // moves committed bytes of somebody else's message.
+    expect(renderMessageFile(parseMessageFile(file))).toBe(file);
+  });
+
+  it("a malformed stamp is DROPPED with the reason named, and the message still reads", () => {
+    // The tolerant half of the parser (see `Message.warnings`): the door refuses the value where
+    // it can still be retyped, and a reader of an append-only feed names it and carries on.
+    const broken = parseMessageFile(file.replace("2026-08-30T14:24:19Z", "2026-08-30"));
+    expect(broken.fields.raised).toBeUndefined();
+    expect(broken.warnings?.join(" ")).toContain("raised: 2026-08-30");
+    expect(broken.fields.waitingOn).toBe("curator");
+  });
+
+  it("a message of the old form reads exactly as it did — the field is optional", () => {
+    const old = file.replace("raised: 2026-08-30T14:24:19Z\n", "");
+    const message = parseMessageFile(old);
+    expect(message.fields.raised).toBeUndefined();
+    expect(message.warnings).toBeUndefined();
+    expect(renderMessageFile(message)).toBe(old);
+  });
+});

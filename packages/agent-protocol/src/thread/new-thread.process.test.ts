@@ -493,3 +493,68 @@ describe("new-thread refuses what it does not understand", () => {
     expect(inOrigin(contest)).not.toContain("040-new");
   });
 });
+
+/**
+ * THE THIRD FIELD OF PROVENANCE THROUGH THE OTHER DOOR (thread 081). The lesson of 075 is
+ * literal here: a flag one command of the pair writes and the other swallows costs an empty
+ * turn, so the opening message is asked the same question as an ordinary one.
+ */
+describe("new-thread writes `raised:` (thread 081)", () => {
+  it("puts the flag in the header of the opening message", () => {
+    const c = contour();
+    expect(open(c, ["--raised", "2026-08-30T14:24:19Z"]).code).toBe(0);
+    expect(firstHeader(c, "040-new").fields.raised).toBe("2026-08-30T14:24:19Z");
+  });
+
+  it("takes it from the launch environment, so a raised session passes nothing", () => {
+    const c = contour();
+    const out = execFileSync(
+      TSX,
+      [
+        CLI,
+        "new-thread",
+        "--repo",
+        c.repo,
+        "--root",
+        c.root,
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--id",
+        "040-new",
+        "--title",
+        "A new conversation",
+        "--participants",
+        "dev-core,curator",
+        "--from",
+        "dev-core",
+        "--expects",
+        "answer",
+        "--waiting-on",
+        "curator",
+        "--body-file",
+        c.body,
+        "--write",
+      ],
+      {
+        encoding: "utf8",
+        stdio: "pipe",
+        env: sandbox(configHomeInside(c.repo), {
+          ...IDENTITY,
+          AGENT_PROTOCOL_WORKER: "claude-code",
+          AGENT_PROTOCOL_RAISED_AT: "2026-08-30T14:24:19Z",
+        }),
+      },
+    );
+    expect(out).toContain("040-new");
+    expect(firstHeader(c, "040-new").fields.raised).toBe("2026-08-30T14:24:19Z");
+  });
+
+  it("refuses a malformed stamp BY NAME — the feed is append-only and a reader drops it", () => {
+    const c = contour();
+    const refused = open(c, ["--raised", "2026-08-30"]);
+    expect(refused.code).toBe(2);
+    expect(refused.out).toContain("--raised '2026-08-30'");
+    expect(refused.out).toContain("AGENT_PROTOCOL_RAISED_AT");
+  });
+});

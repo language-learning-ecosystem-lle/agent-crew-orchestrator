@@ -41,6 +41,12 @@
  * `agent-protocol`, `unknown`, and whatever tool comes next), validated by SHAPE and
  * not by a list. A closed enum would make every new tool in the ecosystem a schema
  * migration of the protocol — and which tools exist is not the protocol's business.
+ *
+ * `raised` JOINED THEM THIRD (thread 081) and it is the one piece of provenance the READER
+ * acts on: WHEN the session was started. The other two identify the writer; this one dates
+ * it, and dating it is what tells a letter that ANSWERS a park from one that merely came
+ * after it — a session raised before the park was announced never saw it. See
+ * `MessageFields.raised` and `standingParkOf` in `thread.ts` for the walk that uses it.
  */
 
 /**
@@ -263,6 +269,22 @@ export type MessageFields = {
    * thing (a human, a chat) or where the run could not name itself.
    */
   readonly session?: string;
+  /**
+   * WHEN THE CIRCUIT RAISED THE SESSION that wrote this — the third field of provenance
+   * (thread 081, decision of john 2026-09-02, `PROTOCOL.md` R27/042). `date` says when the
+   * message was WRITTEN; this says when its author was STARTED, and the gap between the two
+   * is where a whole class of defect lives: a session raised before a park was announced
+   * never saw the park, so its letter is not an answer to it.
+   *
+   * A DECLARATION, exactly like {@link MessageFields.delivers} and the `verdict:`/`pr:` pair:
+   * it is not checked against the journal, and `from:` is still not read in the lift. ABSENT
+   * IS LEGAL AND MEANS "the moment of the raise was not declared" — every message written
+   * before the field existed, every one written by a hand, and every machine one
+   * (`worker: gh-action`). The feed is append-only, so absence is a permanent property of the
+   * form rather than a gap to be migrated away, and it is the norm that names which way it
+   * degenerates: a message without it lifts a park exactly as it did.
+   */
+  readonly raised?: string;
   /** New ones — a UTC stamp `2026-07-23T13:45:12Z`; migrated ones — a date only. */
   readonly date: string;
   readonly expects: Expects;
@@ -506,6 +528,14 @@ const SESSION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
  */
 export const isWorkerId = (value: string): boolean => WORKER.test(value);
 export const isSessionId = (value: string): boolean => SESSION.test(value);
+/**
+ * The shape of `raised:` — a FULL UTC stamp and nothing else, which is stricter than `date`
+ * accepts. `date` tolerates a bare date because migrated messages carry one and cannot be
+ * rewritten; `raised:` has no history at all — it is written by a session that knows the
+ * second it was started — and the value is COMPARED against the moment of a park, where a
+ * whole day of slack would decide the incident case the wrong way.
+ */
+export const isRaisedAt = (value: string): boolean => TIMESTAMP.test(value);
 
 /**
  * The keys a launch directive may carry. A CLOSED list, unlike the worker vocabulary:
@@ -781,6 +811,19 @@ export const parseMessageFile = (raw: string): Message => {
     }
     return value;
   });
+  // The third field of provenance (thread 081) and soft like its two neighbours: a malformed
+  // stamp is DROPPED with the reason named, and a dropped `raised:` reads as "not declared" —
+  // which lifts the park as before. That direction is the norm's, not the reader's convenience:
+  // `PROTOCOL.md` weighs one empty raise against a thread frozen with its own answer inside.
+  const raised = soft(() => {
+    const value = raws.get("raised");
+    if (value !== undefined && !TIMESTAMP.test(value)) {
+      throw new MessageFormatError(
+        `'raised: ${value}' — the moment the session was raised is a full UTC stamp like 2026-09-02T14:24:19Z`,
+      );
+    }
+    return value;
+  });
 
   const launchRaw = raws.get("launch");
   const launch = launchRaw === undefined ? undefined : soft(() => parseLaunchDirective(launchRaw));
@@ -884,6 +927,7 @@ export const parseMessageFile = (raw: string): Message => {
     from,
     ...(worker === undefined ? {} : { worker }),
     ...(session === undefined ? {} : { session }),
+    ...(raised === undefined ? {} : { raised }),
     date,
     expects: expects as Expects,
     ...(waitingRaw === undefined ? {} : { waitingOn: parseWaitingOnField(waitingRaw) }),
@@ -926,6 +970,9 @@ export const renderMessageFile = (message: Message): string => {
     // said it, and what wrote it down.
     ...(fields.worker === undefined ? [] : [`worker: ${fields.worker}`]),
     ...(fields.session === undefined ? [] : [`session: ${fields.session}`]),
+    // The third of the provenance block and LAST in it, directly above `date`: the two stamps
+    // read as one pair — when the writer was started, when it wrote (thread 081).
+    ...(fields.raised === undefined ? [] : [`raised: ${fields.raised}`]),
     `date: ${fields.date}`,
     `expects: ${fields.expects}`,
     ...(fields.waitingOn === undefined ? [] : [`waiting-on: ${fields.waitingOn ?? "—"}`]),
