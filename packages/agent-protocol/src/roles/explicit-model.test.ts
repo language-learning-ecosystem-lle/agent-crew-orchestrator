@@ -44,9 +44,14 @@ describe("the launch profiles of this repository's roles", () => {
   const withAgent = config.roles.filter((role) => role.launch?.agent !== undefined);
 
   it("are found at all — an empty sweep would be a green test that checks nothing", () => {
-    // curator, dev-core, pilot-codex today; the roles GitHub Actions raises carry no
-    // launch profile at all and are not judged here.
-    expect(withAgent.map((role) => role.id).sort()).toEqual(["curator", "dev-core", "pilot-codex"]);
+    // curator, dev-core, devops, pilot-codex today; the roles GitHub Actions raises carry
+    // no launch profile at all and are not judged here.
+    expect(withAgent.map((role) => role.id).sort()).toEqual([
+      "curator",
+      "dev-core",
+      "devops",
+      "pilot-codex",
+    ]);
   });
 
   it("name the model explicitly, so no vendor default moves this circuit unseen", () => {

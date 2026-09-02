@@ -44,8 +44,8 @@ const CONFIG_PATH = fileURLToPath(new URL("agent-protocol.json", REPO_ROOT));
 const config = parseProtocolConfig(JSON.parse(readFileSync(CONFIG_PATH, "utf8")));
 const devops = config.roles.find((role) => role.id === "devops");
 
-/** The row as it would look the day somebody switches it on, minus the money fields. */
-const flippedToActive = (role: Role): Role => ({ ...role, status: "active" });
+/** The row as it looked before john's word of 2026-09-02 — the state the doors below are read against. */
+const beforeTheFlip = (role: Role): Role => ({ ...role, status: "planned" });
 
 describe("the role 'devops' as this repository declares it", () => {
   it("is in the config at all — an absent row would make every claim below vacuously green", () => {
@@ -58,19 +58,25 @@ describe("the role 'devops' as this repository declares it", () => {
     expect(existsSync(fileURLToPath(new URL("docs/roles/devops.md", REPO_ROOT)))).toBe(true);
   });
 
-  it("is 'planned', so the circuit does not raise it and says why instead of failing every tick", () => {
-    // `active` today would mean a session attempted on every tick and refused by
-    // `systemUserRefusal` on every one of them — attempts burned on a door that cannot open
-    // until a hand on the box opens it (`docs/box-setup.md` §0.1).
-    expect(devops?.status).toBe("planned");
-    expect(roleLaunchability(devops as Role)).toEqual({ launchable: false, reason: "inactive" });
+  it("is 'active' — and the row that made it raisable is the whole flip, not the one word", () => {
+    // The flip is a one-word diff only in the status; what makes the role raisable is the
+    // profile and the owning instance below. `planned` is kept as the read-back of the door
+    // that spoke for four weeks, so a future editor who reverts the word gets the same
+    // sentence rather than silence.
+    expect(devops?.status).toBe("active");
+    expect(roleLaunchability(beforeTheFlip(devops as Role))).toEqual({
+      launchable: false,
+      reason: "inactive",
+    });
+    expect(roleLaunchability(devops as Role)).toEqual({ launchable: true });
   });
 
-  it("cannot be raised as the daemon's own user even once it is active — the door names all three", () => {
+  it("cannot be raised as the daemon's own user now that it is active — the door names all three", () => {
     // The identity is the whole point of the row: the daemon's user on this box carries the
     // `sudo` group and reads both git private keys and `secrets.env` (measured, thread 047
-    // msg-004 §2а), so a quiet fallback would hand the role everything the box has.
-    const refusal = systemUserRefusal(flippedToActive(devops as Role), "lle");
+    // msg-004 §2а), so a quiet fallback would hand the role everything the box has. Active
+    // does not soften this by one word — the refusal is read off the row as it now stands.
+    const refusal = systemUserRefusal(devops as Role, "lle");
 
     expect(refusal).toContain("role 'devops'");
     expect(refusal).toContain("'aco-devops'");
@@ -78,29 +84,37 @@ describe("the role 'devops' as this repository declares it", () => {
     expect(refusal).toContain("Repair:");
   });
 
-  it("carries no launch profile, and the flip to 'active' is refused by name rather than defaulted", () => {
-    expect(devops?.launch).toBeUndefined();
-    expect(roleLaunchability(flippedToActive(devops as Role))).toEqual({
-      launchable: false,
-      reason: "no-launch-profile",
-    });
+  it("carries a launch profile that answers both money questions rather than defaulting them", () => {
+    // WHAT IS ASSERTED IS THAT THEY ARE SAID, NOT WHICH: the model and the account are money,
+    // i.e. john's decision, and pinning their values here would mean this file is edited by
+    // whoever spends it — the review this repository wants to happen instead.
+    expect(devops?.launch?.agent?.kind).toBe("claude-code");
+    expect(devops?.launch?.agent?.model).toBeDefined();
+    expect(devops?.launch?.account).toBeDefined();
+    // The lever claude-code HAS: a session raised without it writes nothing (thread 012).
+    expect((devops?.launch?.allowedTools ?? []).length).toBeGreaterThan(0);
+    // Ceilings are dev-core's judgement and not john's, but their absence is not a judgement
+    // at all — a row that leaves all three unsaid inherits a window sized for nobody.
+    expect(devops?.launch?.limits?.wallClockSeconds).toBeDefined();
+    expect(devops?.launch?.limits?.idleSeconds).toBeDefined();
+    expect(devops?.launch?.limits?.maxTurns).toBeDefined();
   });
 
-  it("has no owning instance yet, and that too is refused by name at the flip, not at runtime", () => {
-    // `ownershipIssues` judges LAUNCHABLE roles only, so a `planned` row owned by nobody is
-    // legitimate today. Whoever switches the role on gets the sentence rather than a daemon
-    // that silently raises nobody — which is what makes "declare the box" part of the flip
-    // checklist instead of part of somebody's memory.
+  it("is claimed by exactly one instance, so the box that raises it is declared and not remembered", () => {
+    // `ownershipIssues` judges LAUNCHABLE roles only: while the row was `planned`, owned by
+    // nobody was legitimate, and the sentence below is what the flip had to answer. Now that
+    // it is raisable, the same judgement has to come back empty — a role owned by two boxes
+    // is two daemons whose local leases know nothing of each other.
     const isKnownRole = (id: string): boolean => config.roles.some((role) => role.id === id);
+    const launchable = config.roles
+      .filter((role) => roleLaunchability(role).launchable)
+      .map((role) => role.id);
 
-    expect(ownershipIssues({ instances: config.instances, launchable: [], isKnownRole })).toEqual(
-      [],
-    );
+    expect(launchable).toContain("devops");
+    expect(ownershipIssues({ instances: config.instances, launchable, isKnownRole })).toEqual([]);
     expect(
-      ownershipIssues({ instances: config.instances, launchable: ["devops"], isKnownRole }).join(
-        " ",
-      ),
-    ).toContain("no instance claims it");
+      config.instances.filter((box) => box.roles.includes("devops")).map((box) => box.id),
+    ).toEqual(["hetzner"]);
   });
 
   it("cannot widen its own rights: the config and the cards are under its forbidden prefixes", () => {
@@ -216,12 +230,14 @@ describe("the capabilities the row grants, and their boundaries", () => {
     expect(byName.get("disk-free")).toEqual({ name: "disk-free" });
   });
 
-  it("is a declaration and not a right in use: the role is still 'planned' and unraisable", () => {
-    // The order is the point (thread 047): the verbs are reviewed and merged BEFORE anything can
-    // execute them. What is missing is no longer the identity — `aco-devops` is on the box since
-    // 2026-08-30 ~08:20Z — but the executor: no code in this build reads `capabilities` at all.
-    expect(devops?.status).toBe("planned");
-    expect(roleLaunchability(devops as Role).launchable).toBe(false);
+  it("stays a closed list once the role is raisable: the verbs did not widen with the flip", () => {
+    // The order was the point (thread 047): the verbs were reviewed and merged BEFORE anything
+    // could execute them, and switching the role on is not the moment to add a fourth. A verb
+    // arrives by a PR to this array and by nothing else — the flip moved `status`, `launch` and
+    // the owning instance, and left the vocabulary of the row where review put it.
+    expect(devops?.status).toBe("active");
+    expect(roleLaunchability(devops as Role).launchable).toBe(true);
+    expect([...byName.keys()].sort()).toEqual(["disk-free", "log-tail", "repo-refresh"]);
   });
 });
 
@@ -274,10 +290,12 @@ describe("the prose of the row and the data under it", () => {
     expect(summary).toContain("docs/box-setup.md");
   });
 
-  it("gives the reason for 'planned' that this build can be held to", () => {
+  it("names the door of the only path in, and names it in the words of this build", () => {
     // A reason that lives in the code outlives a reason that lives on the box: the door is here,
-    // named, and a future editor who deletes it breaks a test rather than a sentence.
+    // named, and a future editor who deletes it breaks a test rather than a sentence. It was the
+    // reason the row was `planned`; with the row `active` it is the reason the row is still safe
+    // — the identity switch is the ONLY way in, and its absence refuses by name.
     expect(summary).toContain("systemUserRefusal");
-    expect(devops?.status).toBe("planned");
+    expect(devops?.status).toBe("active");
   });
 });
