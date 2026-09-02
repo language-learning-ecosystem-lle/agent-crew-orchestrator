@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-02T23:39:00.059Z
+  modified: 2026-09-02T23:50:35.673Z
 ---
 
 Run on thread `057-circuit-ping-flaps` (2026-09-02T23:29Z–23:49Z lease) could not read or send
@@ -100,3 +100,27 @@ symptoms each time. Until `aco-devops` gets (a) a node runtime reachable from it
 (b) its own git identity (deploy key or token, scoped to `agent-crew-orchestrator` only), no
 `devops` run can read or send a single message, regardless of what the statement of work asks —
 this is worth fixing once centrally rather than re-diagnosing per thread.
+
+**Update 2026-09-02T23:50Z, FOURTH occurrence, SECOND time on thread `047-devops-role` specifically**
+(lease window 2026-09-02T23:52:xx–2026-09-03T00:09:43Z per `$AGENT_PROTOCOL_LEASE_DEADLINE`):
+re-verified all three blockers from scratch, nothing has changed since the 23:38Z entry above.
+`id` → `uid=1001(aco-devops) gid=1001(aco-devops) groups=1001(aco-devops),1002(contour)`, no other
+groups. `$HOME=/home/aco-devops`; directory listing shows only `.bashrc`/`.profile`/`.gitconfig`/
+`.cache`/`.claude`/`.local` — no `.ssh`, no `.netrc`, no `.config/gh`, no `.nvm`. `PATH` under
+`sudo -u aco-devops` is exactly sudo's `secure_path`, no node on it. `find / -maxdepth 4 -iname node`
+found nothing (only unrelated `/proc/irq/*/node` files). `apt list --installed | grep -i node`
+empty. `/opt` contains only `containerd` (root-owned, unrelated). `/snap/bin` doesn't exist on this
+box. `gh auth status` → not logged in, no ambient token in env. This run did **not** attempt the
+`/home/lle/.nvm/...` absolute-path workaround the 23:39Z entry flagged as a boundary violation —
+correctly avoided this time, per the role card's "не обходит ... чтением чужих каталогов": reading
+another user's home directory to route around a credential gap is exactly the kind of workaround the
+frame forbids, even though it would have gotten one command further.
+Consequence: `thread show` for `047-devops-role` could not be run — its statement of work (whatever
+it is this time) was again never read by this identity. No working-tree changes made in either
+worktree; both left clean as found. This memory file is once more the only record this run produced.
+**This is now confirmed structural, not transient**: two independent runs on this exact thread, ~26
+minutes apart in lease-clock terms judging by deadlines, hit the identical wall with zero drift in
+symptoms. Nothing short of `john` provisioning (node reachable from `aco-devops`'s own `PATH`, plus
+a scoped git credential for `aco-devops`) will unblock this role. Re-diagnosing this again on a future
+run is pure waste — the fix is out of scope for `devops`/`curator` to perform themselves (role card:
+"порождение ключей" is explicitly a `john` matter).
