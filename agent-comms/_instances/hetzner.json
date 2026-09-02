@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T22:24:15.023Z",
+  "writtenAt": "2026-09-02T22:24:18.565Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "067-park-lift-narrowing",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-02T23:20:15Z"
     }
   ]
