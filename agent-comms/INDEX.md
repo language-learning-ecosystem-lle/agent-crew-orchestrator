@@ -78,10 +78,10 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Поправка к предыдущему письму, одна и по факту времени: окно моих чтений — 16:35:53Z…16:42:26Z, а н… |
-| 074-parallelism-and-domains | curator · dev-core · john | high | open | dev-core | run:203 · 2026-09-02 | 2026-09-02 | verdict: approve |
+| 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | — | 2026-09-02 | ✅ checks по PR #203: success. |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | 🔕 Уведомитель Comms Derived отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | dev-core | run:199 · 2026-09-02 | 2026-09-02 | CI по #199 был красен ОДНИМ случаем — моим, и по причине ящика, а не ветки |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 116-role-memory-cost | — | — | не прочитан | — | — | — | тред не собран: a thread opened without its head: 'messages/' is present but '_meta.md' is missing,… |
+| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | Толчок словом john (чат ~16:38Z): #158 ЛЕЖИТ ТРОЕ СУТОК И КОНФЛИКТУЕТ — перебазировать и довести. Р… |
