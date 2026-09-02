@@ -4,22 +4,23 @@
  * `reviewer-pr.test.ts` and `workflow-signatures.test.ts` hold theirs: the repository serves
  * itself, and the file that decides what a role of THIS circuit is entitled to is that config.
  *
- * WHAT THE ROW IS AND WHAT IT DELIBERATELY IS NOT (thread `047-devops-role`, john's simplified
- * frame of 2026-08-29). The role is declared `planned`, names its system identity
- * (`systemUser: "aco-devops"`, protocol 22) and carries NO launch profile. Every one of those
- * three is a statement, not an omission, and each is pinned below by the door that speaks when
- * it is changed — because the flip to `active` is a one-word diff, and a one-word diff is
- * exactly the kind that is made without reading the thread it came from.
+ * WHAT THE ROW IS AND WHAT MAKES IT RAISABLE (thread `047-devops-role`, john's simplified frame of
+ * 2026-08-29, switched on by his word of 2026-09-02). The role names its system identity
+ * (`systemUser: "aco-devops"`, protocol 22), it is `active`, and it carries a launch profile whose
+ * two money fields are said rather than defaulted. None of the three stands alone: `active` without
+ * a profile refuses by name (`no-launch-profile`), a profile without an owning instance refuses by
+ * name too, and each of them is pinned below by the door that speaks when it is changed — because
+ * the flip was a one-word diff in `status`, and a one-word diff is exactly the kind that is made
+ * without reading the thread it came from.
  *
- * WHY THE ABSENT LAUNCH PROFILE IS THE SAFE SHAPE AND A HALF-FILLED ONE IS NOT. `launch.account`
- * and `launch.agent.model` spend money, which is john's decision and nobody else's (thread 047,
- * msg `14-45Z`: curator names the shape and deliberately leaves those two unsaid). A profile
+ * WHY A HALF-FILLED LAUNCH PROFILE IS THE SHAPE TO GUARD AGAINST. `launch.account` and
+ * `launch.agent.model` spend money, which is john's decision and nobody else's (thread 047,
+ * msg `14-45Z` for the shape, john's «последний Sonnet» of 2026-09-02 for the value). A profile
  * carrying `allowedTools` and no `agent` would parse, pass every door, and put the role on
- * whatever the vendor defaults to on the day it is switched on — the silent state
- * `explicit-model.test.ts` exists against, and one its sweep does not see, because that sweep
- * only judges roles that HAVE an `agent` block. No profile at all cannot be silent: the launch
- * door refuses by name (`no-launch-profile`), so the money question has to be answered before
- * the role can be raised at all.
+ * whatever the vendor defaults to — the silent state `explicit-model.test.ts` exists against, and
+ * one its sweep does not see, because that sweep only judges roles that HAVE an `agent` block.
+ * That is why what is asserted below is that both fields are SAID: an absent profile refuses out
+ * loud, a half-filled one does not.
  *
  * THIS TEST ASSERTS NO MODEL AND NO ACCOUNT, on purpose and for the reason `explicit-model.test.ts`
  * names: it would then have to be edited by whoever spends the money, which is precisely the
