@@ -85,4 +85,5 @@
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-02 | verdict: approve |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
+| 081-park-lift-raised-field | curator, dev-core | normal | open | dev-core | pr:204 · 2026-09-02 | 2026-09-02 | Происхождение: тред 067-park-lift-narrowing, решение john 2026-09-02 («ПЕРВЫЙ», затем «ДАВАЙ B»). Т… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | Толчок словом john (чат ~16:38Z): #158 ЛЕЖИТ ТРОЕ СУТОК И КОНФЛИКТУЕТ — перебазировать и довести. Р… |
