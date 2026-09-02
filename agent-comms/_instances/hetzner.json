@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T11:41:20.193Z",
+  "writtenAt": "2026-09-02T11:42:03.794Z",
   "roles": [
     "curator",
     "dev-core",
@@ -16,7 +16,7 @@
     {
       "role": "curator",
       "thread": "072-ci-outcome-not-delivered",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-02T12:20:30Z"
     }
   ]
