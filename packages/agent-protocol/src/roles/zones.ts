@@ -25,8 +25,9 @@
  * THE CHAIN IS ONLY AS HONEST AS ITS HOLES ARE NAMED. Door 1 sees a `Bash` write
  * UNRELIABLY, and "unreliably" is the whole statement — it is neither the guarantee
  * nor the plain hole the first writing of this block assumed. Measured on a raised
- * `dev-core` session (2026-07-28, current `main`): `printf x > apps/pronunciation-
- * service/probe.md` on its own, and `rm` of a file under that prefix, were both
+ * `dev-core` session (2026-07-28, current `main`), the forbidden prefix of the command
+ * as it was typed anonymised here: `printf x > apps/acme-service/probe.md` on its own,
+ * and `rm` of a file under that prefix, were both
  * REFUSED — the tool applies its file deny rules to bash commands as well, which this
  * block did not know; the SAME write inside a longer compound command
  * (`node -v; printf … > … && git add … && git rev-parse HEAD > …`) went through and
@@ -56,8 +57,8 @@
  * is `forbidden`.
  *
  * ENTRIES ARE REPOSITORY-RELATIVE PATH PREFIXES, files or directories alike
- * (`apps`, `apps/pronunciation-service`, `PROTOCOL.md`), and a prefix matches a path
- * only at a path SEPARATOR: `apps` bans `apps/x` and `apps` itself, never `appsx`.
+ * (`apps`, `apps/acme-service`, `PROTOCOL.md`), and a prefix matches a path only at a
+ * path SEPARATOR: `apps` bans `apps/x` and `apps` itself, never `appsx`.
  */
 
 import type { Role } from "./schema.js";
@@ -122,17 +123,17 @@ export type ChangedPathsSource =
  * synthetic repository before it was believed):
  *
  *  1. **A deletion was invisible.** `--diff-filter=ACMRT` has no `D` in it, so after
- *     `git rm apps/pronunciation-service/main.py` the list came back EMPTY and the
- *     commit passed. Deleting somebody else's file is exactly as easy to do by
- *     accident as creating one, so the filter is gone altogether: every status of a
- *     changed path is a path the change touched.
+ *     `git rm apps/acme-service/main.py` the list came back EMPTY and the commit
+ *     passed. Deleting somebody else's file is exactly as easy to do by accident as
+ *     creating one, so the filter is gone altogether: every status of a changed path
+ *     is a path the change touched.
  *  2. **A rename OUT of a foreign zone was invisible.** With rename detection on,
- *     `git mv apps/pronunciation-service/main.py packages/foo/main.py` reports only
- *     the destination — which is in the role's OWN zone — and the banned source side
+ *     `git mv apps/acme-service/main.py packages/foo/main.py` reports only the
+ *     destination — which is in the role's OWN zone — and the banned source side
  *     never appears. `--no-renames` reports the change as a delete plus an add, and
  *     the delete is the half that matters.
  *  3. **A non-ASCII path was invisible.** With `core.quotePath` (on by default) git
- *     returns `"apps/pronunciation-service/\321\202\320\265\321\201\321\202.py"` —
+ *     returns `"apps/acme-service/\321\202\320\265\321\201\321\202.py"` —
  *     quoted and octal-escaped, so no prefix of ours matches it. `-z` turns the
  *     quoting off and separates records by NUL, which also survives a newline inside
  *     a filename; `core.quotePath=false` would fix only the case we happened to try.
