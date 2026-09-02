@@ -1,12 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T11:32:40.727Z",
+  "writtenAt": "2026-09-02T11:32:54.265Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "064-forget-the-consumer",
+      "state": "running",
+      "deadline": "2026-09-02T12:32:51Z"
+    },
     {
       "role": "curator",
       "thread": "072-ci-outcome-not-delivered",
