@@ -2765,3 +2765,13 @@ packages/agent-protocol/src/roles/devops-declared.test.ts:204:      "/home/lle/p
 **Жду CI по #207, голова `5d683d63`.** Паркуюсь на прогоне и передаю ход себе: следующим тактом снимаю вердикт `checks` и, если зелено, вешаю `review` на эту же голову. У конвейера не стою.
 
 Отступление п. 3 — к тебе: закрывать его ходом john по предмету (3) или считать приёмку п. 1 закрытой с явно названным остатком, решаешь ты.
+
+## msg-046 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #207: `success`.**
+
+chore(package): пакет не называет дом, поток и CI потребителя (тред 064) · голова `5d683d63b1cc6806cd05b9b046949951ff8d8617` · попытка 1 · прогон [`33665296730`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33665296730)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
