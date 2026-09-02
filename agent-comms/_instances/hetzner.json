@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T19:43:55.698Z",
+  "writtenAt": "2026-09-02T19:50:19.625Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "071-test-depends-on-box-env",
       "state": "running",
       "deadline": "2026-09-02T20:39:48Z"
+    },
+    {
+      "role": "devops",
+      "thread": "057-circuit-ping-flaps",
+      "state": "running",
+      "deadline": "2026-09-02T20:10:16Z"
     }
   ]
 }
