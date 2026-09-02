@@ -65,6 +65,8 @@ export type NewMessageInput = {
   readonly from: string;
   /** What is writing this (R7). Resolved by the CLI: the flag, or the launch channel. */
   readonly worker?: string;
+  /** When the circuit raised the writing session (thread 081) — optional, as its neighbours are. */
+  readonly raised?: string;
   /** The id of the run writing it, where the run can name itself. */
   readonly session?: string;
   readonly date: string;
@@ -164,6 +166,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     from: input.from,
     ...(input.worker === undefined ? {} : { worker: input.worker }),
     ...(input.session === undefined ? {} : { session: input.session }),
+    ...(input.raised === undefined ? {} : { raised: input.raised }),
     date: input.date,
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
@@ -216,6 +219,8 @@ export type NewThreadInput = {
   readonly from: string;
   readonly worker?: string;
   readonly session?: string;
+  /** When the circuit raised the writing session (thread 081) — optional, as its neighbours are. */
+  readonly raised?: string;
   readonly date: string;
   readonly expects: MessageFields["expects"];
   readonly waitingOn?: string | null;
@@ -268,6 +273,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     from: input.from,
     ...(input.worker === undefined ? {} : { worker: input.worker }),
     ...(input.session === undefined ? {} : { session: input.session }),
+    ...(input.raised === undefined ? {} : { raised: input.raised }),
     date: input.date,
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
