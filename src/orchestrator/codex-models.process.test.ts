@@ -43,7 +43,7 @@ const configWith = (agent: Record<string, unknown>) => ({
   protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   orchestrator: { state: ".orchestrator", mailCheckout: ".worktrees/comms", ref: "HEAD" },
-  instances: [{ id: "lle-agents", roles: ["pilot-codex"] }],
+  instances: [{ id: "acme-agents", roles: ["pilot-codex"] }],
   roles: [
     { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "the one" },
     {

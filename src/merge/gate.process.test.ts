@@ -375,7 +375,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     const result = run(
       repo,
       stubGh(repo, {
-        failWith: "GraphQL: Could not resolve to a Repository with the name 'lle/lle'.",
+        failWith: "GraphQL: Could not resolve to a Repository with the name 'acme/widgets'.",
       }),
     );
 
@@ -1060,7 +1060,7 @@ describe("merge-gate refuses a tree of another contour", () => {
     const home = repoWithConfig();
     git(home, "remote", "add", "origin", "https://github.com/o/agent-crew-orchestrator.git");
     const foreign = repoWithConfig();
-    git(foreign, "remote", "add", "origin", "https://github.com/o/language-learning-ecosystem.git");
+    git(foreign, "remote", "add", "origin", "https://github.com/o/acme-app.git");
     // The box declares this contour and the checkout it owns — without it there is no
     // boundary to cross and the door would (correctly) judge nothing.
     const configHome = configHomeInside(home);
@@ -1105,7 +1105,7 @@ describe("merge-gate refuses a tree of another contour", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("belongs to another contour");
-    expect(result.out).toContain("language-learning-ecosystem");
+    expect(result.out).toContain("acme-app");
     // The verdict of the payload never appears: the door stopped before the ask.
     expect(result.out).not.toContain("READY");
   });

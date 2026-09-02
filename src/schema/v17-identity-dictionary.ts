@@ -1,6 +1,6 @@
 /**
  * MIGRATION 16 → 17: the dictionary of authorized signatures is DECLARED, not known
- * (thread `080-extraction-prep`, 080.9).
+ * (the package-extraction thread of the parent contour, point 9).
  *
  * Version 17 gives the config one optional top-level key — `identityDictionary` — and takes
  * the matching constant out of the package. Until now `doctor` pointed the operator at
@@ -12,7 +12,7 @@
  * NOTHING IS WRITTEN BY THE STEP, and that is deliberate: a migration that invented
  * `identityDictionary: "docs/protocol-reference.md"` for every repository would re-create
  * the default it is removing, one repository at a time. The project that HAS such a file
- * declares it by hand in the same PR (LLE does, and the declaration is today's truth);
+ * declares it by hand in the same PR (a consumer does, and the declaration is today's truth);
  * a project that has none says nothing and gets rows that name the absence as a FACT.
  *
  * ABSENCE IS NEVER A CROSS. A repository without a dictionary is a legitimate repository:

@@ -5,7 +5,7 @@
  * The live case, twice in two days and both times the same repair — a thread directory created
  * with a message and WITHOUT `_meta.md`: `092-consent-and-deletion` on 29.08 (`derive` red ten
  * times in a row, `unreadable threads: 1` and no name, three false hypotheses, three trips of
- * john to the box) and `055-mirror-rules-to-lle` on 30.08 (two more red runs). Both times the
+ * john to the box) and `055` on 30.08 (two more red runs). Both times the
  * cost was not the broken thread — it was `INDEX.md`, `TASKS.md` and every `_thread.md` of the
  * whole mail standing still while one directory was missing one file.
  *

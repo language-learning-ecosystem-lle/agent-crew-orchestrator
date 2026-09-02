@@ -25,7 +25,7 @@ const CONFIG = {
   protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   orchestrator: { state: ".orchestrator", mailCheckout: ".worktrees/comms", ref: "HEAD" },
-  instances: [{ id: "lle-agents", roles: ["dev-core"] }],
+  instances: [{ id: "acme-agents", roles: ["dev-core"] }],
   roles: [
     { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "the one" },
     {
@@ -76,7 +76,7 @@ describe("config set — the file on disk", () => {
   it("a plan leaves every byte where it was", () => {
     const { repo, path } = box({ agents: {}, instance: "laptop" });
     const before = readFileSync(path, "utf8");
-    const { said, code } = run(repo, "instance", "lle-agents", "--local-config", path);
+    const { said, code } = run(repo, "instance", "acme-agents", "--local-config", path);
     expect(code).toBe(0);
     expect(said).toContain("--write does it");
     expect(readFileSync(path, "utf8")).toBe(before);
@@ -116,9 +116,9 @@ describe("config set — the file on disk", () => {
   });
 
   it("writes nothing when the value is already there — the mtime is an operator's evidence", () => {
-    const { repo, path } = box({ agents: {}, instance: "lle-agents" });
+    const { repo, path } = box({ agents: {}, instance: "acme-agents" });
     const before = readFileSync(path, "utf8");
-    const { said } = run(repo, "instance", "lle-agents", "--local-config", path, "--write");
+    const { said } = run(repo, "instance", "acme-agents", "--local-config", path, "--write");
     expect(said).toContain("already says that");
     expect(readFileSync(path, "utf8")).toBe(before);
   });
@@ -134,8 +134,8 @@ describe("config set — the file on disk", () => {
   it("writes an account beside the one already declared, and reads back through the strict schema", () => {
     const { repo, path } = box({
       agents: {},
-      accounts: { "lle-main": { configDir: "/var/empty/agent-protocol-test/main" } },
-      instance: "lle-agents",
+      accounts: { "acme-main": { configDir: "/var/empty/agent-protocol-test/main" } },
+      instance: "acme-agents",
     });
     // THE PREMISE IS THE TEST'S OWN, NOT THE BOX'S (thread 055, 2026-08-07). This case
     // used to name the operator's real directories, and its claim — "the directory does
@@ -148,7 +148,7 @@ describe("config set — the file on disk", () => {
     const { said, code } = run(
       repo,
       "account",
-      "lle-second",
+      "acme-second",
       "--config-dir",
       absent,
       "--local-config",
@@ -162,10 +162,10 @@ describe("config set — the file on disk", () => {
     expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
       agents: {},
       accounts: {
-        "lle-main": { configDir: "/var/empty/agent-protocol-test/main" },
-        "lle-second": { configDir: absent },
+        "acme-main": { configDir: "/var/empty/agent-protocol-test/main" },
+        "acme-second": { configDir: absent },
       },
-      instance: "lle-agents",
+      instance: "acme-agents",
     });
   });
 
@@ -177,7 +177,7 @@ describe("config set — the file on disk", () => {
     const { said, code } = run(
       repo,
       "account",
-      "lle-second",
+      "acme-second",
       "--config-dir",
       repo,
       "--local-config",
@@ -193,7 +193,7 @@ describe("config set — the file on disk", () => {
     const { said, code } = run(
       repo,
       "instance",
-      "lle-agents",
+      "acme-agents",
       "--nonsense",
       "--local-config",
       path,

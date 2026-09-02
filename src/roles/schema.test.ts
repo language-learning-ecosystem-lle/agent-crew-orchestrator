@@ -25,7 +25,7 @@ describe("protocolConfigSchema", () => {
     const result = protocolConfigSchema.safeParse({
       protocolVersion: 1,
       mail: MAIL,
-      roles: [{ ...human, sesion: "lle-john" }],
+      roles: [{ ...human, sesion: "acme-john" }],
     });
 
     expect(result.success).toBe(false);
@@ -45,7 +45,7 @@ describe("protocolConfigSchema", () => {
     const result = protocolConfigSchema.safeParse({
       protocolVersion: 1,
       mail: MAIL,
-      roles: [{ ...human, wake: { mode: "self", session: "lle-john" } }],
+      roles: [{ ...human, wake: { mode: "self", session: "acme-john" } }],
     });
 
     expect(result.success).toBe(false);

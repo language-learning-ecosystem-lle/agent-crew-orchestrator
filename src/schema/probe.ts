@@ -6,7 +6,7 @@
  * wrong build: a foreign circuit moves its pin from one tag to the next, and until
  * the pin has moved the installed package is still the OLD one. So `config check`
  * there stays green right up to the merge and goes red on a live `main` afterwards —
- * measured on 2026-08-22, LLE: pin `v0.2.1` → `v0.2.3` moved by hand, CI red 37
+ * measured on 2026-08-22, a consumer: pin `v0.2.1` → `v0.2.3` moved by hand, CI red 37
  * seconds later on «the repository declares protocol version 17, the package writes
  * 18», because the step that was skipped over (`v0.2.2`) carried the shape bump.
  *

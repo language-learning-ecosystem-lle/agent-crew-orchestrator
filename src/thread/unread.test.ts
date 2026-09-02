@@ -61,7 +61,7 @@ describe("unreadFor", () => {
 
 /**
  * THE SECOND CASE OF THE CLASS, and it has no parallelism in it at all (curator, thread
- * `058`, msg-003): circuit LLE, 2026-08-30, dev-speech wrote twice in a row 32 seconds apart
+ * `058`, msg-003): a consumer's circuit, 2026-08-30, dev-speech wrote twice in a row 32 seconds apart
  * (`15:49:21Z` and `15:49:53Z`) — the second letter lifted a parking the first one had
  * declared by mistake. One role, one session, two letters; a reader of "the last message"
  * sees the lift and never the thing being lifted. The mark being the reader's OWN last

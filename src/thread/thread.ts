@@ -796,7 +796,7 @@ const standingParkOf = (thread: Thread): number | undefined => {
         // THE PARK IS ON A TURN, AND A NEW TURN DOES NOT INHERIT IT (thread 042, decision of john
         // 2026-08-29, `PROTOCOL.md`): a later message naming somebody ELSE in `waiting-on` ended
         // the turn the park was declared on, and the pair that holds the thread now is not
-        // waiting for a human — it is waiting to be raised. Measured in LLE on 2026-08-28: a
+        // waiting for a human — it is waiting to be raised. Measured at a consumer on 2026-08-28: a
         // park declared on curator's turn stood over `dev-speech×010-speech-service` for
         // 4 h 16 m, with 201 ticks of `PARKED behind a decision of john` — true about the thread
         // and false about the pair. The turn coming BACK to the same role later does not revive
