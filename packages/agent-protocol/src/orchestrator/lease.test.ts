@@ -115,6 +115,24 @@ describe("foldLeases — the lifecycle", () => {
     expect(v.state).toBe("running");
     expect(v.lastEvent).toBe("launch");
   });
+
+  // WHEN, beside WHAT (thread 063, review of #201). `lastEvent` has always said which event
+  // was the pair's last and never when it happened, and the mail lock cannot be attributed to
+  // a pair without that: a frame holds one row per pair ever seen, so "which pair of this role
+  // is the one still writing" is answerable by recency alone.
+  it("the view carries the stamp of the pair's last event, not of its first", () => {
+    const events = [acquire("dev-core", "t", FUTURE), launch("dev-core", "t")];
+    const v = only(events);
+    expect(v.lastAt).toBe((events[1] as OrchestratorEvent).ts);
+    expect(v.lastAt).not.toBe((events[0] as OrchestratorEvent).ts);
+  });
+
+  it("each pair is stamped by its OWN last event", () => {
+    const first = acquire("dev-core", "old", FUTURE);
+    const second = acquire("dev-core", "new", FUTURE);
+    const views = foldLeases([first, second], NOW);
+    expect(views.map((v) => v.lastAt)).toEqual([first.ts, second.ts]);
+  });
 });
 
 describe("foldLeases — gap 1: working vs stuck (overdue)", () => {

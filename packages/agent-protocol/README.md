@@ -3247,6 +3247,21 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   saying "60m left" about a pair while the observer showed only a stamp is the same
   two-renderers defect one layer up. The inventory the vocabulary was derived from, including
   the states still MISSING, is [`docs/state-model.md`](../../docs/state-model.md).
+- **THE OBSERVER'S TOP ROW KEEPS THE MARK, WHATEVER THE WIDTH** (thread 063, found in review
+  of #201). Ordering the columns is not enough for the MARKS: `⚠ OVERDUE`, `⚠ EXHAUSTED (…)`,
+  `⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET`, `⏳ THIS PAIR IS OVER, ITS SESSION IS NOT`
+  are glued past the deadline stamp and each is a paragraph — the `restore` mark alone makes
+  the row 458 characters, so a plain cut at a hundred columns dropped every one of them and
+  the panel showed `working — nothing reported yet` about a pair `status` was calling
+  raised-and-silent. The panel now keeps the mark's OWN first sentence (up to the em-dash the
+  mark itself puts between its name and its explanation) and spends the cut on the columns
+  instead — the same words `status` prints, fewer of them, never others. Two limits are
+  measured rather than assumed: the pair's `role` and `thread` are never traded away for a
+  mark (a window on a row nobody can identify is a fact about nobody), and the panel is still
+  exactly the terminal's width, so on a screen narrower than the mark's own sentence the mark
+  is what gets cut. Held by `one-fact-one-phrase.test.ts`, which now asserts both windows on
+  the top ROW and not on the whole panel — the middle panel reprints the frame, so a phrase
+  found anywhere in it proves nothing about the line an operator reads.
 - **Putting things down covers the whole process group (`-pid`), not just the direct
   child.** A SIGTERM to a launcher does not reach its children (`claude` → its
   subprocesses), and they would be orphaned; the spawn is `detached` and the
@@ -4165,6 +4180,43 @@ a human can predict the queue without reading the code.
   was about. Every mark is computed from sections the frame already carries (`parallelism.live`,
   `holds`, the `quota:` panel), never from a new field handed in by the caller, so the panel and
   the row cannot come to say different things.
+- **A PAIR THAT IS UP BEFORE ITS CHILD HAS SPOKEN IS SAID SO ON ITS OWN LEASE ROW** (thread 063).
+  The supervisor learns a vendor session id from the INIT LINE of the stream and only then writes
+  the run's `.session` file, so between the lease and the child's first word the frame shows
+  `running · working` about a process that may not exist yet — and the operator waits for output
+  that cannot come, then goes to kill a session that is not there. The row now carries
+  `⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET — no session id has been written for this run …
+  the next step here is to wait`, beside the `⚠ OVERDUE`/`⚠ EXHAUSTED` marks rather than instead
+  of them. Two things the sentence does deliberately: it does NOT call the pair silent (the
+  session log is opened and written BEFORE the spawn, so the activity trace moves in this window
+  — a mark reading "nothing reported" would ask for the very kill it prevents), and it names the
+  WINDOW rather than a cause. A memory restore and the plain gap between the spawn and the first
+  line of the stream both live inside it, nothing the circuit records tells them apart, and their
+  next step is the same one — so the line offers them as alternatives and asserts neither. What
+  reaches the frame is a machine fact (`existsSync` of the id file, asked where the frame is
+  filled, one call per LIVE pair); the mark itself is computed in the renderer.
+- **AND A PAIR THAT IS OVER WHILE ITS SESSION IS STILL WRITING** (thread 063). A run saves its own
+  memory AFTER the handoff and writes it through the mail checkout, whose lock is ONE PER BOX — so
+  the frame shows `released · completed` beside a process that is holding up every other delivery.
+  ONE row carries `⏳ THIS PAIR IS OVER, ITS SESSION IS NOT — pid <n> still holds the mail checkout …
+  every other delivery waits behind it` — the pair of the role the LOCK names (`memory of <role>`,
+  read verbatim from the record) whose last journal event is the most recent (`lastAt`). A role is not
+  a pair: the frame holds a row per pair ever seen in the journal, so matching on the role alone put
+  the mark on every historical pair of that role at once. When the pair cannot be picked — no finished
+  row of that role here, or two equally recent ones — NO row is marked and the lock is printed as a
+  line of its own that names which of the two it was; the fact is never lost silently. The choice is
+  made once per frame (`mailLockPair`) and used by both renderers of the top section, `status` and the
+  observer's panel — and so is that line-of-its-own (`mailLockOrphanLine`): it is a line of the SECTION,
+  so the panel BUILDS it rather than inheriting it from the frame it reprints below, cuts it the way it
+  cuts a mark (the holder, the pid and the `since` survive a narrow terminal) and counts it in the
+  panel's own budget, where a line that does not fit is dropped by a `capped` that says how many it
+  dropped. With no pairs in the frame at all neither renderer prints it: `status` stops at its "no
+  sessions" line, and the panel says nothing the text frame does not. Three things it does not do: it does not pin a lock on the pair that
+  happens to be nearest (a digest or an ordinary delivery gets a line of its own, attributed to
+  nobody), it does not trust a record whose pid is gone (liveness is measured in `readMailLock`, and
+  a stale lock explains nothing), and it does not mark a `running` row — there the same process is
+  doing the work the row already names. The reader never repairs or waits for the lock: it looks at
+  the record and nothing else.
 
 ## `spike/` — P0
 
