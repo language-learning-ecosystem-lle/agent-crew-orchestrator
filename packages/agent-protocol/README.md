@@ -4164,7 +4164,12 @@ a human can predict the queue without reading the code.
   row of that role here, or two equally recent ones — NO row is marked and the lock is printed as a
   line of its own that names which of the two it was; the fact is never lost silently. The choice is
   made once per frame (`mailLockPair`) and used by both renderers of the top section, `status` and the
-  observer's panel. Three things it does not do: it does not pin a lock on the pair that
+  observer's panel — and so is that line-of-its-own (`mailLockOrphanLine`): it is a line of the SECTION,
+  so the panel BUILDS it rather than inheriting it from the frame it reprints below, cuts it the way it
+  cuts a mark (the holder, the pid and the `since` survive a narrow terminal) and counts it in the
+  panel's own budget, where a line that does not fit is dropped by a `capped` that says how many it
+  dropped. With no pairs in the frame at all neither renderer prints it: `status` stops at its "no
+  sessions" line, and the panel says nothing the text frame does not. Three things it does not do: it does not pin a lock on the pair that
   happens to be nearest (a digest or an ordinary delivery gets a line of its own, attributed to
   nobody), it does not trust a record whose pid is gone (liveness is measured in `readMailLock`, and
   a stale lock explains nothing), and it does not mark a `running` row — there the same process is

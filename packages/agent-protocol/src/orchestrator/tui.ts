@@ -37,7 +37,7 @@ import { USAGE } from "../usage.js";
 import { parseUsage } from "./argv.js";
 import type { HoldView } from "./hold.js";
 import { type OperatorFrame, renderFrame } from "./snapshot.js";
-import { mailLockPair, renderLeaseLine } from "./status.js";
+import { mailLockOrphanLine, mailLockPair, renderLeaseLine } from "./status.js";
 
 /**
  * The eight keys of the observer: five that read (T-1) and three that act (T-2).
@@ -481,15 +481,36 @@ export const renderTui = (input: {
     );
     return `${index === state.selected ? "▸ " : "  "}${line}`;
   });
+  // A LOCK THAT WEARS NO ROW IS STILL A LINE OF THIS SECTION, so the panel builds it with the
+  // section's own function rather than inheriting it from the slice below (second review of
+  // #201). It is NOT a pair: it never takes the selection cursor, and it is appended after the
+  // rows so no index of `state.selected` moves under it. What it does take is a place in the
+  // panel's BUDGET — dropped here, it is dropped inside a `capped` that says how many lines it
+  // dropped, which is the whole difference between a fact lost and a loss announced.
+  //
+  // AND NOT WHEN THERE ARE NO PAIRS AT ALL: `renderStatus` returns its "no sessions" line and
+  // stops before the lock, so a panel that printed the orphan there would be saying a sentence
+  // the text frame does not have. The two frames are one (T-1) in what they DROP as well.
+  const orphan =
+    frame.leases.length === 0 ? undefined : mailLockOrphanLine(frame.leases, frame.mailLock);
+  // `trimStart` after the fit and not instead of it: the section's line carries the two spaces
+  // `status` indents it with, and the panel's own two-column gutter is the one the rows use —
+  // stacked, they set the mark one column right of every row and the column stopped being a
+  // column. The fit is measured against `cols - 2` either way, so trimming only shortens.
+  const section =
+    orphan === undefined ? pairs : [...pairs, `  ${fitLeaseLine(orphan, cols - 2).trimStart()}`];
   const top = capped(
-    pairs.length === 0 ? ["orchestrator: no sessions in the journal"] : pairs,
+    section.length === 0 ? ["orchestrator: no sessions in the journal"] : section,
     Math.max(1, Math.floor(rows / 3)),
   );
 
   // The middle is the frame MINUS the lease lines it starts with — the same text
-  // `status` prints, not a re-assembly of the same sections in a second order.
+  // `status` prints, not a re-assembly of the same sections in a second order. The count is
+  // the SECTION's length and not the pairs': the orphan line above is a line of `renderStatus`
+  // too, and a slice that forgot it printed it twice — once cut by the panel, once cut by the
+  // middle — which is one fact in two shapes, the defect this thread exists for.
   const whole = renderFrame(frame).split("\n");
-  const middleAll = whole.slice(Math.max(1, frame.leases.length));
+  const middleAll = whole.slice(Math.max(1, section.length));
   const selected = frame.leases[Math.min(state.selected, Math.max(0, frame.leases.length - 1))];
   // The header is TWO lines, and the path has one to itself: crammed onto the end of the
   // first it was the part an 80-column terminal cut off — the one thing on that line an

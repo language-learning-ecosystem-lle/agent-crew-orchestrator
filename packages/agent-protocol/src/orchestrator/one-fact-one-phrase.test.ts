@@ -33,7 +33,7 @@ import type { LeaseView } from "./lease.js";
 import type { OperatorFrame } from "./snapshot.js";
 import { renderParallelism } from "./snapshot.js";
 import { stateWord } from "./state-word.js";
-import { renderLeaseLine } from "./status.js";
+import { renderLeaseLine, renderStatus } from "./status.js";
 import { initialTuiState, renderTui } from "./tui.js";
 
 const NOW = new Date("2026-08-30T19:00:00Z");
@@ -164,6 +164,29 @@ describe("one fact — one phrase in every frame", () => {
       const frame: OperatorFrame = { ...FRAME, leases: [pair], mailLock };
       const row = renderTui({ frame, state: initialTuiState, rows: 24, cols: 80 })[0] as string;
       expect(row, "the observer's top row is silent about a window `status` names").toContain(head);
+    });
+
+    // THE SAME WINDOW WHEN NO ROW CAN WEAR IT (third review of #201). This one is not a mark on
+    // a pair — it is a line of the lease SECTION — and that is exactly why it drifted: the panel
+    // sliced the frame by the number of PAIRS, so the line arrived only as a leftover of the
+    // middle block, cut by the plain width cut instead of the mark-preserving one. Measured at
+    // 24×100 before the fix: `— one l`. Asserted on the top panel and against `status`'s own
+    // first sentence, the same shape as the two cases above.
+    it("`save` with no row to wear it: both frames still name the lock", () => {
+      const mailLock = { holder: "digest", pid: 4242, since: "2026-08-30T18:58:00Z", alive: true };
+      const status = renderStatus([PAIR], undefined, NOW, undefined, mailLock);
+      const orphan = status.split("\n").at(-1) as string;
+      const head = HEAD(orphan.slice(orphan.indexOf("⏳")));
+      expect(head).toBe(
+        "⏳ the mail checkout is held by 'digest' (pid 4242, since 2026-08-30T18:58:00Z)",
+      );
+      const frame: OperatorFrame = { ...FRAME, mailLock };
+      const panel = renderTui({ frame, state: initialTuiState, rows: 24, cols: 80 });
+      // The SECOND row: one pair, then the lock — inside the panel, not in the reprint below.
+      expect(panel[1], "the observer's top panel is silent about a lock `status` names").toContain(
+        "the mail checkout is held by 'digest'",
+      );
+      expect(panel[1]).toContain("pid 4242");
     });
   });
 

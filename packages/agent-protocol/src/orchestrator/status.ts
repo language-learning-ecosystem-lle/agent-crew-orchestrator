@@ -290,23 +290,39 @@ export const renderStatus = (
       ),
     )
     .join("\n");
-  // A LOCK THAT BELONGS TO NO PAIR IS SAID WITHOUT ONE (curator's condition 2). The digest
-  // is a writer of this box that has no lease and no row, and the ordinary deliveries name
-  // a command rather than a session; attributing either to the pair that happens to be
-  // nearest would invent a fact about that pair.
-  //
-  // AND THE SAME LINE CATCHES THE HOLDER THAT NAMES A ROLE BUT REACHED NO ROW (review of
-  // #201): the writer's pair may be outside this frame, or two pairs of that role may be
-  // equally recent. The old condition asked whether the holder PARSED, so exactly those
-  // cases printed nothing at all — a live lock, a named pid and "every other delivery waits
-  // behind it" all vanishing, leaving a busy door indistinguishable from a free one. The
-  // condition now asks the thing that matters: was the mark actually put on a row above.
-  const orphan =
-    lock === undefined || !lock.alive || saver !== undefined
-      ? undefined
-      : `  ⏳ the mail checkout is held by '${lock.holder}' (pid ${lock.pid}, since ${lock.since}) — one lock for the whole box, and ${whyNoPair(views, lock)}: every delivery waits behind it while it lasts`;
+  const orphan = mailLockOrphanLine(views, lock);
   return orphan === undefined ? rows : `${rows}\n${orphan}`;
 };
+
+/**
+ * A LOCK THAT BELONGS TO NO PAIR, SAID WITHOUT ONE (curator's condition 2). The digest is a
+ * writer of this box that has no lease and no row, and the ordinary deliveries name a command
+ * rather than a session; attributing either to the pair that happens to be nearest would
+ * invent a fact about that pair.
+ *
+ * AND THE SAME LINE CATCHES THE HOLDER THAT NAMES A ROLE BUT REACHED NO ROW (review of #201):
+ * the writer's pair may be outside this frame, or two pairs of that role may be equally
+ * recent. The old condition asked whether the holder PARSED, so exactly those cases printed
+ * nothing at all — a live lock, a named pid and "every other delivery waits behind it" all
+ * vanishing, leaving a busy door indistinguishable from a free one. The condition asks the
+ * thing that matters: was the mark actually put on a row above.
+ *
+ * EXPORTED FOR THE SAME REASON `mailLockPair` IS (second review of #201): this line is a line
+ * of the lease SECTION, not of the sections below it, and the observer's top panel is that
+ * section's other renderer. It used to reach the screen only as a leftover — `renderTui` sliced
+ * the rendered frame by the NUMBER OF PAIRS and this line is one more than that, so it fell
+ * into the middle block, where it was cut to the terminal's width by `cutTo` and lost its
+ * second half: at a hundred columns the operator read `— one l` and never the reason, the
+ * "every delivery waits behind it", nor the announcement of what had been dropped. A fact that
+ * survives on the arithmetic of somebody else's slice is not carried; it is spilled.
+ */
+export const mailLockOrphanLine = (
+  views: readonly LeaseView[],
+  lock?: HeldMailLock,
+): string | undefined =>
+  lock === undefined || !lock.alive || mailLockPair(views, lock) !== undefined
+    ? undefined
+    : `  ⏳ the mail checkout is held by '${lock.holder}' (pid ${lock.pid}, since ${lock.since}) — one lock for the whole box, and ${whyNoPair(views, lock)}: every delivery waits behind it while it lasts`;
 
 /**
  * WHY NO ROW WEARS THIS LOCK — the clause the orphan line ends its first half with. A
