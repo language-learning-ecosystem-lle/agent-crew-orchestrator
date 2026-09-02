@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T17:20:19.070Z",
+  "writtenAt": "2026-09-02T17:20:46.572Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "064-forget-the-consumer",
       "state": "running",
       "deadline": "2026-09-02T18:16:08Z"
+    },
+    {
+      "role": "curator",
+      "thread": "064-forget-the-consumer",
+      "state": "running",
+      "deadline": "2026-09-02T18:00:43Z"
     }
   ]
 }
