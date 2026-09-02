@@ -954,13 +954,13 @@ describe("merge-gate takes the token of the instance the checkout belongs to", (
     if (secrets.write) writeFileSync(envFile, `GH_TOKEN=${SECRET}\n`, "utf8");
   };
 
-  /** The command run from a CLEAN environment: no `GH_TOKEN`, no login of `gh`. */
+  /**
+   * The command run from a CLEAN environment: no `GH_TOKEN`, no login of `gh`. The
+   * subtraction is the sandbox's own (thread `071`) — it used to be spelled out here, and
+   * spelling it out per file is what let two other files reach this door without it.
+   */
   const runClean = (repo: string, bin: string): { code: number; out: string } => {
-    const {
-      GH_TOKEN: _mine,
-      GITHUB_TOKEN: _theirs,
-      ...clean
-    } = sandbox(configHomeInside(repo), {
+    const clean = sandbox(configHomeInside(repo), {
       PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
     });
     try {
