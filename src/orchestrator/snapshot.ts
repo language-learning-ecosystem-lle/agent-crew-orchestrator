@@ -54,7 +54,7 @@ import { renderInstances } from "./instances.js";
 import { CLAUDE_CODE, kindOf } from "./kind.js";
 import type { LeaseView } from "./lease.js";
 import { describeGhOutage, type GhOutage, ghAlarmDue } from "./outage.js";
-import type { RankedCandidate } from "./priority.js";
+import type { RankedCandidate, RoleElsewhere } from "./priority.js";
 import { describeOrder } from "./priority.js";
 import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
 import { type ResidentWait, renderResidentWaits } from "./resident.js";
@@ -239,7 +239,7 @@ export const renderQueue = (
   /** Which of those parks ask nobody (`modeParks`, thread 063) — carried, not re-decided. */
   modeParked: ReadonlySet<string> = new Set(),
   /** Roles that cannot be raised because they are elsewhere (thread 063) — role → what it is doing. */
-  busy: ReadonlyMap<string, string> = new Map(),
+  busy: ReadonlyMap<string, RoleElsewhere> = new Map(),
   /** Roles whose every account is shelved (thread 063) — role → the window that reopens first. */
   shelved: ReadonlyMap<string, string> = new Map(),
 ): string => {
@@ -267,15 +267,21 @@ export const renderQueue = (
  * A LIVE SESSION AND A HOLD ARE NAMED APART, because they are repaired apart: the first ends by
  * itself, the second ends when a human gives the role back. An ACTIVE hold only — an expired one
  * is not capacity spent, and `renderHolds` already says so two blocks above.
+ *
+ * THE THREAD OF THE LIVE SESSION RIDES ALONG (thread 063, states 4/5) so the row can compare it
+ * with its own — the whole difference between "the role is spent on another thread" and "the
+ * mail handed the turn back to a session that is still running". The hold carries none: it is
+ * not a session standing on a thread, and inventing one would be the frame guessing.
  */
 export const busyRoles = (
   parallelism: Parallelism,
   holds: readonly HoldView[] = [],
-): ReadonlyMap<string, string> => {
-  const busy = new Map<string, string>();
-  for (const view of parallelism.live) busy.set(view.role, `live on ${view.thread}`);
+): ReadonlyMap<string, RoleElsewhere> => {
+  const busy = new Map<string, RoleElsewhere>();
+  for (const view of parallelism.live)
+    busy.set(view.role, { doing: `live on ${view.thread}`, thread: view.thread });
   for (const hold of holds)
-    if (hold.active) busy.set(hold.role, `held by a manual session of ${hold.by}`);
+    if (hold.active) busy.set(hold.role, { doing: `held by a manual session of ${hold.by}` });
   return busy;
 };
 

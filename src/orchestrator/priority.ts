@@ -237,6 +237,23 @@ export const rankCandidates = (input: {
 };
 
 /**
+ * WHAT A BUSY ROLE IS DOING INSTEAD, and — when that is a session — WHICH THREAD IT STANDS ON
+ * (thread 063, states 4/5).
+ *
+ * The thread rides beside the words rather than being read back out of them, because the queue
+ * row has to compare it with its own: a role live on ANOTHER thread and a role live on THIS
+ * one are two different states of the pair, and until this field existed the frame printed one
+ * sentence for both, differing by a thread id inside it and by nothing else. A manual hold
+ * carries no thread — it is not a session standing anywhere — so it is never the second case.
+ */
+export type RoleElsewhere = {
+  /** "live on 063-…", "held by a manual session of john" — what the row says after "is". */
+  readonly doing: string;
+  /** The thread of the live session, absent for a hold. */
+  readonly thread?: string | undefined;
+};
+
+/**
  * The queue in words, for the daemon's stream. Printed BEFORE the tick decides, so
  * that "why this pair and not that one" is answerable from the log alone — the same
  * reason every skip says its reason out loud (curator's requirement 1 of the 2026-07-26
@@ -277,7 +294,7 @@ export const describeOrder = (
    * in the operator's frame: the daemon says the first one in its skip line, and the frame has
    * no skip lines at all. Absent map, the row reads exactly as it did before.
    */
-  busy: ReadonlyMap<string, string> = new Map(),
+  busy: ReadonlyMap<string, RoleElsewhere> = new Map(),
   /**
    * THE ROLES HELD BY A CLOSED WINDOW (thread 063, §2.2 state 3): role id → the window and
    * when it reopens. The tick has said this since the shelves existed — `skipped` carries the
@@ -312,10 +329,21 @@ export const describeOrder = (
     // freeze rather than instead of it: a parked pair whose role is also busy is held by two
     // different things, and an operator repairing one of them needs to know about the other.
     const elsewhere = busy.get(candidate.role);
+    // AND TWO DIFFERENT THINGS SAID APART (thread 063, states 4/5). Measured before the second
+    // sentence was written: rendered off one fixture, the two frames differed by the thread id
+    // INSIDE this line and by nothing else, so an operator told them apart by comparing two
+    // identifiers within one sentence. They are not one state. "The role is on another thread"
+    // is capacity spent elsewhere and the pair waits its turn; "the role is live on THIS row's
+    // thread" is the mail handing the turn back to a pair that is still running — the busiest
+    // pair of the frame, not a stuck one. The old tail was worse than silent on that second
+    // form: `until that one ends` pointed at the very pair the row is about.
+    const sameThread = elsewhere?.thread !== undefined && elsewhere.thread === candidate.thread;
     const taken =
       elsewhere === undefined
         ? ""
-        : ` · ⛔ ROLE BUSY — ${candidate.role} is ${elsewhere}; one session per role (its workspace is one), so this pair is not raised until that one ends`;
+        : sameThread
+          ? ` · ↩ THE TURN CAME BACK TO A LIVE PAIR — ${candidate.role} is ${elsewhere.doing}, and that is the thread of this very row: the mail asked this pair again while its own session still runs. Nothing else holds it — the live session takes that word in place if it is waiting for one, and otherwise the pair is raised anew the moment that session ends`
+          : ` · ⛔ ROLE BUSY — ${candidate.role} is ${elsewhere.doing}; one session per role (its workspace is one), so this pair is not raised until that one ends`;
     // THE CLOSED WINDOW, said on the row that promises the launch (thread 063). Beside the two
     // above and never instead of them, for the reason the freeze is beside the busy mark: a pair
     // can be held by three different things at once, and each of them is repaired — or waited
