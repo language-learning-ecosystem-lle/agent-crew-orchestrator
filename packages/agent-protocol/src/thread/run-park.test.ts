@@ -7,6 +7,7 @@ import {
   looksLikeAbsentPr,
   pendingRunsOf,
   RUN_PARK_TTL_SECONDS,
+  runsOnHead,
   staleRunParks,
 } from "./run-park.js";
 import type { Thread } from "./thread.js";
@@ -52,7 +53,11 @@ describe("the door of a run: park (thread 062, layer 1)", () => {
     expect(verdict.ok).toBe(false);
     if (verdict.ok) return;
     expect(verdict.reason).toContain("not one run on head 6f933b03");
-    expect(verdict.reason).toContain("gh pr checks 243");
+    // THE COMMAND IT HANDS OUT IS ONE THE READER CAN ACTUALLY RUN (thread 120): `gh pr checks`
+    // reads `statusCheckRollup`, a Checks resource no fine-grained token is ever granted, so
+    // the old wording sent a role to a 403 to check the door's word.
+    expect(verdict.reason).toContain("actions/runs?head_sha=6f933b0321ab");
+    expect(verdict.reason).not.toContain("gh pr checks");
   });
 
   // The CAUSE of that head having no runs, said apart because it is repaired differently.
@@ -75,6 +80,87 @@ describe("the door of a run: park (thread 062, layer 1)", () => {
     if (!verdict.ok) return;
     expect(verdict.note).toContain("NOT verified");
     expect(verdict.note).toContain("gh: no token");
+  });
+});
+
+/**
+ * TWO SOURCES CAN REFUSE APART (thread 120) — the door reads the head from `gh pr view` and the
+ * runs from `actions/runs`, and a token can hold the first while being refused the second. That
+ * is not a hypothesis: it is the shape of the box this circuit runs on, where the Checks
+ * resource is unreachable by construction.
+ */
+describe("the door of a run: park — the runs that were not read (thread 120)", () => {
+  it("lets the park stand when the PR was read and its runs were not, quoting the refusal", () => {
+    const verdict = judgeRunPark({
+      pr: 181,
+      facts: {
+        headSha: "147905ee109",
+        mergeable: "MERGEABLE",
+        runsRefusal: "HTTP 403: Resource not accessible by personal access token",
+      },
+    });
+
+    expect(verdict.ok).toBe(true);
+    if (!verdict.ok) return;
+    expect(verdict.note).toContain("were NOT read");
+    expect(verdict.note).toContain("147905ee1");
+    expect(verdict.note).toContain("Resource not accessible");
+  });
+
+  // AN UNREAD SOURCE IS NOT AN EMPTY ONE. Reading absent counts as "no runs on this head" would
+  // refuse every park on a box whose token cannot see Actions — a door that says no to everyone
+  // is the same silence as a door that says nothing, only louder.
+  it("never reads unread runs as zero runs", () => {
+    const verdict = judgeRunPark({
+      pr: 181,
+      facts: { headSha: "147905ee109", mergeable: "MERGEABLE" },
+    });
+
+    expect(verdict.ok).toBe(true);
+  });
+
+  // The first source still judges what it alone can judge: a conflicting PR gets no merge ref
+  // and therefore no run, whatever Actions did or did not answer.
+  it("still refuses a CONFLICTING pull request when the runs are unreadable", () => {
+    const verdict = judgeRunPark({
+      pr: 181,
+      facts: { headSha: "147905ee109", mergeable: "CONFLICTING", runsRefusal: "HTTP 403" },
+    });
+
+    expect(verdict.ok).toBe(false);
+    if (verdict.ok) return;
+    expect(verdict.reason).toContain("NO RUN WILL BE BORN");
+  });
+});
+
+describe("the runs of THIS head (thread 120)", () => {
+  const runs = [
+    { headSha: "147905EE109", status: "completed" },
+    { headSha: "147905ee109", status: "in_progress" },
+    { headSha: "0a612b27c15", status: "queued" },
+    { status: "in_progress" },
+  ];
+
+  // The anchor is enforced on the ANSWER, not only in the query: `actions/runs` is asked with
+  // the head in the URL, but the payload is somebody else's and this circuit has twice paid for
+  // an outcome read off another slice of the repository.
+  it("keeps the runs of the head whatever the case of the sha, and drops every other", () => {
+    expect(runsOnHead(runs, "147905ee109")).toHaveLength(2);
+    expect(runsOnHead(runs, "0a612b27c15")).toHaveLength(1);
+    expect(runsOnHead(runs, "deadbeef000")).toHaveLength(0);
+  });
+
+  // A run that names no head anchors nothing, and "unanchored" cannot be the evidence that
+  // there is something to wait for — so it is dropped, towards refusing the park.
+  it("drops a run that names no head at all", () => {
+    expect(runsOnHead([{ status: "in_progress" }], "147905ee109")).toHaveLength(0);
+  });
+
+  // The vocabulary moved from GraphQL's `COMPLETED` to REST's `completed`, and the counter did
+  // not have to: it has always case-folded. Both words are read here so the move is a test.
+  it("counts what is still in flight in the vocabulary of Actions and of the old rollup alike", () => {
+    expect(pendingRunsOf(runsOnHead(runs, "147905ee109"))).toBe(1);
+    expect(pendingRunsOf([{ status: "COMPLETED" }, { status: "queued" }])).toBe(1);
   });
 });
 
@@ -123,7 +209,8 @@ describe("the door of a run: park — the round that is already over (thread 032
     expect(verdict.reason).toContain("ALREADY FINISHED");
     expect(verdict.reason).toContain("64b331d7e");
     expect(verdict.reason).toContain("BEHIND the park");
-    expect(verdict.reason).toContain("gh pr checks 386");
+    expect(verdict.reason).toContain("actions/runs?head_sha=64b331d7ee0");
+    expect(verdict.reason).not.toContain("gh pr checks");
   });
 
   // The regression of the class: a round IN FLIGHT is what the form is for, and it is not

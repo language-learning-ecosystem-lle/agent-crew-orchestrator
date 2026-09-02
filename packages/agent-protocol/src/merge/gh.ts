@@ -99,29 +99,26 @@ export const ghOpenPullRequestsSchema = z.array(
 );
 
 /**
- * THE CHEAPEST READ OF ALL — the three facts the door of a `run:` park needs (thread 062):
- * which head the park would wait on, whether GitHub will assemble a merge ref for this pull
- * request at all, and whether ANY run exists on that head.
+ * THE CHEAPEST READ OF ALL — the two facts about the PULL REQUEST that the door of a `run:`
+ * park needs (thread 062): which head the park would wait on, and whether GitHub will
+ * assemble a merge ref for this pull request at all.
  *
  * Its own schema rather than {@link ghPullRequestSchema}: that one asks for reviews, commits
  * and files, which the question "is there a run" has no use for, and this call sits in the
  * hot path of an ordinary message. Loose for the same reason as the rest — somebody else's
- * payload grows — and the three fields it computes from are pinned, so a rename is caught by
+ * payload grows — and both fields it computes from are pinned, so a rename is caught by
  * name instead of being read as "no runs" (which here would REFUSE a legal park).
+ *
+ * `statusCheckRollup` USED TO BE THE THIRD FIELD AND IS GONE (thread 120), for the same
+ * measured reason it left the door of `merge-gate`: it is a Checks resource, no fine-grained
+ * token can ever be granted it, and asking for it in the same `gh pr view` as `headRefOid`
+ * and `mergeable` cost the WHOLE call — the park then degraded into "not verified" on every
+ * message from such a box, which is a door that never says anything. The runs of the head now
+ * come from `actions/runs?head_sha=` ({@link readWorkflowRuns}), the one source that answers.
  */
 export const ghRunParkSchema = z.looseObject({
   headRefOid: z.string().min(1),
   mergeable: z.string(),
-  // `status`/`state` ARE READ, NOT PINNED (thread 032): the door asks not only whether a run
-  // exists on this head but whether one is STILL IN FLIGHT — a park behind a round that has
-  // already finished waits for an event that has already happened. A check run says
-  // `status: QUEUED|IN_PROGRESS|COMPLETED`, a status context says `state: PENDING|SUCCESS|…`,
-  // and the two shapes live in the same array; an entry carrying neither is read as finished,
-  // which is the direction that does not refuse a legal park on a payload we stopped
-  // understanding (see {@link pendingRunsOf}).
-  statusCheckRollup: z
-    .array(z.looseObject({ status: nullableText, state: nullableText }))
-    .nullish(),
 });
 
 /**

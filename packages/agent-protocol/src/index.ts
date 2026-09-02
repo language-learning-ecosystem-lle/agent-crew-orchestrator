@@ -323,6 +323,8 @@ export {
   RUN_PARK_TTL_SECONDS,
   type RunParkFacts,
   type RunParkVerdict,
+  type RunRollupEntry,
+  runsOnHead,
   type StaleRunPark,
   staleRunParks,
 } from "./thread/run-park.js";

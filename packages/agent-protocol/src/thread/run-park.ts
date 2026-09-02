@@ -18,10 +18,14 @@
  *
  * TWO LAYERS, AND THEY CATCH DIFFERENT THINGS (curator's statement of work, point 3):
  *
- *  1. {@link judgeRunPark} — AT THE DOOR of the park. One `gh` call: is there a run on THIS
- *     head, is the pull request mergeable at all, and — since thread 032 — is any of those runs
- *     STILL RUNNING. Nothing there — the park is refused with the reason in words. This closes
- *     the case above entirely and costs one call.
+ *  1. {@link judgeRunPark} — AT THE DOOR of the park. Is there a run on THIS head, is the pull
+ *     request mergeable at all, and — since thread 032 — is any of those runs STILL RUNNING.
+ *     Nothing there — the park is refused with the reason in words. This closes the case above
+ *     entirely. TWO CALLS SINCE THREAD 120, not one: `gh pr view` for the head and `mergeable`,
+ *     `gh api actions/runs?head_sha=` for the runs. They were one call while the runs came from
+ *     `statusCheckRollup` — and that field is a Checks resource no fine-grained token can hold,
+ *     so on this circuit the single call failed WHOLE and the door said "not verified" about
+ *     every park it was ever asked. Two calls that answer beat one that 403s.
  *
  *     The third question is the other end of the same class and was measured a fortnight later
  *     (thread 032, LLE 2026-08-23): a park whose condition had come true TWENTY SECONDS BEFORE
@@ -53,33 +57,82 @@ import { mergedPrs, parkingOf, type Thread } from "./thread.js";
  */
 export const RUN_PARK_TTL_SECONDS = 30 * 60;
 
-/** What the door asks GitHub about a pull request before a park on its round is allowed. */
+/**
+ * What the door asks GitHub about a pull request before a park on its round is allowed.
+ *
+ * TWO QUESTIONS AND TWO SOURCES SINCE THREAD 120, and that is why the counts are OPTIONAL:
+ * the head and `mergeable` come from `gh pr view`, the runs on that head from
+ * `actions/runs?head_sha=`. A token can hold the first and be refused the second, and a door
+ * that threw away the answer it did get would refuse nothing it could have refused —
+ * `CONFLICTING` is judged from the first source alone. Absent counts mean "the runs were not
+ * read", are said out loud with {@link RunParkFacts.runsRefusal}, and are NEVER read as
+ * "there are no runs", which is a refusal of the park.
+ */
 export type RunParkFacts = {
   /** The head the park would be waiting on — named in the refusal, so a human can check it. */
   readonly headSha: string;
   /** `gh`'s own word: `MERGEABLE`, `CONFLICTING`, `UNKNOWN` (it is computed lazily). */
   readonly mergeable: string;
-  /** How many check runs / status contexts GitHub reports ON THAT HEAD. Zero is the defect. */
-  readonly checkRuns: number;
+  /**
+   * How many runs Actions reports ON THAT HEAD. Zero is the defect; `undefined` is "not
+   * read" and degrades into a note, exactly like a `gh` that could not be asked at all.
+   */
+  readonly checkRuns?: number;
   /**
    * How many of those are STILL IN FLIGHT — queued or running (thread 032). Zero with
    * `checkRuns > 0` is the race: the round is over, its outcome is already in the feed or is
    * being written into it right now, and the park would wait for an event behind its own back.
    */
-  readonly pendingRuns: number;
+  readonly pendingRuns?: number;
+  /** Why the counts are missing — GitHub's own sentence, quoted into the note. */
+  readonly runsRefusal?: string;
 };
 
-/** One entry of `statusCheckRollup`, in the two shapes GitHub puts in that one array. */
+/**
+ * One run of `actions/runs` as this door reads it (thread 120) — the head it ran on and
+ * whether it has finished. Two fields, because those are the two questions.
+ */
 export type RunRollupEntry = {
-  /** A check run: `QUEUED` / `IN_PROGRESS` / `COMPLETED` (and whatever GitHub adds next). */
+  /** Actions: `queued` / `in_progress` / `completed` (and whatever GitHub adds next). */
   readonly status?: string | null | undefined;
-  /** A status context: `PENDING` / `SUCCESS` / `FAILURE` / `ERROR`. */
+  /**
+   * `head_sha` of the run. The API is asked WITH the head in the query and the answer is
+   * filtered by it again ({@link runsOnHead}) — the same belt guard 2 wears, for the same
+   * reason: this circuit has twice paid for an outcome read off another slice of the repo.
+   */
+  readonly headSha?: string | null | undefined;
+  /**
+   * A status context of the old `statusCheckRollup`: `PENDING` / `SUCCESS` / `FAILURE`.
+   * Nothing produces this shape any more — it is still read because the reading costs one
+   * comparison and because the vocabulary of the old source is what older feeds quote.
+   */
   readonly state?: string | null | undefined;
 };
 
 /**
+ * THE RUNS THAT BELONG TO THIS HEAD — the anchor enforced on the ANSWER and not only in the
+ * query, because the payload is somebody else's.
+ *
+ * A run naming another head is dropped by name rather than read charitably: counting it would
+ * let a park stand behind a round of another slice, the class this door exists to refuse. A run
+ * carrying NO head is dropped too — it anchors nothing, and "unanchored" cannot be the evidence
+ * that there is something to wait for. Both drops err towards refusing the park, which is the
+ * loud direction; the silent one has no second layer.
+ */
+export const runsOnHead = (
+  runs: readonly RunRollupEntry[],
+  head: string,
+): readonly RunRollupEntry[] =>
+  runs.filter((run) => (run.headSha ?? "").toLowerCase() === head.toLowerCase());
+
+/**
  * HOW MANY ROUNDS ARE STILL RUNNING ON THE HEAD — the one fact the race is read from, kept
  * pure so its edges are a test and not a screenshot of `gh`.
+ *
+ * The vocabulary it reads is Actions' since thread 120 (`queued` / `in_progress` /
+ * `completed`, lower case in REST), and the comparison has always been case-folded, which is
+ * why the move of the source did not move this function: `COMPLETED` of the old GraphQL rollup
+ * and `completed` of `actions/runs` are the same word to it.
  *
  * NOT-COMPLETED IS THE POSITIVE READING, and the asymmetry is deliberate: an entry whose shape
  * this function does not recognise (no `status`, no `state`, a word GitHub invented after this
@@ -176,14 +229,30 @@ export const judgeRunPark = (input: {
       )}: the park would wait for a message the circuit has no reason to write (thread 062, the live case of 2026-08-08 — 2h10m of a frozen pair). Resolve the conflict, push, and park on the round that starts then`,
     };
   }
+  // THE PULL REQUEST WAS READ AND ITS RUNS WERE NOT (thread 120) — the two sources of this
+  // door can refuse apart, and this is the half where `gh pr view` answered while
+  // `actions/runs` did not. The park stands with the reason quoted, in the same one direction
+  // as a `gh` that could not be asked at all: an unread source is not evidence of an empty one.
+  // `CONFLICTING` above is judged before this on purpose — it is a fact of the first source,
+  // and the runs have nothing to add to a merge ref GitHub will never assemble.
+  if (facts.checkRuns === undefined) {
+    return {
+      ok: true,
+      note: `the runs on head ${short(facts.headSha)} of PR #${input.pr} were NOT read, so the park was not verified: ${
+        facts.runsRefusal ?? "the runs of the head could not be asked for"
+      }. The park stands — the age ceiling (${Math.round(
+        RUN_PARK_TTL_SECONDS / 60,
+      )} min by default) is what catches it if there is nothing to wait for`,
+    };
+  }
   if (facts.checkRuns === 0) {
     return {
       ok: false,
       reason: `--parked-on 'run:${input.pr}' — there is not one run on head ${short(
         facts.headSha,
-      )} of PR #${input.pr}, and the park has exactly one lift: a message about the OUTCOME of a run. Waiting for an event with no source is the silence of thread 062. Check with 'gh pr checks ${
-        input.pr
-      }' — if a push has just landed, the first run appears seconds later and the park is legal then; if the answer stays "no checks reported", find out why the workflow did not start before parking`,
+      )} of PR #${input.pr}, and the park has exactly one lift: a message about the OUTCOME of a run. Waiting for an event with no source is the silence of thread 062. Check with ${byHand(
+        facts.headSha,
+      )} — if a push has just landed, the first run appears seconds later and the park is legal then; if the answer stays empty, find out why the workflow did not start before parking`,
     };
   }
   // THE ROUND IS OVER BEFORE THE PARK IS WRITTEN (thread 032, the race of the third refusal).
@@ -212,9 +281,9 @@ export const judgeRunPark = (input: {
         facts.headSha,
       )} of PR #${input.pr} has ALREADY FINISHED (${facts.checkRuns} run${
         facts.checkRuns === 1 ? "" : "s"
-      }, none queued or in progress), so the outcome this park waits for has already happened: its message is in the feed BEHIND the park, and the lift only ever looks forward (thread 032, the live race of 2026-08-23 — 22 minutes of a frozen pair). Read the outcome and report it, or, if you have just pushed or just put up the label, wait for the round to appear ('gh pr checks ${
-        input.pr
-      }') and park then`,
+      }, none queued or in progress), so the outcome this park waits for has already happened: its message is in the feed BEHIND the park, and the lift only ever looks forward (thread 032, the live race of 2026-08-23 — 22 minutes of a frozen pair). Read the outcome and report it, or, if you have just pushed or just put up the label, wait for the round to appear (${byHand(
+        facts.headSha,
+      )}) and park then`,
     };
   }
   return {
@@ -226,6 +295,19 @@ export const judgeRunPark = (input: {
 };
 
 const short = (sha: string): string => (sha.length > 9 ? sha.slice(0, 9) : sha);
+
+/**
+ * THE ONE COMMAND THAT ANSWERS THE SAME QUESTION BY HAND — and it is not `gh pr checks`
+ * any more (thread 120).
+ *
+ * `gh pr checks` reads `statusCheckRollup`, a Checks resource that no fine-grained token can
+ * be granted, so a role told to run it on this circuit gets `Resource not accessible by
+ * personal access token` and learns nothing. A refusal that hands out a command the reader
+ * cannot run is worse than one that hands out none: it spends the reader's turn proving the
+ * door wrong. This is the same call the door itself makes.
+ */
+const byHand = (head: string): string =>
+  `'gh api "repos/{owner}/{repo}/actions/runs?head_sha=${head}"'`;
 
 /** A `run:` park that has outlived the ceiling — the thread, the round, and how long it stood. */
 export type StaleRunPark = {

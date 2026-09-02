@@ -103,6 +103,7 @@ import {
   pullRequestFacts,
   readCheckRuns,
   readReviewRuns,
+  readWorkflowRuns,
 } from "./merge/gh.js";
 import {
   type AccountAlarm,
@@ -587,6 +588,7 @@ import {
   pendingRunsOf,
   RUN_PARK_TTL_SECONDS,
   type RunParkFacts,
+  runsOnHead,
   staleRunParks,
 } from "./thread/run-park.js";
 import { judgeSelfTurn } from "./thread/self-turn.js";
@@ -3066,7 +3068,12 @@ const runParkFacts = (
   try {
     raw = execFileSync(
       "gh",
-      ["pr", "view", String(pr), "--json", "headRefOid,mergeable,statusCheckRollup"],
+      // NO `statusCheckRollup` HERE (thread 120): asking for it in the same call as
+      // `headRefOid` and `mergeable` made a token without the Checks resource lose ALL
+      // THREE — the door then said "not verified" about every park on this circuit. The
+      // runs come from Actions below, and this call now asks only what `gh pr view` can
+      // actually answer.
+      ["pr", "view", String(pr), "--json", "headRefOid,mergeable"],
       {
         cwd: repo,
         encoding: "utf8",
@@ -3102,13 +3109,47 @@ const runParkFacts = (
         .join("; ")}`,
     };
   }
-  const rollup = parsed.data.statusCheckRollup ?? [];
+  const head = parsed.data.headRefOid;
+  // THE SECOND SOURCE (thread 120) — the runs of this head, from Actions, which is the one
+  // resource a fine-grained token can be granted. It is asked ONLY once the first call
+  // answered: the head is its query, and there is nothing to ask about a head we do not have.
+  //
+  // A refusal here does NOT lose the two facts already in hand: `CONFLICTING` is judged from
+  // `gh pr view` alone, and an unread run list becomes a note on a park that stands — the same
+  // one-directional degradation this door has always had, now able to happen by halves.
+  const runs = readWorkflowRuns(() =>
+    execFileSync(
+      "gh",
+      // `per_page=100`: the runs of ONE head, and a head with a hundred runs on it has a
+      // different problem than this door is about. Same query as the merge door's guard 2.
+      ["api", `repos/{owner}/{repo}/actions/runs?head_sha=${head}&per_page=100`],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: platform.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 16 * 1024 * 1024,
+      },
+    ),
+  );
+  if ("reason" in runs)
+    return {
+      facts: {
+        headSha: head,
+        mergeable: parsed.data.mergeable,
+        runsRefusal: explainWithCredentials(runs.reason, platform),
+      },
+    };
+  const onHead = runsOnHead(
+    runs.runs.map((run) => ({ status: run.status, headSha: run.headSha })),
+    head,
+  );
   return {
     facts: {
-      headSha: parsed.data.headRefOid,
+      headSha: head,
       mergeable: parsed.data.mergeable,
-      checkRuns: rollup.length,
-      pendingRuns: pendingRunsOf(rollup),
+      checkRuns: onHead.length,
+      pendingRuns: pendingRunsOf(onHead),
     },
   };
 };

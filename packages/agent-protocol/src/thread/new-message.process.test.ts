@@ -695,15 +695,27 @@ describe("new-message --write delivers (R3)", () => {
  * can only drop the directive with a line.
  */
 /**
- * A `gh` ON `PATH` that answers the ONE call the door of a `run:` park makes (thread 062).
+ * A `gh` ON `PATH` that answers the TWO calls the door of a `run:` park makes — `gh pr view`
+ * for the head and `mergeable` (thread 062), and `gh api actions/runs?head_sha=` for the runs
+ * on that head (thread 120, where the runs left `statusCheckRollup`).
  *
  * A shim rather than an injected source: the door is the thing under test, and it resolves the
  * binary itself — a stub handed to it would test everything except the wiring that failed live.
+ * It BRANCHES ON THE SUBCOMMAND for the same reason: the split into two calls IS the repair, and
+ * one payload answering both would pass whether or not the split happened.
  */
 const ghShim = (
   repo: string,
   answer:
-    | { readonly headSha: string; readonly mergeable: string; readonly runs: number }
+    | {
+        readonly headSha: string;
+        readonly mergeable: string;
+        readonly runs: number;
+        /** Actions refuses while `gh pr view` answers — the half-refusal of thread 120. */
+        readonly refuseRuns?: true;
+        /** Runs Actions reports on ANOTHER head; the door must drop them by name. */
+        readonly foreignRuns?: number;
+      }
     | { readonly refuse: true }
     // The vendor's own sentence about a pull request that is not there (thread 061), copied
     // from what `gh pr view 33328290131` actually printed on 2026-08-30.
@@ -711,21 +723,46 @@ const ghShim = (
 ): string => {
   const dir = join(repo, `gh-shim-${randomUUID().slice(0, 8)}`);
   mkdirSync(dir, { recursive: true });
-  const body =
-    "refuse" in answer
-      ? 'echo "gh: no token" >&2; exit 1'
-      : "absent" in answer
-        ? 'echo "GraphQL: Could not resolve to a PullRequest with the number of 999999. (repository.pullRequest)" >&2; exit 1'
-        : `cat <<'JSON'\n${JSON.stringify({
-            headRefOid: answer.headSha,
-            mergeable: answer.mergeable,
-            statusCheckRollup: Array.from({ length: answer.runs }, (_, at) => ({
-              name: `check-${at}`,
-              status: "IN_PROGRESS",
-            })),
-          })}\nJSON`;
+  const shim = (): string => {
+    if ("refuse" in answer) return 'echo "gh: no token" >&2; exit 1';
+    if ("absent" in answer)
+      return 'echo "GraphQL: Could not resolve to a PullRequest with the number of 999999. (repository.pullRequest)" >&2; exit 1';
+    const view = JSON.stringify({
+      headRefOid: answer.headSha,
+      mergeable: answer.mergeable,
+    });
+    const runs = JSON.stringify({
+      workflow_runs: [
+        ...Array.from({ length: answer.runs }, (_, at) => ({
+          name: `check-${at}`,
+          head_sha: answer.headSha,
+          status: "in_progress",
+          conclusion: null,
+        })),
+        ...Array.from({ length: answer.foreignRuns ?? 0 }, (_, at) => ({
+          name: `elsewhere-${at}`,
+          head_sha: "0000000000000000000000000000000000000000",
+          status: "in_progress",
+          conclusion: null,
+        })),
+      ],
+    });
+    const runsBody =
+      answer.refuseRuns === true
+        ? 'echo "HTTP 403: Resource not accessible by personal access token" >&2; exit 1'
+        : `cat <<'JSON'\n${runs}\nJSON`;
+    return [
+      'case "$1" in',
+      `pr) cat <<'JSON'\n${view}\nJSON`,
+      ";;",
+      `api) ${runsBody}`,
+      ";;",
+      '*) echo "gh: unexpected call $*" >&2; exit 1 ;;',
+      "esac",
+    ].join("\n");
+  };
   const bin = join(dir, "gh");
-  writeFileSync(bin, `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+  writeFileSync(bin, `#!/bin/sh\n${shim()}\n`, { mode: 0o755 });
   return dir;
 };
 
@@ -1079,6 +1116,50 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(result.code).toBe(0);
     expect(result.out).toContain("NOT verified");
     expect(written(contest.root).fields.parkedOn).toBe("run:243");
+  });
+
+  // THREAD 120, THE HALF-REFUSAL — the shape of this circuit's own box: `gh pr view` answers
+  // and `actions/runs` does not. It is the whole reason the runs left `statusCheckRollup`:
+  // while both rode ONE call, such a token lost the head, `mergeable` and the runs together.
+  it("a refusal of Actions alone leaves the park standing and quotes what GitHub said", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:243", {
+      PATH: `${ghShim(contest.repo, {
+        headSha: "6f933b0321ab",
+        mergeable: "MERGEABLE",
+        runs: 0,
+        refuseRuns: true,
+      })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("were NOT read");
+    expect(result.out).toContain("Resource not accessible");
+    // AND NOT the refusal of an empty head — `runs: 0` is what the payload WOULD have said had
+    // it arrived. An unread source read as an empty one refuses every park on this box.
+    expect(result.out).not.toContain("not one run on head");
+    expect(written(contest.root).fields.parkedOn).toBe("run:243");
+  });
+
+  // The anchor, through the real door: Actions is asked WITH the head in the query and answers
+  // with runs of another slice anyway. Counting them would stand a park behind somebody else's
+  // round — the class this circuit has already paid for twice.
+  it("runs of another head do not hold a park up — the anchor is enforced on the answer", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:243", {
+      PATH: `${ghShim(contest.repo, {
+        headSha: "6f933b0321ab",
+        mergeable: "MERGEABLE",
+        runs: 0,
+        foreignRuns: 3,
+      })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("not one run on head 6f933b03");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
   });
 
   // THREAD 061, msg-002 — THE NUMBER ITSELF. Three parks in one day took somebody else's
