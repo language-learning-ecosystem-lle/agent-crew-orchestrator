@@ -89,4 +89,5 @@
 | 082-no-verdict-letter-vs-park | curator, john | normal | open | curator | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~21:2xZ): ЧИНИТЬ, и работу ставишь ты сама — постановка н… |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
+| 085-stale-workspace-package | curator · dev-core · john | normal | open | — | — | — | — |
 | 116-role-memory-cost | curator | normal | open | curator | — | 2026-09-02 | verdict: approve |
