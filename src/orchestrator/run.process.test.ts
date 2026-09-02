@@ -1571,6 +1571,80 @@ describe("a session that asks and waits alive (R19)", () => {
   }, 60_000);
 
   /**
+   * THE OTHER HALF OF THE SAME CLASS, AND THE ONLY PLACE ITS SEAM EXISTS (thread
+   * `056-shared-tmp-mechanism`, step 1 of john's order of 2026-09-02): what `TMPDIR`
+   * cannot reach is the path the session TYPES, because a literal path obeys no variable.
+   * Both cases measured under the merged mechanism were exactly that — `> /tmp/.nothing`
+   * and `> "$HOME/.marker_$$"` — and all eight known cases of the class were found by a
+   * role catching itself, which is a confession and not a measurement.
+   *
+   * THE HOME IS THE TEST'S OWN, said out loud for the same reason the `PATH` case says it:
+   * the shared places of a run are the platform's temp and the box user's home, and a case
+   * that reached for the REAL ones to prove itself would be committing the defect it
+   * measures. `HOME` goes through `extra`, and the file the stub types lands inside a
+   * directory this test owns and throws away.
+   */
+  it("A PATH THE SESSION TYPED INTO A SHARED PLACE IS NAMED IN THE RUN'S OWN LOG — and nothing is removed", () => {
+    const { repo } = contour();
+    const home = join(repo, "home");
+    mkdirSync(home, { recursive: true });
+    // What was there BEFORE the run: the measurement is «appeared while this run was
+    // alive», so an entry older than the run must not be reported as its leaving.
+    const older = join(home, ".someone-elses-file");
+    writeFileSync(older, "not this run's\n");
+    // The form that no variable catches: a path typed by hand, in the middle of a command
+    // whose subject is something else entirely. This is the shape of case 7 and case 8.
+    const typed = join(home, ".marker056");
+    const exec = stub(repo, [`printf 'xxxxx' > "$HOME/.marker056"`, "sleep 1"].join("\n"));
+
+    execFileSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--poll",
+        "1",
+        "--exec",
+        exec,
+        "--wall-clock",
+        "30",
+        "--write",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        stdio: "pipe",
+        env: sandbox(configHome(repo), { HOME: home }),
+      },
+    );
+
+    const log = sessionLog(repo);
+    // The class is measurable now: the path, its size, and whose run's window it appeared
+    // in — read from the run's own journal instead of from an executor's honesty.
+    expect(log).toContain(`SHARED PLACE ${home} gained 1 entry`);
+    expect(log).toContain(`${typed} (5 bytes)`);
+    expect(log).toContain("dev-core/012-x");
+    // A window is not an owner, and the line says so itself.
+    expect(log).toContain("A shared place is shared");
+    // What was already there is nobody's finding…
+    expect(log).not.toContain(older);
+    // …and step 1 forbids nothing: both files are still where they were. Deleting somebody
+    // else's file on the strength of a window would be worse than the defect measured.
+    expect(existsSync(typed)).toBe(true);
+    expect(existsSync(older)).toBe(true);
+  }, 60_000);
+
+  /**
    * THE SEAM OF THE `PATH` (thread `069-session-path`), and like the one above it is the
    * only place the claim can be made: a unit proves `sessionPathValue` composes a string,
    * and no string proves that a REAL session, typing a tool's bare name the way a role
