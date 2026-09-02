@@ -17,7 +17,7 @@
  *   - `tsx` — the loader every process test in this repository spawns through — opens
  *     `<TMPDIR>/tsx-<uid>/<pid>.pipe`, 22 characters with a four-digit uid and a seven-digit
  *     pid. So `TMPDIR` of 86 characters runs and 87 dies: 86 + 22 = 108;
- *   - the variable is LENGTH, not location: the same 142-character name under `/tmp` fails,
+ *   - the variable is LENGTH, not location: a padded 133-character name under `/tmp` fails,
  *     a 71-character name inside the state directory runs.
  *
  * WHY IT MATTERS BEYOND ONE LOADER. Under the long `TMPDIR` all 36 tests of
