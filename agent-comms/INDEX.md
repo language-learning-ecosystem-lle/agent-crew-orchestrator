@@ -43,12 +43,12 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | dev-core | run:210 · 2026-09-02 | 2026-09-02 | PR-1 постановки msg-106 §1 открыт: #210, голова 6b9837605a9998f7692a9ea31df5c881b6f3271f. Жду check… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #210: success. |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Промежуточный замер поля моей рукой, 16:08–16:10Z. Дубля по-прежнему нет — 858 тактов курьера. Но р… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-09-02 | verdict: approve |
+| 047-devops-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Вердикт approve на 068f2380 пришёл, и дверь merge-gate в фактах открыта — но мёржа нет: гард 3 держ… |
 | 048-box-privileges-today | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
