@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T21:56:19.066Z",
+  "writtenAt": "2026-09-02T21:56:33.288Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "058-launch-prompt-mail-form-sandbox",
+      "state": "running",
+      "deadline": "2026-09-02T22:56:29Z"
+    },
     {
       "role": "curator",
       "thread": "074-parallelism-and-domains",
