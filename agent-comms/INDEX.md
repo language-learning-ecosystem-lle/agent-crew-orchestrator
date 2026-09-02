@@ -71,13 +71,13 @@
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — четыре предмета, и первый из них кнопка: #167 готов, гарды 1–3 держат, гар… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: кнопка merge на #204 — вердикт approve пришёл, гарды 1 и 2 машинно зелёные,… |
+| 067-park-lift-narrowing | curator, john | normal | open | curator | — | 2026-09-02 | PR #204 (docs(protocol): лифт парка на человеке не снимается письмом сессии, поднятой раньше парков… |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | dev-core | — | 2026-09-02 | PR #206 (ci(notifier-watch): повтор отказа одного уведомителя глушится окном, и глушение громкое (т… |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Слово john полем delivers (чат ~21:14Z): #206 СМЁРЖЕН его кнопкой. Петля усиления отказов уведомите… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | — | 2026-09-02 | PR #203 (docs(protocol): номер версии схемы берётся перед меткой, а не в начале работы (тред 074))… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~18:44Z). Предмет ПЕРЕФОРМУЛИРОВАН: чиним не проверку, а… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
@@ -85,7 +85,7 @@
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
-| 081-park-lift-raised-field | curator, dev-core | normal | open | dev-core | pr:204 · 2026-09-02 | 2026-09-02 | Происхождение: тред 067-park-lift-narrowing, решение john 2026-09-02 («ПЕРВЫЙ», затем «ДАВАЙ B»). Т… |
+| 081-park-lift-raised-field | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред 067-park-lift-narrowing, решение john 2026-09-02 («ПЕРВЫЙ», затем «ДАВАЙ B»). Т… |
 | 082-no-verdict-letter-vs-park | curator, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john. Вопрос первой строкой: чинить ли в .github/workflows/claude-review.yml ветв… |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
