@@ -166,6 +166,7 @@ import {
   renderCodeVintage,
   renderDriftStandoff,
 } from "./orchestrator/code-age.js";
+import { codexReadOnlyEnv } from "./orchestrator/codex.js";
 import {
   type CodexCatalogue,
   codexCataloguePaths,
@@ -9051,6 +9052,14 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // own name is too long for a socket to be opened under it, and then this is a short
       // symlink to the very same directory (thread `070`).
       [RUN_TMPDIR_ENV]: runTmp.handed,
+      // …AND WHAT A RUN CONFINED BY THE VENDOR'S SANDBOX HAS TO BE TOLD ABOUT THAT
+      // DIRECTORY (thread `058-launch-prompt-mail-form-sandbox`). It goes RIGHT AFTER
+      // `TMPDIR` because it is about `TMPDIR`: the run's own scratch is fresh by
+      // construction (#172), and under `--sandbox read-only` a loader that has to CREATE
+      // its cache directory there dies with `ENOENT` before the CLI it imports ever
+      // starts. Empty for every role that is not held — see `codexReadOnlyEnv` for the
+      // measurement and for why this is a variable rather than a directory made by hand.
+      ...codexReadOnlyEnv(p.launch),
       // WHERE ITS TOOLS ARE LOOKED UP (thread `069-session-path`). The inherited `PATH`
       // is the daemon's — under systemd, the unit's own (`systemd.ts`, decision 5) — and
       // it carries no per-user directory, so a tool installed the ordinary way
