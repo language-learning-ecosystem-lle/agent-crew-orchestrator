@@ -1564,6 +1564,90 @@ describe("a session that asks and waits alive (R19)", () => {
   }, 60_000);
 
   /**
+   * THE SEAM OF THE `PATH` (thread `069-session-path`), and like the one above it is the
+   * only place the claim can be made: a unit proves `sessionPathValue` composes a string,
+   * and no string proves that a REAL session, typing a tool's bare name the way a role
+   * types it, finds the file. What is measured here is the tax the finding named — a
+   * command dead with `No such file or directory` while the same binary sits on the
+   * operator's own `PATH` — and its absence afterwards.
+   *
+   * THE BOX IS THE TEST'S OWN, `HOME` AND ALL: the tool is minted inside `HOME/.local/bin`
+   * of a home this test owns, so the case measures the mechanism and not whether the
+   * developer running the suite happens to have `uv` installed. `HOME` is passed through
+   * `extra` and said out loud here, which is the same discipline `process-sandbox.ts`
+   * states for every other ambient variable a case is ABOUT.
+   */
+  it("A TOOL IN THE USER'S OWN bin IS FOUND BY THE SESSION BY ITS BARE NAME — and the inherited PATH still answers first", () => {
+    const { repo } = contour();
+    const home = join(repo, "home");
+    const userBin = join(home, ".local", "bin");
+    mkdirSync(userBin, { recursive: true });
+    // A tool installed the ordinary way — the class `uv`, `pipx` and `pip --user` belong
+    // to. Nothing about it is declared anywhere in this circuit's config.
+    const tool = join(userBin, "tool069");
+    writeFileSync(tool, "#!/bin/sh\nprintf 'the user tool ran'\n");
+    chmodSync(tool, 0o755);
+
+    const pathDump = join(repo, "path-env.txt");
+    const toolDump = join(repo, "tool-out.txt");
+    const exec = stub(
+      repo,
+      [
+        `printf '%s' "$PATH" > ${pathDump}`,
+        // The bare name, exactly as a role would type it, with the failure captured
+        // rather than swallowed: a missing tool must show up as a value, not as a
+        // silent empty file that any assertion could be written around.
+        `tool069 > ${toolDump} 2>&1 || printf 'NOT FOUND' > ${toolDump}`,
+        "sleep 1",
+      ].join("\n"),
+    );
+
+    execFileSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--poll",
+        "1",
+        "--exec",
+        exec,
+        "--wall-clock",
+        "30",
+        "--write",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        stdio: "pipe",
+        env: sandbox(configHome(repo), { HOME: home }),
+      },
+    );
+
+    // The session did nothing special and still ran the tool.
+    expect(readFileSync(toolDump, "utf8")).toBe("the user tool ran");
+    // …because the directory was APPENDED to what the supervisor inherited: everything
+    // that resolved before this mechanism existed still resolves to the same file, the
+    // agent binary first among them (R14).
+    const seen = readFileSync(pathDump, "utf8").split(":");
+    expect(seen.at(-1)).toBe(userBin);
+    expect(seen.filter((dir) => dir === userBin)).toHaveLength(1);
+    expect(seen.slice(0, -1).join(":")).toBe(process.env.PATH);
+    // AND THE COMPOSITION IS SAID, not done silently — the run's own log is where an
+    // operator finds out what the session could see.
+    expect(sessionLog(repo)).toContain(`session PATH ${seen.join(":")}`);
+  }, 60_000);
+
+  /**
    * THE SEAM, AND IT IS A NEW ONE (thread `038`): the config of the served project now
    * reaches the text a session reads. A unit on `buildLaunchPrompt` proves the builder
    * substitutes what it is handed; it cannot prove that the loader, the run and the spawn

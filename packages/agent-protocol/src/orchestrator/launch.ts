@@ -35,6 +35,7 @@
  * and a ceiling nobody can move or attribute is indistinguishable from a bug.
  */
 import { userInfo } from "node:os";
+import { join } from "node:path";
 
 import type { LocalConfig } from "../config/local.js";
 import {
@@ -194,6 +195,90 @@ export const LAUNCH_ENV = {
  * under — a claim this package has no business making about its own harness.
  */
 export const RUN_TMPDIR_ENV = "TMPDIR";
+
+/**
+ * THE SECOND VARIABLE OF THE LAUNCH THAT IS NOT OURS TO NAME (thread `069-session-path`),
+ * and it is here for the same reason as the one above: what the session gets from the
+ * environment it does not have to remember.
+ *
+ * THE FACT. A session raised by the resident inherits the daemon's environment, and under
+ * systemd that `PATH` is the unit's own (`systemd.ts`, decision 5): the interpreter's
+ * directory, the agent binaries' directories, the system floor. Deliberately NOT a login
+ * shell's `PATH` — a user unit does not inherit one, and copying one into the unit would
+ * put the paths in a fourth place. The consequence measured on `lle-agents`
+ * (2026-09-02T09:52Z): `~/.local/bin` — where `pip --user`, `pipx`, `uv` and the GitHub
+ * CLI's own installer put their binaries — is on the operator's `PATH` and absent from
+ * every session's. `uv` and `uvx` resolved for the user and resolved nowhere for the
+ * session, which is how the finding surfaced: one command dead with `No such file or
+ * directory`, the next one alive with the full path typed by hand.
+ *
+ * THE PRICE IS A TAX, NOT A BREAKAGE, and that is precisely why it is fixed here. Every
+ * session needing such a tool pays one dead call, one guess and one line in its log; a
+ * role that has never seen the failure pays a whole turn, because it has no reason to
+ * suspect the `PATH` rather than the box. The alternative fix — a sentence in a role card
+ * telling sessions to type full paths — is the same substitution of memory for mechanism
+ * this repository already refused for the shared `/tmp` (thread `056`) and for the
+ * command's own credentials (thread `065`).
+ *
+ * THE DIRECTORIES ARE APPENDED, NEVER PREPENDED, and this is the whole safety of the
+ * change: a name that already resolves for the session keeps resolving to the same file.
+ * The box that produced the finding shows why it matters — `~/.local/bin/claude` is the
+ * vendor's native install and the session's `claude` comes from the node version manager;
+ * putting the user's directory in front would silently change WHICH agent binary the
+ * circuit raises, a decision that belongs to the machine config (R14) and to whoever pays
+ * for it. Appended, the set of resolvable names only grows.
+ *
+ * IT ADDS A FLOOR, IT DOES NOT COPY A SHELL. Only the standard per-user binary directory
+ * ({@link USER_BIN_DIRS}) is considered, and only if it EXISTS on the box: «everything the
+ * operator happens to have» would make the session's environment a function of somebody's
+ * `.bashrc`, unreproducible between two boxes and impossible to state in a doc. A
+ * vendor-specific directory (the box also carries `~/.maestro/bin`) is not this package's
+ * business — it belongs to whoever declares the tool.
+ */
+export const SESSION_PATH_ENV = "PATH";
+
+/**
+ * The per-user binary directory, relative to `HOME` — the one place a Linux box agrees on
+ * (systemd's own `user-dirs`, the XDG layout, `pip --user`, `pipx`, `uv`, `cargo`'s
+ * installers all end up here). One entry, and a list rather than a constant so a test can
+ * name its own without reaching into `HOME`.
+ */
+export const USER_BIN_DIRS: readonly string[] = [".local/bin"];
+
+/**
+ * The `PATH` the session is handed: the inherited one plus whatever of {@link USER_BIN_DIRS}
+ * exists and is not already on it, appended in order. `undefined` means «nothing to say» —
+ * the caller then leaves the inherited value alone rather than writing an identical one.
+ *
+ * IT EXTENDS A `PATH`, IT DOES NOT INVENT ONE. With nothing inherited the answer is
+ * `undefined`, not a `PATH` made of user directories: a box whose daemon has no `PATH` at
+ * all cannot find `git` or `sh` either, and handing the session a two-entry `PATH` would
+ * dress that fault as a working environment. `preflight` names that one by itself.
+ */
+export const sessionPathValue = (input: {
+  /**
+   * The inherited `PATH`, as the supervisor's own environment carries it. Explicitly
+   * `| undefined` and not merely optional: under `exactOptionalPropertyTypes` those are
+   * different types, and the caller reads `process.env`, where a missing variable IS the
+   * value `undefined` rather than an absent key.
+   */
+  readonly path?: string | undefined;
+  /** The user's home; absent (an environment without `HOME`) means nothing is added. */
+  readonly home?: string | undefined;
+  /** Does this directory exist on the box — injected, so the rule stays testable. */
+  readonly exists: (dir: string) => boolean;
+  /** The candidates, relative to `home`; defaults to {@link USER_BIN_DIRS}. */
+  readonly dirs?: readonly string[];
+}): string | undefined => {
+  const home = input.home;
+  if (!input.path || !home) return undefined;
+  const present = input.path.split(":").filter((entry) => entry.length > 0);
+  const added = (input.dirs ?? USER_BIN_DIRS)
+    .map((dir) => join(home, dir))
+    .filter((dir) => !present.includes(dir) && input.exists(dir))
+    .filter((dir, index, all) => all.indexOf(dir) === index);
+  return added.length === 0 ? undefined : [...present, ...added].join(":");
+};
 
 /**
  * What the orchestrator says it is raising. A DEFAULT rather than a config field:
