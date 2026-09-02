@@ -1,0 +1,1 @@
+- [No git credentials for aco-devops](gap_no_git_credentials.md) — mail CLI unusable: no ~/.ssh/gh-auth, and node missing from PATH
