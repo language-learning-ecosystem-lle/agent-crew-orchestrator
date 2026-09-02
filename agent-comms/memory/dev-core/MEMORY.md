@@ -13,3 +13,4 @@
 - [Гард 1 двери merge требует имя воркфлоу ревью](merge-gate-guard1-needs-review-workflow-name.md) — без `--review-workflow 'Claude PR Review'` гард 1 отдаёт `you` даже на настоящем approve.
 - [Ветка может опережать тред](branch-may-be-ahead-of-thread.md) — умершая сессия пушит и не отчитывается; смотреть `origin` до того, как делать заказанное.
 - [Чужой дом мерится путями, не именами ролей](foreign-home-measured-by-paths-not-role-names.md) — переименование ролей оставляет `apps/<чужое>` на соседней строке; и `LLE` без `\b` ловит `CALLED`.
+- [Счёт по `daemon.log` — только с якорем](daemon-log-grep-needs-an-anchor.md) — в лог попадают транскрипты сессий; без `^agent-protocol: daemon —` число завышено.
