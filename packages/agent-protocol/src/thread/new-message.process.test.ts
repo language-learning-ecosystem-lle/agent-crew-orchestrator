@@ -2019,3 +2019,48 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
     });
   });
 });
+
+/**
+ * THE THIRD FIELD OF PROVENANCE AT THE ORDINARY DOOR (thread 081). Its neighbour case for
+ * `new-thread` lives in `new-thread.process.test.ts` — both, because a flag one command of the
+ * pair writes and the other swallows is what 075 was paid for.
+ */
+describe("new-message writes `raised:` (thread 081)", () => {
+  it("takes it from the launch environment — a raised session passes nothing", () => {
+    const c = contour();
+    const result = write(c, {
+      AGENT_PROTOCOL_WORKER: "claude-code",
+      AGENT_PROTOCOL_RAISED_AT: "2026-08-30T14:24:19Z",
+    });
+    expect(result.code).toBe(0);
+    expect(written(c.root).fields.raised).toBe("2026-08-30T14:24:19Z");
+  });
+
+  it("the flag wins over the environment, for a hand that knows better", () => {
+    const c = contour();
+    const result = write(
+      c,
+      { AGENT_PROTOCOL_WORKER: "claude-code", AGENT_PROTOCOL_RAISED_AT: "2026-08-30T14:24:19Z" },
+      "--raised",
+      "2026-08-30T15:00:00Z",
+    );
+    expect(result.code).toBe(0);
+    expect(written(c.root).fields.raised).toBe("2026-08-30T15:00:00Z");
+  });
+
+  it("without the variable and without the flag the header carries no such line", () => {
+    // The degenerate case is the NORM's (`PROTOCOL.md`): a hand and a workflow have no moment
+    // of being raised, and their letters lift a park exactly as they always did.
+    const c = contour();
+    expect(write(c, { AGENT_PROTOCOL_WORKER: "human" }).code).toBe(0);
+    expect(written(c.root).fields.raised).toBeUndefined();
+  });
+
+  it("refuses a malformed stamp BY NAME, where it can still be retyped", () => {
+    const c = contour();
+    const refused = write(c, { AGENT_PROTOCOL_WORKER: "claude-code" }, "--raised", "вчера");
+    expect(refused.code).toBe(2);
+    expect(refused.out).toContain("--raised 'вчера'");
+    expect(refused.out).toContain("2026-09-02T14:24:19Z");
+  });
+});

@@ -687,6 +687,18 @@ export const parkSpansOf = (thread: Thread): readonly ParkSpan[] => {
  * and so does an outcome handed to the same holder without a question in it. A park whose
  * message declared no holder is untouched by all of this — see the walk itself.
  *
+ * SINCE 2026-09-02 BOTH OF THOSE ARE HEARD ONLY FROM A SESSION THAT COULD HAVE SEEN THE PARK
+ * (thread 081, decision of john, `PROTOCOL.md` "ОСНОВАНИЕ — ПОЛЕ ПРОВЕНАНСА В ШАПКЕ ПИСЬМА").
+ * The pair (i)/(ii) above reads the header of a LATER message — but "later in the feed" and
+ * "written in answer to the park" are not the same thing when a session is raised concurrently
+ * with the announcement: the letter was composed by a run that started before the park existed
+ * and had no way of knowing about it. The new field of provenance says which it is —
+ * `raised: <UTC stamp>`, the moment the circuit started the writer — and a claim raised STRICTLY
+ * before the park's date opens no new turn. A claim without the field is heard as before: that
+ * degeneracy is the norm's, not the code's, and it is why nothing in the existing feed moves.
+ * `delivers:` and `status: closed` are outside this filter at any moment of raising — the word
+ * of the person and the closing of the thread lift a park always.
+ *
  * WHY THE PERSON PARK LEFT THE COMMON WALK (thread 030, defect (в1), decision of john
  * 2026-08-22, `PROTOCOL.md`). The wide lift was defended by an ASYMMETRY of the price: lifting
  * early cost one empty raise, not lifting cost a thread frozen with the answer already inside it
@@ -768,10 +780,14 @@ const standingParkOf = (thread: Thread): number | undefined => {
   let moved = false;
   const delivered = new Set<string>();
   // THE TURNS OPENED SINCE (thread 042): every role a later message HANDED THE TURN TO, and the
-  // ones it handed it to WITHOUT ASKING FOR ANYTHING. The first set answers "did the turn the
+  // ones it handed it to WITHOUT ASKING FOR ANYTHING. The first list answers "did the turn the
   // park was declared on end", the second "did the turn it was declared on get its outcome".
-  const handedTo = new Set<string>();
-  const outcomeFor = new Set<string>();
+  //
+  // LISTS AND NOT SETS SINCE 2026-09-02 (thread 081), because each entry now carries the moment
+  // its writer was RAISED, and whether that entry counts is a question only the park can answer:
+  // the comparison is against the park's own date, and walking backwards we do not have it yet.
+  const handedTo: ParkLiftClaim[] = [];
+  const outcomeFor: ParkLiftClaim[] = [];
   for (let at = thread.messages.length - 1; at >= 0; at -= 1) {
     const message = thread.messages[at];
     if (message === undefined) return undefined;
@@ -802,7 +818,19 @@ const standingParkOf = (thread: Thread): number | undefined => {
         // and false about the pair. The turn coming BACK to the same role later does not revive
         // it either: that is a third turn, not the parked one, which is why this is a set of
         // everything seen and not the last handover alone.
-        for (const to of handedTo) if (to !== holder) return undefined;
+        //
+        // AND SINCE 2026-09-02 A CLAIM IS ONLY HEARD IF ITS WRITER COULD HAVE SEEN THE PARK
+        // (thread 081, decision of john, `PROTOCOL.md` "ОСНОВАНИЕ — ПОЛЕ ПРОВЕНАНСА В ШАПКЕ
+        // ПИСЬМА"). A session raised BEFORE the park was announced never read it, so its letter
+        // is not an answer to it — it is the letter it was going to write anyway. Measured at a
+        // consumer on 2026-08-30: the circuit raised a role at 14:24:19Z, curator parked the
+        // thread at 14:24:50Z, and the role's letter landed at 14:26:53Z — 31 seconds too late
+        // to have been about anything. The park left the courier's composition, the human was
+        // shown a last line with no park in it, and the standing question was never asked.
+        // The filter is on THESE TWO LISTS ONLY: `delivered` above is the word of the person
+        // themselves and lifts at any moment of raising, and so does `status: closed`.
+        for (const claim of handedTo)
+          if (claim.to !== holder && sawThePark(claim, message.fields.date)) return undefined;
         // AND AT THE SAME HOLDER, THE ACTIONABLE OUTCOME OPENS ONE TOO (same norm, second half):
         // a message that hands the turn over WITHOUT asking anything is the circuit's outcome —
         // the red CI, and the green `checks` on a PR that does not yet carry the `review` label
@@ -818,7 +846,11 @@ const standingParkOf = (thread: Thread): number | undefined => {
         // the DECLARED PAIR `verdict:`/`pr:` in the header — the sender's role is deliberately
         // NOT read against the config — so no body text is parsed here either, and a letter
         // written before the fields existed carries none and opens nothing, exactly as it did.
-        return outcomeFor.has(holder) ? undefined : at;
+        return outcomeFor.some(
+          (claim) => claim.to === holder && sawThePark(claim, message.fields.date),
+        )
+          ? undefined
+          : at;
       }
       // The event parks keep the walk exactly as it was: they wait for a machine event, and the
       // first message that MOVES anybody says the wait is over.
@@ -828,13 +860,17 @@ const standingParkOf = (thread: Thread): number | undefined => {
     if (delivers !== undefined) delivered.add(delivers);
     const waitingOn = message.fields.waitingOn;
     if (typeof waitingOn === "string") {
-      handedTo.add(waitingOn);
+      const claim: ParkLiftClaim = {
+        to: waitingOn,
+        ...(message.fields.raised === undefined ? {} : { raised: message.fields.raised }),
+      };
+      handedTo.push(claim);
       // The outcome is stated in one of two ways, and both are header fields: the circuit hands
       // the turn over without asking anything (`expects: none`), or a message DECLARES the
       // verdict of a round (thread 042). The verdict's own `expects` is `answer` and stays that:
       // the reviewer asks the author for fixes or curator for the button, and the norm of
       // `REVIEWER.md` does not move a line — what the pair adds is the OUTCOME being readable.
-      if (message.fields.expects === "none" || declaresVerdict(message)) outcomeFor.add(waitingOn);
+      if (message.fields.expects === "none" || declaresVerdict(message)) outcomeFor.push(claim);
     }
     // The walk does not stop here any more, it REMEMBERS: a message that moves somebody lifts an
     // event park, and behind it there may still stand a park on a person that it does not touch.
@@ -842,6 +878,36 @@ const standingParkOf = (thread: Thread): number | undefined => {
   }
   return undefined;
 };
+
+/**
+ * A LATER MESSAGE'S CLAIM ON THE PARK IT WALKED PAST (thread 042 for `to`, thread 081 for
+ * `raised`): who it handed the turn to, and when its own writer was raised. Collected on the
+ * way down and judged at the park, because both halves of the judgement — the holder the park
+ * was declared on and the date it was declared at — belong to the park, not to the claim.
+ */
+type ParkLiftClaim = { readonly to: string; readonly raised?: string };
+
+/**
+ * COULD THE WRITER OF THIS CLAIM HAVE SEEN THE PARK (thread 081)?
+ *
+ * Three answers, and all three are the norm's rather than this function's:
+ *
+ *  - NO `raised:` at all → YES. The overwhelming majority of the feed, plus every message a
+ *    human or a workflow writes, and the norm names the degeneracy explicitly: a message
+ *    without the field lifts a park exactly as it did before the field existed;
+ *  - `raised:` at or AFTER the park's date → YES. Equality lands on "saw it" deliberately: a
+ *    session raised in the same second as the announcement is a doubt, and the doubt is
+ *    settled towards LIFTING, which costs one empty raise instead of a frozen thread;
+ *  - `raised:` STRICTLY BEFORE it → NO. This is the whole narrowing.
+ *
+ * Compared as STRINGS, which is exact for the two canonical spellings and nothing else is
+ * reachable here: `raised:` parses only as a full UTC stamp (`isRaisedAt`), and a park's date is
+ * either that or the bare date of a migrated message — where `'2026-08-30' < '2026-08-30T…Z'`
+ * puts every stamp of that day AFTER the park, i.e. on the lifting side, which is again the
+ * direction the norm chose for doubt.
+ */
+const sawThePark = (claim: ParkLiftClaim, parkedAt: string): boolean =>
+  claim.raised === undefined || claim.raised >= parkedAt;
 
 /**
  * Does this message DECLARE the verdict of a review round (thread 042)? Both halves are demanded

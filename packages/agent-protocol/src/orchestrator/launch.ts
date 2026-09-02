@@ -172,6 +172,21 @@ export const LAUNCH_ENV = {
    * moved when the answer comes back, which is the one moment it changes.
    */
   leaseDeadline: "AGENT_PROTOCOL_LEASE_DEADLINE",
+  /**
+   * WHEN THIS RUN WAS STARTED (thread 081), ISO — the value `new-message` writes into the
+   * header as `raised:`, and the one fact of a message that the park lift acts on.
+   *
+   * A VALUE and not a path, and the same value the `lease-acquired` event carries: the moment
+   * exists BEFORE the spawn (it is what the lease is dated by), unlike the session id, which is
+   * minted afterwards. So the session needs to remember nothing and to ask nothing — it writes
+   * a letter, and the letter says when its writer was started.
+   *
+   * IT IS NOT RE-STAMPED WHEN A PARKED RUN COMES BACK (R19), and that is deliberate: the
+   * question the lift asks is "did this SESSION exist before the park", and a session that
+   * waited an hour for an answer is the same session with the same context — including the
+   * same not having read whatever was written into another thread meanwhile.
+   */
+  raisedAt: "AGENT_PROTOCOL_RAISED_AT",
 } as const;
 
 /**
@@ -1833,7 +1848,17 @@ export const consecutiveLaunchesWithoutDelivery = (
 export type LaunchRefusal = "already-running" | "exhausted" | "run-budget";
 
 export type LaunchPlan =
-  | { readonly ok: true; readonly deadline: string; readonly events: readonly OrchestratorEvent[] }
+  | {
+      readonly ok: true;
+      readonly deadline: string;
+      /**
+       * WHEN THE RUN STARTS (thread 081) — the same stamp the `lease-acquired` event is dated
+       * by, handed out separately so the spawn can put it in the session's environment without
+       * re-reading its own journal or minting a second `now` that would disagree with it.
+       */
+      readonly raisedAt: string;
+      readonly events: readonly OrchestratorEvent[];
+    }
   | { readonly ok: false; readonly reason: LaunchRefusal };
 
 /**
@@ -1895,5 +1920,5 @@ export const planLaunch = (input: {
       ...(input.world === undefined ? {} : { world: input.world }),
     },
   ];
-  return { ok: true, deadline, events: events2 };
+  return { ok: true, deadline, raisedAt: ts, events: events2 };
 };

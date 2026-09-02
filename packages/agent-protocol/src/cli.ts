@@ -593,6 +593,7 @@ import type {
 import {
   bodyClaimsTurnRelease,
   EXPECTS,
+  isRaisedAt,
   isSessionId,
   isWorkerId,
   KNOWN_WORKERS,
@@ -2887,9 +2888,15 @@ const parseWaitingOn = (raw: string, registry: RoleRegistry): string | null => {
 const provenanceFrom = (
   argv: readonly string[],
   options: { readonly required?: boolean; readonly env?: NodeJS.ProcessEnv } = {},
-): { worker?: string; session?: string } => {
+): { worker?: string; session?: string; raised?: string } => {
   const env = options.env ?? process.env;
   const worker = flag(argv, "--worker") ?? env[LAUNCH_ENV.worker];
+  // WHEN THE WRITER WAS RAISED (thread 081) — a VALUE in the environment, unlike the session
+  // id: the moment exists before the spawn, so there is nothing to promise a file for. It is
+  // OPTIONAL on the writing side too, and that is the norm's decision rather than a leniency
+  // (`PROTOCOL.md`, R27/042): a hand at a terminal and a workflow have no such moment, and a
+  // message without the field lifts a park exactly as it always did.
+  const raised = flag(argv, "--raised") ?? env[LAUNCH_ENV.raisedAt];
   const sessionFile = env[LAUNCH_ENV.sessionFile];
   let session = flag(argv, "--session");
   if (session === undefined && sessionFile !== undefined && sessionFile !== "") {
@@ -2917,9 +2924,20 @@ const provenanceFrom = (
   if (session !== undefined && session !== "" && !isSessionId(session)) {
     fail(`--session '${session}' — one printable token without spaces is expected`, 2);
   }
+  // Refused at the door for the same reason the two above are, and it matters more here: a
+  // malformed `raised:` is DROPPED by the reader, and a dropped one reads as "not declared",
+  // which lifts a park the message was never an answer to. The feed is append-only, so this
+  // is the only place the typo can still be retyped.
+  if (raised !== undefined && raised !== "" && !isRaisedAt(raised)) {
+    fail(
+      `--raised '${raised}' — the moment the session was raised is a full UTC stamp like 2026-09-02T14:24:19Z. A raised session inherits it from ${LAUNCH_ENV.raisedAt} and passes nothing`,
+      2,
+    );
+  }
   return {
     ...(worker === undefined || worker === "" ? {} : { worker }),
     ...(session === undefined || session === "" ? {} : { session }),
+    ...(raised === undefined || raised === "" ? {} : { raised }),
   };
 };
 
@@ -9084,6 +9102,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // — this one is here for the shell: a session checking how much is left runs
       // `date`, not a re-read of its own prompt.
       [LAUNCH_ENV.leaseDeadline]: plan.deadline,
+      // WHEN THIS RUN WAS STARTED (thread 081) — the stamp `new-message` writes into the
+      // header as `raised:`. The same value the lease is dated by, so the session's own
+      // account of when it began and the journal's cannot disagree by a poll interval.
+      [LAUNCH_ENV.raisedAt]: plan.raisedAt,
       // WHERE ITS «TEMPORARY» GOES (thread `056-shared-tmp-mechanism`). Not an
       // `AGENT_PROTOCOL_*` field of the launch contract but the STANDARD variable, and
       // that is the whole point: the tools already read it (`mktemp`, node, python, go,

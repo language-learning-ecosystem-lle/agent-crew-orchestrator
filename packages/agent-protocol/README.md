@@ -1920,7 +1920,7 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
                             # A LETTER INTO A THREAD THAT IS ALREADY PARKED IS REFUSED UNLESS IT SAYS WHAT IT
                             # DOES ABOUT THE PARK (thread 058, (B.3)): the refusal names the park in full —
                             # what it waits for, since when, whose turn it was declared on, and the question
@@ -1960,6 +1960,27 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # --await-input: this question PARKS the run instead of ending it (R19, S13)
                             # ON A THREAD DECLARING `turn: explicit` (079) `--waiting-on` is OBLIGATORY and
                             # the refusal names both exits; everywhere else a fieldless message stays legal
+                            # --raised <UTC stamp>: WHEN THE WRITING SESSION WAS STARTED (thread 081,
+                            # decision of john 2026-09-02) — the third field of provenance, beside
+                            # `--worker` and `--session`, written into the header as `raised:`. A raised
+                            # session passes nothing: the launch environment carries it
+                            # (`AGENT_PROTOCOL_RAISED_AT`, the same stamp the lease is dated by).
+                            # WHAT IT DOES: a letter whose session was raised STRICTLY BEFORE a park on a
+                            # person was announced does NOT lift that park and opens no new turn by it —
+                            # the session started before the park existed and never read it. Measured at a
+                            # consumer 2026-08-30: raised 14:24:19Z, park announced 14:24:50Z, letter
+                            # written 14:26:53Z — the park left the courier's composition and the standing
+                            # question was never asked. `--delivers` and `status: closed` stay lifts at any
+                            # moment of raising, and the event parks (`pr:`/`run:`) are untouched
+                            # OPTIONAL, AND THE ABSENCE IS THE NORM'S DECISION, not a leniency: a message
+                            # WITHOUT the field lifts a park exactly as it always did — a hand at a
+                            # terminal, a workflow (`--worker gh-action`) and every message written before
+                            # the field existed have no such moment, and the feed is append-only, so
+                            # nothing is migrated. A stamp EQUAL to the park's date or later reads as "the
+                            # session saw it" and lifts: doubt is settled towards lifting, which costs one
+                            # empty raise rather than a thread frozen with its own answer inside
+                            # A malformed value is REFUSED here (a full UTC stamp is required): the reader
+                            # drops it, and a dropped field reads as "not declared"
                             # --model <m> / --effort <e>: WITH WHAT the runs of this thread are raised from
                             # here on (R21, S15) — only from a role holding `launch-params`, and the value
                             # is checked against the tool's vocabulary at this door
@@ -2146,12 +2167,15 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--write] [--no-push]
                             # --delivers: THE SAME FIELD TOO (thread 030), by the same door and with the
                             # same two refusals — a thread is often OPENED by the courier of a decision,
                             # and the park that word lifts stands in ANOTHER thread. Written here on the
                             # day the field is born, because 075 is what a flag parsed by one command of
                             # the pair and swallowed by the other costs in an append-only feed
+                            # --raised: THE SAME FIELD TOO (thread 081), same source, same refusal — an
+                            # opening message is a message, and the same 075 argument applies: a flag one
+                            # command of the pair writes and the other swallows costs an empty turn
                             # --verdict/--pr: THE SAME PAIR TOO (thread 042), by the same door and the same
                             # refusal on a half. In an OPENING message the pair opens no turn — the walk of
                             # `standingParkOf` looks for a park EARLIER in the same thread and a first

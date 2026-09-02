@@ -404,7 +404,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
@@ -506,7 +506,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # raises nobody, and replaces no line of the body
                               # THE SIGN IS THE DECLARATION, not the sender: the role is NOT checked against
                               # the config — that source of truth breaks when the reviewer's tool changes
-  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] [--delivers <person>] [--park-mover <participant>] [--verdict <approve|needs-fixes> --pr <n>] [--turn <explicit>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+  agent-protocol new-thread   --root <mail> --ref <ref> --id <NNN-slug> --title <t> --participants <r,r> --from <role> --expects <e> [--waiting-on <role>] [--parked-on <who>] [--delivers <person>] [--park-mover <participant>] [--verdict <approve|needs-fixes> --pr <n>] [--turn <explicit>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--write] [--no-push]
                               # THE OTHER WRITING DOOR (R3): --write means SENT here too — '_meta.md' and the
                               # first message go in ONE commit, pushed, with the same replanning retry
                               # --parked-on: THE SAME FIELD AS 'new-message''s, same values, same refusals
@@ -527,7 +527,11 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # the NNN is REFUSED if a thread already holds it (029): the number is a
                               # short address; nothing is renamed after the fact, the door is what changes
                               # --worker: what wrote it, REQUIRED on a write; --session: the id of the run, optional
-                              # a raised session passes neither — the launch environment carries both
+                              # --raised <UTC stamp>: WHEN the writing session was started (081) — optional, and
+                              # its absence is legal by the norm: a hand and a workflow have no such moment.
+                              # A message carrying it does NOT lift a park on a person announced AFTER it —
+                              # the session was raised before the park and never read it
+                              # a raised session passes none of the three — the launch environment carries them
                               # --no-push: write the files only (for a caller that owns its own git, e.g. CI)
 
 WHICH '--write' DELIVERS (thread 033). Three commands SEND — 'new-message', 'new-thread'
