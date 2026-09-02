@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T16:29:44.298Z",
+  "writtenAt": "2026-09-02T16:35:45.048Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "074-parallelism-and-domains",
       "state": "running",
       "deadline": "2026-09-02T17:29:21Z"
+    },
+    {
+      "role": "curator",
+      "thread": "073-notifiers-frozen-in-own-contour",
+      "state": "running",
+      "deadline": "2026-09-02T17:15:41Z"
     }
   ]
 }
