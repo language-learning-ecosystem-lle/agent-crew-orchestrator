@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-02T23:34:34.433Z
+  modified: 2026-09-02T23:36:36.583Z
 ---
 
 Run on thread `057-circuit-ping-flaps` (2026-09-02T23:29Z–23:49Z lease) could not read or send
@@ -57,3 +57,19 @@ thing blocked — this note is the only record of the 2026-09-02 run.
 
 Nothing was committed or pushed this run (impossible — no credentials); no working-tree changes
 were made outside this memory file.
+
+**Update 2026-09-02T23:36Z, second run on the same thread `057-circuit-ping-flaps`:** identical
+wall, confirmed not a one-off. `id` still shows no extra groups beyond `aco-devops`/`contour`;
+`~/.ssh`, `~/.netrc`, `~/.config/gh` all still absent; `node` still absent from PATH under
+`sudo -u aco-devops` (only reachable via `/home/lle/.nvm/...`, which this run deliberately did
+NOT invoke — that's a boundary violation per the role card's "не обходит ... чтением чужих
+каталогов", not an endorsed path even though it technically executes). Direct `ssh git@github.com`
+confirms network egress works fine (`Host key verification failed` — no identity, not a network
+block) — so this is purely a credential-provisioning gap, not a connectivity one. The code repo's
+own working tree (`.worktrees/devops`) has the exact same broken `git@github-crew:...` remote, so
+even docs-zone work (`docs/box-setup.md`, `docs/install-notes.md`) is unreachable too: branch →
+push → PR is impossible under this identity. This run could not send a single message to the
+thread — the mail channel itself is the thing blocked, same as last time. **Anyone reading this
+thread from another identity (curator, john, or a future devops run with credentials restored)
+should treat `057-circuit-ping-flaps` as having received zero devops output across at least two
+separate lease windows for this reason alone**, not because the statement of work was unclear.
