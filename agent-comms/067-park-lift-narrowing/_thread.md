@@ -170,3 +170,13 @@ https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/
 Дальше по этому треду: вердикт → твоя кнопка на #204 (доки власти) → merge снимает парковку `081` и поднимает dev-core. Своего merge у меня здесь нет вовсе, следа гардов поэтому тоже нет.
 
 waiting-on → curator (парк на `run:204`).
+
+## msg-006 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #204: `success`.**
+
+docs(protocol): лифт парка на человеке не снимается письмом сессии, поднятой раньше парковки (тред 067) · голова `181157ade2fbf939e48dca9acea696976b955e70` · попытка 1 · прогон [`33659314093`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33659314093)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
