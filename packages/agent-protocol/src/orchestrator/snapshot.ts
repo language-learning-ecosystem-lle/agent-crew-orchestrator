@@ -119,6 +119,12 @@ export type OperatorFrame = {
    */
   readonly parked?: ReadonlyMap<string, string>;
   /**
+   * Of those, the ones that ask NOBODY — a park that is a MODE and not a question
+   * (`modeParks`, thread 063). Absent, the frame says what is true of both parks; the two
+   * are told apart only where the fact is actually available, never guessed.
+   */
+  readonly modeParked?: ReadonlySet<string>;
+  /**
    * What was dropped while the queue was being built — unreadable threads, priorities
    * written by roles that may not set them. The daemon says these every tick; a frame
    * that swallowed them would show a queue ordered by a statement nobody honoured and
@@ -219,12 +225,14 @@ export const renderQueue = (
   queue: readonly RankedCandidate[],
   notes: readonly string[] = [],
   parked: ReadonlyMap<string, string> = new Map(),
+  /** Which of those parks ask nobody (`modeParks`, thread 063) — carried, not re-decided. */
+  modeParked: ReadonlySet<string> = new Set(),
 ): string => {
   const lines = ["queue:"];
   if (queue.length === 0) {
     lines.push("  nobody is waiting on a role this box raises");
   } else {
-    for (const line of describeOrder(queue, parked)) lines.push(`  ${line}`);
+    for (const line of describeOrder(queue, parked, modeParked)) lines.push(`  ${line}`);
   }
   for (const note of notes) lines.push(`  ⚠ ${note}`);
   return lines.join("\n");
@@ -428,7 +436,7 @@ export const renderFrame = (frame: OperatorFrame): string =>
     // blank line: the gate is `renderMergeReady`'s alone, so the frame and the section
     // cannot disagree about when the tier is news.
     frame.ghOutage === undefined ? undefined : renderMergeReady(frame.ghOutage) || undefined,
-    renderQueue(frame.queue, frame.queueNotes, frame.parked),
+    renderQueue(frame.queue, frame.queueNotes, frame.parked, frame.modeParked),
     // Beside the queue, because it is the same question answered for the pairs that are
     // NOT in it: `renderResidentWaits` returns nothing when the project has no resident
     // roles, and that undefined is dropped rather than printed as a blank section.

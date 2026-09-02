@@ -235,6 +235,39 @@ export const parkedThreads = (
 };
 
 /**
+ * THE PARKS THAT ASK NOBODY — thread ids whose standing park is a MODE, not a question
+ * (thread 063, §2.3 of the second statement of work; the legal shape since 2026-08-04,
+ * decision of john, `PROTOCOL.md` R27).
+ *
+ * The two are one word in the frame today and they are different things: a park with
+ * `expects: answer`/`ack` is a QUEUE TO A HUMAN — somebody owes this thread a word, and the
+ * courier rings for it; a park with `expects: none` is a MODE the thread was deliberately
+ * put into — nobody is being called, and nothing is late. A frame that says "waiting for a
+ * decision of john" about the second sends the operator to chase a word nobody was asked
+ * for, which is the same defect this thread was opened on: the name does not describe what
+ * is happening.
+ *
+ * A SEPARATE SET RATHER THAN A RICHER VALUE OF {@link parkedThreads}, on purpose: the value
+ * of that map is the RAW `parked-on` and four readers plus every fixture that builds one
+ * (`new Map([[id, "john"]])`) depend on it being exactly that. The distinction is carried
+ * beside it for the readers that have room to print it, and a reader that does not pass this
+ * set reads exactly as it did before it existed.
+ *
+ * Only a park on a PERSON can be a mode: an event park (`pr:`/`run:`) calls nobody by
+ * construction, so "asks nobody" would be true of every one of them and would say nothing.
+ * The signal is read where the courier and the index already read it — `Parking.asks`, the
+ * `expects` of the message that DECLARED the park — and not re-decided here.
+ */
+export const modeParks = (threads: readonly Thread[]): ReadonlySet<string> => {
+  const mute = new Set<string>();
+  for (const thread of threads) {
+    const parking = parkingOf(thread);
+    if (parking?.kind === "person" && !parking.asks) mute.add(thread.id);
+  }
+  return mute;
+};
+
+/**
  * SESSIONS THAT WROTE INTO THE MAIL — the fact the journal does not have (thread 023).
  *
  * A run that carries a question to a human keeps the turn on itself: scalar

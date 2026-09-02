@@ -2165,7 +2165,10 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # the frame: leases, the PARALLELISM line (how many of this box's roles are live,
                             # which pairs they are, which roles are left free — D-4), holds, the circuit
                             # (gate, stop/force flags, whether a daemon is alive), the queue with the reason
-                            # for its order AND the mark on a thread frozen behind a person ('parked-on', R27),
+                            # for its order AND the mark on a thread frozen behind a person ('parked-on', R27) —
+                            # a park that ASKS somebody ('expects: answer'/'ack') reads as a decision that is
+                            # owed, one that asks NOBODY ('expects: none') reads as a MODE the thread stands
+                            # in: nothing is late, and the lift is named in both (thread 063),
                             # the neighbours' digests, and how old the mail on disk is; then the static half
                             # (paths, permissions, resolution)
                             # AND, only when it is true, HOW OLD THE CODE IN THE LIVE DAEMON IS (023.2):
