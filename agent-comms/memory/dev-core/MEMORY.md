@@ -18,3 +18,4 @@
 - [Лежалый PR может быть перекрыт](stale-pr-may-be-superseded.md) — `add/add` при перебазировке = предмет уже сел другим пакетом; мерить остаток, а не мержить конфликт.
 - [`git stash` на чистом дереве достаёт чужой stash](stash-on-clean-tree-pops-a-foreign-stash.md) — базу мерить детач-чекаутом на SHA, не stash'ем.
 - [Дефекты двери прячутся в процессных тестах](door-defects-hide-in-process-tests.md) — 98/98 в `usage.test.ts` ничего не значит: настоящий CLI живёт в `*.process.test.ts`.
+- [Проза ход не снимает](prose-does-not-release-the-turn.md) — «ход не передаю» в теле оставляет держателя прежним и поднимает тебя же; снимает только `--waiting-on —`.
