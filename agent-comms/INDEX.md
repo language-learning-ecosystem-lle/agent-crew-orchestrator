@@ -78,5 +78,5 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 НЕ смержен этим тактом, и причина ровно одна — гард 3. Вердикт есть, гарды 1, 2 и 4 машинно ok,… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вернуть ли живые триггеры двум почтовым воркфлоу этого репозитория — ci-out… |
-| 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | СУЖЕНИЕ ПОСТАНОВКИ словом john (чат ~12:22Z): «пока что просто нужен замер». Всё проектирование §3–… |
+| 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | run:196 · 2026-09-02 | 2026-09-02 | Замер сделан. Столкновения есть, их 62 за две недели — но цена одного не «конфликт руками», а переб… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
