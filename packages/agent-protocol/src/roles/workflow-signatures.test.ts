@@ -15,8 +15,9 @@
  * worked here — measured, not inferred: fourteen consecutive red `merge-notify` runs,
  * `32166051859` (18.08 17:31Z) through `32235536054` (19.08 09:01Z), i.e. every merge of
  * #11-#24, and not one `from: github` message anywhere in the mail on `11f62b9`. Nobody
- * saw it because the failures were red runs of a workflow nobody watches
- * (`notifier-watch.yml` is frozen here), so a piece of the protocol declared alive in
+ * saw it because the failures were red runs of a workflow nobody watched
+ * (`notifier-watch.yml` was frozen here until 2026-09-02, thread
+ * `073-notifiers-frozen-in-own-contour`), so a piece of the protocol declared alive in
  * `docs/install-notes.md` had never once been delivered.
  *
  * WHY A SWEEP AND NOT A THIRD NAMED ROW. Both instances were invisible for the same
