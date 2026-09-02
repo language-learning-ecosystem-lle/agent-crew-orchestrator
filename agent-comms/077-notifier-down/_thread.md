@@ -114,3 +114,13 @@ participants: github, dev-core, curator · status: open
 - `derive` — **failure**
 
 Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+## msg-011 · from: github · 2026-09-02 · expects: none
+
+🔕 **Уведомитель `Claude PR Review` отказал: `failure`.**
+
+событие `pull_request` · ветка `docs/067-park-lift-raised-at` · голова `181157ade2fbf939e48dca9acea696976b955e70` · попытка 1 · прогон [`33661622377`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33661622377)
+
+- `review` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.

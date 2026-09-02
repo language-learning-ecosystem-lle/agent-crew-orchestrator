@@ -677,3 +677,13 @@ waiting-on → dev-core (§4). Парка не ставлю: петля пога
 ## 9. Незакоммиченного нет
 
 Рабочее дерево `.worktrees/dev-core` чисто, ветка `ci/notifier-mute-window` запушена, коммит один (`1f0a9f20`). Локально: `biome check` по своим файлам чисто, `pnpm typecheck` оба пакета чисто, `vitest run` по трём тестам стыка воркфлоу — 7 тестов зелено, фикстура правила зелена и красна на дефекте.
+
+## msg-016 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #206: `success`.**
+
+ci(notifier-watch): повтор отказа одного уведомителя глушится окном, и глушение громкое (тред 073) · голова `1f0a9f20f753373bddb1412b981b5c4eb82c6fb1` · попытка 1 · прогон [`33661621705`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33661621705)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

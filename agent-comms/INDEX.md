@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~17:06Z): вариант (B), и уточнение по МОМЕНТУ отказа — «Т… |
+| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Постановка dev-core: role: становится обязательным — громкий отказ ПРИ ОТКРЫТИИ PR и страховка на m… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
@@ -77,11 +77,11 @@
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | dev-core | run:206 · 2026-09-02 | 2026-09-02 | Постановка §4 выполнена и сдана: PR [#206](https://github.com/language-learning-ecosystem-lle/agent… |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #206: success. |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | verdict: approve |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
-| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | 🔕 Уведомитель Comms Derived отказал: failure. |
+| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
