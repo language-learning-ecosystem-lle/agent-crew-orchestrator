@@ -805,6 +805,67 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     for (const name of ["--exec", "--worker", "--model", "--effort"]) expect(named).toContain(name);
   });
 
+  /**
+   * THE TWO PLACES WHERE THE SHIPPED TEXT MADE PUNCTUATION A VALUE (thread 042, the
+   * measurement of curator in `msg-106` §0, re-taken by this role over all 49 usage
+   * lines: exactly these two, and the four `--mode`/`--paths` literals which are
+   * grammar the text declares and are left alone).
+   *
+   * Asserted on the SIDE of the table, not on the name being in it: `--staged` and
+   * `--clear-force` were both present all along — as flags that demand a value. The
+   * second one stands behind `guardArguments` today, so it was not a latent cost:
+   * `orchestrator up --clear-force` was refused, and `--clear-force --forgeround`
+   * passed with the typo eaten as the value.
+   */
+  it("reads `--staged` of `zones check` as a switch, not as a flag valued `|` (042)", () => {
+    const spec = specFor("zones check");
+    expect(spec.boolean).toContain("--staged");
+    expect(spec.value).not.toContain("--staged");
+    // The neighbours in the same bracket keep what the text gives them.
+    expect(spec.value).toContain("--base");
+    expect(spec.value).toContain("--paths");
+  });
+
+  it("reads `--clear-force` of `orchestrator up` as a switch, not as a flag valued `#` (042)", () => {
+    const spec = specFor("orchestrator up");
+    expect(spec.boolean).toContain("--clear-force");
+    expect(spec.value).not.toContain("--clear-force");
+  });
+
+  it("keeps the literal values the usage text really declares (042)", () => {
+    // The repair must not be a broad "punctuation-ish tokens are not values": `--mode
+    // take` and `--paths a b` are bare literals the grammar declares (`argv.ts`), and
+    // demoting them to switches would refuse calls the corpus above makes.
+    for (const key of ["orchestrator hold", "orchestrator stop"]) {
+      expect([key, specFor(key).value.includes("--mode")]).toEqual([key, true]);
+      expect([key, specFor(key).boolean.includes("--mode")]).toEqual([key, false]);
+    }
+    expect(specFor("zones check").value).toContain("--paths");
+  });
+
+  it("holds no token of a tail comment or of the grammar anywhere in the table (042)", () => {
+    // Over the WHOLE table rather than the two mended lines: the defect was not in a
+    // line, it was in the parse, and the next `#` comment or `|` bracket someone adds
+    // must not quietly grow a third case.
+    const strays: string[] = [];
+    for (const [key, spec] of parseUsage(USAGE)) {
+      for (const name of [...spec.value, ...spec.boolean]) {
+        if (!name.startsWith("-")) strays.push(`${key}: '${name}'`);
+      }
+    }
+    expect(strays).toEqual([]);
+  });
+
+  it("refuses the typo `orchestrator up` used to swallow behind `--clear-force` (042)", () => {
+    // Through `strayArguments` with the spec the door itself merges, so the behaviour
+    // of the door is asserted and not inferred from the table.
+    const up = specFor("orchestrator up");
+    expect(strayArguments(["--clear-force"], up)).toEqual([]);
+    const problems = strayArguments(["--clear-force", "--forgeround"], up);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("--forgeround");
+  });
+
   it("lets `up` pass its own flags through to the daemon it starts", () => {
     // `up` re-executes itself as `orchestrator daemon <everything typed, minus its
     // own two flags>`. If the daemon refused a flag `up` accepts, the refusal would
