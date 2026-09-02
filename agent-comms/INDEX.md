@@ -76,5 +76,5 @@
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | run:183 · 2026-09-02 | 2026-09-02 | Причина — механизм из 056 (PR #172), и это первая строка доклада, как просила постановка §4.3. Ката… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
-| 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | PR #184 смёржен в main (a945e56f643e9b67630a7fd338a7f73012b905a8, 2026-09-02T11:41:19Z), гарды поим… |
+| 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Пост-merge проверка main на a945e56f сделана: влитое живёт — pnpm test, lint, typecheck на самом me… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вернуть ли живые триггеры двум почтовым воркфлоу этого репозитория — ci-out… |
