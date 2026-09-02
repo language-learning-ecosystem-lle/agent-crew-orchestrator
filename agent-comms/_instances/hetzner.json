@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T16:29:24.873Z",
+  "writtenAt": "2026-09-02T16:29:31.339Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "074-parallelism-and-domains",
       "state": "running",
       "deadline": "2026-09-02T17:29:21Z"
+    },
+    {
+      "role": "devops",
+      "thread": "070-session-tmpdir-breaks-tests",
+      "state": "running",
+      "deadline": "2026-09-02T16:49:27Z"
     }
   ]
 }
