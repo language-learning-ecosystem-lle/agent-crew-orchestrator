@@ -31,6 +31,15 @@
  * thing the point says must not happen. The refusal is what makes "the letter must name it"
  * true of the letter and not only of the shell it was typed in.
  *
+ * AND IT ASKS THIS OF ROLES, NOT OF EVENTS (thread 072, john's decision of 2026-09-02). The
+ * three exits are three statements ABOUT the thread; the circuit announcing its own fact
+ * (`from: github` — a merge, the outcome of a run) makes none of them and has nobody behind it
+ * to choose one. It was measured as a broken protocol link rather than a missing line in a feed:
+ * for two days every letter from GitHub into this contour was refused here, so `merge` stopped
+ * returning the turn to the author of a PR, `pr:` parks degenerated into timers, and the
+ * acceptances hanging off a merge never came due. A machine letter now passes with a NOTE —
+ * `machineWriter`, decided by the registry (`isMachineWriter`) and not by this file.
+ *
  * WHY IT FIRES AT MOST ONCE PER PARK. A park is lifted by the next message that does not
  * repeat it (`parkingOf`), so the only letter this door can ever stop is the FIRST one after
  * the declaration — which is the incident letter, and no ordinary traffic behind it.
@@ -93,6 +102,12 @@ export const judgeParkSeen = (input: {
    * `undefined` means the feed WAS read and `parking` is what it says.
    */
   readonly unreadable?: string;
+  /**
+   * THE LETTER IS A MACHINE EVENT AND NOT A ROLE'S (thread 072, john's decision of 2026-09-02).
+   * `true` — the writer is the circuit announcing its own fact (`from: github`); the door lets
+   * it through and SAYS SO instead of asking it for a judgement it has nobody to make.
+   */
+  readonly machineWriter?: boolean;
 }): ParkSeenVerdict => {
   const { parking, lifted } = input;
   // A DOOR THAT COULD NOT LOOK SAYS SO — it does not report its own blindness as "clear"
@@ -147,6 +162,25 @@ export const judgeParkSeen = (input: {
   const holder = parking.holder === undefined ? "" : `, declared on ${parking.holder}'s turn`;
   const question =
     parking.question.trim() === "" ? "" : ` The question it stands on: "${parking.question}".`;
+  // A MACHINE EVENT IS NOT ASKED WHAT IT DOES ABOUT THE PARK (thread 072, john's decision of
+  // 2026-09-02, «первый вариант»). The three exits above are three STATEMENTS about the thread,
+  // and the circuit announcing its own fact makes none of them: the merge happened, the run
+  // ended — neither says anything about the question the thread is frozen on, and a workflow
+  // step has nobody behind it to decide which of the three it means. Requiring one of a machine
+  // is requiring a judgement of what cannot judge, and the refusal then does not defend the
+  // human it was written for — it breaks the link that returns the turn after the button.
+  //
+  // WHAT IT DOES NOT DO. It lifts nothing: the letter passes the door unchanged, so the park
+  // stands exactly as `parkingOf` reads it, and the ONE thing that lifts an event park is the
+  // field the notifier already carries (`--merged-pr N`, matched above). And it is not silent —
+  // the note names the park the letter landed beside, because the next reader of that thread
+  // sees a live-looking letter under a frozen question and must be able to tell why.
+  if (input.machineWriter === true) {
+    return {
+      ok: true,
+      note: `'${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this letter is a MACHINE EVENT — it is not asked what it does about the park.${question} The letter is written as it is; the park is NOT lifted and NOT touched by it`,
+    };
+  }
   return {
     ok: false,
     reason: `thread '${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this message says nothing about it.${question} A letter written into a standing park reads as if the thread were alive — measured on 2026-08-30 (LLE thread 110): the report of a session raised 31 seconds before the park landed two minutes after it, and the call to the human showed that report instead of the question the thread was frozen on. Say what THIS letter does about the park: '${addressOf(parking)}' if it carries what the park waits for (that is what lifts it), '--parked-on ${value}' if the question still stands and your letter is a report beside it, or '--park-lifted ${value}' if the park is over and you are naming it as you write`,
