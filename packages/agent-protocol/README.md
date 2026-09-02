@@ -3247,6 +3247,21 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   saying "60m left" about a pair while the observer showed only a stamp is the same
   two-renderers defect one layer up. The inventory the vocabulary was derived from, including
   the states still MISSING, is [`docs/state-model.md`](../../docs/state-model.md).
+- **THE OBSERVER'S TOP ROW KEEPS THE MARK, WHATEVER THE WIDTH** (thread 063, found in review
+  of #201). Ordering the columns is not enough for the MARKS: `⚠ OVERDUE`, `⚠ EXHAUSTED (…)`,
+  `⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET`, `⏳ THIS PAIR IS OVER, ITS SESSION IS NOT`
+  are glued past the deadline stamp and each is a paragraph — the `restore` mark alone makes
+  the row 458 characters, so a plain cut at a hundred columns dropped every one of them and
+  the panel showed `working — nothing reported yet` about a pair `status` was calling
+  raised-and-silent. The panel now keeps the mark's OWN first sentence (up to the em-dash the
+  mark itself puts between its name and its explanation) and spends the cut on the columns
+  instead — the same words `status` prints, fewer of them, never others. Two limits are
+  measured rather than assumed: the pair's `role` and `thread` are never traded away for a
+  mark (a window on a row nobody can identify is a fact about nobody), and the panel is still
+  exactly the terminal's width, so on a screen narrower than the mark's own sentence the mark
+  is what gets cut. Held by `one-fact-one-phrase.test.ts`, which now asserts both windows on
+  the top ROW and not on the whole panel — the middle panel reprints the frame, so a phrase
+  found anywhere in it proves nothing about the line an operator reads.
 - **Putting things down covers the whole process group (`-pid`), not just the direct
   child.** A SIGTERM to a launcher does not reach its children (`claude` → its
   subprocesses), and they would be orphaned; the spawn is `detached` and the

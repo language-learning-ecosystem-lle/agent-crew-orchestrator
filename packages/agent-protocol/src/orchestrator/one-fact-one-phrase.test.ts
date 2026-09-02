@@ -124,6 +124,49 @@ describe("one fact — one phrase in every frame", () => {
     }
   });
 
+  // THE MARKS ARE PART OF THE FACT, NOT DECORATION ON IT (found in review of #201). The two
+  // frames that can carry a WINDOW — `status` and the observer's top row — are the two this
+  // case holds together, because the other two surfaces have no place to put one: the
+  // parallelism block is a census of pairs and the neighbouring box publishes a digest that
+  // never crossed a wire carrying these facts. The defect this replaces: `renderStatus` was
+  // given `speechless`/`mailLock` and `renderTui` was not, and because both parameters carry
+  // defaults nothing failed to compile — the observer just went on printing `working —
+  // nothing reported yet` about a pair `status` was already calling raised-and-silent.
+  //
+  // Asserted on the top ROW and not on the joined panel: the middle panel reprints the whole
+  // of `renderFrame`, so a phrase found anywhere in `renderTui(...).join("\n")` proves
+  // nothing about the row an operator actually reads.
+  describe("a window on a pair is a fact, and both frames that can show one do", () => {
+    const HEAD = (mark: string): string => (mark.split(" — ")[0] as string).trim();
+
+    it("`restore`: raised, and the child has not spoken yet", () => {
+      const pair: LeaseView = { ...PAIR, state: "running" };
+      const speechless = new Set([pair.sessionLog as string]);
+      const status = renderLeaseLine(pair, false, NOW, speechless);
+      const head = HEAD(status.slice(status.indexOf("⏳")));
+      expect(head).toBe("⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET");
+      const frame: OperatorFrame = { ...FRAME, leases: [pair], speechless };
+      const row = renderTui({ frame, state: initialTuiState, rows: 24, cols: 80 })[0] as string;
+      expect(row, "the observer's top row is silent about a window `status` names").toContain(head);
+    });
+
+    it("`save`: the pair is over and its session is still writing its memory", () => {
+      const mailLock = {
+        holder: `memory of ${ROLE}`,
+        pid: 4242,
+        since: "2026-08-30T18:58:00Z",
+        alive: true,
+      };
+      const pair: LeaseView = { ...PAIR, state: "released", reason: "completed" };
+      const status = renderLeaseLine(pair, false, NOW, new Set(), mailLock);
+      const head = HEAD(status.slice(status.indexOf("⏳")));
+      expect(head).toBe("⏳ THIS PAIR IS OVER, ITS SESSION IS NOT");
+      const frame: OperatorFrame = { ...FRAME, leases: [pair], mailLock };
+      const row = renderTui({ frame, state: initialTuiState, rows: 24, cols: 80 })[0] as string;
+      expect(row, "the observer's top row is silent about a window `status` names").toContain(head);
+    });
+  });
+
   it("a state this build has never heard of travels through all four unchanged", () => {
     // The forward rule of the vocabulary (PROTOCOL.md, the states dictionary): an unknown
     // word is printed AS IT CAME, in every frame, so a box running ahead of this one is

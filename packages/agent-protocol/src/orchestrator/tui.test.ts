@@ -5,6 +5,7 @@ import { parseUsage } from "./argv.js";
 import type { HoldView } from "./hold.js";
 import type { LeaseView } from "./lease.js";
 import type { OperatorFrame } from "./snapshot.js";
+import { renderLeaseLine } from "./status.js";
 import {
   argvOf,
   commandOf,
@@ -397,6 +398,65 @@ describe("renderTui — the frame as three panels", () => {
   it("the top panel says how much is left, in the same words status uses", () => {
     const lines = renderTui({ frame: frameOf([lease()]), state: initialTuiState, rows, cols });
     expect(lines.join("\n")).toContain("60m left of its window");
+  });
+
+  // FOUND IN REVIEW OF #201, and it is the class this thread exists to end: `status` got
+  // `speechless`/`mailLock` and the top panel did not, so the observer showed `working —
+  // nothing reported yet` about a pair `status` was calling RAISED-AND-NOT-SPOKEN-YET. Both
+  // windows are asserted at a real terminal's width and on the FIRST line — that line IS the
+  // top panel's row for the pair, so a phrase that only survives in the middle panel (which
+  // reprints the frame) cannot make either case pass.
+  it("the top panel carries the 'not spoken yet' window, in status's own words", () => {
+    const pair = lease();
+    const frame = {
+      ...frameOf([pair]),
+      speechless: new Set([pair.sessionLog as string]),
+    } satisfies OperatorFrame;
+    const row = renderTui({ frame, state: initialTuiState, rows, cols })[0] as string;
+    expect(row).toContain("RAISED, AND THE CHILD HAS NOT SPOKEN YET");
+    // The pair is still NAMED: a window on a row whose role was cut away is a fact about
+    // nobody. And the panel is still the terminal's width, mark or no mark.
+    expect(row).toContain("dev-core");
+    expect([...row].length).toBeLessThanOrEqual(cols);
+  });
+
+  it("the top panel carries the 'still writing its memory' window too", () => {
+    const frame = {
+      ...frameOf([lease({ state: "released", reason: "completed" })]),
+      mailLock: {
+        holder: "memory of dev-core",
+        pid: 4242,
+        since: "2026-07-31T08:59:00Z",
+        alive: true,
+      },
+    } satisfies OperatorFrame;
+    const row = renderTui({ frame, state: initialTuiState, rows, cols })[0] as string;
+    expect(row).toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    expect(row).toContain("dev-core");
+  });
+
+  // The mark costs the row its tail, never its name — and never the panel's width. Forty
+  // columns is narrower than any mark's own first sentence, which is the case where a rule
+  // written as "reserve room for the mark" would either overflow or print an anonymous row.
+  it("at a width no mark fits in, the row still names its pair and still fits the screen", () => {
+    const pair = lease();
+    const frame = {
+      ...frameOf([pair]),
+      speechless: new Set([pair.sessionLog as string]),
+    } satisfies OperatorFrame;
+    const narrow = 40;
+    const lines = renderTui({ frame, state: initialTuiState, rows, cols: narrow });
+    expect(lines.every((line) => [...line].length <= narrow)).toBe(true);
+    expect(lines[0]).toContain("dev-core");
+  });
+
+  // A row with NO mark is untouched by the fitting rule: the old cut, character for
+  // character. Otherwise the fix for the marks would quietly re-lay-out every ordinary row.
+  it("an unmarked row is cut exactly where it always was", () => {
+    const row = renderTui({ frame: frameOf([lease()]), state: initialTuiState, rows, cols })[0];
+    // `▸ ` because the fixture's only pair is the selected one — the two-column gutter the
+    // panel's width budget (`cols - 2`) is reserved for.
+    expect(row).toBe(`▸ ${[...renderLeaseLine(lease(), false, NOW)].slice(0, cols - 2).join("")}`);
   });
 
   it("the selected pair is marked, and only it", () => {

@@ -381,6 +381,46 @@ const typedKeys = (text: string): readonly TuiKey[] => {
  */
 const cutTo = (line: string, cols: number): string => [...line].slice(0, cols).join("");
 
+/** Where a MARK starts on a lease line — the two sigils `renderLeaseLine` glues its marks on with. */
+const MARK = / {2}[⚠⏳] /u;
+/** The columns' own separator, used here only to find where `role  ·  thread` ends. */
+const SEP = "  ·  ";
+
+/**
+ * A LEASE LINE CUT TO THE TERMINAL WITHOUT LOSING ITS MARK (thread 063).
+ *
+ * Every mark `renderLeaseLine` can append — `⚠ OVERDUE`, `⚠ EXHAUSTED (…)`, `⚠ THE WAIT
+ * EXPIRED`, `⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET`, `⏳ THIS PAIR IS OVER, ITS SESSION
+ * IS NOT` — is glued onto the END of the row, behind the deadline stamp, and every one of
+ * them is a paragraph: measured, the `restore` mark alone makes the row 458 characters. A
+ * plain `cutTo` at a hundred columns therefore drops ALL of them, and the top panel then
+ * shows a pair the operator has to open `status` to learn anything true about — which is the
+ * defect of two frames disagreeing, arrived at by cutting rather than by a second renderer.
+ *
+ * THE WORDS SHOWN HERE ARE NOT A SECOND VOCABULARY: they are the mark's OWN first sentence,
+ * taken from the very string `status` prints, up to the em-dash the mark itself puts between
+ * its name and its explanation. The panel says less than `status`; it never says other.
+ *
+ * AND THE NAME OF THE PAIR IS NEVER TRADED FOR THE MARK. A mark on a row whose `role` and
+ * `thread` have been cut away names a pair the reader cannot find, so the columns keep at
+ * least those two whatever the mark costs — and the final cut is the width invariant of the
+ * panel, which nothing here is allowed to break. When both do not fit, the name is what
+ * stands and the mark is what gets cut, in that order and measurably.
+ *
+ * ONE SPACE JOINS THEM, not the row's two: this is the panel that is short of width, and a
+ * column of padding here costs a word of the operator's sentence. At eighty columns that one
+ * character is the difference between the whole first sentence of the `restore` mark and its
+ * last letter — measured, not supposed.
+ */
+const fitLeaseLine = (line: string, cols: number): string => {
+  const at = line.search(MARK);
+  if (at === -1) return cutTo(line, cols);
+  const head = ` ${(line.slice(at).trimStart().split(" — ")[0] as string).trimEnd()}`;
+  const named = line.indexOf(SEP, line.indexOf(SEP) + SEP.length);
+  const room = Math.max(named === -1 ? at : named, cols - [...head].length);
+  return cutTo(`${cutTo(line.slice(0, at), room).trimEnd()}${head}`, cols);
+};
+
 /**
  * THE SCREEN — the frame laid out as three panels, exactly `rows` lines tall.
  *
@@ -417,10 +457,21 @@ export const renderTui = (input: {
     // frame's `now` goes with it: without it the top panel dropped the "how much is left"
     // phrase while `status` printed it (thread 063, john's requirement 5), and two frames
     // of one fact saying different things is the very defect this thread is about.
-    const line = cutTo(
-      renderLeaseLine(view, frame.closedThreads?.has(view.thread) ?? false, frame.now).split(
-        "\n",
-      )[0] as string,
+    //
+    // EVERY ARGUMENT `renderStatus` PASSES IS PASSED HERE, and that is the whole reason the
+    // two calls sit under one comment: the parameters carry defaults, so a field added to
+    // one call and forgotten in the other does not fail to compile — it silently prints a
+    // different frame. That is how `speechless` and `mailLock` were lost here while `status`
+    // had them (found in review of #201). `fitLeaseLine` and not `cutTo` for the same fact:
+    // a mark passed in and then cut off at the terminal's edge is lost just as completely.
+    const line = fitLeaseLine(
+      renderLeaseLine(
+        view,
+        frame.closedThreads?.has(view.thread) ?? false,
+        frame.now,
+        frame.speechless,
+        frame.mailLock,
+      ).split("\n")[0] as string,
       cols - 2,
     );
     return `${index === state.selected ? "▸ " : "  "}${line}`;
