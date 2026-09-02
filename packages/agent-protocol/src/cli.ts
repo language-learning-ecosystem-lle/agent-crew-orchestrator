@@ -101,6 +101,7 @@ import {
   ghRefusalHint,
   ghRunParkSchema,
   pullRequestFacts,
+  readCheckRuns,
   readReviewRuns,
 } from "./merge/gh.js";
 import {
@@ -12475,20 +12476,28 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
           JSON.parse(ask(["pr", "list", "--state", "open", "--json", "number,headRefOid,body"])),
         )
         .map((pr) => ({ number: pr.number, headSha: pr.headRefOid, body: pr.body })),
-    facts: async (number: number) =>
-      pullRequestFacts(
-        ghPullRequestSchema.parse(
-          JSON.parse(
-            ask([
-              "pr",
-              "view",
-              String(number),
-              "--json",
-              "number,headRefOid,body,statusCheckRollup,reviews,commits,files,mergeable,mergeStateStatus",
-            ]),
-          ),
+    facts: async (number: number) => {
+      const pr = ghPullRequestSchema.parse(
+        JSON.parse(
+          ask([
+            "pr",
+            "view",
+            String(number),
+            "--json",
+            // No `statusCheckRollup` — see the merge door for the measurement (thread 120).
+            "number,headRefOid,body,reviews,commits,files,mergeable,mergeStateStatus",
+          ]),
         ),
-      ),
+      );
+      // THE SECOND CALL THE TICK NOW PAYS FOR, and it buys back what the first one lost:
+      // guard 2 has no source without it, and a scheduler whose guard 2 always failed would
+      // switch the merge-holds tier off silently — the degradation this whole thread is
+      // about. Still one PR per tick and only for a head not judged yet.
+      const checkRuns = readCheckRuns(() =>
+        ask(["api", `repos/{owner}/{repo}/actions/runs?head_sha=${pr.headRefOid}&per_page=100`]),
+      );
+      return pullRequestFacts(pr, undefined, undefined, checkRuns);
+    },
   };
 };
 
@@ -12538,7 +12547,12 @@ const mergeGate = (argv: readonly string[]): void => {
         // against (023.3, input repaired in 023.4) — read for a note, never for a guard.
         // The name and not `baseRefOid`: that SHA is the base the branch was cut from and
         // stands still while the base moves, which made the note a silent no-op.
-        "number,headRefOid,body,statusCheckRollup,reviews,commits,files,baseRefName,mergeable,mergeStateStatus",
+        // `statusCheckRollup` IS DELIBERATELY ABSENT (thread 120): asking for it here made
+        // the WHOLE call fail on a token that may not read Checks — guards 1, 2, 4 and the
+        // `thread:` line lost together over a field only guard 2 used, and its refused half
+        // (commit statuses) is empty in this project anyway. The outcome of the checks now
+        // comes from `actions/runs?head_sha=` below.
+        "number,headRefOid,body,reviews,commits,files,baseRefName,mergeable,mergeStateStatus",
       ],
       {
         cwd: repo,
@@ -12658,35 +12672,53 @@ const mergeGate = (argv: readonly string[]): void => {
   // A refusal is NOT fatal here, unlike the `gh pr view` above: guard 1 has a third state
   // for it (`by-hand`), which is the point of the whole repair.
   const reviewWorkflow = flag(argv, "--review-workflow")?.trim();
+  // ONE CALL, TWO GUARDS (thread 120): the rounds of review and the outcome of the checks
+  // are two readings of the SAME payload, and asking twice would be asking about two
+  // moments. Memoised rather than hoisted so that the `--review-workflow`-less invocation
+  // still pays for it — guard 2 needs it whether or not anybody named the reviewer.
+  let runsRaw: string | undefined;
+  const askRuns = (): string => {
+    if (runsRaw === undefined)
+      runsRaw = execFileSync(
+        "gh",
+        [
+          "api",
+          // `per_page=100`: the runs of ONE head, and a head with a hundred runs on it has
+          // a different problem than this door is about.
+          `repos/{owner}/{repo}/actions/runs?head_sha=${parsed.data.headRefOid}&per_page=100`,
+        ],
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: platform.env,
+          stdio: ["ignore", "pipe", "pipe"],
+          maxBuffer: 16 * 1024 * 1024,
+        },
+      );
+    return runsRaw;
+  };
   const reviewRuns =
     reviewWorkflow === undefined || reviewWorkflow.length === 0
       ? undefined
-      : readReviewRuns({
-          workflow: reviewWorkflow,
-          ask: () =>
-            execFileSync(
-              "gh",
-              [
-                "api",
-                // `per_page=100`: the rounds of ONE head, and a head with a hundred runs on
-                // it has a different problem than this door is about.
-                `repos/{owner}/{repo}/actions/runs?head_sha=${parsed.data.headRefOid}&per_page=100`,
-              ],
-              {
-                cwd: repo,
-                encoding: "utf8",
-                env: platform.env,
-                stdio: ["ignore", "pipe", "pipe"],
-                maxBuffer: 16 * 1024 * 1024,
-              },
-            ),
-        });
+      : readReviewRuns({ workflow: reviewWorkflow, ask: askRuns });
+  const checkRuns = readCheckRuns(askRuns);
+
+  // WHICH RUNS ARE OBLIGATORY IS THE PROJECT'S FACT, NOT THE PACKAGE'S (thread 120, point
+  // 5): without a list, "green" means only "everything that started is green" — printed,
+  // never assumed, exactly like the list guard 4 judges by.
+  const requiredRuns = list("--required-runs");
+  out(
+    requiredRuns.length === 0
+      ? "merge-gate: no required runs declared (--required-runs) — guard 2 will judge only what started on the head"
+      : `merge-gate: required runs — ${requiredRuns.join(", ")}`,
+  );
 
   // The SAME reading of the payload the scheduler's merge-ready uses (`pullRequestFacts`).
   const verdict = evaluateMergeGate({
-    pr: pullRequestFacts(parsed.data, baseHead, reviewRuns),
+    pr: pullRequestFacts(parsed.data, baseHead, reviewRuns, checkRuns),
     powerDocs,
     d1,
+    requiredRuns,
   });
 
   for (const line of describeMergeGate(verdict)) out(line);

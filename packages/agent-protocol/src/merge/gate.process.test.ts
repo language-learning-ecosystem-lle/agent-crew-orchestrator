@@ -97,11 +97,14 @@ const stubGh = (
   // The runs ask is answered BEFORE anything else, by matching the argument GitHub's path
   // carries — the door makes three different calls through one binary, and a stub that
   // answered them all alike would prove nothing about the wiring of any of them.
+  // SINCE THREAD 120 THE DEFAULT IS NOT SILENCE: guard 2 reads this same call, so a stub
+  // that answered nothing here would make every fixture a head whose outcome is unreadable.
+  const runsAnswer = answer.runs ?? (answer.runsFailWith === undefined ? ROUND_ON_HEAD : undefined);
   const runsBranch =
     answer.runsFailWith !== undefined
       ? `case "$*" in *actions/runs*) echo ${JSON.stringify(answer.runsFailWith)} >&2; exit 1;; esac\n`
-      : answer.runs !== undefined
-        ? `case "$*" in *actions/runs*) cat <<'RUNS'\n${JSON.stringify(answer.runs)}\nRUNS\nexit 0;; esac\n`
+      : runsAnswer !== undefined
+        ? `case "$*" in *actions/runs*) cat <<'RUNS'\n${JSON.stringify(runsAnswer)}\nRUNS\nexit 0;; esac\n`
         : "";
   const script =
     answer.failWith !== undefined
@@ -172,16 +175,6 @@ const mergeable = (over: Record<string, unknown> = {}): unknown => ({
   // The head commit, made BEFORE the verdict above — so the verdict is an answer about
   // it and not one merely shown against it (thread 043).
   commits: [{ oid: HEAD, committedDate: "2026-07-30T00:00:00Z" }],
-  statusCheckRollup: [
-    // A check RUN and a status CONTEXT in one array — two node types, different fields.
-    {
-      name: "checks",
-      status: "COMPLETED",
-      conclusion: "SUCCESS",
-      completedAt: "2026-07-30T00:04:05Z",
-    },
-    { context: "pronunciation", state: "SUCCESS" },
-  ],
   files: [{ path: "packages/agent-protocol/src/merge/gate.ts" }],
   mergeable: "MERGEABLE",
   mergeStateStatus: "CLEAN",
@@ -194,7 +187,7 @@ const mergeable = (over: Record<string, unknown> = {}): unknown => ({
  * two words and still exercises the same wiring the door uses.
  */
 const ROUND_ON_HEAD: unknown = {
-  total_count: 1,
+  total_count: 3,
   workflow_runs: [
     {
       id: 32535411165,
@@ -206,8 +199,59 @@ const ROUND_ON_HEAD: unknown = {
       created_at: "2026-07-01T00:00:00Z",
       updated_at: "2026-08-01T00:00:00Z",
     },
+    // AND GUARD 2 READS THE SAME PAYLOAD (thread 120): the checks of this head used to
+    // arrive in `statusCheckRollup` of the `gh pr view` above, which no fine-grained token
+    // can be granted. A fixture that answered only the review round would leave every test
+    // here judging a head with no outcome at all.
+    {
+      id: 32535411166,
+      name: "checks",
+      head_sha: HEAD,
+      event: "pull_request",
+      status: "completed",
+      conclusion: "success",
+      created_at: "2026-07-30T00:02:00Z",
+      updated_at: "2026-07-30T00:04:05Z",
+    },
+    {
+      id: 32535411167,
+      name: "pronunciation",
+      head_sha: HEAD,
+      event: "pull_request",
+      status: "completed",
+      conclusion: "success",
+      created_at: "2026-07-30T00:02:00Z",
+      updated_at: "2026-07-30T00:04:05Z",
+    },
   ],
 };
+
+/**
+ * A recorded set of attempts in the vocabulary of `actions/runs` (thread 120) — lower case,
+ * `created_at`/`updated_at`, one entry per ATTEMPT, which is what makes the rerun cases
+ * below say the same thing they said when they were written against `statusCheckRollup`.
+ */
+const runsOn = (
+  attempts: readonly {
+    name: string;
+    conclusion?: string | null;
+    status?: string;
+    at?: string;
+    since?: string;
+  }[],
+): unknown => ({
+  total_count: attempts.length,
+  workflow_runs: attempts.map((attempt, index) => ({
+    id: 90_000 + index,
+    name: attempt.name,
+    head_sha: HEAD,
+    event: "pull_request",
+    status: attempt.status ?? "completed",
+    conclusion: attempt.conclusion ?? null,
+    created_at: attempt.since ?? attempt.at ?? "2026-07-30T00:00:00Z",
+    updated_at: attempt.at ?? "2026-07-30T00:00:00Z",
+  })),
+});
 
 /** The flag that names the reviewer's workflow — without it guard 1 is an obligation (027). */
 const REVIEWED = ["--review-workflow", "Claude PR Review"];
@@ -220,7 +264,9 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     expect(result.code).toBe(0);
     expect(result.out).toContain("ok   guard 1");
     // The status CONTEXT half of the rollup arrives as a name, not as "?".
-    expect(result.out).toContain("pronunciation=SUCCESS");
+    // Lower case since thread 120: the outcome comes from `actions/runs`, not from a
+    // status context of `statusCheckRollup`, and the door prints what GitHub said.
+    expect(result.out).toContain("pronunciation=success");
     expect(result.out).toContain("guards 3 and 5 are yours to answer");
   });
 
@@ -387,11 +433,13 @@ describe("merge-gate — the command, with a real gh on the other side of the se
   it("a gh answer missing a field the verdict is computed from is refused by name", () => {
     const repo = repoWithConfig();
     const payload = mergeable() as Record<string, unknown>;
-    delete payload.statusCheckRollup;
+    // `statusCheckRollup` is not asked for any more (thread 120) — `reviews` is the pinned
+    // field of the same class: the verdict is computed from it, so losing it must refuse.
+    delete payload.reviews;
     const result = run(repo, stubGh(repo, { json: payload }));
 
     expect(result.code).toBe(2);
-    expect(result.out).toContain("statusCheckRollup");
+    expect(result.out).toContain("reviews");
     expect(result.out).not.toContain("guard 2");
   });
 
@@ -428,41 +476,22 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     const result = run(
       repo,
       stubGh(repo, {
-        json: mergeable({
-          number: 89,
-          statusCheckRollup: [
-            {
-              name: "review",
-              status: "COMPLETED",
-              conclusion: "FAILURE",
-              completedAt: "2026-07-30T00:05:30Z",
-            },
-            {
-              name: "checks",
-              status: "COMPLETED",
-              conclusion: "SUCCESS",
-              completedAt: "2026-07-30T00:04:05Z",
-            },
-            {
-              name: "review",
-              status: "COMPLETED",
-              conclusion: "SUCCESS",
-              completedAt: "2026-07-30T00:20:41Z",
-            },
-            {
-              name: "pronunciation",
-              status: "COMPLETED",
-              conclusion: "SUCCESS",
-              completedAt: "2026-07-29T23:58:09Z",
-            },
-          ],
-        }),
+        json: mergeable({ number: 89 }),
+        runs: runsOn([
+          { name: "Claude PR Review", conclusion: "success", at: "2026-07-30T00:20:41Z" },
+          { name: "review", conclusion: "failure", at: "2026-07-30T00:05:30Z" },
+          { name: "checks", conclusion: "success", at: "2026-07-30T00:04:05Z" },
+          { name: "review", conclusion: "success", at: "2026-07-30T00:20:41Z" },
+          { name: "pronunciation", conclusion: "success", at: "2026-07-29T23:58:09Z" },
+        ]),
       }),
     );
 
     expect(result.code).toBe(0);
     expect(result.out).toContain("ok   guard 2");
-    expect(result.out).toContain("3 check(s) green");
+    // FOUR, not three: the round of review is a run of this head like the others, and
+    // since thread 120 guard 2 reads the same payload guard 1 does.
+    expect(result.out).toContain("4 run(s) green");
     expect(result.out).not.toContain("review=FAILURE");
   });
 
@@ -494,35 +523,19 @@ describe("merge-gate — the command, with a real gh on the other side of the se
               submittedAt: "2026-07-31T03:33:07Z",
             },
           ],
-
-          statusCheckRollup: [
-            {
-              name: "review",
-              status: "COMPLETED",
-              conclusion: "FAILURE",
-              completedAt: "2026-07-31T02:52:13Z",
-            },
-            {
-              name: "checks",
-              status: "COMPLETED",
-              conclusion: "SUCCESS",
-              completedAt: "2026-07-31T02:53:02Z",
-            },
-            {
-              name: "review",
-              status: "COMPLETED",
-              conclusion: "SUCCESS",
-              completedAt: "2026-07-31T03:33:11Z",
-            },
-            {
-              name: "pronunciation",
-              status: "COMPLETED",
-              conclusion: "SUCCESS",
-              completedAt: "2026-07-31T02:46:03Z",
-            },
-          ],
         }),
-        runs: ROUND_ON_HEAD,
+        runs: runsOn([
+          {
+            name: "Claude PR Review",
+            conclusion: "success",
+            since: "2026-07-31T03:33:07Z",
+            at: "2026-07-31T03:33:11Z",
+          },
+          { name: "review", conclusion: "failure", at: "2026-07-31T02:52:13Z" },
+          { name: "checks", conclusion: "success", at: "2026-07-31T02:53:02Z" },
+          { name: "review", conclusion: "success", at: "2026-07-31T03:33:11Z" },
+          { name: "pronunciation", conclusion: "success", at: "2026-07-31T02:46:03Z" },
+        ]),
       }),
       REVIEWED,
     );
@@ -665,21 +678,20 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     const result = run(
       repo,
       stubGh(repo, {
-        json: mergeable({
-          statusCheckRollup: [
-            {
-              name: "review",
-              status: "IN_PROGRESS",
-              conclusion: "",
-              startedAt: "2026-07-31T02:26:00Z",
-            },
-          ],
-        }),
+        json: mergeable(),
+        runs: runsOn([
+          {
+            name: "review",
+            status: "in_progress",
+            conclusion: null,
+            since: "2026-07-31T02:26:00Z",
+          },
+        ]),
       }),
     );
 
     expect(result.code).toBe(1);
-    expect(result.out).toContain("review=IN_PROGRESS");
+    expect(result.out).toContain("review=in_progress");
     expect(result.out).not.toContain("not green: review=\n");
   });
 });
@@ -707,6 +719,13 @@ const stubGhWithBase = (
       ? 'echo "gh: HTTP 404" >&2\n  exit 1'
       : `printf '%s\\t%s\\n' ${JSON.stringify(base.sha)} ${JSON.stringify(base.date)}`;
   const script = `#!/bin/sh
+case "$*" in
+  *actions/runs*)
+    cat <<'RUNS'
+${JSON.stringify(runsOn([{ name: "checks", conclusion: "success", since: "2026-07-30T00:02:00Z", at: "2026-07-30T00:04:05Z" }]))}
+RUNS
+    exit 0;;
+esac
 if [ "$1" = "api" ]; then
   echo "$2" > ${JSON.stringify(join(repo, "second-ask.txt"))}
   ${answer}
@@ -786,10 +805,14 @@ describe("merge-gate — the round of review behind the approve (thread 027)", (
       ["--review-workflow", "Claude PR Review"],
     );
 
-    expect(result.code).toBe(0);
+    // EXIT 1 SINCE THREAD 120, AND THAT IS THE REPAIR: the same refused call is guard 1's
+    // obligation AND guard 2's only source of an outcome. An unread anchor leaves a human
+    // something to check; an unread OUTCOME leaves the door with nothing, so it refuses by
+    // name instead of reading silence as "nothing confirmed this head".
+    expect(result.code).toBe(1);
     expect(result.out).toContain("you  guard 1");
     expect(result.out).toContain("Resource not accessible by integration");
-    expect(result.out).toContain("guards 1, 3 and 5 are yours to answer");
+    expect(result.out).toContain("STOP guard 2");
   });
 
   it("without the flag nothing is asked of Actions, and guard 1 says so instead of passing", () => {
@@ -808,15 +831,6 @@ describe("merge-gate — the base under a credited check (023.3)", () => {
   const withBase = (over: Record<string, unknown> = {}): unknown =>
     mergeable({
       baseRefName: "main",
-      statusCheckRollup: [
-        {
-          name: "checks",
-          status: "COMPLETED",
-          conclusion: "SUCCESS",
-          startedAt: "2026-07-30T00:02:00Z",
-          completedAt: "2026-07-30T00:04:05Z",
-        },
-      ],
       ...over,
     });
 
@@ -934,7 +948,7 @@ describe("merge-gate takes the token of the instance the checkout belongs to", (
     const path = join(bin, "gh");
     writeFileSync(
       path,
-      `#!/bin/sh\nif [ "$GH_TOKEN" != ${JSON.stringify(expected)} ]; then\n  echo "gh: no token in the environment" >&2\n  exit 1\nfi\ncat <<'PAYLOAD'\n${JSON.stringify(json)}\nPAYLOAD\n`,
+      `#!/bin/sh\nif [ "$GH_TOKEN" != ${JSON.stringify(expected)} ]; then\n  echo "gh: no token in the environment" >&2\n  exit 1\nfi\ncase "$*" in *actions/runs*) cat <<'RUNS'\n${JSON.stringify(ROUND_ON_HEAD)}\nRUNS\nexit 0;; esac\ncat <<'PAYLOAD'\n${JSON.stringify(json)}\nPAYLOAD\n`,
       "utf8",
     );
     chmodSync(path, 0o755);

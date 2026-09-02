@@ -8,13 +8,28 @@
  * name of the missing field rather than silently read as "no reviews, no checks" —
  * which, for a merge gate, would fail open.
  *
- * `statusCheckRollup` is a union of two node types and is flattened into one loose
- * shape: a check run answers with `name`/`status`/`conclusion`, a status context
- * with `context`/`state`. Both halves are optional here and the gate reads whichever
- * arrived. The STAMPS (`completedAt`, `startedAt`) are optional for the same reason —
- * a status context has neither — but they are what tells a rerun from the attempt it
- * replaced, so they are asked for (thread 026, D1). `reviews[].submittedAt` is there for
- * the same reason on the verdict side (D4). `commits` is asked for BESIDE `reviews`:
+ * `statusCheckRollup` IS NOT ASKED FOR AT ALL, and its absence is the repair of thread
+ * 120 (john's facts of 2026-09-02). Three measured reasons, in the order they bite:
+ *
+ *  1. THE WHOLE CALL DIES FOR IT. `gh pr view` asks for that field in ONE request with
+ *     `body`, `reviews`, `files`, `headRefOid`; a token that may not read it gets
+ *     `Resource not accessible by personal access token (…statusCheckRollup…)` and the
+ *     request answers NOTHING — so guards 1, 2, 4 and the `thread:` line go down together
+ *     over a field only guard 2 used.
+ *  2. NO TOKEN CAN BE GIVEN THE RIGHT. `Checks` is not in the repository permissions of a
+ *     fine-grained PAT at all (it exists for GitHub Apps only), so this is not a setting
+ *     anybody can fix on the box — it is a source that has to change.
+ *  3. THE REFUSED HALF IS EMPTY HERE ANYWAY. The path GitHub names ends in
+ *     `statusCheckRollup.contexts.nodes.N` — commit statuses — and this project creates
+ *     none: on head `0a612b27` the combined status carried `statuses: 0` while Actions
+ *     carried ten runs. The call paid a total refusal for zero rows.
+ *
+ * The outcome of the checks now comes from `actions/runs?head_sha=<head>` instead
+ * ({@link ghWorkflowRunsSchema}), which the same token reads — one read that already
+ * happened for guard 1 and now serves guard 2 beside it.
+ *
+ * `reviews[].submittedAt` tells a second round from the verdict it
+ * replaced (D4). `commits` is asked for BESIDE `reviews`:
  * the head commit's `committedDate` is what tells a verdict about this head from one
  * merely SHOWN against it, and it is the one fact a substituted anchor cannot fake
  * (thread 043).
@@ -25,7 +40,7 @@
  */
 
 import { z } from "zod";
-import type { PullRequestFacts, ReviewRunFact, ReviewRunReading } from "./gate.js";
+import type { CheckRunReading, PullRequestFacts, ReviewRunFact, ReviewRunReading } from "./gate.js";
 
 const nullableText = z.string().nullish();
 
@@ -53,17 +68,6 @@ export const ghPullRequestSchema = z.looseObject({
     z.looseObject({
       oid: z.string(),
       committedDate: nullableText,
-    }),
-  ),
-  statusCheckRollup: z.array(
-    z.looseObject({
-      name: nullableText,
-      context: nullableText,
-      status: nullableText,
-      conclusion: nullableText,
-      state: nullableText,
-      completedAt: nullableText,
-      startedAt: nullableText,
     }),
   ),
   files: z.array(z.looseObject({ path: z.string() })),
@@ -160,48 +164,91 @@ export const reviewRunFacts = (payload: GhWorkflowRuns): readonly ReviewRunFact[
   }));
 
 /**
- * The answer of `gh api actions/runs` read as a {@link ReviewRunReading} — INCLUDING its
- * refusals, which is the whole reason this is a function and not two lines at the call
- * site. A throw of `gh`, a body that is not JSON and a body that is not the shape we read
- * are three different sentences a human can act on, and all three land in the same
- * honest state: unreadable, with what GitHub said quoted.
+ * The answer of `gh api actions/runs` read as runs OR as the reason there are none —
+ * INCLUDING its refusals, which is the whole reason this is a function and not two lines
+ * at the call site. A throw of `gh`, a body that is not JSON and a body that is not the
+ * shape we read are three different sentences a human can act on, and all three land in
+ * the same honest state: unreadable, with what GitHub said quoted.
+ *
+ * ONE READING, TWO GUARDS (thread 120): guard 1 asks which round produced the verdict and
+ * guard 2 asks how the checks ended, and both are answers of this one payload. They are
+ * built from the SAME call at the call site — a second `gh api` for the second guard would
+ * be a second moment, and two guards judging two moments is the class of defect this
+ * module already carries a note about.
  */
-export const readReviewRuns = (input: {
-  readonly workflow: string;
-  readonly ask: () => string;
-}): ReviewRunReading => {
+export const readWorkflowRuns = (
+  ask: () => string,
+): { readonly runs: readonly ReviewRunFact[] } | { readonly reason: string } => {
   let raw: string;
   try {
-    raw = input.ask();
+    raw = ask();
   } catch (error) {
     const message = (error as Error).message.trim();
-    return {
-      state: "unreadable",
-      workflow: input.workflow,
-      reason: `${message}${ghRefusalHint(message)}`,
-    };
+    return { reason: `${message}${ghRefusalHint(message)}` };
   }
   let body: unknown;
   try {
     body = JSON.parse(raw);
   } catch (error) {
-    return {
-      state: "unreadable",
-      workflow: input.workflow,
-      reason: `the answer is not JSON: ${(error as Error).message.trim()}`,
-    };
+    return { reason: `the answer is not JSON: ${(error as Error).message.trim()}` };
   }
   const parsed = ghWorkflowRunsSchema.safeParse(body);
   if (!parsed.success)
     return {
-      state: "unreadable",
-      workflow: input.workflow,
       reason: `the answer is not the shape this command reads: ${parsed.error.issues
         .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
         .join("; ")}`,
     };
-  return { state: "read", workflow: input.workflow, runs: reviewRunFacts(parsed.data) };
+  return { runs: reviewRunFacts(parsed.data) };
 };
+
+/** {@link readWorkflowRuns} as guard 1 reads it — the runs under the workflow it was told about. */
+export const readReviewRuns = (input: {
+  readonly workflow: string;
+  readonly ask: () => string;
+}): ReviewRunReading => {
+  const answer = readWorkflowRuns(input.ask);
+  return "reason" in answer
+    ? { state: "unreadable", workflow: input.workflow, reason: answer.reason }
+    : { state: "read", workflow: input.workflow, runs: answer.runs };
+};
+
+/** {@link readWorkflowRuns} as guard 2 reads it — every run on the head, workflow or not. */
+export const readCheckRuns = (ask: () => string): CheckRunReading => {
+  const answer = readWorkflowRuns(ask);
+  return "reason" in answer
+    ? { state: "unreadable", reason: answer.reason }
+    : { state: "read", runs: answer.runs };
+};
+
+/**
+ * THE RUNS OF THIS HEAD AS THE ATTEMPTS GUARD 2 JUDGES (thread 120) — the mapping that
+ * replaces `statusCheckRollup`, and the place the ANCHOR TO THE HEAD is enforced.
+ *
+ * The filter on `head_sha` is not a tidiness: `actions/runs` is asked WITH the head in the
+ * query, but a payload is somebody else's and this door has twice paid for an outcome read
+ * off another slice of the repository. A run that does not name this head anchors nothing
+ * and is dropped by name, not read charitably.
+ *
+ * `updated_at` becomes `completedAt` ONLY for a finished run — for one still in flight it is
+ * the moment it last spoke, and calling that "completed" would let an unfinished attempt
+ * overtake the finished one it is retrying (D1 reads the stamps to tell reruns apart).
+ */
+export const checkFactsFromRuns = (
+  runs: readonly ReviewRunFact[],
+  head: string,
+): PullRequestFacts["checks"] =>
+  runs
+    .filter((run) => (run.headSha ?? "").toLowerCase() === head.toLowerCase())
+    .map((run) => ({
+      name: run.name ?? "?",
+      status: run.status ?? undefined,
+      conclusion: run.conclusion ?? undefined,
+      state: undefined,
+      completedAt:
+        (run.status ?? "").toLowerCase() === "completed" ? (run.updatedAt ?? undefined) : undefined,
+      startedAt: run.createdAt ?? undefined,
+    }));
 
 /**
  * THE PAYLOAD OF `gh` READ AS THE FACTS THE GUARDS JUDGE — one mapping, because there
@@ -232,6 +279,14 @@ export const pullRequestFacts = (
    * guard then says `by-hand` instead of guessing.
    */
   reviewRuns?: ReviewRunReading | undefined,
+  /**
+   * THE RUNS ON THE HEAD AS GUARD 2'S SOURCE (thread 120) — the same payload as
+   * {@link reviewRuns}, read without the workflow filter. A parameter and not a field for
+   * the reason the two above are: a caller that does not ask Actions gets `not-asked`, and
+   * guard 2 then REFUSES BY NAME instead of reading "no checks" as "nothing confirmed" and
+   * "everything green" alike.
+   */
+  checkRuns?: CheckRunReading | undefined,
 ): PullRequestFacts => ({
   number: pr.number,
   headSha: pr.headRefOid,
@@ -248,16 +303,11 @@ export const pullRequestFacts = (
   headCommittedAt:
     pr.commits.find((commit) => commit.oid === pr.headRefOid)?.committedDate ?? undefined,
   reviewRuns,
-  checks: pr.statusCheckRollup.map((check) => ({
-    // A flying run answers `conclusion: ""`, not null — the gate reads emptiness as
-    // absence itself (D3), so the mapping stays a mapping.
-    name: check.name ?? check.context ?? "?",
-    status: check.status ?? undefined,
-    conclusion: check.conclusion ?? undefined,
-    state: check.state ?? undefined,
-    completedAt: check.completedAt ?? undefined,
-    startedAt: check.startedAt ?? undefined,
-  })),
+  checkRuns,
+  checks:
+    checkRuns !== undefined && checkRuns.state === "read"
+      ? checkFactsFromRuns(checkRuns.runs, pr.headRefOid)
+      : [],
   changedPaths: pr.files.map((file) => file.path),
   baseSha: baseHead?.sha,
   baseCommittedAt: baseHead?.committedAt,

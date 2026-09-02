@@ -123,20 +123,30 @@ const readyPayload = (thread: string): string =>
       },
     ],
     commits: [{ oid: HEAD, committedDate: "2026-08-01T06:40:00Z" }],
-    statusCheckRollup: [
-      {
-        name: "checks",
-        context: null,
-        status: "COMPLETED",
-        conclusion: "SUCCESS",
-        state: null,
-        completedAt: "2026-08-01T06:49:00Z",
-        startedAt: "2026-08-01T06:41:00Z",
-      },
-    ],
     files: [{ path: "packages/agent-protocol/src/cli.ts" }],
     mergeable: "MERGEABLE",
     mergeStateStatus: "CLEAN",
+  });
+
+/**
+ * THE RUNS OF THE HEAD (thread 120) — since `statusCheckRollup` left the `gh pr view` above,
+ * this is where the outcome guard 2 judges comes from, and the scheduler asks for it too.
+ */
+const runsPayload = (): string =>
+  JSON.stringify({
+    total_count: 1,
+    workflow_runs: [
+      {
+        id: 4242,
+        name: "CI",
+        head_sha: HEAD,
+        event: "pull_request",
+        status: "completed",
+        conclusion: "success",
+        created_at: "2026-08-01T06:41:00Z",
+        updated_at: "2026-08-01T06:49:00Z",
+      },
+    ],
   });
 
 /**
@@ -160,6 +170,10 @@ const ghShim = (
   const script = [
     "#!/bin/sh",
     `echo "$@" >> ${JSON.stringify(log)}`,
+    "case \"$*\" in *actions/runs*) cat <<'RUNS'",
+    runsPayload(),
+    "RUNS",
+    "  exit 0 ;; esac",
     'case "$2" in',
     `  list) cat <<'JSON'\n${open}\nJSON\n    ;;`,
     `  view) ${expensive}`,

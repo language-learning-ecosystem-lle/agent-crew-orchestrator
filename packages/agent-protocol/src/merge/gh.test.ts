@@ -4,7 +4,13 @@
  * all of them, and was right about at most one.
  */
 import { describe, expect, it } from "vitest";
-import { ghPullRequestSchema, ghRefusalHint, pullRequestFacts } from "./gh.js";
+import {
+  checkFactsFromRuns,
+  ghPullRequestSchema,
+  ghRefusalHint,
+  pullRequestFacts,
+  readCheckRuns,
+} from "./gh.js";
 
 /** What `execFileSync` hands up: the ECHOED COMMAND LINE, then what the process said. */
 const asThrown = (stderr: string): string =>
@@ -85,7 +91,6 @@ describe("pullRequestFacts — where the base comes from (023.4)", () => {
     body: "thread: 023-daemon-parallelism",
     reviews: [],
     commits: [],
-    statusCheckRollup: [],
     files: [],
     baseRefName: "main",
     mergeable: "MERGEABLE",
@@ -110,5 +115,83 @@ describe("pullRequestFacts — where the base comes from (023.4)", () => {
     // Not `44471804`: an unmeasured base is ABSENT, and the note says so out loud.
     expect(facts.baseSha).toBeUndefined();
     expect(facts.baseCommittedAt).toBeUndefined();
+  });
+});
+
+/**
+ * GUARD 2'S NEW SOURCE (thread 120): the runs of `actions/runs?head_sha=` read as the
+ * attempts the gate judges. Every case here is a shape john or curator measured on the
+ * live circuit on 2026-09-02 — the six `Notifier Watch: skipped` of head `0a612b27`
+ * included, which is why "skipped" has a case of its own here and a class of its own in
+ * `gate.ts`.
+ */
+describe("checkFactsFromRuns — the runs of THIS head, and nobody else's", () => {
+  const head = "0a612b27c151a53ae53eec27e240f04b7866fa87";
+  const run = (over: Record<string, unknown>) => ({
+    id: 1,
+    name: "CI",
+    headSha: head,
+    event: "pull_request",
+    status: "completed",
+    conclusion: "success",
+    createdAt: "2026-09-02T08:00:00Z",
+    updatedAt: "2026-09-02T08:10:00Z",
+    ...over,
+  });
+
+  it("drops a run that names another head — an outcome from another slice is not an outcome here", () => {
+    const facts = checkFactsFromRuns([run({}), run({ name: "E2E", headSha: "34716450" })], head);
+
+    expect(facts.map((check) => check.name)).toEqual(["CI"]);
+  });
+
+  it("keeps the Actions vocabulary as it is and dates a finished run by `updated_at`", () => {
+    const [check] = checkFactsFromRuns([run({})], head);
+
+    expect(check).toMatchObject({
+      name: "CI",
+      status: "completed",
+      conclusion: "success",
+      startedAt: "2026-09-02T08:00:00Z",
+      completedAt: "2026-09-02T08:10:00Z",
+    });
+  });
+
+  it("does not date an unfinished run as completed — a flying attempt must not overtake the finished one it retries", () => {
+    const [check] = checkFactsFromRuns([run({ status: "in_progress", conclusion: null })], head);
+
+    expect(check?.completedAt).toBeUndefined();
+    expect(check?.startedAt).toBe("2026-09-02T08:00:00Z");
+  });
+});
+
+describe("readCheckRuns — a refusal is a state, never an empty list", () => {
+  it("reads the runs of a healthy answer", () => {
+    const reading = readCheckRuns(() =>
+      JSON.stringify({
+        workflow_runs: [
+          { id: 7, name: "CI", head_sha: "abc", status: "completed", conclusion: "success" },
+        ],
+      }),
+    );
+
+    expect(reading.state).toBe("read");
+    expect(reading.state === "read" && reading.runs[0]?.name).toBe("CI");
+  });
+
+  it("carries GitHub's own words when the token is refused — the sentence the door prints", () => {
+    const reading = readCheckRuns(() => {
+      throw new Error("HTTP 403: Resource not accessible by personal access token");
+    });
+
+    expect(reading.state).toBe("unreadable");
+    expect(reading.state === "unreadable" && reading.reason).toContain(
+      "Resource not accessible by personal access token",
+    );
+  });
+
+  it("is unreadable — not empty — when the answer is not JSON or not the shape", () => {
+    expect(readCheckRuns(() => "<html>502</html>").state).toBe("unreadable");
+    expect(readCheckRuns(() => JSON.stringify({ runs: [] })).state).toBe("unreadable");
   });
 });

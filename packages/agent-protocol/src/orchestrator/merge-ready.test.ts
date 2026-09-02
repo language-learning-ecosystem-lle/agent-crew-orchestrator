@@ -30,6 +30,9 @@ const facts = (over: Partial<PullRequestFacts> = {}): PullRequestFacts => ({
       submittedAt: "2026-08-01T05:10:00Z",
     },
   ],
+  // The runs of the head WERE read (thread 120) — the scheduler now pays for that call
+  // too, because guard 2 has no other source and a fact without it refuses by construction.
+  checkRuns: { state: "read", runs: [] },
   checks: [
     {
       name: "checks",

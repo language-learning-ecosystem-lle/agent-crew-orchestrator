@@ -175,7 +175,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # when, by which system user, which verb at which target, and how it ended
                               # — readable without the session transcript. It raises NO identity: the
                               # user is the one the session was already spawned as (box-setup §0.1a)
-  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--review-workflow <name>] [--d1 <thread/message.md>]
+  agent-protocol merge-gate   --ref <ref> --pr <n> [--repo <path>] [--power-docs <a,b>] [--working-cards <a,b>] [--review-workflow <name>] [--required-runs <a,b>] [--d1 <thread/message.md>]
                               # THE MERGE DOOR OF 'curator' (thread 026): the three guards that are
                               # FACTS — approve on the CURRENT head, green checks on it, and no
                               # document of power in the diff (the role cards and the config are
@@ -206,9 +206,20 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # refusal — a decision is fixed where it was taken; it is printed
                               # a --d1 on a diff that touches NO document of power leaves guard 4 the
                               # pass it was and SAYS the flag changed nothing (never silent either way)
-                              # guard 2 reads 'statusCheckRollup' — a token without 'checks: read'
-                              # (and 'actions: read', asked for inside it) is refused the whole call;
-                              # the command PRINTS what gh answered and only guesses at the scope
+                              # guard 2 reads the RUNS of Actions on the head, not
+                              # 'statusCheckRollup' (thread 120): 'Checks' is not a permission a
+                              # fine-grained token can be granted at all, and asking for it inside
+                              # 'gh pr view' failed the WHOLE call — guards 1, 2 and 4 at once. A
+                              # refused 'actions/runs' now stops guard 2 by name, quoting gh
+                              # --required-runs <a,b>: the runs guard 2 requires BY NAME on the head
+                              # (e.g. 'CI,E2E'). Without it 'green' means only 'everything that started
+                              # is green',
+                              # and the door says so out loud rather than passing quietly. Which
+                              # workflows are obligatory is the served project's fact, like
+                              # --review-workflow and the documents of power
+                              # a run that only SKIPPED never satisfies a required run and is never
+                              # what green is made of; one still running is 'still running', which is
+                              # a moment to come back to and not a refusal
                               # and it judges the LAST attempt of each check name, by time — a rerun
                               # replaces the run it reran, both of which hang on the same head
                               # guard 1 judges the LAST verdict of each reviewer on that head, by

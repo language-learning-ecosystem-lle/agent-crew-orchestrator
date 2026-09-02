@@ -259,6 +259,22 @@ export type ReviewRunReading =
   /** No `--review-workflow`: nobody named the reviewer's workflow, so nothing was asked. */
   | { readonly state: "not-asked" };
 
+/**
+ * WHAT THE DOOR KNOWS ABOUT THE RUNS ON THIS HEAD — guard 2's source since thread 120,
+ * where the outcome of the checks moved off `statusCheckRollup` (a resource no fine-grained
+ * token can be granted; see `gh.ts`) and onto `actions/runs?head_sha=`.
+ *
+ * Three states and no fourth, because the difference between them is the whole repair:
+ * `read` carries the runs, `unreadable` carries GitHub's own words and REFUSES the guard by
+ * name, `not-asked` refuses it too and says the caller never asked. Neither refusal is "no
+ * checks reported": that sentence is reserved for a head Actions answered about with an
+ * empty list, which is a fact about the head and not about our reach.
+ */
+export type CheckRunReading =
+  | { readonly state: "read"; readonly runs: readonly ReviewRunFact[] }
+  | { readonly state: "unreadable"; readonly reason: string }
+  | { readonly state: "not-asked" };
+
 /** The facts about a pull request the gate judges — the shape `gh pr view --json` gives. */
 export type PullRequestFacts = {
   readonly number: number;
@@ -283,7 +299,19 @@ export type PullRequestFacts = {
    * a pass.
    */
   readonly reviewRuns?: ReviewRunReading | undefined;
-  /** `statusCheckRollup`: check runs (status/conclusion) and status contexts (state) alike. */
+  /**
+   * How guard 2's source answered (thread 120) — the runs on this head, or the reason
+   * there are none to read. Absent is read as {@link CheckRunReading} `not-asked`.
+   */
+  readonly checkRuns?: CheckRunReading | undefined;
+  /**
+   * The attempts guard 2 judges — the runs of {@link checkRuns} anchored to this head
+   * (`gh.ts` → `checkFactsFromRuns`). The vocabulary is Actions': `status: completed`,
+   * `conclusion: success|failure|skipped|cancelled|…`, lower case. The older vocabulary
+   * of `statusCheckRollup` (upper case, plus a status context's `state`) is still read —
+   * the judgement is case-insensitive and the field survives — because a caller that
+   * builds these facts by hand is not the reason to lose a reading that costs nothing.
+   */
   readonly checks: readonly {
     readonly name: string;
     readonly status: string | undefined;
@@ -580,13 +608,20 @@ export const readD1Reference = (value: string): D1Reference | { readonly refusal
 };
 
 /**
- * A check is green when it FINISHED and did not fail. `NEUTRAL` and `SKIPPED` count
- * as green (a skipped job is a job the workflow decided not to run — the reviewer's
- * own action skips itself on a workflow change by design); anything still running is
- * not green, because guard 2 is about the checks having ANSWERED on this head.
+ * A check is green when it FINISHED and did not fail; anything still running is not green,
+ * because guard 2 is about the checks having ANSWERED on this head.
+ *
+ * `SKIPPED` USED TO BE COUNTED GREEN AND IS NOT ANY MORE (thread 120, john's decision of
+ * 2026-09-02): a skipped job answered nothing, and green that is the sum of skips is a
+ * class this project has already named. It is not a failure either — the reviewer's own
+ * action skips itself on a workflow change by design, and six `Notifier Watch: skipped`
+ * runs sat on head `0a612b27` beside three real successes. So it is a THIRD class
+ * ({@link checkIsSkipped}): it never fails guard 2 by itself, it never satisfies a required
+ * run, and it is never what "green" is made of.
  */
-const greenConclusions = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
+const greenConclusions = new Set(["SUCCESS", "NEUTRAL"]);
 const greenStates = new Set(["SUCCESS", "EXPECTED"]);
+const skippedConclusions = new Set(["SKIPPED"]);
 
 /** `gh` says "no value" with an empty string as readily as with null — both are absent. */
 const present = (value: string | undefined): string | undefined => {
@@ -868,15 +903,149 @@ export const reviewRunAnchor = (input: {
   };
 };
 
+/**
+ * UPPER CASE IS NOT THE FACT, IT WAS THE SOURCE (thread 120): GraphQL shouted
+ * `COMPLETED`/`SUCCESS`, the REST of `actions/runs` says `completed`/`success`, and the
+ * guard judges the same thing in both. Read at the door, once, so no judgement below has to
+ * remember which payload it came from.
+ */
+const word = (value: string | undefined): string | undefined => value?.trim().toUpperCase();
+
+const checkIsFinished = (check: Attempt): boolean =>
+  word(check.status) === "COMPLETED" || (check.status === undefined && check.state !== undefined);
+
+/** Still in flight — "it is running" is an answer of its own, never "it is not green". */
+export const checkIsRunning = (check: Attempt): boolean =>
+  !checkIsFinished(check) &&
+  // A status context (`state`) with no `status` is finished by construction; a run with
+  // neither field said nothing at all, and "said nothing" is not "is running".
+  (check.status !== undefined || check.conclusion === undefined);
+
+export const checkIsSkipped = (check: Attempt): boolean =>
+  checkIsFinished(check) &&
+  check.conclusion !== undefined &&
+  skippedConclusions.has(word(check.conclusion) ?? "");
+
 const checkIsGreen = (check: Attempt): boolean =>
   check.conclusion === undefined && check.status === undefined
-    ? check.state !== undefined && greenStates.has(check.state)
-    : check.status === "COMPLETED" &&
+    ? check.state !== undefined && greenStates.has(word(check.state) ?? "")
+    : word(check.status) === "COMPLETED" &&
       check.conclusion !== undefined &&
-      greenConclusions.has(check.conclusion);
+      greenConclusions.has(word(check.conclusion) ?? "");
 
 const describeCheck = (check: Attempt): string =>
   `${check.name}=${check.conclusion ?? check.state ?? check.status ?? "?"}`;
+
+const GUARD_2 = { guard: 2, title: "green checks on the same head" } as const;
+
+/**
+ * GUARD 2 — "the checks on THIS head answered green", computed off the runs of Actions
+ * since thread 120 and not off `statusCheckRollup` (why: `gh.ts`).
+ *
+ * Five answers, and the four that are not "pass" are four different sentences on purpose:
+ *
+ *  - THE SOURCE REFUSED (`unreadable`) — GitHub's words are quoted and the guard FAILS. Not
+ *    `by-hand` like guard 1's third state: an unread anchor leaves a human an obligation,
+ *    an unread OUTCOME leaves the door with nothing at all, and silent degradation into
+ *    "nothing confirmed this head" is the class that cost this project a morning.
+ *  - NOBODY ASKED (`not-asked`) — the caller reads no runs (the scheduler does not), so the
+ *    guard says that, in those words, instead of reading an empty list as a fact about the
+ *    head.
+ *  - NO RUN ON THE HEAD — Actions answered, and answered nothing about this commit.
+ *  - A REQUIRED RUN IS MISSING OR NOT GREEN — see below.
+ *  - SOMETHING IS STILL RUNNING — said as "still running", never as "not green": one is a
+ *    moment to come back to, the other is a refusal.
+ *
+ * AND GREEN IS NEVER THE SUM OF SKIPS. A skipped run is neither side (see
+ * {@link checkIsSkipped}); a head whose every run skipped is not confirmed by anything, and
+ * a required run that only skipped is a required run that did not happen.
+ *
+ * THE REQUIRED LIST IS DECLARED, NEVER INFERRED. "All the runs that started are green" is
+ * a sentence about what happened to start — the door says so out loud when the list is
+ * empty rather than passing quietly on it. The list is the caller's (`--required-runs`)
+ * because which workflows are obligatory is a fact of the served project, the same line
+ * `--review-workflow` and the documents of power already stand on.
+ *
+ * THE ANSWER IS THE LAST ATTEMPT. `actions/runs` lists reruns as separate runs, so D1's
+ * rule (latest attempt per name) is what makes a `rerun --failed` count: a head green after
+ * a rerun IS green here, deliberately, and the failed attempt it replaced is not held
+ * against it.
+ */
+export const checksOutcome = (
+  pr: PullRequestFacts,
+  required: readonly string[] = [],
+): GateOutcome => {
+  const head = pr.headSha;
+  const reading: CheckRunReading = pr.checkRuns ?? { state: "not-asked" };
+  if (reading.state === "unreadable")
+    return {
+      ...GUARD_2,
+      state: "fail",
+      detail: `the runs on ${head.slice(0, 7)} could not be read, so the outcome of the checks is UNKNOWN — GitHub answered: ${reading.reason}. Guard 2 reads 'actions/runs?head_sha=' (thread 120): 'statusCheckRollup' is a Checks resource no fine-grained token can be granted, and this door refuses rather than calling an unread outcome an outcome`,
+    };
+  if (reading.state === "not-asked")
+    return {
+      ...GUARD_2,
+      state: "fail",
+      detail: `the runs on ${head.slice(0, 7)} were not asked for — this caller reads no Actions, so nothing here has confirmed the head. By hand: \`gh api "repos/{owner}/{repo}/actions/runs?head_sha=${head}"\``,
+    };
+
+  const attempts = latestAttemptPerName(pr.checks.map(asAttempt));
+  if (attempts.length === 0)
+    return {
+      ...GUARD_2,
+      state: "fail",
+      detail: `no run of Actions reported on ${head.slice(0, 7)} — nothing has confirmed this head`,
+    };
+
+  const running = attempts.filter(checkIsRunning);
+  const skipped = attempts.filter(checkIsSkipped);
+  const green = attempts.filter(checkIsGreen);
+  const failed = attempts.filter(
+    (check) => !checkIsGreen(check) && !checkIsSkipped(check) && !checkIsRunning(check),
+  );
+  const missing = required.filter(
+    (name) => !green.some((check) => check.name.trim().toLowerCase() === name.trim().toLowerCase()),
+  );
+  const beside =
+    skipped.length === 0
+      ? ""
+      : `; skipped (neither side): ${skipped.map(describeCheck).join(", ")}`;
+
+  if (failed.length > 0)
+    return {
+      ...GUARD_2,
+      state: "fail",
+      detail: `not green: ${failed.map(describeCheck).join(", ")}${beside}`,
+    };
+  if (missing.length > 0)
+    return {
+      ...GUARD_2,
+      state: "fail",
+      detail: `required run(s) with no green answer on this head: ${missing.join(", ")} — ${running.length > 0 ? `still running: ${running.map(describeCheck).join(", ")}` : "not among the runs of this head at all"}${beside}`,
+    };
+  if (running.length > 0)
+    return {
+      ...GUARD_2,
+      state: "fail",
+      detail: `still running on ${head.slice(0, 7)}: ${running.map(describeCheck).join(", ")} — the checks have not answered yet, which is a moment to come back to and not a refusal${beside}`,
+    };
+  if (green.length === 0)
+    return {
+      ...GUARD_2,
+      state: "fail",
+      detail: `nothing on ${head.slice(0, 7)} answered green — every run of this head skipped: ${skipped.map(describeCheck).join(", ")}. Green is never the sum of skips`,
+    };
+  return {
+    ...GUARD_2,
+    state: "pass",
+    detail:
+      `${green.length} run(s) green: ${green.map(describeCheck).join(", ")}${beside}. ` +
+      (required.length === 0
+        ? "NO REQUIRED LIST WAS DECLARED (--required-runs): this says every run that started on this head is green, not that every run that had to run did"
+        : `required and green: ${required.join(", ")}`),
+  };
+};
 
 /**
  * What GitHub says about applying the branch (D2). Not a guard: printed as a fact and
@@ -1027,6 +1196,8 @@ export const baseDriftOf = (pr: PullRequestFacts): BaseDrift => {
  */
 export const verdictAndChecks = (
   pr: PullRequestFacts,
+  /** The runs guard 2 requires by name; see {@link checksOutcome}. Empty means none was declared. */
+  required: readonly string[] = [],
 ): { readonly verdict: GateOutcome; readonly checks: GateOutcome } => {
   const head = pr.headSha;
 
@@ -1130,31 +1301,7 @@ export const verdictAndChecks = (
                       .join(", ")}, the head has moved to ${head.slice(0, 7)} — a new round is due`,
             };
 
-  const attempts = latestAttemptPerName(pr.checks.map(asAttempt));
-  const notGreen = attempts.filter((check) => !checkIsGreen(check));
-  const checks: GateOutcome =
-    attempts.length === 0
-      ? {
-          guard: 2,
-          title: "green checks on the same head",
-          state: "fail",
-          detail: `no checks reported on ${head.slice(0, 7)} — nothing has confirmed this head`,
-        }
-      : notGreen.length === 0
-        ? {
-            guard: 2,
-            title: "green checks on the same head",
-            state: "pass",
-            detail: `${attempts.length} check(s) green: ${attempts.map(describeCheck).join(", ")}`,
-          }
-        : {
-            guard: 2,
-            title: "green checks on the same head",
-            state: "fail",
-            detail: `not green: ${notGreen.map(describeCheck).join(", ")}`,
-          };
-
-  return { verdict, checks };
+  return { verdict, checks: checksOutcome(pr, required) };
 };
 
 /**
@@ -1181,10 +1328,12 @@ export const evaluateMergeGate = (input: {
   readonly powerDocs: readonly string[];
   /** Class Д-1 DECLARED at the door — see the header and {@link readD1Reference}. */
   readonly d1?: D1Reference | undefined;
+  /** The runs guard 2 requires by name (`--required-runs`); see {@link checksOutcome}. */
+  readonly requiredRuns?: readonly string[] | undefined;
 }): MergeGateVerdict => {
   const { pr } = input;
   const head = pr.headSha;
-  const { verdict, checks } = verdictAndChecks(pr);
+  const { verdict, checks } = verdictAndChecks(pr, input.requiredRuns ?? []);
 
   const thread = threadOfDescription(pr.body);
   const ascent: GateOutcome =

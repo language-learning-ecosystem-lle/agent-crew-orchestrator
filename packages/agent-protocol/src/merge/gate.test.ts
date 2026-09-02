@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  checksOutcome,
   describeMergeGate,
   describePowerDocuments,
   describeVersionBumpFollowUp,
@@ -53,6 +54,9 @@ const pr = (over: Partial<PullRequestFacts> = {}): PullRequestFacts => ({
     },
   ],
   reviewRuns: ROUND_ON_HEAD,
+  // The runs WERE read (thread 120): guard 2 has a source, and the attempts below are what
+  // it answered. A fact built without this reads as `not-asked` and refuses, on purpose.
+  checkRuns: { state: "read", runs: [] },
   checks: [{ name: "checks", status: "COMPLETED", conclusion: "SUCCESS", state: undefined }],
   changedPaths: ["packages/agent-protocol/src/merge/gate.ts"],
   mergeable: "MERGEABLE",
@@ -1063,7 +1067,7 @@ describe("guard 2 — one head answers once per check name", () => {
       2,
     );
     expect(outcome?.state).toBe("pass");
-    expect(outcome?.detail).toContain("3 check(s) green");
+    expect(outcome?.detail).toContain("3 run(s) green");
     expect(outcome?.detail).toContain("review=SUCCESS");
     expect(outcome?.detail).not.toContain("FAILURE");
   });
@@ -1127,7 +1131,7 @@ describe("guard 2 — one head answers once per check name", () => {
       2,
     );
     expect(outcome?.state).toBe("pass");
-    expect(outcome?.detail).toContain("2 check(s) green");
+    expect(outcome?.detail).toContain("2 run(s) green");
   });
 });
 
@@ -1543,5 +1547,115 @@ describe("the follow-up a schema bump leaves on the boxes", () => {
         configPath: "agent-protocol.json",
       }).length,
     ).toBe(2);
+  });
+});
+
+/**
+ * GUARD 2 OFF THE RUNS OF ACTIONS (thread 120). The five answers are five sentences, and
+ * the reason each is its own case is that the previous shape had ONE — "not green" — for a
+ * refused token, an unfinished round and a real failure alike.
+ */
+describe("checksOutcome — the outcome of the checks, and the reasons there is none", () => {
+  const head = "0a612b27c151a53ae53eec27e240f04b7866fa87";
+  const facts = (
+    checks: PullRequestFacts["checks"],
+    checkRuns?: PullRequestFacts["checkRuns"],
+  ): PullRequestFacts => ({
+    number: 1,
+    headSha: head,
+    body: "thread: 120-box-github-credentials",
+    reviews: [],
+    checks,
+    checkRuns: checkRuns ?? { state: "read", runs: [] },
+    changedPaths: [],
+    mergeable: "MERGEABLE",
+  });
+  const run = (name: string, conclusion: string | undefined, status = "completed") => ({
+    name,
+    status,
+    conclusion,
+    state: undefined,
+    completedAt: status === "completed" ? "2026-09-02T08:10:00Z" : undefined,
+    startedAt: "2026-09-02T08:00:00Z",
+  });
+
+  it("REFUSES BY NAME when the source refused — never 'nothing confirmed this head'", () => {
+    const outcome = checksOutcome(
+      facts([], { state: "unreadable", reason: "HTTP 403: Resource not accessible" }),
+    );
+
+    expect(outcome.state).toBe("fail");
+    expect(outcome.detail).toContain("HTTP 403: Resource not accessible");
+    expect(outcome.detail).toContain("UNKNOWN");
+  });
+
+  it("says nobody asked when nobody asked — the scheduler's own state, not a fact about the head", () => {
+    const outcome = checksOutcome(facts([], { state: "not-asked" }));
+
+    expect(outcome.state).toBe("fail");
+    expect(outcome.detail).toContain("not asked for");
+  });
+
+  it("green when every run that answered is green — and says the required list was not declared", () => {
+    const outcome = checksOutcome(facts([run("CI", "success"), run("E2E", "success")]));
+
+    expect(outcome.state).toBe("pass");
+    expect(outcome.detail).toContain("NO REQUIRED LIST WAS DECLARED");
+  });
+
+  it("counts a skip as neither side — green is never the sum of skips", () => {
+    const onlySkips = checksOutcome(
+      facts([run("Notifier Watch", "skipped"), run("Notifier Watch 2", "skipped")]),
+    );
+    expect(onlySkips.state).toBe("fail");
+    expect(onlySkips.detail).toContain("Green is never the sum of skips");
+
+    // Beside a real success they are named and do not refuse — the live shape of `0a612b27`.
+    const beside = checksOutcome(facts([run("CI", "success"), run("Notifier Watch", "skipped")]));
+    expect(beside.state).toBe("pass");
+    expect(beside.detail).toContain("skipped (neither side)");
+  });
+
+  it("tells 'still running' from 'not green' — one is a moment to come back to", () => {
+    const outcome = checksOutcome(facts([run("CI", undefined, "in_progress")]));
+
+    expect(outcome.state).toBe("fail");
+    expect(outcome.detail).toContain("still running");
+    expect(outcome.detail).not.toContain("not green");
+  });
+
+  it("fails on a required run that is missing, and on one that only skipped", () => {
+    const missing = checksOutcome(facts([run("CI", "success")]), ["CI", "E2E"]);
+    expect(missing.state).toBe("fail");
+    expect(missing.detail).toContain("E2E");
+
+    const skipped = checksOutcome(facts([run("CI", "success"), run("E2E", "skipped")]), [
+      "CI",
+      "E2E",
+    ]);
+    expect(skipped.state).toBe("fail");
+    expect(skipped.detail).toContain("E2E");
+  });
+
+  it("passes on a head whose runs Actions answered about with an empty list? — no: that is 'no run reported'", () => {
+    const outcome = checksOutcome(facts([]));
+
+    expect(outcome.state).toBe("fail");
+    expect(outcome.detail).toContain("no run of Actions reported");
+  });
+
+  it("credits the LAST attempt — a rerun that went green is green (D1 over the runs)", () => {
+    const failed = { ...run("CI", "failure"), completedAt: "2026-09-02T08:05:00Z" };
+    const rerun = { ...run("CI", "success"), completedAt: "2026-09-02T09:00:00Z" };
+
+    expect(checksOutcome(facts([failed, rerun]), ["CI"]).state).toBe("pass");
+  });
+
+  it("reads the older vocabulary too — a hand-built fact in upper case is judged the same", () => {
+    const outcome = checksOutcome(facts([{ ...run("CI", "SUCCESS"), status: "COMPLETED" }]), [
+      "CI",
+    ]);
+
+    expect(outcome.state).toBe("pass");
   });
 });
