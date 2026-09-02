@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:23:56.440Z",
+  "writtenAt": "2026-09-02T18:24:09.412Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "059-pilot-codex-terra-max",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-02T18:56:56Z"
     }
   ]
