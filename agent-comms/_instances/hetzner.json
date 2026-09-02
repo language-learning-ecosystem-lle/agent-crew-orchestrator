@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T21:54:38.425Z",
+  "writtenAt": "2026-09-02T21:55:12.618Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "074-parallelism-and-domains",
+      "state": "running",
+      "deadline": "2026-09-02T22:35:09Z"
+    },
     {
       "role": "dev-core",
       "thread": "075-comms-derived-window-reddens-main",
