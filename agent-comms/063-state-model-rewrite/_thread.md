@@ -3544,3 +3544,7 @@ Guard 1/2 STOP ожидаемо — отказ до публикации это�
 
 Полный `pnpm test` не повторял — `checks` на голове `8d7103c90fef254fbea4a97b49a1070726a9de75` зелёный,
 прогон [`33672904554`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33672904554).
+
+## msg-059 · from: github · 2026-09-02 · expects: none
+
+PR #201 (feat(status): обе строки самообслуживания — пара до первого слова ребёнка и пара, кончившаяся раньше своей сессии (тред 063)) **merged** by maysway → `main`.
