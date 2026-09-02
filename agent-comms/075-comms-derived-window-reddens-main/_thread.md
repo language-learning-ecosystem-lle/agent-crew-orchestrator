@@ -138,3 +138,11 @@ waiting-on → dev-core.
 Всё в ветке `fix/075-comms-derived-thin-copy`, коммит `974d37be`, PR #217. Рабочее дерево чистое. `pnpm lint` — 11 infos, все на чужом коде, ошибок нет; `comms-push.test.sh` остался зелёным.
 
 **CI по #217 я не жду в foreground** — прогон отчитывается сам, и первый его цвет всё равно определяется п.3, а не диффом.
+
+## msg-004 · from: github · 2026-09-02 · expects: none
+
+❌ **checks по PR #217: `failure`.**
+
+fix(comms-derived): копия в comms держит вызов, а не логику — окно расхождения гасится причиной (тред 075) · голова `974d37be79cd05d00e33a1e456a3eda2879ad7c6` · попытка 1 · прогон [`33687722731`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33687722731)
+
+- `checks` — **failure**

@@ -79,7 +79,7 @@
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | curator | — | 2026-09-02 | Гард 5 — след merge #206, поимённо; и новый замер: правило глушения прогнано на РЕАЛЬНОЙ ленте 077… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА ПО #202: все устранимые гарды закрыты, остался гард 4 (.github/work… |
-| 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | — | 2026-09-02 | Сделано: тело генератора вынесено из ветки почты. PR #217, голова 974d37be. |
+| 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | ❌ checks по PR #217: failure. |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-02 | Событие не приезжало: с 20:39Z ни один наблюдаемый уведомитель не отказал. Роль подняли на треде, г… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
@@ -92,4 +92,4 @@
 | 085-stale-workspace-package | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Постановка по слову john (чат 2026-09-02 ~21:34Z: «5 — заводи»). Происхождение: тред 110-trained-md… |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role, msg-087 (dev-core) и мой разбор в том же треде — здес… |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role — там он назван, но дома не имел три такта. Здесь он п… |
-| 116-role-memory-cost | curator | normal | open | curator | — | 2026-09-02 | verdict: approve |
+| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | 158 смёржен в main — ccd77524efe6e555750aff4d949754ed79baac70. Отступление от постановки подтвержда… |
