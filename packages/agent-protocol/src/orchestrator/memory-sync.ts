@@ -1,7 +1,7 @@
 /**
- * A ROLE'S MEMORY TRAVELS WITH THE MAIL — the third third of form D (LLE thread
- * `116-role-memory-cost`, curator's postановка msg-008 §3, john's word «D, рядом с
- * почтой, с потолком»).
+ * A ROLE'S MEMORY TRAVELS WITH THE MAIL — the third third of form D (a consumer thread
+ * on the cost of a role's memory, curator's postановка msg-008 §3, john's word «D, рядом
+ * с почтой, с потолком»).
  *
  * WHAT WAS MISSING WITHOUT IT. `memory.ts` answered WHICH directory a session is
  * pointed at and put the ceiling on the index, but the directory it named lives in the
@@ -24,7 +24,7 @@
  * message. The save does write into that tree — and it does it THROUGH `deliverMessage`,
  * which owns the lock, the dirty check, the retry and the undo, rather than beside it.
  *
- * FIRST-WRITE-WINS, PER FILE, AND IT IS NOT A PREFERENCE (phase G of the LLE, quoted in
+ * FIRST-WRITE-WINS, PER FILE, AND IT IS NOT A PREFERENCE (phase G of the consumer, quoted in
  * the постановка: «конфликтов двух версий состояния не бывает, бывает конфликт двух
  * намерений над одним состоянием»). The save carries ONLY what this session changed
  * against what it restored. A file the session did not touch is not staged at all, so

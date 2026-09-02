@@ -1,8 +1,7 @@
 /**
  * THE WATCHDOG OF THE CIRCUIT — an outgoing dead-man's switch on the daemon PROCESS
  * (thread `017-circuit-watchdog`, curator's statement of work; john's decision of
- * 2026-08-19, `agent-comms/082-hetzner-migration/messages/2026-08-19T12-22-08Z-curator.md`,
- * step 5 of the move to hetzner).
+ * 2026-08-19, step 5 of the move to hetzner announced in the parent contour).
  *
  * THE PRICE WAS PAID BEFORE THE CODE WAS WRITTEN: on 2026-08-18 the circuit stood dead
  * for 2 h 50 min behind a fully green dashboard. Everything that watches this project
@@ -167,7 +166,7 @@ export type WatchdogState =
 
 /**
  * The key of a NAMED instance: the bare key plus the name in UPPER_SNAKE
- * (`lle-hetzner` → `HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER`).
+ * (`acme-box` → `HEALTHCHECKS_CIRCUIT_URL_ACME_BOX`).
  *
  * A name that does not become a legal environment key is REFUSED rather than mangled into
  * one. Mangling would be the same class of silence as everything else in this module: two

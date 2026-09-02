@@ -8,9 +8,9 @@
  * feed is THIS circuit's mail. All of it rests on one assumption that nothing ever
  * checked — «the role works in its own tree». On 2026-08-30 the assumption turned out
  * to be false twice in one hour: a session of the `agent-crew-orchestrator` circuit
- * made a temporary checkout of `language-learning-ecosystem` and opened PRs #453 and
- * #454 there — in a repository where it has no zones, no card, no review round and no
- * trace in the right feed. Nothing refused, because nothing was asked.
+ * made a temporary checkout of a consumer's repository and opened two PRs there — in a
+ * repository where it has no zones, no card, no review round and no trace in the right
+ * feed. Nothing refused, because nothing was asked.
  *
  * This module is the asking. It answers ONE question — «does this tree belong to the
  * contour the command came from» — and it answers it from facts that already exist on

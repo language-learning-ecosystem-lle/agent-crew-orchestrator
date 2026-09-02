@@ -1768,8 +1768,8 @@ describe("new-thread and the same claim (thread 042)", () => {
 /**
  * THE STACK of point (B.3) of thread 058: the feed on disk → `parkingOf` → the writing door.
  * The unit cases of `park-seen.ts` judge a `Parking` handed to them; only this one shows that
- * the door READS the park standing in the thread it is writing into — the step the incident of
- * LLE 110 went through without anybody noticing.
+ * the door READS the park standing in the thread it is writing into — the step the incident
+ * measured on 2026-08-30 went through without anybody noticing.
  */
 describe("a letter into a thread that is already parked (thread 058)", () => {
   /** The park of the incident: curator asks john and freezes the thread, on its own turn. */

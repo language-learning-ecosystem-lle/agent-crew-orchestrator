@@ -447,7 +447,7 @@ describe("parkedOnOf — the turn frozen behind a person (R27)", () => {
 
 describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", () => {
   // The fixtures are built from REAL headers, and all of them from the two days the norm was
-  // measured on: the LLE feed of 2026-08-28 named in `PROTOCOL.md` message by message, and this
+  // measured on: a consumer's feed of 2026-08-28 named in `PROTOCOL.md` message by message, and this
   // circuit's own thread `042-unaccepted-turn-silent` of 2026-08-29.
   const message = (
     date: string,
@@ -470,7 +470,7 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     waitingOn: "curator",
   });
 
-  it("THE 4 h 16 m OF LLE: the turn moved to another role, so the park covers nobody", () => {
+  it("THE 4 h 16 m OF a consumer: the turn moved to another role, so the park covers nobody", () => {
     // 2026-08-28, the case the norm was written on. Two letters after the park the turn stood on
     // `dev-speech`, a role waiting for nothing from john — and the daemon printed
     // `⏸ PARKED behind a decision of john (R27)` 201 times, a true sentence about the thread and
@@ -508,8 +508,8 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     expect(parkedOnOf(feed)).toBeUndefined();
   });
 
-  it("THE VERDICT OF A ROUND OPENS ONE TOO — the 19 minutes of LLE (042, norm of 29.08)", () => {
-    // THE LIVE WINDOW the norm was measured on: LLE 2026-08-28, park at 17:34Z on curator's own
+  it("THE VERDICT OF A ROUND OPENS ONE TOO — the 19 minutes of a consumer (042, norm of 29.08)", () => {
+    // THE LIVE WINDOW the norm was measured on: a consumer, 2026-08-28, park at 17:34Z on curator's own
     // turn, and six minutes later the verdict `17-40-11Z-reviewer-pr.md` — `expects: answer`,
     // `waiting-on: curator`, no park of its own. The turn never changed holder, so nothing in
     // the header said the wait was over, and the pair stood until 17:59Z. Since the fields

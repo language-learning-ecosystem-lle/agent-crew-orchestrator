@@ -9,7 +9,7 @@
  *
  * MEASURED THREE TIMES IN ONE DAY (2026-08-30): `dev-core` parked on `run:33328290131` at
  * 18:34:38Z and spent a separate letter correcting itself nine seconds later; `dev-speech` wrote
- * a correction to its own park twice in LLE-`110`; thread `054` records a park "набранная
+ * a correction to its own park twice in a consumer's thread; thread `054` records a park "набранная
  * номером ПРОГОНА вместо номера PR". Every one of them was caught by the author, and every one
  * of them was caught AFTER the record — which is why the repair is the door and not the care.
  *

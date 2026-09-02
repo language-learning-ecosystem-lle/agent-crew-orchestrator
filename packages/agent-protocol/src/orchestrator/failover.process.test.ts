@@ -27,7 +27,7 @@ const configWith = (launch: Record<string, unknown>) => ({
   protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
   orchestrator: { state: ".orchestrator", mailCheckout: ".worktrees/comms", ref: "HEAD" },
-  instances: [{ id: "lle-agents", roles: ["dev-core"] }],
+  instances: [{ id: "acme-agents", roles: ["dev-core"] }],
   roles: [
     { id: "john", kind: "human", status: "active", wake: { mode: "self" }, summary: "the one" },
     {
@@ -36,7 +36,7 @@ const configWith = (launch: Record<string, unknown>) => ({
       status: "active",
       wake: { mode: "watch", session: "crew-dev-core" },
       summary: "the hands",
-      launch: { allowedTools: ["Bash"], account: "lle-second", ...launch },
+      launch: { allowedTools: ["Bash"], account: "acme-second", ...launch },
     },
   ],
 });
@@ -68,7 +68,7 @@ const box = (
   const home = mkdtempSync(join(tmpdir(), "agent-protocol-machine-"));
   mkdirSync(home, { recursive: true });
   const localConfig = join(home, "local.json");
-  writeFileSync(localConfig, `${JSON.stringify({ instance: "lle-agents", accounts }, null, 2)}\n`);
+  writeFileSync(localConfig, `${JSON.stringify({ instance: "acme-agents", accounts }, null, 2)}\n`);
   return { repo, localConfig };
 };
 
@@ -95,20 +95,20 @@ const check = (
 };
 
 const DECLARED = {
-  "lle-main": { configDir: "/home/lle/.claude", kind: "claude-code" },
-  "lle-second": { configDir: "/home/lle/.claude-second", kind: "claude-code" },
+  "acme-main": { configDir: "/home/lle/.claude", kind: "claude-code" },
+  "acme-second": { configDir: "/home/lle/.claude-second", kind: "claude-code" },
   "codex-main": { configDir: "/home/lle/.codex", kind: "codex" },
 };
 
 describe("config check — a fall-back chain is judged where it is WRITTEN, not where it is spent", () => {
   it("AN UNDECLARED ACCOUNT REFUSES BY NAME: the role, the key, and the machine field to write", () => {
-    const { said, code } = check({ fallback: ["lle-thrid"] }, DECLARED);
+    const { said, code } = check({ fallback: ["acme-thrid"] }, DECLARED);
     expect(code).toBe(1);
     expect(said).toContain("the config does not hold together");
     expect(said).toContain(
-      "role 'dev-core': the fall-back 'lle-thrid' ('roles[].launch.fallback')",
+      "role 'dev-core': the fall-back 'acme-thrid' ('roles[].launch.fallback')",
     );
-    expect(said).toContain("accounts.lle-thrid.configDir");
+    expect(said).toContain("accounts.acme-thrid.configDir");
   });
 
   it("AN ACCOUNT OF ANOTHER KIND is refused with both kinds named — a spare tool is not a spare key", () => {
@@ -119,14 +119,14 @@ describe("config check — a fall-back chain is judged where it is WRITTEN, not 
   });
 
   it("THE ROLE'S OWN ACCOUNT in its own chain is refused", () => {
-    const { said, code } = check({ fallback: ["lle-second"] }, DECLARED);
+    const { said, code } = check({ fallback: ["acme-second"] }, DECLARED);
     expect(code).toBe(1);
-    expect(said).toContain("the fall-back 'lle-second'");
+    expect(said).toContain("the fall-back 'acme-second'");
     expect(said).toContain("already spends");
   });
 
   it("A HEALTHY CHAIN PASSES WITHOUT ONE EXTRA WORD", () => {
-    const { out, said, code } = check({ fallback: ["lle-main"] }, DECLARED);
+    const { out, said, code } = check({ fallback: ["acme-main"] }, DECLARED);
     expect(code).toBe(0);
     expect(out).toContain("agent-protocol: ok");
     expect(said).toBe("");
@@ -143,7 +143,7 @@ describe("config check — a fall-back chain is judged where it is WRITTEN, not 
   it("NO MACHINE CONFIG IS NOT A REFUSAL: what this box never said about accounts is not a finding", () => {
     // The chain names an account nobody declared, and the reader has no machine file at all —
     // "this box declares no such account" would then be a sentence about the reader.
-    const { out, code } = check({ fallback: ["lle-thrid"] });
+    const { out, code } = check({ fallback: ["acme-thrid"] });
     expect(code).toBe(0);
     expect(out).toContain("agent-protocol: ok");
   });

@@ -4,7 +4,7 @@
  * «получается, что пишется одновременно несколько сообщений, а ты потом придёшь и
  * прочитаешь только последнее»).
  *
- * THE MEASURED CASE, circuit LLE, thread `110`, 2026-08-30. The merge of #450 returned the
+ * THE MEASURED CASE, a consumer's circuit, thread `110`, 2026-08-30. The merge of #450 returned the
  * turn to its author at `14:23:55Z`; dev-speech was raised at `14:24:19Z`; curator, in her
  * own live session, wrote a question to john and parked the thread at `14:24:50Z` — thirty
  * one seconds after that raise; dev-speech finished its own letter at `14:26:53Z`, into a

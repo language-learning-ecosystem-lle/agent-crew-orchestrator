@@ -22,7 +22,7 @@ describe("the role hosted by a live process (R23-1)", () => {
     expect(wakeSchema.parse({ mode: "resident" })).toEqual({ mode: "resident" });
     // A session name would be a promise the mode cannot keep: nobody wakes a resident,
     // so there is nothing for a name to address.
-    expect(wakeSchema.safeParse({ mode: "resident", session: "lle-curator" }).success).toBe(false);
+    expect(wakeSchema.safeParse({ mode: "resident", session: "acme-curator" }).success).toBe(false);
   });
 
   it("the circuit refuses to raise it with a reason of its own, not with 'wake-not-watch'", () => {
@@ -47,7 +47,7 @@ describe("the role hosted by a live process (R23-1)", () => {
       roles: [
         resident("curator"),
         role({ id: "john", wake: { mode: "self" } }),
-        role({ id: "dev-core", wake: { mode: "watch", session: "lle-dev-core" } }),
+        role({ id: "dev-core", wake: { mode: "watch", session: "acme-dev-core" } }),
       ],
     });
     expect(registry.residents()).toEqual(["curator"]);

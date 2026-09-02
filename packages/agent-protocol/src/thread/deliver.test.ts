@@ -347,10 +347,10 @@ describe("deliverySubject", () => {
     expect(
       deliverySubject({
         from: "curator",
-        thread: "080-extraction-prep",
+        thread: "031-acme-rollout",
         mailDir: "agent-comms",
         detail: "head repaired",
       }),
-    ).toBe("docs(agent-comms): curator → 080-extraction-prep head repaired");
+    ).toBe("docs(agent-comms): curator → 031-acme-rollout head repaired");
   });
 });

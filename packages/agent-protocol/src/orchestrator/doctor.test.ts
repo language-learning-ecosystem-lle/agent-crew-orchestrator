@@ -94,13 +94,13 @@ describe("which instance this box is (R13)", () => {
   });
 
   it("fails when the box names an instance the repository does not know it has", () => {
-    const check = instanceCheck({ instance: "lle-agents", declared: [], localConfigPath });
+    const check = instanceCheck({ instance: "acme-agents", declared: [], localConfigPath });
     expect(check.status).toBe("fail");
     expect(check.detail).toContain("nothing to join to");
   });
 
   it("fails on a nameless box while the repository declares instances — it raises nobody", () => {
-    const check = instanceCheck({ declared: ["laptop", "lle-agents"], localConfigPath });
+    const check = instanceCheck({ declared: ["laptop", "acme-agents"], localConfigPath });
     expect(check.status).toBe("fail");
     expect(check.detail).toContain("raises nobody");
     expect(check.detail).toContain(localConfigPath);
@@ -109,7 +109,7 @@ describe("which instance this box is (R13)", () => {
   it("calls an UNDECLARED name a bench, not an error (curator's split in the statement)", () => {
     const check = instanceCheck({
       instance: "my-laptop",
-      declared: ["laptop", "lle-agents"],
+      declared: ["laptop", "acme-agents"],
       localConfigPath,
     });
     expect(check.status).toBe("info");
@@ -119,8 +119,8 @@ describe("which instance this box is (R13)", () => {
 
   it("passes naming the roles that box is the one to raise", () => {
     const check = instanceCheck({
-      instance: "lle-agents",
-      declared: ["laptop", "lle-agents"],
+      instance: "acme-agents",
+      declared: ["laptop", "acme-agents"],
       roles: ["dev-core", "curator"],
       localConfigPath,
     });
@@ -130,11 +130,11 @@ describe("which instance this box is (R13)", () => {
 });
 
 describe("the agent rows follow the fact of the box (thread 052)", () => {
-  const declared = ["laptop", "lle-agents"];
+  const declared = ["laptop", "acme-agents"];
 
   it("a box with roles is asked both questions, whatever the binary answers", () => {
     expect(
-      boxRaisesNoRoles({ instance: "lle-agents", declared, roles: ["dev-core", "curator"] }),
+      boxRaisesNoRoles({ instance: "acme-agents", declared, roles: ["dev-core", "curator"] }),
     ).toBeUndefined();
   });
 
@@ -148,7 +148,7 @@ describe("the agent rows follow the fact of the box (thread 052)", () => {
   });
 
   it("a declared box with no role assigned to it raises nothing either", () => {
-    expect(boxRaisesNoRoles({ instance: "lle-agents", declared, roles: [] })).toContain(
+    expect(boxRaisesNoRoles({ instance: "acme-agents", declared, roles: [] })).toContain(
       "no role of the project is assigned to it",
     );
   });
@@ -184,8 +184,8 @@ describe("the four cells: what each kind of box is asked about the agent", () =>
     readonly binaryFound: boolean;
   }): readonly PreflightCheck[] => {
     const reason = boxRaisesNoRoles({
-      instance: input.raisesRoles ? "lle-agents" : "my-laptop",
-      declared: ["lle-agents"],
+      instance: input.raisesRoles ? "acme-agents" : "my-laptop",
+      declared: ["acme-agents"],
       ...(input.raisesRoles ? { roles: ["dev-core"] } : {}),
     });
     if (reason !== undefined) return agentChecksWithoutRoles(reason);
@@ -388,11 +388,11 @@ describe("what git owes an unattended box", () => {
     const checks = gitChecks({
       origin: "git@github.com:org/repo.git",
       fetch: { ok: true, detail: "reachable" },
-      push: { ok: false, detail: "remote: Permission to org/repo.git denied to lle-agents" },
+      push: { ok: false, detail: "remote: Permission to org/repo.git denied to acme-agents" },
     });
     const push = checks.find((check) => check.name.includes("write access"));
     expect(push?.status).toBe("fail");
-    expect(push?.detail).toContain("denied to lle-agents");
+    expect(push?.detail).toContain("denied to acme-agents");
   });
 
   it("masks a credential in the origin url — the row is written to be pasted into a chat", () => {
@@ -533,11 +533,11 @@ describe("commit identity against the canon", () => {
     const check = commitIdentityCheck({
       window: "the last 7 days",
       roles,
-      identities: [one("curator", "curator@lle.local", 8), one("ivan", "ivan@corp.ru", 500)],
+      identities: [one("curator", "curator@acme.local", 8), one("ivan", "ivan@corp.ru", 500)],
     });
     expect(check.status).toBe("info");
     expect(check.detail).toContain("1 of them wear a declared role's NAME");
-    expect(check.detail).toContain("'curator <curator@lle.local>' (8)");
+    expect(check.detail).toContain("'curator <curator@acme.local>' (8)");
   });
 
   it("fails on a name inside the role namespace that answers to no declared role", () => {
@@ -572,7 +572,7 @@ describe("commit identity against the canon", () => {
 
   it("judges an address by case-folded email — git does not fold it, a reader does", () => {
     expect(identityVerdict({ email: "Dev-Core@Agents.Invalid", roles })).toBe("role");
-    expect(identityVerdict({ email: "curator@lle.local", roles })).toBe("unrecognised");
+    expect(identityVerdict({ email: "curator@acme.local", roles })).toBe("unrecognised");
     expect(identityVerdict({ email: MACHINERY_IDENTITY, roles })).toBe("machinery");
   });
 });
