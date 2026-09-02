@@ -205,7 +205,7 @@ export const RUN_TMPDIR_ENV = "TMPDIR";
  * systemd that `PATH` is the unit's own (`systemd.ts`, decision 5): the interpreter's
  * directory, the agent binaries' directories, the system floor. Deliberately NOT a login
  * shell's `PATH` — a user unit does not inherit one, and copying one into the unit would
- * put the paths in a fourth place. The consequence measured on `lle-agents`
+ * put the paths in a fourth place. The consequence measured on the live box
  * (2026-09-02T09:52Z): `~/.local/bin` — where `pip --user`, `pipx`, `uv` and the GitHub
  * CLI's own installer put their binaries — is on the operator's `PATH` and absent from
  * every session's. `uv` and `uvx` resolved for the user and resolved nowhere for the
@@ -978,7 +978,7 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  *    raise: john (`self`, a human), reviewer-pr/github (`event`, woken by the platform)
  *    are not ours to spawn;
  *  - empty `instructions` — there is nothing to build a prompt from (that is
- *    dev-speech today): an honest refusal rather than a crash on a missing file;
+ *    dev-acme today): an honest refusal rather than a crash on a missing file;
  *  - `instructions` with `external` — the card is executed OUTSIDE (a skill on the
  *    chat side) and a local `claude -p` must not drive it. Note that this refusal
  *    is about ANY entry, not about the whole array, and that is what makes a role

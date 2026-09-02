@@ -75,11 +75,11 @@ describe("an unreadable thread in the register", () => {
 
   it("names the directory and the reason, and invents nothing about the thread", () => {
     const index = renderIndex([thread("012-x")], {
-      unreadable: [{ id: "092-consent-and-deletion", problem: "'_meta.md' is missing" }],
+      unreadable: [{ id: "905-acme-feature", problem: "'_meta.md' is missing" }],
     });
 
     expect(index).toContain(
-      "| 092-consent-and-deletion | — | — | не прочитан | — | — | — | тред не собран: '_meta.md' is missing |",
+      "| 905-acme-feature | — | — | не прочитан | — | — | — | тред не собран: '_meta.md' is missing |",
     );
     // And the readable one is untouched — the whole point of the isolation.
     expect(index).toContain("| 012-x | curator, dev-core | normal | open | dev-core |");

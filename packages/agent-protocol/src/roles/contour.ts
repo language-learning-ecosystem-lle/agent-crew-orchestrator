@@ -64,7 +64,8 @@ export type ContourInput = {
    * a runner, a laptop: the list is empty) from "there is one and the caller is
    * standing outside all of it" (the list is not empty and no entry claims the
    * caller's tree). Without it both read as `unknown`, and the second case is the
-   * very shape of #453/#454: a session working from a checkout made in `/tmp`.
+   * very shape of the two pull requests opened outside this repository on 2026-08-30: a
+   * session working from a checkout made in `/tmp`.
    */
   readonly boxContours?: readonly string[] | undefined;
 };
@@ -122,7 +123,8 @@ export type GroundInput = {
  * THE GROUND — and it is judged with no target in hand, which is the whole reason it
  * is its own function. A box that declares contours and claims the caller's tree with
  * NONE of them is not a box without a boundary: it is a session standing outside every
- * boundary it has, which is exactly what a temporary checkout in `/tmp` is (#453/#454).
+ * boundary it has, which is exactly what a temporary checkout in `/tmp` is (the leak
+ * of 2026-08-30).
  * Refusing there costs the honest case nothing — a role works in the workspace its own
  * instance declares (R17) — and it costs the dishonest case the first command it types,
  * whether or not that command was kind enough to name `--repo`.

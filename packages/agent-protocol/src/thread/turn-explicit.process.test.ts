@@ -155,7 +155,7 @@ const open = (contest: Contour, extra: readonly string[]) =>
   cli(contest, [
     "new-thread",
     "--id",
-    "080-new",
+    "908-new",
     "--title",
     "A thread",
     "--participants",
@@ -294,7 +294,7 @@ describe("the key 'turn: explicit' and its door (thread 079)", () => {
 
     const created = open(contest, ["--turn", "explicit", "--waiting-on", "dev-core"]);
     expect(created.code).toBe(0);
-    expect(metaInOrigin(contest, "080-new")).toContain("turn: explicit");
+    expect(metaInOrigin(contest, "908-new")).toContain("turn: explicit");
   });
 
   it("new-thread checks the same permission — the form is not the opener's to give", () => {
@@ -303,7 +303,7 @@ describe("the key 'turn: explicit' and its door (thread 079)", () => {
     const result = cli(contest, [
       "new-thread",
       "--id",
-      "080-new",
+      "908-new",
       "--title",
       "A thread",
       "--participants",
@@ -325,6 +325,6 @@ describe("the key 'turn: explicit' and its door (thread 079)", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("thread-status");
-    expect(messagesInOrigin(contest)).not.toContain("080-new");
+    expect(messagesInOrigin(contest)).not.toContain("908-new");
   });
 });

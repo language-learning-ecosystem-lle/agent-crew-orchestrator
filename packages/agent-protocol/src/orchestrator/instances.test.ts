@@ -49,7 +49,7 @@ describe("where a digest lives (R13)", () => {
 
 describe("the roles a box answers for (R13, thread 025 part two)", () => {
   const topology = [
-    { id: "box-a", roles: ["curator", "dev-core", "dev-speech"] },
+    { id: "box-a", roles: ["curator", "dev-core", "dev-acme"] },
     { id: "box-b", roles: ["dev-web"] },
   ];
 
@@ -57,7 +57,7 @@ describe("the roles a box answers for (R13, thread 025 part two)", () => {
     expect(rolesOfInstance({ instances: topology, instance: "box-a" })).toEqual([
       "curator",
       "dev-core",
-      "dev-speech",
+      "dev-acme",
     ]);
     expect(rolesOfInstance({ instances: topology, instance: "box-b" })).toEqual(["dev-web"]);
   });
@@ -85,11 +85,11 @@ describe("what a box publishes about itself (R13)", () => {
       leases: [
         view(),
         view({ role: "curator", thread: "017-x", state: "released" }),
-        view({ role: "dev-speech", thread: "018-y", state: "waiting" }),
+        view({ role: "dev-acme", thread: "018-y", state: "waiting" }),
       ],
       now: at("2026-07-27T10:00:00.000Z"),
     });
-    expect(digest.leases.map((lease) => lease.role)).toEqual(["dev-core", "dev-speech"]);
+    expect(digest.leases.map((lease) => lease.role)).toEqual(["dev-core", "dev-acme"]);
     expect(digest.writtenAt).toBe("2026-07-27T10:00:00.000Z");
     expect(digest.roles).toEqual(["dev-core"]);
   });

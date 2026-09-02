@@ -121,8 +121,8 @@ export type IndexReading = {
    * the threads and printed as a whole register is a display that lies about the composition
    * of the mail — the caller that has some `failures` has exactly two honest options, refuse
    * to publish or publish WITH the gap named, and the second one is what stops one broken
-   * directory from freezing the derived files of the entire branch (measured: `092-consent-
-   * and-deletion` 29.08, ten red runs; `055` 30.08, two more).
+   * directory from freezing the derived files of the entire branch (measured: a consumer's
+   * thread 29.08, ten red runs; `055` 30.08, two more).
    *
    * The row carries `—` in every column that is READ FROM the thread: nothing was read, and a
    * plausible-looking cell there would be an invention. What it does carry is the id (the one

@@ -49,7 +49,7 @@ const CONFIG = {
   // it exists so that `box-a` has somebody to leave a role to, and somebody to read.
   instances: [
     { id: "box-a", roles: ["dev-core"] },
-    { id: "box-b", roles: ["dev-speech"] },
+    { id: "box-b", roles: ["dev-acme"] },
   ],
   roles: [
     {
@@ -62,7 +62,7 @@ const CONFIG = {
       launch: { allowedTools: ["Bash"] },
     },
     {
-      id: "dev-speech",
+      id: "dev-acme",
       kind: "claude-code",
       status: "active",
       wake: { mode: "watch", session: "s2" },
@@ -98,11 +98,11 @@ const foreignDigest = (writtenAt: string): string =>
     {
       instance: "box-b",
       writtenAt,
-      roles: ["dev-speech"],
+      roles: ["dev-acme"],
       leases: [
         {
-          role: "dev-speech",
-          thread: "004-speech",
+          role: "dev-acme",
+          thread: "904-acme",
           state: "running",
           deadline: "2026-07-25T12:00:00.000Z",
         },
@@ -285,7 +285,7 @@ describe("a box publishes its own state into the mail branch (R13)", () => {
     expect(read.ok).toBe(true);
     if (read.ok) {
       expect(read.digest.instance).toBe("box-a");
-      // The roles of THIS box, not of the circuit: `dev-speech` belongs to box-b.
+      // The roles of THIS box, not of the circuit: `dev-acme` belongs to box-b.
       expect(read.digest.roles).toEqual(["dev-core"]);
     }
     // Committed and PUSHED, not merely written: a digest on one disk is exactly the
@@ -391,7 +391,7 @@ describe("a MANUAL run publishes the state of its box too (R13, thread 025 part 
     // writers; what this launch raises is carried by `leases`, as a fact.
     const bench = contour({
       instance: "box-a",
-      topology: [{ id: "box-a", roles: ["dev-core", "dev-speech"] }],
+      topology: [{ id: "box-a", roles: ["dev-core", "dev-acme"] }],
     });
 
     run(bench, ["--write", "--roles", "dev-core"]);
@@ -400,7 +400,7 @@ describe("a MANUAL run publishes the state of its box too (R13, thread 025 part 
     expect(published.length).toBeGreaterThan(0);
     for (const read of published) {
       expect(read.ok).toBe(true);
-      if (read.ok) expect(read.digest.roles).toEqual(["dev-core", "dev-speech"]);
+      if (read.ok) expect(read.digest.roles).toEqual(["dev-core", "dev-acme"]);
     }
   });
 
@@ -426,7 +426,7 @@ describe("`status` reads the other boxes out of the branch (R13)", () => {
     expect(result.out).toContain("box-a (this box)");
     expect(result.out).toContain("box-b");
     // What box-b was doing — read from a file, never asked for over a wire.
-    expect(result.out).toContain("dev-speech/004-speech");
+    expect(result.out).toContain("dev-acme/904-acme");
     // Planted in the past, so the reader's tolerance has long since run out.
     expect(result.out).toContain("STALE");
   });
@@ -439,7 +439,7 @@ describe("`status` reads the other boxes out of the branch (R13)", () => {
       // …but `box-b` answers for nobody now: no daemon of its own will ever rewrite it.
       // The id is kept declared on purpose — that is what a bench is for.
       topology: [
-        { id: "box-a", roles: ["dev-core", "dev-speech"] },
+        { id: "box-a", roles: ["dev-core", "dev-acme"] },
         { id: "box-b", roles: [] },
       ],
     });
@@ -450,7 +450,7 @@ describe("`status` reads the other boxes out of the branch (R13)", () => {
 
     expect(result.out).toContain("bench — the repository declares it with no roles");
     // The wiring is the point: the CLI must read the TOPOLOGY, not `box-b`'s own file,
-    // which still claims `roles: ["dev-speech"]` and would have kept the ⚠ alight.
+    // which still claims `roles: ["dev-acme"]` and would have kept the ⚠ alight.
     expect(result.out).not.toContain("⚠ STALE");
     // The file's age is still on screen — explained, not hidden.
     expect(result.out).toContain("2026-07-25T11:00:00.000Z");

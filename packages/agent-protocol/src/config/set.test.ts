@@ -6,7 +6,7 @@ import { configSetSummary, planConfigSet } from "./set.js";
 const base = {
   path: "/home/op/.config/agent-protocol/local.json",
   declaredInstances: ["laptop", "acme-agents"],
-  knownRoles: ["curator", "dev-core", "dev-speech"],
+  knownRoles: ["curator", "dev-core", "dev-acme"],
 } as const;
 
 const empty: LocalConfig = { agents: {} };
