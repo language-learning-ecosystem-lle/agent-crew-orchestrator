@@ -7312,6 +7312,17 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // role's spare may be spent — without them a chain would be refused for lack of a
     // statement and a healthy role would be printed as held.
     ...(frameAccounts === undefined ? {} : { accounts: frameAccounts }),
+    // WHICH LIVE RUNS HAVE NOT WRITTEN A SESSION ID YET (thread 063, `restore`) — asked of
+    // the file system HERE, where the frame is filled, because a renderer may not touch a
+    // disk and this layer already reads six other files. One `existsSync` per LIVE pair and
+    // never per row of history: the window closes with the child's first word, so a released
+    // pair's answer could not change a mark.
+    speechless: new Set(
+      leases
+        .filter((view) => view.state === "running" && view.sessionLog !== undefined)
+        .map((view) => view.sessionLog as string)
+        .filter((log) => !existsSync(sessionIdPath(log))),
+    ),
     // The tier's own health, from the file the daemon writes (thread 051): a frame that
     // showed an empty merge-ready tier and a silently refusing `gh` identically is the
     // defect this section exists to close.

@@ -284,3 +284,66 @@ describe("a count past its ceiling never stands there silently (thread 023)", ()
     expect(renderLeaseLine(view({ attempt: 3, ceiling: 3 }))).not.toContain("past the ceiling");
   });
 });
+
+/**
+ * THE PAIR IS UP AND THE CHILD HAS NOT SPOKEN YET (thread 063, `restore`; curator's answer
+ * of 2026-09-02). The window is the one between the lease and the first line of the vendor's
+ * stream — measured by the absence of the run's `.session` file — and the two conditions of
+ * the answer are asserted here by name: the sentence must not call the pair silent, and it
+ * must name its own window instead of guessing at the cause of it.
+ */
+describe("renderStatus — raised, and the child has not spoken yet", () => {
+  const LOG = "/s/2026-09-02T15-00-00Z-dev-core-063-state-model-rewrite.log";
+
+  it("a running pair whose session id is not on disk says so, and says the next step is to wait", () => {
+    const line = renderStatus([view({ sessionLog: LOG })], new Set(), undefined, new Set([LOG]));
+    expect(line).toContain("THE CHILD HAS NOT SPOKEN YET");
+    expect(line).toContain("no process to go and kill");
+    expect(line).toContain("the next step here is to wait");
+  });
+
+  it("and it does NOT call the pair silent — the log is open and growing in this window", () => {
+    // Condition 1 of the answer: `writeLog` fills the session log BEFORE the spawn, so
+    // `logBytes` moves here. A mark that read as "nothing has been reported" would send the
+    // operator to the very kill this line exists to prevent.
+    const line = renderStatus([view({ sessionLog: LOG })], new Set(), undefined, new Set([LOG]));
+    expect(line).toContain("Its log is open and growing");
+    expect(line).toContain("this pair is not a silent one");
+    expect(line).not.toMatch(/says nothing|nothing has been reported|reported nothing/);
+  });
+
+  it("and it names the WINDOW, not a cause: the words 'memory' and 'restore' promise nothing measured", () => {
+    // Condition 2: two sub-cases live inside this window (a memory restore, and the plain
+    // gap between the spawn and the first line of the stream) and nothing tells them apart.
+    // The sentence may offer them as alternatives; it may not assert one.
+    const line = renderStatus([view({ sessionLog: LOG })], new Set(), undefined, new Set([LOG]));
+    expect(line).toContain("either still being started or restoring its own memory");
+    expect(line).not.toContain("WRITING MEMORY");
+  });
+
+  it("a run whose session id IS on disk keeps the row it always had", () => {
+    const line = renderStatus([view({ sessionLog: LOG })], new Set(), undefined, new Set());
+    expect(line).not.toContain("HAS NOT SPOKEN YET");
+  });
+
+  it("the window belongs to a LIVE row: a released pair with no id file is history, not a call to wait", () => {
+    const line = renderStatus(
+      [view({ state: "released", sessionLog: LOG })],
+      new Set(),
+      undefined,
+      new Set([LOG]),
+    );
+    expect(line).not.toContain("HAS NOT SPOKEN YET");
+  });
+
+  it("the mark stands BESIDE the overdue one, never instead of it", () => {
+    const line = renderStatus(
+      [view({ overdue: true, sessionLog: LOG })],
+      new Set(),
+      undefined,
+      new Set([LOG]),
+    );
+    expect(line).toContain("⚠ OVERDUE");
+    expect(line).toContain("HAS NOT SPOKEN YET");
+  });
+});

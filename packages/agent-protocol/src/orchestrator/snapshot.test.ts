@@ -170,6 +170,37 @@ describe("renderFrame", () => {
     mail: { root: "/mail", fetchedAt: new Date("2026-07-27T17:59:50Z"), behind: 0 },
   };
 
+  /**
+   * THE WHOLE FRAME CARRIES THE FACT, not just the row renderer (thread 063, `restore`). The
+   * pair of cases is one fixture apart: the field present and the field absent. The second is
+   * what makes the first impossible to make green by accident — `speechless` is OPTIONAL and
+   * defaults to an empty set, so a lost argument between the frame and the section would fail
+   * silently in the safe direction and the mark would simply never appear again.
+   */
+  it("a live pair whose session id is not on disk is marked in the frame itself", () => {
+    const log = "/s/2026-09-02T15-00-00Z-dev-core-019-operator-ux.log";
+    const withLog = { ...lease, sessionLog: log };
+    const text = renderFrame({
+      ...frame,
+      leases: [withLog],
+      parallelism: { ...frame.parallelism, live: [withLog] },
+      speechless: new Set([log]),
+    });
+    expect(text).toContain("THE CHILD HAS NOT SPOKEN YET");
+    expect(text).toContain("the next step here is to wait");
+  });
+
+  it("and without the field the same frame says nothing about it", () => {
+    const log = "/s/2026-09-02T15-00-00Z-dev-core-019-operator-ux.log";
+    const withLog = { ...lease, sessionLog: log };
+    const text = renderFrame({
+      ...frame,
+      leases: [withLog],
+      parallelism: { ...frame.parallelism, live: [withLog] },
+    });
+    expect(text).not.toContain("HAS NOT SPOKEN YET");
+  });
+
   it("is the five panels in the order a watch is read", () => {
     const lines = renderFrame(frame).split("\n");
     const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));

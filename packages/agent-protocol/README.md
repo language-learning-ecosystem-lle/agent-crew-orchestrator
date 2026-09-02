@@ -4123,6 +4123,21 @@ a human can predict the queue without reading the code.
   was about. Every mark is computed from sections the frame already carries (`parallelism.live`,
   `holds`, the `quota:` panel), never from a new field handed in by the caller, so the panel and
   the row cannot come to say different things.
+- **A PAIR THAT IS UP BEFORE ITS CHILD HAS SPOKEN IS SAID SO ON ITS OWN LEASE ROW** (thread 063).
+  The supervisor learns a vendor session id from the INIT LINE of the stream and only then writes
+  the run's `.session` file, so between the lease and the child's first word the frame shows
+  `running · working` about a process that may not exist yet — and the operator waits for output
+  that cannot come, then goes to kill a session that is not there. The row now carries
+  `⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET — no session id has been written for this run …
+  the next step here is to wait`, beside the `⚠ OVERDUE`/`⚠ EXHAUSTED` marks rather than instead
+  of them. Two things the sentence does deliberately: it does NOT call the pair silent (the
+  session log is opened and written BEFORE the spawn, so the activity trace moves in this window
+  — a mark reading "nothing reported" would ask for the very kill it prevents), and it names the
+  WINDOW rather than a cause. A memory restore and the plain gap between the spawn and the first
+  line of the stream both live inside it, nothing the circuit records tells them apart, and their
+  next step is the same one — so the line offers them as alternatives and asserts neither. What
+  reaches the frame is a machine fact (`existsSync` of the id file, asked where the frame is
+  filled, one call per LIVE pair); the mark itself is computed in the renderer.
 
 ## `spike/` — P0
 
