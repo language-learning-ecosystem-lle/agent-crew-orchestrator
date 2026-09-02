@@ -183,13 +183,11 @@ export const strayArguments = (argv: readonly string[], flags: CommandFlags): re
     if (flags.boolean.includes(token)) continue;
     if (flags.list.includes(token)) {
       // Every word up to the next flag belongs to the list, exactly as `listFlag` reads
-      // it. "Said and empty" stays a refusal — the handler calls it one too.
-      let words = 0;
-      while (at + 1 < argv.length && !isFlag(argv[at + 1] as string)) {
-        at += 1;
-        words += 1;
-      }
-      if (words === 0) problems.push(`'${token}' was given nothing to name`);
+      // it. A list that names NOTHING is left to the handler on purpose: `listFlag`
+      // already refuses it by name (`--paths was given nothing to name`), and a second
+      // refusal here would only reword a correct one — the door's business is the token
+      // it cannot account for, not the value of a token it can.
+      while (at + 1 < argv.length && !isFlag(argv[at + 1] as string)) at += 1;
       continue;
     }
     if (flags.value.includes(token)) {

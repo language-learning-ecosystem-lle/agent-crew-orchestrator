@@ -1055,8 +1055,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     ).toEqual([]);
     const problems = strayArguments(["--role", "dev-core", "--paths", "a", "b", "--stagd"], zones);
     expect(problems).toEqual(["'--stagd' — unknown flag"]);
-    // A list that names nothing is a refusal, because the handler calls it one too.
-    expect(strayArguments(["--paths"], zones)).toEqual(["'--paths' was given nothing to name"]);
+    // A list that names NOTHING passes the door and is refused by the handler, which
+    // already says it by name (`zones.process.test.ts` holds that sentence). A door that
+    // reworded a correct refusal would take it away, not add one.
+    expect(strayArguments(["--paths"], zones)).toEqual([]);
   });
 
   it("no longer refuses the multi-word form at the doors that were already up (042)", () => {
