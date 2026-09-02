@@ -201,6 +201,25 @@ describe("renderFrame", () => {
     expect(text).not.toContain("HAS NOT SPOKEN YET");
   });
 
+  it("a session still writing its memory is named in the frame, on the row of ITS OWN role", () => {
+    // The `save` window (thread 063): one lock for the whole box, so the pair that reads
+    // `released · completed` is the answer to why every other delivery is crawling.
+    const done = { ...lease, state: "released" as const, reason: "completed" as const };
+    const text = renderFrame({
+      ...frame,
+      leases: [done],
+      parallelism: { ...frame.parallelism, live: [] },
+      mailLock: {
+        pid: 4242,
+        holder: "memory of dev-core",
+        since: "2026-07-27T17:58:00Z",
+        alive: true,
+      },
+    });
+    expect(text).toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    expect(text).toContain("every other delivery waits behind it");
+  });
+
   it("is the five panels in the order a watch is read", () => {
     const lines = renderFrame(frame).split("\n");
     const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));

@@ -6,6 +6,7 @@
  * attempt ceiling) are called out as explicit marks instead of hiding inside the
  * state column.
  */
+import type { HeldMailLock } from "../thread/checkout-lock.js";
 import type { LeaseView } from "./lease.js";
 import { stateWord, timeLeftWord } from "./state-word.js";
 import { describeFreeze, freezeHasTerm } from "./thaw.js";
@@ -67,23 +68,6 @@ const flag = (view: LeaseView, closed: boolean): string => {
 };
 
 /**
- * ONE PAIR, ONE LINE — exported because the TUI highlights the SELECTED line and so
- * needs the lines one at a time, while `renderStatus` below stays their assembly
- * (T-1, thread 019). A second formatter for the same columns is refused on principle:
- * the top panel of the observer and the first section of `status` are the same fact,
- * and two renderers is how they would quietly start to differ.
- *
- * `closed` — this pair's thread is closed (thread 016); it changes the MARK and nothing
- * else. It is a parameter and not a field of the view on purpose: the fold reads the
- * journal, and whether a thread is closed is a fact of the MAIL, which the fold has never
- * been given and must not start needing.
- *
- * `now` — for the "how much is left" phrase (thread 063, john's requirement 5). Optional,
- * and its absence drops the column rather than guessing at the clock: a caller that reads
- * a journal without a moment to judge it against (a test, an offline reader) gets the
- * frame it always did, and nobody is shown a countdown computed from the wrong `now`.
- */
-/**
  * THE PAIR IS UP AND THE CHILD HAS NOT SPOKEN YET (thread 063, §2.2; curator's answer of
  * 2026-09-02, `restore`). The window is real and it is measured, not supposed: the id of a
  * vendor session is written by the supervisor from the INIT LINE of the stream
@@ -108,9 +92,53 @@ const flag = (view: LeaseView, closed: boolean): string => {
  *    step, so the difference is not a line. "Writing memory" would claim more than was
  *    measured, and this sentence deliberately does not say it.
  */
+/**
+ * THE PAIR IS FINISHED AND ITS PROCESS IS STILL WRITING (thread 063, §2.2; curator's answer
+ * of 2026-09-02, `save`). A session saves its own memory AFTER the handoff, and that write
+ * goes through the mail checkout — whose lock is ONE PER BOX. So the frame shows
+ * `released · completed` about a pair whose process is still holding the door every other
+ * delivery has to walk through, and the error escapes the pair: an operator watching some
+ * OTHER role's delivery crawl has no way to learn where the queue is.
+ *
+ * WHAT IS SAID IS WHAT THE RECORD SAYS. The holder line is written by the writer itself
+ * (`memory of <role>`), so the mark names the role the LOCK names — never the pair nearest
+ * on screen. A lock held by a digest or by an ordinary delivery belongs to no pair and gets
+ * no mark on a row (`renderStatus` says it as a line of its own instead).
+ *
+ * AND ONLY A LIVE HOLDER IS A HOLDER. The record outlives a killed process; `readMailLock`
+ * measures the pid and the mark is refused when that measurement says the writer is gone —
+ * a stale record explaining somebody else's slowness would be a lie with a timestamp on it.
+ */
+const savingMemory = (lock: HeldMailLock): string =>
+  `  ⏳ THIS PAIR IS OVER, ITS SESSION IS NOT — pid ${lock.pid} still holds the mail checkout as '${lock.holder}' (since ${lock.since}), which is ONE lock for the whole box: the run has reported and is now writing its own memory through it. Nothing is wrong here, and nothing is owed by anybody — but every other delivery waits behind it, so this is the answer to "why is the mail slow right now"`;
+
+/** The role a lock is being held FOR, when it is a session's own memory; nobody otherwise. */
+const roleSavingMemory = (lock: HeldMailLock): string | undefined => {
+  if (!lock.alive) return undefined;
+  const named = /^memory of (\S+)$/.exec(lock.holder);
+  return named?.[1];
+};
+
 const NOT_SPOKEN_YET =
   "  ⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET — no session id has been written for this run, so there is no process to go and kill: it is either still being started or restoring its own memory before its first word. Its log is open and growing meanwhile, so this pair is not a silent one — the next step here is to wait";
 
+/**
+ * ONE PAIR, ONE LINE — exported because the TUI highlights the SELECTED line and so
+ * needs the lines one at a time, while `renderStatus` below stays their assembly
+ * (T-1, thread 019). A second formatter for the same columns is refused on principle:
+ * the top panel of the observer and the first section of `status` are the same fact,
+ * and two renderers is how they would quietly start to differ.
+ *
+ * `closed` — this pair's thread is closed (thread 016); it changes the MARK and nothing
+ * else. It is a parameter and not a field of the view on purpose: the fold reads the
+ * journal, and whether a thread is closed is a fact of the MAIL, which the fold has never
+ * been given and must not start needing.
+ *
+ * `now` — for the "how much is left" phrase (thread 063, john's requirement 5). Optional,
+ * and its absence drops the column rather than guessing at the clock: a caller that reads
+ * a journal without a moment to judge it against (a test, an offline reader) gets the
+ * frame it always did, and nobody is shown a countdown computed from the wrong `now`.
+ */
 export const renderLeaseLine = (
   view: LeaseView,
   closed = false,
@@ -125,6 +153,12 @@ export const renderLeaseLine = (
    * state whose signal is not in hand is not invented.
    */
   speechless: ReadonlySet<string> = new Set(),
+  /**
+   * WHO IS INSIDE THE MAIL CHECKOUT RIGHT NOW, verbatim as the lock record lies on disk —
+   * see {@link SAVING_MEMORY}. Undefined means the lock is free, unreadable, or was not
+   * asked about at all, and the row then reads exactly as it did before.
+   */
+  lock?: HeldMailLock,
 ): string => {
   const cols = [
     view.role,
@@ -160,7 +194,16 @@ export const renderLeaseLine = (
     view.state === "running" && view.sessionLog !== undefined && speechless.has(view.sessionLog)
       ? NOT_SPOKEN_YET
       : "";
-  return `${cols}${flag(view, closed)}${speaking}`;
+  // THE PAIR READS AS OVER AND ITS PROCESS IS STILL INSIDE THE MAIL (thread 063, `save`).
+  // On the rows of THAT role and of no other — `roleSavingMemory` reads the holder, and a
+  // lock held by anything else (a digest, a delivery) is not attributed to a pair at all.
+  // Never on a `running` row: there the same process is doing its work, which the row
+  // already says, and a second sentence would compete with the first.
+  const saving =
+    view.state !== "running" && lock !== undefined && roleSavingMemory(lock) === view.role
+      ? savingMemory(lock)
+      : "";
+  return `${cols}${flag(view, closed)}${speaking}${saving}`;
 };
 
 /**
@@ -182,9 +225,21 @@ export const renderStatus = (
   closed: ReadonlySet<string> = new Set(),
   now?: Date,
   speechless: ReadonlySet<string> = new Set(),
+  /** Who holds the mail checkout right now; see {@link savingMemory}. */
+  lock?: HeldMailLock,
 ): string => {
   if (views.length === 0) return "orchestrator: no sessions in the journal";
-  return views
-    .map((view) => renderLeaseLine(view, closed.has(view.thread), now, speechless))
+  const rows = views
+    .map((view) => renderLeaseLine(view, closed.has(view.thread), now, speechless, lock))
     .join("\n");
+  // A LOCK THAT BELONGS TO NO PAIR IS SAID WITHOUT ONE (curator's condition 2). The digest
+  // is a writer of this box that has no lease and no row, and the ordinary deliveries name
+  // a command rather than a session; attributing either to the pair that happens to be
+  // nearest would invent a fact about that pair. The line is added only when the holder was
+  // NOT matched to a row above — and only for a holder measured to be alive.
+  const orphan =
+    lock === undefined || !lock.alive || roleSavingMemory(lock) !== undefined
+      ? undefined
+      : `  ⏳ the mail checkout is held by '${lock.holder}' (pid ${lock.pid}, since ${lock.since}) — one lock for the whole box, and it belongs to no pair above: every delivery waits behind it while it lasts`;
+  return orphan === undefined ? rows : `${rows}\n${orphan}`;
 };

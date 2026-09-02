@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-
+import type { HeldMailLock } from "../thread/checkout-lock.js";
 import type { OrchestratorEvent } from "./journal.js";
 import { foldLeases, type LeaseView } from "./lease.js";
 import { renderLeaseLine, renderStatus } from "./status.js";
@@ -345,5 +345,92 @@ describe("renderStatus — raised, and the child has not spoken yet", () => {
     );
     expect(line).toContain("⚠ OVERDUE");
     expect(line).toContain("HAS NOT SPOKEN YET");
+  });
+});
+
+/**
+ * THE PAIR IS OVER AND ITS SESSION IS NOT (thread 063, `save`; curator's three conditions of
+ * 2026-09-02). The lock of the mail checkout is ONE PER BOX, a session writes its own memory
+ * through it AFTER the handoff, and while that lasts the pair reads `released · completed`
+ * next to a process that is holding every other delivery up.
+ */
+describe("renderStatus — the pair is over, its session is still inside the mail", () => {
+  const lock = (over: Partial<HeldMailLock> = {}): HeldMailLock => ({
+    pid: 4242,
+    holder: "memory of dev-core",
+    since: "2026-09-02T15:40:00Z",
+    alive: true,
+    ...over,
+  });
+
+  it("names the role the LOCK names, on that role's finished row", () => {
+    const line = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(line).toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    expect(line).toContain("pid 4242");
+    expect(line).toContain("since 2026-09-02T15:40:00Z");
+    // The error escapes the pair — that is the whole reason the mark exists.
+    expect(line).toContain("every other delivery waits behind it");
+  });
+
+  it("condition 2: a lock of ANOTHER role is not pinned on the pair that happens to be here", () => {
+    const line = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock({ holder: "memory of curator" }),
+    );
+    expect(line).not.toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+  });
+
+  it("condition 2: a digest holds no pair, so the line names the DIGEST and no row is marked", () => {
+    const line = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock({ holder: "digest of instance hetzner" }),
+    );
+    expect(line).not.toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    expect(line).toContain("digest of instance hetzner");
+    expect(line).toContain("belongs to no pair above");
+  });
+
+  it("condition 3: a record whose pid is GONE explains nothing — neither on a row nor beside it", () => {
+    // The record outlives a killed process. A stale lock read as "held" would blame a
+    // process that is not there for somebody else's slowness — a lie with a timestamp on it.
+    const dead = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock({ alive: false }),
+    );
+    expect(dead).not.toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    const orphanDead = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock({ holder: "digest of instance hetzner", alive: false }),
+    );
+    expect(orphanDead).not.toContain("belongs to no pair above");
+  });
+
+  it("a RUNNING row of the same role is left alone — there the process is doing its work", () => {
+    const line = renderStatus([view({})], new Set(), undefined, new Set(), lock());
+    expect(line).not.toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+  });
+
+  it("and a free checkout changes no row at all", () => {
+    const line = renderStatus([view({ state: "released", reason: "completed" })]);
+    expect(line).not.toContain("ITS SESSION IS NOT");
+    expect(line).not.toContain("mail checkout");
   });
 });

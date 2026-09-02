@@ -541,7 +541,13 @@ import {
   ProtocolVersionError,
 } from "./schema/version.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
-import { fileMailLock, MailCheckoutBusyError, type MailLock } from "./thread/checkout-lock.js";
+import {
+  fileMailLock,
+  type HeldMailLock,
+  MailCheckoutBusyError,
+  type MailLock,
+  readMailLock,
+} from "./thread/checkout-lock.js";
 import {
   DeliveryRefusedError,
   deliverMessage,
@@ -7185,6 +7191,27 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
 
   const events = existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
   const now = orchestratorNow(argv);
+  // NEVER A REPAIR AND NEVER A WAIT: the reader only looks at the record. A frame that
+  // touched the lock would race the very deliveries it describes, and a git call that failed
+  // (a checkout that is not a repository yet) leaves the fact absent rather than killing the
+  // frame — the rule every diagnostic of this function lives by.
+  const mailLockRecord = ((): HeldMailLock | undefined => {
+    try {
+      const gitDir = execFileSync(
+        "git",
+        [
+          "-C",
+          dirname(rootOr(argv, () => pathsFrom(argv).mailRoot)),
+          "rev-parse",
+          "--absolute-git-dir",
+        ],
+        { encoding: "utf8" },
+      ).trim();
+      return readMailLock(join(gitDir, "agent-protocol-mail.lock"));
+    } catch {
+      return undefined;
+    }
+  })();
   const modeFile = flag(argv, "--mode-file");
   let reboot: "systemd" | "manual" | undefined;
   if (modeFile !== undefined) {
@@ -7317,6 +7344,11 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // disk and this layer already reads six other files. One `existsSync` per LIVE pair and
     // never per row of history: the window closes with the child's first word, so a released
     // pair's answer could not change a mark.
+    // WHO IS INSIDE THE MAIL CHECKOUT (thread 063, `save`) — read where the frame is filled,
+    // through the same record a waiting delivery reads, with the pid measured there. The path
+    // is derived from the checkout the frame already names, so no new argument and no new
+    // statement about a pair enters the frame: the mark is the renderer's.
+    ...(mailLockRecord === undefined ? {} : { mailLock: mailLockRecord }),
     speechless: new Set(
       leases
         .filter((view) => view.state === "running" && view.sessionLog !== undefined)

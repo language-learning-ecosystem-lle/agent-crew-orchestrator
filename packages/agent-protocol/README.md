@@ -4138,6 +4138,17 @@ a human can predict the queue without reading the code.
   next step is the same one — so the line offers them as alternatives and asserts neither. What
   reaches the frame is a machine fact (`existsSync` of the id file, asked where the frame is
   filled, one call per LIVE pair); the mark itself is computed in the renderer.
+- **AND A PAIR THAT IS OVER WHILE ITS SESSION IS STILL WRITING** (thread 063). A run saves its own
+  memory AFTER the handoff and writes it through the mail checkout, whose lock is ONE PER BOX — so
+  the frame shows `released · completed` beside a process that is holding up every other delivery.
+  The row of the role the LOCK names (`memory of <role>`, read verbatim from the record) now carries
+  `⏳ THIS PAIR IS OVER, ITS SESSION IS NOT — pid <n> still holds the mail checkout … every other
+  delivery waits behind it`. Three things it does not do: it does not pin a lock on the pair that
+  happens to be nearest (a digest or an ordinary delivery gets a line of its own, attributed to
+  nobody), it does not trust a record whose pid is gone (liveness is measured in `readMailLock`, and
+  a stale lock explains nothing), and it does not mark a `running` row — there the same process is
+  doing the work the row already names. The reader never repairs or waits for the lock: it looks at
+  the record and nothing else.
 
 ## `spike/` — P0
 

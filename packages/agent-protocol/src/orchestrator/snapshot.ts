@@ -39,6 +39,7 @@
  * forbidden to do — see `mailCheckoutFreshness`).
  */
 import type { MailFreshness } from "../fs/git.js";
+import type { HeldMailLock } from "../thread/checkout-lock.js";
 import { type AuthShelf, describeAuthShelf } from "./auth.js";
 import {
   type CodeAgeView,
@@ -173,6 +174,18 @@ export type OperatorFrame = {
    * live by: a state whose signal is not in hand is not invented.
    */
   readonly speechless?: ReadonlySet<string> | undefined;
+  /**
+   * WHO HOLDS THE MAIL CHECKOUT RIGHT NOW (thread 063, §2.2; curator's answer of 2026-09-02
+   * on `save`), verbatim as the record lies on disk and with the liveness of its pid already
+   * MEASURED (`readMailLock`). One lock for the whole box, so a session still writing its own
+   * memory after a handoff is the answer to "why is every other delivery slow" — and the pair
+   * it belongs to reads `released · completed` while it lasts.
+   *
+   * A machine fact and nothing else: the holder string is what its writer wrote, and which
+   * row (if any) it belongs to is decided in the renderer. Absent — the lock is free, or was
+   * not asked about — and every row reads as it did before.
+   */
+  readonly mailLock?: HeldMailLock | undefined;
   /**
    * The run of `gh` refusals in the merge-ready tier (thread 051), read from the file the
    * daemon writes. Undefined means the tier answered on the last tick that asked it.
@@ -524,7 +537,7 @@ export const renderFreshness = (
  */
 export const renderFrame = (frame: OperatorFrame): string =>
   [
-    renderStatus(frame.leases, frame.closedThreads, frame.now, frame.speechless),
+    renderStatus(frame.leases, frame.closedThreads, frame.now, frame.speechless, frame.mailLock),
     renderParallelism(frame.parallelism, frame.now),
     renderHolds(frame.holds),
     renderCircuit(frame.circuit),
