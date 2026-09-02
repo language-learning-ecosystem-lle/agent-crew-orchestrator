@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:11:05.117Z",
+  "writtenAt": "2026-09-02T23:12:43.837Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "devops",
-      "thread": "057-circuit-ping-flaps",
-      "state": "draining",
-      "deadline": "2026-09-02T23:20:12Z"
-    },
     {
       "role": "dev-core",
       "thread": "087-hold-refusal-hides-short-form",
