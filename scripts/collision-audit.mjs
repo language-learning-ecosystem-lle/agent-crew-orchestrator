@@ -100,21 +100,30 @@ function readSquashCommits() {
   return byPr;
 }
 
-/** Отказы подъёма из журнала: класс «общее рабочее место» виден здесь или нигде. */
+/**
+ * Отказы подъёма из журнала: класс «общее рабочее место» виден здесь или нигде.
+ *
+ * ОТСУТСТВИЕ ЖУРНАЛА — НЕ НОЛЬ ОТКАЗОВ, и различить их обязан вывод, а не читатель.
+ * Журнал лежит вне репозитория (`.orchestrator/journal.jsonl` на ящике контура), поэтому в
+ * ЛЮБОЙ чужой среде — у ревьюера, в CI, в свежем клоне — файла нет. Молчаливый `return []`
+ * печатал там «Отказов нет»: непрочитанный источник выглядел ровно как измеренный ноль, то есть
+ * дверь молчала. Поэтому возврат несёт `found`, а отчёт называет ненайденный журнал по имени
+ * пути и говорит, что класс НЕ ИЗМЕРЕН.
+ */
 function readLaunchRefusals() {
   const path = join(HOME, "journal.jsonl");
-  if (!existsSync(path)) return [];
-  const out = [];
+  if (!existsSync(path)) return { found: false, path, entries: [] };
+  const entries = [];
   for (const line of readFileSync(path, "utf8").split("\n")) {
     if (!line.includes("launch-refused")) continue;
     try {
       const d = JSON.parse(line);
-      if (d.kind === "launch-refused" && Date.parse(d.ts) >= SINCE) out.push(d);
+      if (d.kind === "launch-refused" && Date.parse(d.ts) >= SINCE) entries.push(d);
     } catch {
       /* строка журнала нечитаема — она не факт о столкновении */
     }
   }
-  return out;
+  return { found: true, path, entries };
 }
 
 function analyse() {
@@ -208,11 +217,14 @@ lines.push("");
 lines.push("## Отказы подъёма из журнала");
 lines.push("");
 const byReason = new Map();
-for (const r of refusals) byReason.set(r.reason, (byReason.get(r.reason) ?? 0) + 1);
+for (const r of refusals.entries) byReason.set(r.reason, (byReason.get(r.reason) ?? 0) + 1);
 lines.push(
-  byReason.size === 0
-    ? "Отказов нет."
-    : [...byReason].map(([reason, n]) => `- \`${reason}\` — ${n}`).join("\n"),
+  !refusals.found
+    ? `журнал не найден (${refusals.path}) — класс «общее рабочее место» НЕ ИЗМЕРЕН.` +
+        " Журнал лежит на ящике контура, а не в репозитории; здесь это не ноль отказов, а нечитанный источник."
+    : byReason.size === 0
+      ? "Журнал прочитан, отказов подъёма за период нет."
+      : [...byReason].map(([reason, n]) => `- \`${reason}\` — ${n}`).join("\n"),
 );
 lines.push("");
 lines.push("## PR, закрытые без merge");
