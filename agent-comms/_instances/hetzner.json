@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:27:11.658Z",
+  "writtenAt": "2026-09-02T18:27:24.618Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "066-cost-of-prose",
       "state": "running",
       "deadline": "2026-09-02T19:05:38Z"
-    },
-    {
-      "role": "devops",
-      "thread": "070-session-tmpdir-breaks-tests",
-      "state": "running",
-      "deadline": "2026-09-02T18:47:08Z"
     }
   ]
 }
