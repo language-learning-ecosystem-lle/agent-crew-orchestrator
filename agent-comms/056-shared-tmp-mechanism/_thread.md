@@ -1214,3 +1214,13 @@ README пакета **§S28** («what a run left where it had no business writin
 
 Незакоммиченного нет: всё лежит коммитом `8cd8feca` в `origin/dev-core/056-shared-places-visible`.
 Чекаут соседнего контура не трогал.
+
+## msg-019 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #200: `success`.**
+
+feat(launch): что прогон оставил в общем месте — названо по имени, ролью и тредом (тред 056) · голова `8cd8feca4f36ef56f8fa2bfc4d4a14c93da12085` · попытка 1 · прогон [`33657424785`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33657424785)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
