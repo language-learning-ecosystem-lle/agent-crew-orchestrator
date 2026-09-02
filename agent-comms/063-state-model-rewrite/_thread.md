@@ -2421,3 +2421,7 @@ every other delivery waits behind it, so this is the answer to "why is the mail 
 Чужих PR (#186, #200, #199, #197, #196 и прочих) не трогала.
 
 waiting-on → dev-core.
+
+## msg-043 · from: github · 2026-09-02 · expects: none
+
+PR #186 (docs(protocol): словарь состояний пары — норма кадра, а не одно переименование (тред 063)) **merged** by maysway → `main`.
