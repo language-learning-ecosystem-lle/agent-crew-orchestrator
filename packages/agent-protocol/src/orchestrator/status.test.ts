@@ -434,3 +434,147 @@ describe("renderStatus — the pair is over, its session is still inside the mai
     expect(line).not.toContain("mail checkout");
   });
 });
+
+/**
+ * ONE PAIR WEARS THE LOCK, NOT ONE ROLE (thread 063, review of #201). A frame prints one row
+ * per pair EVER seen in the journal, so a role that has worked five threads owns five rows,
+ * and a mark matched on the role alone went onto all five at once: every long-dead pair of
+ * that role told the operator that IT is the one holding the door. The other half of the same
+ * defect was silence — a holder naming a role with no row here printed nothing anywhere, so a
+ * busy checkout read exactly like a free one.
+ */
+describe("renderStatus — the mail lock belongs to ONE pair of the role", () => {
+  const lock = (over: Partial<HeldMailLock> = {}): HeldMailLock => ({
+    pid: 4242,
+    holder: "memory of dev-core",
+    since: "2026-09-02T15:40:00Z",
+    alive: true,
+    ...over,
+  });
+  const done = (thread: string, lastAt?: string): LeaseView =>
+    view({
+      thread,
+      state: "released",
+      reason: "completed",
+      ...(lastAt === undefined ? {} : { lastAt }),
+    });
+  const MARK = "THIS PAIR IS OVER, ITS SESSION IS NOT";
+  const marked = (frame: string): readonly string[] =>
+    frame.split("\n").filter((line) => line.includes(MARK));
+
+  it("two finished pairs of one role: the mark goes on the RECENT one and on it alone", () => {
+    const frame = renderStatus(
+      [
+        done("010-ancient-thread", "2026-08-11T09:00:00Z"),
+        done("063-state-model-rewrite", "2026-09-02T15:39:00Z"),
+      ],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    const hit = marked(frame);
+    expect(hit).toHaveLength(1);
+    expect(hit[0]).toContain("063-state-model-rewrite");
+    expect(frame).not.toContain("mail checkout is held by");
+    // The ancient row keeps its own sentence and gains nothing about somebody's memory.
+    const ancient = frame.split("\n").find((line) => line.includes("010-ancient-thread")) as string;
+    expect(ancient).not.toContain(MARK);
+  });
+
+  it("the recent pair wins wherever it stands in the frame — order of rows is not recency", () => {
+    const frame = renderStatus(
+      [
+        done("063-state-model-rewrite", "2026-09-02T15:39:00Z"),
+        done("010-ancient-thread", "2026-08-11T09:00:00Z"),
+      ],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(1);
+    expect(marked(frame)[0]).toContain("063-state-model-rewrite");
+  });
+
+  it("a RUNNING pair of the role is no candidate: the finished one carries the mark", () => {
+    const frame = renderStatus(
+      [
+        view({ thread: "079-live", lastAt: "2026-09-02T15:41:00Z" }),
+        done("063-state-model-rewrite", "2026-09-02T15:39:00Z"),
+      ],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(1);
+    expect(marked(frame)[0]).toContain("063-state-model-rewrite");
+  });
+
+  it("the role has no row here at all — the fact is NOT lost, it is said as a line of its own", () => {
+    // The whole point: the writer's pair may be outside this frame, and a live lock with a
+    // named pid disappearing was indistinguishable from a free checkout.
+    const frame = renderStatus(
+      [view({ role: "curator", thread: "070-charter", state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(0);
+    expect(frame).toContain("the mail checkout is held by 'memory of dev-core'");
+    expect(frame).toContain("pid 4242");
+    expect(frame).toContain("every delivery waits behind it");
+    // And it says WHY no row wears it, rather than refusing without a cause.
+    expect(frame).toContain("no finished pair of 'dev-core' is in this frame");
+  });
+
+  it("every pair of the role is RUNNING — the same line, and it names that reason too", () => {
+    const frame = renderStatus([view({})], new Set(), undefined, new Set(), lock());
+    expect(marked(frame)).toHaveLength(0);
+    expect(frame).toContain("no finished pair of 'dev-core' is in this frame");
+  });
+
+  it("two equally recent pairs: nothing is guessed, and the lock is still said out loud", () => {
+    // Journal stamps are second-precision, so a tie is honest. Naming either row would be a
+    // guess wearing the clothes of a measurement.
+    const frame = renderStatus(
+      [
+        done("010-ancient-thread", "2026-09-02T15:39:00Z"),
+        done("063-state-model-rewrite", "2026-09-02T15:39:00Z"),
+      ],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(0);
+    expect(frame).toContain("'dev-core' has 2 finished pairs here");
+    expect(frame).toContain("do not say which of them is writing");
+  });
+
+  it("a hand-built frame with no stamps refuses to pick rather than taking the first row", () => {
+    const frame = renderStatus(
+      [done("010-ancient-thread"), done("063-state-model-rewrite")],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(0);
+    expect(frame).toContain("the mail checkout is held by 'memory of dev-core'");
+  });
+
+  it("one finished pair of the role needs no stamp — there is nothing to choose between", () => {
+    const frame = renderStatus(
+      [done("063-state-model-rewrite"), view({ role: "curator", thread: "070-charter" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(1);
+    expect(frame).not.toContain("mail checkout is held by");
+  });
+});

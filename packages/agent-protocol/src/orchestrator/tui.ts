@@ -37,7 +37,7 @@ import { USAGE } from "../usage.js";
 import { parseUsage } from "./argv.js";
 import type { HoldView } from "./hold.js";
 import { type OperatorFrame, renderFrame } from "./snapshot.js";
-import { renderLeaseLine } from "./status.js";
+import { mailLockPair, renderLeaseLine } from "./status.js";
 
 /**
  * The eight keys of the observer: five that read (T-1) and three that act (T-2).
@@ -451,6 +451,11 @@ export const renderTui = (input: {
     return pad(["history (l closes it):", ...body.slice(-(rows - 1))], rows, cols);
   }
 
+  // WHICH ROW WEARS THE MAIL LOCK IS DECIDED ONCE, FOR THE WHOLE PANEL, and by the very
+  // function `renderStatus` decides it with (`mailLockPair`): the holder names a role, and
+  // a role can own several rows — a panel that handed the lock to every row would put the
+  // same "its session is still writing" on every historical pair of that role.
+  const saver = mailLockPair(frame.leases, frame.mailLock);
   const pairs = frame.leases.map((view, index) => {
     // The observer and `status` are one frame (T-1), the closures included: a pair whose
     // thread is closed loses its mark here for the same reason it loses it there. The
@@ -470,7 +475,7 @@ export const renderTui = (input: {
         frame.closedThreads?.has(view.thread) ?? false,
         frame.now,
         frame.speechless,
-        frame.mailLock,
+        view === saver ? frame.mailLock : undefined,
       ).split("\n")[0] as string,
       cols - 2,
     );

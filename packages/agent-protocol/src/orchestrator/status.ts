@@ -119,6 +119,49 @@ const roleSavingMemory = (lock: HeldMailLock): string | undefined => {
   return named?.[1];
 };
 
+/**
+ * WHICH PAIR THE LOCK BELONGS TO — one row of the frame, or none (thread 063, review of
+ * #201). The holder names a ROLE (`memory of <role>`) and a role is not a pair: a frame
+ * carries one row per pair ever seen in the journal, so a role that has worked five threads
+ * has five rows and the mark, matched on the role alone, landed on ALL of them at once —
+ * every long-closed pair of that role told the operator that IT is the one holding the door.
+ *
+ * The pair is picked by RECENCY (`lastAt`), because that is the only fact of the row that
+ * bears on the question: memory is written by the session of the run that has just reported,
+ * so among the finished pairs of that role the one whose journal event is the latest is the
+ * one whose process can still be inside the mail.
+ *
+ * AND WHEN IT CANNOT BE PICKED, NONE IS — no row of that role at all (the writer's pair is
+ * outside this frame), or two equally recent ones. `renderStatus` then says the lock as a
+ * line of its own naming the reason, because the alternative is the class of defect this
+ * whole thread is about: a fact that quietly disappears and leaves silence indistinguishable
+ * from a free lock.
+ *
+ * Exported because BOTH renderers of the top section need the same answer — `renderStatus`
+ * here and `renderTui`'s panel — and a second way of choosing the row is exactly how the two
+ * frames of one fact start to differ (T-1).
+ */
+export const mailLockPair = (
+  views: readonly LeaseView[],
+  lock?: HeldMailLock,
+): LeaseView | undefined => {
+  const role = lock === undefined ? undefined : roleSavingMemory(lock);
+  if (role === undefined) return undefined;
+  // `running` is out for the reason the mark itself is: there the same process is doing the
+  // work the row already names, and a run inside its work is not writing its memory yet.
+  const candidates = views.filter((view) => view.role === role && view.state !== "running");
+  if (candidates.length === 0) return undefined;
+  if (candidates.length === 1) return candidates[0];
+  const stamped = candidates.filter((view) => view.lastAt !== undefined);
+  if (stamped.length !== candidates.length) return undefined;
+  const latest = stamped.reduce((a, b) => ((a.lastAt as string) >= (b.lastAt as string) ? a : b));
+  // A TIE IS NOT A WINNER. The journal's stamps are second-precision, so two rows of one
+  // role can honestly share a moment; naming either of them would be a guess wearing the
+  // clothes of a measurement.
+  const ties = stamped.filter((view) => view.lastAt === latest.lastAt);
+  return ties.length === 1 ? latest : undefined;
+};
+
 const NOT_SPOKEN_YET =
   "  ⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET — no session id has been written for this run, so there is no process to go and kill: it is either still being started or restoring its own memory before its first word. Its log is open and growing meanwhile, so this pair is not a silent one — the next step here is to wait";
 
@@ -155,8 +198,13 @@ export const renderLeaseLine = (
   speechless: ReadonlySet<string> = new Set(),
   /**
    * WHO IS INSIDE THE MAIL CHECKOUT RIGHT NOW, verbatim as the lock record lies on disk —
-   * see {@link SAVING_MEMORY}. Undefined means the lock is free, unreadable, or was not
-   * asked about at all, and the row then reads exactly as it did before.
+   * see {@link savingMemory}. Undefined means the lock is free, unreadable, not this row's,
+   * or was not asked about at all, and the row then reads exactly as it did before.
+   *
+   * IT IS PASSED FOR ONE ROW OF THE FRAME AND FOR NO OTHER — the one `mailLockPair` picks.
+   * A row cannot make that choice: the holder names a role, and which PAIR of that role is
+   * meant is only visible from the whole frame. The role check below is a guard against
+   * mis-wiring, not the attribution itself.
    */
   lock?: HeldMailLock,
 ): string => {
@@ -195,10 +243,10 @@ export const renderLeaseLine = (
       ? NOT_SPOKEN_YET
       : "";
   // THE PAIR READS AS OVER AND ITS PROCESS IS STILL INSIDE THE MAIL (thread 063, `save`).
-  // On the rows of THAT role and of no other — `roleSavingMemory` reads the holder, and a
-  // lock held by anything else (a digest, a delivery) is not attributed to a pair at all.
-  // Never on a `running` row: there the same process is doing its work, which the row
-  // already says, and a second sentence would compete with the first.
+  // On the ONE row the caller was given the lock for — `mailLockPair` chose it out of the
+  // whole frame, and a lock held by anything else (a digest, a delivery) is not attributed
+  // to a pair at all. Never on a `running` row: there the same process is doing its work,
+  // which the row already says, and a second sentence would compete with the first.
   const saving =
     view.state !== "running" && lock !== undefined && roleSavingMemory(lock) === view.role
       ? savingMemory(lock)
@@ -229,17 +277,48 @@ export const renderStatus = (
   lock?: HeldMailLock,
 ): string => {
   if (views.length === 0) return "orchestrator: no sessions in the journal";
+  // ONE ROW CARRIES THE MARK, AND THE FRAME PICKS WHICH — see {@link mailLockPair}.
+  const saver = mailLockPair(views, lock);
   const rows = views
-    .map((view) => renderLeaseLine(view, closed.has(view.thread), now, speechless, lock))
+    .map((view) =>
+      renderLeaseLine(
+        view,
+        closed.has(view.thread),
+        now,
+        speechless,
+        view === saver ? lock : undefined,
+      ),
+    )
     .join("\n");
   // A LOCK THAT BELONGS TO NO PAIR IS SAID WITHOUT ONE (curator's condition 2). The digest
   // is a writer of this box that has no lease and no row, and the ordinary deliveries name
   // a command rather than a session; attributing either to the pair that happens to be
-  // nearest would invent a fact about that pair. The line is added only when the holder was
-  // NOT matched to a row above — and only for a holder measured to be alive.
+  // nearest would invent a fact about that pair.
+  //
+  // AND THE SAME LINE CATCHES THE HOLDER THAT NAMES A ROLE BUT REACHED NO ROW (review of
+  // #201): the writer's pair may be outside this frame, or two pairs of that role may be
+  // equally recent. The old condition asked whether the holder PARSED, so exactly those
+  // cases printed nothing at all — a live lock, a named pid and "every other delivery waits
+  // behind it" all vanishing, leaving a busy door indistinguishable from a free one. The
+  // condition now asks the thing that matters: was the mark actually put on a row above.
   const orphan =
-    lock === undefined || !lock.alive || roleSavingMemory(lock) !== undefined
+    lock === undefined || !lock.alive || saver !== undefined
       ? undefined
-      : `  ⏳ the mail checkout is held by '${lock.holder}' (pid ${lock.pid}, since ${lock.since}) — one lock for the whole box, and it belongs to no pair above: every delivery waits behind it while it lasts`;
+      : `  ⏳ the mail checkout is held by '${lock.holder}' (pid ${lock.pid}, since ${lock.since}) — one lock for the whole box, and ${whyNoPair(views, lock)}: every delivery waits behind it while it lasts`;
   return orphan === undefined ? rows : `${rows}\n${orphan}`;
+};
+
+/**
+ * WHY NO ROW WEARS THIS LOCK — the clause the orphan line ends its first half with. A
+ * refusal that does not say what it refused on is the defect this thread is about, so each
+ * of the three ways a lock can miss the rows is named apart from the others.
+ */
+const whyNoPair = (views: readonly LeaseView[], lock: HeldMailLock): string => {
+  const role = roleSavingMemory(lock);
+  if (role === undefined) return "it belongs to no pair above";
+  const candidates = views.filter((view) => view.role === role && view.state !== "running");
+  if (candidates.length === 0) {
+    return `no finished pair of '${role}' is in this frame — its row is either absent or still running, so which pair is writing cannot be said`;
+  }
+  return `'${role}' has ${candidates.length} finished pairs here and their last events do not say which of them is writing`;
 };

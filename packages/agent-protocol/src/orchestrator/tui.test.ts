@@ -435,6 +435,41 @@ describe("renderTui — the frame as three panels", () => {
     expect(row).toContain("dev-core");
   });
 
+  // AND IT CARRIES IT ON ONE ROW, the same one `status` picks (review of #201, second round):
+  // the holder names a ROLE, and the panel holds a row per pair of the journal — so a panel
+  // deciding per row put "its session is still writing" on every historical pair of that role
+  // at once. Asserted here and not only in `status.test.ts` because this is a SECOND caller of
+  // the same choice, and the whole class of defect in this file is the two drifting apart.
+  it("with two pairs of one role, only the recent row wears the memory window", () => {
+    const frame = {
+      ...frameOf([
+        lease({
+          thread: "010-ancient-thread",
+          state: "released",
+          reason: "completed",
+          lastAt: "2026-07-30T08:00:00Z",
+        }),
+        lease({
+          thread: "063-state-model-rewrite",
+          state: "released",
+          reason: "completed",
+          lastAt: "2026-07-31T08:58:00Z",
+        }),
+      ]),
+      mailLock: {
+        holder: "memory of dev-core",
+        pid: 4242,
+        since: "2026-07-31T08:59:00Z",
+        alive: true,
+      },
+    } satisfies OperatorFrame;
+    const lines = renderTui({ frame, state: initialTuiState, rows, cols });
+    const top = lines.slice(0, 2);
+    const wearing = top.filter((line) => line.includes("THIS PAIR IS OVER, ITS SESSION IS NOT"));
+    expect(wearing).toHaveLength(1);
+    expect(wearing[0]).toContain("063-state-model-rewrite");
+  });
+
   // The mark costs the row its tail, never its name — and never the panel's width. Forty
   // columns is narrower than any mark's own first sentence, which is the case where a rule
   // written as "reserve room for the mark" would either overflow or print an anonymous row.
