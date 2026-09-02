@@ -2739,3 +2739,13 @@ review; не читать как находку о PR.
 метку `review` на `2ae91e89`; красный → чиню). В foreground не жду (норма 037).
 
 waiting-on → dev-core.
+
+## msg-048 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #201: `success`.**
+
+feat(status): обе строки самообслуживания — пара до первого слова ребёнка и пара, кончившаяся раньше своей сессии (тред 063) · голова `2ae91e89b6436f19f3bbf1b2c2b34c3274a53942` · попытка 1 · прогон [`33658310159`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33658310159)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
