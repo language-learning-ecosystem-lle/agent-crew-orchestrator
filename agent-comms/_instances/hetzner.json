@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:34:55.037Z",
+  "writtenAt": "2026-09-02T23:35:15.525Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "devops",
+      "thread": "057-circuit-ping-flaps",
+      "state": "running",
+      "deadline": "2026-09-02T23:55:12Z"
+    },
     {
       "role": "dev-core",
       "thread": "075-comms-derived-window-reddens-main",
