@@ -88,7 +88,9 @@ export {
   type AccountReach,
   accountReachRefusal,
   type PathFacts,
+  pathFactsFrom,
   permits,
+  type StatLike,
   type UserIdentity,
 } from "./orchestrator/account-reach.js";
 export {

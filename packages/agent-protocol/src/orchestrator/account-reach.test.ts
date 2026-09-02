@@ -17,6 +17,7 @@ import {
   type AccountReach,
   accountReachRefusal,
   type PathFacts,
+  pathFactsFrom,
   permits,
 } from "./account-reach.js";
 
@@ -40,6 +41,44 @@ const reachable: AccountReach = {
   ancestors: [dir({ path: "/home" })],
   dir: dir({ path: "/home/aco-devops/.claude", mode: 0o700, uid: 1001, gid: 1001 }),
 };
+
+/**
+ * THE STITCH — what the box THREW turning into what the door reads. It is the half where
+ * the mirror defect of 2026-09-02 actually lived: `catch` flattened every failure into
+ * `present: false`, and the door, having no way to tell them apart, announced absence.
+ */
+describe("pathFactsFrom", () => {
+  const throwing = (code: string, message: string) => () => {
+    throw Object.assign(new Error(message), { code });
+  };
+
+  it("marks a path the box REFUSED THIS PROCESS as blind, not as absent", () => {
+    const facts = pathFactsFrom(
+      "/home/aco-devops/.claude",
+      throwing("EACCES", "EACCES: permission denied, stat '/home/aco-devops/.claude'"),
+    );
+    expect(facts.present).toBe(false);
+    expect(facts.blind).toBe(true);
+    expect(facts.detail).toContain("EACCES");
+  });
+
+  it("marks EPERM blind too — the same refusal, a different errno", () => {
+    expect(pathFactsFrom("/x", throwing("EPERM", "EPERM: operation not permitted"))?.blind).toBe(
+      true,
+    );
+  });
+
+  it("leaves a path the box says is NOT THERE unmarked — ENOENT is an answer, not a refusal", () => {
+    const facts = pathFactsFrom("/x", throwing("ENOENT", "ENOENT: no such file or directory"));
+    expect(facts.present).toBe(false);
+    expect(facts.blind).toBeUndefined();
+  });
+
+  it("keeps only the permission bits of a mode, dropping the file type", () => {
+    const facts = pathFactsFrom("/x", () => ({ mode: 0o40750, uid: 1001, gid: 1001 }));
+    expect(facts).toMatchObject({ present: true, mode: 0o750, uid: 1001, gid: 1001 });
+  });
+});
 
 describe("permits", () => {
   it("takes the FIRST matching class, as the kernel does — not the union of the three", () => {
@@ -157,6 +196,92 @@ describe("accountReachRefusal", () => {
     });
     expect(said).toContain("does not exist on this box");
     expect(said).toContain("ENOENT");
+  });
+
+  /**
+   * THE MIRROR DEFECT, measured by curator on 2026-09-02 against the box john had just
+   * built by hand: `/home/aco-devops` is `750 aco-devops`, so the target user traverses it
+   * fine, but the SUPERVISOR (`lle`) is refused a `stat` of `/home/aco-devops/.claude` and
+   * `pathFactsOf` reported `present: false`. The door then said "does not exist on this
+   * box" about a directory that exists, is `700`, is owned by the right user and holds a
+   * live `.credentials.json` — this door making exactly the mistake it was written to end,
+   * one layer up: naming the wrong layer, and naming a repair already done.
+   */
+  const blind = (path: string): PathFacts => ({
+    path,
+    present: false,
+    blind: true,
+    detail: `EACCES: permission denied, stat '${path}'`,
+  });
+
+  it("SAYS NOTHING when the supervisor is merely blind to the directory and the way in is open", () => {
+    expect(
+      accountReachRefusal({
+        role: ROLE,
+        as: SUDO,
+        account: { id: "devops-main", configDir: "/home/aco-devops/.claude" },
+        reach: {
+          user: "aco-devops",
+          identity: THEM,
+          // The way in is judged on facts the box DID give: `/home` traverses for everyone,
+          // `/home/aco-devops` is the target user's own at 0750 — `x` for the owner.
+          ancestors: [
+            dir({ path: "/home" }),
+            dir({ path: "/home/aco-devops", mode: 0o750, uid: 1001, gid: 1001 }),
+          ],
+          dir: blind("/home/aco-devops/.claude"),
+        },
+      }),
+    ).toBeUndefined();
+  });
+
+  it("still names the ANCESTOR when the leaf is blind — blindness excuses nothing above it", () => {
+    // The control case: leaf unstatable, but an ancestor the box DID speak about denies the
+    // target user its `x`. That is a fact, so it is a refusal — and it must read as
+    // traversal, never as absence, or the operator goes looking for a missing directory.
+    const said = accountReachRefusal({
+      role: ROLE,
+      as: SUDO,
+      account: ACCOUNT,
+      reach: {
+        user: "aco-devops",
+        identity: THEM,
+        ancestors: [dir({ path: "/home" }), dir({ path: "/home/lle", mode: 0o700, uid: 1000 })],
+        dir: blind(ACCOUNT.configDir),
+      },
+    });
+    expect(said).toContain("cannot traverse");
+    expect(said).toContain("/home/lle");
+    expect(said).not.toContain("does not exist");
+  });
+
+  it("does not read a blind ANCESTOR as a wall — no bits is not the same as no permission", () => {
+    // `permits` answers `false` about every path it has no bits for, so an ancestor this
+    // process cannot stat would otherwise be reported as one the target user cannot pass.
+    expect(
+      accountReachRefusal({
+        role: ROLE,
+        as: SUDO,
+        account: ACCOUNT,
+        reach: { ...reachable, ancestors: [dir({ path: "/home" }), blind("/home/aco-devops")] },
+      }),
+    ).toBeUndefined();
+  });
+
+  it("keeps saying 'does not exist' when the box ANSWERED that it does not — ENOENT is not blindness", () => {
+    // Guarding the fix against overshooting: only `EACCES`/`EPERM` sets `blind`, and a
+    // genuinely missing directory must keep the refusal it had.
+    expect(
+      accountReachRefusal({
+        role: ROLE,
+        as: SUDO,
+        account: ACCOUNT,
+        reach: {
+          ...reachable,
+          dir: { path: ACCOUNT.configDir, present: false, detail: "ENOENT: no such file" },
+        },
+      }),
+    ).toContain("does not exist on this box");
   });
 
   it("refuses when the box cannot say who the user is — no uid, nothing to judge", () => {

@@ -35,6 +35,16 @@ export type PathFacts = {
   readonly path: string;
   /** `false` when the path does not exist, or when `stat` refused to speak about it. */
   readonly present: boolean;
+  /**
+   * `true` when the box REFUSED THE SUPERVISOR AN ANSWER about this path (`EACCES`/`EPERM`)
+   * rather than saying it is not there. The distinction is the whole point of this field:
+   * `present: false` then means "this process is blind here", not "absent", and a door that
+   * reads the first as the second refuses a correctly built box. `/home/aco-devops/.claude`
+   * at `700 aco-devops` is exactly what `docs/box-setup.md` §0.1a asks for, and the daemon
+   * running as `lle` cannot `stat` it BY CONSTRUCTION — the blindness is evidence FOR the
+   * setup, not against it.
+   */
+  readonly blind?: boolean;
   /** Permission bits (`mode & 0o7777`), when the path is present. */
   readonly mode?: number;
   readonly uid?: number;
@@ -75,6 +85,38 @@ export type AccountReach = {
    * that actually blocks, or the operator repairs the wrong one.
    */
   readonly ancestors: readonly PathFacts[];
+};
+
+/** What this module needs of a `stat` — the three numbers, and nothing about `fs`. */
+export type StatLike = {
+  readonly mode: number;
+  readonly uid: number;
+  readonly gid: number;
+};
+
+/**
+ * ONE PATH, ASKED OF THE BOX — and the half where the mirror defect actually lived. The
+ * caller passes `statSync`; the mapping from what the box threw to what the door reads is
+ * here, where it can be asserted without a filesystem.
+ *
+ * THE WHOLE RULE IS IN THE `catch`: `EACCES`/`EPERM` means THIS PROCESS may not look, and
+ * `ENOENT` means the path is not there. Reporting both as `present: false` and nothing
+ * else made the door announce "does not exist on this box" about a `700` directory owned
+ * by the role's own user — the shape `docs/box-setup.md` §0.1a asks for.
+ */
+export const pathFactsFrom = (path: string, stat: (path: string) => StatLike): PathFacts => {
+  try {
+    const facts = stat(path);
+    return { path, present: true, mode: facts.mode & 0o7777, uid: facts.uid, gid: facts.gid };
+  } catch (error) {
+    const code = (error as { readonly code?: string }).code;
+    return {
+      path,
+      present: false,
+      ...(code === "EACCES" || code === "EPERM" ? { blind: true } : {}),
+      detail: (error as Error).message,
+    };
+  }
 };
 
 const READ = 0o4;
@@ -167,12 +209,26 @@ export const accountReachRefusal = (input: {
       `and this box cannot say who '${input.reach.user}' is — ${input.reach.identityDetail ?? "no passwd entry"}; with no uid there is nothing to judge the directory's bits against`,
     );
   }
-  const blocked = ancestors.find((facts) => !permits(facts, identity, EXEC));
+  // ONLY PATHS THE BOX ACTUALLY SPOKE ABOUT ARE JUDGED. A blind path carries no bits, and
+  // `permits` says `false` about everything it has no bits for — so judging one would turn
+  // "this process may not look" into "this user may not pass", which is the same mistake in
+  // the same door, one layer up.
+  const blocked = ancestors.find((facts) => !facts.blind && !permits(facts, identity, EXEC));
   if (blocked !== undefined) {
     return said(
       `which that user cannot traverse: '${blocked.path}' is ${blocked.present ? `${describePath(blocked)} — no 'x' for this user` : `absent or unreadable${blocked.detail === undefined ? "" : ` (${blocked.detail})`}`}`,
     );
   }
+  // THE DIRECTORY THIS PROCESS IS NOT ALLOWED TO SEE — silence, and the launch proceeds as
+  // it did before this module existed. It is the one branch where the door has NO FACT: the
+  // bits exist, the supervisor is simply not permitted to read them, and every ancestor it
+  // COULD read grants the target user its `x`. Refusing here would have refused the box
+  // john built by hand this very day (`/home/aco-devops/.claude`, `700 aco-devops`, logged
+  // in under that user) with the words "does not exist on this box" — the mirror image of
+  // the field case this module was written for, and worse, because it would name a repair
+  // that is already done. The vendor answers for what is inside the directory; this door
+  // answers only for reaching it, and about this one it has nothing to say.
+  if (!dir.present && dir.blind === true) return undefined;
   if (!dir.present) {
     return said(
       `which does not exist on this box${dir.detail === undefined ? "" : ` (${dir.detail})`}`,

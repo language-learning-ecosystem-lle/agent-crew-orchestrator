@@ -130,6 +130,7 @@ import {
   type AccountReach,
   accountReachRefusal,
   type PathFacts,
+  pathFactsFrom,
   type UserIdentity,
 } from "./orchestrator/account-reach.js";
 import {
@@ -8330,15 +8331,13 @@ const userIdentityOf = (user: string): UserIdentity | { readonly detail: string 
   return { uid: Number(uid), gids: groups.map(Number) };
 };
 
-/** The permission bits of one path as the box has them, or the reason it would not say. */
-const pathFactsOf = (path: string): PathFacts => {
-  try {
-    const facts = statSync(path);
-    return { path, present: true, mode: facts.mode & 0o7777, uid: facts.uid, gid: facts.gid };
-  } catch (error) {
-    return { path, present: false, detail: (error as Error).message };
-  }
-};
+/**
+ * The permission bits of one path as the box has them, or the reason it would not say.
+ * The mapping itself lives beside the door ({@link pathFactsFrom}) — this line is only the
+ * `fs` it is given, so that "the box refused ME an answer" and "the box says it is not
+ * there" can be told apart under test.
+ */
+const pathFactsOf = (path: string): PathFacts => pathFactsFrom(path, statSync);
 
 /**
  * ASKING THE BOX WHETHER THE TARGET USER CAN REACH THE ACCOUNT DIRECTORY (thread 047,
