@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:29:59.194Z",
+  "writtenAt": "2026-09-02T18:30:09.177Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "073-notifiers-frozen-in-own-contour",
       "state": "running",
       "deadline": "2026-09-02T19:29:46Z"
-    },
-    {
-      "role": "devops",
-      "thread": "070-session-tmpdir-breaks-tests",
-      "state": "running",
-      "deadline": "2026-09-02T18:49:53Z"
     }
   ]
 }
