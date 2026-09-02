@@ -191,7 +191,7 @@
           "kind": "claude-code",
           "model": "claude-sonnet-5"
         },
-        "account": "lle-second"
+        "account": "devops-main"
       },
       "capabilities": [
         {
