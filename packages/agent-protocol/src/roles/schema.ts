@@ -5,7 +5,7 @@
  * it by eye and by bash scripts: the list of known roles was cut out of a
  * markdown table with awk, the set of notified roles was hardcoded as
  * `NOTIFY_ROLES="john curator"`, the tmux session name was assembled from the
- * template `lle-<role>`, and "who to poke so that curator wakes up" was written
+ * template `acme-<role>`, and "who to poke so that curator wakes up" was written
  * down nowhere at all — it lived in a comment inside the notifier's awk program.
  *
  * WHAT EXACTLY BECAME DATA AND WHY. The schema holds exactly what today DERIVES
@@ -171,7 +171,7 @@ export const zonesSchema = z.strictObject({
  * of permissions in the contract at all: S1 was built around "whom and with which
  * prompt".
  *
- * WHY PER-ROLE: role permissions will diverge (dev-speech has its own zone), and
+ * WHY PER-ROLE: role permissions will diverge (dev-acme has its own zone), and
  * they must be read from the role card, not from the launcher's code.
  *
  * THE BOUNDARY IS NOT HERE, and one has to know that in order not to mistake this

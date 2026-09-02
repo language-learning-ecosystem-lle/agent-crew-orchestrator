@@ -83,6 +83,22 @@ export type ObserveStep =
   | null;
 
 /**
+ * WHAT THE MAIL SAYS ABOUT THIS RUN'S TURN. Two facts, not one, and the second exists
+ * because the first was measured lying (thread 063, 2026-08-30, curator × 063).
+ */
+export type HandoffReading = {
+  /** The turn was passed BY THE ROLE — the only thing that may close a run as `completed`. */
+  readonly handedOff: boolean;
+  /**
+   * THE TURN WAS TAKEN, NOT PASSED: the thread no longer awaits the role, and the role
+   * has not written a line into it since the lease was taken. Somebody else's message
+   * moved `waiting-on` away — the notifier of a merged pull request, a reviewer's
+   * verdict, a second role writing into the same thread (thread 058).
+   */
+  readonly turnTaken: boolean;
+};
+
+/**
  * Whether the turn has passed — by THE STATE OF THE MAIL. A separate function
  * rather than an expression in the shell for exactly one reason: this is the most
  * dangerous branch of broken-thread isolation, and it needs a test of its own
@@ -96,6 +112,23 @@ export type ObserveStep =
  * broken mail file would quietly forge the acceptance result. Hence unreadability
  * of OUR OWN thread is uncertainty: we keep observing, and the deadline sets the
  * limit.
+ *
+ * AND THE THREAD LEAVING THE LIST IS NOT THE ROLE'S DOING EITHER — measured, not
+ * supposed (thread 063). On 2026-08-30 the pair `curator × 063` was raised at 22:00:44Z
+ * by an ordinary mail turn (the reviewer's approve of 22:00:15Z carried
+ * `waiting-on: curator`); at 22:01:44Z the `github` notifier wrote the merge of PR #161
+ * into the SAME thread with `waiting-on: dev-core`, and 33 seconds later the observer
+ * recorded `handoff-detected` — while the curator had not written a line since 17:27:46Z.
+ * The frame then said about that pair "working on — already reported, turn passed", which
+ * was false, and had the session died in the next minute the run would have closed as
+ * `completed`: the same forged acceptance the unreadable-thread branch above exists to
+ * prevent, arriving through the other door.
+ *
+ * So the turn passing is TWO facts and not one: the thread stopped awaiting the role AND
+ * the role spoke in it during this lease. `spoke === undefined` means nobody could tell
+ * (the role's own last message could not be read at the raise) — there the old reading
+ * stands unchanged, because holding a run open on an unknown would swap a rare false
+ * `completed` for a routine false `timeout`.
  */
 export const handoffDetected = (input: {
   /** The thread the lease was taken for did not parse during this walk. */
@@ -104,7 +137,20 @@ export const handoffDetected = (input: {
   readonly waitingThreads: readonly string[];
   /** The thread the lease was taken for. */
   readonly thread: string;
-}): boolean => !input.threadUnreadable && !input.waitingThreads.includes(input.thread);
+  /**
+   * HAS THE ROLE WRITTEN INTO THE THREAD SINCE THE LEASE WAS TAKEN — the role's own
+   * newest message compared with the one the raise recorded (`world.mine`, R18).
+   * `undefined` when that mark does not exist: see the note above on why it keeps the
+   * old reading rather than inventing a safer-sounding one.
+   */
+  readonly spoke?: boolean;
+}): HandoffReading => {
+  const released = !input.threadUnreadable && !input.waitingThreads.includes(input.thread);
+  return {
+    handedOff: released && input.spoke !== false,
+    turnTaken: released && input.spoke === false,
+  };
+};
 
 export const observeStep = (lifecycle: Lifecycle, signals: ObserveSignals): ObserveStep => {
   // THE PARKED RUN (R19). Its own branch, first, because none of the three judgements

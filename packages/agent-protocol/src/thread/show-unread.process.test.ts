@@ -1,6 +1,6 @@
 /**
  * THE SEAM OF B.1 (thread `058-concurrent-writers-one-thread`): the reading COMMAND, on a
- * thread two roles wrote into within a minute — the shape of LLE thread 110 on 2026-08-30.
+ * thread two roles wrote into within a minute — the shape of a consumer's thread on 2026-08-30.
  *
  * A unit on {@link unreadFor} cannot hold this: what failed in the field was a session
  * TYPING A COMMAND and believing its output, and the two halves that matter — the count
@@ -34,7 +34,7 @@ const CONFIG = {
       summary: "the stream",
     },
     {
-      id: "dev-speech",
+      id: "dev-acme",
       kind: "claude-code",
       status: "active",
       wake: { mode: "watch", session: "s2" },
@@ -65,14 +65,14 @@ const IDENTITY = {
 };
 
 const META =
-  "---\ntitle: Two writers, one thread\nparticipants: dev-speech, curator, john\nstatus: open\n---\n";
+  "---\ntitle: Two writers, one thread\nparticipants: dev-acme, curator, john\nstatus: open\n---\n";
 
 const letter = (from: string, stamp: string, waitingOn: string, body: string): string =>
   `---\nfrom: ${from}\ndate: ${stamp}\nexpects: answer\nwaiting-on: ${waitingOn}\n---\n\n${body}\n`;
 
 /**
- * The incident, in four letters: dev-speech works, curator asks john a question in her own
- * live session, dev-speech finishes its report into the thread that was frozen while it
+ * The incident, in four letters: dev-acme works, curator asks john a question in her own
+ * live session, dev-acme finishes its report into the thread that was frozen while it
  * wrote. The question is the SECOND-TO-LAST line, and that is the whole point.
  */
 const mailbox = (): { repo: string; root: string } => {
@@ -80,20 +80,20 @@ const mailbox = (): { repo: string; root: string } => {
   execFileSync("git", ["-C", repo, "init", "-q", "-b", "comms"]);
   writeFileSync(join(repo, "agent-protocol.json"), `${JSON.stringify(CONFIG, null, 2)}\n`);
   const root = join(repo, "agent-comms");
-  const dir = join(root, "110-two-writers", "messages");
+  const dir = join(root, "906-two-writers", "messages");
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(root, "110-two-writers", "_meta.md"), META);
+  writeFileSync(join(root, "906-two-writers", "_meta.md"), META);
   writeFileSync(
-    join(dir, "2026-08-30T14-14-43Z-dev-speech.md"),
-    letter("dev-speech", "2026-08-30T14:14:43Z", "curator", "THE HEAD OF THE BRANCH IS READY."),
+    join(dir, "2026-08-30T14-14-43Z-dev-acme.md"),
+    letter("dev-acme", "2026-08-30T14:14:43Z", "curator", "THE HEAD OF THE BRANCH IS READY."),
   );
   writeFileSync(
     join(dir, "2026-08-30T14-24-50Z-curator.md"),
     letter("curator", "2026-08-30T14:24:50Z", "curator", "THE QUESTION FOR JOHN, AND THE PARK."),
   );
   writeFileSync(
-    join(dir, "2026-08-30T14-26-53Z-dev-speech.md"),
-    letter("dev-speech", "2026-08-30T14:26:53Z", "curator", "THE REPORT WRITTEN OVER THE PARK."),
+    join(dir, "2026-08-30T14-26-53Z-dev-acme.md"),
+    letter("dev-acme", "2026-08-30T14:26:53Z", "curator", "THE REPORT WRITTEN OVER THE PARK."),
   );
   execFileSync("git", ["-C", repo, "add", "."]);
   execFileSync("git", [
@@ -128,7 +128,7 @@ const show = (
       "HEAD",
       "--no-fetch",
       "--thread",
-      "110-two-writers",
+      "906-two-writers",
       ...extra,
     ],
     { encoding: "utf8", env: sandbox(configHomeInside(box.repo), IDENTITY) },
@@ -143,20 +143,20 @@ describe("thread show --for — the reading tool counts what is new to the reade
     expect(result.code).toBe(0);
     expect(result.out).toContain("unread for curator: 1 of 3 message(s)");
     expect(result.out).toContain("curator's own letter of 2026-08-30T14:24:50Z");
-    expect(result.out).toContain("written by dev-speech");
+    expect(result.out).toContain("written by dev-acme");
   });
 
   it("reads a role that has never written here as having read nothing here", () => {
     const result = show(mailbox(), ["--for", "john"]);
 
     expect(result.out).toContain("all 3 message(s) — john has not written in this thread yet");
-    expect(result.out).toContain("written by dev-speech, curator");
+    expect(result.out).toContain("written by dev-acme, curator");
   });
 
   it("says the count even when there is nothing new — silence would read as unasked", () => {
-    const result = show(mailbox(), ["--for", "dev-speech"]);
+    const result = show(mailbox(), ["--for", "dev-acme"]);
 
-    expect(result.out).toContain("unread for dev-speech: none");
+    expect(result.out).toContain("unread for dev-acme: none");
   });
 
   /**
@@ -175,7 +175,7 @@ describe("thread show --for — the reading tool counts what is new to the reade
   });
 
   it("leaves a bound WIDER than the unread run exactly as it was asked for", () => {
-    const result = show(mailbox(), ["--for", "dev-speech", "--tail", "1"]);
+    const result = show(mailbox(), ["--for", "dev-acme", "--tail", "1"]);
 
     expect(result.out).not.toContain("was widened");
     expect(result.out).toContain("2 earlier ones are NOT shown");

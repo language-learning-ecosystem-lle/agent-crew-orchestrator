@@ -342,7 +342,7 @@ export type MessageFields = {
    * thing you are waiting for happen?".
    *
    * THE DEFECT IT ANSWERS is a park waiting for an event that CANNOT HAPPEN while the park
-   * stands. Measured live: `dev-speech` parked on `pr:451` — the merge of its own PR — but that
+   * stands. Measured live: `dev-acme` parked on `pr:451` — the merge of its own PR — but that
    * merge needs the curator of the same thread to label and judge it first, and a parked thread
    * raises nobody. The event was behind a door the park itself had locked. It was caught in 32
    * seconds by the author reading the door's note, which is exactly the защита that holds only
@@ -384,7 +384,7 @@ export type MessageFields = {
    * them out of the header already. The third, the reviewer's verdict, was unreadable there: by
    * the header it is a letter of a role with `expects: answer` and `waiting-on: curator`,
    * indistinguishable from any report, and its `verdict:`/`pr:` lines ride in the BODY, which the
-   * R27 net is forbidden to parse (norm 020). The cost was measured in LLE on 2026-08-28,
+   * R27 net is forbidden to parse (norm 020). The cost was measured at a consumer on 2026-08-28,
    * 17:40→17:59Z: the verdict landed in a thread parked six minutes earlier and was eaten.
    *
    * So the same two lines are raised into the header, and the SIGN IS THE DECLARATION rather

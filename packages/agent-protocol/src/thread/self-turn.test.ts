@@ -10,7 +10,7 @@ import { judgeSelfTurn } from "./self-turn.js";
 
 describe("judgeSelfTurn — a turn named as one's own, with nothing said about the wait", () => {
   it("REFUSES 'expects: ack' + a self-named turn, and names the exit that repairs it", () => {
-    // The live header of `010-speech-service` on 2026-08-21, replayed: `expects: ack`,
+    // The live header of a consumer's thread on 2026-08-21, replayed: `expects: ack`,
     // `waiting-on: curator` from curator, no `parked-on`. Six of them, then `exhausted`.
     const verdict = judgeSelfTurn({ from: "curator", waitingOn: "curator", expects: "ack" });
 

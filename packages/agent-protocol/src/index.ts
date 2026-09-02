@@ -281,6 +281,7 @@ export {
 } from "./thread/check.js";
 export {
   type IndexReading,
+  modeParks,
   parkedThreads,
   renderIndex,
   threadsWaitingOn,

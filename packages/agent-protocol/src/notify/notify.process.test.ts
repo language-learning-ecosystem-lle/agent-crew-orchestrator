@@ -544,7 +544,7 @@ describe("notify as a command", () => {
     // The defect end to end, through the real command: a park is lifted by anybody's later
     // move, the raised role finds its question unanswered and writes it out again, and every
     // repeat used to be a second call on a human's phone. Two about aco-028 and two about
-    // LLE-102 on 2026-08-21/22, one question each.
+    // acme-102 on 2026-08-21/22, one question each.
     const contest = contour({ stalledAfter: 10_000_000 });
     contest.park("023-x", { asks: true });
     contest.commit();
@@ -1031,9 +1031,9 @@ describe("a turn this box never took — notify against the journal (thread 042)
     // `0 parked`, and what is left is the plain untaken turn the box owes a raise.
     const contest = contour({});
     raiseable(contest);
-    contest.park("010-speech", { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "curator" });
+    contest.park("902-acme", { asks: true, date: "2026-07-25T19:58:00Z", waitingOn: "curator" });
     writeFileSync(
-      join(contest.root, "010-speech", "messages", "2026-07-25T20-00-00Z-curator.md"),
+      join(contest.root, "902-acme", "messages", "2026-07-25T20-00-00Z-curator.md"),
       `---\nfrom: curator\nworker: human\ndate: 2026-07-25T20:00:00Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nДержи ход.\n`,
     );
     box(contest, []);
@@ -1041,7 +1041,7 @@ describe("a turn this box never took — notify against the journal (thread 042)
 
     const result = run(contest);
 
-    expect(result.out).toContain("dev-core×010-speech");
+    expect(result.out).toContain("dev-core×902-acme");
     expect(result.out).toContain("0 parked, 0 of them asking, 0 of those new");
     // AND THE SENTENCES OF THE FREEZE ARE ABSENT, both of them: the pair is not behind a park,
     // and the courier's strap for a park it merely inherited has nothing to fire on here.

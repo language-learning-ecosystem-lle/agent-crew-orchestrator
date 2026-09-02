@@ -35,6 +35,7 @@ import { waitFor } from "../testing/wait-for.js";
 import { parseJournal } from "./journal.js";
 import { foldLeases } from "./lease.js";
 import { openQuotaShelves } from "./quota.js";
+import { runTmpAliasPath } from "./run-tmp.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -1550,11 +1551,17 @@ describe("a session that asks and waits alive (R19)", () => {
     const sessions = join(repo, ".orchestrator", "sessions");
     const logName = readdirSync(sessions).find((name) => name.endsWith(".log")) as string;
     const own = join(sessions, logName.replace(/\.log$/, ".tmp"));
-    // The variable the whole world already reads names THIS run's directory…
-    expect(readFileSync(envDump, "utf8")).toBe(own);
-    expect(readFileSync(envDump, "utf8")).not.toBe(tmpdir());
+    // The variable the whole world already reads names THIS run's directory — either
+    // directly, or, since thread `070`, through the short symlink a run gets when its own
+    // name is too long for a unix socket to be opened under it. Both are accepted here on
+    // purpose: which of the two a box gets depends on how deep the checkout sits, and WHICH
+    // string is handed over is the subject of `run-tmp.process.test.ts`. What `056` claims
+    // is where the writes LAND, and that is asserted below, from the sweep.
+    const handed = readFileSync(envDump, "utf8");
+    expect([own, runTmpAliasPath(own)]).toContain(handed);
+    expect(handed).not.toBe(tmpdir());
     // …so a `mktemp -d` that names no destination lands inside it by construction.
-    expect(readFileSync(madeDump, "utf8").startsWith(`${own}/`)).toBe(true);
+    expect(readFileSync(madeDump, "utf8").startsWith(`${handed}/`)).toBe(true);
     // AND THE RUN DOES NOT LEAVE IT LYING ABOUT: swept at the close of the session, with
     // what was in it named first — the measurable half. A run that left nothing says
     // nothing, so this line in a log always means something was left.
