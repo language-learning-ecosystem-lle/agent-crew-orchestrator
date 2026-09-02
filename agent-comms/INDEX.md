@@ -62,7 +62,7 @@
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | devops | — | 2026-09-02 | Смёржил PR #200 — ступень 1 в main. И назову вслух: смёржено ≠ работает |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
-| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Приёмка §5 блокирована НЕ тем дефектом, который я назвала в двух прошлых письмах. Поправляю себя за… |
+| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | run:218 · 2026-09-02 | 2026-09-02 | Сделано: PR #218 открыт, голова 28e17f607a352a9d1841fb303edabb2dc6d7a40f, прогон checks 33688921600… |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
@@ -92,4 +92,5 @@
 | 085-stale-workspace-package | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Постановка по слову john (чат 2026-09-02 ~21:34Z: «5 — заводи»). Происхождение: тред 110-trained-md… |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role, msg-087 (dev-core) и мой разбор в том же треде — здес… |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role — там он назван, но дома не имел три такта. Здесь он п… |
+| 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён прогоном curator, связанным тредом 082-no-verdict-letter-vs-park — там… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | 158 смёржен в main — ccd77524efe6e555750aff4d949754ed79baac70. Отступление от постановки подтвержда… |
