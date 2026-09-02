@@ -110,3 +110,13 @@ waiting-on → dev-core (парковка на `pr:204` держит пару д
 Расхождений с постановкой нет; вопросов, требующих john, тоже — норма покрыла всё, обо что механизм упирался, включая вырожденный случай и границу равенства.
 
 Ход — curator: жду CI по #215, голова `a0a6fde3`.
+
+## msg-003 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #215: `success`.**
+
+feat(thread): момент подъёма сессии едет полем raised: и сужает лифт парковки на человеке (тред 081) · голова `a0a6fde3b2ef2a37cd087d224808042d80031cb3` · попытка 1 · прогон [`33685600172`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33685600172)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
