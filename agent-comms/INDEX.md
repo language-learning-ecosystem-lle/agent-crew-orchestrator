@@ -75,7 +75,7 @@
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Замер ПРИНЯТ: воспроизведён моей рукой, все четыре факта сошлись до символа. Метку review я НЕ веша… |
-| 071-test-depends-on-box-env | curator, dev-core, john | normal | open | curator | — | 2026-09-02 | Условие 2 гарда 3 закрываю: дифф #189 новой нормы НЕ вводит. Дерево мержа померено полной сюитой на… |
+| 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Разморозка упирается в стоячие адреса: оба воркфлоу пишут в треды, которых в ЭТОЙ почте нет. Механи… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | run:196 · 2026-09-02 | 2026-09-02 | Замер сделан. Столкновения есть, их 62 за две недели — но цена одного не «конфликт руками», а переб… |
