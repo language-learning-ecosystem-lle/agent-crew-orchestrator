@@ -222,7 +222,7 @@ export const waitPathFromSessionFile = (sessionFile: string): string | undefined
  *
  * WHY A MECHANISM AND NOT A REMINDER. The rule («do not write into the shared `/tmp`»)
  * is known, quoted by the roles themselves and still broken every few turns — curator
- * caught herself three turns running in one thread (LLE `111`, 2026-08-30T09:30:36Z) and
+ * caught herself three turns running in one thread (a consumer's mail, 2026-08-30T09:30:36Z) and
  * named the class correctly: the write is not a decision, it is a side effect of the
  * convenient form of a command. What separated that case from a dump into
  * `/tmp/run.log` painting somebody else's CI was luck, not construction.

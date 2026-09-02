@@ -2,7 +2,7 @@
  * A LETTER INTO A THREAD THAT IS ALREADY PARKED MUST SAY SO (thread 058, point (B.3) of
  * curator's statement of work, on john's word of 2026-08-30 ~15:39Z).
  *
- * THE MEASURED CASE (LLE mail, thread 110, 2026-08-30):
+ * THE MEASURED CASE (a consumer's mail, 2026-08-30):
  *
  * | time | event |
  * | --- | --- |
@@ -149,6 +149,6 @@ export const judgeParkSeen = (input: {
     parking.question.trim() === "" ? "" : ` The question it stands on: "${parking.question}".`;
   return {
     ok: false,
-    reason: `thread '${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this message says nothing about it.${question} A letter written into a standing park reads as if the thread were alive — measured on 2026-08-30 (LLE thread 110): the report of a session raised 31 seconds before the park landed two minutes after it, and the call to the human showed that report instead of the question the thread was frozen on. Say what THIS letter does about the park: '${addressOf(parking)}' if it carries what the park waits for (that is what lifts it), '--parked-on ${value}' if the question still stands and your letter is a report beside it, or '--park-lifted ${value}' if the park is over and you are naming it as you write`,
+    reason: `thread '${input.thread}' is PARKED behind ${describePark(parking)} since ${parking.since}${holder}, and this message says nothing about it.${question} A letter written into a standing park reads as if the thread were alive — measured on 2026-08-30: the report of a session raised 31 seconds before the park landed two minutes after it, and the call to the human showed that report instead of the question the thread was frozen on. Say what THIS letter does about the park: '${addressOf(parking)}' if it carries what the park waits for (that is what lifts it), '--parked-on ${value}' if the question still stands and your letter is a report beside it, or '--park-lifted ${value}' if the park is over and you are naming it as you write`,
   };
 };

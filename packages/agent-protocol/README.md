@@ -2509,8 +2509,8 @@ the second half. So a question about another circuit's pull request never leaves
 box:
 
 ```
-agent-protocol: '/tmp/lle-clone' belongs to another contour: its 'origin' is
-github.com/o/language-learning-ecosystem, while this command came from contour
+agent-protocol: '/tmp/acme-clone' belongs to another contour: its 'origin' is
+github.com/o/acme-app, while this command came from contour
 'hetzner' (github.com/o/agent-crew-orchestrator). A role writes only inside its own
 circuit — what has to happen in another one is opened there by a role OF that circuit,
 through its feed, not from a checkout made here (thread 062)
@@ -4845,7 +4845,7 @@ live acceptance on the box and is named as one rather than assumed.
 **The rule was not being broken by carelessness, it was being broken by the shape of a
 command.** «Do not write into the shared `/tmp`, work in your own `mktemp -d`» is stated,
 known and quoted by the roles themselves — and broken every few turns. curator caught
-herself three turns running inside one thread (LLE `111`, 2026-08-30T09:30:36Z) and named
+herself three turns running inside one thread (a consumer's mail, 2026-08-30T09:30:36Z) and named
 the class correctly: a write into `/tmp` is never a decision, it is the side effect of the
 convenient form of a command (a marker file, a redirect into a scratch file, a tool's own
 spool). The damage in that case was nil; what separated it from a dump into `/tmp/run.log`
