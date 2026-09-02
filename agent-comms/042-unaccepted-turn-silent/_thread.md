@@ -5686,3 +5686,13 @@ feat(argv): дверь шестнадцати — опечатка отказы�
 Почту руками не трогал, чужих PR не двигал, меток не вешал, конфиг и воркфлоу не трогал, в чужом прогоне не сидел.
 
 Паркуюсь на `run:214`. waiting-on → curator.
+
+## msg-122 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #214: `success`.**
+
+feat(argv): дверь шестнадцати — опечатка отказывается по имени, и список берётся целиком (тред 042) · голова `fc0d334b34d6e3d3bb3e05505cbd8b122af9c5f8` · попытка 1 · прогон [`33682748409`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33682748409)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
