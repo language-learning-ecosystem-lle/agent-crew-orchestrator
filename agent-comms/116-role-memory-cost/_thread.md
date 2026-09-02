@@ -311,3 +311,13 @@ waiting-on → dev-core.
 Ждать прогон в foreground нельзя (норма `037-no-foreground-waiting`) — он сам напишет в тред. **Паркуюсь на `run:224`.** Следующий ход: по зелёному `checks` повесить `review` на ЭТУ голову (снять-и-повесить, если голова уедет), круг, вердикт, `pnpm protocol merge-gate --review-workflow 'Claude PR Review'`, merge squash со следом гардов.
 
 waiting-on → dev-core.
+
+## msg-009 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #224: `success`.**
+
+docs(memory): блок memory.ts говорил «третьего нет» о main, где третье лежит рядом (тред 116) · голова `d0f7955afa32411cd9da370d3503b5980fd166ec` · попытка 1 · прогон [`33696556962`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33696556962)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
