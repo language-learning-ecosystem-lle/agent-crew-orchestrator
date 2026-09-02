@@ -119,6 +119,12 @@ export type OperatorFrame = {
    */
   readonly parked?: ReadonlyMap<string, string>;
   /**
+   * Of those, the ones that ask NOBODY — a park that is a MODE and not a question
+   * (`modeParks`, thread 063). Absent, the frame says what is true of both parks; the two
+   * are told apart only where the fact is actually available, never guessed.
+   */
+  readonly modeParked?: ReadonlySet<string>;
+  /**
    * What was dropped while the queue was being built — unreadable threads, priorities
    * written by roles that may not set them. The daemon says these every tick; a frame
    * that swallowed them would show a queue ordered by a statement nobody honoured and
@@ -219,15 +225,44 @@ export const renderQueue = (
   queue: readonly RankedCandidate[],
   notes: readonly string[] = [],
   parked: ReadonlyMap<string, string> = new Map(),
+  /** Which of those parks ask nobody (`modeParks`, thread 063) — carried, not re-decided. */
+  modeParked: ReadonlySet<string> = new Set(),
+  /** Roles that cannot be raised because they are elsewhere (thread 063) — role → what it is doing. */
+  busy: ReadonlyMap<string, string> = new Map(),
 ): string => {
   const lines = ["queue:"];
   if (queue.length === 0) {
     lines.push("  nobody is waiting on a role this box raises");
   } else {
-    for (const line of describeOrder(queue, parked)) lines.push(`  ${line}`);
+    for (const line of describeOrder(queue, parked, modeParked, busy)) lines.push(`  ${line}`);
   }
   for (const note of notes) lines.push(`  ⚠ ${note}`);
   return lines.join("\n");
+};
+
+/**
+ * WHY A ROLE IN THE QUEUE IS NOT GOING TO BE RAISED — role id → what it is doing instead
+ * (thread 063, §2.3 row 2).
+ *
+ * Two different things read as one row in this frame until it existed: a pair standing because
+ * ITS ROLE IS ELSEWHERE (one session per role — the workspace is one), and a pair standing for
+ * no reason at all. The daemon says the first out loud in a skip line; the operator's frame has
+ * no skip lines, so the two looked identical there — and the second one is a defect while the
+ * first one is the circuit working exactly as designed.
+ *
+ * A LIVE SESSION AND A HOLD ARE NAMED APART, because they are repaired apart: the first ends by
+ * itself, the second ends when a human gives the role back. An ACTIVE hold only — an expired one
+ * is not capacity spent, and `renderHolds` already says so two blocks above.
+ */
+export const busyRoles = (
+  parallelism: Parallelism,
+  holds: readonly HoldView[] = [],
+): ReadonlyMap<string, string> => {
+  const busy = new Map<string, string>();
+  for (const view of parallelism.live) busy.set(view.role, `live on ${view.thread}`);
+  for (const hold of holds)
+    if (hold.active) busy.set(hold.role, `held by a manual session of ${hold.by}`);
+  return busy;
 };
 
 /**
@@ -428,7 +463,17 @@ export const renderFrame = (frame: OperatorFrame): string =>
     // blank line: the gate is `renderMergeReady`'s alone, so the frame and the section
     // cannot disagree about when the tier is news.
     frame.ghOutage === undefined ? undefined : renderMergeReady(frame.ghOutage) || undefined,
-    renderQueue(frame.queue, frame.queueNotes, frame.parked),
+    renderQueue(
+      frame.queue,
+      frame.queueNotes,
+      frame.parked,
+      frame.modeParked,
+      // FROM THE FRAME'S OWN TWO SECTIONS, not from a new field (thread 063, §2.3 row 2): the
+      // live pairs and the holds are already here, printed two blocks above, and a queue row
+      // that promised a launch the box cannot make was the one reading that contradicted them.
+      // Computed here rather than by the caller so the three sections cannot disagree.
+      busyRoles(frame.parallelism, frame.holds),
+    ),
     // Beside the queue, because it is the same question answered for the pairs that are
     // NOT in it: `renderResidentWaits` returns nothing when the project has no resident
     // roles, and that undefined is dropped rather than printed as a blank section.
