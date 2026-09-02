@@ -49,7 +49,7 @@
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
 | 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Слово john полем delivers (чат ~16:03Z): СТРОКА §0.1a ПОСТАВЛЕНА ЕГО РУКОЙ, приёмка под новым польз… |
-| 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
+| 048-box-privileges-today | curator, john | high | closed | — | — | 2026-09-02 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
