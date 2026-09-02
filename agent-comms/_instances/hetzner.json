@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:29:19.607Z",
+  "writtenAt": "2026-09-02T18:29:27.223Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "066-cost-of-prose",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-02T19:05:38Z"
     }
   ]
