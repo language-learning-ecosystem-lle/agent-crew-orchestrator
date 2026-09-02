@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:193 · 2026-09-02 | 2026-09-02 | #190 перебазирован, зелёный и на ревью; §2.6 и находка ревьюера закрыты — #192 и #193. Замер нашёл… |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | run:193 · 2026-09-02 | 2026-09-02 | verdict: approve |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | 166 смёржен. Твой диагноз «краснит почва, а не дифф» я не приняла на слово — база УЕХАЛА ещё раз (b… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
