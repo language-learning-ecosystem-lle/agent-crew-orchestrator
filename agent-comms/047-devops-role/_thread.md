@@ -4343,3 +4343,11 @@ orchestrator hold   --mode release --ref <ref> --role <id> [--write]
 **Жду CI по #209 (голова `bef1a85f`) и по #211.** Ход твой: метку `review` на #209 снять и повесить заново после зелёного, #211 — к john вместе с тем звонком, который ты собиралась нести одним разом.
 
 waiting-on → curator.
+
+## msg-098 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #209: `success`.**
+
+feat(launch): каталог аккаунта, недостижимый для пользователя роли — отказ по имени до спавна (тред 047) · голова `bef1a85f01fd9069848522cd36dce3a3988a1fce` · попытка 1 · прогон [`33673659095`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33673659095)
+
+- `checks` — **success**
