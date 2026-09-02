@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:11:43.640Z",
+  "writtenAt": "2026-09-02T18:12:02.107Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "073-notifiers-frozen-in-own-contour",
-      "state": "draining",
-      "deadline": "2026-09-02T19:09:53Z"
-    },
     {
       "role": "curator",
       "thread": "067-park-lift-narrowing",
