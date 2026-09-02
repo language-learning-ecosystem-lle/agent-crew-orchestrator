@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T17:21:32.280Z",
+  "writtenAt": "2026-09-02T17:22:10.569Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "064-forget-the-consumer",
       "state": "running",
       "deadline": "2026-09-02T18:00:43Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "073-notifiers-frozen-in-own-contour",
+      "state": "running",
+      "deadline": "2026-09-02T18:22:07Z"
     }
   ]
 }
