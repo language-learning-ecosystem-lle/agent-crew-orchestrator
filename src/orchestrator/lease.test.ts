@@ -257,12 +257,12 @@ describe("foldLeases — several pairs", () => {
     const views = foldLeases(
       [
         acquire("dev-core", "t1", FUTURE),
-        acquire("dev-speech", "t2", PAST),
-        release("dev-speech", "t2", "timeout"),
+        acquire("dev-acme", "t2", PAST),
+        release("dev-acme", "t2", "timeout"),
       ],
       NOW,
     );
-    expect(views.map((v) => `${v.role}/${v.thread}`)).toEqual(["dev-core/t1", "dev-speech/t2"]);
+    expect(views.map((v) => `${v.role}/${v.thread}`)).toEqual(["dev-core/t1", "dev-acme/t2"]);
     expect(views[0]).toMatchObject({ state: "running", overdue: false });
     expect(views[1]).toMatchObject({ state: "released", launchable: true });
   });

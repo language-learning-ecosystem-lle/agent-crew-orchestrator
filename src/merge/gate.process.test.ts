@@ -1115,7 +1115,8 @@ describe("merge-gate refuses a tree of another contour", () => {
    * RARE way to call this command: `REVIEWER.md` itself writes `merge-gate --ref
    * origin/main --pr <n>` and nothing else, so the tree is the caller's own. While the
    * ground was judged only inside the `--repo` branch, a session standing in a checkout
-   * no contour of the box claims — the shape of #453/#454 — asked nothing, reached `gh`
+   * no contour of the box claims — the shape of the leak of 2026-08-30 — asked nothing,
+   * reached `gh`
    * and got a verdict about another circuit's pull request. The stub again answers a
    * perfectly mergeable PR, so a door that does not fire here exits 0.
    */

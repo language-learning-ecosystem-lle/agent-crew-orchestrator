@@ -21,7 +21,7 @@ import {
   waitingOnOf,
 } from "./thread.js";
 
-const ROLES = ["john", "curator", "dev-core", "dev-speech", "reviewer-pr", "github"];
+const ROLES = ["john", "curator", "dev-core", "dev-acme", "reviewer-pr", "github"];
 
 // A cast of a live thread: two sections, a waiting declaration written as prose
 // with an arrow, a historical heading tail and prose containing the word
@@ -96,7 +96,7 @@ describe("declaredWaitingOn", () => {
 
   it("does not lose a role because of a parenthesised explanation", () => {
     // Thread 011: the hypothesis "parentheses eat the next role" was checked by fact.
-    expect(declaredWaitingOn("waiting-on → dev-speech (stage 1), john", ROLES)).toBe("dev-speech");
+    expect(declaredWaitingOn("waiting-on → dev-acme (stage 1), john", ROLES)).toBe("dev-acme");
   });
 
   it("cuts at the last waiting-on word, not at the first arrow in the line", () => {
@@ -458,8 +458,8 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     text,
   });
   const thread = (...messages: readonly Message[]): Thread => ({
-    id: "010-speech-service",
-    meta: { title: "t", participants: ["curator", "dev-speech", "github", "john"], status: "open" },
+    id: "901-acme-service",
+    meta: { title: "t", participants: ["curator", "dev-acme", "github", "john"], status: "open" },
     messages: [...messages],
   });
   // `12-11-29Z-curator.md`: the park declared ON CURATOR'S OWN TURN — the header the whole norm
@@ -472,14 +472,14 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
 
   it("THE 4 h 16 m OF a consumer: the turn moved to another role, so the park covers nobody", () => {
     // 2026-08-28, the case the norm was written on. Two letters after the park the turn stood on
-    // `dev-speech`, a role waiting for nothing from john — and the daemon printed
+    // `dev-acme`, a role waiting for nothing from john — and the daemon printed
     // `⏸ PARKED behind a decision of john (R27)` 201 times, a true sentence about the thread and
     // a false one about the pair. Between `lease-released 12:13:54Z` and `lease-acquired
     // 16:29:49Z` the journal has not one line.
     const feed = thread(
       declared,
-      message("2026-08-28T12:13:16Z", { from: "dev-speech", waitingOn: "curator" }),
-      message("2026-08-28T12:14:09Z", { from: "github", expects: "none", waitingOn: "dev-speech" }),
+      message("2026-08-28T12:13:16Z", { from: "dev-acme", waitingOn: "curator" }),
+      message("2026-08-28T12:14:09Z", { from: "github", expects: "none", waitingOn: "dev-acme" }),
     );
     expect(parkedOnOf(feed)).toBeUndefined();
   });
@@ -592,8 +592,8 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     // and a later handover back to the same role starts a new one, which inherits no freeze.
     const feed = thread(
       declared,
-      message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-speech" }),
-      message("2026-08-28T12:30:00Z", { from: "dev-speech", waitingOn: "curator" }),
+      message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-acme" }),
+      message("2026-08-28T12:30:00Z", { from: "dev-acme", waitingOn: "curator" }),
     );
     expect(parkedOnOf(feed)).toBeUndefined();
   });
@@ -601,12 +601,12 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
   it("'delivers' STILL LIFTS IT WHOLE — the word of the person outranks whose turn it is", () => {
     const feed = thread(
       declared,
-      message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-speech" }),
+      message("2026-08-28T12:13:16Z", { from: "curator", waitingOn: "dev-acme" }),
       message("2026-08-28T12:30:00Z", {
         from: "curator",
         expects: "none",
         delivers: "john",
-        waitingOn: "dev-speech",
+        waitingOn: "dev-acme",
       }),
     );
     expect(parkedOnOf(feed)).toBeUndefined();
@@ -619,8 +619,8 @@ describe("parkedOnOf — a park on a person is a park ON A TURN (thread 042)", (
     // the day this ships, so they behave exactly as they did before 042.
     const feed = thread(
       message("2026-08-28T12:11:29Z", { from: "curator", expects: "none", parkedOn: "john" }),
-      message("2026-08-28T12:13:16Z", { from: "dev-speech", waitingOn: "curator" }),
-      message("2026-08-28T12:14:09Z", { from: "github", expects: "none", waitingOn: "dev-speech" }),
+      message("2026-08-28T12:13:16Z", { from: "dev-acme", waitingOn: "curator" }),
+      message("2026-08-28T12:14:09Z", { from: "github", expects: "none", waitingOn: "dev-acme" }),
     );
     expect(parkedOnOf(feed)).toBe("john");
   });

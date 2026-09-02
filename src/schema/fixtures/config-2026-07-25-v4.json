@@ -49,10 +49,10 @@
       }
     },
     {
-      "id": "dev-speech",
+      "id": "dev-acme",
       "kind": "claude-code",
       "status": "active",
-      "wake": { "mode": "watch", "session": "acme-dev-speech" },
+      "wake": { "mode": "watch", "session": "acme-dev-acme" },
       "summary": "Поток произношения: apps/pronunciation-service, свои префиксы очередей",
       "zones": { "writes": ["apps/pronunciation-service"], "forbidden": [] }
     },

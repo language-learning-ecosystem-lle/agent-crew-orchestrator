@@ -520,7 +520,7 @@ describe("the registry of held locks", () => {
   it("releasing a path this process never took does nothing — a foreign tree is not ours to unlock", () => {
     const { git, unlocked } = spyGit();
     const locks = createWorkspaceLocks(git);
-    locks.release("/repo/.worktrees/dev-speech");
+    locks.release("/repo/.worktrees/dev-acme");
     expect(unlocked).toEqual([]);
   });
 

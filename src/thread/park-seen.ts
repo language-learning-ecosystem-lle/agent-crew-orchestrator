@@ -6,11 +6,11 @@
  *
  * | time | event |
  * | --- | --- |
- * | `14:24:19Z` | dev-speech is raised by the merge of its PR |
+ * | `14:24:19Z` | dev-acme is raised by the merge of its PR |
  * | `14:24:50Z` | curator, in its own live session, asks john a question and PARKS the thread |
- * | `14:26:53Z` | dev-speech writes its report — into the standing park, saying nothing of it |
+ * | `14:26:53Z` | dev-acme writes its report — into the standing park, saying nothing of it |
  *
- * Nothing here broke a rule: the pair `dev-speech × 110` had its own reason to be raised, and
+ * Nothing here broke a rule: the pair `dev-acme × 110` had its own reason to be raised, and
  * the park is written on the THREAD while the scheduler works on PAIRS. What it cost was paid
  * three times over — john's call showed the last line (a report) instead of the question the
  * thread was frozen on; the curator of the chat built an answer on that last line and spent

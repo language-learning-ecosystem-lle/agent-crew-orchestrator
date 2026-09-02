@@ -443,7 +443,7 @@ export type Parking = {
    * (role × thread) and the park is written on the THREAD, so when the turn moves on to another
    * role the park stays where it was and the new pair inherits a freeze declared about somebody
    * else. Measured on 2026-08-28: a park declared on curator's turn (`12-11-29Z`) stood over the
-   * pair `dev-speech×010-speech-service`, whose turn arrived two letters later and had nothing
+   * next pair of the same thread, whose turn arrived two letters later and had nothing
    * to do with the decision — 4 h 16 m of silence, and the daemon printed `PARKED behind a
    * decision of john` at every tick, a true sentence about the thread and a false one about the
    * pair.
@@ -797,7 +797,7 @@ const standingParkOf = (thread: Thread): number | undefined => {
         // 2026-08-29, `PROTOCOL.md`): a later message naming somebody ELSE in `waiting-on` ended
         // the turn the park was declared on, and the pair that holds the thread now is not
         // waiting for a human — it is waiting to be raised. Measured at a consumer on 2026-08-28: a
-        // park declared on curator's turn stood over `dev-speech×010-speech-service` for
+        // park declared on curator's turn stood over the next pair of the same thread for
         // 4 h 16 m, with 201 ticks of `PARKED behind a decision of john` — true about the thread
         // and false about the pair. The turn coming BACK to the same role later does not revive
         // it either: that is a third turn, not the parked one, which is why this is a set of

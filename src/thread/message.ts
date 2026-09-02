@@ -342,7 +342,7 @@ export type MessageFields = {
    * thing you are waiting for happen?".
    *
    * THE DEFECT IT ANSWERS is a park waiting for an event that CANNOT HAPPEN while the park
-   * stands. Measured live: `dev-speech` parked on `pr:451` — the merge of its own PR — but that
+   * stands. Measured live: `dev-acme` parked on `pr:451` — the merge of its own PR — but that
    * merge needs the curator of the same thread to label and judge it first, and a parked thread
    * raises nobody. The event was behind a door the park itself had locked. It was caught in 32
    * seconds by the author reading the door's note, which is exactly the защита that holds only

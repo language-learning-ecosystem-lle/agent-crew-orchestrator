@@ -80,8 +80,8 @@ describe("loadThreads — a failure of one thread does not blind the circuit", (
     // The live shape of 077 on 2026-08-14 and of 066 the day before: a conversation opened
     // by a writer going around the door — message files, no head, and no legacy `_thread.md`
     // anywhere near, so nothing was ever migrated here.
-    mkdirSync(join(at, "077-broken", "messages"), { recursive: true });
-    writeFileSync(join(at, "077-broken", "messages", "2026-08-14T14-06-40Z-curator.md"), MESSAGE);
+    mkdirSync(join(at, "909-broken", "messages"), { recursive: true });
+    writeFileSync(join(at, "909-broken", "messages", "2026-08-14T14-06-40Z-curator.md"), MESSAGE);
 
     const { failures } = loadThreads(at, ROLES);
 

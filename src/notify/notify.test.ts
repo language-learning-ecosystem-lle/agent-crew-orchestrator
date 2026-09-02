@@ -1667,15 +1667,15 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
 
   it("(в2) a park that OUTLIVED the turn it was declared on is the standstill, not a park", () => {
     // The measured window, from `daemon.log.1:15100` of a consumer's box: `queue 3/4:
-    // dev-speech×010-speech-service — priority normal, waiting since 2026-08-28T12:14:09Z ·
+    // dev-acme×901-acme-service — priority normal, waiting since 2026-08-28T12:14:09Z ·
     // ⏸ PARKED behind a decision of john (R27)`. The park was declared by `12-11-29Z-curator.md`
-    // on CURATOR's turn; the turn moved to dev-speech two letters later, and the pair stood
+    // on CURATOR's turn; the turn moved to dev-acme two letters later, and the pair stood
     // 4 h 16 m while the daemon printed a true sentence about the thread and a false one about
     // the pair. The discrimination is the HOLDER, not the presence of a park.
     const result = untaken({
       parked: [
         {
-          thread: "010-speech-service",
+          thread: "901-acme-service",
           person: "john",
           since: "2026-08-28T12:11:29Z",
           question: "Какой вариант?",
@@ -1685,8 +1685,8 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
       ],
       unaccepted: [
         {
-          role: "dev-speech",
-          thread: "010-speech-service",
+          role: "dev-acme",
+          thread: "901-acme-service",
           since: "2026-08-28T12:14:09Z",
           age: "4h 16m",
         },
@@ -1697,7 +1697,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     expect(result.unaccepted[0]?.staleParkOn).toBe("john");
     const lines = result.lines.filter((line) => line.kind === "unaccepted-stale-park");
     expect(lines).toHaveLength(1);
-    expect(lines[0]?.text).toContain("dev-speech×010-speech-service");
+    expect(lines[0]?.text).toContain("dev-acme×901-acme-service");
     expect(lines[0]?.text).toContain("john");
     // And it does NOT send the reader to the daemon: the box is innocent here.
     expect(lines[0]?.text).not.toContain("are launches enabled");
@@ -1707,7 +1707,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     const result = untaken({
       parked: [
         {
-          thread: "010-speech-service",
+          thread: "901-acme-service",
           person: "john",
           since: "2026-08-28T12:11:29Z",
           question: "?",
@@ -1716,8 +1716,8 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
       ],
       unaccepted: [
         {
-          role: "dev-speech",
-          thread: "010-speech-service",
+          role: "dev-acme",
+          thread: "901-acme-service",
           since: "2026-08-28T12:14:09Z",
           age: "4h 16m",
         },
@@ -1834,7 +1834,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
   it("(д2) a stall the class does NOT name is untouched — Д-2 and Д-4 keep their lines", () => {
     const result = untaken({
       stalled: [
-        { thread: "007-other", role: "dev-speech", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
+        { thread: "007-other", role: "dev-acme", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
       ],
       unaccepted: [
         { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "3h 20m" },

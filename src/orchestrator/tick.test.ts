@@ -177,13 +177,13 @@ describe("planTick — a hold on a manual session (S5)", () => {
   it("one role is taken — the others launch as usual", () => {
     const candidates: Candidate[] = [
       { role: "dev-core", thread: "t1" },
-      { role: "dev-speech", thread: "t2" },
+      { role: "dev-acme", thread: "t2" },
     ];
     expect(
       planTick({ ...base, candidates, enabled: true, stopped: false, held: ["dev-core"] }),
     ).toEqual({
       kind: "plan",
-      launches: [{ role: "dev-speech", thread: "t2" }],
+      launches: [{ role: "dev-acme", thread: "t2" }],
       skipped: [{ role: "dev-core", thread: "t1", reason: "held", attempt: 0 }],
     });
   });
@@ -284,18 +284,18 @@ describe("planTick — nothing drops out silently (the defect of 2026-07-26)", (
   it("candidates BEHIND the launched one are still accounted for", () => {
     const candidates: Candidate[] = [
       { role: "dev-core", thread: "free" },
-      { role: "dev-speech", thread: "busy" },
+      { role: "dev-acme", thread: "busy" },
     ];
     const decision = planTick({
       ...base,
       candidates,
-      events: [acquire("dev-speech", "busy")],
+      events: [acquire("dev-acme", "busy")],
       enabled: true,
       stopped: false,
     });
     expect(raised(decision)).toEqual(["dev-core×free"]);
     expect(decision.skipped).toEqual([
-      { role: "dev-speech", thread: "busy", reason: "active", attempt: 1 },
+      { role: "dev-acme", thread: "busy", reason: "active", attempt: 1 },
     ]);
   });
 });
@@ -308,10 +308,10 @@ describe("planTick — one launch per FREE ROLE, not one per box (D-1, thread 02
     const candidates: Candidate[] = [
       { role: "dev-core", thread: "016" },
       { role: "curator", thread: "019" },
-      { role: "dev-speech", thread: "021" },
+      { role: "dev-acme", thread: "021" },
     ];
     const decision = planTick({ ...base, candidates, enabled: true, stopped: false });
-    expect(raised(decision)).toEqual(["dev-core×016", "curator×019", "dev-speech×021"]);
+    expect(raised(decision)).toEqual(["dev-core×016", "curator×019", "dev-acme×021"]);
     expect(decision.skipped).toEqual([]);
   });
 
@@ -406,13 +406,13 @@ describe("planTick — a role this process is ALREADY running (D-2, thread 023)"
     const candidates: Candidate[] = [
       { role: "dev-core", thread: "023" },
       { role: "curator", thread: "019" },
-      { role: "dev-speech", thread: "021" },
+      { role: "dev-acme", thread: "021" },
     ];
     expect(
       raised(
         planTick({ ...base, candidates, running: ["dev-core"], enabled: true, stopped: false }),
       ),
-    ).toEqual(["curator×019", "dev-speech×021"]);
+    ).toEqual(["curator×019", "dev-acme×021"]);
   });
 
   it("an empty registry changes nothing — the pre-D-2 plan, verbatim", () => {
@@ -427,7 +427,7 @@ describe("planTick — the global budget CUTS THE TAIL of the plan (D-1)", () =>
   const threeRoles: Candidate[] = [
     { role: "dev-core", thread: "016" },
     { role: "curator", thread: "019" },
-    { role: "dev-speech", thread: "021" },
+    { role: "dev-acme", thread: "021" },
   ];
 
   it("a remainder of one lets the head through and cuts the rest — with ONE reason", () => {
@@ -447,7 +447,7 @@ describe("planTick — the global budget CUTS THE TAIL of the plan (D-1)", () =>
       reason: "run-budget",
       candidates: [
         { role: "curator", thread: "019" },
-        { role: "dev-speech", thread: "021" },
+        { role: "dev-acme", thread: "021" },
       ],
       recorded: { role: "curator", thread: "019" },
     });
@@ -516,14 +516,14 @@ describe("describePlan — what the operator reads before the first session star
         reason: "run-budget",
         candidates: [
           { role: "curator", thread: "019" },
-          { role: "dev-speech", thread: "021" },
+          { role: "dev-acme", thread: "021" },
         ],
         recorded: { role: "curator", thread: "019" },
       },
     });
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain("run-budget");
-    expect(lines[0]).toContain("curator×019, dev-speech×021");
+    expect(lines[0]).toContain("curator×019, dev-acme×021");
     expect(lines[0]).toContain("curator/019");
   });
 

@@ -192,21 +192,19 @@ describe("renderFrame", () => {
     const lines = renderFrame({
       ...frame,
       residents: {
-        roles: ["dev-speech"],
-        waits: [{ role: "dev-speech", thread: "030-tts" }],
+        roles: ["dev-acme"],
+        waits: [{ role: "dev-acme", thread: "030-acme" }],
       },
     }).split("\n");
     const at = (needle: string): number => lines.findIndex((line) => line.includes(needle));
     expect(at("resident roles")).toBeGreaterThan(at("queue:"));
     expect(at("resident roles")).toBeLessThan(at("instances:"));
     // MARKED, not filtered (R23-1): the pair is named, with whose process answers for it.
-    expect(lines.some((line) => line.includes("030-tts") && line.includes("dev-speech"))).toBe(
-      true,
-    );
+    expect(lines.some((line) => line.includes("030-acme") && line.includes("dev-acme"))).toBe(true);
   });
 
   it("a project with resident roles and nobody waiting still gets the answer, not silence", () => {
-    expect(renderFrame({ ...frame, residents: { roles: ["dev-speech"], waits: [] } })).toContain(
+    expect(renderFrame({ ...frame, residents: { roles: ["dev-acme"], waits: [] } })).toContain(
       "no thread is waiting on any of them",
     );
   });
@@ -307,7 +305,7 @@ describe("renderParallelism — the live count and the room left", () => {
     launchable: false,
   });
   const p = (over: Partial<Parallelism> = {}): Parallelism => ({
-    raisable: ["dev-core", "curator", "dev-speech"],
+    raisable: ["dev-core", "curator", "dev-acme"],
     live: [],
     held: [],
     ...over,
@@ -330,7 +328,7 @@ describe("renderParallelism — the live count and the room left", () => {
 
   it("names the roles that are FREE — 'room for whom' is the question actually asked", () => {
     const text = renderParallelism(p({ live: [running("dev-core", "023-daemon-parallelism")] }));
-    expect(text).toContain("free: curator, dev-speech");
+    expect(text).toContain("free: curator, dev-acme");
   });
 
   it("says saturation out loud instead of printing an empty list", () => {
@@ -354,7 +352,7 @@ describe("renderParallelism — the live count and the room left", () => {
     );
     expect(text).toContain("held by a human: curator");
     // ...and it is NOT counted as room the circuit can use.
-    expect(text).toContain("free: dev-speech");
+    expect(text).toContain("free: dev-acme");
   });
 
   // The combination the two branches used to disagree on (reviewer, PR #100): a hold is
@@ -366,7 +364,7 @@ describe("renderParallelism — the live count and the room left", () => {
     expect(text).toContain(
       "parallelism: nobody is live — 3 role(s) this box raises, 2 free, 1 held",
     );
-    expect(text).toContain("free: dev-core, dev-speech");
+    expect(text).toContain("free: dev-core, dev-acme");
     expect(text).toContain("held by a human: curator");
   });
 

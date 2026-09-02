@@ -102,7 +102,7 @@ export type NewMessageInput = {
  *
  * IT IS DEMANDED ON `pr:` AND NOT ON `run:`, and the asymmetry is the point. A `pr:` park waits
  * for A HAND on a button, and whose hand it is is a judgement no field expresses — that is the
- * whole finding of the thread: `dev-speech` parked on the merge of its own PR, whose label and
+ * whole finding of the thread: `dev-acme` parked on the merge of its own PR, whose label and
  * verdict needed the curator of the same thread, and a parked thread raises nobody. A `run:`
  * park names its mover already: the round the door has just verified to be alive and running.
  *

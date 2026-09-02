@@ -1392,7 +1392,7 @@ of the whole circuit.
   060). They used to write nothing at all when one thread was broken — assembling the
   index from part of the threads means publishing the incomplete as complete, and the
   refusal was the honest answer to that. The price of it was measured twice in two days:
-  a directory created with a message and without `_meta.md` (`092-consent-and-deletion`
+  a directory created with a message and without `_meta.md` (a consumer's thread
   29.08, ten red runs in a row; `055` 30.08, two more) froze
   `INDEX.md`, `TASKS.md` and every `_thread.md` OF BOTH CONTOURS while one file was
   missing in one thread. The punishment was not the crime's size. So now `index build`
@@ -1400,7 +1400,7 @@ of the whole circuit.
   register as a MARKER ROW (`| <id> | — | — | не прочитан | — | — | — | тред не собран:
   <reason> |`) — the display therefore still cannot be read as complete — and the
   refusal stays: **same exit code 2, said LAST, after the write**, and it NAMES THE
-  DIRECTORIES (`… — 1 unreadable thread: '092-consent-and-deletion'`) instead of
+  DIRECTORIES (`… — 1 unreadable thread: '905-acme-feature'`) instead of
   counting them. `check` reports broken threads in a separate block.
 - **The exit code being last is load-bearing for the generator's job**: a shell running
   `derive --write` under `set -e` gets its files written before the process dies, so the
@@ -1697,7 +1697,7 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # behind a STALE PARK: a park is declared on a TURN and written on the
                             # THREAD, so when the turn moves to another role the new pair inherits a
                             # freeze declared about somebody else. That is the 4 h 16 m of 2026-08-28
-                            # (`dev-speech×010-speech-service` behind a park declared on curator's turn),
+                            # (a pair of a consumer's circuit behind a park declared on curator's turn),
                             # and it gets its own text — the move is to lift the park, not to look at the
                             # daemon. A park whose message named no `waiting-on` keeps its whole thread
                             # A BUSY ROLE IS A LEGITIMATE QUEUE and never counts — AND THE QUEUE IS
@@ -2082,7 +2082,7 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # state has no lawful outcome: the turn is the author's, so nobody can answer,
                             # and the only thing that wakes the author is the circuit — which does, every
                             # tick, until the ceiling of the pair is spent. Live on 2026-08-21: six such
-                            # headers in `010-speech-service` and the pair went `exhausted`; the net of 020
+                            # headers in one thread and the pair went `exhausted`; the net of 020
                             # reads the FIELD and cannot catch it, so it is caught where it is written
                             # THE SAME SHAPE WITH `--expects answer` IS WARNED ABOUT AND WRITTEN, on a
                             # measurement rather than a taste (both mails, 2026-08-21): the `ack` class is
@@ -4903,7 +4903,7 @@ left in it.
 
 ### S27 — the session's `PATH` carries the user's own tools (thread 069)
 
-**The measurement, taken on the live box (`lle-agents`, 2026-09-02T09:52Z).** A raised
+**The measurement, taken on the live box (2026-09-02T09:52Z).** A raised
 session sees `~/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin` — the daemon's
 environment, which under systemd is the unit's own `PATH` (S-decision 5 of `systemd.ts`: the
 interpreter's directory, the declared agent binaries' directories, the system floor). The

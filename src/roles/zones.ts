@@ -47,7 +47,7 @@
  * `zones`, or with an empty `forbidden`, is restricted by NOTHING — the whole tree.
  * `writes` is a POSITIVE statement of where the role's work lives, not a closed
  * allow-list, and it is deliberately not read as one: `dev-core` declares
- * `writes: []` (its home is "everything except the speech service"), and reading
+ * `writes: []` (its home is "everything except what `forbidden` names"), and reading
  * an empty list as an allow-list would deny it every file in the repository.
  * `forbidden` is the only field that bans, which also keeps one fact in one place —
  * "what is banned" is not spread across two lists that can disagree. THE PRICE, said

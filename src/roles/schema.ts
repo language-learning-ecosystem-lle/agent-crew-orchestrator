@@ -171,7 +171,7 @@ export const zonesSchema = z.strictObject({
  * of permissions in the contract at all: S1 was built around "whom and with which
  * prompt".
  *
- * WHY PER-ROLE: role permissions will diverge (dev-speech has its own zone), and
+ * WHY PER-ROLE: role permissions will diverge (dev-acme has its own zone), and
  * they must be read from the role card, not from the launcher's code.
  *
  * THE BOUNDARY IS NOT HERE, and one has to know that in order not to mistake this
