@@ -260,4 +260,36 @@ describe("describeOrder (R5) — the queue is readable without the code", () => 
     expect(lines[0]).toContain("the circuit's own announcements do not");
     expect(lines[0]).not.toContain("merge");
   });
+
+  // THE SLITNESS OF THREAD 063, §2.3: two parks on the same person, differing ONLY in whether
+  // the message that declared them asked for anything, and until this pair of tests they read
+  // as one sentence. The fixtures differ in exactly one input — membership of the mode set.
+  it("a MODE park and a QUESTION park on the same person read differently (thread 063)", () => {
+    const queue = orderCandidates([{ role: "curator", thread: "063-a", priority: "normal" }]);
+    const parked = new Map([["063-a", "john"]]);
+    const question = describeOrder(queue, parked)[0] ?? "";
+    const mode = describeOrder(queue, parked, new Set(["063-a"]))[0] ?? "";
+    expect(question).not.toEqual(mode);
+    // The question park says somebody owes the thread a word…
+    expect(question).toContain("PARKED behind a decision of john (R27)");
+    // …and the mode park says the opposite in as many words: nobody was asked.
+    expect(mode).toContain("PARKED as a MODE set by john (R27)");
+    expect(mode).toContain("asks NOBODY for anything");
+    expect(mode).not.toContain("behind a decision of");
+    // AND THE LIFT IS THE SAME IN BOTH, because the mechanism did not change — only the
+    // reading did. A row that dropped the lift would trade one unreadable line for another.
+    for (const line of [question, mode]) expect(line).toContain("('delivers: john')");
+  });
+
+  it("an EVENT park is never read as a mode, even if the caller says so (thread 063)", () => {
+    // `expects: none` on a `pr:`/`run:` park says nothing — an event park calls nobody by
+    // construction. A row that answered "a MODE set by pr:127" would invent a person.
+    const lines = describeOrder(
+      orderCandidates([{ role: "dev-core", thread: "063-b", priority: "normal" }]),
+      new Map([["063-b", "pr:127"]]),
+      new Set(["063-b"]),
+    );
+    expect(lines[0]).toContain("⏸ PARKED behind the merge of PR #127 (R27)");
+    expect(lines[0]).not.toContain("MODE");
+  });
 });

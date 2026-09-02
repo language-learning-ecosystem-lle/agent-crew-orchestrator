@@ -666,6 +666,61 @@ describe("planTick — the turn parked behind a person (R27)", () => {
     expect(line).not.toContain("parked behind the merge");
   });
 
+  // THE SLITNESS OF THREAD 063, §2.3, on the daemon's side of the same fact: two parks on the
+  // same person, differing ONLY in whether the declaring message asked for anything.
+  it("a park that asks NOBODY is skipped as a MODE, not as a person owing an answer (063)", () => {
+    const decision = planTick({
+      ...base,
+      enabled: true,
+      stopped: false,
+      parked: new Map([["t1", "john"]]),
+      modeParked: new Set(["t1"]),
+    });
+    const skip = decision.skipped[0];
+
+    expect(raised(decision)).toEqual([]);
+    expect(skip?.reason).toBe("parked");
+    // The tick CARRIES the fact instead of the line re-deciding it: one reading, two renderers.
+    expect(skip?.parkedIsMode).toBe(true);
+
+    const ceiling = { value: 3, source: "default" } as const;
+    const mode = describeSkip(
+      {
+        role: "curator",
+        thread: "t1",
+        reason: "parked",
+        attempt: 0,
+        parkedOn: "john" as string,
+        parkedIsMode: true,
+      },
+      ceiling,
+    );
+    const question = describeSkip(
+      { role: "curator", thread: "t1", reason: "parked", attempt: 0, parkedOn: "john" },
+      ceiling,
+    );
+
+    expect(mode).not.toEqual(question);
+    expect(mode).toContain("parked as a MODE set by john");
+    expect(mode).toContain("NOBODY was asked for anything and nothing is late");
+    expect(mode).not.toContain("waiting for a PERSON");
+    expect(question).toContain("waiting for a PERSON, not for a launch");
+    // The LIFT is one and the same in both — only the reading changed, not the mechanism.
+    for (const line of [mode, question]) expect(line).toContain("'delivers: john'");
+  });
+
+  // A tick that is not told reads exactly as it did before the field existed: the frame never
+  // guesses which of the two parks it is holding.
+  it("without the mode set the park keeps the sentence it had (063)", () => {
+    const decision = planTick({
+      ...base,
+      enabled: true,
+      stopped: false,
+      parked: new Map([["t1", "john"]]),
+    });
+    expect(decision.skipped[0]?.parkedIsMode).toBeUndefined();
+  });
+
   it("only the parked thread drops out: another thread of the same role is raised", () => {
     const decision = planTick({
       ...base,

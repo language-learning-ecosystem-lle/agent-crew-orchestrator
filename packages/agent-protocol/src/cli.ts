@@ -551,6 +551,7 @@ import {
 import {
   closedThreads,
   deliveryMarks,
+  modeParks,
   parkedThreads,
   renderIndex,
   threadsWaitingOn,
@@ -7218,6 +7219,11 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // not a park any more, and a frame that still showed one would describe a pair as frozen
     // in the very tick the daemon is about to raise it.
     parked: parkedThreads(threads, { now, ttlSeconds: runParkTtlFrom(argv) }),
+    // AND WHICH OF THEM ASK NOBODY (thread 063): a mode park and a question park froze the
+    // pair with the same sentence until this field existed, and one of the two readings sent
+    // the operator to chase a word that was never asked for. From the same scan as the map
+    // above — the frame must not answer the two halves of one question from two readings.
+    modeParked: modeParks(threads),
     circuit: {
       launchesEnabled: existsSync(enableFlag),
       ...(reboot === undefined ? {} : { reboot }),
@@ -11133,7 +11139,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       err(`agent-protocol: daemon — ${describeStaleRunPark(stale, runParkTtl)}`);
     }
     const parked = parkedThreads(threads, { now, ttlSeconds: runParkTtl });
-    for (const line of describeOrder(candidates, parked)) err(`agent-protocol: ${line}`);
+    for (const line of describeOrder(candidates, parked, modeParks(threads)))
+      err(`agent-protocol: ${line}`);
     // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.
     // A resident is never a candidate — it is hosted, not raised — so without this line
     // the daemon's silence about it is indistinguishable from an empty mailbox, and a
@@ -11186,6 +11193,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
       parked,
+      // The same set the queue lines above were printed with (thread 063): the skip line and
+      // the queue row are two renderings of ONE fact, and they read it from one place.
+      modeParked: modeParks(threads),
     });
 
     // EVERY CANDIDATE THAT WAS NOT RAISED IS NAMED, whatever the tick decided to do

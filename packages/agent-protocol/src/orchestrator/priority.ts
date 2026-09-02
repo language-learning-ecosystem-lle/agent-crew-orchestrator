@@ -256,12 +256,37 @@ export const describeOrder = (
    * thing this line has room to say.
    */
   parked: ReadonlyMap<string, string> = new Map(),
+  /**
+   * Of those, THE ONES THAT ASK NOBODY (`modeParks`, thread 063): a park declared with
+   * `expects: none` is a MODE the thread stands in, not a word somebody owes it. Both read
+   * `PARKED behind a decision of john` until this argument existed, and one of the two
+   * sentences was false — it sent the operator to chase an answer nobody had been asked for.
+   *
+   * Optional, and an absent set reads exactly as this line read before: a caller that has
+   * only the raw map (a neighbour box of an older version, a fixture) says the thing that is
+   * true of both parks rather than guessing which one it is holding.
+   */
+  modeParked: ReadonlySet<string> = new Set(),
+  /**
+   * THE ROLES THAT CANNOT BE RAISED THIS TICK WHATEVER THE ORDER SAYS (thread 063, §2.3 row 2):
+   * role id → what it is doing instead ("live on 058-…", "held by a manual session"). One
+   * session per role — its workspace is one — so a row whose role is busy promises a launch
+   * that is not coming, and it looks exactly like the row above it that is.
+   *
+   * "Stands because the role is busy elsewhere" and "stands for no reason" were the same row
+   * in the operator's frame: the daemon says the first one in its skip line, and the frame has
+   * no skip lines at all. Absent map, the row reads exactly as it did before.
+   */
+  busy: ReadonlyMap<string, string> = new Map(),
 ): string[] =>
   ordered.map((candidate, at) => {
     const waited =
       candidate.since === undefined ? "no dated handoff" : `waiting since ${candidate.since}`;
     const on = parked.get(candidate.thread);
-    const freeze = on === undefined ? "" : ` · ⏸ ${describeFreeze(parkedOnKind(on))}`;
+    const freeze =
+      on === undefined
+        ? ""
+        : ` · ⏸ ${describeFreeze(parkedOnKind(on), modeParked.has(candidate.thread))}`;
     // THE TIER IS NAMED BY WHAT WAS MEASURED, not by what one hopes it means (statement
     // of work of 2026-08-01, point 2). "merge-ready" would read as "all five guards are
     // green", and guards 3 and 5 are judgements this circuit never computes — the line is
@@ -270,17 +295,38 @@ export const describeOrder = (
       candidate.mergeReadyPr === undefined
         ? ""
         : ` · guards 1-2 hold on PR #${candidate.mergeReadyPr}`;
-    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}`;
+    // THE ROLE IS ELSEWHERE, said on the row that promises the launch (thread 063). Beside the
+    // freeze rather than instead of it: a parked pair whose role is also busy is held by two
+    // different things, and an operator repairing one of them needs to know about the other.
+    const elsewhere = busy.get(candidate.role);
+    const taken =
+      elsewhere === undefined
+        ? ""
+        : ` · ⛔ ROLE BUSY — ${candidate.role} is ${elsewhere}; one session per role (its workspace is one), so this pair is not raised until that one ends`;
+    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}${taken}`;
   });
 
 /** The frozen half of a queue row: what holds the turn, and what will let it go. */
-const describeFreeze = (on: ParkedOn): string => {
+const describeFreeze = (
+  on: ParkedOn,
+  /** The park asks nobody — it is a mode, not a queue to a person (`modeParks`, thread 063). */
+  mode = false,
+): string => {
   switch (on.kind) {
     case "event":
       return `PARKED behind the merge of PR #${on.pr} (R27) — not raised until the merge notifier reports that PR`;
     case "run":
       return `PARKED behind the round running on PR #${on.pr} (R27) — not raised until a message asks somebody for something (the circuit's own announcements do not)`;
     case "person":
+      // A MODE IS NOT A QUESTION (thread 063, §2.3): the message that declared this park asks
+      // nobody for anything (`expects: none`, the legal shape since 2026-08-04), so nothing is
+      // late and nobody owes this thread a word. The row said the opposite about it until the
+      // two got separate sentences — and "waiting for a decision of john" about a thread john
+      // deliberately put on the shelf is the same defect the whole state-model rewrite was
+      // opened on: a name that does not describe what is happening. The LIFT is the same for
+      // both, and it is said in both: the mechanism did not change, only the reading did.
+      if (mode)
+        return `PARKED as a MODE set by ${on.person} (R27) — the message that declared it asks NOBODY for anything, so nothing is late and nobody owes this thread a word; it lifts when a message carries that word ('delivers: ${on.person}')`;
       // The queue row says the lift as it IS since 2026-08-22 (thread 030): the word of that
       // person carried into the mail by whoever relays it ('delivers'), and nothing else. The
       // operator reads this line to know what to do — "the next substantive message" would send
