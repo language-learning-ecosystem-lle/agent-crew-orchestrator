@@ -4886,6 +4886,36 @@ destination, and what is asserted is that `TMPDIR` is this run's directory, that
 landed inside it, that the directory is gone after the run and that the log named what was
 left in it.
 
+**S26a — and that directory has to fit a socket (thread 070).** The run's own name is long
+by construction, and a long `TMPDIR` breaks every tool that opens a unix socket under it.
+Measured on the role's box, 2026-09-02: a socket path of 108 characters binds and 109 is
+`listen EINVAL` (`sun_path`, and the limit is on the STRING passed to `bind()`, not on what
+it resolves to); `tsx` — the loader every process test here is spawned through — adds
+`<TMPDIR>/tsx-<uid>/<pid>.pipe`, so `TMPDIR` of 86 runs and 87 dies. The variable is LENGTH,
+not location: the same long name under `/tmp` fails too. Under the 131-character run
+directory all 36 tests of `notify.process.test.ts` failed, and three roles had learned to
+type `TMPDIR=/tmp` by hand — the mechanism of S26 had bought a clean `/tmp` at the price of
+the roles' own acceptance instrument. **The cause is S26 itself, said plainly.**
+
+- **The fix is a short alias, not a shorter name.** No path derived from the checkout can be
+  guaranteed short, so shortening the run's name would only buy margin. When the run's
+  `TMPDIR` is over the budget (108 minus a 32-character reserve = 76) the supervisor makes
+  `/tmp/aco-<12 hex of the path>`, a symlink to that same directory, and hands the child
+  THAT. It works for the reason the limit exists: the kernel copies the address and resolves
+  the path afterwards.
+- **S26 is untouched.** The real directory still lies beside the log, the session's
+  `mktemp -d` is still born in it, the sweep still names what was left. The shared `/tmp`
+  holds one symlink, named after that directory's own hash and removed when the run ends.
+- **The substitution is in the supervisor's log with the number that caused it**, and so is
+  every way of failing to make it — the run keeps its outcome and the log answers the
+  question a session hitting `EINVAL` inside a vendor's loader cannot.
+- **What is tested** is the invariant, not a green suite: `run-tmp.process.test.ts` binds at
+  108 and at 109, builds a directory PADDED to 131 characters (never inheriting the box's
+  depth — a test that only reproduces on a deep box goes quiet on a shallow one, which is
+  exactly how this survived CI), and asserts that a socket opens under the handed value,
+  that it is born in the run's directory, that the raw path gives `EINVAL`, and that `tsx`
+  itself runs under the one and dies under the other.
+
 ### S27 — the session's `PATH` carries the user's own tools (thread 069)
 
 **The measurement, taken on the live box (`lle-agents`, 2026-09-02T09:52Z).** A raised

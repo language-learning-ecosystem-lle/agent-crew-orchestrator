@@ -398,6 +398,7 @@ import {
   parseDaemonArgv,
   renderDaemonArgv,
 } from "./orchestrator/restart.js";
+import { dropRunTmpAlias, handOverRunTmp } from "./orchestrator/run-tmp.js";
 import {
   describeExclusion,
   describeScope,
@@ -8647,6 +8648,11 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // worse than no `TMPDIR` at all — `mktemp` refuses, and the session falls back to typing
   // `/tmp` by hand, which is the very move this closes.
   mkdirSync(p.sessionTmp, { recursive: true });
+  // …AND IT HAS TO FIT A SOCKET (thread `070`). The run's own name is long by construction,
+  // and a `TMPDIR` over the budget breaks every tool that opens a unix socket under it —
+  // `tsx`, and with it all 36 process tests of the role's own acceptance run. See
+  // `orchestrator/run-tmp.ts` for the measured numbers.
+  const runTmp = handOverRunTmp(p.sessionTmp);
   const sink = openSync(p.sessionLog, "a");
   const rawSink = openSync(p.sessionStream, "a");
   let sinksOpen = true;
@@ -8659,6 +8665,8 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // log of every run now answers "did this session leave temporary files, and which" —
     // and the sweep keeps the state directory from growing a run's scratch for ever.
     for (const line of sweepRunTmp(p.sessionTmp)) writeLog(`supervisor  ${line}`);
+    if (runTmp.alias)
+      for (const line of dropRunTmpAlias(runTmp.alias)) writeLog(`supervisor  ${line}`);
     sinksOpen = false;
     closeSync(sink);
     closeSync(rawSink);
@@ -8668,6 +8676,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     writeSync(sink, `${stampLine(new Date(), text)}\n`);
   };
   writeLog(`supervisor  ${p.roleId}/${p.thread}  raw stream ${p.sessionStream}`);
+  for (const line of runTmp.lines) writeLog(`supervisor  ${line}`);
   // The sink exists now, so a takedown complaint lands in the run's own log as well as on
   // stdout (thread 047): stdout belongs to whoever was watching, this file is what is read
   // afterwards, and an unkilled session is exactly the thing read about afterwards.
@@ -8764,7 +8773,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // the inherited environment on purpose — an operator's exported `TMPDIR` names
       // their own box's scratch, not this run's, and on Linux `TMPDIR` outranks the
       // `TMP`/`TEMP` an inherited environment might also carry.
-      [RUN_TMPDIR_ENV]: p.sessionTmp,
+      // …and it is `runTmp.handed`, not `p.sessionTmp`: the two differ only when the run's
+      // own name is too long for a socket to be opened under it, and then this is a short
+      // symlink to the very same directory (thread `070`).
+      [RUN_TMPDIR_ENV]: runTmp.handed,
       // WHERE ITS TOOLS ARE LOOKED UP (thread `069-session-path`). The inherited `PATH`
       // is the daemon's — under systemd, the unit's own (`systemd.ts`, decision 5) — and
       // it carries no per-user directory, so a tool installed the ordinary way
