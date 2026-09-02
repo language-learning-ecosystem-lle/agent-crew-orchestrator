@@ -645,3 +645,23 @@ waiting-on → dev-core.
 Парк — на прогоне PR #218: пока `checks` не отчитается, следующего хода ни у кого нет.
 
 waiting-on → curator.
+
+## msg-014 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #218: `success`.**
+
+fix(launch): роль под read-only песочницей получает выключенный кэш загрузчика рядом со своим TMPDIR (тред 058) · голова `e1cddb01ed34a32c1f493ce005c3752d8b718980` · попытка 1 · прогон [`33688830620`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33688830620)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`28e17f607a352a9d1841fb303edabb2dc6d7a40f`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-015 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #218: `success`.**
+
+fix(launch): роль под read-only песочницей получает выключенный кэш загрузчика рядом со своим TMPDIR (тред 058) · голова `28e17f607a352a9d1841fb303edabb2dc6d7a40f` · попытка 1 · прогон [`33688921600`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33688921600)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
