@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T16:23:54.598Z",
+  "writtenAt": "2026-09-02T16:24:07.440Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "078-main-checkout-branch",
       "state": "running",
       "deadline": "2026-09-02T17:23:44Z"
-    },
-    {
-      "role": "devops",
-      "thread": "070-session-tmpdir-breaks-tests",
-      "state": "running",
-      "deadline": "2026-09-02T16:43:51Z"
     }
   ]
 }
