@@ -278,6 +278,19 @@ export const describeOrder = (
    * no skip lines at all. Absent map, the row reads exactly as it did before.
    */
   busy: ReadonlyMap<string, string> = new Map(),
+  /**
+   * THE ROLES HELD BY A CLOSED WINDOW (thread 063, §2.2 state 3): role id → the window and
+   * when it reopens. The tick has said this since the shelves existed — `skipped` carries the
+   * reason `quota` and the journal carries `launch-refused` — but it said it in the DAEMON'S
+   * stream, and the operator's frame has no skip lines: there the pair simply sat at the head
+   * of a queue nothing was raised from, which reads as "the circuit is dead", not as "the
+   * subscription is shut until 21:40".
+   *
+   * Absent map, the row reads exactly as it did before — a caller that does not know the
+   * account chain (a fixture, a neighbour box of an older version) says nothing rather than
+   * guessing, by the rule of §2.5: a state whose signal is not in hand is not invented.
+   */
+  shelved: ReadonlyMap<string, string> = new Map(),
 ): string[] =>
   ordered.map((candidate, at) => {
     const waited =
@@ -303,7 +316,17 @@ export const describeOrder = (
       elsewhere === undefined
         ? ""
         : ` · ⛔ ROLE BUSY — ${candidate.role} is ${elsewhere}; one session per role (its workspace is one), so this pair is not raised until that one ends`;
-    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}${taken}`;
+    // THE CLOSED WINDOW, said on the row that promises the launch (thread 063). Beside the two
+    // above and never instead of them, for the reason the freeze is beside the busy mark: a pair
+    // can be held by three different things at once, and each of them is repaired — or waited
+    // out — differently. This one ends BY ITSELF and at a stated moment, which is precisely
+    // what the operator cannot tell from a row that says nothing.
+    const window = shelved.get(candidate.role);
+    const paused =
+      window === undefined
+        ? ""
+        : ` · ⏸ HELD BY A CLOSED WINDOW — ${window}; nothing is owed and nobody is late, the pair is raised when the window reopens`;
+    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}${taken}${paused}`;
   });
 
 /** The frozen half of a queue row: what holds the turn, and what will let it go. */
