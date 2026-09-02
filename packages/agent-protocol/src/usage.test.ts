@@ -1040,7 +1040,7 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     expect(zones.list).not.toContain("--base");
     expect(zones.list).not.toContain("--role");
     const gate = specFor("merge-gate");
-    expect([...gate.list].sort()).toEqual(["--power-docs", "--working-cards"]);
+    expect([...gate.list].sort()).toEqual(["--power-docs", "--required-runs", "--working-cards"]);
   });
 
   it("takes every word of a list flag, and still refuses the typo after it (042)", () => {
