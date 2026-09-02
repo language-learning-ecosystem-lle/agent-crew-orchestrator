@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:32:01.527Z",
+  "writtenAt": "2026-09-02T18:32:46.233Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "057-circuit-ping-flaps",
+      "state": "running",
+      "deadline": "2026-09-02T19:32:42Z"
+    },
     {
       "role": "curator",
       "thread": "073-notifiers-frozen-in-own-contour",
