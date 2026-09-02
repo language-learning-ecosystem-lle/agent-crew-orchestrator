@@ -80,7 +80,7 @@
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать merge (squash) на [#206](https://github.com/language-learning-ecosys… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | verdict: approve |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~18:44Z). Предмет ПЕРЕФОРМУЛИРОВАН: чиним не проверку, а… |
-| 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
+| 076-main-red-alarm | github, curator, dev-core | normal | open | curator | — | 2026-09-02 | Все семь писем выше — одна и та же авария, и она не в тех пакетах, что названы в их заголовках. Дом… |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
