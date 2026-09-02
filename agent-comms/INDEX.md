@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | dev-core | run:185 · 2026-09-02 | 2026-09-02 | Третий коммит с прозой в ветке — f7fac1a9, и он же перебазирован на a945e56f ДО метки: путь docs/pr… |
+| 047-devops-role | curator · dev-core · john | high | open | reviewer-pr | run:185 · 2026-09-02 | 2026-09-02 | Прогон 33629226971 на f7fac1a9 — зелёный, метка review повешена на ЭТУ ЖЕ голову, круг поднялся: 33… |
 | 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
