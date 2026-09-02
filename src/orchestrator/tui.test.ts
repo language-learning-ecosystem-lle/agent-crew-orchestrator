@@ -5,6 +5,7 @@ import { parseUsage } from "./argv.js";
 import type { HoldView } from "./hold.js";
 import type { LeaseView } from "./lease.js";
 import type { OperatorFrame } from "./snapshot.js";
+import { renderLeaseLine, renderStatus } from "./status.js";
 import {
   argvOf,
   commandOf,
@@ -397,6 +398,185 @@ describe("renderTui — the frame as three panels", () => {
   it("the top panel says how much is left, in the same words status uses", () => {
     const lines = renderTui({ frame: frameOf([lease()]), state: initialTuiState, rows, cols });
     expect(lines.join("\n")).toContain("60m left of its window");
+  });
+
+  // FOUND IN REVIEW OF #201, and it is the class this thread exists to end: `status` got
+  // `speechless`/`mailLock` and the top panel did not, so the observer showed `working —
+  // nothing reported yet` about a pair `status` was calling RAISED-AND-NOT-SPOKEN-YET. Both
+  // windows are asserted at a real terminal's width and on the FIRST line — that line IS the
+  // top panel's row for the pair, so a phrase that only survives in the middle panel (which
+  // reprints the frame) cannot make either case pass.
+  it("the top panel carries the 'not spoken yet' window, in status's own words", () => {
+    const pair = lease();
+    const frame = {
+      ...frameOf([pair]),
+      speechless: new Set([pair.sessionLog as string]),
+    } satisfies OperatorFrame;
+    const row = renderTui({ frame, state: initialTuiState, rows, cols })[0] as string;
+    expect(row).toContain("RAISED, AND THE CHILD HAS NOT SPOKEN YET");
+    // The pair is still NAMED: a window on a row whose role was cut away is a fact about
+    // nobody. And the panel is still the terminal's width, mark or no mark.
+    expect(row).toContain("dev-core");
+    expect([...row].length).toBeLessThanOrEqual(cols);
+  });
+
+  it("the top panel carries the 'still writing its memory' window too", () => {
+    const frame = {
+      ...frameOf([lease({ state: "released", reason: "completed" })]),
+      mailLock: {
+        holder: "memory of dev-core",
+        pid: 4242,
+        since: "2026-07-31T08:59:00Z",
+        alive: true,
+      },
+    } satisfies OperatorFrame;
+    const row = renderTui({ frame, state: initialTuiState, rows, cols })[0] as string;
+    expect(row).toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    expect(row).toContain("dev-core");
+  });
+
+  // AND IT CARRIES IT ON ONE ROW, the same one `status` picks (review of #201, second round):
+  // the holder names a ROLE, and the panel holds a row per pair of the journal — so a panel
+  // deciding per row put "its session is still writing" on every historical pair of that role
+  // at once. Asserted here and not only in `status.test.ts` because this is a SECOND caller of
+  // the same choice, and the whole class of defect in this file is the two drifting apart.
+  it("with two pairs of one role, only the recent row wears the memory window", () => {
+    const frame = {
+      ...frameOf([
+        lease({
+          thread: "010-ancient-thread",
+          state: "released",
+          reason: "completed",
+          lastAt: "2026-07-30T08:00:00Z",
+        }),
+        lease({
+          thread: "063-state-model-rewrite",
+          state: "released",
+          reason: "completed",
+          lastAt: "2026-07-31T08:58:00Z",
+        }),
+      ]),
+      mailLock: {
+        holder: "memory of dev-core",
+        pid: 4242,
+        since: "2026-07-31T08:59:00Z",
+        alive: true,
+      },
+    } satisfies OperatorFrame;
+    const lines = renderTui({ frame, state: initialTuiState, rows, cols });
+    const top = lines.slice(0, 2);
+    const wearing = top.filter((line) => line.includes("THIS PAIR IS OVER, ITS SESSION IS NOT"));
+    expect(wearing).toHaveLength(1);
+    expect(wearing[0]).toContain("063-state-model-rewrite");
+  });
+
+  // AND WHEN NO ROW CAN WEAR IT, THE PANEL STILL SAYS THE LOCK (review of #201, third round).
+  // `status.test.ts` covers this branch with eight cases; the panel had none, because the panel
+  // never BUILT the line — it inherited it from `renderFrame` through a slice taken by the
+  // number of pairs, one short of the section's real length. Measured before the fix, twelve
+  // running pairs at 24×100: the line reached the screen, but in the MIDDLE block and cut by
+  // `cutTo` to `— one l`, so the reason, the "every delivery waits behind it" and the pid's own
+  // sentence were gone, and at rows ≤ 4 the middle's budget dropped it with nothing said. The
+  // three cases below are the three ways the pair cannot be picked, which is `whyNoPair`'s
+  // whole domain: no finished row of that role, a tie, and a holder that is no session at all.
+  const lockOf = (holder: string): OperatorFrame["mailLock"] => ({
+    holder,
+    pid: 4242,
+    since: "2026-07-31T08:59:00Z",
+    alive: true,
+  });
+  const orphanCases = [
+    {
+      what: "no finished pair of the role is in the frame",
+      leases: [lease({ thread: "a" }), lease({ thread: "b" })],
+      lock: lockOf("memory of dev-core"),
+      because: "no finished pair of 'dev-core' is in this frame",
+    },
+    {
+      what: "two pairs of the role are equally recent",
+      leases: [
+        lease({
+          thread: "a",
+          state: "released",
+          reason: "completed",
+          lastAt: "2026-07-31T08:00:00Z",
+        }),
+        lease({
+          thread: "b",
+          state: "released",
+          reason: "completed",
+          lastAt: "2026-07-31T08:00:00Z",
+        }),
+      ],
+      lock: lockOf("memory of dev-core"),
+      because: "their last events do not say which of them is writing",
+    },
+    {
+      what: "the holder is no session's memory at all",
+      leases: [lease()],
+      lock: lockOf("digest"),
+      because: "it belongs to no pair above",
+    },
+  ] as const;
+
+  for (const c of orphanCases) {
+    it(`the top panel names an unattributed mail lock — ${c.what}`, () => {
+      const frame = { ...frameOf(c.leases), mailLock: c.lock } satisfies OperatorFrame;
+      const lines = renderTui({ frame, state: initialTuiState, rows, cols });
+      // WITHIN THE TOP PANEL'S OWN BUDGET, not somewhere in the reprinted frame below it: the
+      // panel is `Math.max(1, floor(rows / 3))` lines and this fact has to be inside them.
+      const top = lines.slice(0, Math.max(1, Math.floor(rows / 3)));
+      const said = top.filter((line) => line.includes("the mail checkout is held by"));
+      expect(said, `the observer's top panel is silent about a lock ${c.what}`).toHaveLength(1);
+      // The pid survives the cut — it is the one thing on the line an operator acts on.
+      expect(said[0]).toContain("pid 4242");
+      expect([...(said[0] as string)].length).toBeLessThanOrEqual(cols);
+      // ONE line, not two: `status`'s own copy of it must not also arrive through the middle
+      // slice. That double print is the same fact in two shapes, cut two different ways.
+      expect(lines.filter((l) => l.includes("the mail checkout is held by"))).toHaveLength(1);
+      // And `status` still says the whole of it, reason included — the panel says less than
+      // `status`, never other (T-1).
+      const text = renderStatus(frame.leases, undefined, NOW, undefined, c.lock);
+      expect(text).toContain(c.because);
+    });
+  }
+
+  // A LOSS THAT IS ANNOUNCED IS NOT THE DEFECT; a loss nobody counts is. When the panel is too
+  // short for the section, the orphan line goes with the rows it belongs to and `capped` says
+  // so — before the fix it fell outside every budget that reports what it drops.
+  it("when the panel is too short, the lock line is dropped by a counter that says so", () => {
+    const frame = {
+      ...frameOf(Array.from({ length: 12 }, (_, at) => lease({ thread: `t${at}` }))),
+      mailLock: lockOf("memory of dev-core"),
+    } satisfies OperatorFrame;
+    const top = renderTui({ frame, state: initialTuiState, rows, cols }).slice(0, 8);
+    expect(top.at(-1)).toContain("more line(s)");
+    // Thirteen lines in the section — twelve pairs and the lock — and seven shown.
+    expect(top.at(-1)).toContain("… 6 more line(s)");
+  });
+
+  // The mark costs the row its tail, never its name — and never the panel's width. Forty
+  // columns is narrower than any mark's own first sentence, which is the case where a rule
+  // written as "reserve room for the mark" would either overflow or print an anonymous row.
+  it("at a width no mark fits in, the row still names its pair and still fits the screen", () => {
+    const pair = lease();
+    const frame = {
+      ...frameOf([pair]),
+      speechless: new Set([pair.sessionLog as string]),
+    } satisfies OperatorFrame;
+    const narrow = 40;
+    const lines = renderTui({ frame, state: initialTuiState, rows, cols: narrow });
+    expect(lines.every((line) => [...line].length <= narrow)).toBe(true);
+    expect(lines[0]).toContain("dev-core");
+  });
+
+  // A row with NO mark is untouched by the fitting rule: the old cut, character for
+  // character. Otherwise the fix for the marks would quietly re-lay-out every ordinary row.
+  it("an unmarked row is cut exactly where it always was", () => {
+    const row = renderTui({ frame: frameOf([lease()]), state: initialTuiState, rows, cols })[0];
+    // `▸ ` because the fixture's only pair is the selected one — the two-column gutter the
+    // panel's width budget (`cols - 2`) is reserved for.
+    expect(row).toBe(`▸ ${[...renderLeaseLine(lease(), false, NOW)].slice(0, cols - 2).join("")}`);
   });
 
   it("the selected pair is marked, and only it", () => {
