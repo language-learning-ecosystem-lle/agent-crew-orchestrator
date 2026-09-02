@@ -439,6 +439,7 @@ import {
   workingTreeState,
 } from "./orchestrator/self-restart.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
+import { stateWord } from "./orchestrator/state-word.js";
 import {
   foregroundRefusal,
   planSystemdUnit,
@@ -8991,6 +8992,11 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // readable as "it was told, in this log, at this minute, and kept digging". Said once
   // per crossing rather than every poll, and re-armed when a park moves the deadline.
   let windDownAnnounced = false;
+  // THE TURN THAT WAS TAKEN RATHER THAN PASSED (thread 063) — said once per run, for the
+  // same reason the wind-down line is: it explains a run that goes on working past the
+  // moment the mail stopped naming it, and a line repeated every poll would be noise in
+  // the one log an operator reads after the fact.
+  let turnTakenAnnounced = false;
 
   while (true) {
     await sleep(p.pollMs);
@@ -9048,14 +9054,42 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         `agent-protocol: thread ${p.thread} under lease is unreadable — the passed turn is NOT counted`,
       );
     }
-    const handedOff = handoffDetected({
+    // DID THE ROLE ITSELF SPEAK IN THIS RUN (thread 063) — the mark of its own last
+    // message at the raise (`world.mine`, R18) against the same mark now. `undefined`
+    // when either end cannot be read: no world was recorded, or the thread is not among
+    // the ones this walk parsed. See `handoffDetected` for why an unknown keeps the old
+    // reading instead of holding the run open.
+    const mineAtRaise = p.world?.mine;
+    const mineNow = ((): string | undefined => {
+      const loaded = scan.threads.find((entry) => entry.thread.id === p.thread);
+      if (loaded?.input === undefined) return undefined;
+      return (
+        loaded.input.entries.filter((entry) => entry.message.fields.from === p.roleId).at(-1)
+          ?.fileName ?? ""
+      );
+    })();
+    const spoke =
+      mineAtRaise === undefined || mineNow === undefined ? undefined : mineNow !== mineAtRaise;
+    const reading = handoffDetected({
       threadUnreadable,
       waitingThreads: threadsWaitingOn(
         scan.threads.map((loaded) => loaded.thread),
         p.roleId,
       ),
       thread: p.thread,
+      ...(spoke === undefined ? {} : { spoke }),
     });
+    const handedOff = reading.handedOff;
+    // THE TURN WAS TAKEN, AND THE FRAME SAYS SO BY NAME. Without this line the run looks
+    // from the outside exactly like one that is ignoring its own thread: the mail no
+    // longer names the role, the session keeps working, and nothing anywhere says that
+    // somebody else's message is what moved `waiting-on`.
+    if (reading.turnTaken && !turnTakenAnnounced) {
+      turnTakenAnnounced = true;
+      const line = `the turn was TAKEN, not passed — thread ${p.thread} no longer awaits ${p.roleId}, but ${p.roleId} has not written a line since the raise: somebody else's message moved 'waiting-on'. The run keeps going and will NOT be closed as finished on its own word`;
+      err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
+      writeLog(`supervisor  ${line}`);
+    }
     // HAS THE SESSION DECLARED A WAIT FOR INPUT (R19)? A level signal, read every poll:
     // it both parks the run and, by going away, brings it back.
     const declared = ((): string | undefined => {
@@ -10955,7 +10989,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   );
   for (const orphan of orphans) {
     err(
-      `agent-protocol: lease ${orphan.role}/${orphan.thread} was left CLOSED BY NOTHING (${orphan.state}, attempt ${orphan.attempt})${orphan.overdue ? ", OVERDUE" : ""} — the supervisor was killed in a way that left it no time to record (SIGKILL/machine crash). Close it by hand: orchestrator record --kind lease-released --reason supervisor-gone`,
+      // THE SAME FACT, THE SAME PHRASE (thread 063) — this line printed the raw machine
+      // word (`draining`/`running`) into the one stream an operator reads, next to frames
+      // that had already stopped doing it. It is a rare path, which is exactly why it is
+      // read by someone who has no context to correct it with.
+      `agent-protocol: lease ${orphan.role}/${orphan.thread} was left CLOSED BY NOTHING (${stateWord(orphan.state)}, attempt ${orphan.attempt})${orphan.overdue ? ", OVERDUE" : ""} — the supervisor was killed in a way that left it no time to record (SIGKILL/machine crash). Close it by hand: orchestrator record --kind lease-released --reason supervisor-gone`,
     );
   }
 
