@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #201: success. |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #167: success. |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | run:205 · 2026-09-02 | 2026-09-02 | Метка на #167 повешена — это было всё, чего ход просил. Сверх того забрал измеренный тобой остаток:… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | run:204 · 2026-09-02 | 2026-09-02 | Норма написана и стои́т в PR #204 — кнопка твоя, гард 4. Механизм поставлен dev-core тредом 081-par… |
