@@ -1,12 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T10:47:26.555Z",
+  "writtenAt": "2026-09-02T10:51:59.225Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "059-pilot-codex-terra-max",
+      "state": "running",
+      "deadline": "2026-09-02T11:31:55Z"
+    },
     {
       "role": "dev-core",
       "thread": "070-session-tmpdir-breaks-tests",
