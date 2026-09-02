@@ -1194,11 +1194,13 @@ export const describeSpawnAs = (as: SpawnAs): readonly string[] =>
         // FIRST: `sudo -u` gives the child that user's `HOME`, so the vendor's session store
         // moves with it and `--resume` stops finding this role's earlier conversations. The
         // account directory is worse than a lost resume — it is pointed at by
-        // `CLAUDE_CONFIG_DIR`, it belongs to the daemon's user today, and a target user
-        // without write access there fails at a layer that reads as a dead token. Neither is
-        // checked here: both are facts about a box this process cannot inspect across the
-        // switch, and the honest form of that is saying so on every such launch.
-        `identity ${as.user}: 'HOME' becomes that user's, so a '--resume' of this role's earlier sessions is NOT expected to find them, and the account directory ('CLAUDE_CONFIG_DIR') must be one that user may write — neither is checked by this build (docs/box-setup.md §0.1a)`,
+        // `CLAUDE_CONFIG_DIR`, it belonged to the daemon's user on the first live launch of
+        // such a role, and a target user without access there fails at a layer that reads as
+        // a dead token. THE SECOND HALF IS NO LONGER UNCHECKED: `accountReachRefusal` judges
+        // the directory's bits against that user's uid and groups before the spawn (thread
+        // 047, msg-089). The lost resume stays a warning, because it is not a defect — it is
+        // what changing `HOME` means, and there is nothing to repair.
+        `identity ${as.user}: 'HOME' becomes that user's, so a '--resume' of this role's earlier sessions is NOT expected to find them; the account directory ('CLAUDE_CONFIG_DIR') must be one that user may read and write, and THAT half is checked before the spawn (docs/box-setup.md §0.1a)`,
         `identity ${as.user}: takedown of this session is UNVERIFIED — a signal from this user to another user's process group is expected to fail with EPERM (inference, not a measurement); if it does, the entitlement needs a second target and that is john's decision`,
       ];
 

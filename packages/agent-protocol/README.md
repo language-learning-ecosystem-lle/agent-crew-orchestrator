@@ -153,6 +153,21 @@ the box), and putting such a session down is unverified — a signal from the su
 to another user's process group is expected to fail with `EPERM`, which is reasoning and not
 a measurement.
 
+**A switched run is also refused when that user cannot reach its account directory.**
+`sudo -u` gives the child that user's `HOME`, but the account (`launch.account` →
+`accounts.<id>.configDir` of the machine config) is a path named by somebody else, and on the
+first live launch of such a role it was the daemon user's own: mode `600`, another owner, so
+the session came up and died at the vendor with `Not logged in`. That failure is invisible at
+the layer it happens — it reads as a dead token, puts the whole account on the shelf, and
+stands down every OTHER role spending it. So both doors now judge the directory's permission
+bits against the target user's uid and supplementary groups (POSIX class rules: owner, else
+group, else other) BEFORE the spawn, together with the traversal of every ancestor, and refuse
+by name — the role, the user, the account, the path, its mode and owner, and the repair. The
+check is `stat` and `id` from the supervisor's side rather than `sudo -u … test`, because the
+entitlement of §0.1a grants one binary and would refuse the probe on a correctly narrow box.
+A role that does not switch identity takes none of this: nothing is asked of the box, and the
+launch is byte for byte what it was.
+
 `capabilities` (protocol 24) is the other half of the same question: `systemUser` says who the
 run IS to the operating system, this says WHAT IT MAY DO to the machine. A closed vocabulary of
 three verbs — `log-tail`, `repo-refresh`, `disk-free` — and every one of them carries the closed
