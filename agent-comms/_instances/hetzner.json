@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T22:50:06.920Z",
+  "writtenAt": "2026-09-02T22:50:24.073Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "085-stale-workspace-package",
       "state": "running",
       "deadline": "2026-09-02T23:28:20Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "086-thread-id-write-read-mismatch",
+      "state": "running",
+      "deadline": "2026-09-02T23:50:20Z"
     }
   ]
 }
