@@ -47,10 +47,12 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # says what identity that file claims — one picks the box, the other
                               # writes into it
                               # --ref may be left out (the operator's set): 'orchestrator.ref'
-  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all] [--exec <path>] [--worker <kind>] [--model <id>] [--effort <level>]
-                              # the four agent flags are the LIVE RUN's, not decoration: the headless
+  agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline] [--probe-timeout <sec>] [--identity-window <days>] [--identity-all] [--exec <path>] [--worker <kind>] [--model <id>] [--effort <level>] [--max-turns <n>]
+                              # the agent flags are the LIVE RUN's, not decoration: the headless
                               # probe below resolves its binary through the same 'agentFor' the daemon
                               # uses, so a box is probed with the agent the operator names here
+                              # --max-turns is read by that same 'agentFor' (the lever door of thread
+                              # 026) and was the one flag this line did not spell — thread 042
                               # IS THIS BOX COMMISSIONED (thread 019, the operator tail): the
                               # checklist of a machine that is supposed to raise roles unattended —
                               # both configs, which instance it is, the agent binary AND A LIVE

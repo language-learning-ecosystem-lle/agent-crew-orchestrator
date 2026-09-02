@@ -389,6 +389,7 @@ const specFor = (key: string) => {
   return {
     value: [...spec.value, ...daemon.value],
     boolean: [...spec.boolean, ...daemon.boolean],
+    list: [...spec.list, ...daemon.list],
     positionals: spec.positionals,
   };
 };
@@ -953,5 +954,136 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     const own = ["--daemon-log", "--log-max-bytes", "--pid-file", "--clear-force", "--foreground"];
     const passed = up.value.filter((name) => !own.includes(name));
     expect(passed.filter((name) => !daemon.value.includes(name))).toEqual([]);
+  });
+
+  /**
+   * THE SIXTEEN PUT BEHIND THE DOOR (thread 042, john's word: all at once). One case per
+   * command, both halves in it: a legal call passes, and one typo in it is refused BY
+   * NAME. The legal argv is the command's own — not a shared skeleton — because what the
+   * door is being asked here is whether each LINE is whole, and a skeleton would ask the
+   * same question sixteen times.
+   */
+  const SIXTEEN: readonly (readonly [string, readonly string[]])[] = [
+    ["config check", ["--ref", "origin/main", "--local-config", "/tmp/l", "--instance", "box"]],
+    [
+      "doctor",
+      [
+        "--offline",
+        "--probe-timeout",
+        "5",
+        "--identity-all",
+        "--worker",
+        "claude-code",
+        "--max-turns",
+        "40",
+      ],
+    ],
+    ["roles list", ["--ref", "origin/main", "--repo", "/tmp/r"]],
+    ["schema migrate", ["--root", "/tmp/mail", "--to", "7", "--write"]],
+    ["schema version", ["--ref", "origin/main", "--package-ref", "origin/main"]],
+    ["role exists", ["--ref", "origin/main", "--role", "dev-core"]],
+    ["zones check", ["--ref", "origin/main", "--role-from-workspace", "--staged"]],
+    [
+      "capability run",
+      ["--ref", "origin/main", "--role", "dev-core", "--capability", "read", "--lines", "5"],
+    ],
+    [
+      "merge-gate",
+      ["--ref", "origin/main", "--pr", "213", "--review-workflow", "Claude PR Review"],
+    ],
+    ["index build", ["--root", "/tmp/mail", "--ref", "origin/main", "--write"]],
+    ["thread build", ["--root", "/tmp/mail", "--ref", "origin/main", "--id", "042-x", "--write"]],
+    ["check", ["--root", "/tmp/mail", "--ref", "origin/main", "--since", "origin/main~1"]],
+    ["migrate", ["--root", "/tmp/mail", "--ref", "origin/main", "--id", "042-x", "--write"]],
+    ["derive", ["--root", "/tmp/mail", "--ref", "origin/main", "--write"]],
+    ["tasks list", ["--root", "/tmp/mail", "--ref", "origin/main", "--status", "open", "--json"]],
+    ["metrics", ["--ref", "origin/main", "--role", "dev-core", "--thread", "042-x", "--json"]],
+  ];
+
+  it.each(SIXTEEN.map(([key, argv]) => [key, argv] as const))(
+    "lets a legal call of '%s' through the door of the sixteen (042)",
+    (key, argv) => {
+      expect(strayArguments(argv, specFor(key))).toEqual([]);
+    },
+  );
+
+  it.each(SIXTEEN.map(([key, argv]) => [key, argv] as const))(
+    "refuses a typo at '%s' BY NAME, and says nothing about the legal flags (042)",
+    (key, argv) => {
+      // The typo is made out of the command's OWN last flag, so the refusal cannot be
+      // passing for a reason other than the misspelling.
+      const typo = [...argv];
+      const at = typo.findLastIndex((token) => token.startsWith("--"));
+      typo[at] = `${typo[at] as string}x`;
+      const problems = strayArguments(typo, specFor(key));
+      expect(problems.some((problem) => problem.includes(typo[at] as string))).toBe(true);
+      expect(problems.filter((problem) => problem.includes("unknown flag"))).toHaveLength(1);
+    },
+  );
+
+  it("routes all sixteen through `guardArguments` in the CLI's dispatch (042)", () => {
+    // The stake of the door is not the table but the CALL: a line measured whole and a
+    // guard never invoked is a door leaning against the wall. Read off the source, so a
+    // command dropped from the dispatch later fails here by name.
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+    for (const [key] of SIXTEEN) {
+      expect([key, source.includes(`guardArguments("${key}"`)]).toEqual([key, true]);
+    }
+  });
+
+  it("reads a `<a,b>` placeholder as a LIST, and one word as one word (042)", () => {
+    // The classification, asserted against the class and not against a name in a union:
+    // `--paths` is a list, `--base` beside it in the same alternative is not.
+    const zones = specFor("zones check");
+    expect(zones.list).toContain("--paths");
+    expect(zones.value).toContain("--paths");
+    expect(zones.list).not.toContain("--base");
+    expect(zones.list).not.toContain("--role");
+    const gate = specFor("merge-gate");
+    expect([...gate.list].sort()).toEqual(["--power-docs", "--working-cards"]);
+  });
+
+  it("takes every word of a list flag, and still refuses the typo after it (042)", () => {
+    // `--paths a b` is a form the usage line spells out loud, and `listFlag` reads it.
+    // Before this round the door consumed ONE word and called the rest stray arguments.
+    const zones = specFor("zones check");
+    expect(
+      strayArguments(
+        ["--ref", "origin/main", "--role", "dev-core", "--paths", "a", "b", "c"],
+        zones,
+      ),
+    ).toEqual([]);
+    const problems = strayArguments(["--role", "dev-core", "--paths", "a", "b", "--stagd"], zones);
+    expect(problems).toEqual(["'--stagd' — unknown flag"]);
+    // A list that names NOTHING passes the door and is refused by the handler, which
+    // already says it by name (`zones.process.test.ts` holds that sentence). A door that
+    // reworded a correct refusal would take it away, not add one.
+    expect(strayArguments(["--paths"], zones)).toEqual([]);
+  });
+
+  it("no longer refuses the multi-word form at the doors that were already up (042)", () => {
+    // The same defect stood at commands guarded long before the sixteen: `new-thread
+    // --participants a b` and `orchestrator daemon --roles a b` were refused for their
+    // second word. The fix is in the parse, so it lands on them too.
+    expect(
+      strayArguments(["--participants", "curator", "dev-core"], specFor("new-thread")),
+    ).toEqual([]);
+    expect(
+      strayArguments(
+        ["--roles", "curator", "dev-core", "--exclude-roles", "john"],
+        specFor("orchestrator daemon"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("spells the flag `doctor` reads through `agentFor` and did not name (042)", () => {
+    // The one line of the sixteen that was short, and the premise stated beside it: the
+    // probe resolves its agent through `agentFor`, which reads `--max-turns` off the very
+    // argv the operator typed. Stop reading it there and this fails by name.
+    const spec = specFor("doctor");
+    expect(spec.value).toContain("--max-turns");
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+    expect(source).toContain('const turnsFlag = flagInt(argv, "--max-turns");');
+    expect(source).toContain("execTargets(withRef, local, roles)");
   });
 });
