@@ -5018,3 +5018,60 @@ unchanged, and that the run's log said so.
 **Not closed, and named:** a session spawned under `sudo -n -u <user>` (thread 047) crosses
 into an environment the box's `env_keep` decides, and this supervisor cannot see across that
 switch — the composed `PATH` reaches such a session only if the box lets it.
+
+### S28 — what a run left where it had no business writing: shared places, named (thread 056, step 1)
+
+**The half `TMPDIR` cannot reach.** S26 closed the shape where the command names no
+destination: `mktemp` reads the variable, so an ordinary command lands in the run's own
+directory. It cannot close — and never could — the shape where the session TYPES a path.
+Two cases were measured under the merged mechanism itself: `> /tmp/.nothing` (the write
+happened: 140 bytes, removed at once) and `> "$HOME/.marker_$$"` (the write happened, and
+it was not in `/tmp` at all). The second one decided the shape of this step and of john's
+answer of 2026-09-02: **the trap is the literal path as a convenient form of a command, not
+the directory `/tmp`** — so `PrivateTmp=yes` would narrow the class rather than close it
+and was not bought; it stays in reserve.
+
+**And every known case of the class was a CONFESSION.** All eight were found by a role
+catching itself and reporting it in its own letter — that is a class visible exactly as
+often as an executor happens to be honest and awake. Step 1 makes it a measurement:
+
+- **The supervisor lists the shared places before the spawn and again at the close**, and
+  names what appeared in between: the path, its size (or that it is a directory, or that it
+  was already gone), the role and the thread. Into the run's own log and onto the
+  supervisor's stderr — unlike the sweep of S26, because a run's own scratch is the run's
+  own business while an entry in a shared place outlives the run and belongs to nobody.
+- **The places are the platform's temp (`os.tmpdir()`, i.e. `/tmp` on this box) and the box
+  user's `HOME`** — the two every measured case landed in. The run's own directory is never
+  one of them; it lives under the state directory and is swept by its owner.
+- **The listing is the top level, not a walk.** A typed path is short (`/tmp/x`,
+  `$HOME/.marker`); a recursive walk of a home directory would cost every run a whole tree
+  for entries no case has ever produced.
+- **NOTHING IS REMOVED.** Step 1 forbids nothing by construction: an entry in a shared place
+  belongs to whoever made it, and deleting somebody's file on the strength of a time window
+  would be a worse defect than the one being measured.
+- **A window is not an owner, and the line says so itself.** This is the objection that made
+  the statement of work's first shape refusable (S26): on a box with several live sessions a
+  shared listing cannot attribute anything. What is claimed here is only that an entry
+  appeared between this run's spawn and its close, and the sentence naming the entry carries
+  that reservation with it. A window is a fact where a confession is a mood — which is what
+  makes it worth writing anyway.
+- **A place that cannot be listed is said, not swallowed**, and it is never read as empty:
+  an unreadable place treated as empty would make every entry in it look new at the close,
+  that is, a door inventing findings.
+- **Silence is the ordinary run.** A session that left nothing produces no line, so a line
+  always means something appeared — the same discipline as the sweep of S26.
+
+**What this feeds.** The count and the shape of the cases over a week is the INPUT to step 2
+(the statement of work's §4): homogeneous cases — mostly «a file was needed to assemble the
+body of a letter or a PR» — argue for removing the reason to make the file at all (text
+accepted on a stream); heterogeneous ones argue for a door on the form of the command
+(an absolute path outside the run's workspace and outside its `TMPDIR` refused by name).
+That is a decision to be taken from the number, not from a judgement made in advance.
+
+**What is tested.** The judgement is a unit (`shared-places.test.ts`) with the listings
+injected — appeared / was already there / unreadable / a directory / gone again / past the
+twentieth name — because a case that reached for the real `/tmp` to prove itself would be
+committing the very defect it measures. The seam is a process test (`run.process.test.ts`):
+a stub session types a literal path into a `HOME` the test owns, and what is asserted is
+that the run's log names the path with its size, role and thread, that an entry older than
+the run is not reported, and that both files are still there afterwards.
