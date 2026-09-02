@@ -58,6 +58,31 @@ export type RoleRegistry = {
   /** Whether the role may OPEN and DROP tasks in the feed (thread 021, `task-declare`). */
   canDeclareTask(id: RoleId): boolean;
   /**
+   * WHETHER THIS WRITER IS A MACHINE EVENT rather than somebody who can be asked for a
+   * JUDGEMENT about the mail (thread 072, john's decision of 2026-09-02, «первый вариант»).
+   *
+   * The circuit announces its own events in the mail under a participant of its own
+   * (`from: github` — the merge, the outcome of a run, the trace of the watch-keeper). Such a
+   * letter asserts one fact and nothing else: the button was pressed, the run ended this way.
+   * It is not a report, it carries no reading of the thread, and there is nobody behind it to
+   * form one — which is exactly what the writing doors of the mail ask of an author when they
+   * ask a letter to say what it does about a standing park.
+   *
+   * MEASURED, and the price was the whole channel: from `2026-08-30T20:14Z` to
+   * `2026-09-02T10:51Z` not one letter from GitHub reached this contour's mail — the park door
+   * of thread 058 refused the merge notifier of every one of them ("say what THIS letter does
+   * about the park"), a workflow step cannot say it, and so the merge stopped returning the turn
+   * to the author of a PR at all. Six merges in one day went into silence.
+   *
+   * DERIVED FROM `wake` AND FROM THE ABSENCE OF A CARD, not from `kind`: `kind` is a project's
+   * label for a vendor and this package does not interpret it (see `roles/schema.ts`). The two
+   * facts are read for one reason each — `wake.mode: 'event'` says nobody of the circuit raises
+   * it as a session, and no `instructions` says there is no card it reads, hence no norm it
+   * could apply and no judgement it could form. A participant with a card (`reviewer-pr`) meets
+   * every door as before, and so does a human (`wake.mode: 'self'`) writing by hand.
+   */
+  isMachineWriter(id: RoleId): boolean;
+  /**
    * The `watch` roles paired with the session name each is to be woken in. RESERVED:
    * called by nothing but tests today (measured 2026-08-18, thread
    * `012-wake-watch-reserved`) — this installation has no watch-keeper at all, and the
@@ -165,6 +190,10 @@ export const createRoleRegistry = (config: RolesSection): RoleRegistry => {
     canDeclareTask: (id) => {
       const role = byId.get(id);
       return role !== undefined && hasPermission(role, "task-declare");
+    },
+    isMachineWriter: (id) => {
+      const role = byId.get(id);
+      return role !== undefined && role.wake.mode === "event" && role.instructions === undefined;
     },
     watchTargets: () =>
       active.flatMap((role) =>
