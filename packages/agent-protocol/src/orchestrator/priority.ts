@@ -267,6 +267,17 @@ export const describeOrder = (
    * true of both parks rather than guessing which one it is holding.
    */
   modeParked: ReadonlySet<string> = new Set(),
+  /**
+   * THE ROLES THAT CANNOT BE RAISED THIS TICK WHATEVER THE ORDER SAYS (thread 063, §2.3 row 2):
+   * role id → what it is doing instead ("live on 058-…", "held by a manual session"). One
+   * session per role — its workspace is one — so a row whose role is busy promises a launch
+   * that is not coming, and it looks exactly like the row above it that is.
+   *
+   * "Stands because the role is busy elsewhere" and "stands for no reason" were the same row
+   * in the operator's frame: the daemon says the first one in its skip line, and the frame has
+   * no skip lines at all. Absent map, the row reads exactly as it did before.
+   */
+  busy: ReadonlyMap<string, string> = new Map(),
 ): string[] =>
   ordered.map((candidate, at) => {
     const waited =
@@ -284,7 +295,15 @@ export const describeOrder = (
       candidate.mergeReadyPr === undefined
         ? ""
         : ` · guards 1-2 hold on PR #${candidate.mergeReadyPr}`;
-    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}`;
+    // THE ROLE IS ELSEWHERE, said on the row that promises the launch (thread 063). Beside the
+    // freeze rather than instead of it: a parked pair whose role is also busy is held by two
+    // different things, and an operator repairing one of them needs to know about the other.
+    const elsewhere = busy.get(candidate.role);
+    const taken =
+      elsewhere === undefined
+        ? ""
+        : ` · ⛔ ROLE BUSY — ${candidate.role} is ${elsewhere}; one session per role (its workspace is one), so this pair is not raised until that one ends`;
+    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}${taken}`;
   });
 
 /** The frozen half of a queue row: what holds the turn, and what will let it go. */

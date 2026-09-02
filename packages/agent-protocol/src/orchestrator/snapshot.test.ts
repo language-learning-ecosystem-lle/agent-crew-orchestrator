@@ -17,6 +17,7 @@ import { GH_OUTAGE_TICKS, type GhOutage, ghAlarmDue } from "./outage.js";
 import type { RankedCandidate } from "./priority.js";
 import { BOX_ACCOUNT } from "./quota.js";
 import {
+  busyRoles,
   type CircuitState,
   type OperatorFrame,
   type Parallelism,
@@ -413,6 +414,85 @@ describe("renderQueue — the parked candidate is marked where the queue is read
 
   it("without a park nothing is added — the ordinary queue reads as before", () => {
     expect(renderQueue(queue)).not.toContain("PARKED");
+  });
+
+  // THE SLITNESS OF THREAD 063, §2.3 ROW 2: "stands because its role is busy elsewhere" and
+  // "stands for no reason" were the same row here — the daemon says the first in a skip line
+  // and this frame has no skip lines.
+  it("a row whose ROLE is elsewhere says so; the row beside it does not (thread 063)", () => {
+    const text = renderQueue(
+      queue,
+      [],
+      new Map(),
+      new Set(),
+      new Map([["curator", "live on 058-concurrent-writers-one-thread"]]),
+    );
+    const rows = text.split("\n").filter((line) => line.includes("queue "));
+
+    expect(rows[0]).toContain(
+      "⛔ ROLE BUSY — curator is live on 058-concurrent-writers-one-thread",
+    );
+    expect(rows[0]).toContain("one session per role");
+    expect(rows[1]).not.toContain("ROLE BUSY");
+  });
+
+  it("a park and a busy role are two holds and both are said (thread 063)", () => {
+    // Repaired apart: one waits for a person, the other for a session to end. A row that named
+    // only one of them would send the operator to fix half of what is holding the pair.
+    const text = renderQueue(
+      queue,
+      [],
+      new Map([["030-consult-lane", "john"]]),
+      new Set(["030-consult-lane"]),
+      new Map([["curator", "held by a manual session of lle"]]),
+    );
+
+    expect(text).toContain("PARKED as a MODE set by john");
+    expect(text).toContain("⛔ ROLE BUSY — curator is held by a manual session of lle");
+  });
+});
+
+describe("busyRoles — what the queue row reads to know the launch is not coming (thread 063)", () => {
+  const lease = (role: string, thread: string): LeaseView =>
+    ({ role, thread, state: "running", deadline: "2026-09-02T14:00:00Z" }) as LeaseView;
+  const parallelism = (live: readonly LeaseView[]): Parallelism => ({
+    raisable: ["curator", "dev-core"],
+    live,
+    held: [],
+  });
+
+  it("a live pair makes its role busy, and names the thread it is busy WITH", () => {
+    expect(busyRoles(parallelism([lease("dev-core", "063-state-model-rewrite")]))).toEqual(
+      new Map([["dev-core", "live on 063-state-model-rewrite"]]),
+    );
+  });
+
+  it("an ACTIVE hold is capacity spent too, and it is named apart — it ends by a human", () => {
+    const held: HoldView = {
+      role: "curator",
+      by: "lle",
+      taken: "2026-09-02T11:00:00Z",
+      expires: "2026-09-02T15:00:00Z",
+      active: true,
+    };
+    expect(busyRoles(parallelism([]), [held])).toEqual(
+      new Map([["curator", "held by a manual session of lle"]]),
+    );
+  });
+
+  it("an EXPIRED hold is not capacity spent — the role is raisable and the row says nothing", () => {
+    const stale: HoldView = {
+      role: "curator",
+      by: "lle",
+      taken: "2026-09-02T09:00:00Z",
+      expires: "2026-09-02T10:00:00Z",
+      active: false,
+    };
+    expect(busyRoles(parallelism([]), [stale])).toEqual(new Map());
+  });
+
+  it("nothing live and nothing held — every row in the queue is a launch that can happen", () => {
+    expect(busyRoles(parallelism([]))).toEqual(new Map());
   });
 });
 
