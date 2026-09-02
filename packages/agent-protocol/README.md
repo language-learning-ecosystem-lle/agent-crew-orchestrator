@@ -1507,7 +1507,16 @@ agent-protocol config set   <key> <value> [--exec <p>] [--config-dir <p>] [--ref
                             # --ref may be left out (the operator's set): `orchestrator.ref` of the tree
 agent-protocol doctor       [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline] \
                             [--probe-timeout <sec>] [--identity-window <days>] [--identity-all] \
-                            [--exec <path>] [--worker <kind>] [--model <id>] [--effort <level>]
+                            [--exec <path>] [--worker <kind>] [--model <id>] [--effort <level>] \
+                            [--max-turns <n>]
+                            # THE ARGUMENTS ARE CHECKED (042): this command and the fifteen beside it
+                            # (`config check`, `roles list`, `schema migrate`, `schema version`, `role
+                            # exists`, `zones check`, `capability run`, `merge-gate`, `index build`,
+                            # `thread build`, `check`, `migrate`, `derive`, `tasks list`, `metrics`)
+                            # refuse an unknown flag BY NAME instead of ignoring it. --max-turns is on
+                            # this line for that reason: 'agentFor' reads it off the operator's own argv,
+                            # and a door in front of a line that did not spell it would refuse a working
+                            # call
                             # IS THIS BOX COMMISSIONED (thread 019): the checklist of a machine that is
                             # supposed to raise roles unattended — both configs, which instance it is, the
                             # agent binary AND A LIVE HEADLESS RUN of it, git (origin, fetch, write access),
@@ -2450,6 +2459,7 @@ Empty output — there are no non-migrated threads and this refusal is unreachab
 agent-protocol doctor [--ref <ref>] [--repo <p>] [--local-config <p>] [--instance <name>] [--offline]
                       [--probe-timeout <sec>] [--identity-window <days>] [--identity-all]
                       [--exec <path>] [--worker <kind>] [--model <id>] [--effort <level>]
+                      [--max-turns <n>]
 ```
 
 The measurement behind the command: bringing one VPS into service took an evening and
