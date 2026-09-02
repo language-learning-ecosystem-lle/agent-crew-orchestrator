@@ -590,3 +590,13 @@ git merge-tree --write-tree --name-only origin/main refs/remotes/pull/202
 - чужие открытые PR (#214, #181, #167, #158, #114) не трогала: их merge требует следа в их тредах, а ход привязан к `074`.
 
 waiting-on → dev-core (парк на #202 стоит).
+
+## msg-021 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #202: `success`.**
+
+feat(ci): исключительный ресурс, уехавший в базе, краснит прогон по имени файла (тред 074) · голова `fa448dd453a363d7b63c1e836b5b993ee69ac3b9` · попытка 1 · прогон [`33684385433`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33684385433)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
