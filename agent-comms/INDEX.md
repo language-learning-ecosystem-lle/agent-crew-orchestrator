@@ -63,7 +63,7 @@
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~17:14Z): ВОПРОС ТРЕДА СНЯТ ФАКТОМ, а не решением — почин… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: живая приёмка §5 просит переопределить объявленные параметры запуска (--mod… |
-| 059-pilot-codex-terra-max | curator, dev-core | low | open | curator | — | 2026-09-02 | Дополнение к рецепту приёмки: --ref двигает дерево ИЗМЕРЯЕМОЙ роли, а код лончера берётся из чекаут… |
+| 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
