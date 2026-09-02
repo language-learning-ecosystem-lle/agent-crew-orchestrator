@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T19:37:43.543Z",
+  "writtenAt": "2026-09-02T19:37:56.738Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "056-shared-tmp-mechanism",
       "state": "running",
       "deadline": "2026-09-02T20:37:40Z"
-    },
-    {
-      "role": "devops",
-      "thread": "057-circuit-ping-flaps",
-      "state": "running",
-      "deadline": "2026-09-02T19:57:27Z"
     }
   ]
 }
