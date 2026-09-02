@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T14:43:32.972Z",
+  "writtenAt": "2026-09-02T14:44:26.123Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "073-notifiers-frozen-in-own-contour",
       "state": "running",
       "deadline": "2026-09-02T15:40:08Z"
-    },
-    {
-      "role": "curator",
-      "thread": "073-notifiers-frozen-in-own-contour",
-      "state": "draining",
-      "deadline": "2026-09-02T15:20:12Z"
     }
   ]
 }
