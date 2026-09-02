@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:07:49.839Z",
+  "writtenAt": "2026-09-02T23:08:26.950Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "057-circuit-ping-flaps",
       "state": "running",
       "deadline": "2026-09-02T23:20:12Z"
-    },
-    {
-      "role": "curator",
-      "thread": "081-park-lift-raised-field",
-      "state": "draining",
-      "deadline": "2026-09-02T23:40:19Z"
     },
     {
       "role": "dev-core",
