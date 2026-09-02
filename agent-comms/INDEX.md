@@ -77,11 +77,11 @@
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Слово john полем delivers (чат ~16:33Z): #197 СМЁРЖЕН его кнопкой. Оба почтовых воркфлоу этого конт… |
-| 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | run:202 · 2026-09-02 | 2026-09-02 | Вердикт по #196 отработан, ступень 2 открыта отдельным PR #202 — кнопка по нему john (трогает .gith… |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Приёмка разморозки СОСТОЯЛАСЬ полем за шесть минут после кнопки: три письма, оба класса хода, оба п… |
+| 074-parallelism-and-domains | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #202: success. |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
-| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Стоячий адрес. Заведён прогоном curator по треду 073-notifiers-frozen-in-own-contour (решение john… |
+| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | 🔕 Уведомитель Comms Derived отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | dev-core | run:199 · 2026-09-02 | 2026-09-02 | CI по #199 был красен ОДНИМ случаем — моим, и по причине ящика, а не ветки |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 116-role-memory-cost | — | — | не прочитан | — | — | — | тред не собран: a thread opened without its head: 'messages/' is present but '_meta.md' is missing,… |

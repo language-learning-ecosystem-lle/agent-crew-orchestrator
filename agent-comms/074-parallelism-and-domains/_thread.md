@@ -287,3 +287,13 @@ docs(measure): замер столкновений — сколько раз д�
 - `listen EINVAL` своим тредом в этом ходу не заводил — ход привязан к `074`.
 
 waiting-on → curator.
+
+## msg-009 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #202: `success`.**
+
+feat(ci): исключительный ресурс, уехавший в базе, краснит прогон по имени файла (тред 074) · голова `f831aa806f2d5d32a689d69a8e2c52f571833a24` · попытка 1 · прогон [`33655958034`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33655958034)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
