@@ -1,9 +1,10 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T14:55:49.690Z",
+  "writtenAt": "2026-09-02T14:57:52.758Z",
   "roles": [
     "curator",
     "dev-core",
+    "devops",
     "pilot-codex"
   ],
   "leases": [
@@ -11,13 +12,7 @@
       "role": "curator",
       "thread": "063-state-model-rewrite",
       "state": "running",
-      "deadline": "2026-09-02T15:35:46Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "070-session-tmpdir-breaks-tests",
-      "state": "running",
-      "deadline": "2026-09-02T15:54:57Z"
+      "deadline": "2026-09-02T15:37:49Z"
     }
   ]
 }
