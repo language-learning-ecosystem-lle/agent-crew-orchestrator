@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T17:34:52.939Z",
+  "writtenAt": "2026-09-02T17:34:56.265Z",
   "roles": [
     "curator",
     "dev-core",
@@ -15,14 +15,15 @@
       "role": "curator",
       "until": "2026-09-02T18:00:00Z",
       "stated": true
+    },
+    {
+      "account": "lle-second",
+      "window": "five_hour",
+      "since": "2026-09-02T17:34:56Z",
+      "role": "dev-core",
+      "until": "2026-09-02T18:00:00Z",
+      "stated": true
     }
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "064-forget-the-consumer",
-      "state": "running",
-      "deadline": "2026-09-02T18:34:24Z"
-    }
-  ]
+  "leases": []
 }
