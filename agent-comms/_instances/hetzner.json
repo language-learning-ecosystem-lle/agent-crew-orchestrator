@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T21:22:09.242Z",
+  "writtenAt": "2026-09-02T21:33:23.651Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "081-park-lift-raised-field",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-02T22:20:15Z"
     }
   ]
