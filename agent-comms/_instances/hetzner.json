@@ -1,19 +1,23 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T22:59:29.523Z",
+  "writtenAt": "2026-09-02T22:59:42.426Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
+  "quota": [
     {
+      "account": "devops-main",
+      "window": "five_hour",
+      "since": "2026-09-02T22:59:42Z",
       "role": "devops",
-      "thread": "057-circuit-ping-flaps",
-      "state": "running",
-      "deadline": "2026-09-02T23:19:26Z"
-    },
+      "until": "2026-09-02T23:00:00Z",
+      "stated": true
+    }
+  ],
+  "leases": [
     {
       "role": "dev-core",
       "thread": "086-thread-id-write-read-mismatch",
