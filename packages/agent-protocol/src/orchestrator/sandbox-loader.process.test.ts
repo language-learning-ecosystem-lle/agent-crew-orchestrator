@@ -20,12 +20,12 @@
  * and this measurement is about a box, not about the package's logic.
  */
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import { codexReadOnlyEnv } from "./codex.js";
 
@@ -56,10 +56,17 @@ const SANDBOX_ARGV = [
  */
 const codexHere = (): boolean => spawnSync(CODEX, ["--version"], { encoding: "utf8" }).status === 0;
 
-/** A directory nobody has been in yet — which is what every run gets since #172. */
+/**
+ * A directory nobody has been in yet — which is what every run gets since #172 — AND
+ * REMOVED WHEN THE CASE ENDS. A test measuring the price of leftovers in a shared place
+ * (S26) may not leave any: on this box the suite is run with `TMPDIR=/tmp` by hand, so
+ * every case would otherwise add an entry belonging to nobody.
+ */
+const made: string[] = [];
 const freshTmp = (): string => {
   const dir = mkdtempSync(join(tmpdir(), "aco-sandbox-loader."));
   mkdirSync(dir, { recursive: true });
+  made.push(dir);
   return dir;
 };
 
@@ -94,6 +101,10 @@ const underSandbox = (
 };
 
 describe("the loader of a run held by the read-only sandbox (thread 058)", () => {
+  afterAll(() => {
+    for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
   it("dies on a FRESH TMPDIR when nothing is handed to it — the defect, reproduced", (ctx) => {
     if (!codexHere()) {
       ctx.skip("no `codex` binary on this box — the vendor's sandbox cannot be entered here");
