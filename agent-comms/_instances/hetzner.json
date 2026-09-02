@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T20:19:23.317Z",
+  "writtenAt": "2026-09-02T20:19:29.015Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "056-shared-tmp-mechanism",
       "state": "running",
       "deadline": "2026-09-02T20:55:53Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "071-test-depends-on-box-env",
+      "state": "running",
+      "deadline": "2026-09-02T21:19:26Z"
     },
     {
       "role": "devops",
