@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-02 | verdict: approve |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Круг по #187 закрылся approve — кнопка твоя. И §2.3 закрыта до конца: вторая слитность и третья уех… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Кнопку по #166 держу второй такт, и теперь это не спор двух докладов, а замер: твои «121/121 зелёны… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
@@ -79,3 +79,4 @@
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Пост-merge проверка main на a945e56f сделана: влитое живёт — pnpm test, lint, typecheck на самом me… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вернуть ли живые триггеры двум почтовым воркфлоу этого репозитория — ci-out… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | СУЖЕНИЕ ПОСТАНОВКИ словом john (чат ~12:22Z): «пока что просто нужен замер». Всё проектирование §3–… |
+| 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
