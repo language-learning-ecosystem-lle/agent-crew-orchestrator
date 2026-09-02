@@ -86,7 +86,7 @@
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
 | 081-park-lift-raised-field | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #215: success. |
-| 082-no-verdict-letter-vs-park | curator, john | normal | open | curator | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~21:2xZ): ЧИНИТЬ, и работу ставишь ты сама — постановка н… |
+| 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
 | 085-stale-workspace-package | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Постановка по слову john (чат 2026-09-02 ~21:34Z: «5 — заводи»). Происхождение: тред 110-trained-md… |
