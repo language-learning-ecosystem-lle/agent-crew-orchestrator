@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { LAUNCH_ENV } from "../orchestrator/launch.js";
+import { BOX_URL_KEY, CIRCUIT_URL_KEY } from "../orchestrator/watchdog.js";
 import { configHome, configHomeInside, sandbox } from "./process-sandbox.js";
 
 /** Sets a variable for the body and puts the ambient value back, absent or not. */
@@ -61,6 +62,32 @@ describe("the config home of a process test (R14)", () => {
       expect(sandbox("/home", { [LAUNCH_ENV.worker]: "claude-code" })[LAUNCH_ENV.worker]).toBe(
         "claude-code",
       );
+    });
+  });
+
+  // The monitors of the box (thread 071, measured 2026-09-02): the secrets file is merged
+  // OVER the environment, so a key the file leaves out is answered by the box — and the box
+  // that runs the circuit names its daemon's own monitor standingly. The suffixed form is
+  // the one that was measured red; the bare one and the box's cron key go the same way,
+  // because all three are read by `resolveWatchdog` off the same merged map.
+  it("drops the monitors of the box — a spawned daemon beats the test's server or nothing", () => {
+    for (const name of [BOX_URL_KEY, CIRCUIT_URL_KEY, `${CIRCUIT_URL_KEY}_HETZNER`]) {
+      withAmbient(name, "https://the.box/ping/live", () => {
+        expect(sandbox("/home")[name]).toBeUndefined();
+      });
+    }
+  });
+
+  it("a test that is ABOUT a monitor still passes it through extra", () => {
+    withAmbient(`${CIRCUIT_URL_KEY}_HETZNER`, "https://the.box/ping/live", () => {
+      const env = sandbox("/home", { [`${CIRCUIT_URL_KEY}_HETZNER`]: "http://127.0.0.1:1/ping" });
+      expect(env[`${CIRCUIT_URL_KEY}_HETZNER`]).toBe("http://127.0.0.1:1/ping");
+    });
+  });
+
+  it("a name that only LOOKS like a monitor is left alone — the prefix is not a substring", () => {
+    withAmbient(`${CIRCUIT_URL_KEY}S_OWN`, "not a monitor", () => {
+      expect(sandbox("/home")[`${CIRCUIT_URL_KEY}S_OWN`]).toBe("not a monitor");
     });
   });
 
