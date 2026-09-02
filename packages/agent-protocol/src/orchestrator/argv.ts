@@ -35,12 +35,27 @@
  * behind the door: `orchestrator up --clear-force` was REFUSED for wanting a value it
  * never takes, and `orchestrator up --clear-force --forgeround` passed, because the
  * typo was eaten as that value — the very defect this module was written against.
+ *
+ * A LIST IS NOT ONE WORD, and the comma in the placeholder is what says so (thread 042).
+ * `--paths <a,b>`, `--roles <a,b>`, `--participants <r,r>` are read by `listFlag`, which
+ * takes EVERY word up to the next flag — `--paths a b` is a form the usage line spells
+ * out loud. A door that consumes exactly one word after such a flag calls the second word
+ * a stray argument, and `new-thread --participants a b` was refused by this very check
+ * for a spelling the help text offers. So a placeholder containing `,` marks a flag that
+ * eats words until the next one, and the refusal it can still raise is the honest half:
+ * a list flag with NOTHING after it.
  */
 
 /** What one command accepts: flags that take a value, switches, and how many bare arguments. */
 export type CommandFlags = {
   readonly value: readonly string[];
   readonly boolean: readonly string[];
+  /**
+   * The subset of `value` whose value is a LIST: one or more words, `--x a,b` and
+   * `--x a b` naming the same thing (`listFlag` in `cli.ts`). Spelled `<a,b>` in the
+   * usage line — the comma in the placeholder is the whole grammar of it.
+   */
+  readonly list: readonly string[];
   /** Bare arguments the command itself takes (`hold <role>`); flags do not count. */
   readonly positionals: number;
 };
@@ -64,6 +79,8 @@ const GLOBAL_BOOLEAN = ["--no-fetch"] as const;
 const strip = (token: string): string => token.replaceAll(/^[[(]|[\])]$/g, "");
 const isFlag = (token: string): boolean => token.startsWith("-");
 const isPlaceholder = (token: string): boolean => token.startsWith("<");
+/** `<a,b>`: the placeholder of a list flag — the comma is what tells it from `<path>`. */
+const isListPlaceholder = (token: string): boolean => isPlaceholder(token) && token.includes(",");
 /** The `|` of `(--staged | --base <ref>)`: grammar between two alternatives, never a value. */
 const isSeparator = (token: string): boolean => token === "|";
 /** The tail comment of a usage line: `#` and everything after it is prose, not grammar. */
@@ -77,7 +94,7 @@ const isComment = (token: string): boolean => token.startsWith("#");
 export const parseUsage = (usage: string): Map<string, CommandFlags> => {
   const table = new Map<
     string,
-    { value: Set<string>; boolean: Set<string>; positionals: number }
+    { value: Set<string>; boolean: Set<string>; list: Set<string>; positionals: number }
   >();
   for (const line of usage.split("\n")) {
     const trimmed = line.trim();
@@ -103,6 +120,7 @@ export const parseUsage = (usage: string): Map<string, CommandFlags> => {
     const entry = table.get(key) ?? {
       value: new Set<string>(),
       boolean: new Set<string>(),
+      list: new Set<string>(),
       positionals: 0,
     };
 
@@ -118,8 +136,10 @@ export const parseUsage = (usage: string): Map<string, CommandFlags> => {
       if (!isFlag(token)) continue;
       const next = tokens[at + 1];
       const takesValue = next !== undefined && !isFlag(next);
+      const takesList = takesValue && isListPlaceholder(next as string);
       for (const name of token.split("|")) {
         (takesValue ? entry.value : entry.boolean).add(name);
+        if (takesList) entry.list.add(name);
       }
       if (takesValue) at += 1;
     }
@@ -131,6 +151,7 @@ export const parseUsage = (usage: string): Map<string, CommandFlags> => {
     result.set(key, {
       value: [...entry.value, ...GLOBAL_VALUE],
       boolean: [...entry.boolean, ...GLOBAL_BOOLEAN],
+      list: [...entry.list],
       positionals: entry.positionals,
     });
   }
@@ -160,6 +181,17 @@ export const strayArguments = (argv: readonly string[], flags: CommandFlags): re
       continue;
     }
     if (flags.boolean.includes(token)) continue;
+    if (flags.list.includes(token)) {
+      // Every word up to the next flag belongs to the list, exactly as `listFlag` reads
+      // it. "Said and empty" stays a refusal — the handler calls it one too.
+      let words = 0;
+      while (at + 1 < argv.length && !isFlag(argv[at + 1] as string)) {
+        at += 1;
+        words += 1;
+      }
+      if (words === 0) problems.push(`'${token}' was given nothing to name`);
+      continue;
+    }
     if (flags.value.includes(token)) {
       if (argv[at + 1] === undefined) {
         problems.push(`'${token}' expects a value and is the last thing on the line`);

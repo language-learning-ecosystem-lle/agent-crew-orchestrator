@@ -12464,16 +12464,24 @@ const orchestratorResumeShort = (argv: readonly string[]): void => {
  * APPEND-ONLY feed — the message cannot be taken back, and the silence is paid for by
  * a tick raising a pair on a thread that was waiting for a person. The six that write
  * or read the mail are guarded (`new-thread`, `new-message`, `thread show`, `thread
- * status`, `mail`, `await-input`) plus `notify`. What is left open is measured and
- * named rather than assumed: thirteen commands, all of them tools rather than mail
- * (`check`, `derive`, `index build`, `thread build`, `migrate`, `schema migrate`,
- * `metrics`, `tasks list`, `roles list`, `role exists`, `config check`, `zones check`,
- * `merge-gate`, `doctor`) — a swallowed flag there costs a re-run, not a message.
+ * status`, `mail`, `await-input`) plus `notify`.
+ *
+ * AND SINCE 2026-09-02 TO THE REMAINING SIXTEEN (thread 042, john's word): `config
+ * check`, `doctor`, `roles list`, `schema migrate`, `schema version`, `role exists`,
+ * `zones check`, `capability run`, `merge-gate`, `index build`, `thread build`, `check`,
+ * `migrate`, `derive`, `tasks list`, `metrics`. All at once rather than by halves, and
+ * the reason is the reader's: with half the commands catching a typo and half swallowing
+ * it, the operator has to remember which is which, and a rule remembered per command is
+ * not a rule. A swallowed flag here costs a re-run rather than a message — that is why
+ * these came last, not why they were left out.
  *
  * A DOOR IS ONLY AS TRUE AS THE USAGE LINE: the table is the help text, so putting a
  * command behind the guard means the line must spell every flag the handler reads.
  * `thread show --id` was such a case — an alias accepted for months and never written
- * down; the fix is the line, not an exception in the guard.
+ * down; the fix is the line, not an exception in the guard. The sixteen were measured
+ * the same way before the guard was put in front of them (handler → every function its
+ * OWN argv reaches → every `flag`/`flagInt`/`listFlag`/`includes` read there), and one
+ * line was short: `doctor` reads `--max-turns` through `agentFor` and did not spell it.
  */
 const USAGE_FLAGS = parseUsage(USAGE);
 
@@ -12491,6 +12499,7 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
       ? {
           value: [...spec.value, ...daemon.value],
           boolean: [...spec.boolean, ...daemon.boolean],
+          list: [...spec.list, ...daemon.list],
           positionals: spec.positionals,
         }
       : spec;
@@ -13070,11 +13079,13 @@ const main = async (argv: readonly string[]): Promise<void> => {
     );
   }
   if (command === "config" && subcommand === "check") {
+    guardArguments("config check", argv.slice(2));
     configCheck(argv.slice(2));
   } else if (command === "config" && subcommand === "set") {
     guardArguments("config set", argv.slice(2));
     configSet(argv.slice(2));
   } else if (command === "doctor") {
+    guardArguments("doctor", argv.slice(1));
     doctor(argv.slice(1));
   } else if (command === "init" && subcommand === "github") {
     // The one two-word form of `init`, so both the key of the guard's table and the argv
@@ -13085,22 +13096,31 @@ const main = async (argv: readonly string[]): Promise<void> => {
     guardArguments("init", argv.slice(1));
     boxInit(argv.slice(1));
   } else if (command === "schema" && subcommand === "migrate") {
+    guardArguments("schema migrate", argv.slice(2));
     schemaMigrate(argv.slice(2));
   } else if (command === "schema" && subcommand === "version") {
+    guardArguments("schema version", argv.slice(2));
     schemaVersion(argv.slice(2));
   } else if (command === "merge-gate") {
+    guardArguments("merge-gate", argv.slice(1));
     mergeGate(argv.slice(1));
   } else if (command === "zones" && subcommand === "check") {
+    guardArguments("zones check", argv.slice(2));
     zonesCheck(argv.slice(2));
   } else if (command === "capability" && subcommand === "run") {
+    guardArguments("capability run", argv.slice(2));
     capabilityRun(argv.slice(2));
   } else if (command === "roles" && subcommand === "list") {
+    guardArguments("roles list", argv.slice(2));
     rolesList(argv.slice(2));
   } else if (command === "role" && subcommand === "exists") {
+    guardArguments("role exists", argv.slice(2));
     roleExists(argv.slice(2));
   } else if (command === "index" && subcommand === "build") {
+    guardArguments("index build", argv.slice(2));
     indexBuild(argv.slice(2));
   } else if (command === "thread" && subcommand === "build") {
+    guardArguments("thread build", argv.slice(2));
     threadBuild(argv.slice(2));
   } else if (command === "thread" && subcommand === "show") {
     guardArguments("thread show", argv.slice(2));
@@ -13109,15 +13129,20 @@ const main = async (argv: readonly string[]): Promise<void> => {
     guardArguments("thread status", argv.slice(2));
     threadStatus(argv.slice(2));
   } else if (command === "check") {
+    guardArguments("check", argv.slice(1));
     checkAll(argv.slice(1));
   } else if (command === "migrate") {
+    guardArguments("migrate", argv.slice(1));
     migrate(argv.slice(1));
   } else if (command === "derive") {
+    guardArguments("derive", argv.slice(1));
     derive(argv.slice(1));
   } else if (command === "metrics") {
+    guardArguments("metrics", argv.slice(1));
     metrics(argv.slice(1));
   } else if (command === "tasks") {
     if (argv[1] !== "list") fail(`unknown 'tasks' subcommand '${argv[1] ?? ""}'\n${USAGE}`, 2);
+    guardArguments("tasks list", argv.slice(2));
     tasksList(argv.slice(2));
   } else if (command === "new-message") {
     guardArguments("new-message", argv.slice(1));
