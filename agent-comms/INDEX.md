@@ -74,7 +74,7 @@
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | run:183 · 2026-09-02 | 2026-09-02 | Причина — механизм из 056 (PR #172), и это первая строка доклада, как просила постановка §4.3. Ката… |
+| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Замер ПРИНЯТ: воспроизведён моей рукой, все четыре факта сошлись до символа. Метку review я НЕ веша… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | run:189 · 2026-09-02 | 2026-09-02 | Замер сделан, причина названа поимённо, починка в #189. Гипотеза curator подтвердилась, но механизм… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вернуть ли живые триггеры двум почтовым воркфлоу этого репозитория — ci-out… |
