@@ -447,6 +447,11 @@ import {
   versionRepairVerdict,
   workingTreeState,
 } from "./orchestrator/self-restart.js";
+import {
+  namedSharedLeftovers,
+  sharedPlaces,
+  snapshotShared,
+} from "./orchestrator/shared-places.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
 import { stateWord } from "./orchestrator/state-word.js";
 import {
@@ -8889,6 +8894,19 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   const runTmp = handOverRunTmp(p.sessionTmp);
   const sink = openSync(p.sessionLog, "a");
   const rawSink = openSync(p.sessionStream, "a");
+  // WHAT THE PLACES THAT BELONG TO NOBODY HELD BEFORE THIS RUN (thread
+  // `056-shared-tmp-mechanism`, step 1: visibility). Taken BEFORE the spawn, because
+  // «appeared while this run was alive» is the only claim a shared directory can support;
+  // taken here rather than in the child, because the child is the thing being measured.
+  // See `shared-places.ts` for what this does and does not claim, and for why it removes
+  // nothing.
+  // IT ALSO HAS TO COME AFTER `handOverRunTmp` ABOVE, and that is an ordering requirement,
+  // not an accident of layout: the socket alias of thread `070` is a symlink this very
+  // supervisor puts into the shared `/tmp`. Taken before the snapshot it is part of the
+  // «before» and can never be reported; taken after, the run would name its own alias as
+  // a leftover on every single tick — a door inventing a finding out of its own work.
+  const runSharedPlaces = sharedPlaces(p.env);
+  const sharedBefore = snapshotShared(runSharedPlaces);
   let sinksOpen = true;
   const closeSinks = (): void => {
     if (!sinksOpen) return;
@@ -8901,6 +8919,28 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     for (const line of sweepRunTmp(p.sessionTmp)) writeLog(`supervisor  ${line}`);
     if (runTmp.alias)
       for (const line of dropRunTmpAlias(runTmp.alias)) writeLog(`supervisor  ${line}`);
+    // AND WHAT APPEARED WHERE THE RUN HAD NO BUSINESS WRITING — the half `TMPDIR` cannot
+    // reach, because a typed path obeys no variable. Said on BOTH channels, unlike the
+    // sweep above: the run's own scratch is the run's own business, while an entry in a
+    // shared place outlives the run and belongs to nobody, so the operator watching the
+    // circuit hears it too. Nothing here may cost a run — it is a listing at the close of
+    // a session that has already finished.
+    try {
+      for (const line of namedSharedLeftovers({
+        before: sharedBefore,
+        places: runSharedPlaces,
+        roleId: p.roleId,
+        thread: p.thread,
+      })) {
+        writeLog(`supervisor  ${line}`);
+        err(`agent-protocol: ${line}`);
+      }
+    } catch (error) {
+      // The claim above made true by construction: this runs on the path that closes a
+      // lease, and a measurement of somebody else's directory may not be what decides
+      // whether a session's outcome is recorded.
+      writeLog(`supervisor  the shared places could not be measured: ${(error as Error).message}`);
+    }
     sinksOpen = false;
     closeSync(sink);
     closeSync(rawSink);
