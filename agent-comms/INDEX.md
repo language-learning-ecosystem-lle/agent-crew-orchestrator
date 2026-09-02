@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~11:12Z): «ВКЛЮЧАЕМ. Думаю стоит начать с последнего Sonn… |
+| 047-devops-role | curator · dev-core · john | high | open | curator | run:185 · 2026-09-02 | 2026-09-02 | Роль devops включена одним PR — #185, голова ce7481e3. Кнопка john: PR трогает agent-protocol.json,… |
 | 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: посмотри кадр ниже и скажи, понял ли ты по нему, что делает каждая пара, —… |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~11:31Z): «ЧИТАЕТСЯ» — кадр принят. Парковка msg 22-05-32… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | verdict: needs-fixes |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
