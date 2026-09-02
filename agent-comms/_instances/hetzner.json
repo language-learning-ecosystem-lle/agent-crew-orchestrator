@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T22:29:51.444Z",
+  "writtenAt": "2026-09-02T22:35:39.290Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "085-stale-workspace-package",
       "state": "running",
       "deadline": "2026-09-02T23:27:41Z"
-    },
-    {
-      "role": "curator",
-      "thread": "076-main-red-alarm",
-      "state": "running",
-      "deadline": "2026-09-02T23:09:48Z"
     }
   ]
 }
