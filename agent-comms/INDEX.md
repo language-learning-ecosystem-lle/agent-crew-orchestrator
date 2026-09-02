@@ -88,7 +88,7 @@
 | 081-park-lift-raised-field | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #215: success. |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
-| 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
+| 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | curator | — | 2026-09-02 | Замер сделан, петля уточнена, полка получила область — PR #219, жду CI |
 | 085-stale-workspace-package | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Постановка по слову john (чат 2026-09-02 ~21:34Z: «5 — заводи»). Происхождение: тред 110-trained-md… |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role, msg-087 (dev-core) и мой разбор в том же треде — здес… |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role — там он назван, но дома не имел три такта. Здесь он п… |
