@@ -89,4 +89,4 @@
 | 082-no-verdict-letter-vs-park | curator, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john. Вопрос первой строкой: чинить ли в .github/workflows/claude-review.yml ветв… |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
-| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | Толчок словом john (чат ~16:38Z): #158 ЛЕЖИТ ТРОЕ СУТОК И КОНФЛИКТУЕТ — перебазировать и довести. Р… |
+| 116-role-memory-cost | curator | normal | open | dev-core | run:158 · 2026-09-02 | 2026-09-02 | 158 не был устаревшим — он был ДУБЛИРУЮЩИМ. Форма D села трое суток назад другим PR; от #158 осталс… |
