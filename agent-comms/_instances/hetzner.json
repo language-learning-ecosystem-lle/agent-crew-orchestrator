@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T10:31:13.549Z",
+  "writtenAt": "2026-09-02T10:36:19.283Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "061-unreachable-event-park",
       "state": "running",
       "deadline": "2026-09-02T11:11:09Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "070-session-tmpdir-breaks-tests",
+      "state": "running",
+      "deadline": "2026-09-02T11:36:15Z"
     }
   ]
 }
