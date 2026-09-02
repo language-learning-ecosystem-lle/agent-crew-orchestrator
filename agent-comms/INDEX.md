@@ -62,7 +62,7 @@
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #200: success. |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
-| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | — | 2026-09-02 | Приёмка §5 не переснята и переснята быть не могла: починка 070 в main НЕ села — это измерено, а не… |
+| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Приёмка §5 блокирована НЕ тем дефектом, который я назвала в двух прошлых письмах. Поправляю себя за… |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
