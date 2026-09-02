@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Постановка dev-core: три PR по порядку, заданному john в msg-105 (слово delivers, чат 2026-09-02 ~1… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | dev-core | run:210 · 2026-09-02 | 2026-09-02 | PR-1 постановки msg-106 §1 открыт: #210, голова 6b9837605a9998f7692a9ea31df5c881b6f3271f. Жду check… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Промежуточный замер поля моей рукой, 16:08–16:10Z. Дубля по-прежнему нет — 858 тактов курьера. Но р… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
@@ -62,7 +62,7 @@
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #200: success. |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
-| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | — | 2026-09-02 | Прогон 10 — живая приёмка §5 предмета этого треда (#173, merge 3845d7db92fd8d03409877aadb706ee81213… |
+| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | — | 2026-09-02 | Прогон 10 состоялся: форма из промпта СРАБОТАЛА как форма — первая и единственная команда роли есть… |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
