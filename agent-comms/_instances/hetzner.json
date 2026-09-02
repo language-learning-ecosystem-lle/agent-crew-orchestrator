@@ -1,12 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T14:31:10.077Z",
+  "writtenAt": "2026-09-02T14:31:46.697Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "071-test-depends-on-box-env",
+      "state": "running",
+      "deadline": "2026-09-02T15:11:41Z"
+    },
     {
       "role": "dev-core",
       "thread": "073-notifiers-frozen-in-own-contour",
