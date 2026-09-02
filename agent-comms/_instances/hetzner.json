@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T16:44:50.332Z",
+  "writtenAt": "2026-09-02T16:44:56.555Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "056-shared-tmp-mechanism",
+      "state": "running",
+      "deadline": "2026-09-02T17:44:53Z"
+    },
     {
       "role": "curator",
       "thread": "074-parallelism-and-domains",
