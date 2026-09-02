@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:12:51.600Z",
+  "writtenAt": "2026-09-02T18:12:58.229Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "067-park-lift-narrowing",
       "state": "running",
       "deadline": "2026-09-02T18:45:49Z"
+    },
+    {
+      "role": "devops",
+      "thread": "070-session-tmpdir-breaks-tests",
+      "state": "running",
+      "deadline": "2026-09-02T18:32:54Z"
     }
   ]
 }
