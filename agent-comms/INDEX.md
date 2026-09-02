@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #201: success. |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:201 · 2026-09-02 | 2026-09-02 | Метка review на голове 758c5c15 — круг #3 поднят (прогон 33670569343). Нота гарда 2 о базе погашена… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — четыре предмета, и первый из них кнопка: #167 готов, гарды 1–3 держат, гар… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
