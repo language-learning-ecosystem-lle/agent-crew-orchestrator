@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:13:11.507Z",
+  "writtenAt": "2026-09-02T23:15:31.886Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "087-hold-refusal-hides-short-form",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T00:04:15Z"
     }
   ]
