@@ -46,11 +46,12 @@ import {
   describeUnpublishedCode,
   describeUnreadableCodeAge,
 } from "./code-age.js";
+import { chooseAccount, type DeclaredAccount } from "./failover.js";
 import type { HoldView } from "./hold.js";
 import { renderHolds } from "./hold.js";
 import type { InstanceDigest } from "./instances.js";
 import { renderInstances } from "./instances.js";
-import { kindOf } from "./kind.js";
+import { CLAUDE_CODE, kindOf } from "./kind.js";
 import type { LeaseView } from "./lease.js";
 import { describeGhOutage, type GhOutage, ghAlarmDue } from "./outage.js";
 import type { RankedCandidate } from "./priority.js";
@@ -151,6 +152,16 @@ export type OperatorFrame = {
    */
   readonly accountKinds?: Readonly<Record<string, string>> | undefined;
   /**
+   * WHAT THIS MACHINE DECLARES ABOUT ITS ACCOUNTS (`accounts` of the machine config) — the
+   * same half of the join the tick judges a fall-back chain by, carried so `shelvedRoles`
+   * can ask the tick's own question instead of a weaker one of its own. It is the CONFIG
+   * READING the frame already does for `accountKinds` above and not a new statement about a
+   * pair: the mark on the queue row is still computed here, out of sections this frame
+   * carries. A box that declares nothing hands nothing, and a chain is then judged exactly
+   * as `chooseAccount` judges one on a box with no declarations.
+   */
+  readonly accounts?: Readonly<Record<string, DeclaredAccount>> | undefined;
+  /**
    * The run of `gh` refusals in the merge-ready tier (thread 051), read from the file the
    * daemon writes. Undefined means the tier answered on the last tick that asked it.
    */
@@ -229,12 +240,15 @@ export const renderQueue = (
   modeParked: ReadonlySet<string> = new Set(),
   /** Roles that cannot be raised because they are elsewhere (thread 063) — role → what it is doing. */
   busy: ReadonlyMap<string, string> = new Map(),
+  /** Roles whose every account is shelved (thread 063) — role → the window that reopens first. */
+  shelved: ReadonlyMap<string, string> = new Map(),
 ): string => {
   const lines = ["queue:"];
   if (queue.length === 0) {
     lines.push("  nobody is waiting on a role this box raises");
   } else {
-    for (const line of describeOrder(queue, parked, modeParked, busy)) lines.push(`  ${line}`);
+    for (const line of describeOrder(queue, parked, modeParked, busy, shelved))
+      lines.push(`  ${line}`);
   }
   for (const note of notes) lines.push(`  ⚠ ${note}`);
   return lines.join("\n");
@@ -263,6 +277,49 @@ export const busyRoles = (
   for (const hold of holds)
     if (hold.active) busy.set(hold.role, `held by a manual session of ${hold.by}`);
   return busy;
+};
+
+/**
+ * WHY A ROLE IN THE QUEUE IS NOT GOING TO BE RAISED, SECOND ANSWER — role id → the window
+ * that holds it and when it reopens (thread 063, §2.2 state 3: "held by quota").
+ *
+ * IT IS A MARK BUILT OUT OF SECTIONS THE FRAME ALREADY CARRIES, not a new fact asked of the
+ * caller (curator's answer of 2026-09-02): the shelves are `frame.quota` — the very ones
+ * `renderQuota` prints two blocks up — and the chain rides on the candidate, so the queue row
+ * and the shelf list cannot come to say different things about one subscription.
+ *
+ * THE PREDICATE IS THE TICK'S OWN, `chooseAccount`, and not a re-derivation of it: "shelved"
+ * is not "some window is closed" but "every link of this role's chain is closed", and a frame
+ * that answered the first would call a role held while the tick raised it on a spare. Measured
+ * before the mark existed: the signal was never missing — `tick.ts` pushes `skipped` with the
+ * reason `quota` and the journal takes `launch-refused` — it just never reached the operator's
+ * frame, which has no skip lines at all.
+ *
+ * The named window is the FIRST TO REOPEN of the shut chain (`chooseAccount`'s own `until`),
+ * because that is the moment the pair can move, and a row naming any other shelf would send
+ * the reader to wait out a door the role is not standing at.
+ */
+export const shelvedRoles = (
+  now: Date,
+  queue: readonly RankedCandidate[],
+  shelves: readonly QuotaShelf[] = [],
+  /** What the machine declares about its accounts — the same half of the join the tick judges a chain by. */
+  accounts?: Readonly<Record<string, DeclaredAccount>> | undefined,
+): ReadonlyMap<string, string> => {
+  const held = new Map<string, string>();
+  if (shelves.length === 0) return held;
+  for (const candidate of queue) {
+    if (held.has(candidate.role)) continue;
+    const choice = chooseAccount({
+      ...(candidate.account === undefined ? {} : { primary: candidate.account }),
+      ...(candidate.fallback === undefined ? {} : { fallback: candidate.fallback }),
+      worker: candidate.worker ?? CLAUDE_CODE.id,
+      ...(accounts === undefined ? {} : { accounts }),
+      shelves,
+    });
+    if (choice.kind === "paused") held.set(candidate.role, describeQuotaShelf(choice.until, now));
+  }
+  return held;
 };
 
 /**
@@ -473,6 +530,11 @@ export const renderFrame = (frame: OperatorFrame): string =>
       // that promised a launch the box cannot make was the one reading that contradicted them.
       // Computed here rather than by the caller so the three sections cannot disagree.
       busyRoles(frame.parallelism, frame.holds),
+      // AND FROM THE SHELF LIST SIX LINES ABOVE, for the same reason (thread 063, §2.2 state 3):
+      // `renderQuota` and this row are two readings of one fact, and the second one is the one
+      // read in front of a stalled contour. The declared accounts ride in the frame already —
+      // `renderAuth` dictates a login off them — so no new field enters the frame for this mark.
+      shelvedRoles(frame.now, frame.queue, frame.quota, frame.accounts),
     ),
     // Beside the queue, because it is the same question answered for the pairs that are
     // NOT in it: `renderResidentWaits` returns nothing when the project has no resident

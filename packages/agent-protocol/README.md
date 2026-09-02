@@ -3164,6 +3164,17 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
     is never read as the vendor's word. The courier's category does **not ring**: a quota
     pause ends by a clock the box already holds and there is no action behind it, so it
     is printed, not delivered.
+  - **AND THE PAIR ITSELF IS MARKED IN THE QUEUE** (thread 063): the row that promises the
+    launch carries `⏸ HELD BY A CLOSED WINDOW — quota-paused until <ISO> …; nothing is owed
+    and nobody is late`, beside `⛔ ROLE BUSY` and the park rather than instead of them.
+    Until this existed the signal stopped at the daemon's stream — the operator's frame has
+    no skip lines, so a shelved pair simply stood at the head of a queue nothing was raised
+    from, which reads as a dead circuit rather than a shut subscription. The mark asks the
+    TICK'S question (`shelvedRoles` → `chooseAccount`): "every link of this role's chain is
+    closed", never "some window is closed" — a role the tick would raise on an open spare is
+    not marked. The shelves are the frame's own `quota:` panel, and the role→account→spares
+    join is the one the tick makes (`roleAccountChains`), so the panel, the row and the next
+    tick cannot come to say different things about one subscription.
   - **The round the vendor ended is UNDONE, not merely forgiven** (thread 019, §4). A
     `quota-exhausted` release has never counted as a failed attempt, but the
     `lease-acquired` that opened the round moved the counter and nothing moved it back:
