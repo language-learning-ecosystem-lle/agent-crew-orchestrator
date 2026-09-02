@@ -389,6 +389,16 @@ describe("renderTui — the frame as three panels", () => {
     expect(text).toContain("queue:");
   });
 
+  // Thread 063, john's requirement 5. The top panel used to call `renderLeaseLine` without
+  // the frame's `now`, so `status` said "60m left of its window" about a pair and the
+  // observer, looking at the SAME frame, said only a stamp. Two renderers of one fact
+  // differing is the defect this thread exists to end, so the phrase is asserted at a real
+  // terminal's width — a countdown that only survives on a 200-column screen is not shown.
+  it("the top panel says how much is left, in the same words status uses", () => {
+    const lines = renderTui({ frame: frameOf([lease()]), state: initialTuiState, rows, cols });
+    expect(lines.join("\n")).toContain("60m left of its window");
+  });
+
   it("the selected pair is marked, and only it", () => {
     const frame = frameOf([lease({ thread: "a" }), lease({ thread: "b" })]);
     const lines = renderTui({

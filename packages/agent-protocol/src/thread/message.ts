@@ -337,6 +337,31 @@ export type MessageFields = {
    */
   readonly delivers?: string;
   /**
+   * WHO WILL MOVE THE EVENT THIS TURN IS PARKED BEHIND (thread 061, form (B) of curator's
+   * statement, by the word of john 2026-08-30) — the answer to "and what, exactly, makes the
+   * thing you are waiting for happen?".
+   *
+   * THE DEFECT IT ANSWERS is a park waiting for an event that CANNOT HAPPEN while the park
+   * stands. Measured live: `dev-speech` parked on `pr:451` — the merge of its own PR — but that
+   * merge needs the curator of the same thread to label and judge it first, and a parked thread
+   * raises nobody. The event was behind a door the park itself had locked. It was caught in 32
+   * seconds by the author reading the door's note, which is exactly the защита that holds only
+   * while somebody reads.
+   *
+   * WHY A NAME AND NOT A VERDICT OF REACHABILITY. john asked how the system could possibly know
+   * that a PR needs the curator's hand; the honest answer is that it cannot — "who must act" is
+   * a judgement, expressed by no field. So the machine does not guess: it makes the parker state
+   * the answer, and the value of the field is that STATING IT IS WHAT FORCES THE CHECK. The
+   * refusal of the hard form (A) — computed reachability — was deliberate: it would refuse
+   * legitimate parks whose event another thread or a human hand moves.
+   *
+   * The value is a role known to the config, and it may be the parker itself (a role that will
+   * come back with a second run) or a person. It is demanded on `pr:` parks, where the event is
+   * A HAND on a button; a `run:` park names its mover already — the round the door has just
+   * verified to be alive.
+   */
+  readonly parkMover?: string;
+  /**
    * THE MERGE THIS MESSAGE ANNOUNCES (thread 023) — the number of a PR that has just landed
    * in the default branch. Written by the merge notifier, read by `parkingOf`: a thread
    * parked on `pr:<n>` lifts on the message that says this number, and on nothing else.
@@ -799,6 +824,19 @@ export const parseMessageFile = (raw: string): Message => {
     return value;
   });
 
+  // `park-mover` names WHO MOVES the event (thread 061). Shape only here, for the reason above:
+  // whether that name is a role the config knows is a question with the config in hand, and a
+  // reader of an append-only feed cannot repair what is already written.
+  const parkMover = soft(() => {
+    const value = raws.get("park-mover");
+    if (value !== undefined && !ROLE.test(value)) {
+      throw new MessageFormatError(
+        `'park-mover: ${value}' — expected the id of the participant who will move the event this turn is parked behind`,
+      );
+    }
+    return value;
+  });
+
   // The fact that LIFTS an event park, and the only one the courier of merges can state:
   // "PR N is in the default branch now". A number, because that is what the notifier has.
   const mergedPr = soft(() => {
@@ -853,6 +891,7 @@ export const parseMessageFile = (raw: string): Message => {
     ...(priority === undefined ? {} : { priority: priority as ThreadPriorityValue }),
     ...(parkedOn === undefined ? {} : { parkedOn }),
     ...(delivers === undefined ? {} : { delivers }),
+    ...(parkMover === undefined ? {} : { parkMover }),
     ...(mergedPr === undefined ? {} : { mergedPr }),
     ...(verdictPair ?? {}),
     ...(tasks.length === 0 ? {} : { tasks }),
@@ -902,6 +941,9 @@ export const renderMessageFile = (message: Message): string => {
     // Beside `parked-on` for the same reason `merged-pr` is: one freezes a turn behind a
     // person, this one says that the person has spoken.
     ...(fields.delivers === undefined ? [] : [`delivers: ${fields.delivers}`]),
+    // Directly under `parked-on`, because it is a qualifier OF THE PARK and reads as one line
+    // with it: what freezes the turn, and who will move that thing (thread 061).
+    ...(fields.parkMover === undefined ? [] : [`park-mover: ${fields.parkMover}`]),
     // Beside `parked-on` because it is its counterpart: one freezes a turn behind an event,
     // this one says the event happened.
     ...(fields.mergedPr === undefined ? [] : [`merged-pr: ${fields.mergedPr}`]),

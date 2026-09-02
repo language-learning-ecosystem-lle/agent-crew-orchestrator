@@ -300,6 +300,28 @@ stands in, and the failure of getting it wrong is a partial write into the wrong
 rather than a refusal. A config with no `orchestrator` section declares no ref, and then
 the flag is absent rather than invented, exactly as the prefix is.
 
+**And a role held by a read-only sandbox gets two flags more — `--no-fetch --repo <its own
+working tree>`.** For a role whose card declares `launch.agent.toolsHeldBy:
+"sandbox-read-only"` the line above fails by construction rather than by luck: a `--ref`
+with an `origin/` prefix updates the ref before reading it, and a process confined to
+read-only tools has neither the network nor the write to do that — `exit 2` on the run's
+only command. `--repo` is the second half of the same line: without it the config's
+repository is derived from the directory of `--root`, that is from the MAIL CHECKOUT
+rather than from the tree the role works in; the two often answer the same ref on one box,
+and a prompt may not lean on that. Both values are read from what the config already
+declares — the mark from the card (protocol version 20), the path from
+`orchestrator.workdir.worktrees` + the role id, absolute and resolved by the same run —
+so no key and no schema version is spent on them. **A role without the mark gets the line
+above unchanged**, which is the point: the roles that do reach the network must not be
+handed a stale config behind a warning. A project that declares no role worktrees declares
+no path, and `--repo` is then absent rather than invented while `--no-fetch` still stands.
+
+Measured cost of the omission (thread `058-launch-prompt-mail-form-sandbox`, from the runs
+of `038` on 2026-08-30): one raise issued this single command, got the refusal, and
+delivered none of the five asked-for points; the next raise of the same role and the same
+model delivered all five, and differed only in that its statement of work had spelled the
+working form out by hand.
+
 ## The machine config (R14)
 
 **The repository says WHAT, the machine says WHERE.** Roles, permissions, ceilings,
@@ -320,6 +342,29 @@ every machine and belongs to none of them.
 `secrets.envFile` (R4) is a PATH and only a path: the values live in that file, which
 is read and never printed, while this one is printed on every preflight. Both fields
 say the same kind of thing — where something on this box happens to sit.
+
+**And the commands take their GitHub credentials from it themselves** (thread 065): a
+command standing in the checkout of a circuit resolves that circuit's machine config the
+way every other command does, reads `secrets.envFile`, and hands the variables to the
+child `gh` and `git` it runs. Nothing has to be exported before the call, and no
+`EnvironmentFile=` in a unit repeats what the config already says. Three rules:
+
+- **an already-set variable is never overwritten** — a caller who exported `GH_TOKEN`
+  (the debugging path, and the operator's own) wins over the file;
+- **`GH_TOKEN` or `GITHUB_TOKEN`** is what counts as a login, and every other variable of
+  the file is passed on too;
+- **the credential is offered, never demanded** — a command whose config names no file
+  still calls `gh`, because `gh` has logins this package does not manage (`gh auth login`
+  on a human's box, the token an Actions job is handed). Only when the child ITSELF
+  refuses does the missing credential join the reason, and there it **names the file**,
+  not the variable: no `secrets.envFile` in the config / the file is absent / it cannot be
+  read / it carries no token are four different messages, each quoting the path it tried
+  to read. A value is never printed, anywhere.
+
+`git` gets the same environment: a credential helper for `github.com` that reads the
+token out of its own environment, and `GIT_TERMINAL_PROMPT=0` — a `Username for
+'https://github.com'` on the stdin of a session nobody is watching is a hang, not a
+failure.
 
 `accounts` is the same kind of thing for the SUBSCRIPTIONS a box holds (thread 055),
 and it is one half of a join that runs across the R14 line in both directions:
@@ -1381,6 +1426,21 @@ of the whole circuit.
 `--repo` defaults to the repository of the current directory. Without `--write`
 nothing is written.
 
+**A command typed in a tree of ANOTHER contour is refused, by name, before anything is
+read** (thread 062). Each named instance config of a box declares the `repo` of one
+circuit, and the door is asked in two halves. The GROUND — the tree the command was
+typed in — is judged on **every** call, `--repo` or no `--repo`: a box that declares
+contours and claims the caller's tree with none of them refuses at once, because that
+is a session working from a checkout made in `/tmp`, outside every boundary it has
+(zones, its card, its review round, its feed). The TARGET is judged when `--repo` names
+one: it must belong to the same circuit, and the refusal names both origins, the other
+contour when this box declares it, and the way through — a role OF that circuit opens
+the work there. A box with no named instances declares no contours and nothing is
+judged: there is no boundary to cross. Two limits, stated rather than implied: a session calling `git` and
+`gh` directly never passes this door (the load-bearing measure is a `gh` token scoped
+to one repository), and a tree that is outside the contour AND has no `origin` is not
+judged — the facts do not decide, and guessing would refuse honest first-run trees.
+
 **A flag that takes a LIST takes it in both forms** — `--x a,b` and `--x a b` name the
 same list, and a list flag reads every word up to the next `--` (thread 033). It used to
 read exactly one, so `zones check --paths a b c` judged ONE path and answered green about
@@ -1716,6 +1776,26 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # lifts the park, and the clock (`remind <person> <thread> <stamp>` in the
                             # state file) is dropped with it, so the next question of that pair starts
                             # its cadence over rather than inheriting an answered one's stamp
+                            # AND THE ELEVENTH: AN EVENT PARK THE CIRCUIT CANNOT REACH (thread 061).
+                            # A park on `pr:`/`run:` is deliberately mute in every pass above — it is
+                            # not a call and not a stall — and that silence cannot tell a working
+                            # circuit from a merge that landed with no `merged-pr` header (thread 030:
+                            # 8 hours, woken by a human's hand) or from a park whose event needs a move
+                            # by the very role the park keeps unraised (the deadlock of 061). Past
+                            # EVENT_PARK_STALE_AFTER_MINUTES (360 — a constant, for the reason the two
+                            # thresholds above are) the park rings ONCE: the thread, the age, the PR and
+                            # WHAT WOULD LIFT IT, which differs between the forms (`merged-pr: N` in a
+                            # header for `pr:`, the round reporting into the thread for `run:`)
+                            # IT NAMES NO DIAGNOSIS: whether the event is still reachable is a fact
+                            # about GitHub, and reading it here would poll the vendor on every tick for
+                            # the one class of park that legitimately lasts days. The line carries what
+                            # the box KNOWS — how long, behind what, what lifts it — and the reader
+                            # decides. Keyed by thread + PR + the stamp of the declaring message
+                            # (`event-park` in the state file), and the key lives only while the park
+                            # does: a lifted park forgets itself on the next tick, so the NEXT promise
+                            # of the same thread rings again. It raises its own letter, for the reason
+                            # the reminder does; with no clock and on a box with no `direct` target
+                            # there is no watchdog at all, which is the honest answer, not a default
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--for <role>] [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
@@ -1816,7 +1896,27 @@ agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
 agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
-                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            --worker <w> [--session <id>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            # A LETTER INTO A THREAD THAT IS ALREADY PARKED IS REFUSED UNLESS IT SAYS WHAT IT
+                            # DOES ABOUT THE PARK (thread 058, (B.3)): the refusal names the park in full —
+                            # what it waits for, since when, whose turn it was declared on, and the question
+                            # in its own words. It fires at most once per park (the next letter lifts it), it
+                            # changes NOTHING about what lifts a park, and it is a REFUSAL and not a warning
+                            # because `--write` is one action: a warning would be a remark about a letter
+                            # already lying in an append-only feed. Three ways to pass — carry what the park
+                            # waits for (`--delivers` / `--merged-pr` / `--verdict --pr`), carry the park
+                            # forward (`--parked-on <the same value>`), or name the lift:
+                            # --park-lifted <person|pr:N|run:N>: THE PARK IS OVER AND THIS LETTER SAYS WHICH
+                            # ONE IT ENDS. The value must MATCH the standing park; nothing is written to the
+                            # header by it. A stale value — the park was lifted by somebody else between the
+                            # read and the write, which is the very subject of 058 — is a NOTE, not a refusal
+                            # AND IF THE FEED OF THE THREAD DOES NOT READ AT ALL (half a migration, a message
+                            # file that does not parse), the door SAYS SO instead of passing its own blindness
+                            # off as "nothing is parked": a note naming the failed read and its reason. It does
+                            # not refuse — a refusal built on a feed nobody could parse names the writer
+                            # nothing they can fix — but it never stays silent about a check that did not run.
+                            # The dating of the letter reads the same files and REFUSES by name when one of
+                            # them is unparsable (the stamp must stand strictly after the last in the feed)
                             # THE WRITING HALF (R3): --write means SENT — the file, the commit and the push
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
@@ -1906,6 +2006,39 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # refusal is said apart from "no run at all" because the repair differs:
                             # there the round has not been born (wait seconds, park then), here it has
                             # already died (read the outcome and report it)
+                            # --park-mover <participant>: WHO MAKES THAT MERGE HAPPEN (thread 061, by the
+                            # word of john 2026-08-30) — DEMANDED on `--parked-on pr:<n>`, refused with
+                            # anything else. A merge park waits for A HAND on a button, and a parked
+                            # thread raises nobody: park behind an event that needs THIS thread's own
+                            # next step and the door is locked from the inside. Live on 2026-08-30: a
+                            # role parked on the merge of its own PR, whose label and verdict were its
+                            # own curator's next move; caught by its author in 32 seconds, by reading a
+                            # note — a защита that holds only while somebody reads. The machine judges
+                            # NOTHING about the name (whether that participant will act is a question
+                            # about the world, and computed reachability was refused for the false
+                            # refusals it would cost): what the field buys is that the question gets
+                            # asked, and the parker who must write "the label goes up by curator" has
+                            # just checked that somebody can. Any participant the config knows is legal,
+                            # a wakeable role above all — unlike `--delivers`, which names a person the
+                            # circuit cannot move. A `run:` park needs no mover: the round it waits for
+                            # is a machine the door has just verified to be running
+                            # BOTH EVENT FORMS TAKE THE NUMBER OF A PULL REQUEST, AND THE DOOR CHECKS
+                            # THAT IT IS ONE (thread 061): `run:<n>` waits for the round ON PR n — it is
+                            # NOT an id of a workflow run, and the two are indistinguishable to the eye
+                            # (`160` and `33328290131` are both integers). A number of six digits or more
+                            # is refused by MAGNITUDE alone, with no vendor asked: PR numbers are a
+                            # counter inside one repository and reach 1000000 nowhere, so the refusal
+                            # says what it read the number for, and — when the number has the shape of a
+                            # run id — names that as the likely cause and where to read the right number
+                            # (`gh pr view --json number`). On `run:` there is a second refusal from the
+                            # vendor: `gh` answering that THERE IS NO SUCH PULL REQUEST is the one of its
+                            # refusals that is a fact and not a blink, so it refuses the park by name
+                            # instead of degrading into a note. `pr:` is deliberately NOT asked about —
+                            # parking on a pull request being created in this very tick is legal, and an
+                            # existence check would refuse it; magnitude is the whole check there.
+                            # Measured 2026-08-30: three parks in one day took somebody else's number,
+                            # every one caught by its own author and every one AFTER the record — a
+                            # correction letter each, in a feed that keeps both
                             # ALL THREE PARKS LIFT NARROWLY, by one walk (thread 023; the event ones on
                             # 2026-08-03, the person one on 2026-08-04): the first message that MOVES
                             # somebody, plus — for the event ones only — the merge of that PR announced
@@ -1977,7 +2110,7 @@ agent-protocol await-input  --root <comms> --ref <ref> --role <id> --thread <id>
                             # beside the question. code 0 — the answer arrived; code 3 — the wait ran out
 agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <t> \
                             --participants <r,r> --from <role> --expects <e> \
-                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
+                            [--waiting-on <role>] [--parked-on <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--verdict <approve|needs-fixes> --pr <n>] --worker <w> [--session <id>] --body-file <p> [--write] [--no-push]
                             # --delivers: THE SAME FIELD TOO (thread 030), by the same door and with the
                             # same two refusals — a thread is often OPENED by the courier of a decision,
                             # and the park that word lifts stands in ANOTHER thread. Written here on the
@@ -2360,9 +2493,28 @@ facts about the pull request and this command answers them in one call: an `appr
 verdict **on the current head**, green checks **on that same head**, and no **document
 of power** in the diff. Exit 0 — nothing in the facts forbids the merge; exit 1 — a
 guard does not hold. The facts come from `gh pr view --json` (the tool a session
-already runs to look at a PR; its authentication is the operator's), and its answer is
+already runs to look at a PR; **the token is taken from the `secrets.envFile` of this
+circuit's machine config** unless the caller already exported one — the first line of the
+output says which file and which variable won, never a value), and its answer is
 validated at the door — a renamed field is a refusal by name, never a silent "no
 reviews, no checks", which for a merge gate would fail open.
+
+**The contour boundary is asked first, before `gh` (thread 062).** Both halves apply at
+exit 2 before the pull request is read at all — the general door described under the
+shared flags above, reached here through the config this command loads. The ordinary
+form (`merge-gate --ref origin/main --pr <n>`, the one written in `REVIEWER.md`) is
+judged by its GROUND: called from a checkout no contour of the box claims, it refuses
+without asking `gh` anything. A `--repo` naming another contour's checkout is refused by
+the second half. So a question about another circuit's pull request never leaves the
+box:
+
+```
+agent-protocol: '/tmp/lle-clone' belongs to another contour: its 'origin' is
+github.com/o/language-learning-ecosystem, while this command came from contour
+'hetzner' (github.com/o/agent-crew-orchestrator). A role writes only inside its own
+circuit — what has to happen in another one is opened there by a role OF that circuit,
+through its feed, not from a checkout made here (thread 062)
+```
 
 **Two guards are never reported as passed, and that is the point.** Whether the feed
 really holds a decision of the owner of the decision (here: john) behind this PR (guard 3), and whether the merge gets
@@ -3046,12 +3198,29 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   we wait for the process to exit naturally → `completed`. The deadline without a
   passed turn → `timeout`, and the role does not hang forever. `handedOff`
   outweighs `overdue`: a success noticed at the deadline is still a success.
-  **In the operator frame that state is printed `working past handoff`** (thread 019):
-  `draining` is the machine's word and reads as "shutting down", while the session is
-  in fact still working inside the same window — john read the frame twice and asked
-  both times. The translation lives in the renderer only; `state` stays `draining`
-  wherever it is data (the journal, the digest a box publishes), and the deadline
-  column beside it is the "until when".
+  **In every frame a human reads, that state is printed `working on — already reported,
+  turn passed`** (thread 019, widened by thread 063): `draining` is the machine's word and
+  reads as "shutting down", while the session is in fact still working inside the same
+  window — john read the frame three times and asked all three. The translation lives in
+  the renderer only; `state` stays `draining` wherever it is data (the journal, the digest
+  a box publishes), and the deadline column beside it is the "until when".
+- **One vocabulary for every state a human reads — `orchestrator/state-word.ts`** (thread
+  063). The translation of thread 019 covered `draining` in `status` alone, and the two
+  OTHER renderers of the same fact — the parallelism block of the frame and the line about
+  a neighbouring box — kept printing the raw machine word beside it; that is the list john
+  read `draining` in on 2026-08-30. Now `stateWord(state, reason)` is the single source of
+  the display phrase for all three, each of the eleven release reasons has its own sentence
+  instead of a bare enum in brackets, and an unknown state (a neighbour on another version)
+  is printed as it came rather than guessed at. `timeLeftWord(view, now)` adds the second
+  half — `40m left of its window`, `18m left of the wait`, `12m past the end of its window`
+  — on the clock the fold itself judges by, and nothing at all on a terminal lease. It stands
+  BEFORE the deadline stamp on purpose: the observer's top panel cuts the line to the
+  terminal's width and the cut eats the END, so what survives is the half a reader READS and
+  what is lost is the stamp they COPY. Every human frame carries it, the observer's top panel
+  included — `tui` calls the same `renderLeaseLine` with the frame's `now`, because `status`
+  saying "60m left" about a pair while the observer showed only a stamp is the same
+  two-renderers defect one layer up. The inventory the vocabulary was derived from, including
+  the states still MISSING, is [`docs/state-model.md`](../../docs/state-model.md).
 - **Putting things down covers the whole process group (`-pid`), not just the direct
   child.** A SIGTERM to a launcher does not reach its children (`claude` → its
   subprocesses), and they would be orphaned; the spawn is `detached` and the
@@ -4670,3 +4839,109 @@ with the systemd taken out: see a non-zero code, raise it again) ticks with no d
 report. What a CI runner cannot reproduce is the other half — that THIS box's unit answers a
 75 with a fresh process — because it has neither this systemd nor this unit; that half is a
 live acceptance on the box and is named as one rather than assumed.
+
+### S26 — the run's own «temporary»: `TMPDIR` per session (thread 056)
+
+**The rule was not being broken by carelessness, it was being broken by the shape of a
+command.** «Do not write into the shared `/tmp`, work in your own `mktemp -d`» is stated,
+known and quoted by the roles themselves — and broken every few turns. curator caught
+herself three turns running inside one thread (LLE `111`, 2026-08-30T09:30:36Z) and named
+the class correctly: a write into `/tmp` is never a decision, it is the side effect of the
+convenient form of a command (a marker file, a redirect into a scratch file, a tool's own
+spool). The damage in that case was nil; what separated it from a dump into `/tmp/run.log`
+painting somebody else's CI was luck, not construction. The repository's own conclusion
+from thread `053` applies verbatim: a rule phrased as an appeal does not work, a
+precondition attached to the action does.
+
+- **Every run is spawned with its own `TMPDIR`** — `<state>/sessions/<run>.tmp`, created
+  before the child exists and set over the inherited environment. It is the sixth file of
+  the family already named per run (`.log`, `.jsonl`, `.session`, `.supervisor`,
+  `.waiting`), so one run stays one name in a directory listing.
+- **It is the PLATFORM's variable and that is the entire point.** Everything the world
+  runs already reads it — `mktemp`, node's `os.tmpdir`, python's `tempfile`, go, the
+  vendor's binaries — so a command written in the ordinary shape lands in this run's own
+  directory without the session knowing that it did. It is deliberately not part of the
+  `AGENT_PROTOCOL_*` launch contract: that set is also what the process sandbox scrubs
+  from a test's ambient environment, and scrubbing the platform's `TMPDIR` there would
+  change what the tests themselves run under.
+- **It is never the role's worktree.** A scratch file there is a dirty tree, that is, a
+  refusal to launch on the next tick (R17) — the state directory is the only place a
+  run's leavings can be both private and harmless.
+- **What the run left is NAMED, then swept.** At the close of a session the supervisor
+  lists what is in that directory (up to twenty entries, then a count) into the run's own
+  log and removes it. A run that left nothing says nothing, so a line there always means
+  something was left — and the class curator asked to make measurable is measurable from
+  the session logs, per run, with no ambiguity about whose leftovers they are.
+- **Why not a before/after listing of the shared `/tmp`**, the cheapest candidate in the
+  statement of work: on a box running several sessions at once (and in this package's own
+  test suite, which mints `mkdtemp` from many files in parallel) that listing is full of
+  other processes' entries and can attribute none of them. The private directory gives the
+  same measurement with exact attribution and no race. What it does NOT cover is a session
+  that types the literal path `/tmp/x` — no environment variable can intercept that, and
+  the only mechanism that would is `PrivateTmp=yes` on the unit, which is john's to decide.
+
+**What is tested.** The name is a unit (`paths.test.ts`); the seam is a process test
+(`run.process.test.ts`) — a stub session runs `mktemp -d` and `mktemp` naming no
+destination, and what is asserted is that `TMPDIR` is this run's directory, that both
+landed inside it, that the directory is gone after the run and that the log named what was
+left in it.
+
+### S27 — the session's `PATH` carries the user's own tools (thread 069)
+
+**The measurement, taken on the live box (`lle-agents`, 2026-09-02T09:52Z).** A raised
+session sees `~/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin` — the daemon's
+environment, which under systemd is the unit's own `PATH` (S-decision 5 of `systemd.ts`: the
+interpreter's directory, the declared agent binaries' directories, the system floor). The
+operator's login `PATH` also carries `~/.local/bin` and `~/.maestro/bin`. Comparing the two,
+the executables available to the user and unreachable from a session were exactly:
+
+| binary | where | in the session |
+| --- | --- | --- |
+| `uv`, `uvx` | `~/.local/bin` | **not found** — the finding that raised the thread |
+| `maestro` | `~/.maestro/bin` | not found; a vendor-specific directory, see below |
+| `claude`, `gh` | `~/.local/bin` | resolvable, from ANOTHER directory (`~/.nvm/…/bin`, `/usr/bin`) |
+
+**The price is a tax, not a breakage,** which is why it is closed by construction. The role
+that hit it guessed and retyped the full path in one turn; a role that has never seen the
+failure pays a whole turn, because `No such file or directory` reads as a fact about the box,
+not about the environment its session was raised in. The alternative — a sentence in a role
+card saying «call it by its full path» — is the same substitution of memory for mechanism
+this repository already refused for the shared `/tmp` (S26) and for a command's own
+credentials (thread `065`).
+
+- **The session's `PATH` is composed at the spawn, beside `TMPDIR`** — the inherited value
+  plus the standard per-user binary directory (`$HOME/.local/bin`), and only if it exists on
+  the box. Nothing is added when there is nothing to add, and the key is then not set at all:
+  writing an identical value back would make an inherited environment look composed.
+- **APPENDED, never prepended, and that is the whole safety of it.** Every name that
+  resolved before this existed resolves to the same file after it — the agent binary first
+  among them: the box carries `~/.local/bin/claude` (the vendor's native install) as well as
+  the version manager's, and putting the user's directory in front would silently change
+  WHICH tool the circuit raises. That is the machine config's decision (R14) and whoever
+  pays for it, not this spawn's.
+- **A floor, not a copy of somebody's shell.** Only `~/.local/bin` — the one directory a
+  Linux box agrees on (`pip --user`, `pipx`, `uv`, `cargo`'s installers, the XDG layout).
+  Copying the operator's whole `PATH` would make a session's environment a function of
+  somebody's `.bashrc`: unreproducible between two boxes and impossible to state in a doc.
+  `~/.maestro/bin` stays out for that reason and is named here rather than silently dropped:
+  a vendor's own directory belongs to whoever declares the tool, and this package declares
+  agent binaries in the machine config, where an absolute path already works.
+- **It is said, not done silently.** The run's own log carries `session PATH <value>`
+  whenever the mechanism added anything, so an operator finds out what the session could
+  see from the log rather than by re-deriving it.
+- **The unit file is not touched.** The `PATH` of `Environment=` stays what the box's facts
+  make it — a fourth place for these directories to live is exactly what decision 3 of
+  `systemd.ts` refuses — and the composition at the spawn covers a daemon raised any way at
+  all, systemd or a foreground `run`.
+
+**What is tested.** The rule is a unit (`launch.test.ts`, `sessionPathValue`): appended and
+never prepended, absent directory says nothing, a directory already on the `PATH` is not
+duplicated, no `PATH` inherited means none is invented. The seam is a process test
+(`run.process.test.ts`): a tool minted in the test's own `HOME/.local/bin`, a stub session
+that types its BARE NAME the way a role would, and the assertions that it ran, that its
+directory is last on the session's `PATH`, that everything before it is the inherited value
+unchanged, and that the run's log said so.
+
+**Not closed, and named:** a session spawned under `sudo -n -u <user>` (thread 047) crosses
+into an environment the box's `env_keep` decides, and this supervisor cannot see across that
+switch — the composed `PATH` reaches such a session only if the box lets it.

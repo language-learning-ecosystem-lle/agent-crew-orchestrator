@@ -140,6 +140,10 @@ const run = (
       {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
+        // FROM INSIDE THE TREE THE COMMAND IS ABOUT — the shape a session actually has,
+        // and since thread 062 also the shape the contour door judges: the tree the
+        // command is invoked from is what the target is compared against.
+        cwd: repo,
         env: sandbox(configHomeInside(repo), {
           PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
         }),
@@ -908,5 +912,222 @@ describe("merge-gate — the base under a credited check (023.3)", () => {
     expect(result.code).toBe(1);
     expect(result.out).toContain("note · base:");
     expect(result.out).toContain("REFUSED");
+  });
+});
+
+/**
+ * THE DOOR TAKES THE CREDENTIALS OF ITS OWN CIRCUIT (thread 065) — the SEAM, which is
+ * the only place this can be seen at all: the unit test of `platformEnvFrom` proves the
+ * rules on a record, and nothing there says the record reaches a real child process.
+ *
+ * So the stub `gh` here REFUSES unless the token arrived in its environment, and the
+ * command is started from an environment that carries none — which is exactly the state
+ * that made john's console answer `Username for 'https://github.com'`.
+ */
+describe("merge-gate takes the token of the instance the checkout belongs to", () => {
+  const SECRET = "ghp_test_only_1234567890";
+
+  /** A `gh` that answers only when the token reached it, and says so when it did not. */
+  const stubGhNeedingToken = (repo: string, json: unknown, expected: string): string => {
+    const bin = join(repo, "stub-bin-token");
+    mkdirSync(bin, { recursive: true });
+    const path = join(bin, "gh");
+    writeFileSync(
+      path,
+      `#!/bin/sh\nif [ "$GH_TOKEN" != ${JSON.stringify(expected)} ]; then\n  echo "gh: no token in the environment" >&2\n  exit 1\nfi\ncat <<'PAYLOAD'\n${JSON.stringify(json)}\nPAYLOAD\n`,
+      "utf8",
+    );
+    chmodSync(path, 0o755);
+    return bin;
+  };
+
+  /** The machine config of this box, naming a secrets file beside it. */
+  const machineConfig = (repo: string, secrets: { write: boolean }): void => {
+    const home = join(configHomeInside(repo), "agent-protocol");
+    mkdirSync(home, { recursive: true });
+    const envFile = join(repo, "secrets.aco.env");
+    writeFileSync(
+      join(home, "local.json"),
+      `${JSON.stringify({ agents: {}, secrets: { envFile } }, null, 2)}\n`,
+      "utf8",
+    );
+    if (secrets.write) writeFileSync(envFile, `GH_TOKEN=${SECRET}\n`, "utf8");
+  };
+
+  /** The command run from a CLEAN environment: no `GH_TOKEN`, no login of `gh`. */
+  const runClean = (repo: string, bin: string): { code: number; out: string } => {
+    const {
+      GH_TOKEN: _mine,
+      GITHUB_TOKEN: _theirs,
+      ...clean
+    } = sandbox(configHomeInside(repo), {
+      PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
+    });
+    try {
+      const out = execFileSync(
+        TSX,
+        [CLI, "merge-gate", "--ref", "HEAD", "--repo", repo, "--pr", "61"],
+        {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+          env: clean,
+        },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? -1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("the config names the file → the token reaches the child `gh`, from a clean environment", () => {
+    const repo = repoWithConfig();
+    machineConfig(repo, { write: true });
+    const result = runClean(repo, stubGhNeedingToken(repo, mergeable(), SECRET));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("token GH_TOKEN ← the secrets file");
+    // The NAME of the variable is printed; the value never is.
+    expect(result.out).toContain("GH_TOKEN (values not shown)");
+    expect(result.out).not.toContain(SECRET);
+  });
+
+  it("the file the config names is not there → the refusal of `gh` says WHICH file, not 'populate the GH_TOKEN'", () => {
+    const repo = repoWithConfig();
+    machineConfig(repo, { write: false });
+    const result = runClean(repo, stubGhNeedingToken(repo, mergeable(), SECRET));
+
+    expect(result.code).toBe(2);
+    // The reason `gh` gave is the fact, and the missing credential is what makes it
+    // actionable: the path this command read, and the config that named it.
+    expect(result.out).toContain("no token in the environment");
+    expect(result.out).toContain("no credential for GitHub");
+    expect(result.out).toContain(join(repo, "secrets.aco.env"));
+    expect(result.out).toContain("does not exist");
+  });
+
+  /**
+   * THE CREDENTIAL IS AN ENRICHMENT, NEVER A GATE — the case the first shape of this PR
+   * got wrong and CI caught in forty tests at once. `gh` has logins this package does not
+   * manage (`gh auth login` on a human's box, the token an Actions job is handed), and a
+   * door that refused in front of them would be LESS capable than the one it replaced.
+   */
+  it("no secrets file named, but `gh` answers on a login of its own → the door works and says 'no token'", () => {
+    const repo = repoWithConfig();
+    // A machine config exists and names NO secrets file; the stub answers regardless.
+    const home = join(configHomeInside(repo), "agent-protocol");
+    mkdirSync(home, { recursive: true });
+    writeFileSync(join(home, "local.json"), `${JSON.stringify({ agents: {} }, null, 2)}\n`, "utf8");
+    const result = runClean(repo, stubGh(repo, { json: mergeable() }));
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("credentials — no secrets file named; no token");
+    expect(result.out).not.toContain("no credential for GitHub");
+  });
+
+  it("a token already in the environment WINS over the file — the debug path is not overridden", () => {
+    const repo = repoWithConfig();
+    machineConfig(repo, { write: true });
+    const bin = stubGhNeedingToken(repo, mergeable(), "the-callers-own-token");
+    const out = execFileSync(
+      TSX,
+      [CLI, "merge-gate", "--ref", "HEAD", "--repo", repo, "--pr", "61"],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: sandbox(configHomeInside(repo), {
+          PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
+          GH_TOKEN: "the-callers-own-token",
+        }),
+      },
+    );
+
+    expect(out).toContain("token GH_TOKEN ← the environment of the caller (not overwritten)");
+  });
+});
+
+/**
+ * THE CONTOUR DOOR AS A PROCESS (thread `062-contour-boundary`). `roles/contour.test.ts`
+ * proves the JUDGEMENT on facts handed to it; what only the process can prove is the
+ * reading of those facts — that the machine config of the box and the `origin` of two
+ * real trees arrive at the judge at all, and that the refusal happens BEFORE `gh` is
+ * asked anything. The stub here answers a perfectly mergeable pull request, so a door
+ * that ran late would exit 0 and this test would be measuring nothing.
+ */
+describe("merge-gate refuses a tree of another contour", () => {
+  /** A box that declares one contour and the checkout it owns, plus a foreign checkout. */
+  const twoTrees = (): { home: string; foreign: string; configHome: string } => {
+    const home = repoWithConfig();
+    git(home, "remote", "add", "origin", "https://github.com/o/agent-crew-orchestrator.git");
+    const foreign = repoWithConfig();
+    git(foreign, "remote", "add", "origin", "https://github.com/o/language-learning-ecosystem.git");
+    // The box declares this contour and the checkout it owns — without it there is no
+    // boundary to cross and the door would (correctly) judge nothing.
+    const configHome = configHomeInside(home);
+    mkdirSync(join(configHome, "agent-protocol", "instances"), { recursive: true });
+    writeFileSync(
+      join(configHome, "agent-protocol", "instances", "hetzner.json"),
+      `${JSON.stringify({ instance: "hetzner", repo: home }, null, 2)}\n`,
+      "utf8",
+    );
+    return { home, foreign, configHome };
+  };
+
+  const runGate = (
+    argv: readonly string[],
+    where: { cwd: string; configHome: string; bin: string },
+  ): { code: number; out: string } => {
+    try {
+      const out = execFileSync(TSX, [CLI, "merge-gate", ...argv], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        cwd: where.cwd,
+        env: sandbox(where.configHome, {
+          PATH: `${where.bin}${delimiter}${process.env.PATH ?? ""}`,
+        }),
+      });
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? -1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("names the foreign origin and never reaches gh", () => {
+    const { home, foreign, configHome } = twoTrees();
+    const bin = stubGh(foreign, { json: mergeable() });
+
+    const result = runGate(["--ref", "HEAD", "--repo", foreign, "--pr", "61"], {
+      cwd: home,
+      configHome,
+      bin,
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("belongs to another contour");
+    expect(result.out).toContain("language-learning-ecosystem");
+    // The verdict of the payload never appears: the door stopped before the ask.
+    expect(result.out).not.toContain("READY");
+  });
+
+  /**
+   * THE FORM THE DOOR WAS MISSING (the reviewer's finding on PR #160). `--repo` is the
+   * RARE way to call this command: `REVIEWER.md` itself writes `merge-gate --ref
+   * origin/main --pr <n>` and nothing else, so the tree is the caller's own. While the
+   * ground was judged only inside the `--repo` branch, a session standing in a checkout
+   * no contour of the box claims — the shape of #453/#454 — asked nothing, reached `gh`
+   * and got a verdict about another circuit's pull request. The stub again answers a
+   * perfectly mergeable PR, so a door that does not fire here exits 0.
+   */
+  it("refuses the ordinary form too — no --repo, called from a checkout of nobody", () => {
+    const { foreign, configHome } = twoTrees();
+    const bin = stubGh(foreign, { json: mergeable() });
+
+    const result = runGate(["--ref", "HEAD", "--pr", "61"], { cwd: foreign, configHome, bin });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("no contour of this box");
+    expect(result.out).toContain("'hetzner'");
+    expect(result.out).not.toContain("READY");
   });
 });

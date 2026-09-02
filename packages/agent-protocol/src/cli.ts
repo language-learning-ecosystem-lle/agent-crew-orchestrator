@@ -45,6 +45,7 @@ import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
+import { explainWithCredentials, platformEnvOf } from "./config/credentials.js";
 import {
   type LoadedConfig,
   type LoadedPolicy,
@@ -57,6 +58,7 @@ import {
   type LoadedLocalConfig,
   type LocalAccount,
   LocalConfigError,
+  listInstanceConfigs,
   type ResolvedLocalConfig,
   resolveLocalConfig,
 } from "./config/local.js";
@@ -289,6 +291,7 @@ import {
   type ResolvedExec,
   type ResolvedGates,
   type ResolvedWorker,
+  RUN_TMPDIR_ENV,
   resolveAccount,
   resolveAgentParams,
   resolveCeilings,
@@ -296,9 +299,11 @@ import {
   resolveSpawnIdentity,
   resolveWorker,
   roleLaunchability,
+  SESSION_PATH_ENV,
   type SpawnAs,
   SWITCH_EXEC,
   type SwitchProbe,
+  sessionPathValue,
   spawnAsCommand,
   switchProbeArgv,
 } from "./orchestrator/launch.js";
@@ -344,6 +349,7 @@ import {
   sessionLogPath,
   sessionStreamPath,
   sessionSupervisorPath,
+  sessionTmpPath,
   sessionWaitPath,
   waitPathFromSessionFile,
 } from "./orchestrator/paths.js";
@@ -494,6 +500,7 @@ import {
   workspaceVerdict,
 } from "./orchestrator/workspace.js";
 import { type CheckoutState, runCapabilityCall } from "./roles/capability-run.js";
+import { judgeContour, judgeGround } from "./roles/contour.js";
 import { ORCHESTRATOR_IDENTITY, roleIdentity } from "./roles/identity.js";
 import { RoleConfigError, type RoleRegistry } from "./roles/registry.js";
 import {
@@ -570,11 +577,14 @@ import {
   VERDICT_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import { judgeParkNumber } from "./thread/park-number.js";
+import { judgeParkSeen } from "./thread/park-seen.js";
 import { describePrPark } from "./thread/pr-park.js";
 import { synthesiseMeta } from "./thread/repair.js";
 import {
   describeStaleRunPark,
   judgeRunPark,
+  looksLikeAbsentPr,
   pendingRunsOf,
   RUN_PARK_TTL_SECONDS,
   type RunParkFacts,
@@ -590,6 +600,7 @@ import {
 } from "./thread/tasks.js";
 import {
   mergedPrs,
+  type Parking,
   parkingOf,
   parkSpansOf,
   parseMetaFile,
@@ -957,7 +968,7 @@ const configFrom = (argv: readonly string[], root?: string): LoadedConfig => {
   // the place where the mail lies). Demanding it explicitly meant breaking every
   // example in the documentation — which is what happened (the reviewer's finding
   // on PR #21).
-  const repo = flag(argv, "--repo") ?? repoOf(root ?? process.cwd());
+  const repo = repoArg(argv, root ?? process.cwd());
   const noFetch = argv.includes("--no-fetch");
 
   if (noFetch && ref.startsWith("origin/")) {
@@ -1032,7 +1043,7 @@ const registryFrom = (argv: readonly string[], root?: string): RoleRegistry =>
  */
 const policyFrom = (argv: readonly string[], root?: string): LoadedPolicy => {
   const ref = required(argv, "--ref");
-  const repo = flag(argv, "--repo") ?? repoOf(root ?? process.cwd());
+  const repo = repoArg(argv, root ?? process.cwd());
   const noFetch = argv.includes("--no-fetch");
   if (noFetch && ref.startsWith("origin/")) {
     err(`agent-protocol: WARNING — '${ref}' was not updated (--no-fetch), the config may be stale`);
@@ -1081,7 +1092,7 @@ const repairSkew = createSkewVoice();
 
 const repairFrom = (argv: readonly string[]): LoadedRepair => {
   const ref = required(argv, "--ref");
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = repoArg(argv, process.cwd());
   const noFetch = argv.includes("--no-fetch");
   const path = flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH;
   const key = standingKey({ repo, ref, path });
@@ -1151,6 +1162,110 @@ const repoOf = (at: string, env?: NodeJS.ProcessEnv): string => {
   }
 };
 
+/** `origin` of a tree, or nothing: a tree without a remote is a fact, not an error. */
+const originOf = (at: string): string | undefined => {
+  try {
+    return execFileSyncByExit("git", ["-C", at, "remote", "get-url", "origin"], {
+      env: gitEnvOutsideHook(),
+    }).trim();
+  } catch {
+    return undefined;
+  }
+};
+
+/** Which contour of this box claims a tree, and which checkout that contour declares. */
+const contourOf = (at: string): { name?: string | undefined; repo?: string | undefined } => {
+  try {
+    const resolved = resolveLocalConfig({ repo: at });
+    return { name: resolved.instanceName, repo: resolved.config.repo };
+  } catch {
+    // A box that cannot resolve an instance has no boundary to enforce — and it already
+    // says so, by name, at every command that actually needs the machine config.
+    return {};
+  }
+};
+
+/**
+ * THE DOOR OF THE CONTOUR (thread 062), in two guards below. The tree a command was
+ * typed in — and the tree it is pointed at, when `--repo` names one — must belong to
+ * the circuit the caller belongs to; anything else is refused before it is read,
+ * written or opened.
+ *
+ * The judgement is in `roles/contour.ts` and so is the reasoning; these are its facts
+ * — who claims the caller's tree, who claims the target — and the exit. It is the
+ * cheap half of the measure, and the report says so: a session that calls `git` and
+ * `gh` directly never comes past this line, which is why the load-bearing half is a
+ * token scoped to one repository.
+ */
+
+/**
+ * WHAT THIS BOX DECLARES AT ALL — and only the instances that name a `repo`, because
+ * an instance claiming no checkout draws no boundary: counting it would refuse every
+ * tree on a box whose single config happens to omit the path. A config that does not
+ * parse is skipped here and NAMED where it matters — `resolveLocalConfig`, at the
+ * commands that need the machine config itself.
+ */
+const boxContours = (): readonly string[] =>
+  listInstanceConfigs()
+    .filter((entry) => {
+      try {
+        return typeof JSON.parse(readFileSync(entry.path, "utf8")).repo === "string";
+      } catch {
+        return false;
+      }
+    })
+    .map((entry) => entry.name);
+
+/**
+ * THE GROUND, ASKED WITHOUT A TARGET — and asked on every command that resolves a
+ * repository, which is what makes the door a door. The reviewer's finding on PR #160:
+ * while this lived inside `guardContour`, it ran only when `--repo` was named, so the
+ * documented form (`merge-gate --ref origin/main --pr N`, `REVIEWER.md`) asked nothing
+ * and a session in a checkout of another circuit passed in silence — the very shape of
+ * #453/#454. The judgement itself is unchanged; what changed is WHEN it is requested.
+ */
+const guardGround = (): void => {
+  const caller = contourOf(process.cwd());
+  const verdict = judgeGround({
+    at: process.cwd(),
+    boxContours: boxContours(),
+    // A contour that claims the caller but declares no checkout is no ground to stand
+    // on — the same pairing `judgeContour` makes, so both doors answer alike.
+    ...(caller.name === undefined || caller.repo === undefined ? {} : { ownContour: caller.name }),
+  });
+  if (verdict.verdict === "foreign") fail(verdict.refusal, 2);
+};
+
+const guardContour = (target: string): string => {
+  const caller = contourOf(process.cwd());
+  const targeted = contourOf(target);
+  const verdict = judgeContour({
+    target,
+    boxContours: boxContours(),
+    ...(targeted.name === undefined ? {} : { targetContour: targeted.name }),
+    ...(originOf(target) === undefined ? {} : { targetRemote: originOf(target) }),
+    ...(caller.name === undefined ? {} : { ownContour: caller.name }),
+    ...(caller.repo === undefined ? {} : { ownRepo: caller.repo }),
+    ...(caller.repo === undefined ? {} : { ownRemote: originOf(caller.repo) }),
+  });
+  if (verdict.verdict === "foreign") return fail(verdict.refusal, 2);
+  return target;
+};
+
+/**
+ * `--repo`, judged against the contour the command came from, or the caller's own tree
+ * — and the GROUND is judged either way. Without `--repo` there is no target to judge
+ * beyond the caller's own tree, but the caller still has to be standing somewhere this
+ * box declares: that half costs one config read and is what closes the ordinary form of
+ * every command (`merge-gate --ref origin/main --pr N`) against a foreign checkout.
+ */
+const repoArg = (argv: readonly string[], at: string): string => {
+  const named = flag(argv, "--repo");
+  if (named !== undefined) return guardContour(named);
+  guardGround();
+  return repoOf(at);
+};
+
 /**
  * WHERE THE STATE OF THE CIRCUIT LIVES ON THIS MACHINE (R26) — the base for
  * `orchestrator.state` and `orchestrator.mailCheckout`, and for the worktrees root,
@@ -1191,11 +1306,17 @@ const writeOut = (path: string, content: string): void => {
 const gitIn =
   (checkout: string): GitRun =>
   (args, env) => {
+    // THE PUSH TAKES THE CIRCUIT'S OWN CREDENTIALS TOO (thread 065), and the refusal is
+    // NOT fatal here: a delivery that reads and commits locally needs no token, only the
+    // push does, and git says by name which repository it could not reach. What this
+    // always buys is the end of the prompt — `Username for 'https://github.com'` on the
+    // stdin of a session nobody is watching is a hang, not a failure.
+    const platform = platformEnvOf({ repo: checkout });
     try {
       return execFileSync("git", ["-C", checkout, ...args], {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
-        ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
+        env: { ...platform.env, ...(env ?? {}) },
       });
     } catch (error) {
       const failure = error as { stderr?: string; status?: number };
@@ -1325,7 +1446,7 @@ const configIssues = (
 
 const configCheck = (argv: readonly string[]): void => {
   const loaded = configFrom(argv, undefined);
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = repoArg(argv, process.cwd());
   const catalogue = codexCatalogueHere();
   // The machine's half of the account join, read through the door that must not die over
   // an unreadable local config: a box that cannot say what it declares still gets every
@@ -1376,7 +1497,7 @@ const configCheck = (argv: readonly string[]): void => {
  * read and the version it found before doing anything else.
  */
 const schemaMigrate = (argv: readonly string[]): void => {
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = repoArg(argv, process.cwd());
   const configPath = join(repo, flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH);
   const raw = readFile(configPath, "protocol config");
 
@@ -2932,8 +3053,17 @@ const priorityFrom = (
 const runParkFacts = (
   pr: number,
   repo: string,
-): { readonly facts?: RunParkFacts; readonly refusal?: string } => {
+): {
+  readonly facts?: RunParkFacts;
+  readonly refusal?: string;
+  readonly absent?: { readonly where: string };
+} => {
   let raw: string;
+  // The circuit's own credentials (thread 065), OFFERED and not demanded: `gh` is asked
+  // even when this module could assemble no token, because `gh` has logins of its own.
+  // Only if `gh` itself refuses does the missing credential join the reason — by name,
+  // with the file it looked in, instead of `populate the GH_TOKEN environment variable`.
+  const platform = platformEnvOf({ repo });
   try {
     raw = execFileSync(
       "gh",
@@ -2941,13 +3071,24 @@ const runParkFacts = (
       {
         cwd: repo,
         encoding: "utf8",
+        env: platform.env,
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 8 * 1024 * 1024,
       },
     );
   } catch (error) {
     const message = (error as Error).message;
-    return { refusal: `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}` };
+    // ONE OF `gh`'s REFUSALS IS A FACT AND NOT A BLINK (thread 061): "there is no pull request
+    // with this number". It is told apart here, at the only place that has the vendor's own
+    // sentence, and handed to the judge as a separate input — everything else keeps degrading
+    // into a note, exactly as before.
+    if (looksLikeAbsentPr(message)) return { absent: { where: repo } };
+    return {
+      refusal: explainWithCredentials(
+        `${message.split("\n")[0] ?? message}${ghRefusalHint(message)}`,
+        platform,
+      ),
+    };
   }
   let parsed: ReturnType<typeof ghRunParkSchema.safeParse>;
   try {
@@ -3022,9 +3163,22 @@ const parkedOnFrom = (
   // eight hours. The form is not narrowed and no watcher of PR state is added — the cheap and
   // honest half of the repair is that nobody may declare this park without being told what
   // will not lift it.
+  //
+  // AND BEFORE EITHER OF THEM, THE NUMBER ITSELF (thread 061, msg-002): both forms take the
+  // NUMBER OF A PULL REQUEST, and the door used to accept any integer — so an id of a workflow
+  // run went in silently three times in one day and each author spent a second letter undoing
+  // it. `judgeParkNumber` costs nothing and needs nobody: it reads the order of magnitude.
   const merge = /^pr:(\d+)$/.exec(value);
   if (merge !== null) {
-    out(`agent-protocol: ${describePrPark(Number(merge[1]))}`);
+    const pr = Number(merge[1]);
+    // A `pr:` PARK IS CHECKED BY MAGNITUDE AND NOTHING ELSE, and that is a choice named in the
+    // statement of work (point 4): parking on a pull request that is being created in this very
+    // tick is legal and common, and an existence check would refuse it. The weaker form catches
+    // the measured defect — a number that is not a PR number in ANY repository — without
+    // refusing anything honest.
+    const number = judgeParkNumber({ kind: "pr", value: pr });
+    if (!number.ok) return fail(number.reason, 2);
+    out(`agent-protocol: ${describePrPark(pr)}`);
     return value;
   }
   // `run:N` IS THE ONE PARK WHOSE SOURCE THE DOOR ASKS ABOUT (thread 062, layer 1). It was the
@@ -3037,6 +3191,11 @@ const parkedOnFrom = (
   const round = /^run:(\d+)$/.exec(value);
   if (round !== null) {
     const pr = Number(round[1]);
+    // The magnitude first and the vendor second: an id of a workflow run is refused BEFORE `gh`
+    // is asked about it, because the answer would be a confusing "could not resolve" about a
+    // number the author never meant as a PR.
+    const number = judgeParkNumber({ kind: "run", value: pr });
+    if (!number.ok) return fail(number.reason, 2);
     const verdict = judgeRunPark({ pr, ...runParkFacts(pr, process.cwd()) });
     if (!verdict.ok) return fail(verdict.reason, 2);
     if (verdict.note !== undefined) out(`agent-protocol: ${verdict.note}`);
@@ -3089,6 +3248,34 @@ const deliversFrom = (
   if (input.registry.canHoldTurn(value)) {
     return fail(
       `--delivers '${value}' — that role CAN be woken, so it speaks for itself in the feed and no turn is ever parked behind it. This field names a person the circuit cannot move (wake.mode='self'); to hand the turn to a role use '--waiting-on ${value}'`,
+      2,
+    );
+  }
+  return value;
+};
+
+/**
+ * THE DOOR OF A NAMED MOVER (thread 061, form (B)) — `--park-mover <participant>` on both
+ * writing commands: WHO makes the merge this turn is parked behind actually happen.
+ *
+ * The one check here is that the config knows the name, and it is the whole of what a machine
+ * may judge about it: whether that participant will in fact act is a question about the world.
+ * Unlike `--delivers`, a WAKEABLE role is perfectly legal here — "the label goes up by curator"
+ * is the commonest true answer there is, and the point of the field is that the parker had to
+ * write it down. The PAIRING rules (a merge park demands a mover, a mover demands a merge park)
+ * live in `planNewMessage`, where both writing commands pass and neither can hold them alone.
+ *
+ * No permission gates it, for the reason none gates a park.
+ */
+const parkMoverFrom = (
+  argv: readonly string[],
+  input: { readonly registry: RoleRegistry },
+): string | undefined => {
+  const value = flag(argv, "--park-mover");
+  if (value === undefined) return undefined;
+  if (!input.registry.isKnown(value)) {
+    return fail(
+      `--park-mover '${value}' is not listed in the config: this field names the participant who will move the event this turn is parked behind, and a name nobody knows names nobody. Any participant is legal here — the role that will label and merge, the person who presses the button, or yourself coming back with another run`,
       2,
     );
   }
@@ -3240,6 +3427,52 @@ const declaredTurnOf = (threadDir: string): ThreadTurn | undefined => {
   }
 };
 
+/**
+ * What the writing door learned about the park of a thread: the park as read, or the REASON
+ * it could not be read. The two are not the same answer and are not folded into one value.
+ */
+type StandingPark =
+  | { readonly readable: true; readonly parking: Parking | undefined }
+  | { readonly readable: false; readonly reason: string };
+
+/**
+ * THE PARK STANDING ON A THREAD, read from disk for the WRITING door (thread 058, (B.3)).
+ *
+ * A thread that cannot be read as files parks nobody as far as this door is concerned: the
+ * letter must stay writable, and a refusal built on a feed nobody could parse names nothing the
+ * writer can fix. BUT THE FAILED READ IS RETURNED AS ITSELF and not as "no park" (finding 11 of
+ * the review of #170): the caller stands AFTER `existsSync(threadDir)`, so an honest "there is
+ * no such thread" never reaches this `catch` — everything it can catch is "the thread is there
+ * and its feed is unreadable" (half a migration, a message file that does not parse), and in
+ * exactly that state the door of (B.3) used to switch off without a word. The point it was
+ * written for is not "refuse at any cost", it is "do not be silent about what was not checked",
+ * so the reason travels on to `judgeParkSeen`, which says it in words.
+ *
+ * THE SECOND READ IS ONLY FOR THE EVENT PARKS. A park on `pr:N` / `run:N` is lifted by the merge
+ * notifier writing into the PR's OWN thread (thread 023), which this feed cannot see — so the
+ * whole mail is scanned for the merges, and only then: the everyday write stays off a full scan,
+ * and the one case that needs it pays for it.
+ */
+const standingParkFor = (input: {
+  readonly root: string;
+  readonly thread: string;
+  readonly ids: readonly string[];
+}): StandingPark => {
+  let loaded: LoadedThread;
+  try {
+    loaded = loadThread(join(input.root, input.thread), input.thread, input.ids);
+  } catch (error) {
+    return { readable: false, reason: error instanceof Error ? error.message : String(error) };
+  }
+  const parking = parkingOf(loaded.thread);
+  if (parking === undefined || parking.kind === "person") return { readable: true, parking };
+  const { threads } = loadThreads(input.root, input.ids);
+  return {
+    readable: true,
+    parking: parkingOf(loaded.thread, mergedPrs(threads.map((entry) => entry.thread))),
+  };
+};
+
 const newMessage = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
   const threadId = required(argv, "--thread");
@@ -3285,6 +3518,7 @@ const newMessage = (argv: readonly string[]): void => {
   const priority = priorityFrom(argv, { from, registry });
   const parkedOn = parkedOnFrom(argv, { registry });
   const delivers = deliversFrom(argv, { registry });
+  const parkMover = parkMoverFrom(argv, { registry });
   // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
   // can still be retyped, because the feed is append-only and such a header cannot be taken
   // back: it names its own author as the one who acts next, asks for something, and says
@@ -3313,6 +3547,25 @@ const newMessage = (argv: readonly string[]): void => {
   // halves are judged together in `planNewMessage`, so the refusal is one for both doors.
   const verdictFields = verdictFrom(argv);
   const tasks = tasksFor(argv, { from, thread: threadId, registry });
+  // A LETTER INTO A THREAD THAT IS ALREADY PARKED MUST NAME THE PARK (thread 058, (B.3)) —
+  // judged here, where the flags can still be retyped and before `--write` is looked at, for
+  // the reason `provenance` is: a dry run is the preview of the write, and a preview that
+  // succeeds where the write refuses is a lie. What lifts a park is not touched — the standing
+  // one is READ (`parkingOf`) and the letter is asked what it says about it.
+  const parkLifted = flag(argv, "--park-lifted");
+  const standing = standingParkFor({ root, thread: threadId, ids: registry.ids() });
+  const parkSeen = judgeParkSeen({
+    thread: threadId,
+    parking: standing.readable ? standing.parking : undefined,
+    ...(standing.readable ? {} : { unreadable: standing.reason }),
+    ...(parkedOn === undefined ? {} : { parkedOn }),
+    ...(delivers === undefined ? {} : { delivers }),
+    ...(mergedPr === undefined ? {} : { mergedPr }),
+    ...(verdictFields.pr === undefined ? {} : { verdictPr: verdictFields.pr }),
+    ...(parkLifted === undefined ? {} : { lifted: parkLifted }),
+  });
+  if (!parkSeen.ok) fail(parkSeen.reason, 2);
+  else if (parkSeen.note !== undefined) out(`agent-protocol: ${parkSeen.note}`);
 
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
@@ -3325,9 +3578,25 @@ const newMessage = (argv: readonly string[]): void => {
     const existingTs = threadHasMessages
       ? readdirSync(messagesDir)
           .filter((name) => name.endsWith(".md"))
-          .map(
-            (name) => parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date,
-          )
+          .map((name) => {
+            try {
+              return parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date;
+            } catch (error) {
+              // A STOP THAT NAMES THE FILE IT STOPPED ON (thread 058, alongside finding 11 of
+              // the review of #170). This scan already refused such a feed — by dying on the
+              // parser's own sentence ("a message file must start with a '---' line"), with no
+              // file name, no exit code of a refusal and a stack trace behind it, which is the
+              // very shape `loadThread` was taught out of in thread 016. The OUTCOME is kept:
+              // the stamp of the new letter has to stand strictly after the last one in the
+              // feed, and a file whose date nobody can read makes that unknowable — skipping it
+              // would put the answer before the question it answers. What changes is that the
+              // writer is told WHICH file and WHAT to run.
+              return fail(
+                `messages/${name}: ${(error as Error).message} — this letter cannot be dated against a feed with an unreadable file in it (its stamp must stand strictly after the last one). Repair the thread first: 'thread status --thread ${threadId} --from ${from} --repair --write' rebuilds the head, a message file broken by hand has to be fixed by hand`,
+                2,
+              );
+            }
+          })
           .filter((date) => date.includes("T"))
       : [];
     const date = nextMessageTimestamp(new Date(), existingTs);
@@ -3372,6 +3641,7 @@ const newMessage = (argv: readonly string[]): void => {
         ...(priority === undefined ? {} : { priority }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
+        ...(parkMover === undefined ? {} : { parkMover }),
         ...(mergedPr === undefined ? {} : { mergedPr }),
         ...verdictFields,
         ...(tasks.length === 0 ? {} : { tasks }),
@@ -3535,6 +3805,7 @@ const newThread = (argv: readonly string[]): void => {
   // later: a flag parsed by one command of the pair and swallowed by the other is written
   // without a word into an append-only feed.
   const delivers = deliversFrom(argv, { registry });
+  const parkMover = parkMoverFrom(argv, { registry });
   // AND THE SAME VERDICT, by the same door (thread 042), for the reason `delivers` is here and
   // not for a use case: the lesson of 075 is that a flag one command of the pair parses and the
   // other swallows goes into an append-only feed without a word. What the field does in an
@@ -3593,6 +3864,7 @@ const newThread = (argv: readonly string[]): void => {
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
         ...(delivers === undefined ? {} : { delivers }),
+        ...(parkMover === undefined ? {} : { parkMover }),
         ...verdictFields,
         ...(turn === undefined ? {} : { turn }),
         text,
@@ -4113,7 +4385,17 @@ const runNotify = async (input: {
   // a decision that somebody is now sitting on — a machine is judging, and the pair moves the
   // moment it answers (thread 019). It joins the frozen for the same purpose: to keep the age
   // pass quiet about a thread that is behaving exactly as intended.
-  const frozen = parkings.flatMap(({ id, parking }) => (parking.kind === "person" ? [] : [id]));
+  //
+  // IT CARRIES THE FACTS AND NOT THE IDS ALONE SINCE THREAD 061: past
+  // `EVENT_PARK_STALE_AFTER_MINUTES` the same set is what the watchdog rings on, and the three
+  // things its line needs — which PR, which of the two forms, and since when — are readable here
+  // and nowhere downstream. The threshold is NOT applied here on purpose: the set has to arrive
+  // whole, or the age pass would start calling young event parks stalled.
+  const frozen = parkings.flatMap(({ id, parking }) =>
+    parking.kind === "person" || parking.pr === undefined
+      ? []
+      : [{ thread: id, pr: parking.pr, kind: parking.kind, since: parking.since }],
+  );
   const stalled = parsed.flatMap((thread) => {
     const holder = waitingOnOf(thread);
     if (holder === undefined) return [];
@@ -4572,6 +4854,12 @@ const runNotify = async (input: {
       plan.remindedParked.length === 0 &&
       plan.freshFreezes.length === 0 &&
       plan.freshUnaccepted.length === 0 &&
+      // AND AN OVERDUE EVENT PARK RAISES ITS OWN LETTER (thread 061, form (C)), for the reason
+      // the reminder does: it is the ONLY line anybody will ever write about a thread that has
+      // stood six hours behind an event, and the box holding it is quiet precisely because that
+      // thread raises nobody. A line that waits for somebody else's letter is owed to one that
+      // never comes.
+      plan.staleEventParks.length === 0 &&
       !plan.freshAuth &&
       !plan.freshGh &&
       // A DRIFT PAST THE BAND IS WORTH A LETTER OF ITS OWN (thread 044). It rings once per
@@ -4608,6 +4896,10 @@ const runNotify = async (input: {
         // send condition below reads `remindedParked`), so what is written here is the
         // surviving clock and nothing else.
         reminded: plan.reminded,
+        // NOTHING WENT OUT, AND NOTHING NEEDS SUPPRESSING HERE (thread 061): this branch is
+        // reachable only with `staleEventParks` empty — an overdue park raises its own letter
+        // above — so the keys are the surviving ones alone, and no park is recorded as told.
+        eventParks: plan.eventParkKeys,
       }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
@@ -4637,6 +4929,7 @@ const runNotify = async (input: {
         // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
         accounts: plan.accountKeys,
         reminded: plan.reminded,
+        eventParks: plan.eventParkKeys,
       }),
     );
     return { kind: "sent", summary, lines: said };
@@ -4674,6 +4967,7 @@ const runNotify = async (input: {
       // The STATES only — a switch of subscriptions leaves no key (see `accountKeys`).
       accounts: plan.accountKeys,
       reminded: plan.reminded,
+      eventParks: plan.eventParkKeys,
     }),
   );
   say(outcome.detail);
@@ -7997,6 +8291,13 @@ type RunParams = {
   readonly sessionIdFile: string;
   /** Where the session DECLARES a wait for input (R19) — written by `new-message --await-input`. */
   readonly waitFlag: string;
+  /**
+   * THIS RUN'S OWN «TEMPORARY» (thread `056-shared-tmp-mechanism`) — created before the
+   * spawn, handed to the child as `TMPDIR`, named-and-removed when the run ends. See
+   * `sessionTmpPath` for why the shared `/tmp` had to stop being the default by
+   * construction rather than by the session's memory of rule №15.
+   */
+  readonly sessionTmp: string;
   /** The child process environment: the inherited one + the project preamble (S8). */
   readonly env: NodeJS.ProcessEnv;
   /** What is being raised, as the session will record it in its messages (R7). */
@@ -8043,6 +8344,47 @@ type RunParams = {
    * unambiguous unconditionally, and it already is: each run has its own log.
    */
   readonly streamPrefix?: string;
+};
+
+/**
+ * HOW MANY LEFTOVERS ARE WORTH NAMING ONE BY ONE. A run that spooled ten thousand chunks
+ * into its own `TMPDIR` is one fact, not ten thousand lines in its log — the names stop,
+ * the count does not.
+ */
+const RUN_TMP_NAMED = 20;
+
+/**
+ * THE END OF THIS RUN'S OWN «TEMPORARY» (thread `056-shared-tmp-mechanism`): name what is
+ * in it, then remove it — and return the lines, because the supervisor's log is where the
+ * class is measured from now on («did a session leave temporary files, and which»).
+ *
+ * NOTHING HERE MAY COST A RUN. It runs at the close of a session that has already
+ * finished; a directory that cannot be read or cannot be removed is reported as such and
+ * the run keeps its outcome. Silence is the answer for the ordinary case — a run that
+ * left nothing says nothing, so a line here always means something was left.
+ */
+const sweepRunTmp = (dir: string): readonly string[] => {
+  let left: string[];
+  try {
+    left = readdirSync(dir, { recursive: true, encoding: "utf8" }).sort();
+  } catch (error) {
+    // ENOENT is not a fault: the directory is removed by whoever closes first, and a
+    // second close finding nothing is exactly the intended shape.
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    return [`the run's own TMPDIR could not be read: ${(error as Error).message}`];
+  }
+  const lines: string[] = [];
+  if (left.length > 0) {
+    lines.push(
+      `the session left ${left.length} temporary ${left.length === 1 ? "entry" : "entries"} in its own TMPDIR (${dir}): ${left.slice(0, RUN_TMP_NAMED).join(", ")}${left.length > RUN_TMP_NAMED ? `, … and ${left.length - RUN_TMP_NAMED} more` : ""}`,
+    );
+  }
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch (error) {
+    lines.push(`the run's own TMPDIR could not be removed: ${(error as Error).message}`);
+  }
+  return lines;
 };
 
 /**
@@ -8300,11 +8642,23 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // the agent speaks on stdout, and the old format spoke only once, at the end of a
   // run that a break never reaches.
   mkdirSync(dirname(p.sessionLog), { recursive: true });
+  // THIS RUN'S OWN «TEMPORARY», BEFORE THE CHILD EXISTS (thread `056-shared-tmp-mechanism`).
+  // It has to be here and not lazily: `TMPDIR` naming a directory that does not exist is
+  // worse than no `TMPDIR` at all — `mktemp` refuses, and the session falls back to typing
+  // `/tmp` by hand, which is the very move this closes.
+  mkdirSync(p.sessionTmp, { recursive: true });
   const sink = openSync(p.sessionLog, "a");
   const rawSink = openSync(p.sessionStream, "a");
   let sinksOpen = true;
   const closeSinks = (): void => {
     if (!sinksOpen) return;
+    // WHAT THE RUN LEFT BEHIND, SAID BY NAME BEFORE IT IS SWEPT — the measurable half of
+    // the same finding. In the shared `/tmp` this class was invisible (a leftover there
+    // belongs to nobody and cannot be attributed on a box running several sessions at
+    // once); in a directory owned by ONE run the attribution is exact and free. So the
+    // log of every run now answers "did this session leave temporary files, and which" —
+    // and the sweep keeps the state directory from growing a run's scratch for ever.
+    for (const line of sweepRunTmp(p.sessionTmp)) writeLog(`supervisor  ${line}`);
     sinksOpen = false;
     closeSync(sink);
     closeSync(rawSink);
@@ -8346,6 +8700,18 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     writeLog(`supervisor  ${line}`);
     err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
   }
+  // WHAT THE SESSION WILL BE ABLE TO FIND (thread `069-session-path`), decided before the
+  // spawn and SAID, because an environment composed silently is one an operator debugs by
+  // guessing: the run's own log now answers "did this box hand the session its user's
+  // tools, and from where". Nothing is said when nothing is added — the inherited `PATH`
+  // is then the whole truth and a line claiming otherwise would be noise.
+  const sessionPath = sessionPathValue({
+    path: p.env.PATH,
+    home: p.env.HOME,
+    exists: (dir) => existsSync(dir),
+  });
+  if (sessionPath !== undefined) writeLog(`supervisor  session PATH ${sessionPath}`);
+
   // WHO IT RUNS AS (thread 047, point 3). `self` — the command IS the binary, exactly as
   // every run before this field existed; `sudo` — the binary becomes an argument of the
   // narrow entitlement, and NOTHING ELSE about this spawn changes: the same argv, the same
@@ -8390,6 +8756,26 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // — this one is here for the shell: a session checking how much is left runs
       // `date`, not a re-read of its own prompt.
       [LAUNCH_ENV.leaseDeadline]: plan.deadline,
+      // WHERE ITS «TEMPORARY» GOES (thread `056-shared-tmp-mechanism`). Not an
+      // `AGENT_PROTOCOL_*` field of the launch contract but the STANDARD variable, and
+      // that is the whole point: the tools already read it (`mktemp`, node, python, go,
+      // the vendor's own binaries), so an ordinary command lands in this run's own
+      // directory without the session having to remember anything. It is set LAST over
+      // the inherited environment on purpose — an operator's exported `TMPDIR` names
+      // their own box's scratch, not this run's, and on Linux `TMPDIR` outranks the
+      // `TMP`/`TEMP` an inherited environment might also carry.
+      [RUN_TMPDIR_ENV]: p.sessionTmp,
+      // WHERE ITS TOOLS ARE LOOKED UP (thread `069-session-path`). The inherited `PATH`
+      // is the daemon's — under systemd, the unit's own (`systemd.ts`, decision 5) — and
+      // it carries no per-user directory, so a tool installed the ordinary way
+      // (`~/.local/bin`: `uv`, `pipx`, `pip --user`) is invisible to every session while
+      // being on the operator's own `PATH`. Composed rather than replaced, and APPENDED:
+      // every name that resolved before this line resolves to the same file after it —
+      // in particular the agent binary, whose identity is the machine config's to decide
+      // (R14), not this spawn's. `undefined` when there is nothing to add, and then the
+      // key is not set at all: writing back an identical value would make the child's
+      // environment look composed on a box where it was merely inherited.
+      ...(sessionPath === undefined ? {} : { [SESSION_PATH_ENV]: sessionPath }),
       // WHICH ACCOUNT IT SPENDS (thread 055). The whole account — credentials, the
       // tool's config, the transcripts and the session store — hangs off this one
       // directory, so pointing at it is the entire isolation; there is no second
@@ -9207,7 +9593,19 @@ const settleRun = (input: {
  * `orchestrator` section declares none, and the flag is then not printed rather than
  * guessed.
  */
-const mailFormFor = (argv: readonly string[], role: Role, root: string): MailForm => {
+const mailFormFor = (
+  argv: readonly string[],
+  role: Role,
+  root: string,
+  /**
+   * THE ROLE'S OWN WORKING TREE, absolute — `settleRun`'s `workspace`, which is the ONE
+   * place this path is resolved for this run (`workspacePath`, R17). It is passed in
+   * rather than recomputed for the reason `--root` is: a second derivation is the one
+   * line able to disagree with the tree the session is actually standing in. Absent in
+   * the pre-R17 mode (no `orchestrator.workdir.worktrees`), and absent stays absent.
+   */
+  workspace?: string,
+): MailForm => {
   const loaded = configFrom(argv, undefined).config;
   const command = loaded.mailCommand;
   const ref = loaded.orchestrator?.ref;
@@ -9217,6 +9615,7 @@ const mailFormFor = (argv: readonly string[], role: Role, root: string): MailFor
     root,
     ...(ref === undefined ? {} : { ref }),
     ...(writesHeldBy === undefined ? {} : { writesHeldBy }),
+    ...(workspace === undefined ? {} : { repo: workspace }),
   };
 };
 
@@ -9257,6 +9656,10 @@ const promptForRun = (input: {
     input.setup.continuation.mode === "resume"
       ? buildResumePrompt({
           thread: input.thread,
+          // The id of the role being resumed — the fact `await-input` asks for and the
+          // resume prompt used to print its line without (thread `054`). It is in hand
+          // here exactly as it is in the fresh branch below; nothing new is resolved.
+          role: input.role.id,
           reason: input.setup.previousReason ?? "an external abort",
           deadline,
           windDownSeconds: input.windDownSeconds,
@@ -9486,7 +9889,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
       thread,
       setup,
       windDownSeconds: ceilings.windDown.value,
-      mail: mailFormFor(argv, role, mailRoot),
+      mail: mailFormFor(argv, role, mailRoot, setup.workspace),
     }),
     exec,
     // WHO THE SESSION RUNS AS (thread 047, point 3) — `self` for every role that declares
@@ -9507,6 +9910,7 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     sessionStream: sessionStreamPath(sessionLog),
     sessionIdFile: sessionIdPath(sessionLog),
     waitFlag: sessionWaitPath(sessionLog),
+    sessionTmp: sessionTmpPath(sessionLog),
     worker: agent.worker.value,
     params: agent.params,
     // Thread 055: the account travels with the parameters, being the same resolution.
@@ -10465,7 +10869,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
             thread: candidate.thread,
             setup,
             windDownSeconds: ceilings.windDown.value,
-            mail: mailFormFor(argv, role, mailRoot),
+            mail: mailFormFor(argv, role, mailRoot, setup.workspace),
           }),
           exec: agent.exec.value,
           spawnAs: identity.as,
@@ -10485,6 +10889,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           sessionStream: sessionStreamPath(sessionLog),
           sessionIdFile: sessionIdPath(sessionLog),
           waitFlag: sessionWaitPath(sessionLog),
+          sessionTmp: sessionTmpPath(sessionLog),
           worker: agent.worker.value,
           params: agent.params,
           ...(agent.account === undefined ? {} : { account: agent.account }),
@@ -11096,20 +11501,12 @@ const orchestratorStop = (argv: readonly string[]): void => {
   let delivered = false;
   try {
     const sent = deliverMessage({
-      git: (args) => {
-        try {
-          return execFileSync("git", ["-C", checkout, ...args], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-          });
-        } catch (error) {
-          const failure = error as { stderr?: string; status?: number };
-          const said = (failure.stderr ?? "").trim();
-          throw new DeliveryRefusedError(
-            `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
-          );
-        }
-      },
+      // THE SAME GIT AS EVERY OTHER DELIVERY — `gitIn`, not a copy of it. This call site
+      // carried its own inline duplicate of the old form, and so the credentials of the
+      // circuit (thread 065) reached six deliveries out of seven: a force stop announced
+      // from a clean environment pushed with nothing and got the login prompt the whole
+      // change was written to remove. Found by review of #164.
+      git: gitIn(checkout),
       write: writeOut,
       branch: loadedConfig.config.mail.branch,
       subject: deliverySubject({
@@ -11257,7 +11654,7 @@ const orchestratorHold = (argv: readonly string[]): void => {
  */
 const withOperatorRef = (argv: readonly string[]): readonly string[] => {
   if (flag(argv, "--ref") !== undefined) return argv;
-  const repo = flag(argv, "--repo") ?? repoOf(process.cwd());
+  const repo = repoArg(argv, process.cwd());
   const path = join(repo, flag(argv, "--config-path") ?? DEFAULT_CONFIG_PATH);
   let parsed: unknown;
   try {
@@ -12073,13 +12470,29 @@ const zonesCheck = (argv: readonly string[]): void => {
  * queued pull requests, one `gh pr view` each buys nothing worth a second machinery.
  */
 const ghMergeReadySource = (repo: string): MergeReadySource => {
-  const ask = (args: readonly string[]): string =>
-    execFileSync("gh", [...args], {
-      cwd: repo,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      maxBuffer: 16 * 1024 * 1024,
-    });
+  const ask = (args: readonly string[]): string => {
+    // THE CIRCUIT'S OWN CREDENTIALS (thread 065), read PER CALL and not once at start-up:
+    // this source is built when the daemon boots and lives as long as it does, so a token
+    // rotated under a running daemon has to be picked up without a restart — the cost is
+    // one small file read beside a network call.
+    const platform = platformEnvOf({ repo });
+    try {
+      return execFileSync("gh", [...args], {
+        cwd: repo,
+        encoding: "utf8",
+        env: platform.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 16 * 1024 * 1024,
+      });
+    } catch (error) {
+      // `readMergeReady` turns every failure of this source into "no acceleration" with
+      // the reason said out loud. A `gh` that refused while this module had NO token to
+      // give it gets the missing credential named in that same line — that is precisely
+      // what the five blind ticks lacked: the daemon said "refused", not "refused, and
+      // here is the file nobody filled in".
+      throw new Error(explainWithCredentials((error as Error).message, platform));
+    }
+  };
   return {
     open: async () =>
       ghOpenPullRequestsSchema
@@ -12124,6 +12537,16 @@ const mergeGate = (argv: readonly string[]): void => {
   const skew = describePolicySkew(loaded);
   if (skew !== undefined) out(`merge-gate: ${skew}`);
   const repo = flag(argv, "--repo") ?? process.cwd();
+  // THE DOOR TAKES THE CREDENTIALS OF THE CIRCUIT IT STANDS IN (thread 065) — of the
+  // instance the CHECKOUT belongs to, and of no other: a verdict read through somebody
+  // else's login is a verdict about the wrong repository, and the one line that tells the
+  // two apart is the note below. Names and paths only — never a value.
+  //
+  // NOT A GATE. Nothing is refused here even when no token could be assembled: `gh` has
+  // logins this package does not manage, and the missing credential is named only if `gh`
+  // itself then refuses (see `explainWithCredentials`).
+  const platform = platformEnvOf({ repo });
+  out(`merge-gate: credentials — ${platform.note}`);
 
   const ask = (): string =>
     execFileSync(
@@ -12145,6 +12568,7 @@ const mergeGate = (argv: readonly string[]): void => {
       {
         cwd: repo,
         encoding: "utf8",
+        env: platform.env,
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 16 * 1024 * 1024,
       },
@@ -12165,7 +12589,13 @@ const mergeGate = (argv: readonly string[]): void => {
     const message = (error as Error).message;
     // The reason `gh` returned is the fact and is printed whole; the hint is a reading
     // of it and says so (`ghRefusalHint` — why it stopped asserting a scope).
-    fail(`PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`, 2);
+    fail(
+      explainWithCredentials(
+        `PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`,
+        platform,
+      ),
+      2,
+    );
     return;
   }
 
@@ -12225,7 +12655,13 @@ const mergeGate = (argv: readonly string[]): void => {
           "--jq",
           "[.sha, .commit.committer.date] | @tsv",
         ],
-        { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 1024 * 1024 },
+        {
+          cwd: repo,
+          encoding: "utf8",
+          env: platform.env,
+          stdio: ["ignore", "pipe", "pipe"],
+          maxBuffer: 1024 * 1024,
+        },
       ).trim();
       const [sha, committedAt] = answer.split(/\s+/);
       // Half an answer is no answer: a SHA with no date, or a date with no SHA, would be
@@ -12264,6 +12700,7 @@ const mergeGate = (argv: readonly string[]): void => {
               {
                 cwd: repo,
                 encoding: "utf8",
+                env: platform.env,
                 stdio: ["ignore", "pipe", "pipe"],
                 maxBuffer: 16 * 1024 * 1024,
               },
