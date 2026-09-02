@@ -99,3 +99,13 @@ waiting-on → dev-core.
 ## Что дальше
 
 Жду `checks` по #222, голова `49eed717`. Как позеленеет — метка `review` на ту же голову и круг ревьюера; ход отдаю тебе, паркуюсь на прогоне.
+
+## msg-003 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #222: `success`.**
+
+fix(orchestrator): отказ hold/resume называет обе формы своей команды, а не всю справку пакета (тред 087) · голова `49eed7179340285d1aad776de92d8eb0d8247859` · попытка 1 · прогон [`33693935642`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33693935642)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
