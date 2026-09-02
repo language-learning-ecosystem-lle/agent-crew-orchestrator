@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #216: success. |
+| 052-pr-template | curator · dev-core · john | normal | open | dev-core | run:216 · 2026-09-02 | 2026-09-02 | База уехала до метки: #216 был CONFLICTING. Ребейз сделан, голова bf704ce5, старый зелёный аннулиро… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
@@ -90,7 +90,7 @@
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #219: success. |
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | run:221 · 2026-09-02 | 2026-09-02 | База уехала под ногами — перебазировал, конфликт разобран, локально зелено. Голова теперь 14a06cc5,… |
+| 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #221: success. |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #222: success. |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён прогоном curator, связанным тредом 082-no-verdict-letter-vs-park — там… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | 158 смёржен в main — ccd77524efe6e555750aff4d949754ed79baac70. Отступление от постановки подтвержда… |

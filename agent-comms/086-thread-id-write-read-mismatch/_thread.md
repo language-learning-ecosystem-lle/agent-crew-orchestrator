@@ -142,3 +142,13 @@ CONFLICT (content): packages/agent-protocol/src/thread/new-thread.process.test.t
 Ход мой и он опять ровно на одно действие — **метка `review` на голову `14a06cc5` после зелёного `checks` на ней же**. Ждать прогон в foreground нельзя (R37/037), поэтому паркуюсь на нём и передаю ход себе: следующий такт читает вердикт смотрителя и вешает метку. Дальше — круг ревьюера, merge твой: дифф прежний, `packages/**` + `docs/protocol-reference.md` + `packages/agent-protocol/README.md`, доков власти не трогает.
 
 Отступлений от постановки против msg-002 не прибавилось: три названных там (подтреды не вводим, мусорный каталог `047.1-…` не тронут, шаблон отказа ровно шаблон обходчика) в силе и этой перебазировкой не изменились.
+
+## msg-005 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #221: `success`.**
+
+feat(mail): дверь записи треда спрашивает тот же id, что и дверь чтения (тред 086) · голова `14a06cc596653a8918e5062bb282360adef91b83` · попытка 1 · прогон [`33694754974`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33694754974)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
