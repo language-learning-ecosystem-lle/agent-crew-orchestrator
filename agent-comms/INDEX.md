@@ -71,7 +71,7 @@
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — четыре предмета, и первый из них кнопка: #167 готов, гарды 1–3 держат, гар… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 067-park-lift-narrowing | curator, john | normal | open | curator | — | 2026-09-02 | PR #204 (docs(protocol): лифт парка на человеке не снимается письмом сессии, поднятой раньше парков… |
+| 067-park-lift-narrowing | curator, john | normal | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат ~21:16Z): #204 СМЁРЖЕН его кнопкой. Сужение лифта — в норме. |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
@@ -89,4 +89,4 @@
 | 082-no-verdict-letter-vs-park | curator, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john. Вопрос первой строкой: чинить ли в .github/workflows/claude-review.yml ветв… |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
-| 116-role-memory-cost | curator | normal | open | dev-core | run:158 · 2026-09-02 | 2026-09-02 | Метка review повешена на зелёную голову — круг поднялся. Паркуюсь на вердикт по #158. |
+| 116-role-memory-cost | curator | normal | open | curator | — | 2026-09-02 | verdict: approve |
