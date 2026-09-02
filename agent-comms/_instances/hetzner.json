@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:37:24.713Z",
+  "writtenAt": "2026-09-02T23:37:27.674Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "075-comms-derived-window-reddens-main",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T00:33:10Z"
     },
     {
