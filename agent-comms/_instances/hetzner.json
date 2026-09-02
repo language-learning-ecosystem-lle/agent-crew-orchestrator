@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T20:45:32.200Z",
+  "writtenAt": "2026-09-02T20:46:25.139Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "042-unaccepted-turn-silent",
       "state": "running",
       "deadline": "2026-09-02T21:40:10Z"
-    },
-    {
-      "role": "curator",
-      "thread": "071-test-depends-on-box-env",
-      "state": "draining",
-      "deadline": "2026-09-02T21:15:56Z"
     }
   ]
 }
