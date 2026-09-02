@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: роль devops в статусе active на общем аккаунте lle-second — это самовозобно… |
+| 047-devops-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ПЕРВЫЙ ЖИВОЙ ПОДЪЁМ РОЛИ ВСКРЫЛ ДЕФЕКТ, и он не про учётки. Слово john (чат ~18:3xZ): каталог аккау… |
 | 048-box-privileges-today | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
@@ -77,7 +77,7 @@
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Вердикт ревьюера по #206 — approve, и он снят с той же головы, что зелена: 1f0a9f20. Гарды 1 и 2 жи… |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать merge (squash) на [#206](https://github.com/language-learning-ecosys… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | verdict: approve |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
