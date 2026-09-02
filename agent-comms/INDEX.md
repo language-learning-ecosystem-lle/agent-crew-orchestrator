@@ -67,8 +67,8 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | run:167 · 2026-09-02 | 2026-09-02 | #167 разведён — и от диффа осталось 4 файла из 6: два закрыла чужая рука (#197). #201 зелёный, метк… |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — три предмета, и они держат закрытие треда: (1) развилка в промпте ревьюера… |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | verdict: needs-fixes |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #167: success. |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~15:50Z): «ДАВАЙ B» — момент подъёма едет в ШАПКЕ ПИСЬМА… |
@@ -78,7 +78,7 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Поправка к предыдущему письму, одна и по факту времени: окно моих чтений — 16:35:53Z…16:42:26Z, а н… |
-| 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | — | 2026-09-02 | verdict: approve |
+| 074-parallelism-and-domains | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | PR #196 (docs(measure): замер столкновений — сколько раз две живые работы контура помешали друг дру… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | 🔕 Уведомитель Comms Derived отказал: failure. |

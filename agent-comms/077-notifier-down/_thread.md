@@ -44,3 +44,33 @@ participants: github, dev-core, curator · status: open
 - `derive` — **failure**
 
 Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+## msg-004 · from: github · 2026-09-02 · expects: none
+
+🔕 **Уведомитель `Comms Derived` отказал: `failure`.**
+
+событие `push` · ветка `comms` · голова `6f84d2b04f82195fc649779f0df6a2f0f3dbf5e8` · попытка 1 · прогон [`33656622001`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33656622001)
+
+- `derive` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+## msg-005 · from: github · 2026-09-02 · expects: none
+
+🔕 **Уведомитель `Comms Derived` отказал: `failure`.**
+
+событие `push` · ветка `comms` · голова `f82c8e06f2faf9bd073780ac18848a683f96cbda` · попытка 1 · прогон [`33656650615`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33656650615)
+
+- `derive` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+## msg-006 · from: github · 2026-09-02 · expects: none
+
+🔕 **Уведомитель `Comms Derived` отказал: `failure`.**
+
+событие `push` · ветка `comms` · голова `57b9cb633e466d4b7f81dbf5d24286d5c5413751` · попытка 1 · прогон [`33656691660`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33656691660)
+
+- `derive` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
