@@ -78,7 +78,7 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | dev-core | — | 2026-09-02 | Смотритель за отказами прошёл рабочую ветку полем — и первым же делом показал усиливающую петлю: пи… |
-| 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ КНОПКА JOHN: #202 готов к merge — approve на текущей голове, зелёные чеки на ней же, гард… |
+| 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | verdict: approve |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | 🔕 Уведомитель Comms Derived отказал: failure. |
