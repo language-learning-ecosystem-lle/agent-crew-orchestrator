@@ -662,3 +662,111 @@ describe("the run lock (R17, john's requirement 1)", () => {
     );
   });
 });
+
+/**
+ * THE SEAM OF THREAD 078: the branch of the main checkout → the door that refuses.
+ *
+ * A unit test of `mainCheckoutVerdict` proves the sentence; it cannot prove that the
+ * branch is READ from the operator's own tree, that the distance is counted against
+ * `origin/main` rather than the tree's own upstream, or that the refusal actually stops a
+ * launch. All three are facts about a real repository and a real process, and all three
+ * are what the field case turned on: the line existed, said the right branch name, and
+ * changed nothing.
+ */
+describe("the main checkout on a foreign branch is a refusal, not an inventory line (078)", () => {
+  /** Park the operator's checkout on a branch of its own and move `origin/main` past it. */
+  const park = (repo: string, ahead: number): string => {
+    const origin = git(repo, "remote", "get-url", "origin").trim();
+    git(repo, "checkout", "-q", "-b", "core/gate-checks-from-actions");
+    writeFileSync(join(repo, "on-the-branch.txt"), "the commit the daemon would run\n");
+    git(repo, "add", ".");
+    git(repo, "commit", "-qm", "fix: the work of another contour, in this tree");
+    // `main` moves on WITHOUT this tree — the shape of the field case, and the only way
+    // the distance to `origin/main` is a number rather than a zero.
+    const scratch = join(repo, "..", "scratch");
+    execFileSync("git", ["clone", "-q", origin, scratch]);
+    for (let n = 0; n < ahead; n += 1) {
+      writeFileSync(join(scratch, `merged-${n}.txt`), "landed in main\n");
+      git(scratch, "add", ".");
+      git(scratch, "commit", "-qm", `feat: merged ${n}`);
+    }
+    git(scratch, "push", "-q", "origin", "main");
+    git(repo, "fetch", "-q", "origin", "main");
+    return origin;
+  };
+
+  /**
+   * `--exec` IS NOT DECORATION HERE. Without it preflight probes the binary the role's
+   * kind names (`claude`), and that is a fact about the BOX: it is on the operator's
+   * PATH — the session running the suite is one — and on no runner. The green case
+   * below therefore passed locally and returned 2 on the runner for a reason that has
+   * nothing to do with the branch of the main checkout (measured: run 33648477022).
+   * The stub is the same one `run` is handed, so the only cross this block can print is
+   * its own.
+   */
+  const preflight = (repo: string): { code: number; out: string } => {
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "orchestrator",
+          "preflight",
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--repo",
+          repo,
+          "--exec",
+          join(repo, "stub.sh"),
+        ],
+        { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("on the project's branch the line is a PASSED comparison and names the distance to origin/main", () => {
+    const { repo } = contour();
+    stub(repo);
+
+    const result = preflight(repo);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("✓ main checkout:");
+    expect(result.out).toContain("0 commit(s) of 'origin/main' are missing from it");
+  });
+
+  it("parked on a foreign branch → preflight FAILS, names the branch, the number and the cure", () => {
+    const { repo } = contour();
+    stub(repo);
+    park(repo, 3);
+
+    const result = preflight(repo);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("✗ main checkout:");
+    expect(result.out).toContain("'core/gate-checks-from-actions'");
+    // The number is measured against `origin/main`. Against the tree's OWN upstream it
+    // would be zero — true, and the sentence that let five hours of foreign code through.
+    expect(result.out).toContain("3 commit(s) of 'origin/main' are missing from it");
+    expect(result.out).toContain(`git -C ${repo} checkout main`);
+  });
+
+  it("and the refusal STOPS the launch — no session is started from code that was never merged", () => {
+    const { repo } = contour();
+    stub(repo);
+    park(repo, 2);
+
+    const result = run(repo);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("preflight failed — not starting");
+    expect(result.out).toContain("2 commit(s) of 'origin/main' are missing from it");
+    // The stub records its own start; the absence of the file is the absence of a session.
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(false);
+  });
+});

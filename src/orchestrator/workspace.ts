@@ -635,17 +635,63 @@ export const createWorkspaceLocks = (git: WorkspaceLockGit): WorkspaceLocks => {
 };
 
 /**
- * The line for the checkout NOBODY works in any more. It is printed for exactly as
- * long as it takes to notice that it changed meaning: with workspaces declared, the
- * branch of the operator's own tree stops deciding anything, and comparing it against
- * `workdir.branch` would resurrect the refusal R17 was written to remove.
+ * THE CHECKOUT NOBODY WORKS IN — AND THE CODE EVERYBODY RUNS (thread 078).
+ *
+ * R17 moved the sessions into worktrees of their own and this line went with them: the
+ * operator's tree stopped being anyone's workplace, so it was reported as a fact and
+ * compared against nothing. That was the right half of a wrong conclusion. Nobody WORKS
+ * in the main checkout, but the daemon is LOADED from it — node resolves the modules
+ * there once, at start — and every module the circuit executes is whatever that tree
+ * happens to be holding. "Not a workplace" and "not load-bearing" are different
+ * statements, and for five hours and fifty-four minutes on 2026-09-02 the difference was
+ * the whole contour: a hand created `core/gate-checks-from-actions` in the main checkout
+ * at 09:09Z, committed onto it at 09:35Z, and the daemon raised afterwards ran that
+ * commit — eleven commits of `main` it had never seen — while this line said `· main
+ * checkout: … — on 'core/gate-checks-from-actions'` in the even tone of an inventory
+ * entry, twenty lines deep in a passing preflight. It cost a false acceptance (`git
+ * rev-parse HEAD` in that tree answered with the foreign tip, was read as "the fix is
+ * rolled out", a workaround was removed on the strength of it and BOTH contours fell).
+ *
+ * SO IT REFUSES, and the refusal is not a new severity invented here: the pre-R17 sibling
+ * `workdirVerdict` has failed on exactly this comparison since R12, and R17 dropped it by
+ * accident rather than by decision. A daemon on a foreign branch cannot heal either — its
+ * self-repair is `git pull --ff-only` on the CURRENT branch, which on a foreign one
+ * succeeds, moves nothing, and leaves the drift against `origin/main` standing.
+ *
+ * THE DISTANCE IS MEASURED AGAINST THE MAIN BRANCH, ALWAYS — never against the tree's own
+ * upstream. "I match my own origin" is true of a foreign branch and answers a question
+ * nobody asked; "N commits of `origin/main` are missing from me" is true on every branch
+ * and is the number the reader needs. It is a convenience and degrades on its own: an
+ * uncountable distance costs the number and never the verdict.
  */
 export const mainCheckoutVerdict = (input: {
   readonly repo: string;
   readonly branch: string;
   readonly dirty: boolean;
-}): PreflightCheck => ({
-  name: "main checkout",
-  status: "info",
-  detail: `${input.repo} — on '${input.branch}'${input.dirty ? ", has unsaved changes" : ""}; not a workplace of any role (the sessions land in their own worktrees)`,
-});
+  /** The branch the project declared (`orchestrator.workdir.branch`) — the code of record. */
+  readonly expectedBranch: string;
+  /** Commits of `origin/<expectedBranch>` this tree does not have; absent when uncountable. */
+  readonly behind?: number;
+}): PreflightCheck => {
+  const dirt = input.dirty ? ", has unsaved changes" : "";
+  const distance =
+    input.behind === undefined
+      ? `the distance to 'origin/${input.expectedBranch}' did not read`
+      : `${input.behind} commit(s) of 'origin/${input.expectedBranch}' are missing from it`;
+  if (input.branch !== input.expectedBranch) {
+    // A detached HEAD reads back as the literal branch name `HEAD`, which in a refusal
+    // would look like a branch somebody made. It is named for what it is.
+    const where =
+      input.branch === "HEAD" ? "is DETACHED (on no branch)" : `is on '${input.branch}'`;
+    return {
+      name: "main checkout",
+      status: "fail",
+      detail: `${input.repo} ${where}, not the project's '${input.expectedBranch}' — ${distance}. The daemon loads its modules from this tree, so the circuit would execute THAT code, not what is merged${dirt}. Put it back: git -C ${input.repo} checkout ${input.expectedBranch} && git -C ${input.repo} pull --ff-only${input.dirty ? " (save or stash the unsaved changes first)" : ""}`,
+    };
+  }
+  return {
+    name: "main checkout",
+    status: "ok",
+    detail: `${input.repo} — on '${input.branch}'${dirt}, the project's branch; ${distance}; not a workplace of any role (the sessions land in their own worktrees)`,
+  };
+};
