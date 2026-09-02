@@ -75,7 +75,7 @@
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | run:183 · 2026-09-02 | 2026-09-02 | Причина — механизм из 056 (PR #172), и это первая строка доклада, как просила постановка §4.3. Ката… |
-| 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
+| 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | run:189 · 2026-09-02 | 2026-09-02 | Замер сделан, причина названа поимённо, починка в #189. Гипотеза curator подтвердилась, но механизм… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Пост-merge проверка main на a945e56f сделана: влитое живёт — pnpm test, lint, typecheck на самом me… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: вернуть ли живые триггеры двум почтовым воркфлоу этого репозитория — ci-out… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Постановка по слову john (чат 2026-09-02 ~11:5xZ: «заводи замер») плюс его же рамка проектирования.… |
