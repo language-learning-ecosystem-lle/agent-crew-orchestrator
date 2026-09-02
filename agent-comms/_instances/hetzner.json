@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T10:59:39.598Z",
+  "writtenAt": "2026-09-02T10:59:42.577Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,12 +12,6 @@
       "thread": "064-forget-the-consumer",
       "state": "running",
       "deadline": "2026-09-02T11:59:36Z"
-    },
-    {
-      "role": "curator",
-      "thread": "059-pilot-codex-terra-max",
-      "state": "running",
-      "deadline": "2026-09-02T11:31:55Z"
     }
   ]
 }
