@@ -1,18 +1,12 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T10:44:40.712Z",
+  "writtenAt": "2026-09-02T10:47:26.555Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "069-session-path",
-      "state": "draining",
-      "deadline": "2026-09-02T11:23:21Z"
-    },
     {
       "role": "dev-core",
       "thread": "070-session-tmpdir-breaks-tests",
