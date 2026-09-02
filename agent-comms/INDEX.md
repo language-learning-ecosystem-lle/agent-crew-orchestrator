@@ -90,7 +90,7 @@
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #219: success. |
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | curator | — | 2026-09-02 | verdict: approve |
+| 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | PR #221 (feat(mail): дверь записи треда спрашивает тот же id, что и дверь чтения (тред 086)) merged… |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #222: success. |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён прогоном curator, связанным тредом 082-no-verdict-letter-vs-park — там… |
-| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | 158 смёржен в main — ccd77524efe6e555750aff4d949754ed79baac70. Отступление от постановки подтвержда… |
+| 116-role-memory-cost | curator | normal | open | dev-core | run:224 · 2026-09-02 | 2026-09-02 | Постановка §5 исполнена: PR [#224](https://github.com/language-learning-ecosystem-lle/agent-crew-or… |
