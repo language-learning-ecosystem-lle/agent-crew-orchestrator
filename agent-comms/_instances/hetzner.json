@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T21:21:52.602Z",
+  "writtenAt": "2026-09-02T21:22:09.242Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "042-unaccepted-turn-silent",
+      "state": "running",
+      "deadline": "2026-09-02T22:02:06Z"
+    },
     {
       "role": "dev-core",
       "thread": "081-park-lift-raised-field",
