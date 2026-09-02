@@ -124,9 +124,24 @@ export const BOX_URL_KEY = "HEALTHCHECKS_URL";
  *
  * AND THE BUDGET IS WHAT KEEPS THE DEGRADATION ONE-WAY. A beat is settled where the tick was
  * going to sleep, so its cost is the delay before the NEXT tick may raise a role — three full
- * timeouts would be 30 s of that. The budget bounds the whole beat, the last attempt's own
+ * timeouts would be 30 s of that. The budget bounds the retries, the last attempt's own
  * timeout is clipped to what is left of it, and `beatBudgetFor` clips the budget to the tick
  * itself: a box that ticks faster than one attempt makes one attempt and no retries.
+ *
+ * THE BUDGET IS SPENT IN ALLOWANCE, NOT IN WALL CLOCK, AND THAT IS THE SECOND ROUND OF THIS
+ * THREAD. The first version read the budget off the wall clock from the moment the beat was
+ * ISSUED — the top of the tick — and the field then said what the arithmetic would not: 86
+ * refusals across two epochs of this box, every single one "after 1 attempt", not one retry
+ * in either. The reason is the same blocked loop the retries were added to survive. The first
+ * attempt is issued at the top of the tick and settles only when the loop is free again, so
+ * on a starved tick it comes back having spent 14–19 s of wall clock on its 10 s timeout;
+ * against a 20 s window that leaves no room, and the retry — the whole repair — is declined.
+ * A budget charged for the tick's own blockage cancels the cure for that blockage.
+ *
+ * So a wait is charged `min(waited, allowance)`: what the beat ASKED for. The ceiling on what
+ * the beat costs the next tick is the same 20 s of timeouts and pauses it always was — a
+ * dead monitor still buys two attempts and no more — while the seconds the blocked loop added
+ * on top are reported (`starved`) instead of being paid for out of the retry.
  */
 export const BEAT_TIMEOUT_MS = 10_000;
 
@@ -139,7 +154,11 @@ export const BEAT_ATTEMPTS = 3;
  */
 export const BEAT_RETRY_PAUSE_MS = 1_000;
 
-/** The ceiling on a whole beat, retries and pauses included. See the block above. */
+/**
+ * The ceiling on a whole beat, retries and pauses included — counted in what its timeouts and
+ * pauses were ALLOWED, not in the wall clock a blocked loop turned that into. See the block
+ * above for why the difference is the whole of the second round of this thread.
+ */
 export const BEAT_BUDGET_MS = 20_000;
 
 /**
@@ -321,14 +340,34 @@ export type BeatOutcome =
       readonly detail: string;
       /** How many attempts were spent before giving up. */
       readonly attempts: number;
+      /** How many it was ALLOWED — printed beside the count above, never inferred from it. */
+      readonly limit: number;
+      /** The budget this beat was given, so the line below can name the number it ran out of. */
+      readonly budgetMs: number;
+      /**
+       * WHY the beat stopped short of `limit`, when it did. `"budget"` is the whole of it
+       * today: the room for a retry, or for the pause in front of one, was gone.
+       *
+       * IT IS A FIELD BECAUSE THE FIELD WAS MISSING. 86 refusals across two epochs of this
+       * box (thread `057`) every one of them "after 1 attempt", and nothing in the line said
+       * whether the other two were declined or never came due — so "three attempts" read as
+       * working while it had never once fired. A count that cannot be told apart from a
+       * limit of one is the silent-door class (dev-core card, discipline 4).
+       */
+      readonly declined?: "budget";
       /** Wall clock of the whole beat — the evidence for the field below. */
       readonly elapsedMs: number;
       /**
-       * THE BEAT WAITED LONGER THAN ITS OWN TIMEOUTS ALLOW, so the time went somewhere no
-       * timeout can account for: this process was not running its loop. That is the
-       * `057-circuit-ping-flaps` class, and the line says it — a watch that reports "the
-       * monitor is silent" when the truth is "I was too busy to listen" sends a human to the
-       * wrong box.
+       * ONE OF THIS BEAT'S WAITS TOOK LONGER THAN THE TIMEOUT THAT BOUNDED IT, so the time
+       * went somewhere no timeout can account for: this process was not running its loop.
+       * That is the `057-circuit-ping-flaps` class, and the line says it — a watch that
+       * reports "the monitor is silent" when the truth is "I was too busy to listen" sends a
+       * human to the wrong box.
+       *
+       * MEASURED PER WAIT, NOT OVER THE WHOLE BEAT. The sum stopped being the right yardstick
+       * the moment retries were allowed to run after a starved first attempt: a 15 s attempt
+       * followed by two honest ones averages back under the threshold and the blame goes
+       * quiet exactly where it was earned.
        */
       readonly starved: boolean;
     };
@@ -373,19 +412,52 @@ export const beat = async (input: {
   const now = input.now ?? Date.now;
   const started = now();
   let last = "";
-  /** What the timeouts and pauses ALLOWED — the yardstick the wall clock is judged against. */
-  let allowed = 0;
   let made = 0;
+  let declined: "budget" | undefined;
+  /**
+   * WHAT THE BUDGET HAS BEEN CHARGED — the ALLOWANCE spent, not the wall clock spent, and
+   * that difference is the repair of thread `057`'s own repair. See the block on
+   * `BEAT_BUDGET_MS`: the budget used to be read off the wall clock from the moment the beat
+   * was ISSUED, i.e. from the top of the tick, so a first attempt that came back having burnt
+   * 14 s for its 10 s timeout — the loop was blocked, which is the whole subject of this
+   * module — left 6 s of a 20 s window and the retry was declined. 86 refusals over two
+   * epochs of the live box, not one retry in either. A wait is charged what it was ALLOWED
+   * (`min(waited, allowance)`), so a wait inflated by the blocked loop cannot buy out the
+   * retry that exists for exactly that case, and the ceiling on what the beat costs the next
+   * tick is unchanged.
+   */
+  let charged = 0;
+  /**
+   * A WAIT THAT OUTRAN ITS OWN ALLOWANCE, remembered for the whole beat. Judged per wait
+   * rather than over the sum — see the field's own comment on `BeatOutcome`.
+   */
+  let starved = false;
+  /**
+   * ONE WAIT, ACCOUNTED FOR. The budget is charged what the wait was ALLOWED and never more —
+   * the overrun above an allowance is the blocked loop's, and charging it to the budget is
+   * how the retry got cancelled by the very thing it exists to survive. The same overrun is
+   * what the blame is read off, so nothing is lost by not charging it: it is said in the
+   * line instead of silently eating the next attempt.
+   */
+  const account = (waitedMs: number, allowedMs: number): void => {
+    charged += Math.min(waitedMs, allowedMs);
+    // A 50 % overrun of what a timer was told to allow is not jitter; nothing but a loop that
+    // was not running can produce it.
+    if (waitedMs > allowedMs * 1.5) starved = true;
+  };
 
   for (let attempt = 1; attempt <= limit; attempt += 1) {
-    const left = budgetMs - (now() - started);
+    const left = budgetMs - charged;
     // A retry with less than half an attempt's room left is not made at all: a timeout
     // clipped to a sliver would report "no answer in 0.2s" about a monitor that was never
     // really asked, and a false detail is worse than a missing retry.
-    if (attempt > 1 && left < timeoutMs / 2) break;
+    if (attempt > 1 && left < timeoutMs / 2) {
+      declined = "budget";
+      break;
+    }
     const attemptMs = attempt === 1 ? timeoutMs : Math.min(timeoutMs, left);
-    allowed += attemptMs;
     made = attempt;
+    const attemptFrom = now();
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), attemptMs);
@@ -405,27 +477,32 @@ export const beat = async (input: {
       clearTimeout(timer);
     }
     last = refusal;
+    account(now() - attemptFrom, attemptMs);
 
     if (attempt === limit) break;
     if (pauseMs > 0) {
-      const room = budgetMs - (now() - started);
-      if (room <= pauseMs) break;
-      allowed += pauseMs;
+      const room = budgetMs - charged;
+      if (room <= pauseMs) {
+        declined = "budget";
+        break;
+      }
+      const pauseFrom = now();
       await new Promise((resolve) => setTimeout(resolve, pauseMs));
+      account(now() - pauseFrom, pauseMs);
     }
     // The detail of the LAST attempt is what the caller is told, so a retry that changed the
     // failure (a timeout that became a 503) reports what is true now, not what was true first.
   }
 
-  const elapsedMs = now() - started;
   return {
     kind: "refused",
     detail: last,
     attempts: made,
-    elapsedMs,
-    // A 50 % overrun of everything the timeouts and pauses allowed is not jitter; nothing but
-    // a loop that was not running can produce it.
-    starved: elapsedMs > allowed * 1.5,
+    limit,
+    budgetMs,
+    ...(declined === undefined ? {} : { declined }),
+    elapsedMs: now() - started,
+    starved,
   };
 };
 
@@ -444,14 +521,24 @@ export const describeBeat = (outcome: BeatOutcome, previous?: BeatOutcome): stri
   if (previous?.kind === "refused" && previous.detail === outcome.detail) return undefined;
   // The counts and the clock are PRINTED but never compared: they move every time, and a
   // comparison over them would put a line on the stream each tick of one outage.
-  const tries =
-    outcome.attempts === 1
-      ? "1 attempt"
-      : `${outcome.attempts} attempts, ${outcome.elapsedMs / 1000}s`;
+  //
+  // THE COUNT IS SAID AGAINST ITS LIMIT, AND THE CLOCK IS SAID ALWAYS. Both used to be
+  // dropped for the one-attempt case — the very case this box printed 86 times running — so
+  // the line was thinnest exactly where it was most often read. "1 attempt" out of context
+  // reads as "it tried once and that is the design"; "1 of 3 attempts, 15.4s" is the defect.
+  const tries = `${outcome.attempts} of ${outcome.limit} attempt${outcome.limit === 1 ? "" : "s"}, ${outcome.elapsedMs / 1000}s`;
+  // WHY THE REST WERE NOT MADE, when they were not. A retry that is silently skipped leaves
+  // the reader to infer it from a number, and the inference that comes first is the wrong
+  // one: that no retry was ever configured.
+  const missing = outcome.limit - outcome.attempts;
+  const short =
+    outcome.declined === "budget"
+      ? `. THE OTHER ${missing} ATTEMPT${missing === 1 ? " WAS" : "S WERE"} NOT MADE: the ${outcome.budgetMs / 1000}s one beat may spend was already gone when the retry came due, so the retry this watch leans on did not happen at all`
+      : "";
   const blame = outcome.starved
-    ? ". And THAT WAIT WAS THIS PROCESS, not the monitor: the beat took longer of the wall clock than its own timeouts allow, which only a loop that was not running can do — look at what the tick does synchronously before you look at the network"
+    ? ". And THAT WAIT WAS THIS PROCESS, not the monitor: one of the beat's waits took longer of the wall clock than the timeout that bounded it, which only a loop that was not running can do — look at what the tick does synchronously before you look at the network"
     : "";
-  return `circuit watchdog — the dead-man ping was NOT delivered after ${tries}: ${outcome.detail}. The daemon keeps working and raising roles; what is at risk is the ALARM — if this box dies now, the monitor's silence is the only thing left to notice it${blame}`;
+  return `circuit watchdog — the dead-man ping was NOT delivered after ${tries}: ${outcome.detail}. The daemon keeps working and raising roles; what is at risk is the ALARM — if this box dies now, the monitor's silence is the only thing left to notice it${short}${blame}`;
 };
 
 /**

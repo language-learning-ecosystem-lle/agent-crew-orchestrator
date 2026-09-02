@@ -441,14 +441,13 @@ describe("the beat retries — a slow answer is not a dead monitor", () => {
     expect(http.calls).toHaveLength(6);
   });
 
-  it("spends no more than the budget it was given", async () => {
-    const clock = virtualClock();
-    // A monitor that never answers: each attempt runs to its own abort. The REAL abort is
-    // what fires (the code's own timer), and what it costs is said to the virtual clock —
-    // 60ms for the first attempt, 40ms for the second, which is all the budget leaves it.
-    const burn = [60, 40];
+  /**
+   * A monitor that never answers: each attempt runs to its own abort. The REAL abort is what
+   * fires (the code's own timer), and what it costs is said to the virtual clock.
+   */
+  const burning = (burn: readonly number[], clock: ReturnType<typeof virtualClock>) => {
     let call = 0;
-    const http = recorder((_url, signal) => {
+    return recorder((_url, signal) => {
       const spent = burn[call] ?? 0;
       call += 1;
       return new Promise((_resolve, reject) => {
@@ -458,6 +457,12 @@ describe("the beat retries — a slow answer is not a dead monitor", () => {
         });
       });
     });
+  };
+
+  it("spends no more than the budget it was given", async () => {
+    const clock = virtualClock();
+    // 60ms for the first attempt, 40ms for the second, which is all the budget leaves it.
+    const http = burning([60, 40], clock);
     const outcome = await beat({
       url: URL_OF_CIRCUIT,
       fetch: http.fetch,
@@ -476,14 +481,74 @@ describe("the beat retries — a slow answer is not a dead monitor", () => {
     expect(outcome.elapsedMs).toBe(100);
     // Exactly the budget and no more, so nothing here is the starvation class.
     expect(outcome.starved).toBe(false);
+    expect(outcome.declined).toBe("budget");
+  });
+
+  /**
+   * THE DEFECT THE FIELD FOUND, as a test (thread `057`, msg-019 §3 → this round). 86
+   * refusals over two epochs of the live box, every one of them "after 1 attempt" — because
+   * the budget used to be read off the WALL CLOCK, so a first attempt that came back having
+   * spent 500ms on its 60ms timeout had eaten a 100ms budget whole and the retry was
+   * declined. The retry was cancelled by exactly the starvation it exists for. Charged what
+   * it was ALLOWED, that same attempt costs 60ms and the retry happens.
+   */
+  it("still retries after a STARVED first attempt — the blocked loop's seconds are not charged to the budget", async () => {
+    const clock = virtualClock();
+    let call = 0;
+    const http = recorder((_url, signal) => {
+      call += 1;
+      if (call === 1)
+        return new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => {
+            // A 60ms attempt that took 500ms of wall clock: the blocked tick, reproduced.
+            clock.advance(500);
+            reject(new Error("aborted"));
+          });
+        });
+      // The loop is free again at the bottom of the tick, so the retry answers in no time.
+      return Promise.resolve({ ok: true, status: 204 });
+    });
+    const outcome = await beat({
+      url: URL_OF_CIRCUIT,
+      fetch: http.fetch,
+      timeoutMs: 60,
+      retryPauseMs: 0,
+      budgetMs: 100,
+      now: clock.now,
+    });
+    expect(http.calls).toHaveLength(2);
+    expect(outcome).toEqual({ kind: "beat", status: 204, attempts: 2 });
+  });
+
+  it("says WHY the remaining attempts were not made, and how many they were", async () => {
+    const clock = virtualClock();
+    const http = burning([60], clock);
+    const outcome = await beat({
+      url: URL_OF_CIRCUIT,
+      fetch: http.fetch,
+      timeoutMs: 60,
+      retryPauseMs: 0,
+      // 10ms of budget after the first attempt is less than half of one: a retry would be
+      // clipped to a number the monitor was never really given.
+      budgetMs: 70,
+      now: clock.now,
+    });
+    if (outcome.kind !== "refused") throw new Error("unreachable");
+    expect(outcome.attempts).toBe(1);
+    expect(outcome.limit).toBe(3);
+    expect(outcome.declined).toBe("budget");
+    // And the line says it in words. THIS IS THE SHAPE THE LIVE BOX PRINTED 86 TIMES: before
+    // this round it said "after 1 attempt" and nothing else, which reads as a design with one
+    // attempt rather than as two attempts that were declined.
+    const line = describeBeat(outcome);
+    expect(line).toContain("1 of 3 attempts, 0.06s");
+    expect(line).toContain("THE OTHER 2 ATTEMPTS WERE NOT MADE");
+    expect(line).toContain("0.07s one beat may spend");
   });
 
   it("charges the pause to the budget too, and stops rather than pause past it", async () => {
     const clock = virtualClock();
-    const http = recorder(() => {
-      clock.advance(60);
-      return Promise.reject(new Error("aborted"));
-    });
+    const http = burning([60], clock);
     const outcome = await beat({
       url: URL_OF_CIRCUIT,
       fetch: http.fetch,
@@ -497,6 +562,7 @@ describe("the beat retries — a slow answer is not a dead monitor", () => {
     expect(http.calls).toHaveLength(1);
     if (outcome.kind !== "refused") throw new Error("unreachable");
     expect(outcome.attempts).toBe(1);
+    expect(outcome.declined).toBe("budget");
   });
 
   /**
@@ -525,6 +591,30 @@ describe("the beat retries — a slow answer is not a dead monitor", () => {
     expect(describeBeat(outcome)).toContain("THAT WAIT WAS THIS PROCESS");
   });
 
+  /**
+   * AND THE BLAME IS PER WAIT, NOT OVER THE SUM — which is what keeps it from going quiet now
+   * that a starved attempt is followed by retries. Here the first attempt overran its 60ms
+   * timeout by two thirds and the two retries were honest: the SUM (220ms against 180ms
+   * allowed) is under the threshold and would report a healthy loop, while the wait that was
+   * actually starved is right there in the first attempt.
+   */
+  it("blames the wait that outran its own timeout, even when the retries after it were honest", async () => {
+    const clock = virtualClock();
+    const http = burning([100, 60, 60], clock);
+    const outcome = await beat({
+      url: URL_OF_CIRCUIT,
+      fetch: http.fetch,
+      timeoutMs: 60,
+      retryPauseMs: 0,
+      budgetMs: 1_000,
+      now: clock.now,
+    });
+    if (outcome.kind !== "refused") throw new Error("unreachable");
+    expect(outcome.attempts).toBe(3);
+    expect(outcome.elapsedMs).toBe(220);
+    expect(outcome.starved).toBe(true);
+  });
+
   it("clips the budget to the tick — a box that ticks faster than one attempt does not retry", () => {
     expect(beatBudgetFor(30_000)).toBe(BEAT_BUDGET_MS);
     expect(beatBudgetFor(15_000)).toBe(15_000);
@@ -540,6 +630,8 @@ describe("describeBeat", () => {
     kind: "refused",
     detail: "the monitor answered 503",
     attempts: 3,
+    limit: 3,
+    budgetMs: 20_000,
     elapsedMs: 1_200,
     starved: false,
   };
@@ -557,10 +649,28 @@ describe("describeBeat", () => {
         kind: "refused",
         detail: "no answer in 10s",
         attempts: 2,
+        limit: 3,
+        budgetMs: 20_000,
         elapsedMs: 21_000,
         starved: false,
       }),
     ).toBeDefined();
+  });
+
+  /**
+   * THE COUNT IS SAID AGAINST ITS LIMIT AND THE CLOCK IS ALWAYS SAID. Both used to be dropped
+   * for `attempts === 1`, which is the shape the live box printed 86 times running: "after 1
+   * attempt" alone reads as a design with one attempt, and that is how "three attempts" went
+   * two epochs without anybody noticing it had never fired.
+   */
+  it("names the limit and the clock even for the one-attempt case", () => {
+    const line = describeBeat({
+      ...bad,
+      detail: "no answer in 10s",
+      attempts: 1,
+      elapsedMs: 15_400,
+    });
+    expect(line).toContain("1 of 3 attempts, 15.4s");
   });
 
   /**

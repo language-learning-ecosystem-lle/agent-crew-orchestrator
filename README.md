@@ -3346,11 +3346,32 @@ construction:
   in front of the sleep, so what it spends is delay before the next launch), the last
   attempt's timeout is clipped to what is left of that budget, and a box that ticks faster
   than one attempt makes one attempt and no retries. **The threshold moved, the class did
-  not**: a monitor that answers no attempt still gets its line, once, and the line now names
-  how many attempts were spent — and when the beat outran its own timeouts on the wall clock,
-  it says the wait was THIS PROCESS and not the monitor, because a watch that reports "the
-  monitor is silent" when the truth is "I was too busy to listen" sends the operator to the
-  wrong box.
+  not**: a monitor that answers no attempt still gets its line, once, and the line names
+  how many attempts were spent OF HOW MANY ALLOWED — and when one of the beat's waits outran
+  the timeout that bounded it, it says the wait was THIS PROCESS and not the monitor, because
+  a watch that reports "the monitor is silent" when the truth is "I was too busy to listen"
+  sends the operator to the wrong box.
+
+- **The budget is spent in ALLOWANCE, not in wall clock — and the line says when a retry was
+  DECLINED** (same thread, measured 2026-09-02 on the live box). The repair above shipped, the
+  flap kept its cadence, and the log said why to anybody who read the whole line: **86
+  refusals across two epochs (56 + 29), every single one of them "after 1 attempt", not one
+  retry in either.** The arithmetic explains it exactly. The budget was read off the wall
+  clock from the moment the beat was ISSUED — the top of the tick — while the first attempt
+  settles only when the loop is free again, so on a starved tick it came back having spent
+  14–19 s of wall clock on its 10 s timeout, the 20 s was gone, and the retry was declined for
+  lack of room. **A budget charged for the tick's own blockage cancels the cure for that
+  blockage**, and it did so in exactly the case retries exist for. So a wait is now charged
+  `min(waited, allowance)` — what the beat ASKED for. The ceiling on what the beat costs the
+  next tick is unchanged (a dead monitor still buys two attempts and no more); the seconds the
+  blocked loop added on top are reported instead of paid for out of the retry. **Starvation is
+  judged per wait rather than over the sum**, which keeps the blame from going quiet once
+  honest retries follow a starved attempt. The line itself was the other half of the defect:
+  for one attempt it printed `after 1 attempt` and dropped the clock, so the shape the box
+  printed 86 times running was the least informative one it had. Now: `after 1 of 3 attempts,
+  15.4s` plus `THE OTHER 2 ATTEMPTS WERE NOT MADE: the 20s one beat may spend was already gone
+  when the retry came due`. A count that cannot be told apart from a limit of one is a door
+  that stays silent about which way it swung.
 
 - **A dead network does not kill the watch** (R6-достройка, john's decision of
   2026-07-26). The one thing that used to end the daemon before it started was the
