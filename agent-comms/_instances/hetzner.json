@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:15:31.886Z",
+  "writtenAt": "2026-09-02T23:15:46.961Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "057-circuit-ping-flaps",
       "state": "running",
       "deadline": "2026-09-02T23:33:07Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "087-hold-refusal-hides-short-form",
-      "state": "draining",
-      "deadline": "2026-09-03T00:04:15Z"
     }
   ]
 }
