@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:37:50.085Z",
+  "writtenAt": "2026-09-02T23:38:12.290Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "052-pr-template",
+      "state": "running",
+      "deadline": "2026-09-03T00:38:09Z"
+    },
     {
       "role": "devops",
       "thread": "047-devops-role",
