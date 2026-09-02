@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-
+import type { HeldMailLock } from "../thread/checkout-lock.js";
 import type { OrchestratorEvent } from "./journal.js";
 import { foldLeases, type LeaseView } from "./lease.js";
 import { renderLeaseLine, renderStatus } from "./status.js";
@@ -282,5 +282,299 @@ describe("a count past its ceiling never stands there silently (thread 023)", ()
   it("a count at or below its ceiling reads exactly as it always did", () => {
     expect(renderLeaseLine(view({ attempt: 3, ceiling: 3 }))).toContain("attempt 3/3");
     expect(renderLeaseLine(view({ attempt: 3, ceiling: 3 }))).not.toContain("past the ceiling");
+  });
+});
+
+/**
+ * THE PAIR IS UP AND THE CHILD HAS NOT SPOKEN YET (thread 063, `restore`; curator's answer
+ * of 2026-09-02). The window is the one between the lease and the first line of the vendor's
+ * stream — measured by the absence of the run's `.session` file — and the two conditions of
+ * the answer are asserted here by name: the sentence must not call the pair silent, and it
+ * must name its own window instead of guessing at the cause of it.
+ */
+describe("renderStatus — raised, and the child has not spoken yet", () => {
+  const LOG = "/s/2026-09-02T15-00-00Z-dev-core-063-state-model-rewrite.log";
+
+  it("a running pair whose session id is not on disk says so, and says the next step is to wait", () => {
+    const line = renderStatus([view({ sessionLog: LOG })], new Set(), undefined, new Set([LOG]));
+    expect(line).toContain("THE CHILD HAS NOT SPOKEN YET");
+    expect(line).toContain("no process to go and kill");
+    expect(line).toContain("the next step here is to wait");
+  });
+
+  it("and it does NOT call the pair silent — the log is open and growing in this window", () => {
+    // Condition 1 of the answer: `writeLog` fills the session log BEFORE the spawn, so
+    // `logBytes` moves here. A mark that read as "nothing has been reported" would send the
+    // operator to the very kill this line exists to prevent.
+    const line = renderStatus([view({ sessionLog: LOG })], new Set(), undefined, new Set([LOG]));
+    expect(line).toContain("Its log is open and growing");
+    expect(line).toContain("this pair is not a silent one");
+    expect(line).not.toMatch(/says nothing|nothing has been reported|reported nothing/);
+  });
+
+  it("and it names the WINDOW, not a cause: the words 'memory' and 'restore' promise nothing measured", () => {
+    // Condition 2: two sub-cases live inside this window (a memory restore, and the plain
+    // gap between the spawn and the first line of the stream) and nothing tells them apart.
+    // The sentence may offer them as alternatives; it may not assert one.
+    const line = renderStatus([view({ sessionLog: LOG })], new Set(), undefined, new Set([LOG]));
+    expect(line).toContain("either still being started or restoring its own memory");
+    expect(line).not.toContain("WRITING MEMORY");
+  });
+
+  it("a run whose session id IS on disk keeps the row it always had", () => {
+    const line = renderStatus([view({ sessionLog: LOG })], new Set(), undefined, new Set());
+    expect(line).not.toContain("HAS NOT SPOKEN YET");
+  });
+
+  it("the window belongs to a LIVE row: a released pair with no id file is history, not a call to wait", () => {
+    const line = renderStatus(
+      [view({ state: "released", sessionLog: LOG })],
+      new Set(),
+      undefined,
+      new Set([LOG]),
+    );
+    expect(line).not.toContain("HAS NOT SPOKEN YET");
+  });
+
+  it("the mark stands BESIDE the overdue one, never instead of it", () => {
+    const line = renderStatus(
+      [view({ overdue: true, sessionLog: LOG })],
+      new Set(),
+      undefined,
+      new Set([LOG]),
+    );
+    expect(line).toContain("⚠ OVERDUE");
+    expect(line).toContain("HAS NOT SPOKEN YET");
+  });
+});
+
+/**
+ * THE PAIR IS OVER AND ITS SESSION IS NOT (thread 063, `save`; curator's three conditions of
+ * 2026-09-02). The lock of the mail checkout is ONE PER BOX, a session writes its own memory
+ * through it AFTER the handoff, and while that lasts the pair reads `released · completed`
+ * next to a process that is holding every other delivery up.
+ */
+describe("renderStatus — the pair is over, its session is still inside the mail", () => {
+  const lock = (over: Partial<HeldMailLock> = {}): HeldMailLock => ({
+    pid: 4242,
+    holder: "memory of dev-core",
+    since: "2026-09-02T15:40:00Z",
+    alive: true,
+    ...over,
+  });
+
+  it("names the role the LOCK names, on that role's finished row", () => {
+    const line = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(line).toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    expect(line).toContain("pid 4242");
+    expect(line).toContain("since 2026-09-02T15:40:00Z");
+    // The error escapes the pair — that is the whole reason the mark exists.
+    expect(line).toContain("every other delivery waits behind it");
+  });
+
+  it("condition 2: a lock of ANOTHER role is not pinned on the pair that happens to be here", () => {
+    const line = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock({ holder: "memory of curator" }),
+    );
+    expect(line).not.toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+  });
+
+  it("condition 2: a digest holds no pair, so the line names the DIGEST and no row is marked", () => {
+    const line = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock({ holder: "digest of instance hetzner" }),
+    );
+    expect(line).not.toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    expect(line).toContain("digest of instance hetzner");
+    expect(line).toContain("belongs to no pair above");
+  });
+
+  it("condition 3: a record whose pid is GONE explains nothing — neither on a row nor beside it", () => {
+    // The record outlives a killed process. A stale lock read as "held" would blame a
+    // process that is not there for somebody else's slowness — a lie with a timestamp on it.
+    const dead = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock({ alive: false }),
+    );
+    expect(dead).not.toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+    const orphanDead = renderStatus(
+      [view({ state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock({ holder: "digest of instance hetzner", alive: false }),
+    );
+    expect(orphanDead).not.toContain("belongs to no pair above");
+  });
+
+  it("a RUNNING row of the same role is left alone — there the process is doing its work", () => {
+    const line = renderStatus([view({})], new Set(), undefined, new Set(), lock());
+    expect(line).not.toContain("THIS PAIR IS OVER, ITS SESSION IS NOT");
+  });
+
+  it("and a free checkout changes no row at all", () => {
+    const line = renderStatus([view({ state: "released", reason: "completed" })]);
+    expect(line).not.toContain("ITS SESSION IS NOT");
+    expect(line).not.toContain("mail checkout");
+  });
+});
+
+/**
+ * ONE PAIR WEARS THE LOCK, NOT ONE ROLE (thread 063, review of #201). A frame prints one row
+ * per pair EVER seen in the journal, so a role that has worked five threads owns five rows,
+ * and a mark matched on the role alone went onto all five at once: every long-dead pair of
+ * that role told the operator that IT is the one holding the door. The other half of the same
+ * defect was silence — a holder naming a role with no row here printed nothing anywhere, so a
+ * busy checkout read exactly like a free one.
+ */
+describe("renderStatus — the mail lock belongs to ONE pair of the role", () => {
+  const lock = (over: Partial<HeldMailLock> = {}): HeldMailLock => ({
+    pid: 4242,
+    holder: "memory of dev-core",
+    since: "2026-09-02T15:40:00Z",
+    alive: true,
+    ...over,
+  });
+  const done = (thread: string, lastAt?: string): LeaseView =>
+    view({
+      thread,
+      state: "released",
+      reason: "completed",
+      ...(lastAt === undefined ? {} : { lastAt }),
+    });
+  const MARK = "THIS PAIR IS OVER, ITS SESSION IS NOT";
+  const marked = (frame: string): readonly string[] =>
+    frame.split("\n").filter((line) => line.includes(MARK));
+
+  it("two finished pairs of one role: the mark goes on the RECENT one and on it alone", () => {
+    const frame = renderStatus(
+      [
+        done("010-ancient-thread", "2026-08-11T09:00:00Z"),
+        done("063-state-model-rewrite", "2026-09-02T15:39:00Z"),
+      ],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    const hit = marked(frame);
+    expect(hit).toHaveLength(1);
+    expect(hit[0]).toContain("063-state-model-rewrite");
+    expect(frame).not.toContain("mail checkout is held by");
+    // The ancient row keeps its own sentence and gains nothing about somebody's memory.
+    const ancient = frame.split("\n").find((line) => line.includes("010-ancient-thread")) as string;
+    expect(ancient).not.toContain(MARK);
+  });
+
+  it("the recent pair wins wherever it stands in the frame — order of rows is not recency", () => {
+    const frame = renderStatus(
+      [
+        done("063-state-model-rewrite", "2026-09-02T15:39:00Z"),
+        done("010-ancient-thread", "2026-08-11T09:00:00Z"),
+      ],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(1);
+    expect(marked(frame)[0]).toContain("063-state-model-rewrite");
+  });
+
+  it("a RUNNING pair of the role is no candidate: the finished one carries the mark", () => {
+    const frame = renderStatus(
+      [
+        view({ thread: "079-live", lastAt: "2026-09-02T15:41:00Z" }),
+        done("063-state-model-rewrite", "2026-09-02T15:39:00Z"),
+      ],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(1);
+    expect(marked(frame)[0]).toContain("063-state-model-rewrite");
+  });
+
+  it("the role has no row here at all — the fact is NOT lost, it is said as a line of its own", () => {
+    // The whole point: the writer's pair may be outside this frame, and a live lock with a
+    // named pid disappearing was indistinguishable from a free checkout.
+    const frame = renderStatus(
+      [view({ role: "curator", thread: "070-charter", state: "released", reason: "completed" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(0);
+    expect(frame).toContain("the mail checkout is held by 'memory of dev-core'");
+    expect(frame).toContain("pid 4242");
+    expect(frame).toContain("every delivery waits behind it");
+    // And it says WHY no row wears it, rather than refusing without a cause.
+    expect(frame).toContain("no finished pair of 'dev-core' is in this frame");
+  });
+
+  it("every pair of the role is RUNNING — the same line, and it names that reason too", () => {
+    const frame = renderStatus([view({})], new Set(), undefined, new Set(), lock());
+    expect(marked(frame)).toHaveLength(0);
+    expect(frame).toContain("no finished pair of 'dev-core' is in this frame");
+  });
+
+  it("two equally recent pairs: nothing is guessed, and the lock is still said out loud", () => {
+    // Journal stamps are second-precision, so a tie is honest. Naming either row would be a
+    // guess wearing the clothes of a measurement.
+    const frame = renderStatus(
+      [
+        done("010-ancient-thread", "2026-09-02T15:39:00Z"),
+        done("063-state-model-rewrite", "2026-09-02T15:39:00Z"),
+      ],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(0);
+    expect(frame).toContain("'dev-core' has 2 finished pairs here");
+    expect(frame).toContain("do not say which of them is writing");
+  });
+
+  it("a hand-built frame with no stamps refuses to pick rather than taking the first row", () => {
+    const frame = renderStatus(
+      [done("010-ancient-thread"), done("063-state-model-rewrite")],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(0);
+    expect(frame).toContain("the mail checkout is held by 'memory of dev-core'");
+  });
+
+  it("one finished pair of the role needs no stamp — there is nothing to choose between", () => {
+    const frame = renderStatus(
+      [done("063-state-model-rewrite"), view({ role: "curator", thread: "070-charter" })],
+      new Set(),
+      undefined,
+      new Set(),
+      lock(),
+    );
+    expect(marked(frame)).toHaveLength(1);
+    expect(frame).not.toContain("mail checkout is held by");
   });
 });

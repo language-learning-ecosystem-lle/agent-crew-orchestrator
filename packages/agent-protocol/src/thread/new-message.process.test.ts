@@ -57,6 +57,15 @@ const CONFIG = {
       summary: "the keeper",
       permissions: ["launch-params", "thread-priority"],
     },
+    {
+      // THE CIRCUIT'S OWN VOICE (thread 072): a participant nobody of ours raises as a session
+      // and that reads no card — the merge notifier, the outcome of a run, the watch-keeper.
+      id: "github",
+      kind: "gh-action",
+      status: "active",
+      wake: { mode: "event" },
+      summary: "the circuit announcing its own facts",
+    },
   ],
 };
 
@@ -997,7 +1006,7 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(written(contest.root).fields.parkMover).toBe("curator");
   });
 
-  // THREAD 061, form (B) — THE PARK BEHIND A DOOR IT LOCKED ITSELF. `dev-speech` parked on the
+  // THREAD 061, form (B) — THE PARK BEHIND A DOOR IT LOCKED ITSELF. `dev-acme` parked on the
   // merge of its own PR, whose label and verdict were the next move of its own curator, and a
   // parked thread raises nobody. The machine cannot judge reachability, so it demands the NAME:
   // the parker who has to write who moves the merge is the parker who has just checked.
@@ -1317,7 +1326,7 @@ const selfTurned = (
 
 describe("new-message and a park by MEANING that is not a park by FIELD (thread 022)", () => {
   it("REFUSES 'expects: ack' + a self-named turn without a park, and nothing is written", () => {
-    // The live header of `010-speech-service`, 2026-08-21: six of them, then the pair went
+    // The live header of a consumer's thread, 2026-08-21: six of them, then the pair went
     // `exhausted`. The refusal bites into the TEXT — a refusal that does not name the exit is
     // one the raised session cannot repair.
     const contest = contour();
@@ -1384,7 +1393,26 @@ describe("new-message and a park by MEANING that is not a park by FIELD (thread 
   });
 });
 
-/** `--parked-on` with an `--expects` of the caller's choosing — the door under test here. */
+/**
+ * `--parked-on` with an `--expects` of the caller's choosing — the door under test here.
+ *
+ * THE SANDBOX IS NOT DECORATION HERE, AND THIS HELPER IS THE ONE THAT LEARNED IT: it was
+ * the only child in this file spawned with the AMBIENT environment, so the CLI it raised
+ * read the real box's instance configs instead of the contour built for the case. The
+ * ground door of thread 062 (`roles/contour.ts`) then judged the tree the RUNNER was
+ * standing in — and refused with code 2 («belongs to no contour of this box») whenever
+ * the checkout under test lived outside a declared contour. Measured 2026-09-02, thread
+ * 064: the same commit `a945e56f` gives 91/91 from a contour checkout and 89/91 from a
+ * `git worktree` in `/tmp`, the two failures being the park cases below. CI never saw it
+ * because a runner declares no instances at all, which the door reads as `unknown` and
+ * passes — so the fixture and the box agreed only by accident.
+ *
+ * `configHomeInside` puts `XDG_CONFIG_HOME` inside the case's own repository, where no
+ * instance is declared. What is bought is not tidiness: a process test that reads the
+ * machine it runs on measures the machine, and its verdict cannot be carried between two
+ * checkouts — which is exactly how a green tree and a red tree came to be reported for
+ * one merge.
+ */
 const parkedWithExpects = (
   contest: { repo: string; root: string; body: string },
   expects: string,
@@ -1421,7 +1449,11 @@ const parkedWithExpects = (
         // the body file lives inside the checkout, which delivery refuses to touch.
         "--no-push",
       ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: sandbox(configHomeInside(contest.repo)),
+      },
     );
     return { code: 0, out };
   } catch (error) {
@@ -1840,8 +1872,8 @@ describe("new-thread and the same claim (thread 042)", () => {
 /**
  * THE STACK of point (B.3) of thread 058: the feed on disk → `parkingOf` → the writing door.
  * The unit cases of `park-seen.ts` judge a `Parking` handed to them; only this one shows that
- * the door READS the park standing in the thread it is writing into — the step the incident of
- * LLE 110 went through without anybody noticing.
+ * the door READS the park standing in the thread it is writing into — the step the incident
+ * measured on 2026-08-30 went through without anybody noticing.
  */
 describe("a letter into a thread that is already parked (thread 058)", () => {
   /** The park of the incident: curator asks john and freezes the thread, on its own turn. */
@@ -1905,6 +1937,85 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
     expect(
       write(courier, { AGENT_PROTOCOL_WORKER: "claude-code" }, "--delivers", "john").code,
     ).toBe(0);
+  });
+
+  /**
+   * AND THE MACHINE EVENT GOES THROUGH IT (thread 072, john's decision of 2026-09-02).
+   *
+   * THE JOINT this covers, which no unit can: `--from` → the registry (`isMachineWriter`) →
+   * `judgeParkSeen` → the file on disk. The unit level is handed a boolean and believes it; the
+   * live failure was precisely that nobody joined the writer's NAME to the door — `Merge Notify`
+   * run `33621585134` (2026-09-02T10:51:23Z) exited 1 announcing a merge into thread `060`,
+   * parked on john, with the words "say what THIS letter does about the park", and behind it two
+   * days in which not one letter from GitHub reached this contour's mail.
+   */
+  const asEvent = (
+    contest: { repo: string; root: string; body: string },
+    ...extra: readonly string[]
+  ): { code: number; out: string } => {
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "new-message",
+          "--repo",
+          contest.repo,
+          "--root",
+          contest.root,
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--thread",
+          "016-x",
+          "--from",
+          "github",
+          "--expects",
+          "none",
+          "--body-file",
+          contest.body,
+          "--worker",
+          "human",
+          "--write",
+          "--no-push",
+          ...extra,
+        ],
+        {
+          encoding: "utf8",
+          stdio: "pipe",
+          env: sandbox(configHomeInside(contest.repo), {}),
+        },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("WRITES the machine event into a standing park, and says the park is untouched", () => {
+    const contest = contour();
+    park(contest);
+
+    // The letter of the incident, in the shape the merge notifier writes it: a fact about a PR
+    // that has nothing to do with the question the thread is frozen on.
+    const result = asEvent(contest, "--merged-pr", "169");
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(result.out).toContain("NOT lifted and NOT touched");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+  });
+
+  it("REGRESSION: a ROLE writing the very same letter is still refused by name", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = direct(contest, "dev-core", "--merged-pr", "169");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(1);
   });
 
   it("an unparked thread is untouched by the door — the everyday letter needs no flag", () => {

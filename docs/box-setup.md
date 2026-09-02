@@ -78,8 +78,8 @@ sudo -u aco-devops mkdir -p /home/aco-devops/.config
 sudo groupadd -f contour
 sudo usermod -aG contour aco-devops
 sudo usermod -aG contour lle
-sudo chgrp -R contour /home/lle/projects/agent-crew-orchestrator /home/lle/projects/language-learning-ecosystem
-sudo chmod -R g+rwX     /home/lle/projects/agent-crew-orchestrator /home/lle/projects/language-learning-ecosystem
+sudo chgrp -R contour /home/lle/projects/agent-crew-orchestrator /home/lle/projects/<второй-контур>
+sudo chmod -R g+rwX     /home/lle/projects/agent-crew-orchestrator /home/lle/projects/<второй-контур>
 sudo find /home/lle/projects -type d -exec chmod g+s {} +   # новые файлы наследуют группу
 sudo chmod o+x   /home/lle                                  # ПРОХОД по известному пути, см. ниже
 sudo chmod o-rwx /home/lle/.ssh /home/lle/.config/agent-protocol   # ключи и секреты — только владельцу
@@ -94,7 +94,7 @@ sudo chmod o-rwx /home/lle/.ssh /home/lle/.config/agent-protocol   # ключи 
 **Оговорка, которую нельзя потерять:** членство в группе не действует на уже запущенные процессы —
 демон `lle` увидит `contour` только после перезапуска (тот же класс, что `docker` у раннеров, §0).
 На этом ящике перезапуск сделан тем же заходом: `systemctl --user restart agent-protocol@hetzner
-lle-orchestrator@lle-hetzner` → оба `active`.
+<юнит второго контура>` → оба `active`.
 
 Приёмка (класс 2, на ящике; в CI её существовать не может — нужен второй пользователь). Правая
 колонка — не пожелание, а снятый вывод 2026-08-30:
@@ -108,13 +108,16 @@ lle-orchestrator@lle-hetzner` → оба `active`.
 | `systemctl --user restart <юнит контура>` от чужого пользователя | отказ ОС — **ОЖИДАЕМЫЙ при составе (A), а не дефект**: этих двух возможностей роль не объявляет |
 | разрешённое действие своего набора (хвост `daemon.log`, `git pull --ff-only` в чекауте) | проходит |
 
-**Строка роли в конфиге уже стоит** (`roles[]`, `id: "devops"`, `status: "planned"`,
-`systemUser: "aco-devops"`): контур её не поднимает и называет причину, а не бьётся в отказ каждый
-такт. Переключение в `active` — отдельный PR к `agent-protocol.json` (кнопка john), и в нём же
-придётся ответить на два вопроса, которые строка сознательно не отвечает: `launch.account` и
-`launch.agent.model` (деньги), плюс какой инстанс роль заявляет. Обе двери отказывают по имени —
-`no-launch-profile` и «role 'devops' can be launched but no instance claims it», — так что забыть их
-молча нельзя. Порядок: сначала этот раздел рукой, потом приёмка ниже, и только потом переключение.
+**Строка роли в конфиге стоит** (`roles[]`, `id: "devops"`, `systemUser: "aco-devops"`). Значение
+`status` этот файл НЕ пересказывает: оно живёт в `agent-protocol.json`, меняется кнопкой john, а
+пересказ протухает молча — ровно тем способом, каким протух `summary` роли. Что принадлежит этому
+файлу — **порядок рук**: сначала этот раздел и §0.1a рукой на ящике, потом приёмка ниже, и только
+потом переключение строки в `active`. Обратный порядок ничего не ломает, но заставляет контур каждый
+такт биться в `systemUserRefusal` и жечь попытки: правило §0.1a — единственный путь подъёма.
+Переключение — PR к `agent-protocol.json` (кнопка john), и тем же PR отвечаются два денежных вопроса
+(`launch.account`, `launch.agent.model`) и один опознавательный — какой инстанс роль заявляет. Обе
+двери отказывают по имени — `no-launch-profile` и «role 'devops' can be launched but no instance
+claims it», — так что забыть их молча нельзя.
 
 Строка `id` стоит первой не для полноты: `sudo -n true` отказывает **уже сегодня под `lle`** —
 потому что нет пароля, а не потому что нет права. Одна вторая строка была бы зелёной по неверной
@@ -229,8 +232,8 @@ node`, поэтому запуск не зависит от того, есть �
 ## 1. Репозиторий и Node
 
 ```bash
-git clone <origin> ~/projects/language-learning-ecosystem
-cd ~/projects/language-learning-ecosystem
+git clone <origin> ~/projects/<обслуживаемый-репозиторий>
+cd ~/projects/<обслуживаемый-репозиторий>
 nvm install "$(cat .nvmrc)" && nvm use          # Node 24; corepack идёт в комплекте
 corepack enable
 pnpm install                                    # ОБЯЗАТЕЛЬНО: без node_modules нет tsx,
@@ -598,8 +601,8 @@ pnpm -F agent-protocol cli orchestrator systemd install \
   --daemon-args '--ref origin/main --log-max-bytes 65536' --write
 systemctl --user daemon-reload && systemctl --user restart agent-protocol.service
 # дать демону натикать за потолок (несколько тиков), затем ещё один restart:
-ls -l ~/projects/language-learning-ecosystem/.orchestrator/daemon.log*   # появился .log.1
-grep -c '=== daemon epoch' ~/projects/language-learning-ecosystem/.orchestrator/daemon.log
+ls -l ~/projects/<обслуживаемый-репозиторий>/.orchestrator/daemon.log*   # появился .log.1
+grep -c '=== daemon epoch' ~/projects/<обслуживаемый-репозиторий>/.orchestrator/daemon.log
 ```
 
 Под юнитом первичный канал — journald (он ротируется сам); этот файл — зеркало, и
@@ -682,15 +685,14 @@ Watch` — но он живёт в GitHub Actions и умеет видеть т�
 
 ## 7a. Сторож КОНТУРА — второй монитор, и второй он не случайно
 
-**Постановка john, тред 017 (шаг 5 переезда, `082-hetzner-migration`).** Ящик и контур —
+**Постановка john, тред 017 (шаг 5 переезда, объявленного в контуре-родителе).** Ящик и контур —
 две разные сущности, и сторож обязан быть у каждой. §7 отвечает «жив ли ящик»; здесь —
 «тикает ли ДЕМОН». Механизм тот же и сервис тот же, отправитель другой: пинг шлёт не
 cron, а сам тик демона.
 
 ### Разовая настройка (руки john — внешний аккаунт и деньги)
 
-1. Завести **ОТДЕЛЬНЫЙ** чек на healthchecks.io, по одному на контур (у проекта их два —
-   LLE и этот). Период имеет смысл брать вдвое-втрое больше тика демона, grace — с тем же
+1. Завести **ОТДЕЛЬНЫЙ** чек на healthchecks.io, по одному на контур (на этом ящике их два). Период имеет смысл брать вдвое-втрое больше тика демона, grace — с тем же
    запасом, что у §7: тревога после нескольких пропущенных подряд, а не после одного лага.
 2. Интеграция — тот же Telegram-чат, что и у сторожа ящика (§7, п. 2).
 3. URL пинга положить в **файл секретов** (`secrets.envFile` машинного конфига — тот же,
@@ -714,7 +716,7 @@ cron, а сам тик демона.
 
 | что ответило за демон | какой ключ он читает |
 | --- | --- |
-| `instances/<name>.json` | `HEALTHCHECKS_CIRCUIT_URL_<NAME>` — имя в UPPER_SNAKE, `-` → `_` (`lle-hetzner` → `HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER`) |
+| `instances/<name>.json` | `HEALTHCHECKS_CIRCUIT_URL_<NAME>` — имя в UPPER_SNAKE, `-` → `_` (`aco-hetzner` → `HEALTHCHECKS_CIRCUIT_URL_ACO_HETZNER`) |
 | безымянный `local.json` | `HEALTHCHECKS_CIRCUIT_URL` — как было, байт в байт |
 
 **Именованный инстанс на голый ключ НЕ откатывается**: есть голый, нет своего — сторож

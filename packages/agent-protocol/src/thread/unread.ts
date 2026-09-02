@@ -4,10 +4,10 @@
  * «получается, что пишется одновременно несколько сообщений, а ты потом придёшь и
  * прочитаешь только последнее»).
  *
- * THE MEASURED CASE, circuit LLE, thread `110`, 2026-08-30. The merge of #450 returned the
- * turn to its author at `14:23:55Z`; dev-speech was raised at `14:24:19Z`; curator, in her
+ * THE MEASURED CASE, a consumer's circuit, 2026-08-30. A merge returned the
+ * turn to its author at `14:23:55Z`; dev-acme was raised at `14:24:19Z`; curator, in her
  * own live session, wrote a question to john and parked the thread at `14:24:50Z` — thirty
- * one seconds after that raise; dev-speech finished its own letter at `14:26:53Z`, into a
+ * one seconds after that raise; dev-acme finished its own letter at `14:26:53Z`, into a
  * thread that had been frozen while it was writing. Nobody broke a rule: the scheduler
  * plans PAIRS (role × thread) and the `waiting-on` of the last letter forbids the second
  * pair nothing. What broke is the READING — three readers in a row took the last line for

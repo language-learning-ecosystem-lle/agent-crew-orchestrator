@@ -19,7 +19,7 @@
  * has no credentials is indistinguishable from a quiet week.
  *
  * THE FORMAT IS THE ONE THAT IS ALREADY THERE — `KEY=value` lines, as in the file
- * this replaces (`~/.config/lle/telegram.env`, documented in PROTOCOL.md and set up
+ * this replaces (`~/.config/agent-protocol/telegram.env`, documented in PROTOCOL.md and set up
  * by hand once). Adopting an existing file beats asking a human to convert it, and
  * the parser is small enough to own: `export ` prefixes, `#` comments, blank lines,
  * and quotes stripped when they wrap the whole value.

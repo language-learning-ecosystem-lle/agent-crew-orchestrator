@@ -6,6 +6,7 @@
  * attempt ceiling) are called out as explicit marks instead of hiding inside the
  * state column.
  */
+import type { HeldMailLock } from "../thread/checkout-lock.js";
 import type { LeaseView } from "./lease.js";
 import { stateWord, timeLeftWord } from "./state-word.js";
 import { describeFreeze, freezeHasTerm } from "./thaw.js";
@@ -67,6 +68,104 @@ const flag = (view: LeaseView, closed: boolean): string => {
 };
 
 /**
+ * THE PAIR IS UP AND THE CHILD HAS NOT SPOKEN YET (thread 063, §2.2; curator's answer of
+ * 2026-09-02, `restore`). The window is real and it is measured, not supposed: the id of a
+ * vendor session is written by the supervisor from the INIT LINE of the stream
+ * (`sessionIdPath`), so between the moment the lease is acquired and the child's first word
+ * there is a `running` row with no id file beside its log. Inside that window the process
+ * may not exist yet at all — it is being started, or it is restoring its own memory before
+ * saying anything.
+ *
+ * WHY THE ROW HAD TO GROW A MARK. The operator reads `running · working` about a pair whose
+ * child has not appeared, waits for output that cannot come yet, and in the limit goes to
+ * kill a session that is not there. The next step this window actually calls for is the
+ * opposite one: wait — there is nothing to kill.
+ *
+ * TWO THINGS THE SENTENCE MUST DO, and both come out of the measurement rather than taste:
+ *  · it must NOT say the pair is silent. The session log is opened and written BEFORE the
+ *    spawn (`writeLog` puts `supervisor …` lines into it), so `logBytes` moves in this
+ *    window: a mark that said "nothing has been reported" would send the reader to the very
+ *    kill it exists to prevent, and would contradict the activity trace besides;
+ *  · it must name ITS OWN WINDOW and not guess at the cause. Two sub-cases live inside it —
+ *    a memory restore and the plain gap between `spawn` and the first line of the stream —
+ *    and nothing the circuit records tells them apart. They also call for the SAME next
+ *    step, so the difference is not a line. "Writing memory" would claim more than was
+ *    measured, and this sentence deliberately does not say it.
+ */
+/**
+ * THE PAIR IS FINISHED AND ITS PROCESS IS STILL WRITING (thread 063, §2.2; curator's answer
+ * of 2026-09-02, `save`). A session saves its own memory AFTER the handoff, and that write
+ * goes through the mail checkout — whose lock is ONE PER BOX. So the frame shows
+ * `released · completed` about a pair whose process is still holding the door every other
+ * delivery has to walk through, and the error escapes the pair: an operator watching some
+ * OTHER role's delivery crawl has no way to learn where the queue is.
+ *
+ * WHAT IS SAID IS WHAT THE RECORD SAYS. The holder line is written by the writer itself
+ * (`memory of <role>`), so the mark names the role the LOCK names — never the pair nearest
+ * on screen. A lock held by a digest or by an ordinary delivery belongs to no pair and gets
+ * no mark on a row (`renderStatus` says it as a line of its own instead).
+ *
+ * AND ONLY A LIVE HOLDER IS A HOLDER. The record outlives a killed process; `readMailLock`
+ * measures the pid and the mark is refused when that measurement says the writer is gone —
+ * a stale record explaining somebody else's slowness would be a lie with a timestamp on it.
+ */
+const savingMemory = (lock: HeldMailLock): string =>
+  `  ⏳ THIS PAIR IS OVER, ITS SESSION IS NOT — pid ${lock.pid} still holds the mail checkout as '${lock.holder}' (since ${lock.since}), which is ONE lock for the whole box: the run has reported and is now writing its own memory through it. Nothing is wrong here, and nothing is owed by anybody — but every other delivery waits behind it, so this is the answer to "why is the mail slow right now"`;
+
+/** The role a lock is being held FOR, when it is a session's own memory; nobody otherwise. */
+const roleSavingMemory = (lock: HeldMailLock): string | undefined => {
+  if (!lock.alive) return undefined;
+  const named = /^memory of (\S+)$/.exec(lock.holder);
+  return named?.[1];
+};
+
+/**
+ * WHICH PAIR THE LOCK BELONGS TO — one row of the frame, or none (thread 063, review of
+ * #201). The holder names a ROLE (`memory of <role>`) and a role is not a pair: a frame
+ * carries one row per pair ever seen in the journal, so a role that has worked five threads
+ * has five rows and the mark, matched on the role alone, landed on ALL of them at once —
+ * every long-closed pair of that role told the operator that IT is the one holding the door.
+ *
+ * The pair is picked by RECENCY (`lastAt`), because that is the only fact of the row that
+ * bears on the question: memory is written by the session of the run that has just reported,
+ * so among the finished pairs of that role the one whose journal event is the latest is the
+ * one whose process can still be inside the mail.
+ *
+ * AND WHEN IT CANNOT BE PICKED, NONE IS — no row of that role at all (the writer's pair is
+ * outside this frame), or two equally recent ones. `renderStatus` then says the lock as a
+ * line of its own naming the reason, because the alternative is the class of defect this
+ * whole thread is about: a fact that quietly disappears and leaves silence indistinguishable
+ * from a free lock.
+ *
+ * Exported because BOTH renderers of the top section need the same answer — `renderStatus`
+ * here and `renderTui`'s panel — and a second way of choosing the row is exactly how the two
+ * frames of one fact start to differ (T-1).
+ */
+export const mailLockPair = (
+  views: readonly LeaseView[],
+  lock?: HeldMailLock,
+): LeaseView | undefined => {
+  const role = lock === undefined ? undefined : roleSavingMemory(lock);
+  if (role === undefined) return undefined;
+  // `running` is out for the reason the mark itself is: there the same process is doing the
+  // work the row already names, and a run inside its work is not writing its memory yet.
+  const candidates = views.filter((view) => view.role === role && view.state !== "running");
+  if (candidates.length === 0) return undefined;
+  if (candidates.length === 1) return candidates[0];
+  const stamped = candidates.filter((view) => view.lastAt !== undefined);
+  if (stamped.length !== candidates.length) return undefined;
+  const latest = stamped.reduce((a, b) => ((a.lastAt as string) >= (b.lastAt as string) ? a : b));
+  // A TIE IS NOT A WINNER. The journal's stamps are second-precision, so two rows of one
+  // role can honestly share a moment; naming either of them would be a guess wearing the
+  // clothes of a measurement.
+  const ties = stamped.filter((view) => view.lastAt === latest.lastAt);
+  return ties.length === 1 ? latest : undefined;
+};
+
+const NOT_SPOKEN_YET =
+  "  ⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET — no session id has been written for this run, so there is no process to go and kill: it is either still being started or restoring its own memory before its first word. Its log is open and growing meanwhile, so this pair is not a silent one — the next step here is to wait";
+
+/**
  * ONE PAIR, ONE LINE — exported because the TUI highlights the SELECTED line and so
  * needs the lines one at a time, while `renderStatus` below stays their assembly
  * (T-1, thread 019). A second formatter for the same columns is refused on principle:
@@ -83,7 +182,32 @@ const flag = (view: LeaseView, closed: boolean): string => {
  * a journal without a moment to judge it against (a test, an offline reader) gets the
  * frame it always did, and nobody is shown a countdown computed from the wrong `now`.
  */
-export const renderLeaseLine = (view: LeaseView, closed = false, now?: Date): string => {
+export const renderLeaseLine = (
+  view: LeaseView,
+  closed = false,
+  now?: Date,
+  /**
+   * The runs whose session id file is NOT on disk yet, BY THE PATH OF THEIR OWN LOG — the
+   * machine fact, read by the layer that already goes to the disk (`operatorFrame`), never
+   * by this renderer. Keyed by the log path and not by the role because that is the name the
+   * row already carries: one run, one file, no second way to say which run is meant.
+   *
+   * Absent set, the row reads exactly as it did before — the rule of §2.5 of this thread: a
+   * state whose signal is not in hand is not invented.
+   */
+  speechless: ReadonlySet<string> = new Set(),
+  /**
+   * WHO IS INSIDE THE MAIL CHECKOUT RIGHT NOW, verbatim as the lock record lies on disk —
+   * see {@link savingMemory}. Undefined means the lock is free, unreadable, not this row's,
+   * or was not asked about at all, and the row then reads exactly as it did before.
+   *
+   * IT IS PASSED FOR ONE ROW OF THE FRAME AND FOR NO OTHER — the one `mailLockPair` picks.
+   * A row cannot make that choice: the holder names a role, and which PAIR of that role is
+   * meant is only visible from the whole frame. The role check below is a guard against
+   * mis-wiring, not the attribution itself.
+   */
+  lock?: HeldMailLock,
+): string => {
   const cols = [
     view.role,
     view.thread,
@@ -110,7 +234,24 @@ export const renderLeaseLine = (view: LeaseView, closed = false, now?: Date): st
   ]
     .filter((c) => c !== "")
     .join("  ·  ");
-  return `${cols}${flag(view, closed)}`;
+  // BESIDE THE MARK OF `flag`, never instead of it: a pair can be overdue AND still have no
+  // child of its own, and those two call for opposite hands. The window belongs to `running`
+  // alone — a released pair whose id file never appeared is history, and a row of history
+  // that asked the operator to "wait" would be asking for a run that has already ended.
+  const speaking =
+    view.state === "running" && view.sessionLog !== undefined && speechless.has(view.sessionLog)
+      ? NOT_SPOKEN_YET
+      : "";
+  // THE PAIR READS AS OVER AND ITS PROCESS IS STILL INSIDE THE MAIL (thread 063, `save`).
+  // On the ONE row the caller was given the lock for — `mailLockPair` chose it out of the
+  // whole frame, and a lock held by anything else (a digest, a delivery) is not attributed
+  // to a pair at all. Never on a `running` row: there the same process is doing its work,
+  // which the row already says, and a second sentence would compete with the first.
+  const saving =
+    view.state !== "running" && lock !== undefined && roleSavingMemory(lock) === view.role
+      ? savingMemory(lock)
+      : "";
+  return `${cols}${flag(view, closed)}${speaking}${saving}`;
 };
 
 /**
@@ -122,12 +263,78 @@ export const renderLeaseLine = (view: LeaseView, closed = false, now?: Date): st
  * `closed` — the ids of the threads that are over, from the mail the caller has already
  * read. Empty by default: a caller with no mail in its hands (a test, a reader pointed at
  * a journal alone) prints the same frame it always did.
+ *
+ * `speechless` — the runs whose session id file is not on disk yet; see {@link NOT_SPOKEN_YET}.
+ * Passed straight through to the row, because the fact is about ONE run and the section is
+ * only their assembly.
  */
 export const renderStatus = (
   views: readonly LeaseView[],
   closed: ReadonlySet<string> = new Set(),
   now?: Date,
+  speechless: ReadonlySet<string> = new Set(),
+  /** Who holds the mail checkout right now; see {@link savingMemory}. */
+  lock?: HeldMailLock,
 ): string => {
   if (views.length === 0) return "orchestrator: no sessions in the journal";
-  return views.map((view) => renderLeaseLine(view, closed.has(view.thread), now)).join("\n");
+  // ONE ROW CARRIES THE MARK, AND THE FRAME PICKS WHICH — see {@link mailLockPair}.
+  const saver = mailLockPair(views, lock);
+  const rows = views
+    .map((view) =>
+      renderLeaseLine(
+        view,
+        closed.has(view.thread),
+        now,
+        speechless,
+        view === saver ? lock : undefined,
+      ),
+    )
+    .join("\n");
+  const orphan = mailLockOrphanLine(views, lock);
+  return orphan === undefined ? rows : `${rows}\n${orphan}`;
+};
+
+/**
+ * A LOCK THAT BELONGS TO NO PAIR, SAID WITHOUT ONE (curator's condition 2). The digest is a
+ * writer of this box that has no lease and no row, and the ordinary deliveries name a command
+ * rather than a session; attributing either to the pair that happens to be nearest would
+ * invent a fact about that pair.
+ *
+ * AND THE SAME LINE CATCHES THE HOLDER THAT NAMES A ROLE BUT REACHED NO ROW (review of #201):
+ * the writer's pair may be outside this frame, or two pairs of that role may be equally
+ * recent. The old condition asked whether the holder PARSED, so exactly those cases printed
+ * nothing at all — a live lock, a named pid and "every other delivery waits behind it" all
+ * vanishing, leaving a busy door indistinguishable from a free one. The condition asks the
+ * thing that matters: was the mark actually put on a row above.
+ *
+ * EXPORTED FOR THE SAME REASON `mailLockPair` IS (second review of #201): this line is a line
+ * of the lease SECTION, not of the sections below it, and the observer's top panel is that
+ * section's other renderer. It used to reach the screen only as a leftover — `renderTui` sliced
+ * the rendered frame by the NUMBER OF PAIRS and this line is one more than that, so it fell
+ * into the middle block, where it was cut to the terminal's width by `cutTo` and lost its
+ * second half: at a hundred columns the operator read `— one l` and never the reason, the
+ * "every delivery waits behind it", nor the announcement of what had been dropped. A fact that
+ * survives on the arithmetic of somebody else's slice is not carried; it is spilled.
+ */
+export const mailLockOrphanLine = (
+  views: readonly LeaseView[],
+  lock?: HeldMailLock,
+): string | undefined =>
+  lock === undefined || !lock.alive || mailLockPair(views, lock) !== undefined
+    ? undefined
+    : `  ⏳ the mail checkout is held by '${lock.holder}' (pid ${lock.pid}, since ${lock.since}) — one lock for the whole box, and ${whyNoPair(views, lock)}: every delivery waits behind it while it lasts`;
+
+/**
+ * WHY NO ROW WEARS THIS LOCK — the clause the orphan line ends its first half with. A
+ * refusal that does not say what it refused on is the defect this thread is about, so each
+ * of the three ways a lock can miss the rows is named apart from the others.
+ */
+const whyNoPair = (views: readonly LeaseView[], lock: HeldMailLock): string => {
+  const role = roleSavingMemory(lock);
+  if (role === undefined) return "it belongs to no pair above";
+  const candidates = views.filter((view) => view.role === role && view.state !== "running");
+  if (candidates.length === 0) {
+    return `no finished pair of '${role}' is in this frame — its row is either absent or still running, so which pair is writing cannot be said`;
+  }
+  return `'${role}' has ${candidates.length} finished pairs here and their last events do not say which of them is writing`;
 };

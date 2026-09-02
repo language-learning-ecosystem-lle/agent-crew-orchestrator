@@ -153,6 +153,21 @@ the box), and putting such a session down is unverified — a signal from the su
 to another user's process group is expected to fail with `EPERM`, which is reasoning and not
 a measurement.
 
+**A switched run is also refused when that user cannot reach its account directory.**
+`sudo -u` gives the child that user's `HOME`, but the account (`launch.account` →
+`accounts.<id>.configDir` of the machine config) is a path named by somebody else, and on the
+first live launch of such a role it was the daemon user's own: mode `600`, another owner, so
+the session came up and died at the vendor with `Not logged in`. That failure is invisible at
+the layer it happens — it reads as a dead token, puts the whole account on the shelf, and
+stands down every OTHER role spending it. So both doors now judge the directory's permission
+bits against the target user's uid and supplementary groups (POSIX class rules: owner, else
+group, else other) BEFORE the spawn, together with the traversal of every ancestor, and refuse
+by name — the role, the user, the account, the path, its mode and owner, and the repair. The
+check is `stat` and `id` from the supervisor's side rather than `sudo -u … test`, because the
+entitlement of §0.1a grants one binary and would refuse the probe on a correctly narrow box.
+A role that does not switch identity takes none of this: nothing is asked of the box, and the
+launch is byte for byte what it was.
+
 `capabilities` (protocol 24) is the other half of the same question: `systemUser` says who the
 run IS to the operating system, this says WHAT IT MAY DO to the machine. A closed vocabulary of
 three verbs — `log-tail`, `repo-refresh`, `disk-free` — and every one of them carries the closed
@@ -334,7 +349,7 @@ every machine and belongs to none of them.
 // ~/.config/agent-protocol/local.json  (or --local-config <path>)
 {
   "agents": { "claude-code": { "exec": "/home/j/.nvm/versions/node/v18.20.3/bin/claude" } },
-  "secrets": { "envFile": "/home/j/.config/lle/telegram.env" },
+  "secrets": { "envFile": "/home/j/.config/agent-protocol/telegram.env" },
   "operator": "john"
 }
 ```
@@ -629,7 +644,7 @@ source and the source is SAID.
 
 Two refusals carry the shape, and neither is a fallback:
 
-- **a name that disagrees with the checkout** (`--instance crew` inside the `lle`
+- **a name that disagrees with the checkout** (`--instance crew` inside the `acme`
   tree) — the case where a quiet pick raises one project's roles with another
   project's binaries, with nothing anywhere saying why;
 - **a checkout claimed by nobody** on a box that has named configs and no `local.json`
@@ -814,7 +829,7 @@ apart along lines the package already had:
   own** (thread 030, defect Д-2). A park is lifted by any later message that moves
   somebody, so a role raised on a thread whose question is still unanswered re-asks it in
   a new message — and while the stamp was part of the key, every such repeat was a second
-  call: two about `aco-028` and two about `LLE-102` in one day, one question each. The key
+  call: two about `aco-028` and two about `acme-102` in one day, one question each. The key
   is the pair, and the stamp is kept in the state for one purpose — telling a park
   re-declared under that key from one standing untouched. Such a park is **restated**: it
   produces a line (the project's `parked` sentence, prefixed by the package's own "still
@@ -1147,7 +1162,7 @@ agent-protocol schema version [--package-ref <ref>] [--package-repo <p>] [--repo
 The gate above is asked by the INSTALLED package, and during a pin bump in a foreign
 circuit that is the old one by construction: the consumer's `config check` stays green
 right up to the merge that moves the pin and goes red on a live `main` afterwards.
-Measured on 2026-08-22 in LLE — the pin went `v0.2.1` → `v0.2.3` by hand, and 37
+Measured on 2026-08-22 at a consumer — the pin went `v0.2.1` → `v0.2.3` by hand, and 37
 seconds later CI was red on "the repository declares protocol version 17, the package
 writes 18". The shape had moved on the step that was skipped over (`v0.2.2`), under a
 title that read as a pure release bump.
@@ -1392,15 +1407,15 @@ of the whole circuit.
   060). They used to write nothing at all when one thread was broken — assembling the
   index from part of the threads means publishing the incomplete as complete, and the
   refusal was the honest answer to that. The price of it was measured twice in two days:
-  a directory created with a message and without `_meta.md` (`092-consent-and-deletion`
-  29.08, ten red runs in a row; `055-mirror-rules-to-lle` 30.08, two more) froze
+  a directory created with a message and without `_meta.md` (a consumer's thread
+  29.08, ten red runs in a row; `055` 30.08, two more) froze
   `INDEX.md`, `TASKS.md` and every `_thread.md` OF BOTH CONTOURS while one file was
   missing in one thread. The punishment was not the crime's size. So now `index build`
   and `derive` assemble everything they could read, the unreadable thread enters the
   register as a MARKER ROW (`| <id> | — | — | не прочитан | — | — | — | тред не собран:
   <reason> |`) — the display therefore still cannot be read as complete — and the
   refusal stays: **same exit code 2, said LAST, after the write**, and it NAMES THE
-  DIRECTORIES (`… — 1 unreadable thread: '092-consent-and-deletion'`) instead of
+  DIRECTORIES (`… — 1 unreadable thread: '905-acme-feature'`) instead of
   counting them. `check` reports broken threads in a separate block.
 - **The exit code being last is load-bearing for the generator's job**: a shell running
   `derive --write` under `set -e` gets its files written before the process dies, so the
@@ -1621,7 +1636,7 @@ agent-protocol mail    --root <comms> --ref <ref> --role <id>              # mai
                             # narrowed, and it does not break either: the readable ones still print
 agent-protocol wake    <role> --ref <ref> [--root <comms>] [--as <invocation>] [--repo <p>]
                             # THE ENTRY OF A ROLE, said by the package rather than copied into the
-                            # served project (thread 087 of the LLE mail): the mail branch, the mail
+                            # served project (a thread of a consumer's mail): the mail branch, the mail
                             # root of THIS machine, the role's card and the threads waiting on it —
                             # then the steps and the standing rules, in one text on stdout
                             # --as: HOW THIS CLI IS TYPED at the consumer ('pnpm -w protocol', a
@@ -1697,7 +1712,7 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # behind a STALE PARK: a park is declared on a TURN and written on the
                             # THREAD, so when the turn moves to another role the new pair inherits a
                             # freeze declared about somebody else. That is the 4 h 16 m of 2026-08-28
-                            # (`dev-speech×010-speech-service` behind a park declared on curator's turn),
+                            # (a pair of a consumer's circuit behind a park declared on curator's turn),
                             # and it gets its own text — the move is to lift the park, not to look at the
                             # daemon. A park whose message named no `waiting-on` keeps its whole thread
                             # A BUSY ROLE IS A LEGITIMATE QUEUE and never counts — AND THE QUEUE IS
@@ -1811,7 +1826,7 @@ agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--for <rol
                                                                            # AND --tail MAY NOT CUT INTO THAT RUN: a
                                                                            # narrower bound is widened to it and the
                                                                            # widening is printed. Two roles legally write
-                                                                           # into one thread within a minute (LLE 110,
+                                                                           # into one thread within a minute (a consumer's thread,
                                                                            # 30.08) and "I read the last message" then
                                                                            # misses the one that froze the thread
                                                                            # --no-fetch: read the ref WITHOUT updating it —
@@ -1910,6 +1925,18 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # ONE IT ENDS. The value must MATCH the standing park; nothing is written to the
                             # header by it. A stale value — the park was lifted by somebody else between the
                             # read and the write, which is the very subject of 058 — is a NOTE, not a refusal
+                            # AND IT IS ASKED OF ROLES, NOT OF MACHINE EVENTS (thread 072, decision of john
+                            # 2026-09-02): a letter from the participant the circuit announces its own facts
+                            # under — `wake.mode: 'event'` and NO instructions, so no session of ours is
+                            # raised as it and there is no card it reads — passes with a NOTE naming the park
+                            # instead of being refused. The three exits are three STATEMENTS about the thread
+                            # and a workflow step has nobody behind it to choose one; requiring the choice
+                            # broke the link that returns the turn after a merge (measured: from
+                            # 2026-08-30T20:14Z to 2026-09-02T10:51Z not one letter from GitHub reached this
+                            # mail — every merge went into silence, `pr:` parks degenerated into timers). The
+                            # note says the park is NOT lifted and NOT touched: the only thing that lifts an
+                            # event park is the field the notifier already carries (`--merged-pr N`). A
+                            # participant WITH a card (`reviewer-pr`) and a human meet the door as before
                             # AND IF THE FEED OF THE THREAD DOES NOT READ AT ALL (half a migration, a message
                             # file that does not parse), the door SAYS SO instead of passing its own blindness
                             # off as "nothing is parked": a note naming the failed read and its reason. It does
@@ -2070,7 +2097,7 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # state has no lawful outcome: the turn is the author's, so nobody can answer,
                             # and the only thing that wakes the author is the circuit — which does, every
                             # tick, until the ceiling of the pair is spent. Live on 2026-08-21: six such
-                            # headers in `010-speech-service` and the pair went `exhausted`; the net of 020
+                            # headers in one thread and the pair went `exhausted`; the net of 020
                             # reads the FIELD and cannot catch it, so it is caught where it is written
                             # THE SAME SHAPE WITH `--expects answer` IS WARNED ABOUT AND WRITTEN, on a
                             # measurement rather than a taste (both mails, 2026-08-21): the `ack` class is
@@ -2090,7 +2117,7 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # lines `REVIEWER.md` already asks for in the BODY, said where the R27 net is
                             # allowed to read them — the norm of 020 forbids it the body, so until these
                             # fields existed the third member of the norm's list was unreadable and the
-                            # verdict of LLE 17:40:11Z landed in a parked thread and was eaten (19 minutes)
+                            # verdict at a consumer, 17:40:11Z landed in a parked thread and was eaten (19 minutes)
                             # A PAIR, and the door refuses a half: `--verdict` without `--pr` is an outcome
                             # with no address, `--pr` without `--verdict` says nothing happened. The reader
                             # of the feed drops a half too, so writing one would be writing to nobody
@@ -2153,7 +2180,10 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # the frame: leases, the PARALLELISM line (how many of this box's roles are live,
                             # which pairs they are, which roles are left free — D-4), holds, the circuit
                             # (gate, stop/force flags, whether a daemon is alive), the queue with the reason
-                            # for its order AND the mark on a thread frozen behind a person ('parked-on', R27),
+                            # for its order AND the mark on a thread frozen behind a person ('parked-on', R27) —
+                            # a park that ASKS somebody ('expects: answer'/'ack') reads as a decision that is
+                            # owed, one that asks NOBODY ('expects: none') reads as a MODE the thread stands
+                            # in: nothing is late, and the lift is named in both (thread 063),
                             # the neighbours' digests, and how old the mail on disk is; then the static half
                             # (paths, permissions, resolution)
                             # AND, only when it is true, HOW OLD THE CODE IN THE LIVE DAEMON IS (023.2):
@@ -2194,7 +2224,9 @@ agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] \
                             [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] \
-                            [--roles <a,b>] [--exclude-roles <a,b>]
+                            [--roles <a,b>] [--exclude-roles <a,b>] [--state <p>] [--env-file <p>]
+                            # --state/--env-file are the COURIER'S: the daemon dials `notify` itself every tick,
+                            #   with its own argv, so both flags of that command are read here too
                             # --roles/--exclude-roles: WHICH roles this launch raises (R13, S17), mutually exclusive,
                             #   on top of the instance filter — a role owned by another box is never raised here
                             # the two GATES: --max-attempts (failures of one pair since its last delivery)
@@ -2293,7 +2325,7 @@ the message beside a meta already in the feed. The thread id is re-checked AFTER
 refresh, inside the attempt: the pre-flight check only knows this disk, and if somebody
 took the number in between, writing it again would overwrite their meta.
 
-#### `wake` — вход роли говорит пакет, а не копия в обслуживаемом проекте (тред 087 почты LLE)
+#### `wake` — вход роли говорит пакет, а не копия в обслуживаемом проекте (замер у потребителя)
 
 Инструкция «ты — роль X, вот почта, вот как читают и как отвечают» жила текстом в
 обслуживаемом проекте и **разошлась с кодом по трём пунктам сразу** (замер curator,
@@ -2509,8 +2541,8 @@ the second half. So a question about another circuit's pull request never leaves
 box:
 
 ```
-agent-protocol: '/tmp/lle-clone' belongs to another contour: its 'origin' is
-github.com/o/language-learning-ecosystem, while this command came from contour
+agent-protocol: '/tmp/acme-clone' belongs to another contour: its 'origin' is
+github.com/o/acme-app, while this command came from contour
 'hetzner' (github.com/o/agent-crew-orchestrator). A role writes only inside its own
 circuit — what has to happen in another one is opened there by a role OF that circuit,
 through its feed, not from a checkout made here (thread 062)
@@ -3119,7 +3151,7 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
     019, `windowBoundaryOf` + `shelfEndOfRefusal`), and only falls back to the SHORT shelf
     (`SHORT_SHELF_MINUTES`, 5m) when there is none. The stream carries a `rate_limit_event`
     in the first frames of every session and it carries `resetsAt` **whatever the status**
-    (measured on the live LLE box, 2026-08-21: every observation is `status: allowed` with
+    (measured on a live consumer's box, 2026-08-21: every observation is `status: allowed` with
     a `resetsAt` and a `rateLimitType`) — so the moment the window reopens is known before
     it ever closes, and a refusal that named no time no longer has to be guessed at. The
     refusal's own time still wins; a refusal that named its window takes that window's
@@ -3149,6 +3181,17 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
     is never read as the vendor's word. The courier's category does **not ring**: a quota
     pause ends by a clock the box already holds and there is no action behind it, so it
     is printed, not delivered.
+  - **AND THE PAIR ITSELF IS MARKED IN THE QUEUE** (thread 063): the row that promises the
+    launch carries `⏸ HELD BY A CLOSED WINDOW — quota-paused until <ISO> …; nothing is owed
+    and nobody is late`, beside `⛔ ROLE BUSY` and the park rather than instead of them.
+    Until this existed the signal stopped at the daemon's stream — the operator's frame has
+    no skip lines, so a shelved pair simply stood at the head of a queue nothing was raised
+    from, which reads as a dead circuit rather than a shut subscription. The mark asks the
+    TICK'S question (`shelvedRoles` → `chooseAccount`): "every link of this role's chain is
+    closed", never "some window is closed" — a role the tick would raise on an open spare is
+    not marked. The shelves are the frame's own `quota:` panel, and the role→account→spares
+    join is the one the tick makes (`roleAccountChains`), so the panel, the row and the next
+    tick cannot come to say different things about one subscription.
   - **The round the vendor ended is UNDONE, not merely forgiven** (thread 019, §4). A
     `quota-exhausted` release has never counted as a failed attempt, but the
     `lease-acquired` that opened the round moved the counter and nothing moved it back:
@@ -3187,7 +3230,7 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   the role, into that thread, with `--worker claude-code`, inside that window. Measured on
   2026-08-21: the window at the door is reachable (13 messages of the current header form
   carry a worker and no session), while on the live journals the second sign changes nothing
-  yet — LLE's 18 self-exits of that day still read 15 deliveries, exactly as before. Judging by the
+  yet — a consumer's 18 self-exits of that day still read 15 deliveries, exactly as before. Judging by the
   mail rather than by a new outcome name is what makes the correction RETROACTIVE: the
   journal keeps its honest record of what the observer saw, and pairs already
   `exhausted` come back the moment a reader hands the fold the set — no hand rewrites
@@ -3221,6 +3264,21 @@ After the spawn, `orchestrator run` does not block but OBSERVES, moving the leas
   saying "60m left" about a pair while the observer showed only a stamp is the same
   two-renderers defect one layer up. The inventory the vocabulary was derived from, including
   the states still MISSING, is [`docs/state-model.md`](../../docs/state-model.md).
+- **THE OBSERVER'S TOP ROW KEEPS THE MARK, WHATEVER THE WIDTH** (thread 063, found in review
+  of #201). Ordering the columns is not enough for the MARKS: `⚠ OVERDUE`, `⚠ EXHAUSTED (…)`,
+  `⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET`, `⏳ THIS PAIR IS OVER, ITS SESSION IS NOT`
+  are glued past the deadline stamp and each is a paragraph — the `restore` mark alone makes
+  the row 458 characters, so a plain cut at a hundred columns dropped every one of them and
+  the panel showed `working — nothing reported yet` about a pair `status` was calling
+  raised-and-silent. The panel now keeps the mark's OWN first sentence (up to the em-dash the
+  mark itself puts between its name and its explanation) and spends the cut on the columns
+  instead — the same words `status` prints, fewer of them, never others. Two limits are
+  measured rather than assumed: the pair's `role` and `thread` are never traded away for a
+  mark (a window on a row nobody can identify is a fact about nobody), and the panel is still
+  exactly the terminal's width, so on a screen narrower than the mark's own sentence the mark
+  is what gets cut. Held by `one-fact-one-phrase.test.ts`, which now asserts both windows on
+  the top ROW and not on the whole panel — the middle panel reprints the frame, so a phrase
+  found anywhere in it proves nothing about the line an operator reads.
 - **Putting things down covers the whole process group (`-pid`), not just the direct
   child.** A SIGTERM to a launcher does not reach its children (`claude` → its
   subprocesses), and they would be orphaned; the spawn is `detached` and the
@@ -3277,7 +3335,7 @@ construction:
   monitor beaten by two senders stays green while either of them lives, which reproduces
   the 2 h 50 min by construction. **On a box that hosts several instances the key carries
   the instance's name** — `HEALTHCHECKS_CIRCUIT_URL_<INSTANCE>`, UPPER_SNAKE with `-` → `_`
-  (`lle-hetzner` → `HEALTHCHECKS_CIRCUIT_URL_LLE_HETZNER`), because both machine configs of
+  (`acme-box` → `HEALTHCHECKS_CIRCUIT_URL_ACME_BOX`), because both machine configs of
   such a box name ONE secrets file and one key there would mean one monitor for two
   daemons: the same refusal one level up. A named instance does NOT fall back on the bare
   key — the bare key with several instances IS that collision, so the watchdog is off and
@@ -3320,11 +3378,32 @@ construction:
   in front of the sleep, so what it spends is delay before the next launch), the last
   attempt's timeout is clipped to what is left of that budget, and a box that ticks faster
   than one attempt makes one attempt and no retries. **The threshold moved, the class did
-  not**: a monitor that answers no attempt still gets its line, once, and the line now names
-  how many attempts were spent — and when the beat outran its own timeouts on the wall clock,
-  it says the wait was THIS PROCESS and not the monitor, because a watch that reports "the
-  monitor is silent" when the truth is "I was too busy to listen" sends the operator to the
-  wrong box.
+  not**: a monitor that answers no attempt still gets its line, once, and the line names
+  how many attempts were spent OF HOW MANY ALLOWED — and when one of the beat's waits outran
+  the timeout that bounded it, it says the wait was THIS PROCESS and not the monitor, because
+  a watch that reports "the monitor is silent" when the truth is "I was too busy to listen"
+  sends the operator to the wrong box.
+
+- **The budget is spent in ALLOWANCE, not in wall clock — and the line says when a retry was
+  DECLINED** (same thread, measured 2026-09-02 on the live box). The repair above shipped, the
+  flap kept its cadence, and the log said why to anybody who read the whole line: **86
+  refusals across two epochs (56 + 29), every single one of them "after 1 attempt", not one
+  retry in either.** The arithmetic explains it exactly. The budget was read off the wall
+  clock from the moment the beat was ISSUED — the top of the tick — while the first attempt
+  settles only when the loop is free again, so on a starved tick it came back having spent
+  14–19 s of wall clock on its 10 s timeout, the 20 s was gone, and the retry was declined for
+  lack of room. **A budget charged for the tick's own blockage cancels the cure for that
+  blockage**, and it did so in exactly the case retries exist for. So a wait is now charged
+  `min(waited, allowance)` — what the beat ASKED for. The ceiling on what the beat costs the
+  next tick is unchanged (a dead monitor still buys two attempts and no more); the seconds the
+  blocked loop added on top are reported instead of paid for out of the retry. **Starvation is
+  judged per wait rather than over the sum**, which keeps the blame from going quiet once
+  honest retries follow a starved attempt. The line itself was the other half of the defect:
+  for one attempt it printed `after 1 attempt` and dropped the clock, so the shape the box
+  printed 86 times running was the least informative one it had. Now: `after 1 of 3 attempts,
+  15.4s` plus `THE OTHER 2 ATTEMPTS WERE NOT MADE: the 20s one beat may spend was already gone
+  when the retry came due`. A count that cannot be told apart from a limit of one is a door
+  that stays silent about which way it swung.
 
 - **A dead network does not kill the watch** (R6-достройка, john's decision of
   2026-07-26). The one thing that used to end the daemon before it started was the
@@ -3577,13 +3656,32 @@ not forget" item.
 
 - **Where the sessions will work.** With `orchestrator.workdir.worktrees` declared
   (R17, S11) each launchable role's own worktree is reported — where it is, at which
-  commit, whether it is clean — and the operator's checkout is printed as a fact that
-  is compared with nothing: comparing it would resurrect the very refusal R17 removes.
-  Those lines never `fail`, because a workspace belongs to ONE role while preflight
-  stops the whole circuit; the refusal happens in that role's launch instead. Without
-  `worktrees` the pre-R17 line stands: the inherited checkout is shown always (the
-  fact is free, while "the session started from the wrong branch" is not visible from
-  the outside AT ALL), and the refusal is opt-in through `orchestrator.workdir.branch`.
+  commit, whether it is clean. Those per-role lines never `fail`, because a workspace
+  belongs to ONE role while preflight stops the whole circuit; the refusal happens in
+  that role's launch instead. Without `worktrees` the pre-R17 line stands: the
+  inherited checkout is shown always (the fact is free, while "the session started
+  from the wrong branch" is not visible from the outside AT ALL), and the refusal is
+  opt-in through `orchestrator.workdir.branch`.
+- **Which branch the MAIN CHECKOUT is on — and this one `fail`s (thread 078).** R17
+  took the sessions out of the operator's tree, and the line about it was demoted to a
+  fact compared with nothing on the argument that comparing it would resurrect the
+  refusal R17 removed. That was half right. Nobody WORKS in the main checkout, but the
+  daemon is LOADED from it: node resolves the modules there once, at start, so whatever
+  that tree holds is what the whole circuit executes. On 2026-09-02 a branch was created
+  in it by hand at 09:09Z and committed onto at 09:35Z; the daemon raised afterwards ran
+  that commit for five hours and fifty-four minutes, eleven commits of `main` behind,
+  while the line read `· main checkout: … — on 'core/gate-checks-from-actions'` in the
+  even tone of an inventory entry. It cost a false acceptance — `git rev-parse HEAD` in
+  that tree answered with the foreign tip, was read as "the fix is rolled out", a
+  workaround was removed on the strength of it and both contours fell. Nor can the box
+  heal itself there: the self-repair of thread 003 is `git pull --ff-only` on the
+  CURRENT branch, which on a foreign one succeeds, moves nothing, and leaves the drift
+  against `origin/main` exactly where it was. So the line now compares the branch with
+  `orchestrator.workdir.branch` and refuses by name, with the two commands that undo it.
+  **The distance it prints is to `origin/<that branch>` on EVERY branch**, never to the
+  tree's own upstream: "I match my own origin" is true of a parked foreign branch and
+  answers a question nobody asked, which is precisely why the morning drift watch stayed
+  silent through the field case.
 
 **A LINE THAT COMPARED NOTHING NO LONGER WEARS A TICK (R12).** A check has three
 outcomes, not two: `✓` is a passed COMPARISON, `·` is a fact nobody promised
@@ -3701,7 +3799,9 @@ written down nowhere.
 worktree of the same repository. The project says where those live
 (`orchestrator.workdir.worktrees`), the package says that one role gets one directory
 named after it. The operator's main checkout stops being anybody's workplace — which
-is also what makes it safe to keep using.
+is also what makes it safe to keep using. **It does NOT stop being load-bearing**: the
+daemon's modules are resolved from it once, at start, so it must stay on
+`workdir.branch`, and since thread 078 preflight refuses when it is not (S8).
 
 ```json
 "orchestrator": { "workdir": { "branch": "main", "worktrees": ".worktrees" } }
@@ -4080,6 +4180,60 @@ a human can predict the queue without reading the code.
   high, waiting since 2026-07-24T…` — beside the skips it already announced. An
   unexpected order is then answerable from the log alone, without a journal
   archaeology run.
+- **AND WHAT HOLDS THE ROW IS SAID ON THE ROW** (thread 063). A queue line promises a launch,
+  and the operator's frame has no skip lines at all — so everything that makes that promise
+  false used to look exactly like a row where it is true. Four marks now ride in
+  `describeOrder`, each beside the others rather than instead of them, because one pair can be
+  held by several things at once and each of them ends differently: `⏸ PARKED …` (R27, and the
+  park that is a MODE is said apart from the park that asks a person), `⛔ ROLE BUSY — <role> is
+  live on <other thread>; one session per role …`, `⏸ HELD BY A CLOSED WINDOW — quota-paused
+  until <ISO> …`, and — when the live session stands on THIS row's own thread —
+  `↩ THE TURN CAME BACK TO A LIVE PAIR — <role> is live on <thread>, and that is the thread of
+  this very row …`. The last two of those are the same fact told apart: measured on one fixture,
+  the two frames differed by the thread id INSIDE one sentence and by nothing else, so a pair
+  whose role is spent elsewhere and a pair whose own session was handed the turn back read as
+  one state. They are not one: the first waits for capacity, the second is the busiest pair of
+  the frame — and the old tail `not raised until that one ends` pointed at the very pair the row
+  was about. Every mark is computed from sections the frame already carries (`parallelism.live`,
+  `holds`, the `quota:` panel), never from a new field handed in by the caller, so the panel and
+  the row cannot come to say different things.
+- **A PAIR THAT IS UP BEFORE ITS CHILD HAS SPOKEN IS SAID SO ON ITS OWN LEASE ROW** (thread 063).
+  The supervisor learns a vendor session id from the INIT LINE of the stream and only then writes
+  the run's `.session` file, so between the lease and the child's first word the frame shows
+  `running · working` about a process that may not exist yet — and the operator waits for output
+  that cannot come, then goes to kill a session that is not there. The row now carries
+  `⏳ RAISED, AND THE CHILD HAS NOT SPOKEN YET — no session id has been written for this run …
+  the next step here is to wait`, beside the `⚠ OVERDUE`/`⚠ EXHAUSTED` marks rather than instead
+  of them. Two things the sentence does deliberately: it does NOT call the pair silent (the
+  session log is opened and written BEFORE the spawn, so the activity trace moves in this window
+  — a mark reading "nothing reported" would ask for the very kill it prevents), and it names the
+  WINDOW rather than a cause. A memory restore and the plain gap between the spawn and the first
+  line of the stream both live inside it, nothing the circuit records tells them apart, and their
+  next step is the same one — so the line offers them as alternatives and asserts neither. What
+  reaches the frame is a machine fact (`existsSync` of the id file, asked where the frame is
+  filled, one call per LIVE pair); the mark itself is computed in the renderer.
+- **AND A PAIR THAT IS OVER WHILE ITS SESSION IS STILL WRITING** (thread 063). A run saves its own
+  memory AFTER the handoff and writes it through the mail checkout, whose lock is ONE PER BOX — so
+  the frame shows `released · completed` beside a process that is holding up every other delivery.
+  ONE row carries `⏳ THIS PAIR IS OVER, ITS SESSION IS NOT — pid <n> still holds the mail checkout …
+  every other delivery waits behind it` — the pair of the role the LOCK names (`memory of <role>`,
+  read verbatim from the record) whose last journal event is the most recent (`lastAt`). A role is not
+  a pair: the frame holds a row per pair ever seen in the journal, so matching on the role alone put
+  the mark on every historical pair of that role at once. When the pair cannot be picked — no finished
+  row of that role here, or two equally recent ones — NO row is marked and the lock is printed as a
+  line of its own that names which of the two it was; the fact is never lost silently. The choice is
+  made once per frame (`mailLockPair`) and used by both renderers of the top section, `status` and the
+  observer's panel — and so is that line-of-its-own (`mailLockOrphanLine`): it is a line of the SECTION,
+  so the panel BUILDS it rather than inheriting it from the frame it reprints below, cuts it the way it
+  cuts a mark (the holder, the pid and the `since` survive a narrow terminal) and counts it in the
+  panel's own budget, where a line that does not fit is dropped by a `capped` that says how many it
+  dropped. With no pairs in the frame at all neither renderer prints it: `status` stops at its "no
+  sessions" line, and the panel says nothing the text frame does not. Three things it does not do: it does not pin a lock on the pair that
+  happens to be nearest (a digest or an ordinary delivery gets a line of its own, attributed to
+  nobody), it does not trust a record whose pid is gone (liveness is measured in `readMailLock`, and
+  a stale lock explains nothing), and it does not mark a `running` row — there the same process is
+  doing the work the row already names. The reader never repairs or waits for the lock: it looks at
+  the record and nothing else.
 
 ## `spike/` — P0
 
@@ -4743,7 +4897,7 @@ keeps ticking; the child sets the stop flag, waits the old process out, pulls an
 successor. That works for a daemon nobody supervises. Under this box's systemd unit it
 cannot, and the failure is measured rather than argued:
 
-- **the field trace** (`lle-hetzner`, 17–18.08.2026): the child printed `stopping pid …
+- **the field trace** (`acme-box`, 17–18.08.2026): the child printed `stopping pid …
   gracefully` and `the stop flag is set` and stopped mid-phase. The daemon exited **0**.
   `Restart=on-failure` is by construction blind to a clean exit, so nothing was raised, and
   the stop flag the child had already set was still on the floor to kill anything raised by
@@ -4845,7 +4999,7 @@ live acceptance on the box and is named as one rather than assumed.
 **The rule was not being broken by carelessness, it was being broken by the shape of a
 command.** «Do not write into the shared `/tmp`, work in your own `mktemp -d`» is stated,
 known and quoted by the roles themselves — and broken every few turns. curator caught
-herself three turns running inside one thread (LLE `111`, 2026-08-30T09:30:36Z) and named
+herself three turns running inside one thread (a consumer's mail, 2026-08-30T09:30:36Z) and named
 the class correctly: a write into `/tmp` is never a decision, it is the side effect of the
 convenient form of a command (a marker file, a redirect into a scratch file, a tool's own
 spool). The damage in that case was nil; what separated it from a dump into `/tmp/run.log`
@@ -4885,3 +5039,150 @@ precondition attached to the action does.
 destination, and what is asserted is that `TMPDIR` is this run's directory, that both
 landed inside it, that the directory is gone after the run and that the log named what was
 left in it.
+
+**S26a — and that directory has to fit a socket (thread 070).** The run's own name is long
+by construction, and a long `TMPDIR` breaks every tool that opens a unix socket under it.
+Measured on the role's box, 2026-09-02: a socket path of 108 characters binds and 109 is
+`listen EINVAL` (`sun_path`, and the limit is on the STRING passed to `bind()`, not on what
+it resolves to); `tsx` — the loader every process test here is spawned through — adds
+`<TMPDIR>/tsx-<uid>/<pid>.pipe`, so `TMPDIR` of 86 runs and 87 dies. The variable is LENGTH,
+not location: the same long name under `/tmp` fails too. Under the 131-character run
+directory all 36 tests of `notify.process.test.ts` failed, and three roles had learned to
+type `TMPDIR=/tmp` by hand — the mechanism of S26 had bought a clean `/tmp` at the price of
+the roles' own acceptance instrument. **The cause is S26 itself, said plainly.**
+
+- **The fix is a short alias, not a shorter name.** No path derived from the checkout can be
+  guaranteed short, so shortening the run's name would only buy margin. When the run's
+  `TMPDIR` is over the budget (108 minus a 32-character reserve = 76) the supervisor makes
+  `/tmp/aco-<12 hex of the path>`, a symlink to that same directory, and hands the child
+  THAT. It works for the reason the limit exists: the kernel copies the address and resolves
+  the path afterwards.
+- **S26 is untouched.** The real directory still lies beside the log, the session's
+  `mktemp -d` is still born in it, the sweep still names what was left. The shared `/tmp`
+  holds one symlink, named after that directory's own hash and removed when the run ends.
+- **The substitution is in the supervisor's log with the number that caused it**, and so is
+  every way of failing to make it — the run keeps its outcome and the log answers the
+  question a session hitting `EINVAL` inside a vendor's loader cannot.
+- **What is tested** is the invariant, not a green suite: `run-tmp.process.test.ts` binds at
+  108 and at 109, builds a directory PADDED to 131 characters (never inheriting the box's
+  depth — a test that only reproduces on a deep box goes quiet on a shallow one, which is
+  exactly how this survived CI), and asserts that a socket opens under the handed value,
+  that it is born in the run's directory, that the raw path gives `EINVAL`, and that `tsx`
+  itself runs under the one and dies under the other.
+
+### S27 — the session's `PATH` carries the user's own tools (thread 069)
+
+**The measurement, taken on the live box (2026-09-02T09:52Z).** A raised
+session sees `~/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin` — the daemon's
+environment, which under systemd is the unit's own `PATH` (S-decision 5 of `systemd.ts`: the
+interpreter's directory, the declared agent binaries' directories, the system floor). The
+operator's login `PATH` also carries `~/.local/bin` and `~/.maestro/bin`. Comparing the two,
+the executables available to the user and unreachable from a session were exactly:
+
+| binary | where | in the session |
+| --- | --- | --- |
+| `uv`, `uvx` | `~/.local/bin` | **not found** — the finding that raised the thread |
+| `maestro` | `~/.maestro/bin` | not found; a vendor-specific directory, see below |
+| `claude`, `gh` | `~/.local/bin` | resolvable, from ANOTHER directory (`~/.nvm/…/bin`, `/usr/bin`) |
+
+**The price is a tax, not a breakage,** which is why it is closed by construction. The role
+that hit it guessed and retyped the full path in one turn; a role that has never seen the
+failure pays a whole turn, because `No such file or directory` reads as a fact about the box,
+not about the environment its session was raised in. The alternative — a sentence in a role
+card saying «call it by its full path» — is the same substitution of memory for mechanism
+this repository already refused for the shared `/tmp` (S26) and for a command's own
+credentials (thread `065`).
+
+- **The session's `PATH` is composed at the spawn, beside `TMPDIR`** — the inherited value
+  plus the standard per-user binary directory (`$HOME/.local/bin`), and only if it exists on
+  the box. Nothing is added when there is nothing to add, and the key is then not set at all:
+  writing an identical value back would make an inherited environment look composed.
+- **APPENDED, never prepended, and that is the whole safety of it.** Every name that
+  resolved before this existed resolves to the same file after it — the agent binary first
+  among them: the box carries `~/.local/bin/claude` (the vendor's native install) as well as
+  the version manager's, and putting the user's directory in front would silently change
+  WHICH tool the circuit raises. That is the machine config's decision (R14) and whoever
+  pays for it, not this spawn's.
+- **A floor, not a copy of somebody's shell.** Only `~/.local/bin` — the one directory a
+  Linux box agrees on (`pip --user`, `pipx`, `uv`, `cargo`'s installers, the XDG layout).
+  Copying the operator's whole `PATH` would make a session's environment a function of
+  somebody's `.bashrc`: unreproducible between two boxes and impossible to state in a doc.
+  `~/.maestro/bin` stays out for that reason and is named here rather than silently dropped:
+  a vendor's own directory belongs to whoever declares the tool, and this package declares
+  agent binaries in the machine config, where an absolute path already works.
+- **It is said, not done silently.** The run's own log carries `session PATH <value>`
+  whenever the mechanism added anything, so an operator finds out what the session could
+  see from the log rather than by re-deriving it.
+- **The unit file is not touched.** The `PATH` of `Environment=` stays what the box's facts
+  make it — a fourth place for these directories to live is exactly what decision 3 of
+  `systemd.ts` refuses — and the composition at the spawn covers a daemon raised any way at
+  all, systemd or a foreground `run`.
+
+**What is tested.** The rule is a unit (`launch.test.ts`, `sessionPathValue`): appended and
+never prepended, absent directory says nothing, a directory already on the `PATH` is not
+duplicated, no `PATH` inherited means none is invented. The seam is a process test
+(`run.process.test.ts`): a tool minted in the test's own `HOME/.local/bin`, a stub session
+that types its BARE NAME the way a role would, and the assertions that it ran, that its
+directory is last on the session's `PATH`, that everything before it is the inherited value
+unchanged, and that the run's log said so.
+
+**Not closed, and named:** a session spawned under `sudo -n -u <user>` (thread 047) crosses
+into an environment the box's `env_keep` decides, and this supervisor cannot see across that
+switch — the composed `PATH` reaches such a session only if the box lets it.
+
+### S28 — what a run left where it had no business writing: shared places, named (thread 056, step 1)
+
+**The half `TMPDIR` cannot reach.** S26 closed the shape where the command names no
+destination: `mktemp` reads the variable, so an ordinary command lands in the run's own
+directory. It cannot close — and never could — the shape where the session TYPES a path.
+Two cases were measured under the merged mechanism itself: `> /tmp/.nothing` (the write
+happened: 140 bytes, removed at once) and `> "$HOME/.marker_$$"` (the write happened, and
+it was not in `/tmp` at all). The second one decided the shape of this step and of john's
+answer of 2026-09-02: **the trap is the literal path as a convenient form of a command, not
+the directory `/tmp`** — so `PrivateTmp=yes` would narrow the class rather than close it
+and was not bought; it stays in reserve.
+
+**And every known case of the class was a CONFESSION.** All eight were found by a role
+catching itself and reporting it in its own letter — that is a class visible exactly as
+often as an executor happens to be honest and awake. Step 1 makes it a measurement:
+
+- **The supervisor lists the shared places before the spawn and again at the close**, and
+  names what appeared in between: the path, its size (or that it is a directory, or that it
+  was already gone), the role and the thread. Into the run's own log and onto the
+  supervisor's stderr — unlike the sweep of S26, because a run's own scratch is the run's
+  own business while an entry in a shared place outlives the run and belongs to nobody.
+- **The places are the platform's temp (`os.tmpdir()`, i.e. `/tmp` on this box) and the box
+  user's `HOME`** — the two every measured case landed in. The run's own directory is never
+  one of them; it lives under the state directory and is swept by its owner.
+- **The listing is the top level, not a walk.** A typed path is short (`/tmp/x`,
+  `$HOME/.marker`); a recursive walk of a home directory would cost every run a whole tree
+  for entries no case has ever produced.
+- **NOTHING IS REMOVED.** Step 1 forbids nothing by construction: an entry in a shared place
+  belongs to whoever made it, and deleting somebody's file on the strength of a time window
+  would be a worse defect than the one being measured.
+- **A window is not an owner, and the line says so itself.** This is the objection that made
+  the statement of work's first shape refusable (S26): on a box with several live sessions a
+  shared listing cannot attribute anything. What is claimed here is only that an entry
+  appeared between this run's spawn and its close, and the sentence naming the entry carries
+  that reservation with it. A window is a fact where a confession is a mood — which is what
+  makes it worth writing anyway.
+- **A place that cannot be listed is said, not swallowed**, and it is never read as empty:
+  an unreadable place treated as empty would make every entry in it look new at the close,
+  that is, a door inventing findings.
+- **Silence is the ordinary run.** A session that left nothing produces no line, so a line
+  always means something appeared — the same discipline as the sweep of S26.
+
+**What this feeds.** The count and the shape of the cases over a week is the INPUT to step 2
+(the statement of work's §4): homogeneous cases — mostly «a file was needed to assemble the
+body of a letter or a PR» — argue for removing the reason to make the file at all (text
+accepted on a stream); heterogeneous ones argue for a door on the form of the command
+(an absolute path outside the run's workspace and outside its `TMPDIR` refused by name).
+That is a decision to be taken from the number, not from a judgement made in advance.
+
+**What is tested.** The judgement is a unit (`shared-places.test.ts`) with the listings
+injected — appeared / was already there / unreadable / a directory / gone again / past the
+twentieth name — because a case that reached for the real `/tmp` to prove itself would be
+committing the very defect it measures. The seam is a process test (`run.process.test.ts`):
+a stub session types a literal path into a `HOME` the test owns, and what is asserted is
+that the run's log names the path with its size, role and thread, that an entry older than
+the run is not reported, and that both files are still there afterwards.

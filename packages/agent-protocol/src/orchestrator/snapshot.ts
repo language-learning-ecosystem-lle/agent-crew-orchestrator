@@ -39,6 +39,7 @@
  * forbidden to do — see `mailCheckoutFreshness`).
  */
 import type { MailFreshness } from "../fs/git.js";
+import type { HeldMailLock } from "../thread/checkout-lock.js";
 import { type AuthShelf, describeAuthShelf } from "./auth.js";
 import {
   type CodeAgeView,
@@ -46,14 +47,15 @@ import {
   describeUnpublishedCode,
   describeUnreadableCodeAge,
 } from "./code-age.js";
+import { chooseAccount, type DeclaredAccount } from "./failover.js";
 import type { HoldView } from "./hold.js";
 import { renderHolds } from "./hold.js";
 import type { InstanceDigest } from "./instances.js";
 import { renderInstances } from "./instances.js";
-import { kindOf } from "./kind.js";
+import { CLAUDE_CODE, kindOf } from "./kind.js";
 import type { LeaseView } from "./lease.js";
 import { describeGhOutage, type GhOutage, ghAlarmDue } from "./outage.js";
-import type { RankedCandidate } from "./priority.js";
+import type { RankedCandidate, RoleElsewhere } from "./priority.js";
 import { describeOrder } from "./priority.js";
 import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
 import { type ResidentWait, renderResidentWaits } from "./resident.js";
@@ -119,6 +121,12 @@ export type OperatorFrame = {
    */
   readonly parked?: ReadonlyMap<string, string>;
   /**
+   * Of those, the ones that ask NOBODY — a park that is a MODE and not a question
+   * (`modeParks`, thread 063). Absent, the frame says what is true of both parks; the two
+   * are told apart only where the fact is actually available, never guessed.
+   */
+  readonly modeParked?: ReadonlySet<string>;
+  /**
    * What was dropped while the queue was being built — unreadable threads, priorities
    * written by roles that may not set them. The daemon says these every tick; a frame
    * that swallowed them would show a queue ordered by a statement nobody honoured and
@@ -144,6 +152,40 @@ export type OperatorFrame = {
    * kind, while this module holds no config and may not learn to read one.
    */
   readonly accountKinds?: Readonly<Record<string, string>> | undefined;
+  /**
+   * WHAT THIS MACHINE DECLARES ABOUT ITS ACCOUNTS (`accounts` of the machine config) — the
+   * same half of the join the tick judges a fall-back chain by, carried so `shelvedRoles`
+   * can ask the tick's own question instead of a weaker one of its own. It is the CONFIG
+   * READING the frame already does for `accountKinds` above and not a new statement about a
+   * pair: the mark on the queue row is still computed here, out of sections this frame
+   * carries. A box that declares nothing hands nothing, and a chain is then judged exactly
+   * as `chooseAccount` judges one on a box with no declarations.
+   */
+  readonly accounts?: Readonly<Record<string, DeclaredAccount>> | undefined;
+  /**
+   * THE RUNS WHOSE VENDOR SESSION ID IS NOT ON DISK YET (thread 063, §2.2; curator's answer
+   * of 2026-09-02 on `restore`), by the path of their own log — a `running` pair whose child
+   * has not said its first word. The MARK is computed in `renderLeaseLine`, out of this fact
+   * and the state the row already prints; what travels here is only what a file system was
+   * asked (`existsSync` of `sessionIdPath`), because a reader of a frame may not touch a
+   * disk and the layer that fills the frame already does.
+   *
+   * Absent, every row reads exactly as it did before — the same rule the two fields above
+   * live by: a state whose signal is not in hand is not invented.
+   */
+  readonly speechless?: ReadonlySet<string> | undefined;
+  /**
+   * WHO HOLDS THE MAIL CHECKOUT RIGHT NOW (thread 063, §2.2; curator's answer of 2026-09-02
+   * on `save`), verbatim as the record lies on disk and with the liveness of its pid already
+   * MEASURED (`readMailLock`). One lock for the whole box, so a session still writing its own
+   * memory after a handoff is the answer to "why is every other delivery slow" — and the pair
+   * it belongs to reads `released · completed` while it lasts.
+   *
+   * A machine fact and nothing else: the holder string is what its writer wrote, and which
+   * row (if any) it belongs to is decided in the renderer. Absent — the lock is free, or was
+   * not asked about — and every row reads as it did before.
+   */
+  readonly mailLock?: HeldMailLock | undefined;
   /**
    * The run of `gh` refusals in the merge-ready tier (thread 051), read from the file the
    * daemon writes. Undefined means the tier answered on the last tick that asked it.
@@ -219,15 +261,96 @@ export const renderQueue = (
   queue: readonly RankedCandidate[],
   notes: readonly string[] = [],
   parked: ReadonlyMap<string, string> = new Map(),
+  /** Which of those parks ask nobody (`modeParks`, thread 063) — carried, not re-decided. */
+  modeParked: ReadonlySet<string> = new Set(),
+  /** Roles that cannot be raised because they are elsewhere (thread 063) — role → what it is doing. */
+  busy: ReadonlyMap<string, RoleElsewhere> = new Map(),
+  /** Roles whose every account is shelved (thread 063) — role → the window that reopens first. */
+  shelved: ReadonlyMap<string, string> = new Map(),
 ): string => {
   const lines = ["queue:"];
   if (queue.length === 0) {
     lines.push("  nobody is waiting on a role this box raises");
   } else {
-    for (const line of describeOrder(queue, parked)) lines.push(`  ${line}`);
+    for (const line of describeOrder(queue, parked, modeParked, busy, shelved))
+      lines.push(`  ${line}`);
   }
   for (const note of notes) lines.push(`  ⚠ ${note}`);
   return lines.join("\n");
+};
+
+/**
+ * WHY A ROLE IN THE QUEUE IS NOT GOING TO BE RAISED — role id → what it is doing instead
+ * (thread 063, §2.3 row 2).
+ *
+ * Two different things read as one row in this frame until it existed: a pair standing because
+ * ITS ROLE IS ELSEWHERE (one session per role — the workspace is one), and a pair standing for
+ * no reason at all. The daemon says the first out loud in a skip line; the operator's frame has
+ * no skip lines, so the two looked identical there — and the second one is a defect while the
+ * first one is the circuit working exactly as designed.
+ *
+ * A LIVE SESSION AND A HOLD ARE NAMED APART, because they are repaired apart: the first ends by
+ * itself, the second ends when a human gives the role back. An ACTIVE hold only — an expired one
+ * is not capacity spent, and `renderHolds` already says so two blocks above.
+ *
+ * THE THREAD OF THE LIVE SESSION RIDES ALONG (thread 063, states 4/5) so the row can compare it
+ * with its own — the whole difference between "the role is spent on another thread" and "the
+ * mail handed the turn back to a session that is still running". The hold carries none: it is
+ * not a session standing on a thread, and inventing one would be the frame guessing.
+ */
+export const busyRoles = (
+  parallelism: Parallelism,
+  holds: readonly HoldView[] = [],
+): ReadonlyMap<string, RoleElsewhere> => {
+  const busy = new Map<string, RoleElsewhere>();
+  for (const view of parallelism.live)
+    busy.set(view.role, { doing: `live on ${view.thread}`, thread: view.thread });
+  for (const hold of holds)
+    if (hold.active) busy.set(hold.role, { doing: `held by a manual session of ${hold.by}` });
+  return busy;
+};
+
+/**
+ * WHY A ROLE IN THE QUEUE IS NOT GOING TO BE RAISED, SECOND ANSWER — role id → the window
+ * that holds it and when it reopens (thread 063, §2.2 state 3: "held by quota").
+ *
+ * IT IS A MARK BUILT OUT OF SECTIONS THE FRAME ALREADY CARRIES, not a new fact asked of the
+ * caller (curator's answer of 2026-09-02): the shelves are `frame.quota` — the very ones
+ * `renderQuota` prints two blocks up — and the chain rides on the candidate, so the queue row
+ * and the shelf list cannot come to say different things about one subscription.
+ *
+ * THE PREDICATE IS THE TICK'S OWN, `chooseAccount`, and not a re-derivation of it: "shelved"
+ * is not "some window is closed" but "every link of this role's chain is closed", and a frame
+ * that answered the first would call a role held while the tick raised it on a spare. Measured
+ * before the mark existed: the signal was never missing — `tick.ts` pushes `skipped` with the
+ * reason `quota` and the journal takes `launch-refused` — it just never reached the operator's
+ * frame, which has no skip lines at all.
+ *
+ * The named window is the FIRST TO REOPEN of the shut chain (`chooseAccount`'s own `until`),
+ * because that is the moment the pair can move, and a row naming any other shelf would send
+ * the reader to wait out a door the role is not standing at.
+ */
+export const shelvedRoles = (
+  now: Date,
+  queue: readonly RankedCandidate[],
+  shelves: readonly QuotaShelf[] = [],
+  /** What the machine declares about its accounts — the same half of the join the tick judges a chain by. */
+  accounts?: Readonly<Record<string, DeclaredAccount>> | undefined,
+): ReadonlyMap<string, string> => {
+  const held = new Map<string, string>();
+  if (shelves.length === 0) return held;
+  for (const candidate of queue) {
+    if (held.has(candidate.role)) continue;
+    const choice = chooseAccount({
+      ...(candidate.account === undefined ? {} : { primary: candidate.account }),
+      ...(candidate.fallback === undefined ? {} : { fallback: candidate.fallback }),
+      worker: candidate.worker ?? CLAUDE_CODE.id,
+      ...(accounts === undefined ? {} : { accounts }),
+      shelves,
+    });
+    if (choice.kind === "paused") held.set(candidate.role, describeQuotaShelf(choice.until, now));
+  }
+  return held;
 };
 
 /**
@@ -414,7 +537,7 @@ export const renderFreshness = (
  */
 export const renderFrame = (frame: OperatorFrame): string =>
   [
-    renderStatus(frame.leases, frame.closedThreads, frame.now),
+    renderStatus(frame.leases, frame.closedThreads, frame.now, frame.speechless, frame.mailLock),
     renderParallelism(frame.parallelism, frame.now),
     renderHolds(frame.holds),
     renderCircuit(frame.circuit),
@@ -428,7 +551,22 @@ export const renderFrame = (frame: OperatorFrame): string =>
     // blank line: the gate is `renderMergeReady`'s alone, so the frame and the section
     // cannot disagree about when the tier is news.
     frame.ghOutage === undefined ? undefined : renderMergeReady(frame.ghOutage) || undefined,
-    renderQueue(frame.queue, frame.queueNotes, frame.parked),
+    renderQueue(
+      frame.queue,
+      frame.queueNotes,
+      frame.parked,
+      frame.modeParked,
+      // FROM THE FRAME'S OWN TWO SECTIONS, not from a new field (thread 063, §2.3 row 2): the
+      // live pairs and the holds are already here, printed two blocks above, and a queue row
+      // that promised a launch the box cannot make was the one reading that contradicted them.
+      // Computed here rather than by the caller so the three sections cannot disagree.
+      busyRoles(frame.parallelism, frame.holds),
+      // AND FROM THE SHELF LIST SIX LINES ABOVE, for the same reason (thread 063, §2.2 state 3):
+      // `renderQuota` and this row are two readings of one fact, and the second one is the one
+      // read in front of a stalled contour. The declared accounts ride in the frame already —
+      // `renderAuth` dictates a login off them — so no new field enters the frame for this mark.
+      shelvedRoles(frame.now, frame.queue, frame.quota, frame.accounts),
+    ),
     // Beside the queue, because it is the same question answered for the pairs that are
     // NOT in it: `renderResidentWaits` returns nothing when the project has no resident
     // roles, and that undefined is dropped rather than printed as a blank section.

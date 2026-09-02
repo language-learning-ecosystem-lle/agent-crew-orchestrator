@@ -66,7 +66,7 @@ describe("reading the last run off the journal", () => {
         {
           kind: "lease-acquired",
           ts: "2026-07-25T10:00:00Z",
-          role: "dev-speech",
+          role: "dev-acme",
           thread: "016-x",
           deadline: "2026-07-25T11:00:00Z",
         },

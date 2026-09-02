@@ -41,7 +41,7 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir, hostname } from "node:os";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
@@ -78,6 +78,7 @@ import {
 } from "./fs/comms.js";
 import { execFileSyncByExit, SyncRunError } from "./fs/exec-sync.js";
 import {
+  commitsBehindRef,
   fileExistsAtRef,
   mailCheckoutFreshness,
   mailCheckoutState,
@@ -127,6 +128,13 @@ import {
 } from "./notify/notify.js";
 import { describeSecrets, type LoadedSecrets, loadSecrets } from "./notify/secrets.js";
 import { loadTransport, type Transport } from "./notify/transport.js";
+import {
+  type AccountReach,
+  accountReachRefusal,
+  type PathFacts,
+  pathFactsFrom,
+  type UserIdentity,
+} from "./orchestrator/account-reach.js";
 import {
   type ActivityTrace,
   describeQuiet,
@@ -301,9 +309,11 @@ import {
   resolveSpawnIdentity,
   resolveWorker,
   roleLaunchability,
+  SESSION_PATH_ENV,
   type SpawnAs,
   SWITCH_EXEC,
   type SwitchProbe,
+  sessionPathValue,
   spawnAsCommand,
   switchProbeArgv,
 } from "./orchestrator/launch.js";
@@ -398,6 +408,7 @@ import {
   parseDaemonArgv,
   renderDaemonArgv,
 } from "./orchestrator/restart.js";
+import { dropRunTmpAlias, handOverRunTmp } from "./orchestrator/run-tmp.js";
 import {
   describeExclusion,
   describeScope,
@@ -438,7 +449,13 @@ import {
   versionRepairVerdict,
   workingTreeState,
 } from "./orchestrator/self-restart.js";
+import {
+  namedSharedLeftovers,
+  sharedPlaces,
+  snapshotShared,
+} from "./orchestrator/shared-places.js";
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
+import { stateWord } from "./orchestrator/state-word.js";
 import {
   foregroundRefusal,
   planSystemdUnit,
@@ -539,7 +556,13 @@ import {
   ProtocolVersionError,
 } from "./schema/version.js";
 import { checkImmutable, checkThread } from "./thread/check.js";
-import { fileMailLock, MailCheckoutBusyError, type MailLock } from "./thread/checkout-lock.js";
+import {
+  fileMailLock,
+  type HeldMailLock,
+  MailCheckoutBusyError,
+  type MailLock,
+  readMailLock,
+} from "./thread/checkout-lock.js";
 import {
   DeliveryRefusedError,
   deliverMessage,
@@ -550,6 +573,7 @@ import {
 import {
   closedThreads,
   deliveryMarks,
+  modeParks,
   parkedThreads,
   renderIndex,
   threadsWaitingOn,
@@ -1122,9 +1146,10 @@ const repairFrom = (argv: readonly string[]): LoadedRepair => {
  * stops answering "the root of the repository" and answers "the current directory" —
  * so a guard that resolves the repository from its cwd resolves it to whatever
  * directory the hook's command happened to run in. That is not a hypothetical: the
- * zones guard of thread 020 let a commit into `apps/pronunciation-service` through on
- * its first live test, because `pnpm -F agent-protocol` runs in the package directory
- * and the inherited `GIT_DIR` made that directory look like the repository root — the
+ * zones guard of thread 020 let a commit into a path under a prefix FORBIDDEN to the
+ * committing role through on its first live test, because `pnpm -F agent-protocol`
+ * runs in the package directory and the inherited `GIT_DIR` made that directory look
+ * like the repository root — the
  * guard concluded "not a role workspace" and stood aside, silently, in exactly the
  * situation it exists for.
  */
@@ -1223,7 +1248,7 @@ const boxContours = (): readonly string[] =>
  * while this lived inside `guardContour`, it ran only when `--repo` was named, so the
  * documented form (`merge-gate --ref origin/main --pr N`, `REVIEWER.md`) asked nothing
  * and a session in a checkout of another circuit passed in silence — the very shape of
- * #453/#454. The judgement itself is unchanged; what changed is WHEN it is requested.
+ * the two pull requests opened outside this repository on 2026-08-30. The judgement itself is unchanged; what changed is WHEN it is requested.
  */
 const guardGround = (): void => {
   const caller = contourOf(process.cwd());
@@ -1584,7 +1609,7 @@ const schemaMigrate = (argv: readonly string[]): void => {
  * `schema version` — THE TWO NUMBERS OF A PIN, SIDE BY SIDE, BEFORE IT MOVES (thread
  * 028). `config check` answers the same question from the INSTALLED package, which
  * during a pin bump is the old one by definition: the consumer's CI stays green until
- * the pin lands and goes red on a live `main` afterwards (LLE, 2026-08-22, 37 seconds
+ * the pin lands and goes red on a live `main` afterwards (a consumer, 2026-08-22, 37 seconds
  * after the merge). This command asks the CANDIDATE instead — `--package-ref` names a
  * tag, and the number is read out of its source, with nothing installed and nothing
  * checked out.
@@ -1700,9 +1725,9 @@ const roleExists = (argv: readonly string[]): void => {
  *
  * The generators of the derived files used to stop on the FIRST unreadable thread, and the
  * punishment was measured against the wrong crime: one directory created without `_meta.md`
- * froze `INDEX.md`, `TASKS.md` and every `_thread.md` of BOTH contours — `092-consent-and-
- * deletion` on 29.08 (ten red runs in a row, three false hypotheses, three trips of john to
- * the box) and `055-mirror-rules-to-lle` on 30.08 (two more). The repair both times was one
+ * froze `INDEX.md`, `TASKS.md` and every `_thread.md` of BOTH contours — a consumer's
+ * thread on 29.08 (ten red runs in a row, three false hypotheses, three trips of john to
+ * the box) and `055` on 30.08 (two more). The repair both times was one
  * file.
  *
  * So the assembly runs over the threads that DID parse, the unreadable ones enter the register
@@ -1816,7 +1841,7 @@ const threadBuild = (argv: readonly string[]): void => {
  * `--for <role>` SAYS HOW MUCH OF IT IS NEW TO THAT ROLE (thread 058, B.1) — the count
  * from the role's own last letter down, and a `--tail` that would cut into that run is
  * widened to cover it. Two roles writing into one thread within a minute is legal and
- * happens (LLE thread 110, 2026-08-30), and it turns "read the last message" into a
+ * happens (a consumer's thread, 2026-08-30), and it turns "read the last message" into a
  * reading that misses the one that mattered; the cure belongs to the READING TOOL,
  * because the raised session is a fresh process and remembers nothing. See
  * `thread/unread.ts` for the incident and for why there is no cursor file.
@@ -3329,7 +3354,7 @@ const parkMoverFrom = (
  * The pair is what the norm made readable: a park on a person holds the TURN it was declared on,
  * and the verdict of a round is one of the three outcomes that open a new turn at the same
  * holder. Until the fields existed the verdict rode in the BODY (`REVIEWER.md`), where the R27
- * net may not read it (norm 020) — measured in LLE 17:40→17:59Z, where the verdict landed in a
+ * net may not read it (norm 020) — measured at a consumer, 17:40→17:59Z, where the verdict landed in a
  * parked thread and was eaten.
  *
  * TWO THINGS THIS DOOR DELIBERATELY DOES NOT CHECK. The sender's role against the config — that
@@ -3603,6 +3628,10 @@ const newMessage = (argv: readonly string[]): void => {
     ...(mergedPr === undefined ? {} : { mergedPr }),
     ...(verdictFields.pr === undefined ? {} : { verdictPr: verdictFields.pr }),
     ...(parkLifted === undefined ? {} : { lifted: parkLifted }),
+    // WHO IS WRITING, not what about (thread 072): the door asks a ROLE what its letter does
+    // about the park, and the circuit's own event has nobody to answer with. The registry
+    // decides it from the config, so the door stays a judgement over data.
+    ...(registry.isMachineWriter(from) ? { machineWriter: true } : {}),
   });
   if (!parkSeen.ok) fail(parkSeen.reason, 2);
   else if (parkSeen.note !== undefined) out(`agent-protocol: ${parkSeen.note}`);
@@ -5148,6 +5177,57 @@ const machineAccounts = (
   };
 };
 
+/**
+ * WHICH ACCOUNT EACH ROLE'S NEXT SESSION WOULD SPEND, AND ITS SPARES — the join the tick
+ * makes before it plans and the frame makes before it prints the queue (thread 063).
+ *
+ * ONE reading called from two places, and that is the whole point of it being a function:
+ * the daemon carried this join inline, the frame carried none at all, and a queue row
+ * saying "raised next" about a pair whose window is shut is the same class of lie the
+ * state-model rewrite was opened on. Two copies of it would be worse than one — the frame
+ * and the tick would disagree about a subscription, which is exactly what the comment at
+ * the tick's own join has warned about since thread 036.
+ *
+ * The card is the primary (`launch.account`), the instance's account is the default, and
+ * a role naming no chain is absent from the map's second half — failover is OFF for it and
+ * everything downstream behaves as it did before the field existed.
+ */
+const roleAccountChains = (input: {
+  readonly registry: RoleRegistry;
+  readonly roles: readonly string[];
+  readonly instanceAccount?: string | undefined;
+}): ReadonlyMap<
+  string,
+  {
+    readonly account?: string;
+    readonly fallback?: readonly string[];
+    readonly worker?: string;
+  }
+> => {
+  const chains = new Map<
+    string,
+    { readonly account?: string; readonly fallback?: readonly string[]; readonly worker?: string }
+  >();
+  for (const roleId of input.roles) {
+    const launch = input.registry.get(roleId)?.launch;
+    const account = launch?.account ?? input.instanceAccount;
+    const fallback = launch?.fallback;
+    const chain =
+      fallback === undefined || fallback.length === 0
+        ? undefined
+        : {
+            fallback,
+            worker: resolveWorker({ ...(launch === undefined ? {} : { launch }) }).value,
+          };
+    if (account === undefined && chain === undefined) continue;
+    chains.set(roleId, {
+      ...(account === undefined ? {} : { account }),
+      ...(chain === undefined ? {} : chain),
+    });
+  }
+  return chains;
+};
+
 /** The same reading as a map of ids to kinds — what the frame carries for `renderAuth`. */
 const declaredAccountKinds = (argv: readonly string[]): Readonly<Record<string, string>> =>
   Object.fromEntries(
@@ -5930,7 +6010,19 @@ const runPreflight = (
       );
     } else {
       const base = baseCommitOf(repo, section.workdir.branch);
-      workdirChecks.push(mainCheckoutVerdict({ repo, ...state }));
+      // The main checkout is judged against the PROJECT'S branch and its distance is
+      // measured to `origin/<that branch>` (thread 078) — the tree nobody works in is
+      // still the tree node loads the daemon's modules from, so "on the wrong branch"
+      // means "the circuit executes code that was never merged".
+      const behind = commitsBehindRef(repo, `origin/${section.workdir.branch}`);
+      workdirChecks.push(
+        mainCheckoutVerdict({
+          repo,
+          ...state,
+          expectedBranch: section.workdir.branch,
+          ...(behind === undefined ? {} : { behind }),
+        }),
+      );
       for (const role of roles) {
         const path = workspacePath({ repo, worktrees, role: role.id });
         workdirChecks.push(
@@ -6191,7 +6283,7 @@ const resolveOnPath = (name: string, env: NodeJS.ProcessEnv): string | undefined
  * are the effects, and three of them are worth naming at the place they happen:
  *
  *  - THE MAIL WORKTREE IS CREATED WITH A FETCH FIRST, and that ordering is the defect
- *    this command was written around: the checkout on `lle-agents` was made by hand
+ *    this command was written around: the checkout on `acme-agents` was made by hand
  *    without one, and every frame afterwards said `mail: never pulled`.
  *  - THE MACHINE CONFIG IS WRITTEN WHOLE, from `nextLocalConfig`, and then re-read by
  *    `doctor` through the ordinary loader. Nothing here reports on its own work.
@@ -7167,6 +7259,27 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
 
   const events = existsSync(journal) ? parseJournal(readFile(journal, "orchestrator journal")) : [];
   const now = orchestratorNow(argv);
+  // NEVER A REPAIR AND NEVER A WAIT: the reader only looks at the record. A frame that
+  // touched the lock would race the very deliveries it describes, and a git call that failed
+  // (a checkout that is not a repository yet) leaves the fact absent rather than killing the
+  // frame — the rule every diagnostic of this function lives by.
+  const mailLockRecord = ((): HeldMailLock | undefined => {
+    try {
+      const gitDir = execFileSync(
+        "git",
+        [
+          "-C",
+          dirname(rootOr(argv, () => pathsFrom(argv).mailRoot)),
+          "rev-parse",
+          "--absolute-git-dir",
+        ],
+        { encoding: "utf8" },
+      ).trim();
+      return readMailLock(join(gitDir, "agent-protocol-mail.lock"));
+    } catch {
+      return undefined;
+    }
+  })();
   const modeFile = flag(argv, "--mode-file");
   let reboot: "systemd" | "manual" | undefined;
   if (modeFile !== undefined) {
@@ -7196,6 +7309,17 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     waitingOn: (role) => threadsWaitingOn(threads, role),
     authorized: (role) => registry.canSetThreadPriority(role),
     mergeReady,
+  });
+  // THE SAME JOIN THE TICK MAKES (thread 063), through the same function: which account each
+  // pair of this queue would spend and what its spares are. Read here, where the registry and
+  // the machine config are both in hand, so the pure renderer stays free of a config it may
+  // not learn to read.
+  const machine = machineAccounts(argv, configFrom(argv, undefined).config);
+  const frameAccounts = machine.accounts;
+  const frameChains = roleAccountChains({
+    registry,
+    roles: scope.roles,
+    ...(machine.instanceAccount === undefined ? {} : { instanceAccount: machine.instanceAccount }),
   });
   const residentRoles = registry.residents();
   const published = loadDigests(mailRoot);
@@ -7253,6 +7377,11 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // not a park any more, and a frame that still showed one would describe a pair as frozen
     // in the very tick the daemon is about to raise it.
     parked: parkedThreads(threads, { now, ttlSeconds: runParkTtlFrom(argv) }),
+    // AND WHICH OF THEM ASK NOBODY (thread 063): a mode park and a question park froze the
+    // pair with the same sentence until this field existed, and one of the two readings sent
+    // the operator to chase a word that was never asked for. From the same scan as the map
+    // above — the frame must not answer the two halves of one question from two readings.
+    modeParked: modeParks(threads),
     circuit: {
       launchesEnabled: existsSync(enableFlag),
       ...(reboot === undefined ? {} : { reboot }),
@@ -7273,6 +7402,27 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // the right vendor. A box that declares nothing hands an empty map and the section
     // reads exactly as it did before the field existed.
     accountKinds: declaredAccountKinds(argv),
+    // AND THE WHOLE OF THAT SAME READING (thread 063), for the mark on the queue row: the
+    // shelf list above says which windows are shut, and only the declarations say whether a
+    // role's spare may be spent — without them a chain would be refused for lack of a
+    // statement and a healthy role would be printed as held.
+    ...(frameAccounts === undefined ? {} : { accounts: frameAccounts }),
+    // WHICH LIVE RUNS HAVE NOT WRITTEN A SESSION ID YET (thread 063, `restore`) — asked of
+    // the file system HERE, where the frame is filled, because a renderer may not touch a
+    // disk and this layer already reads six other files. One `existsSync` per LIVE pair and
+    // never per row of history: the window closes with the child's first word, so a released
+    // pair's answer could not change a mark.
+    // WHO IS INSIDE THE MAIL CHECKOUT (thread 063, `save`) — read where the frame is filled,
+    // through the same record a waiting delivery reads, with the pid measured there. The path
+    // is derived from the checkout the frame already names, so no new argument and no new
+    // statement about a pair enters the frame: the mark is the renderer's.
+    ...(mailLockRecord === undefined ? {} : { mailLock: mailLockRecord }),
+    speechless: new Set(
+      leases
+        .filter((view) => view.state === "running" && view.sessionLog !== undefined)
+        .map((view) => view.sessionLog as string)
+        .filter((log) => !existsSync(sessionIdPath(log))),
+    ),
     // The tier's own health, from the file the daemon writes (thread 051): a frame that
     // showed an empty merge-ready tier and a silently refusing `gh` identically is the
     // defect this section exists to close.
@@ -7293,7 +7443,15 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
             }),
           },
         }),
-    queue: orderCandidates(ranked),
+    // WITH THE ACCOUNT CHAIN JOINED ON, exactly as the tick joins it before it plans
+    // (thread 063): the queue is ordered by the mail and knows nothing about subscriptions,
+    // and a frame without this join could only ask "is any window closed" where the tick asks
+    // "is every link of THIS role's chain closed" — the difference between those two is a
+    // healthy role reported as stood down.
+    queue: orderCandidates(ranked).map((candidate) => ({
+      ...candidate,
+      ...(frameChains.get(candidate.role) ?? {}),
+    })),
     // The same count as `mail`'s (065.4), in the frame the operator watches: the queue
     // below is short BECAUSE some threads were not read, and the notes said which ones
     // without ever saying how many — one line among the skips reads as a curiosity.
@@ -7926,7 +8084,7 @@ const orchestratorSystemdInstall = (argv: readonly string[]): void => {
     ...(user === undefined ? {} : { user }),
   });
   // WHICH INTERPRETER WENT INTO THE FILE, said out loud in both branches: the live unit
-  // that died on `lle-agents` looked perfectly well-formed, and the one token that was
+  // that died on `acme-agents` looked perfectly well-formed, and the one token that was
   // wrong (bare node on a `.ts` entry) is the one nobody reads twice.
   const interpreter =
     loader === undefined
@@ -8241,6 +8399,90 @@ const spawnIdentityFor = (input: {
   });
 };
 
+/**
+ * WHO A SYSTEM USER IS TO THE KERNEL — `id -u` and `id -G`, asked of the box without any
+ * entitlement (both are readable by anybody). `undefined` when there is no such user, which
+ * is an answer and not an error: the door above turns it into a refusal that says so.
+ */
+const userIdentityOf = (user: string): UserIdentity | { readonly detail: string } => {
+  const ask = (flag: string): string | undefined => {
+    const said = spawnSync("id", [flag, user], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (said.error !== undefined || said.status !== 0) return undefined;
+    return (said.stdout ?? "").trim();
+  };
+  const uid = ask("-u");
+  if (uid === undefined || !/^\d+$/.test(uid)) {
+    return { detail: `'id -u ${user}' gave no uid` };
+  }
+  const groups = (ask("-G") ?? "").split(/\s+/).filter((word) => /^\d+$/.test(word));
+  return { uid: Number(uid), gids: groups.map(Number) };
+};
+
+/**
+ * The permission bits of one path as the box has them, or the reason it would not say.
+ * The mapping itself lives beside the door ({@link pathFactsFrom}) — this line is only the
+ * `fs` it is given, so that "the box refused ME an answer" and "the box says it is not
+ * there" can be told apart under test.
+ */
+const pathFactsOf = (path: string): PathFacts => pathFactsFrom(path, statSync);
+
+/**
+ * ASKING THE BOX WHETHER THE TARGET USER CAN REACH THE ACCOUNT DIRECTORY (thread 047,
+ * msg-089 point 2) — the IO half of {@link accountReachRefusal}.
+ *
+ * IT IS `stat` AND `id`, NOT `sudo -u <user> test -r`. The entitlement of §0.1a grants ONE
+ * binary — the agent — so a probe that ran `test` as the target user would be refused by
+ * the box's own rule and would report "cannot reach" about every correctly set up box. The
+ * bits and the identity are both readable from here, and the permission rule is the
+ * kernel's; judging them in a pure function is what makes this testable at all.
+ *
+ * RUN ONLY WHEN THE IDENTITY ACTUALLY SWITCHES — no role that runs on this circuit today
+ * except one, exactly like the switch probe beside it.
+ */
+const accountReachFor = (input: {
+  readonly user: string;
+  readonly configDir: string;
+}): AccountReach => {
+  const identity = userIdentityOf(input.user);
+  const parts = input.configDir.split(sep).filter((part) => part !== "");
+  const ancestors: PathFacts[] = [];
+  // From the root downwards, stopping before the directory itself: its own bits are judged
+  // separately (traversal is `x`, using it needs `r`, `w` and `x`).
+  for (let depth = 0; depth < parts.length - 1; depth += 1) {
+    const prefix = parts.slice(0, depth + 1).join(sep);
+    ancestors.push(pathFactsOf(input.configDir.startsWith(sep) ? `${sep}${prefix}` : prefix));
+  }
+  return {
+    user: input.user,
+    ...("uid" in identity ? { identity } : { identityDetail: identity.detail }),
+    dir: pathFactsOf(input.configDir),
+    ancestors,
+  };
+};
+
+/**
+ * THE ACCOUNT-REACH DOOR OF BOTH LIFT POINTS, joined here for the same reason
+ * {@link spawnIdentityFor} is: `run` and the daemon must not drift apart on whether a
+ * session may reach its credentials. `undefined` — nothing to say.
+ */
+const accountReachRefusalFor = (input: {
+  readonly role: Role;
+  readonly as: SpawnAs;
+  readonly account?: { readonly id: string; readonly configDir: string };
+}): string | undefined =>
+  accountReachRefusal({
+    role: input.role,
+    as: input.as,
+    ...(input.account === undefined ? {} : { account: input.account }),
+    reach:
+      input.as.mode === "sudo" && input.account !== undefined
+        ? accountReachFor({ user: input.as.user, configDir: input.account.configDir })
+        : undefined,
+  });
+
 type RunParams = {
   readonly journalPath: string;
   readonly mailRoot: string;
@@ -8305,7 +8547,7 @@ type RunParams = {
   /** The zone deny rules of the role (thread 020) — the tool refuses the edit at the moment it happens. */
   readonly denyRules: readonly string[];
   /**
-   * THE ROLE'S OWN MEMORY DIRECTORY (LLE thread `116-role-memory-cost`, form D) — derived
+   * THE ROLE'S OWN MEMORY DIRECTORY (a consumer's thread, form D) — derived
    * from the ROLE and not from the project directory, which is the whole defect being
    * answered: the vendor keys its notes by project+account, so two roles on one account
    * share a pile and one role on two accounts has two. Carried into the settings source
@@ -8687,8 +8929,26 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // worse than no `TMPDIR` at all — `mktemp` refuses, and the session falls back to typing
   // `/tmp` by hand, which is the very move this closes.
   mkdirSync(p.sessionTmp, { recursive: true });
+  // …AND IT HAS TO FIT A SOCKET (thread `070`). The run's own name is long by construction,
+  // and a `TMPDIR` over the budget breaks every tool that opens a unix socket under it —
+  // `tsx`, and with it all 36 process tests of the role's own acceptance run. See
+  // `orchestrator/run-tmp.ts` for the measured numbers.
+  const runTmp = handOverRunTmp(p.sessionTmp);
   const sink = openSync(p.sessionLog, "a");
   const rawSink = openSync(p.sessionStream, "a");
+  // WHAT THE PLACES THAT BELONG TO NOBODY HELD BEFORE THIS RUN (thread
+  // `056-shared-tmp-mechanism`, step 1: visibility). Taken BEFORE the spawn, because
+  // «appeared while this run was alive» is the only claim a shared directory can support;
+  // taken here rather than in the child, because the child is the thing being measured.
+  // See `shared-places.ts` for what this does and does not claim, and for why it removes
+  // nothing.
+  // IT ALSO HAS TO COME AFTER `handOverRunTmp` ABOVE, and that is an ordering requirement,
+  // not an accident of layout: the socket alias of thread `070` is a symlink this very
+  // supervisor puts into the shared `/tmp`. Taken before the snapshot it is part of the
+  // «before» and can never be reported; taken after, the run would name its own alias as
+  // a leftover on every single tick — a door inventing a finding out of its own work.
+  const runSharedPlaces = sharedPlaces(p.env);
+  const sharedBefore = snapshotShared(runSharedPlaces);
   let sinksOpen = true;
   const closeSinks = (): void => {
     if (!sinksOpen) return;
@@ -8699,6 +8959,30 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // log of every run now answers "did this session leave temporary files, and which" —
     // and the sweep keeps the state directory from growing a run's scratch for ever.
     for (const line of sweepRunTmp(p.sessionTmp)) writeLog(`supervisor  ${line}`);
+    if (runTmp.alias)
+      for (const line of dropRunTmpAlias(runTmp.alias)) writeLog(`supervisor  ${line}`);
+    // AND WHAT APPEARED WHERE THE RUN HAD NO BUSINESS WRITING — the half `TMPDIR` cannot
+    // reach, because a typed path obeys no variable. Said on BOTH channels, unlike the
+    // sweep above: the run's own scratch is the run's own business, while an entry in a
+    // shared place outlives the run and belongs to nobody, so the operator watching the
+    // circuit hears it too. Nothing here may cost a run — it is a listing at the close of
+    // a session that has already finished.
+    try {
+      for (const line of namedSharedLeftovers({
+        before: sharedBefore,
+        places: runSharedPlaces,
+        roleId: p.roleId,
+        thread: p.thread,
+      })) {
+        writeLog(`supervisor  ${line}`);
+        err(`agent-protocol: ${line}`);
+      }
+    } catch (error) {
+      // The claim above made true by construction: this runs on the path that closes a
+      // lease, and a measurement of somebody else's directory may not be what decides
+      // whether a session's outcome is recorded.
+      writeLog(`supervisor  the shared places could not be measured: ${(error as Error).message}`);
+    }
     sinksOpen = false;
     closeSync(sink);
     closeSync(rawSink);
@@ -8708,6 +8992,7 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     writeSync(sink, `${stampLine(new Date(), text)}\n`);
   };
   writeLog(`supervisor  ${p.roleId}/${p.thread}  raw stream ${p.sessionStream}`);
+  for (const line of runTmp.lines) writeLog(`supervisor  ${line}`);
   // The sink exists now, so a takedown complaint lands in the run's own log as well as on
   // stdout (thread 047): stdout belongs to whoever was watching, this file is what is read
   // afterwards, and an unkilled session is exactly the thing read about afterwards.
@@ -8740,6 +9025,18 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     writeLog(`supervisor  ${line}`);
     err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
   }
+  // WHAT THE SESSION WILL BE ABLE TO FIND (thread `069-session-path`), decided before the
+  // spawn and SAID, because an environment composed silently is one an operator debugs by
+  // guessing: the run's own log now answers "did this box hand the session its user's
+  // tools, and from where". Nothing is said when nothing is added — the inherited `PATH`
+  // is then the whole truth and a line claiming otherwise would be noise.
+  const sessionPath = sessionPathValue({
+    path: p.env.PATH,
+    home: p.env.HOME,
+    exists: (dir) => existsSync(dir),
+  });
+  if (sessionPath !== undefined) writeLog(`supervisor  session PATH ${sessionPath}`);
+
   // WHO IT RUNS AS (thread 047, point 3). `self` — the command IS the binary, exactly as
   // every run before this field existed; `sudo` — the binary becomes an argument of the
   // narrow entitlement, and NOTHING ELSE about this spawn changes: the same argv, the same
@@ -8792,7 +9089,21 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // the inherited environment on purpose — an operator's exported `TMPDIR` names
       // their own box's scratch, not this run's, and on Linux `TMPDIR` outranks the
       // `TMP`/`TEMP` an inherited environment might also carry.
-      [RUN_TMPDIR_ENV]: p.sessionTmp,
+      // …and it is `runTmp.handed`, not `p.sessionTmp`: the two differ only when the run's
+      // own name is too long for a socket to be opened under it, and then this is a short
+      // symlink to the very same directory (thread `070`).
+      [RUN_TMPDIR_ENV]: runTmp.handed,
+      // WHERE ITS TOOLS ARE LOOKED UP (thread `069-session-path`). The inherited `PATH`
+      // is the daemon's — under systemd, the unit's own (`systemd.ts`, decision 5) — and
+      // it carries no per-user directory, so a tool installed the ordinary way
+      // (`~/.local/bin`: `uv`, `pipx`, `pip --user`) is invisible to every session while
+      // being on the operator's own `PATH`. Composed rather than replaced, and APPENDED:
+      // every name that resolved before this line resolves to the same file after it —
+      // in particular the agent binary, whose identity is the machine config's to decide
+      // (R14), not this spawn's. `undefined` when there is nothing to add, and then the
+      // key is not set at all: writing back an identical value would make the child's
+      // environment look composed on a box where it was merely inherited.
+      ...(sessionPath === undefined ? {} : { [SESSION_PATH_ENV]: sessionPath }),
       // WHICH ACCOUNT IT SPENDS (thread 055). The whole account — credentials, the
       // tool's config, the transcripts and the session store — hangs off this one
       // directory, so pointing at it is the entire isolation; there is no second
@@ -9008,6 +9319,11 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // readable as "it was told, in this log, at this minute, and kept digging". Said once
   // per crossing rather than every poll, and re-armed when a park moves the deadline.
   let windDownAnnounced = false;
+  // THE TURN THAT WAS TAKEN RATHER THAN PASSED (thread 063) — said once per run, for the
+  // same reason the wind-down line is: it explains a run that goes on working past the
+  // moment the mail stopped naming it, and a line repeated every poll would be noise in
+  // the one log an operator reads after the fact.
+  let turnTakenAnnounced = false;
 
   while (true) {
     await sleep(p.pollMs);
@@ -9065,14 +9381,42 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
         `agent-protocol: thread ${p.thread} under lease is unreadable — the passed turn is NOT counted`,
       );
     }
-    const handedOff = handoffDetected({
+    // DID THE ROLE ITSELF SPEAK IN THIS RUN (thread 063) — the mark of its own last
+    // message at the raise (`world.mine`, R18) against the same mark now. `undefined`
+    // when either end cannot be read: no world was recorded, or the thread is not among
+    // the ones this walk parsed. See `handoffDetected` for why an unknown keeps the old
+    // reading instead of holding the run open.
+    const mineAtRaise = p.world?.mine;
+    const mineNow = ((): string | undefined => {
+      const loaded = scan.threads.find((entry) => entry.thread.id === p.thread);
+      if (loaded?.input === undefined) return undefined;
+      return (
+        loaded.input.entries.filter((entry) => entry.message.fields.from === p.roleId).at(-1)
+          ?.fileName ?? ""
+      );
+    })();
+    const spoke =
+      mineAtRaise === undefined || mineNow === undefined ? undefined : mineNow !== mineAtRaise;
+    const reading = handoffDetected({
       threadUnreadable,
       waitingThreads: threadsWaitingOn(
         scan.threads.map((loaded) => loaded.thread),
         p.roleId,
       ),
       thread: p.thread,
+      ...(spoke === undefined ? {} : { spoke }),
     });
+    const handedOff = reading.handedOff;
+    // THE TURN WAS TAKEN, AND THE FRAME SAYS SO BY NAME. Without this line the run looks
+    // from the outside exactly like one that is ignoring its own thread: the mail no
+    // longer names the role, the session keeps working, and nothing anywhere says that
+    // somebody else's message is what moved `waiting-on`.
+    if (reading.turnTaken && !turnTakenAnnounced) {
+      turnTakenAnnounced = true;
+      const line = `the turn was TAKEN, not passed — thread ${p.thread} no longer awaits ${p.roleId}, but ${p.roleId} has not written a line since the raise: somebody else's message moved 'waiting-on'. The run keeps going and will NOT be closed as finished on its own word`;
+      err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
+      writeLog(`supervisor  ${line}`);
+    }
     // HAS THE SESSION DECLARED A WAIT FOR INPUT (R19)? A level signal, read every poll:
     // it both parks the run and, by going away, brings it back.
     const declared = ((): string | undefined => {
@@ -9766,6 +10110,18 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     fail(identity.reason, 2);
     return;
   }
+  // AND WHETHER THAT IDENTITY CAN REACH THE CREDENTIALS IT IS POINTED AT (msg-089 point 2).
+  // After the identity door and after `agent`, because it needs both answers: the user the
+  // session becomes, and the directory the account resolved to.
+  const unreachable = accountReachRefusalFor({
+    role,
+    as: identity.as,
+    ...(agent.account === undefined ? {} : { account: agent.account }),
+  });
+  if (unreachable !== undefined) {
+    fail(unreachable, 2);
+    return;
+  }
   const maxTurns = String(ceilings.maxTurns.value);
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
 
@@ -10002,8 +10358,8 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
 const DIGEST_LOCK_WAIT_MS = 20_000;
 
 /**
- * THE TWO MOMENTS OF A ROLE'S MEMORY, BOUND TO THIS BOX (LLE thread
- * `116-role-memory-cost`, form D, third third). Both halves are built here, together,
+ * THE TWO MOMENTS OF A ROLE'S MEMORY, BOUND TO THIS BOX (a consumer thread on the cost
+ * of a role's memory, form D, third third). Both halves are built here, together,
  * because they are one contract: the save can only tell "this session wrote it" from
  * "it was already there" against the snapshot the restore recorded, and two call sites
  * assembling the pair separately is how the halves come to disagree about a path.
@@ -10326,33 +10682,15 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     instances: configFrom(argv, undefined).config.instances,
     instance: local.config?.instance,
   });
-  const roleAccounts = new Map<string, string>();
-  // THREAD 036, STEP 3 — AND THE SPARES BESIDE THE ACCOUNT, off the same card and in the
-  // same pass, because they are one statement of the role: "spend this, and if its window
-  // is shut, these in this order". Read once at startup with everything else the launch
-  // mode is resolved from; a chain that changes wants the daemon restarted exactly as a
-  // changed account does.
-  //
-  // THE KIND TRAVELS WITH THE CHAIN and is not re-derived by the planner: a spare of
-  // another kind is refused by name, and the refusal needs to know what the role is raised
-  // as. It is read off the role's OWN CARD, exactly as the config door reads it: a
-  // `--worker` flag on whoever started this daemon is provenance about the command, and a
-  // chain judged by it would refuse the spares of every role the flag does not describe.
-  const roleChains = new Map<string, { fallback: readonly string[]; worker: string }>();
-  for (const roleId of launchable) {
-    const named = registry.get(roleId)?.launch?.account ?? instanceAccount;
-    if (named !== undefined) roleAccounts.set(roleId, named);
-    const fallback = registry.get(roleId)?.launch?.fallback;
-    if (fallback !== undefined && fallback.length > 0)
-      roleChains.set(roleId, {
-        fallback,
-        worker: resolveWorker({
-          ...(registry.get(roleId)?.launch === undefined
-            ? {}
-            : { launch: registry.get(roleId)?.launch as Launch }),
-        }).value,
-      });
-  }
+  // ONE JOIN FOR THE TICK AND THE FRAME (thread 063) — `roleAccountChains`. It was written
+  // out here and nowhere else until the operator's queue row had to answer the same question
+  // ("which account does this pair spend"), and two copies of it would be the frame and the
+  // tick disagreeing about a subscription — the class of defect this whole thread is about.
+  const roleChains = roleAccountChains({
+    registry,
+    roles: launchable,
+    ...(instanceAccount === undefined ? {} : { instanceAccount }),
+  });
   // What THIS MACHINE says about its accounts — read once, beside the machine config the
   // rest of the launch mode comes from. `undefined` when it declared nothing at all, and
   // the planner is told the difference (see `planTick`'s `accounts`).
@@ -10845,6 +11183,20 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       pairErr(candidate, identity.reason);
       return;
     }
+    // AND THE CREDENTIALS THAT IDENTITY WOULD READ (msg-089 point 2) — said out loud for
+    // the same reason the refusal above is, and it matters more here than at the hand-typed
+    // door: the alternative is a session that dies at the vendor in 0 seconds, is recorded
+    // as `auth-failed`, and stands down every pair spending that account — including roles
+    // that never failed.
+    const unreachable = accountReachRefusalFor({
+      role,
+      as: identity.as,
+      ...(agent.account === undefined ? {} : { account: agent.account }),
+    });
+    if (unreachable !== undefined) {
+      pairErr(candidate, unreachable);
+      return;
+    }
     // The workspace and the continuation are settled PER LAUNCH: both are properties of
     // this (role, thread) pair at this moment, and the daemon lives for days. This half
     // is deliberately SYNCHRONOUS and happens before the registry entry exists — it is
@@ -10972,7 +11324,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   );
   for (const orphan of orphans) {
     err(
-      `agent-protocol: lease ${orphan.role}/${orphan.thread} was left CLOSED BY NOTHING (${orphan.state}, attempt ${orphan.attempt})${orphan.overdue ? ", OVERDUE" : ""} — the supervisor was killed in a way that left it no time to record (SIGKILL/machine crash). Close it by hand: orchestrator record --kind lease-released --reason supervisor-gone`,
+      // THE SAME FACT, THE SAME PHRASE (thread 063) — this line printed the raw machine
+      // word (`draining`/`running`) into the one stream an operator reads, next to frames
+      // that had already stopped doing it. It is a rare path, which is exactly why it is
+      // read by someone who has no context to correct it with.
+      `agent-protocol: lease ${orphan.role}/${orphan.thread} was left CLOSED BY NOTHING (${stateWord(orphan.state)}, attempt ${orphan.attempt})${orphan.overdue ? ", OVERDUE" : ""} — the supervisor was killed in a way that left it no time to record (SIGKILL/machine crash). Close it by hand: orchestrator record --kind lease-released --reason supervisor-gone`,
     );
   }
 
@@ -11108,7 +11464,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       err(`agent-protocol: daemon — ${describeStaleRunPark(stale, runParkTtl)}`);
     }
     const parked = parkedThreads(threads, { now, ttlSeconds: runParkTtl });
-    for (const line of describeOrder(candidates, parked)) err(`agent-protocol: ${line}`);
+    for (const line of describeOrder(candidates, parked, modeParks(threads)))
+      err(`agent-protocol: ${line}`);
     // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.
     // A resident is never a candidate — it is hosted, not raised — so without this line
     // the daemon's silence about it is indistinguishable from an empty mailbox, and a
@@ -11140,18 +11497,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // queue is ordered by the mail (R5) and knows nothing about subscriptions, while the
       // tick's two infrastructure shelves are read per account. The role is what carries
       // the account, so the join is one lookup per candidate.
-      candidates: candidates.map((candidate) => {
-        const account = roleAccounts.get(candidate.role);
-        // AND THE CHAIN RIDES THE SAME JOIN (thread 036, step 3): the queue knows nothing
-        // about subscriptions, so both halves of "which account does this pair spend" are
-        // attached here, at the one line where the role is in hand.
-        const chain = roleChains.get(candidate.role);
-        return {
-          ...candidate,
-          ...(account === undefined ? {} : { account }),
-          ...(chain === undefined ? {} : { fallback: chain.fallback, worker: chain.worker }),
-        };
-      }),
+      // AND BOTH HALVES RIDE ONE JOIN (thread 036, step 3; thread 063): the queue knows
+      // nothing about subscriptions, so "which account does this pair spend" and "what are
+      // its spares" are attached here, at the one line where the role is in hand — by the
+      // same function the operator's frame attaches them with.
+      candidates: candidates.map((candidate) => ({
+        ...candidate,
+        ...(roleChains.get(candidate.role) ?? {}),
+      })),
       ...(declaredForPlan === undefined ? {} : { accounts: declaredForPlan }),
       now: new Date(),
       // The mail is already parsed for the queue above — the set of sessions that
@@ -11161,6 +11514,9 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       maxConsecutive: gates.maxConsecutive.value,
       maxAttempts: gates.maxAttempts.value,
       parked,
+      // The same set the queue lines above were printed with (thread 063): the skip line and
+      // the queue row are two renderings of ONE fact, and they read it from one place.
+      modeParked: modeParks(threads),
     });
 
     // EVERY CANDIDATE THAT WAS NOT RAISED IS NAMED, whatever the tick decided to do

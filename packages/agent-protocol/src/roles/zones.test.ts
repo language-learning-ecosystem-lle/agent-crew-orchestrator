@@ -49,19 +49,16 @@ describe("pathsOutsideZones", () => {
   });
 
   it("names the paths under a banned prefix, and only those", () => {
-    const r = role({ writes: [], forbidden: ["apps/pronunciation-service"] });
+    const r = role({ writes: [], forbidden: ["apps/acme-service"] });
     const verdict = pathsOutsideZones({
       role: r,
       paths: [
         "apps/api/src/index.ts",
-        "apps/pronunciation-service/main.py",
-        "./apps/pronunciation-service/README.md",
+        "apps/acme-service/main.py",
+        "./apps/acme-service/README.md",
       ],
     });
-    expect(verdict).toEqual([
-      "apps/pronunciation-service/main.py",
-      "apps/pronunciation-service/README.md",
-    ]);
+    expect(verdict).toEqual(["apps/acme-service/main.py", "apps/acme-service/README.md"]);
   });
 
   it("a prefix matches at a separator, never mid-name", () => {
@@ -78,13 +75,10 @@ describe("pathsOutsideZones", () => {
 
 describe("zoneDenyRules", () => {
   it("the entry and its subtree are denied to every editing tool through one Edit rule", () => {
-    const r = role({ writes: [], forbidden: ["apps/pronunciation-service"] });
+    const r = role({ writes: [], forbidden: ["apps/acme-service"] });
     // Edit(path) covers every file-editing tool; Write(path) is not matched at all
     // (the tool said so on the live probe) — so an Edit rule is the whole rule.
-    expect(zoneDenyRules(r)).toEqual([
-      "Edit(apps/pronunciation-service)",
-      "Edit(apps/pronunciation-service/**)",
-    ]);
+    expect(zoneDenyRules(r)).toEqual(["Edit(apps/acme-service)", "Edit(apps/acme-service/**)"]);
   });
 
   it("Read is never denied — a zone says who may write", () => {
@@ -117,7 +111,7 @@ describe("changedPathsGitArgs — the three ways a foreign-zone edit slipped pas
   });
 
   it("--no-renames: a rename OUT of a foreign zone shows its banned source side", () => {
-    // With rename detection on, `git mv apps/pronunciation-service/x packages/foo/x`
+    // With rename detection on, `git mv apps/acme-service/x packages/foo/x`
     // reports only the destination — and the destination is inside the role's own zone.
     expect(changedPathsGitArgs({ repo: "/r", source: { kind: "staged" } })).toContain(
       "--no-renames",
@@ -151,9 +145,7 @@ describe("parseChangedPaths", () => {
   });
 
   it("a non-ASCII path survives unquoted — the case -z exists for", () => {
-    expect(parseChangedPaths("apps/pronunciation-service/тест.py\0")).toEqual([
-      "apps/pronunciation-service/тест.py",
-    ]);
+    expect(parseChangedPaths("apps/acme-service/тест.py\0")).toEqual(["apps/acme-service/тест.py"]);
   });
 
   it("no changes is no paths", () => {

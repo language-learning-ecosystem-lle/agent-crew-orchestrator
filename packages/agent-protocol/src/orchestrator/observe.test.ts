@@ -13,15 +13,17 @@ describe("handoffDetected — a broken thread does not pass itself off as a pass
   const base = { thread: "012-x", waitingThreads: ["012-x"], threadUnreadable: false };
 
   it("the thread is still waiting on the role → the turn has NOT passed", () => {
-    expect(handoffDetected(base)).toBe(false);
+    expect(handoffDetected(base).handedOff).toBe(false);
   });
 
   it("the thread stopped waiting on the role → the turn has passed", () => {
-    expect(handoffDetected({ ...base, waitingThreads: [] })).toBe(true);
+    expect(handoffDetected({ ...base, waitingThreads: [] }).handedOff).toBe(true);
   });
 
   it("our own thread is unreadable → NOT a passed turn, even though it is not in the waiting list", () => {
-    expect(handoffDetected({ ...base, waitingThreads: [], threadUnreadable: true })).toBe(false);
+    expect(handoffDetected({ ...base, waitingThreads: [], threadUnreadable: true }).handedOff).toBe(
+      false,
+    );
   });
 
   it("unreadability outweighs an empty list: otherwise the run would close as completed", () => {
@@ -35,11 +37,61 @@ describe("handoffDetected — a broken thread does not pass itself off as a pass
       waitingThreads: [],
       threadUnreadable: false,
     });
-    expect(brokenLooksLikeHandoff).not.toBe(realHandoff);
+    expect(brokenLooksLikeHandoff.handedOff).not.toBe(realHandoff.handedOff);
+  });
+
+  it("an unreadable thread is not a TAKEN turn either — it is no statement at all", () => {
+    expect(
+      handoffDetected({ ...base, waitingThreads: [], threadUnreadable: true, spoke: false }),
+    ).toEqual({ handedOff: false, turnTaken: false });
   });
 
   it("other threads in the waiting list do not affect the decision", () => {
-    expect(handoffDetected({ ...base, waitingThreads: ["009-other", "014-other"] })).toBe(true);
+    expect(handoffDetected({ ...base, waitingThreads: ["009-other", "014-other"] }).handedOff).toBe(
+      true,
+    );
+  });
+});
+
+/**
+ * THE FIELD CASE, REPRODUCED AS A FIXTURE (thread 063, measured 2026-08-30 on the pair
+ * `curator × 063-state-model-rewrite`): the reviewer's approve raised the curator, the
+ * `github` notifier wrote the merge of PR #161 into the same thread with
+ * `waiting-on: dev-core`, and the observer read that as the curator passing a turn it had
+ * not taken. Two pairs differing ONLY in whether the role itself spoke must not produce
+ * the same reading — that is the whole of the fix.
+ */
+describe("handoffDetected — a turn TAKEN by someone else's message is not a turn passed", () => {
+  const base = { thread: "063-state-model-rewrite", waitingThreads: [], threadUnreadable: false };
+
+  it("the role spoke → the turn was passed, and nothing was taken", () => {
+    expect(handoffDetected({ ...base, spoke: true })).toEqual({
+      handedOff: true,
+      turnTaken: false,
+    });
+  });
+
+  it("the role never spoke → the turn was TAKEN, and the run is NOT closed on it", () => {
+    expect(handoffDetected({ ...base, spoke: false })).toEqual({
+      handedOff: false,
+      turnTaken: true,
+    });
+  });
+
+  it("the two differ only by who wrote — and they read differently", () => {
+    expect(handoffDetected({ ...base, spoke: false })).not.toEqual(
+      handoffDetected({ ...base, spoke: true }),
+    );
+  });
+
+  it("nobody could tell → the old reading stands, and it is not called a taken turn", () => {
+    expect(handoffDetected(base)).toEqual({ handedOff: true, turnTaken: false });
+  });
+
+  it("the thread still awaits the role → neither passed nor taken, whoever wrote", () => {
+    expect(
+      handoffDetected({ ...base, waitingThreads: ["063-state-model-rewrite"], spoke: false }),
+    ).toEqual({ handedOff: false, turnTaken: false });
   });
 });
 

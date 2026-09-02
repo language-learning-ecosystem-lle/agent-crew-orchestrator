@@ -152,13 +152,13 @@ const contour = (secrets: { write: boolean }): Contour => {
   };
 };
 
-/** The force stop, run from a CLEAN environment: no `GH_TOKEN`, no login of `gh`. */
+/**
+ * The force stop, run from a CLEAN environment: no `GH_TOKEN`, no login of `gh`. The
+ * subtraction is the sandbox's own (thread `071`) — it used to be spelled out here, and
+ * spelling it out per file is what let two other files reach this door without it.
+ */
 const forceStop = (contest: Contour): { code: number; out: string } => {
-  const {
-    GH_TOKEN: _mine,
-    GITHUB_TOKEN: _theirs,
-    ...clean
-  } = sandbox(configHome(contest.repo), {
+  const clean = sandbox(configHome(contest.repo), {
     PATH: `${contest.bin}${delimiter}${process.env.PATH ?? ""}`,
   });
   const argv = [

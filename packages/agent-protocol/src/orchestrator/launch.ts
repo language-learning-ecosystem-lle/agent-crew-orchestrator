@@ -35,6 +35,7 @@
  * and a ceiling nobody can move or attribute is indistinguishable from a bug.
  */
 import { userInfo } from "node:os";
+import { join } from "node:path";
 
 import type { LocalConfig } from "../config/local.js";
 import {
@@ -194,6 +195,90 @@ export const LAUNCH_ENV = {
  * under — a claim this package has no business making about its own harness.
  */
 export const RUN_TMPDIR_ENV = "TMPDIR";
+
+/**
+ * THE SECOND VARIABLE OF THE LAUNCH THAT IS NOT OURS TO NAME (thread `069-session-path`),
+ * and it is here for the same reason as the one above: what the session gets from the
+ * environment it does not have to remember.
+ *
+ * THE FACT. A session raised by the resident inherits the daemon's environment, and under
+ * systemd that `PATH` is the unit's own (`systemd.ts`, decision 5): the interpreter's
+ * directory, the agent binaries' directories, the system floor. Deliberately NOT a login
+ * shell's `PATH` — a user unit does not inherit one, and copying one into the unit would
+ * put the paths in a fourth place. The consequence measured on the live box
+ * (2026-09-02T09:52Z): `~/.local/bin` — where `pip --user`, `pipx`, `uv` and the GitHub
+ * CLI's own installer put their binaries — is on the operator's `PATH` and absent from
+ * every session's. `uv` and `uvx` resolved for the user and resolved nowhere for the
+ * session, which is how the finding surfaced: one command dead with `No such file or
+ * directory`, the next one alive with the full path typed by hand.
+ *
+ * THE PRICE IS A TAX, NOT A BREAKAGE, and that is precisely why it is fixed here. Every
+ * session needing such a tool pays one dead call, one guess and one line in its log; a
+ * role that has never seen the failure pays a whole turn, because it has no reason to
+ * suspect the `PATH` rather than the box. The alternative fix — a sentence in a role card
+ * telling sessions to type full paths — is the same substitution of memory for mechanism
+ * this repository already refused for the shared `/tmp` (thread `056`) and for the
+ * command's own credentials (thread `065`).
+ *
+ * THE DIRECTORIES ARE APPENDED, NEVER PREPENDED, and this is the whole safety of the
+ * change: a name that already resolves for the session keeps resolving to the same file.
+ * The box that produced the finding shows why it matters — `~/.local/bin/claude` is the
+ * vendor's native install and the session's `claude` comes from the node version manager;
+ * putting the user's directory in front would silently change WHICH agent binary the
+ * circuit raises, a decision that belongs to the machine config (R14) and to whoever pays
+ * for it. Appended, the set of resolvable names only grows.
+ *
+ * IT ADDS A FLOOR, IT DOES NOT COPY A SHELL. Only the standard per-user binary directory
+ * ({@link USER_BIN_DIRS}) is considered, and only if it EXISTS on the box: «everything the
+ * operator happens to have» would make the session's environment a function of somebody's
+ * `.bashrc`, unreproducible between two boxes and impossible to state in a doc. A
+ * vendor-specific directory (the box also carries `~/.maestro/bin`) is not this package's
+ * business — it belongs to whoever declares the tool.
+ */
+export const SESSION_PATH_ENV = "PATH";
+
+/**
+ * The per-user binary directory, relative to `HOME` — the one place a Linux box agrees on
+ * (systemd's own `user-dirs`, the XDG layout, `pip --user`, `pipx`, `uv`, `cargo`'s
+ * installers all end up here). One entry, and a list rather than a constant so a test can
+ * name its own without reaching into `HOME`.
+ */
+export const USER_BIN_DIRS: readonly string[] = [".local/bin"];
+
+/**
+ * The `PATH` the session is handed: the inherited one plus whatever of {@link USER_BIN_DIRS}
+ * exists and is not already on it, appended in order. `undefined` means «nothing to say» —
+ * the caller then leaves the inherited value alone rather than writing an identical one.
+ *
+ * IT EXTENDS A `PATH`, IT DOES NOT INVENT ONE. With nothing inherited the answer is
+ * `undefined`, not a `PATH` made of user directories: a box whose daemon has no `PATH` at
+ * all cannot find `git` or `sh` either, and handing the session a two-entry `PATH` would
+ * dress that fault as a working environment. `preflight` names that one by itself.
+ */
+export const sessionPathValue = (input: {
+  /**
+   * The inherited `PATH`, as the supervisor's own environment carries it. Explicitly
+   * `| undefined` and not merely optional: under `exactOptionalPropertyTypes` those are
+   * different types, and the caller reads `process.env`, where a missing variable IS the
+   * value `undefined` rather than an absent key.
+   */
+  readonly path?: string | undefined;
+  /** The user's home; absent (an environment without `HOME`) means nothing is added. */
+  readonly home?: string | undefined;
+  /** Does this directory exist on the box — injected, so the rule stays testable. */
+  readonly exists: (dir: string) => boolean;
+  /** The candidates, relative to `home`; defaults to {@link USER_BIN_DIRS}. */
+  readonly dirs?: readonly string[];
+}): string | undefined => {
+  const home = input.home;
+  if (!input.path || !home) return undefined;
+  const present = input.path.split(":").filter((entry) => entry.length > 0);
+  const added = (input.dirs ?? USER_BIN_DIRS)
+    .map((dir) => join(home, dir))
+    .filter((dir) => !present.includes(dir) && input.exists(dir))
+    .filter((dir, index, all) => all.indexOf(dir) === index);
+  return added.length === 0 ? undefined : [...present, ...added].join(":");
+};
 
 /**
  * What the orchestrator says it is raising. A DEFAULT rather than a config field:
@@ -893,7 +978,7 @@ export type Launchability = { launchable: true } | { launchable: false; reason: 
  *    raise: john (`self`, a human), reviewer-pr/github (`event`, woken by the platform)
  *    are not ours to spawn;
  *  - empty `instructions` — there is nothing to build a prompt from (that is
- *    dev-speech today): an honest refusal rather than a crash on a missing file;
+ *    dev-acme today): an honest refusal rather than a crash on a missing file;
  *  - `instructions` with `external` — the card is executed OUTSIDE (a skill on the
  *    chat side) and a local `claude -p` must not drive it. Note that this refusal
  *    is about ANY entry, not about the whole array, and that is what makes a role
@@ -1109,11 +1194,13 @@ export const describeSpawnAs = (as: SpawnAs): readonly string[] =>
         // FIRST: `sudo -u` gives the child that user's `HOME`, so the vendor's session store
         // moves with it and `--resume` stops finding this role's earlier conversations. The
         // account directory is worse than a lost resume — it is pointed at by
-        // `CLAUDE_CONFIG_DIR`, it belongs to the daemon's user today, and a target user
-        // without write access there fails at a layer that reads as a dead token. Neither is
-        // checked here: both are facts about a box this process cannot inspect across the
-        // switch, and the honest form of that is saying so on every such launch.
-        `identity ${as.user}: 'HOME' becomes that user's, so a '--resume' of this role's earlier sessions is NOT expected to find them, and the account directory ('CLAUDE_CONFIG_DIR') must be one that user may write — neither is checked by this build (docs/box-setup.md §0.1a)`,
+        // `CLAUDE_CONFIG_DIR`, it belonged to the daemon's user on the first live launch of
+        // such a role, and a target user without access there fails at a layer that reads as
+        // a dead token. THE SECOND HALF IS NO LONGER UNCHECKED: `accountReachRefusal` judges
+        // the directory's bits against that user's uid and groups before the spawn (thread
+        // 047, msg-089). The lost resume stays a warning, because it is not a defect — it is
+        // what changing `HOME` means, and there is nothing to repair.
+        `identity ${as.user}: 'HOME' becomes that user's, so a '--resume' of this role's earlier sessions is NOT expected to find them; the account directory ('CLAUDE_CONFIG_DIR') must be one that user may read and write, and THAT half is checked before the spawn (docs/box-setup.md §0.1a)`,
         `identity ${as.user}: takedown of this session is UNVERIFIED — a signal from this user to another user's process group is expected to fail with EPERM (inference, not a measurement); if it does, the entitlement needs a second target and that is john's decision`,
       ];
 
@@ -1180,7 +1267,7 @@ export type LaunchArgvInput = {
    */
   readonly denyRules?: readonly string[];
   /**
-   * THE ROLE'S OWN MEMORY DIRECTORY (LLE thread `116-role-memory-cost`, form D) — the
+   * THE ROLE'S OWN MEMORY DIRECTORY (a consumer's thread, form D) — the
    * path derived from the ROLE (`memory.ts`), handed to the vendor through
    * `autoMemoryDirectory` in the same settings source the deny rules ride in. Optional
    * for the same reason `denyRules` is: a caller that knows nothing about memory passes

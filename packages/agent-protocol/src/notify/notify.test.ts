@@ -353,7 +353,7 @@ describe("a thread frozen behind a person — the third class of event (thread 0
     // THE DEFECT Д-2, MEASURED IN THE FIELD 2026-08-21/22 (thread 030): a park is lifted by
     // anybody's later move, so a role raised on the thread finds its question unanswered and
     // writes it out again — and the stamp in the key made every such repeat a fresh call.
-    // Two calls about aco-028 and two about LLE-102 in one day, one question each.
+    // Two calls about aco-028 and two about acme-102 in one day, one question each.
     const first = withPark([PARKED]);
     const later = withPark([{ ...PARKED, since: "2026-07-31T15:00:00Z", question: "И ещё?" }], {
       waiting: [],
@@ -1666,16 +1666,16 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
   });
 
   it("(в2) a park that OUTLIVED the turn it was declared on is the standstill, not a park", () => {
-    // The measured window, from `daemon.log.1:15100` of the LLE box: `queue 3/4:
-    // dev-speech×010-speech-service — priority normal, waiting since 2026-08-28T12:14:09Z ·
+    // The measured window, from `daemon.log.1:15100` of a consumer's box: `queue 3/4:
+    // dev-acme×901-acme-service — priority normal, waiting since 2026-08-28T12:14:09Z ·
     // ⏸ PARKED behind a decision of john (R27)`. The park was declared by `12-11-29Z-curator.md`
-    // on CURATOR's turn; the turn moved to dev-speech two letters later, and the pair stood
+    // on CURATOR's turn; the turn moved to dev-acme two letters later, and the pair stood
     // 4 h 16 m while the daemon printed a true sentence about the thread and a false one about
     // the pair. The discrimination is the HOLDER, not the presence of a park.
     const result = untaken({
       parked: [
         {
-          thread: "010-speech-service",
+          thread: "901-acme-service",
           person: "john",
           since: "2026-08-28T12:11:29Z",
           question: "Какой вариант?",
@@ -1685,8 +1685,8 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
       ],
       unaccepted: [
         {
-          role: "dev-speech",
-          thread: "010-speech-service",
+          role: "dev-acme",
+          thread: "901-acme-service",
           since: "2026-08-28T12:14:09Z",
           age: "4h 16m",
         },
@@ -1697,7 +1697,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     expect(result.unaccepted[0]?.staleParkOn).toBe("john");
     const lines = result.lines.filter((line) => line.kind === "unaccepted-stale-park");
     expect(lines).toHaveLength(1);
-    expect(lines[0]?.text).toContain("dev-speech×010-speech-service");
+    expect(lines[0]?.text).toContain("dev-acme×901-acme-service");
     expect(lines[0]?.text).toContain("john");
     // And it does NOT send the reader to the daemon: the box is innocent here.
     expect(lines[0]?.text).not.toContain("are launches enabled");
@@ -1707,7 +1707,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
     const result = untaken({
       parked: [
         {
-          thread: "010-speech-service",
+          thread: "901-acme-service",
           person: "john",
           since: "2026-08-28T12:11:29Z",
           question: "?",
@@ -1716,8 +1716,8 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
       ],
       unaccepted: [
         {
-          role: "dev-speech",
-          thread: "010-speech-service",
+          role: "dev-acme",
+          thread: "901-acme-service",
           since: "2026-08-28T12:14:09Z",
           age: "4h 16m",
         },
@@ -1834,7 +1834,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
   it("(д2) a stall the class does NOT name is untouched — Д-2 and Д-4 keep their lines", () => {
     const result = untaken({
       stalled: [
-        { thread: "007-other", role: "dev-speech", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
+        { thread: "007-other", role: "dev-acme", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
       ],
       unaccepted: [
         { role: "curator", thread: "042-unaccepted", since: "2026-08-29T01:00:00Z", age: "3h 20m" },
@@ -1958,14 +1958,14 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
     // NO TAB IN THE FACT — the state file is columns, and this fixture is the contract of
     // `AccountAlarm.about` being kept rather than described: a caller that joined two facts
     // with `\t` would have its key cut in half by the next parse of the file.
-    about: "lle-main until 2026-08-30T14:00:00Z",
-    text: "account-failover: launches of dev-core are held until 14:00Z — every account of its chain is quota-paused (the first to reopen is lle-main, five_hour window)",
+    about: "acme-main until 2026-08-30T14:00:00Z",
+    text: "account-failover: launches of dev-core are held until 14:00Z — every account of its chain is quota-paused (the first to reopen is acme-main, five_hour window)",
   };
   const SWITCH = {
     kind: "failover" as const,
     role: "curator",
     about: "2026-08-30T11:02:00Z",
-    text: "account-failover: curator is raised on lle-second — lle-main is quota-paused until 14:00Z (five_hour window, seen at 2026-08-30T09:00:00Z)",
+    text: "account-failover: curator is raised on acme-second — acme-main is quota-paused until 14:00Z (five_hour window, seen at 2026-08-30T09:00:00Z)",
   };
   const CHAIN = {
     kind: "chain" as const,
@@ -2002,7 +2002,7 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
 
   it("a NEW window of the same role rings again — the shelf is part of the identity", () => {
     const seen: NotifyState = { ...EMPTY, accounts: [accountAlarmKey(HELD)] };
-    const next = { ...HELD, about: "lle-main until 2026-08-30T19:00:00Z" };
+    const next = { ...HELD, about: "acme-main until 2026-08-30T19:00:00Z" };
     expect(accountLines(planAccounts([next], seen))).toHaveLength(1);
   });
 
@@ -2095,7 +2095,7 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
   it("a held state's key comes back from the file whole, spaces and all", () => {
     const rendered = renderNotifyState({ ...EMPTY, accounts: [accountAlarmKey(HELD)] });
     expect(parseNotifyState(rendered).accounts).toEqual([accountAlarmKey(HELD)]);
-    expect(accountAlarmKey(HELD)).toContain("lle-main until 2026-08-30T14:00:00Z");
+    expect(accountAlarmKey(HELD)).toContain("acme-main until 2026-08-30T14:00:00Z");
   });
 
   // (д) THE DAEMON'S OWN LOG — the stitch `planNotifications` → the courier's summary, which

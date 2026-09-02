@@ -80,8 +80,8 @@ describe("loadThreads — a failure of one thread does not blind the circuit", (
     // The live shape of 077 on 2026-08-14 and of 066 the day before: a conversation opened
     // by a writer going around the door — message files, no head, and no legacy `_thread.md`
     // anywhere near, so nothing was ever migrated here.
-    mkdirSync(join(at, "077-broken", "messages"), { recursive: true });
-    writeFileSync(join(at, "077-broken", "messages", "2026-08-14T14-06-40Z-curator.md"), MESSAGE);
+    mkdirSync(join(at, "909-broken", "messages"), { recursive: true });
+    writeFileSync(join(at, "909-broken", "messages", "2026-08-14T14-06-40Z-curator.md"), MESSAGE);
 
     const { failures } = loadThreads(at, ROLES);
 
@@ -254,9 +254,9 @@ describe("loadThreads — a failure of one thread does not blind the circuit", (
 
 describe("renderThreadFailures", () => {
   it("one line per failure: thread id and what exactly is wrong", () => {
-    const lines = renderThreadFailures([{ id: "009-mobile-front", problem: "half-migrated" }]);
+    const lines = renderThreadFailures([{ id: "910-acme-front", problem: "half-migrated" }]);
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toContain("009-mobile-front");
+    expect(lines[0]).toContain("910-acme-front");
     expect(lines[0]).toContain("could not be read");
     expect(lines[0]).toContain("half-migrated");
   });
@@ -271,7 +271,7 @@ describe("renderUnreadThreads — the same lines under a count (065.4)", () => {
     const lines = renderUnreadThreads(
       [
         { id: "066-test-gaps", problem: "half-migrated" },
-        { id: "064-mobile-e2e", problem: "a UTC stamp is required" },
+        { id: "911-acme-e2e", problem: "a UTC stamp is required" },
       ],
       (count) => `${count} thread(s) were NOT READ:`,
     );
@@ -281,7 +281,7 @@ describe("renderUnreadThreads — the same lines under a count (065.4)", () => {
     expect(lines).toHaveLength(3);
     expect(lines[1]).toContain("066-test-gaps");
     expect(lines[1]).toContain("half-migrated");
-    expect(lines[2]).toContain("064-mobile-e2e");
+    expect(lines[2]).toContain("911-acme-e2e");
     expect(lines[2]).toContain("a UTC stamp is required");
   });
 

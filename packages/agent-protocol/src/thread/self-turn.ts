@@ -3,8 +3,8 @@
  *
  * Thread 020 built the whole recognition of a frozen turn on ONE field: a thread carrying
  * `parked-on` raises nobody and spends no attempt of the pair. The net is right, and it was
- * simply NOT FILLED IN where it was needed. The live case (mail of LLE, thread
- * `010-speech-service`, six messages of 2026-08-21, `origin/comms` e2d7530):
+ * simply NOT FILLED IN where it was needed. The live case (mail of a consumer, one thread,
+ * six messages of 2026-08-21):
  *
  *     from: curator / worker: unknown / date: 2026-08-21
  *     expects: ack / waiting-on: curator
@@ -24,16 +24,16 @@
  * WHY `ack` IS REFUSED AND `answer` IS ONLY WARNED ABOUT — a measurement, not a taste (point 1 of
  * curator's statement of work, both mails read on 2026-08-21):
  *
- * | class (self-named turn, no `parked-on`) | ACO mail | LLE mail | of it on 2026-08-21 |
+ * | class (self-named turn, no `parked-on`) | ACO mail | consumer mail | of it on 2026-08-21 |
  * | --- | --- | --- | --- |
  * | `expects: ack`    | 0  | 17  | 6 |
  * | `expects: answer` | 11 | 162 | 9 |
  *
  * The `ack` class is rare and, read by eye, has no lawful member: six of the seventeen are the
- * live freeze of 010 itself; `074-parked-on-norm` and `082-hetzner-migration` (08:30:53Z) ask
- * john for a decision and for his hands; the remaining eight report a pull request and wait for
- * a round or a button — which today is `--parked-on pr:N` / `run:N`. Asking for an acknowledgement
- * while holding one's own turn is the shape of the defect, so the door refuses it.
+ * live freeze of that thread itself; two more of them (08:30:53Z) ask john for a decision and for his
+ * hands; the remaining eight report a pull request and wait for a round or a button — which today
+ * is `--parked-on pr:N` / `run:N`. Asking for an acknowledgement while holding one's own turn is
+ * the shape of the defect, so the door refuses it.
  *
  * The `answer` class is 173 messages across both mails and is the everyday middle of a working
  * thread — a role writing down where it got to while keeping its turn. Refusing it would block a
@@ -80,7 +80,7 @@ export const judgeSelfTurn = (input: {
   if (input.expects === "ack") {
     return {
       ok: false,
-      reason: `'--expects ack' with '--waiting-on ${input.from}' and no --parked-on is a state with no lawful outcome: the turn is yours, so there is nobody to acknowledge it, and the only thing that can wake you is the circuit — which will, on every tick, until the ceiling of the pair is spent (thread 022; live case: six such headers in '010-speech-service' on 2026-08-21, and the pair went 'exhausted'). ${exits}. If this message asks for nothing, '--expects none' is the working note that passes in silence`,
+      reason: `'--expects ack' with '--waiting-on ${input.from}' and no --parked-on is a state with no lawful outcome: the turn is yours, so there is nobody to acknowledge it, and the only thing that can wake you is the circuit — which will, on every tick, until the ceiling of the pair is spent (thread 022; live case: six such headers in one thread on 2026-08-21, and the pair went 'exhausted'). ${exits}. If this message asks for nothing, '--expects none' is the working note that passes in silence`,
     };
   }
   return {

@@ -121,8 +121,8 @@ export type IndexReading = {
    * the threads and printed as a whole register is a display that lies about the composition
    * of the mail — the caller that has some `failures` has exactly two honest options, refuse
    * to publish or publish WITH the gap named, and the second one is what stops one broken
-   * directory from freezing the derived files of the entire branch (measured: `092-consent-
-   * and-deletion` 29.08, ten red runs; `055-mirror-rules-to-lle` 30.08, two more).
+   * directory from freezing the derived files of the entire branch (measured: a consumer's
+   * thread 29.08, ten red runs; `055` 30.08, two more).
    *
    * The row carries `—` in every column that is READ FROM the thread: nothing was read, and a
    * plausible-looking cell there would be an invention. What it does carry is the id (the one
@@ -141,7 +141,7 @@ const UNREADABLE_STATUS = "не прочитан";
  * frozen on a human was byte-identical to one where a role is simply working: both `open |
  * curator`. Measured cost, on the human: the chatting curator answered john "no parks" or
  * named a partial list four times over 29–30.08 because the register was the source read, and
- * `042-notifier-down` (LLE) stood frozen on a small question for NINE DAYS while the failures
+ * `042-notifier-down` (a consumer) stood frozen on a small question for NINE DAYS while the failures
  * of a workflow addressed at it kept landing in a room where nobody works.
  *
  * `parked-on` and the ❓ answer "is there a queue to a person, and is a word being asked";
@@ -235,6 +235,39 @@ export const parkedThreads = (
 };
 
 /**
+ * THE PARKS THAT ASK NOBODY — thread ids whose standing park is a MODE, not a question
+ * (thread 063, §2.3 of the second statement of work; the legal shape since 2026-08-04,
+ * decision of john, `PROTOCOL.md` R27).
+ *
+ * The two are one word in the frame today and they are different things: a park with
+ * `expects: answer`/`ack` is a QUEUE TO A HUMAN — somebody owes this thread a word, and the
+ * courier rings for it; a park with `expects: none` is a MODE the thread was deliberately
+ * put into — nobody is being called, and nothing is late. A frame that says "waiting for a
+ * decision of john" about the second sends the operator to chase a word nobody was asked
+ * for, which is the same defect this thread was opened on: the name does not describe what
+ * is happening.
+ *
+ * A SEPARATE SET RATHER THAN A RICHER VALUE OF {@link parkedThreads}, on purpose: the value
+ * of that map is the RAW `parked-on` and four readers plus every fixture that builds one
+ * (`new Map([[id, "john"]])`) depend on it being exactly that. The distinction is carried
+ * beside it for the readers that have room to print it, and a reader that does not pass this
+ * set reads exactly as it did before it existed.
+ *
+ * Only a park on a PERSON can be a mode: an event park (`pr:`/`run:`) calls nobody by
+ * construction, so "asks nobody" would be true of every one of them and would say nothing.
+ * The signal is read where the courier and the index already read it — `Parking.asks`, the
+ * `expects` of the message that DECLARED the park — and not re-decided here.
+ */
+export const modeParks = (threads: readonly Thread[]): ReadonlySet<string> => {
+  const mute = new Set<string>();
+  for (const thread of threads) {
+    const parking = parkingOf(thread);
+    if (parking?.kind === "person" && !parking.asks) mute.add(thread.id);
+  }
+  return mute;
+};
+
+/**
  * SESSIONS THAT WROTE INTO THE MAIL — the fact the journal does not have (thread 023).
  *
  * A run that carries a question to a human keeps the turn on itself: scalar
@@ -311,7 +344,7 @@ export const marksOfSessions = (sessions: ReadonlySet<string>): DeliveryMarks =>
  * MEASURED RATHER THAN ASSUMED (2026-08-21): 13 messages of the current header form carry
  * `worker: claude-code` and no `session:`, all of them inside the era in which the field
  * already existed — two in this repository's mail (`005-comms-derived-untracked`
- * 2026-08-18T11:58:31Z, `017-circuit-watchdog` 2026-08-19T12:28:45Z) and eleven in the LLE
+ * 2026-08-18T11:58:31Z, `017-circuit-watchdog` 2026-08-19T12:28:45Z) and eleven in the consumer
  * mail, the latest `042-notifier-down` 2026-08-21T09:19:58Z. So the window is reachable,
  * and a fold judging by the id alone calls every run that lands in it a failed attempt —
  * three of those close the pair.

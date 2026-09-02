@@ -32,7 +32,7 @@ describe("roleMemoryDirectory", () => {
     expect(roleMemoryDirectory({ memory, role: "dev-core" })).toBe(
       "/srv/circuit/.orchestrator/memory/dev-core",
     );
-    expect(roleMemoryDirectory({ memory, role: "dev-speech" })).not.toBe(
+    expect(roleMemoryDirectory({ memory, role: "dev-acme" })).not.toBe(
       roleMemoryDirectory({ memory, role: "dev-core" }),
     );
   });

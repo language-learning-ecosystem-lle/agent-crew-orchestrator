@@ -33,7 +33,7 @@ describe("judgeParkSeen", () => {
   });
 
   it("refuses the incident letter and names the park, the turn, the question and all three exits", () => {
-    const verdict = judgeParkSeen({ thread: "110-speech", parking: personPark });
+    const verdict = judgeParkSeen({ thread: "903-acme", parking: personPark });
     expect(verdict.ok).toBe(false);
     if (verdict.ok) return;
     // The park in full: what it waits for, since when, whose turn it was declared on, and the
@@ -49,19 +49,19 @@ describe("judgeParkSeen", () => {
   });
 
   it("lets through the letter that CARRIES the word the park waits for", () => {
-    expect(judgeParkSeen({ thread: "110-speech", parking: personPark, delivers: "john" })).toEqual({
+    expect(judgeParkSeen({ thread: "903-acme", parking: personPark, delivers: "john" })).toEqual({
       ok: true,
     });
   });
 
   it("lets through the letter that carries the park FORWARD", () => {
-    expect(judgeParkSeen({ thread: "110-speech", parking: personPark, parkedOn: "john" })).toEqual({
+    expect(judgeParkSeen({ thread: "903-acme", parking: personPark, parkedOn: "john" })).toEqual({
       ok: true,
     });
   });
 
   it("lets through the letter that NAMES the lift", () => {
-    expect(judgeParkSeen({ thread: "110-speech", parking: personPark, lifted: "john" })).toEqual({
+    expect(judgeParkSeen({ thread: "903-acme", parking: personPark, lifted: "john" })).toEqual({
       ok: true,
     });
   });
@@ -77,7 +77,7 @@ describe("judgeParkSeen", () => {
 
   it("a park on a person is not addressed by a park on another value being declared", () => {
     const verdict = judgeParkSeen({
-      thread: "110-speech",
+      thread: "903-acme",
       parking: personPark,
       parkedOn: "run:153",
     });
@@ -149,6 +149,66 @@ describe("judgeParkSeen", () => {
     if (!verdict.ok) return;
     expect(verdict.note).toContain("could NOT be checked");
     expect(verdict.note).not.toContain("lifted before this write");
+  });
+
+  /**
+   * THE MACHINE EVENT IS NOT ASKED (thread 072, john's decision of 2026-09-02). The case that
+   * paid for it: `Merge Notify` run `33621585134` died here on 2026-09-02T10:51Z announcing a
+   * merge into thread `060`, which stood parked on john — and behind it two days in which not
+   * one letter from GitHub reached this contour's mail.
+   */
+  describe("and the letter that is a machine event", () => {
+    it("passes into a standing park, and SAYS the park is untouched", () => {
+      const verdict = judgeParkSeen({
+        thread: "060-derive",
+        parking: personPark,
+        machineWriter: true,
+      });
+      expect(verdict.ok).toBe(true);
+      if (!verdict.ok) return;
+      // The park in full, for the next reader of a thread with a live-looking letter in it.
+      expect(verdict.note).toContain("PARKED behind a decision of john's");
+      expect(verdict.note).toContain("since 2026-08-30T14:24:50Z");
+      expect(verdict.note).toContain("declared on curator's turn");
+      expect(verdict.note).toContain("NOT lifted and NOT touched");
+      // And it does not teach the workflow the three exits it cannot choose between.
+      expect(verdict.note).not.toContain("--park-lifted");
+      expect(verdict.note).not.toContain("--parked-on");
+    });
+
+    it("passes a run park and an event park the same way", () => {
+      for (const parking of [runPark, eventPark]) {
+        const verdict = judgeParkSeen({ thread: "060-derive", parking, machineWriter: true });
+        expect(verdict.ok).toBe(true);
+      }
+    });
+
+    it("the field it DOES carry still addresses the park plainly, with no note about it", () => {
+      // `--merged-pr N` is what lifts an event park, and that is unchanged by any of this: the
+      // letter is not "let through despite", it is the answer arriving.
+      expect(
+        judgeParkSeen({
+          thread: "023-x",
+          parking: eventPark,
+          mergedPr: 127,
+          machineWriter: true,
+        }),
+      ).toEqual({ ok: true });
+    });
+
+    it("REGRESSION: the norm for roles is not weakened — the same letter from a role is refused", () => {
+      const verdict = judgeParkSeen({ thread: "060-derive", parking: personPark });
+      expect(verdict.ok).toBe(false);
+      if (verdict.ok) return;
+      expect(verdict.reason).toContain("PARKED behind a decision of john's");
+      expect(verdict.reason).toContain("--parked-on john");
+    });
+
+    it("says nothing at all when nothing is parked — the everyday event needs no note", () => {
+      expect(
+        judgeParkSeen({ thread: "060-derive", parking: undefined, machineWriter: true }),
+      ).toEqual({ ok: true });
+    });
   });
 
   it("a park declared with no waiting-on names no turn and still refuses by name", () => {

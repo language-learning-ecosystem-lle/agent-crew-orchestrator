@@ -378,7 +378,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # and the queue never saw it, twice on 2026-08-13). The input does
                               # not BREAK on it: the readable threads are still printed, exit 0
   agent-protocol wake         <role> --ref <ref> [--root <mail>] [--as <invocation>] [--repo <p>]
-                              # THE ENTRY OF A ROLE, SAID BY THE PACKAGE (thread 087 of the LLE
+                              # THE ENTRY OF A ROLE, SAID BY THE PACKAGE (a thread of a consumer's
                               # mail): the text that explains the mail, the watch and the writing
                               # rules must change in the SAME move as the commands it names. Kept
                               # as a copy in the served project it drifted three ways at once — it
@@ -509,7 +509,7 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # (norm 020 forbids it the body). A PAIR: a header with one of them is refused,
                               # because a verdict with no address is a remark rather than an outcome
                               # WHAT IT DOES: opens a NEW TURN at the SAME holder, so a park on a person
-                              # declared on the previous turn no longer reaches this one (LLE 17:40->17:59Z,
+                              # declared on the previous turn no longer reaches this one (a consumer, 17:40->17:59Z,
                               # where the verdict landed in a parked thread and was eaten). WHAT IT DOES NOT:
                               # it lifts no park on a person ('--delivers' does), touches no 'pr:'/'run:' park,
                               # raises nobody, and replaces no line of the body
@@ -589,7 +589,7 @@ layers, and the layer that answered is PRINTED ('doctor', 'preflight'):
   declares the 'repo' it serves; a role's worktree answers with its home checkout) →
   'local.json', the unnamed config of a box that hosts one instance.
 A box with no 'instances/' directory behaves exactly as it did before. Two layers that
-DISAGREE are a refusal by name — a name saying 'crew' inside the 'lle' checkout is the
+DISAGREE are a refusal by name — a name saying 'crew' inside the 'acme' checkout is the
 case where a quiet pick raises one project's roles with another project's binaries.
 '--instance <name>' stands on the usage line of every command that reads the machine
 config, and this text is the argument checker itself: a command whose line does not
@@ -737,9 +737,12 @@ The strict forms below keep every flag they had.
                               # --wind-down: how long before the deadline the session is asked to land its work (R20); default 20% of the window, 2-15 min
                               # --roles/--exclude-roles: the same scope door as the daemon's (R13) — a --role
                               # owned by another instance, or left out by these flags, is REFUSED here, not raised
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>] [--run-park-ttl <sec>]
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>] [--run-park-ttl <sec>]
                               # --roles/--exclude-roles: WHICH roles THIS run raises (R13), mutually exclusive;
                               # on top of the instance filter — a role owned by another box is never raised here
+                              # --state/--env-file belong to the COURIER: the daemon dials 'notify' itself every
+                              # tick, with its OWN argv, so both flags of that command are read here as well —
+                              # and the door, which is this line, refused them for as long as the line was silent
                               # WHAT THE TICK COULD NOT READ IS NAMED AND COUNTED (065.4), every
                               # tick and beside the skips: the per-thread line is older than the
                               # count, and what a night of ticks never said is that the queue it

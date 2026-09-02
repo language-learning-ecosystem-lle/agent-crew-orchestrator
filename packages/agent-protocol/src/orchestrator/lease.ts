@@ -130,6 +130,21 @@ export type LeaseView = {
    * model, the rest of the quadruple derived from it by name.
    */
   readonly sessionLog?: string;
+  /**
+   * WHEN THIS PAIR WAS LAST TOUCHED — the stamp of its last journal event, the mate of
+   * `lastEvent` (which says WHAT that event was and has never said WHEN). Added for the
+   * attribution of the mail lock (thread 063, review of #201): a frame holds one row per
+   * pair EVER seen in the journal, so a role that worked many threads has many rows, and
+   * "which of them is the one whose session is still writing" is answerable only by
+   * recency. Without a stamp on the row the mark went onto every row of that role at once.
+   *
+   * OPTIONAL, and its absence refuses rather than guesses: a view built by hand (a test,
+   * a reader that folds nothing) carries no journal event to stamp it with, and an
+   * attribution that fell back to "the first row of that role" would be the same invented
+   * fact in a quieter form. `foldLeases` always sets it — every pair enters the fold
+   * through an event.
+   */
+  readonly lastAt?: string;
 };
 
 // The (role, thread) key goes through JSON so that no separator has to be
@@ -394,6 +409,8 @@ type Acc = {
    */
   ceilingSince: string | null;
   lastEvent: OrchestratorEvent["kind"];
+  /** The stamp of that last event — see {@link LeaseView.lastAt}. */
+  lastAt: string;
 };
 
 /** ISO stamp + milliseconds → ISO stamp, in the journal's own second-precision shape. */
@@ -452,11 +469,13 @@ export const foldLeases = (
         releasedAt: null,
         ceilingSince: null,
         lastEvent: event.kind,
+        lastAt: event.ts,
       };
       acc.set(k, cur);
       order.push(k);
     }
     cur.lastEvent = event.kind;
+    cur.lastAt = event.ts;
     // The counter goes back to zero on a DELIVERY, whichever of its two shapes this
     // event is (`isDelivery`) — one predicate rather than a reset written into each
     // branch, so the per-pair ceiling and the global one cannot come to mean different
@@ -612,6 +631,7 @@ export const foldLeases = (
       waitDeadline: cur.waitDeadline,
       reason: cur.reason,
       lastEvent: cur.lastEvent,
+      lastAt: cur.lastAt,
       overdue,
       exhausted,
       launchable,

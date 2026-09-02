@@ -45,15 +45,15 @@ describe("judgeContour", () => {
   it("refuses a tree of another circuit and names both contours and what to do", () => {
     const verdict = judgeContour({
       ...own,
-      target: "/tmp/lle",
-      targetContour: "lle-hetzner",
-      targetRemote: "https://github.com/org/language-learning-ecosystem.git",
+      target: "/tmp/acme",
+      targetContour: "acme-box",
+      targetRemote: "https://github.com/org/acme-app.git",
     });
     if (verdict.verdict !== "foreign")
       throw new Error(`expected a refusal, got ${verdict.verdict}`);
-    expect(verdict.refusal).toContain("/tmp/lle");
-    expect(verdict.refusal).toContain("github.com/org/language-learning-ecosystem");
-    expect(verdict.refusal).toContain("lle-hetzner");
+    expect(verdict.refusal).toContain("/tmp/acme");
+    expect(verdict.refusal).toContain("github.com/org/acme-app");
+    expect(verdict.refusal).toContain("acme-box");
     expect(verdict.refusal).toContain("hetzner");
     expect(verdict.refusal).toContain("a role OF that circuit");
   });
@@ -94,9 +94,9 @@ describe("judgeContour", () => {
 describe("judgeContour — the tree the command came from", () => {
   it("refuses a caller standing in a tree no declared contour claims", () => {
     const verdict = judgeContour({
-      target: "/tmp/lle-clone",
-      targetRemote: "https://github.com/o/language-learning-ecosystem.git",
-      boxContours: ["hetzner", "lle-hetzner"],
+      target: "/tmp/acme-clone",
+      targetRemote: "https://github.com/o/acme-app.git",
+      boxContours: ["hetzner", "acme-box"],
     });
     expect(verdict.verdict).toBe("foreign");
     if (verdict.verdict !== "foreign") return;
@@ -127,7 +127,7 @@ describe("judgeGround", () => {
     const verdict = judgeGround({
       at: "/home/lle/projects/agent-crew-orchestrator/.worktrees/dev-core",
       ownContour: "hetzner",
-      boxContours: ["hetzner", "lle-hetzner"],
+      boxContours: ["hetzner", "acme-box"],
     });
     if (verdict.verdict !== "own") throw new Error(`expected 'own', got ${verdict.verdict}`);
     expect(verdict.because).toContain("hetzner");
@@ -135,13 +135,13 @@ describe("judgeGround", () => {
 
   it("refuses a caller no declared contour claims — with no target in hand at all", () => {
     const verdict = judgeGround({
-      at: "/tmp/lle-clone",
-      boxContours: ["hetzner", "lle-hetzner"],
+      at: "/tmp/acme-clone",
+      boxContours: ["hetzner", "acme-box"],
     });
     if (verdict.verdict !== "foreign")
       throw new Error(`expected a refusal, got ${verdict.verdict}`);
     expect(verdict.refusal).toContain("no contour of this box");
-    expect(verdict.refusal).toContain("'lle-hetzner'");
+    expect(verdict.refusal).toContain("'acme-box'");
     expect(verdict.refusal).toContain("workspace of your own circuit");
   });
 

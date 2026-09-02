@@ -76,8 +76,8 @@ export type StagedMessage = {
    * PATHS THIS ATTEMPT DELETES, absolute like the writes. Empty for every message the
    * mail sends — the feed is append-only — and non-empty for the one writer that carries
    * a DIRECTORY rather than a message: a role's memory, where a note deleted in the
-   * branch has to stay deleted or the death of a note is a decoration (LLE thread
-   * `116-role-memory-cost`, constraint К-3).
+   * branch has to stay deleted or the death of a note is a decoration (a consumer thread
+   * on the cost of a role's memory, constraint К-3).
    *
    * They are planned against the state fetched inside the attempt, like the writes, so a
    * path listed here is one the feed still has. One that has already gone is dropped

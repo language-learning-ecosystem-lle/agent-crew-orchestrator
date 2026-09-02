@@ -156,18 +156,18 @@ describe("the state of the circuit is addressed from the machine (R26)", () => {
         ...CONFIG.roles,
         {
           ...DEV_CORE,
-          id: "dev-speech",
+          id: "dev-acme",
           wake: { mode: "watch", session: "s2" },
           summary: "the other stream",
         },
       ],
-      instances: [{ id: "main", roles: ["dev-core", "dev-speech"] }],
+      instances: [{ id: "main", roles: ["dev-core", "dev-acme"] }],
     };
     writeFileSync(join(workdir, "agent-protocol.json"), `${JSON.stringify(branched, null, 2)}\n`);
     git(workdir, "commit", "-qam", "a role on the branch");
 
-    expect(cli(workdir, home, "roles", "list", "--ref", "HEAD")).toContain("dev-speech");
-    expect(cli(repo, home, "roles", "list", "--ref", "HEAD")).not.toContain("dev-speech");
+    expect(cli(workdir, home, "roles", "list", "--ref", "HEAD")).toContain("dev-acme");
+    expect(cli(repo, home, "roles", "list", "--ref", "HEAD")).not.toContain("dev-acme");
     // ...while the state both of them address is still the one of this machine.
     expect(cli(workdir, home, "orchestrator", "status", "--ref", "HEAD")).toContain(
       `state:    ${join(repo, ".orchestrator")}`,

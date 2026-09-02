@@ -1061,7 +1061,7 @@ describe("guard 2 — one head answers once per check name", () => {
           attempt("review", "FAILURE", "2026-07-30T00:05:30Z"),
           attempt("checks", "SUCCESS", "2026-07-30T00:04:05Z"),
           attempt("review", "SUCCESS", "2026-07-30T00:20:41Z"),
-          attempt("pronunciation", "SUCCESS", "2026-07-29T23:58:09Z"),
+          attempt("acme-e2e", "SUCCESS", "2026-07-29T23:58:09Z"),
         ],
       }),
       2,

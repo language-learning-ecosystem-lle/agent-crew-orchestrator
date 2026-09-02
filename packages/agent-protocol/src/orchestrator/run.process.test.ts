@@ -35,6 +35,7 @@ import { waitFor } from "../testing/wait-for.js";
 import { parseJournal } from "./journal.js";
 import { foldLeases } from "./lease.js";
 import { openQuotaShelves } from "./quota.js";
+import { runTmpAliasPath } from "./run-tmp.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -1550,17 +1551,181 @@ describe("a session that asks and waits alive (R19)", () => {
     const sessions = join(repo, ".orchestrator", "sessions");
     const logName = readdirSync(sessions).find((name) => name.endsWith(".log")) as string;
     const own = join(sessions, logName.replace(/\.log$/, ".tmp"));
-    // The variable the whole world already reads names THIS run's directory…
-    expect(readFileSync(envDump, "utf8")).toBe(own);
-    expect(readFileSync(envDump, "utf8")).not.toBe(tmpdir());
+    // The variable the whole world already reads names THIS run's directory — either
+    // directly, or, since thread `070`, through the short symlink a run gets when its own
+    // name is too long for a unix socket to be opened under it. Both are accepted here on
+    // purpose: which of the two a box gets depends on how deep the checkout sits, and WHICH
+    // string is handed over is the subject of `run-tmp.process.test.ts`. What `056` claims
+    // is where the writes LAND, and that is asserted below, from the sweep.
+    const handed = readFileSync(envDump, "utf8");
+    expect([own, runTmpAliasPath(own)]).toContain(handed);
+    expect(handed).not.toBe(tmpdir());
     // …so a `mktemp -d` that names no destination lands inside it by construction.
-    expect(readFileSync(madeDump, "utf8").startsWith(`${own}/`)).toBe(true);
+    expect(readFileSync(madeDump, "utf8").startsWith(`${handed}/`)).toBe(true);
     // AND THE RUN DOES NOT LEAVE IT LYING ABOUT: swept at the close of the session, with
     // what was in it named first — the measurable half. A run that left nothing says
     // nothing, so this line in a log always means something was left.
     expect(existsSync(own)).toBe(false);
     expect(sessionLog(repo)).toContain("temporary");
     expect(sessionLog(repo)).toContain(own);
+  }, 60_000);
+
+  /**
+   * THE OTHER HALF OF THE SAME CLASS, AND THE ONLY PLACE ITS SEAM EXISTS (thread
+   * `056-shared-tmp-mechanism`, step 1 of john's order of 2026-09-02): what `TMPDIR`
+   * cannot reach is the path the session TYPES, because a literal path obeys no variable.
+   * Both cases measured under the merged mechanism were exactly that — `> /tmp/.nothing`
+   * and `> "$HOME/.marker_$$"` — and all eight known cases of the class were found by a
+   * role catching itself, which is a confession and not a measurement.
+   *
+   * THE HOME IS THE TEST'S OWN, said out loud for the same reason the `PATH` case says it:
+   * the shared places of a run are the platform's temp and the box user's home, and a case
+   * that reached for the REAL ones to prove itself would be committing the defect it
+   * measures. `HOME` goes through `extra`, and the file the stub types lands inside a
+   * directory this test owns and throws away.
+   */
+  it("A PATH THE SESSION TYPED INTO A SHARED PLACE IS NAMED IN THE RUN'S OWN LOG — and nothing is removed", () => {
+    const { repo } = contour();
+    const home = join(repo, "home");
+    mkdirSync(home, { recursive: true });
+    // What was there BEFORE the run: the measurement is «appeared while this run was
+    // alive», so an entry older than the run must not be reported as its leaving.
+    const older = join(home, ".someone-elses-file");
+    writeFileSync(older, "not this run's\n");
+    // The form that no variable catches: a path typed by hand, in the middle of a command
+    // whose subject is something else entirely. This is the shape of case 7 and case 8.
+    const typed = join(home, ".marker056");
+    const exec = stub(repo, [`printf 'xxxxx' > "$HOME/.marker056"`, "sleep 1"].join("\n"));
+
+    execFileSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--poll",
+        "1",
+        "--exec",
+        exec,
+        "--wall-clock",
+        "30",
+        "--write",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        stdio: "pipe",
+        env: sandbox(configHome(repo), { HOME: home }),
+      },
+    );
+
+    const log = sessionLog(repo);
+    // The class is measurable now: the path, its size, and whose run's window it appeared
+    // in — read from the run's own journal instead of from an executor's honesty.
+    expect(log).toContain(`SHARED PLACE ${home} gained 1 entry`);
+    expect(log).toContain(`${typed} (5 bytes)`);
+    expect(log).toContain("dev-core/012-x");
+    // A window is not an owner, and the line says so itself.
+    expect(log).toContain("A shared place is shared");
+    // What was already there is nobody's finding…
+    expect(log).not.toContain(older);
+    // …and step 1 forbids nothing: both files are still where they were. Deleting somebody
+    // else's file on the strength of a window would be worse than the defect measured.
+    expect(existsSync(typed)).toBe(true);
+    expect(existsSync(older)).toBe(true);
+  }, 60_000);
+
+  /**
+   * THE SEAM OF THE `PATH` (thread `069-session-path`), and like the one above it is the
+   * only place the claim can be made: a unit proves `sessionPathValue` composes a string,
+   * and no string proves that a REAL session, typing a tool's bare name the way a role
+   * types it, finds the file. What is measured here is the tax the finding named — a
+   * command dead with `No such file or directory` while the same binary sits on the
+   * operator's own `PATH` — and its absence afterwards.
+   *
+   * THE BOX IS THE TEST'S OWN, `HOME` AND ALL: the tool is minted inside `HOME/.local/bin`
+   * of a home this test owns, so the case measures the mechanism and not whether the
+   * developer running the suite happens to have `uv` installed. `HOME` is passed through
+   * `extra` and said out loud here, which is the same discipline `process-sandbox.ts`
+   * states for every other ambient variable a case is ABOUT.
+   */
+  it("A TOOL IN THE USER'S OWN bin IS FOUND BY THE SESSION BY ITS BARE NAME — and the inherited PATH still answers first", () => {
+    const { repo } = contour();
+    const home = join(repo, "home");
+    const userBin = join(home, ".local", "bin");
+    mkdirSync(userBin, { recursive: true });
+    // A tool installed the ordinary way — the class `uv`, `pipx` and `pip --user` belong
+    // to. Nothing about it is declared anywhere in this circuit's config.
+    const tool = join(userBin, "tool069");
+    writeFileSync(tool, "#!/bin/sh\nprintf 'the user tool ran'\n");
+    chmodSync(tool, 0o755);
+
+    const pathDump = join(repo, "path-env.txt");
+    const toolDump = join(repo, "tool-out.txt");
+    const exec = stub(
+      repo,
+      [
+        `printf '%s' "$PATH" > ${pathDump}`,
+        // The bare name, exactly as a role would type it, with the failure captured
+        // rather than swallowed: a missing tool must show up as a value, not as a
+        // silent empty file that any assertion could be written around.
+        `tool069 > ${toolDump} 2>&1 || printf 'NOT FOUND' > ${toolDump}`,
+        "sleep 1",
+      ].join("\n"),
+    );
+
+    execFileSync(
+      TSX,
+      [
+        CLI,
+        "orchestrator",
+        "run",
+        "--ref",
+        "HEAD",
+        "--no-fetch",
+        "--repo",
+        repo,
+        "--role",
+        "dev-core",
+        "--thread",
+        "012-x",
+        "--poll",
+        "1",
+        "--exec",
+        exec,
+        "--wall-clock",
+        "30",
+        "--write",
+      ],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        stdio: "pipe",
+        env: sandbox(configHome(repo), { HOME: home }),
+      },
+    );
+
+    // The session did nothing special and still ran the tool.
+    expect(readFileSync(toolDump, "utf8")).toBe("the user tool ran");
+    // …because the directory was APPENDED to what the supervisor inherited: everything
+    // that resolved before this mechanism existed still resolves to the same file, the
+    // agent binary first among them (R14).
+    const seen = readFileSync(pathDump, "utf8").split(":");
+    expect(seen.at(-1)).toBe(userBin);
+    expect(seen.filter((dir) => dir === userBin)).toHaveLength(1);
+    expect(seen.slice(0, -1).join(":")).toBe(process.env.PATH);
+    // AND THE COMPOSITION IS SAID, not done silently — the run's own log is where an
+    // operator finds out what the session could see.
+    expect(sessionLog(repo)).toContain(`session PATH ${seen.join(":")}`);
   }, 60_000);
 
   /**

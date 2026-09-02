@@ -215,7 +215,7 @@ const ROUND_ON_HEAD: unknown = {
     },
     {
       id: 32535411167,
-      name: "pronunciation",
+      name: "acme-e2e",
       head_sha: HEAD,
       event: "pull_request",
       status: "completed",
@@ -266,7 +266,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     // The status CONTEXT half of the rollup arrives as a name, not as "?".
     // Lower case since thread 120: the outcome comes from `actions/runs`, not from a
     // status context of `statusCheckRollup`, and the door prints what GitHub said.
-    expect(result.out).toContain("pronunciation=success");
+    expect(result.out).toContain("acme-e2e=success");
     expect(result.out).toContain("guards 3 and 5 are yours to answer");
   });
 
@@ -421,7 +421,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
     const result = run(
       repo,
       stubGh(repo, {
-        failWith: "GraphQL: Could not resolve to a Repository with the name 'lle/lle'.",
+        failWith: "GraphQL: Could not resolve to a Repository with the name 'acme/widgets'.",
       }),
     );
 
@@ -482,7 +482,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
           { name: "review", conclusion: "failure", at: "2026-07-30T00:05:30Z" },
           { name: "checks", conclusion: "success", at: "2026-07-30T00:04:05Z" },
           { name: "review", conclusion: "success", at: "2026-07-30T00:20:41Z" },
-          { name: "pronunciation", conclusion: "success", at: "2026-07-29T23:58:09Z" },
+          { name: "acme-e2e", conclusion: "success", at: "2026-07-29T23:58:09Z" },
         ]),
       }),
     );
@@ -534,7 +534,7 @@ describe("merge-gate — the command, with a real gh on the other side of the se
           { name: "review", conclusion: "failure", at: "2026-07-31T02:52:13Z" },
           { name: "checks", conclusion: "success", at: "2026-07-31T02:53:02Z" },
           { name: "review", conclusion: "success", at: "2026-07-31T03:33:11Z" },
-          { name: "pronunciation", conclusion: "success", at: "2026-07-31T02:46:03Z" },
+          { name: "acme-e2e", conclusion: "success", at: "2026-07-31T02:46:03Z" },
         ]),
       }),
       REVIEWED,
@@ -968,13 +968,13 @@ describe("merge-gate takes the token of the instance the checkout belongs to", (
     if (secrets.write) writeFileSync(envFile, `GH_TOKEN=${SECRET}\n`, "utf8");
   };
 
-  /** The command run from a CLEAN environment: no `GH_TOKEN`, no login of `gh`. */
+  /**
+   * The command run from a CLEAN environment: no `GH_TOKEN`, no login of `gh`. The
+   * subtraction is the sandbox's own (thread `071`) — it used to be spelled out here, and
+   * spelling it out per file is what let two other files reach this door without it.
+   */
   const runClean = (repo: string, bin: string): { code: number; out: string } => {
-    const {
-      GH_TOKEN: _mine,
-      GITHUB_TOKEN: _theirs,
-      ...clean
-    } = sandbox(configHomeInside(repo), {
+    const clean = sandbox(configHomeInside(repo), {
       PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
     });
     try {
@@ -1074,7 +1074,7 @@ describe("merge-gate refuses a tree of another contour", () => {
     const home = repoWithConfig();
     git(home, "remote", "add", "origin", "https://github.com/o/agent-crew-orchestrator.git");
     const foreign = repoWithConfig();
-    git(foreign, "remote", "add", "origin", "https://github.com/o/language-learning-ecosystem.git");
+    git(foreign, "remote", "add", "origin", "https://github.com/o/acme-app.git");
     // The box declares this contour and the checkout it owns — without it there is no
     // boundary to cross and the door would (correctly) judge nothing.
     const configHome = configHomeInside(home);
@@ -1119,7 +1119,7 @@ describe("merge-gate refuses a tree of another contour", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("belongs to another contour");
-    expect(result.out).toContain("language-learning-ecosystem");
+    expect(result.out).toContain("acme-app");
     // The verdict of the payload never appears: the door stopped before the ask.
     expect(result.out).not.toContain("READY");
   });
@@ -1129,7 +1129,8 @@ describe("merge-gate refuses a tree of another contour", () => {
    * RARE way to call this command: `REVIEWER.md` itself writes `merge-gate --ref
    * origin/main --pr <n>` and nothing else, so the tree is the caller's own. While the
    * ground was judged only inside the `--repo` branch, a session standing in a checkout
-   * no contour of the box claims — the shape of #453/#454 — asked nothing, reached `gh`
+   * no contour of the box claims — the shape of the leak of 2026-08-30 — asked nothing,
+   * reached `gh`
    * and got a verdict about another circuit's pull request. The stub again answers a
    * perfectly mergeable PR, so a door that does not fire here exits 0.
    */

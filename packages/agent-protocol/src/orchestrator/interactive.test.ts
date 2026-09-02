@@ -41,11 +41,11 @@ describe("the wait declaration (R19)", () => {
   it("a declaration for ANOTHER thread is refused with the reason, not ignored", () => {
     // A run is bound to one thread; a marker naming another one is a session that went
     // and wrote somewhere else. Refusing quietly would look like the flag did nothing.
-    const verdict = waitAuthorised({ raw: renderWaitMarker(MARKER), thread: "009-mobile-front" });
+    const verdict = waitAuthorised({ raw: renderWaitMarker(MARKER), thread: "910-acme-front" });
     expect(verdict.ok).toBe(false);
     if (!verdict.ok) {
       expect(verdict.why).toContain("016-protocol-roadmap");
-      expect(verdict.why).toContain("009-mobile-front");
+      expect(verdict.why).toContain("910-acme-front");
     }
   });
 

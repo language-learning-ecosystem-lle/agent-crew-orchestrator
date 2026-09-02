@@ -22,7 +22,7 @@ import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
 
-const FOREIGN = "apps/pronunciation-service";
+const FOREIGN = "apps/acme-service";
 
 const CONFIG = {
   protocolVersion: CURRENT_PROTOCOL_VERSION,

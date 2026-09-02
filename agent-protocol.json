@@ -34,7 +34,7 @@
   "instances": [
     {
       "id": "hetzner",
-      "roles": ["curator", "dev-core", "pilot-codex"],
+      "roles": ["curator", "dev-core", "devops", "pilot-codex"],
       "note": "выделенный сервер (Hetzner, i5-12500/64 ГБ/2×2 ТБ NVMe RAID1), тот же ящик и тот же пользователь 'lle', что держит инстанс 'lle-hetzner' проекта LLE — два инстанса на одном ящике, каждый со своим машинным конфигом '~/.config/agent-protocol/instances/<name>.json' (форма 055). Заведён 2026-08-18 (LLE-тред 082, день 2 Э-3′): собственный клон, собственная ветка почты, собственный резидентный юнит рядом с LLE-шным. Обе роли живут здесь — инстанс у репозитория пока ровно один"
     }
   ],
@@ -145,8 +145,8 @@
         },
         "agent": {
           "kind": "codex",
-          "model": "gpt-5.4-mini",
-          "effort": "low",
+          "model": "gpt-5.6-terra",
+          "effort": "max",
           "toolsHeldBy": "sandbox-read-only"
         },
         "account": "codex-main"
@@ -155,12 +155,12 @@
     {
       "id": "devops",
       "kind": "claude-code",
-      "status": "planned",
+      "status": "active",
       "wake": {
         "mode": "watch",
         "session": "crew-devops"
       },
-      "summary": "Операционная роль ящика. ЧТО ЕЙ МОЖНО — не эта проза, а поле 'capabilities' ниже: 'log-tail' (хвост названного лога), 'repo-refresh' ('git pull --ff-only' + install в названном чекауте), 'disk-free'. Список закрыт решением john (тред 047-devops-role, состав (A) от 2026-08-30), расширение — только PR-ом к этому файлу и новым номером схемы, то есть видимо в диффе. Объявлена 'planned', а не 'active', по причине, которая живёт в КОДЕ, а не на ящике: перехода в системного пользователя 'aco-devops' этот билд не умеет (systemUserRefusal), и исполнителя вызова 'capabilities' не существует — контур роль не поднимает, называет причину и не жжёт на неё попытки. Состояние ящика здесь не пересказывается намеренно: оно меняется рукой john и живёт в 'docs/box-setup.md' §0.1, а пересказ протухает молча",
+      "summary": "Операционная роль ящика. ЧТО ЕЙ МОЖНО — не эта проза, а поле 'capabilities' ниже: 'log-tail' (хвост названного лога), 'repo-refresh' ('git pull --ff-only' + install в названном чекауте), 'disk-free'. Список закрыт решением john (тред 047-devops-role, состав (A) от 2026-08-30), расширение — только PR-ом к этому файлу и новым номером схемы, то есть видимо в диффе. Объявлена 'active' решением john 2026-09-02 (тот же тред): исполнитель вызова существует, переход в системного пользователя реализован. Единственный путь подъёма — этот переход: сессия под пользователем демона не поднимается никогда, и без узкого права на ящике подъём отказывает ПО ИМЕНИ (systemUserRefusal), а не тихо становится демоном. Состояние ящика здесь не пересказывается намеренно: оно меняется рукой john и живёт в 'docs/box-setup.md' §0.1 и §0.1a, а пересказ протухает молча",
       "permissions": [],
       "zones": {
         "writes": ["docs/box-setup.md", "docs/install-notes.md"],
@@ -180,6 +180,19 @@
         }
       ],
       "systemUser": "aco-devops",
+      "launch": {
+        "allowedTools": ["Bash", "Read", "Edit", "Write"],
+        "limits": {
+          "idleSeconds": 300,
+          "wallClockSeconds": 1200,
+          "maxTurns": 120
+        },
+        "agent": {
+          "kind": "claude-code",
+          "model": "claude-sonnet-5"
+        },
+        "account": "devops-main"
+      },
       "capabilities": [
         {
           "name": "log-tail",

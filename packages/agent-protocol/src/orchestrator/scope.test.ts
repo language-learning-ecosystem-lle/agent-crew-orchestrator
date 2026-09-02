@@ -14,18 +14,18 @@ const known = (ids: readonly string[]) => (id: string) => ids.includes(id);
 describe("ownership of a role by an instance (R13)", () => {
   it("a repository that declares no instances has nothing to answer for", () => {
     expect(
-      ownershipIssues({ launchable: ["dev-core", "dev-speech"], isKnownRole: known(["dev-core"]) }),
+      ownershipIssues({ launchable: ["dev-core", "dev-acme"], isKnownRole: known(["dev-core"]) }),
     ).toEqual([]);
   });
 
   it("a launchable role nobody claims is refused, by name", () => {
     const issues = ownershipIssues({
       instances: [{ id: "box-a", roles: ["dev-core"] }],
-      launchable: ["dev-core", "dev-speech"],
-      isKnownRole: known(["dev-core", "dev-speech"]),
+      launchable: ["dev-core", "dev-acme"],
+      isKnownRole: known(["dev-core", "dev-acme"]),
     });
     expect(issues).toHaveLength(1);
-    expect(issues[0]).toContain("'dev-speech'");
+    expect(issues[0]).toContain("'dev-acme'");
     expect(issues[0]).toContain("no instance claims it");
   });
 
@@ -59,10 +59,10 @@ describe("ownership of a role by an instance (R13)", () => {
     const issues = ownershipIssues({
       instances: [
         { id: "box-a", roles: ["dev-core"] },
-        { id: "box-a", roles: ["dev-speech"] },
+        { id: "box-a", roles: ["dev-acme"] },
       ],
-      launchable: ["dev-core", "dev-speech"],
-      isKnownRole: known(["dev-core", "dev-speech"]),
+      launchable: ["dev-core", "dev-acme"],
+      isKnownRole: known(["dev-core", "dev-acme"]),
     });
     expect(issues.some((issue) => issue.includes("declared twice"))).toBe(true);
   });
@@ -72,10 +72,10 @@ describe("ownership of a role by an instance (R13)", () => {
       ownershipIssues({
         instances: [
           { id: "box-a", roles: ["dev-core"], note: "the laptop" },
-          { id: "box-b", roles: ["dev-speech"] },
+          { id: "box-b", roles: ["dev-acme"] },
         ],
-        launchable: ["dev-core", "dev-speech"],
-        isKnownRole: known(["dev-core", "dev-speech"]),
+        launchable: ["dev-core", "dev-acme"],
+        isKnownRole: known(["dev-core", "dev-acme"]),
       }),
     ).toEqual([]);
   });
@@ -131,10 +131,10 @@ describe("whether the box knows which instance it is (the machine half of the jo
 });
 
 describe("the operator's flags, refused at the door", () => {
-  const launchable = ["dev-core", "dev-speech"];
+  const launchable = ["dev-core", "dev-acme"];
 
   it("--roles and --exclude-roles together have two answers, so they are refused", () => {
-    const issues = scopeFlagIssues({ select: ["dev-core"], exclude: ["dev-speech"], launchable });
+    const issues = scopeFlagIssues({ select: ["dev-core"], exclude: ["dev-acme"], launchable });
     expect(issues.some((issue) => issue.includes("mutually exclusive"))).toBe(true);
   });
 
@@ -146,16 +146,16 @@ describe("the operator's flags, refused at the door", () => {
 
   it("a well-formed selection passes", () => {
     expect(scopeFlagIssues({ select: ["dev-core"], launchable })).toEqual([]);
-    expect(scopeFlagIssues({ exclude: ["dev-speech"], launchable })).toEqual([]);
+    expect(scopeFlagIssues({ exclude: ["dev-acme"], launchable })).toEqual([]);
     expect(scopeFlagIssues({ launchable })).toEqual([]);
   });
 });
 
 describe("the scope of a run", () => {
-  const launchable = ["dev-core", "dev-speech", "curator"];
+  const launchable = ["dev-core", "dev-acme", "curator"];
   const instances = [
     { id: "box-a", roles: ["dev-core", "curator"] },
-    { id: "box-b", roles: ["dev-speech"] },
+    { id: "box-b", roles: ["dev-acme"] },
   ];
 
   it("without a topology every launchable role stays — the pre-R13 behaviour verbatim", () => {
@@ -168,7 +168,7 @@ describe("the scope of a run", () => {
   it("another box's role drops out, and the line names the owner", () => {
     const scope = resolveLaunchScope({ launchable, instances, instance: "box-a" });
     expect(scope.roles).toEqual(["dev-core", "curator"]);
-    expect(scope.excluded.map((exclusion) => exclusion.role)).toEqual(["dev-speech"]);
+    expect(scope.excluded.map((exclusion) => exclusion.role)).toEqual(["dev-acme"]);
     expect(scope.excluded[0]?.reason).toBe("other-instance");
     expect(describeExclusion(scope.excluded[0] as never)).toContain("box-b");
   });
@@ -205,16 +205,16 @@ describe("the scope of a run", () => {
       launchable,
       instances,
       instance: "box-a",
-      exclude: ["dev-speech"],
+      exclude: ["dev-acme"],
     });
-    expect(scope.excluded.find((exclusion) => exclusion.role === "dev-speech")?.reason).toBe(
+    expect(scope.excluded.find((exclusion) => exclusion.role === "dev-acme")?.reason).toBe(
       "other-instance",
     );
   });
 
   it("saying nothing means every role of this instance — not none", () => {
     const scope = resolveLaunchScope({ launchable, instances, instance: "box-b" });
-    expect(scope.roles).toEqual(["dev-speech"]);
+    expect(scope.roles).toEqual(["dev-acme"]);
     expect(scope.operator).toBe("all");
   });
 
@@ -223,7 +223,7 @@ describe("the scope of a run", () => {
     expect(mine).toContain("instance box-a");
     expect(mine).toContain("dev-core");
     const empty = describeScope(
-      resolveLaunchScope({ launchable: ["dev-speech"], instances, instance: "box-a" }),
+      resolveLaunchScope({ launchable: ["dev-acme"], instances, instance: "box-a" }),
     );
     expect(empty).toContain("NONE");
   });

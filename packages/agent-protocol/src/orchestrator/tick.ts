@@ -174,6 +174,13 @@ export type TickSkip = {
   /** Whose decision the thread is frozen behind — only meaningful for `parked` (R27). */
   readonly parkedOn?: string;
   /**
+   * AND WHETHER THAT PARK ASKS ANYBODY (`modeParks`, thread 063) — a park declared with
+   * `expects: none` is a MODE the thread stands in, not a word somebody owes it. Only
+   * meaningful for `parked` on a person; absent means "not told", and the skip line then
+   * says what is true of both rather than picking one.
+   */
+  readonly parkedIsMode?: boolean;
+  /**
    * WHOSE ACCOUNT THE SKIPPED PAIR WOULD HAVE SPENT (thread 055, B.3) — copied off the
    * candidate by the spread that builds every skip, and declared here so the two folds
    * below can read it DIRECTLY instead of going back to `input.candidates` for the pair
@@ -303,6 +310,12 @@ export const planTick = (input: {
    */
   readonly parked?: ReadonlyMap<string, string>;
   /**
+   * Which of those parks ask NOBODY (`modeParks`, thread 063) — the mode parks. Carried
+   * beside the map rather than folded into its value: the value is the raw `parked-on` and
+   * every reader of it depends on that. A tick that is not told reads exactly as before.
+   */
+  readonly modeParked?: ReadonlySet<string>;
+  /**
    * Sessions that wrote a message into the mail — the differentiator of a run that
    * DELIVERED into its own turn (`isSelfTurnDelivery`, thread 023). The tick reads the
    * threads anyway to build its candidates, so the set costs it nothing; without it the
@@ -390,7 +403,13 @@ export const planTick = (input: {
     // launch, so no attempt, so the counter stands still while the person thinks.
     const parkedOn = input.parked?.get(candidate.thread);
     if (parkedOn !== undefined) {
-      skipped.push({ ...candidate, reason: "parked", attempt, parkedOn });
+      skipped.push({
+        ...candidate,
+        reason: "parked",
+        attempt,
+        parkedOn,
+        ...(input.modeParked?.has(candidate.thread) === true ? { parkedIsMode: true } : {}),
+      });
       continue;
     }
     if (view?.exhausted) {
@@ -628,6 +647,13 @@ export const describeSkip = (
       // a dead pair for reading it as one.
       if (on.kind === "run")
         return `candidate ${pair} skipped: the turn is parked behind the round running on PR #${on.pr} (R27, 'parked-on: ${skip.parkedOn}' in the feed) — it is waiting for a VERDICT, not for a launch; it lifts by itself with the next message that MOVES anybody (asks for something, or names whose turn it is — an actionable CI outcome does, the trace of the round already running does not), and with the merge of that PR`;
+      // A MODE IS NOT A QUEUE TO A HUMAN (thread 063, §2.3): the message that declared this
+      // park asked nobody for anything (`expects: none`, legal since 2026-08-04), so the pair
+      // is not late and no answer is outstanding. The line below would tell the operator that
+      // a person owes this thread a word — true of the other park and false of this one, and
+      // an operator who goes to chase that word finds nobody was ever asked.
+      if (skip.parkedIsMode === true)
+        return `candidate ${pair} skipped: the turn is parked as a MODE set by ${skip.parkedOn ?? "a person"} (R27, 'parked-on' with 'expects: none' in the feed) — NOBODY was asked for anything and nothing is late; it lifts on the word of that person carried into the mail ('delivers: ${skip.parkedOn ?? "<person>"}' in a message header, by whichever role relays it) and on the thread being closed`;
       // AND THIS LINE SAYS THE LIFT AS IT IS, not as it used to be (thread 030, 2026-08-22):
       // "the next substantive message in the thread" stopped being true when the person park
       // was narrowed to the word of the person, and a line that lies about the mechanism is

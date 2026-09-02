@@ -86,6 +86,38 @@ const readRecord = (path: string): LockRecord | undefined => {
 };
 
 /** Signal 0 asks the kernel about a pid without touching the process. */
+/**
+ * THE LOCK AS A READER SEES IT (thread 063, the `save` window). The operator's frame asks
+ * one question of this file — "is somebody inside the checkout right now, and who" — and it
+ * must ask it exactly the way a WAITER asks it, or the frame would explain a slowness the
+ * delivery does not have: an abandoned record still lies on disk after a killed session, and
+ * reading it as "held" would blame a process that is gone.
+ *
+ * So liveness is measured here (`livePid`, the same predicate `take` steals a dead lock by)
+ * and travels as a field: a caller may then say only what was confirmed. Injectable for the
+ * same reason `fileMailLock` takes it — a test must be able to describe a dead holder without
+ * killing anything.
+ *
+ * A record that is missing, unreadable or half-written is `undefined` — the same answer, and
+ * for the same reason, that `readRecord` gives the waiter: not knowing is never "free".
+ */
+export type HeldMailLock = {
+  readonly pid: number;
+  /** Verbatim, as the holder wrote it: `memory of <role>`, `digest of instance <id>`, `new-message …`. */
+  readonly holder: string;
+  readonly since: string;
+  /** Whether that pid is still there — measured, never assumed. */
+  readonly alive: boolean;
+};
+
+export const readMailLock = (
+  path: string,
+  alive: (pid: number) => boolean = livePid,
+): HeldMailLock | undefined => {
+  const held = readRecord(path);
+  return held === undefined ? undefined : { ...held, alive: alive(held.pid) };
+};
+
 const livePid = (pid: number): boolean => {
   try {
     process.kill(pid, 0);

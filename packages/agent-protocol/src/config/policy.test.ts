@@ -26,7 +26,7 @@ const FOREIGN = {
       wake: { mode: "watch", session: "s" },
       summary: "the stream",
       inventedLater: "x",
-      zones: { writes: [], forbidden: ["apps/pronunciation-service"], alsoInvented: 1 },
+      zones: { writes: [], forbidden: ["apps/acme-service"], alsoInvented: 1 },
       instructions: [{ kind: "in-repo", path: "CLAUDE.md", inventedHereToo: true }],
     },
   ],
@@ -50,17 +50,17 @@ describe("the policy shape of the config", () => {
     const parsed = policyConfigSchema.parse(FOREIGN);
     const role = policyRole(parsed, "dev-core");
 
-    expect(role?.zones?.forbidden).toEqual(["apps/pronunciation-service"]);
+    expect(role?.zones?.forbidden).toEqual(["apps/acme-service"]);
     expect(role?.instructions?.map((doc) => doc.path)).toEqual(["CLAUDE.md"]);
     expect(parsed.orchestrator?.workdir?.worktrees).toBe(".worktrees");
   });
 
   it("gives the zone verdict the current shape would give — the acceptance criterion", () => {
     const foreign = policyRole(policyConfigSchema.parse(FOREIGN), "dev-core");
-    const paths = ["apps/pronunciation-service/main.py", "packages/agent-protocol/src/cli.ts"];
+    const paths = ["apps/acme-service/main.py", "packages/agent-protocol/src/cli.ts"];
 
     expect(pathsOutsideZones({ role: foreign as { id: string }, paths })).toEqual([
-      "apps/pronunciation-service/main.py",
+      "apps/acme-service/main.py",
     ]);
   });
 

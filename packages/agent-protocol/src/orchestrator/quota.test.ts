@@ -603,7 +603,7 @@ describe("openQuotaShelves — a shelf per account (055, B.3)", () => {
 
 /* ── THREAD 019: THE BOUNDARY THE VENDOR STATES BEFORE THE WINDOW CLOSES ──────────── */
 
-/** The shape measured on the live LLE box, 2026-08-21 — every session's first frames. */
+/** The shape measured on a live consumer's box, 2026-08-21 — every session's first frames. */
 const boundaryFrame = (status: string, window: string, epoch: number): string =>
   JSON.stringify({
     type: "rate_limit_event",
@@ -623,7 +623,7 @@ const FIVE_HOUR_END = Math.floor(new Date("2026-07-29T17:00:00Z").getTime() / 10
 const SEVEN_DAY_END = Math.floor(new Date("2026-08-04T12:00:00Z").getTime() / 1000);
 
 describe("windowBoundaryOf — the reset time is stated on EVERY turn, closed or open", () => {
-  it("reads the boundary off a PERMITTING event — the live shape of the LLE box", () => {
+  it("reads the boundary off a PERMITTING event — the live shape of a consumer's box", () => {
     expect(windowBoundaryOf(boundaryFrame("allowed", "five_hour", FIVE_HOUR_END))).toEqual({
       window: "five_hour",
       resetsAt: "2026-07-29T17:00:00Z",

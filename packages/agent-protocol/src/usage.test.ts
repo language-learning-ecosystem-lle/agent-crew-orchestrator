@@ -315,7 +315,7 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
     "config set",
     [
       "instance",
-      "lle-agents",
+      "acme-agents",
       "--ref",
       "origin/main",
       "--local-config",
@@ -342,7 +342,7 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
       "--alias",
       "github-crew",
       "--comment",
-      "lle-agents",
+      "acme-agents",
       "--no-probe",
       "--write",
     ],
@@ -803,6 +803,139 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     const spec = specFor("doctor");
     const named = [...spec.value, ...spec.boolean];
     for (const name of ["--exec", "--worker", "--model", "--effort"]) expect(named).toContain(name);
+  });
+
+  /**
+   * THE TWO PLACES WHERE THE SHIPPED TEXT MADE PUNCTUATION A VALUE (thread 042, the
+   * measurement of curator in `msg-106` §0, re-taken by this role over all 49 usage
+   * lines: exactly these two, and the four `--mode`/`--paths` literals which are
+   * grammar the text declares and are left alone).
+   *
+   * Asserted on the SIDE of the table, not on the name being in it: `--staged` and
+   * `--clear-force` were both present all along — as flags that demand a value. The
+   * second one stands behind `guardArguments` today, so it was not a latent cost:
+   * `orchestrator up --clear-force` was refused, and `--clear-force --forgeround`
+   * passed with the typo eaten as the value.
+   */
+  it("reads `--staged` of `zones check` as a switch, not as a flag valued `|` (042)", () => {
+    const spec = specFor("zones check");
+    expect(spec.boolean).toContain("--staged");
+    expect(spec.value).not.toContain("--staged");
+    // The neighbours in the same bracket keep what the text gives them.
+    expect(spec.value).toContain("--base");
+    expect(spec.value).toContain("--paths");
+  });
+
+  it("reads `--clear-force` of `orchestrator up` as a switch, not as a flag valued `#` (042)", () => {
+    const spec = specFor("orchestrator up");
+    expect(spec.boolean).toContain("--clear-force");
+    expect(spec.value).not.toContain("--clear-force");
+  });
+
+  it("keeps the literal values the usage text really declares (042)", () => {
+    // The repair must not be a broad "punctuation-ish tokens are not values": `--mode
+    // take` and `--paths a b` are bare literals the grammar declares (`argv.ts`), and
+    // demoting them to switches would refuse calls the corpus above makes.
+    for (const key of ["orchestrator hold", "orchestrator stop"]) {
+      expect([key, specFor(key).value.includes("--mode")]).toEqual([key, true]);
+      expect([key, specFor(key).boolean.includes("--mode")]).toEqual([key, false]);
+    }
+    expect(specFor("zones check").value).toContain("--paths");
+  });
+
+  it("holds no token of a tail comment or of the grammar anywhere in the table (042)", () => {
+    // Over the WHOLE table rather than the two mended lines: the defect was not in a
+    // line, it was in the parse, and the next `#` comment or `|` bracket someone adds
+    // must not quietly grow a third case.
+    const strays: string[] = [];
+    for (const [key, spec] of parseUsage(USAGE)) {
+      for (const name of [...spec.value, ...spec.boolean]) {
+        if (!name.startsWith("-")) strays.push(`${key}: '${name}'`);
+      }
+    }
+    expect(strays).toEqual([]);
+  });
+
+  it("refuses the typo `orchestrator up` used to swallow behind `--clear-force` (042)", () => {
+    // Through `strayArguments` with the spec the door itself merges, so the behaviour
+    // of the door is asserted and not inferred from the table.
+    const up = specFor("orchestrator up");
+    expect(strayArguments(["--clear-force"], up)).toEqual([]);
+    const problems = strayArguments(["--clear-force", "--forgeround"], up);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("--forgeround");
+  });
+
+  /**
+   * THE DAEMON'S LINE SPELLS THE COURIER'S TWO FLAGS (thread 042, PR-2 of the order
+   * john gave in `msg-105`).
+   *
+   * The daemon dials `notify` itself every tick — `runNotify({ argv, write: true })`
+   * with its OWN argv, not with a line it builds — so both flags that command reads
+   * (`--state`, `--env-file`) are flags of `orchestrator daemon` as well. The line was
+   * silent about them, and the line IS the door: `orchestrator daemon --env-file <p>`
+   * was refused for a flag the process behind the door then goes and reads.
+   */
+  it("spells the two courier flags the daemon really reads (042)", () => {
+    // The premise, asserted and not assumed: if the daemon ever stops dialling the
+    // courier with its own argv, this fails by name instead of leaving the usage line
+    // promising flags nothing reads.
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+    const opens = source.indexOf(
+      "const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {",
+    );
+    expect(opens).toBeGreaterThan(-1);
+    const body = source.slice(opens, opens + source.slice(opens).indexOf("\n};"));
+    expect(body).toContain("runNotify({ argv, write: true");
+    const notify = source.indexOf("const runNotify = async (input: {");
+    expect(notify).toBeGreaterThan(-1);
+    const dial = source.slice(notify, notify + source.slice(notify).indexOf("\n};"));
+    expect(dial).toContain('flag(argv, "--state")');
+    expect(dial).toContain('flag(argv, "--env-file")');
+
+    // And the line, read the way the door reads it. Both carry a value, as they do on
+    // `notify`'s own line — a switch here would eat the path that follows.
+    const spec = specFor("orchestrator daemon");
+    expect(spec.value).toContain("--state");
+    expect(spec.value).toContain("--env-file");
+  });
+
+  it("lets the daemon be given the courier's flags, and still names a typo (042)", () => {
+    // Through `strayArguments`, so what is asserted is the door and not the table.
+    const daemon = specFor("orchestrator daemon");
+    expect(
+      strayArguments(["--ref", "origin/main", "--env-file", "/tmp/x", "--state", "/tmp/s"], daemon),
+    ).toEqual([]);
+    const problems = strayArguments(["--env-file", "/tmp/x", "--env-fil"], daemon);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("--env-fil");
+  });
+
+  it("widens no line but the daemon's — `init`, `init github` and `up` are untouched (042)", () => {
+    // The regression the statement of work asks for by name. `init` and `init github`
+    // were MEASURED against their handlers in this round and were already whole, so
+    // this PR must leave them exactly as they are; `orchestrator up` has its own entry
+    // and gains the two flags only through the merge the door performs (below).
+    const table = parseUsage(USAGE);
+    const named = (key: string): readonly string[] => {
+      const spec = table.get(key);
+      if (spec === undefined) throw new Error(`'${key}' has no line in the shipped USAGE`);
+      return [...spec.value, ...spec.boolean].filter((name) => !name.startsWith("--config-path"));
+    };
+    for (const key of ["init", "init github", "orchestrator up"]) {
+      expect([key, named(key).includes("--state")]).toEqual([key, false]);
+      expect([key, named(key).includes("--env-file")]).toEqual([key, false]);
+    }
+    // `init` reads none of the courier's flags and keeps the eleven it does read: the
+    // spelling of its own tool is `--agent`, not the daemon's `--worker`.
+    expect(named("init")).toContain("--agent");
+    expect(named("init")).not.toContain("--worker");
+
+    // What DOES widen, by construction and on purpose: `up` re-executes itself as the
+    // daemon with everything typed, so the door merges the daemon's flags into it.
+    const up = specFor("orchestrator up");
+    expect(up.value).toContain("--env-file");
+    expect(up.value).toContain("--state");
   });
 
   it("lets `up` pass its own flags through to the daemon it starts", () => {

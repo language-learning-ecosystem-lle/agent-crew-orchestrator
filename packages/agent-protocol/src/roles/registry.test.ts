@@ -25,7 +25,7 @@ const devCore = {
   id: "dev-core",
   kind: "claude-code",
   status: "active",
-  wake: { mode: "watch", session: "lle-dev-core" },
+  wake: { mode: "watch", session: "acme-dev-core" },
   summary: "main stream",
 };
 
@@ -64,9 +64,9 @@ describe("loadRoleRegistry", () => {
   });
 
   it("catches two roles on one session", () => {
-    const devSpeech = { ...devCore, id: "dev-speech" };
+    const devAcme = { ...devCore, id: "dev-acme" };
 
-    expect(() => registryOf(devCore, devSpeech)).toThrow(/share session/);
+    expect(() => registryOf(devCore, devAcme)).toThrow(/share session/);
   });
 
   it("lists ALL complaints at once, not the first one encountered", () => {
@@ -88,6 +88,36 @@ describe("RoleRegistry", () => {
     expect(registry.ids()).toEqual(["john", "dev-core", "dev-legacy"]);
     expect(registry.isKnown("dev-legacy")).toBe(true);
     expect(registry.active().map((role) => role.id)).toEqual(["john", "dev-core"]);
+  });
+
+  /**
+   * WHO IS A MACHINE EVENT AND WHO IS AN AUTHOR (thread 072). The mail's doors ask an author
+   * for a judgement — what this letter does about the park standing on the thread — and the
+   * circuit's own announcement has nobody to make one. The line is drawn over `wake` and the
+   * presence of a card, never over `kind`: `kind` is a project's label for a vendor and this
+   * package does not read it (a `gh-action` WITH a card is an author, and it is `reviewer-pr`).
+   */
+  it("tells the circuit's own event from an author: no session of ours raises it, and it reads no card", () => {
+    const notifier = {
+      id: "github",
+      kind: "gh-action",
+      status: "active",
+      wake: { mode: "event" },
+      summary: "the circuit announcing its own facts",
+    };
+    const reviewerWithCard = {
+      ...reviewer,
+      instructions: [{ kind: "in-repo", path: "REVIEWER.md" }],
+    };
+    const registry = registryOf(john, curator, devCore, reviewerWithCard, notifier);
+
+    expect(registry.isMachineWriter("github")).toBe(true);
+    // A card means there is a norm to apply and somebody applying it — every door as before.
+    expect(registry.isMachineWriter("reviewer-pr")).toBe(false);
+    // A human writing by hand is not an event either, card or no card.
+    expect(registry.isMachineWriter("john")).toBe(false);
+    expect(registry.isMachineWriter("dev-core")).toBe(false);
+    expect(registry.isMachineWriter("nobody")).toBe(false);
   });
 
   it("grants thread-status rights only to those they were given to", () => {
@@ -115,13 +145,13 @@ describe("RoleRegistry", () => {
   it("hands the watch-keeper only roles with a session, and only active ones", () => {
     const paused = {
       ...devCore,
-      id: "dev-speech",
+      id: "dev-acme",
       status: "paused",
-      wake: { mode: "watch", session: "lle-dev-speech" },
+      wake: { mode: "watch", session: "acme-dev-acme" },
     };
     const registry = registryOf(john, curator, devCore, paused, reviewer);
 
-    expect(registry.watchTargets()).toEqual([{ id: "dev-core", session: "lle-dev-core" }]);
+    expect(registry.watchTargets()).toEqual([{ id: "dev-core", session: "acme-dev-core" }]);
   });
 
   it("hands the notifier a human directly, an assistant through a human, and no agents at all", () => {

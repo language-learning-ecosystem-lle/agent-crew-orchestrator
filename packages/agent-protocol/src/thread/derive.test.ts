@@ -75,11 +75,11 @@ describe("an unreadable thread in the register", () => {
 
   it("names the directory and the reason, and invents nothing about the thread", () => {
     const index = renderIndex([thread("012-x")], {
-      unreadable: [{ id: "092-consent-and-deletion", problem: "'_meta.md' is missing" }],
+      unreadable: [{ id: "905-acme-feature", problem: "'_meta.md' is missing" }],
     });
 
     expect(index).toContain(
-      "| 092-consent-and-deletion | — | — | не прочитан | — | — | — | тред не собран: '_meta.md' is missing |",
+      "| 905-acme-feature | — | — | не прочитан | — | — | — | тред не собран: '_meta.md' is missing |",
     );
     // And the readable one is untouched — the whole point of the isolation.
     expect(index).toContain("| 012-x | curator, dev-core | normal | open | dev-core |");
@@ -87,16 +87,12 @@ describe("an unreadable thread in the register", () => {
 
   it("stands in id order among the rest, not appended at the bottom", () => {
     const rows = renderIndex([thread("012-x"), thread("100-z")], {
-      unreadable: [{ id: "055-mirror-rules-to-lle", problem: "'_meta.md' is missing" }],
+      unreadable: [{ id: "055", problem: "'_meta.md' is missing" }],
     })
       .split("\n")
       .filter((line) => /^\| \d/.test(line));
 
-    expect(rows.map((row) => row.split(" | ")[0])).toEqual([
-      "| 012-x",
-      "| 055-mirror-rules-to-lle",
-      "| 100-z",
-    ]);
+    expect(rows.map((row) => row.split(" | ")[0])).toEqual(["| 012-x", "| 055", "| 100-z"]);
   });
 
   it("a reason carrying a pipe does not split the row into extra columns", () => {

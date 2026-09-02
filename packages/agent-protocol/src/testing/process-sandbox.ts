@@ -18,7 +18,67 @@
  */
 import { basename, join } from "node:path";
 
+import { PLATFORM_TOKEN_KEYS } from "../config/credentials.js";
 import { LAUNCH_ENV } from "../orchestrator/launch.js";
+import { BOX_URL_KEY, CIRCUIT_URL_KEY } from "../orchestrator/watchdog.js";
+
+/**
+ * THE MONITORS OF THE BOX ARE THE BOX'S AND NOT A LAUNCH'S (thread `071`, measured
+ * 2026-09-02). `loadSecrets` merges the secrets FILE over `process.env`, so a key the file
+ * does not carry is still answered by the ambient environment — and on the box that runs
+ * the circuit `HEALTHCHECKS_CIRCUIT_URL_HETZNER` is set STANDINGLY, because that is where
+ * the live daemon's own monitor is named.
+ *
+ * Measured on `daemon.watchdog.process.test.ts:505`, the case whose whole claim is "a named
+ * instance with only the BARE key beats nothing": the test writes a secrets file with the
+ * bare key alone, the daemon read the box's suffixed key out of the inherited environment,
+ * and the banner said `circuit watchdog ON — … 'HEALTHCHECKS_CIRCUIT_URL_HETZNER'` instead
+ * of OFF. Red on the box, green on the runner (which has no monitors at all) — the same
+ * direction as the three variables above, and the same loss: a role whose local run is red
+ * for a reason of the stand stops being able to tell its own regression from the box's.
+ *
+ * AND THE SECOND HALF IS WORSE THAN A RED TEST. With the watchdog ON on the ambient URL,
+ * the daemon that the test spawned beat the LIVE circuit's monitor — a suite run silencing
+ * the production alarm for a daemon it is not.
+ *
+ * By prefix rather than by the two names, because the key of a named instance IS the bare
+ * one with a suffix (`resolveWatchdog`), and every instance a box gains adds another.
+ */
+const boxMonitor = (name: string): boolean =>
+  name === BOX_URL_KEY || name === CIRCUIT_URL_KEY || name.startsWith(`${CIRCUIT_URL_KEY}_`);
+
+/**
+ * THE LOGIN OF THE BOX IS THE BOX'S AND NOT A LAUNCH'S (thread `071`, 2026-09-02) — the
+ * same mechanism as the monitors above with a wider blast radius. `config/credentials.ts`
+ * answers a token out of the ambient environment whenever the secrets file does not carry
+ * one (and, by rule 1 of that door, an already-set variable is never overwritten), so a
+ * process test that reaches the credentials door on this box reaches it with the OPERATOR'S
+ * OWN `GH_TOKEN` — which means a spawned CLI is logged in to the live GitHub, and a test
+ * whose whole claim is "no credential anywhere → the refusal names the file" measures the
+ * shell instead of the package.
+ *
+ * IT WAS ALREADY BEING SUBTRACTED, ONCE PER FILE, WHICH IS THE DEFECT AND NOT THE FIX:
+ * `merge/gate.process.test.ts` and `orchestrator/force-stop-delivery.process.test.ts` each
+ * destructured the two names out of the sandbox by hand, and that is exactly the copied
+ * convention the head of this file is about — four files independently forgot one line, and
+ * the third file to reach this door would have forgotten it too. Green today, and green by
+ * accident twice.
+ *
+ * BY THE NAME OF THE DOOR, not by a list typed here: `PLATFORM_TOKEN_KEYS` is what `gh`
+ * itself accepts as a login, so the day that list grows a third name the sandbox grows with
+ * it instead of going stale silently.
+ *
+ * THE TELEGRAM TOKEN IS DELIBERATELY NOT HERE. `TELEGRAM_BOT_TOKEN` is ambient on this box
+ * too and reaches a launch by the same merge, but no door of THIS package reads it: the core
+ * knows a transport module named in the config, never a vendor, and the only constant for
+ * that name lives in `transport-telegram` — a package the core must not import, since the
+ * boundary is the point of splitting it off. Subtracting it here would mean copying a
+ * foreign name into the core, which is the stale copy this file exists to prevent, and it
+ * would buy nothing measured: the one process test that touches it writes the value into
+ * the secrets FILE, and the file wins over the environment (`loadSecrets`).
+ */
+const platformToken = (name: string): boolean =>
+  (PLATFORM_TOKEN_KEYS as readonly string[]).includes(name);
 
 /**
  * The environment of one CLI launch: the ambient one, with the config home replaced by
@@ -64,6 +124,8 @@ export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.Pro
   // two variables that would make it a DIFFERENT BOX are removed by name.
   const { CLAUDE_CONFIG_DIR: _ambient, INVOCATION_ID: _supervisor, ...ambient } = process.env;
   for (const name of Object.values(LAUNCH_ENV)) delete ambient[name];
+  for (const name of Object.keys(ambient))
+    if (boxMonitor(name) || platformToken(name)) delete ambient[name];
   return {
     ...ambient,
     XDG_CONFIG_HOME: home,

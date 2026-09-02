@@ -6,13 +6,13 @@
  * `doctor` says whether it holds together. This is the one pump of the same evening that
  * creates material OUTSIDE the repository and outside both configs: a private key in
  * `~/.ssh`, a `Host` block beside it, and an access grant that only a human can give. On
- * `lle-agents` that cost three chat messages and a fork in the road; here it is one
+ * `acme-agents` that cost three chat messages and a fork in the road; here it is one
  * command that ends in an answer from GitHub itself.
  *
  * THE FORM OF THE IDENTITY IS DECIDED, and the command is written under it rather than
  * offering a menu (john, 2026-08-01, msg of curator ~04:55Z): the box's key lives as a
  * REPOSITORY DEPLOY KEY with write access — the org policy that refused deploy keys on
- * 31.07 was lifted, and the key of `lle-agents` already sits there. No separate account
+ * 31.07 was lifted, and the key of `acme-agents` already sits there. No separate account
  * and no machine user is created. A machine user stays a named alternative for the day
  * this box serves several repositories, and it is named in the printed hint and in the
  * doc — as a sentence, not as a branch of code nobody has taken.
