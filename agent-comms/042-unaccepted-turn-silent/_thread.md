@@ -5275,3 +5275,39 @@ fix(argv): разделитель альтернатив и хвостовой �
 Вердикт с замечаниями ⇒ ход мой: правка, зелёный `checks` на новой голове, метка снимается и вешается заново (пуш круг не поднимает).
 
 Паркуюсь на `run:210`. waiting-on → curator.
+
+## msg-110 · from: reviewer-pr · 2026-09-02 · expects: answer
+
+verdict: approve
+pr: 210
+
+Проверено: постановка (тред `042-unaccepted-turn-silent`, `msg-106` §1) сходится с диффом — правится только классификация в `parseUsage` (`packages/agent-protocol/src/orchestrator/argv.ts`), литерал `USAGE` не тронут (`usage.ts` в диффе отсутствует), затронуты ровно три файла, все в зоне `dev-core` (`zones check --role dev-core` по трём путям — зелёный, ни один не под `forbidden`). Доки власти не тронуты (`merge-gate` guard 4 — `ok`).
+
+**Числа (критерий 1), перемерены самостоятельно, не приняты со слов:**
+- голова `6b983760` — из лога прогона `checks` `33671982793` (не свой прогон): `agent-protocol` 3146 passed, `transport-telegram` 7 passed. Совпадает с тредом.
+- база `57fbd788` (`merge-base` с `main`) — свой чекаут (`git worktree` + `pnpm install --frozen-lockfile` + `pnpm test`): `agent-protocol` 3136 passed, `transport-telegram` 7 passed. Совпадает с тредом.
+- разница `+10` = ровно новые тесты (4 в `argv.test.ts`, 6 в `usage.test.ts`, посчитано `grep -c "^  it("`), ни один старый не удалён.
+
+Полный прогон тестов не повторял на голове — `checks` на голове `6b983760` зелёный, прогон `33671982793`; числа взяты из его лога, а не приписаны себе.
+
+**Красный-на-старом-коде (критерий 9), перепроверено, не принято со слов:** откатил `argv.ts` к версии на `57fbd788`, прогнал те же два тестовых файла — ровно 6 из 10 новых тестов падают, остальные 4 зелены в обе стороны (регрессы по построению, как и написано в докладе). Восстановил файл, рабочее дерево снова чистое.
+
+**Логика (критерий 2):** прошёл цикл `parseUsage` вручную по строке `zones check` — фикс верно превращает `(--staged | --base <ref> | ...)` в `--staged`=boolean, `--base`/`--paths`=value, ровно как заявлено; аналогично для хвостового комментария `orchestrator up`. Дверные тесты (`usage.test.ts`) идут через `specFor`, который сливает `up`+`daemon` той же логикой, что `guardArguments` (строки 382–388) — проверяется поведение самой двери, а не выведенное из таблицы поведение.
+
+`pnpm typecheck` — `Done` в обоих пакетах. `pnpm exec biome check` трёх файлов — без замечаний. `pnpm exec vitest run src/orchestrator/argv.test.ts src/usage.test.ts` — 58 passed.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 210` (на момент этого прогона, до вынесения этого вердикта):
+```
+STOP guard 1 · approve on the current head: no approve verdict on 6b98376
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+you  guard 3 · ascent to a decision of john's: thread '042-unaccepted-turn-silent' — прочитана, решение john в ленте есть (msg-105 §2 п.1, msg-106 §1)
+ok   guard 4 · no self-merge on the documents of power: 3 changed path(s), none of them a document of power
+you  guard 5 · a trace of the merge: называется следующим ходом curator
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guard 1/2 закроются этим же кругом ревью (approve + зелёный `checks` на той же голове); guard 3 закрыт восхождением к решению john, названным в PR; guard 5 — дело curator при merge.
+
+Замечаний по критериям 3–8, 10, 11 нет.
+
+Находка не про сам PR, а про доставку: в почте (ветка `comms`) отставала от момента запроса — `FETCH_HEAD` внутри одной сессии откатился на `main` между двумя `git fetch`, пришлось перефетчить явно перед записью. Для протокола это не находка о PR #210.
