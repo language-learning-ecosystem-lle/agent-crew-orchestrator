@@ -4106,6 +4106,23 @@ a human can predict the queue without reading the code.
   high, waiting since 2026-07-24T…` — beside the skips it already announced. An
   unexpected order is then answerable from the log alone, without a journal
   archaeology run.
+- **AND WHAT HOLDS THE ROW IS SAID ON THE ROW** (thread 063). A queue line promises a launch,
+  and the operator's frame has no skip lines at all — so everything that makes that promise
+  false used to look exactly like a row where it is true. Four marks now ride in
+  `describeOrder`, each beside the others rather than instead of them, because one pair can be
+  held by several things at once and each of them ends differently: `⏸ PARKED …` (R27, and the
+  park that is a MODE is said apart from the park that asks a person), `⛔ ROLE BUSY — <role> is
+  live on <other thread>; one session per role …`, `⏸ HELD BY A CLOSED WINDOW — quota-paused
+  until <ISO> …`, and — when the live session stands on THIS row's own thread —
+  `↩ THE TURN CAME BACK TO A LIVE PAIR — <role> is live on <thread>, and that is the thread of
+  this very row …`. The last two of those are the same fact told apart: measured on one fixture,
+  the two frames differed by the thread id INSIDE one sentence and by nothing else, so a pair
+  whose role is spent elsewhere and a pair whose own session was handed the turn back read as
+  one state. They are not one: the first waits for capacity, the second is the busiest pair of
+  the frame — and the old tail `not raised until that one ends` pointed at the very pair the row
+  was about. Every mark is computed from sections the frame already carries (`parallelism.live`,
+  `holds`, the `quota:` panel), never from a new field handed in by the caller, so the panel and
+  the row cannot come to say different things.
 
 ## `spike/` — P0
 

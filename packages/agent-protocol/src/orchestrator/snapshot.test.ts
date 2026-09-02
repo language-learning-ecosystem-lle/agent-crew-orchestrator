@@ -424,7 +424,15 @@ describe("renderQueue — the parked candidate is marked where the queue is read
       [],
       new Map(),
       new Set(),
-      new Map([["curator", "live on 058-concurrent-writers-one-thread"]]),
+      new Map([
+        [
+          "curator",
+          {
+            doing: "live on 058-concurrent-writers-one-thread",
+            thread: "058-concurrent-writers-one-thread",
+          },
+        ],
+      ]),
     );
     const rows = text.split("\n").filter((line) => line.includes("queue "));
 
@@ -443,7 +451,7 @@ describe("renderQueue — the parked candidate is marked where the queue is read
       [],
       new Map([["030-consult-lane", "john"]]),
       new Set(["030-consult-lane"]),
-      new Map([["curator", "held by a manual session of lle"]]),
+      new Map([["curator", { doing: "held by a manual session of lle" }]]),
     );
 
     expect(text).toContain("PARKED as a MODE set by john");
@@ -462,7 +470,12 @@ describe("busyRoles — what the queue row reads to know the launch is not comin
 
   it("a live pair makes its role busy, and names the thread it is busy WITH", () => {
     expect(busyRoles(parallelism([lease("dev-core", "063-state-model-rewrite")]))).toEqual(
-      new Map([["dev-core", "live on 063-state-model-rewrite"]]),
+      new Map([
+        [
+          "dev-core",
+          { doing: "live on 063-state-model-rewrite", thread: "063-state-model-rewrite" },
+        ],
+      ]),
     );
   });
 
@@ -475,7 +488,7 @@ describe("busyRoles — what the queue row reads to know the launch is not comin
       active: true,
     };
     expect(busyRoles(parallelism([]), [held])).toEqual(
-      new Map([["curator", "held by a manual session of lle"]]),
+      new Map([["curator", { doing: "held by a manual session of lle" }]]),
     );
   });
 
@@ -683,6 +696,43 @@ describe("the queue row inside the whole frame — the wiring, not the folds (th
     expect(rows[1]).not.toContain("ROLE BUSY");
   });
 
+  /**
+   * STATES 4/5, THE PAIR OF FIXTURES THAT DIFFER BY ONE FIELD — and the measurement that made
+   * this test necessary is exactly that: rendered whole, the two frames differed by the thread
+   * id INSIDE the busy sentence and by nothing else, so the operator told a pair whose role is
+   * spent elsewhere apart from a pair whose own session is still running by comparing two
+   * identifiers within one line. Two states, one sentence — the defect class of thread 063.
+   */
+  it("the SAME thread under a live session is not 'role busy' — it is the turn coming back", () => {
+    const rows = rowsOf({
+      ...base,
+      queue: [{ role: "curator", thread: "058-concurrent-writers-one-thread", priority: "normal" }],
+    });
+    expect(rows[0]).toContain("THE TURN CAME BACK TO A LIVE PAIR");
+    expect(rows[0]).toContain("that is the thread of this very row");
+    expect(rows[0]).not.toContain("ROLE BUSY");
+    // AND THE SELF-REFERENTIAL TAIL IS GONE WITH IT: "not raised until that one ends" pointed
+    // at the pair the row is about, which reads as a dead end on the busiest pair of the frame.
+    expect(rows[0]).not.toContain("until that one ends");
+  });
+
+  it("the two forms differ by a WHOLE SENTENCE, not by an identifier inside one", () => {
+    // The fixtures differ in one field — the thread of the queued pair — and that is the
+    // point: what the operator reads must differ by more than the field.
+    const same = rowsOf({
+      ...base,
+      queue: [{ role: "curator", thread: "058-concurrent-writers-one-thread", priority: "normal" }],
+    })[0];
+    const other = rowsOf({
+      ...base,
+      queue: [{ role: "curator", thread: "030-consult-lane", priority: "normal" }],
+    })[0];
+    expect(same).toContain("↩");
+    expect(other).toContain("⛔");
+    expect(other).toContain("one session per role");
+    expect(same).not.toContain("one session per role");
+  });
+
   it("a hold reaches the same row, and the two are named apart because they are repaired apart", () => {
     const rows = rowsOf({
       ...base,
@@ -761,6 +811,78 @@ describe("the queue row inside the whole frame — the wiring, not the folds (th
   it("an open window leaves the row exactly as it was — the mark is news, not decoration", () => {
     const rows = rowsOf({ ...base, quota: [] });
     expect(rows.join("\n")).not.toContain("CLOSED WINDOW");
+  });
+
+  /**
+   * THE FINDING OF THE ROUND ON #195, PICKED UP BY NAME (reviewer-pr's criterion 2/11, curator's
+   * confirmation of `accounts` of 2026-09-02 §3). The branch the field exists for — a role whose
+   * primary is shut but whose declared spare is OPEN must NOT be marked — was covered as a pure
+   * function only: no case ever set `frame.accounts`, so losing that argument on the way into
+   * `shelvedRoles` would have been silent. And the direction of that failure is not the safe one:
+   * `accounts` is optional and defaults to `undefined`, `chooseAccount` then refuses every
+   * declared spare for want of a declaration, and a healthy role prints as HELD — the very lie
+   * about a pair the whole package was written to kill.
+   */
+  it("a shut primary with an OPEN declared spare leaves the row silent, through the whole frame", () => {
+    const rows = rowsOf({
+      ...base,
+      queue: [
+        {
+          role: "dev-core",
+          thread: "019-operator-ux",
+          priority: "normal",
+          account: "pilot",
+          fallback: ["spare"],
+          worker: "claude-code",
+        },
+      ],
+      leases: [],
+      parallelism: { raisable: ["dev-core", "curator"], live: [], held: [] },
+      accounts: { pilot: {}, spare: {} },
+      quota: [
+        {
+          window: "five_hour",
+          account: "pilot",
+          until: "2026-07-27T21:40:00Z",
+          since: "2026-07-27T16:40:00Z",
+          stated: true,
+          role: "dev-core",
+        },
+      ],
+    });
+    expect(rows[0]).toContain("dev-core×019-operator-ux");
+    expect(rows[0]).not.toContain("CLOSED WINDOW");
+  });
+
+  it("…and drop `frame.accounts` on that same fixture and the healthy role prints as HELD", () => {
+    // The guard on the guard: this is what the frame says when the argument is lost, and it is
+    // why the case above is not decoration. Same fixture, one field removed.
+    const rows = rowsOf({
+      ...base,
+      queue: [
+        {
+          role: "dev-core",
+          thread: "019-operator-ux",
+          priority: "normal",
+          account: "pilot",
+          fallback: ["spare"],
+          worker: "claude-code",
+        },
+      ],
+      leases: [],
+      parallelism: { raisable: ["dev-core", "curator"], live: [], held: [] },
+      quota: [
+        {
+          window: "five_hour",
+          account: "pilot",
+          until: "2026-07-27T21:40:00Z",
+          since: "2026-07-27T16:40:00Z",
+          stated: true,
+          role: "dev-core",
+        },
+      ],
+    });
+    expect(rows[0]).toContain("HELD BY A CLOSED WINDOW");
   });
 });
 
