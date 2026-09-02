@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T17:01:34.040Z",
+  "writtenAt": "2026-09-02T17:01:52.059Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "074-parallelism-and-domains",
       "state": "running",
       "deadline": "2026-09-02T17:38:29Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "078-main-checkout-branch",
+      "state": "running",
+      "deadline": "2026-09-02T18:01:48Z"
     }
   ]
 }
