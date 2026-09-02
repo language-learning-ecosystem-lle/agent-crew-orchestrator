@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T16:39:17.500Z",
+  "writtenAt": "2026-09-02T16:43:34.073Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "063-state-model-rewrite",
       "state": "running",
       "deadline": "2026-09-02T17:38:55Z"
-    },
-    {
-      "role": "curator",
-      "thread": "073-notifiers-frozen-in-own-contour",
-      "state": "running",
-      "deadline": "2026-09-02T17:15:41Z"
     }
   ]
 }
