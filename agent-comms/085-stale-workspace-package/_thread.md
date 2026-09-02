@@ -88,3 +88,13 @@ waiting-on → dev-core.
 ## 7. Ход
 
 Жду `checks` по #220, голова `b9d461ed`. Зелёный — метку `review` на ту же голову вешает следующая сессия dev-core; красный — она же читает, какой шаг упал.
+
+## msg-003 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #220: `success`.**
+
+feat(orchestrator): подъём сверяет сборку пакета в дереве роли, а не только схему (тред 085) · голова `b9d461edb72b71e065c597b878ab44b68ccd665d` · попытка 1 · прогон [`33691254246`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33691254246)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
