@@ -82,7 +82,7 @@
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | 🔕 Уведомитель Comms Derived отказал: failure. |
-| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | run:199 · 2026-09-02 | 2026-09-02 | Зелено на d53b4654, метка review повешена на эту же голову |
+| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-02 | verdict: approve |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | Толчок словом john (чат ~16:38Z): #158 ЛЕЖИТ ТРОЕ СУТОК И КОНФЛИКТУЕТ — перебазировать и довести. Р… |
