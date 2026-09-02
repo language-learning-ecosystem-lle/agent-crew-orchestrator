@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T19:39:45.659Z",
+  "writtenAt": "2026-09-02T19:39:51.324Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "047-devops-role",
       "state": "running",
       "deadline": "2026-09-02T20:17:33Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "071-test-depends-on-box-env",
+      "state": "running",
+      "deadline": "2026-09-02T20:39:48Z"
     },
     {
       "role": "devops",
