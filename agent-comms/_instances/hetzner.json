@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T19:12:11.431Z",
+  "writtenAt": "2026-09-02T19:12:24.441Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,12 +19,6 @@
       "thread": "058-launch-prompt-mail-form-sandbox",
       "state": "running",
       "deadline": "2026-09-02T19:45:45Z"
-    },
-    {
-      "role": "devops",
-      "thread": "057-circuit-ping-flaps",
-      "state": "running",
-      "deadline": "2026-09-02T19:32:08Z"
     }
   ]
 }
