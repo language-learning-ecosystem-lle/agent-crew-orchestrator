@@ -201,7 +201,18 @@ const enable = (repo: string): void => {
   writeFileSync(join(repo, ".orchestrator", "enabled"), "", "utf8");
 };
 
-const cli = (contour: Contour, args: readonly string[]): { code: number; out: string } => {
+/**
+ * `--local-config` is added for the ORCHESTRATOR calls and left off the rest, and since
+ * 2026-09-02 that is not a nicety: `check` is behind the argument door (thread 042) and
+ * does not read the machine config, so a flag appended to every call would be refused by
+ * name — correctly. Before the door it was swallowed in silence, which is the same
+ * defect seen from the tests' side.
+ */
+const cli = (
+  contour: Contour,
+  args: readonly string[],
+  localConfig = true,
+): { code: number; out: string } => {
   const result = spawnSync(
     TSX,
     [
@@ -212,8 +223,7 @@ const cli = (contour: Contour, args: readonly string[]): { code: number; out: st
       "--no-fetch",
       "--repo",
       contour.repo,
-      "--local-config",
-      contour.local,
+      ...(localConfig ? ["--local-config", contour.local] : []),
     ],
     {
       cwd: contour.repo,
@@ -467,7 +477,7 @@ describe("`status` reads the other boxes out of the branch (R13)", () => {
 
 describe("`check` knows `_instances/` as a class (R13)", () => {
   const check = (bench: Contour): { code: number; out: string } =>
-    cli(bench, ["check", "--root", join(bench.mail, "agent-comms")]);
+    cli(bench, ["check", "--root", join(bench.mail, "agent-comms")], false);
 
   it("a well-formed digest of a declared box is not a finding", () => {
     const bench = contour({
