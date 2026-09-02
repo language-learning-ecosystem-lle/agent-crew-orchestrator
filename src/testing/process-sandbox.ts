@@ -19,6 +19,32 @@
 import { basename, join } from "node:path";
 
 import { LAUNCH_ENV } from "../orchestrator/launch.js";
+import { BOX_URL_KEY, CIRCUIT_URL_KEY } from "../orchestrator/watchdog.js";
+
+/**
+ * THE MONITORS OF THE BOX ARE THE BOX'S AND NOT A LAUNCH'S (thread `071`, measured
+ * 2026-09-02). `loadSecrets` merges the secrets FILE over `process.env`, so a key the file
+ * does not carry is still answered by the ambient environment — and on the box that runs
+ * the circuit `HEALTHCHECKS_CIRCUIT_URL_HETZNER` is set STANDINGLY, because that is where
+ * the live daemon's own monitor is named.
+ *
+ * Measured on `daemon.watchdog.process.test.ts:505`, the case whose whole claim is "a named
+ * instance with only the BARE key beats nothing": the test writes a secrets file with the
+ * bare key alone, the daemon read the box's suffixed key out of the inherited environment,
+ * and the banner said `circuit watchdog ON — … 'HEALTHCHECKS_CIRCUIT_URL_HETZNER'` instead
+ * of OFF. Red on the box, green on the runner (which has no monitors at all) — the same
+ * direction as the three variables above, and the same loss: a role whose local run is red
+ * for a reason of the stand stops being able to tell its own regression from the box's.
+ *
+ * AND THE SECOND HALF IS WORSE THAN A RED TEST. With the watchdog ON on the ambient URL,
+ * the daemon that the test spawned beat the LIVE circuit's monitor — a suite run silencing
+ * the production alarm for a daemon it is not.
+ *
+ * By prefix rather than by the two names, because the key of a named instance IS the bare
+ * one with a suffix (`resolveWatchdog`), and every instance a box gains adds another.
+ */
+const boxMonitor = (name: string): boolean =>
+  name === BOX_URL_KEY || name === CIRCUIT_URL_KEY || name.startsWith(`${CIRCUIT_URL_KEY}_`);
 
 /**
  * The environment of one CLI launch: the ambient one, with the config home replaced by
@@ -64,6 +90,7 @@ export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.Pro
   // two variables that would make it a DIFFERENT BOX are removed by name.
   const { CLAUDE_CONFIG_DIR: _ambient, INVOCATION_ID: _supervisor, ...ambient } = process.env;
   for (const name of Object.values(LAUNCH_ENV)) delete ambient[name];
+  for (const name of Object.keys(ambient)) if (boxMonitor(name)) delete ambient[name];
   return {
     ...ambient,
     XDG_CONFIG_HOME: home,
