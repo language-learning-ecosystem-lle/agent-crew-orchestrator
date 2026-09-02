@@ -36,6 +36,7 @@ import type { Instance } from "../config/config.js";
 import type { LeaseView } from "./lease.js";
 import { isLeaseAlive } from "./lease.js";
 import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
+import { stateWord } from "./state-word.js";
 
 /** A (role, thread) pair this instance holds a live lease on — the working part of the state. */
 export type DigestLease = {
@@ -398,8 +399,13 @@ export const renderInstances = (input: {
       lines.push(`    ⏸ ${describeQuotaShelf(shelf, input.now)}`);
     }
     for (const lease of digest.leases) {
+      // THE NEIGHBOUR'S STATE IS READ IN THE SAME WORDS AS THIS BOX'S (thread 063). The
+      // digest carries the DATA word off the wire — that is what a file two boxes agree on
+      // has to carry — and the translation happens here, at the frame, exactly as it does
+      // for a local lease. `stateWord` returns an unknown word unchanged, which is what
+      // makes this safe against a neighbour running a version that knows a state we do not.
       lines.push(
-        `    ${lease.role}/${lease.thread}  ·  ${lease.state}${lease.deadline === null ? "" : `  ·  deadline ${lease.deadline}`}`,
+        `    ${lease.role}/${lease.thread}  ·  ${stateWord(lease.state)}${lease.deadline === null ? "" : `  ·  deadline ${lease.deadline}`}`,
       );
     }
   }

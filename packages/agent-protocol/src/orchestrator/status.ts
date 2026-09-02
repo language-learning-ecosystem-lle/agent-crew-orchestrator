@@ -6,24 +6,9 @@
  * attempt ceiling) are called out as explicit marks instead of hiding inside the
  * state column.
  */
-import type { LeaseLifecycle, LeaseView } from "./lease.js";
+import type { LeaseView } from "./lease.js";
+import { stateWord, timeLeftWord } from "./state-word.js";
 import { describeFreeze, freezeHasTerm } from "./thaw.js";
-
-/**
- * THE STATE COLUMN, IN THE OPERATOR'S WORDS (thread 019, john) — `draining` is the
- * word of the state machine, and to a reader who did not write that machine it says
- * "shutting down". It means the opposite of that: the turn has been passed and the
- * session is still WORKING, inside the same window, until its process exits by itself.
- * john read the frame twice and asked both times why a pair marked `draining` was
- * plainly doing work; the second asking is the repro. Only the column a human reads is
- * translated — `state` stays `draining` everywhere it is data (the journal, the digest
- * a box publishes about itself), because a display word in a data file is how two
- * readers of one fact start to disagree. The "until when" the phrase implies is not
- * repeated here: the `deadline` column sits right beside it and already carries it.
- * Every other state reads as itself and is left alone.
- */
-const stateWord = (state: LeaseLifecycle): string =>
-  state === "draining" ? "working past handoff" : state;
 
 /**
  * THE COUNT COLUMN, AND WHY IT MAY EXCEED ITS OWN CEILING (thread 023). `attempt 4/3`
@@ -92,20 +77,36 @@ const flag = (view: LeaseView, closed: boolean): string => {
  * else. It is a parameter and not a field of the view on purpose: the fold reads the
  * journal, and whether a thread is closed is a fact of the MAIL, which the fold has never
  * been given and must not start needing.
+ *
+ * `now` — for the "how much is left" phrase (thread 063, john's requirement 5). Optional,
+ * and its absence drops the column rather than guessing at the clock: a caller that reads
+ * a journal without a moment to judge it against (a test, an offline reader) gets the
+ * frame it always did, and nobody is shown a countdown computed from the wrong `now`.
  */
-export const renderLeaseLine = (view: LeaseView, closed = false): string => {
+export const renderLeaseLine = (view: LeaseView, closed = false, now?: Date): string => {
   const cols = [
     view.role,
     view.thread,
-    stateWord(view.state),
+    // THE STATE AND THE REASON ARE ONE PHRASE (thread 063). They used to be two columns —
+    // a lifecycle word at the front and a bare enum in brackets at the back — and between
+    // them the reader had to reassemble the sentence the frame already knew. `stateWord`
+    // is that sentence, and it is the SAME function the parallelism block and the
+    // neighbouring-box line now call: three renderers of one fact, one vocabulary.
+    stateWord(view.state, view.reason),
     // The count AND what it is judged against: "attempt 13" left an operator to guess
     // both the ceiling and whether their `--max-attempts` had arrived at all.
     attemptWord(view),
+    // WHAT THE DEADLINE MEANS IN MINUTES, beside the stamp rather than instead of it: the
+    // stamp is what an operator quotes into a thread, the phrase is what they read.
+    // BEFORE the stamp, and that order is load-bearing rather than taste: the observer's
+    // top panel cuts this line to the terminal's width (`tui.ts`), and at eighty or a
+    // hundred columns the cut lands inside these last columns. What survives a cut must be
+    // the half that is READ; the half that is COPIED into a thread is the one to lose.
+    now === undefined ? "" : timeLeftWord(view, now),
     view.deadline === null ? "deadline —" : `deadline ${view.deadline}`,
     // The wait's own clock is shown only while it is the one in force: an empty column
     // in every other state would read as "no wait ceiling exists".
     view.waitDeadline === null ? "" : `awaiting input until ${view.waitDeadline}`,
-    view.reason === null ? "" : `(${view.reason})`,
   ]
     .filter((c) => c !== "")
     .join("  ·  ");
@@ -125,7 +126,8 @@ export const renderLeaseLine = (view: LeaseView, closed = false): string => {
 export const renderStatus = (
   views: readonly LeaseView[],
   closed: ReadonlySet<string> = new Set(),
+  now?: Date,
 ): string => {
   if (views.length === 0) return "orchestrator: no sessions in the journal";
-  return views.map((view) => renderLeaseLine(view, closed.has(view.thread))).join("\n");
+  return views.map((view) => renderLeaseLine(view, closed.has(view.thread), now)).join("\n");
 };

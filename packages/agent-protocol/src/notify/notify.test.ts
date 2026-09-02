@@ -12,6 +12,8 @@ import {
   accountAlarmKey,
   announcedOf,
   describeAge,
+  EVENT_PARK_STALE_AFTER_MINUTES,
+  type EventPark,
   type ExhaustedPair,
   exhaustedPairsOf,
   type NotificationPlan,
@@ -878,7 +880,7 @@ describe("a thread frozen behind an EVENT — the class that gets no line at all
       waiting: [],
       seen: EMPTY,
       stalled: [{ thread: "023-x", role: "dev-core", since: "2026-07-31T09:00:00Z", age: "5 h" }],
-      frozen: ["023-x"],
+      frozen: [{ thread: "023-x", pr: 366, kind: "event", since: "2026-07-31T09:00:00Z" }],
       templates: TEMPLATES,
     });
 
@@ -892,11 +894,178 @@ describe("a thread frozen behind an EVENT — the class that gets no line at all
       waiting: [],
       seen: EMPTY,
       stalled: [{ thread: "025-y", role: "dev-core", since: "2026-07-31T09:00:00Z", age: "5 h" }],
-      frozen: ["023-x"],
+      frozen: [{ thread: "023-x", pr: 366, kind: "event", since: "2026-07-31T09:00:00Z" }],
       templates: TEMPLATES,
     });
 
     expect(result.stalled.map((turn) => turn.thread)).toEqual(["025-y"]);
+  });
+});
+
+/**
+ * THE WATCHDOG OVER THAT SAME SILENCE (thread 061, form (C)).
+ *
+ * The class above is right for every park the circuit is working through and blind to the one
+ * it is not: the merge that landed with no `merged-pr` header (thread 030 — 8 hours, woken by
+ * hand), and the park whose event needs a move by somebody the park itself keeps unraised
+ * (thread 061 — the deadlock). Both look, to every other pass in this file, like a circuit
+ * behaving as intended, and the cost of that is silence rather than a wrong verdict.
+ */
+describe("an event park past the band — the watchdog of thread 061", () => {
+  const NOW = new Date("2026-08-31T12:00:00Z");
+  const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 3_600_000).toISOString();
+
+  const watch = (input: {
+    readonly frozen: readonly EventPark[];
+    readonly seen?: NotifyState;
+    readonly targets?: NotificationTarget[];
+  }) =>
+    planNotifications({
+      targets: input.targets ?? TARGETS,
+      waiting: [],
+      seen: input.seen ?? EMPTY,
+      frozen: input.frozen,
+      now: NOW,
+      templates: TEMPLATES,
+    });
+
+  it("a park INSIDE the band is silent — the old promise of the class is kept", () => {
+    const result = watch({
+      frozen: [{ thread: "061-x", pr: 175, kind: "event", since: hoursAgo(5) }],
+    });
+
+    expect(result.staleEventParks).toEqual([]);
+    expect(result.lines).toEqual([]);
+    // And nothing is remembered about a park that was never announced: the tick it crosses
+    // the band it must still be able to ring.
+    expect(result.eventParkKeys).toEqual([]);
+  });
+
+  it("a park PAST the band rings once, naming the thread, the age and the PR", () => {
+    const result = watch({
+      frozen: [{ thread: "061-x", pr: 175, kind: "event", since: hoursAgo(9) }],
+    });
+
+    expect(result.staleEventParks.map((park) => park.thread)).toEqual(["061-x"]);
+    const line = result.lines.find((entry) => entry.kind === "stale-event-park");
+    expect(line?.thread).toBe("061-x");
+    expect(line?.text).toContain("061-x has stood 9h");
+    expect(line?.text).toContain("behind the merge of #175");
+    // THE LIFT IS NAMED, and it is the half of the line that sends the reader to the right
+    // place: a merge park lifts on a header nobody may remember to write.
+    expect(line?.text).toContain("merged-pr: 175");
+    expect(announcedOf(result)).toContain("061-x (stale park on #175)");
+  });
+
+  it("the SECOND tick is silent about the same park, and keeps its key", () => {
+    const first = watch({
+      frozen: [{ thread: "061-x", pr: 175, kind: "event", since: hoursAgo(9) }],
+    });
+    const second = watch({
+      frozen: [{ thread: "061-x", pr: 175, kind: "event", since: hoursAgo(9) }],
+      seen: { ...EMPTY, eventParks: first.eventParkKeys },
+    });
+
+    expect(second.staleEventParks).toEqual([]);
+    expect(second.lines).toEqual([]);
+    expect(second.eventParkKeys).toEqual(first.eventParkKeys);
+  });
+
+  it("a LIFTED park forgets itself, so the NEXT park of the same thread rings again", () => {
+    const first = watch({
+      frozen: [{ thread: "061-x", pr: 175, kind: "event", since: hoursAgo(9) }],
+    });
+    // The park is lifted: the caller stops handing it over, and the key must not survive —
+    // a key kept past the lift would silence the next promise of the same thread.
+    const lifted = watch({ frozen: [], seen: { ...EMPTY, eventParks: first.eventParkKeys } });
+    expect(lifted.eventParkKeys).toEqual([]);
+
+    const again = watch({
+      frozen: [{ thread: "061-x", pr: 180, kind: "run", since: hoursAgo(7) }],
+      seen: { ...EMPTY, eventParks: lifted.eventParkKeys },
+    });
+    expect(again.staleEventParks.map((park) => park.pr)).toEqual([180]);
+  });
+
+  it("a park on a ROUND names the round and not the header — the two lifts are different", () => {
+    const result = watch({
+      frozen: [{ thread: "062-y", pr: 160, kind: "run", since: hoursAgo(8) }],
+    });
+
+    const line = result.lines.find((entry) => entry.kind === "stale-event-park");
+    expect(line?.text).toContain("behind the round of #160");
+    expect(line?.text).toContain("the round of #160 reporting into that thread");
+    expect(line?.text).not.toContain("merged-pr");
+  });
+
+  it("the threshold is the exported one, and the minute below it is silent", () => {
+    const below = watch({
+      frozen: [
+        {
+          thread: "061-x",
+          pr: 175,
+          kind: "event",
+          since: new Date(
+            NOW.getTime() - (EVENT_PARK_STALE_AFTER_MINUTES - 1) * 60_000,
+          ).toISOString(),
+        },
+      ],
+    });
+    const at = watch({
+      frozen: [
+        {
+          thread: "061-x",
+          pr: 175,
+          kind: "event",
+          since: new Date(NOW.getTime() - EVENT_PARK_STALE_AFTER_MINUTES * 60_000).toISOString(),
+        },
+      ],
+    });
+
+    expect(below.staleEventParks).toEqual([]);
+    expect(at.staleEventParks.map((park) => park.thread)).toEqual(["061-x"]);
+  });
+
+  it("with NO CLOCK there is no watchdog — silence, not an invented age", () => {
+    const result = planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      seen: EMPTY,
+      frozen: [{ thread: "061-x", pr: 175, kind: "event", since: hoursAgo(30) }],
+      templates: TEMPLATES,
+    });
+
+    expect(result.staleEventParks).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("with NOBODY TO SPEAK TO the line is not rendered — its move belongs to a person", () => {
+    const result = watch({
+      frozen: [{ thread: "061-x", pr: 175, kind: "event", since: hoursAgo(30) }],
+      targets: [{ id: "curator", style: "nudge", nudge: "john" }],
+    });
+
+    expect(result.staleEventParks).toEqual([]);
+    expect(result.lines).toEqual([]);
+  });
+
+  it("the key survives a round trip through the state file, and a malformed line is dropped", () => {
+    const rendered = renderNotifyState({
+      waiting: [],
+      stalled: [],
+      parked: [],
+      eventParks: ["061-x\t175\t2026-08-30T09:00:00Z"],
+    });
+    expect(rendered).toContain("event-park\t061-x\t175\t2026-08-30T09:00:00Z");
+    expect(parseNotifyState(rendered).eventParks).toEqual(["061-x\t175\t2026-08-30T09:00:00Z"]);
+    // A line whose PR is not a number is dropped rather than half-read: a key that is not the
+    // key would announce the same standstill a second time.
+    expect(
+      parseNotifyState("event-park\t061-x\trun-33344946364\t2026-08-30T09:00:00Z").eventParks,
+    ).toBeUndefined();
+    // And a state file written before this class existed reads as "never announced one",
+    // which must not read as "everything is new" anywhere else in the file.
+    expect(parseNotifyState("john\t016-x\n").eventParks).toBeUndefined();
   });
 });
 
@@ -1100,7 +1269,7 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
   const untaken = (input: {
     readonly unaccepted?: readonly UnacceptedTurn[];
     readonly parked?: readonly ParkedThread[];
-    readonly frozen?: readonly string[];
+    readonly frozen?: readonly EventPark[];
     readonly stalled?: readonly StalledTurn[];
     readonly waiting?: readonly WaitingPair[];
     readonly seen?: NotifyState;
@@ -1560,7 +1729,9 @@ describe("a turn the box never took — the eighth class of event (thread 042)",
 
   it("(в4) a FROZEN thread stays with its own class whoever holds the turn", () => {
     const result = untaken({
-      frozen: ["019-round"],
+      frozen: [
+        { thread: "019-round", pr: 19, kind: "run", since: "2026-08-29T01:00:00Z" } as const,
+      ],
       unaccepted: [
         { role: "curator", thread: "019-round", since: "2026-08-29T01:00:00Z", age: "19m" },
       ],

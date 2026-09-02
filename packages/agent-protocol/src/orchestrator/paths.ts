@@ -215,6 +215,27 @@ export const waitPathFromSessionFile = (sessionFile: string): string | undefined
   sessionFile.endsWith(".session") ? sessionFile.replace(/\.session$/, ".waiting") : undefined;
 
 /**
+ * WHERE THIS RUN'S «TEMPORARY» ACTUALLY LANDS (thread `056-shared-tmp-mechanism`) — the
+ * directory handed to the child as `TMPDIR`, so that a command written in the ordinary
+ * shape (`mktemp -d`, a redirect into a scratch file, a vendor binary's own spool) lands
+ * in this run's own place BY CONSTRUCTION and not by the session remembering rule №15.
+ *
+ * WHY A MECHANISM AND NOT A REMINDER. The rule («do not write into the shared `/tmp`»)
+ * is known, quoted by the roles themselves and still broken every few turns — curator
+ * caught herself three turns running in one thread (LLE `111`, 2026-08-30T09:30:36Z) and
+ * named the class correctly: the write is not a decision, it is a side effect of the
+ * convenient form of a command. What separated that case from a dump into
+ * `/tmp/run.log` painting somebody else's CI was luck, not construction.
+ *
+ * Same name, fifth extension: one run is one name in a directory listing, and the
+ * leftovers of a run are read beside its log rather than hunted for among everyone's.
+ * It lies in the state directory (never in the role's worktree — a scratch file there is
+ * a dirty tree, i.e. a refusal to launch on the next tick, R17) and the supervisor
+ * removes it when the run ends, having first NAMED what was left in it.
+ */
+export const sessionTmpPath = (logPath: string): string => logPath.replace(/\.log$/, ".tmp");
+
+/**
  * WHERE A DETACHED SUPERVISOR SPEAKS (R12). An attached run says everything to the
  * terminal of whoever started it; a detached one has no terminal at all, and its own
  * words — the preflight, the refusals, the relayed session lines — would go to

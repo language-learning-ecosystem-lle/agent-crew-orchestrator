@@ -704,21 +704,26 @@ const ghShim = (
   repo: string,
   answer:
     | { readonly headSha: string; readonly mergeable: string; readonly runs: number }
-    | { readonly refuse: true },
+    | { readonly refuse: true }
+    // The vendor's own sentence about a pull request that is not there (thread 061), copied
+    // from what `gh pr view 33328290131` actually printed on 2026-08-30.
+    | { readonly absent: true },
 ): string => {
   const dir = join(repo, `gh-shim-${randomUUID().slice(0, 8)}`);
   mkdirSync(dir, { recursive: true });
   const body =
     "refuse" in answer
       ? 'echo "gh: no token" >&2; exit 1'
-      : `cat <<'JSON'\n${JSON.stringify({
-          headRefOid: answer.headSha,
-          mergeable: answer.mergeable,
-          statusCheckRollup: Array.from({ length: answer.runs }, (_, at) => ({
-            name: `check-${at}`,
-            status: "IN_PROGRESS",
-          })),
-        })}\nJSON`;
+      : "absent" in answer
+        ? 'echo "GraphQL: Could not resolve to a PullRequest with the number of 999999. (repository.pullRequest)" >&2; exit 1'
+        : `cat <<'JSON'\n${JSON.stringify({
+            headRefOid: answer.headSha,
+            mergeable: answer.mergeable,
+            statusCheckRollup: Array.from({ length: answer.runs }, (_, at) => ({
+              name: `check-${at}`,
+              status: "IN_PROGRESS",
+            })),
+          })}\nJSON`;
   const bin = join(dir, "gh");
   writeFileSync(bin, `#!/bin/sh\n${body}\n`, { mode: 0o755 });
   return dir;
@@ -938,7 +943,7 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     // number exists is not the door's business, and the park lifts on the notifier's word.
     const contest = contour();
 
-    const result = direct(contest, "dev-core", "--parked-on", "pr:127");
+    const result = direct(contest, "dev-core", "--parked-on", "pr:127", "--park-mover", "curator");
 
     expect(result.code).toBe(0);
     expect(written(contest.root).fields.parkedOn).toBe("pr:127");
@@ -951,6 +956,66 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(result.out).toContain("lifts on ONE thing");
     expect(result.out).toContain("'merged-pr: 127'");
     expect(result.out).toContain("NOTHING WATCHES THE STATE OF #127");
+    // Form (B) of thread 061: the mover is written down beside the park it qualifies.
+    expect(written(contest.root).fields.parkMover).toBe("curator");
+  });
+
+  // THREAD 061, form (B) — THE PARK BEHIND A DOOR IT LOCKED ITSELF. `dev-speech` parked on the
+  // merge of its own PR, whose label and verdict were the next move of its own curator, and a
+  // parked thread raises nobody. The machine cannot judge reachability, so it demands the NAME:
+  // the parker who has to write who moves the merge is the parker who has just checked.
+  it("a park on a merge without a named mover is refused, and nothing is written", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:451");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("--park-mover");
+    expect(result.out).toContain("A HAND on a button");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("a mover with no merge park to qualify is refused too — the field means nothing alone", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--park-mover", "curator");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("no event at all");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("a mover the config does not know is refused while the flag can still be retyped", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:451", "--park-mover", "curatr");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("not listed in the config");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  // A WAKEABLE ROLE IS THE COMMONEST TRUE ANSWER, and the door must not repeat `--delivers`'s
+  // refusal here: "the label goes up by curator" is exactly what the field is for.
+  it("a role the circuit CAN wake is a legal mover — that is the usual answer", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:451", "--park-mover", "dev-core");
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkMover).toBe("dev-core");
+  });
+
+  // A `run:` park names its mover already: the round the door has just verified to be alive.
+  it("a run: park needs no mover — its event is a machine that is already running", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:163", {
+      PATH: `${ghShim(contest.repo, { headSha: "6f933b0321ab", mergeable: "MERGEABLE", runs: 3 })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkMover).toBeUndefined();
   });
 
   it("the refusal of an unknown name names the event form — it is the other legal value", () => {
@@ -1014,6 +1079,66 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(result.code).toBe(0);
     expect(result.out).toContain("NOT verified");
     expect(written(contest.root).fields.parkedOn).toBe("run:243");
+  });
+
+  // THREAD 061, msg-002 — THE NUMBER ITSELF. Three parks in one day took somebody else's
+  // number (an id of a workflow run where the form wants the number of a PR); the door accepted
+  // every one and every author spent a second letter undoing the record.
+  it("an id of a workflow run is refused BEFORE gh is asked, and nothing is written", () => {
+    const contest = contour();
+
+    // The vendor IS on PATH and would refuse with its own sentence ("could not resolve to a
+    // PullRequest"); the assertion is that the door never got that far — the magnitude answered
+    // first, and it answers with no token, no network and no `gh` at all.
+    const result = direct(contest, "dev-core", "--parked-on", "run:33328290131", {
+      PATH: `${ghShim(contest.repo, { absent: true })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("NUMBER OF A PULL REQUEST");
+    expect(result.out).toContain("ID OF A WORKFLOW RUN");
+    expect(result.out).not.toContain("gh answers");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  it("the same guard stands on the pr: form, where no vendor is asked at all", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:33328290131");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("pr:33328290131");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  // A number that IS of PR magnitude but names no pull request here: only the `run:` form asks,
+  // and only this one refusal of `gh` is a fact rather than a blink.
+  it("a run: park on a PR that does not exist is refused, naming what was asked", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "run:999", {
+      PATH: `${ghShim(contest.repo, { absent: true })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("THERE IS NO PULL REQUEST #999");
+    // The refusal names WHERE the question was asked, so the same question can be repeated by
+    // hand — `gh` is asked in the working directory of the command, and that path is quoted.
+    expect(result.out).toContain("the repository it was asked about (");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toEqual([]);
+  });
+
+  // AND THE WEAKER FORM ON `pr:` IS DELIBERATE (statement of work, point 4): a park on a pull
+  // request being created in this very tick stays legal, so `pr:` is never asked about.
+  it("a pr: park on a number that does not exist yet still passes — the PR may be minutes away", () => {
+    const contest = contour();
+
+    const result = direct(contest, "dev-core", "--parked-on", "pr:999", "--park-mover", "curator", {
+      PATH: `${ghShim(contest.repo, { absent: true })}:${process.env.PATH ?? ""}`,
+    });
+
+    expect(result.code).toBe(0);
+    expect(written(contest.root).fields.parkedOn).toBe("pr:999");
   });
 
   it("'run' without a number is a name, and is refused as one", () => {
@@ -1628,5 +1753,158 @@ describe("new-thread and the same claim (thread 042)", () => {
     expect(result.code).toBe(2);
     expect(result.out).toContain("waiting-on");
     expect(existsSync(join(contest.root, "018-y"))).toBe(false);
+  });
+});
+
+/**
+ * THE STACK of point (B.3) of thread 058: the feed on disk → `parkingOf` → the writing door.
+ * The unit cases of `park-seen.ts` judge a `Parking` handed to them; only this one shows that
+ * the door READS the park standing in the thread it is writing into — the step the incident of
+ * LLE 110 went through without anybody noticing.
+ */
+describe("a letter into a thread that is already parked (thread 058)", () => {
+  /** The park of the incident: curator asks john and freezes the thread, on its own turn. */
+  const park = (contest: { root: string }): void =>
+    writeFileSync(
+      join(contest.root, "016-x", "messages", "2026-08-30T14-24-50Z-curator.md"),
+      "---\nfrom: curator\ndate: 2026-08-30T14:24:50Z\nexpects: answer\nwaiting-on: curator\nparked-on: john\n---\n\nМожно ли сузить лифт person-парка?\n",
+    );
+
+  it("REFUSES the letter that says nothing about the park, and names it in full", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(result.out).toContain("2026-08-30T14:24:50Z");
+    expect(result.out).toContain("curator's turn");
+    expect(result.out).toContain("Можно ли сузить лифт person-парка?");
+    expect(result.out).toContain("--park-lifted john");
+    // Refused BEFORE the write: the feed is append-only, so a letter caught after it is
+    // committed is not caught at all.
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(1);
+  });
+
+  it("refuses BEFORE --write too — a dry run that succeeds where the write refuses is a lie", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = run(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }, []);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+  });
+
+  it("WRITES the letter that names the lift", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = write(
+      contest,
+      { AGENT_PROTOCOL_WORKER: "claude-code" },
+      "--park-lifted",
+      "john",
+    );
+
+    expect(result.code).toBe(0);
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+  });
+
+  it("WRITES the letter that carries the park forward, and the one that carries john's word", () => {
+    const forward = contour();
+    park(forward);
+    expect(
+      write(forward, { AGENT_PROTOCOL_WORKER: "claude-code" }, "--parked-on", "john").code,
+    ).toBe(0);
+
+    const courier = contour();
+    park(courier);
+    expect(
+      write(courier, { AGENT_PROTOCOL_WORKER: "claude-code" }, "--delivers", "john").code,
+    ).toBe(0);
+  });
+
+  it("an unparked thread is untouched by the door — the everyday letter needs no flag", () => {
+    const contest = contour();
+
+    expect(write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }).code).toBe(0);
+  });
+
+  /**
+   * AND THE DOOR THAT COULD NOT LOOK SAYS SO (finding 11 of the review of #170, measured by
+   * curator against `main`). `standingParkFor` stands AFTER the `existsSync` refusal of
+   * `new-message`, so the only thing its `catch` ever sees is "the thread is there and its feed
+   * is unreadable" — and there the door of (B.3) used to switch off in silence, letting the
+   * letter through with the writer believing the park had been checked.
+   *
+   * TWO CLASSES, ONE CASE EACH, and no third: "the structure is not there" and "a file does not
+   * parse" are the two ways `loadThread` can throw; enumerating more ways to break a feed walks
+   * the same branch of code again. The unit level cannot hold either of them — `judgeParkSeen`
+   * is handed a `Parking` and never meets the reader.
+   */
+  describe("and the feed that could not be read at all", () => {
+    /** Class one: `messages/` without `_meta.md` — half a migration, or a head never written. */
+    const headless = (contest: { root: string }): void => {
+      park(contest);
+      rmSync(join(contest.root, "016-x", "_meta.md"));
+    };
+
+    /** Class two: the head is there, and one message file is not a message. */
+    const unparsable = (contest: { root: string }): void => {
+      park(contest);
+      writeFileSync(
+        join(contest.root, "016-x", "messages", "2026-08-30T14-25-00Z-dev-core.md"),
+        "no front matter here, just prose\n",
+      );
+    };
+
+    it("names the failed read instead of answering 'nothing is parked' (structure missing)", () => {
+      const contest = contour();
+      headless(contest);
+
+      const result = run(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }, []);
+
+      expect(result.out).toContain("could NOT be checked");
+      expect(result.out).toContain("nobody could tell");
+      // The reason travels in the words of the reader, which are the ones naming the cure.
+      expect(result.out).toContain("_meta.md");
+      expect(result.out).toContain("--repair");
+    });
+
+    it("names the failed read instead of answering 'nothing is parked' (a file does not parse)", () => {
+      const contest = contour();
+      unparsable(contest);
+
+      const result = run(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }, []);
+
+      expect(result.out).toContain("could NOT be checked");
+      // WHICH file killed the read — the reader names it, and the note carries that through.
+      expect(result.out).toContain("messages/2026-08-30T14-25-00Z-dev-core.md");
+      // AND THE STOP THAT FOLLOWS IS A REFUSAL WITH A NAME, not a stack trace. The dating of
+      // the new letter reads the same files and cannot read this one either; before this tact
+      // it died on the parser's bare sentence with no file name and the exit code of a crash
+      // (measured on `main`, 550c0266: `CODE=1`, "uncaught error: a message file must start
+      // with a '---' line"). The outcome is unchanged — the letter is not written — but the
+      // writer now learns which file and what to run.
+      expect(result.code).toBe(2);
+      expect(result.out).toContain("cannot be dated against a feed with an unreadable file");
+      expect(result.out).toContain("--repair");
+      expect(result.out).not.toContain("uncaught error");
+    });
+
+    it("the preview does not lie: --write says the same thing, and the letter still goes out", () => {
+      const contest = contour();
+      headless(contest);
+
+      const result = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+
+      // Sent, not refused: a refusal built on a feed nobody could parse names the writer
+      // nothing they can fix, and the mail has to stay writable while it is being repaired.
+      expect(result.code).toBe(0);
+      expect(result.out).toContain("could NOT be checked");
+      expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+    });
   });
 });

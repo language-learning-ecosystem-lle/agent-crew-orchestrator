@@ -96,6 +96,20 @@ export const pendingRunsOf = (entries: readonly RunRollupEntry[]): number =>
     return entry.state?.toUpperCase() === "PENDING";
   }).length;
 
+/**
+ * IS THIS REFUSAL OF `gh` THE SENTENCE "THERE IS NO SUCH PULL REQUEST" (thread 061) — read from
+ * the vendor's own words, and kept pure so the patterns are a test rather than a screenshot.
+ *
+ * NARROW ON PURPOSE, and the narrowness is the safety: only the two sentences GitHub says about
+ * a MISSING PULL REQUEST count. `Could not resolve to a Repository`, `HTTP 404` on the repo, a
+ * missing token, a `gh` that is not installed are NOT this — they are the network blinking or the
+ * box being misconfigured, and those must keep leaving the park exactly as it was. A pattern that
+ * matched them too would turn a flaky network into a role that cannot end its turn, which is the
+ * failure the degradation of this door was written to avoid.
+ */
+export const looksLikeAbsentPr = (message: string): boolean =>
+  /could not resolve to a pullrequest/i.test(message) || /no pull requests found/i.test(message);
+
 /** The verdict of the door: the park stands, or it is refused with the reason in words. */
 export type RunParkVerdict =
   | { readonly ok: true; readonly note?: string }
@@ -126,8 +140,24 @@ export const judgeRunPark = (input: {
   readonly facts?: RunParkFacts;
   /** Why the facts are missing — `gh`'s own sentence, quoted into the note. */
   readonly refusal?: string;
+  /**
+   * THE VENDOR SAID THE PULL REQUEST IS NOT THERE (thread 061, msg-002) — `where` is what was
+   * asked, so a human can check the same thing by hand.
+   *
+   * This is the one refusal of `gh` that is a FACT ABOUT THE WORLD and not a blink of the
+   * network, so it is the one that does NOT degrade into a note: everything else leaves the park
+   * standing (see the sentence above about degradation running in one direction), but "no such
+   * pull request" means the park's only lift can never be written.
+   */
+  readonly absent?: { readonly where: string };
 }): RunParkVerdict => {
   const { facts } = input;
+  if (input.absent !== undefined) {
+    return {
+      ok: false,
+      reason: `--parked-on 'run:${input.pr}' — gh answers that THERE IS NO PULL REQUEST #${input.pr} in the repository it was asked about (${input.absent.where}), and this form takes the NUMBER OF A PULL REQUEST: 'run:<pr>' waits for the round ON that PR. Nothing can ever name #${input.pr} back, so the park would stand until a human lifted it by hand (thread 061). If the number came from a workflow run, read the PR number instead ('gh pr view --json number' on the branch, or the last part of its URL)`,
+    };
+  }
   if (facts === undefined) {
     return {
       ok: true,

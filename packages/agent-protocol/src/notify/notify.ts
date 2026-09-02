@@ -144,6 +144,7 @@ export const BOX_ALARM_KINDS = [
   "frozen",
   "unaccepted",
   "unaccepted-stale-park",
+  "stale-event-park",
   "code-drift",
   "account",
 ] as const;
@@ -215,6 +216,23 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   // reader looking for a fault that is not there — which is the four hours of 2026-08-28.
   "unaccepted-stale-park":
     "{role}×{thread} has been standing for {age} behind a park on {person} that was declared on ANOTHER role's turn: the turn has moved to {role} since, and nothing is wanted of {person} by this pair. The daemon skips it every tick as parked — that line is true of the thread and false of the pair, so the move is to lift or re-declare the park, not to look at the box",
+  // THE ELEVENTH CLASS IS THE ONE THE COURIER USED TO OWE SILENCE (thread 061, form (C)). An
+  // event park is deliberately mute in every other pass here — it is not a call and not a stall
+  // — and that silence is right for the hours a merge or a round actually takes. What it cannot
+  // tell apart is the park whose event WILL NOT HAPPEN: the merge landed with no `merged-pr`
+  // header (thread 030 — 8 hours, and a human woke it by hand), or the park waits on a button
+  // that needs somebody's move first and the park itself is what keeps that somebody unraised
+  // (thread 061 — the deadlock this class is named after). Both look, from every pass in this
+  // file, exactly like a circuit working as intended.
+  //
+  // IT NAMES NO DIAGNOSIS AND ASKS FOR NO REPAIR, and that is deliberate: whether the event is
+  // still reachable is a fact about GitHub, and reading it here would be a poll of the vendor on
+  // every tick, for the one class of park that legitimately lasts days. What the line carries is
+  // what this box KNOWS — how long, behind what, and what would lift it — and the reader decides.
+  // Ringing once per park is the whole of the repair: the cost measured in 030 and 061 was
+  // silence, not a wrong verdict.
+  "stale-event-park":
+    "{thread} has stood {age} behind the {what} of #{pr} and nothing has lifted it. {lift}. Nothing in this box watches the state of #{pr}, and no role is raised on that thread meanwhile — read #{pr}: if what it waits for has already happened, or cannot happen until somebody moves first, the thread needs a letter",
   // THE NINTH CLASS SPEAKS ABOUT THE BOX ITSELF AND NOT ABOUT ANY PAIR (thread 044). The
   // daemon picks up merged code only in a window with no live lease; on an active circuit
   // that window can be missed for hours, and until this line the refusal lived in
@@ -355,6 +373,65 @@ export const unacceptedKey = (turn: Pick<UnacceptedTurn, "role" | "thread" | "si
  * bump asked for in the thread.
  */
 export const UNACCEPTED_AFTER_MINUTES = 10;
+
+/**
+ * ONE THREAD FROZEN BEHIND AN EVENT — a merge (`pr:`) or a round of CI (`run:`) — with the
+ * three facts the watchdog of thread 061 needs: which thread, which PR, and since when.
+ *
+ * IT IS THE WHOLE SET AND NOT THE OVERDUE PART OF IT, and that is why the threshold is applied
+ * inside {@link planNotifications} rather than by the caller the way a stall's is: this set has a
+ * SECOND job older than the watchdog — it is what keeps the age pass quiet about a thread that is
+ * behaving exactly as intended (thread 023) — so a caller that pre-filtered it by age would turn
+ * every young event park into a stall on the tick it was declared.
+ */
+export type EventPark = {
+  readonly thread: string;
+  /** The PR whose merge (`event`) or whose round (`run`) lifts the park. */
+  readonly pr: number;
+  /** Which of the two forms it is — the two lift on different things, and the line says which. */
+  readonly kind: "event" | "run";
+  /** The stamp of the message that declared it — the identity of the park, not of the thread. */
+  readonly since: string;
+};
+
+/** The identity of one event park: the thread, the PR and the message that declared it. */
+export const eventParkKey = (park: EventPark): string =>
+  `${park.thread}\t${park.pr}\t${park.since}`;
+
+/**
+ * AFTER HOW LONG AN EVENT PARK IS ITSELF AN EVENT — six hours (thread 061, form (C)).
+ *
+ * The number is chosen from the two measured cases and not from taste. The floor is what a
+ * legitimate park costs: a round of CI is minutes, and a merge waits on a person who may be
+ * asleep — a threshold under a working day's gap would ring on every park declared in the
+ * evening, which is the noise that teaches a reader to skip the digest. The ceiling is what
+ * silence costs: the park of thread 030 stood 8 hours with a ready head idle, and the deadlock
+ * of 061 stands forever by construction. Six hours rings inside the first of those and on the
+ * same morning as the second.
+ *
+ * A CONSTANT AND NOT A CONFIG KEY, on the rule written at {@link UNACCEPTED_AFTER_MINUTES}: a
+ * new key in `notifications` is a new protocol version and a migration for every box in the
+ * field, which is john's decision rather than a side effect of this repair.
+ */
+export const EVENT_PARK_STALE_AFTER_MINUTES = 360;
+
+/**
+ * WHAT THE THREAD IS BEHIND, in one word, and WHAT WOULD LIFT IT, in one sentence — the two
+ * halves of the alarm's text that differ between the forms.
+ *
+ * They are pure and separate because they are the part of the line a test can pin: a park on a
+ * merge lifts on a header nobody may remember to write (thread 030), a park on a round lifts on
+ * the report of a round that may never have started, and telling a reader the wrong one of those
+ * sends them to look in the wrong place.
+ */
+export const describeEventParkLift = (park: Pick<EventPark, "kind" | "pr">): string =>
+  park.kind === "event"
+    ? `It lifts on ONE thing: a message carrying 'merged-pr: ${park.pr}' in its header, anywhere in the mail — a merge announced in prose lifts nothing (thread 030)`
+    : `It lifts on the round of #${park.pr} reporting into that thread, and on nothing else — a round that never started reports nothing`;
+
+/** The word the alarm names the form by: a merge, or a round of CI. */
+export const describeEventParkWhat = (park: Pick<EventPark, "kind">): string =>
+  park.kind === "event" ? "merge" : "round";
 
 /**
  * ONE THREAD FROZEN BEHIND A PERSON (R27), with the question it is frozen on.
@@ -728,6 +805,14 @@ export type NotifyState = {
    * is what a state file written before this class existed says.
    */
   readonly accounts?: readonly string[] | undefined;
+  /**
+   * The {@link eventParkKey}s of the event parks already announced as stale (thread 061) — the
+   * composition, like `unaccepted` and unlike `freezes`: an event park ends by being lifted, and
+   * being lifted is exactly what drops it from the set the caller hands over, so there is nothing
+   * to carry forward. Absent means this box has never announced one, which is what a state file
+   * written before this class existed says — and it must not read as "every park is new".
+   */
+  readonly eventParks?: readonly string[] | undefined;
 };
 
 export type NotificationPlan = {
@@ -899,6 +984,20 @@ export type NotificationPlan = {
   readonly freshAccounts: readonly AccountAlarm[];
   /** The keys that must survive into the next state file — the STATES only, never an event. */
   readonly accountKeys: readonly string[];
+  /**
+   * The event parks past {@link EVENT_PARK_STALE_AFTER_MINUTES} that ring in THIS letter — the
+   * fresh ones only, on the rule the drift and the park follow: a park that does not go away by
+   * itself and is announced every few minutes for hours is the noise that costs the next real
+   * call its reader (thread 061, §3 of the statement).
+   */
+  readonly staleEventParks: readonly EventPark[];
+  /**
+   * The {@link eventParkKey}s that must survive into the next state file: the ones announced
+   * before AND STILL STANDING, plus the ones that ring now. A lifted park drops out of the set
+   * the caller hands over, so its key leaves here by itself — and the NEXT park of the same
+   * thread is then fresh again, which is right: it is a different promise.
+   */
+  readonly eventParkKeys: readonly string[];
   /** The message, one line per thread-and-human. Rendered from the FULL composition. */
   readonly lines: readonly NotificationLine[];
 };
@@ -1020,6 +1119,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     // the line, and the sentence is not stored — it is re-rendered from the box every run,
     // exactly as the age of a stall and the reason of an unaccepted turn are.
     ...(state.accounts ?? []).map((entry) => `account\t${entry}`),
+    // Four columns (thread, PR, stamp), on the rule every identity line here follows: the age is
+    // not stored because it changes every tick, and what identifies the event is the message that
+    // declared the park.
+    ...(state.eventParks ?? []).map((entry) => `event-park\t${entry}`),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -1032,6 +1135,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const unaccepted: UnacceptedTurn[] = [];
   const reminded: ParkReminder[] = [];
   const accounts: string[] = [];
+  const eventParks: string[] = [];
   let auth: string | undefined;
   let gh: string | undefined;
   let drift: string | undefined;
@@ -1101,6 +1205,22 @@ export const parseNotifyState = (raw: string): NotifyState => {
         accounts.push(`${kind}\t${role}\t${about ?? ""}`);
       continue;
     }
+    if (columns[0] === "event-park") {
+      // Three columns exactly, and the middle one must be a NUMBER — a short or malformed line is
+      // dropped rather than half-read, on the freeze rule: a key that is not the key announces the
+      // same standstill a second time.
+      const [, thread, pr, since] = columns;
+      if (
+        thread !== undefined &&
+        pr !== undefined &&
+        since !== undefined &&
+        /^\d+$/.test(pr) &&
+        thread !== ""
+      ) {
+        eventParks.push(`${thread}\t${pr}\t${since}`);
+      }
+      continue;
+    }
     if (columns[0] === "freeze") {
       // Four columns exactly (kind, role, thread, since) — a short line is dropped rather
       // than half-read: a key that is not the key announces the same freeze a second time.
@@ -1131,6 +1251,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
     ...(unaccepted.length === 0 ? {} : { unaccepted }),
     ...(reminded.length === 0 ? {} : { reminded }),
     ...(accounts.length === 0 ? {} : { accounts }),
+    ...(eventParks.length === 0 ? {} : { eventParks }),
   };
 };
 
@@ -1175,8 +1296,15 @@ export const planNotifications = (input: {
    * lands and the notifier's message lifts the park). The one thing the courier owes such a
    * thread is silence, and it has to be said here, because on the age alone it looks exactly
    * like a dead turn.
+   *
+   * THE SILENCE HAS A FLOOR SINCE THREAD 061, and it is the one thing this set is no longer mute
+   * about: past {@link EVENT_PARK_STALE_AFTER_MINUTES} the park rings ONCE, as
+   * {@link NotificationPlan.staleEventParks}. The two sentences above stay true of every park
+   * inside the band, which is every park the circuit is actually working through; what the
+   * watchdog catches is the one outside it, where "it moves the moment the merge lands" has
+   * stopped being a description of anything.
    */
-  readonly frozen?: readonly string[];
+  readonly frozen?: readonly EventPark[];
   /**
    * The box's own credentials are refused and the predicate rings (thread 051). NOT filtered
    * by target the way a park is: it names no role because it belongs to no thread — it is
@@ -1352,7 +1480,7 @@ export const planNotifications = (input: {
   const told = new Set([
     ...waiting.map((pair) => pair.thread),
     ...parked.map((p) => p.thread),
-    ...(input.frozen ?? []),
+    ...(input.frozen ?? []).map((park) => park.thread),
   ]);
   // AN UNTAKEN TURN IS NOT A PARK AND NOT A FREEZE (thread 042, check (в)): those classes own
   // their threads, and two lines about one id is the noise thread 023 removed.
@@ -1374,7 +1502,7 @@ export const planNotifications = (input: {
     if (at === undefined) parksByThread.set(park.thread, [park]);
     else at.push(park);
   }
-  const frozenIds = new Set(input.frozen ?? []);
+  const frozenIds = new Set((input.frozen ?? []).map((park) => park.thread));
   const unaccepted = [...(input.unaccepted ?? [])]
     .filter((turn) => !frozenIds.has(turn.thread))
     .flatMap((turn): UnacceptedTurn[] => {
@@ -1471,6 +1599,45 @@ export const planNotifications = (input: {
   const freshAuth = auth !== undefined && authAlarmKey(auth) !== input.seen.auth;
   const freshGh = gh !== undefined && gh.since !== input.seen.gh;
   const freshDrift = drift !== undefined && drift.since !== input.seen.drift;
+
+  // THE WATCHDOG OVER THE EVENT PARKS (thread 061, form (C)). Three decisions, and each one is
+  // the answer to a way this class could lie:
+  //
+  //  - IT MEASURES, AND IT IS THE ONLY PASS BESIDES THE REMINDERS THAT DOES. Every other age in
+  //    this function is handed in already measured; this one cannot be, because the caller must
+  //    hand over the WHOLE set of event parks for the silencing job it has done since thread 023
+  //    (see {@link EventPark}). With no clock there is no watchdog at all — and that is the
+  //    honest answer rather than a hidden default, exactly as it is for the reminders: a caller
+  //    that could not give this function `now` cannot be given one that pretends to be it;
+  //  - IT NEEDS A HUMAN TO SPEAK TO. The line's move — read #N, decide whether the event can
+  //    still happen, write a letter — is a person's, and on a box with no `direct` target it
+  //    would be a sentence to nobody, which is the rule `unaccepted` follows above;
+  //  - IT RINGS ONCE PER PARK. The park does not go away by itself (that is the whole class), so
+  //    a line every few minutes for hours would be the noise the drift alarm was keyed to avoid.
+  //    The key is the park — thread, PR and the message that declared it — so a thread that lifts
+  //    one park and declares another is a NEW promise and rings again, correctly.
+  const seenEventParks = new Set(input.seen.eventParks ?? []);
+  const eventParks = input.frozen ?? [];
+  const watchdogClock = input.now;
+  const overdueEventParks =
+    watchdogClock === undefined || !human
+      ? []
+      : eventParks.filter((park) => {
+          const minutes = (watchdogClock.getTime() - Date.parse(park.since)) / 60_000;
+          return Number.isFinite(minutes) && minutes >= EVENT_PARK_STALE_AFTER_MINUTES;
+        });
+  const staleEventParks = overdueEventParks
+    .filter((park) => !seenEventParks.has(eventParkKey(park)))
+    .sort((a, b) => a.thread.localeCompare(b.thread) || a.pr - b.pr);
+  // WHAT SURVIVES INTO THE NEXT STATE, and it is deliberately NOT "everything overdue": a key is
+  // kept only while its park is still in the set the caller hands over, so a lifted park forgets
+  // itself on the very next tick. Keeping a key past the lift would silence the next park of the
+  // same thread — the one thing the reader of thread 030 needed to hear about.
+  const liveEventParkKeys = new Set(eventParks.map(eventParkKey));
+  const eventParkKeys = [
+    ...[...seenEventParks].filter((entry) => liveEventParkKeys.has(entry)),
+    ...staleEventParks.map(eventParkKey),
+  ].sort();
 
   // THE SIXTH CLASS (thread 013). Two decisions live here and neither is a detail:
   //
@@ -1613,6 +1780,33 @@ export const planNotifications = (input: {
         thread: turn.thread,
         age: turn.age,
         person: turn.staleParkOn ?? "",
+      }),
+    });
+  }
+  // AND THE OVERDUE EVENT PARKS STAND HERE, after the pairs the box is failing to raise and
+  // before the mail (thread 061). The order is the reason: the classes above say "this box is
+  // not moving"; this one says "the mail is waiting for something that may never come", and a
+  // reader who has just been told the daemon is down needs to read the second in the light of
+  // the first. One line per park — two stuck threads are two facts, and the reader can act on
+  // them separately.
+  for (const park of staleEventParks) {
+    lines.push({
+      kind: "stale-event-park",
+      thread: park.thread,
+      role: "",
+      text: renderTemplate(BOX_ALARM_TEMPLATES["stale-event-park"], {
+        thread: park.thread,
+        pr: String(park.pr),
+        what: describeEventParkWhat(park),
+        lift: describeEventParkLift(park),
+        // `now` is present by construction — a park reaches this list only through the filter
+        // above, which is empty without a clock — and the fallback names the threshold rather
+        // than a zero, so an unreachable branch cannot print "0m" over a six-hour standstill.
+        age: describeAge(
+          input.now === undefined
+            ? EVENT_PARK_STALE_AFTER_MINUTES
+            : (input.now.getTime() - Date.parse(park.since)) / 60_000,
+        ),
       }),
     });
   }
@@ -1780,6 +1974,8 @@ export const planNotifications = (input: {
     accountAlarms,
     freshAccounts,
     accountKeys,
+    staleEventParks,
+    eventParkKeys,
     lines,
   };
 };
@@ -2078,6 +2274,9 @@ export const announcedOf = (plan: NotificationPlan): readonly string[] => [
   ...plan.fresh.map((pair) => pair.thread),
   ...plan.freshStalled.map((turn) => `${turn.thread} (stalled ${turn.age})`),
   ...plan.freshUnaccepted.map((turn) => `${turn.role}×${turn.thread} (unaccepted ${turn.age})`),
+  // The PR is named and the age is not: the age of this class is re-measured every tick and the
+  // summary is read beside the letter that carries it, where the age is already spelled out.
+  ...plan.staleEventParks.map((park) => `${park.thread} (stale park on #${park.pr})`),
 ];
 
 /** An announcement into a thread — the same templating, the project's language. */
