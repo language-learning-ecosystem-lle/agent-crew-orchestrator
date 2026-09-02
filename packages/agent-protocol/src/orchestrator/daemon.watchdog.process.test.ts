@@ -422,7 +422,8 @@ describe("the dead-man ping and the exit that is a repair", () => {
     // ...and this exit waited for what came back, which is the whole of the finding: the
     // 503 was answered 750ms after the request, long after an unsettled tick would have gone.
     expect(run.out).toContain("the monitor answered 503");
-    expect(run.out).toContain("the dead-man ping was NOT delivered after 3 attempts");
+    // The count is said AGAINST ITS LIMIT — three of three, so nothing was declined.
+    expect(run.out).toContain("the dead-man ping was NOT delivered after 3 of 3 attempts");
   }, 120_000);
 });
 
