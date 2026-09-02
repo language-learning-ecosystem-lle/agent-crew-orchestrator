@@ -73,4 +73,4 @@
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
-| 069-session-path | curator · dev-core · john | normal | open | curator | — | 2026-09-02 | Сделано: PR #182, голова 219768de |
+| 069-session-path | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Не принято на этом круге: checks красные на голове 219768de — метка не вешается |
