@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T14:11:03.357Z",
+  "writtenAt": "2026-09-02T14:13:23.283Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "074-parallelism-and-domains",
       "state": "running",
       "deadline": "2026-09-02T15:10:57Z"
+    },
+    {
+      "role": "curator",
+      "thread": "071-test-depends-on-box-env",
+      "state": "running",
+      "deadline": "2026-09-02T14:53:17Z"
     }
   ]
 }
