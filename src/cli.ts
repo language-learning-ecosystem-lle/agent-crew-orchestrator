@@ -299,9 +299,11 @@ import {
   resolveSpawnIdentity,
   resolveWorker,
   roleLaunchability,
+  SESSION_PATH_ENV,
   type SpawnAs,
   SWITCH_EXEC,
   type SwitchProbe,
+  sessionPathValue,
   spawnAsCommand,
   switchProbeArgv,
 } from "./orchestrator/launch.js";
@@ -8698,6 +8700,18 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     writeLog(`supervisor  ${line}`);
     err(`agent-protocol: ${p.roleId}/${p.thread}: ${line}`);
   }
+  // WHAT THE SESSION WILL BE ABLE TO FIND (thread `069-session-path`), decided before the
+  // spawn and SAID, because an environment composed silently is one an operator debugs by
+  // guessing: the run's own log now answers "did this box hand the session its user's
+  // tools, and from where". Nothing is said when nothing is added — the inherited `PATH`
+  // is then the whole truth and a line claiming otherwise would be noise.
+  const sessionPath = sessionPathValue({
+    path: p.env.PATH,
+    home: p.env.HOME,
+    exists: (dir) => existsSync(dir),
+  });
+  if (sessionPath !== undefined) writeLog(`supervisor  session PATH ${sessionPath}`);
+
   // WHO IT RUNS AS (thread 047, point 3). `self` — the command IS the binary, exactly as
   // every run before this field existed; `sudo` — the binary becomes an argument of the
   // narrow entitlement, and NOTHING ELSE about this spawn changes: the same argv, the same
@@ -8751,6 +8765,17 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // their own box's scratch, not this run's, and on Linux `TMPDIR` outranks the
       // `TMP`/`TEMP` an inherited environment might also carry.
       [RUN_TMPDIR_ENV]: p.sessionTmp,
+      // WHERE ITS TOOLS ARE LOOKED UP (thread `069-session-path`). The inherited `PATH`
+      // is the daemon's — under systemd, the unit's own (`systemd.ts`, decision 5) — and
+      // it carries no per-user directory, so a tool installed the ordinary way
+      // (`~/.local/bin`: `uv`, `pipx`, `pip --user`) is invisible to every session while
+      // being on the operator's own `PATH`. Composed rather than replaced, and APPENDED:
+      // every name that resolved before this line resolves to the same file after it —
+      // in particular the agent binary, whose identity is the machine config's to decide
+      // (R14), not this spawn's. `undefined` when there is nothing to add, and then the
+      // key is not set at all: writing back an identical value would make the child's
+      // environment look composed on a box where it was merely inherited.
+      ...(sessionPath === undefined ? {} : { [SESSION_PATH_ENV]: sessionPath }),
       // WHICH ACCOUNT IT SPENDS (thread 055). The whole account — credentials, the
       // tool's config, the transcripts and the session store — hangs off this one
       // directory, so pointing at it is the entire isolation; there is no second

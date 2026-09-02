@@ -27,9 +27,11 @@ import {
   resolveSpawnIdentity,
   resolveWorker,
   roleLaunchability,
+  sessionPathValue,
   spawnAsCommand,
   switchProbeArgv,
   systemUserRefusal,
+  USER_BIN_DIRS,
   WIND_DOWN_MAX_SECONDS,
   WIND_DOWN_MIN_SECONDS,
 } from "./launch.js";
@@ -1832,5 +1834,55 @@ describe("continuing a session instead of starting one (R18)", () => {
       world: { base: "commit", mine: "2026-07-24T12-00-00Z-dev-core.md" },
     });
     expect(launch).not.toHaveProperty("resumes");
+  });
+});
+
+describe("sessionPathValue — the tools the session can find (thread 069)", () => {
+  const home = "/home/lle";
+  const inherited = "/home/lle/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin";
+  const all = () => true;
+  const none = () => false;
+
+  it("appends the user's binary directory to the daemon's PATH", () => {
+    expect(sessionPathValue({ path: inherited, home, exists: all })).toBe(
+      `${inherited}:/home/lle/.local/bin`,
+    );
+  });
+
+  it("appends and never prepends — every name that resolved before resolves to the same file", () => {
+    // The live case this rule exists for: `claude` is in BOTH directories on the box that
+    // produced the finding — the node version manager's and the vendor's native install.
+    // With the user's directory at the tail the session keeps the binary the machine
+    // config chose; at the head it would silently be raised by another one.
+    const composed = sessionPathValue({ path: inherited, home, exists: all }) as string;
+    const entries = composed.split(":");
+    expect(entries.indexOf("/home/lle/.local/bin")).toBe(entries.length - 1);
+    expect(composed.startsWith(inherited)).toBe(true);
+  });
+
+  it("says nothing when the directory does not exist on this box", () => {
+    expect(sessionPathValue({ path: inherited, home, exists: none })).toBeUndefined();
+  });
+
+  it("says nothing when the directory is already on the inherited PATH — no duplicate entry", () => {
+    expect(
+      sessionPathValue({ path: `${inherited}:/home/lle/.local/bin`, home, exists: all }),
+    ).toBeUndefined();
+  });
+
+  it("extends a PATH and does not invent one: nothing inherited, nothing composed", () => {
+    expect(sessionPathValue({ path: undefined, home, exists: all })).toBeUndefined();
+    expect(sessionPathValue({ path: "", home, exists: all })).toBeUndefined();
+  });
+
+  it("without HOME there is no user directory to name, and none is guessed", () => {
+    expect(sessionPathValue({ path: inherited, home: undefined, exists: all })).toBeUndefined();
+  });
+
+  it("takes the candidates it is given — the rule is the same for a box with another layout", () => {
+    expect(
+      sessionPathValue({ path: inherited, home, exists: all, dirs: [".local/bin", "bin"] }),
+    ).toBe(`${inherited}:/home/lle/.local/bin:/home/lle/bin`);
+    expect(USER_BIN_DIRS).toContain(".local/bin");
   });
 });
