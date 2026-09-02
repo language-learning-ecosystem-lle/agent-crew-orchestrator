@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T22:51:57.747Z",
+  "writtenAt": "2026-09-02T22:52:28.847Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "devops",
+      "thread": "057-circuit-ping-flaps",
+      "state": "running",
+      "deadline": "2026-09-02T23:12:25Z"
+    },
     {
       "role": "dev-core",
       "thread": "086-thread-id-write-read-mismatch",
