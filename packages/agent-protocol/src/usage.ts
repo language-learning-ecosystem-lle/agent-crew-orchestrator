@@ -726,9 +726,12 @@ The strict forms below keep every flag they had.
                               # --wind-down: how long before the deadline the session is asked to land its work (R20); default 20% of the window, 2-15 min
                               # --roles/--exclude-roles: the same scope door as the daemon's (R13) — a --role
                               # owned by another instance, or left out by these flags, is REFUSED here, not raised
-  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>] [--run-park-ttl <sec>]
+  agent-protocol orchestrator daemon --ref <ref> [--repo <p>] [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] [--model <m>] [--effort <e>] [--local-config <p>] [--instance <name>] [--fresh] [--once] [--journal <p>] [--root <mail>] [--state <p>] [--env-file <p>] [--enable-flag <p>] [--stop-flag <p>] [--force-flag <p>] [--holds <d>] [--roles <a,b>] [--exclude-roles <a,b>] [--run-park-ttl <sec>]
                               # --roles/--exclude-roles: WHICH roles THIS run raises (R13), mutually exclusive;
                               # on top of the instance filter — a role owned by another box is never raised here
+                              # --state/--env-file belong to the COURIER: the daemon dials 'notify' itself every
+                              # tick, with its OWN argv, so both flags of that command are read here as well —
+                              # and the door, which is this line, refused them for as long as the line was silent
                               # WHAT THE TICK COULD NOT READ IS NAMED AND COUNTED (065.4), every
                               # tick and beside the skips: the per-thread line is older than the
                               # count, and what a night of ticks never said is that the queue it

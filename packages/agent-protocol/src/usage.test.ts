@@ -866,6 +866,78 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
     expect(problems[0]).toContain("--forgeround");
   });
 
+  /**
+   * THE DAEMON'S LINE SPELLS THE COURIER'S TWO FLAGS (thread 042, PR-2 of the order
+   * john gave in `msg-105`).
+   *
+   * The daemon dials `notify` itself every tick — `runNotify({ argv, write: true })`
+   * with its OWN argv, not with a line it builds — so both flags that command reads
+   * (`--state`, `--env-file`) are flags of `orchestrator daemon` as well. The line was
+   * silent about them, and the line IS the door: `orchestrator daemon --env-file <p>`
+   * was refused for a flag the process behind the door then goes and reads.
+   */
+  it("spells the two courier flags the daemon really reads (042)", () => {
+    // The premise, asserted and not assumed: if the daemon ever stops dialling the
+    // courier with its own argv, this fails by name instead of leaving the usage line
+    // promising flags nothing reads.
+    const source = readFileSync(new URL("./cli.ts", import.meta.url), "utf8");
+    const opens = source.indexOf(
+      "const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {",
+    );
+    expect(opens).toBeGreaterThan(-1);
+    const body = source.slice(opens, opens + source.slice(opens).indexOf("\n};"));
+    expect(body).toContain("runNotify({ argv, write: true");
+    const notify = source.indexOf("const runNotify = async (input: {");
+    expect(notify).toBeGreaterThan(-1);
+    const dial = source.slice(notify, notify + source.slice(notify).indexOf("\n};"));
+    expect(dial).toContain('flag(argv, "--state")');
+    expect(dial).toContain('flag(argv, "--env-file")');
+
+    // And the line, read the way the door reads it. Both carry a value, as they do on
+    // `notify`'s own line — a switch here would eat the path that follows.
+    const spec = specFor("orchestrator daemon");
+    expect(spec.value).toContain("--state");
+    expect(spec.value).toContain("--env-file");
+  });
+
+  it("lets the daemon be given the courier's flags, and still names a typo (042)", () => {
+    // Through `strayArguments`, so what is asserted is the door and not the table.
+    const daemon = specFor("orchestrator daemon");
+    expect(
+      strayArguments(["--ref", "origin/main", "--env-file", "/tmp/x", "--state", "/tmp/s"], daemon),
+    ).toEqual([]);
+    const problems = strayArguments(["--env-file", "/tmp/x", "--env-fil"], daemon);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("--env-fil");
+  });
+
+  it("widens no line but the daemon's — `init`, `init github` and `up` are untouched (042)", () => {
+    // The regression the statement of work asks for by name. `init` and `init github`
+    // were MEASURED against their handlers in this round and were already whole, so
+    // this PR must leave them exactly as they are; `orchestrator up` has its own entry
+    // and gains the two flags only through the merge the door performs (below).
+    const table = parseUsage(USAGE);
+    const named = (key: string): readonly string[] => {
+      const spec = table.get(key);
+      if (spec === undefined) throw new Error(`'${key}' has no line in the shipped USAGE`);
+      return [...spec.value, ...spec.boolean].filter((name) => !name.startsWith("--config-path"));
+    };
+    for (const key of ["init", "init github", "orchestrator up"]) {
+      expect([key, named(key).includes("--state")]).toEqual([key, false]);
+      expect([key, named(key).includes("--env-file")]).toEqual([key, false]);
+    }
+    // `init` reads none of the courier's flags and keeps the eleven it does read: the
+    // spelling of its own tool is `--agent`, not the daemon's `--worker`.
+    expect(named("init")).toContain("--agent");
+    expect(named("init")).not.toContain("--worker");
+
+    // What DOES widen, by construction and on purpose: `up` re-executes itself as the
+    // daemon with everything typed, so the door merges the daemon's flags into it.
+    const up = specFor("orchestrator up");
+    expect(up.value).toContain("--env-file");
+    expect(up.value).toContain("--state");
+  });
+
   it("lets `up` pass its own flags through to the daemon it starts", () => {
     // `up` re-executes itself as `orchestrator daemon <everything typed, minus its
     // own two flags>`. If the daemon refused a flag `up` accepts, the refusal would

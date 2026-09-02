@@ -2209,7 +2209,9 @@ agent-protocol orchestrator run    --ref <ref> --role <id> --thread <slug> \
 agent-protocol orchestrator daemon --ref <ref> [--tick <sec>] [--wall-clock <sec>] [--idle <sec>] [--wait-input <sec>] [--wind-down <sec>] [--poll <sec>] \
                             [--max-turns <n>] [--max-runs <n>] [--max-attempts <n>] [--exec <bin>] [--worker <w>] \
                             [--model <m>] [--effort <e>] [--local-config <p>] [--fresh] [--once] \
-                            [--roles <a,b>] [--exclude-roles <a,b>]
+                            [--roles <a,b>] [--exclude-roles <a,b>] [--state <p>] [--env-file <p>]
+                            # --state/--env-file are the COURIER'S: the daemon dials `notify` itself every tick,
+                            #   with its own argv, so both flags of that command are read here too
                             # --roles/--exclude-roles: WHICH roles this launch raises (R13, S17), mutually exclusive,
                             #   on top of the instance filter — a role owned by another box is never raised here
                             # the two GATES: --max-attempts (failures of one pair since its last delivery)
