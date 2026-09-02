@@ -94,3 +94,13 @@ participants: github, dev-core, curator · status: open
 - `derive` — **failure**
 
 Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+## msg-009 · from: github · 2026-09-02 · expects: none
+
+🔕 **Уведомитель `Comms Derived` отказал: `failure`.**
+
+событие `push` · ветка `comms` · голова `8b298c2e15cd95e532c06f58cdcf9bfbe340ba6d` · попытка 1 · прогон [`33657486974`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33657486974)
+
+- `derive` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
