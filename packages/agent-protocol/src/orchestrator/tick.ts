@@ -474,7 +474,12 @@ export const planTick = (input: {
     // IT IS ASKED OF THE CHOSEN ACCOUNT, not of the role's own: a pair moved onto a spare
     // spends the spare's token, and judging it by the dead credentials of the subscription
     // it just left would hold the one account that could still work.
-    if (authShelfAgainst(authShelves, chosen.account) !== undefined) {
+    // …AND OF THIS CANDIDATE'S ROLE (thread 084). A shelf raised by ONE role's deaths is
+    // evidence about that role and not about the credentials — the neighbours of the same
+    // account went on delivering all through 2026-09-02 while 21 of their launches were
+    // refused behind 29 deaths of a single badly-pointed role. The scope is decided in the
+    // fold; the planner only asks the question with the role in it.
+    if (authShelfAgainst(authShelves, chosen.account, chosen.role) !== undefined) {
       skipped.push({ ...chosen, reason: "auth", attempt });
       continue;
     }
@@ -547,7 +552,9 @@ export const planTick = (input: {
   // accounts may be shelved at once, and a decision naming a shelf the head never met
   // would explain the stall with somebody else's dead token.
   const authShelf =
-    authHead === undefined ? undefined : authShelfAgainst(authShelves, authHead.account);
+    authHead === undefined
+      ? undefined
+      : authShelfAgainst(authShelves, authHead.account, authHead.role);
   // The same guard as the window's above, for the same reason and in the same words:
   // dead credentials of one account are not a state of a box that can still raise the
   // roles of another.
@@ -664,7 +671,7 @@ export const describeSkip = (
     case "quota":
       return `candidate ${pair} skipped: the rate-limit window is closed for ${describeAccount(skip.account ?? BOX_ACCOUNT)} — the window belongs to the ACCOUNT, so a signal from any role standing on it stands down every pair that spends it AND NO OTHER (B.3); it ends by the clock and needs nothing from anybody (see 'orchestrator status' for which window and until when)`;
     case "auth":
-      return `candidate ${pair} skipped: this box cannot authenticate to the vendor with the credentials of ${describeAccount(skip.account ?? BOX_ACCOUNT)} — a refusal stands down the pairs spending THAT account and no neighbour's (B.3); unlike the window it does NOT end by the clock (a human runs '${kind.loginHint("<its dir>")}' here), and the shelf only decides how often one pair is raised to knock (see 'orchestrator status')`;
+      return `candidate ${pair} skipped: this box cannot authenticate to the vendor with the credentials of ${describeAccount(skip.account ?? BOX_ACCOUNT)} — a refusal stands down the pairs spending THAT account and no neighbour's (B.3), and while only ONE role has been refused it stands down that role alone and not the account (thread 084); unlike the window it does NOT end by the clock (a human runs '${kind.loginHint("<its dir>")}' here), and the shelf only decides how often one pair is raised to knock (see 'orchestrator status')`;
     case "role-busy":
       return `candidate ${pair} skipped: ${skip.role} already has a session (raised on an older thread of this tick, or still running from an earlier one) — one session per role (its workspace is one); this pair is first in line for ${skip.role} next tick`;
   }

@@ -666,6 +666,10 @@ describe("renderAuth — whose login lifts this shelf", () => {
     deaths: 2,
     since: "2026-08-24T07:00:00Z",
     until: "2026-08-24T07:30:00Z",
+    // ACCOUNT-SCOPED, because that is the shelf this suite is about: the login command is
+    // only ever printed for the scope that has evidence about the credentials (thread 084).
+    scope: "account" as const,
+    roles: ["dev-core", "curator"],
   };
 
   it("the box says the account is codex → the codex login is what the operator reads", () => {
