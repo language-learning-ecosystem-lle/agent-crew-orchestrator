@@ -25,6 +25,16 @@
  * with `|` in one bracket — `[…]` when the whole group may be left out, `(…)` when
  * one of its members is required. Comment lines under a command start with `#` and
  * are skipped, since they do not begin with `agent-protocol`.
+ *
+ * PUNCTUATION IS NOT A VALUE, and both halves of that were measured defects (thread
+ * 042). "Followed by something that is not a flag" is what the parse calls a value,
+ * and two things in the grammar are neither: the `|` that separates alternatives, and
+ * the `#` comment a usage line may end with. `(--staged | --base <ref>)` made
+ * `--staged` a flag with a value spelled `|`; `[--clear-force]   # plus every 'daemon'
+ * flag` made `--clear-force` a flag with a value spelled `#`. The second one stood
+ * behind the door: `orchestrator up --clear-force` was REFUSED for wanting a value it
+ * never takes, and `orchestrator up --clear-force --forgeround` passed, because the
+ * typo was eaten as that value — the very defect this module was written against.
  */
 
 /** What one command accepts: flags that take a value, switches, and how many bare arguments. */
@@ -54,6 +64,10 @@ const GLOBAL_BOOLEAN = ["--no-fetch"] as const;
 const strip = (token: string): string => token.replaceAll(/^[[(]|[\])]$/g, "");
 const isFlag = (token: string): boolean => token.startsWith("-");
 const isPlaceholder = (token: string): boolean => token.startsWith("<");
+/** The `|` of `(--staged | --base <ref>)`: grammar between two alternatives, never a value. */
+const isSeparator = (token: string): boolean => token === "|";
+/** The tail comment of a usage line: `#` and everything after it is prose, not grammar. */
+const isComment = (token: string): boolean => token.startsWith("#");
 
 /**
  * The usage block, read as data: command name → what it accepts. Several lines for
@@ -68,7 +82,11 @@ export const parseUsage = (usage: string): Map<string, CommandFlags> => {
   for (const line of usage.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed.startsWith("agent-protocol ")) continue;
-    const tokens = trimmed.split(/\s+/).slice(1).map(strip).filter(Boolean);
+    const spelled = trimmed.split(/\s+/).slice(1).map(strip).filter(Boolean);
+    const comment = spelled.findIndex(isComment);
+    const tokens = (comment === -1 ? spelled : spelled.slice(0, comment)).filter(
+      (token) => !isSeparator(token),
+    );
 
     const words: string[] = [];
     let at = 0;
