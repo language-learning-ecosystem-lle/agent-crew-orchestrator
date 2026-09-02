@@ -85,6 +85,13 @@ export {
   transportFrom,
 } from "./notify/transport.js";
 export {
+  type AccountReach,
+  accountReachRefusal,
+  type PathFacts,
+  permits,
+  type UserIdentity,
+} from "./orchestrator/account-reach.js";
+export {
   DEFAULT_WAIT_INPUT_SECONDS,
   describeWait,
   parseWaitMarker,

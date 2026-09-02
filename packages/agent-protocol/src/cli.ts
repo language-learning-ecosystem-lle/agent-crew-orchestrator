@@ -41,7 +41,7 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir, hostname } from "node:os";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_CONFIG_PATH } from "./config/config.js";
@@ -126,6 +126,12 @@ import {
 } from "./notify/notify.js";
 import { describeSecrets, type LoadedSecrets, loadSecrets } from "./notify/secrets.js";
 import { loadTransport, type Transport } from "./notify/transport.js";
+import {
+  type AccountReach,
+  accountReachRefusal,
+  type PathFacts,
+  type UserIdentity,
+} from "./orchestrator/account-reach.js";
 import {
   type ActivityTrace,
   describeQuiet,
@@ -8302,6 +8308,92 @@ const spawnIdentityFor = (input: {
   });
 };
 
+/**
+ * WHO A SYSTEM USER IS TO THE KERNEL — `id -u` and `id -G`, asked of the box without any
+ * entitlement (both are readable by anybody). `undefined` when there is no such user, which
+ * is an answer and not an error: the door above turns it into a refusal that says so.
+ */
+const userIdentityOf = (user: string): UserIdentity | { readonly detail: string } => {
+  const ask = (flag: string): string | undefined => {
+    const said = spawnSync("id", [flag, user], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (said.error !== undefined || said.status !== 0) return undefined;
+    return (said.stdout ?? "").trim();
+  };
+  const uid = ask("-u");
+  if (uid === undefined || !/^\d+$/.test(uid)) {
+    return { detail: `'id -u ${user}' gave no uid` };
+  }
+  const groups = (ask("-G") ?? "").split(/\s+/).filter((word) => /^\d+$/.test(word));
+  return { uid: Number(uid), gids: groups.map(Number) };
+};
+
+/** The permission bits of one path as the box has them, or the reason it would not say. */
+const pathFactsOf = (path: string): PathFacts => {
+  try {
+    const facts = statSync(path);
+    return { path, present: true, mode: facts.mode & 0o7777, uid: facts.uid, gid: facts.gid };
+  } catch (error) {
+    return { path, present: false, detail: (error as Error).message };
+  }
+};
+
+/**
+ * ASKING THE BOX WHETHER THE TARGET USER CAN REACH THE ACCOUNT DIRECTORY (thread 047,
+ * msg-089 point 2) — the IO half of {@link accountReachRefusal}.
+ *
+ * IT IS `stat` AND `id`, NOT `sudo -u <user> test -r`. The entitlement of §0.1a grants ONE
+ * binary — the agent — so a probe that ran `test` as the target user would be refused by
+ * the box's own rule and would report "cannot reach" about every correctly set up box. The
+ * bits and the identity are both readable from here, and the permission rule is the
+ * kernel's; judging them in a pure function is what makes this testable at all.
+ *
+ * RUN ONLY WHEN THE IDENTITY ACTUALLY SWITCHES — no role that runs on this circuit today
+ * except one, exactly like the switch probe beside it.
+ */
+const accountReachFor = (input: {
+  readonly user: string;
+  readonly configDir: string;
+}): AccountReach => {
+  const identity = userIdentityOf(input.user);
+  const parts = input.configDir.split(sep).filter((part) => part !== "");
+  const ancestors: PathFacts[] = [];
+  // From the root downwards, stopping before the directory itself: its own bits are judged
+  // separately (traversal is `x`, using it needs `r`, `w` and `x`).
+  for (let depth = 0; depth < parts.length - 1; depth += 1) {
+    const prefix = parts.slice(0, depth + 1).join(sep);
+    ancestors.push(pathFactsOf(input.configDir.startsWith(sep) ? `${sep}${prefix}` : prefix));
+  }
+  return {
+    user: input.user,
+    ...("uid" in identity ? { identity } : { identityDetail: identity.detail }),
+    dir: pathFactsOf(input.configDir),
+    ancestors,
+  };
+};
+
+/**
+ * THE ACCOUNT-REACH DOOR OF BOTH LIFT POINTS, joined here for the same reason
+ * {@link spawnIdentityFor} is: `run` and the daemon must not drift apart on whether a
+ * session may reach its credentials. `undefined` — nothing to say.
+ */
+const accountReachRefusalFor = (input: {
+  readonly role: Role;
+  readonly as: SpawnAs;
+  readonly account?: { readonly id: string; readonly configDir: string };
+}): string | undefined =>
+  accountReachRefusal({
+    role: input.role,
+    as: input.as,
+    ...(input.account === undefined ? {} : { account: input.account }),
+    reach:
+      input.as.mode === "sudo" && input.account !== undefined
+        ? accountReachFor({ user: input.as.user, configDir: input.account.configDir })
+        : undefined,
+  });
+
 type RunParams = {
   readonly journalPath: string;
   readonly mailRoot: string;
@@ -9894,6 +9986,18 @@ const orchestratorRun = async (argv: readonly string[]): Promise<void> => {
     fail(identity.reason, 2);
     return;
   }
+  // AND WHETHER THAT IDENTITY CAN REACH THE CREDENTIALS IT IS POINTED AT (msg-089 point 2).
+  // After the identity door and after `agent`, because it needs both answers: the user the
+  // session becomes, and the directory the account resolved to.
+  const unreachable = accountReachRefusalFor({
+    role,
+    as: identity.as,
+    ...(agent.account === undefined ? {} : { account: agent.account }),
+  });
+  if (unreachable !== undefined) {
+    fail(unreachable, 2);
+    return;
+  }
   const maxTurns = String(ceilings.maxTurns.value);
   const forceFlag = flag(argv, "--force-flag"); // the force stop applies to a manual run too
 
@@ -10953,6 +11057,20 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const identity = spawnIdentityFor({ role, exec: agent.exec.value });
     if (!identity.ok) {
       pairErr(candidate, identity.reason);
+      return;
+    }
+    // AND THE CREDENTIALS THAT IDENTITY WOULD READ (msg-089 point 2) — said out loud for
+    // the same reason the refusal above is, and it matters more here than at the hand-typed
+    // door: the alternative is a session that dies at the vendor in 0 seconds, is recorded
+    // as `auth-failed`, and stands down every pair spending that account — including roles
+    // that never failed.
+    const unreachable = accountReachRefusalFor({
+      role,
+      as: identity.as,
+      ...(agent.account === undefined ? {} : { account: agent.account }),
+    });
+    if (unreachable !== undefined) {
+      pairErr(candidate, unreachable);
       return;
     }
     // The workspace and the continuation are settled PER LAUNCH: both are properties of
