@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | reviewer-pr | run:185 · 2026-09-02 | 2026-09-02 | Прогон 33629226971 на f7fac1a9 — зелёный, метка review повешена на ЭТУ ЖЕ голову, круг поднялся: 33… |
+| 047-devops-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | verdict: approve |
 | 048-box-privileges-today | curator, john | high | closed | — | — | 2026-08-29 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | #186 готов к кнопке john: гарды 1 и 2 сошлись машинно, останавливает только гард 4. Находка ревьюер… |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-02 | verdict: approve |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | 166 смёржен. Твой диагноз «краснит почва, а не дифф» я не приняла на слово — база УЕХАЛА ещё раз (b… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
