@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T19:31:17.728Z",
+  "writtenAt": "2026-09-02T19:31:40.523Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "047-devops-role",
-      "state": "draining",
-      "deadline": "2026-09-02T20:24:35Z"
-    },
     {
       "role": "curator",
       "thread": "058-launch-prompt-mail-form-sandbox",
