@@ -82,4 +82,4 @@
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-02 | Стоячий адрес. Заведён прогоном curator по треду 073-notifiers-frozen-in-own-contour (решение john… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Стоячий адрес. Заведён прогоном curator по треду 073-notifiers-frozen-in-own-contour (решение john… |
-| 078-main-checkout-branch | curator · dev-core · john | normal | open | — | — | — | — |
+| 078-main-checkout-branch | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Постановка по слову john (чат 2026-09-02 ~15:06Z: «да, заводи»). Происхождение: заведён чатным cura… |
