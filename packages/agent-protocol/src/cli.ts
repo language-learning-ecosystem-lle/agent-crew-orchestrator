@@ -1223,7 +1223,7 @@ const boxContours = (): readonly string[] =>
  * while this lived inside `guardContour`, it ran only when `--repo` was named, so the
  * documented form (`merge-gate --ref origin/main --pr N`, `REVIEWER.md`) asked nothing
  * and a session in a checkout of another circuit passed in silence — the very shape of
- * #453/#454. The judgement itself is unchanged; what changed is WHEN it is requested.
+ * the two pull requests opened outside this repository on 2026-08-30. The judgement itself is unchanged; what changed is WHEN it is requested.
  */
 const guardGround = (): void => {
   const caller = contourOf(process.cwd());
@@ -1700,8 +1700,8 @@ const roleExists = (argv: readonly string[]): void => {
  *
  * The generators of the derived files used to stop on the FIRST unreadable thread, and the
  * punishment was measured against the wrong crime: one directory created without `_meta.md`
- * froze `INDEX.md`, `TASKS.md` and every `_thread.md` of BOTH contours — `092-consent-and-
- * deletion` on 29.08 (ten red runs in a row, three false hypotheses, three trips of john to
+ * froze `INDEX.md`, `TASKS.md` and every `_thread.md` of BOTH contours — a consumer's
+ * thread on 29.08 (ten red runs in a row, three false hypotheses, three trips of john to
  * the box) and `055` on 30.08 (two more). The repair both times was one
  * file.
  *

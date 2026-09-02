@@ -67,7 +67,7 @@ describe("foldHolds — expiry decides, not the presence of a file", () => {
 
   it("heldRoles returns only the effective ones", () => {
     const views = foldHolds(
-      [hold(), hold({ role: "dev-speech", expires: "2026-07-24T13:00:00Z" })],
+      [hold(), hold({ role: "dev-acme", expires: "2026-07-24T13:00:00Z" })],
       NOW,
     );
     expect(heldRoles(views)).toEqual(["dev-core"]);
@@ -95,7 +95,7 @@ describe("renderHolds", () => {
   });
 
   it("several holds — one line each", () => {
-    const out = renderHolds(foldHolds([hold(), hold({ role: "dev-speech" })], NOW));
+    const out = renderHolds(foldHolds([hold(), hold({ role: "dev-acme" })], NOW));
     expect(out.split("\n")).toHaveLength(2);
   });
 });

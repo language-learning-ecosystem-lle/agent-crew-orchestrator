@@ -969,7 +969,7 @@ describe("new-message and the turn parked behind a person (R27)", () => {
     expect(written(contest.root).fields.parkMover).toBe("curator");
   });
 
-  // THREAD 061, form (B) — THE PARK BEHIND A DOOR IT LOCKED ITSELF. `dev-speech` parked on the
+  // THREAD 061, form (B) — THE PARK BEHIND A DOOR IT LOCKED ITSELF. `dev-acme` parked on the
   // merge of its own PR, whose label and verdict were the next move of its own curator, and a
   // parked thread raises nobody. The machine cannot judge reachability, so it demands the NAME:
   // the parker who has to write who moves the merge is the parker who has just checked.
@@ -1245,7 +1245,7 @@ const selfTurned = (
 
 describe("new-message and a park by MEANING that is not a park by FIELD (thread 022)", () => {
   it("REFUSES 'expects: ack' + a self-named turn without a park, and nothing is written", () => {
-    // The live header of `010-speech-service`, 2026-08-21: six of them, then the pair went
+    // The live header of a consumer's thread, 2026-08-21: six of them, then the pair went
     // `exhausted`. The refusal bites into the TEXT — a refusal that does not name the exit is
     // one the raised session cannot repair.
     const contest = contour();

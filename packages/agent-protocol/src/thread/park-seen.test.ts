@@ -33,7 +33,7 @@ describe("judgeParkSeen", () => {
   });
 
   it("refuses the incident letter and names the park, the turn, the question and all three exits", () => {
-    const verdict = judgeParkSeen({ thread: "110-speech", parking: personPark });
+    const verdict = judgeParkSeen({ thread: "903-acme", parking: personPark });
     expect(verdict.ok).toBe(false);
     if (verdict.ok) return;
     // The park in full: what it waits for, since when, whose turn it was declared on, and the
@@ -49,19 +49,19 @@ describe("judgeParkSeen", () => {
   });
 
   it("lets through the letter that CARRIES the word the park waits for", () => {
-    expect(judgeParkSeen({ thread: "110-speech", parking: personPark, delivers: "john" })).toEqual({
+    expect(judgeParkSeen({ thread: "903-acme", parking: personPark, delivers: "john" })).toEqual({
       ok: true,
     });
   });
 
   it("lets through the letter that carries the park FORWARD", () => {
-    expect(judgeParkSeen({ thread: "110-speech", parking: personPark, parkedOn: "john" })).toEqual({
+    expect(judgeParkSeen({ thread: "903-acme", parking: personPark, parkedOn: "john" })).toEqual({
       ok: true,
     });
   });
 
   it("lets through the letter that NAMES the lift", () => {
-    expect(judgeParkSeen({ thread: "110-speech", parking: personPark, lifted: "john" })).toEqual({
+    expect(judgeParkSeen({ thread: "903-acme", parking: personPark, lifted: "john" })).toEqual({
       ok: true,
     });
   });
@@ -77,7 +77,7 @@ describe("judgeParkSeen", () => {
 
   it("a park on a person is not addressed by a park on another value being declared", () => {
     const verdict = judgeParkSeen({
-      thread: "110-speech",
+      thread: "903-acme",
       parking: personPark,
       parkedOn: "run:153",
     });

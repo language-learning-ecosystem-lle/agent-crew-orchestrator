@@ -64,9 +64,9 @@ describe("loadRoleRegistry", () => {
   });
 
   it("catches two roles on one session", () => {
-    const devSpeech = { ...devCore, id: "dev-speech" };
+    const devAcme = { ...devCore, id: "dev-acme" };
 
-    expect(() => registryOf(devCore, devSpeech)).toThrow(/share session/);
+    expect(() => registryOf(devCore, devAcme)).toThrow(/share session/);
   });
 
   it("lists ALL complaints at once, not the first one encountered", () => {
@@ -145,9 +145,9 @@ describe("RoleRegistry", () => {
   it("hands the watch-keeper only roles with a session, and only active ones", () => {
     const paused = {
       ...devCore,
-      id: "dev-speech",
+      id: "dev-acme",
       status: "paused",
-      wake: { mode: "watch", session: "acme-dev-speech" },
+      wake: { mode: "watch", session: "acme-dev-acme" },
     };
     const registry = registryOf(john, curator, devCore, paused, reviewer);
 

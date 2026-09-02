@@ -4,7 +4,7 @@
  *
  * THE DEFECT THIS ANSWERS. The vendor keeps a role's notes in the agent profile,
  * and it keys them by PROJECT DIRECTORY AND ACCOUNT rather than by role: a session
- * running in `.worktrees/dev-speech` writes into the pile of the repository root, so
+ * running in `.worktrees/dev-acme` writes into the pile of the repository root, so
  * two roles on one account share one pile, and one role on two accounts has two piles
  * that never see each other. Measured on 2026-08-30: ACO/`acme-main` 82 notes,
  * ACO/`acme-second` 7, a consumer/`acme-second` 2, a consumer/`acme-main` 0. A role therefore has no
