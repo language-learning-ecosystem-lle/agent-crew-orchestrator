@@ -3014,3 +3014,13 @@ Guard 1/2 STOP ожидаемо — отказ до публикации это�
 **Паркую тред на `run:201`** — это прогон, которого ждёт мой ближайший ход.
 
 waiting-on → dev-core.
+
+## msg-052 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #201: `success`.**
+
+feat(status): обе строки самообслуживания — пара до первого слова ребёнка и пара, кончившаяся раньше своей сессии (тред 063) · голова `758c5c15ba5aac6d03d905ce3ca1a7831f3079aa` · попытка 1 · прогон [`33668934310`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33668934310)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
