@@ -5114,6 +5114,57 @@ const machineAccounts = (
   };
 };
 
+/**
+ * WHICH ACCOUNT EACH ROLE'S NEXT SESSION WOULD SPEND, AND ITS SPARES — the join the tick
+ * makes before it plans and the frame makes before it prints the queue (thread 063).
+ *
+ * ONE reading called from two places, and that is the whole point of it being a function:
+ * the daemon carried this join inline, the frame carried none at all, and a queue row
+ * saying "raised next" about a pair whose window is shut is the same class of lie the
+ * state-model rewrite was opened on. Two copies of it would be worse than one — the frame
+ * and the tick would disagree about a subscription, which is exactly what the comment at
+ * the tick's own join has warned about since thread 036.
+ *
+ * The card is the primary (`launch.account`), the instance's account is the default, and
+ * a role naming no chain is absent from the map's second half — failover is OFF for it and
+ * everything downstream behaves as it did before the field existed.
+ */
+const roleAccountChains = (input: {
+  readonly registry: RoleRegistry;
+  readonly roles: readonly string[];
+  readonly instanceAccount?: string | undefined;
+}): ReadonlyMap<
+  string,
+  {
+    readonly account?: string;
+    readonly fallback?: readonly string[];
+    readonly worker?: string;
+  }
+> => {
+  const chains = new Map<
+    string,
+    { readonly account?: string; readonly fallback?: readonly string[]; readonly worker?: string }
+  >();
+  for (const roleId of input.roles) {
+    const launch = input.registry.get(roleId)?.launch;
+    const account = launch?.account ?? input.instanceAccount;
+    const fallback = launch?.fallback;
+    const chain =
+      fallback === undefined || fallback.length === 0
+        ? undefined
+        : {
+            fallback,
+            worker: resolveWorker({ ...(launch === undefined ? {} : { launch }) }).value,
+          };
+    if (account === undefined && chain === undefined) continue;
+    chains.set(roleId, {
+      ...(account === undefined ? {} : { account }),
+      ...(chain === undefined ? {} : chain),
+    });
+  }
+  return chains;
+};
+
 /** The same reading as a map of ids to kinds — what the frame carries for `renderAuth`. */
 const declaredAccountKinds = (argv: readonly string[]): Readonly<Record<string, string>> =>
   Object.fromEntries(
@@ -7163,6 +7214,17 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     authorized: (role) => registry.canSetThreadPriority(role),
     mergeReady,
   });
+  // THE SAME JOIN THE TICK MAKES (thread 063), through the same function: which account each
+  // pair of this queue would spend and what its spares are. Read here, where the registry and
+  // the machine config are both in hand, so the pure renderer stays free of a config it may
+  // not learn to read.
+  const machine = machineAccounts(argv, configFrom(argv, undefined).config);
+  const frameAccounts = machine.accounts;
+  const frameChains = roleAccountChains({
+    registry,
+    roles: scope.roles,
+    ...(machine.instanceAccount === undefined ? {} : { instanceAccount: machine.instanceAccount }),
+  });
   const residentRoles = registry.residents();
   const published = loadDigests(mailRoot);
   const checkout = dirname(mailRoot);
@@ -7244,6 +7306,11 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
     // the right vendor. A box that declares nothing hands an empty map and the section
     // reads exactly as it did before the field existed.
     accountKinds: declaredAccountKinds(argv),
+    // AND THE WHOLE OF THAT SAME READING (thread 063), for the mark on the queue row: the
+    // shelf list above says which windows are shut, and only the declarations say whether a
+    // role's spare may be spent — without them a chain would be refused for lack of a
+    // statement and a healthy role would be printed as held.
+    ...(frameAccounts === undefined ? {} : { accounts: frameAccounts }),
     // The tier's own health, from the file the daemon writes (thread 051): a frame that
     // showed an empty merge-ready tier and a silently refusing `gh` identically is the
     // defect this section exists to close.
@@ -7264,7 +7331,15 @@ const operatorFrame = async (argv: readonly string[]): Promise<OperatorFrame> =>
             }),
           },
         }),
-    queue: orderCandidates(ranked),
+    // WITH THE ACCOUNT CHAIN JOINED ON, exactly as the tick joins it before it plans
+    // (thread 063): the queue is ordered by the mail and knows nothing about subscriptions,
+    // and a frame without this join could only ask "is any window closed" where the tick asks
+    // "is every link of THIS role's chain closed" — the difference between those two is a
+    // healthy role reported as stood down.
+    queue: orderCandidates(ranked).map((candidate) => ({
+      ...candidate,
+      ...(frameChains.get(candidate.role) ?? {}),
+    })),
     // The same count as `mail`'s (065.4), in the frame the operator watches: the queue
     // below is short BECAUSE some threads were not read, and the notes said which ones
     // without ever saying how many — one line among the skips reads as a curiosity.
@@ -10353,33 +10428,15 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     instances: configFrom(argv, undefined).config.instances,
     instance: local.config?.instance,
   });
-  const roleAccounts = new Map<string, string>();
-  // THREAD 036, STEP 3 — AND THE SPARES BESIDE THE ACCOUNT, off the same card and in the
-  // same pass, because they are one statement of the role: "spend this, and if its window
-  // is shut, these in this order". Read once at startup with everything else the launch
-  // mode is resolved from; a chain that changes wants the daemon restarted exactly as a
-  // changed account does.
-  //
-  // THE KIND TRAVELS WITH THE CHAIN and is not re-derived by the planner: a spare of
-  // another kind is refused by name, and the refusal needs to know what the role is raised
-  // as. It is read off the role's OWN CARD, exactly as the config door reads it: a
-  // `--worker` flag on whoever started this daemon is provenance about the command, and a
-  // chain judged by it would refuse the spares of every role the flag does not describe.
-  const roleChains = new Map<string, { fallback: readonly string[]; worker: string }>();
-  for (const roleId of launchable) {
-    const named = registry.get(roleId)?.launch?.account ?? instanceAccount;
-    if (named !== undefined) roleAccounts.set(roleId, named);
-    const fallback = registry.get(roleId)?.launch?.fallback;
-    if (fallback !== undefined && fallback.length > 0)
-      roleChains.set(roleId, {
-        fallback,
-        worker: resolveWorker({
-          ...(registry.get(roleId)?.launch === undefined
-            ? {}
-            : { launch: registry.get(roleId)?.launch as Launch }),
-        }).value,
-      });
-  }
+  // ONE JOIN FOR THE TICK AND THE FRAME (thread 063) — `roleAccountChains`. It was written
+  // out here and nowhere else until the operator's queue row had to answer the same question
+  // ("which account does this pair spend"), and two copies of it would be the frame and the
+  // tick disagreeing about a subscription — the class of defect this whole thread is about.
+  const roleChains = roleAccountChains({
+    registry,
+    roles: launchable,
+    ...(instanceAccount === undefined ? {} : { instanceAccount }),
+  });
   // What THIS MACHINE says about its accounts — read once, beside the machine config the
   // rest of the launch mode comes from. `undefined` when it declared nothing at all, and
   // the planner is told the difference (see `planTick`'s `accounts`).
@@ -11172,18 +11229,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // queue is ordered by the mail (R5) and knows nothing about subscriptions, while the
       // tick's two infrastructure shelves are read per account. The role is what carries
       // the account, so the join is one lookup per candidate.
-      candidates: candidates.map((candidate) => {
-        const account = roleAccounts.get(candidate.role);
-        // AND THE CHAIN RIDES THE SAME JOIN (thread 036, step 3): the queue knows nothing
-        // about subscriptions, so both halves of "which account does this pair spend" are
-        // attached here, at the one line where the role is in hand.
-        const chain = roleChains.get(candidate.role);
-        return {
-          ...candidate,
-          ...(account === undefined ? {} : { account }),
-          ...(chain === undefined ? {} : { fallback: chain.fallback, worker: chain.worker }),
-        };
-      }),
+      // AND BOTH HALVES RIDE ONE JOIN (thread 036, step 3; thread 063): the queue knows
+      // nothing about subscriptions, so "which account does this pair spend" and "what are
+      // its spares" are attached here, at the one line where the role is in hand — by the
+      // same function the operator's frame attaches them with.
+      candidates: candidates.map((candidate) => ({
+        ...candidate,
+        ...(roleChains.get(candidate.role) ?? {}),
+      })),
       ...(declaredForPlan === undefined ? {} : { accounts: declaredForPlan }),
       now: new Date(),
       // The mail is already parsed for the queue above — the set of sessions that
