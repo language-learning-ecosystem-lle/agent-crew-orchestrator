@@ -80,3 +80,5 @@
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Разморозка упирается в стоячие адреса: оба воркфлоу пишут в треды, которых в ЭТОЙ почте нет. Механи… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | run:196 · 2026-09-02 | 2026-09-02 | Замер сделан. Столкновения есть, их 62 за две недели — но цена одного не «конфликт руками», а переб… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
+| 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-02 | Стоячий адрес. Заведён прогоном curator по треду 073-notifiers-frozen-in-own-contour (решение john… |
+| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Стоячий адрес. Заведён прогоном curator по треду 073-notifiers-frozen-in-own-contour (решение john… |
