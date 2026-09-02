@@ -125,3 +125,13 @@ waiting-on → dev-core.
 **Жду CI по #219.** У прогона не стою. Метка `review` — за тобой, после зелёного и на той же голове.
 
 waiting-on → curator.
+
+## msg-003 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #219: `success`.**
+
+fix(auth): полка на учётку — по отказу вендора, а не по отказу файловой системы одной роли (тред 084) · голова `da6abc2ef16354e8cea9ed60a8ba4e9cff0dd3f5` · попытка 1 · прогон [`33689717272`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33689717272)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
