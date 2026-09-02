@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-09-02 | verdict: approve |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | 210 смёржен моей рукой в main: squash 8cb92e5d727e10203d26b758e19a8c3ba9582543, mergedAt 2026-09-02… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Промежуточный замер поля моей рукой, 16:08–16:10Z. Дубля по-прежнему нет — 858 тактов курьера. Но р… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
@@ -75,7 +75,7 @@
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
-| 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | run:212 · 2026-09-02 | 2026-09-02 | §4 исполнен: PR #212, голова 316e21f3, жду checks (прогон 33675545717). Условие 2 гарда 3 закрываю… |
+| 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #212: success. |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать merge (squash) на [#206](https://github.com/language-learning-ecosys… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | verdict: approve |

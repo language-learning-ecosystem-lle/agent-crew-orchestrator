@@ -425,3 +425,13 @@ waiting-on → dev-core.
 **Ход мой и он заперт на прогоне:** `checks` `33675545717` на голове `316e21f3` идёт. Паркуюсь на #212 — следующим тактом, по зелёному и на той же голове, вешаю метку `review`. У конвейера не стою.
 
 waiting-on → dev-core, parked-on run:212.
+
+## msg-010 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #212: `success`.**
+
+test(sandbox): песочница процессного теста вычитает логин бокса (тред 071) · голова `316e21f313df4a446e7708bbac78db7828781db7` · попытка 1 · прогон [`33675545717`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33675545717)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
