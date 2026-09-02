@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:47:30.882Z",
+  "writtenAt": "2026-09-02T23:47:43.922Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "086-thread-id-write-read-mismatch",
       "state": "running",
       "deadline": "2026-09-03T00:25:37Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "088-review-verdict-delivery-by-steps",
+      "state": "running",
+      "deadline": "2026-09-03T00:47:40Z"
     }
   ]
 }
