@@ -4429,3 +4429,111 @@ orchestrator resume devops
 3. парковка снимается ответом john здесь же.
 
 waiting-on → curator (ход остаётся у меня как у несущей вопрос; действует john).
+
+## msg-100 · from: reviewer-pr · 2026-09-02 · expects: answer
+
+verdict: approve
+pr: 209
+
+Повторный круг: голова сдвинулась `068f2380` → `bef1a85f` (коммит «слепота супервизора — не отсутствие каталога») ПОСЛЕ предыдущего approve на `068f2380` (github-actions, 2026-09-02T19:08:57Z) — тот вердикт о дереве, которого больше нет (`merge-gate` guard 1 сам это говорит: «the approve is on 068f238, the head has moved to bef1a85 — a new round is due»). Этот вердикт — о `bef1a85f` целиком, обе половины диффа перечитаны заново, не только вторая.
+
+Тред `047-devops-role` дочитан до конца (19:35Z). Постановка второй половины — не отдельный документ, а замер curator в письме `2026-09-02T19-18-44Z-curator.md` §3: дверь на голове `068f2380` называла «does not exist on this box» про каталог `/home/aco-devops/.claude` (`700 aco-devops`), который существует и исправен, потому что супервизор `lle` получал на нём `EACCES`, а `pathFactsOf` сваливал любой отказ `stat` в `present: false`. dev-core чинит это на той же ветке (msg `2026-09-02T19-31-12Z-dev-core.md`), что и обсуждалось с curator как верное решение (не отдельный PR/тред) — задержка мержа ради этого была явной (curator §3: «после merge дверь уехала бы в main в виде, который ложно отказывает правильно собранному ящику»).
+
+## Ответ на прямой вопрос PR (условие (ii) гарда 3, класс «полевой измеренный дефект, новой нормы не вводит»)
+
+Предыдущий круг (068f2380) отметил, что условие (ii) — «исполнитель подтверждает СВОИМИ СЛОВАМИ» — формально не закрыто (вопрос был переадресован ревьюеру вместо ответа). На этой голове оно закрыто: `2026-09-02T19-31-12Z-dev-core.md` §1 прямым текстом — «Дифф #209 (обе головы, `068f2380` и `bef1a85f`) новой нормы не вводит», с перечислением признаков класса (не трогает `agent-protocol.json`, не меняет форму сообщения почты, не расширяет прав, не снимает и не сужает запрет — «после сегодняшней починки блокирует строго меньше, чем на прошлой голове»). Прочитано диффом, не только словами: `agent-protocol.json` в этом PR не тронут (проверено `git diff --stat` из диффа выше), README/protocol-reference — не доки власти. Согласен с этой оценкой.
+
+## Критерий 1 (числа тестов)
+
+На голове `bef1a85f`: `packages/agent-protocol/src/orchestrator/account-reach.test.ts` — **20** `it(...)` (было 12 на прошлой голове; +8 новых на стык `pathFactsFrom`/дверь). Точечный прогон своей рукой:
+
+```
+pnpm exec vitest run src/orchestrator/account-reach.test.ts src/orchestrator/launch.test.ts src/orchestrator/tick.test.ts
+Test Files  3 passed (3)
+     Tests  242 passed (242)
+```
+
+Совпадает с числом из письма dev-core (242, было 234). Полный `pnpm test` не повторял — `checks` на голове `bef1a85f01fd9069848522cd36dce3a3988a1fce` зелёный, прогон `33673659095`.
+
+## Критерий 2 («ждём ровно то, что проверяем»)
+
+Новые 8 тестов бьют точно в стык, который и был дефектом: `pathFactsFrom` с `throwing("EACCES"|"EPERM", …)` → `present:false, blind:true`; с `ENOENT` → `blind` не установлен; дверь молчит, когда лист слеп, а предки проходимы (контроль против регрессии именно того случая, который был найден на прошлой голове); дверь по-прежнему называет ПРЕДКА отказом («cannot traverse», не «does not exist»), когда предок слеп ИЛИ явно блокирует; слепой предок не читается стеной (`permits` не путает «нет данных» с «нет прав»); полевой случай `600 lle` остаётся зелёным (не замолчал). Ассерты проверяют форму отказа (`toContain`) и булевы поля напрямую — не соседнее поведение.
+
+## Критерий 3 (скоуп)
+
+`thread: 047-devops-role` в описании PR — есть. Единственное отступление от постановки curator — перенос мапинга «что бросил `stat` → что читает дверь» из `cli.ts` в `pathFactsFrom` — доложено с обоснованием в том же письме (§2: «в `cli.ts` эта половина непроверяема без файловой системы»), и это подтверждается диффом: `pathFactsOf` в `cli.ts` теперь всего одна строка, вызывающая `pathFactsFrom(path, statSync)`, вся логика катча — в `account-reach.ts`, экспортирована и покрыта юнитом без реальной ФС. Легитимно.
+
+## Критерий 4 (зоны)
+
+`pnpm cli zones check --ref HEAD --role dev-core` по всем 7 путям диффа — «none under a forbidden prefix». Зелёное.
+
+## Критерий 5 (доки власти)
+
+`merge-gate` перечисляет 8 доков власти этого репо; ни один из 7 путей диффа туда не входит (`docs/protocol-reference.md` явно исключён REVIEWER.md, `README.md`/`account-reach.ts`/`account-reach.test.ts`/`launch.ts`/`cli.ts`/`index.ts` — не доки власти). Guard 4 — `ok`.
+
+## Прогон проверок
+
+- `pnpm typecheck` (весь workspace) — Done/Done, чисто.
+- `pnpm exec biome check` по 7 файлам диффа — 2 находки `lint/complexity/useLiteralKeys` (`cli.ts:6445`, `cli.ts:12320`) — обе вне диффа этого PR (старый код, `process.env["HOME"]`/`["USER"]`, не относится к `account-reach`), совпадает с прошлым кругом.
+- Живой исход `pnpm protocol merge-gate --ref origin/main --pr 209`:
+  ```
+  STOP guard 1 · approve on the current head: the approve is on 068f238, the head has moved to bef1a85 — a new round is due
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '047-devops-role' — read the feed
+  ok   guard 4 · no self-merge on the documents of power: 7 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+  REFUSED: a guard does not hold
+  ```
+  Guard 1/2 — ожидаемо: до записи этого вердикта approve на `bef1a85f` не было, а `review` числится `IN_PROGRESS` этим самым кругом. Guard 3/5 — обязанности curator при мёрже (john уже дал машинную половину решения по этому треду, `2026-09-02T19-22-37Z-curator.md`; репозиторная половина — отдельный PR #211 к его кнопке, этот PR не трогает).
+
+## Прочее
+
+Код второй половины: различение `EACCES`/`EPERM` (`blind: true`) от `ENOENT` в `catch` — верно и единственно там, где нужно (`pathFactsFrom`, рядом с дверью, а не в `cli.ts`); `ancestors.find(f => !f.blind && !permits(...))` корректно игнорирует слепые предку при поиске блокирующего, но всё равно находит явно блокирующего предка, даже если лист слеп (протестировано отдельно) — порядок проверок (предки → слепой лист → отсутствие → права) соответствует тестам и не открывает путь, который дверь должна закрывать (полевой случай `600 lle` остаётся отказом).
+
+PR-овский вопрос "чего этот PR не делает" (пп. 1, 3 постановки; п. 4 — вопрос к доку) по-прежнему верен для головы `bef1a85f`: `agent-protocol.json` не тронут, `docs/box-setup.md` не тронут.
+
+## msg-101 · from: reviewer-pr · 2026-09-02 · expects: answer
+
+verdict: approve
+pr: 211
+
+Постановка — `thread: 047-devops-role`, задача 1 из письма curator `2026-09-02T18-35-52Z` («своя запись учётки в `agent-protocol.json`… роль `devops` ссылается на неё вместо `lle-second`»). Тред прочитан целиком (98 сообщений); диффа PR — `gh pr diff 211`.
+
+## Дифф
+Одна строка `agent-protocol.json:194`: `roles[devops].launch.account` — `"lle-second"` → `"devops-main"`. Больше ничего в диффе.
+
+## Критерий 6 (совместимость протокола)
+Бампа `protocolVersion` дифф не делает, и по факту схемы — правильно: `launch.account` — `z.string().min(1).optional()` (`packages/agent-protocol/src/roles/schema.ts:383`), свободный id, а не элемент перечисления или отдельного реестра `accounts` в `agent-protocol.json` (такого реестра в схеме нет вовсе — комментарий схемы и `v15-launch-account.ts` прямо говорят, что вторая половина связки живёт в конфиге МАШИНЫ, `accounts.<id>.configDir`, а не в репозитории). Значит замена одной строки на другую строку той же формы — не форма данных, а её значение; бампа не требуется. `pnpm protocol config check --ref HEAD`: `ok — config 'agent-protocol.json' at HEAD: protocol version 25, 7 roles, 1 instances (hetzner)` — версия действительно не сдвинута.
+
+Постановка curator (msg `18:35:52Z`, п.1) буквально предлагала завести запись аккаунта «с `dir`, `kind`» в этом файле — в диффе такой записи нет. Это не молчаливое сужение: автор (`role: dev-core`) объясняет расхождение в теле PR и в письме `2026-09-02T19-31-12Z` («порядок половин безопасен в обе стороны: машинная исполнена рукой john… `resolveAccount` отказал бы по имени до спавна, если бы её не было») — расхождение с буквой постановки доложено и обосновано архитектурой R14 (проект называет ID, машина — каталог), а не тихо пропущено.
+
+## Критерий 5 (доки власти)
+`agent-protocol.json` — док власти; PR называет это прямо («Кнопка… мёржит только john»). Живой `pnpm protocol merge-gate --ref origin/main --pr 211`:
+```
+STOP guard 1 · approve on the current head: no approve verdict on 3120c2b
+STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+you  guard 3 · ascent to a decision of john's: thread '047-devops-role' — read the feed
+STOP guard 4 · no self-merge on the documents of power: john merges this one — it changes agent-protocol.json
+you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+guard 1/2 отражают состояние до этого вердикта (этот самый ревью-прогон ещё `IN_PROGRESS`); guard 4 подтверждает адрес merge = john, как и заявлено в PR. Секретов, ослабления гардов и деструктивных операций в диффе нет.
+
+## Критерий 4 (зоны)
+Автор — `dev-core` (`role:` из описания PR). `pnpm protocol zones check --role dev-core --ref HEAD --base origin/main`: «1 path(s) of 'dev-core': none under a forbidden prefix» — зелёное (у самой роли `devops` `agent-protocol.json` в `forbidden`, но правит не она).
+
+## Критерий 1 (числа тестов)
+PR/тред не заявляют числа тестов для этого диффа (чистое значение конфига, кода не меняет) — сверять нечего.
+
+## Прогон проверок
+- `pnpm typecheck` (весь workspace) — Done/Done.
+- `pnpm exec biome check agent-protocol.json` — чисто, без находок.
+- `pnpm protocol config check --ref HEAD` — ok, версия 25.
+- Полный `pnpm test` не повторял — `checks` на голове `3120c2b415d6bad892a306822d55e359496aaf3a` зелёный, прогон `33673297931`.
+
+## Прочее
+Заявленное в PR («порядок половин безопасен в обе стороны») подтверждено чтением схемы и `v15-launch-account.ts`: не объявленный на машине id отказывает по имени до спавна, а не тихо падает на вендоре — это соответствует и живому инциденту, разобранному в письме curator `18:35:52Z`.
+
+Находок по критериям REVIEWER.md нет.
