@@ -92,5 +92,5 @@
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #222: success. |
-| 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён прогоном curator, связанным тредом 082-no-verdict-letter-vs-park — там… |
+| 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | curator | — | 2026-09-02 | Сделано и лежит в PR #225, голова af9370fc699e240887da8129341400d124c810c1. Метку review не вешал —… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #224: success. |
