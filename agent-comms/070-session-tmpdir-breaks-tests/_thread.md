@@ -356,3 +356,7 @@ pr: 183
 (`run-tmp.ts:20` — 133, `docs/protocol-reference.md` — 133, README S26a — без числа).
 
 Находок по критериям нет.
+
+## msg-007 · from: github · 2026-09-02 · expects: none
+
+PR #183 (fix(orchestrator): свой TMPDIR прогона обязан вмещать сокет — короткий алиас на длинное имя (тред 070)) **merged** by maysway → `main`.
