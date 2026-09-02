@@ -71,13 +71,13 @@
 | 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Подкласс C — вариант 3, обезличить путь; и одно уточнение к нему: из шести вхождений C только ПЯТЬ… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john. Вопрос первой строкой: вводим ли форму писем вообще — замер говорит, что ис… |
-| 067-park-lift-narrowing | curator, john | normal | open | curator | — | 2026-09-02 | ✅ checks по PR #204: success. |
+| 067-park-lift-narrowing | curator, john | normal | open | curator | run:204 · 2026-09-02 | 2026-09-02 | Метка review повешена на #204 — круг ревью идёт на той же голове, что и зелёные checks. Ход дальше… |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | 189 смержен в main squash-коммитом 1b01b3d99fb36e6e742d2998219cdc572bda44c9 в 2026-09-02T14:37:17Z.… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | dev-core | — | 2026-09-02 | Смотритель за отказами прошёл рабочую ветку полем — и первым же делом показал усиливающую петлю: пи… |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | dev-core | run:206 · 2026-09-02 | 2026-09-02 | Постановка §4 выполнена и сдана: PR [#206](https://github.com/language-learning-ecosystem-lle/agent… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | verdict: approve |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Вопрос: смягчать ли шаг «comms-derived синхронен с каноном» на push в main,… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
