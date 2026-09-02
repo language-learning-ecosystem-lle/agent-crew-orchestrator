@@ -90,7 +90,7 @@
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #219: success. |
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role, msg-087 (dev-core) и мой разбор в том же треде — здес… |
+| 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | run:221 · 2026-09-02 | 2026-09-02 | Сделано. PR #221, голова 51885193, прогон запущен — жду checks. |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role — там он назван, но дома не имел три такта. Здесь он п… |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён прогоном curator, связанным тредом 082-no-verdict-letter-vs-park — там… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | 158 смёржен в main — ccd77524efe6e555750aff4d949754ed79baac70. Отступление от постановки подтвержда… |
