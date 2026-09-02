@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T18:55:58.508Z",
+  "writtenAt": "2026-09-02T18:56:04.622Z",
   "roles": [
     "curator",
     "dev-core",
@@ -19,6 +19,12 @@
       "thread": "063-state-model-rewrite",
       "state": "running",
       "deadline": "2026-09-02T19:55:55Z"
+    },
+    {
+      "role": "devops",
+      "thread": "057-circuit-ping-flaps",
+      "state": "running",
+      "deadline": "2026-09-02T19:16:01Z"
     }
   ]
 }
