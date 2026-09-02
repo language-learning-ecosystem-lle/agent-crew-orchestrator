@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T16:07:06.349Z",
+  "writtenAt": "2026-09-02T16:07:51.304Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "063-state-model-rewrite",
       "state": "waiting",
       "deadline": "2026-09-02T16:57:47Z"
-    },
-    {
-      "role": "curator",
-      "thread": "063-state-model-rewrite",
-      "state": "draining",
-      "deadline": "2026-09-02T16:37:52Z"
     }
   ]
 }
