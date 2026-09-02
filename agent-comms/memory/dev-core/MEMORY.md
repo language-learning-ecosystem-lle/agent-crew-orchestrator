@@ -16,3 +16,5 @@
 - [Счёт по `daemon.log` — только с якорем](daemon-log-grep-needs-an-anchor.md) — в лог попадают транскрипты сессий; без `^agent-protocol: daemon —` число завышено.
 - [Пачка писем смотрителя = одна причина](notifier-letters-collapse-to-one-cause.md) — N отказов `Comms Derived` — это N push'ей поверх одной непочиненной головы треда; разбирать последний, не каждое.
 - [Лежалый PR может быть перекрыт](stale-pr-may-be-superseded.md) — `add/add` при перебазировке = предмет уже сел другим пакетом; мерить остаток, а не мержить конфликт.
+- [`git stash` на чистом дереве достаёт чужой stash](stash-on-clean-tree-pops-a-foreign-stash.md) — базу мерить детач-чекаутом на SHA, не stash'ем.
+- [Дефекты двери прячутся в процессных тестах](door-defects-hide-in-process-tests.md) — 98/98 в `usage.test.ts` ничего не значит: настоящий CLI живёт в `*.process.test.ts`.
