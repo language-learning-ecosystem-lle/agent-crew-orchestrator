@@ -43,12 +43,12 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | run:214 · 2026-09-02 | 2026-09-02 | Метка review повешена на текущую голову #214 — fc0d334b34d6e3d3bb3e05505cbd8b122af9c5f8, на ту саму… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-09-02 | verdict: approve |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Промежуточный замер поля моей рукой, 16:08–16:10Z. Дубля по-прежнему нет — 858 тактов курьера. Но р… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | 209 в main — слит. И тем же заходом я измерила три вещи, о которых лента иначе узнала бы неверно: c… |
+| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Слово john полем delivers (чат ~21:14Z): #211 СМЁРЖЕН его кнопкой. Роль devops сидит на СВОЕЙ учётк… |
 | 048-box-privileges-today | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
@@ -77,11 +77,11 @@
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
-| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать merge (squash) на [#206](https://github.com/language-learning-ecosys… |
-| 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | verdict: approve |
+| 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | dev-core | — | 2026-09-02 | PR #206 (ci(notifier-watch): повтор отказа одного уведомителя глушится окном, и глушение громкое (т… |
+| 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | — | 2026-09-02 | PR #203 (docs(protocol): номер версии схемы берётся перед меткой, а не в начале работы (тред 074))… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~18:44Z). Предмет ПЕРЕФОРМУЛИРОВАН: чиним не проверку, а… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
-| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-02 | Разобраны все 10 звонков (msg-002…msg-011): две причины, обе уже закрыты или отданы своим тредом. З… |
+| 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-02 | Событие не приезжало: с 20:39Z ни один наблюдаемый уведомитель не отказал. Роль подняли на треде, г… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |

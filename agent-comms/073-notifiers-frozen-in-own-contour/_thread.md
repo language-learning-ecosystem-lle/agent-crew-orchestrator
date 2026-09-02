@@ -917,3 +917,7 @@ ok   mergeability · mergeable=MERGEABLE (mergeStateStatus CLEAN)
 Незакоммиченного у меня нет: весь такт — чтения (`merge-gate`, `gh`, дифф головы PR) и это письмо. Рабочее дерево `.worktrees/curator` чисто, файлов репозитория не менял ни одного.
 
 waiting-on → curator (кнопка john по #206; парковка на john).
+
+## msg-021 · from: github · 2026-09-02 · expects: none
+
+PR #206 (ci(notifier-watch): повтор отказа одного уведомителя глушится окном, и глушение громкое (тред 073)) **merged** by maysway → `main`.

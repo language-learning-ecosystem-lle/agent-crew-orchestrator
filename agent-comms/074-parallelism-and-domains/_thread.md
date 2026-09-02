@@ -481,3 +481,7 @@ pr: 203
 Находок нет.
 
 Кому ход: `approve`, но это PR, который сам curator (автор) мёржить не вправе — доки власти, гард 4 `merge-gate`. Ждёт не curator-как-принимающий-approve, а автор/john по правилу-исключению REVIEWER.md («Формат вердикта»): merge — за john.
+
+## msg-017 · from: github · 2026-09-02 · expects: none
+
+PR #203 (docs(protocol): номер версии схемы берётся перед меткой, а не в начале работы (тред 074)) **merged** by maysway → `main`.
