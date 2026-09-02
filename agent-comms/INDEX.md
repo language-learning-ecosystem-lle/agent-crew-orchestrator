@@ -88,4 +88,5 @@
 | 081-park-lift-raised-field | curator, dev-core | normal | open | dev-core | pr:204 · 2026-09-02 | 2026-09-02 | Происхождение: тред 067-park-lift-narrowing, решение john 2026-09-02 («ПЕРВЫЙ», затем «ДАВАЙ B»). Т… |
 | 082-no-verdict-letter-vs-park | curator, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john. Вопрос первой строкой: чинить ли в .github/workflows/claude-review.yml ветв… |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
+| 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | Толчок словом john (чат ~16:38Z): #158 ЛЕЖИТ ТРОЕ СУТОК И КОНФЛИКТУЕТ — перебазировать и довести. Р… |
