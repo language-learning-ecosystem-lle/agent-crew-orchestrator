@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T16:50:30.683Z",
+  "writtenAt": "2026-09-02T16:50:49.852Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "056-shared-tmp-mechanism",
       "state": "running",
       "deadline": "2026-09-02T17:44:53Z"
+    },
+    {
+      "role": "curator",
+      "thread": "073-notifiers-frozen-in-own-contour",
+      "state": "running",
+      "deadline": "2026-09-02T17:30:46Z"
     }
   ]
 }
