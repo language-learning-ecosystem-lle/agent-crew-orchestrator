@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T23:57:47.027Z",
+  "writtenAt": "2026-09-02T23:57:50.641Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "088-review-verdict-delivery-by-steps",
-      "state": "draining",
-      "deadline": "2026-09-03T00:47:40Z"
-    },
     {
       "role": "curator",
       "thread": "088-review-verdict-delivery-by-steps",
