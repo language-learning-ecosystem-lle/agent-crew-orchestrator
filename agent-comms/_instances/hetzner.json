@@ -1,12 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T11:20:43.798Z",
+  "writtenAt": "2026-09-02T11:21:12.073Z",
   "roles": [
     "curator",
     "dev-core",
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "060-derive-fails-whole-branch",
+      "state": "running",
+      "deadline": "2026-09-02T12:01:09Z"
+    },
     {
       "role": "dev-core",
       "thread": "072-ci-outcome-not-delivered",
