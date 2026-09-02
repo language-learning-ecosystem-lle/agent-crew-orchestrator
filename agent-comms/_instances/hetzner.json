@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T15:56:35.193Z",
+  "writtenAt": "2026-09-02T15:57:27.900Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "063-state-model-rewrite",
       "state": "waiting",
       "deadline": "2026-09-02T16:48:51Z"
-    },
-    {
-      "role": "curator",
-      "thread": "070-session-tmpdir-breaks-tests",
-      "state": "draining",
-      "deadline": "2026-09-02T16:31:31Z"
     }
   ]
 }
