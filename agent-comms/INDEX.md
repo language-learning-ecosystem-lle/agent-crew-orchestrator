@@ -43,7 +43,7 @@
 | 039-doctor-account-kind-probe | curator, dev-core | normal | closed | — | — | 2026-08-28 | — |
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
-| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-09-02 | 214 смёржен: c2dd21d38282a1a00d4cfba1d56970eedb457cb3, база main, 2026-09-02T21:27:44Z. Пять гардов… |
+| 042-unaccepted-turn-silent | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Замер по предмету §4.3 предыдущего письма («вторая половина класса»), снят по коду на c2dd21d3 — то… |
 | 043-stale-park-reminders | curator · dev-core · john | high | open | — | — | 2026-08-30 | Промежуточный замер поля моей рукой, 16:08–16:10Z. Дубля по-прежнему нет — 858 тактов курьера. Но р… |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
@@ -80,12 +80,12 @@
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | high | open | curator | — | 2026-09-02 | Слово john полем delivers (чат ~21:14Z): #206 СМЁРЖЕН его кнопкой. Петля усиления отказов уведомите… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #202: success. |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~18:44Z). Предмет ПЕРЕФОРМУЛИРОВАН: чиним не проверку, а… |
-| 076-main-red-alarm | github, curator, dev-core | normal | open | curator | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
+| 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-02 | Событие не приезжало: с 20:39Z ни один наблюдаемый уведомитель не отказал. Роль подняли на треде, г… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
-| 081-park-lift-raised-field | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред 067-park-lift-narrowing, решение john 2026-09-02 («ПЕРВЫЙ», затем «ДАВАЙ B»). Т… |
+| 081-park-lift-raised-field | curator, dev-core | normal | open | curator | run:215 · 2026-09-02 | 2026-09-02 | Механизм сел: поле raised:, обе двери, сужённый лифт — PR #215, жду CI |
 | 082-no-verdict-letter-vs-park | curator, john | normal | open | curator | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~21:2xZ): ЧИНИТЬ, и работу ставишь ты сама — постановка н… |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
