@@ -57,6 +57,15 @@ const CONFIG = {
       summary: "the keeper",
       permissions: ["launch-params", "thread-priority"],
     },
+    {
+      // THE CIRCUIT'S OWN VOICE (thread 072): a participant nobody of ours raises as a session
+      // and that reads no card — the merge notifier, the outcome of a run, the watch-keeper.
+      id: "github",
+      kind: "gh-action",
+      status: "active",
+      wake: { mode: "event" },
+      summary: "the circuit announcing its own facts",
+    },
   ],
 };
 
@@ -1824,6 +1833,85 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
     expect(
       write(courier, { AGENT_PROTOCOL_WORKER: "claude-code" }, "--delivers", "john").code,
     ).toBe(0);
+  });
+
+  /**
+   * AND THE MACHINE EVENT GOES THROUGH IT (thread 072, john's decision of 2026-09-02).
+   *
+   * THE JOINT this covers, which no unit can: `--from` → the registry (`isMachineWriter`) →
+   * `judgeParkSeen` → the file on disk. The unit level is handed a boolean and believes it; the
+   * live failure was precisely that nobody joined the writer's NAME to the door — `Merge Notify`
+   * run `33621585134` (2026-09-02T10:51:23Z) exited 1 announcing a merge into thread `060`,
+   * parked on john, with the words "say what THIS letter does about the park", and behind it two
+   * days in which not one letter from GitHub reached this contour's mail.
+   */
+  const asEvent = (
+    contest: { repo: string; root: string; body: string },
+    ...extra: readonly string[]
+  ): { code: number; out: string } => {
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "new-message",
+          "--repo",
+          contest.repo,
+          "--root",
+          contest.root,
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--thread",
+          "016-x",
+          "--from",
+          "github",
+          "--expects",
+          "none",
+          "--body-file",
+          contest.body,
+          "--worker",
+          "human",
+          "--write",
+          "--no-push",
+          ...extra,
+        ],
+        {
+          encoding: "utf8",
+          stdio: "pipe",
+          env: sandbox(configHomeInside(contest.repo), {}),
+        },
+      );
+      return { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+  };
+
+  it("WRITES the machine event into a standing park, and says the park is untouched", () => {
+    const contest = contour();
+    park(contest);
+
+    // The letter of the incident, in the shape the merge notifier writes it: a fact about a PR
+    // that has nothing to do with the question the thread is frozen on.
+    const result = asEvent(contest, "--merged-pr", "169");
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(result.out).toContain("NOT lifted and NOT touched");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+  });
+
+  it("REGRESSION: a ROLE writing the very same letter is still refused by name", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = direct(contest, "dev-core", "--merged-pr", "169");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(1);
   });
 
   it("an unparked thread is untouched by the door — the everyday letter needs no flag", () => {

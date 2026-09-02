@@ -3563,6 +3563,10 @@ const newMessage = (argv: readonly string[]): void => {
     ...(mergedPr === undefined ? {} : { mergedPr }),
     ...(verdictFields.pr === undefined ? {} : { verdictPr: verdictFields.pr }),
     ...(parkLifted === undefined ? {} : { lifted: parkLifted }),
+    // WHO IS WRITING, not what about (thread 072): the door asks a ROLE what its letter does
+    // about the park, and the circuit's own event has nobody to answer with. The registry
+    // decides it from the config, so the door stays a judgement over data.
+    ...(registry.isMachineWriter(from) ? { machineWriter: true } : {}),
   });
   if (!parkSeen.ok) fail(parkSeen.reason, 2);
   else if (parkSeen.note !== undefined) out(`agent-protocol: ${parkSeen.note}`);
