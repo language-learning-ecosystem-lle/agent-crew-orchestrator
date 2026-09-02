@@ -4885,3 +4885,63 @@ precondition attached to the action does.
 destination, and what is asserted is that `TMPDIR` is this run's directory, that both
 landed inside it, that the directory is gone after the run and that the log named what was
 left in it.
+
+### S27 — the session's `PATH` carries the user's own tools (thread 069)
+
+**The measurement, taken on the live box (`lle-agents`, 2026-09-02T09:52Z).** A raised
+session sees `~/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin` — the daemon's
+environment, which under systemd is the unit's own `PATH` (S-decision 5 of `systemd.ts`: the
+interpreter's directory, the declared agent binaries' directories, the system floor). The
+operator's login `PATH` also carries `~/.local/bin` and `~/.maestro/bin`. Comparing the two,
+the executables available to the user and unreachable from a session were exactly:
+
+| binary | where | in the session |
+| --- | --- | --- |
+| `uv`, `uvx` | `~/.local/bin` | **not found** — the finding that raised the thread |
+| `maestro` | `~/.maestro/bin` | not found; a vendor-specific directory, see below |
+| `claude`, `gh` | `~/.local/bin` | resolvable, from ANOTHER directory (`~/.nvm/…/bin`, `/usr/bin`) |
+
+**The price is a tax, not a breakage,** which is why it is closed by construction. The role
+that hit it guessed and retyped the full path in one turn; a role that has never seen the
+failure pays a whole turn, because `No such file or directory` reads as a fact about the box,
+not about the environment its session was raised in. The alternative — a sentence in a role
+card saying «call it by its full path» — is the same substitution of memory for mechanism
+this repository already refused for the shared `/tmp` (S26) and for a command's own
+credentials (thread `065`).
+
+- **The session's `PATH` is composed at the spawn, beside `TMPDIR`** — the inherited value
+  plus the standard per-user binary directory (`$HOME/.local/bin`), and only if it exists on
+  the box. Nothing is added when there is nothing to add, and the key is then not set at all:
+  writing an identical value back would make an inherited environment look composed.
+- **APPENDED, never prepended, and that is the whole safety of it.** Every name that
+  resolved before this existed resolves to the same file after it — the agent binary first
+  among them: the box carries `~/.local/bin/claude` (the vendor's native install) as well as
+  the version manager's, and putting the user's directory in front would silently change
+  WHICH tool the circuit raises. That is the machine config's decision (R14) and whoever
+  pays for it, not this spawn's.
+- **A floor, not a copy of somebody's shell.** Only `~/.local/bin` — the one directory a
+  Linux box agrees on (`pip --user`, `pipx`, `uv`, `cargo`'s installers, the XDG layout).
+  Copying the operator's whole `PATH` would make a session's environment a function of
+  somebody's `.bashrc`: unreproducible between two boxes and impossible to state in a doc.
+  `~/.maestro/bin` stays out for that reason and is named here rather than silently dropped:
+  a vendor's own directory belongs to whoever declares the tool, and this package declares
+  agent binaries in the machine config, where an absolute path already works.
+- **It is said, not done silently.** The run's own log carries `session PATH <value>`
+  whenever the mechanism added anything, so an operator finds out what the session could
+  see from the log rather than by re-deriving it.
+- **The unit file is not touched.** The `PATH` of `Environment=` stays what the box's facts
+  make it — a fourth place for these directories to live is exactly what decision 3 of
+  `systemd.ts` refuses — and the composition at the spawn covers a daemon raised any way at
+  all, systemd or a foreground `run`.
+
+**What is tested.** The rule is a unit (`launch.test.ts`, `sessionPathValue`): appended and
+never prepended, absent directory says nothing, a directory already on the `PATH` is not
+duplicated, no `PATH` inherited means none is invented. The seam is a process test
+(`run.process.test.ts`): a tool minted in the test's own `HOME/.local/bin`, a stub session
+that types its BARE NAME the way a role would, and the assertions that it ran, that its
+directory is last on the session's `PATH`, that everything before it is the inherited value
+unchanged, and that the run's log said so.
+
+**Not closed, and named:** a session spawned under `sudo -n -u <user>` (thread 047) crosses
+into an environment the box's `env_keep` decides, and this supervisor cannot see across that
+switch — the composed `PATH` reaches such a session only if the box lets it.
