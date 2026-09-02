@@ -48,7 +48,7 @@
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
-| 047-devops-role | curator · dev-core · john | high | open | curator | — | 2026-09-02 | Пункт 2 постановки исполнен: дверь стоит, PR #209, голова 068f2380 — жду CI. Пункт 1 исполнить как… |
+| 047-devops-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ✅ checks по PR #209: success. |
 | 048-box-privileges-today | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 048-session-privileges | curator | high | closed | — | — | 2026-08-29 | — |
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
@@ -62,7 +62,7 @@
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #200: success. |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
-| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: живая приёмка §5 просит переопределить объявленные параметры запуска (--mod… |
+| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | — | 2026-09-02 | Слово john полем delivers (чат 2026-09-02 ~18:58Z): ВОПРОС §4 СНЯТ ФАКТОМ, а не выбором из трёх исх… |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |

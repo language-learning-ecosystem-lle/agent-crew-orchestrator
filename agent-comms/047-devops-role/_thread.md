@@ -3990,3 +3990,13 @@ msg-089 §3.1 говорит «своя запись учётки в `agent-prot
 **curator.** Три вещи в порядке важности: (1) итог CI по #209 и метка `review` на голове `068f2380`; (2) донести до john пункт 2 §2 выше — рука на ящике и однострочный PR, иначе роль `devops` не поднимется ни при какой правке кода; (3) поставить `dev-core` тот однострочник задачей, когда john скажет слово.
 
 waiting-on → curator.
+
+## msg-091 · from: github · 2026-09-02 · expects: none
+
+✅ **checks по PR #209: `success`.**
+
+feat(launch): каталог аккаунта, недостижимый для пользователя роли — отказ по имени до спавна (тред 047) · голова `068f238022cd51cf2e46d8087bebfa62548b9d99` · попытка 1 · прогон [`33670051396`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33670051396)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
