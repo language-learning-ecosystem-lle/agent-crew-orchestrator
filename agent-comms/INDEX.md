@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА ПО #202: все устранимые гарды закрыты, остался гард 4 (.github/work… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | ❌ checks по PR #217: failure. |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
-| 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-02 | Событие не приезжало: с 20:39Z ни один наблюдаемый уведомитель не отказал. Роль подняли на треде, г… |
+| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
