@@ -8,6 +8,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { PLATFORM_TOKEN_KEYS } from "../config/credentials.js";
 import { LAUNCH_ENV } from "../orchestrator/launch.js";
 import { BOX_URL_KEY, CIRCUIT_URL_KEY } from "../orchestrator/watchdog.js";
 import { configHome, configHomeInside, sandbox } from "./process-sandbox.js";
@@ -88,6 +89,29 @@ describe("the config home of a process test (R14)", () => {
   it("a name that only LOOKS like a monitor is left alone — the prefix is not a substring", () => {
     withAmbient(`${CIRCUIT_URL_KEY}S_OWN`, "not a monitor", () => {
       expect(sandbox("/home")[`${CIRCUIT_URL_KEY}S_OWN`]).toBe("not a monitor");
+    });
+  });
+
+  // The platform tokens (thread 071, 2026-09-02) go the same way and by the name of the
+  // door that reads them: `PLATFORM_TOKEN_KEYS` is what `gh` accepts as a login, so a list
+  // typed here instead would go stale the day that door grows a third name.
+  it("drops the tokens of the platform — a spawned CLI logs in with the test's stub or with nothing", () => {
+    for (const name of PLATFORM_TOKEN_KEYS) {
+      withAmbient(name, "the operator's own token", () => {
+        expect(sandbox("/home")[name]).toBeUndefined();
+      });
+    }
+  });
+
+  it("a test that is ABOUT a platform token still passes it through extra", () => {
+    withAmbient("GH_TOKEN", "the operator's own token", () => {
+      expect(sandbox("/home", { GH_TOKEN: "the-stubs-token" }).GH_TOKEN).toBe("the-stubs-token");
+    });
+  });
+
+  it("a name that only LOOKS like a platform token is left alone", () => {
+    withAmbient("GH_TOKENS_OWN", "not a login", () => {
+      expect(sandbox("/home").GH_TOKENS_OWN).toBe("not a login");
     });
   });
 
