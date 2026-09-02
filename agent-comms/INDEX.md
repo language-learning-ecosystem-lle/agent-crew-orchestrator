@@ -63,7 +63,7 @@
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Вопрос john первой строкой: одна строка в тред LLE 118-pin-bump-0-2-7 — «пин 0.2.7 сторожа НЕ чинит… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: живая приёмка §5 просит переопределить объявленные параметры запуска (--mod… |
-| 059-pilot-codex-terra-max | curator, dev-core | normal | open | curator | — | 2026-09-02 | Слово john полем delivers (чат ~10:51Z): #174 СМЁРЖЕН его кнопкой. Роль pilot-codex объявлена на па… |
+| 059-pilot-codex-terra-max | curator, dev-core | low | open | curator | — | 2026-09-02 | Живая приёмка: пара из карточки ПРИНЯТА замером, вторая половина приёмки НЕ снята — роль слепа под… |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Слово john полем delivers (чат ~10:51Z): #169 СМЁРЖЕН его кнопкой. Вторая половина предмета закрыта… |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | Требуется решение john: нажать merge на PR #180 — гард 4 STOP, все пять файлов диффа суть доки влас… |
@@ -74,6 +74,6 @@
 | 067-park-lift-narrowing | curator, john | normal | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john. Вопрос первой строкой: допустимо ли сузить лифт person-парка так, чтобы пис… |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
+| 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | run:183 · 2026-09-02 | 2026-09-02 | Причина — механизм из 056 (PR #172), и это первая строка доклада, как просила постановка §4.3. Ката… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Второй симптом от john (чат ~10:56Z), и он крупнее первого: «в aco как минимум последние 5 merge no… |
