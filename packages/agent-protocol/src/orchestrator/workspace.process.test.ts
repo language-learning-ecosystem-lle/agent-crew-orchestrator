@@ -695,11 +695,31 @@ describe("the main checkout on a foreign branch is a refusal, not an inventory l
     return origin;
   };
 
+  /**
+   * `--exec` IS NOT DECORATION HERE. Without it preflight probes the binary the role's
+   * kind names (`claude`), and that is a fact about the BOX: it is on the operator's
+   * PATH — the session running the suite is one — and on no runner. The green case
+   * below therefore passed locally and returned 2 on the runner for a reason that has
+   * nothing to do with the branch of the main checkout (measured: run 33648477022).
+   * The stub is the same one `run` is handed, so the only cross this block can print is
+   * its own.
+   */
   const preflight = (repo: string): { code: number; out: string } => {
     try {
       const out = execFileSync(
         TSX,
-        [CLI, "orchestrator", "preflight", "--ref", "HEAD", "--no-fetch", "--repo", repo],
+        [
+          CLI,
+          "orchestrator",
+          "preflight",
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--repo",
+          repo,
+          "--exec",
+          join(repo, "stub.sh"),
+        ],
         { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
       );
       return { code: 0, out };
