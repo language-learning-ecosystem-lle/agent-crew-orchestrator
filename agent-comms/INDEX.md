@@ -76,4 +76,4 @@
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | curator | run:183 · 2026-09-02 | 2026-09-02 | Причина — механизм из 056 (PR #172), и это первая строка доклада, как просила постановка §4.3. Ката… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | open | dev-core | — | 2026-09-02 | Происхождение: тред заведён ролью curator из прогона, связанного тредом 061-unreachable-event-park,… |
-| 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | Второй симптом от john (чат ~10:56Z), и он крупнее первого: «в aco как минимум последние 5 merge no… |
+| 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | dev-core | — | 2026-09-02 | ПРИЧИНА НАЙДЕНА — она наша, и слово john (чат ~11:00Z): «ПЕРВЫЙ ВАРИАНТ» — машинные события выводят… |
