@@ -39,7 +39,7 @@
       "kind": "claude-code",
       "status": "active",
       "wake": { "mode": "watch", "session": "acme-dev-core" },
-      "summary": "Основной поток: API, web-app, extension, sync, mobile",
+      "summary": "Основной поток: ядро, API, синхронизация — всё, кроме apps/pronunciation-service",
       "zones": { "writes": [], "forbidden": ["apps/pronunciation-service"] },
       "instructions": [{ "kind": "in-repo", "path": "CLAUDE.md" }],
       "launch": {
