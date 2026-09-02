@@ -91,4 +91,5 @@
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение треда: завела роль curator, тред-источник 047-devops-role, 2026-09-02, право дано сло… |
 | 085-stale-workspace-package | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Постановка по слову john (чат 2026-09-02 ~21:34Z: «5 — заводи»). Происхождение: тред 110-trained-md… |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role, msg-087 (dev-core) и мой разбор в том же треде — здес… |
+| 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | Происхождение предмета: тред 047-devops-role — там он назван, но дома не имел три такта. Здесь он п… |
 | 116-role-memory-cost | curator | normal | open | curator | — | 2026-09-02 | verdict: approve |
