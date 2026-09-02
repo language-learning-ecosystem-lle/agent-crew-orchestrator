@@ -71,7 +71,7 @@
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — четыре предмета, и первый из них кнопка: #167 готов, гарды 1–3 держат, гар… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
-| 067-park-lift-narrowing | curator, john | normal | open | curator | — | 2026-09-02 | Норма прочитана, код по ней стои́т: #215 на голове a0a6fde3, checks зелёные. Расхождений с текстом… |
+| 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
