@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T14:44:26.123Z",
+  "writtenAt": "2026-09-02T14:44:46.890Z",
   "roles": [
     "curator",
     "dev-core",
@@ -12,6 +12,12 @@
       "thread": "073-notifiers-frozen-in-own-contour",
       "state": "running",
       "deadline": "2026-09-02T15:40:08Z"
+    },
+    {
+      "role": "curator",
+      "thread": "067-park-lift-narrowing",
+      "state": "running",
+      "deadline": "2026-09-02T15:24:42Z"
     }
   ]
 }
