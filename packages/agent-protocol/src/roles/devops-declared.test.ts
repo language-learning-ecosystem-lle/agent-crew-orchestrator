@@ -113,7 +113,7 @@ describe("the role 'devops' as this repository declares it", () => {
     expect(launchable).toContain("devops");
     expect(ownershipIssues({ instances: config.instances, launchable, isKnownRole })).toEqual([]);
     expect(
-      config.instances.filter((box) => box.roles.includes("devops")).map((box) => box.id),
+      (config.instances ?? []).filter((box) => box.roles.includes("devops")).map((box) => box.id),
     ).toEqual(["hetzner"]);
   });
 
