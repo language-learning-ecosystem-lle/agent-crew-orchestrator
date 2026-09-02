@@ -358,11 +358,77 @@ describe("what the operator is shown", () => {
     expect(check.detail).toContain("a run refuses here");
   });
 
-  it("the operator's own checkout is reported as nobody's workplace, and compared with nothing", () => {
-    const check = mainCheckoutVerdict({ repo: "/repo", branch: "some-branch", dirty: true });
+  it("the operator's own checkout on the project's branch is a PASSED comparison, and still nobody's workplace", () => {
+    const check = mainCheckoutVerdict({
+      repo: "/repo",
+      branch: "main",
+      dirty: true,
+      expectedBranch: "main",
+      behind: 0,
+    });
 
-    expect(check.status).toBe("info");
+    expect(check.status).toBe("ok");
     expect(check.detail).toContain("not a workplace of any role");
+    expect(check.detail).toContain("has unsaved changes");
+  });
+
+  it("a foreign branch under the daemon is a REFUSAL that names the branch, the distance and the cure (078)", () => {
+    // The field case: five hours and fifty-four minutes of a contour executing a commit
+    // that was never merged, under a line of even inventory tone.
+    const check = mainCheckoutVerdict({
+      repo: "/repo",
+      branch: "core/gate-checks-from-actions",
+      dirty: false,
+      expectedBranch: "main",
+      behind: 11,
+    });
+
+    expect(check.status).toBe("fail");
+    expect(check.detail).toContain("'core/gate-checks-from-actions'");
+    expect(check.detail).toContain("11 commit(s) of 'origin/main' are missing");
+    expect(check.detail).toContain("git -C /repo checkout main");
+  });
+
+  it("the distance is to the PROJECT'S branch on every branch — a match still names the number", () => {
+    // "I match my own origin" was the sentence that let the field case through. The one
+    // printed here is true whichever branch the tree is on.
+    const behind = (branch: string): string =>
+      mainCheckoutVerdict({
+        repo: "/repo",
+        branch,
+        dirty: false,
+        expectedBranch: "main",
+        behind: 4,
+      }).detail;
+
+    expect(behind("main")).toContain("4 commit(s) of 'origin/main' are missing");
+    expect(behind("some-branch")).toContain("4 commit(s) of 'origin/main' are missing");
+  });
+
+  it("an uncountable distance costs the number and never the verdict", () => {
+    const check = mainCheckoutVerdict({
+      repo: "/repo",
+      branch: "some-branch",
+      dirty: false,
+      expectedBranch: "main",
+    });
+
+    expect(check.status).toBe("fail");
+    expect(check.detail).toContain("the distance to 'origin/main' did not read");
+  });
+
+  it("a detached main checkout is named as detached, not as a branch called HEAD", () => {
+    const check = mainCheckoutVerdict({
+      repo: "/repo",
+      branch: "HEAD",
+      dirty: false,
+      expectedBranch: "main",
+      behind: 2,
+    });
+
+    expect(check.status).toBe("fail");
+    expect(check.detail).toContain("is DETACHED (on no branch)");
+    expect(check.detail).not.toContain("is on 'HEAD'");
   });
 });
 

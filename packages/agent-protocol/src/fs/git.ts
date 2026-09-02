@@ -206,3 +206,26 @@ export const workdirState = (repo: string): { branch: string; dirty: boolean } =
   branch: git(repo, ["rev-parse", "--abbrev-ref", "HEAD"]).trim(),
   dirty: git(repo, ["status", "--porcelain"]).trim() !== "",
 });
+
+/**
+ * HOW FAR THIS CHECKOUT IS BEHIND A NAMED REF — asked of the ref the project declared,
+ * never of the tree's own upstream (thread 078). The difference is the whole point: a
+ * checkout parked on a foreign branch matches `origin/<that branch>` perfectly and is
+ * arbitrarily far from `origin/main`, so a distance measured against "my own remote" is
+ * true, useless, and reassuring in exactly the case that hurts.
+ *
+ * ON DISK, NO FETCH: this is read inside preflight, which already has its network reads,
+ * and a ref stale on disk is a different fault with its own line.
+ *
+ * `undefined` rather than a throw when the ref is absent (never fetched, another remote)
+ * or the count does not parse: the distance is a convenience the caller prints, and its
+ * loss must cost a number, never a verdict.
+ */
+export const commitsBehindRef = (repo: string, ref: string): number | undefined => {
+  try {
+    const counted = Number(git(repo, ["rev-list", "--count", `HEAD..${ref}`]).trim());
+    return Number.isInteger(counted) ? counted : undefined;
+  } catch {
+    return undefined;
+  }
+};

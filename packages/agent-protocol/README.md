@@ -3603,13 +3603,32 @@ not forget" item.
 
 - **Where the sessions will work.** With `orchestrator.workdir.worktrees` declared
   (R17, S11) each launchable role's own worktree is reported — where it is, at which
-  commit, whether it is clean — and the operator's checkout is printed as a fact that
-  is compared with nothing: comparing it would resurrect the very refusal R17 removes.
-  Those lines never `fail`, because a workspace belongs to ONE role while preflight
-  stops the whole circuit; the refusal happens in that role's launch instead. Without
-  `worktrees` the pre-R17 line stands: the inherited checkout is shown always (the
-  fact is free, while "the session started from the wrong branch" is not visible from
-  the outside AT ALL), and the refusal is opt-in through `orchestrator.workdir.branch`.
+  commit, whether it is clean. Those per-role lines never `fail`, because a workspace
+  belongs to ONE role while preflight stops the whole circuit; the refusal happens in
+  that role's launch instead. Without `worktrees` the pre-R17 line stands: the
+  inherited checkout is shown always (the fact is free, while "the session started
+  from the wrong branch" is not visible from the outside AT ALL), and the refusal is
+  opt-in through `orchestrator.workdir.branch`.
+- **Which branch the MAIN CHECKOUT is on — and this one `fail`s (thread 078).** R17
+  took the sessions out of the operator's tree, and the line about it was demoted to a
+  fact compared with nothing on the argument that comparing it would resurrect the
+  refusal R17 removed. That was half right. Nobody WORKS in the main checkout, but the
+  daemon is LOADED from it: node resolves the modules there once, at start, so whatever
+  that tree holds is what the whole circuit executes. On 2026-09-02 a branch was created
+  in it by hand at 09:09Z and committed onto at 09:35Z; the daemon raised afterwards ran
+  that commit for five hours and fifty-four minutes, eleven commits of `main` behind,
+  while the line read `· main checkout: … — on 'core/gate-checks-from-actions'` in the
+  even tone of an inventory entry. It cost a false acceptance — `git rev-parse HEAD` in
+  that tree answered with the foreign tip, was read as "the fix is rolled out", a
+  workaround was removed on the strength of it and both contours fell. Nor can the box
+  heal itself there: the self-repair of thread 003 is `git pull --ff-only` on the
+  CURRENT branch, which on a foreign one succeeds, moves nothing, and leaves the drift
+  against `origin/main` exactly where it was. So the line now compares the branch with
+  `orchestrator.workdir.branch` and refuses by name, with the two commands that undo it.
+  **The distance it prints is to `origin/<that branch>` on EVERY branch**, never to the
+  tree's own upstream: "I match my own origin" is true of a parked foreign branch and
+  answers a question nobody asked, which is precisely why the morning drift watch stayed
+  silent through the field case.
 
 **A LINE THAT COMPARED NOTHING NO LONGER WEARS A TICK (R12).** A check has three
 outcomes, not two: `✓` is a passed COMPARISON, `·` is a fact nobody promised
@@ -3727,7 +3746,9 @@ written down nowhere.
 worktree of the same repository. The project says where those live
 (`orchestrator.workdir.worktrees`), the package says that one role gets one directory
 named after it. The operator's main checkout stops being anybody's workplace — which
-is also what makes it safe to keep using.
+is also what makes it safe to keep using. **It does NOT stop being load-bearing**: the
+daemon's modules are resolved from it once, at start, so it must stay on
+`workdir.branch`, and since thread 078 preflight refuses when it is not (S8).
 
 ```json
 "orchestrator": { "workdir": { "branch": "main", "worktrees": ".worktrees" } }
