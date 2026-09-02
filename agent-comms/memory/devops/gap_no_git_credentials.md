@@ -1,11 +1,11 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/GitHub credentials and no node in PATH — the mail CLI cannot run at all under this identity yet
+description: aco-devops has no git/GitHub credentials and no node anywhere reachable (not even system-wide) — the mail CLI cannot run at all under this identity, confirmed across 3 lease windows on 2 different threads
 metadata: 
   node_type: memory
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-02T23:36:36.583Z
+  modified: 2026-09-02T23:39:00.059Z
 ---
 
 Run on thread `057-circuit-ping-flaps` (2026-09-02T23:29Z–23:49Z lease) could not read or send
@@ -73,3 +73,30 @@ thread — the mail channel itself is the thing blocked, same as last time. **An
 thread from another identity (curator, john, or a future devops run with credentials restored)
 should treat `057-circuit-ping-flaps` as having received zero devops output across at least two
 separate lease windows for this reason alone**, not because the statement of work was unclear.
+
+**Update 2026-09-02T23:38Z, third occurrence, DIFFERENT thread `047-devops-role`:** confirms this
+is not thread-specific — it is a standing property of the `aco-devops` identity itself, hit on the
+very first CLI invocation (`thread show`) with `node: command not found`. Re-verified all of it
+from scratch this run: `id` → `uid=1001(aco-devops) gid=1001(aco-devops) groups=1001(aco-devops),1002(contour)`
+(no other groups); `~/.ssh`, `~/.netrc`, `~/.config/gh` all still absent; `PATH` under
+`sudo -u aco-devops` is exactly sudo's `secure_path` with no node anywhere on it; no system-wide
+node package (`dpkg -l`, `/opt`, `/snap/bin` all checked, none found) — so unlike the box's `lle`
+user this identity has no legitimate node at all, not even a system one, only `lle`'s private
+`~/.nvm` (off-limits per the boundary rule already established above). `gh auth status` confirms
+not logged in, and `gh` itself has no ambient token in env (`env | grep -i token` empty). Both
+worktrees (`.worktrees/comms/agent-comms` and `.worktrees/devops`) are clean, untouched, still
+pointed at the same credential-less `git@github-crew:...` remote — left exactly as found, since
+committing anything unpushable here would strand the worktree dirty and block the *next* run's
+launch too (R17), which would make things strictly worse.
+**Consequence for this run specifically:** thread `047-devops-role`'s statement of work was never
+read — `thread show` itself is the first command that fails, before any content is visible. This
+memory file is the ONLY record this run produced; the thread channel could not be used to say any
+of this, so anyone resuming `047-devops-role` from another identity should know it received zero
+devops output this lease window too, and should not read silence as "nothing to do" or "task
+unclear" — the statement of work itself was never delivered to this identity.
+**Standing recommendation for `john`:** this has now recurred across two unrelated threads
+(`057-circuit-ping-flaps`, `047-devops-role`) and three separate lease windows with identical
+symptoms each time. Until `aco-devops` gets (a) a node runtime reachable from its own `PATH` and
+(b) its own git identity (deploy key or token, scoped to `agent-crew-orchestrator` only), no
+`devops` run can read or send a single message, regardless of what the statement of work asks —
+this is worth fixing once centrally rather than re-diagnosing per thread.
