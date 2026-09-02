@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-02T09:50:47.540Z",
+  "writtenAt": "2026-09-02T10:00:44.317Z",
   "roles": [
     "curator",
     "dev-core",
@@ -10,7 +10,7 @@
     {
       "role": "dev-core",
       "thread": "069-session-path",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-02T10:50:44Z"
     }
   ]
