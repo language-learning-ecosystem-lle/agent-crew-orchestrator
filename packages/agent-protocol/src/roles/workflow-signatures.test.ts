@@ -46,10 +46,31 @@ import { createRoleRegistry } from "./registry.js";
 
 const REPO_ROOT = new URL("../../../../", import.meta.url);
 const CONFIG_PATH = fileURLToPath(new URL("agent-protocol.json", REPO_ROOT));
-const WORKFLOWS_DIR = fileURLToPath(new URL(".github/workflows/", REPO_ROOT));
+
+/**
+ * WHERE A WORKFLOW SIGNS — two directories, not one, since thread `088`. The delivery
+ * of a review verdict moved out of the yaml into `.github/scripts/review-delivery.sh`
+ * (an agent that dies after writing `verdict.md` must not take the round's product with
+ * it), and a sweep that still read only `workflows/` would have gone quietly from four
+ * signatures to four — the same green it showed before, over a seam that had moved.
+ */
+const SOURCE_DIRS = [
+  { dir: fileURLToPath(new URL(".github/workflows/", REPO_ROOT)), ext: ".yml" },
+  { dir: fileURLToPath(new URL(".github/scripts/", REPO_ROOT)), ext: ".sh" },
+] as const;
 
 /** The flags whose value IS a role id, i.e. the ones the mail door checks against the config. */
 const ROLE_FLAGS = ["--from", "--waiting-on"] as const;
+
+/**
+ * THE SECOND SHAPE OF A SIGNATURE. `deliver_to_thread <тред> <роль> …` passes the role
+ * POSITIONALLY into the `--from` of the `new-message` inside the script, so the name
+ * never appears next to a flag at the call site. It is a literal all the same, and the
+ * door judges it the same way — the sweep has to read the call, not the flag.
+ */
+const POSITIONAL_SIGNERS = [
+  { helper: "deliver_to_thread", flag: "deliver_to_thread(--from)" },
+] as const;
 
 interface Signature {
   readonly file: string;
@@ -63,20 +84,31 @@ const isLiteralRole = (value: string): boolean => /^[a-z][a-z0-9-]*$/.test(value
 
 const collectSignatures = (): readonly Signature[] => {
   const found: Signature[] = [];
-  const names = readdirSync(WORKFLOWS_DIR)
-    .filter((entry) => entry.endsWith(".yml"))
-    .sort();
-  for (const name of names) {
-    const lines = readFileSync(join(WORKFLOWS_DIR, name), "utf8").split("\n");
-    lines.forEach((text, index) => {
-      for (const flag of ROLE_FLAGS) {
-        const match = new RegExp(`${flag}\\s+("?)([^\\s"]+)\\1`).exec(text);
-        if (match === null) continue;
-        const role = match[2] ?? "";
-        if (!isLiteralRole(role)) continue;
-        found.push({ file: name, line: index + 1, flag, role });
-      }
-    });
+  for (const { dir, ext } of SOURCE_DIRS) {
+    const names = readdirSync(dir)
+      .filter((entry) => entry.endsWith(ext))
+      .sort();
+    for (const name of names) {
+      const lines = readFileSync(join(dir, name), "utf8").split("\n");
+      lines.forEach((text, index) => {
+        for (const flag of ROLE_FLAGS) {
+          const match = new RegExp(`${flag}\\s+("?)([^\\s"]+)\\1`).exec(text);
+          if (match === null) continue;
+          const role = match[2] ?? "";
+          if (!isLiteralRole(role)) continue;
+          found.push({ file: name, line: index + 1, flag, role });
+        }
+        for (const { helper, flag } of POSITIONAL_SIGNERS) {
+          // `<helper> <тред> <роль>` — the role is the SECOND argument; the first is a
+          // shell value (`"$THREAD"`) this test cannot judge, and does not have to.
+          const match = new RegExp(`${helper}\\s+("?)[^\\s"]+\\1\\s+("?)([^\\s"]+)\\2`).exec(text);
+          if (match === null) continue;
+          const role = match[3] ?? "";
+          if (!isLiteralRole(role)) continue;
+          found.push({ file: name, line: index + 1, flag, role });
+        }
+      });
+    }
   }
   return found;
 };
@@ -88,8 +120,11 @@ describe("the roles this repository's workflows sign with", () => {
 
   it("are found at all — an empty sweep would be a green test that checks nothing", () => {
     // The workflows that write into the mail today: merge-notify, ci-outcome,
-    // notifier-watch (`--from github`) and claude-review (`--from reviewer-pr`).
+    // notifier-watch (`--from github`) and claude-review, which since thread `088` signs
+    // through `deliver_to_thread "$THREAD" reviewer-pr` on both of its branches — the
+    // one that carries a verdict and the one that reports there is none.
     expect(signatures.length).toBeGreaterThanOrEqual(5);
+    expect(signatures.some((s) => s.role === "reviewer-pr")).toBe(true);
   });
 
   it("are every one of them declared in the config, so the mail door lets the message in", () => {
