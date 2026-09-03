@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T18:53:43.257Z",
+  "writtenAt": "2026-09-03T18:57:01.853Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "065-cli-loads-its-own-secrets",
       "state": "running",
       "deadline": "2026-09-03T19:25:32Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "080-standing-address-catalog",
-      "state": "running",
-      "deadline": "2026-09-03T19:53:40Z"
     }
   ]
 }
