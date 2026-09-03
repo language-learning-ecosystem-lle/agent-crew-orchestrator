@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T15:39:58.728Z",
+  "writtenAt": "2026-09-03T15:40:23.337Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "074-parallelism-and-domains",
+      "state": "running",
+      "deadline": "2026-09-03T16:40:20Z"
+    }
+  ]
 }
