@@ -93,4 +93,5 @@
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | curator | — | 2026-09-03 | PR #222 смёржен в main squash-ом. Merge-коммит f927cdea5f56728f4a618fadac22aedaff482ff4, 2026-09-03… |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | curator | — | 2026-09-03 | Четыре пункта раздела 3 сделаны и лежат в PR #225, новая голова eef94e71d75b4d35228b64ae5421b4cf0b3… |
+| 089-refusal-prints-global-usage | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Происхождение предмета: тред 087-hold-refusal-hides-short-form, письмо dev-core от 2026-09-02 — раз… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | 224 смёржен своей рукой — squash 0b5ff66a7b5d854d1bec1a23ac221a6a1485e587, база main, 2026-09-03T00… |
