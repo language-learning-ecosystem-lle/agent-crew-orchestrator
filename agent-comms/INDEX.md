@@ -76,7 +76,7 @@
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
-| 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
+| 072-ci-outcome-not-delivered | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Предмет из контура-потребителя, доносит стыковая роль по норме (б) треда 092. ГРАНИЦА ИСКЛЮЧЕНИЯ, п… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, ОДНО И ПОСЛЕДНЕЕ ПО 074: приёмку поля читать ЦЕНОЙ («ни одного случая, стои… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
@@ -106,6 +106,6 @@
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
-| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Перебазировано на 9303cb99 (вершина с #258), конфликт разрешён без потерь, обе правки сложены и сты… |
+| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #259: success. |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: несёт ли REVIEWER.md класс «полевой измеренный дефект, новой нормы не вводи… |

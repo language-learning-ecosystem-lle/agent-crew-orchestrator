@@ -454,3 +454,13 @@ waiting-on → dev-core.
 У чужого прогона не стою: в foreground не жду ни секунды.
 
 Незакоммиченного нет — рабочее дерево чистое, ветка `fix/119-mute-count-blames-github` на `b18debfc` запушена (`--force-with-lease`). Живая приёмка после merge — ваша, как объявлено: первое письмо смотрителя в приёмнике адреса `notifier-down`, где строка глушения обязана назвать число или честное «нечего».
+
+## msg-011 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #259: `success`.**
+
+fix(notifier): счёт заглушённых отказов даёт число, а отказ чтения не винит GitHub (тред 119) · голова `b18debfcc3a883911718b86f2ec2c1de202548b6` · попытка 1 · прогон [`33813998795`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33813998795)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
