@@ -1456,6 +1456,18 @@ of the whole circuit.
 `--repo` defaults to the repository of the current directory. Without `--write`
 nothing is written.
 
+**`--repo` names a CHECKOUT ON THIS MACHINE — a path — and `gh` spells its own flag of
+that name `--repo <owner>/<name>`, so a value in the platform's spelling is refused by
+name and before any call goes out** (thread 097). The repository on the platform is never
+typed here: it is read from the remote of the checkout named. Until this guard the two
+spellings were not told apart, and a relative `owner/name` got PAST the contour door below
+— that door resolves a relative path against the caller's directory, so a path that does
+not exist inherited the caller's ancestors and was judged its own — after which the value
+reached the external call as its working directory. Node reports a missing working
+directory as an ENOENT ABOUT THE COMMAND, so a mistake in this flag came back as
+`PR #249 was not read through gh: spawnSync gh ENOENT`: the vendor's binary blamed for the
+caller's own typing, and nothing to act on in it. Measured 2026-09-03 on `pr mergeable`.
+
 **A command typed in a tree of ANOTHER contour is refused, by name, before anything is
 read** (thread 062). Each named instance config of a box declares the `repo` of one
 circuit, and the door is asked in two halves. The GROUND — the tree the command was
@@ -2916,7 +2928,17 @@ not report the field at all is a refusal at the door — never folded into "go a
 GitHub computes the field lazily, though: the FIRST ask about a PR starts the job and
 answers `UNKNOWN`, the next one answers for real — on every open PR here, not now and
 then. A single ask would therefore refuse almost every first run, so the command asks
-again itself, once, and only then reports `UNKNOWN` as an answer.
+again itself.
+
+**And "asks again on `UNKNOWN`" was only half of it** (thread 097, 2026-09-03). A stale
+answer can also be `MERGEABLE` — measured on a head whose base never moved: `MERGEABLE` at
+`17:02:30Z`, `dirty` at `17:21Z`. So the door no longer retries on one word; it reads the
+field through the shared rule of
+[`pr mergeable`](#pr-mergeable--does-this-branch-still-apply-to-its-base-asked-before-the-review-label-thread-097)
+— **a verdict is what two consecutive asks agree on** — and D2 blocks on a reading that
+never settled, printing the whole sequence it heard (`asked 3 times and heard #1 MERGEABLE,
+#2 CONFLICTING, #3 MERGEABLE — consecutive answers disagree`). The payload judged by the
+other guards is the last one read.
 
 **The token needs scopes, and the gate does not say WHICH.** Guard 2 reads
 `statusCheckRollup`, which GitHub serves only to a token holding `checks: read` — and
@@ -2950,6 +2972,64 @@ thread 037 (both doors ask a POLICY question about a foreign ref and tolerate th
 and the list moved into the config at version 18 — measured first: on a head carrying code
 18, `config check --ref HEAD` refuses a config still at 17 and passes one bumped in the
 same commit, so the number rides in the same pull request as the field.
+
+### `pr mergeable` — does this branch still apply to its base, asked before the `review` label (thread 097)
+
+```
+agent-protocol pr mergeable --pr <n> [--repo <path>] [--asks <n>]
+```
+
+The question a role asks **before hanging the `review` label**, and the answer is one of
+three exit codes: `0` — two consecutive asks agreed on `MERGEABLE`, hang it; `1` — they
+agreed on something else, or never agreed at all; `2` — the invocation, or `gh` answered
+nothing this command can read.
+
+```
+pr mergeable: credentials — …
+pr mergeable: PR #482 — asked 3 times and heard #1 MERGEABLE, #2 CONFLICTING, #3 CONFLICTING …
+agent-protocol: PR #482 does not apply to its base (CONFLICTING) — rebase it and hang the
+label on the new head. A round of review on this head would be voided by the rebase
+(guard 1) and paid for twice
+```
+
+**Why a conflict has to be checked before the label** (john's word of 2026-09-03, thread
+`097-conflict-has-no-signal`). The norm says «hang the label after a green `checks` on the
+current head» and says nothing about conflicts, so a role that follows it to the letter can
+hang the label on a head that must be rebased. It is formally right and pays twice: the
+rebase moves the head, [guard 1](#merge-gate--the-guards-of-a-merge-that-are-facts-thread-026)
+voids a verdict that read the old tree, and the round of review runs again. Measured on the
+day this was written: six rebases in twenty-four hours across two circuits, and at least one
+round plus eighteen minutes of tests burnt on a head that could never have merged. Reading
+the conflict costs two `gh` calls; the round costs money and a place in the queue.
+
+**Why one ask is never the answer.** `mergeable` is computed by GitHub LAZILY and served
+from a cache that is allowed to be stale. The merge gate knew half of this and asked again
+on `UNKNOWN` — the half where the stale answer LOOKS unfinished. The other half is the
+expensive one: **a stale answer can also be `MERGEABLE`**. Measured on the same pull
+request: a role read `MERGEABLE` at `17:02:30Z` and hung the label; the same head, with its
+base standing still, read `dirty` at `17:21Z`. So every reading of this field in the package
+now goes through one rule — **a verdict is what two consecutive asks agree on**:
+
+- **one sample is never a verdict**, however definite it reads;
+- **samples that disagree are not a verdict either** — that is the cache changing its mind,
+  and the reading says so and prints the whole sequence it heard;
+- **`UNKNOWN` settles nothing at any count** — "not computed" is an answer to come back
+  for, never a permission;
+- `--asks` is a **ceiling** (default 3), not a count: a pull request that agrees with itself
+  on the second ask costs exactly two calls, and a floor of two asks holds even if `1` is
+  asked for.
+
+The rule lives in `merge/mergeability.ts` and is shared, not restated: `merge-gate` reads
+its `mergeable` through it (D2 now blocks on an unsettled reading, naming the sequence),
+and so does this command. The **scheduler** deliberately does not — its one cheap ask per
+open pull request per tick ranks a queue and opens no door, so a stale answer there costs an
+ordering and not a merge.
+
+**Why this is a read and not the labelling itself.** Hanging the label is a write to
+repository state and it raises a paid round; a package that refused to perform it would put
+the refusal further from the decision, not closer. Like `pr open`, this door catches an
+honest mistake and is bypassed by not using it — the load-bearing half stays at the merge
+gate, which refuses a merge that is not `MERGEABLE` anyway.
 
 ### `pr open` — how a role opens a pull request, and what is refused before it exists (thread 052)
 

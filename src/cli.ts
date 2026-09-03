@@ -101,9 +101,11 @@ import {
   ghPullRequestSchema,
   ghRefusalHint,
   ghRunParkSchema,
+  mergeableWordOf,
   pullRequestFacts,
   readReviewRuns,
 } from "./merge/gh.js";
+import { isMergeable, type MergeabilityReading, readMergeability } from "./merge/mergeability.js";
 import { judgePrDescription, PR_FIELDS_FORM } from "./merge/pr-open.js";
 import {
   type AccountAlarm,
@@ -1340,6 +1342,40 @@ const guardContour = (target: string): string => {
 };
 
 /**
+ * `--repo` NAMES A CHECKOUT ON DISK, AND THE FLAG OF THE SAME NAME ON `gh` NAMES
+ * `owner/name` — so the wrong one gets typed, and until this guard the wrong one was not
+ * refused. Measured 2026-09-03 on `pr mergeable` itself (thread 097): `--repo
+ * language-learning-ecosystem-lle/agent-crew-orchestrator` passed the contour door —
+ * `contourOf` resolves a RELATIVE path against the caller's directory, and the caller
+ * stood inside the circuit, so the phantom path inherited the circuit's ancestors and was
+ * judged "own" — and the value then reached `execFileSync` as its `cwd`. Node reports a
+ * missing `cwd` as an ENOENT ABOUT THE COMMAND, so the door answered
+ * `PR #249 was not read through gh: spawnSync gh ENOENT`: a refusal naming the vendor's
+ * binary for a mistake in the caller's own flag, from which nothing can be fixed.
+ *
+ * The check is existence and directory-ness, nothing more — whether the directory is a
+ * git checkout, and whose, is what the contour door below already answers, and this one
+ * only stops it being asked about a path that is not there. It runs BEFORE that door on
+ * purpose: "there is no such directory" is the cheaper and more precise of the two
+ * sentences, and a contour verdict about a phantom path is not worth printing.
+ */
+const guardRepoPath = (target: string): string => {
+  let directory: boolean;
+  try {
+    directory = statSync(target).isDirectory();
+  } catch {
+    return fail(
+      `--repo '${target}' does not exist — this flag names a CHECKOUT ON THIS MACHINE (a path), not a repository on the platform. 'gh' spells the latter '--repo <owner>/<name>'; here the repository is read from the remote of the checkout you name`,
+      2,
+    );
+  }
+  if (!directory) {
+    return fail(`--repo '${target}' is not a directory — this flag names a checkout`, 2);
+  }
+  return target;
+};
+
+/**
  * `--repo`, judged against the contour the command came from, or the caller's own tree
  * — and the GROUND is judged either way. Without `--repo` there is no target to judge
  * beyond the caller's own tree, but the caller still has to be standing somewhere this
@@ -1348,7 +1384,7 @@ const guardContour = (target: string): string => {
  */
 const repoArg = (argv: readonly string[], at: string): string => {
   const named = flag(argv, "--repo");
-  if (named !== undefined) return guardContour(named);
+  if (named !== undefined) return guardContour(guardRepoPath(named));
   guardGround();
   return repoOf(at);
 };
@@ -13284,17 +13320,24 @@ const mergeGate = (argv: readonly string[]): void => {
       },
     );
 
-  let raw: string;
+  let raw: string | undefined;
+  let mergeability: MergeabilityReading;
   try {
-    raw = ask();
-    // GitHub computes `mergeable` LAZILY: the first ask starts the job and answers
-    // UNKNOWN, the next one answers for real (observed on every open PR of this repo).
-    // Asking again is what the refusal would tell a human to do, so the command does it
-    // once itself — and only then reports UNKNOWN as the answer it is.
-    if (/"mergeable"\s*:\s*"UNKNOWN"/.test(raw)) {
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
-      raw = ask();
-    }
+    // GitHub computes `mergeable` LAZILY AND SERVES IT STALE: the first ask starts the job
+    // and answers whatever the cache holds, the next one answers for real. This used to be
+    // read as "retry on UNKNOWN", which covers only half of it — the half where the stale
+    // answer LOOKS unfinished. The other half is a stale `MERGEABLE`, and it is the one
+    // that cost a round of review on 2026-09-03 (thread `097`). So the door asks until two
+    // consecutive answers AGREE, and the payload it judges is the last one it read.
+    mergeability = readMergeability({
+      ask: () => {
+        raw = ask();
+        return mergeableWordOf(raw);
+      },
+      pause: (ms) => {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+      },
+    });
   } catch (error) {
     const message = (error as Error).message;
     // The reason `gh` returned is the fact and is printed whole; the hint is a reading
@@ -13309,7 +13352,7 @@ const mergeGate = (argv: readonly string[]): void => {
     return;
   }
 
-  const parsed = ghPullRequestSchema.safeParse(JSON.parse(raw));
+  const parsed = ghPullRequestSchema.safeParse(JSON.parse(raw ?? "null"));
   if (!parsed.success) {
     fail(
       `the answer of gh about PR #${number} is not the shape this command reads: ${parsed.error.issues
@@ -13422,6 +13465,7 @@ const mergeGate = (argv: readonly string[]): void => {
     pr: pullRequestFacts(parsed.data, baseHead, reviewRuns),
     powerDocs,
     d1,
+    mergeability,
   });
 
   for (const line of describeMergeGate(verdict)) out(line);
@@ -13449,6 +13493,83 @@ const mergeGate = (argv: readonly string[]): void => {
  * ground guard is asked of it too — a command that opens something outward is the last one
  * that should be an exception to the boundary of thread 062.
  */
+/**
+ * THE DOOR BEFORE THE `review` LABEL (thread `097-conflict-has-no-signal`, john's word of
+ * 2026-09-03) — the cheapest question there is, asked before the expensive thing.
+ *
+ * WHY IT EXISTS. The norm says «hang the label after a green `checks` on the current head»
+ * and says NOTHING about conflicts, so a role that follows it to the letter can hang the
+ * label on a head that has to be rebased. It is formally right and pays twice: the rebase
+ * moves the head, guard 1 voids the verdict of a round that read the old tree, and the
+ * round is run again. Measured on the day this was written — six rebases in twenty-four
+ * hours across two circuits, and at least one round of review plus eighteen minutes of
+ * tests burnt on a head that could never have merged.
+ *
+ * WHY IT IS A READ AND NOT THE LABELLING ITSELF. Hanging the label is a write to somebody
+ * else's repository state and it raises a paid round; this package refusing to perform it
+ * would put the refusal one step further from where the decision is made, not closer. What
+ * a door can honestly do is answer the question the role could not previously ask in one
+ * word — and answer it so it cannot be misread: `pr mergeable` exits 0 ONLY on a settled
+ * `MERGEABLE`, and every other outcome, conflict and unsettled alike, is exit 1 with the
+ * sequence of answers printed. Like every door of this package it is bypassed by not using
+ * it (see `pr-open.ts`, «WHAT THIS DOOR IS NOT»).
+ */
+const prMergeable = (argv: readonly string[]): void => {
+  const number = required(argv, "--pr");
+  if (!/^\d+$/.test(number)) {
+    fail(`--pr '${number}' — the number of a pull request`, 2);
+    return;
+  }
+  const asks = flagInt(argv, "--asks");
+  const repo = repoArg(argv, process.cwd());
+  // The circuit's own credentials, OFFERED and not demanded — the same reading every other
+  // `gh` caller of this package does, and the missing file is named only if `gh` refuses.
+  const platform = platformEnvOf({ repo });
+  out(`pr mergeable: credentials — ${platform.note}`);
+
+  let reading: MergeabilityReading;
+  try {
+    reading = readMergeability({
+      ask: () =>
+        mergeableWordOf(
+          execFileSync("gh", ["pr", "view", number, "--json", "mergeable,mergeStateStatus"], {
+            cwd: repo,
+            encoding: "utf8",
+            env: platform.env,
+            stdio: ["ignore", "pipe", "pipe"],
+            maxBuffer: 8 * 1024 * 1024,
+          }),
+        ),
+      pause: (ms) => {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+      },
+      ...(asks === undefined ? {} : { asks }),
+    });
+  } catch (error) {
+    const message = (error as Error).message;
+    fail(
+      explainWithCredentials(
+        `PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`,
+        platform,
+      ),
+      2,
+    );
+    return;
+  }
+
+  out(`pr mergeable: PR #${number} — ${reading.detail}`);
+  if (isMergeable(reading)) {
+    out("pr mergeable: the branch applies to its base — the 'review' label may be hung");
+    return;
+  }
+  fail(
+    reading.state === "settled"
+      ? `PR #${number} does not apply to its base (${reading.mergeable}) — rebase it and hang the label on the new head. A round of review on this head would be voided by the rebase (guard 1) and paid for twice`
+      : `PR #${number}: GitHub has not settled whether this branch applies to its base — ask again before hanging the label. A label hung on a guess costs a round of review when the guess is wrong`,
+    1,
+  );
+};
+
 const prOpen = (argv: readonly string[]): void => {
   const title = required(argv, "--title");
   const bodyPath = required(argv, "--body-file");
@@ -13550,6 +13671,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "merge-gate") {
     guardArguments("merge-gate", argv.slice(1));
     mergeGate(argv.slice(1));
+  } else if (command === "pr" && subcommand === "mergeable") {
+    guardArguments("pr mergeable", argv.slice(2));
+    prMergeable(argv.slice(2));
   } else if (command === "pr" && subcommand === "open") {
     guardArguments("pr open", argv.slice(2));
     prOpen(argv.slice(2));
