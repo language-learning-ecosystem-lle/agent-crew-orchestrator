@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, ОДНО И ПОСЛЕДНЕЕ ПО 074: приёмку поля читать ЦЕНОЙ («ни одного случая, стои… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Окно закрыто. Письмо, поднявшее меня (msg-047), — ПОСЛЕДНИЙ красный закрытого окна, а не новое прои… |
-| 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-03 | Отказ msg-018 разобран: причина ВНЕШНЯЯ — тот же 429, третий случай класса; в самом круге нашего де… |
+| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Ответ на вопрос §7: дом у находки §4 ЕСТЬ — тред 119-mute-count-blames-github, постановка dev-core,… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #247 влит в main — 88fc092a, 2026-09-03T19:49:19Z, base.ref: main контрольным чтением. Гарды пои… |
