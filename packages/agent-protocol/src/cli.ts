@@ -181,6 +181,11 @@ import {
   previousRun,
 } from "./orchestrator/continuation.js";
 import {
+  foreignCheckouts,
+  namedForeignFootprints,
+  snapshotForeign,
+} from "./orchestrator/contour-footprint.js";
+import {
   type DirectiveVerdict,
   describeDirective,
   resolveThreadDirective,
@@ -9059,6 +9064,15 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   // a leftover on every single tick — a door inventing a finding out of its own work.
   const runSharedPlaces = sharedPlaces(p.env);
   const sharedBefore = snapshotShared(runSharedPlaces);
+  // …AND WHAT THE CHECKOUTS OF OTHER CONTOURS ON THIS BOX HELD (measure 4 of thread
+  // `062-contour-boundary`). Same moment and same reason as the line above: «moved while
+  // this run was alive» is the only claim a directory shared with another circuit can
+  // support, and the thing being measured is the child. The list is derived from the
+  // box's own named machine configs — see `contour-footprint.ts`; a box hosting one
+  // contour has none, gets an empty list and pays nothing.
+  const foreign = foreignCheckouts({ own: p.workdir, env: p.env });
+  const foreignBefore = snapshotForeign(foreign.checkouts);
+  const foreignSince = new Date();
   let sinksOpen = true;
   const closeSinks = (): void => {
     if (!sinksOpen) return;
@@ -9092,6 +9106,36 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
       // lease, and a measurement of somebody else's directory may not be what decides
       // whether a session's outcome is recorded.
       writeLog(`supervisor  the shared places could not be measured: ${(error as Error).message}`);
+    }
+    // AND WHAT MOVED IN THE HOUSE OF ANOTHER CONTOUR (measure 4, thread `062`). AFTER the
+    // session, not inside it — a session that stepped over the boundary will not report
+    // itself, which is why both measured breaches were found by a human days later. On
+    // BOTH channels for the same reason the shared place is: the run's own log is what
+    // nobody reads, and the whole value of the measure is that the finding is heard even
+    // when the session is already dead. It stops nothing — the outcome of the tick is
+    // decided above this line and no branch here can change it.
+    try {
+      for (const line of [
+        ...foreign.holes,
+        ...namedForeignFootprints({
+          before: foreignBefore,
+          checkouts: foreign.checkouts,
+          roleId: p.roleId,
+          thread: p.thread,
+          since: foreignSince,
+          until: new Date(),
+        }),
+      ]) {
+        writeLog(`supervisor  ${line}`);
+        err(`agent-protocol: ${line}`);
+      }
+    } catch (error) {
+      // Same construction as the shared places, and the reason is sharper here: this
+      // reads git in a directory owned by somebody else, and no failure of that reading
+      // may cost this run the record of its own outcome.
+      writeLog(
+        `supervisor  the checkouts of other contours could not be measured: ${(error as Error).message}`,
+      );
     }
     sinksOpen = false;
     closeSync(sink);
