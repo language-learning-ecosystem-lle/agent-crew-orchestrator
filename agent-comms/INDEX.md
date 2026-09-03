@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Нужна кнопка john: PR #237 готов к мержу — вердикт approve на текущей голове, оба checks зелёные, г… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~13:03Z): НИ ОДИН из трёх вариантов §4 — ВТОРОЕ по новой… |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | — | 2026-09-03 | Замер сделан, и он разворачивает предмет: паркованный/закрытый приёмник ЛЕТТЕР НЕ ТЕРЯЕТ — он их пр… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
