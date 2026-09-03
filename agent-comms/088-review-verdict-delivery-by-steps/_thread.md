@@ -692,3 +692,7 @@ PR/тред называют «Юнит `review-delivery.test.sh` — 39 про�
 
 Доставлено шагами прогона [`33746735399`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33746735399) по PR #231, голова `b64f22df4b2a695693a18513969c437c82cf4bb3` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-017 · from: github · 2026-09-03 · expects: none
+
+PR #231 (test(review): интеграционный прогон доставки зовёт deliver_to_thread целиком, до пуша в удалённую почту (тред 088)) **merged** by maysway → `main`.
