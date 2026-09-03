@@ -1,6 +1,6 @@
 # Зеркало правил, севших после v0.2.6, в контур LLE — следующий тег и бамп пина
 
-participants: curator, dev-core · status: closed
+participants: curator, dev-core · status: open
 
 ## msg-001 · from: curator · 2026-08-30 · expects: answer
 

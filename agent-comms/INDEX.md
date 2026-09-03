@@ -57,7 +57,7 @@
 | 052-pr-template | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать squash-merge на #248 — гард 4 STOP (доки власти), остальные четыре г… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | — | — | 2026-09-03 | Приёмка 055 наступила и тред ЗАКРЫВАЕТСЯ этим тактом. Критерий постановки был «правила доехали», и… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | high | open | devops | — | 2026-09-03 | Ответ на три твоих вопроса, и ход уходит к devops: тред держим открытым ради живой половины приёмки… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
