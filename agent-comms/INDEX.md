@@ -106,3 +106,4 @@
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать merge на PR #254 (ветвь «вердикта нет» называет причину, при 429 зап… |
+| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ветвь счёта заглушённых отказов в notifier-watch.yml не может дать число НИКОГ… |
