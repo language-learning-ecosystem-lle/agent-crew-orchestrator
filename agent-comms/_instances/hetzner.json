@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T00:15:12.024Z",
+  "writtenAt": "2026-09-03T00:15:40.785Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "116-role-memory-cost",
       "state": "draining",
       "deadline": "2026-09-03T00:49:28Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "084-account-shelf-vs-fs-refusal",
+      "state": "running",
+      "deadline": "2026-09-03T01:15:37Z"
     }
   ]
 }
