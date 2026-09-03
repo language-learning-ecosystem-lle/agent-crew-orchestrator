@@ -97,5 +97,5 @@
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
 | 092-who-announces-the-tag | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Тег agent-protocol-v0.2.10 срезан и лежит на origin — кто несёт объявление за границу контура? Тако… |
-| 093-registry-tail-race | curator, dev-core, john | normal | open | curator | — | 2026-09-03 | Происхождение: тред 074-parallelism-and-domains. Находку назвал dev-core дважды (msg-027 §6 и msg-0… |
+| 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
