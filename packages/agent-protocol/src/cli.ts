@@ -94,6 +94,8 @@ import {
   evaluateMergeGate,
   powerDocumentList,
   readD1Reference,
+  roleOfDescription,
+  threadOfDescription,
   unmatchedWorkingCards,
 } from "./merge/gate.js";
 import {
@@ -341,6 +343,13 @@ import {
   type MergeReadySource,
   readMergeReady,
 } from "./orchestrator/merge-ready.js";
+import {
+  asksOwed,
+  mergeabilitySaidKey,
+  planMergeabilityWatch,
+  renderMergeabilityLetter,
+  type WatchedPullRequest,
+} from "./orchestrator/mergeability-watch.js";
 import {
   foldMetrics,
   type MergeRecord,
@@ -4500,6 +4509,147 @@ type NotifyRun = {
   readonly lines: readonly string[];
 };
 
+/**
+ * THE WATCHMAN'S PASS (thread `097-conflict-has-no-signal`, half 2) — the caller the rule
+ * in `orchestrator/mergeability-watch.ts` was written for, and the whole of the repair: a
+ * branch that stops applying to its base produces NO EVENT, so this pass makes one.
+ *
+ * WHY IT RIDES WITH THE COURIER AND NOT WITH THE QUEUE. The mark that keeps it quiet lives
+ * in `.orchestrator/notify.state` (curator's answer of 2026-09-03, msg-010 point 3), and
+ * that file is written HERE and nowhere else — a second writer in the tick would race the
+ * courier over the same file every time either of them moved. The scheduler's own list of
+ * open pull requests is not reachable from here for a measured reason, and it is not free
+ * either: `readMergeReady` opens no socket at all on a tick with no candidates, which is
+ * most of a quiet night. So the pass pays ONE call of its own per tick for the cheap half,
+ * and confirms only what disagrees with what it remembers ({@link asksOwed}).
+ *
+ * THE MARK IS PERSISTED BY THE CALLER IMMEDIATELY, before anything is sent to a transport:
+ * a letter that is already committed into the feed must not be forgotten because Telegram
+ * refused a minute later — the `undelivered` path deliberately leaves the rest of the state
+ * untouched so its pairs ring again, and this class must not ride on that.
+ *
+ * A FAILURE HERE IS A LINE, NEVER A THROW. The courier is a superstructure (the daemon
+ * catches it, but a watch that took the box down because `gh` refused is not a watch), and
+ * an undelivered letter simply leaves the mark unset, so the next tick says it again.
+ */
+const watchMergeability = async (input: {
+  readonly repo: string;
+  readonly mailRoot: string;
+  readonly branch: string;
+  readonly registry: RoleRegistry;
+  readonly said: readonly string[];
+  readonly say: (line: string) => void;
+}): Promise<readonly string[] | undefined> => {
+  let open: Awaited<ReturnType<MergeReadySource["open"]>>;
+  try {
+    open = await ghMergeReadySource(input.repo).open();
+  } catch (error) {
+    input.say(
+      `mergeability — the open pull requests were not read: ${(error as Error).message}; nothing is announced and no mark is moved`,
+    );
+    return undefined;
+  }
+  const platform = platformEnvOf({ repo: input.repo });
+  const owed = new Set(
+    asksOwed({
+      cheap: open.map((pr) => ({ number: pr.number, mergeable: pr.mergeable })),
+      said: input.said,
+    }),
+  );
+  const seen: WatchedPullRequest[] = open.map((pr) => {
+    const samples: (string | null | undefined)[] = [pr.mergeable];
+    if (owed.has(pr.number)) {
+      try {
+        samples.push(
+          mergeableWordOf(
+            execFileSync("gh", ["pr", "view", String(pr.number), "--json", "mergeable"], {
+              cwd: input.repo,
+              encoding: "utf8",
+              env: platform.env,
+              stdio: ["ignore", "pipe", "pipe"],
+              maxBuffer: 8 * 1024 * 1024,
+            }),
+          ),
+        );
+      } catch (error) {
+        // ONE PULL REQUEST THAT COULD NOT BE CONFIRMED IS NOT THE TIER GOING DARK: it is
+        // left with a single answer, a single answer is never a verdict, so nothing is
+        // said about it and nothing is forgotten about it either.
+        input.say(
+          `mergeability — PR #${pr.number} was not asked a second time: ${(error as Error).message}; it keeps its mark and is measured again next tick`,
+        );
+      }
+    }
+    return {
+      number: pr.number,
+      headSha: pr.headSha,
+      thread: threadOfDescription(pr.body),
+      role: roleOfDescription(pr.body),
+      samples,
+    };
+  });
+  const plan = planMergeabilityWatch({ seen, said: input.said });
+  for (const note of plan.notes) input.say(`mergeability — ${note}`);
+  const checkout = repoOf(input.mailRoot);
+  const kept = new Set(plan.said);
+  for (const letter of plan.letters) {
+    // THE TWO REFUSALS OF `planThreadMessage` THAT WOULD EXIT THIS PROCESS are asked here
+    // instead: it is a command's subroutine and answers a bad argument with `fail()`, which
+    // inside the daemon's tick would take the box down over somebody's PR description.
+    if (!input.registry.isKnown(letter.role) || !existsSync(join(input.mailRoot, letter.thread))) {
+      input.say(
+        `mergeability — PR #${letter.number} no longer applies to its base, and the letter was NOT written: its description names ${input.registry.isKnown(letter.role) ? `thread '${letter.thread}', which is not in the mail` : `role '${letter.role}', which is not in the config`}. Nothing is remembered, so this repeats until the description is fixed`,
+      );
+      kept.delete(mergeabilitySaidKey(letter.number));
+      continue;
+    }
+    try {
+      const sent = deliverMessage({
+        git: gitIn(checkout),
+        write: writeOut,
+        branch: input.branch,
+        subject: deliverySubject({
+          from: MERGEABILITY_LETTER_FROM,
+          thread: letter.thread,
+          mailDir: relative(checkout, input.mailRoot),
+        }),
+        // THE SAME IDENTITY THE OUTCOME OF A RUN AND A MERGE ARRIVE UNDER (curator's
+        // boundary of 2026-09-03): a new sender is a matter of the norm, and this letter
+        // says exactly what those two say — something happened on the platform.
+        identity: roleIdentity(MERGEABILITY_LETTER_FROM),
+        stage: () =>
+          planThreadMessage(input.mailRoot, letter.thread, input.registry, {
+            from: MERGEABILITY_LETTER_FROM,
+            expects: "none",
+            waitingOn: letter.role,
+            text: renderMergeabilityLetter(letter),
+          }),
+        note: (line) => input.say(line),
+        lock: mailLockFor({
+          checkout,
+          holder: `mergeability of PR #${letter.number} → ${letter.thread}`,
+          note: (line) => input.say(line),
+        }),
+      });
+      input.say(
+        `mergeability — PR #${letter.number} stopped applying to its base (${letter.detail}); the turn was passed to ${letter.role} in ${letter.thread} (${sent.label})`,
+      );
+    } catch (error) {
+      // THE MARK IS NOT SET FOR A LETTER THAT DID NOT LAND. Marking it would be the one
+      // failure this whole module exists against: the break would then be silent for as
+      // long as it lasts.
+      kept.delete(mergeabilitySaidKey(letter.number));
+      input.say(
+        `mergeability — PR #${letter.number} stopped applying to its base and the letter was NOT delivered: ${(error as Error).message}; nothing is remembered, the next tick says it again`,
+      );
+    }
+  }
+  return [...kept].sort();
+};
+
+/** The identity every letter about the platform is signed with — a merge, an outcome, this. */
+const MERGEABILITY_LETTER_FROM = "github";
+
 const runNotify = async (input: {
   readonly argv: readonly string[];
   readonly write: boolean;
@@ -4917,6 +5067,28 @@ const runNotify = async (input: {
   const seen = existsSync(statePath)
     ? parseNotifyState(readFileSync(statePath, "utf8"))
     : { waiting: [], stalled: [], parked: [] };
+  // THE WATCHMAN OF MERGEABILITY WALKS HERE (thread 097, half 2) — see `watchMergeability`
+  // for why it rides with the courier and why its mark is written before anything is sent.
+  // A DRY RUN NEVER WRITES INTO THE MAIL: `notify` without `--write` prints what it would
+  // announce, and a letter committed and pushed by a "would" is not a dry run.
+  let mergeableSaid = seen.mergeable;
+  if (write && section !== undefined) {
+    const marks = await watchMergeability({
+      repo,
+      mailRoot: root,
+      branch: loaded.config.mail.branch,
+      registry,
+      said: seen.mergeable ?? [],
+      say,
+    });
+    if (marks !== undefined) {
+      mergeableSaid = marks;
+      // WRITTEN AT ONCE, and not with the rest of the state at the end of the run: the
+      // letters above are already in the feed, and every other exit of this command leaves
+      // the state alone on purpose (a transport that could not deliver must ring again).
+      writeOut(statePath, renderNotifyState({ ...seen, mergeable: marks }));
+    }
+  }
   const plan = planNotifications({
     targets,
     waiting,
@@ -5137,6 +5309,9 @@ const runNotify = async (input: {
         // reachable only with `staleEventParks` empty — an overdue park raises its own letter
         // above — so the keys are the surviving ones alone, and no park is recorded as told.
         eventParks: plan.eventParkKeys,
+        // The watchman's own marks, carried through unchanged: this command's other classes
+        // are the composition of THIS run, and that one is not (see `watchMergeability`).
+        mergeable: mergeableSaid,
       }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
@@ -5167,6 +5342,9 @@ const runNotify = async (input: {
         accounts: plan.accountKeys,
         reminded: plan.reminded,
         eventParks: plan.eventParkKeys,
+        // The watchman's own marks, carried through unchanged: this command's other classes
+        // are the composition of THIS run, and that one is not (see `watchMergeability`).
+        mergeable: mergeableSaid,
       }),
     );
     return { kind: "sent", summary, lines: said };
@@ -5205,6 +5383,8 @@ const runNotify = async (input: {
       accounts: plan.accountKeys,
       reminded: plan.reminded,
       eventParks: plan.eventParkKeys,
+      // The watchman's own marks, carried through unchanged (see `watchMergeability`).
+      mergeable: mergeableSaid,
     }),
   );
   say(outcome.detail);
