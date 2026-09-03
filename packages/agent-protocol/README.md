@@ -5389,7 +5389,7 @@ the run is not reported, and that both files are still there afterwards.
 ### S29 — what a run moved in the house of ANOTHER contour (thread 062, measure 4)
 
 **The class, and why a door in the commands cannot see it.** Two breaches are measured:
-#453/#454 (a role opened a PR in the neighbour's repository) and #181 (a role of the
+PRs opened by a role in the neighbour's repository, and #181 (a role of the
 consumer contour committed and pushed into THIS contour's checkout, with this contour's
 credentials). Measure 1 — `zones check --repo`, the contour door in the package's own
 commands — judges the tree a command was pointed at; a plain `git -C /somewhere/else
