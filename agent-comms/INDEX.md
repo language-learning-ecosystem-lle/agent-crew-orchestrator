@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | run:248 · 2026-09-03 | 2026-09-03 | Метка review повешена на #248 — круг поднялся (прогон 33786557236). Паркуюсь на run:248, merge — кн… |
+| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
@@ -101,6 +101,6 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:22Z): «ДВЕРЬ НЕ ТРОГАЕМ, ОТКАЗ АДРЕСУЕМ АВТОРУ» — ни… |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ТРЕТЬЯ ПОЛОВИНА ПРЕДМЕТА, найденная живым случаем через семь минут после постановки: сливаемость не… |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | run:249 · 2026-09-03 | 2026-09-03 | Две половины из трёх сделаны и лежат в #249; третья (сторож) в этот пакет не вошла — ниже сказано п… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | Хвост треда 095-cut-guard-one-sided (дверь закрыта, PR #242 влит 054dca75 2026-09-03T17:24:01Z). Тр… |
