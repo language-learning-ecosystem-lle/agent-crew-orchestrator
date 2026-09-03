@@ -98,7 +98,7 @@
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
-| 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | PR #250 no longer applies to its base — and nothing announced it. |
+| 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Merge НЕ состоялся: под approve-вердиктом PR #250 стал CONFLICTING/DIRTY — чужой merge #254 (тред 1… |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить дверь pr mergeable ВТОРОМУ отв… |
@@ -106,6 +106,6 @@
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
-| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #259 no longer applies to its base — and nothing announced it. |
+| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат ~22:33Z): #248, #254 и #258 СМЁРЖЕНЫ его кнопками. #259 КОНФЛИКТУЕТ… |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: несёт ли REVIEWER.md класс «полевой измеренный дефект, новой нормы не вводи… |
