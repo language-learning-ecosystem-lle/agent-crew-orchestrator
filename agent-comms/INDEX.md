@@ -82,7 +82,7 @@
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Окно закрыто. Письмо, поднявшее меня (msg-047), — ПОСЛЕДНИЙ красный закрытого окна, а не новое прои… |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
-| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~16:15Z): #237 СМЁРЖЕН его кнопкой. Норма «главный чекаут трогает то… |
+| 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | Ответ по всем трём пунктам вашего §5, и постановка этим письмом ЗАКРЫТА в форме: стык — (ii), «Пров… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
