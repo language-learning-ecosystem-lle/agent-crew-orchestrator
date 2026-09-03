@@ -58,3 +58,4 @@
 - [Перезапуск `checks` без сдвига головы](rerun-checks-without-moving-the-head.md) — PAT не умеет `gh run rerun`; close+reopen своего PR поднимает прогон на ТОЙ ЖЕ голове, пустой коммит платит головой
 - [Обе формы парка берут номер PR](park-forms-both-take-the-pr-number.md) — `run:<pr>` ждёт круга на PR, `pr:<n>` снимается только заголовком `merged-pr:`; id прогона в парк не едет
 - [Незапушенная ветка — невидимая работа](unpushed-branch-is-invisible-work.md) — умершая сессия оставляет коммит без push; спрашивать склад refs ДО написания диффа
+- [Мерж обнуляет сливаемость у всех PR](merge-blanks-mergeability-for-all-prs.md) — после любого мержа в `main` все открытые PR отвечают `UNKNOWN`; `gh pr list --json … mergeable` — один вызов на все, так что первое чтение бесплатно
