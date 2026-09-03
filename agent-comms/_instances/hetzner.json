@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T19:52:01.828Z",
+  "writtenAt": "2026-09-03T19:53:50.972Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "117-unfit-tags-and-the-silent-skip",
-      "state": "running",
-      "deadline": "2026-09-03T20:48:46Z"
-    }
-  ]
+  "leases": []
 }
