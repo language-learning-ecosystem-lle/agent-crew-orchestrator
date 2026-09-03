@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T11:15:18.342Z",
+  "writtenAt": "2026-09-03T11:15:33.996Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "076-main-red-alarm",
       "state": "running",
       "deadline": "2026-09-03T12:14:49Z"
+    },
+    {
+      "role": "curator",
+      "thread": "088-review-verdict-delivery-by-steps",
+      "state": "running",
+      "deadline": "2026-09-03T11:55:30Z"
     }
   ]
 }
