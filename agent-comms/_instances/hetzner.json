@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T01:27:42.747Z",
+  "writtenAt": "2026-09-03T01:27:46.334Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "076-main-red-alarm",
       "state": "running",
       "deadline": "2026-09-03T02:27:39Z"
-    },
-    {
-      "role": "devops",
-      "thread": "079-devops-enablement-acceptance",
-      "state": "running",
-      "deadline": "2026-09-03T01:43:56Z"
     }
   ]
 }
