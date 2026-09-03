@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T11:21:45.830Z",
+  "writtenAt": "2026-09-03T11:22:48.840Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "088-review-verdict-delivery-by-steps",
-      "state": "draining",
-      "deadline": "2026-09-03T11:55:30Z"
-    }
-  ]
+  "leases": []
 }
