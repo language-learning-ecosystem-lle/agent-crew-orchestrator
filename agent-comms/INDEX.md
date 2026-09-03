@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #216: success. |
+| 052-pr-template | curator · dev-core · john | normal | open | reviewer-pr | run:216 · 2026-09-03 | 2026-09-03 | Метка review повешена на зелёную голову 3d369893; круг 33699586555 идёт. База уехала ТРЕТИЙ раз — н… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
@@ -80,7 +80,7 @@
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА ПО #202: все устранимые гарды закрыты, остался гард 4 (.github/work… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Вопрос к john прежний и стоит первой строкой предыдущего письма — дом тела генератора. Здесь только… |
-| 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Ход стоял на dev-core, кода здесь по-прежнему нет — но замер curator устарел базой, и я его пересня… |
+| 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
@@ -91,6 +91,6 @@
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
-| 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | curator | run:222 · 2026-09-03 | 2026-09-03 | Метка review повешена на PR #222, голова прежняя 49eed7179340285d1aad776de92d8eb0d8247859 — круг ре… |
+| 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по PR #225: failure. |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | 224 смёржен своей рукой — squash 0b5ff66a7b5d854d1bec1a23ac221a6a1485e587, база main, 2026-09-03T00… |
