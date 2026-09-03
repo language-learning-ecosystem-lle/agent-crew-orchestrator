@@ -5336,3 +5336,51 @@ committing the very defect it measures. The seam is a process test (`run.process
 a stub session types a literal path into a `HOME` the test owns, and what is asserted is
 that the run's log names the path with its size, role and thread, that an entry older than
 the run is not reported, and that both files are still there afterwards.
+
+### S29 — what a run moved in the house of ANOTHER contour (thread 062, measure 4)
+
+**The class, and why a door in the commands cannot see it.** Two breaches are measured:
+#453/#454 (a role opened a PR in the neighbour's repository) and #181 (a role of the
+consumer contour committed and pushed into THIS contour's checkout, with this contour's
+credentials). Measure 1 — `zones check --repo`, the contour door in the package's own
+commands — judges the tree a command was pointed at; a plain `git -C /somewhere/else
+commit` never enters this package, so nothing looked. Both were found by a human days
+later, which is not a measurement.
+
+- **The supervisor lists the refs of every foreign checkout before the spawn and again at
+  the close**, and names what moved in between: a new branch, a branch that moved from one
+  object to another, a moved `HEAD`. AFTER the session, where the lease is released and not
+  inside it: a session that stepped over the boundary does not report itself.
+- **The list of foreign checkouts is derived from already-declared data — no new config
+  key, no new field, no new step of the route.** A box hosting more than one contour says
+  so itself: one named machine config per instance (`instances/<name>.json`), whose `repo`
+  is «which checkout this instance serves» (thread 055). Every declared `repo` that is not
+  the checkout of this run is, by that same declaration, another contour's. A box with one
+  contour has no named configs, gets an empty list and pays nothing.
+- **Both channels**, as with the shared places of S28 and the `TMPDIR` that did not fit
+  (S26a): the run's own log is what nobody reads when the session is dead, and the whole
+  value of the measure is that the finding is heard afterwards.
+- **The line names four things:** the role and thread, the window (both timestamps), the
+  foreign address (the path and the instance that declared it), and what was found (which
+  refs, from what to what).
+- **A window is not an owner**, exactly as in S28: on a box where the neighbour's own
+  circuit is alive the same window could be theirs, and the sentence carries that
+  reservation with it.
+- **Nothing is changed, and nothing is fail-closed.** Not a ref, not a file: reading is the
+  whole mandate. The finding does not change the outcome of the tick and does not stop the
+  contour — blocking is the work of measure 1 and of the user separation (measure 5); a
+  watchman that halts a circuit on suspicion is switched off by its first false positive.
+- **A machine config or a checkout that cannot be read is a named hole**, never read as
+  empty: read as empty, every ref would look new at the close — a door inventing findings.
+- **What it cannot see, said rather than left to be found:** an action taken through the
+  API against a repository that has no checkout on this box. This measure catches the
+  footprint ON THE BOX; the rest is closed by separate tokens and separate system users.
+
+**What is tested.** The judgement is a unit (`contour-footprint.test.ts`) with the configs
+and the ref listings injected — own house / foreign house / no checkout declared /
+unreadable config / new branch / moved branch / silence. The seam is a pair of process
+tests (`run.process.test.ts`): a stub session runs `git commit` in a foreign checkout the
+test owns and declares, and what is asserted is that the line reaches the observer's
+channel with all four things in it, that the tick's own outcome is unchanged and that the
+neighbour's checkout was not touched; and the opposite control — an ordinary tick that
+stayed at home is SILENT, without which the argument for not being fail-closed is empty.
