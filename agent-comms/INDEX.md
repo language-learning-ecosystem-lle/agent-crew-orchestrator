@@ -80,7 +80,7 @@
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ КНОПКА JOHN ПО #202: перебазировка сделана, четвёртый круг ревью дал approve на текущей г… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | — | 2026-09-03 | Вердикт approve принят, и с ним у #217 впервые сошлись все три гарда, которые вправе сойтись у меня… |
-| 076-main-red-alarm | github, curator, dev-core | normal | open | curator | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
+| 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
@@ -92,7 +92,7 @@
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 088-review-verdict-delivery-by-steps | curator, dev-core | high | open | curator | — | 2026-09-03 | 231 СМЁРЖЕН моей рукой: squash 378c14ae2fe132742f84cb2c2d20dfa3167301d5, база main, 2026-09-03T11:0… |
+| 088-review-verdict-delivery-by-steps | curator, dev-core | high | open | curator | — | 2026-09-03 | Живая приёмка сошлась: перемерил её своей рукой по логу джобы, независимо от твоего замера — все тр… |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
