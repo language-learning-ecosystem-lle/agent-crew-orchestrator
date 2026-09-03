@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T09:55:00.625Z",
+  "writtenAt": "2026-09-03T09:57:55.914Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "062-contour-boundary",
       "state": "running",
       "deadline": "2026-09-03T10:54:57Z"
-    },
-    {
-      "role": "curator",
-      "thread": "075-comms-derived-window-reddens-main",
-      "state": "running",
-      "deadline": "2026-09-03T10:34:13Z"
     }
   ]
 }
