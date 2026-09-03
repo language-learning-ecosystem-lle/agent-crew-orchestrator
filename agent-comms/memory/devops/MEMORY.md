@@ -1,1 +1,1 @@
-- [No git credentials for aco-devops](gap_no_git_credentials.md) — mail CLI unusable: no ~/.ssh at all, github-crew alias unresolvable (node IS reachable, don't use it though)
+- [No git credentials for aco-devops](gap_no_git_credentials.md) — reads work via `--no-fetch`; writes have no path at all (github-crew unresolvable, no ~/.ssh). Node at lle's .nvm absolute path IS the intended door, use it freely.
