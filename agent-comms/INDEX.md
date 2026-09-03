@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #244: success. |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | run:245 · 2026-09-03 | 2026-09-03 | Постановка §4 выполнена: три места класса «чужие номера PR» под packages/ сняты. PR #245, голова 9b… |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ✅ checks по PR #245: success. |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Полевая приёмка снята ПЕРЕЧИСЛЕНИЕМ, а не ожиданием суток — и она нашла обратное «тихо и зелено»: п… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -89,7 +89,7 @@
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
+| 085-stale-workspace-package | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
