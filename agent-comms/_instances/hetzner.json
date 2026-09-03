@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T09:44:36.931Z",
+  "writtenAt": "2026-09-03T09:45:00.230Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "056-shared-tmp-mechanism",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T10:18:20Z"
     }
   ]
