@@ -318,6 +318,7 @@ import {
   type SpawnAs,
   SWITCH_EXEC,
   type SwitchProbe,
+  sessionCredentialLines,
   sessionPathValue,
   spawnAsCommand,
   switchProbeArgv,
@@ -9258,6 +9259,30 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
   });
   if (sessionPath !== undefined) writeLog(`supervisor  session PATH ${sessionPath}`);
 
+  // WHAT THE SESSION IS LOGGED IN AS (thread `065-cli-loads-its-own-secrets`, the last mile).
+  //
+  // The commands of this package take the credential of their own circuit since #164 — and
+  // that covered the calls the PACKAGE makes, which is one of the two layers a circuit has.
+  // The other one is the SESSION: `gh pr list` and `git push` typed by a role are children of
+  // the agent binary, and the agent binary is a child of the daemon, whose environment carries
+  // no token at all once the unit override is gone. Measured on 2026-09-03 (thread 065,
+  // curator): 0 refusals in the 3½ hours the override stood, 27 in the 2h50m after it was
+  // removed, across two roles and eleven threads.
+  //
+  // THIS IS NOT THE OVERRIDE COMING BACK, and the difference is the whole of thread 065: the
+  // sin of `EnvironmentFile=` was a SECOND SOURCE — the unit knowing what the machine config
+  // already said — not a token in an environment. Here the source is the one the config names
+  // (`secrets.envFile` of the instance THIS TREE belongs to, resolved by `p.workdir`, so a box
+  // hosting two circuits hands each session the login of its own), and the rules of that door
+  // are its own: an already-set value is never overwritten, and no value is ever printed.
+  //
+  // IT IS AN ENRICHMENT AND NEVER A GATE, for the same reason `explainWithCredentials` is one:
+  // a circuit whose config names no secrets file raised sessions before this line and goes on
+  // raising them after it. What changes is that the reason is now IN THE RUN'S OWN LOG, by
+  // name and with the path, instead of being discovered by a role whose first command dies.
+  const credentials = platformEnvOf({ repo: p.workdir, env: p.env });
+  for (const line of sessionCredentialLines(credentials)) writeLog(`supervisor  ${line}`);
+
   // WHO IT RUNS AS (thread 047, point 3). `self` — the command IS the binary, exactly as
   // every run before this field existed; `sudo` — the binary becomes an argument of the
   // narrow entitlement, and NOTHING ELSE about this spawn changes: the same argv, the same
@@ -9292,7 +9317,10 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     // are set here, over the project preamble, because they describe THIS run and
     // nothing in the config may claim to know them.
     env: {
-      ...p.env,
+      // `p.env` PLUS THE CIRCUIT'S LOGIN (thread `065`): the composition above starts from
+      // the inherited environment and the project preamble, and adds the token of this
+      // tree's instance to it — never over a value the caller already set.
+      ...credentials.env,
       [LAUNCH_ENV.worker]: p.worker,
       [LAUNCH_ENV.sessionFile]: p.sessionIdFile,
       // The ceiling of its own wait (R19): the session defaults `await-input` to this

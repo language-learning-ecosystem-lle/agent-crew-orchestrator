@@ -296,6 +296,31 @@ export const sessionPathValue = (input: {
 };
 
 /**
+ * WHAT THE RUN'S OWN LOG SAYS ABOUT THE SESSION'S LOGIN (thread `065`, the last mile) —
+ * always the note, and the refusal beside it when there is one.
+ *
+ * IT IS A FUNCTION AND NOT TWO LINES AT THE SPAWN because of what it must never do. The
+ * daemon's journal is read by every role of the circuit and by whoever operates the box:
+ * it is the one channel of this launch that is PUBLIC, so «no value ever leaves» is worth
+ * more here than at a command's own exit line. Both strings it forwards are built by
+ * `config/credentials.ts` out of NAMES, PATHS and COUNTS — the invariant is that door's,
+ * this one only refuses to add anything of its own to them.
+ *
+ * THE REFUSAL IS SAID AND THE RAISE GOES ON. A circuit whose machine config names no
+ * secrets file raised sessions before this line existed and raises them after it — the
+ * credential is an enrichment, exactly as it is for a command (`explainWithCredentials`).
+ * What the line buys is that the reason is in the log BEFORE the session's first `gh` dies
+ * of it, instead of being reconstructed from twenty-seven identical refusals afterwards.
+ */
+export const sessionCredentialLines = (platform: {
+  readonly note: string;
+  readonly refusal: string | null;
+}): readonly string[] => [
+  `session credentials — ${platform.note}`,
+  ...(platform.refusal === null ? [] : [platform.refusal]),
+];
+
+/**
  * What the orchestrator says it is raising. A DEFAULT rather than a config field:
  * the shape of a per-role launch section is R12's question (curator, 15:25), and
  * `--worker` is the same kind of override as `--exec` beside it — the one place

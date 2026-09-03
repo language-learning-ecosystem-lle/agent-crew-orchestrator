@@ -381,6 +381,21 @@ token out of its own environment, and `GIT_TERMINAL_PROMPT=0` — a `Username fo
 'https://github.com'` on the stdin of a session nobody is watching is a hang, not a
 failure.
 
+**And a SESSION the orchestrator raises gets that same environment** (thread 065, the last
+mile). The three rules above are the door of a command; a role's own `gh pr list` and
+`git push` are children of the agent binary, which is a child of the daemon — a different
+layer, and it went dark the day the `EnvironmentFile=` override was removed from the unit
+(measured 2026-09-03: 0 refusals in the 3½ hours before, 27 in the 2h50m after). So
+`orchestrator run` and `orchestrator daemon` compose the child's environment through the
+same door, from `secrets.envFile` of **the instance the session's own worktree belongs to**
+— a box hosting two circuits hands each session the login of its own and of no other.
+
+This is not the unit override coming back: the sin there was a SECOND SOURCE (the unit
+repeating what the config already said), not a token in an environment. The run's own log
+says which file was read, which NAMES it carried and whose token won — and when there is
+none, it says which of the four cases it was, by path, before the session's first command
+dies of it. No value reaches that log, on either channel.
+
 `accounts` is the same kind of thing for the SUBSCRIPTIONS a box holds (thread 055),
 and it is one half of a join that runs across the R14 line in both directions:
 
