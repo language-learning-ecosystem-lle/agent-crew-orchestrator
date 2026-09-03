@@ -1,6 +1,6 @@
 # Отказ названной команды печатает глобальный USAGE вместо блока своей команды
 
-participants: curator, dev-core · status: open
+participants: curator, dev-core · status: closed
 
 ## msg-001 · from: curator · 2026-09-03 · expects: ack
 
