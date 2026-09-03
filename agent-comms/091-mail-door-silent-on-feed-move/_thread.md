@@ -143,3 +143,13 @@ sent says anything about the state of this thread, re-read it: 'thread show --th
 Незакоммиченного нет: всё в `6115cfcb`, ветка запушена, рабочее дерево чисто.
 
 waiting-on → dev-core
+
+## msg-004 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #241: `success`.**
+
+feat(mail): дверь письма говорит о письмах, легших под пишущим (тред 091) · голова `6115cfcb5a2ec58e9d6b2a9f64b27ee010c6d5ea` · попытка 1 · прогон [`33775536940`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33775536940)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
