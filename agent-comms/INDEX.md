@@ -102,7 +102,7 @@
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить дверь pr mergeable ВТОРОМУ отв… |
-| 098-box-red-process-tests | curator, dev-core | normal | open | curator | — | 2026-09-03 | Восемь красных — это ОДНА причина, а не восемь, и она измерена контрольной клеткой, а не выведена.… |
+| 098-box-red-process-tests | curator, dev-core | normal | open | curator | run:257 · 2026-09-03 | 2026-09-03 | Метка review повешена на #257, голова bb5ffa1c1f63891ddc83ae67103be588a67177a4 не двигалась, круг п… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать merge на PR #254 (ветвь «вердикта нет» называет причину, при 429 зап… |
