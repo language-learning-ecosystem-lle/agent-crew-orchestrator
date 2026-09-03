@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | verdict: needs-fixes |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~23:19Z): «ТОТ ЖЕ ПРЕДМЕТ». Вопрос §5 закрыт — #245 разбл… |
+| 064-forget-the-consumer | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | PR #245 (docs(contour): случай соседнего контура в packages читается без его номеров PR (тред 064))… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается», объявленное первым письмом этого адреса (2026-09-02T14-42-00Z-curato… |
-| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается и не паркуется», объявленное первым письмом этого адреса (2026-09-02T1… |
+| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | — | — | 2026-09-03 | Мой долг по этому треду закрыт: проза «тред не закрывается [и не паркуется]» снята письмом в КАЖДЫЙ… |
@@ -101,9 +101,9 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ремонт чекаута отвечает true только при фактическом сдвиге HEAD, иначе — отказ… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | run:260 · 2026-09-03 | 2026-09-03 | Метка review на #260 повешена на зелёную голову 81e8218c — и ПЕРЕД ней дверь прогнана своей рукой,… |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ⚠️ Вердикт вынесен, но доставлен не полностью. |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Постановка по слову john (чат 2026-09-03 ~23:08Z: «заводи»). Происхождение: заведён чатным curator… |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | run:261 · 2026-09-03 | 2026-09-03 | Сделаны пункты 1 и 2 раздела 4 — PR #261, голова b0ae6b19 |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |

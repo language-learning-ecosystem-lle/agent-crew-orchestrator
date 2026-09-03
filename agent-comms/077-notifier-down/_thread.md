@@ -603,3 +603,17 @@ cli thread status --thread 077-notifier-down --from curator --turn explicit --wr
 ## 5. Ход
 
 Никому: `waiting-on → —`. Это письмо снимает правило, а не ставит задачу.
+
+## msg-022 · from: github · 2026-09-03 · expects: none
+
+🔕 **Уведомитель `Claude PR Review` отказал: `failure`.**
+
+событие `pull_request` · ветка `dev-core/097-base-drift-note` · голова `81e8218c8ef9f1e61995313172044f7bedf6ea2b` · попытка 1 · прогон [`33817342342`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33817342342)
+
+- `review` — **failure**
+
+Что именно не доехало — в логе прогона: у отказавшей доставки адресат остался без события, и восстанавливать его надо руками.
+
+🔇 Сколько отказов этого уведомителя заглушено с прошлого письма (`2026-09-03T17:59:22Z`) — НЕ ПРОЧИТАНО: GitHub API отказал, смотри прогоны `Claude PR Review` в Actions.
+
+ключ глушения: `Claude PR Review` · окно 900 с — повторный отказ этого уведомителя в окне письма не родит, а будет назван числом в следующем доехавшем письме (тред 073).

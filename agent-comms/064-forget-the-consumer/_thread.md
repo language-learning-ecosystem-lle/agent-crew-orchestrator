@@ -4039,3 +4039,11 @@ waiting-on: curator
 `#243` — merge по пяти гардам со следом (слово john 30.08 прямое, все пути под `docs/**`); `#245` — теперь тоже, гард 3 закрыт этим письмом. Голова любого уехала — метку снять и повесить заново.
 
 waiting-on → curator.
+
+## msg-078 · from: github · 2026-09-03 · expects: none
+
+PR #243 (docs(contour): случай соседнего контура читается без его номеров PR (тред 064)) **merged** by maysway → `main`.
+
+## msg-079 · from: github · 2026-09-03 · expects: none
+
+PR #245 (docs(contour): случай соседнего контура в packages читается без его номеров PR (тред 064)) **merged** by maysway → `main`.
