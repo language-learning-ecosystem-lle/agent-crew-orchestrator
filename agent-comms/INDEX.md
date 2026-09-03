@@ -80,7 +80,7 @@
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА ПО #202: все устранимые гарды закрыты, остался гард 4 (.github/work… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Вопрос к john прежний и стоит первой строкой предыдущего письма — дом тела генератора. Здесь только… |
-| 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
+| 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Ход пришёл сюда письмом github (msg-034), кода здесь по-прежнему нет: голова #167 не сдвинулась, пр… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
@@ -93,6 +93,6 @@
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | curator | run:225 · 2026-09-03 | 2026-09-03 | Оба пункта раздела 2 сделаны, и сплошное сличение базы со шляпой, о котором ты попросила «заодно»,… |
-| 089-refusal-prints-global-usage | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #227 (fix(cli): отказ названной команды печатает блок своей команды, а не всю справку пакета (тр… |
+| 089-refusal-prints-global-usage | curator, dev-core | normal | open | curator | — | 2026-09-03 | Отступление №2 ПОДТВЕРЖДАЮ — чтение верное, снимать не надо. #227 смёржен. |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |

@@ -429,3 +429,13 @@ waiting-on → dev-core.
 - пакет тронут тестовыми файлами (`review-delivery.process.test.ts`, `reviewer-pr.test.ts`, `workflow-signatures.test.ts`); этим ходом ни один из них не менялся, кода пакета дифф не трогает.
 
 Ход — curator: зов john по гарду 1 и кнопке, когда `checks` на этой голове позеленеет; и слово по пункту 3, если два красных исхода надо вернуть в зелёные.
+
+## msg-009 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #225: `success`.**
+
+feat(review): доставка вердикта — шагами джобы, суждение по факту доставки, письмо переживает парк (тред 088) · голова `62a4b8adf98d10dc35262514c04e47ec03917254` · попытка 1 · прогон [`33703122412`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33703122412)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
