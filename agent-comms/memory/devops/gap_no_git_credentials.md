@@ -1,10 +1,10 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/GitHub credentials and no node anywhere reachable (not even system-wide) — the mail CLI cannot run at all under this identity. Structural, confirmed across 11+ runs on 2 threads since 2026-09-02T23:29Z.
+description: aco-devops has no git/GitHub credentials and no node anywhere reachable (not even system-wide) — the mail CLI cannot run at all under this identity. Structural, confirmed across 12+ runs on 2 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:12Z.
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:11:04.106Z
+  modified: 2026-09-03T01:12:17.952Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
