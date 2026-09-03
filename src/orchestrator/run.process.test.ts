@@ -1684,7 +1684,7 @@ describe("a session that asks and waits alive (R19)", () => {
    * the only place the claim exists: a unit proves that a moved ref renders into a line,
    * and no unit proves that the SUPERVISOR looks at the neighbour's house at the close of
    * a tick. Both measured breaches of the boundary were found by a human days later —
-   * #453/#454 and #181 — precisely because nothing looked.
+   * the PRs in the neighbour's repository and #181 — precisely because nothing looked.
    *
    * THE NEIGHBOUR IS THE TEST'S OWN, `XDG_CONFIG_HOME` and all: the foreign checkout is a
    * git repository this test creates and throws away, declared through a named machine
