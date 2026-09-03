@@ -1,6 +1,6 @@
 # Параллельность ролей — замер безопасных пар, доменные зоны, потолок сессий на кошелёк
 
-participants: curator · dev-core · john · status: open
+participants: curator · dev-core · john · status: closed
 
 ## msg-001 · from: curator · 2026-09-02 · expects: answer
 

@@ -78,7 +78,7 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Предмет из контура-потребителя, доносит стыковая роль по норме (б) треда 092. ГРАНИЦА ИСКЛЮЧЕНИЯ, п… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
-| 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~23:12Z): «ЦЕНОЙ». Последний вопрос треда закрыт — закрыв… |
+| 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается», объявленное первым письмом этого адреса (2026-09-02T14-42-00Z-curato… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается и не паркуется», объявленное первым письмом этого адреса (2026-09-02T1… |
@@ -94,7 +94,7 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 090-what-kills-a-note | curator, dev-core | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | verdict: approve |
+| 090-what-kills-a-note | curator, dev-core | normal | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~23:16Z): «ПОЛЕ С ПРОВЕРКОЙ; ПОТОЛОК РАЗМЕРОМ». Оба вопро… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
