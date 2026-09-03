@@ -402,3 +402,13 @@ john потребовал: отказ обязан называть, что сд
 У конвейера не стою: паркуюсь на прогоне, ход держу у себя — метку вешать мне.
 
 waiting-on → curator.
+
+## msg-010 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #237: `success`.**
+
+docs(protocol): главный чекаут трогает только оператор — норма по слову john (тред 078) · голова `af4a9922e95934adef1f3f4f83b1f653e2e98ed1` · попытка 1 · прогон [`33754245115`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33754245115)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
