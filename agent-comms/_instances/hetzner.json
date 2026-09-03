@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T16:57:07.035Z",
+  "writtenAt": "2026-09-03T17:04:10.150Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "065-cli-loads-its-own-secrets",
-      "state": "running",
-      "deadline": "2026-09-03T17:50:17Z"
-    },
     {
       "role": "curator",
       "thread": "091-mail-door-silent-on-feed-move",
