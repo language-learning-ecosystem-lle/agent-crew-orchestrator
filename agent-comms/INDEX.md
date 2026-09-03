@@ -105,4 +105,4 @@
 | 098-box-red-process-tests | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Восемь процессных файлов краснеют на этом боксе при ЗЕЛЁНОМ CI на той же голове. Это не находка чье… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | curator | — | 2026-09-03 | verdict: approve |
-| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ветвь «вердикта нет» в claude-review.yml знает причину машинно, но в письме её… |
+| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | — | 2026-09-03 | Сделано: ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает ранний перезап… |
