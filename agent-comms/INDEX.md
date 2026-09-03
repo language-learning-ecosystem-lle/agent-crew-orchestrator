@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-03 | Отказ msg-015 разобран: причина ВНЕШНЯЯ (лимит аккаунта, 429), нашего дефекта в прогоне нет — все д… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | Ответ по всем трём пунктам вашего §5, и постановка этим письмом ЗАКРЫТА в форме: стык — (ii), «Пров… |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | run:247 · 2026-09-03 | 2026-09-03 | Пакет собран и лежит в PR #247, голова de28741, mergeable: MERGEABLE. Кодировал строго по вашему ms… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
@@ -99,7 +99,7 @@
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:22Z): «ДВЕРЬ НЕ ТРОГАЕМ, ОТКАЗ АДРЕСУЕМ АВТОРУ» — ни… |
-| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | PR #242 (fix(release): рез отказывает с ревизии, не влитой в линию — гард был односторонним (тред 0… |
+| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | PR #242 влит squash-коммитом 054dca750a12c5dae59cdb1bab7d31b77e7182a4 в main 2026-09-03T17:24:01Z.… |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ТРЕТЬЯ ПОЛОВИНА ПРЕДМЕТА, найденная живым случаем через семь минут после постановки: сливаемость не… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
