@@ -105,12 +105,21 @@ export const foldGhOutage = (input: {
 };
 
 /**
- * THE PREDICATE THAT RINGS. A single refusal is not an event — `gh` times out, a runner
- * hiccups, a network drops one call — and an alarm that fires on those is one nobody reads.
- * A run past the threshold is the other thing entirely: the tier has been off for minutes
- * and will stay off until somebody looks.
+ * THE PREDICATE THAT RINGS, WITH THE THRESHOLD HANDED IN. A single refusal is not an event
+ * — `gh` times out, a runner hiccups, a network drops one call — and an alarm that fires on
+ * those is one nobody reads. A run past the threshold is the other thing entirely: the tier
+ * has been off for minutes and will stay off until somebody looks.
+ *
+ * THE THRESHOLD IS AN ARGUMENT BECAUSE THE COUNTER HAS A SECOND TIER ON IT (thread `097`,
+ * the watchman of mergeability): the run, the fold and the file are the same mechanism for
+ * both, and what differs is how many refused ticks make THAT tier dead. Two copies of the
+ * fold would be two things to keep in step; one fold with two thresholds is one.
  */
-export const ghAlarmDue = (outage: GhOutage): boolean => outage.ticks >= GH_OUTAGE_TICKS;
+export const outageDue = (outage: GhOutage, threshold: number): boolean =>
+  outage.ticks >= threshold;
+
+/** The merge-ready tier's own reading of {@link outageDue} — see {@link GH_OUTAGE_TICKS}. */
+export const ghAlarmDue = (outage: GhOutage): boolean => outageDue(outage, GH_OUTAGE_TICKS);
 
 /**
  * The outage in a line, WITH THE THRESHOLD BESIDE THE COUNT (the statement of work: the

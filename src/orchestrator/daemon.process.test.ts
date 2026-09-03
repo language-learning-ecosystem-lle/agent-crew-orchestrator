@@ -366,7 +366,19 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
     // must not be consumed by a run that could never have delivered anything.
     expect(result.code).toBe(0);
     expect(journalKinds(repo)).toContain("launch");
-    expect(existsSync(join(stateDir(repo), "notify.state"))).toBe(false);
+    // THE ANNOUNCEMENT MEMORY IS UNTOUCHED, which is what this line has always meant. Since
+    // thread 097 the file may EXIST carrying exactly one thing: the watchman's run of `gh`
+    // refusals — a counter of ticks (there is no `gh` in the sandbox, so every tick is a
+    // refused one), not a record that anything was announced. Nothing that could consume a
+    // trigger is in it.
+    expect(
+      (existsSync(join(stateDir(repo), "notify.state"))
+        ? readFileSync(join(stateDir(repo), "notify.state"), "utf8")
+            .trim()
+            .split("\n")
+        : []
+      ).filter((line) => !line.startsWith("mergeable-outage")),
+    ).toEqual([]);
   });
 
   it("launches disabled → the tick says so, rather than exiting without a word", () => {

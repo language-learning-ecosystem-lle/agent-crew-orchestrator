@@ -6,6 +6,10 @@
 import { describe, expect, it } from "vitest";
 import {
   asksOwed,
+  describeMergeabilityOutage,
+  foldMergeabilityOutage,
+  MERGEABILITY_OUTAGE_TICKS,
+  mergeabilityOutageDue,
   mergeabilitySaidKey,
   planMergeabilityWatch,
   type WatchedPullRequest,
@@ -161,5 +165,59 @@ describe("what the second ask is spent on", () => {
 
   it("treats an absent word as a disagreement rather than as silence", () => {
     expect(asksOwed({ cheap: [{ number: 244, mergeable: null }], said: [] })).toEqual([244]);
+  });
+});
+
+/**
+ * THE COUNTER OF THE WATCHMAN'S OWN REFUSALS (thread 097, curator's remaining requirement:
+ * "the watchman's refusal is HEARD"). The fold is the merge-ready tier's, so what is asked
+ * here is only what this tier adds: its threshold, its sentence, and the two ways a run ends.
+ */
+describe("the watchman's run of refusals (thread 097)", () => {
+  const REFUSAL = "could not resolve to a Repository with the name 'x/y'";
+  const at = (minute: number): Date => new Date(Date.UTC(2026, 8, 3, 20, minute, 0));
+
+  it("counts identical refusals into one run and rings only at the threshold", () => {
+    let outage = foldMergeabilityOutage({ previous: undefined, refusal: REFUSAL, now: at(1) });
+    for (let tick = 2; tick <= MERGEABILITY_OUTAGE_TICKS; tick += 1) {
+      expect(mergeabilityOutageDue(outage as NonNullable<typeof outage>)).toBe(false);
+      outage = foldMergeabilityOutage({ previous: outage, refusal: REFUSAL, now: at(tick) });
+    }
+    const due = outage as NonNullable<typeof outage>;
+    expect(due.ticks).toBe(MERGEABILITY_OUTAGE_TICKS);
+    expect(due.since).toBe("2026-09-03T20:01:00Z");
+    expect(mergeabilityOutageDue(due)).toBe(true);
+  });
+
+  it("ends the run when the vendor answers — the count is not carried over", () => {
+    const first = foldMergeabilityOutage({ previous: undefined, refusal: REFUSAL, now: at(1) });
+    expect(first?.ticks).toBe(1);
+    expect(
+      foldMergeabilityOutage({ previous: first, refusal: undefined, now: at(2) }),
+    ).toBeUndefined();
+  });
+
+  it("starts a new run on a different sentence — a different message is a different fault", () => {
+    const first = foldMergeabilityOutage({ previous: undefined, refusal: REFUSAL, now: at(1) });
+    const second = foldMergeabilityOutage({
+      previous: first,
+      refusal: "gh: HTTP 502",
+      now: at(2),
+    });
+    expect(second).toMatchObject({ ticks: 1, since: "2026-09-03T20:02:00Z" });
+  });
+
+  it("prints the threshold beside the count, quotes the vendor and names what is lost", () => {
+    let outage = foldMergeabilityOutage({ previous: undefined, refusal: REFUSAL, now: at(1) });
+    const early = describeMergeabilityOutage(outage as NonNullable<typeof outage>);
+    expect(early).toContain(`rings at ${MERGEABILITY_OUTAGE_TICKS}`);
+    expect(early).toContain(REFUSAL);
+    // What a dead watchman costs, said in the line: nothing turns red, and that is the point.
+    expect(early).toContain("announced to nobody");
+    for (let tick = 2; tick <= MERGEABILITY_OUTAGE_TICKS; tick += 1)
+      outage = foldMergeabilityOutage({ previous: outage, refusal: REFUSAL, now: at(tick) });
+    expect(describeMergeabilityOutage(outage as NonNullable<typeof outage>)).toContain(
+      "it has been that way since then",
+    );
   });
 });

@@ -331,7 +331,17 @@ describe("notify as a command", () => {
 
     expect(result.code).toBe(1);
     expect(result.out).toContain("the state is unchanged");
-    expect(existsSync(contest.state)).toBe(false);
+    // THE ANNOUNCEMENT MEMORY IS UNTOUCHED, which is what this line has always meant. Since
+    // thread 097 the file may EXIST carrying exactly one thing: the watchman's run of `gh`
+    // refusals — a counter of ticks (there is no `gh` in the sandbox, so every tick is a
+    // refused one), not a record that anything was announced. Nothing that could consume a
+    // trigger is in it.
+    expect(
+      (existsSync(contest.state)
+        ? readFileSync(contest.state, "utf8").trim().split("\n")
+        : []
+      ).filter((line) => !line.startsWith("mergeable-outage")),
+    ).toEqual([]);
 
     // And the proof that the trigger was not consumed: the next call announces it.
     const again = run(contest, ["--write"]);
@@ -349,7 +359,17 @@ describe("notify as a command", () => {
     const result = run(contest, ["--write"]);
 
     expect(result.code).toBe(0);
-    expect(existsSync(contest.state)).toBe(false);
+    // THE ANNOUNCEMENT MEMORY IS UNTOUCHED, which is what this line has always meant. Since
+    // thread 097 the file may EXIST carrying exactly one thing: the watchman's run of `gh`
+    // refusals — a counter of ticks (there is no `gh` in the sandbox, so every tick is a
+    // refused one), not a record that anything was announced. Nothing that could consume a
+    // trigger is in it.
+    expect(
+      (existsSync(contest.state)
+        ? readFileSync(contest.state, "utf8").trim().split("\n")
+        : []
+      ).filter((line) => !line.startsWith("mergeable-outage")),
+    ).toEqual([]);
   });
 
   it("a pair that stops waiting is forgotten even though nothing was announced", () => {
@@ -741,7 +761,17 @@ describe("notify as a command", () => {
     const result = run(contest, ["--write"]);
 
     expect(result.code).toBe(2);
-    expect(existsSync(contest.state)).toBe(false);
+    // THE ANNOUNCEMENT MEMORY IS UNTOUCHED, which is what this line has always meant. Since
+    // thread 097 the file may EXIST carrying exactly one thing: the watchman's run of `gh`
+    // refusals — a counter of ticks (there is no `gh` in the sandbox, so every tick is a
+    // refused one), not a record that anything was announced. Nothing that could consume a
+    // trigger is in it.
+    expect(
+      (existsSync(contest.state)
+        ? readFileSync(contest.state, "utf8").trim().split("\n")
+        : []
+      ).filter((line) => !line.startsWith("mergeable-outage")),
+    ).toEqual([]);
   });
 });
 

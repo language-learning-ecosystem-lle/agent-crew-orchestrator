@@ -53,6 +53,7 @@
  * subject, a different letter, a different repair.
  */
 import { judgeMergeability, MERGEABLE, type MergeabilityReading } from "../merge/mergeability.js";
+import { foldGhOutage, type GhOutage, outageDue } from "./outage.js";
 
 /** One open pull request as the cheap half of the tick sees it, plus whatever was asked after. */
 export type WatchedPullRequest = {
@@ -65,6 +66,55 @@ export type WatchedPullRequest = {
   /** Everything heard about this pull request THIS TICK, in order: one word, or two. */
   readonly samples: readonly (string | null | undefined)[];
 };
+
+/**
+ * HOW MANY CONSECUTIVE REFUSALS MEAN "THE WATCHMAN IS DEAD" rather than a flaky call —
+ * curator's remaining requirement of this thread ("the watchman's refusal is HEARD"), and
+ * the same number the merge-ready tier uses ({@link GH_OUTAGE_TICKS}) for the same reason
+ * rather than by imitation: the unit is a tick with a question in it, this pass asks once
+ * per tick of the courier, and five of them is past any retry, blip or rate-limit pause and
+ * short enough that whoever is on the box hears about it in the working hour it broke.
+ *
+ * WHAT A DEAD WATCHMAN COSTS is what makes it worth a phone at all: nothing goes red, no
+ * queue slows, no run fails — the circuit works exactly as it did before the watchman
+ * existed, which is precisely the state this thread was opened over (`#114` conflicting for
+ * six days with nobody told). A silent watchman is indistinguishable from a quiet week.
+ */
+export const MERGEABILITY_OUTAGE_TICKS = 5;
+
+/**
+ * ONE TICK'S ANSWER → THE RUN, and `asked` is not a parameter here because this pass has no
+ * quiet tick: it opens the list of open pull requests on EVERY tick it runs at all (unlike
+ * the merge-ready tier, which asks nobody when it has no candidates). The fold, the file
+ * format and the identity-by-text are the merge-ready tier's, reused rather than copied
+ * ({@link foldGhOutage}) — a different message is a different fault, so the run restarts.
+ */
+export const foldMergeabilityOutage = (input: {
+  readonly previous: GhOutage | undefined;
+  readonly refusal: string | undefined;
+  readonly now: Date;
+}): GhOutage | undefined =>
+  foldGhOutage({
+    previous: input.previous,
+    refusal: input.refusal,
+    asked: true,
+    now: input.now,
+  });
+
+/** Has the run got long enough to be worth a human's phone — {@link MERGEABILITY_OUTAGE_TICKS}. */
+export const mergeabilityOutageDue = (outage: GhOutage): boolean =>
+  outageDue(outage, MERGEABILITY_OUTAGE_TICKS);
+
+/**
+ * The outage in a line, WITH THE THRESHOLD BESIDE THE COUNT (the same rule as
+ * `describeGhOutage`, and for the same reason: a bare "3 ticks" is a number whose meaning
+ * the reader has to go and look up). It names what is lost while it lasts, because that is
+ * the one thing the reader cannot see anywhere else — nothing turns red when this tier dies.
+ */
+export const describeMergeabilityOutage = (outage: GhOutage): string =>
+  `mergeability: gh has refused the watchman ${outage.ticks} tick(s) in a row (rings at ${MERGEABILITY_OUTAGE_TICKS}) since ${outage.since} — ${outage.evidence}. Nothing is broken by it and nothing is slowed; a branch that stops applying to its base is simply announced to nobody until this is fixed${
+    mergeabilityOutageDue(outage) ? ", and it has been that way since then" : ""
+  }`;
 
 /** A letter the watchman owes: one pull request, one break, one thread. */
 export type MergeabilityLetter = {
