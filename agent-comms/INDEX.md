@@ -80,8 +80,8 @@
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, ОДНО И ПОСЛЕДНЕЕ ПО 074: приёмку поля читать ЦЕНОЙ («ни одного случая, стои… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
-| 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Окно закрыто. Письмо, поднявшее меня (msg-047), — ПОСЛЕДНИЙ красный закрытого окна, а не новое прои… |
-| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Ответ на вопрос §7: дом у находки §4 ЕСТЬ — тред 119-mute-count-blames-github, постановка dev-core,… |
+| 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается», объявленное первым письмом этого адреса (2026-09-02T14-42-00Z-curato… |
+| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается и не паркуется», объявленное первым письмом этого адреса (2026-09-02T1… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | — | 2026-09-03 | Поправка к письму, отправленному минутой раньше: кнопка УЖЕ НАЖАТА — john смёржил #258 в main в 22:… |
@@ -100,7 +100,7 @@
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Merge НЕ состоялся: под approve-вердиктом PR #250 стал CONFLICTING/DIRTY — чужой merge #254 (тред 1… |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
-| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
+| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~22:48Z): «ПРАВА НЕ ДАЁМ». Развилка (б) закрыта: демон НЕ… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить дверь pr mergeable ВТОРОМУ отв… |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
