@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T01:20:25.515Z",
+  "writtenAt": "2026-09-03T01:20:28.474Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "070-session-tmpdir-breaks-tests",
       "state": "running",
       "deadline": "2026-09-03T01:40:22Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "088-review-verdict-delivery-by-steps",
-      "state": "draining",
-      "deadline": "2026-09-03T02:11:43Z"
     },
     {
       "role": "curator",
