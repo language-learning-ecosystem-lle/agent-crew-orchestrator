@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T13:04:14.817Z",
+  "writtenAt": "2026-09-03T13:04:36.778Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "075-comms-derived-window-reddens-main",
+      "state": "running",
+      "deadline": "2026-09-03T13:44:34Z"
+    },
     {
       "role": "dev-core",
       "thread": "090-what-kills-a-note",
