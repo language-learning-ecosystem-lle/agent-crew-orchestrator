@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 2126b792-bfc9-4184-aa76-f8eecf5c98c7
-  modified: 2026-09-03T00:15:25.822Z
+  modified: 2026-09-03T00:36:59.569Z
 ---
 
 Нота `merge-gate` «base moved AFTER the credited checks started» — не отказ и не повод заказывать
@@ -246,3 +246,13 @@ merge. Поэтому на комментарном диффе мерится н
 Признак кодовой ветки («обе стороны трогают код одного слоя») к такому диффу тоже применяется, но
 отвечает на другой вопрос: слой общий → мерить сборку; УТВЕРЖДЕНИЯ об общем слое → мерить чтением.
 См. [[verify-the-grep-pattern-not-its-result]].
+
+**Самый дешёвый стенд — СВОЙ чекаут контура, без воркдерева и без install** (#219, тред `084`,
+2026-09-03T00:3xZ): `C=$(git commit-tree <дерево merge-tree> -p origin/main -p <голова> -m tmp)` →
+`git checkout --detach $C` в рабочем дереве роли → `TMPDIR=/tmp pnpm typecheck && pnpm test` →
+`git checkout --detach <исходный HEAD>` + контрольный `git status --porcelain`. Тree hash — не
+коммит, чекаутить его напрямую нечем, и `commit-tree` это чинит одной строкой; `node_modules`
+остаётся на месте, поэтому цена = сама сюита (здесь 195 файлов / 3308 тестов, ~4 мин) и почва та же,
+что у [[green-is-only-the-runners-command]]. Риск ровно один и он назван: пока идёт замер, дерево
+роли стоит не на своём HEAD — возврат и `--porcelain` обязательны, иначе следующий такт получит R17
+(см. [[reading-a-ref-must-not-write-the-tree]]).
