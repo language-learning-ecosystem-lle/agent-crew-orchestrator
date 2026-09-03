@@ -9102,7 +9102,17 @@ const runOne = async (p: RunParams): Promise<"skip" | ReleaseReason> => {
     writeSync(sink, `${stampLine(new Date(), text)}\n`);
   };
   writeLog(`supervisor  ${p.roleId}/${p.thread}  raw stream ${p.sessionStream}`);
-  for (const line of runTmp.lines) writeLog(`supervisor  ${line}`);
+  // …AND ON WHICH CHANNEL, decided by `fits` rather than by the presence of a line (thread
+  // `056`, the consumer contour's field case). A substitution that WORKED is the run's own
+  // business and stays in the run's own log; a `TMPDIR` that could not be made to fit is a
+  // prediction that this run dies on its first command, and the run's own log is precisely
+  // what nobody reads then — the role gets `listen EINVAL` naming a path, the operator gets
+  // a tick that produced nothing. So that one goes to the observer's channel as well, the
+  // same way a leftover in a shared place does below.
+  for (const line of runTmp.lines) {
+    writeLog(`supervisor  ${line}`);
+    if (!runTmp.fits) err(`agent-protocol: ${line}`);
+  }
   // The sink exists now, so a takedown complaint lands in the run's own log as well as on
   // stdout (thread 047): stdout belongs to whoever was watching, this file is what is read
   // afterwards, and an unkilled session is exactly the thing read about afterwards.

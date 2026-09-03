@@ -5166,12 +5166,25 @@ the roles' own acceptance instrument. **The cause is S26 itself, said plainly.**
 - **The substitution is in the supervisor's log with the number that caused it**, and so is
   every way of failing to make it — the run keeps its outcome and the log answers the
   question a session hitting `EINVAL` inside a vendor's loader cannot.
+- **A substitution that FAILED is said on the observer's channel too** (thread 056, the
+  consumer contour's field case of 2026-09-03). The handover reports `fits` — true for both
+  ordinary outcomes, false only when no alias could be made — and the supervisor routes on
+  it, because the two are not the same kind of news. A working alias is the run's own
+  business. A `TMPDIR` that cannot carry a socket is a prediction that this run dies on the
+  FIRST command its prompt names, and the run's own log is exactly what nobody reads then:
+  measured on a consumer contour, two roles of one tick under `TMPDIR` of 121 and 124
+  characters, both dead on the mail command, each paying a turn to diagnose a stack that
+  named a path and not a cause.
 - **What is tested** is the invariant, not a green suite: `run-tmp.process.test.ts` binds at
   108 and at 109, builds a directory PADDED to 131 characters (never inheriting the box's
   depth — a test that only reproduces on a deep box goes quiet on a shallow one, which is
   exactly how this survived CI), and asserts that a socket opens under the handed value,
   that it is born in the run's directory, that the raw path gives `EINVAL`, and that `tsx`
-  itself runs under the one and dies under the other.
+  itself runs under the one and dies under the other. Two more hold the door itself: the
+  handed value plus a 30-byte reserve stays inside `sun_path` for ROLE AND THREAD NAMES
+  CHOSEN TO BE ABSURD rather than for the ones this box produces (every name measured here
+  fitted — which is how the class reached a consumer at all), and a squatted alias name
+  yields `fits: false` with the length, the budget and `listen EINVAL` in the line.
 
 **S26b — and a run held by the read-only sandbox has to be told that its `TMPDIR` is fresh
 (thread 058).** Under `codex --sandbox read-only` the filesystem is read-only WHOLE: a write
