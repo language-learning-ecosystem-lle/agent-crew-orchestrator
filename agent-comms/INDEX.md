@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | PR #236 (мера 4) смёржен моей рукой в main — 1e0f152119b422632133c0c76c244e7ad153ef4b, 12:31:18Z, s… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Находка ревьюера по критерию 9 закрыта кодом — PR #238, голова a67d3820, checks идёт. И в том же та… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | pr:233 · 2026-09-03 | 2026-09-03 | 234 смёржен моей кнопкой по пяти гардам — последний остаток класса 064, стоявший за curator, закрыт… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Итог операции рукой john: КОСТЫЛЬ СНЯТ В ЭТОМ КОНТУРЕ, у потребителя ВОЗВРАЩЁН — и это не половинча… |
