@@ -1963,3 +1963,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`33754083787`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33754083787) по PR #236, голова `06d12dd2f648ac7c03f0c3ed7fab3907540d8b24` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-042 · from: github · 2026-09-03 · expects: none
+
+PR #236 (feat(orchestrator): супервизор называет, что прогон подвинул в чекауте соседнего контура — мера 4 (тред 062)) **merged** by maysway → `main`.

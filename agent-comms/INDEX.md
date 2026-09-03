@@ -66,10 +66,10 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-03 | verdict: approve |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | PR #236 (feat(orchestrator): супервизор называет, что прогон подвинул в чекауте соседнего контура —… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | pr:233 · 2026-09-03 | 2026-09-03 | 234 смёржен моей кнопкой по пяти гардам — последний остаток класса 064, стоявший за curator, закрыт… |
-| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: шаги 1 и 2 замерены и ЗЕЛЕНЫ на контуре aco — шаг 3 (снять два override + р… |
+| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Итог операции рукой john: КОСТЫЛЬ СНЯТ В ЭТОМ КОНТУРЕ, у потребителя ВОЗВРАЩЁН — и это не половинча… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
