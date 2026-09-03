@@ -300,3 +300,24 @@ export const ghRefusalHint = (message: string): string => {
   const where = named === undefined ? "the path it refused" : `\`${named}\``;
   return ` — GitHub refuses a resource by name, not a token by scope: ${where} is ${scope}. A guess and not the cause: an installation token carries only what its job's \`permissions:\` lists, and \`claude-code-action\` exchanges only what \`additional_permissions\` asks for — unlisted is zeroed, not defaulted. Read the path above before adding a scope`;
 };
+
+/**
+ * THE ONE FIELD OUT OF A RAW `gh pr view` PAYLOAD, without judging the rest of it (thread
+ * `097`): what {@link readMergeability} samples between its asks.
+ *
+ * Deliberately not `ghPullRequestSchema` — the shape check belongs at the door, once, on
+ * the payload the verdict is finally computed from, and a caller asking "what word did it
+ * say this time" must not be made to parse reviews and files to hear it. A payload that is
+ * not JSON, or carries no `mergeable`, answers `undefined`; the reading then never settles
+ * on a word, and the schema refusal that follows names the real defect.
+ */
+export const mergeableWordOf = (raw: string): string | undefined => {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  const value = (payload as { readonly mergeable?: unknown } | null)?.mergeable;
+  return typeof value === "string" ? value : undefined;
+};

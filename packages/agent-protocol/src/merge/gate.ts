@@ -211,6 +211,12 @@
  * and not a move of the norm — the norm always said "an approve ON THIS HEAD".
  */
 
+// TYPE-ONLY, and the only import this module has: the door judges a READING of
+// mergeability (thread `097`), and the rule that produces one lives beside it in
+// `mergeability.ts`. Nothing of it survives compilation, so this file stays what it is —
+// pure functions over facts, with no runtime dependency of its own.
+import type { MergeabilityReading } from "./mergeability.js";
+
 /** One review as the gate reads it — who said what, against which commit, when. */
 export type ReviewFact = {
   readonly state: string;
@@ -902,10 +908,27 @@ const describeCheck = (check: Attempt): string =>
  * What GitHub says about applying the branch (D2). Not a guard: printed as a fact and
  * refusing on anything that is not a plain `MERGEABLE`, `UNKNOWN` included — "not
  * computed yet" is an answer to come back for, never a permission.
+ *
+ * AND ONE ANSWER IS NOT AN ANSWER (thread `097`, msg-002). A caller that read the field
+ * PROPERLY — twice, agreeing — hands its {@link MergeabilityReading} in, and it decides:
+ * an unsettled reading blocks with the sequence of what was heard, a settled one is judged
+ * by the word the two asks agreed on. Without a reading the payload's own field is judged
+ * exactly as before, and that path is the SCHEDULER's (one cheap ask per tick, used to
+ * rank a queue and not to open a door) — the door of `merge-gate` always passes one.
  */
-export const mergeabilityOf = (pr: PullRequestFacts): Mergeability => {
-  const mergeable = present(pr.mergeable)?.toUpperCase();
-  const stateStatus = present(pr.mergeStateStatus);
+export const mergeabilityOf = (
+  pr: PullRequestFacts,
+  reading?: MergeabilityReading | undefined,
+): Mergeability => {
+  const stateStatusOf = present(pr.mergeStateStatus);
+  if (reading?.state === "unsettled")
+    return {
+      state: "blocked",
+      detail: `mergeability unsettled${stateStatusOf === undefined ? "" : ` (mergeStateStatus ${stateStatusOf})`} — ${reading.detail}`,
+    };
+  const mergeable =
+    reading?.state === "settled" ? reading.mergeable : present(pr.mergeable)?.toUpperCase();
+  const stateStatus = stateStatusOf;
   const beside = stateStatus === undefined ? "" : ` (mergeStateStatus ${stateStatus})`;
   if (mergeable === "MERGEABLE") return { state: "clear", detail: `mergeable=MERGEABLE${beside}` };
   if (mergeable === undefined)
@@ -1201,6 +1224,12 @@ export const evaluateMergeGate = (input: {
   readonly powerDocs: readonly string[];
   /** Class Д-1 DECLARED at the door — see the header and {@link readD1Reference}. */
   readonly d1?: D1Reference | undefined;
+  /**
+   * How the branch's mergeability was READ — two agreeing asks or none (thread `097`).
+   * Absent means "judge the payload's own field", which is the scheduler's cheap path;
+   * the door passes one, and D2 refuses on an unsettled reading by name.
+   */
+  readonly mergeability?: MergeabilityReading | undefined;
 }): MergeGateVerdict => {
   const { pr } = input;
   const head = pr.headSha;
@@ -1280,7 +1309,7 @@ export const evaluateMergeGate = (input: {
   };
 
   const guards = [verdict, checks, ascent, power, trace];
-  const mergeability = mergeabilityOf(pr);
+  const mergeability = mergeabilityOf(pr, input.mergeability);
   return {
     number: pr.number,
     headSha: head,
