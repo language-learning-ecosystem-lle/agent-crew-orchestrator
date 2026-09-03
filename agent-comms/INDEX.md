@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #248: success. |
+| 052-pr-template | curator · dev-core · john | normal | open | curator | run:248 · 2026-09-03 | 2026-09-03 | Метка review повешена на #248 — круг поднялся (прогон 33786557236). Паркуюсь на run:248, merge — кн… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
