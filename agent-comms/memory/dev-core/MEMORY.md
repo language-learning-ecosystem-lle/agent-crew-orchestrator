@@ -29,3 +29,4 @@
 - [Писать в ветку, не чекаутя её](write-a-branch-without-checking-it-out.md) — `read-tree`/`update-index`/`commit-tree` во временном индексе + push по SHA: чужой чекаут и своё дерево целы.
 - [Группу мерить `id` внутри сессии](group-check-must-run-inside-the-session.md) — `id -nG <user>` в ssh читает базу, а не среду ролей: демон поднят до `usermod -aG`.
 - [Число проверок перемеряется, а не переносится](test-counts-must-be-remeasured.md) — «39» уехало из прошлого доклада в тело PR и в коммит, пережило merge и круг; фактически 42.
+- [Голый `gh` в сессии не залогинен](bare-gh-in-a-session-has-no-login.md) — токен только из `secrets.aco.env` инстанса; для push — credential.helper, не токен в URL.
