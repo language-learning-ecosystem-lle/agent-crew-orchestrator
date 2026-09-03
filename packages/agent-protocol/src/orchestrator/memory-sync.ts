@@ -55,6 +55,7 @@ import type { MailLock } from "../thread/checkout-lock.js";
 import { unlockedMail } from "../thread/checkout-lock.js";
 import { deliverMessage, type GitRun } from "../thread/deliver.js";
 import { MEMORY_DIR } from "./memory.js";
+import { extinguishNotes } from "./memory-cause.js";
 
 /**
  * A DIRECTORY OF NOTES AS ONE VALUE: the path of a note relative to the role's own
@@ -289,6 +290,30 @@ const writeManifest = (path: string, snapshot: MemorySnapshot): void => {
 };
 
 /**
+ * THE DEATH BY SUBJECT, HELD APART FROM THE MIRROR IT RIDES ON. Its own `try` and not the
+ * restore's: a restore that mirrored the branch and then failed to resolve one thread's
+ * status HAS restored, and reporting it as «could NOT be restored, raised on the previous
+ * copy» would send a reader after a stale directory that is not stale. The rule and the
+ * removal live in `memory-cause.ts`; what is decided here is only that it is never fatal.
+ */
+const extinctionLines = (input: {
+  readonly git: GitRun;
+  readonly ref: string;
+  readonly mailDir: string;
+  readonly role: string;
+  readonly directory: string;
+  readonly notes: MemorySnapshot;
+}): readonly string[] => {
+  try {
+    return extinguishNotes(input);
+  } catch (error) {
+    return [
+      `memory: the notes of '${input.role}' could not be checked against their subjects (${(error as Error).message}) — nothing was extinguished this round, and a note whose thread is closed will be extinguished at the next raise.`,
+    ];
+  }
+};
+
+/**
  * THE RAISE SIDE. Fetches the branch, mirrors it into the role's directory and records
  * what it handed over. Returns the lines to say — it neither prints nor throws, because
  * its caller is the launch path and a launch must not die of a table of contents.
@@ -313,14 +338,29 @@ export const restoreRoleMemory = (input: {
     const plan = planRestore({ branch, live: readSnapshot(input.directory) });
     mkdirSync(input.directory, { recursive: true });
     applySnapshotPlan({ directory: input.directory, plan });
+    // THE SNAPSHOT IS THE BRANCH, AND IT IS RECORDED BEFORE THE EXTINCTION ON PURPOSE
+    // (`memory-cause.ts`): what dies below then reads as THIS session's own removal at the
+    // release, so `planSave` carries the death into the branch through the same delivery
+    // as a note — the box's copy is not where a note dies, it is only where it stops
+    // being loaded.
     writeManifest(input.snapshotFile, branch);
     return {
       restored: branch,
-      lines: isEmptyPlan(plan)
-        ? []
-        : [
-            `memory: the notes of '${input.role}' were restored from the mail branch — ${plan.writes.length} written, ${plan.removals.length} removed (the branch is the source of truth; a note deleted there is deleted here)`,
-          ],
+      lines: [
+        ...(isEmptyPlan(plan)
+          ? []
+          : [
+              `memory: the notes of '${input.role}' were restored from the mail branch — ${plan.writes.length} written, ${plan.removals.length} removed (the branch is the source of truth; a note deleted there is deleted here)`,
+            ]),
+        ...extinctionLines({
+          git: input.git,
+          ref: `origin/${input.branch}`,
+          mailDir: input.mailDir,
+          role: input.role,
+          directory: input.directory,
+          notes: branch,
+        }),
+      ],
     };
   } catch (error) {
     // A BOX THAT CANNOT READ THE BRANCH STILL RAISES ITS ROLE. The session then runs on
