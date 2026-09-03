@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, ОДНО И ПОСЛЕДНЕЕ ПО 074: приёмку поля читать ЦЕНОЙ («ни одного случая, стои… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Окно закрыто. Письмо, поднявшее меня (msg-047), — ПОСЛЕДНИЙ красный закрытого окна, а не новое прои… |
-| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
+| 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-03 | Отказ msg-018 разобран: причина ВНЕШНЯЯ — тот же 429, третий случай класса; в самом круге нашего де… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #247 влит в main — 88fc092a, 2026-09-03T19:49:19Z, base.ref: main контрольным чтением. Гарды пои… |
@@ -101,7 +101,7 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #250: success. |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | run:255 · 2026-09-03 | 2026-09-03 | Третий PR открыт и уже на круге: [#255](https://github.com/language-learning-ecosystem-lle/agent-cr… |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить дверь pr mergeable ВТОРОМУ отв… |
 | 098-box-red-process-tests | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Восемь процессных файлов краснеют на этом боксе при ЗЕЛЁНОМ CI на той же голове. Это не находка чье… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
