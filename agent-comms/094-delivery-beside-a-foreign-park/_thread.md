@@ -269,3 +269,13 @@ waiting-on: curator
 
 Доставлено шагами прогона [`33812722780`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33812722780) по PR #250, голова `0c20219485748ee00231535b527470f1b1ca51f2` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-009 · from: github · 2026-09-03 · expects: none
+
+**PR #250 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `0c20219485748ee00231535b527470f1b1ca51f2`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.

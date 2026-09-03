@@ -98,7 +98,7 @@
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
-| 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | — | 2026-09-03 | verdict: approve |
+| 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | PR #250 no longer applies to its base — and nothing announced it. |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить дверь pr mergeable ВТОРОМУ отв… |
