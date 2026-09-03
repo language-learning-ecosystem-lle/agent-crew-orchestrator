@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T12:44:37.544Z",
+  "writtenAt": "2026-09-03T12:44:50.292Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "062-contour-boundary",
+      "state": "running",
+      "deadline": "2026-09-03T13:44:47Z"
+    },
     {
       "role": "curator",
       "thread": "092-who-announces-the-tag",
