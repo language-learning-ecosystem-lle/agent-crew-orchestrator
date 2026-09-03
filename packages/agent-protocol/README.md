@@ -1441,6 +1441,18 @@ of the whole circuit.
 `--repo` defaults to the repository of the current directory. Without `--write`
 nothing is written.
 
+**`--repo` names a CHECKOUT ON THIS MACHINE — a path — and `gh` spells its own flag of
+that name `--repo <owner>/<name>`, so a value in the platform's spelling is refused by
+name and before any call goes out** (thread 097). The repository on the platform is never
+typed here: it is read from the remote of the checkout named. Until this guard the two
+spellings were not told apart, and a relative `owner/name` got PAST the contour door below
+— that door resolves a relative path against the caller's directory, so a path that does
+not exist inherited the caller's ancestors and was judged its own — after which the value
+reached the external call as its working directory. Node reports a missing working
+directory as an ENOENT ABOUT THE COMMAND, so a mistake in this flag came back as
+`PR #249 was not read through gh: spawnSync gh ENOENT`: the vendor's binary blamed for the
+caller's own typing, and nothing to act on in it. Measured 2026-09-03 on `pr mergeable`.
+
 **A command typed in a tree of ANOTHER contour is refused, by name, before anything is
 read** (thread 062). Each named instance config of a box declares the `repo` of one
 circuit, and the door is asked in two halves. The GROUND — the tree the command was

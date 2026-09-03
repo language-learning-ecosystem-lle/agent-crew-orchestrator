@@ -1341,6 +1341,40 @@ const guardContour = (target: string): string => {
 };
 
 /**
+ * `--repo` NAMES A CHECKOUT ON DISK, AND THE FLAG OF THE SAME NAME ON `gh` NAMES
+ * `owner/name` — so the wrong one gets typed, and until this guard the wrong one was not
+ * refused. Measured 2026-09-03 on `pr mergeable` itself (thread 097): `--repo
+ * language-learning-ecosystem-lle/agent-crew-orchestrator` passed the contour door —
+ * `contourOf` resolves a RELATIVE path against the caller's directory, and the caller
+ * stood inside the circuit, so the phantom path inherited the circuit's ancestors and was
+ * judged "own" — and the value then reached `execFileSync` as its `cwd`. Node reports a
+ * missing `cwd` as an ENOENT ABOUT THE COMMAND, so the door answered
+ * `PR #249 was not read through gh: spawnSync gh ENOENT`: a refusal naming the vendor's
+ * binary for a mistake in the caller's own flag, from which nothing can be fixed.
+ *
+ * The check is existence and directory-ness, nothing more — whether the directory is a
+ * git checkout, and whose, is what the contour door below already answers, and this one
+ * only stops it being asked about a path that is not there. It runs BEFORE that door on
+ * purpose: "there is no such directory" is the cheaper and more precise of the two
+ * sentences, and a contour verdict about a phantom path is not worth printing.
+ */
+const guardRepoPath = (target: string): string => {
+  let directory: boolean;
+  try {
+    directory = statSync(target).isDirectory();
+  } catch {
+    return fail(
+      `--repo '${target}' does not exist — this flag names a CHECKOUT ON THIS MACHINE (a path), not a repository on the platform. 'gh' spells the latter '--repo <owner>/<name>'; here the repository is read from the remote of the checkout you name`,
+      2,
+    );
+  }
+  if (!directory) {
+    return fail(`--repo '${target}' is not a directory — this flag names a checkout`, 2);
+  }
+  return target;
+};
+
+/**
  * `--repo`, judged against the contour the command came from, or the caller's own tree
  * — and the GROUND is judged either way. Without `--repo` there is no target to judge
  * beyond the caller's own tree, but the caller still has to be standing somewhere this
@@ -1349,7 +1383,7 @@ const guardContour = (target: string): string => {
  */
 const repoArg = (argv: readonly string[], at: string): string => {
   const named = flag(argv, "--repo");
-  if (named !== undefined) return guardContour(named);
+  if (named !== undefined) return guardContour(guardRepoPath(named));
   guardGround();
   return repoOf(at);
 };
