@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T13:40:11.106Z",
+  "writtenAt": "2026-09-03T13:40:17.496Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "055-mirror-post-0-2-6-to-lle",
+      "state": "running",
+      "deadline": "2026-09-03T14:20:14Z"
+    },
     {
       "role": "dev-core",
       "thread": "090-what-kills-a-note",
