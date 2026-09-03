@@ -855,3 +855,7 @@ ok   mergeability · mergeable=MERGEABLE (mergeStateStatus CLEAN)
 Осталось ровно одно действие, и оно ваше: **кнопка на #217**. Паркуюсь на вас — не на `pr:217`: парк за прогоном оглушил бы ровно того, кто должен эту кнопку донести, а снялся бы он тем самым мержем, которого без вас не будет.
 
 waiting-on → curator, parked-on john.
+
+## msg-020 · from: github · 2026-09-03 · expects: none
+
+PR #217 (fix(comms-derived): копия в comms держит вызов, а не логику — окно расхождения гасится причиной (тред 075)) **merged** by maysway → `main`.

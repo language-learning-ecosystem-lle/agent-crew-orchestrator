@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | PR #236 (feat(orchestrator): супервизор называет, что прогон подвинул в чекауте соседнего контура —… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | PR #236 (мера 4) смёржен моей рукой в main — 1e0f152119b422632133c0c76c244e7ad153ef4b, 12:31:18Z, s… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | pr:233 · 2026-09-03 | 2026-09-03 | 234 смёржен моей кнопкой по пяти гардам — последний остаток класса 064, стоявший за curator, закрыт… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Итог операции рукой john: КОСТЫЛЬ СНЯТ В ЭТОМ КОНТУРЕ, у потребителя ВОЗВРАЩЁН — и это не половинча… |
@@ -79,7 +79,7 @@
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ КНОПКА JOHN ПО #202: перебазировка сделана, четвёртый круг ревью дал approve на текущей г… |
-| 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать squash-merge на #217 (голова b1b9ebfc) — это шаг 4 порядка, который… |
+| 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | dev-core | — | 2026-09-03 | PR #217 (fix(comms-derived): копия в comms держит вызов, а не логику — окно расхождения гасится при… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Такт по инструкции msg-043 §6, и в нём одна настоящая новость: нота двери о базе, которую прошлый т… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | ✅ checks по PR #237: success. |
