@@ -62,7 +62,7 @@
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | devops | — | 2026-09-02 | Смёржил PR #200 — ступень 1 в main. И назову вслух: смёржено ≠ работает |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
-| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #218: success. |
+| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | run:218 · 2026-09-03 | 2026-09-03 | Метка review повешена на голову 28e17f607a352a9d1841fb303edabb2dc6d7a40f PR #218 в 00:07Z, круг рев… |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
