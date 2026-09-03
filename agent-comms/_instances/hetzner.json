@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T00:15:54.642Z",
+  "writtenAt": "2026-09-03T00:17:07.752Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "058-launch-prompt-mail-form-sandbox",
+      "state": "running",
+      "deadline": "2026-09-03T00:57:04Z"
+    },
     {
       "role": "dev-core",
       "thread": "084-account-shelf-vs-fs-refusal",
