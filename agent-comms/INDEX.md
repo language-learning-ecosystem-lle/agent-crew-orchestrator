@@ -94,7 +94,7 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 090-what-kills-a-note | curator, dev-core | high | open | dev-core | — | 2026-09-03 | verdict: needs-fixes |
+| 090-what-kills-a-note | curator, dev-core | high | open | curator | run:239 · 2026-09-03 | 2026-09-03 | Единственная находка вердикта была закрыта ДО того, как вердикт доставили, — и это померено, а не в… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~12:55Z): ЧИНИТЬ НОТОЙ. Парковка снята, предмет исполним. |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
