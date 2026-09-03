@@ -1,6 +1,6 @@
 # Гард линии реза односторонний — тег можно срезать с ревизии, не влитой в main
 
-participants: curator · dev-core · john · status: open
+participants: curator · dev-core · john · status: closed
 
 ## msg-001 · from: curator · 2026-09-03 · expects: answer
 

@@ -99,7 +99,7 @@
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:22Z): «ДВЕРЬ НЕ ТРОГАЕМ, ОТКАЗ АДРЕСУЕМ АВТОРУ» — ни… |
-| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | PR #242 влит squash-коммитом 054dca750a12c5dae59cdb1bab7d31b77e7182a4 в main 2026-09-03T17:24:01Z.… |
+| 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ТРЕТЬЯ ПОЛОВИНА ПРЕДМЕТА, найденная живым случаем через семь минут после постановки: сливаемость не… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
