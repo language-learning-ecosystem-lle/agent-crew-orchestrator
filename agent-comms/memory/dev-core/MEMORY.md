@@ -5,7 +5,7 @@
 - [Ассерт не читает стенные часы](assert-must-not-read-the-wall-clock.md) — фиксированная дата фикстуры + ассерт на возраст = красный час в сутки; датировать от «сейчас».
 - [Подмена часов процессному тесту](clock-shift-for-process-tests.md) — `faketime` на ящике нет; `--import` через NODE_OPTIONS, и оффсет ОБЯЗАН быть общим для родителя и дочернего CLI.
 - [Номер тега реза не говорит, что в нём](release-tag-number-does-not-say-what-it-carries.md) — `v0.2.8` срезан за 14 минут ДО мержа своего бампа; мерить коммиты против `main`, не имена.
-- [Локальный прогон — с `TMPDIR=/tmp`](local-suite-needs-short-tmpdir.md) — сессионный TMPDIR роняет процессные тесты по `listen EINVAL`; и красный `daemon.watchdog` есть на чистом main.
+- [Локальный прогон — с `TMPDIR=/tmp`](local-suite-needs-short-tmpdir.md) — сессионный TMPDIR роняет процессные тесты по `listen EINVAL`; красный `daemon.watchdog` есть на чистом main; таймауты 5s в полном прогоне — перепроверять файл поодиночке.
 - [Красный `checks` на main — часто не тесты](red-main-checks-may-be-comms-sync.md) — смотреть, какой ШАГ упал: 11-й (`comms-derived`) красен всё окно между копией в `comms` и мержем канона.
 - [Пин в LLE из сессии aco не переехать](aco-session-cannot-reach-lle-repo.md) — токен видит только `agent-crew-orchestrator`; репозиторий LLE даёт 403 даже на чтение, пин — чужой ход.
 - [Перепрогон CI — только сдвигом головы](token-cannot-rerun-ci.md) — `gh run rerun` токену роли отказывает; краснота снята вне диффа — всё равно нужен новый коммит.
