@@ -104,5 +104,5 @@
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | #252 влит: доставка письма сторожа в main, squash-мерж f6b09b8d5a64a83cd901146e52f90e478d6804e2, 20… |
 | 098-box-red-process-tests | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Восемь процессных файлов краснеют на этом боксе при ЗЕЛЁНОМ CI на той же голове. Это не находка чье… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
-| 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | curator | — | 2026-09-03 | verdict: approve |
-| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | — | 2026-09-03 | Сделано: ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает ранний перезап… |
+| 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | curator | — | 2026-09-03 | Предмет 3 закрыт мержем: #253 → main, squash 8003a547 |
+| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #254: success. |
