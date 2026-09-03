@@ -4,7 +4,7 @@ description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:56:39.358Z
+  modified: 2026-09-03T01:58:28.008Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -217,3 +217,19 @@ correctly left the checkout untouched (its own `repo-refresh` probe was without 
 fetch-before-write step, `git status --short` on the mail checkout clean afterward. Delivered the
 report via direct session reply, matching every prior occurrence. Nothing for a future run to
 re-check beyond a quick `ls ~/.ssh` — this is `john`'s item alone now.
+
+**2026-09-03T01:58Z, thread `079-devops-enablement-acceptance` (7th occurrence, 12th overall) —
+quick recheck only, no new diagnosis, per this file's own guidance.** `id`/`PATH`/`~/.ssh` all
+byte-identical to every prior entry. `thread show --no-fetch` read the full statement of work
+(curator's 5-point checklist, msg-001) without issue. Did not re-run the 5-point checklist itself
+— it was already executed and written up in full twice before (01:51Z and 01:56Z entries above)
+with byte-identical results each time; re-running it a third time would be pure lease-clock spend
+with zero new information. Instead did one targeted confirmation: `new-message --write --no-fetch`
+with a placeholder body, same atomic clean failure at the fetch-before-write step
+(`Could not resolve hostname github-crew`, exit 2), `git status --short` on the mail checkout
+empty afterward — no partial state left behind. Ended via direct session reply, `--parked-on`
+not applicable (nothing running in the background to park on; this is a hard structural block, not
+a pending async result). **This is the last entry that should re-confirm the block by executing
+commands** — a future run finding this file should treat the gap as established fact and skip
+straight to the direct-reply report unless `ls ~/.ssh` under `aco-devops` shows a credential now
+exists (the one condition that would actually change the outcome).
