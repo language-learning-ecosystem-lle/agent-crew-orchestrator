@@ -104,3 +104,4 @@
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | run:249 · 2026-09-03 | 2026-09-03 | Две половины из трёх сделаны и лежат в #249; третья (сторож) в этот пакет не вошла — ниже сказано п… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | Хвост треда 095-cut-guard-one-sided (дверь закрыта, PR #242 влит 054dca75 2026-09-03T17:24:01Z). Тр… |
+| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ветвь «вердикта нет» в claude-review.yml знает причину машинно, но в письме её… |
