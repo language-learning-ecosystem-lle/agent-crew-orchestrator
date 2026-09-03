@@ -85,13 +85,25 @@ export type GhPullRequest = z.infer<typeof ghPullRequestSchema>;
 
 /**
  * THE CHEAP HALF OF THE SCHEDULER'S READ (thread 019, point 5): what `gh pr list` says
- * about every open pull request. Three fields, and each earns its place — the number to
- * ask about, the head that tells a moved PR from a still one (the cache key), and the
- * description whose `thread:` line says whose PR it is. Loose for the same reason the
- * full schema is: this payload grows on somebody else's schedule.
+ * about every open pull request. Four fields, and each earns its place — the number to
+ * ask about, the head that tells a moved PR from a still one (the cache key), the
+ * description whose `thread:` line says whose PR it is, and `mergeable`, which rides along
+ * in the same `--json` FOR ZERO EXTRA CALLS (thread 097, half 2: that is the free first
+ * ask the watchman of mergeability is built on). Loose for the same reason the full schema
+ * is: this payload grows on somebody else's schedule.
+ *
+ * `mergeable` IS OPTIONAL HERE AND NOWHERE PROMISED. GitHub omits it, nulls it, and serves
+ * it stale, and a single answer is not a verdict at all (`mergeability.ts`) — so a reader
+ * that treats its absence as a fact about the branch is already wrong. Every caller of
+ * this schema takes it as one sample.
  */
 export const ghOpenPullRequestsSchema = z.array(
-  z.looseObject({ number: z.number().int(), headRefOid: z.string().min(1), body: z.string() }),
+  z.looseObject({
+    number: z.number().int(),
+    headRefOid: z.string().min(1),
+    body: z.string(),
+    mergeable: nullableText,
+  }),
 );
 
 /**

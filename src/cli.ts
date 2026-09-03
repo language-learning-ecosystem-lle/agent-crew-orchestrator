@@ -13243,9 +13243,18 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
     open: async () =>
       ghOpenPullRequestsSchema
         .parse(
-          JSON.parse(ask(["pr", "list", "--state", "open", "--json", "number,headRefOid,body"])),
+          JSON.parse(
+            ask(["pr", "list", "--state", "open", "--json", "number,headRefOid,body,mergeable"]),
+          ),
         )
-        .map((pr) => ({ number: pr.number, headSha: pr.headRefOid, body: pr.body })),
+        .map((pr) => ({
+          number: pr.number,
+          headSha: pr.headRefOid,
+          body: pr.body,
+          // ONE MORE FIELD, ZERO MORE CALLS (thread 097, half 2). The scheduler does not
+          // read it; it is the free first ask the watchman of mergeability is priced on.
+          mergeable: pr.mergeable,
+        })),
     facts: async (number: number) =>
       pullRequestFacts(
         ghPullRequestSchema.parse(
