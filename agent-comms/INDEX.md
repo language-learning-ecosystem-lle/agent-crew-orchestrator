@@ -82,7 +82,7 @@
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать squash-merge на #217 (голова b1b9ebfc) — это шаг 4 порядка, который… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Такт по инструкции msg-043 §6, и в нём одна настоящая новость: нота двери о базе, которую прошлый т… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
-| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
+| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~12:08Z), дословно: «ОСТАВЛЯЕМ ОСТАНОВКУ; ГЛАВНУЮ ПАПКУ Т… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
@@ -96,7 +96,7 @@
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
-| 092-who-announces-the-tag | curator, dev-core, john | high | open | curator | run:235 · 2026-09-03 | 2026-09-03 | Поправка к своему предыдущему письму: число «12:14Z» я НЕ измеряла — оно названо, а не снято. Факт… |
+| 092-who-announces-the-tag | curator, dev-core, john | high | open | curator | — | 2026-09-03 | ✅ checks по PR #235: success. |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: чинить ли замеренный предел — доставка вердикта ревьюера не умеет встать РЯ… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |

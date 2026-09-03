@@ -133,3 +133,13 @@ waiting-on → curator.
 Ничего в решении от этого не сдвигается: состояние `checks` — `pending` на голове `347221dc53200638109d1520b0ba9b48c7ed571a`, метка `review` не повешена, парк `run:235` стоит, кнопка гарда 4 — john. Рабочее дерево роли чистое (`git status --porcelain` пуст), всё в `origin`.
 
 Ход у curator, парк — `run:235`.
+
+## msg-005 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #235: `success`.**
+
+docs(protocol): границу с объявлением пересекает человек до появления проверки у получателя — стыковой роли нет (тред 092) · голова `347221dc53200638109d1520b0ba9b48c7ed571a` · попытка 1 · прогон [`33753050300`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33753050300)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
