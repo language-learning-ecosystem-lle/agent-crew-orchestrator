@@ -174,3 +174,31 @@ export const planMergeabilityWatch = (input: {
     notes,
   };
 };
+
+/**
+ * THE WORDS OF THE LETTER, and they are the package's own English rather than a template
+ * of the project (R1). The one message the package composes for a thread today —
+ * the force-stop announcement — is a template slot precisely because it is SIGNED BY A
+ * HUMAN ROLE, and a project whose threads are in another language has a reason to put its
+ * own words in somebody's mouth. This one is signed by `github`, the same identity the
+ * outcome of a run and a merge arrive under, and adding a slot for it is not free: the
+ * kinds of announcement are enumerated in the schema shape of every protocol version
+ * (`schema/shape.ts`), so a new kind is a change to the SHAPE — a matter of the norm and
+ * john's, not this module's. If the project wants these words in its own language, that is
+ * the door to go through, and it is named here so the next reader does not guess.
+ *
+ * WHAT THE TEXT HAS TO CARRY, beyond the fact: what it costs to ignore. A role that reads
+ * "rebase" and hangs the label back on the old head pays the round of review twice — which
+ * is the very arithmetic that opened this thread — so the letter names guard 1 and the
+ * order of the two actions, not just the state.
+ */
+export const renderMergeabilityLetter = (letter: MergeabilityLetter): string =>
+  [
+    `**PR #${letter.number} no longer applies to its base — and nothing announced it.**`,
+    "",
+    `Measured by the watchman on the head \`${letter.headSha}\`: ${letter.detail}. GitHub raises no event when a branch stops merging, so this letter is the event.`,
+    "",
+    "Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.",
+    "",
+    `This is said ONCE per break: the mark is lifted only by a settled \`MERGEABLE\`, so nothing repeats while the conflict stands, and the next divergence is announced again.`,
+  ].join("\n");

@@ -813,6 +813,21 @@ export type NotifyState = {
    * written before this class existed says — and it must not read as "every park is new".
    */
   readonly eventParks?: readonly string[] | undefined;
+  /**
+   * The {@link mergeabilitySaidKey}s of the pull requests already told they stopped applying
+   * to their base (thread 097, half 2) — carried forward for as long as the pull request is
+   * open, like `freezes` and unlike every composition here: what ends the break is the branch
+   * applying AGAIN, and a merge into `main` voids the computed mergeability of every open
+   * pull request at once, so a memory that forgot on a non-verdict would announce every
+   * still-conflicting one after every merge. The rule that lifts a mark lives in
+   * `orchestrator/mergeability-watch.ts` and nowhere else; this field only stores it.
+   *
+   * IT IS WRITTEN BY THE WATCHMAN'S OWN PASS, not by the plan below, and that is deliberate:
+   * a letter that HAS been delivered into the mail must not be forgotten because Telegram
+   * refused a minute later (`undelivered` leaves the rest of this state untouched, and
+   * rightly so — but our letter is already in the feed).
+   */
+  readonly mergeable?: readonly string[] | undefined;
 };
 
 export type NotificationPlan = {
@@ -1123,6 +1138,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     // not stored because it changes every tick, and what identifies the event is the message that
     // declared the park.
     ...(state.eventParks ?? []).map((entry) => `event-park\t${entry}`),
+    // Two columns: the key IS the pull request (`pr:N`) and nothing else. Neither the head
+    // nor the word heard is stored — a push into a conflicting branch is the SAME break, and
+    // the word is re-measured every tick.
+    ...(state.mergeable ?? []).map((entry) => `mergeable\t${entry}`),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -1136,6 +1155,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const reminded: ParkReminder[] = [];
   const accounts: string[] = [];
   const eventParks: string[] = [];
+  const mergeable: string[] = [];
   let auth: string | undefined;
   let gh: string | undefined;
   let drift: string | undefined;
@@ -1221,6 +1241,14 @@ export const parseNotifyState = (raw: string): NotifyState => {
       }
       continue;
     }
+    if (columns[0] === "mergeable") {
+      // `pr:N` and nothing else — a line that is not that key is dropped rather than
+      // half-read, on the same rule as a freeze: a key that is not the key says the same
+      // break a second time, and this class is the one whose whole purpose is not to.
+      const [, key] = columns;
+      if (key !== undefined && /^pr:\d+$/.test(key)) mergeable.push(key);
+      continue;
+    }
     if (columns[0] === "freeze") {
       // Four columns exactly (kind, role, thread, since) — a short line is dropped rather
       // than half-read: a key that is not the key announces the same freeze a second time.
@@ -1252,6 +1280,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
     ...(reminded.length === 0 ? {} : { reminded }),
     ...(accounts.length === 0 ? {} : { accounts }),
     ...(eventParks.length === 0 ? {} : { eventParks }),
+    ...(mergeable.length === 0 ? {} : { mergeable }),
   };
 };
 

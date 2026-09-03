@@ -1847,6 +1847,26 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # of the same thread rings again. It raises its own letter, for the reason
                             # the reminder does; with no clock and on a box with no `direct` target
                             # there is no watchdog at all, which is the honest answer, not a default
+                            # AND ONE CLASS THAT IS NOT A NOTIFICATION AT ALL — THE WATCHMAN OF
+                            # MERGEABILITY (thread 097): with `--write` it asks `gh` for the open pull
+                            # requests once, and a branch that STOPPED APPLYING to its base gets a
+                            # LETTER IN ITS OWN THREAD from `github`, with the turn on the `role:` of
+                            # its description. GitHub raises no event for that — a merge, an outcome
+                            # and a verdict are announced, "your branch diverged" merely becomes true —
+                            # so `#114` lay conflicting for six days and `#158` for three
+                            # A SINGLE ANSWER IS NEVER A VERDICT (`pr mergeable`): the free word of the
+                            # list is confirmed by a second ask ONLY where it disagrees with the mark,
+                            # and the letter goes out on two agreeing answers alone
+                            # SAID ONCE PER BREAK: the mark (`mergeable pr:N` in the state file) is
+                            # keyed by the PULL REQUEST, and it is lifted ONLY by a settled MERGEABLE —
+                            # never by a non-verdict, because a merge into `main` voids the computed
+                            # mergeability of EVERY open pull request at once, and a memory that forgot
+                            # there would re-announce every conflicting one after every merge
+                            # THE MARK IS WRITTEN AS SOON AS THE LETTER LANDS, before the transport is
+                            # dialled: a letter already in the feed must not be forgotten because
+                            # Telegram refused a minute later. A letter that did NOT land marks nothing
+                            # WITHOUT `--write` NOTHING IS ASKED AND NOTHING IS WRITTEN — a dry run that
+                            # committed and pushed a message would not be one
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--for <role>] [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
