@@ -102,3 +102,13 @@ waiting-on → dev-core.
 ## Чем мерил
 
 `pnpm lint` и `pnpm typecheck` чисто. Полный локальный прогон: **3329 passed, 3 failed** — три падения по `Test timed out in 5000ms` в `daemon.priority`/`daemon.process`/`quota-pause`, все три поднимают настоящий демон; те же три файла отдельным прогоном — 27/27 зелёных. То есть это тайминг коробки под 198 файлами разом, а не мой дифф (он не касается ни одного пути демона). Говорю это как измерение, не как диагноз CI: судит `checks` на голове.
+
+## msg-003 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #227: `success`.**
+
+fix(cli): отказ названной команды печатает блок своей команды, а не всю справку пакета (тред 089) · голова `3b253292f711eb5e7526b9743bcbf5f673ae60a5` · попытка 1 · прогон [`33701939472`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33701939472)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
