@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T01:10:16.233Z",
+  "writtenAt": "2026-09-03T01:10:49.656Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "dev-core",
       "thread": "089-refusal-prints-global-usage",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T02:09:27Z"
     }
   ]
