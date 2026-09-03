@@ -630,6 +630,12 @@ describe("merge-gate — the command, with a real gh on the other side of the se
    * UNKNOWN (observed on every open PR of this repository). A door that refused on that
    * would refuse almost every first run, so the command asks again itself before it
    * reports UNKNOWN as an answer.
+   *
+   * AND SINCE THREAD 097 IT DOES NOT ASK ONLY ON `UNKNOWN`: the field is served from a
+   * cache that may be stale in EITHER direction, so the door asks until two consecutive
+   * answers agree. The two cases below still read the same because a lazy `UNKNOWN`
+   * followed by two agreeing answers settles, and `UNKNOWN` settles nothing at any count;
+   * the case the old rule got wrong is the one under them.
    */
   it("asks again when GitHub has not computed mergeable yet, instead of refusing the first ask", () => {
     const repo = repoWithConfig();
@@ -657,6 +663,30 @@ describe("merge-gate — the command, with a real gh on the other side of the se
 
     expect(result.code).toBe(1);
     expect(result.out).toContain("has not finished computing");
+  });
+
+  /**
+   * THE FIELD CASE (thread `097`, 2026-09-03): a first `MERGEABLE` that is a stale cache
+   * hit. The old rule — "retry only on UNKNOWN" — took this answer as the verdict and let
+   * the door say `mergeable=MERGEABLE` about a branch GitHub would refuse to merge. What
+   * makes it the expensive one is that it fails in the PERMISSIVE direction: `CONFLICTING`
+   * read as `MERGEABLE` is a round of review hung on a head that has to be rebased.
+   */
+  it("does not take a first MERGEABLE as the answer when the next ask says CONFLICTING", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGh(repo, {
+        json: mergeable(),
+        nextAsk: mergeable({ mergeable: "CONFLICTING", mergeStateStatus: "DIRTY" }),
+      }),
+    );
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("STOP mergeability");
+    expect(result.out).toContain("CONFLICTING");
+    // and it does NOT report the word it heard first as the verdict
+    expect(result.out).not.toContain("mergeable=MERGEABLE");
   });
 
   /** D3: a flying run answers `conclusion: ""`, and the refusal used to print nothing. */
