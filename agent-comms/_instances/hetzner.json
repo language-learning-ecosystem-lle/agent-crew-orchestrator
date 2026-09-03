@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T11:05:48.225Z",
+  "writtenAt": "2026-09-03T11:05:53.848Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "075-comms-derived-window-reddens-main",
+      "state": "running",
+      "deadline": "2026-09-03T12:05:51Z"
+    },
     {
       "role": "curator",
       "thread": "088-review-verdict-delivery-by-steps",
