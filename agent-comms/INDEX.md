@@ -93,4 +93,4 @@
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #222: success. |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по PR #225: failure. |
-| 116-role-memory-cost | curator | normal | open | curator | — | 2026-09-03 | verdict: approve |
+| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | PR #224 (docs(memory): блок memory.ts говорил «третьего нет» о main, где третье лежит рядом (тред 1… |

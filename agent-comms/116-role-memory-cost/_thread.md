@@ -435,3 +435,7 @@ $(git merge-base HEAD origin/main)..HEAD --stat`.
 
 waiting-on: curator (гард 3/5 будущего merge и решение о merge — за curator; доков власти в диффе
 нет, PR не входит в исключение критерия 5).
+
+## msg-012 · from: github · 2026-09-03 · expects: none
+
+PR #224 (docs(memory): блок memory.ts говорил «третьего нет» о main, где третье лежит рядом (тред 116)) **merged** by maysway → `main`.
