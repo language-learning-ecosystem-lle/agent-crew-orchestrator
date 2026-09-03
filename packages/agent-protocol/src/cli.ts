@@ -759,8 +759,53 @@ const listFlag = (argv: readonly string[], name: string): readonly string[] | un
   return items;
 };
 
+/**
+ * WHICH COMMAND THIS RUN IS ABOUT — the name the dispatch recognised, or `undefined`
+ * while nothing has been recognised yet.
+ *
+ * It is written in ONE place, `guardArguments`, and that is not a side effect smuggled
+ * into a guard: the guard is called once per run, from `main`, with the very key the
+ * dispatch resolved, and BEFORE the handler it belongs to. Every command of the package
+ * goes through it (thread 042 put the last sixteen behind it), so "recognised" and
+ * "guarded" are the same set — a second place to record the name would be a second
+ * source that can fall behind the first.
+ */
+let namedCommand: string | undefined;
+
+/**
+ * THE USAGE A REFUSAL SHOWS: THE NAMED COMMAND'S OWN BLOCK (thread 089).
+ *
+ * The measurement behind it (curator, 2026-09-03, `0f11a010`): `mail … --bogus-flag`
+ * refused by name — `'mail' does not understand what it was given` — and then printed
+ * all 660 lines of the package's help, whose first two entries are `config check` and
+ * `config set`. The refusal KNOWS the command; it prints its name in the first line;
+ * and it did not use that knowledge when choosing what to show. #222 fixed the text of
+ * one pair (`hold`/`resume`, `HOLD_USAGE`); this is the same defect on the shared path.
+ *
+ * WHAT KEEPS THE WHOLE BLOCK, deliberately and not by oversight: a bare `agent-protocol`
+ * and an UNKNOWN command name. Neither has a block of its own by construction — there is
+ * no command to cut — and the full text is the right answer to "what can this thing do".
+ * Both reach `fail(USAGE, 2)` in `main` without ever passing the guard, so `namedCommand`
+ * is still `undefined` here and the fallback below is what answers them.
+ *
+ * A CUT AND NEVER A SECOND COPY (`usageFor`) — the reason is `usage.ts`'s own: a refusal
+ * that spells the form by hand is the first thing to fall behind the code. And a key with
+ * no line in the text falls back to the whole of it rather than to an empty answer: an
+ * empty usage would be a refusal that says nothing at all, which is worse than a long one.
+ */
+const usageOnRefusal = (): string => {
+  if (namedCommand === undefined) return USAGE;
+  // THE ONE PAIR WHOSE OWN BLOCK IS TWO BLOCKS: `up` and `restart` legally accept
+  // everything `orchestrator daemon` does — they ARE that daemon with its start-up done
+  // — and the guard below judges them by the MERGED table. A refusal offering half of
+  // the form it just judged by would send the hand back for the other half.
+  const merged = namedCommand === "orchestrator up" || namedCommand === "orchestrator restart";
+  const cut = usageFor(USAGE, merged ? [namedCommand, "orchestrator daemon"] : [namedCommand]);
+  return cut === "" ? USAGE : `usage — '${namedCommand}':\n${cut}`;
+};
+
 const required = (argv: readonly string[], name: string): string =>
-  flag(argv, name) ?? fail(`${name} is not set\n${USAGE}`, 2);
+  flag(argv, name) ?? fail(`${name} is not set\n${usageOnRefusal()}`, 2);
 
 /**
  * `--root` AS AN ABSOLUTE PATH, FROM THE DOOR ONWARDS (thread 015) — why the whole
@@ -3841,7 +3886,9 @@ const newThread = (argv: readonly string[]): void => {
   const from = required(argv, "--from");
   if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
   const participants =
-    listFlag(argv, "--participants") ?? fail(`--participants is not set\n${USAGE}`, 2);
+    // The same refusal `required` makes, hand-rolled because the flag carries a LIST —
+    // so it answers with the same cut of the usage and not with the package's help.
+    listFlag(argv, "--participants") ?? fail(`--participants is not set\n${usageOnRefusal()}`, 2);
   for (const p of participants) {
     if (!registry.isKnown(p)) fail(`participant '${p}' is not listed in the config`, 2);
   }
@@ -12666,6 +12713,10 @@ const orchestratorResumeShort = (argv: readonly string[]): void => {
 const USAGE_FLAGS = parseUsage(USAGE);
 
 const guardArguments = (key: string, argv: readonly string[]): void => {
+  // THE ONE PLACE THE RECOGNISED NAME IS RECORDED (thread 089) — see `usageOnRefusal`.
+  // It is set before the refusals below and before the handler, so every refusal of a
+  // named command, here or deeper in, answers with that command's own block.
+  namedCommand = key;
   const spec = USAGE_FLAGS.get(key);
   // A command with no line in the usage block is a command the help text does not
   // document — the guard says so instead of waving it through.
@@ -12687,7 +12738,7 @@ const guardArguments = (key: string, argv: readonly string[]): void => {
   if (problems.length === 0) return;
   err(`agent-protocol: '${key}' does not understand what it was given:`);
   for (const problem of problems) err(`- ${problem}`);
-  fail(USAGE, 2);
+  fail(usageOnRefusal(), 2);
 };
 
 /**
