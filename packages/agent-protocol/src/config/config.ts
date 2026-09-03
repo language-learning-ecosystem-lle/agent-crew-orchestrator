@@ -222,6 +222,23 @@ export const instanceSchema = z.strictObject({
   account: z.string().min(1).optional(),
 });
 
+/**
+ * The round of review, named by the project that has one (v26, thread `063`). Both halves
+ * are required TOGETHER once the key appears: a label with no workflow names a round nobody
+ * can look for, and a workflow with no label names an answer to a question nothing asks —
+ * half a declaration is the silence this field exists to end, wearing the shape of a
+ * declaration.
+ */
+const reviewSchema = z.strictObject({
+  /** The GitHub label a role hangs on a pull request to open a round — `review` here. */
+  label: z.string().min(1),
+  /**
+   * The `name:` of the reviewer's workflow — `Claude PR Review` here, which is the first
+   * line of `.github/workflows/claude-review.yml` and NOT the file's name.
+   */
+  workflow: z.string().min(1),
+});
+
 export const protocolConfigSchema = z.strictObject({
   /**
    * THE VERSION OF THE PROTOCOL SCHEMA the repository's data is at — see
@@ -326,6 +343,30 @@ export const protocolConfigSchema = z.strictObject({
    * about its own authority is not yet authority.
    */
   powerDocuments: z.array(z.string().min(1)).optional(),
+  /**
+   * WHAT THE ROUND OF REVIEW IS CALLED IN THIS REPOSITORY (thread `063-state-model-rewrite`,
+   * john's decision of 2026-09-03) — the label a role hangs to open a round, and the name of
+   * the workflow that answers it.
+   *
+   * WHY IT IS DATA AND NOT A FLAG, and the argument is this thread's own. A pair that has
+   * hung the label and passed the turn reads in the frame as `released (completed)` —
+   * "finished" — while its pull request stands open. Repairing that means the frame knowing
+   * which label opens a round, and the package cannot know: `review` is one contour's word.
+   * An unfilled FLAG would leave the tier silent, and silently — the exact defect the whole
+   * state-model rewrite was opened on; an undeclared FIELD is read as "this project has not
+   * named its round", which is a fact a reader can act on.
+   *
+   * ABSENCE IS NOT A DEFAULT. A project that declares nothing keeps today's behaviour bit for
+   * bit: the tier says nothing about rounds of review. And in BOTH cases the ORDER of the
+   * queue is untouched — this field is read to SAY a state, never to move a pair. Moving one
+   * by it would hand a machine the `thread-priority` right and give "who goes next" a second
+   * answer.
+   *
+   * THE DOOR IS NOT A READER OF THIS FIELD. `merge-gate` keeps taking `--review-workflow` on
+   * its command line; making it read the config is a separate norm and a separate ascent
+   * (john, same word, the boundary he did not widen).
+   */
+  review: reviewSchema.optional(),
   roles: z.array(roleSchema).min(1),
 });
 

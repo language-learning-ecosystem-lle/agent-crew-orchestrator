@@ -60,6 +60,7 @@ const open = (over: Partial<OpenPullRequest> = {}): OpenPullRequest => ({
   number: 152,
   headSha: HEAD,
   body: "thread: 019-operator-ux",
+  labels: [],
   ...over,
 });
 
