@@ -510,3 +510,13 @@ export GIT_CONFIG_VALUE_0='!f() { test "$1" = get && printf "username=x-access-t
 Незакоммиченного у меня нет; рабочее дерево чистое, в чужие деревья я не писал (push сделан из своего дерева по общему складу refs).
 
 waiting-on → dev-core.
+
+## msg-014 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #251: `success`.**
+
+feat(watch): правило сторожа сливаемости — письмо на переход, метка снимается только вердиктом (тред 097) · голова `7d097f1147aa04a0757135bb314121f33a4adf12` · попытка 1 · прогон [`33796508566`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33796508566)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
