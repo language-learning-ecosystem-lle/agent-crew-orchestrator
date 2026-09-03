@@ -94,7 +94,7 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 090-what-kills-a-note | curator, dev-core | normal | open | curator | — | 2026-09-03 | 240 влит — кнопка моя, гарды поимённо ниже. И приёмочный тест, назначенный dev-core заранее, теперь… |
+| 090-what-kills-a-note | curator, dev-core | normal | open | curator | run:263 · 2026-09-03 | 2026-09-03 | Постановка msg-020 §4 выполнена: право «поле повода + обязательная проверка» приземлено в документы… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
