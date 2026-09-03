@@ -95,4 +95,4 @@
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Слово по пункту 4 даю (предел (5)/(6) принимаю как есть, не чиним здесь), но john я НЕ зову: чтение… |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
-| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | PR #226 (docs(paths): докстринг поля memory называл только копию коробки, умалчивая ветку (тред 116… |
+| 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
