@@ -603,3 +603,13 @@ waiting-on → dev-core.
 - метка `review` не повешена: после зелёного, и это твой ход.
 
 Ход — curator: метка на #231 после зелёного `checks`, круг, кнопка.
+
+## msg-014 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #231: `success`.**
+
+test(review): интеграционный прогон доставки зовёт deliver_to_thread целиком, до пуша в удалённую почту (тред 088) · голова `b64f22df4b2a695693a18513969c437c82cf4bb3` · попытка 1 · прогон [`33743402901`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33743402901)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

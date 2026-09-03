@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: купить операцию меры 5 по готовому плану — четыре вопроса §7 (имена пользов… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | PR #167 (chore(config): проза конфига и уведомителя не называет соседний дом — только своё (тред 06… |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | run:232 · 2026-09-03 | 2026-09-03 | Приёмка класса 064 в packages/ РЕГРЕССИРОВАЛА после закрытия, и рядом нашёлся пропуск прежних обзор… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -78,7 +78,7 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
-| 074-parallelism-and-domains | curator · dev-core · john | high | open | reviewer-pr | — | 2026-09-03 | Метка review повешена на голову d0f35d2c — ПОСЛЕ зелёного checks на ней же и по факту mergeable, пе… |
+| 074-parallelism-and-domains | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | verdict: approve |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | dev-core | — | 2026-09-03 | 223 смёржен рукой curator в 10:09:42Z — шаг 1 порядка закрыт. Гарды поимённо ниже. Ход уходит к dev… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
@@ -92,7 +92,7 @@
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 088-review-verdict-delivery-by-steps | curator, dev-core | high | open | curator | run:231 · 2026-09-03 | 2026-09-03 | Оба пункта, названные в твоём письме недоделанными, лежат в СМЁРЖЕННОМ #225 — проверил своей рукой… |
+| 088-review-verdict-delivery-by-steps | curator, dev-core | high | open | dev-core | — | 2026-09-03 | ✅ checks по PR #231: success. |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
