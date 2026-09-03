@@ -42,6 +42,9 @@ const ROLES = [
   },
 ];
 
+/** The vendor's own sentence the stub refuses with — quoted verbatim by the counter. */
+const REFUSAL = "could not resolve to a Repository with the name 'x/y'";
+
 const git = (cwd: string, ...args: readonly string[]): string =>
   execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" });
 
@@ -112,6 +115,13 @@ const box = (options: { readonly words: readonly string[]; readonly body?: strin
       `n=$(wc -l < ${JSON.stringify(calls)} | tr -d ' ')`,
       `words="${options.words.join(" ")}"`,
       'word=$(echo "$words" | cut -d" " -f"$n")',
+      // A REFUSAL IS A WORD OF THE SCRIPT TOO, and it is the vendor's own sentence on the
+      // error channel with a non-zero code — the shape `gh` refuses in, and the shape the
+      // counter of refusals quotes.
+      'if [ "$word" = "REFUSE" ]; then',
+      `  echo "${REFUSAL}" >&2`,
+      "  exit 1",
+      "fi",
       'case "$1 $2" in',
       "  'pr list')",
       `    printf '[{"number":251,"headRefOid":"7d097f11","body":%s,"mergeable":"%s"}]' ${JSON.stringify(
@@ -210,6 +220,47 @@ describe("the watchman of mergeability delivers a letter (thread 097, half 2)", 
     expect(readFileSync(it0.state, "utf8")).not.toContain("mergeable");
   });
 
+  /**
+   * THE REFUSAL COUNTER ACROSS PROCESSES (thread 097, curator's remaining requirement). The
+   * whole of this class is that the count SURVIVES THE PROCESS — the daemon starts a fresh
+   * one every tick — so nothing but running the command as a process, five times, can ask it.
+   */
+  it("counts refusals across restarts, rings at the threshold, and zeroes on an answer", () => {
+    // Five refused ticks, then a tick the vendor answers.
+    const it0 = box({ words: ["REFUSE", "REFUSE", "REFUSE", "REFUSE", "REFUSE", "MERGEABLE"] });
+    for (let tick = 1; tick < 5; tick += 1) {
+      const early = it0.run();
+      // The refusal is SAID on every tick, and it is the vendor's sentence, not a guess.
+      expect(early.out).toContain("the open pull requests were not read");
+      expect(early.out).toContain(REFUSAL);
+      // Below the threshold nothing rings — a single refusal is a blip, not an event.
+      expect(early.out).not.toContain("rings at 5");
+      const state = readFileSync(it0.state, "utf8");
+      // AND THE COUNT IS ON DISK, one tick further along than the run before it.
+      expect(state).toContain(`"ticks":${tick}`);
+      expect(state).toContain("mergeable-outage\t");
+      expect(state).not.toContain("mergeable-rang");
+    }
+    const ringing = it0.run();
+    // The standing line of the tick, with the threshold beside the count (discipline 4).
+    expect(ringing.out).toContain("gh has refused the watchman 5 tick(s) in a row (rings at 5)");
+    // AND THE PHONE: the alarm reached the composition of the letter, and the state now
+    // remembers that this run has been announced — which is what keeps it from ringing every
+    // thirty seconds for as long as the outage lasts.
+    expect(ringing.out).toContain("the watchman of mergeability has been refused by gh");
+    const rang = readFileSync(it0.state, "utf8");
+    expect(rang).toContain("mergeable-rang\t");
+    expect(rang).toContain('"ticks":5');
+
+    // THE ANSWER ENDS THE RUN: the vendor replies, the count is not carried over, and what
+    // was announced is forgotten so that the NEXT outage rings again.
+    const answered = it0.run();
+    expect(answered.out).not.toContain("rings at 5");
+    const clean = readFileSync(it0.state, "utf8");
+    expect(clean).not.toContain("mergeable-outage");
+    expect(clean).not.toContain("mergeable-rang");
+  });
+
   it("refuses out loud when the description names no role, and remembers nothing", () => {
     const it0 = box({
       words: ["CONFLICTING", "CONFLICTING"],
@@ -220,5 +271,34 @@ describe("the watchman of mergeability delivers a letter (thread 097, half 2)", 
     expect(run.out).toContain("no 'role:' line");
     // NOTHING IS REMEMBERED — a mark here would make this break silent for as long as it lasts.
     expect(readFileSync(it0.state, "utf8")).not.toContain("mergeable");
+  });
+
+  /**
+   * THE SUB-CLASS THE REVIEWER FOUND UNCOVERED ON #252: the description names both lines, but
+   * the role is in nobody's config or the thread is in nobody's mail. By code it says so and
+   * remembers nothing; until here that was read rather than measured, and the two refusals
+   * are the ones that would otherwise take the daemon's tick down (`planThreadMessage` ends
+   * in `fail()`), so "it says so" is exactly the claim worth a process.
+   */
+  it("refuses by name when the named role is not in the config, and remembers nothing", () => {
+    const it0 = box({
+      words: ["CONFLICTING", "CONFLICTING"],
+      body: "thread: 097-conflict-has-no-signal\nrole: ghost\n",
+    });
+    const run = it0.run();
+    expect(it0.messages().filter((name) => name.includes("github"))).toHaveLength(0);
+    expect(run.out).toContain("role 'ghost', which is not in the config");
+    expect(readFileSync(it0.state, "utf8")).not.toContain("mergeable\tpr:251");
+  });
+
+  it("refuses by name when the named thread is not in the mail, and remembers nothing", () => {
+    const it0 = box({
+      words: ["CONFLICTING", "CONFLICTING"],
+      body: "thread: 404-not-a-thread\nrole: dev-core\n",
+    });
+    const run = it0.run();
+    expect(it0.messages().filter((name) => name.includes("github"))).toHaveLength(0);
+    expect(run.out).toContain("thread '404-not-a-thread', which is not in the mail");
+    expect(readFileSync(it0.state, "utf8")).not.toContain("mergeable\tpr:251");
   });
 });

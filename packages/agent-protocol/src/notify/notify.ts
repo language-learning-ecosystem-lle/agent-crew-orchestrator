@@ -147,6 +147,7 @@ export const BOX_ALARM_KINDS = [
   "stale-event-park",
   "code-drift",
   "account",
+  "mergeability-outage",
 ] as const;
 export type BoxAlarmKind = (typeof BOX_ALARM_KINDS)[number];
 
@@ -188,6 +189,14 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   auth: "the box cannot authenticate to the vendor for {account}: {deaths} runs in a row died on its credentials since {since}. Nothing is raised for it until {until}, and nothing will be until somebody logs that account in on the box{repair} — the roles that spend it are standing still",
   "gh-outage":
     "merge-ready has been refused by gh for {ticks} ticks in a row (threshold {threshold}) since {since}: {refusal}. Nothing is broken by it — the queue is ordered as it would be without the tier — but the tier is off until this is fixed",
+  // THE SECOND TIER THAT DIES QUIETLY (thread 097). It reads like its neighbour above and
+  // for the same reason — both are a run of refusals from the same vendor — but it names a
+  // DIFFERENT loss, and that is the whole of why it is a kind of its own: merge-ready going
+  // off reorders a queue, this one going off means a branch that stopped applying to its
+  // base is announced to nobody, which is the six silent days of `#114` this thread exists
+  // over. One slot per tier, so a box with both dead says both.
+  "mergeability-outage":
+    "the watchman of mergeability has been refused by gh for {ticks} ticks in a row (threshold {threshold}) since {since}: {refusal}. Nothing turns red for it — a pull request that stops applying to its base is simply announced to nobody, silently, until this is fixed",
   // NEITHER LINE ASKS FOR ANYTHING IN THE FIRST CASE AND BOTH SAY WHOSE MOVE IT IS. The
   // whole defect this comes from is a pair standing for five hours with nobody told, so the
   // texts are built around the one question its reader has: "must I do something now".
@@ -828,6 +837,25 @@ export type NotifyState = {
    * rightly so — but our letter is already in the feed).
    */
   readonly mergeable?: readonly string[] | undefined;
+  /**
+   * THE WATCHMAN'S RUN OF REFUSALS, verbatim as `orchestrator/outage.ts` renders it — this
+   * file CARRIES it and does not read it. It lives here rather than in a file of its own
+   * (the shape the merge-ready tier uses) for one measured reason: this is the state the
+   * watchman already writes, at the one moment in the run where writing is safe, and a
+   * second file would be a second write with its own failure mode for the same fact.
+   *
+   * IT IS A COUNTER AND NOT A COMPOSITION: what makes it worth a phone is the LENGTH of the
+   * run, so it must survive the process (the daemon starts a fresh one every tick) and it is
+   * cleared by exactly one thing — the vendor answering.
+   */
+  readonly mergeableOutage?: string | undefined;
+  /**
+   * The `since` of the watchman's outage ALREADY ANNOUNCED, on the rule the `gh` and `drift`
+   * keys above follow: a run is one event however many ticks it lasts, and an alarm repeated
+   * every thirty seconds is what costs the next real call its reader. A run that ends drops
+   * the key, so the next outage rings again.
+   */
+  readonly mergeableRang?: string | undefined;
 };
 
 export type NotificationPlan = {
@@ -974,6 +1002,8 @@ export type NotificationPlan = {
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready outage in force now, if the predicate rings — also part of the state. */
   readonly gh?: GhAlarm | undefined;
+  /** The watchman's outage in force now, if its predicate rings — also part of the state. */
+  readonly mergeability?: GhAlarm | undefined;
   /** The overdue drift in force now, if there is one — also part of the state. */
   readonly drift?: CodeDriftAlarm | undefined;
   /**
@@ -991,6 +1021,8 @@ export type NotificationPlan = {
   readonly freshAuth: boolean;
   /** True when this run of refusals has not been announced yet — same rule, same reason. */
   readonly freshGh: boolean;
+  /** Whether the watchman's outage is the one already announced — see {@link freshGh}. */
+  readonly freshMergeability: boolean;
   /** True when this period of being behind has not been announced yet — one call per period. */
   readonly freshDrift: boolean;
   /** Everything the tick said about accounts and this box can deliver — announced or not. */
@@ -1142,6 +1174,13 @@ export const renderNotifyState = (state: NotifyState): string => {
     // nor the word heard is stored — a push into a conflicting branch is the SAME break, and
     // the word is re-measured every tick.
     ...(state.mergeable ?? []).map((entry) => `mergeable\t${entry}`),
+    // TWO COLUMNS, THE SECOND ONE OPAQUE: the run is whatever `renderGhOutage` made of it,
+    // and this file neither parses nor re-words it. JSON carries no raw tab (a tab inside a
+    // string is escaped), so the columns of this file survive it.
+    ...(state.mergeableOutage === undefined || state.mergeableOutage.trim() === ""
+      ? []
+      : [`mergeable-outage\t${state.mergeableOutage.trim()}`]),
+    ...(state.mergeableRang === undefined ? [] : [`mergeable-rang\t${state.mergeableRang}`]),
   ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 };
@@ -1159,6 +1198,8 @@ export const parseNotifyState = (raw: string): NotifyState => {
   let auth: string | undefined;
   let gh: string | undefined;
   let drift: string | undefined;
+  let mergeableOutage: string | undefined;
+  let mergeableRang: string | undefined;
   for (const line of raw.split("\n").map((entry) => entry.trim())) {
     if (line === "") continue;
     const columns = line.split("\t");
@@ -1249,6 +1290,18 @@ export const parseNotifyState = (raw: string): NotifyState => {
       if (key !== undefined && /^pr:\d+$/.test(key)) mergeable.push(key);
       continue;
     }
+    if (columns[0] === "mergeable-outage") {
+      // The rest of the line, tabs and all: the value is one JSON object and this file is
+      // only its envelope. An unreadable one reads as NO OUTAGE where it is parsed — the
+      // same one-directional degradation the counter itself has.
+      const value = columns.slice(1).join("\t");
+      if (value !== "") mergeableOutage = value;
+      continue;
+    }
+    if (columns[0] === "mergeable-rang") {
+      if (columns[1] !== undefined) mergeableRang = columns[1];
+      continue;
+    }
     if (columns[0] === "freeze") {
       // Four columns exactly (kind, role, thread, since) — a short line is dropped rather
       // than half-read: a key that is not the key announces the same freeze a second time.
@@ -1281,6 +1334,8 @@ export const parseNotifyState = (raw: string): NotifyState => {
     ...(accounts.length === 0 ? {} : { accounts }),
     ...(eventParks.length === 0 ? {} : { eventParks }),
     ...(mergeable.length === 0 ? {} : { mergeable }),
+    ...(mergeableOutage === undefined ? {} : { mergeableOutage }),
+    ...(mergeableRang === undefined ? {} : { mergeableRang }),
   };
 };
 
@@ -1343,6 +1398,14 @@ export const planNotifications = (input: {
   readonly auth?: AuthAlarm | undefined;
   /** The merge-ready tier has been refused for a run of ticks past its threshold. */
   readonly gh?: GhAlarm | undefined;
+  /**
+   * The WATCHMAN of mergeability has been refused for a run of ticks past ITS threshold
+   * (thread 097). A second slot rather than a second reading of the one above, because the
+   * two tiers die separately and a box with both dead has two sentences to say — and because
+   * what is lost is different: a queue that is merely unordered, against a divergence that
+   * is announced to nobody at all.
+   */
+  readonly mergeability?: GhAlarm | undefined;
   /**
    * The box has been behind its own ref past {@link CODE_DRIFT_OVERDUE_MINUTES} and has
    * named why it is not pulling (thread 044). The caller reads the daemon's published
@@ -1592,6 +1655,10 @@ export const planNotifications = (input: {
   const human = input.targets.some((target) => target.style === "direct");
   const auth = human ? input.auth : undefined;
   const gh = human ? input.gh : undefined;
+  // AND THE WATCHMAN'S OUTAGE GOES WITH IT, for the reason all the box-wide events are
+  // dropped here: "gh cannot be reached from this box" is a repair only somebody with access
+  // to the machine can carry out, and a chat assistant told about it can do nothing at all.
+  const mergeability = human ? input.mergeability : undefined;
   // AND THE DRIFT GOES WITH THEM. "The circuit is executing something other than what was
   // merged" is a fact only somebody with access to the machine can act on, and a chat
   // assistant told about it can do exactly nothing with it.
@@ -1627,6 +1694,8 @@ export const planNotifications = (input: {
     .map(accountAlarmKey);
   const freshAuth = auth !== undefined && authAlarmKey(auth) !== input.seen.auth;
   const freshGh = gh !== undefined && gh.since !== input.seen.gh;
+  const freshMergeability =
+    mergeability !== undefined && mergeability.since !== input.seen.mergeableRang;
   const freshDrift = drift !== undefined && drift.since !== input.seen.drift;
 
   // THE WATCHDOG OVER THE EVENT PARKS (thread 061, form (C)). Three decisions, and each one is
@@ -1734,6 +1803,21 @@ export const planNotifications = (input: {
         since: gh.since,
         ticks: String(gh.ticks),
         threshold: String(gh.threshold),
+      }),
+    });
+  // IT IS THE FRESH ONE THAT PRINTS, like the drift below and unlike the shelf above: a run
+  // of refusals does not end by itself, and a line repeated every thirty seconds for hours is
+  // the noise that costs the next real call its reader.
+  if (mergeability !== undefined && freshMergeability)
+    lines.push({
+      kind: "mergeability-outage",
+      thread: "",
+      role: "",
+      text: renderTemplate(BOX_ALARM_TEMPLATES["mergeability-outage"], {
+        refusal: mergeability.refusal,
+        since: mergeability.since,
+        ticks: String(mergeability.ticks),
+        threshold: String(mergeability.threshold),
       }),
     });
   // AND THE DRIFT STANDS WITH THE TWO ABOVE, for the reason they are there at all: every
@@ -1997,8 +2081,10 @@ export const planNotifications = (input: {
     auth,
     gh,
     drift,
+    mergeability,
     freshAuth,
     freshGh,
+    freshMergeability,
     freshDrift,
     accountAlarms,
     freshAccounts,
@@ -2276,6 +2362,11 @@ export const announcedOf = (plan: NotificationPlan): readonly string[] => [
     : []),
   ...(plan.freshGh && plan.gh !== undefined
     ? [`gh refuses merge-ready (${plan.gh.ticks} ticks since ${plan.gh.since})`]
+    : []),
+  ...(plan.freshMergeability && plan.mergeability !== undefined
+    ? [
+        `gh refuses the watchman of mergeability (${plan.mergeability.ticks} ticks since ${plan.mergeability.since})`,
+      ]
     : []),
   ...(plan.freshDrift && plan.drift !== undefined
     ? [`the box is behind its own ref (${plan.drift.size})`]

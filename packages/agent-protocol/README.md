@@ -1866,7 +1866,19 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # dialled: a letter already in the feed must not be forgotten because
                             # Telegram refused a minute later. A letter that did NOT land marks nothing
                             # WITHOUT `--write` NOTHING IS ASKED AND NOTHING IS WRITTEN — a dry run that
-                            # committed and pushed a message would not be one
+                            # committed and pushed a message would not be one, and the pass runs only
+                            # where an `orchestrator` section says a daemon TICKS: "once per break" and
+                            # the threshold below are both counted in ticks, so a courier hand-run
+                            # through --root/--state alone would spend calls against a threshold it
+                            # could never reach
+                            # AND THE WATCHMAN'S OWN REFUSAL IS HEARD (thread 097): `gh` refusing the
+                            # list is counted as a RUN (identity = the vendor's sentence; a different
+                            # message is a different fault), the count lives in the state file
+                            # (`mergeable-outage`) and SURVIVES THE PROCESS, and at five consecutive
+                            # refused ticks it rings the human once — `mergeable-rang` is what keeps it
+                            # from ringing every tick, and the vendor answering clears both. Nothing
+                            # turns red when this tier dies: a diverged branch is simply announced to
+                            # nobody, which is the whole reason the refusal is worth a phone
 agent-protocol thread show  --root <comms> --ref <ref> --thread <id> [--for <role>] [--tail <n>] [--repo <p>] [--no-fetch]
                                                                            # THE READING HALF (R3): the conversation
                                                                            # from the MESSAGES, not from the derived
