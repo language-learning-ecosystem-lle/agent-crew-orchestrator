@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T19:48:14.849Z",
+  "writtenAt": "2026-09-03T19:48:49.314Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "080-standing-address-catalog",
       "state": "running",
       "deadline": "2026-09-03T20:23:23Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "117-unfit-tags-and-the-silent-skip",
+      "state": "running",
+      "deadline": "2026-09-03T20:48:46Z"
     }
   ]
 }
