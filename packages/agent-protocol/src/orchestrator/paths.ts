@@ -94,12 +94,28 @@ export type OrchestratorPaths = {
    */
   readonly capabilities: string;
   /**
-   * WHERE THE ROLES' PERSONAL MEMORY LIVES (a consumer's thread, form D).
+   * WHERE THE ROLES' PERSONAL MEMORY LIVES ON THIS BOX (a consumer's thread, form D).
    * The base only — one directory per role hangs under it, and the role is the key
-   * (`memory.ts`, `roleMemoryDirectory`). It lies in the state directory and not in a
-   * checkout for a measured reason, spelled out in that module: a note written into the
-   * MAIL checkout would block the next delivery of any role on the box (delivery refuses
-   * on a dirty tree, untracked included) and then be wiped by its `reset --hard` retry.
+   * (`memory.ts`, `roleMemoryDirectory`).
+   *
+   * WHAT THIS PATH IS, AND WHAT IT IS NOT. It is the box's WORKING COPY: the directory
+   * the VENDOR is pointed at and writes notes into at a moment it picks itself. The
+   * SOURCE OF TRUTH is the copy in the mail branch, `<mail.dir>/memory/<role>`
+   * (`memory-sync.ts`, `memoryBranchPrefix`) — that copy is what makes a note survive
+   * this box and makes curator's deletion a deletion rather than a decoration. The two
+   * are carried into each other at the only two moments a session has: restore mirrors
+   * the branch into this directory before the raise, save carries this session's own
+   * changes back at the release.
+   *
+   * WHY THE WORKING COPY LIES IN THE STATE DIRECTORY AND NOT IN A CHECKOUT — measured,
+   * not preferred (constraint К-1, spelled out in `memory.ts`): a note the vendor wrote
+   * into the MAIL checkout mid-flight would block the next delivery of ANY role on the
+   * box (delivery refuses on a dirty tree, untracked included) and then be wiped by its
+   * `reset --hard` retry. That constraint is about the vendor's unmanaged writing, and
+   * the branch copy does not contradict it: the save touches the mail checkout's tree
+   * only THROUGH `deliverMessage`, which owns the lock, the dirty check, the retry and
+   * the undo. Which is also why an operator can see that lock held as `memory of <role>`
+   * (`status.ts`) while nothing at all is wrong.
    */
   readonly memory: string;
   /** The mail root on disk: the mail-branch checkout plus the mail directory inside it. */
