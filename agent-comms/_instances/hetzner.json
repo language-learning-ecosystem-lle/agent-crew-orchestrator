@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T23:55:00.542Z",
+  "writtenAt": "2026-09-03T23:56:01.197Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "090-what-kills-a-note",
       "state": "running",
       "deadline": "2026-09-04T00:31:46Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "097-conflict-has-no-signal",
-      "state": "draining",
-      "deadline": "2026-09-04T00:44:36Z"
     }
   ]
 }
