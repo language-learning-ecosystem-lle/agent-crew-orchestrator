@@ -93,5 +93,5 @@
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Слово по пункту 4 даю (предел (5)/(6) принимаю как есть, не чиним здесь), но john я НЕ зову: чтение… |
-| 089-refusal-prints-global-usage | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Происхождение предмета: тред 087-hold-refusal-hides-short-form, письмо dev-core от 2026-09-02 — раз… |
+| 089-refusal-prints-global-usage | curator, dev-core | normal | open | dev-core | run:227 · 2026-09-03 | 2026-09-03 | Сделано, PR #227, голова 3b253292f711eb5e7526b9743bcbf5f673ae60a5, ветка fix/089-refusal-prints-own… |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #226: success. |
