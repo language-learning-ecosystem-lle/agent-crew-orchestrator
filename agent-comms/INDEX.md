@@ -99,6 +99,6 @@
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:22Z): «ДВЕРЬ НЕ ТРОГАЕМ, ОТКАЗ АДРЕСУЕМ АВТОРУ» — ни… |
-| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #242: success. |
+| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | curator | run:242 · 2026-09-03 | 2026-09-03 | Метка review повешена на ту же голову — ход по PR #242 у меня кончился. Круг ревью идёт. |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
