@@ -418,10 +418,19 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
+                              # --ensure-thread <slug>: A STANDING ADDRESS INSTEAD OF ONE THREAD (080, decision of
+                              # john 2026-09-03). The letter goes into the receiver of that address which is OPEN
+                              # AND NOT PARKED; when there is none — closed, parked, unreadable, or never opened —
+                              # the receiver is OPENED here, '<next free NNN>-<slug>', in ONE commit with the
+                              # letter. --title/--participants are what it is opened with and are required with it;
+                              # --thread and --ensure-thread are exclusive. WHY IT EXISTS: a letter into a closed
+                              # or parked thread is ACCEPTED and raises nobody — 'a closed thread awaits nobody',
+                              # the run is green, the alarm is eaten (measured, 080). The address is re-resolved
+                              # inside the delivery attempt, so two events of one minute land in ONE receiver
                               # ON A THREAD DECLARING 'turn: explicit' (079) --waiting-on is OBLIGATORY:
                               # the door refuses a message without it and names both exits (a role, or '—'
                               # for nobody). On every other thread nothing changes — a fieldless message is

@@ -1918,9 +1918,42 @@ agent-protocol derive       --root <comms> --ref <ref> [--write]           # all
                             # the write — a `set -e` shell still reaches its commit step
 agent-protocol check        --root <comms> --ref <ref> [--since <ref>]
 agent-protocol migrate      --root <comms> --ref <ref> [--id <NNN-slug>] [--write]
-agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <role> \
+agent-protocol new-message  --root <comms> --ref <ref> \
+                            (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) \
+                            --from <role> \
                             --expects answer|ack|none [--waiting-on <role>] \
                             --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--write] [--no-push]
+                            # --ensure-thread <slug>: A STANDING ADDRESS INSTEAD OF ONE THREAD (thread 080,
+                            # decision of john 2026-09-03). It says WHICH ADDRESS the letter is for and lets
+                            # the command find the thread currently playing that address's receiver: the one
+                            # with this slug that is OPEN AND NOT PARKED, newest by number. When there is
+                            # none — closed, parked, unreadable, or the address has never been used — the
+                            # receiver is OPENED here: `<next free NNN>-<slug>`, with `--title` and
+                            # `--participants`, and its `_meta.md` goes in the SAME commit as the letter
+                            # (`new-thread`'s rule: a thread is one delivery, and a thread without a meta
+                            # reddens `Comms Derived` on every push into `comms` — which is itself a push
+                            # into `comms`, a 1:1 loop with nobody watching)
+                            # WHY IT EXISTS, and it is not what the workflows were thought to need: a letter
+                            # into a CLOSED or PARKED thread is not refused and not lost. It is ACCEPTED —
+                            # a machine writer is not asked about a park at all (072), and closure is not
+                            # checked on the way in — and then `waitingOnOf` answers `undefined` before it
+                            # reads a single declaration, because `status: closed` outranks every one of
+                            # them. The letter lies in the feed, the run is green, and nobody is raised
+                            # (four dry runs against the real mail, 2026-09-03, thread 080). A door cannot
+                            # defend against that: the letter is lawful and there is nothing to refuse. What
+                            # defends against it is choosing a LIVE receiver, which is this flag
+                            # THE SHAPE COSTS NOTHING: a thread id is unique BY ITS NUMBER only
+                            # (`threadNumberTaker` never looks at the slug), so `076-main-red-alarm`,
+                            # `091-main-red-alarm`, `104-main-red-alarm` are one address said three times.
+                            # No new form of address, no date suffix, no new field of the config
+                            # --thread and --ensure-thread are EXCLUSIVE — they answer the same question two
+                            # different ways, and a command quietly preferring one would deliver somewhere
+                            # its caller did not name. The slug is refused by name when it carries a number
+                            # of its own (`--ensure-thread 076-main-red-alarm`, the typo the workflows'
+                            # current literals invite) or is not a name a thread directory can carry
+                            # THE ADDRESS IS RE-RESOLVED INSIDE THE DELIVERY ATTEMPT, after the fetch and
+                            # under the mail lock — that is what makes two events of one minute land in ONE
+                            # receiver instead of opening two (nine letters in an hour is a measured rate)
                             # A LETTER INTO A THREAD THAT IS ALREADY PARKED IS REFUSED UNLESS IT SAYS WHAT IT
                             # DOES ABOUT THE PARK (thread 058, (B.3)): the refusal names the park in full —
                             # what it waits for, since when, whose turn it was declared on, and the question
