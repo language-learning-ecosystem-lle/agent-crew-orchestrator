@@ -4,7 +4,7 @@ description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:50:37.396Z
+  modified: 2026-09-03T01:56:39.358Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -204,3 +204,16 @@ atomic, clean failure at the fetch-before-write step (`github-crew` DNS error, e
 entries already established it only leaves a mess. Full report text was surfaced via direct
 session reply per this file's established pattern, not duplicated here. No new diagnosis needed;
 this confirms the gap is still exactly as described, waiting on `john`.
+
+**2026-09-03T01:56Z, thread `079-devops-enablement-acceptance` (6th occurrence, 11th overall) —
+same checklist, same result, no drift.** Independently re-ran the full 5-point acceptance (id,
+three `capability run --no-fetch` calls, four refusal probes, `capabilities.log` read, three
+around-the-channel OS probes) before finding this file, then found it and confirmed rather than
+re-diagnosed. New fact this run: `capabilities.log` holds exactly one line — a **FAILED**
+`repo-refresh` from thread `070` at `2026-09-02T22:50:33Z` (`git pull --ff-only` exited 1 at step
+1 of 2), not a success — so `070`'s live-checkout mutation has still not landed, and this run
+correctly left the checkout untouched (its own `repo-refresh` probe was without `--write`).
+`new-message --write` (both with and without `--no-fetch`) failed identically at the
+fetch-before-write step, `git status --short` on the mail checkout clean afterward. Delivered the
+report via direct session reply, matching every prior occurrence. Nothing for a future run to
+re-check beyond a quick `ls ~/.ssh` — this is `john`'s item alone now.
