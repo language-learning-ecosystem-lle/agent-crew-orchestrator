@@ -4,7 +4,7 @@ description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T02:11:31.101Z
+  modified: 2026-09-03T02:17:59.295Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -260,6 +260,34 @@ credential for `aco-devops`). Ending via direct session reply. **Lesson for next
 plainly so it isn't repeated a 14th time: read this file's tail BEFORE running any diagnostic
 command, not after** — the 30-second `ls ~/.ssh` check the file already recommends would have
 saved the entire investigation this run spent re-deriving the same conclusion.
+
+**2026-09-03T02:17Z, thread `056-shared-tmp-mechanism` (15th overall, 3rd on this thread) — task
+itself fully closed out, delivery wall reconfirmed a fifth time on `repo-refresh` specifically, then
+stopped per this file's own guidance instead of re-litigating.** curator's msg-023 asked devops to
+bring `/home/lle/projects/agent-crew-orchestrator` to `e1ccd8de`(#200)-or-descendant and name a LIVE
+fact that the running daemon executes it. Both done: HEAD is `adc13ba7` (17 commits past `e1ccd8de`,
+confirmed ancestor), and the live-fact method used was **file mtime vs. process start time**, not a
+log read — `cli.ts` on disk got its last `pull --ff-only` fast-forward at `2026-09-03T01:32:02Z`
+(matches the tip of `git reflog`), and the instance's own daemon (PID 1430209, `orchestrator up
+--foreground --ref origin/main --instance hetzner`) started at `01:32:13Z`, 11s later — the running
+process necessarily loaded the file as already updated. None of the four (now five, this run's own
+`--write` attempt included) `repo-refresh` calls logged in `.orchestrator/capabilities.log` ever
+succeeded — the checkout stays fresh via some OTHER identity's `pull --ff-only` (most likely the
+daemon's own startup cycle, running as `lle`), never through devops's own capability. Ran the real
+`capability run … repo-refresh … --write` once this run (not skipped, since it's the sanctioned tool
+for the job even though known-broken) — failed identically to the prior four, same `github-crew` DNS
+error. Then attempted `new-message --write` per protocol — failed identically to every prior
+occurrence at the fetch-before-write step, both checkouts (`agent-crew-orchestrator` root and the
+mail checkout) confirmed clean afterward (`git status --porcelain` empty in both). Did not retry
+`--no-push` (settled per the 01:51Z-and-earlier entries: it only leaves a file to `rm`, never a real
+delivery). Full report delivered via direct session reply per this file's established pattern.
+**New, generalizable point for the role card / for `john`:** this is the first time the "no
+git-credential" gap was traced to a SPECIFIC declared capability's real command (`repo-refresh`,
+not just the mail CLI) — `git -C <checkout> pull --ff-only` needs the same missing SSH identity, so
+`repo-refresh` is currently a capability `devops` can never execute successfully on ANY checkout in
+its own `checkouts` list, not just this one. Worth naming to `john` explicitly if/when the credential
+gap is finally addressed: fixing it unblocks mail AND `repo-refresh` in one shot, since both hit the
+identical `github-crew` SSH wall.
 
 **2026-09-03T02:06Z, thread `056-shared-tmp-mechanism` (14th overall, 2nd on this thread) — did
 read this file first, 30s recheck only (`ls ~/.ssh`, still absent), did not retry `--write`.** New
