@@ -32,3 +32,5 @@
 - [Голый `gh` в сессии не залогинен](bare-gh-in-a-session-has-no-login.md) — токен только из `secrets.aco.env` инстанса; для push — credential.helper, не токен в URL.
 - [Письмо себе — только `--expects none`](note-to-self-needs-expects-none.md) — заметка внутри такта с ходом на себе: `ack`/`answer` дверь отказывает как «состоянию без законного исхода».
 - [Класс упавшего круга — в артефакте прогона](failed-review-round-class-lives-in-the-artifact.md) — `verdict.md` не создан: причину даёт `claude-execution-output.json` (`api_error_status`/`terminal_reason`), не лог джобы; `gh run download` требует `-R`.
+- [Круг ревью читает СНИМОК почты](review-round-reads-a-snapshot-of-the-mail.md) — письмо, отправленное во время круга, для его вердикта не существует; время `ls` писем — в артефакте прогона.
+- [Нетронутое тело PR — само доказательство](unedited-pr-body-can-be-the-proof.md) — пустой таймлайн правок доказывает «было верно с создания»; правка «для ясности» это доказательство убивает.
