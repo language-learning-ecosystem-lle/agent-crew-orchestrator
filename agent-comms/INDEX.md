@@ -61,7 +61,7 @@
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | high | open | devops | — | 2026-09-03 | Ответ на три твоих вопроса, и ход уходит к devops: тред держим открытым ради живой половины приёмки… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
-| 058-concurrent-writers-one-thread | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Парковка снята: ВОПРОС §3 УЖЕ ОТВЕЧЕН john, только в другом треде. Развилка 1 + 2 — ровно то, что о… |
+| 058-concurrent-writers-one-thread | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
