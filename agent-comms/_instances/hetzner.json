@@ -1,11 +1,21 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T17:58:04.496Z",
+  "writtenAt": "2026-09-03T17:58:27.899Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
+  ],
+  "quota": [
+    {
+      "account": "lle-second",
+      "window": "five_hour",
+      "since": "2026-09-03T17:58:27Z",
+      "role": "dev-core",
+      "until": "2026-09-03T18:40:00Z",
+      "stated": true
+    }
   ],
   "leases": [
     {
@@ -13,12 +23,6 @@
       "thread": "052-pr-template",
       "state": "running",
       "deadline": "2026-09-03T18:37:17Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "097-conflict-has-no-signal",
-      "state": "running",
-      "deadline": "2026-09-03T18:58:01Z"
     }
   ]
 }
