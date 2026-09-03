@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type CommandFlags, parseUsage, strayArguments } from "./argv.js";
+import { type CommandFlags, parseUsage, strayArguments, usageFor } from "./argv.js";
 
 const USAGE = `
 usage:
@@ -138,5 +138,43 @@ describe("strayArguments", () => {
     const problems = strayArguments(["--clear-force", "--forgeround"], up);
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain("--forgeround");
+  });
+});
+
+/**
+ * THE SAME TEXT, CUT FOR A REFUSAL (thread 087). The property that matters is not
+ * "some lines came back" but the two halves of the refusal it feeds: everything the
+ * named command spells (both of its forms, and the prose hanging under them), and
+ * NOTHING of the command next to it — the neighbour's line is exactly what made the
+ * old refusal useless.
+ */
+describe("usageFor", () => {
+  it("returns every line of the named command, and its comments", () => {
+    const cut = usageFor(USAGE, ["orchestrator hold"]);
+
+    expect(cut).toContain("--mode take");
+    expect(cut).toContain("orchestrator hold   <role>");
+    expect(cut).not.toContain("orchestrator run");
+    expect(cut).not.toContain("orchestrator daemon");
+    // The comment under `daemon` belongs to `daemon`: a block ends where its lines do.
+    expect(cut).not.toContain("a comment line that is not a command");
+  });
+
+  it("keeps a comment with the line it hangs under", () => {
+    const cut = usageFor(USAGE, ["orchestrator daemon"]);
+
+    expect(cut).toContain("orchestrator daemon");
+    expect(cut).toContain("a comment line that is not a command");
+  });
+
+  it("takes several commands in the order the block spells them", () => {
+    const cut = usageFor(USAGE, ["zones check", "orchestrator hold"]);
+
+    expect(cut.indexOf("orchestrator hold")).toBeLessThan(cut.indexOf("zones check"));
+    expect(cut.split("\n")).toHaveLength(3);
+  });
+
+  it("names nothing for a command the block does not describe", () => {
+    expect(usageFor(USAGE, ["orchestrator nowhere"])).toBe("");
   });
 });

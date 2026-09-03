@@ -87,6 +87,60 @@ const isSeparator = (token: string): boolean => token === "|";
 const isComment = (token: string): boolean => token.startsWith("#");
 
 /**
+ * WHICH COMMAND A USAGE LINE DESCRIBES — the leading bare words of it, up to the first
+ * flag or placeholder (`agent-protocol orchestrator hold <role> …` → `orchestrator
+ * hold`). One function, because two readers now ask the same question of the same text:
+ * the flag table below and `usageFor`, which cuts a command's own lines out for a
+ * refusal. A line that names no command at all (the header, a blank, a comment) is
+ * `undefined`.
+ */
+const commandKey = (line: string): string | undefined => {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("agent-protocol ")) return undefined;
+  const words: string[] = [];
+  for (const token of trimmed.split(/\s+/).slice(1).map(strip).filter(Boolean)) {
+    if (isFlag(token) || isPlaceholder(token) || isComment(token) || isSeparator(token)) break;
+    words.push(token);
+  }
+  return words.length === 0 ? undefined : words.join(" ");
+};
+
+/**
+ * THE LINES OF ONE COMMAND, cut out of the block the whole package is described by
+ * (thread 087).
+ *
+ * The defect that asked for it: `orchestrator hold --role devops` — the strict form
+ * typed without `--mode` — refused with `--mode is not set` and then printed the ENTIRE
+ * usage text, whose first two entries are `config check` and `config set`. The command
+ * has two forms, the short one is what the hand was reaching for, and the refusal named
+ * neither: it answered a question about `hold` with a page about everything else, and
+ * john read it as a broken command (thread 047, 2026-09-02).
+ *
+ * It is a CUT of the same string and never a second copy of it — the reason `parseUsage`
+ * reads the help text instead of a table beside it holds here word for word: a refusal
+ * that spells the form by hand is the first thing to fall behind the code, and a refusal
+ * that offers a form the CLI no longer takes is worse than a silent one.
+ *
+ * A command's block is its lines PLUS the `#` comments hanging under them — that is
+ * where the prose lives ("the short forms ACT (no --write)"), and it is the half a
+ * refusal most needs to carry. Several lines for the same command (both `hold` forms,
+ * strict and short) come back in the order the block spells them.
+ */
+export const usageFor = (usage: string, commands: readonly string[]): string => {
+  const wanted = new Set(commands);
+  const lines: string[] = [];
+  let inside = false;
+  for (const line of usage.split("\n")) {
+    const key = commandKey(line);
+    if (key !== undefined) inside = wanted.has(key);
+    // A comment continues whatever line it hangs under; anything else ends the block.
+    else if (!line.trim().startsWith("#")) inside = false;
+    if (inside) lines.push(line);
+  }
+  return lines.join("\n");
+};
+
+/**
  * The usage block, read as data: command name → what it accepts. Several lines for
  * the same command (`hold --mode take` / `hold --mode release`) are one entry — the
  * union of what they spell.
@@ -105,18 +159,9 @@ export const parseUsage = (usage: string): Map<string, CommandFlags> => {
       (token) => !isSeparator(token),
     );
 
-    const words: string[] = [];
-    let at = 0;
-    while (
-      at < tokens.length &&
-      !isFlag(tokens[at] as string) &&
-      !isPlaceholder(tokens[at] as string)
-    ) {
-      words.push(tokens[at] as string);
-      at += 1;
-    }
-    if (words.length === 0) continue;
-    const key = words.join(" ");
+    const key = commandKey(line);
+    if (key === undefined) continue;
+    let at = key.split(" ").length;
     const entry = table.get(key) ?? {
       value: new Set<string>(),
       boolean: new Set<string>(),
