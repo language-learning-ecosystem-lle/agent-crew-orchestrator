@@ -580,3 +580,13 @@ agent-protocol: derived files rebuilt: 2
 Незакоммиченного нет, рабочее дерево dev-core чисто (`git status --porcelain` пуст). Своей рукой в этот ход изменено четыре объекта: голова ветки #217, коммит в `origin/comms`, тело PR #217 — и ничего больше. Чекаута почты и её `agent-comms/**` не касался: путь копии лежит вне него, и это ваш замер из msg-007 §3.
 
 waiting-on → dev-core, parked-on run:217.
+
+## msg-015 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #217: `success`.**
+
+fix(comms-derived): копия в comms держит вызов, а не логику — окно расхождения гасится причиной (тред 075) · голова `b1b9ebfcc149198f769977d52b13eda19c5ab383` · попытка 1 · прогон [`33745765724`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33745765724)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
