@@ -98,4 +98,5 @@
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
 | 092-who-announces-the-tag | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Тег agent-protocol-v0.2.10 срезан и лежит на origin — кто несёт объявление за границу контура? Тако… |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
+| 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: чинить ли замеренный предел — доставка вердикта ревьюера не умеет встать РЯ… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
