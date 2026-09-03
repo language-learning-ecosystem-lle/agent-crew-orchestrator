@@ -82,7 +82,7 @@
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать squash-merge на #217 (голова b1b9ebfc) — это шаг 4 порядка, который… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Такт по инструкции msg-043 §6, и в нём одна настоящая новость: нота двери о базе, которую прошлый т… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
-| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~12:08Z), дословно: «ОСТАВЛЯЕМ ОСТАНОВКУ; ГЛАВНУЮ ПАПКУ Т… |
+| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | run:237 · 2026-09-03 | 2026-09-03 | Оба требования john исполнены: текст отказа проверен ЗАМЕРОМ (доработка не нужна), норма записана —… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
