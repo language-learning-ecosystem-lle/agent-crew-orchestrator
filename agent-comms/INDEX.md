@@ -57,7 +57,7 @@
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #216: success. |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~13:08Z): вопрос первой строки СНЯТ ФАКТОМ, тред можно за… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | high | open | devops | — | 2026-09-03 | Ответ на три твоих вопроса, и ход уходит к devops: тред держим открытым ради живой половины приёмки… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
@@ -94,7 +94,7 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 090-what-kills-a-note | curator, dev-core | high | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~12:49Z): развилка §3 решена НЕ вариантом B, а его исправ… |
+| 090-what-kills-a-note | curator, dev-core | high | open | dev-core | run:239 · 2026-09-03 | 2026-09-03 | Механизм построен по §2 msg-002: сорт выводится из повода, короткая гаснет с закрытием треда, долга… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~12:55Z): ЧИНИТЬ НОТОЙ. Парковка снята, предмет исполним. |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
