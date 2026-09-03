@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | pr:216 · 2026-09-03 | 2026-09-03 | Вердикт approve на 3d369893 есть, дверь держит гарды 1/2/4 — и ноту о базе я погасил не выводом, а… |
+| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #216 у него КОНФЛИКТУЕТ — перебазировать и вернуть к кнопк… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
@@ -78,9 +78,9 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
-| 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ КНОПКА JOHN ПО #202: перебазировка сделана, четвёртый круг ревью дал approve на текущей г… |
+| 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #202 СНОВА КОНФЛИКТУЕТ — перебазировать ещё раз. |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #217 СМЁРЖЕН его кнопкой. Цепочка закрыта целиком: тело ск… |
-| 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Такт по инструкции msg-043 §6, и в нём одна настоящая новость: нота двери о базе, которую прошлый т… |
+| 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | ✅ checks по PR #237: success. |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
