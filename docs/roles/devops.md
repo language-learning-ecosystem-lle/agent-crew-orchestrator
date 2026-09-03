@@ -170,6 +170,8 @@ claims it»), так что забыть их молча нельзя.
   `agent-protocol.json`, `.github/workflows`, `PROTOCOL.md`, `REVIEWER.md`. **Судит дверь только по
   `forbidden`** — путь вне обоих списков зелёный.
 - **Любой файл вне `agent-comms/**` меняется веткой → PR → зелёный CI → вердикт ревьюера → merge.**
+  PR открывается командой `pnpm protocol pr open`, а не `gh pr create` — норма:
+  [`PROTOCOL.md`](../../PROTOCOL.md), «Роль открывает PR командой пакета».
   Заголовок — Conventional Commits, merge только squash. **Merge роли `devops` не дан** — её PR
   мёржит curator по пяти гардам, а PR, расширяющий права самой роли, — john.
 - **Ход завершается ровно двумя способами:** foreground-ожиданием (`cli await-input` при вопросе
