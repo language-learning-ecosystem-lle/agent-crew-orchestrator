@@ -80,6 +80,19 @@ export type RunTmpHandover = {
   readonly handed: string;
   /** The alias made for it, if one was needed — the caller removes it when the run ends. */
   readonly alias?: string;
+  /**
+   * WHETHER THE VALUE HANDED CAN CARRY A SOCKET AT ALL — `true` for both ordinary outcomes
+   * (a short directory passed through, a long one aliased), `false` only when the alias
+   * could not be made and the run goes out under a `TMPDIR` its own tools will die in.
+   *
+   * IT IS A FIELD AND NOT A RE-MEASUREMENT BY THE CALLER, because the caller would have to
+   * know the budget to ask, and a door that each caller re-derives is a door that one
+   * caller forgets. The consumer contour's field case (thread `056`, curator
+   * 2026-09-03) is the whole argument: a session whose `TMPDIR` is over the limit dies on
+   * the FIRST command its own prompt names, with `listen EINVAL` and a path — the one
+   * failure whose cause is known here and nowhere downstream.
+   */
+  readonly fits: boolean;
   /** What the supervisor's log should say. Empty for the ordinary short-path case. */
   readonly lines: readonly string[];
 };
@@ -93,9 +106,18 @@ export type RunTmpHandover = {
  * with an error naming a path and not a cause. So the fallback is the real directory AND a
  * line that says the number, the budget and what will break — the run continues, and the log
  * answers the question the session cannot.
+ *
+ * WHERE THAT LINE HAS TO BE HEARD is the caller's half of the door, and {@link
+ * RunTmpHandover.fits} is what tells it apart: the substitution is the run's own business
+ * and belongs in the run's own log, while a `TMPDIR` that cannot carry a socket is a
+ * PREDICTION THAT THE RUN IS ABOUT TO DIE, and the run's log is the one place nobody reads
+ * when it does — the session's first command fails, the role sees a raw stack, and the
+ * operator sees a burned tick. Measured in the field on a consumer contour (thread `056`,
+ * curator 2026-09-03): two roles of one tick, `TMPDIR` of 121 and 124 characters, both dead
+ * on the mail command their prompt named first, and the diagnosis cost each of them a turn.
  */
 export const handOverRunTmp = (realDir: string): RunTmpHandover => {
-  if (runTmpFitsSocketBudget(realDir)) return { handed: realDir, lines: [] };
+  if (runTmpFitsSocketBudget(realDir)) return { handed: realDir, fits: true, lines: [] };
   const alias = runTmpAliasPath(realDir);
   const tooLong = `the run's own TMPDIR is ${realDir.length} characters (${realDir}), over the ${RUN_TMPDIR_MAX} a unix socket under it can afford`;
   try {
@@ -104,6 +126,7 @@ export const handOverRunTmp = (realDir: string): RunTmpHandover => {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
       return {
         handed: realDir,
+        fits: false,
         lines: [
           `${tooLong}, and the short alias ${alias} could not be made: ${(error as Error).message} — a tool opening a socket in TMPDIR will fail with 'listen EINVAL'`,
         ],
@@ -119,6 +142,7 @@ export const handOverRunTmp = (realDir: string): RunTmpHandover => {
     } catch (readError) {
       return {
         handed: realDir,
+        fits: false,
         lines: [
           `${tooLong}, and ${alias} is in the way but is not a symlink: ${(readError as Error).message} — a tool opening a socket in TMPDIR will fail with 'listen EINVAL'`,
         ],
@@ -127,6 +151,7 @@ export const handOverRunTmp = (realDir: string): RunTmpHandover => {
     if (target !== realDir) {
       return {
         handed: realDir,
+        fits: false,
         lines: [
           `${tooLong}, and the short alias ${alias} already points at ${target} — a tool opening a socket in TMPDIR will fail with 'listen EINVAL'`,
         ],
@@ -136,6 +161,7 @@ export const handOverRunTmp = (realDir: string): RunTmpHandover => {
   return {
     handed: alias,
     alias,
+    fits: true,
     lines: [`${tooLong}, so the session is handed ${alias}, a symlink to it`],
   };
 };
