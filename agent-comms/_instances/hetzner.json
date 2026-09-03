@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T22:02:56.978Z",
+  "writtenAt": "2026-09-03T22:06:24.727Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "098-box-red-process-tests",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T22:36:06Z"
     },
     {
