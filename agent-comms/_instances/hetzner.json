@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T00:48:00.598Z",
+  "writtenAt": "2026-09-03T00:48:13.720Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "116-role-memory-cost",
       "state": "running",
       "deadline": "2026-09-03T01:47:57Z"
-    },
-    {
-      "role": "devops",
-      "thread": "047-devops-role",
-      "state": "running",
-      "deadline": "2026-09-03T01:07:11Z"
     },
     {
       "role": "curator",
