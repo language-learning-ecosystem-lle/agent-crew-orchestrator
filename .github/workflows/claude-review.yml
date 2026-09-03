@@ -806,12 +806,24 @@ jobs:
           source "${GITHUB_WORKSPACE}/.code/.github/scripts/comms-push.sh"
           source "${GITHUB_WORKSPACE}/.code/.github/scripts/review-delivery.sh"
 
-          SUMMARY="$(delivery_summary "$(delivery_state thread)" "$(delivery_state comment)" "$(delivery_state status)")"
+          THREAD_STATE="$(delivery_state thread)"
+          COMMENT_STATE="$(delivery_state comment)"
+          STATUS_STATE="$(delivery_state status)"
+          VERDICT_PRESENT=0; [ -f verdict.md ] && VERDICT_PRESENT=1
+
+          SUMMARY="$(delivery_summary "$THREAD_STATE" "$COMMENT_STATE" "$STATUS_STATE")"
           echo "Доставки вердикта: ${SUMMARY}"
+          # КОД ВЫХОДА ЭТОГО ШАГА — ПРЕДИКАТОМ ИЗ СКРИПТА, а не безусловной единицей в
+          # хвосте: правило «краснеть или нет» гонялось бы иначе только живым кругом
+          # ревью, и ровно так из него выпал самопропуск (замер curator, тред 088).
+          # Решается ЗДЕСЬ, до доставок, потому что доставки его не меняют: их
+          # собственный отказ красит шаг сам, ниже.
+          FINAL_CODE="$(delivery_exit_code "${SELF_SKIP:-0}" "$VERDICT_PRESENT" \
+            "$THREAD_STATE" "$COMMENT_STATE" "$STATUS_STATE")"
+
           # Всё доехало — говорить нечего, и молчание здесь честное.
-          if [ "$(delivery_state thread)" = "ok" ] && [ "$(delivery_state comment)" = "ok" ] \
-             && [ "$(delivery_state status)" = "ok" ]; then
-            exit 0
+          if [ "$THREAD_STATE" = "ok" ] && [ "$COMMENT_STATE" = "ok" ] && [ "$STATUS_STATE" = "ok" ]; then
+            exit "$FINAL_CODE"
           fi
 
           PR_BODY=$(gh pr view "$PR" --json body -q .body)
@@ -883,9 +895,15 @@ jobs:
           # shellcheck disable=SC2086 # WAIT_ARGS — набор аргументов, не строка
           deliver_to_thread "$THREAD" reviewer-pr "$BODY_TMP" "$COMMIT_MSG" "$PR" ${WAIT_ARGS} \
             || { echo "::error::об исходе доставок в тред ${THREAD} НЕ сообщено (коммент в PR доставлен)."; exit 1; }
-          # Шаг ГРОМКИЙ по построению: доехало не всё, и зелёная джоба здесь читалась бы
-          # как успешный круг.
-          exit 1
+          # Шаг ГРОМКИЙ по построению — доехало не всё, и зелёная джоба здесь читалась бы
+          # как успешный круг, — КРОМЕ одного класса: самопропуска действия, где сообщение
+          # только что уехало обоими каналами, ревью не состоялось по сработавшему гарду, и
+          # красный поднял бы смотрителя на пустое место (тред 046). Судит это
+          # `delivery_exit_code`, и его четыре случая покрыты юнитом.
+          if [ "$FINAL_CODE" = "0" ]; then
+            echo "Самопропуск действия: сообщение о несостоявшемся ревью доставлено комментом и письмом, поломки нет — джоба остаётся зелёной (тред 046)."
+          fi
+          exit "$FINAL_CODE"
 
       # ТРАНСКРИПТ СЕССИИ РЕВЬЮЕРА — АРТЕФАКТОМ (тред 016, 2026-07-29). Прогон
       # ревьюера сейчас НЕ ОСТАВЛЯЕТ О СЕБЕ НИЧЕГО: в логе джобы девять минут работы

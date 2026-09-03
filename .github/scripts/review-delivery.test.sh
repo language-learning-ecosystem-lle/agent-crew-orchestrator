@@ -130,6 +130,66 @@ check "и флага парка из него не строится" "" "$(park_
 check "предупреждение уехало в stderr, то есть В ЛОГ прогона" "да" \
   "$(grep -q '::warning::сухой прогон new-message отказал не по парку' "$PROBE_ERR" && echo да || echo нет)"
 
+# --- 8. Код выхода итогового шага: краснеть или нет ---------------------------
+
+# ЗАМЕР curator (тред 088, чтение головы eef94e71): переезд доставки в шаги сделал
+# итоговый шаг красным на САМОПРОПУСКЕ — класс, который тред 046 объявил зелёным и
+# отсёк шагом статуса. Красный здесь = звонок смотрителя (`notifier-watch.yml` слушает
+# `Claude PR Review` на `failure`) и поднятая пара `dev-core`, которой чинить нечего.
+# Правило гонялось бы иначе только живым кругом ревью — отсюда предикат и эти четыре
+# случая.
+check "самопропуск без вердикта — ЗЕЛЁНАЯ джоба (тред 046)" \
+  "0" "$(delivery_exit_code 1 0 none none none)"
+check "«вердикта нет» БЕЗ самопропуска (H2, обрыв, отказ модели) — красная" \
+  "1" "$(delivery_exit_code 0 0 none none none)"
+check "вердикт есть, доставка неполна — красная (требование B не ослаблено)" \
+  "1" "$(delivery_exit_code 0 1 ok ok failed)"
+check "всё доехало — зелёная (тот самый ранний выход шага)" \
+  "0" "$(delivery_exit_code 0 1 ok ok ok)"
+# ГРАНИЦА ИСКЛЮЧЕНИЯ: самопропуск оправдывает молчание ревьюера, но не провал доставки
+# самого сообщения о нём, и вердикта на самопропуске не бывает вовсе — если он всё же
+# есть, класс уже другой и судится общим правилом.
+check "самопропуск, но вердикт есть и доставка неполна — красная" \
+  "1" "$(delivery_exit_code 1 1 ok ok failed)"
+check "самопропуск и всё доехало — зелёная" \
+  "0" "$(delivery_exit_code 1 0 ok ok ok)"
+
+# --- 9. Переезд не потерял MAIL_REMOTE ----------------------------------------
+
+# ЗАМЕР (сплошное сличение базы со шляпой, тред 088): базовый шаг присваивал
+# `MAIL_REMOTE=` своей строкой, переезд забрал в функцию чекаут, а присваивание не
+# забрал — переменная не задавалась нигде, и `${MAIL_REMOTE:?}` убил бы шаг ДО первой
+# доставки в тред. Интеграционный прогон это пропустил: он зовёт дверь напрямую, минуя
+# `deliver_to_thread`. Теперь функция самодостаточна, и вот на чём это держится.
+check "url почты собирается из токена и репозитория" \
+  "https://x-access-token:t0ken@github.com/lle/repo" \
+  "$(mail_remote_url t0ken https://github.com lle/repo)"
+check "схема сервера не задваивается" \
+  "https://x-access-token:t0ken@ghe.local/lle/repo" \
+  "$(mail_remote_url t0ken https://ghe.local lle/repo)"
+# Чекаут в каталоге, где `.comms-fallback` уже есть: сети не будет (ранний выход), а
+# MAIL_REMOTE обязан быть выставлен ДО него — иначе `deliver_to_thread` возьмёт пустую
+# строку и пойдёт фетчить в никуда.
+(
+  cd "$REVIEW_DELIVERY_DIR" && mkdir -p .comms-fallback
+  unset MAIL_REMOTE
+  GH_TOKEN=t0ken GITHUB_SERVER_URL=https://github.com GITHUB_REPOSITORY=lle/repo review_mail_checkout
+  printf '%s' "$MAIL_REMOTE" > remote.txt
+)
+check "MAIL_REMOTE выставлен шагом, а не yaml — и ДО раннего выхода" \
+  "https://x-access-token:t0ken@github.com/lle/repo" \
+  "$(cat "$REVIEW_DELIVERY_DIR/remote.txt")"
+# Названный снаружи не подменяется: интеграционный прогон и локальная отладка ставят
+# свой (файловый) remote, и функция обязана его уважать.
+(
+  cd "$REVIEW_DELIVERY_DIR"
+  MAIL_REMOTE=/tmp/своя-почта
+  GH_TOKEN=t0ken GITHUB_REPOSITORY=lle/repo review_mail_checkout
+  printf '%s' "$MAIL_REMOTE" > remote.txt
+)
+check "названный снаружи MAIL_REMOTE не подменяется" "/tmp/своя-почта" \
+  "$(cat "$REVIEW_DELIVERY_DIR/remote.txt")"
+
 if [ "$FAILED" = "0" ]; then
   echo "доставка вердикта: все проверки прошли"
 else
