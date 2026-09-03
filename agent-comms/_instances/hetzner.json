@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T10:18:43.798Z",
+  "writtenAt": "2026-09-03T10:20:54.880Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "074-parallelism-and-domains",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T11:18:40Z"
     }
   ]
