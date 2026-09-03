@@ -5,8 +5,8 @@
  * user separation, because it is the only one of the five that works until that hour).
  *
  * THE FACT THIS ANSWERS. Both measured breaches of the boundary were found by a HUMAN
- * reading a foreign repository afterwards — #453/#454 (a PR opened in the neighbour's
- * house) and #181 (a role of the consumer contour committing and pushing into THIS
+ * reading a foreign repository afterwards — PRs opened by a role in the neighbour's
+ * house, and #181 (a role of the consumer contour committing and pushing into THIS
  * contour's checkout with this contour's credentials). Measure 1 is a door in the
  * package's own commands and judges the tree a command was pointed at; it cannot see a
  * plain `git -C /somewhere/else commit`, because that command never enters this package.
