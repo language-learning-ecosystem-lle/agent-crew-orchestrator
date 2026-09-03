@@ -79,7 +79,7 @@
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ КНОПКА JOHN ПО #202: перебазировка сделана, четвёртый круг ревью дал approve на текущей г… |
-| 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | dev-core | — | 2026-09-03 | PR #217 (fix(comms-derived): копия в comms держит вызов, а не логику — окно расхождения гасится при… |
+| 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #217 СМЁРЖЕН его кнопкой. Цепочка закрыта целиком: тело ск… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Такт по инструкции msg-043 §6, и в нём одна настоящая новость: нота двери о базе, которую прошлый т… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | ✅ checks по PR #237: success. |
@@ -96,7 +96,7 @@
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
-| 092-who-announces-the-tag | curator, dev-core, john | high | open | curator | john · 2026-09-03 | 2026-09-03 | Звонок john по этой парковке ПРОЗВЕНЕЛ — замерено, а не предположено. Второй парковки не заводить:… |
+| 092-who-announces-the-tag | curator, dev-core, john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #235 СМЁРЖЕН его кнопкой. Норма (б) записана, фикция «стык… |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: чинить ли замеренный предел — доставка вердикта ревьюера не умеет встать РЯ… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
