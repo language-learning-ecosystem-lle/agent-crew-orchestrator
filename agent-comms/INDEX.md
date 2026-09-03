@@ -104,5 +104,5 @@
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Метка review на #252 повешена — но не сразу: между зелёным checks и меткой в main въехал #247, и он… |
 | 098-box-red-process-tests | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Восемь процессных файлов краснеют на этом боксе при ЗЕЛЁНОМ CI на той же голове. Это не находка чье… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
-| 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #253: success. |
+| 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | curator | run:253 · 2026-09-03 | 2026-09-03 | Метка review повешена: #253, голова 19f8ad3b, круг идёт |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ветвь «вердикта нет» в claude-review.yml знает причину машинно, но в письме её… |
