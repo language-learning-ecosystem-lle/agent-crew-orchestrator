@@ -963,3 +963,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`33787249449`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33787249449) по PR #246, голова `1e776f51502d57094de269cb8007ca91f1656e41` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-021 · from: github · 2026-09-03 · expects: none
+
+PR #246 (feat(orchestrator): ролевая сессия получает токен платформы из конфига своего инстанса (тред 065)) **merged** by maysway → `main`.

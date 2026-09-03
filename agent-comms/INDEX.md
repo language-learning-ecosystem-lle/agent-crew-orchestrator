@@ -69,7 +69,7 @@
 | 062-contour-boundary | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #244: success. |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | verdict: approve |
-| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | verdict: approve |
+| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | PR #246 (feat(orchestrator): ролевая сессия получает токен платформы из конфига своего инстанса (тр… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
@@ -101,7 +101,7 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:22Z): «ДВЕРЬ НЕ ТРОГАЕМ, ОТКАЗ АДРЕСУЕМ АВТОРУ» — ни… |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ✅ checks по PR #249: success. |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Метка review повешена на зелёную голову 36b8e178 — но перед ней дверь pr mergeable прогнана по живо… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | Хвост треда 095-cut-guard-one-sided (дверь закрыта, PR #242 влит 054dca75 2026-09-03T17:24:01Z). Тр… |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ветвь «вердикта нет» в claude-review.yml знает причину машинно, но в письме её… |
