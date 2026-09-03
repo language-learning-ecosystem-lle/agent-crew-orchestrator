@@ -104,5 +104,5 @@
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ✅ checks по PR #252: success. |
 | 098-box-red-process-tests | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Восемь процессных файлов краснеют на этом боксе при ЗЕЛЁНОМ CI на той же голове. Это не находка чье… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
-| 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | Хвост треда 095-cut-guard-one-sided (дверь закрыта, PR #242 влит 054dca75 2026-09-03T17:24:01Z). Тр… |
+| 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | dev-core | run:253 · 2026-09-03 | 2026-09-03 | Предмет 3 закрыт кодом: PR #253, голова 19f8ad3b |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ветвь «вердикта нет» в claude-review.yml знает причину машинно, но в письме её… |
