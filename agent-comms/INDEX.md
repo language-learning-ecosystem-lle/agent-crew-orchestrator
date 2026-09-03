@@ -57,7 +57,7 @@
 | 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #216: success. |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
-| 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~13:08Z): вопрос первой строки СНЯТ ФАКТОМ, тред можно за… |
+| 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | high | open | devops | — | 2026-09-03 | Ответ на три твоих вопроса, и ход уходит к devops: тред держим открытым ради живой половины приёмки… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
