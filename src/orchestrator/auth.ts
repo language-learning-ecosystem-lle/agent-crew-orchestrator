@@ -145,6 +145,29 @@ export const AUTH_SHELF_MINUTES = 10;
 export type AuthShelf = {
   /** Whose credentials were refused — the id, or {@link BOX_ACCOUNT} for the box's own. */
   readonly account: string;
+  /**
+   * WHOM THE SHELF ACTUALLY STANDS DOWN (thread `084-account-shelf-vs-fs-refusal`) — the
+   * field that stops one badly-set-up role from switching the account off for everybody.
+   *
+   * `role`: exactly ONE role has been refused on this account, so all this shelf knows is
+   * that ITS pairs cannot come up. Nothing here says the credentials are dead — a role
+   * that cannot READ the account directory (a `600 lle` directory and a session raised as
+   * `aco-devops`) is handed the vendor's `Not logged in` word for word, and by
+   * {@link AUTH_REFUSAL} that is the same string a dead token prints. The circuit cannot
+   * tell them apart from the string; it CAN tell them apart from who is failing.
+   *
+   * `account`: TWO OR MORE distinct roles have been refused inside the same run of deaths.
+   * Two different roles, two different workspaces, two different system users, one
+   * account, the same refusal — the fact they share is the credentials, and the shelf is
+   * the account's exactly as it was before this field existed.
+   */
+  readonly scope: AuthShelfScope;
+  /**
+   * The roles refused inside this run of deaths, in the order they first appeared. It is
+   * the evidence behind {@link scope} and it is what the refusal reads out: an operator
+   * sent to repair "a role" without its name repairs nothing.
+   */
+  readonly roles: readonly string[];
   /** When the next launch is allowed — UTC ISO to the second. */
   readonly until: string;
   /** The stamp of the LAST refusal seen. */
@@ -158,6 +181,25 @@ export type AuthShelf = {
    */
   readonly deaths: number;
 };
+
+/**
+ * WHOM A SHELF STANDS DOWN — see {@link AuthShelf.scope}. Two values and no third: the
+ * question this answers is "is the evidence about the CREDENTIALS or about ONE ROLE", and
+ * a middle grade would be a shelf whose reader cannot tell which repair to reach for.
+ */
+export type AuthShelfScope = "role" | "account";
+
+/**
+ * HOW MANY DISTINCT ROLES MAKE THE EVIDENCE THE ACCOUNT'S. Two, and the argument is the
+ * one {@link AUTH_ALARM_DEATHS} makes about time: one role failing is a fact about that
+ * role — its directory, its system user, its workspace — and the credentials are the only
+ * thing a SECOND role shares with it. The cost of the threshold is exactly one dead run
+ * per real outage (the second role is raised, dies in 0s and spends nothing, by the same
+ * arithmetic that makes the next launch the probe), and the thing it buys is that the
+ * field case of 2026-09-02 — 29 deaths of ONE role, 21 launches of a role that never
+ * failed refused behind them — cannot happen again.
+ */
+export const AUTH_ACCOUNT_ROLES = 2;
 
 /** The journal shape this fold reads — structural, so nothing here imports the daemon. */
 type AuthEvent = {
@@ -181,15 +223,22 @@ export const AUTH_RELEASE_REASON = "auth-failed";
  * leaves no event in this journal to wait for.
  */
 export const openAuthShelves = (events: readonly AuthEvent[], now: Date): readonly AuthShelf[] => {
-  const runs = new Map<string, { ts: string; role: string; deaths: number }>();
+  const runs = new Map<string, { ts: string; role: string; deaths: number; roles: string[] }>();
   for (const event of events) {
     if (event.kind !== "lease-released") continue;
     const account = event.account ?? BOX_ACCOUNT;
     if (event.reason === AUTH_RELEASE_REASON) {
+      const run = runs.get(account);
+      // THE ROLES ARE ACCUMULATED, NOT COUNTED — the same role dying twenty-nine times is
+      // one role's evidence twenty-nine times over, and it is `scope` that has to stay
+      // `role` throughout it. Insertion order is kept because the refusal reads the list
+      // out and "the first role to fail" is the one an operator looks at first.
+      const roles = run?.roles ?? [];
       runs.set(account, {
         ts: event.ts,
         role: event.role,
-        deaths: (runs.get(account)?.deaths ?? 0) + 1,
+        deaths: (run?.deaths ?? 0) + 1,
+        roles: roles.includes(event.role) ? roles : [...roles, event.role],
       });
       continue;
     }
@@ -205,7 +254,15 @@ export const openAuthShelves = (events: readonly AuthEvent[], now: Date): readon
       .toISOString()
       .slice(0, 19)}Z`;
     if (new Date(until).getTime() <= now.getTime()) continue;
-    shelves.push({ account, until, since: last.ts, role: last.role, deaths: last.deaths });
+    shelves.push({
+      account,
+      until,
+      since: last.ts,
+      role: last.role,
+      deaths: last.deaths,
+      scope: last.roles.length >= AUTH_ACCOUNT_ROLES ? "account" : "role",
+      roles: last.roles,
+    });
   }
   return shelves.sort((a, b) => (a.until < b.until ? -1 : a.until > b.until ? 1 : 0));
 };
@@ -214,11 +271,24 @@ export const openAuthShelves = (events: readonly AuthEvent[], now: Date): readon
  * THE SHELF THAT STANDS IN THE WAY OF ONE CANDIDATE — the planner's whole question, and
  * the counterpart of `shelvesAgainst`: a candidate is refused by the dead credentials of
  * the account it would spend, and by nothing else.
+ *
+ * AND IT IS NO LONGER THE ACCOUNT ALONE (thread `084-account-shelf-vs-fs-refusal`): a
+ * `role`-scoped shelf refuses the pairs of the roles that actually died and nobody else,
+ * because that is the whole of what it measured. `role` omitted means the caller is not
+ * asking on behalf of a candidate but LOOKING at the box — `status`, the frame, the
+ * operator's line — and there the shelf is shown whatever its scope, since a shelf hidden
+ * from the reader is the silence this module keeps being rewritten to remove.
  */
 export const authShelfAgainst = (
   shelves: readonly AuthShelf[],
   account: string | undefined,
-): AuthShelf | undefined => shelves.find((shelf) => shelf.account === (account ?? BOX_ACCOUNT));
+  role?: string,
+): AuthShelf | undefined =>
+  shelves.find(
+    (shelf) =>
+      shelf.account === (account ?? BOX_ACCOUNT) &&
+      (role === undefined || shelf.scope === "account" || shelf.roles.includes(role)),
+  );
 
 /**
  * Whether the refusal of THIS shelf has already been written to the journal — the same
@@ -249,6 +319,33 @@ export const AUTH_ALARM_DEATHS = 2;
 export const authAlarmDue = (shelf: AuthShelf): boolean => shelf.deaths >= AUTH_ALARM_DEATHS;
 
 /**
+ * WHAT THE OPERATOR IS BEING TOLD TO REPAIR — and it is the half of the 2026-09-02 defect
+ * that cost the most. The old line said `claude login` on every shelf; john ran it twice,
+ * on an account whose token was never dead, because the sentence named the only repair it
+ * knew. A line that sends a reader to the wrong layer is worse than no line: they come
+ * back believing the thing is fixed.
+ *
+ * So the two scopes say two different repairs, and each says why it is that one:
+ *
+ *  - `account`: the credentials, as before. Several roles, one account, the same refusal.
+ *  - `role`: the ROLE's access to the account, and the line refuses to mention `login` at
+ *    all — the neighbours of this account are being raised on the very credentials this
+ *    role is failing on, so a login would rewrite a file that is already good. What is
+ *    wrong is between the role and the directory: the system user it is raised as, the
+ *    permission bits of `accounts.<id>.configDir`, the traversal of its ancestors —
+ *    exactly the facts `accountReachRefusal` names when the supervisor can read them, and
+ *    exactly the ones it cannot when the directory is blind to it.
+ */
+const repairOf = (shelf: AuthShelf, kind: AgentKind): string =>
+  shelf.scope === "account"
+    ? `the token is dead and the circuit is standing still: \`${kind.loginHint()}\` on this box for ${describeAccount(shelf.account)}`
+    : `do NOT run \`${kind.loginHint()}\` for this — no other role of ${describeAccount(
+        shelf.account,
+      )} has been refused, so nothing here says the credentials are dead. Repair the ROLE's access to that account: the system user '${
+        shelf.roles[0] ?? shelf.role
+      }' is raised as, the permission bits and owner of its 'accounts.<id>.configDir', and the traversal of every directory above it (docs/box-setup.md §0.1a; 'orchestrator doctor' reads them out)`;
+
+/**
  * The shelf in a line — how long the box has been refused, and what happens next.
  *
  * THE REPAIR COMMAND IS THE KIND'S, NOT THIS FILE'S (thread 026, step 3, point 3).
@@ -259,8 +356,10 @@ export const authAlarmDue = (shelf: AuthShelf): boolean => shelf.deaths >= AUTH_
  * existed.
  */
 export const describeAuthShelf = (shelf: AuthShelf, kind: AgentKind = CLAUDE_CODE): string =>
-  `${describeAccount(shelf.account)} could not authenticate — ${shelf.deaths} run(s) in a row died on the vendor's credentials (last at ${shelf.since} on ${shelf.role}); nothing is raised until ${shelf.until}, when ONE pair is raised as the probe. If it dies too, the shelf is set again${
-    authAlarmDue(shelf)
-      ? ` — the token is dead and the circuit is standing still: \`${kind.loginHint()}\` on this box for ${describeAccount(shelf.account)}`
-      : ""
+  `${describeAccount(shelf.account)} could not authenticate — ${shelf.deaths} run(s) in a row died on the vendor's credentials (last at ${shelf.since} on ${shelf.role}); ${
+    shelf.scope === "account"
+      ? `the refusal reached ${shelf.roles.length} roles (${shelf.roles.join(", ")}), which is what makes it the ACCOUNT's: nothing spending it is raised`
+      : `ONLY role '${shelf.roles[0] ?? shelf.role}' has been refused, so this shelf stands DOWN THAT ROLE ALONE — every other role of ${describeAccount(shelf.account)} keeps being raised on the same credentials, and the vendor's 'not logged in' here says as much about a directory this role cannot read as about a dead token. Its pairs are not raised`
+  } until ${shelf.until}, when ONE pair is raised as the probe. If it dies too, the shelf is set again${
+    authAlarmDue(shelf) ? ` — ${repairOf(shelf, kind)}` : ""
   }.`;
