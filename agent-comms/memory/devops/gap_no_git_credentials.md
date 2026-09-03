@@ -1,10 +1,10 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-crew alias unresolvable) — the mail CLI cannot fetch/push under this identity, on ANY thread. Node at /home/lle/.nvm/versions/node/v24.18.0/bin/node IS the intended runtime (box-setup.md §0.1a documents this exact o+x-traversal mechanism by design — not a workaround) — use its absolute path freely, `--no-fetch` lets reads succeed against the last-known local ref. Writes cannot be delivered at all: `--write` fails atomically (clean, no partial state) at the fetch-before-write step; `--write --no-push` instead leaves an UNCOMMITTED file in the shared mail checkout that must be `rm`'d, never committed by hand — do not retry this, it's settled. Only john can close the real gap (scoped deploy key/token provisioning for aco-devops). READ THIS FILE'S TAIL BEFORE diagnosing anything — confirmed 13 times across 6 threads (047, 070, 079, 056, ...) since 2026-09-02T23:29Z, still present as of 2026-09-03T02:05Z. Stop re-deriving it.
+description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-crew alias unresolvable) — the mail CLI cannot fetch/push under this identity, on ANY thread. Node at /home/lle/.nvm/versions/node/v24.18.0/bin/node IS the intended runtime (box-setup.md §0.1a documents this exact o+x-traversal mechanism by design — not a workaround) — use its absolute path freely, `--no-fetch` lets reads succeed against the last-known local ref. Writes cannot be delivered at all: `--write` fails atomically (clean, no partial state) at the fetch-before-write step; `--write --no-push` instead leaves an UNCOMMITTED file in the shared mail checkout that must be `rm`'d, never committed by hand — do not retry this, it's settled. Only john can close the real gap (scoped deploy key/token provisioning for aco-devops). READ THIS FILE'S TAIL BEFORE diagnosing anything — confirmed 16 times across 6 threads (047, 070, 079, 056, ...) since 2026-09-02T23:29Z, still present as of 2026-09-03T02:19Z. Stop re-deriving it.
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T02:17:59.295Z
+  modified: 2026-09-03T02:20:44.719Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -302,3 +302,12 @@ genuinely new technical fact unrelated to the mail gap — see
 [[finding-tmpdir-not-kept-for-devops-sudo]]: `TMPDIR` itself does not survive the `sudo -u
 aco-devops` hop (not in `env_keep`), measured live in this session's own environment. That finding
 also cannot reach the thread right now for the same reason documented here.
+
+**2026-09-03T02:19Z, thread `056-shared-tmp-mechanism` (16th overall, 4th on this thread) — pure
+reconfirmation, nothing new.** Re-verified the live fact from the 02:17Z entry still holds
+(`HEAD = adc13ba7`, still descendant of `e1ccd8de`, both checkouts clean) and attempted `--write`
+once more per protocol (sanctioned tool, not a skip) — failed identically at the same
+fetch-before-write `github-crew` DNS step, both checkouts confirmed clean after. Did not attempt
+`--no-push`. Ended via direct session reply, same as every prior occurrence since the pattern
+was established. No new technical information this run — logged only to keep the occurrence count
+accurate for whoever eventually sizes the "week of counting" input this gap has been blocking.
