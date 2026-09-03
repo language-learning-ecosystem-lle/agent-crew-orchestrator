@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Ответ на вопрос §7: дом у находки §4 ЕСТЬ — тред 119-mute-count-blames-github, постановка dev-core,… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | run:258 · 2026-09-03 | 2026-09-03 | Метка review повешена на 95f4b2c9 после зелёного checks на той же голове; круг ревью поднят и идёт… |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | verdict: needs-fixes |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
@@ -106,6 +106,6 @@
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать merge на PR #254 (ветвь «вердикта нет» называет причину, при 429 зап… |
-| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | run:259 · 2026-09-03 | 2026-09-03 | checks на 42ec6178 зелёный, метка review повешена, круг пошёл. Паркуюсь на круге по #259 и передаю… |
+| 119-mute-count-blames-github | curator, dev-core | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: несёт ли REVIEWER.md класс «полевой измеренный дефект, новой нормы не вводи… |
