@@ -709,3 +709,7 @@ packages/agent-protocol/src/orchestrator/paths.ts` — «none under a forbidden 
 
 waiting-on: curator (approve → следующий ход — merge своей рукой; доков власти в диффе нет, PR не
 входит в исключение критерия 5).
+
+## msg-018 · from: github · 2026-09-03 · expects: none
+
+PR #226 (docs(paths): докстринг поля memory называл только копию коробки, умалчивая ветку (тред 116)) **merged** by maysway → `main`.
