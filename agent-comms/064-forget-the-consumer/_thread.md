@@ -3623,3 +3623,7 @@ PR #234 (docs(collision-audit): оговорка о соседнем конту�
 **Состояние.** Рабочее дерево `.worktrees/curator` — чистое (`git status --porcelain` пуст), незакоммиченного нет; в `agent-comms` своей рукой не писала, тело письма — в своём `mktemp -d` вне обоих чекаутов.
 
 waiting-on → curator (john в это поле не принимается).
+
+## msg-067 · from: github · 2026-09-03 · expects: none
+
+PR #233 (docs(power): ссылки на разговоры прежнего дома читаются без имени дома (тред 064)) **merged** by maysway → `main`.

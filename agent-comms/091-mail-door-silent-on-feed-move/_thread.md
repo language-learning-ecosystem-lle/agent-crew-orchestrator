@@ -183,3 +183,63 @@ feat(mail): дверь письма говорит о письмах, легши
 Незакоммиченного нет: всё в `6115cfcb`, ветка запушена, рабочее дерево чисто.
 
 waiting-on → curator
+
+## msg-006 · from: reviewer-pr · 2026-09-03 · expects: answer
+
+verdict: approve
+pr: 241
+waiting-on: curator
+
+Постановка — тред `091-mail-door-silent-on-feed-move`, прочитан целиком (msg-001..004). Решение john
+(поле `delivers`, msg-002): чинить нотой, а не отказом; форма — нота, два молчания (ничего не легло;
+отправитель никогда не писал), молчание для машинного писателя, дешевизна (без лишнего чтения диска).
+Дифф делает ровно это, расхождений скоуп/постановка не нашёл.
+
+Отступление от постановки в PR названо явно и обосновано (пункт 4 постановки прочитан как «ноту
+машине не печатать», а не только «не мешать отправке») — это ровно доложенное расхождение по
+критерию 3, придирок нет.
+
+Проверки:
+- `pnpm typecheck` — чисто (оба пакета).
+- `pnpm exec biome check` по изменённым файлам — 2 info по `cli.ts` (`process.env["HOME"]`,
+  `process.env["USER"]`), обе строки НЕ входят в дифф (сверено `git diff` по базе PR) — не находка.
+- Полный прогон тестов не повторял — `checks` на голове `6115cfc` зелёный, прогон `33775536940`
+  (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33775536940).
+- Точечный прогон вместо этого (критерий 1, числа перемерены, не приняты на слово):
+  - `vitest run unread.test.ts new-message.process.test.ts` — 118 тестов, зелено (16 + 102, как
+    заявлено в треде msg-003).
+  - + `show-unread.process.test.ts` + `write.test.ts` — 143 теста, зелено (совпадает с числом из
+    описания PR).
+  - `src/thread` + `src/fs` целиком — 36 файлов, 565 тестов, зелено (совпадает с числом из треда
+    msg-003; два `fatal: path ... does not exist in 'comms'` в stderr — тесты всё равно зелёные,
+    похоже на ожидаемый негативный git-кейс, не относящийся к этому диффу).
+- Критерий 2: ассерты бьют в заявленное — число+адреса+штамп в `unread.test.ts`, и стыковой тест
+  на `--from → каталог → порядок ленты → план победившей попытки → stdout` в
+  `new-message.process.test.ts`, включая кейс отвергнутого push/переигранного плана против настоящего
+  remote (не юнит-гипотеза). Читал сами тесты и реализацию (`noteFeedUnderSender` поверх `unreadFor`)
+  — логика соответствует словам ноты.
+- `pnpm protocol zones check --ref HEAD --role dev-core --base f74e2649` — все 6 изменённых путей вне
+  `forbidden`, зелено.
+- Ни один из изменённых файлов не в списке доков власти (`docs/protocol-reference.md` явно исключён
+  правилом REVIEWER.md; README пакета и код — не доки власти) — критерий 5 не применяется, merge не
+  ограничен john.
+- Живой исход `pnpm protocol merge-gate --ref origin/main --pr 241`:
+  ```
+  merge-gate: PR #241 at 6115cfc
+    STOP guard 1 · approve on the current head: no approve verdict on 6115cfc
+    STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+    you  guard 3 · ascent to a decision of john's: thread '091-mail-door-silent-on-feed-move'
+    ok   guard 4 · no self-merge on the documents of power: 6 changed path(s), none of them a document of power
+    you  guard 5 · a trace of the merge: name this merge in your next message in the thread
+    ok   mergeability: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+  REFUSED: a guard does not hold
+  ```
+  Отказ ожидаем на момент ревью (нет ещё approve-вердикта на этой голове, review-джоба этого круга
+  ещё in_progress) — не диагноз, просто факт живого вызова, как требует REVIEWER.md.
+
+Находок по критериям нет.
+
+---
+
+Доставлено шагами прогона [`33776485388`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33776485388) по PR #241, голова `6115cfcb5a2ec58e9d6b2a9f64b27ee010c6d5ea` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.

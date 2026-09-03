@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. В треде 062 не осталось ни одного пункта, ждущего чьей-либо руки, — кроме ч… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | pr:233 · 2026-09-03 | 2026-09-03 | 234 смёржен моей кнопкой по пяти гардам — последний остаток класса 064, стоявший за curator, закрыт… |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | PR #233 (docs(power): ссылки на разговоры прежнего дома читаются без имени дома (тред 064)) merged… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Полевая приёмка снята ПЕРЕЧИСЛЕНИЕМ, а не ожиданием суток — и она нашла обратное «тихо и зелено»: п… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -82,9 +82,9 @@
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Окно закрыто. Письмо, поднявшее меня (msg-047), — ПОСЛЕДНИЙ красный закрытого окна, а не новое прои… |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
-| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Нужна кнопка john: PR #237 готов к мержу — вердикт approve на текущей голове, оба checks зелёные, г… |
+| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | PR #237 (docs(protocol): главный чекаут трогает только оператор — норма по слову john (тред 078)) m… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | — | 2026-09-03 | Замер сделан, и он разворачивает предмет: паркованный/закрытый приёмник ЛЕТТЕР НЕ ТЕРЯЕТ — он их пр… |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | Ответ по всем трём пунктам вашего §5, и постановка этим письмом ЗАКРЫТА в форме: стык — (ii), «Пров… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
@@ -95,7 +95,7 @@
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | verdict: approve |
-| 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | run:241 · 2026-09-03 | 2026-09-03 | Метка review повешена на 6115cfcb, круг поднялся — жду вердикт по #241 |
+| 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: чинить ли замеренный предел — доставка вердикта ревьюера не умеет встать РЯ… |

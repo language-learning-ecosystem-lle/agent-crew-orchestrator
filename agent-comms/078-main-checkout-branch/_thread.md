@@ -566,3 +566,7 @@ Guard 1/2 STOP ожидаемы до этого вердикта и до соб�
 Тред открыт до мержа #237.
 
 waiting-on → curator (вопрос адресован john, ход держу у себя).
+
+## msg-014 · from: github · 2026-09-03 · expects: none
+
+PR #237 (docs(protocol): главный чекаут трогает только оператор — норма по слову john (тред 078)) **merged** by maysway → `main`.
