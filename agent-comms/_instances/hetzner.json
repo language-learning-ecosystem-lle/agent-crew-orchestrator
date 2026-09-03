@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T16:11:48.290Z",
+  "writtenAt": "2026-09-03T16:12:02.271Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "080-standing-address-catalog",
-      "state": "draining",
-      "deadline": "2026-09-03T17:06:21Z"
-    },
     {
       "role": "curator",
       "thread": "080-standing-address-catalog",
