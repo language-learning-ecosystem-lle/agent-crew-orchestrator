@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T20:33:16.403Z",
+  "writtenAt": "2026-09-03T20:33:59.294Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "097-conflict-has-no-signal",
       "state": "running",
       "deadline": "2026-09-03T21:20:08Z"
+    },
+    {
+      "role": "curator",
+      "thread": "117-unfit-tags-and-the-silent-skip",
+      "state": "running",
+      "deadline": "2026-09-03T21:13:56Z"
     }
   ]
 }
