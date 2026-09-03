@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:230 · 2026-09-03 | 2026-09-03 | План меры 5 написан и лежит PR #230; голова aa901c3660bcd3c447262fa1d8ca3ac3e4c36402, прогон checks… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:230 · 2026-09-03 | 2026-09-03 | Метка review повешена на голову aa901c3660bcd3c447262fa1d8ca3ac3e4c36402 PR #230 — круг поднялся, п… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — четыре предмета, и первый из них кнопка: #167 готов, гарды 1–3 держат, гар… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
@@ -79,7 +79,7 @@
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — КНОПКА ПО #202: все устранимые гарды закрыты, остался гард 4 (.github/work… |
-| 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~09:53Z): дом .github/scripts/ ПРИНЯТ. Вопрос msg-003 §2… |
+| 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | run:223 · 2026-09-03 | 2026-09-03 | Шаг 1 порядка начат: метка review повешена на #223 в 09:56Z, круг 33741556329 идёт на голове 865d57… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Ход пришёл сюда двумя письмами github (msg-038, msg-039), кода здесь по-прежнему нет: голова #167 н… |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два вопроса первой строкой: (1) цена ОТКАЗА вместо предупреждения — дверь… |
