@@ -1891,6 +1891,50 @@ describe("a session that asks and waits alive (R19)", () => {
     expect(prompt).not.toContain("--repo");
   }, 60_000);
 
+  it("A RUN HELD BY THE SANDBOX IS ALSO GIVEN THE LOADER CACHE OFF, BESIDE ITS OWN `TMPDIR`", () => {
+    // THE SEAM, not the mapping (discipline 2): the pure function beside `codex.ts` proves
+    // WHAT the value is; only a spawn proves that the child is handed it — and handed it
+    // together with the fresh `TMPDIR` that makes it necessary. The two facts are set at
+    // the same place for that reason, and one without the other is the defect of thread
+    // `058`: the mail line printed correctly and died before the CLI started.
+    const { repo } = contour({
+      roles: [
+        {
+          ...CONFIG.roles[0],
+          launch: {
+            agent: { kind: "codex", model: "gpt-5-codex", toolsHeldBy: "sandbox-read-only" },
+          },
+        },
+      ],
+    });
+    const envDump = join(repo, "env.txt");
+    const exec = stub(
+      repo,
+      `printf 'cache=[%s] tmp=[%s]' "$TSX_DISABLE_CACHE" "$TMPDIR" > ${envDump}\nsleep 1`,
+    );
+
+    runWith(repo, ["--exec", exec, "--worker", "codex", "--wall-clock", "20", "--write"]);
+
+    const said = readFileSync(envDump, "utf8");
+    expect(said).toContain("cache=[1]");
+    // …and the directory it is about is this run's own, not the box's `/tmp` (thread 056).
+    expect(said).not.toContain("tmp=[]");
+    expect(said).not.toContain("tmp=[/tmp]");
+  }, 60_000);
+
+  it("the SAME circuit without the mark hands no such variable — the writing roles are untouched", () => {
+    // The regression half, in the same shape as the one above it: a role that is not
+    // confined keeps a working loader cache, and its environment does not change by one
+    // key. Same config, one word of the card less.
+    const { repo } = contour();
+    const envDump = join(repo, "env.txt");
+    const exec = stub(repo, `printf 'cache=[%s]' "$TSX_DISABLE_CACHE" > ${envDump}\nsleep 1`);
+
+    runWith(repo, ["--exec", exec, "--wall-clock", "20", "--write"]);
+
+    expect(readFileSync(envDump, "utf8")).toBe("cache=[]");
+  }, 60_000);
+
   it("the landing point is announced in the log, so a timeout can be read for what it is", () => {
     // Nothing fires at the wind-down point — there is no gesture that makes a session
     // commit. What the supervisor owes is the record: it said so, at this minute, and
