@@ -295,6 +295,79 @@ describe("the seam: a note goes to the branch and comes back, and the mail check
     expect(git(c.mail, "status", "--porcelain").trim()).toBe("");
   });
 
+  /** A thread in the branch, in the only form its status is ever read from (`_meta.md`). */
+  const thread = (c: Contour, id: string, status: "open" | "closed"): void =>
+    inTheBranch(c, (at) => {
+      mkdirSync(join(at, "agent-comms", id), { recursive: true });
+      writeFileSync(
+        join(at, "agent-comms", id, "_meta.md"),
+        `---\ntitle: ${id}\nparticipants: curator, dev-core\nstatus: ${status}\n---\n`,
+      );
+    });
+
+  const noteWith = (cause: string): string =>
+    `---\nname: a-note\ndescription: one line\nmetadata:\n  type: project\n  thread: ${cause}\n---\n\nthe fact\n`;
+
+  it("EXTINGUISHES a note whose subject is closed, takes its index line with it, and carries the death into the branch", () => {
+    const c = contour();
+    thread(c, "016-exhausted-closed-threads", "closed");
+    thread(c, "090-what-kills-a-note", "open");
+    restoreRoleMemory(sync(c));
+    writeFileSync(join(c.live, "dead.md"), noteWith("016-exhausted-closed-threads"));
+    writeFileSync(join(c.live, "live.md"), noteWith("090-what-kills-a-note"));
+    writeFileSync(
+      join(c.live, "forever.md"),
+      "---\nname: forever\n---\n\nhow the world is built\n",
+    );
+    writeFileSync(
+      join(c.live, "MEMORY.md"),
+      "- [Dead](dead.md) — a hook\n- [Live](live.md) — a hook\n- [Forever](forever.md) — a hook\n",
+    );
+    saveRoleMemory({ ...sync(c), mailRoot: c.mailRoot, identity: roleIdentity("dev-core") });
+
+    // The next raise of the role: the mechanism, with no hand and no judgement.
+    const back = restoreRoleMemory(sync(c));
+
+    expect(back.lines.join("\n")).toContain("dead.md ← 016-exhausted-closed-threads");
+    expect(existsSync(join(c.live, "dead.md"))).toBe(false);
+    expect(existsSync(join(c.live, "live.md"))).toBe(true);
+    expect(existsSync(join(c.live, "forever.md"))).toBe(true);
+    expect(readFileSync(join(c.live, "MEMORY.md"), "utf8")).toBe(
+      "- [Live](live.md) — a hook\n- [Forever](forever.md) — a hook\n",
+    );
+
+    // AND THE DEATH IS A DEATH (constraint К-3): the release carries it into the branch,
+    // so the note does not come back at the next raise on this box or on any other.
+    saveRoleMemory({ ...sync(c), mailRoot: c.mailRoot, identity: roleIdentity("dev-core") });
+    const listed = git(
+      c.mail,
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "origin/comms",
+      "--",
+      "agent-comms/memory",
+    );
+    expect(listed).not.toContain("dead.md");
+    expect(listed).toContain("live.md");
+    expect(git(c.mail, "show", "origin/comms:agent-comms/memory/dev-core/MEMORY.md")).not.toContain(
+      "dead.md",
+    );
+    expect(git(c.mail, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("KEEPS a note whose subject the branch cannot answer for, and says so by name", () => {
+    const c = contour();
+    restoreRoleMemory(sync(c));
+    writeFileSync(join(c.live, "typo.md"), noteWith("999-no-such-thread"));
+    saveRoleMemory({ ...sync(c), mailRoot: c.mailRoot, identity: roleIdentity("dev-core") });
+
+    const back = restoreRoleMemory(sync(c));
+
+    expect(back.lines.join("\n")).toContain("typo.md → 999-no-such-thread");
+    expect(existsSync(join(c.live, "typo.md"))).toBe(true);
+  });
+
   it("a branch it cannot read is a loud line and a raise that happens anyway", () => {
     const c = contour();
     writeFileSync(join(c.live, "left.md"), "from the previous round\n");
