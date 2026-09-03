@@ -347,7 +347,12 @@ sudo visudo -f /etc/sudoers.d/aco-devops-spawn
 | `ssh-add -l` | `The agent has no identities` | ключи в `~/.ssh` контуру сегодня не нужны — шаг 5a их не заводит |
 | `url.https://github.com/.insteadOf` | `git@github.com:`, `git@github-crew:` — **`/home/lle/.gitconfig`** | ssh-форма всё равно переписывалась бы в HTTPS; после смены `HOME` этой строки нет, и она НЕ нужна |
 | `credential.https://github.com.helper` | два источника: `/home/lle/.gitconfig` (`!/usr/bin/gh auth git-credential`) и **`command line`** — хелпер с `$GH_TOKEN`, который протокол подставляет процессу через `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0` | токен контура переезд `HOME` ПЕРЕЖИВАЕТ (он в окружении процесса); хелпер из `.gitconfig` — нет |
-| `user.name`, `user.email` | только `/home/lle/.gitconfig` | **`git commit` рукой роли под новым пользователем упрётся в «Please tell me who you are»** — почта своей личностью подписывается сама (`roles/identity.ts`), а коммит КОДА в рабочем месте роли — нет |
+| `user.name`, `user.email` | только `/home/lle/.gitconfig` | **`git commit` рукой роли под новым пользователем упрётся в `Please tell me who you are`** — почта своей личностью подписывается сама (`roles/identity.ts`), а коммит КОДА в рабочем месте роли — нет |
+
+Последняя строка — не вывод: поведение git при пустом доме снято командой (одноразовый репозиторий
+в `mktemp -d`, живого ящика не касается), `HOME=<пусто> XDG_CONFIG_HOME=<пусто> GIT_CONFIG_NOSYSTEM=1
+git commit` → `Author identity unknown / *** Please tell me who you are.`, код возврата 1. Где лежат
+сами ключи конфига — тоже замер (`git config --list --show-origin --show-scope`).
 
 **Поэтому шаг 5a кладёт новому пользователю `.gitconfig`, а не ssh-ключ.** Прежняя формулировка
 шага («без ключей шаг „push“ приёмки красный») фактом не подтверждается: push красный будет, но по
