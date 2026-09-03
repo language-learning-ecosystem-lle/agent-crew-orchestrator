@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T14:46:11.604Z",
+  "writtenAt": "2026-09-03T14:49:38.842Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "074-parallelism-and-domains",
-      "state": "running",
-      "deadline": "2026-09-03T15:46:08Z"
-    },
     {
       "role": "curator",
       "thread": "090-what-kills-a-note",
