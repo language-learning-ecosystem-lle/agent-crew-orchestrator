@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import { checkWorkspacePackage, WORKSPACE_PACKAGE } from "./workspace-package.js";
 
-const at = { role: "dev-speech", path: "/home/x/repo/.worktrees/dev-speech", repo: "/home/x/repo" };
+const at = { role: "dev-acme", path: "/home/x/repo/.worktrees/dev-acme", repo: "/home/x/repo" };
 
 describe("the workspace runs the build the circuit runs", () => {
   it("the field case: an older package in the tree, the same schema in both → refused BY NAME", () => {
@@ -26,8 +26,8 @@ describe("the workspace runs the build the circuit runs", () => {
     if (verdict.ok) return;
     // The four things the session of 2026-09-02 had to derive from an `exit 2`: whose
     // tree, which version is there, which is expected, and the command that repairs it.
-    expect(verdict.reason).toContain("dev-speech");
-    expect(verdict.reason).toContain("/home/x/repo/.worktrees/dev-speech");
+    expect(verdict.reason).toContain("dev-acme");
+    expect(verdict.reason).toContain("/home/x/repo/.worktrees/dev-acme");
     expect(verdict.reason).toContain("0.2.7");
     expect(verdict.reason).toContain("0.2.9");
     expect(verdict.reason).toContain("install --frozen-lockfile");
