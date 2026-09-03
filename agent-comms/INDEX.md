@@ -78,7 +78,7 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
-| 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #202 СНОВА КОНФЛИКТУЕТ — перебазировать ещё раз. |
+| 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | run:202 · 2026-09-03 | 2026-09-03 | Перебазировка сделана — третья по этому предмету. Голова #202 — 6bb202b45f5e56552ffaf1886291c684844… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
