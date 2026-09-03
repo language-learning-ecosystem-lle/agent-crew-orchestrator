@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Message } from "./message.js";
-import { describeUnread, tailCovering, unreadFor } from "./unread.js";
+import { describeUnread, noteFeedUnderSender, tailCovering, unreadFor } from "./unread.js";
 
 const message = (from: string, date: string): Message => ({
   fields: { from, date, expects: "answer", waitingOn: "dev-core" },
@@ -83,6 +83,79 @@ describe("unreadFor — one role, two letters in a row", () => {
 
   it("widens `--tail 1` to both — the lift alone is the reading that lost the first letter", () => {
     expect(tailCovering(1, unreadFor(burst, "john"))).toBe(2);
+  });
+});
+
+/**
+ * THE NOTE THE WRITING DOOR SAYS (thread 091), on the feed of the case that produced it:
+ * curator's own letter of `09:29:30Z`, dev-core's letter of `09:31:42Z` lying under it, and
+ * curator about to send a statement about the feed she has not re-read.
+ */
+describe("noteFeedUnderSender", () => {
+  const fiftySix: readonly Message[] = [
+    message("curator", "2026-09-03T09:20:00Z"),
+    message("curator", "2026-09-03T09:29:30Z"),
+    message("dev-core", "2026-09-03T09:31:42Z"),
+    message("dev-core", "2026-09-03T09:33:10Z"),
+  ];
+
+  it("names the number, the roles and the stamp of the last — the reader decides without opening the feed", () => {
+    const note = noteFeedUnderSender({
+      messages: fiftySix,
+      sender: "curator",
+      thread: "056-shared-tmp-mechanism",
+    });
+    expect(note).toContain("2 message(s) landed under your own letter of 2026-09-03T09:29:30Z");
+    expect(note).toContain("written by dev-core");
+    expect(note).toContain("the last of them 2026-09-03T09:33:10Z");
+    // The line hands back the read it is asking for, spelled for this thread and this role.
+    expect(note).toContain("thread show --thread 056-shared-tmp-mechanism --for curator");
+  });
+
+  it("counts letters of MORE THAN ONE role and names them all", () => {
+    const note = noteFeedUnderSender({
+      messages: [...fiftySix, message("john", "2026-09-03T09:40:00Z")],
+      sender: "curator",
+      thread: "056-shared-tmp-mechanism",
+    });
+    expect(note).toContain("3 message(s)");
+    expect(note).toContain("written by dev-core, john");
+  });
+
+  it("SAYS NOTHING when nothing landed under the sender's letter — a '0' on every send is noise", () => {
+    expect(
+      noteFeedUnderSender({ messages: fiftySix, sender: "dev-core", thread: "056-x" }),
+    ).toBeUndefined();
+  });
+
+  it("SAYS NOTHING to a sender that has never written here — there is no letter of theirs to land under", () => {
+    // A first letter into somebody else's thread is the legitimate "writing without reading"
+    // the refusal was rejected for; `thread show --for` is what such a writer needs, and it
+    // already says "all N message(s)".
+    expect(
+      noteFeedUnderSender({ messages: fiftySix, sender: "john", thread: "056-x" }),
+    ).toBeUndefined();
+  });
+
+  it("says nothing on an empty feed — the first letter of a thread has nothing under it", () => {
+    expect(
+      noteFeedUnderSender({ messages: [], sender: "curator", thread: "091-x" }),
+    ).toBeUndefined();
+  });
+
+  it("counts the sender's OWN later letters too — two sessions of one role are two readers", () => {
+    // The mark is the role's own LAST letter, so a role raised twice is told about the letter
+    // its previous session left under it. That is the `058` half of the class, not a new one.
+    const note = noteFeedUnderSender({
+      messages: [
+        message("dev-core", "2026-09-03T09:31:42Z"),
+        message("curator", "2026-09-03T09:36:00Z"),
+      ],
+      sender: "dev-core",
+      thread: "056-x",
+    });
+    expect(note).toContain("1 message(s) landed under your own letter of 2026-09-03T09:31:42Z");
+    expect(note).toContain("written by curator");
   });
 });
 
