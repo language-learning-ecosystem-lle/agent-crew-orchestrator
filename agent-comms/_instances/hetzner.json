@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T10:46:21.042Z",
+  "writtenAt": "2026-09-03T10:46:33.448Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "064-forget-the-consumer",
+      "state": "running",
+      "deadline": "2026-09-03T11:26:30Z"
+    },
     {
       "role": "dev-core",
       "thread": "075-comms-derived-window-reddens-main",
