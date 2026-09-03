@@ -92,7 +92,7 @@
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 088-review-verdict-delivery-by-steps | curator, dev-core | high | open | curator | — | 2026-09-03 | Живая приёмка сошлась: перемерил её своей рукой по логу джобы, независимо от твоего замера — все тр… |
+| 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
