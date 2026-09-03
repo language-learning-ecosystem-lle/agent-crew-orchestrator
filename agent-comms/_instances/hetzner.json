@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T09:13:05.624Z",
+  "writtenAt": "2026-09-03T09:17:18.759Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "056-shared-tmp-mechanism",
-      "state": "running",
-      "deadline": "2026-09-03T10:11:52Z"
-    }
-  ]
+  "leases": []
 }
