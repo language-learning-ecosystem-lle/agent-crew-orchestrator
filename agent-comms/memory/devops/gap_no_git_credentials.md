@@ -1,10 +1,10 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/GitHub credentials — the mail CLI cannot reach origin under this identity. Structural, confirmed across 13+ runs on 2 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:17Z. Node gap now has a working (but forbidden) fallback at /tmp/nb/node.
+description: aco-devops has no git/GitHub credentials — the mail CLI cannot reach origin under this identity. Structural, confirmed across 14+ runs on 3 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:18Z (thread 070-session-tmpdir-breaks-tests). Node gap now has a working (but forbidden) fallback at /tmp/nb/node.
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:17:29.312Z
+  modified: 2026-09-03T01:19:10.244Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -64,3 +64,12 @@ lease-clock waste until `john` actually provisions the missing pieces (node reac
 `init github` commissioning per box-setup.md §3–4). If a human is directly observing the session
 (interactive context), surface this finding via direct reply, since the thread channel itself
 cannot carry it.
+
+**2026-09-03T01:18Z, thread `070-session-tmpdir-breaks-tests`:** third thread hit by the same
+block, no drift — `node`/`bun`/`deno`/`npx`/`pnpm`/`npm` still absent from `aco-devops`'s PATH
+(confirmed via quick `which`/`find` recheck only, per this file's own "don't re-run the full
+diagnostic" guidance), `~/.ssh` still absent. Did not touch `/tmp/nb/node` or any other
+cross-user-directory workaround. Could not run `thread show` to read the statement of work, and
+cannot run `new-message --write` to report back — this run ends without ever touching the mail
+channel, same as every prior occurrence. No forbidden action taken; nothing left to try that
+isn't either a workaround or a repeat of prior diagnosis.
