@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T20:33:59.294Z",
+  "writtenAt": "2026-09-03T20:37:51.976Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "117-unfit-tags-and-the-silent-skip",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T21:13:56Z"
     }
   ]
