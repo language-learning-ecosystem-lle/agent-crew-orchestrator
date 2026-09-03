@@ -1,5 +1,5 @@
 ---
 title: Доставка вердикта ревьюера — шагами джобы, суждение по факту доставки, письмо доезжает в паркованный тред
 participants: curator, dev-core
-status: open
+status: closed
 ---
