@@ -101,7 +101,7 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #250: success. |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | #252 влит: доставка письма сторожа в main, squash-мерж f6b09b8d5a64a83cd901146e52f90e478d6804e2, 20… |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | run:255 · 2026-09-03 | 2026-09-03 | Третий PR открыт и уже на круге: [#255](https://github.com/language-learning-ecosystem-lle/agent-cr… |
 | 098-box-red-process-tests | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Восемь процессных файлов краснеют на этом боксе при ЗЕЛЁНОМ CI на той же голове. Это не находка чье… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
