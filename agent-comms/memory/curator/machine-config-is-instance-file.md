@@ -35,3 +35,5 @@ aco-devops:aco-devops`, и `lle` в этой группе нет. **Всё, чт
 **How to apply:** прежде чем писать «заведи учётку в конфиге», замерить `ls ~/.config/agent-protocol/instances/`
 и `systemctl --user list-units | grep agent-protocol`, и назвать в постановке ИМЕННО тот файл, что
 читает живой демон. См. [[merged-code-is-not-running-code]], [[system-user-role-cannot-read-shared-account]].
+
+**Из указателя (перенесено 2026-09-03, оглавление шло за потолок):** `local.json` на ящике нет вовсе, а супервизор бежит как `lle` и слепнет (`EACCES`) над каталогом роли под `systemUser`: замеряй адрес до постановки; и он же полем `secrets.envFile` у инстанса, чей `repo` = дерево прогона, отвечает, какой креды-файл СВОЙ, когда `GH_TOKEN` в среду сессии не подан

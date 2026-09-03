@@ -25,3 +25,5 @@ metadata:
 `version`, пин в `package.json` и `pnpm-workspace.yaml`) плюс поиск дерева реза в линии `main`. Все —
 чтения, границу контура ([[reading-a-ref-must-not-write-the-tree]], `062`) не переступают.
 Связано: [[statement-of-work-ends-at-the-tag]], [[pinned-blob-rots-in-the-review-circle]].
+
+**Из указателя (перенесено 2026-09-03, оглавление шло за потолок):** сравнение дерева реза с `origin/main:packages/agent-protocol` краснеет на ЧЕСТНОМ теге (main уезжает вперёд); годность = дерево реза встречается у какого-то коммита линии `main`, скан 25 коммитов стоит секунды, а приёмка потребителя — четыре чтения его файлов

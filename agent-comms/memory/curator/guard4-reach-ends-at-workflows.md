@@ -31,3 +31,5 @@ metadata:
 `320933d2` PR не поднялся, а у всех поднявшихся merged-PR `mergedBy` = `maysway`, так что прецедент
 кнопки по этому полю не читается — только прецедент существования дома. См.
 [[comms-copy-before-canon-merge]] и [[statement-of-work-ends-at-the-tag]].
+
+**Из указателя (перенесено 2026-09-03, оглавление шло за потолок):** `powerDocuments` не покрывает НИ `.github/scripts/**`, НИ `packages/**`: вынос тела из воркфлоу снимает его с кнопки john в любой из домов, а выбор адреса решает лишь, может ли curator это тело ПИСАТЬ (`packages` у роли в `forbidden`, `.github/scripts` — нет)
