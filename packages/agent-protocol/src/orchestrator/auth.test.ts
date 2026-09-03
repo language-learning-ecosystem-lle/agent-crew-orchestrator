@@ -273,3 +273,181 @@ describe("openAuthShelves — the credentials are the account's (055, B.3)", () 
     expect(describeAuthShelf(shelves[0] as AuthShelf)).toContain("account 'second'");
   });
 });
+
+/**
+ * THREAD 084 — THE SHELF GOES ON THE ACCOUNT BY THE VENDOR'S REFUSAL, NOT BY ONE ROLE'S
+ * FILESYSTEM.
+ *
+ * THE FIELD CASE, MEASURED, not supposed. `.orchestrator/journal.jsonl`, account
+ * `lle-second`, 2026-09-02 15:00–19:30Z: 29 `lease-released reason=auth-failed`, ALL of
+ * them role `devops` (24 on thread 070, 5 on 057), whose session was raised as system user
+ * `aco-devops` and pointed at `/home/lle/.claude-lle-second` — mode `600`, owner `lle`. It
+ * could not READ the credentials and was handed the vendor's `Not logged in`, which is the
+ * same string a dead token prints. Behind those 29 deaths the fold refused 26 launches, and
+ * 21 of the 26 belonged to `dev-core` — a role that did not fail once in the window and
+ * went on delivering on the very same account between the refusals. The operator was sent
+ * to `claude login` twice on credentials that were never dead.
+ *
+ * The two tests below are the two directions of the same door, and the second is not
+ * optional: the price of being wrong the other way is a circuit that stops noticing a dead
+ * token.
+ */
+describe("openAuthShelves — one role's refusal is not the account's (thread 084)", () => {
+  const died = (ts: string, role: string, account = "lle-second") => ({
+    kind: "lease-released",
+    ts,
+    role,
+    thread: "084-x",
+    reason: "auth-failed",
+    account,
+  });
+  const delivered = (ts: string, role: string, account = "lle-second") => ({
+    kind: "lease-released",
+    ts,
+    role,
+    thread: "084-y",
+    reason: "completed",
+    account,
+  });
+
+  it("ONE role dying while a neighbour of the same account delivers does NOT shelve the account", () => {
+    // The shape of the field case in miniature: `devops` dies twice on credentials it
+    // cannot read, `dev-core` delivers on the same account in between and dies never.
+    const shelves = openAuthShelves(
+      [
+        died("2026-09-02T16:01:56Z", "devops"),
+        delivered("2026-09-02T16:03:00Z", "dev-core"),
+        died("2026-09-02T16:12:33Z", "devops"),
+      ],
+      at("2026-09-02T16:15:00Z"),
+    );
+    const shelf = authShelfAgainst(shelves, "lle-second");
+    expect(shelf?.scope).toBe("role");
+    expect(shelf?.roles).toEqual(["devops"]);
+    // THE REQUIREMENT ITSELF: the neighbour that never failed is not stood down.
+    expect(authShelfAgainst(shelves, "lle-second", "dev-core")).toBeUndefined();
+    expect(authShelfAgainst(shelves, "lle-second", "curator")).toBeUndefined();
+    // …and the role that IS failing still is — a shelf that refuses nobody is no shelf.
+    expect(authShelfAgainst(shelves, "lle-second", "devops")?.scope).toBe("role");
+  });
+
+  it("CONTROL — a refusal the vendor gave on real credentials still shelves the account", () => {
+    // Two DISTINCT roles, two workspaces, two system users, one account, one refusal: the
+    // only thing they share is the token, so the shelf is the account's exactly as before.
+    const shelves = openAuthShelves(
+      [died("2026-08-01T17:00:00Z", "dev-core"), died("2026-08-01T17:02:00Z", "curator")],
+      at("2026-08-01T17:05:00Z"),
+    );
+    const shelf = authShelfAgainst(shelves, "lle-second");
+    expect(shelf?.scope).toBe("account");
+    expect(shelf?.deaths).toBe(2);
+    // Every role of the account is stood down, including one that has not been raised yet.
+    expect(authShelfAgainst(shelves, "lle-second", "dev-core")?.scope).toBe("account");
+    expect(authShelfAgainst(shelves, "lle-second", "devops")?.scope).toBe("account");
+    expect(authAlarmDue(shelf as AuthShelf)).toBe(true);
+  });
+
+  it("the same role dying twenty-nine times is still one role's evidence", () => {
+    const events = Array.from({ length: 29 }, (_, i) =>
+      died(`2026-09-02T16:${String(i).padStart(2, "0")}:00Z`, "devops"),
+    );
+    const shelf = authShelfAgainst(
+      openAuthShelves(events, at("2026-09-02T16:30:00Z")),
+      "lle-second",
+    );
+    expect(shelf?.deaths).toBe(29);
+    expect(shelf?.scope).toBe("role");
+  });
+});
+
+/**
+ * THREAD 084, POINT 3 — THE LINE HAS TO SAY WHICH REPAIR. Half the price of the field case
+ * was paid by the text: `describeAuthShelf` knew one repair, and it was the wrong one.
+ */
+describe("describeAuthShelf — the shelf names what it stands on (thread 084)", () => {
+  const died = (ts: string, role: string) => ({
+    kind: "lease-released",
+    ts,
+    role,
+    thread: "084-x",
+    reason: "auth-failed",
+    account: "lle-second",
+  });
+  const shelfOf = (roles: readonly string[]) =>
+    openAuthShelves(
+      roles.map((role, i) => died(`2026-09-02T16:0${i}:00Z`, role)),
+      at("2026-09-02T16:05:00Z"),
+    )[0] as AuthShelf;
+
+  it("one role refused → the line names the ROLE and refuses to send anybody to login", () => {
+    const said = describeAuthShelf(shelfOf(["devops", "devops"]));
+    expect(said).toContain("devops");
+    expect(said).toContain("stands DOWN THAT ROLE ALONE");
+    // The sentence john acted on twice, on an account whose token was alive.
+    expect(said).not.toMatch(/(?<!do NOT run `)claude login/);
+    expect(said).toContain("do NOT run `claude login`");
+    expect(said).toContain("configDir");
+  });
+
+  it("two roles refused → the line is the old one: the credentials, and the login", () => {
+    const said = describeAuthShelf(shelfOf(["devops", "dev-core"]));
+    expect(said).toContain("the token is dead");
+    expect(said).toContain("claude login");
+    expect(said).toContain("devops, dev-core");
+    expect(said).not.toContain("stands DOWN THAT ROLE ALONE");
+  });
+
+  it("the two lines are different — an operator can tell the two repairs apart", () => {
+    expect(describeAuthShelf(shelfOf(["devops", "devops"]))).not.toEqual(
+      describeAuthShelf(shelfOf(["devops", "dev-core"])),
+    );
+  });
+});
+
+/**
+ * THREAD 084, THE STYCK — the fold and the planner in one breath, on the shape the journal
+ * actually recorded. A unit on `openAuthShelves` proves the scope; only the planner proves
+ * that the scope reaches the decision, and the decision is where the 21 refused launches of
+ * 2026-09-02 were written.
+ */
+describe("planTick — a broken pair does not stand its account up (thread 084)", () => {
+  const died = (ts: string, role: string) => ({
+    kind: "lease-released",
+    ts,
+    role,
+    thread: "070-session-tmpdir-breaks-tests",
+    reason: "auth-failed",
+    account: "lle-second",
+  });
+  const candidates = [
+    { role: "devops", thread: "070-session-tmpdir-breaks-tests", account: "lle-second" },
+    { role: "dev-core", thread: "056-shared-tmp-mechanism", account: "lle-second" },
+  ];
+  const base = { enabled: true, stopped: false, candidates, now: at("2026-09-02T16:15:00Z") };
+
+  it("the healthy neighbour is launched while the role that keeps dying is refused", () => {
+    const decision = planTick({
+      ...base,
+      events: [died("2026-09-02T16:12:33Z", "devops")] as never,
+    });
+    // NOT `auth`: the box is not standing still, it is raising the role that works.
+    expect(decision.kind).toBe("plan");
+    if (decision.kind !== "plan") throw new Error("unreachable");
+    expect(decision.launches.map((c) => c.role)).toEqual(["dev-core"]);
+    expect(decision.skipped.map((skip) => [skip.role, skip.reason])).toEqual([["devops", "auth"]]);
+  });
+
+  it("CONTROL — once a SECOND role is refused, the account stands down as it always did", () => {
+    const decision = planTick({
+      ...base,
+      events: [
+        died("2026-09-02T16:12:33Z", "devops"),
+        died("2026-09-02T16:13:33Z", "dev-core"),
+      ] as never,
+    });
+    expect(decision.kind).toBe("auth");
+    if (decision.kind !== "auth") throw new Error("unreachable");
+    expect(decision.shelf.scope).toBe("account");
+    expect(decision.skipped.map((skip) => skip.reason)).toEqual(["auth", "auth"]);
+  });
+});
