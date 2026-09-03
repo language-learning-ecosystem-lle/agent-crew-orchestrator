@@ -152,6 +152,40 @@ const run = (repo: string, exec: string): { code: number; out: string } => {
   }
 };
 
+/**
+ * The same run, with BOTH channels captured. `run` above keeps stdout, which is enough
+ * for everything decided by the journal; a case about what the OPERATOR hears has to read
+ * stderr as well, because that is where the supervisor shouts what outlives the session.
+ */
+const runCapturingBoth = (repo: string, exec: string): { code: number; out: string } => {
+  const said = spawnSync(
+    TSX,
+    [
+      CLI,
+      "orchestrator",
+      "run",
+      "--ref",
+      "HEAD",
+      "--no-fetch",
+      "--repo",
+      repo,
+      "--role",
+      "dev-core",
+      "--thread",
+      "012-x",
+      "--exec",
+      exec,
+      "--wall-clock",
+      "20",
+      "--poll",
+      "1",
+      "--write",
+    ],
+    { cwd: repo, encoding: "utf8", env: sandbox(configHome(repo)) },
+  );
+  return { code: said.status ?? 1, out: `${said.stdout ?? ""}${said.stderr ?? ""}` };
+};
+
 const journalPath = (repo: string): string => join(repo, ".orchestrator", "journal.jsonl");
 const journal = (repo: string): ReturnType<typeof parseJournal> =>
   parseJournal(readFileSync(journalPath(repo), "utf8"));
@@ -1642,6 +1676,104 @@ describe("a session that asks and waits alive (R19)", () => {
     // else's file on the strength of a window would be worse than the defect measured.
     expect(existsSync(typed)).toBe(true);
     expect(existsSync(older)).toBe(true);
+  }, 60_000);
+
+  /**
+   * THE SEAM OF MEASURE 4 (thread `062-contour-boundary`, the form settled in
+   * `docs/contour-user-separation-plan.md` §6 and bought by john on 2026-09-03), and it is
+   * the only place the claim exists: a unit proves that a moved ref renders into a line,
+   * and no unit proves that the SUPERVISOR looks at the neighbour's house at the close of
+   * a tick. Both measured breaches of the boundary were found by a human days later —
+   * #453/#454 and #181 — precisely because nothing looked.
+   *
+   * THE NEIGHBOUR IS THE TEST'S OWN, `XDG_CONFIG_HOME` and all: the foreign checkout is a
+   * git repository this test creates and throws away, declared through a named machine
+   * config in the test's own config home. Reaching for the real neighbour of this box to
+   * prove the point would be committing the very act being measured.
+   */
+  it("A COMMIT IN THE CHECKOUT OF ANOTHER CONTOUR IS HEARD ON THE OBSERVER'S CHANNEL — measure 4", () => {
+    const { repo } = contour();
+    // The neighbour: a checkout of another contour, with a history of its own from before
+    // this tick — what was already there must never be reported as this run's doing.
+    const neighbour = join(repo, "..", "neighbour");
+    mkdirSync(neighbour, { recursive: true });
+    execFileSync("git", ["init", "-q", "-b", "main", neighbour]);
+    writeFileSync(join(neighbour, "theirs.md"), "the neighbour's own file\n");
+    git(neighbour, "add", ".");
+    git(neighbour, "commit", "-qm", "the neighbour's own commit");
+    // WHERE THE LIST COMES FROM — already-declared data and no new key: one named machine
+    // config per instance, `repo` in it being «which checkout this instance serves»
+    // (thread 055). Both are declared, because a box with named instances is a box where
+    // every checkout belongs to one of them.
+    const instances = join(configHome(repo), "agent-protocol", "instances");
+    mkdirSync(instances, { recursive: true });
+    writeFileSync(join(instances, "own.json"), `${JSON.stringify({ repo })}\n`);
+    writeFileSync(join(instances, "neighbour.json"), `${JSON.stringify({ repo: neighbour })}\n`);
+    // The act itself, in the shape #181 had: a plain git command against a path the
+    // session typed. No door of this package is entered, so measure 1 cannot see it.
+    const exec = stub(
+      repo,
+      [
+        `git -C ${neighbour} -c user.name=t -c user.email=t@e commit -q --allow-empty -m 'not my house'`,
+        "sleep 1",
+      ].join("\n"),
+    );
+
+    // Run it directly rather than through `run` above: what is asserted here is the
+    // OBSERVER'S CHANNEL, and that is stderr — the same channel a `TMPDIR` that did not
+    // fit shouts on (thread `056`, `7376418c`), heard when the session is already dead.
+    const result = runCapturingBoth(repo, exec);
+
+    const log = sessionLog(repo);
+    // The four things the line has to name: the address, the role and thread, the window,
+    // and what was found.
+    expect(log).toContain(`CONTOUR BOUNDARY: the checkout ${neighbour} of another contour`);
+    expect(log).toContain("'neighbour'");
+    expect(log).toContain("dev-core/012-x");
+    expect(log).toContain("refs/heads/main (was ");
+    // It is heard even when the session is dead: the observer's channel, not only the log
+    // of a run nobody reads.
+    expect(result.out).toContain("CONTOUR BOUNDARY");
+    // A window is not an owner, and the line says so itself…
+    expect(log).toContain("not proof of its authorship");
+    // …and nothing is fail-closed: the tick's own outcome is what it was.
+    expect(result.code).toBe(0);
+    expect(journal(repo).at(-1)).toMatchObject({ kind: "lease-released" });
+    // NOTHING WAS CHANGED THERE: the neighbour's commit is still its head, and this
+    // measure touched neither ref nor file.
+    expect(git(neighbour, "log", "--oneline", "-1")).toContain("not my house");
+    expect(existsSync(join(neighbour, "theirs.md"))).toBe(true);
+  }, 60_000);
+
+  /**
+   * THE OPPOSITE CONTROL, and without it the measure is dead by construction: the whole
+   * argument for not making it fail-closed is that a watchman which cries on an ordinary
+   * tick gets switched off by its first false positive. So an ordinary tick — one that
+   * did its work at home and never touched the neighbour — must be SILENT.
+   */
+  it("…and a tick that stayed at home says nothing at all about the neighbour", () => {
+    const { repo } = contour();
+    const neighbour = join(repo, "..", "quiet-neighbour");
+    mkdirSync(neighbour, { recursive: true });
+    execFileSync("git", ["init", "-q", "-b", "main", neighbour]);
+    writeFileSync(join(neighbour, "theirs.md"), "the neighbour's own file\n");
+    git(neighbour, "add", ".");
+    git(neighbour, "commit", "-qm", "the neighbour's own commit");
+    const instances = join(configHome(repo), "agent-protocol", "instances");
+    mkdirSync(instances, { recursive: true });
+    writeFileSync(join(instances, "own.json"), `${JSON.stringify({ repo })}\n`);
+    writeFileSync(join(instances, "neighbour.json"), `${JSON.stringify({ repo: neighbour })}\n`);
+    // An ordinary session: it writes in its OWN house, which is what every tick does.
+    const exec = stub(
+      repo,
+      [`printf 'mine' > ${join(repo, "my-own-file.txt")}`, "sleep 1"].join("\n"),
+    );
+
+    const result = runCapturingBoth(repo, exec);
+
+    expect(sessionLog(repo)).not.toContain("CONTOUR BOUNDARY");
+    expect(result.out).not.toContain("CONTOUR BOUNDARY");
+    expect(result.code).toBe(0);
   }, 60_000);
 
   /**
