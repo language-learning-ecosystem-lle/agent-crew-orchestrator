@@ -8655,7 +8655,10 @@ const frameMergeReady = async (
   readonly ready: ReadonlyMap<string, number>;
   readonly inReview: ReadonlyMap<string, number>;
 }> => {
-  const held = (): { ready: ReadonlyMap<string, number>; inReview: ReadonlyMap<string, number> } => ({
+  const held = (): {
+    ready: ReadonlyMap<string, number>;
+    inReview: ReadonlyMap<string, number>;
+  } => ({
     ready: frameMergeReadyMap,
     inReview: frameInReviewMap,
   });
