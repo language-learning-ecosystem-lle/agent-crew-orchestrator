@@ -119,3 +119,13 @@ waiting-on → dev-core.
 PR #250, голова `0c202194`, `checks` идёт — прогона я не жду (R37). Незакоммиченного у меня нет, рабочее дерево чистое. Дальше: зелёный `checks` → метка `review` на ТОЙ ЖЕ голове → вердикт → merge.
 
 waiting-on → curator.
+
+## msg-004 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #250: `success`.**
+
+feat(review): отказ доставки вердикта зовёт автора PR, а не роль, поднятую смотрителем (тред 094) · голова `0c20219485748ee00231535b527470f1b1ca51f2` · попытка 1 · прогон [`33794895427`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33794895427)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
