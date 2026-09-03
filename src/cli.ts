@@ -594,12 +594,14 @@ import {
 import type {
   Expects,
   LaunchDirective,
+  Message,
   TaskDeclaration,
   ThreadPriorityValue,
   VerdictValue,
 } from "./thread/message.js";
 import {
   bodyClaimsTurnRelease,
+  compareMessageEntries,
   EXPECTS,
   isRaisedAt,
   isSessionId,
@@ -650,7 +652,7 @@ import {
   type ThreadTurn,
   waitingOnOf,
 } from "./thread/thread.js";
-import { describeUnread, tailCovering, unreadFor } from "./thread/unread.js";
+import { describeUnread, noteFeedUnderSender, tailCovering, unreadFor } from "./thread/unread.js";
 import {
   messageTimestamp,
   nextMessageTimestamp,
@@ -3712,14 +3714,30 @@ const newMessage = (argv: readonly string[]): void => {
   // strictly after the last). Without this, clock skew between writers puts an answer
   // before its question (a real case in 012); with a concurrent write it is also why a
   // rejected push cannot simply be rebased — the file NAME has to move too.
-  const plan = (): { path: string; label: string; content: string; date: string } => {
+  const plan = (): {
+    path: string;
+    label: string;
+    content: string;
+    date: string;
+    /**
+     * THE FEED THIS LETTER WAS PLANNED AGAINST, in thread order — carried out of the plan and
+     * not read a second time (thread 091). The scan below already opens every message file to
+     * date the new one; the note about letters that landed under the sender's own last one is
+     * the SAME reading, so it costs no disk. Replanned per delivery attempt with everything
+     * else, which is what makes the note describe the feed the winning push actually saw.
+     */
+    feed: readonly Message[];
+  } => {
     const threadHasMessages = existsSync(messagesDir);
-    const existingTs = threadHasMessages
+    const entries = threadHasMessages
       ? readdirSync(messagesDir)
           .filter((name) => name.endsWith(".md"))
           .map((name) => {
             try {
-              return parseMessageFile(readFileSync(join(messagesDir, name), "utf8")).fields.date;
+              return {
+                fileName: name,
+                message: parseMessageFile(readFileSync(join(messagesDir, name), "utf8")),
+              };
             } catch (error) {
               // A STOP THAT NAMES THE FILE IT STOPPED ON (thread 058, alongside finding 11 of
               // the review of #170). This scan already refused such a feed — by dying on the
@@ -3736,8 +3754,16 @@ const newMessage = (argv: readonly string[]): void => {
               );
             }
           })
-          .filter((date) => date.includes("T"))
+          // ORDER COMES FROM `seq`, NOT FROM THE FILE NAME (`compareMessageEntries`, the same
+          // comparator `loadThread` sorts with): a migrated name leads with a date, and the
+          // date is not monotonic against the feed. The dating below does not care, but the
+          // note does — "whose letters landed under mine" is a statement about the TAIL.
+          .sort(compareMessageEntries)
       : [];
+    const feed = entries.map((entry) => entry.message);
+    const existingTs = feed
+      .map((message) => message.fields.date)
+      .filter((date) => date.includes("T"));
     const date = nextMessageTimestamp(new Date(), existingTs);
     // THE GLOBAL TASK CHECK, inside the plan and therefore replanned per attempt (see
     // `tasksFor`): the declarations of this message are folded into the feed as it is
@@ -3794,10 +3820,31 @@ const newMessage = (argv: readonly string[]): void => {
     const path = join(threadDir, planned.path);
     if (existsSync(path))
       fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
-    return { path, label: `${threadId}/${planned.path}`, content: planned.content, date };
+    return { path, label: `${threadId}/${planned.path}`, content: planned.content, date, feed };
   };
 
   const first = plan();
+  /**
+   * THE NOTE ABOUT LETTERS THAT LANDED UNDER THE SENDER'S OWN LAST ONE (thread 091, john's word
+   * of 2026-09-03: fix it with a note, not a refusal). The sentence itself is
+   * `noteFeedUnderSender` — words in a pure function, so they are testable as words.
+   *
+   * IT IS PRINTED ON EVERY PATH THAT PLANNED A LETTER, dry run included: a preview that stays
+   * quiet where the write speaks is the same lie as a preview that succeeds where the write
+   * refuses (the reason `provenance` and `judgeParkSeen` are asked before `--write` is looked
+   * at). The feed it describes is the one the printing path actually read.
+   *
+   * A MACHINE WRITER IS NOT TOLD (`isMachineWriter`, the registry decides it from the config,
+   * same as at the park door above). The notifier and the outcome of a run write without
+   * reading BY DESIGN — that is the legitimate case the refusal was rejected for — and they
+   * have no session to re-read with. For them the line is not advice, it is noise in a job log,
+   * and "speak only when there is something to say" is half of what was accepted.
+   */
+  const noteFeedUnder = (feed: readonly Message[]): void => {
+    if (registry.isMachineWriter(from)) return;
+    const note = noteFeedUnderSender({ messages: feed, sender: from, thread: threadId });
+    if (note !== undefined) out(`agent-protocol: ${note}`);
+  };
   const write = argv.includes("--write");
   // THE DECLARATION GOES FIRST (R19) — before the message file, not after it. The
   // supervisor sees the question as soon as the file is on disk, and a marker written
@@ -3816,6 +3863,7 @@ const newMessage = (argv: readonly string[]): void => {
   if (!write) {
     out(`agent-protocol: would create ${first.label} (--write writes it):`);
     out(first.content);
+    noteFeedUnder(first.feed);
     return;
   }
 
@@ -3824,10 +3872,12 @@ const newMessage = (argv: readonly string[]): void => {
     out(
       `agent-protocol: created ${first.label} — NOT committed (--no-push: the caller owns its git)`,
     );
+    noteFeedUnder(first.feed);
     return;
   }
 
   const checkout = repoOf(root);
+  let delivering = first;
   try {
     const delivered = deliverMessage({
       git: gitIn(checkout),
@@ -3839,6 +3889,11 @@ const newMessage = (argv: readonly string[]): void => {
       identity: roleIdentity(from),
       stage: () => {
         const next = plan();
+        // THE FEED OF THE ATTEMPT THAT WINS, and that is the point of assigning here: a lost
+        // push is retried after a fast-forward, so the letters lying under this one are only
+        // known from the plan the successful push was built on. `first` would describe the feed
+        // as it was BEFORE the fetch — the exact staleness the note exists to name.
+        delivering = next;
         return { files: [{ path: next.path, content: next.content }], label: next.label };
       },
       note: out,
@@ -3847,6 +3902,7 @@ const newMessage = (argv: readonly string[]): void => {
     out(
       `agent-protocol: sent ${delivered.label} — committed and pushed to origin/${loaded.config.mail.branch}${delivered.attempts > 1 ? ` (after ${delivered.attempts} attempts: the feed moved underneath)` : ""}`,
     );
+    noteFeedUnder(delivering.feed);
   } catch (error) {
     // A BUSY CHECKOUT IS A REFUSAL WITH A NAME, not a stack trace: the caller has to be
     // able to tell "somebody else is delivering right now" from "the mail is broken".

@@ -105,6 +105,50 @@ export const describeUnread = (facts: UnreadForRole): string => {
 };
 
 /**
+ * WHAT THE WRITER IS TOLD WHEN LETTERS LANDED UNDER ITS OWN LAST ONE (thread 091, john's
+ * word of 2026-09-03 ~12:55Z: «чинить нотой»).
+ *
+ * THE MEASURED CASE, this contour's own tick, 2026-09-03: `09:29:30Z` curator reads thread
+ * `056` at the start of her tick → `09:31:42Z` dev-core lays a letter about a cut tag into it
+ * → `09:36Z` curator sends a letter saying «письма о теге в треде нет». A statement ABOUT the
+ * feed, written INTO the feed, false for two minutes by the time it was sent. Nothing raced:
+ * seven minutes of run-up, one push each, so the delivery note `(after N attempts: the feed
+ * moved underneath)` said nothing BY CONSTRUCTION — it stands behind `attempts > 1` and only
+ * ever catches a lost push. The rule "re-read the feed before you write" was already in the
+ * texts and did not hold: an appeal does not hold, a precondition at the action does.
+ *
+ * A NOTE AND NOT A REFUSAL, and that half is the decision rather than an omission: writing
+ * without reading is legitimate (a report into somebody else's thread, a letter from a
+ * machine), and a door that stops the writing is worse than one that stays quiet.
+ *
+ * IT SPEAKS ONLY WHEN IT HAS SOMETHING TO SAY, and says it with a number and an address — how
+ * many letters, from which roles, the stamp of the last — so the reader can decide whether to
+ * re-read WITHOUT opening the feed. Two silences are deliberate:
+ *
+ *   - nothing landed under the sender's letter → no line at all. A count printed as "0" on
+ *     every send is the noise that teaches the reader to skip the line that matters;
+ *   - THE SENDER HAS NEVER WRITTEN HERE → no line either. There is no letter of theirs for
+ *     anything to have landed "under", and a first letter into somebody else's thread is
+ *     exactly the legitimate "writing without reading" the refusal was rejected for. What such
+ *     a writer needs is `thread show --for <role>`, which says "all N message(s)" and is the
+ *     read they are about to do anyway.
+ */
+export const noteFeedUnderSender = (input: {
+  readonly messages: readonly Message[];
+  /** The role in `--from` — whose own last letter is the mark. */
+  readonly sender: string;
+  /** Carried only so the line can hand back the exact command to re-read with. */
+  readonly thread: string;
+}): string | undefined => {
+  const facts = unreadFor(input.messages, input.sender);
+  if (facts.since === undefined || facts.unread === 0) return undefined;
+  // The run is the TAIL of the feed by construction of `unreadFor`, so the last message of the
+  // thread is the last message of the run — no second scan to find its stamp.
+  const last = input.messages.at(-1)?.fields.date ?? facts.since;
+  return `${facts.unread} message(s) landed under your own letter of ${facts.since} before this one — written by ${facts.authors.join(", ")}, the last of them ${last}. If what you have just sent says anything about the state of this thread, re-read it: 'thread show --thread ${input.thread} --for ${input.sender}'`;
+};
+
+/**
  * HOW MANY MESSAGES A BOUNDED READ MUST SHOW so that it hides no unread one (B.1, the half
  * that makes this a door).
  *

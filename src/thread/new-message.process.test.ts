@@ -2157,3 +2157,186 @@ describe("new-message refuses an id the mail cannot read (thread 086)", () => {
     ).toBe(before);
   });
 });
+
+/**
+ * THE NOTE ABOUT LETTERS THAT LANDED UNDER THE SENDER'S OWN LAST ONE (thread 091, john's word
+ * of 2026-09-03: fix it with a note).
+ *
+ * THE JOINT these cover, which the unit on `noteFeedUnderSender` cannot: the words are one
+ * thing, and `--from` → the message directory → the ORDER of the feed → the plan of the
+ * WINNING delivery attempt → stdout is another. The whole defect of the field case lived in
+ * that chain: the existing line `(after N attempts: the feed moved underneath)` is correct
+ * words behind the wrong condition, and no unit could have shown that — it never runs the
+ * door.
+ */
+describe("new-message notes the letters that landed under the sender's own last one", () => {
+  /** A letter dropped straight into the message directory — the feed as the door will read it. */
+  const lay = (contest: { root: string }, stamp: string, from: string): void =>
+    writeFileSync(
+      join(contest.root, "016-x", "messages", `${stamp.replaceAll(":", "-")}-${from}.md`),
+      `---\nfrom: ${from}\ndate: ${stamp}\nexpects: answer\nwaiting-on: dev-core\n---\n\nA letter from ${from}.\n`,
+    );
+
+  it("says the number, the roles and the stamp — and SENDS: it is a note, not a refusal", () => {
+    const contest = contour();
+    lay(contest, "2026-08-30T09:29:30Z", "dev-core");
+    lay(contest, "2026-08-30T09:31:42Z", "curator");
+    lay(contest, "2026-08-30T09:33:10Z", "john");
+
+    const result = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain(
+      "2 message(s) landed under your own letter of 2026-08-30T09:29:30Z",
+    );
+    expect(result.out).toContain("written by curator, john");
+    expect(result.out).toContain("the last of them 2026-08-30T09:33:10Z");
+    expect(result.out).toContain("thread show --thread 016-x --for dev-core");
+    // THE WRITE WENT THROUGH — the half of the decision that is a decision: writing without
+    // reading is legitimate, and a door that stops it is worse than one that stays quiet.
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(4);
+  });
+
+  it("stays quiet when nothing landed under it — a line on every send is the noise that hides the one that matters", () => {
+    const contest = contour();
+    lay(contest, "2026-08-30T09:29:30Z", "curator");
+    lay(contest, "2026-08-30T09:31:42Z", "dev-core");
+
+    const result = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("landed under your own letter");
+  });
+
+  it("stays quiet for a sender that has never written here — a first letter into somebody else's thread reads nothing by right", () => {
+    const contest = contour();
+    lay(contest, "2026-08-30T09:29:30Z", "curator");
+    lay(contest, "2026-08-30T09:31:42Z", "john");
+
+    const result = write(contest, { AGENT_PROTOCOL_WORKER: "claude-code" });
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("landed under your own letter");
+  });
+
+  it("the dry run says the same thing — a preview that is quiet where the write speaks is a lie", () => {
+    const contest = contour();
+    lay(contest, "2026-08-30T09:29:30Z", "dev-core");
+    lay(contest, "2026-08-30T09:31:42Z", "curator");
+
+    const result = run(contest, { AGENT_PROTOCOL_WORKER: "claude-code" }, []);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("would create");
+    expect(result.out).toContain(
+      "1 message(s) landed under your own letter of 2026-08-30T09:29:30Z",
+    );
+  });
+
+  /**
+   * THE MACHINE WRITER IS NOT TOLD (`isMachineWriter`, the same registry the park door asks).
+   * The notifier writes without reading BY DESIGN and has no session to re-read with; for it
+   * the line is not advice but noise in a job log. What must NOT change is the send itself.
+   */
+  it("says nothing to a machine writer, and its send is unchanged", () => {
+    const contest = contour();
+    lay(contest, "2026-08-30T09:29:30Z", "github");
+    lay(contest, "2026-08-30T09:31:42Z", "curator");
+
+    let result: { code: number; out: string };
+    try {
+      const out = execFileSync(
+        TSX,
+        [
+          CLI,
+          "new-message",
+          "--repo",
+          contest.repo,
+          "--root",
+          contest.root,
+          "--ref",
+          "HEAD",
+          "--no-fetch",
+          "--thread",
+          "016-x",
+          "--from",
+          "github",
+          "--expects",
+          "none",
+          "--body-file",
+          contest.body,
+          "--worker",
+          "human",
+          "--write",
+          "--no-push",
+        ],
+        { encoding: "utf8", stdio: "pipe", env: sandbox(configHomeInside(contest.repo), {}) },
+      );
+      result = { code: 0, out };
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string };
+      result = { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+    }
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("landed under your own letter");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(3);
+  });
+
+  /**
+   * THE FEED OF THE ATTEMPT THAT WON, against a real remote — and this is the case that makes
+   * the note worth anything at all. The letter that moved the feed is pushed by SOMEBODY ELSE
+   * after our plan was made: the first push is rejected, the retry replans after a
+   * fast-forward, and only THAT plan has seen the letter. A note built from the first plan
+   * would report the feed as it was before the fetch — the very staleness it exists to name.
+   */
+  it("describes the feed the WINNING push saw, not the one the first attempt read", () => {
+    const contest = delivery();
+    // Our own last letter, in the remote before we start.
+    const own = join(contest.root, "016-x", "messages", "2026-08-30T09-29-30Z-dev-core.md");
+    mkdirSync(join(contest.root, "016-x", "messages"), { recursive: true });
+    writeFileSync(
+      own,
+      "---\nfrom: dev-core\ndate: 2026-08-30T09:29:30Z\nexpects: answer\nwaiting-on: curator\n---\n\nMine.\n",
+    );
+    const git = (...args: string[]): string =>
+      execFileSync(
+        "git",
+        ["-C", contest.repo, "-c", "user.name=t", "-c", "user.email=t@e", ...args],
+        { encoding: "utf8" },
+      );
+    git("add", ".");
+    git("commit", "-qm", "mine");
+    git("push", "-q", "origin", "comms");
+
+    // Somebody else's letter lands in the remote AFTER we have planned ours.
+    const other = mkdtempSync(join(tmpdir(), "agent-protocol-under-"));
+    execFileSync("git", ["-C", other, "clone", "-q", "-b", "comms", contest.remote, "."]);
+    writeFileSync(
+      join(other, "agent-comms", "016-x", "messages", "2026-08-30T09-31-42Z-curator.md"),
+      "---\nfrom: curator\ndate: 2026-08-30T09:31:42Z\nexpects: answer\nwaiting-on: dev-core\n---\n\nTheirs.\n",
+    );
+    execFileSync("git", ["-C", other, "-c", "user.name=t", "-c", "user.email=t@e", "add", "."]);
+    execFileSync("git", [
+      "-C",
+      other,
+      "-c",
+      "user.name=t",
+      "-c",
+      "user.email=t@e",
+      "commit",
+      "-qm",
+      "theirs",
+    ]);
+    execFileSync("git", ["-C", other, "push", "-q", "origin", "comms"]);
+
+    const result = send(contest);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("committed and pushed");
+    expect(result.out).toContain(
+      "1 message(s) landed under your own letter of 2026-08-30T09:29:30Z",
+    );
+    expect(result.out).toContain("written by curator");
+  });
+});

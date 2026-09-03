@@ -1957,6 +1957,37 @@ agent-protocol new-message  --root <comms> --ref <ref> --thread <id> --from <rol
                             # happen inside, with the replanning retry behind them; nothing is left to type
                             # --body-file lies OUTSIDE the mail checkout: delivery refuses a dirty checkout
                             # --no-push: the file only, for the ONE caller that owns its own git (CI)
+                            # AND THE DOOR SAYS IF LETTERS LANDED UNDER THE SENDER'S OWN LAST ONE (thread
+                            # 091, decision of john 2026-09-03): "N message(s) landed under your own letter
+                            # of <stamp> before this one — written by <roles>, the last of them <stamp>",
+                            # with the `thread show --for <role>` that re-reads them. A NOTE, NOT A REFUSAL,
+                            # and that half is the decision rather than an omission: writing without
+                            # reading is legitimate (a report into somebody else's thread, a letter from a
+                            # machine) and a door that stops the writing is worse than one that stays quiet.
+                            # WHY IT IS NOT THE LINE NEXT TO IT: `(after N attempts: the feed moved
+                            # underneath)` stands behind `attempts > 1` and catches only a LOST PUSH.
+                            # Measured, this contour, 2026-09-03: curator read thread 056 at 09:29:30Z,
+                            # dev-core laid a letter into it at 09:31:42Z, curator sent "there is no letter
+                            # about the tag in this thread" at 09:36Z — seven minutes of run-up, one push
+                            # each, so that line said nothing BY CONSTRUCTION while a statement about the
+                            # feed, false for two minutes, went into the feed. The rule "re-read before you
+                            # write" was already in the texts and did not hold: an appeal does not hold, a
+                            # precondition at the action does
+                            # IT SPEAKS ONLY WHEN IT HAS SOMETHING TO SAY, and the two silences are chosen:
+                            # nothing landed under the letter — no line (a "0" on every send is the noise
+                            # that teaches the reader to skip the line that matters); the sender has NEVER
+                            # written in this thread — no line either (there is no letter of theirs for
+                            # anything to have landed under, and a first letter into somebody else's thread
+                            # is exactly the legitimate case the refusal was rejected for). A MACHINE WRITER
+                            # (`wake.mode: 'event'`, `isMachineWriter` — the same registry the park door
+                            # asks) is not told: it writes without reading by design and has no session to
+                            # re-read with, so for it the line is noise in a job log. Its send is unchanged
+                            # THE FEED IT DESCRIBES IS THE ONE THE WINNING PUSH SAW: the count is replanned
+                            # with the message on every delivery attempt, so a rejected push that is retried
+                            # after a fast-forward reports the letters found AFTER the fetch. It costs no
+                            # disk — the dating of the letter already opens every message file. The dry run
+                            # prints the same line: a preview quiet where the write speaks is the same lie
+                            # as a preview that succeeds where the write refuses
                             # --await-input: this question PARKS the run instead of ending it (R19, S13)
                             # ON A THREAD DECLARING `turn: explicit` (079) `--waiting-on` is OBLIGATORY and
                             # the refusal names both exits; everywhere else a fieldless message stays legal
