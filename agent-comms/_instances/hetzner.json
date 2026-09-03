@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T21:56:09.285Z",
+  "writtenAt": "2026-09-03T21:58:50.459Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "098-box-red-process-tests",
       "state": "running",
       "deadline": "2026-09-03T22:36:06Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "119-mute-count-blames-github",
-      "state": "running",
-      "deadline": "2026-09-03T22:49:45Z"
     }
   ]
 }
