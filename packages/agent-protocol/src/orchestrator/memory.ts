@@ -1,6 +1,7 @@
 /**
- * WHERE A ROLE'S PERSONAL MEMORY LIVES — the first half of form D (a consumer thread
- * on the cost of a role's memory, john's word «D, рядом с почтой, с потолком»).
+ * WHERE A ROLE'S PERSONAL MEMORY LIVES — two thirds of form D (a consumer thread on the
+ * cost of a role's memory, john's word «D, рядом с почтой, с потолком»); the third third
+ * is `memory-sync.ts`, next to this file.
  *
  * THE DEFECT THIS ANSWERS. The vendor keeps a role's notes in the agent profile,
  * and it keys them by PROJECT DIRECTORY AND ACCOUNT rather than by role: a session
@@ -11,14 +12,18 @@
  * memory of its own and no access to all of its own — it gets a random slice of
  * "which box raised me".
  *
- * WHAT IS FIXED HERE AND WHAT IS NOT. This module answers two of john's three
- * requirements: WHICH DIRECTORY the raised session is pointed at (and it answers with
- * the role's id, not the project's path), and the CEILING on the index that every
- * session pays for. The third — carrying the directory to and from the mail branch, so
- * that a note survives a box and curator's deletion is a deletion rather than a
- * decoration (constraint К-3) — is NOT here, and until it lands the notes are local to
- * the box. The seam it hangs off is `roleMemoryDirectory`: restore before the raise,
- * save after the release, with the mail checkout clean in between.
+ * WHAT IS ANSWERED HERE AND WHAT IS ANSWERED NEXT DOOR. This module answers two of
+ * john's three requirements: WHICH DIRECTORY the raised session is pointed at (and it
+ * answers with the role's id, not the project's path), and the CEILING on the index that
+ * every session pays for. The third — carrying the directory to and from the mail branch,
+ * so that a note survives a box and curator's deletion is a deletion rather than a
+ * decoration (constraint К-3) — LIVES IN `memory-sync.ts` and landed with these two, in
+ * the same PR (#159, its third commit): restore mirrors the branch into the directory
+ * before the raise, save
+ * carries this session's own changes back at the release, and neither touches the mail
+ * checkout's working tree except through delivery. The seam both hang off is
+ * `roleMemoryDirectory` below: the directory it names is the box's WORKING COPY, and the
+ * branch is the source of truth.
  *
  * WHY OUTSIDE EVERY CHECKOUT, MEASURED AND NOT PREFERRED (curator's constraint К-1).
  * The obvious shape — put the notes in the mail checkout, beside the mail they are
@@ -29,6 +34,11 @@
  * would block the next delivery of ANY role on the box and then be wiped by the first
  * rejected push. The state directory has neither property: it is the daemon's own,
  * ignored by git, and nothing reads its cleanliness.
+ *
+ * That constraint is about the directory the VENDOR writes into, at a moment it picks
+ * itself. The branch copy of the same notes is written by `memory-sync.ts` at the
+ * release and only THROUGH `deliverMessage` — which owns the lock, the dirty check, the
+ * retry and the undo — so К-1 is answered by construction there rather than softened.
  */
 import { statSync } from "node:fs";
 import { join } from "node:path";
@@ -54,10 +64,13 @@ export type SessionSettings = {
 export const MEMORY_DIR = "memory";
 
 /**
- * THE ROLE IS THE KEY, and the whole point of the module is that this is the only
- * place that says so. `join` and not a template: the base comes from the config, and
- * a config that ends its path with a separator is not a special case anybody should
- * have to remember.
+ * THE ROLE IS THE KEY, and the whole point of the module is that this is the only place
+ * that says so about the BOX's copy — the same key inside the mail branch is stated once
+ * too, by `memoryBranchPrefix` in `memory-sync.ts`. Both spell the directory's name with
+ * `MEMORY_DIR` above — this one through the base `paths.ts` assembles from it, so the two
+ * copies cannot drift apart on what the directory is called. `join` and not
+ * a template: the base comes from the config, and a config that ends its path with a
+ * separator is not a special case anybody should have to remember.
  */
 export const roleMemoryDirectory = (input: {
   readonly memory: string;
@@ -76,8 +89,10 @@ export const roleMemoryDirectory = (input: {
  * every other key of the workspace's own settings untouched.
  *
  * `undefined` survives as a return value for the one case that is still honestly
- * silent: no zones AND no memory directory, which is what every caller that has not
- * been taught about memory yet passes.
+ * silent: no zones AND no memory directory. No raise takes that path any more — both
+ * places in `cli.ts` that assemble one, the `run` command and the daemon's tick, name the
+ * directory — and it is kept because the shape, not the call site, is what makes an empty
+ * settings source wrong to hand over.
  */
 export const sessionSettings = (input: {
   readonly deny?: readonly string[];
