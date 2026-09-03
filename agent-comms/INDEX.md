@@ -101,4 +101,5 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:22Z): «ДВЕРЬ НЕ ТРОГАЕМ, ОТКАЗ АДРЕСУЕМ АВТОРУ» — ни… |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Постановка по слову john (чат 2026-09-03 ~17:14Z: «да»). Происхождение: разговор john ↔ чатный cura… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
