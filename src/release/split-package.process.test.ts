@@ -91,6 +91,34 @@ const repoWithMovedLine = (touching: "package" | "elsewhere"): string => {
   return dir;
 };
 
+/**
+ * The head of a bump branch: it carries the WHOLE line and is not merged into it — the shape the
+ * old one-sided check passed by construction (2026-08-30, `agent-protocol-v0.2.8` cut 45 seconds
+ * before its own PR #155 was opened). `bump` is HEAD; `main` is the line.
+ */
+const repoWithUnmergedHead = (version = "0.2.1"): string => {
+  const dir = repoWithPackage();
+  git(dir, "checkout", "--quiet", "-b", "bump");
+  writeFileSync(
+    join(dir, "packages/thing/package.json"),
+    JSON.stringify({ name: "thing", version, exports: { ".": "./src/index.ts" } }),
+  );
+  git(dir, "add", "-A");
+  git(dir, "commit", "--quiet", "-m", "chore(release): the head nobody has merged yet");
+  return dir;
+};
+
+/** The version bump a cut needs, landed on the line itself. */
+const bumpOnLine = (dir: string, version: string): void => {
+  git(dir, "checkout", "--quiet", "main");
+  writeFileSync(
+    join(dir, "packages/thing/package.json"),
+    JSON.stringify({ name: "thing", version, exports: { ".": "./src/index.ts" } }),
+  );
+  git(dir, "add", "-A");
+  git(dir, "commit", "--quiet", "-m", `chore(release): ${version}`);
+};
+
 /** Both streams matter: the refusals go to stderr, and so does the --allow-behind warning. */
 const split = (
   cwd: string,
@@ -208,11 +236,136 @@ describe("scripts/split-package.sh", () => {
     expect(git(repo, "tag", "--list").trim()).toBe("thing-v0.2.0");
   });
 
+  /**
+   * ЛИНИЯ ПРОВЕРЯЕТСЯ В ОБЕ СТОРОНЫ (тред 095). Проверка выше ловит рез с ревизии, ОТСТАВШЕЙ от
+   * линии, и по построению молчит про рез с ревизии, УШЕДШЕЙ вперёд и не влитой: голова ветки
+   * бампа несёт всю линию целиком. Так `agent-protocol-v0.2.8` срезан с головы PR #155 за 45
+   * секунд до его открытия — тег на коде, не прошедшем ни круга ревью, ни зелёных чеков на
+   * влитой голове. Цена постоянная: существующий тег скрипт не двигает, значит ложный вечен.
+   */
+  it("refuses a revision that is not merged into the line, naming both revisions and the commit", () => {
+    const repo = repoWithUnmergedHead();
+    const head = git(repo, "rev-parse", "bump").trim();
+    const line = git(repo, "rev-parse", "main").trim();
+
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.1",
+      "--prefix",
+      "packages/thing",
+      "--base",
+      "main",
+    );
+    expect(run.ok).toBe(false);
+    expect(run.out).toContain("НЕ ВЛИТА в линию 'main'");
+    expect(run.out).toContain(head);
+    expect(run.out).toContain(line);
+    expect(run.out).toContain("chore(release): the head nobody has merged yet");
+    // Refusal means refusal: nothing was tagged on the unmerged cut.
+    expect(git(repo, "tag", "--list").trim()).toBe("");
+  });
+
+  it("does not let --allow-behind lift the not-merged refusal — that tag would live forever", () => {
+    const repo = repoWithUnmergedHead();
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.1",
+      "--prefix",
+      "packages/thing",
+      "--base",
+      "main",
+      "--allow-behind",
+    );
+    expect(run.ok).toBe(false);
+    expect(run.out).toContain("НЕ ВЛИТА в линию 'main'");
+    expect(git(repo, "tag", "--list").trim()).toBe("");
+  });
+
+  it("cuts a revision that IS the line — the legal case stays legal", () => {
+    const repo = repoWithPackage();
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.0",
+      "--prefix",
+      "packages/thing",
+      "--ref",
+      "main",
+      "--base",
+      "main",
+    );
+    expect(run.ok, run.out).toBe(true);
+    expect(git(repo, "tag", "--list").trim()).toBe("thing-v0.2.0");
+  });
+
+  /**
+   * УЖЕ СРЕЗАННЫЕ ТЕГИ ДВИГАТЬ НЕЛЬЗЯ — про них можно только СКАЗАТЬ, и сказать в тот момент,
+   * когда рука ведёт следующий бамп и смотрит в вывод. Мера — по ДЕРЕВУ: тег пригоден тогда,
+   * когда его дерево встречается как '<prefix>' на каком-то коммите линии.
+   */
+  it("names the tags whose tree does not occur in the line, at the next cut", () => {
+    const repo = repoWithUnmergedHead();
+    const cut = git(repo, "subtree", "split", "--prefix=packages/thing", "bump")
+      .trim()
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .at(-1) as string;
+    git(repo, "tag", "thing-v0.2.1", cut.trim());
+    bumpOnLine(repo, "0.2.2");
+
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.2",
+      "--prefix",
+      "packages/thing",
+      "--base",
+      "main",
+    );
+    expect(run.ok, run.out).toBe(true);
+    expect(run.out).toContain("НЕ встречается");
+    expect(run.out).toContain("thing-v0.2.1");
+  });
+
+  it("says the tags are clean when every tag's tree does occur in the line", () => {
+    const repo = repoWithPackage();
+    expect(
+      split(
+        repo,
+        "--tag",
+        "thing-v0.2.0",
+        "--prefix",
+        "packages/thing",
+        "--ref",
+        "main",
+        "--base",
+        "main",
+      ).ok,
+    ).toBe(true);
+    bumpOnLine(repo, "0.2.1");
+
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.1",
+      "--prefix",
+      "packages/thing",
+      "--base",
+      "main",
+    );
+    expect(run.ok, run.out).toBe(true);
+    expect(run.out).toContain("дерево каждого встречается в линии 'main'");
+  });
+
   it("says out loud when the base line is not in the repository at all", () => {
     const run = split(repoWithPackage(), "--tag", "thing-v0.2.0", "--prefix", "packages/thing");
     expect(run.ok, run.out).toBe(true);
-    expect(run.out).toContain("ПРОПУЩЕНА");
+    expect(run.out).toContain("ПРОПУЩЕНЫ");
     expect(run.out).toContain("origin/main");
+    // Все три меры линии стоят на одной ревизии — молчит не одна из них, а весь блок.
+    expect(run.out).toContain("ревизия влита в линию");
   });
 
   /**
