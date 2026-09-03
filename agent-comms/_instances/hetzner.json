@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T22:20:27.890Z",
+  "writtenAt": "2026-09-03T22:23:53.973Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "094-delivery-beside-a-foreign-park",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T23:20:24Z"
     }
   ]
