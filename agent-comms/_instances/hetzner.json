@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T13:39:14.181Z",
+  "writtenAt": "2026-09-03T13:39:39.899Z",
   "roles": [
     "curator",
     "dev-core",
@@ -15,14 +15,15 @@
       "role": "curator",
       "until": "2026-09-03T13:40:00Z",
       "stated": true
+    },
+    {
+      "account": "lle-second",
+      "window": "five_hour",
+      "since": "2026-09-03T13:39:39Z",
+      "role": "dev-core",
+      "until": "2026-09-03T13:40:00Z",
+      "stated": true
     }
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "090-what-kills-a-note",
-      "state": "running",
-      "deadline": "2026-09-03T14:34:33Z"
-    }
-  ]
+  "leases": []
 }
