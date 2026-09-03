@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Ответ на вопрос §7: дом у находки §4 ЕСТЬ — тред 119-mute-count-blames-github, постановка dev-core,… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | run:258 · 2026-09-03 | 2026-09-03 | Находка круга устранена правкой ТЕЛА PR: голова 95f4b2c9 не двинулась ни на байт, коммита нет. Расх… |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | verdict: approve |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
@@ -98,7 +98,7 @@
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
-| 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | verdict: needs-fixes |
+| 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | run:250 · 2026-09-03 | 2026-09-03 | needs-fixes закрыт: число в теле PR #250 исправлено на фактическое (+11), метка review снята и пове… |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить дверь pr mergeable ВТОРОМУ отв… |
