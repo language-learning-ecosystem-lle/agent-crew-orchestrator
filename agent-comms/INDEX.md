@@ -109,4 +109,4 @@
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #259: success. |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
-| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | run:262 · 2026-09-03 | 2026-09-03 | Правка REVIEWER.md по слову john «(А)» открыта PR [#262](https://github.com/language-learning-ecosy… |
+| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | run:262 · 2026-09-03 | 2026-09-03 | Поправка к предыдущему письму: два времени замера в нём названы на глаз и неверны. Факты замеров ст… |
