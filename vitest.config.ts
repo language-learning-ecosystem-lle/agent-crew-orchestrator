@@ -22,6 +22,12 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",
+    // WHERE THE FIXTURES LIVE (thread 098). Every temp directory this suite makes is a
+    // `mkdtemp` under `os.tmpdir()`, and 84 files of it rely on that base NOT being inside
+    // a git repository — an unstated premise that holds on a runner and fails on the box
+    // that runs the circuit, where a raised session's `TMPDIR` points into the checkout by
+    // design. Chosen once here rather than at 135 call sites: see `testing/tmp-base.ts`.
+    setupFiles: ["./src/testing/tmp-base.setup.ts"],
     testTimeout: PROCESS_CHILD_TIMEOUT_MS,
     hookTimeout: PROCESS_CHILD_TIMEOUT_MS,
   },
