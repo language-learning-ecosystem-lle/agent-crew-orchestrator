@@ -91,6 +91,6 @@
 | 084-account-shelf-vs-fs-refusal | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
-| 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | curator | — | 2026-09-03 | verdict: approve |
+| 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | curator | — | 2026-09-03 | PR #222 смёржен в main squash-ом. Merge-коммит f927cdea5f56728f4a618fadac22aedaff482ff4, 2026-09-03… |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по PR #225: failure. |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | 224 смёржен своей рукой — squash 0b5ff66a7b5d854d1bec1a23ac221a6a1485e587, база main, 2026-09-03T00… |
