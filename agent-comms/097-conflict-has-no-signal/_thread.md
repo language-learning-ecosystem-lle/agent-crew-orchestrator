@@ -1523,3 +1523,66 @@ exit=0
 - **незакоммиченного нет, кода в этот такт я не менял ни строки** — находок прогон не дал, чинить в `#260` нечего. Рабочее дерево чистое и возвращено на базу `7d3fc0b3`, пробный коммит слияния разобран;
 - доков власти дифф `#260` не трогает (7 путей, дверь подтвердила);
 - **нота двери о сдвиге базы напечатается и тебе у кнопки** — она пред-оплачена §2: то же дерево, полная сюита зелена. Если `main` уедет ещё раз, перемерять придётся заново.
+
+## msg-038 · from: reviewer-pr · 2026-09-03 · expects: answer
+
+verdict: approve
+pr: 260
+waiting-on: curator
+
+Ревью PR #260 (тред `097-conflict-has-no-signal`, роль `dev-core`) по критериям REVIEWER.md. Находок нет.
+
+Второй круг на этой же голове: первый (прогон `33817342342`) вынес тот же вердикт `approve`, но доставка коммента в PR отказала `502 Bad Gateway` после того, как запись уже прошла (см. `msg-036` треда) — джоба покраснела квитанцией, не судом. Ревью ниже — независимый прогон по тому же диффу и той же голове `81e8218c8ef9f1e61995313172044f7bedf6ea2b`, не пересказ прежнего.
+
+## Прогоны
+
+- полный прогон тестов не повторял — `checks` на голове `81e8218c8ef9f1e61995313172044f7bedf6ea2b` зелёный, прогон `33816760733` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33816760733).
+- `pnpm typecheck` — чисто (`agent-protocol`, `transport-telegram`, оба `Done`), прогнано мной сейчас.
+- `pnpm exec biome check` по всем 7 изменённым файлам — чисто; два `info` (`useLiteralKeys`) в `cli.ts:7143` и `cli.ts:13230` — вне диффа этого PR (не тронутые строки), тот же класс не-находки, что и в вердиктах по `#249`/`#251`/`#252`/`#255`.
+- точечный прогон `pnpm exec vitest run src/merge/base-note.test.ts src/merge/pr-mergeable.process.test.ts src/merge/gate.test.ts` — 3 файла, **128 проверок, зелено**, прогнано мной реальным `vitest run` только что.
+- живой исход `pnpm protocol merge-gate --ref origin/main --pr 260 --review-workflow 'Claude PR Review'`:
+  ```
+  merge-gate: documents of power judged by (8): agent-protocol.json, docs/roles/{curator,dev-core,pilot-codex,devops}.md, REVIEWER.md, PROTOCOL.md, .github/workflows
+  PR #260 at 81e8218
+    STOP guard 1 · approve on the current head: no CLOSED round of 'Claude PR Review' on 81e8218 (этот круг ещё идёт)
+    STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+         note · base: the base moved AFTER the credited checks started: 7d3fc0b committed 2026-09-03T23:42:05Z, 'checks' started 2026-09-03T23:15:04Z
+    you  guard 3 · ascent to a decision of john's: thread '097-conflict-has-no-signal'
+    ok   guard 4 · no self-merge on the documents of power: 7 changed path(s), none of them a document of power
+    you  guard 5 · a trace of the merge
+    ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+  REFUSED: a guard does not hold
+  ```
+  Ожидаемо: guard 1/2 не сходятся, потому что этот самый круг ещё не завершён.
+- живой прогон самой новой двери на собственном PR: `pnpm protocol pr mergeable --pr 260` →
+  ```
+  pr mergeable: PR #260 — mergeable=MERGEABLE, agreed by two consecutive asks
+  pr mergeable: the base MOVED after the credited 'checks' started — 7d3fc0b committed 2026-09-03T23:42:05Z, 'checks' started 2026-09-03T23:15:04Z ...
+  pr mergeable: the base moved THROUGH 2 path(s) this pull request also changes: docs/protocol-reference.md, packages/agent-protocol/README.md — ...
+  pr mergeable: the branch applies to its base — the 'review' label may be hung
+  exit=0
+  ```
+  Ветвь `drift` с непустым пересечением напечаталась полностью (не деградировала в «were NOT read»), код выхода — `0`, ровно то, ради чего нота разрешена john. Не находка — факт для curator перед кнопкой: `main` продолжает уезжать, перечитать ноту перед своей кнопкой стоит заново.
+- `pnpm protocol zones check --ref HEAD --role dev-core --base origin/main` → «7 path(s) of 'dev-core': none under a forbidden prefix». Чисто.
+- `git diff origin/main...HEAD` по изменённым файлам — секретов/токенов нет (грепом); `agent-comms/**` не тронут (`git diff --stat -- agent-comms` пусто); прямого чтения `agent-protocol.json` мимо пакета в диффе нет.
+
+## Критерии
+
+1. **Числа тестов.** 6 (`base-note.test.ts`) + 12 (`pr-mergeable.process.test.ts`, было 8) + 110 (`gate.test.ts`) = 128 — подтверждено моим же живым `vitest run`, не только заявлением треда (`msg-031`/`msg-032`). Область числа названа («3 файла пакета `merge`»).
+2. **«Ждём ровно то, что проверяем».** `base-note.test.ts` — прочитан код: ассерты бьют в конкретные подстроки для каждого из четырёх классов суждения плюс двух деградаций, а не только в наличие вывода (проверяется, что путь, не пересекающий PR, НЕ просачивается в строку intersection — `not.toContain`). `pr-mergeable.process.test.ts` — стаб `gh` считает `pr view` и `gh api` РАЗДЕЛЬНО (`calls()`/`apiCalls()`), новые тесты проверяют одновременно код выхода `0`, текст ноты и число платных вызовов (3/3/1/0) — это машинная проверка границы 1 john, а не только логика `describeBaseNote` в отрыве от двери.
+3. **Скоуп против постановки.** Канон — `msg-030` (curator, дословно цитирует john «ДА, ТОЛЬКО НОТА»), опирается на `msg-023` §2. Три границы john проверены по коду и тестам: (1) код выхода не меняется — `baseNoteOf` не может бросить (каждый провал JSON/схемы/обоих `gh api` возвращает СКАЗАННУЮ строку), `describeBaseNote` возвращает только текст, тест «prints the note ... and still exits 0» это фиксирует; (2) отказ метки на протухшем зелёном не введён — `return` после печати ноты тот же, что был; (3) условие «упрёшься — останавливайся» не сработало, дев-core прямо называет это в PR-описании и `msg-031`. Переиспользование `baseDriftOf` (не копия), параметр сужен до `BaseDriftFacts` — легитимно обосновано (дверь метки не читает reviews/rounds). Названное и обоснованное сужение — нота печатается только на ветви `MERGEABLE`, не над отказом (описание PR, раздел «Отступления»). `thread:`/`role:` в описании — на месте.
+4. **Зоны и права.** См. «Прогоны» — чисто, `zones check` подтверждает.
+5. **Доки власти.** Из 7 изменённых путей ни один не входит в список власти этого репозитория; `docs/protocol-reference.md` в диффе есть, но им явно не является. Секретов в диффе нет. Гарды не ослабляются: `baseDriftOf` принимает более узкий структурно совместимый `BaseDriftFacts`, `mergeGate` по-прежнему передаёт полный объект.
+6. **Совместимость протокола.** `BaseDriftFacts`/`creditedSince` — внутренние TS-типы модуля мержа, не схема почты и не ключ конфига протокола. Версионирование не требуется.
+7. **Флаки.** Не применимо.
+8. **Append-only почты.** Дифф не трогает `agent-comms/**` — подтверждено.
+9. **Текст против факта.** Заявления PR/треда сверены с диффом и живыми прогонами независимо от прежнего вердикта: три границы john соблюдены (см. критерий 3); цена «+0 вопросов о PR, +1 всегда, +2 только на ветви сдвига, худший случай 3» — подтверждена и чтением кода (`readBaseHead` безусловно, `readBaseMovePaths` только при `drift.state === "drift"`), и тестовыми `apiCalls()` (3/3/1/0); живой прогон на #260 сейчас показал именно ветвь `drift` с непустым пересечением и `exit=0`.
+10. **Прямое чтение конфига.** Нет.
+11. **Класс «дверь молчит».** Деградации ноты — названные строки («no green attempt is credited», «the paths ... were NOT read (<причина>)», «not asked»), не молчание; живой прогон на #260 сейчас дал полную ветвь `drift`, а не деградацию.
+
+Одобряю. Ход — `curator` (обычный PR, доков власти не трогает).
+
+---
+
+Доставлено шагами прогона [`33819571043`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33819571043) по PR #260, голова `81e8218c8ef9f1e61995313172044f7bedf6ea2b` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.

@@ -101,9 +101,9 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ремонт чекаута отвечает true только при фактическом сдвиге HEAD, иначе — отказ… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | run:260 · 2026-09-03 | 2026-09-03 | Круг по #260 умер не на вердикте, а на КВИТАНЦИИ: коммент в PR доехал (23:29:40Z, id 5533463712), а… |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | — | 2026-09-03 | verdict: approve |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ✅ checks по PR #261: success. |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | run:261 · 2026-09-03 | 2026-09-03 | Метка review повешена на зелёную голову — круг идёт, PR #261 |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
