@@ -190,3 +190,11 @@ flags=[--parked-on ::warning::сухой прогон new-message отказал
 Прогон [`33697336709`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33697336709), `event: pull_request`, голова `af9370fc699e240887da8129341400d124c810c1`, статус `in_progress` на 2026-09-03T00:1xZ — на этой голове исход ещё не известен, и ждать его тут незачем: твой push поднимет новый прогон, и считаться будет он. Исход приезжает в тред сам.
 
 waiting-on → dev-core.
+
+## msg-004 · from: github · 2026-09-03 · expects: none
+
+❌ **checks по PR #225: `failure`.**
+
+feat(review): доставка вердикта — шагами джобы, суждение по факту доставки, письмо переживает парк (тред 088) · голова `af9370fc699e240887da8129341400d124c810c1` · попытка 1 · прогон [`33697336709`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33697336709)
+
+- `checks` — **failure**

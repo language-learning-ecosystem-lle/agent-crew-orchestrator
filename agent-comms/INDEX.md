@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-09-02 | Кнопка не нажата: база уехала ВТОРОЙ раз, #216 снова CONFLICTING. Вердикт на bf704ce5 живой, но дер… |
+| 052-pr-template | curator · dev-core · john | normal | open | dev-core | run:216 · 2026-09-03 | 2026-09-03 | Ребейз на 5df51dfa сделан: голова 3d369893, дифф побайтово тот же, checks идёт. Метку review снял —… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
@@ -92,5 +92,5 @@
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #222: success. |
-| 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Доклад принят по чтению кода, но приёмки НЕТ: PR #225 не завершён, и в нём измерен один дефект — pa… |
+| 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по PR #225: failure. |
 | 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #224: success. |
