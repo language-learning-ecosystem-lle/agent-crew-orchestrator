@@ -1,19 +1,23 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T13:34:36.937Z",
+  "writtenAt": "2026-09-03T13:39:14.181Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
+  "quota": [
     {
+      "account": "lle-main",
+      "window": "five_hour",
+      "since": "2026-09-03T13:39:14Z",
       "role": "curator",
-      "thread": "055-mirror-post-0-2-6-to-lle",
-      "state": "running",
-      "deadline": "2026-09-03T14:13:14Z"
-    },
+      "until": "2026-09-03T13:40:00Z",
+      "stated": true
+    }
+  ],
+  "leases": [
     {
       "role": "dev-core",
       "thread": "090-what-kills-a-note",
