@@ -60,3 +60,4 @@
 - [Незапушенная ветка — невидимая работа](unpushed-branch-is-invisible-work.md) — умершая сессия оставляет коммит без push; спрашивать склад refs ДО написания диффа
 - [Мерж обнуляет сливаемость у всех PR](merge-blanks-mergeability-for-all-prs.md) — после любого мержа в `main` все открытые PR отвечают `UNKNOWN`; `gh pr list --json … mergeable` — один вызов на все, так что первое чтение бесплатно
 - [Git-личность общая у контуров](git-identity-is-shared-across-contours.md) — `curator@agents.invalid` один в обоих домах: чужой чекаут атрибутируется номером треда и окном, а не автором; мера 4 переживает меру 5 (чтение refs остаётся)
+- [Приёмка слитого дерева стоит минуты](acceptance-on-the-merged-tree-is-cheap.md) — ветку мерили CI и ревьюер, слитое дерево — никто; `worktree` в `.worktrees/` (gitignore) + `pnpm install` из стора = 0.7 с
