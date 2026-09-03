@@ -345,6 +345,10 @@ import {
 } from "./orchestrator/merge-ready.js";
 import {
   asksOwed,
+  describeMergeabilityOutage,
+  foldMergeabilityOutage,
+  MERGEABILITY_OUTAGE_TICKS,
+  mergeabilityOutageDue,
   mergeabilitySaidKey,
   planMergeabilityWatch,
   renderMergeabilityLetter,
@@ -4717,15 +4721,21 @@ const watchMergeability = async (input: {
   readonly registry: RoleRegistry;
   readonly said: readonly string[];
   readonly say: (line: string) => void;
-}): Promise<readonly string[] | undefined> => {
+}): Promise<MergeabilityPass> => {
   let open: Awaited<ReturnType<MergeReadySource["open"]>>;
   try {
     open = await ghMergeReadySource(input.repo).open();
   } catch (error) {
+    // THE REFUSAL IS HANDED BACK, NOT ONLY SAID (thread 097, curator's remaining
+    // requirement). A line in the daemon's log is what the merge-ready tier had on
+    // 2026-08-01 when it was refused every tick for hours and told nobody: the run of
+    // refusals is counted by the caller, survives the process in the state file, and rings
+    // a human at its threshold — see `foldMergeabilityOutage`.
+    const refusal = (error as Error).message;
     input.say(
-      `mergeability — the open pull requests were not read: ${(error as Error).message}; nothing is announced and no mark is moved`,
+      `mergeability — the open pull requests were not read: ${refusal}; nothing is announced and no mark is moved`,
     );
-    return undefined;
+    return { refusal };
   }
   const platform = platformEnvOf({ repo: input.repo });
   const owed = new Set(
@@ -4822,7 +4832,22 @@ const watchMergeability = async (input: {
       );
     }
   }
-  return [...kept].sort();
+  // The vendor answered — whatever came of the letters, the tier itself is alive, and that
+  // is the one thing that ends a run of refusals.
+  return { marks: [...kept].sort() };
+};
+
+/**
+ * WHAT ONE PASS OF THE WATCHMAN CAME TO, and it is two answers rather than one: the marks
+ * to remember (absent when the pass never got a list to judge) and the vendor's own sentence
+ * when it refused. They are not each other's negation — a pass that read the list and failed
+ * to deliver a letter has marks AND no refusal — which is why the second is not "marks are
+ * undefined" but a field of its own.
+ */
+type MergeabilityPass = {
+  readonly marks?: readonly string[] | undefined;
+  /** The vendor's sentence, verbatim, when the LIST could not be read. Absent means it was. */
+  readonly refusal?: string | undefined;
 };
 
 /** The identity every letter about the platform is signed with — a merge, an outcome, this. */
@@ -5250,8 +5275,21 @@ const runNotify = async (input: {
   // A DRY RUN NEVER WRITES INTO THE MAIL: `notify` without `--write` prints what it would
   // announce, and a letter committed and pushed by a "would" is not a dry run.
   let mergeableSaid = seen.mergeable;
+  // THE RUN OF REFUSALS, read back off the disk: the daemon starts a fresh process every
+  // tick, so a counter that lived in memory would count to one for ever.
+  let mergeableOutage = parseGhOutage(seen.mergeableOutage ?? "");
+  let mergeabilityAlarm: GhAlarm | undefined;
+  // AND THE CONDITION IS `section`, NOT ONLY `write` — named here because it was found
+  // unexplained in review (#252) and it is load-bearing rather than incidental. The
+  // watchman's unit is A TICK: "said once per break" and the threshold of its refusal
+  // counter are both counted in passes of the courier, and the courier is only walked in
+  // ticks where an `orchestrator` section says there is a daemon walking it. Run by hand
+  // twice a day through `--root`/`--state` alone, the same code would spend `gh` calls,
+  // deliver letters signed `github` that no tick follows up, and count two ticks a day
+  // against a threshold of five — an alarm that can never ring. A box that wants the
+  // watchman declares the section; the flags are for a courier without one.
   if (write && section !== undefined) {
-    const marks = await watchMergeability({
+    const pass = await watchMergeability({
       repo,
       mailRoot: root,
       branch: loaded.config.mail.branch,
@@ -5259,13 +5297,36 @@ const runNotify = async (input: {
       said: seen.mergeable ?? [],
       say,
     });
-    if (marks !== undefined) {
-      mergeableSaid = marks;
-      // WRITTEN AT ONCE, and not with the rest of the state at the end of the run: the
-      // letters above are already in the feed, and every other exit of this command leaves
-      // the state alone on purpose (a transport that could not deliver must ring again).
-      writeOut(statePath, renderNotifyState({ ...seen, mergeable: marks }));
+    if (pass.marks !== undefined) mergeableSaid = pass.marks;
+    mergeableOutage = foldMergeabilityOutage({
+      previous: mergeableOutage,
+      refusal: pass.refusal,
+      now: new Date(now),
+    });
+    if (mergeableOutage !== undefined && mergeabilityOutageDue(mergeableOutage)) {
+      mergeabilityAlarm = {
+        since: mergeableOutage.since,
+        ticks: mergeableOutage.ticks,
+        threshold: MERGEABILITY_OUTAGE_TICKS,
+        refusal: mergeableOutage.evidence,
+      };
+      // The standing line of every tick, beside the phone call that rings once: the alarm
+      // is said once per run, and this is what an operator reading the log in between sees.
+      say(describeMergeabilityOutage(mergeableOutage));
     }
+    // WRITTEN AT ONCE, and not with the rest of the state at the end of the run: the
+    // letters above are already in the feed, and every other exit of this command leaves
+    // the state alone on purpose (a transport that could not deliver must ring again). The
+    // counter rides in the same write for the same reason — a refused tick that is not
+    // remembered here is a tick the next process cannot count.
+    writeOut(
+      statePath,
+      renderNotifyState({
+        ...seen,
+        mergeable: mergeableSaid,
+        mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+      }),
+    );
   }
   const plan = planNotifications({
     targets,
@@ -5279,6 +5340,7 @@ const runNotify = async (input: {
     unaccepted,
     auth: authAlarm,
     gh: ghAlarm,
+    mergeability: mergeabilityAlarm,
     drift: driftAlarm,
     ...(input.accounts === undefined ? {} : { accounts: input.accounts }),
     // THE CLOCK THE REMINDER PASS NEEDS (thread 043): the same `now` every other age in this
@@ -5383,7 +5445,10 @@ const runNotify = async (input: {
     // possible, and a single clause could not say which is which.
     `${quotaShelves.map((shelf) => `; ${describeQuotaPause(shelf, new Date(now))}`).join("")}` +
     `${plan.auth === undefined ? "" : `; ${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} runs in a row)`}` +
-    `${plan.gh === undefined ? "" : `; gh has refused merge-ready ${plan.gh.ticks} ticks in a row (rings at ${plan.gh.threshold})`}`;
+    `${plan.gh === undefined ? "" : `; gh has refused merge-ready ${plan.gh.ticks} ticks in a row (rings at ${plan.gh.threshold})`}` +
+    // AND THE WATCHMAN'S OWN RUN STANDS BESIDE IT, on the same rule: the phone rings once
+    // per run, and the standing line is what says the tier is still off in between.
+    `${plan.mergeability === undefined ? "" : `; gh has refused the watchman of mergeability ${plan.mergeability.ticks} ticks in a row (rings at ${plan.mergeability.threshold})`}`;
   if (!write) {
     say(message === "" ? "(nothing — nobody is waiting)" : message);
     return {
@@ -5449,6 +5514,11 @@ const runNotify = async (input: {
       plan.staleEventParks.length === 0 &&
       !plan.freshAuth &&
       !plan.freshGh &&
+      // AND THE WATCHMAN'S OUTAGE RAISES ITS OWN LETTER, on the rule of the two above and
+      // for the reason this whole class exists: nothing turns red when that tier dies, so a
+      // line waiting for somebody else's event is owed to a letter that may never come — the
+      // box is quiet precisely because the watchman has stopped announcing anything.
+      !plan.freshMergeability &&
       // A DRIFT PAST THE BAND IS WORTH A LETTER OF ITS OWN (thread 044). It rings once per
       // period of being behind, and the letter is the whole point: the class exists because
       // the fact was already written in `daemon.log` every thirty seconds and reached nobody.
@@ -5490,6 +5560,11 @@ const runNotify = async (input: {
         // The watchman's own marks, carried through unchanged: this command's other classes
         // are the composition of THIS run, and that one is not (see `watchMergeability`).
         mergeable: mergeableSaid,
+        // The counter and what has already rung about it, on the rule of `gh` beside it: the
+        // run is carried verbatim, the announced stamp is dropped when the run ends, so the
+        // NEXT outage rings again.
+        mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+        mergeableRang: plan.mergeability?.since,
       }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
@@ -5523,6 +5598,8 @@ const runNotify = async (input: {
         // The watchman's own marks, carried through unchanged: this command's other classes
         // are the composition of THIS run, and that one is not (see `watchMergeability`).
         mergeable: mergeableSaid,
+        mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+        mergeableRang: plan.mergeability?.since,
       }),
     );
     return { kind: "sent", summary, lines: said };
@@ -5563,6 +5640,8 @@ const runNotify = async (input: {
       eventParks: plan.eventParkKeys,
       // The watchman's own marks, carried through unchanged (see `watchMergeability`).
       mergeable: mergeableSaid,
+      mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+      mergeableRang: plan.mergeability?.since,
     }),
   );
   say(outcome.detail);
