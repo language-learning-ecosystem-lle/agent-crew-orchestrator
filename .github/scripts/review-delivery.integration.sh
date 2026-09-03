@@ -51,6 +51,19 @@ FAKE_TOKEN="integration-not-a-secret"
 printf 'Вердикт тестового круга по PR #%s.\n' "$PR" > "$BODY"
 
 FAILED=0
+# НОМЕР СОСТОЯНИЯ ОБЪЯВЛЯЕТСЯ, А НЕ СЧИТАЕТСЯ ГЛАЗОМ (тред 094, сведение с тредом 118).
+# Прогон растёт хвостом сразу у нескольких тредов, и два из них уже заняли одни и те же
+# номера в один день: механическое склеивание дало бы файл с двумя разными состояниями
+# под номером (10) и итоговой строкой, врущей про их число. Отсюда: каждое состояние
+# отмечается здесь, повтор номера — ПРОВАЛ ПО ИМЕНИ, а итог называет число, которое
+# посчитано прогоном, а не переписано из письма.
+STATES=""
+note_state() { # <номер состояния>
+  case " $STATES " in
+    *" $1 "*) echo "  FAIL · состояние ($1) объявлено дважды — номера разошлись"; FAILED=1 ;;
+  esac
+  STATES="$STATES $1"
+}
 check() { # <что> <ожидалось> <получено>
   if [ "$2" = "$3" ]; then
     echo "  ok   · $1"
@@ -93,6 +106,7 @@ standing_park() { # <тред>
 
 case_park() { # <номер> <что за состояние> <значение парка|пусто> <ожидаемый флаг> <остаётся ли парк стоять: yes|no> <ожидаемый код двери>
   local n="$1" what="$2" value="${3:-}" want_flags="$4" want_left="$5" want_code="${6:-0}"
+  note_state "$n"
   local id="90${n}-фикстура-парка"
   echo "== ($n) ${what}"
   make_thread "$id" "$value"
@@ -157,6 +171,7 @@ case_park 6 "парк за ЧУЖИМ merge (предел)"    "pr:191"    "--pa
 # --- (7) отказ двери НЕ ПО ПАРКУ: предупреждение в лог, парк не выдуман ------------
 # Ветвь, в которой был измеренный дефект: диагностика `park_probe` уезжала в stdout и
 # становилась значением парка. Отказ здесь настоящий — несуществующая роль в `--from`.
+note_state 7
 echo "== (7) сухой прогон отказал НЕ по парку (несуществующая роль)"
 make_thread "907-фикстура-парка" ""
 PROBE_ERR="$WORK/probe.err"
@@ -191,6 +206,7 @@ echo "    дословно: $(head -c 200 "$PROBE_ERR")"
 # веткой требует чистого дерева (`receive.denyCurrentBranch=updateInstead`).
 delivery_case() { # <номер> <что за состояние> <значение парка|пусто> <остаётся ли парк: yes|no> <откуда remote: token|named>
   local n="$1" what="$2" value="${3:-}" want_left="$4" remote_mode="${5:-token}"
+  note_state "$n"
   echo "== ($n) ${what}"
   local arena="$WORK/e2e-$n" ws
   ws="$arena/ws"
@@ -318,6 +334,7 @@ F_TURNS="$(exec_fixture turns '{"type":"result","is_error":true,"api_error_statu
 
 letter_case() { # <номер> <что за состояние> <файл транскрипта|пусто> <самопропуск: 0|1>
   local n="$1" what="$2" exec_file="${3:-}" self_skip="${4:-0}"
+  note_state "$n"
   echo "== ($n) ${what}"
   local arena="$WORK/letter-$n" bin
   bin="$arena/bin"
@@ -390,8 +407,116 @@ letter_case 13 "самопропуск + транскрипт 429: самопр�
 check "напечатан самопропуск" "да" "$(has 'пропустил сам себя')"
 check "лимит не подмешан" "нет" "$(has 'ЛИМИТ АККАУНТА')"
 
+# --- (14)/(15) ОТКАЗ ДОСТАВКИ АДРЕСУЕТСЯ АВТОРУ PR (решение john, тред 094) ---------
+#
+# ЭТО ПРИЁМКА ПОСТАНОВКИ 094 на тех самых состояниях (5) и (6): дверь по решению john не
+# трогается, чужой `run:`/`pr:`-парк письмо в тред PR по-прежнему не пускает — но отказ
+# ТЕПЕРЬ АДРЕСНЫЙ. Проверяется не текст в логе, а ФАКТ: письмо об отказе лежит в приёмнике
+# в УДАЛЁННОЙ почте, ход в нём — на АВТОРЕ PR, и оно называет три вещи (тред, чужой парк с
+# номером, место, где висит вердикт). Тред PR при этом остаётся стоять за чужим парком и
+# письма не получает: лечится адресация, а не дверь.
+# Номера тредов — ТРЁХЗНАЧНЫЕ и передаются явно: дверь читает только `^\d{3}-` («thread
+# id … is not a thread the mail can read»), и `9${n}0` при двузначном номере состояния
+# давало бы четыре цифры. Поймано этим же прогоном.
+escalation_case() { # <номер состояния> <значение ЧУЖОГО парка> <id треда PR> <id приёмника>
+  local n="$1" value="$2"
+  note_state "$n"
+  echo "== ($n) чужой парк '${value}': письмо в тред PR не легло — отказ адресован автору"
+  local arena="$WORK/e2e-$n" ws
+  ws="$arena/ws"
+  mkdir -p "$arena/mail/agent-comms" "$ws"
+  git -C "$arena/mail" init -q -b comms
+  git -C "$arena/mail" config user.name "integration"
+  git -C "$arena/mail" config user.email "integration@agents.invalid"
+  git -C "$arena/mail" config receive.denyCurrentBranch updateInstead
+  git -C "$ws" init -q -b work
+  git -C "$ws" config user.name "integration"
+  git -C "$ws" config user.email "integration@agents.invalid"
+  git -C "$ws" commit -q --allow-empty -m "рабочее дерево джобы"
+  git -C "$ws" remote add origin "https://example.invalid/mail.git"
+  ln -s "$CODE_DIR" "$ws/.code"
+
+  MAIL_DIR="$arena/mail"
+  ROOT="$MAIL_DIR/agent-comms"
+  local id="$3" recv="$4"
+  make_thread "$id" "$value"
+  # Приёмник — стоячий адрес: парка на нём нет (`077-notifier-down` не паркуют).
+  make_thread "$recv" ""
+
+  local before after code
+  before="$(git -C "$MAIL_DIR" ls-tree -r --name-only comms -- "agent-comms/${id}/messages" | wc -l)"
+  (
+    cd "$ws" || exit 3
+    export GITHUB_WORKSPACE="$ws"
+    export GITHUB_SERVER_URL="https://example.invalid"
+    export GITHUB_REPOSITORY="owner/repo"
+    export MAIL_REMOTE="$MAIL_DIR"
+    export REVIEW_DELIVERY_DIR="$arena/.delivery"
+    # Приёмник и автор названы снаружи: сети у харнесса нет, а `gh pr view` — сеть.
+    # Ветвь «прочитать автора из описания PR» закрыта юнитом (`pr_body_role`).
+    export REVIEW_ESCALATION_THREAD="$recv"
+    export REVIEW_PR_AUTHOR="dev-core"
+    # shellcheck source=./comms-push.sh
+    source "${CODE_DIR}/.github/scripts/comms-push.sh"
+    # shellcheck source=./review-delivery.sh
+    source "${CODE_DIR}/.github/scripts/review-delivery.sh"
+    # Коммент в PR уехал — значит письмо об отказе обязано сказать, что текст там.
+    delivery_mark comment ok
+    deliver_to_thread "$id" reviewer-pr "$BODY" "вердикт ревьюера по #${PR}" "$PR" \
+      --waiting-on curator --verdict approve --pr "$PR"
+  ) > "$arena/out.log" 2>&1
+  code=$?
+
+  check "deliver_to_thread отказала (дверь не смягчена)" "1" "$code"
+  after="$(git -C "$MAIL_DIR" ls-tree -r --name-only comms -- "agent-comms/${id}/messages" | wc -l)"
+  check "письмо в тред PR НЕ легло — предел остался пределом" "$before" "$after"
+
+  local esc
+  esc="$(git -C "$MAIL_DIR" -c core.quotePath=false ls-tree -r --name-only comms \
+      -- "agent-comms/${recv}/messages" | grep -- '-reviewer-pr\.md$' | head -n1)"
+  check "письмо об отказе ЛЕГЛО В УДАЛЁННОЙ почте приёмника" "да" \
+    "$([ -n "$esc" ] && echo да || echo нет)"
+  [ -n "$esc" ] || { sed 's/^/    /' "$arena/out.log"; return 0; }
+
+  local text
+  text="$(git -C "$MAIL_DIR" -c core.quotePath=false show "comms:${esc}")"
+  check "ход в письме — на АВТОРЕ PR, а не на роли, поднятой смотрителем" "да" \
+    "$(printf '%s' "$text" | grep -qE '^waiting-on: dev-core$' && echo да || echo нет)"
+  check "назван тред, не принявший вердикт" "да" \
+    "$(printf '%s' "$text" | grep -q "$id" && echo да || echo нет)"
+  check "назван ЧУЖОЙ парк с номером" "да" \
+    "$(printf '%s' "$text" | grep -qF "$value" && echo да || echo нет)"
+  check "названо место, где висит вердикт" "да" \
+    "$(printf '%s' "$text" | grep -q "висит комментом в самом PR #${PR}" && echo да || echo нет)"
+
+  # ПИСЬМО ОДНО НА КРУГ: шагов доставки два, и второй зовёт ту же дорогу — автор не должен
+  # получить два письма об одном событии в стоячий адрес.
+  (
+    cd "$ws" || exit 3
+    export GITHUB_WORKSPACE="$ws" MAIL_REMOTE="$MAIL_DIR" REVIEW_DELIVERY_DIR="$arena/.delivery"
+    export GITHUB_SERVER_URL="https://example.invalid" GITHUB_REPOSITORY="owner/repo"
+    export REVIEW_ESCALATION_THREAD="$recv" REVIEW_PR_AUTHOR="dev-core"
+    # shellcheck source=./comms-push.sh
+    source "${CODE_DIR}/.github/scripts/comms-push.sh"
+    # shellcheck source=./review-delivery.sh
+    source "${CODE_DIR}/.github/scripts/review-delivery.sh"
+    deliver_to_thread "$id" reviewer-pr "$BODY" "вердикт ревьюера по #${PR}" "$PR" \
+      --waiting-on curator --verdict approve --pr "$PR"
+  ) >> "$arena/out.log" 2>&1
+  check "второй шаг доставки второго письма в приёмник НЕ добавил" "1" \
+    "$(git -C "$MAIL_DIR" -c core.quotePath=false ls-tree -r --name-only comms \
+       -- "agent-comms/${recv}/messages" | grep -c -- '-reviewer-pr\.md$')"
+
+  local left
+  left="$( (cd "$ws" && standing_park "$id") )"
+  check "чужой парк на треде PR ОСТАЛСЯ стоять" "$value" "$left"
+}
+
+escalation_case 14 "run:191" 910-фикстура-парка 911-фикстура-приёмника
+escalation_case 15 "pr:191"  912-фикстура-парка 913-фикстура-приёмника
+
 if [ "$FAILED" = "0" ]; then
-  echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ"
+  echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ — $(printf '%s' "$STATES" | wc -w) шт."
 else
   echo "интеграционный прогон доставки: ЕСТЬ ПРОВАЛЫ"
   exit 1
