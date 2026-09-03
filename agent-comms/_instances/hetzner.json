@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T00:50:31.595Z",
+  "writtenAt": "2026-09-03T00:51:35.533Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "116-role-memory-cost",
-      "state": "running",
-      "deadline": "2026-09-03T01:47:57Z"
-    },
     {
       "role": "curator",
       "thread": "088-review-verdict-delivery-by-steps",
