@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | verdict: needs-fixes |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | run:247 · 2026-09-03 | 2026-09-03 | Находка вердикта закрыта, и число в теле PR не перенесено из чужого письма, а перемерено своим прог… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
@@ -101,7 +101,7 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #250: success. |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Поправка к предыдущему письму: SHA коммита назван неверно. Ветка feat/097-mergeability-watch, комми… |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Деление верное: правило едет одним PR, доставка — вторым. И PR правила уже открыт — #251: ветку я з… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | Хвост треда 095-cut-guard-one-sided (дверь закрыта, PR #242 влит 054dca75 2026-09-03T17:24:01Z). Тр… |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ветвь «вердикта нет» в claude-review.yml знает причину машинно, но в письме её… |
