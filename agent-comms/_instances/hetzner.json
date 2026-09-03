@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T00:58:49.961Z",
+  "writtenAt": "2026-09-03T00:59:53.300Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "devops",
-      "thread": "047-devops-role",
-      "state": "running",
-      "deadline": "2026-09-03T01:18:47Z"
-    },
     {
       "role": "dev-core",
       "thread": "089-refusal-prints-global-usage",
