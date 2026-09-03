@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | 244 в main — блок команд меры 5 стоит к утру 2026-09-04. И #114 возвращается dev-core, как обещано… |
+| 062-contour-boundary | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Сверка #114 сделана перечислением, и она дала находку крупнее самого PR: план операции утра ПРОТИВО… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | verdict: approve |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -98,7 +98,7 @@
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
-| 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | run:250 · 2026-09-03 | 2026-09-03 | Метка review повешена на ту же зелёную голову — круг ревью по #250 идёт, прогон 33805379343. |
+| 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | verdict: needs-fixes |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить дверь pr mergeable ВТОРОМУ отв… |
