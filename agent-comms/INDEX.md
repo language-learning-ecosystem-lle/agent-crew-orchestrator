@@ -99,4 +99,5 @@
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: чинить ли замеренный предел — доставка вердикта ревьюера не умеет встать РЯ… |
+| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | — | — | — | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
