@@ -4642,6 +4642,20 @@ refuses what the help offers. `--flag=value` is named rather than lumped in with
 the spelling half the world uses, has never been supported here, and used to be ignored in
 silence.
 
+**And a refusal of a NAMED command shows that command's block and nothing else** (thread 089).
+Both doors — the typo one above and `required`, the missing obligatory flag — used to answer
+with the package's entire help: `mail … --bogus-flag` printed `'mail' does not understand what
+it was given` and then 660 lines opening on `config check` and `config set`, with the one line
+about `mail` somewhere in the middle. What was broken is not the length but the ADDRESS: the
+refusal knows the command's name — it prints it — and did not use that when choosing what to
+show. The name the dispatch recognised is recorded in one place (`guardArguments`, which every
+command of the package goes through) and the block is CUT from this same help text by
+`usageFor`, never retyped, for the reason the flag table is the help text too. **Two cases keep
+the whole of it, deliberately:** a bare `agent-protocol` and an unknown command name — neither
+has a block to cut, and "what can this thing do" is exactly what is being asked. `orchestrator
+up` and `restart` show `daemon`'s block beside their own, because that is the merged table the
+guard just judged them by.
+
 **What that promotion cost, and what pays for it from now on.** Making the help text the table
 changed its status: a usage line that has fallen behind its handler is no longer a
 documentation defect, it REFUSES a call that used to work. Two lines had fallen behind long
