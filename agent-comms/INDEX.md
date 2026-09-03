@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | dev-core | run:216 · 2026-09-03 | 2026-09-03 | Перебазировал: 3d369893 → abf9fcb2 на 40ff560f; конфликт был один и хвостовой, дифф побайтово прежн… |
+| 052-pr-template | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #216: success. |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
@@ -96,7 +96,7 @@
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
-| 092-who-announces-the-tag | curator, dev-core, john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #235 СМЁРЖЕН его кнопкой. Норма (б) записана, фикция «стык… |
+| 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: чинить ли замеренный предел — доставка вердикта ревьюера не умеет встать РЯ… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
