@@ -1,11 +1,11 @@
 ---
 name: machine-config-is-instance-file
-description: "Учётки этого контура объявлены в instances/hetzner.json, а local.json на ящике нет вовсе; супервизор бежит как lle и не видит внутрь /home/aco-devops"
+description: "Учётки этого контура объявлены в instances/hetzner.json, а local.json на ящике нет вовсе; тот же файл полем secrets.envFile отвечает, чей креды-файл СВОЙ; супервизор бежит как lle и не видит внутрь /home/aco-devops"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 22059a72-f6dd-4e0c-8a44-c7c900ff9af4
-  modified: 2026-09-02T19:04:31.543Z
+  modified: 2026-09-03T12:46:48.916Z
 ---
 
 Машинная половина конфига этого контура — `~/.config/agent-protocol/instances/hetzner.json`
@@ -13,6 +13,13 @@ metadata:
 **`~/.config/agent-protocol/local.json` на ящике не существует** — ссылаться на него в постановке
 значит послать john не по адресу. На 2026-09-02 файл объявляет `lle-main`, `lle-second`,
 `codex-main`; `devops-main` в нём нет.
+
+**Он же отвечает, какой файл секретов СВОЙ** (замер 2026-09-03, тред `092`): `GH_TOKEN` бывает не
+подан в среду поднятой сессии вовсе (`gh auth login` тогда просит логина), а на полке лежат оба —
+`secrets.aco.env` и `secrets.lle.env`. Чей какой, решается не именем, а полем `secrets.envFile` того
+инстанса, чей `repo` совпадает с деревом прогона: `hetzner` → `repo: …/agent-crew-orchestrator` →
+`secrets.aco.env`. Взять соседний (`lle-hetzner` → `secrets.lle.env`) — тот самый отказ из
+[[statement-of-work-ends-at-the-tag]], и различие тут ЗАМЕРЯЕМОЕ, а не «по названию похоже».
 
 Второй факт того же замера: супервизор бежит из-под `lle`, а `/home/aco-devops` — `0750
 aco-devops:aco-devops`, и `lle` в этой группе нет. **Всё, что супервизор судит по `stat`, о
