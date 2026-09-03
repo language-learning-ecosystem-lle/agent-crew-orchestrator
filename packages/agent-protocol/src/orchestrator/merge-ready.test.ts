@@ -13,6 +13,7 @@ import {
   readMergeReady,
 } from "./merge-ready.js";
 import { describeOrder, orderCandidates, type RankedCandidate } from "./priority.js";
+import { reviewRoundWord } from "./state-word.js";
 
 const HEAD = "9d356944e57e416d99d8c32ff74aa6b1f5f4ae4f";
 const HEAD_AT = "2026-08-01T05:00:00Z";
@@ -333,5 +334,168 @@ describe("the note of the tier — the raise names its own purpose", () => {
     // is the whole of "the words change, the queue does not".
     expect([...power.ready]).toEqual([["019-operator-ux", 152]]);
     expect([...ordinary.ready]).toEqual([...power.ready]);
+  });
+});
+
+/**
+ * §5 STATE 2 OF `docs/state-model.md` — the pair that hung the label and passed the turn,
+ * and which the frame called "finished". Four branches, and each of them is named here in
+ * the words of the statement of work: the project that declared no round, the round that
+ * is open, the round that closed with a verdict, and the label the reader deliberately
+ * does NOT tell from a running round.
+ */
+describe("readMergeReady — the round of review, said where the pair read as finished", () => {
+  /** Not ready: no verdict against the head at all, so only the label decides. */
+  const unreviewed = facts({ reviews: [] });
+
+  it("no 'review' in the config: the tier is SILENT and the ready half is bit for bit the same", async () => {
+    const reading = await readMergeReady({
+      source: source({ open: [open({ labels: ["review"] })], facts: () => unreviewed }),
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+    });
+
+    // The label is right there on the PR and is still not read: a package that assumed the
+    // word `review` would be inventing one contour's vocabulary for every other one.
+    expect([...reading.inReview]).toEqual([]);
+    expect([...reading.ready]).toEqual([]);
+  });
+
+  it("the label is on and nothing has answered this head: THE STATE, with its PR", async () => {
+    const reading = await readMergeReady({
+      source: source({ open: [open({ labels: ["review", "size/L"] })], facts: () => unreviewed }),
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+      reviewLabel: "review",
+    });
+
+    expect([...reading.inReview]).toEqual([["019-operator-ux", 152]]);
+  });
+
+  it("no label: not the state — a pull request nobody sent to review waits for its author", async () => {
+    const reading = await readMergeReady({
+      source: source({ open: [open({ labels: [] })], facts: () => unreviewed }),
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+      reviewLabel: "review",
+    });
+
+    expect([...reading.inReview]).toEqual([]);
+  });
+
+  it("the round CLOSED with a verdict on this head: not the state, and never both maps", async () => {
+    // `facts()` carries an approve anchored to the head — guards 1-2 hold, the older tier
+    // speaks, and what the pair waits for is a button, not a round.
+    const reading = await readMergeReady({
+      source: source({ open: [open({ labels: ["review"] })] }),
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+      reviewLabel: "review",
+    });
+
+    expect([...reading.ready]).toEqual([["019-operator-ux", 152]]);
+    expect([...reading.inReview]).toEqual([]);
+  });
+
+  it("a verdict on this head that REFUSES: not the state either — the turn is the author's", async () => {
+    // `CHANGES_REQUESTED` on the current head fails guard 1, so the thread is in neither
+    // map: the round has answered, and the pair is not waiting for it.
+    const answered = facts({
+      reviews: [
+        {
+          state: "CHANGES_REQUESTED",
+          commitSha: HEAD,
+          author: "github-actions",
+          submittedAt: "2026-08-01T05:10:00Z",
+        },
+      ],
+    });
+    const reading = await readMergeReady({
+      source: source({ open: [open({ labels: ["review"] })], facts: () => answered }),
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+      reviewLabel: "review",
+    });
+
+    expect([...reading.ready]).toEqual([]);
+    expect([...reading.inReview]).toEqual([]);
+  });
+
+  it("a label left on a head that has since moved is NOT told from a running round — and the line says so", async () => {
+    // The third position of the statement of work (thread `053-review-bypassed`). Telling
+    // it apart is a run of the reviewer's workflow anchored to this head — an Actions call
+    // per pull request per tick, which this reader does not make. So it is reported as the
+    // state, and the caveat travels IN THE WORDS rather than in a document nobody opens.
+    const movedHead = facts({
+      reviews: [
+        {
+          state: "APPROVED",
+          commitSha: "0000000000000000000000000000000000000000",
+          author: "github-actions",
+          submittedAt: "2026-08-01T04:00:00Z",
+        },
+      ],
+    });
+    const reading = await readMergeReady({
+      source: source({ open: [open({ labels: ["review"] })], facts: () => movedHead }),
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+      reviewLabel: "review",
+    });
+
+    expect([...reading.inReview]).toEqual([["019-operator-ux", 152]]);
+    expect(reviewRoundWord(152)).toContain("NOT asked");
+  });
+
+  it("the tier going dark leaves BOTH halves empty — degradation runs in one direction only", async () => {
+    const reading = await readMergeReady({
+      source: source({
+        open: () => {
+          throw new Error("gh: HTTP 401");
+        },
+      }),
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+      reviewLabel: "review",
+    });
+
+    expect([...reading.ready]).toEqual([]);
+    expect([...reading.inReview]).toEqual([]);
+    expect(reading.refusal).toContain("401");
+    expect(reading.asked).toBe(true);
+  });
+
+  it("a single PR that could not be read stays a note: the tier is not stood down and 'asked' holds", async () => {
+    const reading = await readMergeReady({
+      source: {
+        open: async () => [open({ labels: ["review"] })],
+        facts: async () => {
+          throw new Error("gh: could not read PR");
+        },
+      },
+      threads: ["019-operator-ux"],
+      cache: createMergeReadyCache(),
+      reviewLabel: "review",
+    });
+
+    expect([...reading.inReview]).toEqual([]);
+    expect(reading.refusal).toBeUndefined();
+    expect(reading.notes.join("\n")).toContain("keeps its ordinary place");
+  });
+
+  it("the ORDER of the queue is bit for bit the same with the state and without it", async () => {
+    // The load-bearing half: this field is read to SAY a state, never to move a pair.
+    // Moving one by it would hand a machine the `thread-priority` right.
+    const rows: readonly RankedCandidate[] = [
+      { role: "dev-core", thread: "071-other", priority: "normal", since: "2026-08-01" },
+      { role: "dev-core", thread: "063-state", priority: "normal", since: "2026-08-02" },
+    ];
+    const withState = rows.map((row) =>
+      row.thread === "063-state" ? { ...row, reviewRoundPr: 152 } : row,
+    );
+
+    expect(orderCandidates(withState).map((row) => row.thread)).toEqual(
+      orderCandidates(rows).map((row) => row.thread),
+    );
   });
 });
