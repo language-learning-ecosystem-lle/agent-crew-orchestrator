@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T00:54:58.149Z",
+  "writtenAt": "2026-09-03T00:56:04.263Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "088-review-verdict-delivery-by-steps",
-      "state": "draining",
-      "deadline": "2026-09-03T01:30:28Z"
-    },
     {
       "role": "dev-core",
       "thread": "089-refusal-prints-global-usage",
