@@ -266,6 +266,113 @@ delivery_case() { # <номер> <что за состояние> <значен�
 delivery_case 8 "весь путь, url собран из токена: парк за ЭТИМ кругом — run:${PR}" "run:${PR}" no  token
 delivery_case 9 "весь путь, url назван снаружи: парк на человеке"                  "john"      yes named
 
+# --- (10)/(11) ОТКАЗ ДОСТАВКИ АДРЕСУЕТСЯ АВТОРУ PR (решение john, тред 094) ---------
+#
+# ЭТО ПРИЁМКА ПОСТАНОВКИ 094 на тех самых состояниях (5) и (6): дверь по решению john не
+# трогается, чужой `run:`/`pr:`-парк письмо в тред PR по-прежнему не пускает — но отказ
+# ТЕПЕРЬ АДРЕСНЫЙ. Проверяется не текст в логе, а ФАКТ: письмо об отказе лежит в приёмнике
+# в УДАЛЁННОЙ почте, ход в нём — на АВТОРЕ PR, и оно называет три вещи (тред, чужой парк с
+# номером, место, где висит вердикт). Тред PR при этом остаётся стоять за чужим парком и
+# письма не получает: лечится адресация, а не дверь.
+# Номера тредов — ТРЁХЗНАЧНЫЕ и передаются явно: дверь читает только `^\d{3}-` («thread
+# id … is not a thread the mail can read»), и `9${n}0` при двузначном номере состояния
+# давало бы четыре цифры. Поймано этим же прогоном.
+escalation_case() { # <номер состояния> <значение ЧУЖОГО парка> <id треда PR> <id приёмника>
+  local n="$1" value="$2"
+  echo "== ($n) чужой парк '${value}': письмо в тред PR не легло — отказ адресован автору"
+  local arena="$WORK/e2e-$n" ws
+  ws="$arena/ws"
+  mkdir -p "$arena/mail/agent-comms" "$ws"
+  git -C "$arena/mail" init -q -b comms
+  git -C "$arena/mail" config user.name "integration"
+  git -C "$arena/mail" config user.email "integration@agents.invalid"
+  git -C "$arena/mail" config receive.denyCurrentBranch updateInstead
+  git -C "$ws" init -q -b work
+  git -C "$ws" config user.name "integration"
+  git -C "$ws" config user.email "integration@agents.invalid"
+  git -C "$ws" commit -q --allow-empty -m "рабочее дерево джобы"
+  git -C "$ws" remote add origin "https://example.invalid/mail.git"
+  ln -s "$CODE_DIR" "$ws/.code"
+
+  MAIL_DIR="$arena/mail"
+  ROOT="$MAIL_DIR/agent-comms"
+  local id="$3" recv="$4"
+  make_thread "$id" "$value"
+  # Приёмник — стоячий адрес: парка на нём нет (`077-notifier-down` не паркуют).
+  make_thread "$recv" ""
+
+  local before after code
+  before="$(git -C "$MAIL_DIR" ls-tree -r --name-only comms -- "agent-comms/${id}/messages" | wc -l)"
+  (
+    cd "$ws" || exit 3
+    export GITHUB_WORKSPACE="$ws"
+    export GITHUB_SERVER_URL="https://example.invalid"
+    export GITHUB_REPOSITORY="owner/repo"
+    export MAIL_REMOTE="$MAIL_DIR"
+    export REVIEW_DELIVERY_DIR="$arena/.delivery"
+    # Приёмник и автор названы снаружи: сети у харнесса нет, а `gh pr view` — сеть.
+    # Ветвь «прочитать автора из описания PR» закрыта юнитом (`pr_body_role`).
+    export REVIEW_ESCALATION_THREAD="$recv"
+    export REVIEW_PR_AUTHOR="dev-core"
+    # shellcheck source=./comms-push.sh
+    source "${CODE_DIR}/.github/scripts/comms-push.sh"
+    # shellcheck source=./review-delivery.sh
+    source "${CODE_DIR}/.github/scripts/review-delivery.sh"
+    # Коммент в PR уехал — значит письмо об отказе обязано сказать, что текст там.
+    delivery_mark comment ok
+    deliver_to_thread "$id" reviewer-pr "$BODY" "вердикт ревьюера по #${PR}" "$PR" \
+      --waiting-on curator --verdict approve --pr "$PR"
+  ) > "$arena/out.log" 2>&1
+  code=$?
+
+  check "deliver_to_thread отказала (дверь не смягчена)" "1" "$code"
+  after="$(git -C "$MAIL_DIR" ls-tree -r --name-only comms -- "agent-comms/${id}/messages" | wc -l)"
+  check "письмо в тред PR НЕ легло — предел остался пределом" "$before" "$after"
+
+  local esc
+  esc="$(git -C "$MAIL_DIR" -c core.quotePath=false ls-tree -r --name-only comms \
+      -- "agent-comms/${recv}/messages" | grep -- '-reviewer-pr\.md$' | head -n1)"
+  check "письмо об отказе ЛЕГЛО В УДАЛЁННОЙ почте приёмника" "да" \
+    "$([ -n "$esc" ] && echo да || echo нет)"
+  [ -n "$esc" ] || { sed 's/^/    /' "$arena/out.log"; return 0; }
+
+  local text
+  text="$(git -C "$MAIL_DIR" -c core.quotePath=false show "comms:${esc}")"
+  check "ход в письме — на АВТОРЕ PR, а не на роли, поднятой смотрителем" "да" \
+    "$(printf '%s' "$text" | grep -qE '^waiting-on: dev-core$' && echo да || echo нет)"
+  check "назван тред, не принявший вердикт" "да" \
+    "$(printf '%s' "$text" | grep -q "$id" && echo да || echo нет)"
+  check "назван ЧУЖОЙ парк с номером" "да" \
+    "$(printf '%s' "$text" | grep -qF "$value" && echo да || echo нет)"
+  check "названо место, где висит вердикт" "да" \
+    "$(printf '%s' "$text" | grep -q "висит комментом в самом PR #${PR}" && echo да || echo нет)"
+
+  # ПИСЬМО ОДНО НА КРУГ: шагов доставки два, и второй зовёт ту же дорогу — автор не должен
+  # получить два письма об одном событии в стоячий адрес.
+  (
+    cd "$ws" || exit 3
+    export GITHUB_WORKSPACE="$ws" MAIL_REMOTE="$MAIL_DIR" REVIEW_DELIVERY_DIR="$arena/.delivery"
+    export GITHUB_SERVER_URL="https://example.invalid" GITHUB_REPOSITORY="owner/repo"
+    export REVIEW_ESCALATION_THREAD="$recv" REVIEW_PR_AUTHOR="dev-core"
+    # shellcheck source=./comms-push.sh
+    source "${CODE_DIR}/.github/scripts/comms-push.sh"
+    # shellcheck source=./review-delivery.sh
+    source "${CODE_DIR}/.github/scripts/review-delivery.sh"
+    deliver_to_thread "$id" reviewer-pr "$BODY" "вердикт ревьюера по #${PR}" "$PR" \
+      --waiting-on curator --verdict approve --pr "$PR"
+  ) >> "$arena/out.log" 2>&1
+  check "второй шаг доставки второго письма в приёмник НЕ добавил" "1" \
+    "$(git -C "$MAIL_DIR" -c core.quotePath=false ls-tree -r --name-only comms \
+       -- "agent-comms/${recv}/messages" | grep -c -- '-reviewer-pr\.md$')"
+
+  local left
+  left="$( (cd "$ws" && standing_park "$id") )"
+  check "чужой парк на треде PR ОСТАЛСЯ стоять" "$value" "$left"
+}
+
+escalation_case 10 "run:191" 910-фикстура-парка 911-фикстура-приёмника
+escalation_case 11 "pr:191"  912-фикстура-парка 913-фикстура-приёмника
+
 if [ "$FAILED" = "0" ]; then
   echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ"
 else
