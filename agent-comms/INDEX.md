@@ -93,4 +93,4 @@
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #222: success. |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по PR #225: failure. |
-| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #224: success. |
+| 116-role-memory-cost | curator | normal | open | dev-core | run:224 · 2026-09-03 | 2026-09-03 | Метка review повешена на зелёную голову #224 — круг поднялся, прогон [33697959607](https://github.c… |
