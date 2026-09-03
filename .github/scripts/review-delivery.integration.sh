@@ -39,8 +39,15 @@ export REVIEW_DELIVERY_DIR
 # shellcheck source=./review-delivery.sh
 source "${CODE_DIR}/.github/scripts/review-delivery.sh"
 
-ROOT="$WORK/mail/agent-comms"
+# Каталог почты — ПЕРЕМЕННОЙ, а не литералом: состояния (8)/(9) гоняют весь путь
+# доставки и каждому нужна СВОЯ почта (см. их шапку — пуш в общую отказала бы
+# удалённая сторона из-за грязного дерева, оставленного состояниями (1)–(7)).
+MAIL_DIR="$WORK/mail"
+ROOT="$MAIL_DIR/agent-comms"
 BODY="$WORK/body.md"
+# Заведомо НЕ секрет: сеть не трогается, а url с этой подстрокой переписывается
+# `insteadOf` на путь во временном каталоге (состояния (8)/(9)).
+FAKE_TOKEN="integration-not-a-secret"
 printf 'Вердикт тестового круга по PR #%s.\n' "$PR" > "$BODY"
 
 FAILED=0
@@ -75,8 +82,8 @@ make_thread() { # <id треда> <значение parked-on|пусто>
     printf -- '---\n\n'
     printf 'Метка `review` повешена, ход передан ревьюеру.\n'
   } > "${ROOT}/${id}/messages/2026-09-03T00-10-00Z-curator.md"
-  git -C "$WORK/mail" add -A
-  git -C "$WORK/mail" commit -q --no-verify -m "фикстура ${id}"
+  git -C "$MAIL_DIR" add -A
+  git -C "$MAIL_DIR" commit -q --no-verify -m "фикстура ${id}"
 }
 
 # Что дверь считает СТОЯЩИМ парком сейчас — тем же сухим прогоном, что и в проде.
@@ -159,6 +166,105 @@ check "флага парка из него не строится" "" "$(park_fla
 check "предупреждение уехало в лог (stderr)" "да" \
   "$(grep -q '::warning::сухой прогон new-message отказал не по парку' "$PROBE_ERR" && echo да || echo нет)"
 echo "    дословно: $(head -c 200 "$PROBE_ERR")"
+
+# --- (8)/(9) ВЕСЬ ПУТЬ ДОСТАВКИ ЦЕЛИКОМ — `deliver_to_thread`, а не дверь напрямую ---
+#
+# ЗАЧЕМ, И ЭТО ОТВЕТ НА СОБСТВЕННЫЙ ПРОМАХ ЭТОГО ФАЙЛА. Состояния (1)–(7) гоняют
+# `park_probe` + `park_flags` + `new-message` — то есть РЕШЕНИЕ о парке, минуя
+# `deliver_to_thread`. Цена промаха измерена: переезд доставки из yaml в скрипт потерял
+# присваивание `MAIL_REMOTE`, первой строкой `review_mail_checkout` стои́т
+# `${MAIL_REMOTE:?…}`, и неинтерактивный bash на такой подстановке выходит НЕМЕДЛЕННО —
+# письмо в тред не ушло бы НИ НА ОДНОЙ из двух ветвей, а шесть зелёных состояний об этом
+# не сказали ничего (тред 088, доклад dev-core 2026-09-03). Юнит закрыл сборку url; здесь
+# закрывается то, чего юнит не видит, — что функция ДОХОДИТ ДО ДВЕРИ и письмо уезжает.
+#
+# ЧТО ГОНЯЕТСЯ: `deliver_to_thread` целиком, как её зовёт джоба, — `review_mail_checkout`
+# (fetch почты + свой worktree `.comms-fallback` + креденшл), сухая проба парка поверх
+# свежей головы, запись, коммит и НАСТОЯЩИЙ `comms_push` в удалённую почту. Проверяется
+# не «легло в рабочем дереве», а «легло В ВЕТКЕ `comms` УДАЛЁННОЙ почты», то есть пуш
+# прошёл: локальная запись без пуша — ровно та потеря, ради которой писан 088.
+#
+# ПОЧВА. Сеть не нужна и не трогается: удалённая почта — путь на диске, `origin` рабочего
+# дерева канонизируется в несуществующий `example.invalid` (в него не ходят, только
+# `set-url` — тред 016). У каждого состояния СВОЯ пара «почта + рабочее дерево»: почта
+# состояний (1)–(7) осталась с незакоммиченными письмами, а пуш в репозиторий с выкаченной
+# веткой требует чистого дерева (`receive.denyCurrentBranch=updateInstead`).
+delivery_case() { # <номер> <что за состояние> <значение парка|пусто> <остаётся ли парк: yes|no> <откуда remote: token|named>
+  local n="$1" what="$2" value="${3:-}" want_left="$4" remote_mode="${5:-token}"
+  echo "== ($n) ${what}"
+  local arena="$WORK/e2e-$n" ws
+  ws="$arena/ws"
+  mkdir -p "$arena/mail/agent-comms" "$ws"
+  git -C "$arena/mail" init -q -b comms
+  git -C "$arena/mail" config user.name "integration"
+  git -C "$arena/mail" config user.email "integration@agents.invalid"
+  # Пуш идёт в НЕ голый репозиторий с выкаченной `comms`: `updateInstead` двигает и
+  # ветку, и рабочее дерево — иначе удалённая сторона отказала бы пуш, и «легло ли»
+  # пришлось бы мерить мимо того, что читает дверь.
+  git -C "$arena/mail" config receive.denyCurrentBranch updateInstead
+  git -C "$ws" init -q -b work
+  git -C "$ws" config user.name "integration"
+  git -C "$ws" config user.email "integration@agents.invalid"
+  git -C "$ws" commit -q --allow-empty -m "рабочее дерево джобы"
+  git -C "$ws" remote add origin "https://example.invalid/mail.git"
+  ln -s "$CODE_DIR" "$ws/.code"
+
+  # РЕЖИМ `token` ГОНЯЕТ РОВНО ПРОДОВЫЙ ПУТЬ: `MAIL_REMOTE` НЕ ЗАДАН, и функция обязана
+  # собрать url сама из `GH_TOKEN`/`GITHUB_SERVER_URL`/`GITHUB_REPOSITORY`. Именно этот
+  # случай и был дефектом переезда, и харнесс, подающий `MAIL_REMOTE` снаружи, его бы
+  # не поймал — проверено мутацией (вернуть присваивание в `${MAIL_REMOTE:?}` и увидеть
+  # красное). Собранный url — всегда `https://`, поэтому на диск он попадает
+  # `insteadOf`: сети по-прежнему нет, а строку собирает КОД, а не тест.
+  local built_url="https://x-access-token:${FAKE_TOKEN}@example.invalid/owner/repo"
+  git -C "$ws" config "url.${arena}/mail.insteadOf" "$built_url"
+
+  MAIL_DIR="$arena/mail"
+  ROOT="$MAIL_DIR/agent-comms"
+  local id="90${n}-фикстура-парка"
+  make_thread "$id" "$value"
+
+  local before after code
+  before="$(git -C "$MAIL_DIR" ls-tree -r --name-only comms -- "agent-comms/${id}/messages" | wc -l)"
+  (
+    cd "$ws" || exit 3
+    export GITHUB_WORKSPACE="$ws"
+    export GITHUB_SERVER_URL="https://example.invalid"
+    export GITHUB_REPOSITORY="owner/repo"
+    export GH_TOKEN="$FAKE_TOKEN"
+    # `named` — вторая ветвь той же функции: названный снаружи url не подменяется.
+    [ "$remote_mode" = "named" ] && export MAIL_REMOTE="$MAIL_DIR"
+    # Тот же порядок source, что у шага джобы: `comms_push` и потолок попыток — оттуда.
+    # shellcheck source=./comms-push.sh
+    source "${CODE_DIR}/.github/scripts/comms-push.sh"
+    # shellcheck source=./review-delivery.sh
+    source "${CODE_DIR}/.github/scripts/review-delivery.sh"
+    deliver_to_thread "$id" reviewer-pr "$BODY" "вердикт ревьюера по #${PR}" "$PR" \
+      --waiting-on curator --verdict approve --pr "$PR"
+  ) > "$arena/out.log" 2>&1
+  code=$?
+
+  check "deliver_to_thread дошла до конца" "0" "$code"
+  [ "$code" = "0" ] || sed 's/^/    /' "$arena/out.log"
+  after="$(git -C "$MAIL_DIR" ls-tree -r --name-only comms -- "agent-comms/${id}/messages" | wc -l)"
+  check "письмо ЛЕГЛО В УДАЛЁННОЙ почте (то есть push прошёл)" "$((before + 1))" "$after"
+  # `core.quotePath=false` — имена тредов кириллические, и git по умолчанию отдаёт их
+  # экранированными восьмеричными кодами в кавычках: подпись из такого пути не вырезать.
+  check "письмо подписано шагом, а не агентом" "reviewer-pr" \
+    "$(git -C "$MAIL_DIR" -c core.quotePath=false ls-tree -r --name-only comms \
+       -- "agent-comms/${id}/messages" \
+       | grep -v -- '-curator\.md$' | head -n1 | sed 's|.*/[^/]*Z-||; s|\.md$||')"
+
+  local left
+  left="$( (cd "$ws" && standing_park "$id") )"
+  if [ "$want_left" = "yes" ]; then
+    check "чужой парк ОСТАЛСЯ стоять после доставки" "$value" "$left"
+  else
+    check "свой парк СНЯТ доставкой" "" "$left"
+  fi
+}
+
+delivery_case 8 "весь путь, url собран из токена: парк за ЭТИМ кругом — run:${PR}" "run:${PR}" no  token
+delivery_case 9 "весь путь, url назван снаружи: парк на человеке"                  "john"      yes named
 
 if [ "$FAILED" = "0" ]; then
   echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ"
