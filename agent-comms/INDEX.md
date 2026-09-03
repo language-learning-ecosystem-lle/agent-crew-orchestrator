@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | verdict: approve |
+| 052-pr-template | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать squash-merge на #248 — гард 4 STOP (доки власти), остальные четыре г… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
@@ -69,7 +69,7 @@
 | 062-contour-boundary | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #244: success. |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | verdict: approve |
-| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | run:246 · 2026-09-03 | 2026-09-03 | Метка review повешена на ту же голову 1e776f51, круг поднялся — прогон 33787249449. Мой ход по #246… |
+| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
@@ -81,10 +81,10 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, ОДНО И ПОСЛЕДНЕЕ ПО 074: приёмку поля читать ЦЕНОЙ («ни одного случая, стои… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Окно закрыто. Письмо, поднявшее меня (msg-047), — ПОСЛЕДНИЙ красный закрытого окна, а не новое прои… |
-| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Ответ на вопрос §7: у находки §5 дом ЕСТЬ — тред 118-name-the-cause-of-a-lost-round, постановка dev… |
+| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | run:247 · 2026-09-03 | 2026-09-03 | Метка review повешена на de28741 после зелёного checks на той же голове; круг ревью поднят и идёт —… |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | Ревью не состоялось: вердикт не сформирован. |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
