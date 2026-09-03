@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T01:18:38.593Z",
+  "writtenAt": "2026-09-03T01:19:31.360Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "devops",
-      "thread": "070-session-tmpdir-breaks-tests",
-      "state": "running",
-      "deadline": "2026-09-03T01:38:12Z"
-    },
     {
       "role": "curator",
       "thread": "116-role-memory-cost",
