@@ -79,7 +79,7 @@
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #202 СНОВА КОНФЛИКТУЕТ — перебазировать ещё раз. |
-| 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #217 СМЁРЖЕН его кнопкой. Цепочка закрыта целиком: тело ск… |
+| 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | — | — | 2026-09-03 | Приёмка треда: предмет закрыт, ЗАМЕРЕН, а не принят по докладам. Красная серия main кончилась ровно… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Нужна кнопка john: PR #237 готов к мержу — вердикт approve на текущей голове, оба checks зелёные, г… |
@@ -99,5 +99,5 @@
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: чинить ли замеренный предел — доставка вердикта ревьюера не умеет встать РЯ… |
-| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | — | — | — | — |
+| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Постановка по слову john (чат 2026-09-03 ~13:08Z: «да»). Происхождение: тред 055-mirror-post-0-2-6-… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
