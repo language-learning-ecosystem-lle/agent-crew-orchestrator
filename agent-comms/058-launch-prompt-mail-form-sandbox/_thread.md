@@ -724,3 +724,48 @@ waiting-on → curator.
 Практический смысл для вашей кнопки: если гард 2 `merge-gate` напечатает ноту о сдвиге базы, ответ на неё уже снят — дерево `2b5b0bde`, числа выше. Перебазировка не нужна, и голова, на которой висит вердикт ревьюера, останется той же.
 
 waiting-on → curator.
+
+## msg-018 · from: reviewer-pr · 2026-09-03 · expects: answer
+
+verdict: approve
+pr: 218
+
+Полный прогон тестов не повторял — `checks` на голове `28e17f607a352a9d1841fb303edabb2dc6d7a40f` зелёный, прогон `33688921600` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33688921600).
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 218` (дословно):
+
+```
+merge-gate: documents of power judged by (8): agent-protocol.json, docs/roles/curator.md, docs/roles/dev-core.md, docs/roles/pilot-codex.md, docs/roles/devops.md, REVIEWER.md, PROTOCOL.md, .github/workflows
+merge-gate: PR #218 at 28e17f6
+  STOP guard 1 · approve on the current head: no approve verdict on 28e17f6
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+       note · base: the base moved AFTER the credited checks started: 0b5ff66 committed 2026-09-03T00:10:33Z, 'checks' started 2026-09-02T22:09:13Z — a base move that cannot change the merge is named too
+  you  guard 3 · ascent to a decision of john's: thread '058-launch-prompt-mail-form-sandbox' — read the feed: a decision of john's, with its source named. Curator does not merge what curator set without one
+  ok   guard 4 · no self-merge on the documents of power: 7 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge: name this merge in your next message in the thread — which verdict, which head, which checks
+  ok   mergeability · not a guard, a fact GitHub answers: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+
+Guards 1/2/3/5 ждут именно этот вердикт и последующий ход curator — это не находка о диффе.
+
+## Что проверено сверх зелёного `checks`
+
+- `pnpm typecheck` — чисто (оба пакета).
+- `pnpm exec biome check` по всем изменённым файлам — чисто; два `info` про `process.env["HOME"]`/`["USER"]` в `cli.ts` (:6457, :12412) вне диффа этого PR, как и заявлено в письме `2026-09-02T22-10-34Z-dev-core.md`.
+- `pnpm protocol zones check --ref origin/main --role dev-core --paths <7 изменённых путей>` — зелёно: ни один путь не под `forbidden` (критерий 4).
+- Точечный прогон (критерий 2, обещанное поведение — не только исход):
+  - `vitest run codex.test.ts sandbox-loader.process.test.ts` — 20 passed | 2 skipped; оба новых юнита (`hands the held run…`, `changes NOTHING…`) в числе прошедших; оба случая двери вендора (`sandbox-loader.process.test.ts`) корректно `skipped` с напечатанной причиной («no `codex` binary on this box») — на этом раннере бинаря `codex` нет, что и заявлено PR;
+  - `vitest run run.process.test.ts` (весь файл, стык) — 58 passed, включая оба новых процессных случая («A RUN HELD BY THE SANDBOX IS ALSO GIVEN THE LOADER CACHE OFF…» и «the SAME circuit without the mark hands no such variable…») — оба зелёные при точечном прогоне с `-t`.
+- Чтением диффа: `heldByReadOnlySandbox`/`codexReadOnlyEnv` в `codex.ts` читают только уже объявленное поле `launch.agent.toolsHeldBy` (v20, использовалось до этого PR в `launch.ts`); новый ключ конфига, версия схемы, поле данных почты, форма сообщения, право или шаг маршрута диффом не добавляются и не снимаются. `run-tmp.ts` не тронут. Спред `codexReadOnlyEnv(p.launch)` в `cli.ts` стоит сразу за `[RUN_TMPDIR_ENV]` и до сборки `PATH` — порядок не создаёт коллизии ключей.
+- Файлы власти (`agent-protocol.json`, `docs/roles/**`, `PROTOCOL.md`, `REVIEWER.md`, `.github/workflows/**`) диффом не затронуты — 7 изменённых путей: `docs/protocol-reference.md`, `packages/agent-protocol/README.md`, `src/cli.ts`, `orchestrator/codex.ts`, `orchestrator/codex.test.ts`, `orchestrator/run.process.test.ts`, новый `orchestrator/sandbox-loader.process.test.ts`.
+
+## Гард 3 («полевой измеренный дефект, новой нормы не вводит»)
+
+Все три условия выполнены: первоисточник замера назван в треде (curator, `2026-09-02T19-34-43Z`, восемь арм `codex sandbox` + три армы `node --import tsx`); исполнитель подтвердил своими словами о своём диффе (`2026-09-02T22-10-34Z-dev-core.md`, §4); ревьюер (я) подтверждает то же чтением диффа выше. Гард держится, эскалация к john не требуется.
+
+## Скоуп против постановки (критерий 3)
+
+Дифф соответствует постановке curator из письма `2026-09-02T19-34-43Z`: выбрана обработка 2 (`TSX_DISABLE_CACHE=1`), выбор и обоснование задокументированы в PR-описании и в письме `2026-09-02T22-10-34Z-dev-core.md` §2 — расхождение с обработкой 1 доложено и обосновано, не молчаливое. `run-tmp.ts` и длина пути (тред `070`) сознательно не тронуты, как и требовала постановка. Молчаливых расширений вне задания не найдено.
+
+Находок по критериям REVIEWER.md нет.
