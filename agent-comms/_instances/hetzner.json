@@ -1,29 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T13:39:39.899Z",
+  "writtenAt": "2026-09-03T13:40:00.102Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
-  ],
-  "quota": [
-    {
-      "account": "lle-main",
-      "window": "five_hour",
-      "since": "2026-09-03T13:39:14Z",
-      "role": "curator",
-      "until": "2026-09-03T13:40:00Z",
-      "stated": true
-    },
-    {
-      "account": "lle-second",
-      "window": "five_hour",
-      "since": "2026-09-03T13:39:39Z",
-      "role": "dev-core",
-      "until": "2026-09-03T13:40:00Z",
-      "stated": true
-    }
   ],
   "leases": []
 }
