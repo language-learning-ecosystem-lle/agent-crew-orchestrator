@@ -163,6 +163,20 @@ describe("the state file", () => {
     expect(renderNotifyState(EMPTY)).toBe("");
     expect(parseNotifyState("")).toEqual(EMPTY);
   });
+
+  it("carries the marks of the watchman of mergeability, and drops a line that is not a key", () => {
+    const state = { waiting: [], stalled: [], parked: [], mergeable: ["pr:114", "pr:251"] };
+
+    expect(renderNotifyState(state)).toBe("mergeable\tpr:114\nmergeable\tpr:251\n");
+    expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
+    // A malformed line is DROPPED rather than half-read (the freeze rule): a key that is
+    // not the key would announce the same break a second time — which is the one failure
+    // this class exists against.
+    expect(parseNotifyState("mergeable\t251\nmergeable\n").mergeable).toBeUndefined();
+    // And a file written before this class existed reads as "nothing was ever said",
+    // not as "everything is new".
+    expect(parseNotifyState("john\tb\n").mergeable).toBeUndefined();
+  });
 });
 
 describe("a turn that has not moved — the second class of event (thread 024)", () => {
