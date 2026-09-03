@@ -1,10 +1,10 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-crew alias unresolvable) — the mail CLI cannot fetch/push under this identity. This is the real terminal blocker; node is a red herring (reachable via lle's .nvm by absolute path, but must not be used — see 2026-09-03T01:43Z entry). Confirmed across 7 runs on 5 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:43Z (thread 079-devops-enablement-acceptance, 2nd occurrence).
+description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-crew alias unresolvable) — the mail CLI cannot fetch/push under this identity. Node itself is reachable (lle's .nvm, absolute path) but must never be invoked — role-card workaround violation, not the real blocker. Only john can close this (scoped deploy key/token provisioning). Confirmed across 8 runs on 5 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:38Z (thread 079-devops-enablement-acceptance, 3rd occurrence).
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:27:24.249Z
+  modified: 2026-09-03T01:38:58.095Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -143,3 +143,20 @@ the one only `john` can close (provisioning a scoped deploy key/token for `aco-d
 retrying with the forbidden node path a second time) or `new-message --write`; ending via direct
 session reply again. Deadline for this run was `2026-09-03T01:43:56Z` — closed out with ~15 minutes
 to spare, no further diagnosis attempted since nothing here is new except the node correction.
+
+**2026-09-03T01:38Z, thread `079-devops-enablement-acceptance` (3rd occurrence on this thread, 8th
+overall) — description/summary line updated per the prior entry's own instruction.** 30-second
+recheck only, per this file's standing guidance (no full re-diagnosis): `PATH` still sudo's bare
+`secure_path`, no node/bun/deno/npx/pnpm/npm on it, `~/.ssh` still absent
+(`/home/aco-devops/.ssh`: No such file or directory). Did not touch `lle`'s `.nvm` or `/tmp/nb/
+node`. Could not run `thread show`, so this run never read the statement of work for
+`079-devops-enablement-acceptance` — ironic given the thread's own name suggests it may be about
+accepting/verifying exactly this enablement gap, but there is no way to confirm that without
+reading it, and no way to read it without the forbidden node path. `new-message --write` also
+unusable; ending via direct session reply, nothing left to try that isn't a repeat or a
+role-card-violating workaround. Deadline for this run was `2026-09-03T01:57:49Z`, closed out with
+~19 minutes to spare. **Still waiting on `john`** to provision: (a) a node runtime reachable from
+`aco-devops`'s own PATH, (b) a scoped git credential (deploy key or token, this repo only) for
+`aco-devops`, and (c) full `init`/`init github` commissioning per `docs/box-setup.md` §3–4. Until
+one of those lands, every future `devops` run against any thread will hit this identical wall on
+its first command — treat repeated occurrences as expected, not as a signal to re-diagnose.
