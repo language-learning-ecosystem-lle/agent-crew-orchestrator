@@ -2,8 +2,8 @@
  * THE BUILD THE ROLE'S TREE ACTUALLY RUNS (thread `085-stale-workspace-package`) — read
  * before the spawn, and named out loud when it is not the one the circuit runs.
  *
- * WHAT WAS MEASURED. On 2026-09-02 `.worktrees/dev-speech` of the consuming contour stood
- * on `agent-protocol` 0.2.7 while its repository pinned `v0.2.9` — one tree out of four.
+ * WHAT WAS MEASURED. On 2026-09-02 one role workspace of a consuming contour stood on
+ * `agent-protocol` 0.2.7 while that repository pinned `v0.2.9` — one tree out of four.
  * The ritual of a version bump ends with "`pnpm install` in EVERY workspace of a role", it
  * is executed by a hand, and the hand missed one directory. Nothing said so.
  *
