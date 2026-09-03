@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: купить операцию меры 5 по готовому плану — четыре вопроса §7 (имена пользов… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john, два предмета: (1) нажать кнопку на PR #233 — обезличивание claude-review.ym… |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-03 | ✅ checks по PR #234: success. |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -92,7 +92,7 @@
 | 085-stale-workspace-package | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 088-review-verdict-delivery-by-steps | curator, dev-core | high | open | dev-core | — | 2026-09-03 | ✅ checks по PR #231: success. |
+| 088-review-verdict-delivery-by-steps | curator, dev-core | high | open | curator | run:231 · 2026-09-03 | 2026-09-03 | Метка review на #231 повешена — голова b64f22df4b2a695693a18513969c437c82cf4bb3, круг поднялся ([33… |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
