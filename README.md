@@ -2905,6 +2905,55 @@ and the list moved into the config at version 18 — measured first: on a head c
 18, `config check --ref HEAD` refuses a config still at 17 and passes one bumped in the
 same commit, so the number rides in the same pull request as the field.
 
+### `pr open` — how a role opens a pull request, and what is refused before it exists (thread 052)
+
+```
+agent-protocol pr open --ref <ref> --title <t> --body-file <p> [--base <branch>] [--head <branch>]
+                       [--repo <path>] [--draft] [--write]
+```
+
+The command a role opens a pull request with. Its whole reason is the door in front of
+`gh pr create`: **without `thread: NNN-slug` on line 1 and `role: <id>` on line 2 the pull
+request is not created at all** — `gh` is not invoked, the exit code is 2, and every missing
+or malformed field is named with the line it stands on.
+
+```
+agent-protocol: pr open — '/tmp/body.md' is not a description this circuit can read:
+- the description names no role — no `role: <id>` line in it at all, and it is what tells the
+  notifiers whose turn it is after the run and after the merge
+the first two lines of the description are `thread: NNN-slug` and `role: <id>`, before any prose
+```
+
+**Why the two fields are checked here and not only at the merge** (john's decision of
+2026-09-02, thread `052-pr-template`): the first repair of the drifting header was the
+template `.github/pull_request_template.md`, and it turned out to fix the wrong class.
+GitHub substitutes a template into the INTERACTIVE paths only (`--web`, `--template <file>`),
+while roles open pull requests with `gh pr create --body-file <p>`, where an explicit body
+bypasses the placeholder entirely — so the template works for a human and never arrives for
+an agent, which is who writes almost every description. The second half of the measurement is
+that the two fields fail differently: `thread:` was already protected by a loud refusal
+(guard 3 of `merge-gate`), while `role:` was read only by the notifiers' `grep`, and its
+absence cost a turn that was simply never handed on — silently.
+
+- **the readers are the door's own** — `threadOfDescription` and `roleOfDescription` of
+  `merge/gate.ts`, imported, not restated: what this command accepts, the merge gate accepts;
+- **the role is checked against the config** (the same read `role exists` makes): a role
+  nobody declares is a turn no notifier can hand on;
+- **`role:` is read strictly** — `[a-z][a-z0-9-]*` and nothing else. The template's
+  placeholder `role: <id>` must stay unreadable even with its arrow tidied away, and the door
+  must never be looser than the workflows' `grep`, or a body would exist that the gate waved
+  through and a notifier did not understand;
+- **without `--write` nothing is created**: the body is judged in full and the exact
+  `gh pr create` line is printed instead of run;
+- **the repository is resolved the common way**, so the contour's ground guard (thread 062)
+  is asked of this command like of every other.
+
+**What this door is not.** It catches an honest mistake and is bypassed by not using it — a
+hand-typed `gh pr create` walks past it and always will. The load-bearing half is guard 3 of
+[`merge-gate`](#merge-gate--the-guards-of-a-merge-that-are-facts-thread-026), which refuses
+the merge of a description missing either field; this half costs no runner minutes and answers
+before anything has been created.
+
 ### Who said it, and what wrote it down (R7)
 
 `from` names the ROLE. Two more header fields name the RUN:

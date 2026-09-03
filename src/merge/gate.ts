@@ -519,6 +519,26 @@ export const threadOfDescription = (body: string): string | undefined => {
 };
 
 /**
+ * The `role: <id>` line of a PR description — the other half of guard 3 since john's
+ * decision of 2026-09-02 (thread `052-pr-template`, variant (B)).
+ *
+ * WHY IT IS READ MORE STRICTLY THAN `thread:` IS. The thread is taken as any `\S+`; a role
+ * is taken as `[a-z][a-z0-9-]*` and nothing else, for two measured reasons. First, the
+ * template's placeholder: `role: <id> ← заполнить` fails a loose reader only because of the
+ * trailing token, so the day somebody tidies the arrow away a naive `(\S+)` would read
+ * `<id>` as the name of a role and the notifier would hand the turn to it. Second, the
+ * DIRECTION between the readers must not invert: what this door ACCEPTS, all three `grep`
+ * readers of `.github/workflows/*.yml` must read (`merge-notify.yml` takes exactly
+ * `[a-z][a-z0-9-]*`), or a body would exist that the gate waved through and the notifier
+ * did not understand — the silent unhanded turn this whole repair is about. Strict ⊂ loose,
+ * and `pr-template.test.ts` holds that claim against the real workflow files.
+ */
+export const roleOfDescription = (body: string): string | undefined => {
+  const match = /^role:\s*([a-z][a-z0-9-]*)\s*$/m.exec(body);
+  return match?.[1];
+};
+
+/**
  * The declaration of class Д-1 at the door: WHICH message of WHICH thread fixes the
  * decision this diff encodes (condition (б) of the class).
  */
@@ -1187,14 +1207,24 @@ export const evaluateMergeGate = (input: {
   const { verdict, checks } = verdictAndChecks(pr);
 
   const thread = threadOfDescription(pr.body);
+  // THE SECOND FIELD IS AS OBLIGATORY AS THE FIRST (john, 2026-09-02, thread
+  // `052-pr-template`): `role:` used to be read only by the notifiers' `grep`, and its
+  // absence cost a turn that was never handed on — silently. Named field by field, because
+  // "something is wrong with the description" is not a refusal one can act on.
+  const role = roleOfDescription(pr.body);
+  const missing = [
+    thread === undefined ? "`thread: NNN-slug` — there is nothing to ascend to" : undefined,
+    role === undefined
+      ? "`role: <id>` (a lowercase id) — nobody to hand the turn to after the merge"
+      : undefined,
+  ].filter((entry): entry is string => entry !== undefined);
   const ascent: GateOutcome =
-    thread === undefined
+    missing.length > 0
       ? {
           guard: 3,
           title: "ascent to a decision of john's",
           state: "fail",
-          detail:
-            "the description names no thread (`thread: NNN-slug`) — there is nothing to ascend to",
+          detail: `the description names no ${missing.length === 2 ? "thread and no role" : thread === undefined ? "thread" : "role"}: ${missing.join("; ")}`,
         }
       : {
           guard: 3,

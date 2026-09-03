@@ -1198,6 +1198,34 @@ describe("guard 3 — ascent to a decision of john's", () => {
   it("refuses when there is no thread to ascend to", () => {
     expect(guard(pr({ body: "role: dev-core" }), 3)?.state).toBe("fail");
   });
+
+  /**
+   * `role:` IS AS OBLIGATORY AS `thread:` (john, 2026-09-02, thread `052-pr-template`).
+   * It used to be read only by the notifiers' `grep`, and its absence cost a turn nobody
+   * handed on — silently. The refusal names which of the two is missing: half of the
+   * repair is that the door stops, the other half is that it says what to type.
+   */
+  it("refuses when the description names no role, and says which field that is", () => {
+    const outcome = guard(pr({ body: "thread: 026-curator-merge-right" }), 3);
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("names no role");
+    expect(outcome?.detail).toContain("`role: <id>`");
+    expect(outcome?.detail).not.toContain("nothing to ascend to");
+  });
+
+  it("names BOTH fields when a description carries neither", () => {
+    const outcome = guard(pr({ body: "prose and nothing else" }), 3);
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("names no thread and no role");
+    expect(outcome?.detail).toContain("`thread: NNN-slug`");
+    expect(outcome?.detail).toContain("`role: <id>`");
+  });
+
+  it("does not take the template's placeholder for a role", () => {
+    const outcome = guard(pr({ body: "thread: 026-curator-merge-right\nrole: <id>" }), 3);
+    expect(outcome?.state).toBe("fail");
+    expect(outcome?.detail).toContain("names no role");
+  });
 });
 
 describe("guard 4 — no self-merge on the documents of power", () => {

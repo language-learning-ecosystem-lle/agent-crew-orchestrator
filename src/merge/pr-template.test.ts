@@ -19,12 +19,19 @@
  * every one of them then acts on a value nobody meant:
  *
  *   - {@link threadOfDescription} (merge-gate guard 3) — `^thread:\s*(\S+)\s*$`;
+ *   - {@link roleOfDescription} (guard 3 as well since john's decision of 2026-09-02, the
+ *     FOURTH reader and the one added last) — `^role:\s*([a-z][a-z0-9-]*)\s*$`;
  *   - `.github/workflows/*.yml`, the CI and merge notifiers — a `grep -oiE` per field, and
  *     `role:` is what tells them WHOSE turn it is after the run and after the merge.
  *
  * So the assertions below run the door's own function and the workflows' OWN grep patterns,
  * lifted out of the workflow files rather than restated here — a second copy of a pattern is
  * the class this package spends its whole existence avoiding.
+ *
+ * AND SINCE THE FOURTH READER, ONE CLAIM MORE: what the DOOR accepts, every `grep` must read
+ * (`the door is stricter, never merely different`). The direction is what matters and it must
+ * not invert — a body the gate waved through and a notifier did not understand is the silent
+ * unhanded turn that john's decision of 2026-09-02 exists to close.
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -35,7 +42,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { parseProtocolConfig } from "../config/config.js";
-import { powerDocuments, threadOfDescription, touchedPowerDocuments } from "./gate.js";
+import {
+  powerDocuments,
+  roleOfDescription,
+  threadOfDescription,
+  touchedPowerDocuments,
+} from "./gate.js";
 
 const REPO_ROOT = new URL("../../../../", import.meta.url);
 const CONFIG_PATH = fileURLToPath(new URL("agent-protocol.json", REPO_ROOT));
@@ -101,6 +113,34 @@ describe("the pull request template of this repository", () => {
 
   it("is read by the door once filled in — the same two lines, with values", () => {
     expect(threadOfDescription(filled)).toBe("052-pr-template");
+    expect(roleOfDescription(filled)).toBe("dev-core");
+  });
+
+  it("keeps its role placeholder unreadable to the door WITHOUT the arrow, too", () => {
+    // The measurement of curator, 2026-09-02: `role: <id> ← заполнить` fails a loose
+    // reader only because of the trailing token. Tidy the arrow away and a `(\S+)` reader
+    // would take `<id>` for the name of a role and the notifier would hand the turn to it.
+    expect(roleOfDescription(template)).toBeUndefined();
+    expect(roleOfDescription("thread: 052-pr-template\nrole: <id>\n")).toBeUndefined();
+  });
+
+  it("is read by the door as UNFILLED in its role line as well", () => {
+    expect(roleOfDescription(template)).toBeUndefined();
+  });
+
+  it("keeps the door STRICTER than every grep, never merely different", () => {
+    // The direction of the two grammars, held against the real workflow files: a body the
+    // door accepts is a body every notifier can read. The other direction is allowed to
+    // fail (a grep is loose on purpose) — this one may not.
+    const roleReaders = readers.filter((reader) => reader.field === "ROLE");
+    expect(roleReaders.length).toBeGreaterThan(0);
+    for (const id of ["dev-core", "curator", "reviewer-pr", "a", "a1-b2"]) {
+      const body = `thread: 052-pr-template\nrole: ${id}\n\nprose\n`;
+      expect(roleOfDescription(body)).toBe(id);
+      for (const reader of roleReaders) {
+        expect(grepField(reader.pattern, body)).toContain(id);
+      }
+    }
   });
 
   it("is looked at by every workflow reader there is — the patterns are lifted, not restated", () => {

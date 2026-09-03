@@ -104,6 +104,7 @@ import {
   pullRequestFacts,
   readReviewRuns,
 } from "./merge/gh.js";
+import { judgePrDescription, PR_FIELDS_FORM } from "./merge/pr-open.js";
 import {
   type AccountAlarm,
   type AuthAlarm,
@@ -13351,6 +13352,82 @@ const mergeGate = (argv: readonly string[]): void => {
   if (!verdict.curatorMayMerge) process.exit(1);
 };
 
+/**
+ * HOW A ROLE OPENS A PULL REQUEST — and the door that refuses before one exists (thread
+ * `052-pr-template`, john's decision of 2026-09-02: variant (B), «ТРЕТИЙ С ПЕРВЫМ»).
+ *
+ * Until this verb there was no such command at all: roles typed `gh pr create --body-file`
+ * by hand, an explicit body bypasses the template's placeholder entirely, and a description
+ * without `role:` cost a turn that no notifier handed on — silently. The judgement itself
+ * is `judgePrDescription` and so is the reasoning, including what this door is NOT.
+ *
+ * It resolves its repository through `repoArg` like every other command, so the contour's
+ * ground guard is asked of it too — a command that opens something outward is the last one
+ * that should be an exception to the boundary of thread 062.
+ */
+const prOpen = (argv: readonly string[]): void => {
+  const title = required(argv, "--title");
+  const bodyPath = required(argv, "--body-file");
+  const body = readFile(bodyPath, "body of the pull request");
+  const registry = registryFrom(argv, undefined);
+  const repo = repoArg(argv, process.cwd());
+
+  const verdict = judgePrDescription({ body, isKnownRole: (id) => registry.isKnown(id) });
+  if (!verdict.ok) {
+    err(`agent-protocol: pr open — '${bodyPath}' is not a description this circuit can read:`);
+    for (const refusal of verdict.refusals) err(`- ${refusal}`);
+    // The pull request is NOT created, and the exit code is the whole contract with the
+    // caller: gh was never invoked, so there is nothing to close or edit afterwards.
+    fail(PR_FIELDS_FORM, 2);
+    return;
+  }
+
+  const base = flag(argv, "--base");
+  const head = flag(argv, "--head");
+  const args = [
+    "pr",
+    "create",
+    "--title",
+    title,
+    "--body-file",
+    bodyPath,
+    ...(base === undefined ? [] : ["--base", base]),
+    ...(head === undefined ? [] : ["--head", head]),
+    ...(argv.includes("--draft") ? ["--draft"] : []),
+  ];
+  out(`agent-protocol: pr open — thread '${verdict.thread}', role '${verdict.role}'`);
+  if (!argv.includes("--write")) {
+    out(
+      `agent-protocol: pr open — nothing created (no --write). It would run: gh ${args.join(" ")}`,
+    );
+    return;
+  }
+
+  // The credentials of the circuit the checkout belongs to, as at every other seam with
+  // gh (thread 065) — names and paths only, never a value.
+  const platform = platformEnvOf({ repo });
+  out(`agent-protocol: pr open — credentials: ${platform.note}`);
+  try {
+    const created = execFileSync("gh", args, {
+      cwd: repo,
+      encoding: "utf8",
+      env: platform.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    // gh's own last line is the URL of the new pull request — passed through whole rather
+    // than parsed: what it prints is the fact, and a reading of it would be a second one.
+    out(created.trim());
+  } catch (error) {
+    fail(
+      explainWithCredentials(
+        `the pull request was not created by gh: ${(error as Error).message}`,
+        platform,
+      ),
+      2,
+    );
+  }
+};
+
 const main = async (argv: readonly string[]): Promise<void> => {
   const [command, subcommand] = argv;
   if (command === "orchestrator" && subcommand !== undefined) {
@@ -13389,6 +13466,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "merge-gate") {
     guardArguments("merge-gate", argv.slice(1));
     mergeGate(argv.slice(1));
+  } else if (command === "pr" && subcommand === "open") {
+    guardArguments("pr open", argv.slice(2));
+    prOpen(argv.slice(2));
   } else if (command === "zones" && subcommand === "check") {
     guardArguments("zones check", argv.slice(2));
     zonesCheck(argv.slice(2));
