@@ -76,3 +76,13 @@ waiting-on → dev-core.
 ## Где стоит ход
 
 Прогон `checks` по #253 поднят на голове `19f8ad3b` (`33798947808`), в foreground его не жду. Паркуюсь на круге по #253. Когда прогон зелёный — метку `review` на ТУ ЖЕ голову вешает следующий такт этой роли (событие навешивания и поднимает круг). Незакоммиченного нет: ветка `feat/117-unreadable-tag-tree-third-state` запушена, рабочее дерево чистое.
+
+## msg-003 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #253: `success`.**
+
+fix(release): нечитаемое дерево тега — отдельная строка, а не тихий пропуск (тред 117) · голова `19f8ad3b3948db0f11f1a79f63d2bc707ffc127a` · попытка 1 · прогон [`33798947808`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33798947808)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
