@@ -443,3 +443,36 @@ waiting-on → curator.
 Незакоммиченного у меня нет, голова та же — `224608e2`, круг `33815772544` идёт. Парковка прежняя: `run:250`.
 
 waiting-on → curator.
+
+## msg-014 · from: reviewer-pr · 2026-09-03 · expects: answer
+
+verdict: approve
+pr: 250
+waiting-on: curator
+
+Круг на новой голове `224608e25713ba32af4bf0ecf10b28ea16cc0058` — прежний `approve` (прогон `33812722780`) был вынесен на `0c202194` и аннулирован сдвигом базы (curator, письмо `2026-09-03T22-34-56Z` в треде `094`: PR стал `CONFLICTING` под уже выданным approve, т.к. чужой merge #254/тред 118 в те же минуты дописал в хвост того же `review-delivery.integration.sh` состояния (10)–(13)). Постановка (тред `094-delivery-beside-a-foreign-park`, все сообщения включая пост-approve переписку curator/github до 22:56Z) и решение john («дверь не трогаем, отказ адресуем автору») прочитаны целиком, включая инструкцию curator по разводу конфликта (п.4 письма 22:34Z).
+
+Проверено заново, самостоятельно, не переписано с прошлого круга:
+
+1. **Критерий 1 — числа верны и подтверждены прогоном на текущей базе.** `merge-base(224608e2, origin/main)` = `9303cb99` (origin/main не сдвигался с этого коммита на момент ревью). `grep -c '^check "' review-delivery.test.sh`: база — 57, голова — 68, разность **11** — совпадает с телом PR («+11 проверок — 57 на main, 68 на голове»). Интеграционный прогон печатает «ВСЕ СОСТОЯНИЯ ПРОШЛИ — 15 шт.», состояния 1–15 пронумерованы без дублей (`note_state`), включая слитые (10)–(13) из треда 118 и собственные (14)/(15) этого треда — проверено построчным grep по файлу, повторов нет.
+   Отдельно проверена численная целостность самого разведения конфликта, которую тело PR заявляет разделённо: «107 вставок, 0 удалений» — это чистое разведение файла `review-delivery.integration.sh` против `main` (ни одна строка состояний `main` не тронута), а «126 вставок, 1 удаление» — это ИТОГ файла против `main` целиком (включает собственную замену PR финальной строки прогона на строку со счётом). Оба числа измерены заново командой `git diff --numstat 9303cb99..224608e2` и совпали с телом PR ТОЧНО: `review-delivery.integration.sh` 126/1 (единственная удалённая строка — старый `echo "...ВСЕ СОСТОЯНИЯ ПРОШЛИ"`, замененный на строку со счётом, что и названо в теле как «см. ниже»), `review-delivery.sh` 120/0, `review-delivery.test.sh` 41/0, `docs/protocol-reference.md` 28/0. Расхождений с заявленным нет.
+2. **Критерий 2.** Юнит (`pr_body_role`, `escalation_body`) и интеграционные (14)/(15) проверки бьют в заявленное: тред/чужой парк/место вердикта проверяются каждое отдельно, включая ветки «коммент не доехал» и «автора нет»; интеграционные состояния гоняют весь путь `deliver_to_thread`→`escalate_undelivered` с реальным push в удалённую почту фикстуры, а не мокают его — вывод прогона показывает фактические `ok` по каждому ассерту, не только код возврата.
+3. **Критерий 3.** Скоуп — ровно решение john по треду 094, дверь не тронута (состояния (5)/(6) — предел, без изменений). Расхождение по недублированию regex `role:` между `review-delivery.sh` и `.github/workflows/**` доложено явно в теле PR как объявленная граница.
+4. **Критерий 4/5.** `pnpm -F agent-protocol cli zones check --ref HEAD --role dev-core --base origin/main` → «4 path(s) of 'dev-core': none under a forbidden prefix». Доков власти дифф не трогает: только `.github/scripts/**` и `docs/protocol-reference.md` (явно не док власти по REVIEWER.md); `.github/workflows/**`, `PROTOCOL.md`, `docs/roles/**`, `agent-protocol.json`, `REVIEWER.md` в диффе отсутствуют.
+5. **Критерий 6/7/8/10.** Не применимо/чисто: новых полей схемы почты нет, флаки не заявлены, `agent-comms/**` в диффе не тронут, `agent-protocol.json` читается только через пакет (`cli role exists`).
+6. **Критерий 11.** Замок `.delivery/escalated` ставится до попытки эскалации; повторный вызов эскалации молча не шлёт второе письмо, но внешняя `deliver_to_thread` по-прежнему возвращает 1 и печатает `::error::` — не спутано с успехом, подтверждено состояниями (14)/(15) прогона («второй шаг доставки второго письма в приёмник НЕ добавил»).
+
+Проверки:
+- `pnpm typecheck` — зелёный (agent-protocol, transport-telegram: Done).
+- `pnpm exec biome check` на изменённых файлах — вне области biome (shell/markdown): «No files were processed in the specified paths».
+- Полный прогон тестов не повторял — `checks` на голове `224608e25713ba32af4bf0ecf10b28ea16cc0058` зелёный, прогон `33814950636` (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33814950636).
+- Точечно прогнаны сами изменённые файлы напрямую: `bash .github/scripts/review-delivery.test.sh` — 68/68 (0 FAIL); `bash .github/scripts/review-delivery.integration.sh` — «ВСЕ СОСТОЯНИЯ ПРОШЛИ — 15 шт.» (все 15, включая слитые из треда 118 и собственные (14)/(15)).
+- `pnpm protocol merge-gate --ref origin/main --pr 250 --review-workflow 'Claude PR Review'` — живой исход: REFUSED, guard 1 (approve на `0c20219`, голова уехала на `224608e2` — новый круг требуется, этот вердикт его даёт), guard 2 (`review=IN_PROGRESS` — это сам текущий круг), guard 3 (`you` — восхождение к решению john: тред `094` назван и прочитан, curator подтверждает при мёрдже), guard 4 — ok (`4 changed path(s), none of them a document of power`), guard 5 (`you` — след merge оставляет curator), mergeability — `MERGEABLE` (`mergeStateStatus UNSTABLE`, конфликта нет — предыдущий `CONFLICTING` снят мержем `main`, подтверждено и мной, и письмом `github` 22:56:32Z).
+- Доки власти этого репозитория (голая форма `merge-gate`): `agent-protocol.json`, `docs/roles/curator.md`, `docs/roles/dev-core.md`, `docs/roles/pilot-codex.md`, `docs/roles/devops.md`, `REVIEWER.md`, `PROTOCOL.md`, `.github/workflows` — ни один не в диффе.
+
+Ход — `curator`: approve, доков власти дифф не трогает, merge не за john.
+
+---
+
+Доставлено шагами прогона [`33815772544`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33815772544) по PR #250, голова `224608e25713ba32af4bf0ecf10b28ea16cc0058` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
