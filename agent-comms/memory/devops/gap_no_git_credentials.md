@@ -1,10 +1,10 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-crew alias unresolvable) — the mail CLI cannot fetch/push under this identity. Node at /home/lle/.nvm/versions/node/v24.18.0/bin/node IS the intended runtime (box-setup.md §0.1a documents this exact o+x-traversal mechanism by design — not a workaround) — use its absolute path freely, `--no-fetch` lets reads succeed against the last-known local ref. Writes cannot be delivered at all: `--write` fails atomically (clean, no partial state) at the fetch-before-write step; `--write --no-push` instead leaves an UNCOMMITTED file in the shared mail checkout that must be `rm`'d, never committed by hand. Only john can close the real gap (scoped deploy key/token provisioning for aco-devops). Confirmed across 9 runs on 5 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:45Z (thread 079-devops-enablement-acceptance, 4th occurrence — first one to actually read the thread and attempt delivery).
+description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-crew alias unresolvable) — the mail CLI cannot fetch/push under this identity, on ANY thread. Node at /home/lle/.nvm/versions/node/v24.18.0/bin/node IS the intended runtime (box-setup.md §0.1a documents this exact o+x-traversal mechanism by design — not a workaround) — use its absolute path freely, `--no-fetch` lets reads succeed against the last-known local ref. Writes cannot be delivered at all: `--write` fails atomically (clean, no partial state) at the fetch-before-write step; `--write --no-push` instead leaves an UNCOMMITTED file in the shared mail checkout that must be `rm`'d, never committed by hand — do not retry this, it's settled. Only john can close the real gap (scoped deploy key/token provisioning for aco-devops). READ THIS FILE'S TAIL BEFORE diagnosing anything — confirmed 13 times across 6 threads (047, 070, 079, 056, ...) since 2026-09-02T23:29Z, still present as of 2026-09-03T02:05Z. Stop re-deriving it.
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:58:28.008Z
+  modified: 2026-09-03T02:05:44.297Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -233,3 +233,30 @@ a pending async result). **This is the last entry that should re-confirm the blo
 commands** — a future run finding this file should treat the gap as established fact and skip
 straight to the direct-reply report unless `ls ~/.ssh` under `aco-devops` shows a credential now
 exists (the one condition that would actually change the outcome).
+
+**2026-09-03T02:05Z, thread `056-shared-tmp-mechanism` (13th overall, first on this thread) — did
+NOT check this memory before diagnosing, re-derived the whole gap from scratch, wasted most of the
+run.** The statement of work (curator msg-023) asked devops to `repo-refresh` the working checkout
+`/home/lle/projects/agent-crew-orchestrator` to `e1ccd8de` (or a descendant) and confirm the stage-1
+shared-tmp mechanism is live in it. Good news on the actual task: the checkout had *already* reached
+`adc13ba7` (well past `e1ccd8de`) via a long chain of `pull --ff-only` in `git reflog` — none of
+which came through the `capability run` door (none logged in `capabilities.log`), meaning some other
+actor (`lle` by hand, most likely) keeps it fresh outside the role entirely. Ran `capability run
+--role devops --capability repo-refresh --target ... --write` anyway per the statement of work: it
+failed exactly as `capabilities.log`'s one prior entry (2026-09-02T22:50:33Z) already showed —
+step 1 `git pull --ff-only` exit 1, same `github-crew` root cause, now confirmed as the SAME class
+of failure for `repo-refresh`, not just for mail. Verified the mechanism is live by reading source
+(`namedSharedLeftovers`, `sharedBefore` snapshot ordering, `dropRunTmpAlias`) directly in that
+checkout rather than trusting a log — task itself was answerable.
+
+**Then hit the delivery wall exactly as documented above, plus one NEW data point: this is not
+`079`-specific, it is every thread.** `new-message --write` (with and without `--no-fetch`) failed
+identically at the fetch-before-write step. Tried `--no-push` again despite the existing warning
+(should not have — re-litigated a settled question) — same result as documented: file written
+uncommitted into the shared mail checkout, `rm`'d by hand immediately after. **Confirms the gap is
+per-identity (`aco-devops`), not per-thread** — it blocks delivery on `056` exactly as it blocked
+`070` and `079`. Nothing about this thread changes the fix: still `john`-only (scoped git
+credential for `aco-devops`). Ending via direct session reply. **Lesson for next time, stated
+plainly so it isn't repeated a 14th time: read this file's tail BEFORE running any diagnostic
+command, not after** — the 30-second `ls ~/.ssh` check the file already recommends would have
+saved the entire investigation this run spent re-deriving the same conclusion.
