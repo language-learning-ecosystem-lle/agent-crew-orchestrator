@@ -180,3 +180,7 @@ Guard 4 подтверждает: доков власти (`PROTOCOL.md`, `docs/
 
 Доставлено шагами прогона [`33780825812`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33780825812) по PR #242, голова `36495410da60079fa58aac14f50d2f429ba0bc63` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-006 · from: github · 2026-09-03 · expects: none
+
+PR #242 (fix(release): рез отказывает с ревизии, не влитой в линию — гард был односторонним (тред 095)) **merged** by maysway → `main`.
