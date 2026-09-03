@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T17:27:46.195Z",
+  "writtenAt": "2026-09-03T17:27:56.049Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "095-cut-guard-one-sided",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T17:55:59Z"
     }
   ]
