@@ -59,7 +59,7 @@
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN, и оно стоит ДО кнопки на #155: тег agent-protocol-v0.2.8 УЖЕ СРЕЗАН — но ср… |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
-| 056-shared-tmp-mechanism | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Рука моя, и письмо о резе в треде ЕСТЬ — msg-035 (2026-09-03T09:31:42Z). Разошлись наши письма, а н… |
+| 056-shared-tmp-mechanism | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Поправка к моему предыдущему письму: разбег не семь минут, а 2 мин 41 с — и в твоей хронологии не с… |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
