@@ -144,17 +144,30 @@ jobs:
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          # Стоячий тред-приёмник и роль, которой уходит ход: воркфлоу контура —
-          # зона dev-core. Оба назначены, а не выведены: у отказа уведомителя
-          # нет описания PR, из которого что-то выводится.
-          # АДРЕС ЗДЕШНИЙ (заведён curator рукой, тред 073, 2026-09-02), и цена
-          # ошибки тут выше, чем у соседа: у этой джобы путь ОДИН и проверки
-          # каталога нет. При заморозке здесь остался литерал контура-родителя
-          # (`042-notifier-down`), под которым в этой почте лежит ДРУГОЙ тред, —
-          # дверь отвечает `thread '…' not found`, шаг падает `::error::`, и
-          # смотритель краснеет на КАЖДОМ отказе, не доставив ничего. Правишь
-          # адрес — сверяй его каталогом в `origin/comms`, а не памятью.
-          THREAD: 077-notifier-down
+          # СТОЯЧИЙ АДРЕС — СЛАГ, А НЕ ЛИТЕРАЛ ТРЕДА (тред 080, решение john
+          # 2026-09-03). Раньше здесь стояло `THREAD: 077-notifier-down`, и это
+          # был адрес без конца: тред, который нельзя закрыть, потому что
+          # закрытие делает канал недоставляемым. Замер треда 080 показал, что
+          # оно хуже: письмо в закрытый или паркованный тред дверь ПРИНИМАЕТ (от
+          # машинного писателя — всегда), прогон зелёный, а `waitingOnOf` на
+          # закрытом треде отвечает «никого» ДО разбора объявлений — звонок
+          # доезжает и никого не будит, и красноты об этом нет нигде.
+          # Теперь адрес называется слагом, а исполняет его обычный тред с
+          # концом: `--ensure-thread` берёт тот приёмник этого слага, что открыт
+          # и не паркован (старший по номеру), а нет такого — ОТКРЫВАЕТ
+          # следующий (`<следующий свободный NNN>-notifier-down`) с заголовком и
+          # участниками отсюда, мету и письмо одним коммитом.
+          # `077-notifier-down` при этом остаётся тем, чем был: пока он открыт,
+          # письма едут в него — переезд адреса начнётся с его закрытия, и
+          # закрытие теперь нормальный исход, а не авария.
+          # Слаг НЕ несёт номера: `--ensure-thread 077-notifier-down` дверь
+          # отказывает по имени (номер — это то, что флаг выдаёт сам).
+          THREAD_SLUG: notifier-down
+          THREAD_TITLE: "Стоячий адрес: отказ уведомителя"
+          # Участники нового приёмника берутся ОТСЮДА, а не выводятся, и каждый
+          # сверяется дверью с конфигом: неизвестный завалил бы доставку внутри
+          # аварии. Тот же состав, что у 077, заведённого рукой.
+          THREAD_PARTICIPANTS: github,dev-core,curator
           ROLE: dev-core
         run: |
           set -euo pipefail
@@ -170,14 +183,31 @@ jobs:
           git fetch --no-tags origin comms
           git reset --hard origin/comms
           NOW_ISO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          read -r VERDICT LAST_AT AGE <<<"$(notifier_mute_decide \
-            "${GITHUB_WORKSPACE}/agent-comms/${THREAD}/messages" "$WF_NAME" "$NOW_ISO")"
+          # ЛЕНТА, ПО КОТОРОЙ ГЛУШАТ, — ЛЕНТА ТЕКУЩЕГО ПРИЁМНИКА (тред 080).
+          # Адрес стоячий, приёмники сменяются, и читать здесь каталог по имени
+          # значило бы глушить звонок серией из ЗАКРЫТОГО треда — письмо-то
+          # поедет в новый и пустой. Правило выбора и цена того, чего оно не
+          # видит (парк), названы в самом `notifier-mute.sh`.
+          MUTE_SOURCE="$(notifier_mute_source "${GITHUB_WORKSPACE}/agent-comms" "$THREAD_SLUG")"
+          if [ -z "$MUTE_SOURCE" ]; then
+            # Открытого приёмника у адреса нет — глушить нечем и не о чем:
+            # письмо поедет и откроет его. Молчание здесь было бы тишиной в
+            # аварии, то есть исходным дефектом треда 073.
+            VERDICT=deliver
+            LAST_AT=-
+            AGE=-
+            echo "У адреса '${THREAD_SLUG}' открытого приёмника нет — письмо откроет следующий."
+          else
+            MUTE_IN="$(basename "${MUTE_SOURCE%/messages}")"
+            echo "Приёмник адреса '${THREAD_SLUG}' сейчас: ${MUTE_IN}"
+            read -r VERDICT LAST_AT AGE <<<"$(notifier_mute_decide "$MUTE_SOURCE" "$WF_NAME" "$NOW_ISO")"
+          fi
 
           if [ "$VERDICT" = mute ]; then
             # ЗАГЛУШЕНО — НЕ ОТКАЗ: прогон зелёный. Красный здесь означал бы, что
             # смотритель сломался, и звал бы человека ровно туда, где всё
             # работает по правилу.
-            MUTED_SAY="Отказ уведомителя ${WF_NAME} (прогон ${RUN_ID}) ЗАГЛУШЁН: письмо о нём уже лежит в ${THREAD} (${LAST_AT}, ${AGE} с назад, окно ${NOTIFIER_MUTE_WINDOW_SEC} с). Следующее доехавшее письмо назовёт его числом."
+            MUTED_SAY="Отказ уведомителя ${WF_NAME} (прогон ${RUN_ID}) ЗАГЛУШЁН: письмо о нём уже лежит в ${MUTE_IN} (${LAST_AT}, ${AGE} с назад, окно ${NOTIFIER_MUTE_WINDOW_SEC} с). Следующее доехавшее письмо назовёт его числом."
             echo "::notice::${MUTED_SAY}"
             printf '🔇 %s\n\nПрогон отказавшего: %s\n' "$MUTED_SAY" "$RUN_URL" >> "${GITHUB_STEP_SUMMARY}"
             exit 0
@@ -242,25 +272,41 @@ jobs:
           # Своя запись каждый раз пересобирается ПОВЕРХ свежего origin/comms —
           # протокол append-only, старый текст не переносится.
           source "${GITHUB_WORKSPACE}/.code/.github/scripts/comms-push.sh"
-          echo "2/2 · запись в тред ${THREAD} (${WF_NAME}, исход ${CONCLUSION})"
+          echo "2/2 · запись в стоячий адрес '${THREAD_SLUG}' (${WF_NAME}, исход ${CONCLUSION})"
           for attempt in $(seq 1 "$COMMS_PUSH_ATTEMPTS"); do
             git fetch --no-tags origin comms
             git reset --hard origin/comms
+            # АДРЕС РЕШАЕТСЯ ВНУТРИ ПОПЫТКИ, а не до цикла: команда выбирает
+            # приёмник по ленте, на которую мы сейчас пушим, — потому этот вызов
+            # и стоит ПОСЛЕ `reset --hard origin/comms`. Два отказа одной минуты
+            # так дают один приёмник, а не два.
             if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
                   --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
-                  --thread "$THREAD" --from github --expects none --waiting-on "$ROLE" \
+                  --ensure-thread "$THREAD_SLUG" --title "$THREAD_TITLE" \
+                  --participants "$THREAD_PARTICIPANTS" \
+                  --from github --expects none --waiting-on "$ROLE" \
                   --worker gh-action \
                   --body-file "$BODY_TMP" --write --no-push); then
-              echo "::error::new-message отказал — отказ уведомителя ${WF_NAME} (${RUN_ID}) НЕ записан в ${THREAD}."
+              echo "::error::new-message отказал — отказ уведомителя ${WF_NAME} (${RUN_ID}) НЕ записан в адрес '${THREAD_SLUG}'."
+              exit 1
+            fi
+            # КУДА ЛЕГЛО — СПРАШИВАЕТСЯ У ДЕРЕВА, А НЕ У ВЫВОДА КОМАНДЫ: приёмник
+            # мог быть открыт этим же вызовом, и его номер отсюда иначе не узнать.
+            # Дерево перед вызовом чистое (`reset --hard` строкой выше), поэтому
+            # всё новое под `agent-comms/` — это ровно то, что записала доставка.
+            LANDED_IN="$(git status --porcelain --untracked-files=all -- agent-comms \
+              | sed -nE 's#^.. "?agent-comms/([0-9]{3}-[a-z0-9-]+)/.*#\1#p' | sort -u | head -1)"
+            if [ -z "$LANDED_IN" ]; then
+              echo "::error::new-message отчитался об успехе, но под agent-comms/ ничего не появилось — отказ уведомителя ${WF_NAME} (${RUN_ID}) НЕ записан."
               exit 1
             fi
             git add agent-comms
-            git commit -m "chore(comms): уведомитель ${WF_NAME} отказал (${CONCLUSION}) — звонок в тред ${THREAD}"
+            git commit -m "chore(comms): уведомитель ${WF_NAME} отказал (${CONCLUSION}) — звонок в тред ${LANDED_IN}"
             if comms_push "$attempt"; then
-              echo "Отказ уведомителя ${WF_NAME} (${RUN_ID}) доставлен в тред ${THREAD}."
+              echo "Отказ уведомителя ${WF_NAME} (${RUN_ID}) доставлен в тред ${LANDED_IN} (адрес '${THREAD_SLUG}')."
               exit 0
             fi
           done
 
-          echo "::error::Не удалось доставить отказ уведомителя ${WF_NAME} (${RUN_ID}) в ${THREAD} за ${COMMS_PUSH_ATTEMPTS} попыток."
+          echo "::error::Не удалось доставить отказ уведомителя ${WF_NAME} (${RUN_ID}) в адрес '${THREAD_SLUG}' за ${COMMS_PUSH_ATTEMPTS} попыток."
           exit 1

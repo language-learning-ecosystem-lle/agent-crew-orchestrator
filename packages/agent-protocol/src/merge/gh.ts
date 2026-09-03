@@ -85,13 +85,25 @@ export type GhPullRequest = z.infer<typeof ghPullRequestSchema>;
 
 /**
  * THE CHEAP HALF OF THE SCHEDULER'S READ (thread 019, point 5): what `gh pr list` says
- * about every open pull request. Three fields, and each earns its place — the number to
- * ask about, the head that tells a moved PR from a still one (the cache key), and the
- * description whose `thread:` line says whose PR it is. Loose for the same reason the
- * full schema is: this payload grows on somebody else's schedule.
+ * about every open pull request. Four fields, and each earns its place — the number to
+ * ask about, the head that tells a moved PR from a still one (the cache key), the
+ * description whose `thread:` line says whose PR it is, and `mergeable`, which rides along
+ * in the same `--json` FOR ZERO EXTRA CALLS (thread 097, half 2: that is the free first
+ * ask the watchman of mergeability is built on). Loose for the same reason the full schema
+ * is: this payload grows on somebody else's schedule.
+ *
+ * `mergeable` IS OPTIONAL HERE AND NOWHERE PROMISED. GitHub omits it, nulls it, and serves
+ * it stale, and a single answer is not a verdict at all (`mergeability.ts`) — so a reader
+ * that treats its absence as a fact about the branch is already wrong. Every caller of
+ * this schema takes it as one sample.
  */
 export const ghOpenPullRequestsSchema = z.array(
-  z.looseObject({ number: z.number().int(), headRefOid: z.string().min(1), body: z.string() }),
+  z.looseObject({
+    number: z.number().int(),
+    headRefOid: z.string().min(1),
+    body: z.string(),
+    mergeable: nullableText,
+  }),
 );
 
 /**
@@ -299,4 +311,25 @@ export const ghRefusalHint = (message: string): string => {
         : "likely `checks: read` or `actions: read`";
   const where = named === undefined ? "the path it refused" : `\`${named}\``;
   return ` — GitHub refuses a resource by name, not a token by scope: ${where} is ${scope}. A guess and not the cause: an installation token carries only what its job's \`permissions:\` lists, and \`claude-code-action\` exchanges only what \`additional_permissions\` asks for — unlisted is zeroed, not defaulted. Read the path above before adding a scope`;
+};
+
+/**
+ * THE ONE FIELD OUT OF A RAW `gh pr view` PAYLOAD, without judging the rest of it (thread
+ * `097`): what {@link readMergeability} samples between its asks.
+ *
+ * Deliberately not `ghPullRequestSchema` — the shape check belongs at the door, once, on
+ * the payload the verdict is finally computed from, and a caller asking "what word did it
+ * say this time" must not be made to parse reviews and files to hear it. A payload that is
+ * not JSON, or carries no `mergeable`, answers `undefined`; the reading then never settles
+ * on a word, and the schema refusal that follows names the real defect.
+ */
+export const mergeableWordOf = (raw: string): string | undefined => {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  const value = (payload as { readonly mergeable?: unknown } | null)?.mergeable;
+  return typeof value === "string" ? value : undefined;
 };

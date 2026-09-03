@@ -94,6 +94,8 @@ import {
   evaluateMergeGate,
   powerDocumentList,
   readD1Reference,
+  roleOfDescription,
+  threadOfDescription,
   unmatchedWorkingCards,
 } from "./merge/gate.js";
 import {
@@ -101,9 +103,11 @@ import {
   ghPullRequestSchema,
   ghRefusalHint,
   ghRunParkSchema,
+  mergeableWordOf,
   pullRequestFacts,
   readReviewRuns,
 } from "./merge/gh.js";
+import { isMergeable, type MergeabilityReading, readMergeability } from "./merge/mergeability.js";
 import { judgePrDescription, PR_FIELDS_FORM } from "./merge/pr-open.js";
 import {
   type AccountAlarm,
@@ -339,6 +343,17 @@ import {
   type MergeReadySource,
   readMergeReady,
 } from "./orchestrator/merge-ready.js";
+import {
+  asksOwed,
+  describeMergeabilityOutage,
+  foldMergeabilityOutage,
+  MERGEABILITY_OUTAGE_TICKS,
+  mergeabilityOutageDue,
+  mergeabilitySaidKey,
+  planMergeabilityWatch,
+  renderMergeabilityLetter,
+  type WatchedPullRequest,
+} from "./orchestrator/mergeability-watch.js";
 import {
   foldMetrics,
   type MergeRecord,
@@ -621,6 +636,13 @@ import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { judgeParkNumber } from "./thread/park-number.js";
 import { judgeParkSeen } from "./thread/park-seen.js";
 import { describePrPark } from "./thread/pr-park.js";
+import {
+  chooseReceiver,
+  type ReceiverChoice,
+  ReceiverRefusedError,
+  type ReceiverThread,
+  receiverNote,
+} from "./thread/receiver.js";
 import { synthesiseMeta } from "./thread/repair.js";
 import {
   describeStaleRunPark,
@@ -1340,6 +1362,40 @@ const guardContour = (target: string): string => {
 };
 
 /**
+ * `--repo` NAMES A CHECKOUT ON DISK, AND THE FLAG OF THE SAME NAME ON `gh` NAMES
+ * `owner/name` — so the wrong one gets typed, and until this guard the wrong one was not
+ * refused. Measured 2026-09-03 on `pr mergeable` itself (thread 097): `--repo
+ * language-learning-ecosystem-lle/agent-crew-orchestrator` passed the contour door —
+ * `contourOf` resolves a RELATIVE path against the caller's directory, and the caller
+ * stood inside the circuit, so the phantom path inherited the circuit's ancestors and was
+ * judged "own" — and the value then reached `execFileSync` as its `cwd`. Node reports a
+ * missing `cwd` as an ENOENT ABOUT THE COMMAND, so the door answered
+ * `PR #249 was not read through gh: spawnSync gh ENOENT`: a refusal naming the vendor's
+ * binary for a mistake in the caller's own flag, from which nothing can be fixed.
+ *
+ * The check is existence and directory-ness, nothing more — whether the directory is a
+ * git checkout, and whose, is what the contour door below already answers, and this one
+ * only stops it being asked about a path that is not there. It runs BEFORE that door on
+ * purpose: "there is no such directory" is the cheaper and more precise of the two
+ * sentences, and a contour verdict about a phantom path is not worth printing.
+ */
+const guardRepoPath = (target: string): string => {
+  let directory: boolean;
+  try {
+    directory = statSync(target).isDirectory();
+  } catch {
+    return fail(
+      `--repo '${target}' does not exist — this flag names a CHECKOUT ON THIS MACHINE (a path), not a repository on the platform. 'gh' spells the latter '--repo <owner>/<name>'; here the repository is read from the remote of the checkout you name`,
+      2,
+    );
+  }
+  if (!directory) {
+    return fail(`--repo '${target}' is not a directory — this flag names a checkout`, 2);
+  }
+  return target;
+};
+
+/**
  * `--repo`, judged against the contour the command came from, or the caller's own tree
  * — and the GROUND is judged either way. Without `--repo` there is no target to judge
  * beyond the caller's own tree, but the caller still has to be standing somewhere this
@@ -1348,7 +1404,7 @@ const guardContour = (target: string): string => {
  */
 const repoArg = (argv: readonly string[], at: string): string => {
   const named = flag(argv, "--repo");
-  if (named !== undefined) return guardContour(named);
+  if (named !== undefined) return guardContour(guardRepoPath(named));
   guardGround();
   return repoOf(at);
 };
@@ -3606,21 +3662,126 @@ const standingParkFor = (input: {
   };
 };
 
+/**
+ * THE MAIL AS THE RECEIVER CHOICE SEES IT (thread 080): every DIRECTORY of the root, because
+ * the number handed out on creation must be free against all of them — and a directory the
+ * reader never visits (`047.1-…`, a half-migration) holds its number just as firmly as a
+ * thread does. What is not among the parsed threads is not a candidate: `readable: false`.
+ *
+ * The merges announced elsewhere are folded in for `parkingOf` (thread 023): a park on a `pr:`
+ * that has already landed is lifted, and a receiver frozen behind it is alive again.
+ */
+const receiverThreadsOf = (
+  root: string,
+  registry: ReturnType<typeof registryFrom>,
+): readonly ReceiverThread[] => {
+  const scan = loadThreads(root, registry.ids());
+  const merged = mergedPrs(scan.threads.map((entry) => entry.thread));
+  const parsed = new Map(
+    scan.threads.map((entry) => [
+      entry.thread.id,
+      {
+        id: entry.thread.id,
+        status: entry.thread.meta.status,
+        parked: parkingOf(entry.thread, merged) !== undefined,
+      } satisfies ReceiverThread,
+    ]),
+  );
+  return readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_"))
+    .map(
+      (entry) =>
+        parsed.get(entry.name) ?? {
+          id: entry.name,
+          status: "open" as const,
+          parked: false,
+          readable: false,
+        },
+    );
+};
+
+/**
+ * THE RECEIVER OF A STANDING ADDRESS (thread 080, decision of john 2026-09-03) — resolved
+ * against the disk as it is NOW, and therefore called again inside the delivery attempt: the
+ * attempt runs after the fetch, and two events of one minute must end up in ONE receiver
+ * rather than opening two (nine letters in an hour is a measured rate, not a hypothesis).
+ */
+const resolveReceiver = (input: {
+  readonly root: string;
+  readonly slug: string;
+  readonly registry: ReturnType<typeof registryFrom>;
+}): ReceiverChoice => {
+  try {
+    return chooseReceiver({
+      slug: input.slug,
+      threads: receiverThreadsOf(input.root, input.registry),
+    });
+  } catch (error) {
+    if (error instanceof ReceiverRefusedError) return fail(error.message, 2);
+    throw error;
+  }
+};
+
 const newMessage = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
-  const threadId = required(argv, "--thread");
+  // AN ADDRESS INSTEAD OF AN ID (thread 080): `--ensure-thread <slug>` says which STANDING
+  // ADDRESS the letter is for and lets the command find — or open — the thread currently
+  // playing that receiver. The two flags are exclusive because they answer the same question
+  // in two different ways, and a command that quietly preferred one would deliver somewhere
+  // its caller did not name.
+  const ensureSlug = flag(argv, "--ensure-thread");
+  const namedThread = flag(argv, "--thread");
+  if (ensureSlug !== undefined && namedThread !== undefined) {
+    fail(
+      `--thread '${namedThread}' and --ensure-thread '${ensureSlug}' both name where this letter goes, and they are not the same question: '--thread' addresses ONE conversation, '--ensure-thread' addresses a standing address and takes whichever of its receivers is open and unparked (opening one if none is). Pass exactly one of them`,
+      2,
+    );
+  }
+  const threadFlag = ensureSlug === undefined ? required(argv, "--thread") : undefined;
   // The same door as `new-thread`'s (thread 086), and for the harder half of the case: a
   // directory under such an id may already be lying in the branch from before the refusal
   // existed, and appending into it would be writing a message no reader ever walks past.
   // "Not found" would be the wrong sentence for it — the directory IS there.
-  refuseUnreadableThreadId(threadId);
+  if (threadFlag !== undefined) refuseUnreadableThreadId(threadFlag);
   const from = required(argv, "--from");
   const loaded = configFrom(argv, repoOf(root));
   const registry = loaded.registry;
   if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
 
+  // ASKED BEFORE THE FIRST RESOLUTION AND NOT ONLY WHEN A THREAD HAS TO BE OPENED: a receiver
+  // is opened on the day the previous one closes, which may be weeks after the flag was
+  // written into a workflow — a refusal that waits for that day is a refusal inside an
+  // incident, in the one command whose whole job is to report incidents.
+  const ensure =
+    ensureSlug === undefined
+      ? undefined
+      : {
+          slug: ensureSlug,
+          title: required(argv, "--title"),
+          participants:
+            listFlag(argv, "--participants") ??
+            fail(
+              `--participants is not set: --ensure-thread may have to OPEN the receiver, and a thread is opened with its participants named\n${usageOnRefusal()}`,
+              2,
+            ),
+        };
+  for (const participant of ensure?.participants ?? []) {
+    if (!registry.isKnown(participant)) {
+      fail(`participant '${participant}' is not listed in the config`, 2);
+    }
+  }
+
+  const chosen =
+    ensure === undefined
+      ? ({ kind: "existing", id: threadFlag as string } as const)
+      : resolveReceiver({ root, slug: ensure.slug, registry });
+  if (chosen.kind === "create") out(`agent-protocol: ${receiverNote(chosen)}`);
+  const threadId = chosen.id;
+
   const threadDir = join(root, threadId);
-  if (!existsSync(threadDir)) fail(`thread '${threadId}' not found in '${root}'`, 2);
+  if (chosen.kind === "existing" && !existsSync(threadDir)) {
+    fail(`thread '${threadId}' not found in '${root}'`, 2);
+  }
   const messagesDir = join(threadDir, "messages");
 
   const text = readFile(required(argv, "--body-file"), "message body");
@@ -3684,14 +3845,19 @@ const newMessage = (argv: readonly string[]): void => {
   // THE VERDICT OF A ROUND (thread 042): the pair that opens a new turn at the same holder. The
   // halves are judged together in `planNewMessage`, so the refusal is one for both doors.
   const verdictFields = verdictFrom(argv);
-  const tasks = tasksFor(argv, { from, thread: threadId, registry });
   // A LETTER INTO A THREAD THAT IS ALREADY PARKED MUST NAME THE PARK (thread 058, (B.3)) —
   // judged here, where the flags can still be retyped and before `--write` is looked at, for
   // the reason `provenance` is: a dry run is the preview of the write, and a preview that
   // succeeds where the write refuses is a lie. What lifts a park is not touched — the standing
   // one is READ (`parkingOf`) and the letter is asked what it says about it.
   const parkLifted = flag(argv, "--park-lifted");
-  const standing = standingParkFor({ root, thread: threadId, ids: registry.ids() });
+  // A receiver about to be OPENED has no feed and therefore no park — asking would read a
+  // directory that does not exist and answer "unreadable", which is a true sentence about
+  // nothing and a refusal about the wrong thing.
+  const standing: StandingPark =
+    chosen.kind === "create"
+      ? { readable: true, parking: undefined }
+      : standingParkFor({ root, thread: threadId, ids: registry.ids() });
   const parkSeen = judgeParkSeen({
     thread: threadId,
     parking: standing.readable ? standing.parking : undefined,
@@ -3709,16 +3875,35 @@ const newMessage = (argv: readonly string[]): void => {
   if (!parkSeen.ok) fail(parkSeen.reason, 2);
   else if (parkSeen.note !== undefined) out(`agent-protocol: ${parkSeen.note}`);
 
+  // A RECEIVER THAT RAISES NOBODY IS THE FAILURE THIS FLAG EXISTS AGAINST, said out loud
+  // rather than refused: the whole point of opening a fresh thread is that the turn arrives
+  // somewhere, and a first letter with no `waiting-on` reproduces the silence one step later.
+  // It is a NOTE and not a door — who acts on an event is the caller's statement to make, and
+  // an address whose events are logged for a human to read is a lawful thing to want.
+  if (chosen.kind === "create" && (waitingOn === undefined || waitingOn === null)) {
+    out(
+      `agent-protocol: receiver '${threadId}' is opened by this letter and names nobody to act on it — 'mail' will list it for no role, and nothing will raise a session over it. Pass '--waiting-on <role>' if this event is meant to reach somebody`,
+    );
+  }
+
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
   // there — migrated ones, dated without a time, are excluded — and clamp the new one
   // strictly after the last). Without this, clock skew between writers puts an answer
   // before its question (a real case in 012); with a concurrent write it is also why a
   // rejected push cannot simply be rebased — the file NAME has to move too.
-  const plan = (): {
-    path: string;
+  //
+  // AND RE-RESOLVED PER ATTEMPT WHEN THE ADDRESS IS A STANDING ONE (thread 080): between the
+  // preview and the attempt somebody may have opened the receiver we were about to open, or
+  // closed the one we were about to write into. The attempt runs after the fetch and under the
+  // mail lock, so re-asking there is what makes two events of one minute land in ONE receiver.
+  const plan = (
+    into: ReceiverChoice,
+  ): {
+    files: readonly { path: string; content: string }[];
     label: string;
-    content: string;
+    subject: string;
+    preview: string;
     date: string;
     /**
      * THE FEED THIS LETTER WAS PLANNED AGAINST, in thread order — carried out of the plan and
@@ -3729,15 +3914,17 @@ const newMessage = (argv: readonly string[]): void => {
      */
     feed: readonly Message[];
   } => {
-    const threadHasMessages = existsSync(messagesDir);
+    const intoDir = join(root, into.id);
+    const intoMessages = into.kind === "create" ? join(intoDir, "messages") : messagesDir;
+    const threadHasMessages = existsSync(intoMessages);
     const entries = threadHasMessages
-      ? readdirSync(messagesDir)
+      ? readdirSync(intoMessages)
           .filter((name) => name.endsWith(".md"))
           .map((name) => {
             try {
               return {
                 fileName: name,
-                message: parseMessageFile(readFileSync(join(messagesDir, name), "utf8")),
+                message: parseMessageFile(readFileSync(join(intoMessages, name), "utf8")),
               };
             } catch (error) {
               // A STOP THAT NAMES THE FILE IT STOPPED ON (thread 058, alongside finding 11 of
@@ -3750,7 +3937,7 @@ const newMessage = (argv: readonly string[]): void => {
               // would put the answer before the question it answers. What changes is that the
               // writer is told WHICH file and WHAT to run.
               return fail(
-                `messages/${name}: ${(error as Error).message} — this letter cannot be dated against a feed with an unreadable file in it (its stamp must stand strictly after the last one). Repair the thread first: 'thread status --thread ${threadId} --from ${from} --repair --write' rebuilds the head, a message file broken by hand has to be fixed by hand`,
+                `messages/${name}: ${(error as Error).message} — this letter cannot be dated against a feed with an unreadable file in it (its stamp must stand strictly after the last one). Repair the thread first: 'thread status --thread ${into.id} --from ${from} --repair --write' rebuilds the head, a message file broken by hand has to be fixed by hand`,
                 2,
               );
             }
@@ -3766,6 +3953,10 @@ const newMessage = (argv: readonly string[]): void => {
       .map((message) => message.fields.date)
       .filter((date) => date.includes("T"));
     const date = nextMessageTimestamp(new Date(), existingTs);
+    // Declared against the thread this attempt actually writes into: a receiver re-resolved
+    // under the lock is a different address, and a task declared about the other one would be
+    // a statement nobody can find.
+    const tasks = tasksFor(argv, { from, thread: into.id, registry });
     // THE GLOBAL TASK CHECK, inside the plan and therefore replanned per attempt (see
     // `tasksFor`): the declarations of this message are folded into the feed as it is
     // AFTER the fetch, and anything `check` would redden the branch for is refused now.
@@ -3775,7 +3966,7 @@ const newMessage = (argv: readonly string[]): void => {
       const pending: TaskThreadInput[] = [
         ...layer.inputs,
         {
-          id: threadId,
+          id: into.id,
           entries: [
             {
               fileName: "<this message>",
@@ -3795,36 +3986,68 @@ const newMessage = (argv: readonly string[]): void => {
         );
       }
     }
-    let planned: ReturnType<typeof planNewMessage>;
+    const fields = {
+      from,
+      ...provenance,
+      date,
+      expects,
+      ...(waitingOn === undefined ? {} : { waitingOn }),
+      ...(launchDirective === undefined ? {} : { launch: launchDirective }),
+      ...(priority === undefined ? {} : { priority }),
+      ...(parkedOn === undefined ? {} : { parkedOn }),
+      ...(delivers === undefined ? {} : { delivers }),
+      ...(parkMover === undefined ? {} : { parkMover }),
+      ...(mergedPr === undefined ? {} : { mergedPr }),
+      ...verdictFields,
+      ...(tasks.length === 0 ? {} : { tasks }),
+      text,
+    };
+    let planned: readonly PlannedFile[];
     try {
-      planned = planNewMessage({
-        from,
-        ...provenance,
-        date,
-        expects,
-        ...(waitingOn === undefined ? {} : { waitingOn }),
-        ...(launchDirective === undefined ? {} : { launch: launchDirective }),
-        ...(priority === undefined ? {} : { priority }),
-        ...(parkedOn === undefined ? {} : { parkedOn }),
-        ...(delivers === undefined ? {} : { delivers }),
-        ...(parkMover === undefined ? {} : { parkMover }),
-        ...(mergedPr === undefined ? {} : { mergedPr }),
-        ...verdictFields,
-        ...(tasks.length === 0 ? {} : { tasks }),
-        text,
-        threadHasMessages,
-      });
+      // A THREAD IS ONE DELIVERY, NOT TWO (`planNewThread`): the receiver is born with its
+      // `_meta.md` and its first letter in ONE commit. A meta pushed without the message is a
+      // conversation nobody can answer, and a thread with no meta at all reddens `Comms
+      // Derived` on every push into `comms` — while the letter reporting THAT redness is
+      // itself a push into `comms`. A receiver opened by the notifier is exactly where that
+      // loop would close, with nobody watching.
+      planned =
+        into.kind === "create"
+          ? planNewThread({
+              title: ensure?.title ?? "",
+              participants: ensure?.participants ?? [],
+              ...fields,
+            })
+          : [planNewMessage({ ...fields, threadHasMessages })];
     } catch (error) {
       if (error instanceof WriteRefusedError) return fail(error.message, 2);
       throw error;
     }
-    const path = join(threadDir, planned.path);
-    if (existsSync(path))
-      fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
-    return { path, label: `${threadId}/${planned.path}`, content: planned.content, date, feed };
+    const message = planned[planned.length - 1] as PlannedFile;
+    for (const file of planned) {
+      if (existsSync(join(intoDir, file.path))) {
+        fail(
+          into.kind === "create"
+            ? `thread '${into.id}' already carries '${file.path}' — the receiver was opened underneath us; nothing was written`
+            : `file '${file.path}' already exists — two writes within one second?`,
+          2,
+        );
+      }
+    }
+    const label =
+      into.kind === "create"
+        ? `${into.id} (${planned.length} files, a new receiver of '${ensure?.slug}')`
+        : `${into.id}/${message.path}`;
+    return {
+      files: planned.map((file) => ({ path: join(intoDir, file.path), content: file.content })),
+      label,
+      subject: deliverySubject({ from, thread: into.id, mailDir: loaded.config.mail.dir }),
+      preview: message.content,
+      date,
+      feed,
+    };
   };
 
-  const first = plan();
+  const first = plan(chosen);
   /**
    * THE NOTE ABOUT LETTERS THAT LANDED UNDER THE SENDER'S OWN LAST ONE (thread 091, john's word
    * of 2026-09-03: fix it with a note, not a refusal). The sentence itself is
@@ -3863,13 +4086,13 @@ const newMessage = (argv: readonly string[]): void => {
 
   if (!write) {
     out(`agent-protocol: would create ${first.label} (--write writes it):`);
-    out(first.content);
+    out(first.preview);
     noteFeedUnder(first.feed);
     return;
   }
 
   if (argv.includes("--no-push")) {
-    writeOut(first.path, first.content);
+    for (const file of first.files) writeOut(file.path, file.content);
     out(
       `agent-protocol: created ${first.label} — NOT committed (--no-push: the caller owns its git)`,
     );
@@ -3884,18 +4107,22 @@ const newMessage = (argv: readonly string[]): void => {
       git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
-      subject: deliverySubject({ from, thread: threadId, mailDir: loaded.config.mail.dir }),
+      subject: first.subject,
       // The commit is BY THE ROLE, not by the owner of the box (027): the mail checkout
       // is shared by every role here, so the signature can only be per-commit.
       identity: roleIdentity(from),
       stage: () => {
-        const next = plan();
+        // The address is asked again HERE, after the fetch, when it is a standing one: this
+        // is the only point at which the answer is about the feed we are pushing onto.
+        const next = plan(
+          ensure === undefined ? chosen : resolveReceiver({ root, slug: ensure.slug, registry }),
+        );
         // THE FEED OF THE ATTEMPT THAT WINS, and that is the point of assigning here: a lost
         // push is retried after a fast-forward, so the letters lying under this one are only
         // known from the plan the successful push was built on. `first` would describe the feed
         // as it was BEFORE the fetch — the exact staleness the note exists to name.
         delivering = next;
-        return { files: [{ path: next.path, content: next.content }], label: next.label };
+        return { files: next.files, label: next.label, subject: next.subject };
       },
       note: out,
       lock: mailLockFor({ checkout, holder: `new-message ${from} → ${threadId}`, note: out }),
@@ -4464,6 +4691,168 @@ type NotifyRun = {
   readonly lines: readonly string[];
 };
 
+/**
+ * THE WATCHMAN'S PASS (thread `097-conflict-has-no-signal`, half 2) — the caller the rule
+ * in `orchestrator/mergeability-watch.ts` was written for, and the whole of the repair: a
+ * branch that stops applying to its base produces NO EVENT, so this pass makes one.
+ *
+ * WHY IT RIDES WITH THE COURIER AND NOT WITH THE QUEUE. The mark that keeps it quiet lives
+ * in `.orchestrator/notify.state` (curator's answer of 2026-09-03, msg-010 point 3), and
+ * that file is written HERE and nowhere else — a second writer in the tick would race the
+ * courier over the same file every time either of them moved. The scheduler's own list of
+ * open pull requests is not reachable from here for a measured reason, and it is not free
+ * either: `readMergeReady` opens no socket at all on a tick with no candidates, which is
+ * most of a quiet night. So the pass pays ONE call of its own per tick for the cheap half,
+ * and confirms only what disagrees with what it remembers ({@link asksOwed}).
+ *
+ * THE MARK IS PERSISTED BY THE CALLER IMMEDIATELY, before anything is sent to a transport:
+ * a letter that is already committed into the feed must not be forgotten because Telegram
+ * refused a minute later — the `undelivered` path deliberately leaves the rest of the state
+ * untouched so its pairs ring again, and this class must not ride on that.
+ *
+ * A FAILURE HERE IS A LINE, NEVER A THROW. The courier is a superstructure (the daemon
+ * catches it, but a watch that took the box down because `gh` refused is not a watch), and
+ * an undelivered letter simply leaves the mark unset, so the next tick says it again.
+ */
+const watchMergeability = async (input: {
+  readonly repo: string;
+  readonly mailRoot: string;
+  readonly branch: string;
+  readonly registry: RoleRegistry;
+  readonly said: readonly string[];
+  readonly say: (line: string) => void;
+}): Promise<MergeabilityPass> => {
+  let open: Awaited<ReturnType<MergeReadySource["open"]>>;
+  try {
+    open = await ghMergeReadySource(input.repo).open();
+  } catch (error) {
+    // THE REFUSAL IS HANDED BACK, NOT ONLY SAID (thread 097, curator's remaining
+    // requirement). A line in the daemon's log is what the merge-ready tier had on
+    // 2026-08-01 when it was refused every tick for hours and told nobody: the run of
+    // refusals is counted by the caller, survives the process in the state file, and rings
+    // a human at its threshold — see `foldMergeabilityOutage`.
+    const refusal = (error as Error).message;
+    input.say(
+      `mergeability — the open pull requests were not read: ${refusal}; nothing is announced and no mark is moved`,
+    );
+    return { refusal };
+  }
+  const platform = platformEnvOf({ repo: input.repo });
+  const owed = new Set(
+    asksOwed({
+      cheap: open.map((pr) => ({ number: pr.number, mergeable: pr.mergeable })),
+      said: input.said,
+    }),
+  );
+  const seen: WatchedPullRequest[] = open.map((pr) => {
+    const samples: (string | null | undefined)[] = [pr.mergeable];
+    if (owed.has(pr.number)) {
+      try {
+        samples.push(
+          mergeableWordOf(
+            execFileSync("gh", ["pr", "view", String(pr.number), "--json", "mergeable"], {
+              cwd: input.repo,
+              encoding: "utf8",
+              env: platform.env,
+              stdio: ["ignore", "pipe", "pipe"],
+              maxBuffer: 8 * 1024 * 1024,
+            }),
+          ),
+        );
+      } catch (error) {
+        // ONE PULL REQUEST THAT COULD NOT BE CONFIRMED IS NOT THE TIER GOING DARK: it is
+        // left with a single answer, a single answer is never a verdict, so nothing is
+        // said about it and nothing is forgotten about it either.
+        input.say(
+          `mergeability — PR #${pr.number} was not asked a second time: ${(error as Error).message}; it keeps its mark and is measured again next tick`,
+        );
+      }
+    }
+    return {
+      number: pr.number,
+      headSha: pr.headSha,
+      thread: threadOfDescription(pr.body),
+      role: roleOfDescription(pr.body),
+      samples,
+    };
+  });
+  const plan = planMergeabilityWatch({ seen, said: input.said });
+  for (const note of plan.notes) input.say(`mergeability — ${note}`);
+  const checkout = repoOf(input.mailRoot);
+  const kept = new Set(plan.said);
+  for (const letter of plan.letters) {
+    // THE TWO REFUSALS OF `planThreadMessage` THAT WOULD EXIT THIS PROCESS are asked here
+    // instead: it is a command's subroutine and answers a bad argument with `fail()`, which
+    // inside the daemon's tick would take the box down over somebody's PR description.
+    if (!input.registry.isKnown(letter.role) || !existsSync(join(input.mailRoot, letter.thread))) {
+      input.say(
+        `mergeability — PR #${letter.number} no longer applies to its base, and the letter was NOT written: its description names ${input.registry.isKnown(letter.role) ? `thread '${letter.thread}', which is not in the mail` : `role '${letter.role}', which is not in the config`}. Nothing is remembered, so this repeats until the description is fixed`,
+      );
+      kept.delete(mergeabilitySaidKey(letter.number));
+      continue;
+    }
+    try {
+      const sent = deliverMessage({
+        git: gitIn(checkout),
+        write: writeOut,
+        branch: input.branch,
+        subject: deliverySubject({
+          from: MERGEABILITY_LETTER_FROM,
+          thread: letter.thread,
+          mailDir: relative(checkout, input.mailRoot),
+        }),
+        // THE SAME IDENTITY THE OUTCOME OF A RUN AND A MERGE ARRIVE UNDER (curator's
+        // boundary of 2026-09-03): a new sender is a matter of the norm, and this letter
+        // says exactly what those two say — something happened on the platform.
+        identity: roleIdentity(MERGEABILITY_LETTER_FROM),
+        stage: () =>
+          planThreadMessage(input.mailRoot, letter.thread, input.registry, {
+            from: MERGEABILITY_LETTER_FROM,
+            expects: "none",
+            waitingOn: letter.role,
+            text: renderMergeabilityLetter(letter),
+          }),
+        note: (line) => input.say(line),
+        lock: mailLockFor({
+          checkout,
+          holder: `mergeability of PR #${letter.number} → ${letter.thread}`,
+          note: (line) => input.say(line),
+        }),
+      });
+      input.say(
+        `mergeability — PR #${letter.number} stopped applying to its base (${letter.detail}); the turn was passed to ${letter.role} in ${letter.thread} (${sent.label})`,
+      );
+    } catch (error) {
+      // THE MARK IS NOT SET FOR A LETTER THAT DID NOT LAND. Marking it would be the one
+      // failure this whole module exists against: the break would then be silent for as
+      // long as it lasts.
+      kept.delete(mergeabilitySaidKey(letter.number));
+      input.say(
+        `mergeability — PR #${letter.number} stopped applying to its base and the letter was NOT delivered: ${(error as Error).message}; nothing is remembered, the next tick says it again`,
+      );
+    }
+  }
+  // The vendor answered — whatever came of the letters, the tier itself is alive, and that
+  // is the one thing that ends a run of refusals.
+  return { marks: [...kept].sort() };
+};
+
+/**
+ * WHAT ONE PASS OF THE WATCHMAN CAME TO, and it is two answers rather than one: the marks
+ * to remember (absent when the pass never got a list to judge) and the vendor's own sentence
+ * when it refused. They are not each other's negation — a pass that read the list and failed
+ * to deliver a letter has marks AND no refusal — which is why the second is not "marks are
+ * undefined" but a field of its own.
+ */
+type MergeabilityPass = {
+  readonly marks?: readonly string[] | undefined;
+  /** The vendor's sentence, verbatim, when the LIST could not be read. Absent means it was. */
+  readonly refusal?: string | undefined;
+};
+
+/** The identity every letter about the platform is signed with — a merge, an outcome, this. */
+const MERGEABILITY_LETTER_FROM = "github";
+
 const runNotify = async (input: {
   readonly argv: readonly string[];
   readonly write: boolean;
@@ -4881,6 +5270,64 @@ const runNotify = async (input: {
   const seen = existsSync(statePath)
     ? parseNotifyState(readFileSync(statePath, "utf8"))
     : { waiting: [], stalled: [], parked: [] };
+  // THE WATCHMAN OF MERGEABILITY WALKS HERE (thread 097, half 2) — see `watchMergeability`
+  // for why it rides with the courier and why its mark is written before anything is sent.
+  // A DRY RUN NEVER WRITES INTO THE MAIL: `notify` without `--write` prints what it would
+  // announce, and a letter committed and pushed by a "would" is not a dry run.
+  let mergeableSaid = seen.mergeable;
+  // THE RUN OF REFUSALS, read back off the disk: the daemon starts a fresh process every
+  // tick, so a counter that lived in memory would count to one for ever.
+  let mergeableOutage = parseGhOutage(seen.mergeableOutage ?? "");
+  let mergeabilityAlarm: GhAlarm | undefined;
+  // AND THE CONDITION IS `section`, NOT ONLY `write` — named here because it was found
+  // unexplained in review (#252) and it is load-bearing rather than incidental. The
+  // watchman's unit is A TICK: "said once per break" and the threshold of its refusal
+  // counter are both counted in passes of the courier, and the courier is only walked in
+  // ticks where an `orchestrator` section says there is a daemon walking it. Run by hand
+  // twice a day through `--root`/`--state` alone, the same code would spend `gh` calls,
+  // deliver letters signed `github` that no tick follows up, and count two ticks a day
+  // against a threshold of five — an alarm that can never ring. A box that wants the
+  // watchman declares the section; the flags are for a courier without one.
+  if (write && section !== undefined) {
+    const pass = await watchMergeability({
+      repo,
+      mailRoot: root,
+      branch: loaded.config.mail.branch,
+      registry,
+      said: seen.mergeable ?? [],
+      say,
+    });
+    if (pass.marks !== undefined) mergeableSaid = pass.marks;
+    mergeableOutage = foldMergeabilityOutage({
+      previous: mergeableOutage,
+      refusal: pass.refusal,
+      now: new Date(now),
+    });
+    if (mergeableOutage !== undefined && mergeabilityOutageDue(mergeableOutage)) {
+      mergeabilityAlarm = {
+        since: mergeableOutage.since,
+        ticks: mergeableOutage.ticks,
+        threshold: MERGEABILITY_OUTAGE_TICKS,
+        refusal: mergeableOutage.evidence,
+      };
+      // The standing line of every tick, beside the phone call that rings once: the alarm
+      // is said once per run, and this is what an operator reading the log in between sees.
+      say(describeMergeabilityOutage(mergeableOutage));
+    }
+    // WRITTEN AT ONCE, and not with the rest of the state at the end of the run: the
+    // letters above are already in the feed, and every other exit of this command leaves
+    // the state alone on purpose (a transport that could not deliver must ring again). The
+    // counter rides in the same write for the same reason — a refused tick that is not
+    // remembered here is a tick the next process cannot count.
+    writeOut(
+      statePath,
+      renderNotifyState({
+        ...seen,
+        mergeable: mergeableSaid,
+        mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+      }),
+    );
+  }
   const plan = planNotifications({
     targets,
     waiting,
@@ -4893,6 +5340,7 @@ const runNotify = async (input: {
     unaccepted,
     auth: authAlarm,
     gh: ghAlarm,
+    mergeability: mergeabilityAlarm,
     drift: driftAlarm,
     ...(input.accounts === undefined ? {} : { accounts: input.accounts }),
     // THE CLOCK THE REMINDER PASS NEEDS (thread 043): the same `now` every other age in this
@@ -4997,7 +5445,10 @@ const runNotify = async (input: {
     // possible, and a single clause could not say which is which.
     `${quotaShelves.map((shelf) => `; ${describeQuotaPause(shelf, new Date(now))}`).join("")}` +
     `${plan.auth === undefined ? "" : `; ${describeAccount(plan.auth.account)} cannot authenticate (${plan.auth.deaths} runs in a row)`}` +
-    `${plan.gh === undefined ? "" : `; gh has refused merge-ready ${plan.gh.ticks} ticks in a row (rings at ${plan.gh.threshold})`}`;
+    `${plan.gh === undefined ? "" : `; gh has refused merge-ready ${plan.gh.ticks} ticks in a row (rings at ${plan.gh.threshold})`}` +
+    // AND THE WATCHMAN'S OWN RUN STANDS BESIDE IT, on the same rule: the phone rings once
+    // per run, and the standing line is what says the tier is still off in between.
+    `${plan.mergeability === undefined ? "" : `; gh has refused the watchman of mergeability ${plan.mergeability.ticks} ticks in a row (rings at ${plan.mergeability.threshold})`}`;
   if (!write) {
     say(message === "" ? "(nothing — nobody is waiting)" : message);
     return {
@@ -5063,6 +5514,11 @@ const runNotify = async (input: {
       plan.staleEventParks.length === 0 &&
       !plan.freshAuth &&
       !plan.freshGh &&
+      // AND THE WATCHMAN'S OUTAGE RAISES ITS OWN LETTER, on the rule of the two above and
+      // for the reason this whole class exists: nothing turns red when that tier dies, so a
+      // line waiting for somebody else's event is owed to a letter that may never come — the
+      // box is quiet precisely because the watchman has stopped announcing anything.
+      !plan.freshMergeability &&
       // A DRIFT PAST THE BAND IS WORTH A LETTER OF ITS OWN (thread 044). It rings once per
       // period of being behind, and the letter is the whole point: the class exists because
       // the fact was already written in `daemon.log` every thirty seconds and reached nobody.
@@ -5101,6 +5557,14 @@ const runNotify = async (input: {
         // reachable only with `staleEventParks` empty — an overdue park raises its own letter
         // above — so the keys are the surviving ones alone, and no park is recorded as told.
         eventParks: plan.eventParkKeys,
+        // The watchman's own marks, carried through unchanged: this command's other classes
+        // are the composition of THIS run, and that one is not (see `watchMergeability`).
+        mergeable: mergeableSaid,
+        // The counter and what has already rung about it, on the rule of `gh` beside it: the
+        // run is carried verbatim, the announced stamp is dropped when the run ends, so the
+        // NEXT outage rings again.
+        mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+        mergeableRang: plan.mergeability?.since,
       }),
     );
     return { kind: "quiet", summary: `${describeWaits} — nothing to announce`, lines: said };
@@ -5131,6 +5595,11 @@ const runNotify = async (input: {
         accounts: plan.accountKeys,
         reminded: plan.reminded,
         eventParks: plan.eventParkKeys,
+        // The watchman's own marks, carried through unchanged: this command's other classes
+        // are the composition of THIS run, and that one is not (see `watchMergeability`).
+        mergeable: mergeableSaid,
+        mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+        mergeableRang: plan.mergeability?.since,
       }),
     );
     return { kind: "sent", summary, lines: said };
@@ -5169,6 +5638,10 @@ const runNotify = async (input: {
       accounts: plan.accountKeys,
       reminded: plan.reminded,
       eventParks: plan.eventParkKeys,
+      // The watchman's own marks, carried through unchanged (see `watchMergeability`).
+      mergeable: mergeableSaid,
+      mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+      mergeableRang: plan.mergeability?.since,
     }),
   );
   say(outcome.detail);
@@ -13207,9 +13680,18 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
     open: async () =>
       ghOpenPullRequestsSchema
         .parse(
-          JSON.parse(ask(["pr", "list", "--state", "open", "--json", "number,headRefOid,body"])),
+          JSON.parse(
+            ask(["pr", "list", "--state", "open", "--json", "number,headRefOid,body,mergeable"]),
+          ),
         )
-        .map((pr) => ({ number: pr.number, headSha: pr.headRefOid, body: pr.body })),
+        .map((pr) => ({
+          number: pr.number,
+          headSha: pr.headRefOid,
+          body: pr.body,
+          // ONE MORE FIELD, ZERO MORE CALLS (thread 097, half 2). The scheduler does not
+          // read it; it is the free first ask the watchman of mergeability is priced on.
+          mergeable: pr.mergeable,
+        })),
     facts: async (number: number) =>
       pullRequestFacts(
         ghPullRequestSchema.parse(
@@ -13284,17 +13766,24 @@ const mergeGate = (argv: readonly string[]): void => {
       },
     );
 
-  let raw: string;
+  let raw: string | undefined;
+  let mergeability: MergeabilityReading;
   try {
-    raw = ask();
-    // GitHub computes `mergeable` LAZILY: the first ask starts the job and answers
-    // UNKNOWN, the next one answers for real (observed on every open PR of this repo).
-    // Asking again is what the refusal would tell a human to do, so the command does it
-    // once itself — and only then reports UNKNOWN as the answer it is.
-    if (/"mergeable"\s*:\s*"UNKNOWN"/.test(raw)) {
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
-      raw = ask();
-    }
+    // GitHub computes `mergeable` LAZILY AND SERVES IT STALE: the first ask starts the job
+    // and answers whatever the cache holds, the next one answers for real. This used to be
+    // read as "retry on UNKNOWN", which covers only half of it — the half where the stale
+    // answer LOOKS unfinished. The other half is a stale `MERGEABLE`, and it is the one
+    // that cost a round of review on 2026-09-03 (thread `097`). So the door asks until two
+    // consecutive answers AGREE, and the payload it judges is the last one it read.
+    mergeability = readMergeability({
+      ask: () => {
+        raw = ask();
+        return mergeableWordOf(raw);
+      },
+      pause: (ms) => {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+      },
+    });
   } catch (error) {
     const message = (error as Error).message;
     // The reason `gh` returned is the fact and is printed whole; the hint is a reading
@@ -13309,7 +13798,7 @@ const mergeGate = (argv: readonly string[]): void => {
     return;
   }
 
-  const parsed = ghPullRequestSchema.safeParse(JSON.parse(raw));
+  const parsed = ghPullRequestSchema.safeParse(JSON.parse(raw ?? "null"));
   if (!parsed.success) {
     fail(
       `the answer of gh about PR #${number} is not the shape this command reads: ${parsed.error.issues
@@ -13422,6 +13911,7 @@ const mergeGate = (argv: readonly string[]): void => {
     pr: pullRequestFacts(parsed.data, baseHead, reviewRuns),
     powerDocs,
     d1,
+    mergeability,
   });
 
   for (const line of describeMergeGate(verdict)) out(line);
@@ -13449,6 +13939,83 @@ const mergeGate = (argv: readonly string[]): void => {
  * ground guard is asked of it too — a command that opens something outward is the last one
  * that should be an exception to the boundary of thread 062.
  */
+/**
+ * THE DOOR BEFORE THE `review` LABEL (thread `097-conflict-has-no-signal`, john's word of
+ * 2026-09-03) — the cheapest question there is, asked before the expensive thing.
+ *
+ * WHY IT EXISTS. The norm says «hang the label after a green `checks` on the current head»
+ * and says NOTHING about conflicts, so a role that follows it to the letter can hang the
+ * label on a head that has to be rebased. It is formally right and pays twice: the rebase
+ * moves the head, guard 1 voids the verdict of a round that read the old tree, and the
+ * round is run again. Measured on the day this was written — six rebases in twenty-four
+ * hours across two circuits, and at least one round of review plus eighteen minutes of
+ * tests burnt on a head that could never have merged.
+ *
+ * WHY IT IS A READ AND NOT THE LABELLING ITSELF. Hanging the label is a write to somebody
+ * else's repository state and it raises a paid round; this package refusing to perform it
+ * would put the refusal one step further from where the decision is made, not closer. What
+ * a door can honestly do is answer the question the role could not previously ask in one
+ * word — and answer it so it cannot be misread: `pr mergeable` exits 0 ONLY on a settled
+ * `MERGEABLE`, and every other outcome, conflict and unsettled alike, is exit 1 with the
+ * sequence of answers printed. Like every door of this package it is bypassed by not using
+ * it (see `pr-open.ts`, «WHAT THIS DOOR IS NOT»).
+ */
+const prMergeable = (argv: readonly string[]): void => {
+  const number = required(argv, "--pr");
+  if (!/^\d+$/.test(number)) {
+    fail(`--pr '${number}' — the number of a pull request`, 2);
+    return;
+  }
+  const asks = flagInt(argv, "--asks");
+  const repo = repoArg(argv, process.cwd());
+  // The circuit's own credentials, OFFERED and not demanded — the same reading every other
+  // `gh` caller of this package does, and the missing file is named only if `gh` refuses.
+  const platform = platformEnvOf({ repo });
+  out(`pr mergeable: credentials — ${platform.note}`);
+
+  let reading: MergeabilityReading;
+  try {
+    reading = readMergeability({
+      ask: () =>
+        mergeableWordOf(
+          execFileSync("gh", ["pr", "view", number, "--json", "mergeable,mergeStateStatus"], {
+            cwd: repo,
+            encoding: "utf8",
+            env: platform.env,
+            stdio: ["ignore", "pipe", "pipe"],
+            maxBuffer: 8 * 1024 * 1024,
+          }),
+        ),
+      pause: (ms) => {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+      },
+      ...(asks === undefined ? {} : { asks }),
+    });
+  } catch (error) {
+    const message = (error as Error).message;
+    fail(
+      explainWithCredentials(
+        `PR #${number} was not read through gh: ${message}${ghRefusalHint(message)}`,
+        platform,
+      ),
+      2,
+    );
+    return;
+  }
+
+  out(`pr mergeable: PR #${number} — ${reading.detail}`);
+  if (isMergeable(reading)) {
+    out("pr mergeable: the branch applies to its base — the 'review' label may be hung");
+    return;
+  }
+  fail(
+    reading.state === "settled"
+      ? `PR #${number} does not apply to its base (${reading.mergeable}) — rebase it and hang the label on the new head. A round of review on this head would be voided by the rebase (guard 1) and paid for twice`
+      : `PR #${number}: GitHub has not settled whether this branch applies to its base — ask again before hanging the label. A label hung on a guess costs a round of review when the guess is wrong`,
+    1,
+  );
+};
+
 const prOpen = (argv: readonly string[]): void => {
   const title = required(argv, "--title");
   const bodyPath = required(argv, "--body-file");
@@ -13550,6 +14117,9 @@ const main = async (argv: readonly string[]): Promise<void> => {
   } else if (command === "merge-gate") {
     guardArguments("merge-gate", argv.slice(1));
     mergeGate(argv.slice(1));
+  } else if (command === "pr" && subcommand === "mergeable") {
+    guardArguments("pr mergeable", argv.slice(2));
+    prMergeable(argv.slice(2));
   } else if (command === "pr" && subcommand === "open") {
     guardArguments("pr open", argv.slice(2));
     prOpen(argv.slice(2));

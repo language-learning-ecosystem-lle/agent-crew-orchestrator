@@ -234,6 +234,9 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # fact of the served project and is never guessed here
                               # 'mergeable' is read too and printed BESIDE the guards, not as a sixth:
                               # the door refuses what GitHub itself would refuse, UNKNOWN included
+                              # and it is read with TWO AGREEING ASKS, never one (thread 097): the
+                              # field is computed lazily and served stale, so a lone 'MERGEABLE' can
+                              # be a cache hit — answers that disagree block with the sequence heard
                               # WHAT GUARD 2 DOES NOT ASK, said under it as 'note · base' (023.3): a
                               # 'pull_request' check measures the head MERGED WITH THE BASE OF ITS OWN
                               # MOMENT, and a base that moves afterwards reruns nothing — the green
@@ -253,6 +256,18 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # moves — dating it made the note a no-op that printed 'current' about
                               # a measurement nobody took, with every guard and every test green
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
+  agent-protocol pr mergeable --pr <n> [--repo <path>] [--asks <n>]
+                              # THE DOOR BEFORE THE 'review' LABEL (thread 097, john 2026-09-03):
+                              # does this branch still apply to its base? A round of review hung on a
+                              # conflicting head is burnt work — the head has to be rebased, and a
+                              # rebase voids the verdict by guard 1, so the round is paid for twice
+                              # ONE ASK IS NEVER THE ANSWER: 'mergeable' is computed lazily and served
+                              # from a cache that may be stale, so the command asks until TWO
+                              # CONSECUTIVE answers AGREE ('--asks', ceiling, default 3, floor 2)
+                              # exit 0: two asks agree on MERGEABLE — hang the label
+                              # exit 1: they agree on something else (rebase, then label), or never
+                              # agree at all (GitHub has not settled it — ask again, do not label)
+                              # exit 2: the invocation, or gh answered nothing this command can read
   agent-protocol pr open      --ref <ref> --title <t> --body-file <p> [--base <branch>] [--head <branch>] [--repo <path>] [--draft] [--write]
                               # HOW A ROLE OPENS A PULL REQUEST (thread 052, john 2026-09-02) — and
                               # the door that refuses BEFORE it is created: no 'thread: NNN-slug' on
@@ -418,10 +433,19 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # without --write: prints what it would send and leaves the state alone
                               # only what the transport CONFIRMED is marked announced (029): a failed
                               # delivery is a NON-ZERO exit with the state untouched, so it rings again
-  agent-protocol new-message  --root <mail> --ref <ref> --thread <id> --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
+  agent-protocol new-message  --root <mail> --ref <ref> (--thread <id> | --ensure-thread <slug> --title <t> --participants <a,b>) --from <role> --expects <e> [--waiting-on <role>] --worker <w> [--session <id>] [--raised <ts>] --body-file <p> [--await-input] [--model <m>] [--effort <e>] [--priority <p>] [--parked-on <person|pr:N|run:N>] [--park-lifted <person|pr:N|run:N>] [--delivers <person>] [--park-mover <participant>] [--merged-pr <n>] [--verdict <approve|needs-fixes> --pr <n>] [--task <d>]... [--write] [--no-push]
                               # THE WRITING HALF (R3): --write means SENT — the commit and the push happen inside,
                               # with a replanning retry when somebody wrote into the feed first
                               # --no-push: write the file only (for a caller that owns its own git, e.g. CI)
+                              # --ensure-thread <slug>: A STANDING ADDRESS INSTEAD OF ONE THREAD (080, decision of
+                              # john 2026-09-03). The letter goes into the receiver of that address which is OPEN
+                              # AND NOT PARKED; when there is none — closed, parked, unreadable, or never opened —
+                              # the receiver is OPENED here, '<next free NNN>-<slug>', in ONE commit with the
+                              # letter. --title/--participants are what it is opened with and are required with it;
+                              # --thread and --ensure-thread are exclusive. WHY IT EXISTS: a letter into a closed
+                              # or parked thread is ACCEPTED and raises nobody — 'a closed thread awaits nobody',
+                              # the run is green, the alarm is eaten (measured, 080). The address is re-resolved
+                              # inside the delivery attempt, so two events of one minute land in ONE receiver
                               # ON A THREAD DECLARING 'turn: explicit' (079) --waiting-on is OBLIGATORY:
                               # the door refuses a message without it and names both exits (a role, or '—'
                               # for nobody). On every other thread nothing changes — a fieldless message is

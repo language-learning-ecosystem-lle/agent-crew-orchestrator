@@ -163,6 +163,46 @@ describe("the state file", () => {
     expect(renderNotifyState(EMPTY)).toBe("");
     expect(parseNotifyState("")).toEqual(EMPTY);
   });
+
+  it("carries the marks of the watchman of mergeability, and drops a line that is not a key", () => {
+    const state = { waiting: [], stalled: [], parked: [], mergeable: ["pr:114", "pr:251"] };
+
+    expect(renderNotifyState(state)).toBe("mergeable\tpr:114\nmergeable\tpr:251\n");
+    expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
+    // A malformed line is DROPPED rather than half-read (the freeze rule): a key that is
+    // not the key would announce the same break a second time — which is the one failure
+    // this class exists against.
+    expect(parseNotifyState("mergeable\t251\nmergeable\n").mergeable).toBeUndefined();
+    // And a file written before this class existed reads as "nothing was ever said",
+    // not as "everything is new".
+    expect(parseNotifyState("john\tb\n").mergeable).toBeUndefined();
+  });
+
+  it("carries the watchman's run of refusals verbatim, and what has already rung about it", () => {
+    // The run is one JSON object and this file is only its envelope — it neither parses nor
+    // re-words it, which is why the round trip is asked of the exact text.
+    const run =
+      '{"evidence":"gh: HTTP 502","since":"2026-09-03T20:01:00Z","ticks":5,"last":"2026-09-03T20:05:00Z"}';
+    const state = {
+      waiting: [],
+      stalled: [],
+      parked: [],
+      mergeableOutage: run,
+      mergeableRang: "2026-09-03T20:01:00Z",
+    };
+
+    expect(renderNotifyState(state)).toBe(
+      `mergeable-outage\t${run}\nmergeable-rang\t2026-09-03T20:01:00Z\n`,
+    );
+    expect(parseNotifyState(renderNotifyState(state))).toEqual(state);
+    // A run that has ended writes no line at all — the counter is cleared, not zeroed in place.
+    expect(renderNotifyState({ waiting: [], stalled: [], parked: [], mergeableOutage: "" })).toBe(
+      "",
+    );
+    // A file written before this class existed reads as "no outage and nothing announced".
+    expect(parseNotifyState("john\tb\n").mergeableOutage).toBeUndefined();
+    expect(parseNotifyState("john\tb\n").mergeableRang).toBeUndefined();
+  });
 });
 
 describe("a turn that has not moved — the second class of event (thread 024)", () => {

@@ -88,6 +88,14 @@ export type StagedMessage = {
   readonly removals?: readonly string[];
   /** What is said about the write in the output — the thread-relative path. */
   readonly label: string;
+  /**
+   * The commit subject of THIS attempt, when the attempt knows it better than the caller did
+   * (thread 080). One writer does: `--ensure-thread` re-resolves the receiver of a standing
+   * address inside the attempt, after the fetch — so the thread the commit names is decided
+   * here and not before the lock was taken. A commit whose subject names one thread while its
+   * diff touches another is the kind of silent drift this feed cannot take back.
+   */
+  readonly subject?: string;
 };
 
 export class DeliveryRefusedError extends Error {}
@@ -250,7 +258,10 @@ const deliverUnderLock = (input: UnderLock): Delivered => {
       if (input.git(["diff", "--cached", "--name-only", "--", ...paths]).trim() === "") {
         return { label: staged.label, attempts: attempt, written: false };
       }
-      input.git(["commit", "--quiet", "-m", input.subject], identityEnv(input.identity));
+      input.git(
+        ["commit", "--quiet", "-m", staged.subject ?? input.subject],
+        identityEnv(input.identity),
+      );
       try {
         input.git(["push", "--quiet", "origin", `HEAD:${input.branch}`]);
       } catch (error) {
