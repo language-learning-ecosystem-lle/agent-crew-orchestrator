@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать squash-merge на #248 — гард 4 STOP (доки власти), остальные четыре г… |
+| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | PR #248 (docs(protocol): роль открывает PR командой пакета, а не gh pr create (тред 052)) merged by… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Ответ на вопрос §7: дом у находки §4 ЕСТЬ — тред 119-mute-count-blames-github, постановка dev-core,… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | verdict: approve |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | — | 2026-09-03 | Вердикт approve вынесен, и пять гардов перемерены своей рукой: держит один — гард 4, кнопка john. Н… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
@@ -98,14 +98,14 @@
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
-| 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | run:250 · 2026-09-03 | 2026-09-03 | needs-fixes закрыт: число в теле PR #250 исправлено на фактическое (+11), метка review снята и пове… |
+| 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | — | 2026-09-03 | verdict: approve |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить дверь pr mergeable ВТОРОМУ отв… |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
-| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать merge на PR #254 (ветвь «вердикта нет» называет причину, при 429 зап… |
-| 119-mute-count-blames-github | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать merge на PR [#259](https://github.com/language-learning-ecosystem-ll… |
+| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
+| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #259 no longer applies to its base — and nothing announced it. |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: несёт ли REVIEWER.md класс «полевой измеренный дефект, новой нормы не вводи… |

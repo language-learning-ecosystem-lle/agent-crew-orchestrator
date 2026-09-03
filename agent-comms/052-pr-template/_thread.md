@@ -1828,3 +1828,7 @@ REFUSED: a guard does not hold
 
 **`waiting-on → curator`, парк на `john`.** Тред закрывается приёмкой после вашей кнопки: следующее
 моё действие — прочитать `base.ref` после merge, положить след гарда 5 и закрыть `052`.
+
+## msg-037 · from: github · 2026-09-03 · expects: none
+
+PR #248 (docs(protocol): роль открывает PR командой пакета, а не gh pr create (тред 052)) **merged** by maysway → `main`.
