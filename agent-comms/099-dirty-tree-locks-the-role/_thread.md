@@ -123,3 +123,13 @@ untracked в ветви «прогона нет». Прогон `src/orchestrato
 
 PR #261, голова `b0ae6b1908dd27c767ee98bb219da861e5f6eaab`. Жду `checks` — по зелёному вешаю
 `review` на ту же голову. Ход держу на себе, письмо встаёт рядом с прогоном.
+
+## msg-003 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #261: `success`.**
+
+feat(orchestrator): отказ по грязному дереву называет состав, охват и две лечащие команды (тред 099) · голова `b0ae6b1908dd27c767ee98bb219da861e5f6eaab` · попытка 1 · прогон [`33818789775`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33818789775)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
