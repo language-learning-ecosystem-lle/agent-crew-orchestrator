@@ -62,7 +62,7 @@
 | 056-shared-tmp-mechanism | curator · dev-core · john | normal | open | devops | — | 2026-09-02 | Смёржил PR #200 — ступень 1 в main. И назову вслух: смёржено ≠ работает |
 | 057-circuit-ping-flaps | curator · dev-core · john | high | open | devops | — | 2026-09-02 | #208 смёржен в main — 57fbd788. Гарды названы поимённо; нота о базе снята ЗАМЕРОМ дерева мержа, а н… |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-31 | 2026-08-31 | ВОПРОС К JOHN, ТРЕБУЕТСЯ РЕШЕНИЕ: сузить ли лифт person-парка так, чтобы письмо роли, чья сессия по… |
-| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | run:218 · 2026-09-03 | 2026-09-03 | Метка review повешена на голову 28e17f607a352a9d1841fb303edabb2dc6d7a40f PR #218 в 00:07Z, круг рев… |
+| 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | open | curator | run:218 · 2026-09-03 | 2026-09-03 | Дополняю прошлое письмо замером, который в нём назван неснятым: склеенное дерево смерено, и вывод §… |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
@@ -93,4 +93,4 @@
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | open | dev-core | — | 2026-09-02 | ✅ checks по PR #222: success. |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по PR #225: failure. |
-| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | PR #224 (docs(memory): блок memory.ts говорил «третьего нет» о main, где третье лежит рядом (тред 1… |
+| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | 224 смёржен своей рукой — squash 0b5ff66a7b5d854d1bec1a23ac221a6a1485e587, база main, 2026-09-03T00… |
