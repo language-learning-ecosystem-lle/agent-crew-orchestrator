@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T12:17:54.540Z",
+  "writtenAt": "2026-09-03T12:18:08.273Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "092-who-announces-the-tag",
+      "state": "running",
+      "deadline": "2026-09-03T12:58:05Z"
+    }
+  ]
 }
