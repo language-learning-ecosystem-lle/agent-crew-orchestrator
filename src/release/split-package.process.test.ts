@@ -329,6 +329,56 @@ describe("scripts/split-package.sh", () => {
     expect(run.out).toContain("thing-v0.2.1");
   });
 
+  /**
+   * ТРЕТЬЕ СОСТОЯНИЕ (тред 117, находка ревьюера по #242 п.11). Тег, чьё дерево не резолвится,
+   * цикл раньше пропускал молча — и исход тихого пропуска был НЕОТЛИЧИМ от исхода честной
+   * проверки: оба давали «тег не назван», то есть «всё в порядке». Такой тег обязан быть назван
+   * ОТДЕЛЬНОЙ строкой и при этом НЕ зачислен в непригодные: про его пригодность не сказано
+   * ничего ни в ту, ни в другую сторону. Код возврата реза от этого не меняется — мера
+   * информационная, гейтом она не является.
+   */
+  it("names a tag whose tree cannot be read on its own line, without calling it unfit", () => {
+    const repo = repoWithPackage();
+    expect(
+      split(
+        repo,
+        "--tag",
+        "thing-v0.2.0",
+        "--prefix",
+        "packages/thing",
+        "--ref",
+        "main",
+        "--base",
+        "main",
+      ).ok,
+    ).toBe(true);
+    bumpOnLine(repo, "0.2.1");
+    // Ref на объект, которого в этом чекауте нет: так выглядит повреждённый или недостижимый
+    // тег. `git tag --list` его перечисляет, а `rev-parse <tag>^{tree}` на нём отказывает.
+    writeFileSync(
+      join(repo, ".git/refs/tags/thing-v0.2.9"),
+      "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef\n",
+    );
+
+    const run = split(
+      repo,
+      "--tag",
+      "thing-v0.2.1",
+      "--prefix",
+      "packages/thing",
+      "--base",
+      "main",
+    );
+    expect(run.ok, run.out).toBe(true);
+    expect(run.out).toContain("ДЕРЕВО КОТОРЫХ НЕ ЧИТАЕТСЯ");
+    expect(run.out).toContain("thing-v0.2.9");
+    // И это НЕ второе состояние: непригодным нечитаемый тег не объявляется.
+    expect(run.out).not.toContain("НЕ встречается");
+    // Про измеренные теги сказано отдельно, и сказано без перебора: «каждый» тут уже неправда.
+    expect(run.out).toContain("дерево каждого ЧИТАЕМОГО встречается в линии 'main'");
+    expect(git(repo, "tag", "--list", "thing-v0.2.1").trim()).toBe("thing-v0.2.1");
+  });
+
   it("says the tags are clean when every tag's tree does occur in the line", () => {
     const repo = repoWithPackage();
     expect(
