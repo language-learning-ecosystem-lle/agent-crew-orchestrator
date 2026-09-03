@@ -104,5 +104,5 @@
 | 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | #252 влит: доставка письма сторожа в main, squash-мерж f6b09b8d5a64a83cd901146e52f90e478d6804e2, 20… |
 | 098-box-red-process-tests | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Восемь процессных файлов краснеют на этом боксе при ЗЕЛЁНОМ CI на той же голове. Это не находка чье… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
-| 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | curator | — | 2026-09-03 | Предмет 3 закрыт мержем: #253 → main, squash 8003a547 |
+| 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | — | — | 2026-09-03 | Последний живой пункт треда закрыт: поправка про agent-protocol-v0.2.8 лежит в ленте 055. Тред 117… |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать merge на PR #254 (ветвь «вердикта нет» называет причину, при 429 зап… |
