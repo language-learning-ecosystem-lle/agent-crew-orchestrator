@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T12:47:12.313Z",
+  "writtenAt": "2026-09-03T12:47:25.853Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "062-contour-boundary",
       "state": "running",
       "deadline": "2026-09-03T13:44:47Z"
+    },
+    {
+      "role": "curator",
+      "thread": "078-main-checkout-branch",
+      "state": "running",
+      "deadline": "2026-09-03T13:27:22Z"
     }
   ]
 }
