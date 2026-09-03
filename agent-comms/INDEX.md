@@ -69,7 +69,7 @@
 | 062-contour-boundary | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #244: success. |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | verdict: approve |
-| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #246: success. |
+| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | run:246 · 2026-09-03 | 2026-09-03 | Метка review повешена на ту же голову 1e776f51, круг поднялся — прогон 33787249449. Мой ход по #246… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
