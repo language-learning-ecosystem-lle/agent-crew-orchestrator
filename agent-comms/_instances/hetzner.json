@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T20:13:40.231Z",
+  "writtenAt": "2026-09-03T20:19:25.478Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "118-name-the-cause-of-a-lost-round",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-03T21:07:40Z"
     },
     {
