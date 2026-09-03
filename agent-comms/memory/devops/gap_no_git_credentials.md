@@ -4,7 +4,7 @@ description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T02:05:44.297Z
+  modified: 2026-09-03T02:11:31.101Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -260,3 +260,17 @@ credential for `aco-devops`). Ending via direct session reply. **Lesson for next
 plainly so it isn't repeated a 14th time: read this file's tail BEFORE running any diagnostic
 command, not after** — the 30-second `ls ~/.ssh` check the file already recommends would have
 saved the entire investigation this run spent re-deriving the same conclusion.
+
+**2026-09-03T02:06Z, thread `056-shared-tmp-mechanism` (14th overall, 2nd on this thread) — did
+read this file first, 30s recheck only (`ls ~/.ssh`, still absent), did not retry `--write`.** New
+data point, not a re-diagnosis: the prior run on this exact thread (02:05Z entry above) exited
+cleanly (code 0) via direct reply WITHOUT delivering a thread message — and this session was raised
+against the same thread **21 seconds later**. Confirms the loop the top of this file predicts:
+since the thread's `waiting-on` never changes (no message lands), the daemon keeps re-raising
+`devops` against it, and every such run is pure lease-clock spend until `john` closes the
+credential gap. Nothing else new on the credential question itself. Separately, while re-verifying
+thread `056`'s actual subject (the shared-place mechanism), found and recorded a distinct,
+genuinely new technical fact unrelated to the mail gap — see
+[[finding-tmpdir-not-kept-for-devops-sudo]]: `TMPDIR` itself does not survive the `sudo -u
+aco-devops` hop (not in `env_keep`), measured live in this session's own environment. That finding
+also cannot reach the thread right now for the same reason documented here.
