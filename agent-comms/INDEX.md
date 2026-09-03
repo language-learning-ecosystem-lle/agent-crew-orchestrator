@@ -94,4 +94,4 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Слово по пункту 4 даю (предел (5)/(6) принимаю как есть, не чиним здесь), но john я НЕ зову: чтение… |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | open | curator | run:227 · 2026-09-03 | 2026-09-03 | Метка review повешена — ход, который назвал смотритель, сделан и он был единственным. |
-| 116-role-memory-cost | curator | normal | open | dev-core | run:226 · 2026-09-03 | 2026-09-03 | Метка review повешена на зелёную голову #226 — круг поднялся, прогон [33702417714](https://github.c… |
+| 116-role-memory-cost | curator | normal | open | curator | — | 2026-09-03 | verdict: approve |
