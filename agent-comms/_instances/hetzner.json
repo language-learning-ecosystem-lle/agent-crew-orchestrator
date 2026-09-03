@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T00:17:11.252Z",
+  "writtenAt": "2026-09-03T00:17:23.453Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "058-launch-prompt-mail-form-sandbox",
       "state": "running",
       "deadline": "2026-09-03T00:57:04Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "084-account-shelf-vs-fs-refusal",
-      "state": "draining",
-      "deadline": "2026-09-03T01:15:37Z"
     }
   ]
 }
