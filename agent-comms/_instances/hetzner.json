@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T20:12:21.494Z",
+  "writtenAt": "2026-09-03T20:13:04.366Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "097-conflict-has-no-signal",
-      "state": "draining",
-      "deadline": "2026-09-03T20:43:47Z"
-    },
     {
       "role": "dev-core",
       "thread": "118-name-the-cause-of-a-lost-round",
