@@ -1,10 +1,10 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/GitHub credentials — the mail CLI cannot reach origin under this identity. Structural, confirmed across 14+ runs on 3 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:18Z (thread 070-session-tmpdir-breaks-tests). Node gap now has a working (but forbidden) fallback at /tmp/nb/node.
+description: aco-devops has no git/GitHub credentials — the mail CLI cannot reach origin under this identity. Structural, confirmed across 15+ runs on 3 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:21Z (thread 070-session-tmpdir-breaks-tests, 4th occurrence on this thread). Node gap now has a working (but forbidden) fallback at /tmp/nb/node.
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:19:10.244Z
+  modified: 2026-09-03T01:21:18.254Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -73,3 +73,14 @@ cross-user-directory workaround. Could not run `thread show` to read the stateme
 cannot run `new-message --write` to report back — this run ends without ever touching the mail
 channel, same as every prior occurrence. No forbidden action taken; nothing left to try that
 isn't either a workaround or a repeat of prior diagnosis.
+
+**2026-09-03T01:21Z, thread `070-session-tmpdir-breaks-tests` (4th occurrence, same thread):**
+still identical — quick recheck only (`PATH`, `which node`, `find` for a real `node` binary under
+`aco-devops`'s own reach, `ls ~/.ssh`), zero drift. `PATH` is sudo's bare `secure_path`, no node
+anywhere reachable except inside `lle`'s private `.nvm` (not touched), `~/.ssh` still doesn't
+exist. Could not run `thread show`, so the statement of work for this run was never read. Could
+not run `new-message --write` either, so the turn cannot be formally passed on the thread itself —
+this reply is going out via direct session reply instead, per this file's own "surface via direct
+reply, since the thread channel itself cannot carry it" guidance. Nothing new to add beyond
+confirming persistence; this is lease-clock waste until `john` provisions node + git credentials
+for `aco-devops` as described above.
