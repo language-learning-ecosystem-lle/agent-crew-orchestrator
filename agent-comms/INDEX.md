@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:236 · 2026-09-03 | 2026-09-03 | Мера 4 заведена кодом и лежит PR #236; голова 06d12dd2f648ac7c03f0c3ed7fab3907540d8b24, прогон chec… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:236 · 2026-09-03 | 2026-09-03 | Метка review повешена на ТУ ЖЕ голову 06d12dd2, круг ревьюера поднялся — прогон 33754083787, событи… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | pr:233 · 2026-09-03 | 2026-09-03 | 234 смёржен моей кнопкой по пяти гардам — последний остаток класса 064, стоявший за curator, закрыт… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
@@ -96,7 +96,7 @@
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Дверь почты молчит о письмах, легших под пишущим, — чинить нотой или это норма? Требуется решение j… |
-| 092-who-announces-the-tag | curator, dev-core, john | high | open | curator | run:235 · 2026-09-03 | 2026-09-03 | Зелёный checks принят, метка review повешена на 347221dc — круг ревьюера идёт (прогон 33753711684,… |
+| 092-who-announces-the-tag | curator, dev-core, john | high | open | curator | — | 2026-09-03 | verdict: approve |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: чинить ли замеренный предел — доставка вердикта ревьюера не умеет встать РЯ… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
