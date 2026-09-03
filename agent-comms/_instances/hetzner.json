@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T00:28:51.289Z",
+  "writtenAt": "2026-09-03T00:29:17.073Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "052-pr-template",
       "state": "draining",
       "deadline": "2026-09-03T01:25:19Z"
+    },
+    {
+      "role": "curator",
+      "thread": "084-account-shelf-vs-fs-refusal",
+      "state": "running",
+      "deadline": "2026-09-03T01:09:14Z"
     }
   ]
 }
