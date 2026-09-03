@@ -26,9 +26,11 @@ import {
   codexIsAssistantStep,
   codexModelOf,
   codexProbeFailure,
+  codexReadOnlyEnv,
   codexRenderLine,
   codexRunUsageOf,
   codexSessionIdOf,
+  heldByReadOnlySandbox,
 } from "./codex.js";
 import { CLAUDE_CODE } from "./kind.js";
 import type { buildLaunchArgv } from "./launch.js";
@@ -224,6 +226,34 @@ describe("what this kind cannot say, it does not say", () => {
     // A probe that can write is a probe that can break the box it is diagnosing.
     expect(argv).toContain("--sandbox");
     expect(argv).toContain("read-only");
+  });
+
+  it("hands the held run the one variable that lets its first command start (thread 058)", () => {
+    // MEASURED, not reasoned (curator, 2026-09-02, `codex sandbox -c
+    // sandbox_mode='"read-only"'`, no model called): under this sandbox `mkdir` of a path
+    // that does not exist gives ENOENT, and `tsx` makes `<TMPDIR>/tsx-<uid>` before it
+    // loads anything. Since #172 the run's `TMPDIR` is fresh, so that directory never
+    // pre-exists and the role died on its FIRST command — the mail line this very thread
+    // was opened to fix.
+    const held = {
+      ...LAUNCH,
+      launch: { agent: { kind: "codex", toolsHeldBy: "sandbox-read-only" } },
+    } as unknown as Parameters<typeof buildLaunchArgv>[0];
+    expect(codexReadOnlyEnv(held.launch)).toEqual({ TSX_DISABLE_CACHE: "1" });
+    // The same profile that gets the variable is the one that gets the confinement: one
+    // predicate reads them both, so the two cannot drift apart.
+    expect(buildCodexArgv(held)).toContain("--sandbox");
+  });
+
+  it("changes NOTHING in the environment of a run that is not held (thread 058)", () => {
+    // The regression half, asserted rather than left to absence: a role with a working
+    // cache keeps it. `toEqual({})` and not `not.toHaveProperty` — an empty object is the
+    // claim, and it is what the spread at the spawn site turns into no keys at all.
+    expect(codexReadOnlyEnv(LAUNCH.launch)).toEqual({});
+    expect(
+      codexReadOnlyEnv({ agent: { kind: "codex" } } as unknown as typeof LAUNCH.launch),
+    ).toEqual({});
+    expect(heldByReadOnlySandbox(LAUNCH.launch)).toBe(false);
   });
 
   it("reads the reason of a failed probe off the END, not off the first line (thread 039)", () => {

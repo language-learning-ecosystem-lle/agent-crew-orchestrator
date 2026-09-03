@@ -253,6 +253,56 @@ export const codexEffortSchema = z.enum(["low", "medium", "high", "xhigh", "max"
 export const CODEX_READ_ONLY_ARGV: readonly string[] = ["--sandbox", "read-only"];
 
 /**
+ * WHETHER THIS PROFILE'S RUN IS CONFINED BY THE VENDOR'S READ-ONLY SANDBOX — one
+ * predicate, so the argv that puts the confinement on and the environment that has to
+ * survive it cannot drift apart. Read from `launch.agent.toolsHeldBy` (v20) and from
+ * nothing else: the card already declares it, and a second field beside it would be a
+ * second way to say one thing.
+ */
+export const heldByReadOnlySandbox = (launch: LaunchArgvInput["launch"]): boolean =>
+  launch.agent?.kind === CODEX_WORKER && launch.agent.toolsHeldBy !== undefined;
+
+/**
+ * WHAT A RUN UNDER THAT SANDBOX HAS TO BE TOLD SO ITS FIRST COMMAND CAN START AT ALL
+ * (thread `058-launch-prompt-mail-form-sandbox`, curator's measurement of 2026-09-02).
+ *
+ * THE DEFECT, measured on this box with `codex sandbox -c sandbox_mode='"read-only"'` —
+ * eight arms, no model called. Under `--sandbox read-only` the filesystem is read-only
+ * WHOLE: a write gives `EROFS`, and `mkdir` of a path that does not exist gives `ENOENT`
+ * (not `EACCES`, which is why the refusal read as a riddle). `tsx` starts by making its
+ * own cache directory — `mkdirSync(<TMPDIR>/tsx-<uid>, { recursive: true })`. On a
+ * directory that ALREADY exists that call is a silent no-op and the loader drives on,
+ * surviving `EROFS` on the cache itself; on a directory that does not, it dies before the
+ * CLI it was importing ever starts. So the trigger is neither the location nor the alias
+ * of thread `070`: it is the FRESHNESS of the directory.
+ *
+ * Which is why this begins with #172 (`909c8c47`, thread `056`) and not with a vendor
+ * change: until every run got its OWN `TMPDIR`, the shared `/tmp/tsx-<uid>` had been
+ * lying there since the first unsandboxed run on the box, so the mail line of runs 6-8
+ * (2026-08-30) went through. From #172 on, `tsx-<uid>` pre-exists NEVER, and the one role
+ * that reads its mail under the sandbox died on its first command — `ENOENT: mkdir
+ * '<TMPDIR>/tsx-1000'`, twice in the field (thread `083` at 18:19:25Z, run 10 of thread
+ * `058` at 19:08:26Z).
+ *
+ * WHY THE VARIABLE AND NOT A PRE-MADE DIRECTORY, the other arm curator measured working:
+ * pre-creating `<TMPDIR>/tsx-<uid>` would make this package spell out a foreign tool's
+ * cache layout AND guess the uid the child will run as — and the guess is the
+ * supervisor's, which is not the child's on any role that declares `systemUser`. It also
+ * buys nothing: the run's `TMPDIR` is fresh by construction, so that cache is cold on
+ * every run, and under a read-only filesystem it can never be filled — `EROFS` on the
+ * first write. Disabling it loses exactly the speed a cache that cannot be written was
+ * never going to give.
+ *
+ * ONLY FOR THE HELD RUN, and that is the same scoping as the mail form: a role that is
+ * not confined keeps a working cache and its environment does not change by one key.
+ */
+export const CODEX_READ_ONLY_ENV: Readonly<Record<string, string>> = { TSX_DISABLE_CACHE: "1" };
+
+/** That environment for a profile, or nothing at all when the profile is not held. */
+export const codexReadOnlyEnv = (launch: LaunchArgvInput["launch"]): NodeJS.ProcessEnv =>
+  heldByReadOnlySandbox(launch) ? { ...CODEX_READ_ONLY_ENV } : {};
+
+/**
  * WHY A FAILED PROBE OF THIS TOOL FAILED — READ FROM THE END, NOT FROM THE START
  * (thread 039). Unlike every other reading in this file, this one comes from a stream
  * CAPTURED ON THIS BOX: `codex exec --skip-git-repo-check --sandbox read-only …` with a
@@ -332,9 +382,7 @@ export const buildCodexArgv = (input: LaunchArgvInput): string[] => [
   ...(input.resume === undefined ? [] : ["resume", input.resume]),
   "--json",
   "--skip-git-repo-check",
-  ...(input.launch.agent?.kind === CODEX_WORKER && input.launch.agent.toolsHeldBy !== undefined
-    ? CODEX_READ_ONLY_ARGV
-    : []),
+  ...(heldByReadOnlySandbox(input.launch) ? CODEX_READ_ONLY_ARGV : []),
   ...(input.params?.model === undefined ? [] : ["-m", input.params.model.value]),
   ...(input.params?.effort === undefined
     ? []

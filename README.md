@@ -5146,6 +5146,40 @@ the roles' own acceptance instrument. **The cause is S26 itself, said plainly.**
   that it is born in the run's directory, that the raw path gives `EINVAL`, and that `tsx`
   itself runs under the one and dies under the other.
 
+**S26b — and a run held by the read-only sandbox has to be told that its `TMPDIR` is fresh
+(thread 058).** Under `codex --sandbox read-only` the filesystem is read-only WHOLE: a write
+gives `EROFS`, and `mkdir` of a path that does not exist gives `ENOENT` — not `EACCES`, which
+is why the refusal read as a riddle for three turns. `tsx` opens by making
+`<TMPDIR>/tsx-<uid>`: on a directory that already exists that call is a silent no-op and the
+loader drives on, surviving `EROFS` on the cache itself; on one that does not, it dies before
+the CLI it was importing ever starts. So the trigger is neither the location of the directory
+nor the alias of S26a — it is the FRESHNESS, and the door closed on the day of S26 itself.
+Until every run got its own `TMPDIR`, the shared `/tmp/tsx-<uid>` had been lying on the box
+since the first unsandboxed run, so the mail line of the pilot's runs 6-8 (2026-08-30) went
+through; from #172 on it pre-exists never, and the one role that reads its mail under the
+sandbox died on its FIRST command — twice in the field, at the price of a role slot each time.
+
+- **The held run is handed `TSX_DISABLE_CACHE=1`, beside `TMPDIR` and derived from the same
+  declaration as its confinement** (`launch.agent.toolsHeldBy`, v20) — one predicate reads
+  both, so the flag that puts the sandbox on and the environment that has to survive it
+  cannot drift apart. A role that is not held keeps a working cache and its environment does
+  not change by one key.
+- **A variable rather than a directory made by hand**, the other arm measured working:
+  pre-creating `<TMPDIR>/tsx-<uid>` would make this package spell out a foreign tool's cache
+  layout and guess the uid the child runs as (the supervisor's own, which is not the child's
+  on a role that declares `systemUser`). It also buys nothing — the run's `TMPDIR` is fresh
+  by construction, so that cache is cold every time and can never be filled under a read-only
+  filesystem. Disabling it loses exactly the speed a cache that cannot be written was never
+  going to give.
+- **What is tested** is the seam and the vendor's own door. The seam: a stub session under a
+  held card gets `TSX_DISABLE_CACHE=1` together with this run's own `TMPDIR`, and the same
+  circuit without that word of the card gets neither (`run.process.test.ts`). The door:
+  `codex sandbox` runs any command under the same confinement WITHOUT calling a model, so
+  `sandbox-loader.process.test.ts` reproduces the field's refusal on a fresh `TMPDIR` and
+  shows the handed environment surviving it — for free, in under a second. Where the binary
+  is absent (the CI runner) both cases SKIP with the reason printed, because that
+  measurement is about a box and not about this package's logic.
+
 ### S27 — the session's `PATH` carries the user's own tools (thread 069)
 
 **The measurement, taken on the live box (2026-09-02T09:52Z).** A raised
