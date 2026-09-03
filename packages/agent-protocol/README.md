@@ -4611,6 +4611,19 @@ with the two answers the operator was retyping filled in: the ref from the confi
 plan — `--write` guards a change nobody can see, while a hold is visible in one command
 (`status`) and undone in one word.
 
+**A refusal of the pair shows the pair, not the package.** Every refusal `hold` and `resume`
+raise for a missing argument prints THEIR OWN two forms — the short one first, with the
+`--write` asymmetry said in words — and no other command's line. The defect that bought this
+was measured on 2026-09-02: `orchestrator hold --role devops` (the strict form, typed without
+`--mode`) answered `--mode is not set` and then the entire usage block, which opens on `config
+check` and `config set` and never names `hold <role>` — the form the hand was reaching for. The
+command reads as broken while both of its forms work, and the right answer to the refusal is a
+command that CHANGES STATE with no `--write` in it: all the more reason for the refusal to name
+it rather than leave it to be found in the source. The lines are a CUT of this help text
+(`usageFor`, `orchestrator/argv.ts`), never a second copy — for the reason the flag table is
+the help text too. `resume` also stopped reading a flag as a role: `resume --ref HEAD` used to
+report `there is no hold on '--ref' — nothing to release` and exit 0.
+
 **`--ref` may be omitted, and ONLY here.** For these four commands it is not a choice at all:
 the project declared it in `orchestrator.ref`. The bootstrap is the one thing to be honest
 about — the pointer is read from the WORKING TREE (the exception `schema migrate` already

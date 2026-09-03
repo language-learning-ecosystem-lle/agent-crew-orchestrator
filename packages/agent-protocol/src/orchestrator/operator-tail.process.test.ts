@@ -308,6 +308,106 @@ describe("the watcher survives what it watches", () => {
   }, 180_000);
 });
 
+/**
+ * WHAT THE HAND IS TOLD WHEN THE PARKING COMMAND REFUSES (thread 087).
+ *
+ * The measurement behind it: john typed `orchestrator hold --role devops`, got `--mode is
+ * not set` and then the package's whole usage block — which opens on `config check` and
+ * `config set`, and never names `hold <role>`, the form that was actually wanted. The
+ * command reads as broken while both of its forms work.
+ *
+ * PINNED BY THREE FACTS AND NOT BY THE WHOLE OUTPUT: the short form is offered, the
+ * strict one is offered, and no other command's line is in there. The text itself is a
+ * cut of `USAGE` and is meant to move with it; an assertion on the whole block would go
+ * red on every unrelated line reflow and teach the next reader to re-record it blindly.
+ *
+ * And the fourth fact is not about text at all: a refusal must not have DONE anything.
+ * The short form acts without `--write`, so the holds directory is where a refusal that
+ * half-executed would show.
+ */
+describe("the refusal of the parking pair names its own two forms", () => {
+  const short = /orchestrator hold\s+<role>/;
+
+  /** The three facts, asked of one refusal. */
+  const namesBothForms = (stderr: string): void => {
+    expect(stderr).toMatch(short);
+    expect(stderr).toContain("--mode take");
+    expect(stderr).toContain("--mode release");
+    expect(stderr).not.toContain("config check");
+    expect(stderr).not.toContain("config set");
+  };
+
+  it("`hold --role <r>` without --mode offers the short form, not the package's help", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+
+    const done = run(repo, home, "orchestrator", "hold", "--ref", "HEAD", "--role", "dev-core");
+
+    // A refusal, not a help screen: the exit code is what a script reads.
+    expect(done.status).toBe(2);
+    expect(done.stderr).toContain("--mode is not set");
+    namesBothForms(done.stderr);
+    // The asymmetry said in words: the offered form needs no --write and therefore acts.
+    expect(done.stderr).toContain("no --write");
+    // And nothing was taken while refusing.
+    expect(existsSync(join(repo, ".orchestrator", "holds"))).toBe(false);
+  });
+
+  it("the strict form without --by refuses the same way — one door, three flags", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+
+    const done = run(
+      repo,
+      home,
+      "orchestrator",
+      "hold",
+      "--mode",
+      "take",
+      "--ref",
+      "HEAD",
+      "--role",
+      "dev-core",
+      "--write",
+    );
+
+    expect(done.status).toBe(2);
+    expect(done.stderr).toContain("--by is not set");
+    namesBothForms(done.stderr);
+    // `--write` WAS typed here, which is exactly why the state is worth asserting on.
+    expect(existsSync(join(repo, ".orchestrator", "holds"))).toBe(false);
+  });
+
+  it("`resume` with no role names the role it wants and the pair it belongs to", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+
+    const done = run(repo, home, "orchestrator", "resume");
+
+    expect(done.status).toBe(2);
+    // Not '--role is not set': `resume` has no such flag to spell, and the strict
+    // handler it used to fall through to answered about one.
+    expect(done.stderr).toContain("'orchestrator resume' names the role");
+    expect(done.stderr).toMatch(/orchestrator resume\s+<role>/);
+    namesBothForms(done.stderr);
+    expect(existsSync(join(repo, ".orchestrator", "holds"))).toBe(false);
+  });
+
+  it("`resume --ref HEAD` is refused, not read as a hold on a role called '--ref'", () => {
+    const { repo } = contour();
+    const home = configHome(repo);
+
+    const done = run(repo, home, "orchestrator", "resume", "--ref", "HEAD");
+
+    // It used to answer `there is no hold on '--ref' — nothing to release` and exit 0:
+    // a green line about a role nobody has, for a command that lifted nothing.
+    expect(done.status).toBe(2);
+    expect(done.stderr).toContain("'--ref' is a flag, not a role");
+    expect(done.stdout).not.toContain("nothing to release");
+    namesBothForms(done.stderr);
+  });
+});
+
 describe("who signs a hold when nobody typed --by", () => {
   /** A machine config in the sandbox home the CLI will read. */
   const machineConfig = (home: string, config: unknown): void => {
