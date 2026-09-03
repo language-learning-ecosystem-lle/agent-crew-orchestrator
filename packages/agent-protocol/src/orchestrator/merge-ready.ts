@@ -53,6 +53,13 @@ export type OpenPullRequest = {
   readonly headSha: string;
   /** The description — the `thread:` line is read out of it, and nothing else is. */
   readonly body: string;
+  /**
+   * The labels on the pull request, as GitHub names them. Read for ONE thing: whether the
+   * label this project calls a round of review (`review.label` of the config, v26) is on.
+   * It rides on the CHEAP half — the same `gh pr list` call that already answers the
+   * numbers and the heads — so the state below costs no second read.
+   */
+  readonly labels: readonly string[];
 };
 
 /**
@@ -82,6 +89,17 @@ const cacheKey = (pr: number, head: string): string => `${pr}@${head}`;
 export type MergeReadyReading = {
   /** thread id → the number of the PR whose guards 1-2 hold. Empty on any failure. */
   readonly ready: ReadonlyMap<string, number>;
+  /**
+   * WAITING FOR A ROUND OF REVIEW — thread id → the PR that holds it (thread `063`, §5
+   * state 2). The label is on, and no verdict has been submitted against the head the PR
+   * has NOW. Empty when the project declared no round (`review` absent from the config)
+   * and on every failure, exactly like {@link ready}.
+   *
+   * NEVER BOTH. A thread in {@link ready} is not here: an approve on the head means the
+   * round CLOSED, and what the pair is waiting for then is a button, which is the sentence
+   * the older tier already says.
+   */
+  readonly inReview: ReadonlyMap<string, number>;
   /** Lines for the daemon's stream — a refusal, or the pairs that were accelerated. */
   readonly notes: readonly string[];
   /**
@@ -101,7 +119,26 @@ export type MergeReadyReading = {
   readonly asked: boolean;
 };
 
-const EMPTY: MergeReadyReading = { ready: new Map(), notes: [], asked: false };
+const EMPTY: MergeReadyReading = {
+  ready: new Map(),
+  inReview: new Map(),
+  notes: [],
+  asked: false,
+};
+
+/**
+ * IS THERE A VERDICT ABOUT THE TREE THAT IS THERE NOW. Read off the reviews the expensive
+ * half already answered — no second call is made for it.
+ *
+ * A review with NO anchor counts as one about the head, which is the substitution guard 1
+ * makes (thread 043): GitHub anchors a verdict to the head the PR had when it was SENT, so
+ * an unanchored one cannot be shown to be about an older tree, and the reading that errs
+ * towards "the round is over" is the one that does not promise a state it cannot see.
+ */
+const verdictOnHead = (facts: PullRequestFacts): boolean =>
+  facts.reviews.some(
+    (review) => review.commitSha === undefined || review.commitSha === facts.headSha,
+  );
 
 /**
  * Read the merge-readiness of the threads that are already queued.
@@ -114,6 +151,12 @@ export const readMergeReady = async (input: {
   readonly source: MergeReadySource;
   readonly threads: readonly string[];
   readonly cache: MergeReadyCache;
+  /**
+   * The label this project calls a round of review (`review.label`, v26). ABSENT MEANS
+   * SILENCE, not a guess: a package that assumed `review` would be inventing one contour's
+   * vocabulary for every other one, and {@link MergeReadyReading.inReview} stays empty.
+   */
+  readonly reviewLabel?: string | undefined;
 }): Promise<MergeReadyReading> => {
   const wanted = new Set(input.threads);
   if (wanted.size === 0) return EMPTY;
@@ -123,6 +166,7 @@ export const readMergeReady = async (input: {
   } catch (error) {
     return {
       ready: new Map(),
+      inReview: new Map(),
       notes: [
         `merge-ready: not asked — ${describe(error)}. Nothing is accelerated and nothing is slowed: the queue is exactly the queue without merge-ready`,
       ],
@@ -131,6 +175,7 @@ export const readMergeReady = async (input: {
     };
   }
   const ready = new Map<string, number>();
+  const inReview = new Map<string, number>();
   const notes: string[] = [];
   for (const pr of open) {
     const thread = threadOfDescription(pr.body);
@@ -140,10 +185,15 @@ export const readMergeReady = async (input: {
     const key = cacheKey(pr.number, pr.headSha);
     const remembered = input.cache.get(key);
     let holds: boolean;
+    // The facts of THIS tick, when they were read — the reviews in them answer the review
+    // round below, so the second state costs no second call. A remembered `true` leaves
+    // them unread, and that case never needs them: it is the ready one.
+    let facts: PullRequestFacts | undefined;
     if (remembered !== undefined) holds = remembered;
     else {
       try {
-        holds = guardsOneAndTwoHold(await input.source.facts(pr.number));
+        facts = await input.source.facts(pr.number);
+        holds = guardsOneAndTwoHold(facts);
       } catch (error) {
         notes.push(
           `merge-ready: PR #${pr.number} (${thread}) not read — ${describe(error)}; the thread keeps its ordinary place`,
@@ -159,13 +209,35 @@ export const readMergeReady = async (input: {
       // stale memory is one needless place in a queue.
       if (holds) input.cache.set(key, holds);
     }
-    if (!holds) continue;
+    if (!holds) {
+      // WAITING FOR A ROUND OF REVIEW (thread `063`, §5 state 2) — the state the frame had
+      // no word for: the role hung the label, passed the turn, and the pair read as
+      // `released (completed)`, "finished", with its pull request open.
+      //
+      // Two conditions, and both are cheap: the declared label is ON (the `gh pr list` call
+      // that already ran), and no verdict stands against the head the PR has now (the
+      // reviews the expensive half already answered). `facts === undefined` means the read
+      // was skipped as remembered-ready, which cannot reach this branch.
+      if (
+        input.reviewLabel !== undefined &&
+        facts !== undefined &&
+        pr.labels.includes(input.reviewLabel) &&
+        !verdictOnHead(facts) &&
+        !inReview.has(thread)
+      ) {
+        inReview.set(thread, pr.number);
+      }
+      continue;
+    }
     // The FIRST ready PR of a thread wins the tier. A thread with two of them is raised
     // for the same reason either way, and naming one keeps the queue line short.
     if (!ready.has(thread)) ready.set(thread, pr.number);
   }
+  // NEVER BOTH, and the ready half wins: a thread can carry two pull requests, one of them
+  // ready. What that pair waits for is the button, and the tier above already says so.
+  for (const thread of ready.keys()) inReview.delete(thread);
   for (const [thread, pr] of ready) notes.push(note({ thread, pr }));
-  return { ready, notes, asked: true };
+  return { ready, inReview, notes, asked: true };
 };
 
 /**

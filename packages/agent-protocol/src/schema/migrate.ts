@@ -69,6 +69,7 @@ import { ROLE_SYSTEM_USER_STEP } from "./v22-role-system-user.js";
 import { LAUNCH_FALLBACK_STEP } from "./v23-launch-fallback.js";
 import { ROLE_CAPABILITIES_STEP } from "./v24-role-capabilities.js";
 import { MAIL_COMMAND_STEP } from "./v25-mail-command.js";
+import { REVIEW_ROUND_STEP } from "./v26-review-round.js";
 
 /**
  * THE REGISTRY — one entry per version step, and the order of the array does not
@@ -100,6 +101,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   LAUNCH_FALLBACK_STEP,
   ROLE_CAPABILITIES_STEP,
   MAIL_COMMAND_STEP,
+  REVIEW_ROUND_STEP,
 ];
 
 export type {

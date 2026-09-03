@@ -91,7 +91,18 @@ export type GhPullRequest = z.infer<typeof ghPullRequestSchema>;
  * full schema is: this payload grows on somebody else's schedule.
  */
 export const ghOpenPullRequestsSchema = z.array(
-  z.looseObject({ number: z.number().int(), headRefOid: z.string().min(1), body: z.string() }),
+  z.looseObject({
+    number: z.number().int(),
+    headRefOid: z.string().min(1),
+    body: z.string(),
+    /**
+     * The labels, as `gh pr list --json labels` answers them. DEFAULTED rather than
+     * required: this schema reads somebody else's payload, and a field the caller did not
+     * ask for must not turn a readable answer into a refusal that stands the whole tier
+     * down (thread 063).
+     */
+    labels: z.array(z.looseObject({ name: z.string() })).default([]),
+  }),
 );
 
 /**

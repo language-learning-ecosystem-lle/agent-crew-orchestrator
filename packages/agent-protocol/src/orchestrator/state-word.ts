@@ -128,6 +128,32 @@ export const stateWord = (state: LeaseLifecycle | string, reason?: LeaseView["re
 };
 
 /**
+ * WAITING FOR A ROUND OF REVIEW — §5 state 2 of `docs/state-model.md`, the last of the
+ * missing states of this thread.
+ *
+ * THE DEFECT. A role that hung the review label and passed the turn is `released
+ * (completed)` in the frame — "finished — the turn was passed" — while its pull request
+ * stands open and its round has not answered. The pair reads as done; the package is not.
+ * It is the same class as `draining`: the mechanism sets one thing and the reader is told
+ * another.
+ *
+ * WHAT THE PHRASE PROMISES, AND WHAT IT REFUSES TO PROMISE. Two of the three positions a
+ * label can be in are told apart here for free — a round that has ANSWERED on this head is
+ * not this state (a verdict against the current head is read off the reviews the tier
+ * already has), and neither is a pull request with no label. The third — a label left over
+ * from a head that has since moved (thread `053-review-bypassed`) — is NOT told from a
+ * running round, and the line says so instead of implying it: the anchor is a run of the
+ * reviewer's workflow, which costs an Actions call per pull request per tick, and this
+ * reader makes none (the same price guard 1 is answered `by-hand` for).
+ *
+ * The caveat is IN THE LINE and not in a document, for the reason this whole file exists:
+ * a frame that quietly names the likelier of two states teaches its reader to trust a
+ * distinction it never made.
+ */
+export const reviewRoundWord = (pr: number): string =>
+  `⏳ WAITING FOR A ROUND OF REVIEW — the label is on PR #${pr} and no verdict stands against the head it has now. Whether the round is still running or the label was left on a head that has since moved is NOT asked (that is an Actions call per pull request per tick) — if nothing has answered for long, look at the head before waiting further`;
+
+/**
  * HOW MUCH IS LEFT — the second half of john's requirement 5: today the frame shows a
  * word and a deadline, and a reader has to subtract two ISO stamps in their head to learn
  * whether a role has forty minutes or four. One phrase does it instead.

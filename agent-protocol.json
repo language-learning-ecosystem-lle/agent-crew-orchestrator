@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 25,
+  "protocolVersion": 26,
   "mail": {
     "branch": "comms",
     "dir": "agent-comms"
@@ -31,6 +31,7 @@
   },
   "identityDictionary": "docs/protocol-reference.md",
   "powerDocuments": ["PROTOCOL.md", "REVIEWER.md", ".github/workflows"],
+  "review": { "label": "review", "workflow": "Claude PR Review" },
   "instances": [
     {
       "id": "hetzner",

@@ -48,6 +48,7 @@
  */
 import type { Message, ThreadPriorityValue } from "../thread/message.js";
 import { type ParkedOn, parkedOnKind } from "../thread/thread.js";
+import { reviewRoundWord } from "./state-word.js";
 import type { Candidate } from "./tick.js";
 
 /**
@@ -155,6 +156,18 @@ export type RankedCandidate = Candidate & {
    * queue exactly as a circuit without merge-ready would.
    */
   readonly mergeReadyPr?: number;
+  /**
+   * The pull request of this thread whose round of review has not answered on the current
+   * head (thread 063, §5 state 2), when one was MEASURED this tick. Absent means "not
+   * measured, not labelled, or already answered" — and, as with {@link mergeReadyPr}, those
+   * are deliberately one case: the reader degrades to silence.
+   *
+   * IT ORDERS NOTHING. {@link orderCandidates} never looks at it: a pair waiting for a round
+   * is waiting for a machine that owes it an answer, and moving it in the queue would hand a
+   * machine the `thread-priority` right this package keeps with john and curator. The field
+   * exists to SAY a state that had no name.
+   */
+  readonly reviewRoundPr?: number;
 };
 
 const RANK: Record<ThreadPriority, number> = { high: 0, normal: 1, low: 2 };
@@ -214,6 +227,12 @@ export const rankCandidates = (input: {
    * failure degrades to.
    */
   readonly mergeReady?: ReadonlyMap<string, number>;
+  /**
+   * thread id → the PR whose round of review has not answered on the current head (thread
+   * 063). Passed in from the same reading `mergeReady` comes from, and read for the words
+   * of the row alone — the ORDER of the queue is bit for bit the same with it and without.
+   */
+  readonly inReview?: ReadonlyMap<string, number>;
 }): { readonly ranked: RankedCandidate[]; readonly ignored: string[] } => {
   const byId = new Map(input.threads.map((thread) => [thread.id, thread]));
   const ignored: string[] = [];
@@ -224,12 +243,14 @@ export const rankCandidates = (input: {
       for (const line of verdict.ignored) ignored.push(`${thread} — ${line}`);
       const since = waitingSince({ messages, role: roleId });
       const mergeReadyPr = input.mergeReady?.get(thread);
+      const reviewRoundPr = input.inReview?.get(thread);
       return {
         role: roleId,
         thread,
         priority: verdict.effective?.priority ?? DEFAULT_THREAD_PRIORITY,
         ...(since === undefined ? {} : { since }),
         ...(mergeReadyPr === undefined ? {} : { mergeReadyPr }),
+        ...(reviewRoundPr === undefined ? {} : { reviewRoundPr }),
       };
     }),
   );
@@ -325,6 +346,12 @@ export const describeOrder = (
       candidate.mergeReadyPr === undefined
         ? ""
         : ` · guards 1-2 hold on PR #${candidate.mergeReadyPr}`;
+    // THE ROUND OF REVIEW, said where the pair otherwise reads as finished (thread 063, §5
+    // state 2). Never beside the tier above and never instead of it: the reader never puts a
+    // thread in both, because an approve on the head means the round is over and what the
+    // pair waits for then is a button. The words are the vocabulary's, not this module's.
+    const round =
+      candidate.reviewRoundPr === undefined ? "" : ` · ${reviewRoundWord(candidate.reviewRoundPr)}`;
     // THE ROLE IS ELSEWHERE, said on the row that promises the launch (thread 063). Beside the
     // freeze rather than instead of it: a parked pair whose role is also busy is held by two
     // different things, and an operator repairing one of them needs to know about the other.
@@ -354,7 +381,7 @@ export const describeOrder = (
       window === undefined
         ? ""
         : ` · ⏸ HELD BY A CLOSED WINDOW — ${window}; nothing is owed and nobody is late, the pair is raised when the window reopens`;
-    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}${taken}${paused}`;
+    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${round}${freeze}${taken}${paused}`;
   });
 
 /** The frozen half of a queue row: what holds the turn, and what will let it go. */
