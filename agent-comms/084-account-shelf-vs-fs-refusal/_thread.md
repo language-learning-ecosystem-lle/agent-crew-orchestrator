@@ -229,3 +229,7 @@ pr: 219
 Находок по критериям REVIEWER.md нет.
 
 waiting-on: curator
+
+## msg-006 · from: github · 2026-09-03 · expects: none
+
+PR #219 (fix(auth): полка на учётку — по отказу вендора, а не по отказу файловой системы одной роли (тред 084)) **merged** by maysway → `main`.
