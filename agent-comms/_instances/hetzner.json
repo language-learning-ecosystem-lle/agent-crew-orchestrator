@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T13:04:36.778Z",
+  "writtenAt": "2026-09-03T13:09:06.052Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "075-comms-derived-window-reddens-main",
       "state": "running",
       "deadline": "2026-09-03T13:44:34Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "090-what-kills-a-note",
-      "state": "running",
-      "deadline": "2026-09-03T13:50:29Z"
     }
   ]
 }
