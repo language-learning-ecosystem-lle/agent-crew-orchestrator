@@ -1,8 +1,10 @@
 /**
  * The units of measure 4 (thread `062-contour-boundary`): where the list of foreign
  * checkouts comes from, and what a moved ref reads as. The SEAM — a whole tick with a
- * planted footprint, and the opposite control of a clean tick — is in
- * `contour-footprint.process.test.ts`, because a mapping unit cannot prove that the
+ * planted footprint (`A COMMIT IN THE CHECKOUT OF ANOTHER CONTOUR IS HEARD ON THE
+ * OBSERVER'S CHANNEL`) and the opposite control of a clean tick (`…and a tick that stayed
+ * at home says nothing at all about the neighbour`) — lives in `run.process.test.ts`,
+ * beside the rest of the supervisor's tick, because a mapping unit cannot prove that the
  * supervisor calls any of this.
  */
 import { describe, expect, it } from "vitest";
