@@ -1,10 +1,10 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/GitHub credentials — the mail CLI cannot reach origin under this identity. Structural, confirmed across 15+ runs on 3 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:21Z (thread 070-session-tmpdir-breaks-tests, 4th occurrence on this thread). Node gap now has a working (but forbidden) fallback at /tmp/nb/node.
+description: aco-devops has no git/GitHub credentials — the mail CLI cannot reach origin under this identity. Structural, confirmed across 16+ runs on 4 threads since 2026-09-02T23:29Z, still present at 2026-09-03T01:22Z (thread 079-devops-enablement-acceptance). Node gap now has a working (but forbidden) fallback at /tmp/nb/node.
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:22:20.494Z
+  modified: 2026-09-03T01:23:12.665Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -94,3 +94,13 @@ binaries resolve, `~/.ssh` still does not exist (`No such file or directory`). D
 this run again ends via direct session reply, never touching the mail channel. Deadline for this
 run was `2026-09-03T01:41:51Z` — closed out with ~19 minutes to spare, no need to run down the
 clock repeating a confirmed diagnosis a 6th time.
+
+**2026-09-03T01:22Z, thread `079-devops-enablement-acceptance` (first occurrence on this thread,
+6th overall):** still identical, 30-second recheck only (`id`, `PATH`, `which node/bun/deno/npx/
+pnpm/npm`, `ls ~/.ssh`) — same uid/gid/groups, same bare `secure_path`, no node binaries resolve,
+`~/.ssh` still does not exist. Did not touch `/tmp/nb/node` or `lle`'s `.nvm`. Could not run
+`thread show`, so the statement of work for `079-devops-enablement-acceptance` (which, going by
+its name, may itself be about accepting/verifying devops enablement — i.e. this exact gap) was
+never read. `new-message --write` also unusable, so the turn cannot be formally passed on the
+thread; ending via direct session reply per this file's established pattern. Deadline for this run
+was `2026-09-03T01:42:37Z` — closed out with ~19 minutes to spare.
