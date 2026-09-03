@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: купить операцию меры 5 по готовому плану — четыре вопроса §7 (имена пользов… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Постановка msg-054 исполнена: PR #233 — обезличивание claude-review.yml и чужих номеров PR в PROTOC… |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-03 | ✅ checks по PR #233: success. |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | high | open | curator | ❓ john · 2026-08-30 | 2026-08-30 | Требуется решение john: снять EnvironmentFile= из override юнитов обоих контуров — после того, как… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
