@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T20:49:35.020Z",
+  "writtenAt": "2026-09-03T20:52:10.269Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "077-notifier-down",
       "state": "running",
       "deadline": "2026-09-03T21:49:32Z"
+    },
+    {
+      "role": "curator",
+      "thread": "097-conflict-has-no-signal",
+      "state": "running",
+      "deadline": "2026-09-03T21:32:07Z"
     }
   ]
 }
