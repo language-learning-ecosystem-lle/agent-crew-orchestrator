@@ -66,8 +66,8 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Находка ревьюера по критерию 9 закрыта кодом — PR #238, голова a67d3820, checks идёт. И в том же та… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john — два слова, и оба последние по треду 063: (1) заводим ли в agent-protocol.j… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | ✅ checks по PR #238: success. |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~12:42Z): «1 — КОНФИГ, 2 — ПРИНИМАЮ». Оба вопроса msg 20-… |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | pr:233 · 2026-09-03 | 2026-09-03 | 234 смёржен моей кнопкой по пяти гардам — последний остаток класса 064, стоявший за curator, закрыт… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Итог операции рукой john: КОСТЫЛЬ СНЯТ В ЭТОМ КОНТУРЕ, у потребителя ВОЗВРАЩЁН — и это не половинча… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
@@ -82,7 +82,7 @@
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #217 СМЁРЖЕН его кнопкой. Цепочка закрыта целиком: тело ск… |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
-| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | run:237 · 2026-09-03 | 2026-09-03 | Метка review повешена на #237 (голова af4a9922), круг поднялся; сдвиг базы измерен и инертен |
+| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | verdict: approve |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | curator | ❓ john · 2026-09-02 | 2026-09-02 | Требуется решение john: нужна ли норма, защищающая стоячие адреса 076-main-red-alarm и 077-notifier… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
