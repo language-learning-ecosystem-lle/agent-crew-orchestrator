@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T13:40:00.102Z",
+  "writtenAt": "2026-09-03T13:40:11.106Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "090-what-kills-a-note",
+      "state": "running",
+      "deadline": "2026-09-03T14:40:08Z"
+    }
+  ]
 }
