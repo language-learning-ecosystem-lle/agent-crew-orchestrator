@@ -15,7 +15,7 @@
  * address is copied) is only visible to the kernel.
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -117,7 +117,65 @@ describe("the run's own TMPDIR has room for a socket under it", () => {
     expect(base.length).toBeLessThanOrEqual(RUN_TMPDIR_MAX);
 
     const handover = handOverRunTmp(base);
-    expect(handover).toEqual({ handed: base, lines: [] });
+    expect(handover).toEqual({ handed: base, fits: true, lines: [] });
+  });
+
+  /**
+   * THE INVARIANT THE CONSUMER CONTOUR PAID FOR (thread `056`, curator 2026-09-03): the value
+   * handed has room for a socket NO MATTER WHAT THE RUN IS CALLED. Asserted over names that
+   * are absurd on purpose rather than over the ones this box happens to produce — the whole
+   * reason the class reached a consumer was that every name measured here fitted.
+   */
+  it("whatever the role and thread are called, the handed value leaves room for a socket", () => {
+    const base = mkdtempSync(join("/tmp", "aco-any-"));
+    cleanup.push(() => rmSync(base, { recursive: true, force: true }));
+
+    for (const [role, thread] of [
+      ["dev-core", "056-shared-tmp-mechanism"],
+      ["curator", "118-pin-bump-0-2-7"],
+      // Long to the limit the FILESYSTEM allows, not beyond it: one component may be 255
+      // bytes, and a name that cannot be created tests the box rather than the door.
+      ["a-role-whose-name-nobody-would-shorten", "x".repeat(120)],
+    ] as const) {
+      const real = join(base, "sessions", `2026-09-03T08-56-43Z-${role}-${thread}.tmp`);
+      mkdirSync(real, { recursive: true });
+      const handover = handOverRunTmp(real);
+      cleanup.push(() => {
+        if (handover.alias) dropRunTmpAlias(handover.alias);
+      });
+
+      expect(handover.fits).toBe(true);
+      // The acceptance stated in the thread, in its own arithmetic: the path plus the
+      // reserve for whatever the session runs stays inside `sun_path`.
+      expect(handover.handed.length + 30).toBeLessThanOrEqual(SOCKET_PATH_MAX);
+      expect(runTmpFitsSocketBudget(handover.handed)).toBe(true);
+    }
+  });
+
+  /**
+   * AND WHEN IT CANNOT BE MADE TO FIT, IT SAYS SO — the half that was silent. The run is not
+   * cost (the fallback stands), but `fits` is false, and that is the flag the supervisor
+   * reads to decide the failure is heard on the observer's channel and not only in the log
+   * of a session that is about to die on its first command.
+   */
+  it("an alias that cannot be made is reported as not fitting, by name and with the number", () => {
+    const real = longRunTmp();
+    const squatted = runTmpAliasPath(real);
+    // Something that is not ours already wearing the name: a plain file, so the symlink
+    // fails with EEXIST and the readlink behind it fails too.
+    writeFileSync(squatted, "not ours");
+    cleanup.push(() => rmSync(squatted, { force: true }));
+
+    const handover = handOverRunTmp(real);
+    expect(handover.handed).toBe(real);
+    expect(handover.alias).toBeUndefined();
+    expect(handover.fits).toBe(false);
+    expect(runTmpFitsSocketBudget(handover.handed)).toBe(false);
+    const said = handover.lines.join(" ");
+    expect(said).toContain(`${real.length} characters`);
+    expect(said).toContain(String(RUN_TMPDIR_MAX));
+    expect(said).toContain(squatted);
+    expect(said).toContain("listen EINVAL");
   });
 
   it("tsx itself runs under the handed value and dies under the raw one", () => {
