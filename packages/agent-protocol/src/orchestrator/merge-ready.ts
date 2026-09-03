@@ -53,6 +53,14 @@ export type OpenPullRequest = {
   readonly headSha: string;
   /** The description — the `thread:` line is read out of it, and nothing else is. */
   readonly body: string;
+  /**
+   * ONE SAMPLE OF `mergeable`, carried because it costs nothing (thread 097, half 2): it
+   * comes back in the same `--json` as the three fields above, so the free first ask of the
+   * watchman of mergeability is this one. NOTHING IN THIS MODULE READS IT — the order of
+   * the queue is decided by guards 1 and 2 and by nothing else, and a stale word about
+   * conflicts would buy a wrong order for free. It is a sample, never a verdict.
+   */
+  readonly mergeable?: string | null | undefined;
 };
 
 /**
