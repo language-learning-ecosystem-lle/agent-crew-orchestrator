@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T10:47:19.754Z",
+  "writtenAt": "2026-09-03T10:52:25.761Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "064-forget-the-consumer",
-      "state": "running",
-      "deadline": "2026-09-03T11:26:30Z"
-    },
     {
       "role": "dev-core",
       "thread": "088-review-verdict-delivery-by-steps",
