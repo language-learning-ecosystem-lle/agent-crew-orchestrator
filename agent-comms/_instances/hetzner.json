@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T01:57:42.618Z",
+  "writtenAt": "2026-09-03T01:58:46.049Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "088-review-verdict-delivery-by-steps",
       "state": "running",
       "deadline": "2026-09-03T02:30:11Z"
-    },
-    {
-      "role": "devops",
-      "thread": "079-devops-enablement-acceptance",
-      "state": "running",
-      "deadline": "2026-09-03T02:17:39Z"
     }
   ]
 }
