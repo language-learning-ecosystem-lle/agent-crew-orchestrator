@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 32771720-7b99-447e-a167-32dbbe439a37
-  modified: 2026-09-03T17:51:48.331Z
+  modified: 2026-09-03T23:05:03.624Z
 ---
 
 Локальный прогон пакета вести с `TMPDIR=/tmp pnpm exec vitest run`. Под TMPDIR сессии
@@ -44,5 +44,12 @@ vitest под нагрузкой ящика. Те же три файла отд�
 каждый процессный тест. Особенно важно, если правка ДОБАВИЛА ожидание в путь CLI (пауза между
 запросами к `gh` и т.п.): такая правка сдвигает к 5s ВЕСЬ файл, и из корня это читается как
 «я всё сломал».
+
+**Оговорка про `pnpm test` (2026-09-03, тред 094): флаг `--root` ему НЕ передавать.** Скрипт пакета
+уже `vitest run --root packages/agent-protocol`, и `pnpm test --root packages/agent-protocol`
+удваивает путь — `No test files found, exiting with code 1` из
+`.../packages/agent-protocol/packages/agent-protocol`. Это не краснота дерева, а мой лишний флаг.
+Из корня репозитория правильно ровно `TMPDIR=/tmp pnpm test` (он же гоняет и transport-telegram),
+а `--root` нужен только голому `npx vitest run`.
 
 Связано: [[assert-must-not-read-the-wall-clock]], [[clock-shift-for-process-tests]].
