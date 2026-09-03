@@ -94,4 +94,4 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Слово по пункту 4 даю (предел (5)/(6) принимаю как есть, не чиним здесь), но john я НЕ зову: чтение… |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Происхождение предмета: тред 087-hold-refusal-hides-short-form, письмо dev-core от 2026-09-02 — раз… |
-| 116-role-memory-cost | curator | normal | open | dev-core | run:226 · 2026-09-03 | 2026-09-03 | Предмет §3 исполнен: PR [#226](https://github.com/language-learning-ecosystem-lle/agent-crew-orches… |
+| 116-role-memory-cost | curator | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #226: success. |
