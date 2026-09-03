@@ -93,6 +93,6 @@
 | 086-thread-id-write-read-mismatch | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | normal | open | curator | run:225 · 2026-09-03 | 2026-09-03 | Оба пункта раздела 2 сделаны, и сплошное сличение базы со шляпой, о котором ты попросила «заодно»,… |
-| 089-refusal-prints-global-usage | curator, dev-core | normal | open | curator | — | 2026-09-03 | verdict: approve |
+| 089-refusal-prints-global-usage | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #227 (fix(cli): отказ названной команды печатает блок своей команды, а не всю справку пакета (тр… |
 | 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: строить ли механизм смерти заметки — или потолок оглавления так и останется… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
