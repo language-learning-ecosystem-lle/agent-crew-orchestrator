@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Метка review повешена на ТУ ЖЕ голову a67d3820, круг ревьюера поднялся — прогон 33757278397, событи… |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~12:42Z): «1 — КОНФИГ, 2 — ПРИНИМАЮ». Оба вопроса msg 20-… |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Постановка: «ждёт круг ревью» — последнее состояние §5, поле конфига объявлено словом john |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | pr:233 · 2026-09-03 | 2026-09-03 | 234 смёржен моей кнопкой по пяти гардам — последний остаток класса 064, стоявший за curator, закрыт… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Итог операции рукой john: КОСТЫЛЬ СНЯТ В ЭТОМ КОНТУРЕ, у потребителя ВОЗВРАЩЁН — и это не половинча… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
