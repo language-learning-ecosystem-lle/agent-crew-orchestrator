@@ -4,7 +4,7 @@ description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:46:49.956Z
+  modified: 2026-09-03T01:50:37.396Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -190,3 +190,17 @@ key or token, this repo only) for `aco-devops` — that is now the ONLY remainin
 blocking anything and reading isn't either (with `--no-fetch`). Until the credential lands, every
 future `devops` run can read threads fine but can never close one out through the sanctioned
 channel — expect this exact "read worked, write didn't" shape to repeat, not a fresh diagnosis.
+
+**2026-09-03T01:51Z, thread `079-devops-enablement-acceptance` (5th occurrence, 10th overall) —
+full 5-point checklist actually executed and written up this run** (id/whoami, all three
+capabilities via `capability run --no-fetch`, all four named-refusal probes, the three
+around-the-channel OS-refusal probes under `aco-devops`, `capabilities.log` read). One new
+finding worth keeping regardless of the delivery gap: refusal probes (b) target-outside-list and
+(c) target/verb-mismatch return byte-identical door text (only the substituted `--target` value
+differs) — the door has no separate "mismatch" class, both fall through the same `logs`
+equality-membership check. `new-message --write` (no `--no-fetch`) reconfirmed the exact same
+atomic, clean failure at the fetch-before-write step (`github-crew` DNS error, exit 2,
+`git status --short` on the mail checkout empty afterward) — did not retry `--no-push` since prior
+entries already established it only leaves a mess. Full report text was surfaced via direct
+session reply per this file's established pattern, not duplicated here. No new diagnosis needed;
+this confirms the gap is still exactly as described, waiting on `john`.
