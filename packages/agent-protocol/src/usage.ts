@@ -253,6 +253,20 @@ export const USAGE = `usage (--ref is required everywhere except 'schema migrate
                               # moves — dating it made the note a no-op that printed 'current' about
                               # a measurement nobody took, with every guard and every test green
                               # exit 0: nothing in the facts forbids it · exit 1: a guard does not hold
+  agent-protocol pr open      --ref <ref> --title <t> --body-file <p> [--base <branch>] [--head <branch>] [--repo <path>] [--draft] [--write]
+                              # HOW A ROLE OPENS A PULL REQUEST (thread 052, john 2026-09-02) — and
+                              # the door that refuses BEFORE it is created: no 'thread: NNN-slug' on
+                              # line 1 and no 'role: <id>' on line 2, and gh is never called. Every
+                              # missing or malformed field is named, with the line it stands on
+                              # the role is checked against the config too — a role nobody declares
+                              # is a turn no notifier can hand on ('role exists' does the same read)
+                              # the readers are the door's own ('merge-gate' guard 3), not a second
+                              # grammar: what this command accepts, the merge gate accepts as well
+                              # WITHOUT --write nothing is created: the body is judged and the exact
+                              # 'gh pr create' line is printed. With it, gh runs and its output is
+                              # passed through — the URL of the new PR is gh's own last line
+                              # IT CATCHES AN HONEST MISTAKE AND NOTHING ELSE: a hand-typed
+                              # 'gh pr create' walks past it. The load-bearing half is guard 3
   agent-protocol index build  --root <mail> --ref <ref> [--write]
   agent-protocol thread show  --root <mail> --ref <ref> --thread <NNN-slug> [--id <NNN-slug>] [--for <role>] [--tail <n>] [--repo <p>] [--no-fetch]
                               # --for: WHOSE READING THIS IS (058). Prints how many messages arrived
@@ -573,7 +587,11 @@ reason:
   · 'capability run' — the box itself, and the word means 'do it' here as well (thread 047).
     Only one of the three verbs reads it: 'repo-refresh' moves a checkout somebody may be
     standing in, so without '--write' the plan is resolved, printed, and the tree is not
-    even LOOKED at. 'log-tail' and 'disk-free' are reads and take no word at all.
+    even LOOKED at. 'log-tail' and 'disk-free' are reads and take no word at all;
+  · 'pr open' — the word means 'do it' here too, and what it does is OUTWARD: a pull
+    request on GitHub, which nothing in this package can take back. Without it the
+    description is judged in full (the refusal is the same one, word for word) and the
+    exact 'gh pr create' line is printed instead of run.
 
 WHICH INSTANCE A COMMAND IS ABOUT (thread 055). A box may host several projects, one
 instance per repository, and each has its OWN machine config:

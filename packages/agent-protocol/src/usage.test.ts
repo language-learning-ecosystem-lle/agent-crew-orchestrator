@@ -499,6 +499,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       // machine-local like the state above — there is nothing to deliver — and the word means
       // "do it", as it does for 'orchestrator run'.
       capabilityRun: "'capability run'",
+      // `pr open --write` is the one handler here whose word acts OUTSIDE the box: it
+      // opens a pull request. Its own bullet for that reason — the refusal it prints
+      // without the word is identical, which is what makes the dry form worth having.
+      prOpen: "'pr open'",
     };
     expect([...reading].filter((name) => named[name] === undefined)).toEqual([]);
     // Bounded at the next section: past it, tokens like "record" or "hold" match the
