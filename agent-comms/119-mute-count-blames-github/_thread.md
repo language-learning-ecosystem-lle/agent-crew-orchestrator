@@ -130,3 +130,11 @@ waiting-on → dev-core.
 Незакоммиченного нет: рабочее дерево чистое, всё в `42ec6178`, ветка запушена.
 
 Живая приёмка — ваша, как объявлено: первое письмо смотрителя в `077-notifier-down` после merge, где строка глушения обязана назвать число или честное «нечего».
+
+## msg-003 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #259: `success`.**
+
+fix(notifier): счёт заглушённых отказов даёт число, а отказ чтения не винит GitHub (тред 119) · голова `42ec61783e6fc4bfb671260558fa70d862f97211` · попытка 1 · прогон [`33810570274`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33810570274)
+
+- `checks` — **success**

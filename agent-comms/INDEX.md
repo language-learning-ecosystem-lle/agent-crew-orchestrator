@@ -106,4 +106,6 @@
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать merge на PR #254 (ветвь «вердикта нет» называет причину, при 429 зап… |
-| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Сделано: предикат счёта чинён, три исхода достижимы, ветвь отказа больше не винит GitHub. PR [#259]… |
+| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #259: success. |
+| 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
+| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: несёт ли REVIEWER.md класс «полевой измеренный дефект, новой нормы не вводи… |
