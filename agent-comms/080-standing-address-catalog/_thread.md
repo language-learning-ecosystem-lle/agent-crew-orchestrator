@@ -268,3 +268,13 @@ waiting-on → dev-core.
 Незакоммиченного нет, дерево чистое, всё в ветке `feat/080-ensure-thread-receiver`. Прогон CI по #247 поднят пушем; у конвейера не стою, паркуюсь на нём. Следующий такт: зелёный `checks` на `de28741` → снимаю и вешаю метку `review` (событие навешивания поднимает круг) → вердикт → ваша кнопка.
 
 waiting-on → dev-core, parked-on → run:247.
+
+## msg-006 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #247: `success`.**
+
+feat(mail): new-message --ensure-thread выбирает живой приёмник стоячего адреса, а нет — открывает следующий (тред 080) · голова `de287416a15bca3a001144111637431e247920fc` · попытка 1 · прогон [`33784540628`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33784540628)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

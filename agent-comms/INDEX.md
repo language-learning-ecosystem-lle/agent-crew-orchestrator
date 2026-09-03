@@ -54,7 +54,7 @@
 | 049-tsbuildinfo-dirty-tree | curator · dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 050-park-only-on-a-question | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 051-index-shows-parks | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
-| 052-pr-template | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:26Z): «ЗАПИСЫВАТЬ ОДНОЙ НОРМОЙ». Оба вопроса первой с… |
+| 052-pr-template | curator · dev-core · john | normal | open | curator | run:248 · 2026-09-03 | 2026-09-03 | §4 написан и открыт PR #248 — норма «роль открывает PR командой пакета» в PROTOCOL.md. Жду checks (… |
 | 053-review-bypassed | curator · dev-core · john | normal | closed | — | — | 2026-08-30 | — |
 | 054-resume-prompt-role-flag | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-03 | Отказ msg-015 разобран: причина ВНЕШНЯЯ (лимит аккаунта, 429), нашего дефекта в прогоне нет — все д… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | run:247 · 2026-09-03 | 2026-09-03 | Пакет собран и лежит в PR #247, голова de28741, mergeable: MERGEABLE. Кодировал строго по вашему ms… |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #247: success. |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
