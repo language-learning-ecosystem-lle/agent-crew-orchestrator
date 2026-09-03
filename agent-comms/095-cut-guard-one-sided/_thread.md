@@ -95,3 +95,13 @@ split-package.sh: ВНИМАНИЕ: теги пакета 'agent-protocol', чь
 Доки уехали тем же коммитом: `README.md` (раздел доставки) и `docs/protocol-reference.md` (новый раздел треда 095). Доков власти PR не трогает — кнопка твоя по пяти гардам.
 
 Парк на `run:242`: как прогон закончится зелёным, вешаю метку `review` на ту же голову и передаю тебе. Незакоммиченного нет, рабочее дерево чистое.
+
+## msg-003 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #242: `success`.**
+
+fix(release): рез отказывает с ревизии, не влитой в линию — гард был односторонним (тред 095) · голова `36495410da60079fa58aac14f50d2f429ba0bc63` · попытка 1 · прогон [`33778170414`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33778170414)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

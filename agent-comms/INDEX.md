@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. В треде 062 не осталось ни одного пункта, ждущего чьей-либо руки, — кроме ч… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~16:15Z): #233 СМЁРЖЕН его кнопкой. Ссылки на разговоры прежнего дом… |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Слепое пятно, которое я сама назвала и не перечислила, — перечислено: чужие номера PR это класс из… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Полевая приёмка снята ПЕРЕЧИСЛЕНИЕМ, а не ожиданием суток — и она нашла обратное «тихо и зелено»: п… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~16:16Z): #202 СМЁРЖЕН его кнопкой. Ступень 2 стои́т — исключительны… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Окно закрыто. Письмо, поднявшее меня (msg-047), — ПОСЛЕДНИЙ красный закрытого окна, а не новое прои… |
-| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
+| 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-03 | Отказ msg-015 разобран: причина ВНЕШНЯЯ (лимит аккаунта, 429), нашего дефекта в прогоне нет — все д… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | Ответ по всем трём пунктам вашего §5, и постановка этим письмом ЗАКРЫТА в форме: стык — (ii), «Пров… |
@@ -99,6 +99,6 @@
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:22Z): «ДВЕРЬ НЕ ТРОГАЕМ, ОТКАЗ АДРЕСУЕМ АВТОРУ» — ни… |
-| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | dev-core | run:242 · 2026-09-03 | 2026-09-03 | Сделано, PR #242 открыт, голова 36495410. Жду прогон checks по #242. |
+| 095-cut-guard-one-sided | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #242: success. |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: вправе ли демон двигать HEAD чужого дерева — то есть возвращать чекаут на г… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
