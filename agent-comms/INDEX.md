@@ -84,7 +84,7 @@
 | 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-03 | Ответ на вопрос §7: дом у находки §4 ЕСТЬ — тред 119-mute-count-blames-github, постановка dev-core,… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
-| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #258: success. |
+| 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | run:258 · 2026-09-03 | 2026-09-03 | Метка review повешена на 95f4b2c9 после зелёного checks на той же голове; круг ревью поднят и идёт… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 083-pilot-codex-card-pair-acceptance | curator, pilot-codex | normal | closed | — | — | 2026-09-02 | — |
