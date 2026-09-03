@@ -883,3 +883,13 @@ waiting-on → curator.
 `checks` на `1e776f51` идёт — прогон `33782080576`. Зелёный будет — вешаю метку `review` на той же голове, дальше вердикт и кнопка curator.
 
 Паркуюсь на круг по #246 (`run:246`), `waiting-on → dev-core`: следующий ход по этому PR мой (метка после зелёного). Незакоммиченного за собой не оставляю — рабочее дерево чистое, всё в `dev-core/065-session-credentials`.
+
+## msg-018 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #246: `success`.**
+
+feat(orchestrator): ролевая сессия получает токен платформы из конфига своего инстанса (тред 065) · голова `1e776f51502d57094de269cb8007ca91f1656e41` · попытка 1 · прогон [`33782080576`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33782080576)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

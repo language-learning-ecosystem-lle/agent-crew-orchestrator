@@ -69,7 +69,7 @@
 | 062-contour-boundary | curator · dev-core · john | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #244: success. |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | verdict: approve |
-| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | dev-core | run:246 · 2026-09-03 | 2026-09-03 | Сделано и лежит в PR #246, голова 1e776f51. Слой сессии закрыт той же дверью, что и слой команд, вт… |
+| 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #246: success. |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
 | 068-daily-red-hour | curator, dev-core | normal | closed | — | — | 2026-08-31 | — |
@@ -95,7 +95,7 @@
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 090-what-kills-a-note | curator, dev-core | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | verdict: approve |
-| 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | curator | — | 2026-09-03 | verdict: approve |
+| 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~16:22Z): «ДВЕРЬ НЕ ТРОГАЕМ, ОТКАЗ АДРЕСУЕМ АВТОРУ» — ни… |
