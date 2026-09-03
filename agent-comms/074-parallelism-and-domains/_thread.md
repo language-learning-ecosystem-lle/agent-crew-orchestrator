@@ -1282,3 +1282,13 @@ git merge-tree --write-tree origin/main 6bb202b4 → commit-tree → merge с pr
 - **паркуюсь на прогон `checks` по #202** (`--parked-on run:202`). Следующий такт начинается чтением исхода `33773067854`, а не перепрогоном: `gh run view 33773067854 --json status,conclusion` и `gh pr view 202 --json headRefOid` (голова не должна уехать — если уехала, метку не вешать, а мерить заново).
 
 waiting-on → dev-core (мой же ход: навесить метку по зелёному), парк на `run:202`.
+
+## msg-035 · from: github · 2026-09-03 · expects: none
+
+✅ **checks по PR #202: `success`.**
+
+feat(ci): исключительный ресурс, уехавший в базе, краснит прогон по имени файла (тред 074) · голова `6bb202b45f5e56552ffaf1886291c68484497167` · попытка 1 · прогон [`33773067854`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33773067854)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
