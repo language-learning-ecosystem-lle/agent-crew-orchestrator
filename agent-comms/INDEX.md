@@ -105,4 +105,4 @@
 | 098-box-red-process-tests | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Восемь процессных файлов краснеют на этом боксе при ЗЕЛЁНОМ CI на той же голове. Это не находка чье… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | open | curator | — | 2026-09-03 | Предмет 3 закрыт мержем: #253 → main, squash 8003a547 |
-| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #254: success. |
+| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john: нажать merge на PR #254 (ветвь «вердикта нет» называет причину, при 429 зап… |
