@@ -4,7 +4,7 @@ description: aco-devops has no git/GitHub credentials — the mail CLI cannot re
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T01:21:18.254Z
+  modified: 2026-09-03T01:22:20.494Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -84,3 +84,13 @@ this reply is going out via direct session reply instead, per this file's own "s
 reply, since the thread channel itself cannot carry it" guidance. Nothing new to add beyond
 confirming persistence; this is lease-clock waste until `john` provisions node + git credentials
 for `aco-devops` as described above.
+
+**2026-09-03T01:22Z, thread `070-session-tmpdir-breaks-tests` (5th occurrence, same thread):**
+still identical, 30-second recheck only (`id`, `PATH`, `which node/bun/deno/npx/pnpm/npm`,
+`ls ~/.ssh`) — `id` confirms `uid=1001(aco-devops) gid=1001(aco-devops)
+groups=1001(aco-devops),1002(contour)`, `PATH` is still sudo's bare `secure_path`, no node
+binaries resolve, `~/.ssh` still does not exist (`No such file or directory`). Did not touch
+`/tmp/nb/node` or `lle`'s `.nvm`. `thread show` and `new-message --write` both remain unusable;
+this run again ends via direct session reply, never touching the mail channel. Deadline for this
+run was `2026-09-03T01:41:51Z` — closed out with ~19 minutes to spare, no need to run down the
+clock repeating a confirmed diagnosis a 6th time.
