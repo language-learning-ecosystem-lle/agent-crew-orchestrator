@@ -623,6 +623,13 @@ import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
 import { judgeParkNumber } from "./thread/park-number.js";
 import { judgeParkSeen } from "./thread/park-seen.js";
 import { describePrPark } from "./thread/pr-park.js";
+import {
+  chooseReceiver,
+  type ReceiverChoice,
+  ReceiverRefusedError,
+  type ReceiverThread,
+  receiverNote,
+} from "./thread/receiver.js";
 import { synthesiseMeta } from "./thread/repair.js";
 import {
   describeStaleRunPark,
@@ -3642,21 +3649,126 @@ const standingParkFor = (input: {
   };
 };
 
+/**
+ * THE MAIL AS THE RECEIVER CHOICE SEES IT (thread 080): every DIRECTORY of the root, because
+ * the number handed out on creation must be free against all of them — and a directory the
+ * reader never visits (`047.1-…`, a half-migration) holds its number just as firmly as a
+ * thread does. What is not among the parsed threads is not a candidate: `readable: false`.
+ *
+ * The merges announced elsewhere are folded in for `parkingOf` (thread 023): a park on a `pr:`
+ * that has already landed is lifted, and a receiver frozen behind it is alive again.
+ */
+const receiverThreadsOf = (
+  root: string,
+  registry: ReturnType<typeof registryFrom>,
+): readonly ReceiverThread[] => {
+  const scan = loadThreads(root, registry.ids());
+  const merged = mergedPrs(scan.threads.map((entry) => entry.thread));
+  const parsed = new Map(
+    scan.threads.map((entry) => [
+      entry.thread.id,
+      {
+        id: entry.thread.id,
+        status: entry.thread.meta.status,
+        parked: parkingOf(entry.thread, merged) !== undefined,
+      } satisfies ReceiverThread,
+    ]),
+  );
+  return readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_"))
+    .map(
+      (entry) =>
+        parsed.get(entry.name) ?? {
+          id: entry.name,
+          status: "open" as const,
+          parked: false,
+          readable: false,
+        },
+    );
+};
+
+/**
+ * THE RECEIVER OF A STANDING ADDRESS (thread 080, decision of john 2026-09-03) — resolved
+ * against the disk as it is NOW, and therefore called again inside the delivery attempt: the
+ * attempt runs after the fetch, and two events of one minute must end up in ONE receiver
+ * rather than opening two (nine letters in an hour is a measured rate, not a hypothesis).
+ */
+const resolveReceiver = (input: {
+  readonly root: string;
+  readonly slug: string;
+  readonly registry: ReturnType<typeof registryFrom>;
+}): ReceiverChoice => {
+  try {
+    return chooseReceiver({
+      slug: input.slug,
+      threads: receiverThreadsOf(input.root, input.registry),
+    });
+  } catch (error) {
+    if (error instanceof ReceiverRefusedError) return fail(error.message, 2);
+    throw error;
+  }
+};
+
 const newMessage = (argv: readonly string[]): void => {
   const root = requiredRoot(argv);
-  const threadId = required(argv, "--thread");
+  // AN ADDRESS INSTEAD OF AN ID (thread 080): `--ensure-thread <slug>` says which STANDING
+  // ADDRESS the letter is for and lets the command find — or open — the thread currently
+  // playing that receiver. The two flags are exclusive because they answer the same question
+  // in two different ways, and a command that quietly preferred one would deliver somewhere
+  // its caller did not name.
+  const ensureSlug = flag(argv, "--ensure-thread");
+  const namedThread = flag(argv, "--thread");
+  if (ensureSlug !== undefined && namedThread !== undefined) {
+    fail(
+      `--thread '${namedThread}' and --ensure-thread '${ensureSlug}' both name where this letter goes, and they are not the same question: '--thread' addresses ONE conversation, '--ensure-thread' addresses a standing address and takes whichever of its receivers is open and unparked (opening one if none is). Pass exactly one of them`,
+      2,
+    );
+  }
+  const threadFlag = ensureSlug === undefined ? required(argv, "--thread") : undefined;
   // The same door as `new-thread`'s (thread 086), and for the harder half of the case: a
   // directory under such an id may already be lying in the branch from before the refusal
   // existed, and appending into it would be writing a message no reader ever walks past.
   // "Not found" would be the wrong sentence for it — the directory IS there.
-  refuseUnreadableThreadId(threadId);
+  if (threadFlag !== undefined) refuseUnreadableThreadId(threadFlag);
   const from = required(argv, "--from");
   const loaded = configFrom(argv, repoOf(root));
   const registry = loaded.registry;
   if (!registry.isKnown(from)) fail(`role '${from}' is not listed in the config`, 2);
 
+  // ASKED BEFORE THE FIRST RESOLUTION AND NOT ONLY WHEN A THREAD HAS TO BE OPENED: a receiver
+  // is opened on the day the previous one closes, which may be weeks after the flag was
+  // written into a workflow — a refusal that waits for that day is a refusal inside an
+  // incident, in the one command whose whole job is to report incidents.
+  const ensure =
+    ensureSlug === undefined
+      ? undefined
+      : {
+          slug: ensureSlug,
+          title: required(argv, "--title"),
+          participants:
+            listFlag(argv, "--participants") ??
+            fail(
+              `--participants is not set: --ensure-thread may have to OPEN the receiver, and a thread is opened with its participants named\n${usageOnRefusal()}`,
+              2,
+            ),
+        };
+  for (const participant of ensure?.participants ?? []) {
+    if (!registry.isKnown(participant)) {
+      fail(`participant '${participant}' is not listed in the config`, 2);
+    }
+  }
+
+  const chosen =
+    ensure === undefined
+      ? ({ kind: "existing", id: threadFlag as string } as const)
+      : resolveReceiver({ root, slug: ensure.slug, registry });
+  if (chosen.kind === "create") out(`agent-protocol: ${receiverNote(chosen)}`);
+  const threadId = chosen.id;
+
   const threadDir = join(root, threadId);
-  if (!existsSync(threadDir)) fail(`thread '${threadId}' not found in '${root}'`, 2);
+  if (chosen.kind === "existing" && !existsSync(threadDir)) {
+    fail(`thread '${threadId}' not found in '${root}'`, 2);
+  }
   const messagesDir = join(threadDir, "messages");
 
   const text = readFile(required(argv, "--body-file"), "message body");
@@ -3720,14 +3832,19 @@ const newMessage = (argv: readonly string[]): void => {
   // THE VERDICT OF A ROUND (thread 042): the pair that opens a new turn at the same holder. The
   // halves are judged together in `planNewMessage`, so the refusal is one for both doors.
   const verdictFields = verdictFrom(argv);
-  const tasks = tasksFor(argv, { from, thread: threadId, registry });
   // A LETTER INTO A THREAD THAT IS ALREADY PARKED MUST NAME THE PARK (thread 058, (B.3)) —
   // judged here, where the flags can still be retyped and before `--write` is looked at, for
   // the reason `provenance` is: a dry run is the preview of the write, and a preview that
   // succeeds where the write refuses is a lie. What lifts a park is not touched — the standing
   // one is READ (`parkingOf`) and the letter is asked what it says about it.
   const parkLifted = flag(argv, "--park-lifted");
-  const standing = standingParkFor({ root, thread: threadId, ids: registry.ids() });
+  // A receiver about to be OPENED has no feed and therefore no park — asking would read a
+  // directory that does not exist and answer "unreadable", which is a true sentence about
+  // nothing and a refusal about the wrong thing.
+  const standing: StandingPark =
+    chosen.kind === "create"
+      ? { readable: true, parking: undefined }
+      : standingParkFor({ root, thread: threadId, ids: registry.ids() });
   const parkSeen = judgeParkSeen({
     thread: threadId,
     parking: standing.readable ? standing.parking : undefined,
@@ -3745,16 +3862,35 @@ const newMessage = (argv: readonly string[]): void => {
   if (!parkSeen.ok) fail(parkSeen.reason, 2);
   else if (parkSeen.note !== undefined) out(`agent-protocol: ${parkSeen.note}`);
 
+  // A RECEIVER THAT RAISES NOBODY IS THE FAILURE THIS FLAG EXISTS AGAINST, said out loud
+  // rather than refused: the whole point of opening a fresh thread is that the turn arrives
+  // somewhere, and a first letter with no `waiting-on` reproduces the silence one step later.
+  // It is a NOTE and not a door — who acts on an event is the caller's statement to make, and
+  // an address whose events are logged for a human to read is a lawful thing to want.
+  if (chosen.kind === "create" && (waitingOn === undefined || waitingOn === null)) {
+    out(
+      `agent-protocol: receiver '${threadId}' is opened by this letter and names nobody to act on it — 'mail' will list it for no role, and nothing will raise a session over it. Pass '--waiting-on <role>' if this event is meant to reach somebody`,
+    );
+  }
+
   // PLANNED AGAINST THE DISK AS IT IS NOW, and replanned per delivery attempt: the
   // stamp is monotonic along the feed (we take the stamps of the NEW messages lying
   // there — migrated ones, dated without a time, are excluded — and clamp the new one
   // strictly after the last). Without this, clock skew between writers puts an answer
   // before its question (a real case in 012); with a concurrent write it is also why a
   // rejected push cannot simply be rebased — the file NAME has to move too.
-  const plan = (): {
-    path: string;
+  //
+  // AND RE-RESOLVED PER ATTEMPT WHEN THE ADDRESS IS A STANDING ONE (thread 080): between the
+  // preview and the attempt somebody may have opened the receiver we were about to open, or
+  // closed the one we were about to write into. The attempt runs after the fetch and under the
+  // mail lock, so re-asking there is what makes two events of one minute land in ONE receiver.
+  const plan = (
+    into: ReceiverChoice,
+  ): {
+    files: readonly { path: string; content: string }[];
     label: string;
-    content: string;
+    subject: string;
+    preview: string;
     date: string;
     /**
      * THE FEED THIS LETTER WAS PLANNED AGAINST, in thread order — carried out of the plan and
@@ -3765,15 +3901,17 @@ const newMessage = (argv: readonly string[]): void => {
      */
     feed: readonly Message[];
   } => {
-    const threadHasMessages = existsSync(messagesDir);
+    const intoDir = join(root, into.id);
+    const intoMessages = into.kind === "create" ? join(intoDir, "messages") : messagesDir;
+    const threadHasMessages = existsSync(intoMessages);
     const entries = threadHasMessages
-      ? readdirSync(messagesDir)
+      ? readdirSync(intoMessages)
           .filter((name) => name.endsWith(".md"))
           .map((name) => {
             try {
               return {
                 fileName: name,
-                message: parseMessageFile(readFileSync(join(messagesDir, name), "utf8")),
+                message: parseMessageFile(readFileSync(join(intoMessages, name), "utf8")),
               };
             } catch (error) {
               // A STOP THAT NAMES THE FILE IT STOPPED ON (thread 058, alongside finding 11 of
@@ -3786,7 +3924,7 @@ const newMessage = (argv: readonly string[]): void => {
               // would put the answer before the question it answers. What changes is that the
               // writer is told WHICH file and WHAT to run.
               return fail(
-                `messages/${name}: ${(error as Error).message} — this letter cannot be dated against a feed with an unreadable file in it (its stamp must stand strictly after the last one). Repair the thread first: 'thread status --thread ${threadId} --from ${from} --repair --write' rebuilds the head, a message file broken by hand has to be fixed by hand`,
+                `messages/${name}: ${(error as Error).message} — this letter cannot be dated against a feed with an unreadable file in it (its stamp must stand strictly after the last one). Repair the thread first: 'thread status --thread ${into.id} --from ${from} --repair --write' rebuilds the head, a message file broken by hand has to be fixed by hand`,
                 2,
               );
             }
@@ -3802,6 +3940,10 @@ const newMessage = (argv: readonly string[]): void => {
       .map((message) => message.fields.date)
       .filter((date) => date.includes("T"));
     const date = nextMessageTimestamp(new Date(), existingTs);
+    // Declared against the thread this attempt actually writes into: a receiver re-resolved
+    // under the lock is a different address, and a task declared about the other one would be
+    // a statement nobody can find.
+    const tasks = tasksFor(argv, { from, thread: into.id, registry });
     // THE GLOBAL TASK CHECK, inside the plan and therefore replanned per attempt (see
     // `tasksFor`): the declarations of this message are folded into the feed as it is
     // AFTER the fetch, and anything `check` would redden the branch for is refused now.
@@ -3811,7 +3953,7 @@ const newMessage = (argv: readonly string[]): void => {
       const pending: TaskThreadInput[] = [
         ...layer.inputs,
         {
-          id: threadId,
+          id: into.id,
           entries: [
             {
               fileName: "<this message>",
@@ -3831,36 +3973,68 @@ const newMessage = (argv: readonly string[]): void => {
         );
       }
     }
-    let planned: ReturnType<typeof planNewMessage>;
+    const fields = {
+      from,
+      ...provenance,
+      date,
+      expects,
+      ...(waitingOn === undefined ? {} : { waitingOn }),
+      ...(launchDirective === undefined ? {} : { launch: launchDirective }),
+      ...(priority === undefined ? {} : { priority }),
+      ...(parkedOn === undefined ? {} : { parkedOn }),
+      ...(delivers === undefined ? {} : { delivers }),
+      ...(parkMover === undefined ? {} : { parkMover }),
+      ...(mergedPr === undefined ? {} : { mergedPr }),
+      ...verdictFields,
+      ...(tasks.length === 0 ? {} : { tasks }),
+      text,
+    };
+    let planned: readonly PlannedFile[];
     try {
-      planned = planNewMessage({
-        from,
-        ...provenance,
-        date,
-        expects,
-        ...(waitingOn === undefined ? {} : { waitingOn }),
-        ...(launchDirective === undefined ? {} : { launch: launchDirective }),
-        ...(priority === undefined ? {} : { priority }),
-        ...(parkedOn === undefined ? {} : { parkedOn }),
-        ...(delivers === undefined ? {} : { delivers }),
-        ...(parkMover === undefined ? {} : { parkMover }),
-        ...(mergedPr === undefined ? {} : { mergedPr }),
-        ...verdictFields,
-        ...(tasks.length === 0 ? {} : { tasks }),
-        text,
-        threadHasMessages,
-      });
+      // A THREAD IS ONE DELIVERY, NOT TWO (`planNewThread`): the receiver is born with its
+      // `_meta.md` and its first letter in ONE commit. A meta pushed without the message is a
+      // conversation nobody can answer, and a thread with no meta at all reddens `Comms
+      // Derived` on every push into `comms` — while the letter reporting THAT redness is
+      // itself a push into `comms`. A receiver opened by the notifier is exactly where that
+      // loop would close, with nobody watching.
+      planned =
+        into.kind === "create"
+          ? planNewThread({
+              title: ensure?.title ?? "",
+              participants: ensure?.participants ?? [],
+              ...fields,
+            })
+          : [planNewMessage({ ...fields, threadHasMessages })];
     } catch (error) {
       if (error instanceof WriteRefusedError) return fail(error.message, 2);
       throw error;
     }
-    const path = join(threadDir, planned.path);
-    if (existsSync(path))
-      fail(`file '${planned.path}' already exists — two writes within one second?`, 2);
-    return { path, label: `${threadId}/${planned.path}`, content: planned.content, date, feed };
+    const message = planned[planned.length - 1] as PlannedFile;
+    for (const file of planned) {
+      if (existsSync(join(intoDir, file.path))) {
+        fail(
+          into.kind === "create"
+            ? `thread '${into.id}' already carries '${file.path}' — the receiver was opened underneath us; nothing was written`
+            : `file '${file.path}' already exists — two writes within one second?`,
+          2,
+        );
+      }
+    }
+    const label =
+      into.kind === "create"
+        ? `${into.id} (${planned.length} files, a new receiver of '${ensure?.slug}')`
+        : `${into.id}/${message.path}`;
+    return {
+      files: planned.map((file) => ({ path: join(intoDir, file.path), content: file.content })),
+      label,
+      subject: deliverySubject({ from, thread: into.id, mailDir: loaded.config.mail.dir }),
+      preview: message.content,
+      date,
+      feed,
+    };
   };
 
-  const first = plan();
+  const first = plan(chosen);
   /**
    * THE NOTE ABOUT LETTERS THAT LANDED UNDER THE SENDER'S OWN LAST ONE (thread 091, john's word
    * of 2026-09-03: fix it with a note, not a refusal). The sentence itself is
@@ -3899,13 +4073,13 @@ const newMessage = (argv: readonly string[]): void => {
 
   if (!write) {
     out(`agent-protocol: would create ${first.label} (--write writes it):`);
-    out(first.content);
+    out(first.preview);
     noteFeedUnder(first.feed);
     return;
   }
 
   if (argv.includes("--no-push")) {
-    writeOut(first.path, first.content);
+    for (const file of first.files) writeOut(file.path, file.content);
     out(
       `agent-protocol: created ${first.label} — NOT committed (--no-push: the caller owns its git)`,
     );
@@ -3920,18 +4094,22 @@ const newMessage = (argv: readonly string[]): void => {
       git: gitIn(checkout),
       write: writeOut,
       branch: loaded.config.mail.branch,
-      subject: deliverySubject({ from, thread: threadId, mailDir: loaded.config.mail.dir }),
+      subject: first.subject,
       // The commit is BY THE ROLE, not by the owner of the box (027): the mail checkout
       // is shared by every role here, so the signature can only be per-commit.
       identity: roleIdentity(from),
       stage: () => {
-        const next = plan();
+        // The address is asked again HERE, after the fetch, when it is a standing one: this
+        // is the only point at which the answer is about the feed we are pushing onto.
+        const next = plan(
+          ensure === undefined ? chosen : resolveReceiver({ root, slug: ensure.slug, registry }),
+        );
         // THE FEED OF THE ATTEMPT THAT WINS, and that is the point of assigning here: a lost
         // push is retried after a fast-forward, so the letters lying under this one are only
         // known from the plan the successful push was built on. `first` would describe the feed
         // as it was BEFORE the fetch — the exact staleness the note exists to name.
         delivering = next;
-        return { files: [{ path: next.path, content: next.content }], label: next.label };
+        return { files: next.files, label: next.label, subject: next.subject };
       },
       note: out,
       lock: mailLockFor({ checkout, holder: `new-message ${from} → ${threadId}`, note: out }),

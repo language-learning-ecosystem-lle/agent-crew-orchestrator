@@ -246,6 +246,17 @@ export type NewThreadInput = {
   readonly pr?: number;
   /** The form declared for the answers of this thread (079) — see `ThreadTurn`. */
   readonly turn?: ThreadTurn;
+  /**
+   * The three remaining fields of a message, passed through for the ONE reason every other
+   * field here is (the lesson of 075): a thread can now be BORN of an ordinary delivery —
+   * `new-message --ensure-thread` opens the receiver of a standing address when the current
+   * one has ended (thread 080) — and a flag one door parses while the other swallows it goes
+   * into an append-only feed without a word.
+   */
+  readonly launch?: LaunchDirective;
+  readonly priority?: ThreadPriorityValue;
+  readonly mergedPr?: number;
+  readonly tasks?: readonly TaskDeclaration[];
   readonly text: string;
 };
 
@@ -282,6 +293,10 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     ...(input.parkMover === undefined ? {} : { parkMover: input.parkMover }),
     ...(input.verdict === undefined ? {} : { verdict: input.verdict }),
     ...(input.pr === undefined ? {} : { pr: input.pr }),
+    ...(input.launch === undefined ? {} : { launch: input.launch }),
+    ...(input.priority === undefined ? {} : { priority: input.priority }),
+    ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
+    ...(input.tasks === undefined ? {} : { tasks: input.tasks }),
     text: input.text,
     threadHasMessages: true, // a new thread is file-based by construction
   });
