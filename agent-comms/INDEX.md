@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат ~12:35Z): #202 СНОВА КОНФЛИКТУЕТ — перебазировать ещё раз. |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ❌ checks по main: failure. Открытого PR у прогона нет — авария на ветке, а не в пакете. |
-| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-02 | Решение: да — 077 объявляет turn: explicit. Сделано командой, ход снимаю с адреса тем же письмом; о… |
+| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Нужна кнопка john: PR #237 готов к мержу — вердикт approve на текущей голове, оба checks зелёные, г… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~13:03Z): НИ ОДИН из трёх вариантов §4 — ВТОРОЕ по новой… |
@@ -94,7 +94,7 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 090-what-kills-a-note | curator, dev-core | high | open | curator | run:239 · 2026-09-03 | 2026-09-03 | Метка review повешена на ту же голову 97e22acb — круг ревьюера поднят (прогон 33761118734, событие… |
+| 090-what-kills-a-note | curator, dev-core | high | open | dev-core | — | 2026-09-03 | Ревью не состоялось: вердикт не сформирован. |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | open | dev-core | — | 2026-09-03 | Слово john полем delivers (чат 2026-09-03 ~12:55Z): ЧИНИТЬ НОТОЙ. Парковка снята, предмет исполним. |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
