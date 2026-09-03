@@ -2440,3 +2440,220 @@ PR #238 (docs(orchestrator): указатель на стык меры 4 наз�
 Отдельно засчитано, что состояние `logout` названо **состоянием, а не рукой**: «файл пуст» не переведено в «john сделал», потому что время не сходится.
 
 waiting-on → curator.
+
+## msg-053 · from: curator · 2026-09-03 · expects: none
+
+**Блок команд к утру 2026-09-04 готов, лежит ниже целиком И УЖЕ УЛОЖЕН В ДОК** — PR #244, разделом 8 плана `docs/contour-user-separation-plan.md`. Читается сверху вниз, из ленты досбирать нечего. Внутри одна находка, снятая по дороге и к операции прямо относящаяся: **сторож ЯЩИКА (§7 `box-setup.md`) мёртв четвёртые сутки** — строка cron читает файл, которого нет с 2026-08-30 20:04. Замер в §7 ниже.
+
+**Две копии, и разница между ними нулевая по построению — текст один.** Письмо читается сейчас и не зависит ни от чьего круга; PR #244 (`docs/separation-command-block`, голова `63a8c41e67a7010dcc0c92e64b8d74aec600f6c2`) кладёт тот же текст в дом плана — там же, где §1–§7, которые ты уже читал. Прогон `checks` `33780108046` шёл `in_progress`, когда я передавала ход; метку `review` вешает следующий такт после зелёного на ТОЙ ЖЕ голове (метка ≠ круг, и вешать её на незелёное — вердикт о дереве, которого может не стать). **Если круг до утра не сложится, операция от этого не страдает: инструкция — вот она.**
+
+Тем же PR у §7 плана («открытые вопросы к john») проставлен статус каждому из четырёх пунктов: три закрыты, один — каталоги аккаунта вендора — оставлен за тобой явно, двумя формами с ценой каждой. Пункт, переживший своё закрытие, ровно тот класс, ради которого резались #236 и #238; лента этого треда его уже несла восемь писем.
+
+## 0. Две развилки, закрытые мной как исполнителем (одно слово john переворачивает любую)
+
+**(а) Имена пользователей: `aco-hetzner` (контур ACO) и `lang-hetzner` (контур language-learning-ecosystem).** Рабочее имя из плана `lle-hetzner` я НЕ беру, и причина не вкусовая: оно отличается от оператора `lle` одним суффиксом и едет в каждой строке `chown -R` **на живом дереве**. Промах пальцем в `chown -R lle:` вместо `chown -R lle-hetzner:` разворачивает полдерева обратно на оператора и читается только следующим тактом. Инстансы имён не меняют: `hetzner` и `lle-hetzner` остаются id инстансов, пользователь ≠ инстанс.
+
+**(б) Группа `contour` УПРАЗДНЯЕТСЯ, вместо неё две: `contour-aco` и `contour-lang`.** Состав каждой: свой пользователь контура + `aco-devops` + `lle`. Отсюда прямо следует ответ на вопрос §7.1 плана: **`devops` обслуживает ОБА контура** — он состоит в обеих группах, и это остаточная общая дверь, названная вслух, а не забытая. Хочешь «devops на контур» — это вторая системная идентичность и второй `systemUser` в конфиге, то есть PR и твоя кнопка; одним словом в треде переворачивается.
+
+**Общие каталоги, которые остаются, поимённо** (§2 требует их назвать): `/home/lle` — только проход (`o+x`, перечисление закрыто); `/home/lle/.nvm/versions/node/v24.18.0/bin` — интерпретатор и `claude`, читается всеми, пишется только `lle`; `/etc/sudoers.d/aco-devops-spawn`; шина `systemd` как механизм (инстансы и шины разные); Telegram-чат уведомлений (§5 плана — сознательно). Всё остальное общим быть перестаёт.
+
+## 1. Проверка ДО — полный круг, а не «демон active»
+
+Честная форма, и я её называю прежде команд: **круг ДО снимается с ПОСЛЕДНЕГО настоящего такта, а не запускается специально.** Заставить контур поднять роль ради замера — это `orchestrator daemon --once`, то есть деньги и твоё право `launch-params`; если ты их тратить не хочешь, семь фактов ниже одинаково хорошо читаются с такта, который случился сам ночью или утром.
+
+```bash
+# 0) состояние обоих контуров и аренды
+systemctl --user is-active agent-protocol@hetzner lle-orchestrator@lle-hetzner
+cd /home/lle/projects/agent-crew-orchestrator && pnpm protocol orchestrator status --ref origin/main --instance hetzner
+cd /home/lle/projects/language-learning-ecosystem  && pnpm protocol orchestrator status --ref origin/main --instance lle-hetzner
+
+# 1) роль поднялась — строка спавна последнего такта
+grep -n '^agent-protocol: daemon —' /home/lle/projects/agent-crew-orchestrator/.orchestrator/daemon.log | tail -5
+# 2) прочла почту, 3) коммит, 4) push — последнее письмо в ленте и его штамп
+cd /home/lle/projects/agent-crew-orchestrator && git -C .worktrees/comms log -3 --format='%H %an %ad %s' --date=iso-strict
+# 5) уведомление доехало — глазами в чате: последнее «⏳ твой ход» и его время
+# 6) id внутри поднятой сессии — берётся из отчёта роли, снаружи не подделывается
+# 7) круг CI жив
+gh run list --limit 3 --json name,status,conclusion,headSha,createdAt
+
+# 8) точка сравнения целиком
+cd /home/lle/projects/agent-crew-orchestrator && pnpm protocol doctor --ref origin/main --instance hetzner
+cd /home/lle/projects/language-learning-ecosystem  && pnpm protocol doctor --ref origin/main --instance lle-hetzner
+```
+
+**Записать до операции (это и есть точка сравнения):** обе строки `is-active`, sha последнего письма почты, время последнего уведомления в чате, `doctor: green` у обоих. Без записанного «до» «после» ничего не доказывает.
+
+## 2. Блок операции — шаги в порядке, откат при каждом
+
+Порядок — из §3 плана и не переставляется. Первым идёт остановка, а не `useradd`: `chown` на живом демоне даёт полудерево.
+
+```bash
+### ШАГ 1-2 — остановить оба контура (откат: start/resume)
+cd /home/lle/projects/agent-crew-orchestrator && pnpm protocol orchestrator hold curator --by john --note 'user separation' --ref origin/main
+# при желании — hold каждой роли; проще и грубее: остановить юниты и дождаться нуля аренд
+systemctl --user stop agent-protocol@hetzner lle-orchestrator@lle-hetzner
+pgrep -u lle -fa 'cli.ts orchestrator'      # ДОЛЖНО быть пусто — иначе шаг 4 не начинать
+pgrep -u lle -fa 'bin/claude'               # живых сессий тоже быть не должно
+
+### ШАГ 3 — два пользователя (откат: userdel -r <имя>)
+sudo useradd -m -s /bin/bash aco-hetzner
+sudo useradd -m -s /bin/bash lang-hetzner
+sudo loginctl enable-linger aco-hetzner lang-hetzner
+sudo chmod o+x /home/aco-hetzner /home/lang-hetzner   # НЕ o+r: проход есть, перечисления нет
+
+### ШАГ 3a — группы: contour расщепляется на две (откат: groupdel + вернуть chgrp)
+sudo groupadd -f contour-aco
+sudo groupadd -f contour-lang
+sudo usermod -aG contour-aco  aco-hetzner
+sudo usermod -aG contour-aco  aco-devops
+sudo usermod -aG contour-aco  lle
+sudo usermod -aG contour-lang lang-hetzner
+sudo usermod -aG contour-lang aco-devops
+sudo usermod -aG contour-lang lle
+
+### ШАГ 4 — чекауты переезжают ЦЕЛИКОМ (откат: chown -R lle:lle обратно — симметрично)
+sudo chown -R aco-hetzner:contour-aco   /home/lle/projects/agent-crew-orchestrator
+sudo chown -R lang-hetzner:contour-lang /home/lle/projects/language-learning-ecosystem
+sudo chmod -R g+rwX /home/lle/projects/agent-crew-orchestrator /home/lle/projects/language-learning-ecosystem
+sudo find /home/lle/projects -type d -exec chmod g+s {} +
+sudo groupdel contour                    # упразднение — ПОСЛЕ chgrp, не до
+
+### ШАГ 5 — секреты и машинные конфиги по домам (файлы КОПИРУЮТСЯ; откат = вернуть старый конфиг)
+sudo -u aco-hetzner  mkdir -p /home/aco-hetzner/.config/agent-protocol/instances
+sudo -u lang-hetzner mkdir -p /home/lang-hetzner/.config/agent-protocol/instances
+sudo cp /home/lle/.config/agent-protocol/secrets.aco.env /home/aco-hetzner/.config/agent-protocol/secrets.env
+sudo cp /home/lle/.config/agent-protocol/secrets.lle.env /home/lang-hetzner/.config/agent-protocol/secrets.env
+sudo chown aco-hetzner:  /home/aco-hetzner/.config/agent-protocol/secrets.env  && sudo chmod 600 /home/aco-hetzner/.config/agent-protocol/secrets.env
+sudo chown lang-hetzner: /home/lang-hetzner/.config/agent-protocol/secrets.env && sudo chmod 600 /home/lang-hetzner/.config/agent-protocol/secrets.env
+sudo cp /home/lle/.config/agent-protocol/instances/hetzner.json     /home/aco-hetzner/.config/agent-protocol/instances/hetzner.json
+sudo cp /home/lle/.config/agent-protocol/instances/lle-hetzner.json /home/lang-hetzner/.config/agent-protocol/instances/lle-hetzner.json
+sudo chown -R aco-hetzner:  /home/aco-hetzner/.config
+sudo chown -R lang-hetzner: /home/lang-hetzner/.config
+sudo chmod o-rwx /home/aco-hetzner/.config/agent-protocol /home/lang-hetzner/.config/agent-protocol
+# путь к секретам — АБСОЛЮТНЫЙ, из-под своего пользователя (мина '~' — та же, что §0.1)
+sudo -u aco-hetzner  -i bash -lc "cd /home/lle/projects/agent-crew-orchestrator && pnpm protocol config set secrets /home/aco-hetzner/.config/agent-protocol/secrets.env --instance hetzner --write"
+sudo -u lang-hetzner -i bash -lc "cd /home/lle/projects/language-learning-ecosystem && pnpm protocol config set secrets /home/lang-hetzner/.config/agent-protocol/secrets.env --instance lle-hetzner --write"
+
+### ШАГ 5a — ключи git по домам (без них шаг «push» приёмки красный)
+# у каждого контура СВОЙ ключ/токен в СВОЁМ ~/.ssh; GH_TOKEN уже лежит в своём файле секретов
+sudo -u aco-hetzner  ssh-keygen -t ed25519 -N '' -f /home/aco-hetzner/.ssh/id_ed25519   # если контур ходит по ssh
+sudo -u lang-hetzner ssh-keygen -t ed25519 -N '' -f /home/lang-hetzner/.ssh/id_ed25519
+# публичные части — в deploy keys СВОЕГО репозитория, рука john
+
+### ШАГ 6 — юниты генерируются из-под новых пользователей, из ОСНОВНОГО чекаута (не из .worktrees)
+sudo -u aco-hetzner  -i bash -lc "cd /home/lle/projects/agent-crew-orchestrator && pnpm protocol orchestrator systemd install --ref origin/main --instance hetzner --write"
+sudo -u lang-hetzner -i bash -lc "cd /home/lle/projects/language-learning-ecosystem && pnpm protocol orchestrator systemd install --ref origin/main --instance lle-hetzner --write"
+sudo -u aco-hetzner  XDG_RUNTIME_DIR=/run/user/$(id -u aco-hetzner)  systemctl --user daemon-reload
+sudo -u lang-hetzner XDG_RUNTIME_DIR=/run/user/$(id -u lang-hetzner) systemctl --user daemon-reload
+# старые юниты lle НЕ удаляются до шага 10 — только disable
+systemctl --user disable agent-protocol@hetzner lle-orchestrator@lle-hetzner
+
+### ШАГ 7 — sudoers: вызывающим становится пользователь контура ACO, не lle (откат: rm файла)
+sudo visudo -f /etc/sudoers.d/aco-devops-spawn
+#   Defaults:aco-hetzner env_keep += "AGENT_PROTOCOL_WORKER AGENT_PROTOCOL_SESSION_FILE AGENT_PROTOCOL_WAIT_SECONDS AGENT_PROTOCOL_LEASE_DEADLINE CLAUDE_CONFIG_DIR"
+#   aco-hetzner ALL=(aco-devops) NOPASSWD: /home/lle/.nvm/versions/node/v24.18.0/bin/claude
+# строку с вызывающим 'lle' убрать в том же заходе — иначе право осталось шире, чем объявлено
+```
+
+## 3. Каталоги аккаунта вендора и вход ПОД каждым новым пользователем — обязательный шаг
+
+Урок `devops` 02.09 дословно применим: **чужой каталог аккаунта под новым пользователем не читается (`600`/`700`), роль умирает `Not logged in` за 0 секунд, а полка кредов АККАУНТНАЯ — падает одна роль, стоят все пары аккаунта.** Сегодня `configDir` всех аккаунтов обоих контуров смотрит в `/home/lle/.claude*` и `/home/lle/.codex` — после шага 3 ни один новый пользователь туда не пишет.
+
+Каталоги ACO-контура (`hetzner.json`): `lle-main` → `/home/lle/.claude`, `lle-second` → `/home/lle/.claude-lle-second`, `codex-main` → `/home/lle/.codex`, `devops-main` → `/home/aco-devops/.claude` (этот уже правильный и не трогается). Контур `lle-hetzner` смотрит в ТЕ ЖЕ `/home/lle/.claude` и `.claude-lle-second` — то есть каталоги сегодня общие у двух контуров, и это ровно та дверь, ради которой мера 5 куплена.
+
+Две формы шага, выбор — твой, потому что это деньги и внешние входы. Я его не делаю за тебя и не притворяюсь, что замерила безопасность каждой:
+
+- **A, дешёвая: перенести каталоги копией.** `sudo cp -a /home/lle/.claude /home/aco-hetzner/.claude && sudo chown -R aco-hetzner: /home/aco-hetzner/.claude` (и так по каждому). Нового входа не требует. Цена: креды копируются, и один аккаунт живёт в двух каталогах на разных пользователях — на аккаунтной полке это ровно тот класс, который валит все пары аккаунта разом;
+- **B, чистая: новый вход под каждым новым пользователем.** Именно от имени этого пользователя и ПОЛНЫМ путём к бинарю — `PATH` у него урезан (урок 02.09):
+  ```bash
+  sudo -u aco-hetzner -i bash -lc 'CLAUDE_CONFIG_DIR=/home/aco-hetzner/.claude /home/lle/.nvm/versions/node/v24.18.0/bin/claude login'
+  ```
+  Цена: интерактивный OAuth на каждый каталог, и вопрос «сколько аккаунтов ты готов держать» — твой.
+
+**После любой из форм `configDir` в машинном конфиге переписывается на новый путь** (`config set account <id> --config-dir <path> --instance <name> --write`, из-под своего пользователя). Каталоги `codex-*` этой строкой тоже покрываются, но команду входа для `codex` я НЕ называю: не мерила её на этом ящике и выдумывать не буду.
+
+## 4. `gh auth logout` — ПОСЛЕДНИМ, и он сведён к проверке
+
+Общий вход `gho_…` уже пуст — мой замер держится: `~/.config/gh/hosts.yml` = `{}`, 3 байта, mtime `2026-08-30 17:08Z`, и следствие проверено (`gh` без токена контура требует логина). Значит шаг — не операция, а строка приёмки:
+
+```bash
+od -c /home/lle/.config/gh/hosts.yml | head -2      # ожидание: {} \n, 3 байта
+env -u GH_TOKEN -u GITHUB_TOKEN gh auth status      # ожидание: 'not logged in'
+```
+
+Если строки не сойдутся — тогда и только тогда `gh auth logout`, и это единственный необратимый шаг блока.
+
+## 5. Проверка ПОСЛЕ — тот же круг плюс СЕМЬ отказов
+
+```bash
+### круг — тем же списком §1, но такт обязан быть НОВЫМ (снимок старого ничего не доказывает)
+sudo -u aco-hetzner  XDG_RUNTIME_DIR=/run/user/$(id -u aco-hetzner)  systemctl --user enable --now agent-protocol@hetzner
+sudo -u lang-hetzner XDG_RUNTIME_DIR=/run/user/$(id -u lang-hetzner) systemctl --user enable --now lle-orchestrator@lle-hetzner
+cd /home/lle/projects/agent-crew-orchestrator && pnpm protocol orchestrator resume curator --ref origin/main
+# затем те же 8 команд §1 + ГЛАЗАМИ: новое уведомление в чате, новое письмо в ленте, новый прогон checks
+
+### семь отказных строк — это и есть приёмка САМОГО разведения
+sudo -u aco-hetzner cat /home/lang-hetzner/.config/agent-protocol/secrets.env            # отказ ОС
+sudo -u aco-hetzner cat /home/lang-hetzner/.config/agent-protocol/instances/lle-hetzner.json  # отказ ОС
+sudo -u aco-hetzner touch /home/lle/projects/language-learning-ecosystem/PROBE           # отказ ОС
+sudo -u aco-hetzner -i bash -lc 'cd /home/lle/projects/language-learning-ecosystem && git push --dry-run origin HEAD'  # отказ GitHub/ОС
+sudo -u aco-hetzner XDG_RUNTIME_DIR=/run/user/$(id -u lang-hetzner) systemctl --user status lle-orchestrator@lle-hetzner  # отказ ОС
+sudo -u aco-hetzner cat /home/lang-hetzner/.ssh/id_ed25519 /home/lle/.ssh/id_ed25519     # отказ ОС
+sudo -u aco-hetzner sudo -n true                                                          # отказ по ОТСУТСТВИЮ ПРАВА
+```
+
+**Последняя строка стоит последней не для симметрии.** `sudo -n true` отказывает уже сегодня под `lle` — по отсутствию пароля, а не права. Поэтому её читают только вместе с `id` (в списке групп нового пользователя нет `sudo`), иначе строка зелёная по неверной причине — та же ловушка, из-за которой в §0.1 `id` стоит первой.
+
+**Зеркальные семь — из-под `lang-hetzner` в дом ACO.** Разведение односторонним не бывает, а замер одной стороны читается как «разведено».
+
+**Что НЕ является поломкой и должно быть названо заранее, чтобы не диагностировали:** `--resume` прошлых разговоров ролей не найдёт — `HOME` сменился, история такта состоянием протокола не является (§2 плана).
+
+## 6. Откат по шагам — что возвращается одной командой, что нет
+
+- **одной командой:** шаг 2 (`systemctl --user start` старых юнитов `lle` — они живы до шага 10), шаг 6 (`disable --now` новых), шаг 7 (`sudo rm /etc/sudoers.d/aco-devops-spawn`);
+- **симметрично, но не мгновенно:** шаг 4 — `sudo chown -R lle:lle` обоих чекаутов;
+- **копией, а не откатом:** шаг 5 — файлы КОПИРОВАЛИСЬ, старые лежат на месте; вернуть = вернуть старый машинный конфиг;
+- **только твоей рукой:** шаг 4 §4 (`gh auth logout`) и внешние входы §3 — деньги и внешний аккаунт;
+- **точка невозврата — шаг 10 и он последний намеренно:** удаление старых юнитов и старых копий секретов **делается только после зелёной приёмки §5**, и в один день с операцией его делать не обязательно.
+
+## 7. Находка по дороге: сторож ЯЩИКА (§7) мёртв с 2026-08-30
+
+Снято, не выведено. `crontab -l` пользователя `lle` — одна строка:
+
+```
+*/5 * * * * . "$HOME/.config/agent-protocol/secrets.env"; curl -fsS -m 10 --retry 3 "$HEALTHCHECKS_URL" >/dev/null 2>&1
+```
+
+Файла `~/.config/agent-protocol/secrets.env` **нет** (`ls` → `No such file or directory`). В каталоге лежат `secrets.aco.env` (mtime 2026-08-30 19:59), `secrets.lle.env` (20:04) и `secrets.env.bak` (2026-08-21) — то есть 30 августа файл разделён надвое, а строка cron осталась указывать на старое имя. Проверено следствием, а не рассуждением:
+
+```
+$ bash -c '. "$HOME/.config/agent-protocol/secrets.env"; echo "URL=[${HEALTHCHECKS_URL}]"'
+bash: /home/lle/.config/agent-protocol/secrets.env: No such file or directory
+URL=[]
+```
+
+`. ` падает, `;` продолжает, `curl` получает пустой URL, `2>&1 >/dev/null` глотает отказ. **Пинг не уходит четвёртые сутки.** Чего я НЕ утверждаю: что ты не получал алерта — healthchecks устроен как dead-man's switch и на прекращение пинга ОБЯЗАН был позвонить; если не позвонил — вопрос к состоянию самой проверки, и он твой, не мой. Класс дефекта тот же, ради которого резались #236/#238: **указатель, переживший то, на что указывал.**
+
+Починка — одна строка (`crontab -e`, заменить имя файла на `secrets.aco.env` либо на новый путь после шага 5), но cron принадлежит `lle`, то есть тебе. К операции это относится прямо: **строку правят в шаге 5, иначе сторож ящика останется мёртвым и после разведения** — тогда уже по двум причинам сразу.
+
+Отдельно, тем же чтением: `secrets.aco.env` и `secrets.lle.env` — не две половины, а две КОПИИ. Оба файла несут одинаковый набор имён, включая ОБА ключа контуров (`HEALTHCHECKS_CIRCUIT_URL_HETZNER` и `..._LLE_HETZNER`) и `GH_TOKEN`/`GITHUB_TOKEN`. После шага 5 каждый файл обязан нести ключи ТОЛЬКО своего контура — иначе разведение секретов остаётся номинальным, и это ещё одна строка приёмки §5, которой в плане не было.
+
+## 8. Чего в блоке НЕТ — названо, а не пропущено
+
+- **`orchestrator hold` каждой роли поимённо** — я даю грубую форму (стоп юнита + `pgrep` на ноль). Тонкая форма (`hold` по роли) есть в §3 плана и от неё ничего не зависит, кроме аккуратности;
+- **раннеры self-hosted и группа `docker`** — этим пакетом не трогаются (§2 плана), назвал, чтобы не оказались «забытыми»;
+- **команда входа `codex`** — не мерила на этом ящике, не выдумываю (§3);
+- **проверка, что снятие процессной группы под сменённым пользователем не даёт `EPERM`** — это по-прежнему ВЫВОД, а не замер (§0.1a `box-setup.md`), и живой спавн `devops` после операции — первое место, где он проверится;
+- **сторож КОНТУРА (§7a)** — ключи уже разведены по инстансам и едут вместе с файлами секретов; отдельного шага не требует, но после §5 его пинг обязан появиться в обоих мониторах — восьмая строка приёмки.
+
+## 9. Ход
+
+Незакоммиченного за мной нет. Этот такт: девять чтений ящика, ветка `docs/separation-command-block`, коммит `63a8c41e`, push, PR #244 и это письмо. **Живого ящика не тронула ни битом** — ни `chown`, ни `crontab`, ни `systemctl`, ни `useradd`, ни одной записи в его чекаут или конфиги; всё, что снято, снято чтением. Соседнего контура не касалась вовсе.
+
+**Мера 4** — состояние прежнее, проверяется одной командой (`5e1ad0d9` предок `daemon-code.json.sha`); моим тактом она не наблюдается по построению, и держать ради неё тред нельзя.
+
+**Хвост чужих PR:** `gh pr list --state open` этим тактом не гоняла — решение то же, что три такта подряд, и оно решение, а не пропуск: прогон связан тредом `062`, а след гарда 5 по чужому PR обязан лечь в ленту треда-хозяина, куда мне писать нечем.
+
+`waiting-on → curator`, **парк на `run:244`** — у прогона `checks` есть автор, он пишет сам, и у конвейера я не стою. Открытых действий по этому треду ровно два, оба мои и оба однокомандные: повесить `review` на #244 после зелёного и прочитать последствие меры 4.
+
+Тред остаётся **открытым**: в нём живы операция утра 2026-09-04 и живая приёмка меры 4.
