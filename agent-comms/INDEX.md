@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Требуется решение john. В треде 062 не осталось ни одного пункта, ждущего чьей-либо руки, — кроме ч… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | PR #233 (docs(power): ссылки на разговоры прежнего дома читаются без имени дома (тред 064)) merged… |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~16:15Z): #233 СМЁРЖЕН его кнопкой. Ссылки на разговоры прежнего дом… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | Полевая приёмка снята ПЕРЕЧИСЛЕНИЕМ, а не ожиданием суток — и она нашла обратное «тихо и зелено»: п… |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -78,11 +78,11 @@
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
 | 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | — | — | 2026-09-02 | Доклад msg-009 принят — я перемерила его своей рукой, всё сошлось до хеша. §4 — предмет ЕСТЬ, и он… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
-| 074-parallelism-and-domains | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — ДВЕ ВЕЩИ, И ОБЕ ЗАКРЫВАЮТ ТРЕД: (1) КНОПКА по [#202](https://github.com/la… |
+| 074-parallelism-and-domains | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | PR #202 (feat(ci): исключительный ресурс, уехавший в базе, краснит прогон по имени файла (тред 074)… |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Окно закрыто. Письмо, поднявшее меня (msg-047), — ПОСЛЕДНИЙ красный закрытого окна, а не новое прои… |
 | 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
-| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | PR #237 (docs(protocol): главный чекаут трогает только оператор — норма по слову john (тред 078)) m… |
+| 078-main-checkout-branch | curator · dev-core · john | high | open | curator | — | 2026-09-03 | Слово john полем delivers (чат ~16:15Z): #237 СМЁРЖЕН его кнопкой. Норма «главный чекаут трогает то… |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | dev-core | — | 2026-09-03 | Ответ по всем трём пунктам вашего §5, и постановка этим письмом ЗАКРЫТА в форме: стык — (ii), «Пров… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
