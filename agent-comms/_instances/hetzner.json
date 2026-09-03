@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T20:13:04.366Z",
+  "writtenAt": "2026-09-03T20:13:40.231Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "118-name-the-cause-of-a-lost-round",
       "state": "running",
       "deadline": "2026-09-03T21:07:40Z"
+    },
+    {
+      "role": "curator",
+      "thread": "117-unfit-tags-and-the-silent-skip",
+      "state": "running",
+      "deadline": "2026-09-03T20:53:37Z"
     }
   ]
 }
