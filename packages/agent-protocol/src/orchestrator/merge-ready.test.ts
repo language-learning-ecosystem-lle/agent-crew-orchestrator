@@ -289,6 +289,39 @@ describe("the queue line (describeOrder)", () => {
       orderCandidates([candidate({ thread: "023-parking", since: "2026-07-28T10:00:00Z" })]),
     );
     expect(line).not.toContain("guards 1-2");
+    expect(line).not.toContain("ROUND OF REVIEW");
+  });
+
+  it("the round of review is printed WHOLE, and it carries its own caveat (thread 063)", () => {
+    // The line is asserted entire and not by a keyword: §11 of `docs/state-model.md` showed
+    // that two different states can print one phrase, and that is only catchable by reading
+    // the sentence a human is going to read.
+    const [line] = describeOrder(
+      orderCandidates([
+        candidate({
+          thread: "063-state-model-rewrite",
+          since: "2026-09-03T10:00:00Z",
+          reviewRoundPr: 240,
+        }),
+      ]),
+    );
+
+    expect(line).toBe(
+      "queue 1/1: dev-core×063-state-model-rewrite — priority normal, waiting since 2026-09-03T10:00:00Z · ⏳ WAITING FOR A ROUND OF REVIEW — the label is on PR #240 and no verdict stands against the head it has now. Whether the round is still running or the label was left on a head that has since moved is NOT asked (that is an Actions call per pull request per tick) — if nothing has answered for long, look at the head before waiting further",
+    );
+  });
+
+  it("the two tiers are never on one row: a ready PR is not also 'waiting for a round'", () => {
+    // Held by construction in the reader (a thread in `ready` is deleted from `inReview`),
+    // and asserted here on the words, because the row is where a reader would meet both.
+    const [line] = describeOrder(
+      orderCandidates([
+        candidate({ thread: "019-operator-ux", since: "2026-08-01T05:00:00Z", mergeReadyPr: 152 }),
+      ]),
+    );
+
+    expect(line).toContain("guards 1-2 hold on PR #152");
+    expect(line).not.toContain("ROUND OF REVIEW");
   });
 });
 

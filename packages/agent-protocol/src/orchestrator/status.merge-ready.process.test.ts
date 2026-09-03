@@ -47,6 +47,12 @@ const git = (repo: string, ...args: string[]): string =>
 const CONFIG = {
   protocolVersion: CURRENT_PROTOCOL_VERSION,
   mail: { branch: "comms", dir: "agent-comms" },
+  // THE ROUND OF REVIEW, NAMED BY THIS FIXTURE'S PROJECT (v26, thread 063). The other cases
+  // of this file carry no labels at all, so declaring it here changes nothing for them —
+  // what it buys is that the seam is exercised END TO END: the frame reads the name out of
+  // the config on disk, and a package that had guessed `review` would pass the test without
+  // the config ever being read.
+  review: { label: "review", workflow: "Claude PR Review" },
   orchestrator: { state: ".orchestrator", mailCheckout: "mailco", ref: "HEAD" },
   roles: [
     {
@@ -140,23 +146,43 @@ const readyPayload = (thread: string): string =>
   });
 
 /**
+ * The payload of a pull request whose ROUND IS OPEN: the label is on (see the cheap half),
+ * the checks are green, and NOTHING has been submitted against this head — `reviews: []`.
+ * Guards 1-2 do not hold on it, so the older tier stays silent about it, which is exactly
+ * the pair that used to read as `released (completed)`, "finished".
+ */
+const inReviewPayload = (thread: string): string =>
+  JSON.stringify({
+    ...JSON.parse(readyPayload(thread)),
+    reviews: [],
+  });
+
+/**
  * A `gh` on `PATH` that answers both halves and logs every call. `mode` is what the
  * expensive half does: answer, or refuse the way a box with no token refuses.
  */
 const ghShim = (
   repo: string,
-  options: { readonly thread: string; readonly mode?: "ready" | "refuse" },
+  options: { readonly thread: string; readonly mode?: "ready" | "refuse" | "in-review" },
 ): { readonly bin: string; readonly calls: () => string[] } => {
   const dir = join(repo, "ghbin");
   mkdirSync(dir, { recursive: true });
   const log = join(repo, "gh-calls.log");
   const open = JSON.stringify([
-    { number: 154, headRefOid: HEAD, body: `thread: ${options.thread}\nrole: dev-core\n` },
+    {
+      number: 154,
+      headRefOid: HEAD,
+      body: `thread: ${options.thread}\nrole: dev-core\n`,
+      // The label rides on the cheap half, which is the whole point of reading it there.
+      labels: options.mode === "in-review" ? [{ name: "review" }] : [],
+    },
   ]);
   const expensive =
     options.mode === "refuse"
       ? 'echo "gh: no token" >&2; exit 1'
-      : `cat <<'JSON'\n${readyPayload(options.thread)}\nJSON`;
+      : options.mode === "in-review"
+        ? `cat <<'JSON'\n${inReviewPayload(options.thread)}\nJSON`
+        : `cat <<'JSON'\n${readyPayload(options.thread)}\nJSON`;
   const script = [
     "#!/bin/sh",
     `echo "$@" >> ${JSON.stringify(log)}`,
@@ -308,5 +334,44 @@ describe("`orchestrator status` orders by the merge a thread holds — the tick'
     expect(gh.calls().filter((line) => line.startsWith("pr view"))).toHaveLength(1);
     // And every frame still carries the tier: the reading is reused, not dropped.
     expect(result.out.split("guards 1-2 hold on PR #154").length - 1).toBe(3);
+  });
+});
+
+/**
+ * §5 STATE 2 — the pair that hung the label and passed the turn (thread 063). The seam this
+ * case exists for is not the reader (that is unit-tested) but the CHAIN: the config on disk
+ * names the label, the cheap half of the `gh` read carries it, the reader turns it into a
+ * state and the frame prints the sentence a human reads. §11 of `docs/state-model.md` is why
+ * the line is asserted WHOLE — two different states there printed one phrase, and only
+ * reading the row entire could see it.
+ */
+describe("`orchestrator status` says WAITING FOR A ROUND OF REVIEW where it used to say nothing", () => {
+  it("prints the row whole, caveat included, and never beside the merge tier", () => {
+    const repo = contour([
+      { id: "063-state-model-rewrite", message: handoff({ date: "2026-09-03T10:00:00Z" }) },
+    ]);
+    const gh = ghShim(repo, { thread: "063-state-model-rewrite", mode: "in-review" });
+
+    const result = status(repo, { path: gh.bin });
+
+    expect(result.out).toContain(
+      "queue 1/1: dev-core×063-state-model-rewrite — priority normal, waiting since 2026-09-03T10:00:00Z · ⏳ WAITING FOR A ROUND OF REVIEW — the label is on PR #154 and no verdict stands against the head it has now. Whether the round is still running or the label was left on a head that has since moved is NOT asked (that is an Actions call per pull request per tick) — if nothing has answered for long, look at the head before waiting further",
+    );
+    // The older tier is silent about it, and no Actions call was made for the caveat.
+    expect(result.out).not.toContain("guards 1-2 hold");
+    expect(gh.calls().filter((line) => line.startsWith("api"))).toHaveLength(0);
+  });
+
+  it("the same pull request with an approve on the head is the OTHER state, not this one", () => {
+    const repo = contour([
+      { id: "063-state-model-rewrite", message: handoff({ date: "2026-09-03T10:00:00Z" }) },
+    ]);
+    // Same label, same head — only the verdict differs, and that is the whole distinction.
+    const gh = ghShim(repo, { thread: "063-state-model-rewrite", mode: "ready" });
+
+    const result = status(repo, { path: gh.bin });
+
+    expect(result.out).toContain("guards 1-2 hold on PR #154");
+    expect(result.out).not.toContain("WAITING FOR A ROUND OF REVIEW");
   });
 });
