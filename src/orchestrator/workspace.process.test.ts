@@ -202,6 +202,12 @@ describe("the role gets a workspace of its own (R17)", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("uncommitted changes");
+    // AND THE REFUSAL IS ACTIONABLE FROM WHERE IT IS READ (thread 099): the untracked
+    // file is named — `git diff HEAD` alone would never have mentioned it — and both
+    // repairs are printed against this tree's real path.
+    expect(result.out).toContain("half-done.txt (untracked, not counted)");
+    expect(result.out).toContain(`git -C ${workspace(repo)} stash push -u`);
+    expect(result.out).toContain(`git -C ${workspace(repo)} checkout -b dev-core/012-x`);
     // Not repaired at somebody else's expense.
     expect(readFileSync(join(workspace(repo), "half-done.txt"), "utf8")).toContain(
       "broken session",
@@ -285,6 +291,36 @@ describe("dirt left by a broken run is parked, not left standing", () => {
     expect(result.out).toContain("ENDED ITS OWN TURN");
     // Untouched, and NOT stashed: an error of finishing is read by a human first.
     expect(readFileSync(join(workspace(repo), "half-done.txt"), "utf8")).toContain("finished turn");
+    expect(git(workspace(repo), "stash", "list")).toBe("");
+  });
+
+  /**
+   * THE FIELD CASE OF 2026-09-03, REPRODUCED (thread 099) — one edit of a tracked file
+   * left by a run that ended its own turn. The line counts are the point of running it
+   * against a real repository: the pure function can only be handed numbers, and the two
+   * git calls that produce them (`status --porcelain` for the names, `diff HEAD
+   * --numstat` for the counts) are the seam nothing else covers.
+   */
+  it("a MODIFIED tracked file → the refusal counts its lines and offers the branch by thread", () => {
+    const { repo } = contour();
+    stub(repo);
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+    writeFileSync(join(workspace(repo), "CARD.md"), "the role card\nrewritten by the run\n");
+    seedRun(repo, "exited-without-handoff");
+
+    const result = run(repo);
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("ENDED ITS OWN TURN ('exited-without-handoff')");
+    // WHAT IS IN THE TREE, by name and by size — the three commands john ran by hand.
+    expect(result.out).toContain("1 path(s) — CARD.md (modified, +1/-0)");
+    // WHAT IT COSTS — the role, not the thread.
+    expect(result.out).toContain("EVERY thread it holds a turn on");
+    // AND THE TWO WAYS OUT, against this tree and this thread.
+    expect(result.out).toContain(`git -C ${workspace(repo)} checkout -b dev-core/012-x`);
+    expect(result.out).toContain(`git -C ${workspace(repo)} stash push -u -m 'wip(012-x)`);
+    // Still nobody's work was moved: the door proposes, it does not perform.
+    expect(git(workspace(repo), "status", "--porcelain")).toContain("CARD.md");
     expect(git(workspace(repo), "stash", "list")).toBe("");
   });
 
