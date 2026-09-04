@@ -118,3 +118,4 @@
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать merge на #273 — гард 4 (доки власти). Четыре остальных гарда сняты,… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: заводить ли интеграционную сюиту доставки вердикта (.github/scripts/review-… |
+| 129-park-bell-silent-letter | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | Парковочное письмо к john может не прозвенеть, и тишина неотличима от ожидания: замерено дважды, и… |
