@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 32771720-7b99-447e-a167-32dbbe439a37
-  modified: 2026-09-03T23:05:03.624Z
+  modified: 2026-09-04T01:54:53.573Z
 ---
 
 Локальный прогон пакета вести с `TMPDIR=/tmp pnpm exec vitest run`. Под TMPDIR сессии
@@ -51,5 +51,13 @@ vitest под нагрузкой ящика. Те же три файла отд�
 `.../packages/agent-protocol/packages/agent-protocol`. Это не краснота дерева, а мой лишний флаг.
 Из корня репозитория правильно ровно `TMPDIR=/tmp pnpm test` (он же гоняет и transport-telegram),
 а `--root` нужен только голому `npx vitest run`.
+
+**То же удвоение даёт `pnpm --filter` (2026-09-04, тред 096):** `pnpm --filter agent-protocol exec
+vitest run --root packages/agent-protocol <файлы>` → `No test files found` из
+`.../packages/agent-protocol/packages/agent-protocol`. `--filter` УЖЕ входит в пакет, поэтому
+`--root` там лишний ровно как в `pnpm test`. Правило одной фразой: `--root` ставится ТОЛЬКО когда
+рабочий каталог — корень репозитория (`npx vitest run`); всё, что входит в пакет само (`pnpm test`,
+`pnpm --filter … exec`, `cd` в пакет), берёт конфиг с `testTimeout: 60_000` без флага. Точечный
+прогон файлов — `TMPDIR=/tmp pnpm --filter agent-protocol exec vitest run <пути от корня пакета>`.
 
 Связано: [[assert-must-not-read-the-wall-clock]], [[clock-shift-for-process-tests]].
