@@ -312,6 +312,85 @@ printf '[{"type":"result","is_error":true,"api_error_status":429},%s]\n' \
   '{"type":"result","is_error":false,"terminal_reason":"completed"}' > "${CAUSE_DIR}/mid.json"
 check "429 в середине, а конец штатный — причины нет" "" "$(review_failure_cause "${CAUSE_DIR}/mid.json")"
 
+# --- 10. Адресация эскалации: слаг, а не имя каталога (тред 125) --------------
+
+# ПОЧЕМУ ЭТО ГОНЯЕТСЯ ЗДЕСЬ, А ВЫБОР ПРИЁМНИКА — НЕТ. Выбор приёмника у стоячего
+# адреса делает ДВЕРЬ (`--ensure-thread`), и второго его разбора в этом файле нет
+# намеренно (см. шапку `address_flags`): гонять здесь нечего, кроме того, что дверь
+# спрошена ПРАВИЛЬНО. Сам выбор — на живой двери, в интеграционном прогоне,
+# состояния (16)–(18).
+ADDR_ESC="$(address_flags "address:notifier-down")"
+check "стоячий адрес спрашивается флагом --ensure-thread" "да" \
+  "$(printf '%s' "$ADDR_ESC" | grep -qx -- '--ensure-thread' && echo да || echo нет)"
+check "и слаг едет БЕЗ номера — номер выдаёт сама дверь" "да" \
+  "$(printf '%s' "$ADDR_ESC" | grep -qx -- 'notifier-down' && echo да || echo нет)"
+check "именованный тред остаётся --thread" "--thread
+067-park-lift-narrowing" "$(address_flags 067-park-lift-narrowing)"
+# ПО ОДНОМУ АРГУМЕНТУ НА СТРОКУ — не украшение: заголовок приёмника несёт пробел, и
+# словоделением он приехал бы к двери четырьмя аргументами. Считается ЧИСЛО и само
+# значение, потому что «шесть строк» ещё не значит «шесть аргументов».
+mapfile -t ADDR_ARGS <<<"$ADDR_ESC"
+check "флагов ровно шесть — заголовок не расклеен по пробелу" "6" "${#ADDR_ARGS[@]}"
+check "заголовок приёмника — ОДИН аргумент" "Стоячий адрес: отказ уведомителя" "${ADDR_ARGS[3]}"
+check "состав приёмника назван и он тот же, что у смотрителя" "github,dev-core,curator" \
+  "${ADDR_ARGS[5]}"
+# ПУСТОЙ АДРЕС — ОТКАЗ ПО ИМЕНИ, а не письмо в никуда.
+ADDR_ERR="${REVIEW_DELIVERY_DIR}/addr.err"
+# Пустой адрес убивает вызов на `${1:?}` (в неинтерактивном bash это не «код возврата»,
+# а немедленная смерть подоболочки) — поэтому и гоняется он подоболочкой.
+check "адрес пуст — отказ" "1" "$( (address_flags '') 2>"$ADDR_ERR" >/dev/null; echo $?)"
+check "и он назван по имени" "да" \
+  "$(grep -q 'address_flags: не назван адрес' "$ADDR_ERR" && echo да || echo нет)"
+check "'address:' без слага — отказ" "1" \
+  "$(address_flags 'address:' 2>"$ADDR_ERR" >/dev/null; echo $?)"
+check "и он тоже назван" "да" \
+  "$(grep -q 'стоячий адрес не назван' "$ADDR_ERR" && echo да || echo нет)"
+
+# ФАКТИЧЕСКИЙ ПРИЁМНИК ЧИТАЕТСЯ ИЗ ДЕРЕВА — у стоячего адреса он мог быть ОТКРЫТ этой
+# же записью, и его номер иначе не узнать ниоткуда.
+check "новый приёмник (untracked) — назван" "126-notifier-down" \
+  "$(landed_thread '?? agent-comms/126-notifier-down/_meta.md
+?? agent-comms/126-notifier-down/messages/2026-09-04T10-00-00Z-reviewer-pr.md')"
+check "существующий приёмник (одно письмо) — назван" "077-notifier-down" \
+  "$(landed_thread '?? agent-comms/077-notifier-down/messages/2026-09-04T10-00-00Z-reviewer-pr.md')"
+check "имя в кавычках (не-ASCII слаг фикстуры) — назван без кавычки" "911-фикстура" \
+  "$(landed_thread '?? "agent-comms/911-фикстура/messages/письмо.md"')"
+# ПРОИЗВОДНЫЙ INDEX ТРЕДОМ НЕ ЯВЛЯЕТСЯ: он лежит не под `NNN-`, и принять его за
+# приёмник значило бы назвать читателю лога файл вместо треда.
+check "изменился только INDEX — приёмника нет" "" \
+  "$(landed_thread ' M agent-comms/INDEX.md')"
+check "дерево не тронуто — приёмника нет" "" "$(landed_thread '')"
+
+# ЗАМОК — НА АДРЕСЕ, А НЕ НА КАТАЛОГЕ, и второй шаг доставки называет ФАКТИЧЕСКИЙ
+# приёмник первого письма. Сеть здесь не трогается: ветвь замка отвечает до неё.
+printf '126-notifier-down\n' > "${REVIEW_DELIVERY_DIR}/escalated"
+LOCKED="$(escalate_undelivered 067-park-lift-narrowing run:191 204)"
+check "второе письмо в стоячий адрес не шлётся" "да" \
+  "$(printf '%s' "$LOCKED" | grep -q 'второго письма в стоячий адрес не шлём' && echo да || echo нет)"
+check "и назван ТРЕД, в котором письмо лежит, а не слаг" "да" \
+  "$(printf '%s' "$LOCKED" | grep -q 'приёмник 126-notifier-down' && echo да || echo нет)"
+check "адрес назван рядом с приёмником" "да" \
+  "$(printf '%s' "$LOCKED" | grep -q "адрес 'notifier-down'" && echo да || echo нет)"
+# ПЕРВОЕ ПИСЬМО МОГЛО И НЕ ЛЕЧЬ — тогда приёмника нет, и номер не выдумывается.
+: > "${REVIEW_DELIVERY_DIR}/escalated"
+check "первое письмо не легло — приёмник НЕ НАЗВАН, а не выдуман" "да" \
+  "$(escalate_undelivered 067-park-lift-narrowing run:191 204 \
+     | grep -q 'приёмник НЕ НАЗВАН: первое письмо не легло' && echo да || echo нет)"
+rm -f "${REVIEW_DELIVERY_DIR}/escalated"
+
+# --- 11. Литерала приёмника в коде нет ни в каком виде ------------------------
+
+# Требование 1 постановки 125: `077-notifier-down` не остаётся в файле нигде, включая
+# значение по умолчанию и прозу шапок. Чистый греп бывает чистым по кривому шаблону —
+# поэтому рядом два контроля: шаблон ловит форму, которую ищет, и читается ТОТ файл.
+check "номера приёмника в коде нет" "" "$(grep -nE '[0-9]{3}-notifier-down' ./review-delivery.sh)"
+check "контроль: шаблон ловит ту самую форму" "да" \
+  "$(printf 'X="077-notifier-down"\n' | grep -qE '[0-9]{3}-notifier-down' && echo да || echo нет)"
+check "контроль: греп читает тот самый файл" "да" \
+  "$(grep -qF 'REVIEW_ESCALATION_ADDRESS' ./review-delivery.sh && echo да || echo нет)"
+check "и старого имени переменной, за которым читатель искал бы номер, тоже нет" "" \
+  "$(grep -n 'REVIEW_ESCALATION_THREAD' ./review-delivery.sh)"
+
 if [ "$FAILED" = "0" ]; then
   echo "доставка вердикта: все проверки прошли"
 else

@@ -276,17 +276,85 @@ delivery_exit_code() { # <самопропуск: 1|0> <вердикт есть:
 #
 # ЧТО БЫЛО ТИХОГО В ГРОМКОМ ПРОВАЛЕ. Сам провал громкий (`::error::`, `thread failed`,
 # красная джоба), но у громкости был второй, тихий ход: красный `Claude PR Review` читает
-# смотритель (`notifier-watch.yml`) и звонит в `077-notifier-down` с ходом на `dev-core` —
-# роль, у которой в предмете дела нет. АВТОР PR, чей вердикт не доехал, не позван вовсе, а
-# тред стои́т за чужим парком, и ход по вердикту не передан никому: молчание держится, пока
-# человек не прочтёт красный прогон руками.
+# смотритель (`notifier-watch.yml`) и звонит в стоячий адрес отказа уведомителя с ходом на
+# `dev-core` — роль, у которой в предмете дела нет. АВТОР PR, чей вердикт не доехал, не
+# позван вовсе, а тред стои́т за чужим парком, и ход по вердикту не передан никому: молчание
+# держится, пока человек не прочтёт красный прогон руками.
 #
 # ЛЕЧИТСЯ АДРЕСАЦИЯ, И ТОЛЬКО ОНА. Дверь и её отказы не смягчаются ни на букву; не легло
-# письмо в тред PR — то же самое сообщение едет в ПРИЁМНИК (`077-notifier-down`) с ходом на
+# письмо в тред PR — то же самое сообщение едет в ПРИЁМНИК стоячего адреса с ходом на
 # АВТОРА PR (`role:` из описания — тот же источник, которым передают ход уведомители).
 # Приёмник остаётся местом ЗАПИСИ события, а ход по вердикту уходит тому, кто может
 # действовать: перевесить метку, перепарковаться, донести вердикт руками.
-REVIEW_ESCALATION_THREAD="${REVIEW_ESCALATION_THREAD:-077-notifier-down}"
+#
+# АДРЕС — СЛАГ, А НЕ ИМЯ КАТАЛОГА (постановка curator, тред 125, 2026-09-04).
+#
+# ЧТО БЫЛО НЕ ТАК. Приёмник стоял здесь ЛИТЕРАЛОМ (`--thread <NNN-слаг>`), а второй писатель
+# того же класса звонков — `notifier-watch.yml` — адресует слагом (`--ensure-thread`). Пока
+# первый приёмник открыт, разницы не видно; но закрытие приёмника — НОРМАЛЬНОЕ событие
+# устава стоячего адреса (решение john 2026-09-03, тред 080), и в тот день письмо по
+# литералу продолжило бы ДОСТАВЛЯТЬСЯ (дверь письмо в закрытый тред принимает — от
+# машинного писателя всегда), кандидатом тред бы не стал и роль бы не поднялась. Красноты
+# не будет нигде: тихая потеря звонка об отказе доставки вердикта — ровно тот класс, ради
+# которого стоячий адрес и заведён.
+#
+# ОТСЮДА: здесь живёт СЛАГ, а какой тред его сейчас исполняет — решает дверь
+# (`--ensure-thread`: старший открытый и непаркованный приёмник этого слага, а нет такого —
+# открывает следующий). Номер в переопределении дверь отказывает по имени
+# (`unreadableReceiverSlug`), поэтому и переменная называется адресом, а не тредом: имя, за
+# которым читатель ищет номер, — половина того же дефекта.
+REVIEW_ESCALATION_ADDRESS="${REVIEW_ESCALATION_ADDRESS:-notifier-down}"
+# ЗАГОЛОВОК И СОСТАВ НОВОГО ПРИЁМНИКА — ДОСЛОВНО ТЕ ЖЕ, ЧТО ОБЪЯВЛЯЕТ `notifier-watch.yml`,
+# и это не копипаста, а требование: приёмник открывает ТОТ, кто позвонил первым после
+# закрытия прошлого, и роспись адреса не должна зависеть от того, кто это оказался.
+# Переопределения им не дано намеренно — адрес один, и второй его состав был бы вторым
+# мнением о том, кого этот звонок касается. Каждый участник сверяется дверью с конфигом:
+# неизвестный завалил бы доставку внутри аварии.
+REVIEW_ESCALATION_TITLE="Стоячий адрес: отказ уведомителя"
+REVIEW_ESCALATION_PARTICIPANTS="github,dev-core,curator"
+
+# ФЛАГИ АДРЕСАЦИИ ОДНОГО ПИСЬМА — ПО ОДНОМУ АРГУМЕНТУ НА СТРОКУ (читается `mapfile`,
+# потому что заголовок адреса несёт пробелы и словоделением его не передать).
+# Форм адреса две, и они не смешиваются:
+#   · `<NNN-слаг>`      — ИМЕНОВАННЫЙ тред: у ветви вердикта адресат один и известен
+#                         (тред PR из описания), выбирать там нечего;
+#   · `address:<слаг>`  — СТОЯЧИЙ адрес: приёмник выбирает дверь, а не этот файл.
+# Правило выбора приёмника здесь НЕ повторяется даже частично: второй разбор ленты был бы
+# вторым мнением о том, кто сейчас исполняет адрес, и разошёлся бы он ровно в тот день,
+# когда приёмник сменился (это и есть цена, названная в `notifier-mute.sh`, — там второй
+# разбор неизбежен, потому что ленту надо ЧИТАТЬ; здесь письмо только пишется).
+address_flags() { # <адрес: <NNN-слаг> либо address:<слаг>>
+  local address="${1:?address_flags: не назван адрес}"
+  case "$address" in
+    address:?*)
+      printf -- '--ensure-thread\n%s\n--title\n%s\n--participants\n%s\n' \
+        "${address#address:}" "$REVIEW_ESCALATION_TITLE" "$REVIEW_ESCALATION_PARTICIPANTS"
+      ;;
+    address:)
+      echo "address_flags: 'address:' без слага — стоячий адрес не назван." >&2
+      return 1
+      ;;
+    # Пустой адрес сюда не доходит: его назвал по имени `${1:?}` выше — то есть отказ
+    # один, а не два в разных формах.
+    *) printf -- '--thread\n%s\n' "$address" ;;
+  esac
+}
+
+# КУДА ЛЕГЛО — СПРАШИВАЕТСЯ У ДЕРЕВА, А НЕ У ВЫВОДА КОМАНДЫ (тот же приём, что в
+# `notifier-watch.yml`): у стоячего адреса приёмник мог быть ОТКРЫТ этой же записью, и его
+# номер отсюда иначе не узнать. Дерево перед записью чистое (`reset --hard FETCH_HEAD`),
+# поэтому всё новое под `agent-comms/` — ровно то, что записала доставка.
+# Хвост имени не пересуживается (`[^/"]`, а не форма слага): что там законно, уже сказала
+# дверь, а этой функции надо назвать каталог, в который дверь написала.
+landed_thread() { # <вывод git status --porcelain --untracked-files=all -- agent-comms>
+  printf '%s\n' "${1:-}" \
+    | sed -nE 's#^.. "?agent-comms/([0-9]{3}-[^/"]+)/.*#\1#p' | sort -u | head -1
+}
+
+# ФАКТИЧЕСКИЙ ПРИЁМНИК ПОСЛЕДНЕЙ УДАВШЕЙСЯ ДОСТАВКИ — переменная, а не вывод: её читает
+# `escalate_undelivered`, чтобы назвать в логе тред, в который письмо ЛЕГЛО. Пусто — не
+# легло никуда, и это третье состояние, а не синоним слага.
+REVIEW_LANDED_THREAD=""
 
 # РОЛЬ АВТОРА PR ИЗ ОПИСАНИЯ. Regex тот же, терпимый к оформлению, что в `merge-notify.yml`
 # и в шагах `claude-review.yml`: строки в бэктиках уже один раз ослепили парсер (PR #16), и
@@ -359,27 +427,37 @@ escalation_body() { # <тред PR> <значение парка|пусто> <н
 # СТОЯЧИЙ адрес. Замок ставится ДО попытки: провал самой эскалации тоже не повод писать
 # второй раз, он и так громкий в прогоне (и он же обрывает рекурсию — эскалация идёт через
 # ту же `deliver_to_thread`, чей отказ зовёт эскалацию).
+#
+# ЗАМОК — НА АДРЕСЕ, А НЕ НА КАТАЛОГЕ, и это важно ровно с той минуты, как приёмник стал
+# сменяемым: закройся он между двумя шагами доставки, замок по имени каталога пропустил бы
+# второе письмо — в НОВЫЙ приёмник, об одном и том же событии. Файл замка один на адрес, и
+# в него же кладётся ФАКТИЧЕСКИЙ приёмник первого письма: второй шаг называет читателю лога
+# тред, в котором письмо лежит, а не слаг (слаг читателю лога не адрес). Пусто в замке —
+# первое письмо не легло, и об этом так и говорится, а не выдумывается номер.
 escalate_undelivered() { # <тред, не принявший письмо> <значение парка|пусто> <номер PR>
   local thread="${1:?}" park="${2:-}" pr="${3:?}"
   local lock="${REVIEW_DELIVERY_DIR}/escalated"
   mkdir -p "$REVIEW_DELIVERY_DIR"
   if [ -f "$lock" ]; then
-    echo "Отказ доставки по треду ${thread} уже адресован (${REVIEW_ESCALATION_THREAD}) — второго письма в стоячий адрес не шлём."
+    local landed
+    landed="$(tr -d '\r\n' < "$lock")"
+    echo "Отказ доставки по треду ${thread} уже адресован (адрес '${REVIEW_ESCALATION_ADDRESS}', приёмник ${landed:-НЕ НАЗВАН: первое письмо не легло}) — второго письма в стоячий адрес не шлём."
     return 0
   fi
-  printf 'sent\n' > "$lock"
+  : > "$lock"
   local who wait_args="" body
   who="$(review_pr_author "$pr")"
   [ -n "$who" ] && wait_args="--waiting-on ${who}"
   body="$(mktemp)"
   escalation_body "$thread" "$park" "$pr" "$(delivery_state comment)" "${RUN_URL:-}" "$who" > "$body"
   # shellcheck disable=SC2086 # wait_args — набор аргументов, не строка
-  if deliver_to_thread "$REVIEW_ESCALATION_THREAD" reviewer-pr "$body" \
+  if deliver_to_thread "address:${REVIEW_ESCALATION_ADDRESS}" reviewer-pr "$body" \
       "chore(comms): вердикт по PR #${pr} не лёг в тред ${thread}" "$pr" ${wait_args}; then
-    echo "Отказ доставки адресован: тред ${REVIEW_ESCALATION_THREAD}, ход у '${who:-никого}'."
+    printf '%s\n' "$REVIEW_LANDED_THREAD" > "$lock"
+    echo "Отказ доставки адресован: тред ${REVIEW_LANDED_THREAD} (адрес '${REVIEW_ESCALATION_ADDRESS}'), ход у '${who:-никого}'."
     return 0
   fi
-  echo "::error::отказ доставки НЕ адресован — письмо не легло и в приёмник ${REVIEW_ESCALATION_THREAD}."
+  echo "::error::отказ доставки НЕ адресован — письмо не легло и в приёмник адреса '${REVIEW_ESCALATION_ADDRESS}'."
   return 1
 }
 
@@ -458,13 +536,19 @@ PARK_PROBE_SENTINEL="${PARK_PROBE_SENTINEL:-probe:no-such-park}"
 # ловит теперь не всякий будущий отказ записи, а только тот, что дверь выносит ДО парка.
 # Прогон идёт ПЕРЕД КАЖДОЙ попыткой записи, поверх только что подтянутой головы почты: в тред
 # пишут двое, и парк может уехать между чтением и записью.
-park_probe() { # <корень почты> <тред> <от кого> <файл тела> [прочие аргументы new-message...]
-  local root="${1:?}" thread="${2:?}" from="${3:?}" body="${4:?}"
+park_probe() { # <корень почты> <адрес> <от кого> <файл тела> [прочие аргументы new-message...]
+  local root="${1:?}" address="${2:?}" from="${3:?}" body="${4:?}"
   shift 4
+  # Адресация у сухого прогона ТА ЖЕ, что у записи (иначе он был бы предпросмотром другого
+  # письма): у стоячего адреса приёмник выбирается на том же дереве, а значит и тот же.
+  local flags
+  flags="$(address_flags "$address")" || return 0
+  local -a addr_args
+  mapfile -t addr_args <<<"$flags"
   local out
   if out=$( (cd .code && pnpm -F agent-protocol --silent cli new-message \
         --root "$root" --repo . --ref origin/main \
-        --thread "$thread" --from "$from" --expects answer "$@" \
+        "${addr_args[@]}" --from "$from" --expects answer "$@" \
         --park-lifted "$PARK_PROBE_SENTINEL" \
         --worker gh-action --body-file "$body" --no-push) 2>&1 ); then
     return 0
@@ -491,46 +575,72 @@ park_probe() { # <корень почты> <тред> <от кого> <файл 
 
 # ПИСЬМО В ТРЕД — одна дверь на обе ветви (вердикт есть / вердикта нет). Возвращает 0,
 # если письмо ЛЕГЛО и уехало; 1 — если нет, и причина напечатана.
-deliver_to_thread() { # <тред> <от кого> <файл тела> <сообщение коммита> <номер PR> [прочие аргументы new-message...]
-  local thread="${1:?}" from="${2:?}" body="${3:?}" commit_msg="${4:?}" pr="${5:?}"
+deliver_to_thread() { # <адрес: <NNN-слаг> либо address:<слаг>> <от кого> <файл тела> <сообщение коммита> <номер PR> [прочие аргументы new-message...]
+  local address="${1:?}" from="${2:?}" body="${3:?}" commit_msg="${4:?}" pr="${5:?}"
   shift 5
   local root="${GITHUB_WORKSPACE}/.comms-fallback/agent-comms"
+  local flags
+  flags="$(address_flags "$address")" || return 1
+  local -a addr_args
+  mapfile -t addr_args <<<"$flags"
+  # ТРЕД, НЕ ПРИНЯВШИЙ ПИСЬМО, называется эскалации по АДРЕСУ — до записи фактического
+  # приёмника у стоячего адреса нет, и подставлять туда слаг нельзя: слаг не тред.
+  local thread="${address#address:}"
+  REVIEW_LANDED_THREAD=""
   review_mail_checkout
-  if [ ! -d "${root}/${thread}/messages" ]; then
+  # Каталог спрашивается только у ИМЕНОВАННОГО треда. У стоячего адреса его отсутствие —
+  # законный случай, а не отказ: приёмника этого слага может не быть вовсе, и письмо его
+  # ОТКРОЕТ. Отказ здесь похоронил бы звонок ровно в тот день, ради которого адрес стоячий.
+  if [ "$thread" = "$address" ] && [ ! -d "${root}/${thread}/messages" ]; then
     echo "::warning::Каталога .comms-fallback/agent-comms/${thread}/messages нет — в тред не сообщено."
     escalate_undelivered "$thread" "" "$pr"
     return 1
   fi
   COMMS_PUSH_DIR=.comms-fallback
   COMMS_PUSH_REMOTE="$MAIL_REMOTE"
-  local attempt park park_args
+  local attempt park park_args landed
   for attempt in $(seq 1 "$COMMS_PUSH_ATTEMPTS"); do
     git -C .comms-fallback fetch --no-tags "$MAIL_REMOTE" comms
     git -C .comms-fallback reset --hard FETCH_HEAD
-    park="$(park_probe "$root" "$thread" "$from" "$body" "$@")"
+    # ПРИЁМНИК РЕШАЕТСЯ ВНУТРИ ПОПЫТКИ, а не до цикла: у стоячего адреса он выбирается по
+    # той ленте, на которую мы сейчас пишем, — потому и сухой прогон, и запись стоят ПОСЛЕ
+    # `reset --hard`.
+    park="$(park_probe "$root" "$address" "$from" "$body" "$@")"
     # shellcheck disable=SC2046 # аргументы флага парка разделяются по словам намеренно
     park_args=$(park_flags "$park" "$pr")
-    [ -n "$park" ] && echo "На треде ${thread} стои́т парк '${park}' — письмо идёт с '${park_args}'."
+    [ -n "$park" ] && echo "На адресате '${address}' стои́т парк '${park}' — письмо идёт с '${park_args}'."
     # shellcheck disable=SC2086 # $park_args и $@ — набор аргументов, не строка
     if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
           --root "$root" --repo . --ref origin/main \
-          --thread "$thread" --from "$from" --expects answer "$@" ${park_args} \
+          "${addr_args[@]}" --from "$from" --expects answer "$@" ${park_args} \
           --worker gh-action --body-file "$body" --write --no-push); then
-      echo "::error::new-message отказал — в тред ${thread} НЕ сообщено."
+      echo "::error::new-message отказал — по адресу '${address}' НЕ сообщено."
       escalate_undelivered "$thread" "$park" "$pr"
       return 1
     fi
+    landed="$(landed_thread "$(git -C .comms-fallback -c core.quotePath=false status \
+      --porcelain --untracked-files=all -- agent-comms)")"
+    if [ -z "$landed" ]; then
+      # Успех команды без записи в дерево — не «доставлено», а расхождение отчёта с
+      # фактом, то есть болезнь треда 082 с другой стороны. Коммитить нечего, повторять
+      # попытку нечем: следующая попытка сделала бы ровно то же самое.
+      echo "::error::new-message отчитался об успехе, но под agent-comms/ ничего не появилось — по адресу '${address}' НЕ сообщено."
+      escalate_undelivered "$thread" "$park" "$pr"
+      return 1
+    fi
+    REVIEW_LANDED_THREAD="$landed"
     git -C .comms-fallback add -A
     # --no-verify НЕ послабление стиля: worktree'ы делят `.git`, а с ним и хуки,
     # установленные `pnpm install` в главном чекауте; коммит почты звал бы pre-commit
     # главного репозитория (`Command "turbo" not found`, прогон 30521214435).
     git -C .comms-fallback commit --no-verify -m "$commit_msg"
     if comms_push "$attempt"; then
-      echo "Доставлено в тред ${thread}."
+      echo "Доставлено в тред ${landed}."
       return 0
     fi
   done
-  echo "::error::Не удалось сообщить в тред ${thread} за ${COMMS_PUSH_ATTEMPTS} попыток."
+  REVIEW_LANDED_THREAD=""
+  echo "::error::Не удалось сообщить по адресу '${address}' за ${COMMS_PUSH_ATTEMPTS} попыток."
   escalate_undelivered "$thread" "$park" "$pr"
   return 1
 }

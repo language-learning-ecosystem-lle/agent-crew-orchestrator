@@ -440,7 +440,10 @@ escalation_case() { # <номер состояния> <значение ЧУЖО
   ROOT="$MAIL_DIR/agent-comms"
   local id="$3" recv="$4"
   make_thread "$id" "$value"
-  # Приёмник — стоячий адрес: парка на нём нет (`077-notifier-down` не паркуют).
+  # Приёмник — СТОЯЧИЙ АДРЕС, и с тредом 125 он адресуется слагом: `deliver_to_thread`
+  # зовёт дверь с `--ensure-thread`, а та выбирает старший открытый непаркованный
+  # приёмник этого слага. Парка на приёмнике нет (стоячий адрес не паркуют), и слаг
+  # фикстуры ЛАТИНСКИЙ: `unreadableReceiverSlug` отказывает всему прочему по имени.
   make_thread "$recv" ""
 
   local before after code
@@ -454,7 +457,7 @@ escalation_case() { # <номер состояния> <значение ЧУЖО
     export REVIEW_DELIVERY_DIR="$arena/.delivery"
     # Приёмник и автор названы снаружи: сети у харнесса нет, а `gh pr view` — сеть.
     # Ветвь «прочитать автора из описания PR» закрыта юнитом (`pr_body_role`).
-    export REVIEW_ESCALATION_THREAD="$recv"
+    export REVIEW_ESCALATION_ADDRESS="${recv#[0-9][0-9][0-9]-}"
     export REVIEW_PR_AUTHOR="dev-core"
     # shellcheck source=./comms-push.sh
     source "${CODE_DIR}/.github/scripts/comms-push.sh"
@@ -495,7 +498,7 @@ escalation_case() { # <номер состояния> <значение ЧУЖО
     cd "$ws" || exit 3
     export GITHUB_WORKSPACE="$ws" MAIL_REMOTE="$MAIL_DIR" REVIEW_DELIVERY_DIR="$arena/.delivery"
     export GITHUB_SERVER_URL="https://example.invalid" GITHUB_REPOSITORY="owner/repo"
-    export REVIEW_ESCALATION_THREAD="$recv" REVIEW_PR_AUTHOR="dev-core"
+    export REVIEW_ESCALATION_ADDRESS="${recv#[0-9][0-9][0-9]-}" REVIEW_PR_AUTHOR="dev-core"
     # shellcheck source=./comms-push.sh
     source "${CODE_DIR}/.github/scripts/comms-push.sh"
     # shellcheck source=./review-delivery.sh
@@ -512,8 +515,11 @@ escalation_case() { # <номер состояния> <значение ЧУЖО
   check "чужой парк на треде PR ОСТАЛСЯ стоять" "$value" "$left"
 }
 
-escalation_case 14 "run:191" 910-фикстура-парка 911-фикстура-приёмника
-escalation_case 15 "pr:191"  912-фикстура-парка 913-фикстура-приёмника
+# Слаг приёмника у состояний РАЗНЫЙ: у каждого своя почта, но один слаг на двоих
+# читался бы как «один адрес, два приёмника» — состояние, о котором эти состояния не
+# говорят ничего.
+escalation_case 14 "run:191" 910-фикстура-парка 911-stand-in-receiver
+escalation_case 15 "pr:191"  912-фикстура-парка 913-second-receiver
 
 if [ "$FAILED" = "0" ]; then
   echo "интеграционный прогон доставки: ВСЕ СОСТОЯНИЯ ПРОШЛИ — $(printf '%s' "$STATES" | wc -w) шт."
