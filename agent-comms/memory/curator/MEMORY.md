@@ -69,3 +69,4 @@
 - [Парк ставится ПОСЛЕ вердикта](park-goes-after-the-verdict-not-before.md) — парк на john при летящем круге глотает письмо `reviewer-pr`: метка → вердикт в ленте → парк
 - [Каталог транскриптов выдаёт учётку](transcript-dir-reveals-the-account.md) — `find … -printf` под `TZ=UTC` читает подъём роли ЧУЖОГО контура, не трогая его репозиторий
 - [Каталог учётки называет свой аккаунт и тариф](config-dir-names-its-account-and-tier.md) — `.claude.json` → `oauthAccount.organizationRateLimitTier`: перелогин принимается замером, а не первой сессией роли
+- [Группы приезжают от менеджера пользователя](groups-come-from-the-user-manager.md) — рестарт юнита группу не подтягивает: креды держит `systemd --user` (PPID 1), мерится `/proc/<pid>/status` у трёх звеньев
