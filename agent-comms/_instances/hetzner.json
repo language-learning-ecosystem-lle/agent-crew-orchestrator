@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T15:12:52.464Z",
+  "writtenAt": "2026-09-04T15:18:42.936Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "120-enclosing-repo-probe-silent",
+      "state": "running",
+      "deadline": "2026-09-04T16:18:40Z"
+    },
     {
       "role": "curator",
       "thread": "120-enclosing-repo-probe-silent",
