@@ -5359,7 +5359,15 @@ before either form acts:
   -C … checkout … && git -C … pull --ff-only` the preflight door prints, because the branch
   of a checkout is moved by the operator and by nothing in this process (`PROTOCOL.md`,
   «Главный чекаут трогает только оператор»). The expected branch is taken from the `--ref`
-  this box judges by; there is no literal `main` in the repair.
+  this box judges by; there is no literal `main` in the repair;
+- **and the installer's question is asked over the span the verdict names, not over the
+  pull's diff.** When it is that second condition which credits the move, `HEAD` before and
+  after the pull are ONE COMMIT, so `git diff before after` is empty whatever `pnpm-lock.yaml`
+  did between the code this process loaded and the tree it leaves behind — and a skip decided
+  there would raise the successor over `node_modules` matching nothing. So the diff is taken
+  from the SHA this process's modules were loaded at, which is what those `node_modules` were
+  installed against, and the line that skips the installer names the span it measured
+  (`abc12345..def67890`) instead of claiming the pull moved none of the install inputs.
 
 Two things follow for the operator, and both are said by the commands that touch them.
 `Restart=on-failure` is now **load-bearing**: a unit edited to `Restart=no` turns the repair

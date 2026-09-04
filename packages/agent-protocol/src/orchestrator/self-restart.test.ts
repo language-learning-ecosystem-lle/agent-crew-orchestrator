@@ -567,8 +567,33 @@ describe("whether a pull needs the installer run after it", () => {
   });
 
   it("says why it was skipped — silence there reads as 'it ran and said nothing'", () => {
-    expect(describeInstallSkipped()).toContain("pnpm install skipped");
-    for (const input of INSTALL_INPUTS) expect(describeInstallSkipped()).toContain(input);
+    const span = {
+      from: "a".repeat(40),
+      fromMeans: "the code this process is running",
+      to: "b".repeat(40),
+    };
+    expect(describeInstallSkipped(span)).toContain("pnpm install skipped");
+    for (const input of INSTALL_INPUTS) expect(describeInstallSkipped(span)).toContain(input);
+  });
+
+  /**
+   * AND IT NAMES THE SPAN IT MEASURED (thread 096, the reviewer's finding on #266). The old
+   * wording — "the pull moved none of …" — was a claim about the pull's own diff, and on the
+   * second success condition the pull moves nothing at all: the sentence stayed true while
+   * telling the reader the opposite of the fact. A skip a reader cannot check is the silent
+   * door of criterion 11.
+   */
+  it("names the span the skip was measured over, and what its near end is", () => {
+    const said = describeInstallSkipped({
+      from: "a".repeat(40),
+      fromMeans: "the code this process is running",
+      to: "b".repeat(40),
+    });
+    expect(said).toContain(`${"a".repeat(8)}..${"b".repeat(8)}`);
+    expect(said).toContain("the code this process is running");
+    expect(said).toContain("the tree a replacement would load");
+    // The claim that was never measured is gone: nothing here speaks about the pull.
+    expect(said).not.toContain("the pull moved none of");
   });
 });
 
@@ -766,6 +791,65 @@ describe("whether the repair moved anything", () => {
       loaded: before,
     });
     expect(move.kind).toBe("moved");
+  });
+
+  /**
+   * AND THAT SECOND SUCCESS CARRIES THE SPAN THE INSTALLER MUST BE ASKED ABOUT (thread 096,
+   * the reviewer's finding on #266). Here `before` and `after` are ONE COMMIT — the pull had
+   * nowhere to move the tree — so `git diff before after` is empty whatever `pnpm-lock.yaml`
+   * did between the code this process loaded and that tree. Anchored there, the installer
+   * was skipped under a line saying nothing had changed, and the successor came up on a tree
+   * no `node_modules` matched. The anchor is what the modules were installed against.
+   */
+  it("anchors the install question at the loaded code, not at the tree the pull found", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before: after,
+      after,
+      branch: { kind: "branch", name: "main" },
+      loaded: before,
+    });
+    expect(move.kind).toBe("moved");
+    if (move.kind !== "moved") return;
+    expect(move.installFrom).toBe(before);
+    expect(move.installFrom).not.toBe(move.from);
+    expect(move.installFromMeans).toBe("the code this process is running");
+  });
+
+  /**
+   * THE ORDINARY PULL IS UNCHANGED BY THAT: when the loaded code IS the tree the pull found
+   * — the whole of the version path, where the vintage is read in the same breath — the span
+   * is the pull's own diff, exactly as before.
+   */
+  it("leaves the ordinary span alone when the loaded code is the tree the pull found", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before,
+      after,
+      branch: { kind: "branch", name: "main" },
+      loaded: before,
+    });
+    expect(move.kind).toBe("moved");
+    if (move.kind !== "moved") return;
+    expect(move.installFrom).toBe(before);
+    expect(move.to).toBe(after);
+  });
+
+  /** An undated process anchors where it can — and the line says so instead of claiming more. */
+  it("falls back to the tree the pull found when the loaded code could not be dated", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before,
+      after,
+      branch: { kind: "branch", name: "main" },
+    });
+    expect(move.kind).toBe("moved");
+    if (move.kind !== "moved") return;
+    expect(move.installFrom).toBe(before);
+    expect(move.installFromMeans).toBe("the tree as this repair found it");
   });
 
   it("stands when the branch could not be read — an unmeasured branch is not 'some branch'", () => {

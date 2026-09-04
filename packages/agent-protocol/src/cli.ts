@@ -976,11 +976,17 @@ const repairCheckoutInPlace = (input: {
     err(`agent-protocol: daemon — ${describeRepairStood(move.why)}`);
     return false;
   }
+  // THE SPAN IS THE VERDICT'S, NOT THE PULL'S (thread 096, the reviewer's finding on #266):
+  // when the tree was already carrying newer code, `before` and `after` are one commit and
+  // their diff is empty no matter what the dependencies did — so the question is asked from
+  // the code this process is RUNNING, which is what `node_modules` was installed against.
   let changed: readonly string[] = [];
   try {
-    changed = execFileSync("git", ["-C", checkout, "diff", "--name-only", before, after], {
-      encoding: "utf8",
-    })
+    changed = execFileSync(
+      "git",
+      ["-C", checkout, "diff", "--name-only", move.installFrom, move.to],
+      { encoding: "utf8" },
+    )
       .split("\n")
       .filter((line) => line.trim() !== "");
   } catch {
@@ -989,7 +995,9 @@ const repairCheckoutInPlace = (input: {
     changed = [...INSTALL_INPUTS];
   }
   if (!installNeeded(changed)) {
-    err(`agent-protocol: daemon — ${describeInstallSkipped()}`);
+    err(
+      `agent-protocol: daemon — ${describeInstallSkipped({ from: move.installFrom, fromMeans: move.installFromMeans, to: move.to })}`,
+    );
     return true;
   }
   return step("pnpm install", ["pnpm", ["--dir", checkout, "install"]]);

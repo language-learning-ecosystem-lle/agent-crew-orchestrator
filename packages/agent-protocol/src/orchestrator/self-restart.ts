@@ -423,7 +423,26 @@ export const installNeeded = (changed: readonly string[]): boolean =>
  * by the operator only), so the refusal ends in the same command the preflight door prints.
  */
 export type RepairMove =
-  | { readonly kind: "moved"; readonly from: string; readonly to: string }
+  | {
+      readonly kind: "moved";
+      readonly from: string;
+      readonly to: string;
+      /**
+       * THE SPAN THE INSTALL QUESTION MUST BE ASKED OVER, and it is not the pull's own diff
+       * (thread 096, the reviewer's finding on #266). Under the SECOND condition `before`
+       * and `after` are the same commit — the tree was already carrying newer code, so the
+       * pull had nowhere to move it — and `git diff before after` is then EMPTY whatever
+       * the dependencies did between the code this process loaded and that tree. Asked over
+       * that span, `installNeeded` answered "nothing to install" without measuring anything,
+       * and the successor came up on a tree whose `pnpm-lock.yaml` no `node_modules` matched.
+       *
+       * The anchor is what `node_modules` was last installed against, and that is the code
+       * this process is RUNNING when it is known — not the tree as the repair found it.
+       */
+      readonly installFrom: string;
+      /** What {@link installFrom} is, so the line that skips the installer can name it. */
+      readonly installFromMeans: string;
+    }
   | { readonly kind: "stood"; readonly why: string };
 
 /**
@@ -461,7 +480,16 @@ export const repairMoveVerdict = (input: {
   readonly loaded?: string;
 }): RepairMove => {
   if (input.after !== input.before || (input.loaded !== undefined && input.loaded !== input.after))
-    return { kind: "moved", from: input.before, to: input.after };
+    return {
+      kind: "moved",
+      from: input.before,
+      to: input.after,
+      installFrom: input.loaded ?? input.before,
+      installFromMeans:
+        input.loaded === undefined
+          ? "the tree as this repair found it"
+          : "the code this process is running",
+    };
   const expected = expectedBranchOfRef(input.ref);
   const pulled = `'git pull --ff-only' in '${input.checkout}' SUCCEEDED and moved nothing: HEAD is still ${short(input.before)}`;
   if (input.branch.kind === "unreadable")
@@ -488,9 +516,21 @@ export const repairMoveVerdict = (input: {
 export const describeRepairStood = (why: string): string =>
   `SELF-RESTART: THE REPAIR MOVED NOTHING — ${why}. NOT leaving: a supervisor would raise a process that loads the same code this one is running, which is a restart loop and not a repair; this daemon stays up and behind, and the attempt is counted`;
 
-/** Why the installer was not run — silence here would read as "it ran and said nothing". */
-export const describeInstallSkipped = (): string =>
-  `SELF-RESTART: pnpm install skipped — the pull moved none of ${INSTALL_INPUTS.join(", ")}, so what is installed already matches what the tree declares`;
+/**
+ * Why the installer was not run — silence here would read as "it ran and said nothing".
+ *
+ * AND IT NAMES THE SPAN IT MEASURED (thread 096, the reviewer's finding on #266). The old
+ * line said "the pull moved none of …", which is a claim about the pull's own diff — and
+ * on the second success condition the pull moved nothing at all, so that sentence was true
+ * and told the reader the opposite of the fact. A line that names its span is one a reader
+ * can check; see {@link RepairMove}.`installFrom`.
+ */
+export const describeInstallSkipped = (span: {
+  readonly from: string;
+  readonly fromMeans: string;
+  readonly to: string;
+}): string =>
+  `SELF-RESTART: pnpm install skipped — none of ${INSTALL_INPUTS.join(", ")} differs across ${short(span.from)}..${short(span.to)} (${span.fromMeans} → the tree a replacement would load), so what is installed already matches what the tree declares`;
 
 /**
  * THE LINE THAT NAMES WHAT THE HANDOVER COST THIS TICK (condition 6, 2026-08-07). It is
