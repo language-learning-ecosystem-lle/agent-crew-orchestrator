@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T17:02:40.875Z",
+  "writtenAt": "2026-09-04T17:07:58.496Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "127-verdict-delivery-suite-red-on-main",
+      "state": "running",
+      "deadline": "2026-09-04T17:47:55Z"
+    }
+  ]
 }
