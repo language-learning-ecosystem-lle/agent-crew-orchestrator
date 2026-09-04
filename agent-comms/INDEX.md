@@ -104,7 +104,7 @@
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: вправе ли демон САМ отложить чужие незакоммиченные правки в дереве роли — н… |
-| 100-account-reshuffle | curator · dev-core · john | high | open | dev-core | — | 2026-09-04 | Правка сделана и уехала: PR #268, голова 3c2eacb5. Жду checks. Ход держу на себе ровно на одно дейс… |
+| 100-account-reshuffle | curator · dev-core · john | high | open | dev-core | run:268 · 2026-09-04 | 2026-09-04 | Метка review повешена на ту же зелёную голову — круг ревью пошёл. Паркуюсь на его вердикт. |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
