@@ -31,14 +31,22 @@
  * thing the point says must not happen. The refusal is what makes "the letter must name it"
  * true of the letter and not only of the shell it was typed in.
  *
- * AND IT ASKS THIS OF ROLES, NOT OF EVENTS (thread 072, john's decision of 2026-09-02). The
- * three exits are three statements ABOUT the thread; the circuit announcing its own fact
- * (`from: github` — a merge, the outcome of a run) makes none of them and has nobody behind it
- * to choose one. It was measured as a broken protocol link rather than a missing line in a feed:
- * for two days every letter from GitHub into this contour was refused here, so `merge` stopped
- * returning the turn to the author of a PR, `pr:` parks degenerated into timers, and the
- * acceptances hanging off a merge never came due. A machine letter now passes with a NOTE —
- * `machineWriter`, decided by the registry (`isMachineWriter`) and not by this file.
+ * AND IT ASKS THIS OF RAISED SESSIONS, NOT OF JOB STEPS (thread 072, john's decision of
+ * 2026-09-02, widened 2026-09-04). The three exits are three statements ABOUT the thread; a step
+ * of a workflow announcing a fact — the merge, the outcome of a run, the verdict of a review
+ * round — makes none of them and has nobody behind it to choose one. It was measured as a broken
+ * protocol link rather than a missing line in a feed: for two days every letter from GitHub into
+ * this contour was refused here, so `merge` stopped returning the turn to the author of a PR,
+ * `pr:` parks degenerated into timers, and the acceptances hanging off a merge never came due. A
+ * machine letter now passes with a NOTE — `machineWriter`, decided by the registry
+ * (`isMachineWriter`) and not by this file.
+ *
+ * THE BOUNDARY IS WHO SENDS, NOT WHO SIGNS, and that cost a second incident. Read at first as
+ * "no card, so no norm to apply", the exception covered `from: github` and missed the verdict of
+ * `reviewer-pr` — signed by a role, written by a step of the review job. The consumer contour
+ * measured it on 2026-09-03 (round `33751725081`, PR #485): the thread was parked on john, the
+ * delivery step named no verdict about the park, this door refused, and an `approve` reached the
+ * PR comment and the review status but not the feed — the ONE channel that wakes anybody.
  *
  * WHY IT FIRES AT MOST ONCE PER PARK. A park is lifted by the next message that does not
  * repeat it (`parkingOf`), so the only letter this door can ever stop is the FIRST one after
@@ -103,9 +111,11 @@ export const judgeParkSeen = (input: {
    */
   readonly unreadable?: string;
   /**
-   * THE LETTER IS A MACHINE EVENT AND NOT A ROLE'S (thread 072, john's decision of 2026-09-02).
-   * `true` — the writer is the circuit announcing its own fact (`from: github`); the door lets
-   * it through and SAYS SO instead of asking it for a judgement it has nobody to make.
+   * THE LETTER IS WRITTEN BY A JOB STEP AND NOT BY A RAISED SESSION (thread 072, john's
+   * decision of 2026-09-02, widened 2026-09-04). `true` — the writer is a participant the
+   * circuit never raises (`wake.mode: 'event'`): the merge notifier, the outcome of a run, the
+   * verdict of a review round. The door lets it through and SAYS SO instead of asking it for a
+   * judgement it has nobody to make.
    */
   readonly machineWriter?: boolean;
 }): ParkSeenVerdict => {
@@ -164,11 +174,12 @@ export const judgeParkSeen = (input: {
     parking.question.trim() === "" ? "" : ` The question it stands on: "${parking.question}".`;
   // A MACHINE EVENT IS NOT ASKED WHAT IT DOES ABOUT THE PARK (thread 072, john's decision of
   // 2026-09-02, «первый вариант»). The three exits above are three STATEMENTS about the thread,
-  // and the circuit announcing its own fact makes none of them: the merge happened, the run
-  // ended — neither says anything about the question the thread is frozen on, and a workflow
-  // step has nobody behind it to decide which of the three it means. Requiring one of a machine
-  // is requiring a judgement of what cannot judge, and the refusal then does not defend the
-  // human it was written for — it breaks the link that returns the turn after the button.
+  // and a step of a job makes none of them: the merge happened, the run ended, the round judged
+  // — none of it says anything about the question the thread is frozen on, and the step has
+  // nobody behind it to decide which of the three it means. Requiring one of a machine is
+  // requiring a judgement of what cannot judge, and the refusal then does not defend the human
+  // it was written for — it breaks the link that returns the turn after the button, and the one
+  // that carries a verdict into the only channel that wakes the author.
   //
   // WHAT IT DOES NOT DO. It lifts nothing: the letter passes the door unchanged, so the park
   // stands exactly as `parkingOf` reads it, and the ONE thing that lifts an event park is the

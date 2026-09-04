@@ -3945,9 +3945,10 @@ const newMessage = (argv: readonly string[]): void => {
     ...(mergedPr === undefined ? {} : { mergedPr }),
     ...(verdictFields.pr === undefined ? {} : { verdictPr: verdictFields.pr }),
     ...(parkLifted === undefined ? {} : { lifted: parkLifted }),
-    // WHO IS WRITING, not what about (thread 072): the door asks a ROLE what its letter does
-    // about the park, and the circuit's own event has nobody to answer with. The registry
-    // decides it from the config, so the door stays a judgement over data.
+    // WHO IS WRITING, not what about (thread 072): the door asks a RAISED SESSION what its
+    // letter does about the park, and a step of a job — the merge notifier, the outcome of a
+    // run, the verdict of a review round — has nobody to answer with. The registry decides it
+    // from the config (`wake.mode: 'event'`), so the door stays a judgement over data.
     ...(registry.isMachineWriter(from) ? { machineWriter: true } : {}),
   });
   if (!parkSeen.ok) fail(parkSeen.reason, 2);
@@ -4137,10 +4138,11 @@ const newMessage = (argv: readonly string[]): void => {
    * at). The feed it describes is the one the printing path actually read.
    *
    * A MACHINE WRITER IS NOT TOLD (`isMachineWriter`, the registry decides it from the config,
-   * same as at the park door above). The notifier and the outcome of a run write without
-   * reading BY DESIGN — that is the legitimate case the refusal was rejected for — and they
-   * have no session to re-read with. For them the line is not advice, it is noise in a job log,
-   * and "speak only when there is something to say" is half of what was accepted.
+   * same as at the park door above). The notifier, the outcome of a run and the verdict of a
+   * review round write without reading BY DESIGN — that is the legitimate case the refusal was
+   * rejected for — and none of them has a session to re-read with. For them the line is not
+   * advice, it is noise in a job log, and "speak only when there is something to say" is half
+   * of what was accepted.
    */
   const noteFeedUnder = (feed: readonly Message[]): void => {
     if (registry.isMachineWriter(from)) return;

@@ -2026,18 +2026,24 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # ONE IT ENDS. The value must MATCH the standing park; nothing is written to the
                             # header by it. A stale value — the park was lifted by somebody else between the
                             # read and the write, which is the very subject of 058 — is a NOTE, not a refusal
-                            # AND IT IS ASKED OF ROLES, NOT OF MACHINE EVENTS (thread 072, decision of john
-                            # 2026-09-02): a letter from the participant the circuit announces its own facts
-                            # under — `wake.mode: 'event'` and NO instructions, so no session of ours is
-                            # raised as it and there is no card it reads — passes with a NOTE naming the park
-                            # instead of being refused. The three exits are three STATEMENTS about the thread
-                            # and a workflow step has nobody behind it to choose one; requiring the choice
-                            # broke the link that returns the turn after a merge (measured: from
+                            # AND IT IS ASKED OF RAISED SESSIONS, NOT OF JOB STEPS (thread 072, decision of
+                            # john 2026-09-02, widened 2026-09-04): a letter from a participant nobody of ours
+                            # raises — `wake.mode: 'event'`, the WHOLE predicate — passes with a NOTE naming
+                            # the park instead of being refused. The three exits are three STATEMENTS about
+                            # the thread and a workflow step has nobody behind it to choose one; requiring the
+                            # choice broke the link that returns the turn after a merge (measured: from
                             # 2026-08-30T20:14Z to 2026-09-02T10:51Z not one letter from GitHub reached this
                             # mail — every merge went into silence, `pr:` parks degenerated into timers). The
                             # note says the park is NOT lifted and NOT touched: the only thing that lifts an
-                            # event park is the field the notifier already carries (`--merged-pr N`). A
-                            # participant WITH a card (`reviewer-pr`) and a human meet the door as before
+                            # event park is the field the notifier already carries (`--merged-pr N`)
+                            # THE BOUNDARY IS WHO SENDS, NOT WHO SIGNS, and reading it as "no card, so no norm
+                            # to apply" cost a second incident: `reviewer-pr` HAS a card (`REVIEWER.md`) and
+                            # is still a step of the review job. Measured in a consumer contour 2026-09-03
+                            # (round `33751725081`, PR #485): the thread was parked, the delivery step named
+                            # no verdict about the park, and an `approve` reached the PR comment and the
+                            # review status but NOT the feed — the one channel that WAKES anybody. A human
+                            # and every role the circuit can raise (`watch`, `via-human`, `resident`) meet
+                            # the door as before: the norm for sessions is not weakened by a letter
                             # AND IF THE FEED OF THE THREAD DOES NOT READ AT ALL (half a migration, a message
                             # file that does not parse), the door SAYS SO instead of passing its own blindness
                             # off as "nothing is parked": a note naming the failed read and its reason. It does
@@ -2072,8 +2078,9 @@ agent-protocol new-message  --root <comms> --ref <ref> \
                             # anything to have landed under, and a first letter into somebody else's thread
                             # is exactly the legitimate case the refusal was rejected for). A MACHINE WRITER
                             # (`wake.mode: 'event'`, `isMachineWriter` — the same registry the park door
-                            # asks) is not told: it writes without reading by design and has no session to
-                            # re-read with, so for it the line is noise in a job log. Its send is unchanged
+                            # asks, and `reviewer-pr` is one of them) is not told: it writes without reading
+                            # by design and has no session to re-read with, so for it the line is noise in a
+                            # job log. Its send is unchanged
                             # THE FEED IT DESCRIBES IS THE ONE THE WINNING PUSH SAW: the count is replanned
                             # with the message on every delivery attempt, so a rejected push that is retried
                             # after a fast-forward reports the letters found AFTER the fetch. It costs no
