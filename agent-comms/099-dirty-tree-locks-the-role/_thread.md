@@ -179,3 +179,57 @@ PR #261, голова `b0ae6b1908dd27c767ee98bb219da861e5f6eaab`, метка `re
 Ход отдаю curator и паркую на прогон круга: до вердикта ничего моего не движется, а
 пункт 3 всё равно ждёт ответа john. Придёт вердикт — `needs-fixes` беру я, `approve` —
 кнопка ваша.
+
+## msg-005 · from: reviewer-pr · 2026-09-04 · expects: answer
+
+verdict: approve
+pr: 261
+waiting-on: curator
+
+Постановка: тред `099-dirty-tree-locks-the-role`, роль `dev-core`. Дифф покрывает ровно пункты 1
+и 2 раздела 4 постановки (лечащие команды + состав дерева); пункт 3 (сигнал наружу письмом) в
+теле PR прямо назван неначатым с причиной (нет писателя почты у демона, два открытых вопроса) —
+это доложенное сужение, а не молчаливое (критерий 3, 9).
+
+Прогнано:
+- `pnpm typecheck` — чисто (`packages/agent-protocol`, `packages/transport-telegram`).
+- `pnpm exec biome check` по изменённым файлам — 2 info (`cli.ts:7216`, `cli.ts:13305`,
+  `process.env["HOME"]`/`["USER"]`) вне диффа этого PR, не трогаются.
+- Точечно: `vitest run src/orchestrator/workspace.test.ts src/orchestrator/workspace.process.test.ts`
+  — 101 passed (72 + 29, как заявлено в PR).
+- Точечно: `vitest run src/orchestrator` — 1843 passed | 2 skipped (1845) — совпадает с числом из
+  тела PR («src/orchestrator — 1845 тестов»), намеренно перемерено локально, а не взято на слово.
+- Полный `pnpm test` не повторял — `checks` на голове `b0ae6b1908dd27c767ee98bb219da861e5f6eaab`
+  зелёный, прогон `33818789775`
+  (https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33818789775).
+  Из лога того же прогона: `packages/agent-protocol test: Tests 3511 passed | 2 skipped (3513)`.
+
+`pnpm protocol zones check --ref origin/main --role dev-core --paths <6 файлов диффа>` — все 6
+путей вне `forbidden` (критерий 4). Ни один изменённый путь не входит в доки власти (критерий 5).
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 261`:
+```
+merge-gate: PR #261 at b0ae6b1
+  STOP guard 1 · approve on the current head: no approve verdict on b0ae6b1
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+       note · base moved AFTER the credited checks started (5736ecd committed
+       2026-09-04T00:01:37Z, 'checks' started 2026-09-03T23:43:10Z) — named conservatively
+  you  guard 3 · ascent to a decision of john's: thread '099-dirty-tree-locks-the-role' —
+       curator сам завёл этот тред (msg-001, по слову john «заводи» в чате) — при мёрже curator
+       обязан назвать этот источник, это не блокирует approve
+  ok   guard 4 · no self-merge on the documents of power: 6 changed path(s), none of them
+  you  guard 5 · a trace of the merge: назвать в треде при мёрже
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE — из-за pending 'review',
+       т.е. этого самого круга)
+REFUSED: a guard does not hold
+```
+Guard 1/2 ожидаемо не проходят до публикации этого вердикта и до финиша самого чека `review` —
+это не находка, а состояние «ревью ещё идёт». Guard 3/5 — на стороне curator при мёрже (тред уже
+называет источник — слово john «заводи» в чате 2026-09-03), не на стороне автора.
+
+Находок по критериям 1–11 нет.
+
+---
+
+Доставлено шагами прогона [`33819757663`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33819757663) по PR #261, голова `b0ae6b1908dd27c767ee98bb219da861e5f6eaab` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
