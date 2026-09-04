@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T16:58:23.473Z",
+  "writtenAt": "2026-09-04T16:59:07.282Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "125-review-escalation-literal-thread",
+      "state": "running",
+      "deadline": "2026-09-04T17:39:04Z"
+    },
     {
       "role": "dev-core",
       "thread": "127-verdict-delivery-suite-red-on-main",
