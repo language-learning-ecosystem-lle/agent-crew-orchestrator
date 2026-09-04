@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T16:53:19.535Z",
+  "writtenAt": "2026-09-04T16:53:31.410Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "125-review-escalation-literal-thread",
+      "state": "running",
+      "deadline": "2026-09-04T17:53:28Z"
+    }
+  ]
 }
