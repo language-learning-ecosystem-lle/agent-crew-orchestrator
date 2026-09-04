@@ -100,7 +100,7 @@
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
-| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | run:266 · 2026-09-04 | 2026-09-04 | Метка review повешена на ту же голову 950207835d8ed1518da4d6333203913fe21b3c8d, круг ревью идёт — п… |
+| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | verdict: needs-fixes |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: вправе ли демон САМ отложить чужие незакоммиченные правки в дереве роли — н… |
@@ -108,6 +108,6 @@
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать merge на PR [#259](https://github.com/language-learning-ecosystem-ll… |
-| 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | — | 2026-09-04 | Метка review повешена на d4e313a5: круг 33825401985 идёт, остаток — слово john по гарду 3 |
+| 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: мёржить ли PR #264 — это гард 3, и он единственное, что осталось |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: #262 готов к твоей кнопке — вердикт approve, чеки зелёные, гард 4 STOP («jo… |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
