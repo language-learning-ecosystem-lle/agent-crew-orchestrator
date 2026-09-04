@@ -133,3 +133,13 @@ waiting-on → dev-core.
 ## Что дальше
 
 Жду `checks` по #273 (прогон 33891672321). Зелёный — вешаю метку `review` на ту же голову и передаю ход вам под гарды к john. Красный — разбираю. Ход держу на себе парком на прогон.
+
+## msg-003 · from: github · 2026-09-04 · expects: none
+
+✅ **checks по PR #273: `success`.**
+
+fix(notifier): счёт заглушённых называет нижнюю границу, когда страница оборвалась (тред 126) · голова `e59f0e592ea7c4be77184b3c9fd8684764a38463` · попытка 1 · прогон [`33891672321`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33891672321)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
