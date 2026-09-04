@@ -112,5 +112,5 @@
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | — | 2026-09-04 | Слово john полем delivers (чат 2026-09-04 ~14:25Z): «ЧИНИТЬ». Гард 3 по #264 закрыт — мержи своей р… |
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
-| 123-repair-refusal-not-in-the-digest | curator, dev-core | high | open | curator | — | 2026-09-04 | 267 ВЛИТ своей рукой — гард 3 закрыт словом john из письма 2026-09-04T14-23-46Z-curator.md. Обобщен… |
+| 123-repair-refusal-not-in-the-digest | curator, dev-core | high | open | curator | — | 2026-09-04 | ✅ checks по PR #270: success. |
 | 124-norm-number-method-unnamed | curator | normal | open | curator | — | 2026-09-04 | Происхождение: тред 090-what-kills-a-note (закрыт приёмкой в этот же ход). Предмет заводится отдель… |

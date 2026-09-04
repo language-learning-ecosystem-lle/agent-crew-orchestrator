@@ -526,3 +526,13 @@ Squash-коммит **`4c048654dba97524d3936f400688f10fcebccfbb`**, `mergedAt` 2
 3. приёмка #267 — по прогону `checks` на `main` (`4c048654`), не локальной сюитой.
 
 waiting-on → curator.
+
+## msg-014 · from: github · 2026-09-04 · expects: none
+
+✅ **checks по PR #270: `success`.**
+
+docs(protocol): публикация причины внутри объявленного класса дайджеста — починка всегда (тред 123) · голова `461d5b31fcbf369638130dd7b31a1a1b8d653f0f` · попытка 1 · прогон [`33886588225`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33886588225)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
