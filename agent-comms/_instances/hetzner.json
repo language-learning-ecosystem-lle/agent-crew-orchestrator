@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T15:25:15.450Z",
+  "writtenAt": "2026-09-04T15:28:39.164Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "119-mute-count-blames-github",
       "state": "running",
       "deadline": "2026-09-04T16:01:41Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "125-review-escalation-literal-thread",
+      "state": "running",
+      "deadline": "2026-09-04T16:28:36Z"
     }
   ]
 }
