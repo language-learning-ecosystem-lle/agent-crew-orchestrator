@@ -603,7 +603,10 @@ describe("a park ANNOUNCED AND LIFTED — a line, never a call (thread 030, (в2
     const told = planNotifications({
       targets: TARGETS,
       waiting: [],
-      seen: { waiting: [], stalled: [], parked: owed.parked },
+      // The caller writes BOTH halves of what it said (thread 129): the composition, which no
+      // longer holds the key, and the ledger of questions already told — without the second a
+      // park announced and lifted would read as never told and ring again for ever.
+      seen: { waiting: [], stalled: [], parked: owed.parked, asked: owed.asked },
       parked: [],
       declaredParks: [PARKED],
       templates: PARK_TEMPLATE,
@@ -2182,5 +2185,90 @@ describe("the accounts of the box — the tenth class of event (thread 036)", ()
       "curator (account: failover)",
       "036-account-failover",
     ]);
+  });
+});
+
+describe("парк, снятый до того, как его объявили (тред 129)", () => {
+  // Полевой замер 2026-09-04: письмо curator в тред 125 с `--expects ack --parked-on john`
+  // (17:01:36Z) перестало СТОЯТЬ в 17:10:27Z — объявление контура передало ход автору и тем
+  // кончило ход, на котором парк объявлен (тред 042). Вопрос к john не прозвенел ни разу и не
+  // мог прозвенеть позже: в композиции его больше нет, а строка о снятии говорит только о том,
+  // что было объявлено. Красноты нет ни у кого.
+  const MISSED: ParkedThread = {
+    thread: "125-review-escalation-literal-thread",
+    person: "john",
+    since: "2026-09-04T17:01:36Z",
+    question: "Разрешаешь ли merge #272?",
+    asks: true,
+    answered: false,
+  };
+  const PARK_TEMPLATE = { ...TEMPLATES, parked: "❓ {thread} ждёт твоего решения: {question}" };
+
+  const tick = (seen: NotifyState, declaredParks: readonly ParkedThread[] = [MISSED]) =>
+    planNotifications({
+      targets: TARGETS,
+      waiting: [],
+      stalled: [],
+      // Парк НЕ стоит: ход под ним кончился, планировщик о нём больше не знает.
+      parked: [],
+      declaredParks,
+      seen,
+      templates: PARK_TEMPLATE,
+    });
+
+  it("звонит о вопросе, который никто не задал человеку", () => {
+    // ГРАНИЦА ЧИНКИ, названная здесь, потому что вход у неё РОВНО ЭТОТ: книги в файле нет и
+    // строки `parked` в нём тоже нет. «Не объявляли никогда» и «объявили, сказали и строка уже
+    // ушла до апгрейда» с этого входа неотличимы — засевать книгу нечем. Значит на такте
+    // выкатки такая парковка звонит ещё раз; ровно один раз (тест ниже), а не вечно. Замерено
+    // сухим прогоном по живой почте: 0 таких звонков.
+    const plan = tick(EMPTY);
+    // СЧИТАЕТСЯ ОТДЕЛЬНО, ЗВОНИТ ТЕМ ЖЕ: три числа сводки описывают стоячий парк, и «0 стоит,
+    // 0 из них спрашивает, 1 из них новых» — фраза, противоречащая себе в одной строке.
+    expect(plan.missedParks).toEqual([MISSED]);
+    expect(plan.freshParked).toEqual([]);
+    expect(plan.lines.map((line) => line.text)).toContain(
+      "❓ 125-review-escalation-literal-thread ждёт твоего решения: Разрешаешь ли merge #272?",
+    );
+  });
+
+  it("звонит РОВНО ОДИН раз: сказанное записано в состояние", () => {
+    const first = tick(EMPTY);
+    const state = parseNotifyState(
+      renderNotifyState({ waiting: [], stalled: [], parked: [], asked: first.asked }),
+    );
+    expect(state.asked).toEqual([
+      { person: "john", thread: MISSED.thread, since: MISSED.since, question: "", asks: false },
+    ]);
+    expect(tick(state).missedParks).toEqual([]);
+  });
+
+  it("о ПЕРЕПАРКОВАННОМ том же треде спрашивает заново — ключ несёт штамп", () => {
+    const state = parseNotifyState(
+      renderNotifyState({ waiting: [], stalled: [], parked: [], asked: tick(EMPTY).asked }),
+    );
+    const again = { ...MISSED, since: "2026-09-04T17:49:45Z" };
+    expect(tick(state, [again]).missedParks).toEqual([again]);
+  });
+
+  it("молчит, когда слово человека пришло, и когда письмо ничего не просило", () => {
+    expect(tick(EMPTY, [{ ...MISSED, answered: true }]).missedParks).toEqual([]);
+    expect(tick(EMPTY, [{ ...MISSED, asks: false }]).missedParks).toEqual([]);
+  });
+
+  it("книга, заведённая при СТОЯЧЕЙ строке, переживает её уход — иначе перезвон следующим тактом", () => {
+    // Такт апгрейда старой коробки: строки `asked` в файле нет вовсе, а строка `parked` о
+    // парковке ещё стоит — значит о вопросе уже звонили, когда её писали. Молчим на этом такте:
+    // это делает и старое исключение `seenParks`, поэтому проверка тут НЕ кончается.
+    const upgrade = tick({ waiting: [], stalled: [], parked: [MISSED] });
+    expect(upgrade.missedParks).toEqual([]);
+    // Та половина, ради которой засев книги и существует: сказанное унесено в книгу. Строка
+    // `parked` уйдёт из состояния своим ходом (парковка снята), и следующий такт без книги
+    // прочитал бы «никогда не говорили» — а `seenParks` его уже не спасёт.
+    expect(upgrade.asked.map((park) => park.thread)).toEqual([MISSED.thread]);
+    const next = parseNotifyState(
+      renderNotifyState({ waiting: [], stalled: [], parked: [], asked: upgrade.asked }),
+    );
+    expect(tick(next).missedParks).toEqual([]);
   });
 });

@@ -659,8 +659,13 @@ describe("notify as a command", () => {
     );
     expect(text).not.toContain("no answer named");
     expect(letter.out).toContain("030-x (lifted on john)");
-    // Told at last, so the key leaves the state — and the tick after it says nothing again.
-    expect(readFileSync(contest.state, "utf8")).not.toContain("030-x");
+    // Told at last, so the PARK key leaves the state — and the tick after it says nothing again.
+    // The assert names the row rather than the thread since thread 129: the ledger of questions
+    // already told keeps its own line about the same thread on purpose, and that line is what
+    // stops a park announced-then-lifted from reading as never told and ringing for ever.
+    const told = readFileSync(contest.state, "utf8");
+    expect(told).not.toContain("parked\tjohn\t030-x");
+    expect(told).toContain("asked\tjohn\t030-x");
     rmSync(contest.delivered);
 
     const after = run(contest, ["--write"]);
@@ -1314,5 +1319,119 @@ describe("the drift of the box reaches the digest — the standoff read off disk
     expect(result.code).toBe(0);
     expect(result.out).toContain("⏳ твой ход: 044-x");
     expect(result.out).not.toContain("this box is running code");
+  });
+});
+
+describe("парк, снятый ходом раньше первого такта курьера (тред 129)", () => {
+  // ЗАМЕР, НЕ ГИПОТЕЗА (2026-09-04, тред 125): письмо curator с `--expects ack --parked-on john`
+  // от 17:01:36Z строки в `.orchestrator/notify.state` не породило; письмо тех же флагов от
+  // 17:49:45Z дало её через 20 секунд. Между ними лежит объявление контура 17:10:27Z с
+  // `waiting-on: dev-core` — оно кончило ход curator, на котором парк объявлен, и парк перестал
+  // стоять (тред 042). Такт курьера в эти девять минут не попал, и вопрос к john не был задан ни
+  // разу; позже он не задаётся никогда — снятого парка в композиции нет, а строка о снятии
+  // говорит только о том, что БЫЛО объявлено. Красноты нет ни у кого.
+  //
+  // Стык, а не маппинг: письма настоящие, дверь настоящая, состояние читается файлом.
+  const letter = (
+    contest: ReturnType<typeof contour>,
+    id: string,
+    name: string,
+    header: string,
+    body: string,
+  ): void => {
+    writeFileSync(join(contest.root, id, "messages", name), `---\n${header}\n---\n\n${body}\n`);
+  };
+
+  const THREAD = "125-review-escalation-literal-thread";
+  const QUESTION = "Разрешаешь ли merge #272?";
+  const parkOnJohn = (contest: ReturnType<typeof contour>): void => {
+    // `--expects ack` — «стою, пока не подтвердишь»: действие человека нужно так же, как у
+    // `answer`, и звонок ему положен (тред 051).
+    contest.park(THREAD, { asks: true, date: "2026-09-04T17:01:36Z", body: QUESTION });
+    letter(
+      contest,
+      THREAD,
+      "2026-09-04T17-01-36Z-curator.md",
+      [
+        "from: curator",
+        "worker: claude-code",
+        "date: 2026-09-04T17:01:36Z",
+        "expects: ack",
+        "waiting-on: curator",
+        "parked-on: john",
+      ].join("\n"),
+      QUESTION,
+    );
+  };
+
+  it("звонит человеку, хотя парк уже не стоит — и звонит один раз", () => {
+    const contest = contour({ stalledAfter: 10_000_000 });
+    parkOnJohn(contest);
+    // Объявление контура: хода никому не просит, но передаёт его автору — и этим кончает ход,
+    // на котором парк объявлен.
+    letter(
+      contest,
+      THREAD,
+      "2026-09-04T17-10-27Z-github.md",
+      [
+        "from: github",
+        "worker: gh-action",
+        "date: 2026-09-04T17:10:27Z",
+        "expects: none",
+        "waiting-on: dev-core",
+      ].join("\n"),
+      "`checks` по PR #272 — success.",
+    );
+    // И письмо роли, паркующее ТОТ ЖЕ тред на прогон: с этого момента стоячий парк треда —
+    // машинный, и о человеке в композиции курьера не остаётся ничего.
+    letter(
+      contest,
+      THREAD,
+      "2026-09-04T17-32-50Z-dev-core.md",
+      [
+        "from: dev-core",
+        "worker: claude-code",
+        "date: 2026-09-04T17:32:50Z",
+        "expects: answer",
+        "waiting-on: dev-core",
+        "parked-on: run:272",
+      ].join("\n"),
+      "Жду круг ревью по #272.",
+    );
+    contest.commit();
+
+    const first = run(contest, ["--write"]);
+
+    expect(first.code).toBe(0);
+    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text as string).toContain(
+      `your decision: ${THREAD} — ${QUESTION}`,
+    );
+    // Книга сказанного — по паре И штампу: она и есть то, что не даёт вопросу звонить вечно.
+    expect(readFileSync(contest.state, "utf8")).toContain(
+      `asked\tjohn\t${THREAD}\t2026-09-04T17:01:36Z`,
+    );
+    rmSync(contest.delivered);
+
+    const second = run(contest, ["--write"]);
+    expect(second.out).toContain("nothing to announce");
+    expect(existsSync(contest.delivered)).toBe(false);
+  });
+
+  it("КОНТРОЛЬ: без соседних писем парк стоит, и звонок идёт прежним путём", () => {
+    // Иначе тест зелен по кривому построению: он обязан отличать «позвонили, потому что чинили»
+    // от «звонок был и без починки».
+    const contest = contour({ stalledAfter: 10_000_000 });
+    parkOnJohn(contest);
+    contest.commit();
+
+    const first = run(contest, ["--write"]);
+
+    expect(first.out).toContain("1 parked, 1 of them asking, 1 of those new");
+    expect(JSON.parse(readFileSync(contest.delivered, "utf8")).text as string).toContain(
+      `your decision: ${THREAD} — ${QUESTION}`,
+    );
+    const state = readFileSync(contest.state, "utf8");
+    expect(state).toContain(`parked\tjohn\t${THREAD}\t2026-09-04T17:01:36Z`);
+    expect(state).toContain(`asked\tjohn\t${THREAD}\t2026-09-04T17:01:36Z`);
   });
 });
