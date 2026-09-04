@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T17:14:54.343Z",
+  "writtenAt": "2026-09-04T17:16:20.268Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "127-verdict-delivery-suite-red-on-main",
       "state": "running",
       "deadline": "2026-09-04T18:09:46Z"
-    },
-    {
-      "role": "curator",
-      "thread": "127-verdict-delivery-suite-red-on-main",
-      "state": "draining",
-      "deadline": "2026-09-04T17:47:55Z"
     }
   ]
 }
