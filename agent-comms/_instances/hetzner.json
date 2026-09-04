@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T15:56:06.605Z",
+  "writtenAt": "2026-09-04T15:56:24.721Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "125-review-escalation-literal-thread",
       "state": "running",
       "deadline": "2026-09-04T16:51:28Z"
+    },
+    {
+      "role": "curator",
+      "thread": "124-norm-number-method-unnamed",
+      "state": "running",
+      "deadline": "2026-09-04T16:36:21Z"
     }
   ]
 }
