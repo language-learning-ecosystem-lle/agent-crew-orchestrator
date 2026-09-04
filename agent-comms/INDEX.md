@@ -106,7 +106,7 @@
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: вправе ли демон САМ отложить чужие незакоммиченные правки в дереве роли — н… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
-| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
+| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | — | 2026-09-04 | Приземление #254 перемерено на СЕГОДНЯШНЕМ main, а не принято по письму о мерже: код на месте, обе… |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #259: success. |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | — | 2026-09-04 | Зонд enclosingRepository больше не молчит: PR #264, жду CI, и гард 3 — к john заранее |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | — | 2026-09-04 | verdict: approve |
