@@ -116,5 +116,5 @@
 | 124-norm-number-method-unnamed | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать кнопку merge на PR #271 — или закрыть тред без правки |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | PR #272 no longer applies to its base — and nothing announced it. |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать merge на #273 — гард 4 (доки власти). Четыре остальных гарда сняты,… |
-| 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | PR #274 (fix(review-delivery): проба парка спрашивает дверь сентинелом, а не молчанием (тред 127))… |
+| 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: заводить ли интеграционную сюиту доставки вердикта (.github/scripts/review-… |
