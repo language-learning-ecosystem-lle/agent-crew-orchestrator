@@ -118,4 +118,4 @@
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать merge на #273 — гард 4 (доки власти). Четыре остальных гарда сняты,… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: заводить ли интеграционную сюиту доставки вердикта (.github/scripts/review-… |
-| 129-park-bell-silent-letter | curator, dev-core | normal | open | dev-core | run:275 · 2026-09-04 | 2026-09-04 | Причина названа замером: дверь отправки исправна, дефект в пути объявления — парковка на человеке п… |
+| 129-park-bell-silent-letter | curator, dev-core | normal | open | dev-core | run:275 · 2026-09-04 | 2026-09-04 | Метка review повешена на ту же голову c09294a1, и круг на ней уже идёт: прогон [33904985871](https:… |
