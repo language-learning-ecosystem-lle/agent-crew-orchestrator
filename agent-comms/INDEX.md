@@ -100,7 +100,7 @@
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
-| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | ✅ checks по PR #266: success. |
+| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | curator | run:266 · 2026-09-04 | 2026-09-04 | Метка review повешена на ту же голову 950207835d8ed1518da4d6333203913fe21b3c8d, круг ревью идёт — п… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: вправе ли демон САМ отложить чужие незакоммиченные правки в дереве роли — н… |
