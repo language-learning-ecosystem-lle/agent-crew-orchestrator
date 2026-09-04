@@ -309,10 +309,17 @@ sudo -u lang-hetzner -i bash -lc "cd /home/lle/projects/language-learning-ecosys
 #  · строка cron сторожа ЯЩИКА у lle читает 'secrets.env', которого нет с 2026-08-30 → починить имя;
 #  · из каждого файла убрать ключи ЧУЖОГО контура: сегодня оба несут ОБА '..._CIRCUIT_URL_*' и GH_TOKEN
 
-### ШАГ 5a — ключи git по домам (без них шаг «push» приёмки красный)
-sudo -u aco-hetzner  ssh-keygen -t ed25519 -N '' -f /home/aco-hetzner/.ssh/id_ed25519   # если контур ходит по ssh
-sudo -u lang-hetzner ssh-keygen -t ed25519 -N '' -f /home/lang-hetzner/.ssh/id_ed25519
-# публичные части — в deploy keys СВОЕГО репозитория, рука john
+### ШАГ 5a — git нового пользователя (замер: ssh здесь ни при чём, ломается ~/.gitconfig)
+# Ни один git-путь этого ящика по ssh не ходит (замер ниже) — ключи НЕ обязательны.
+# Ломается другое: user.name/user.email и credential-хелпер живут в /home/lle/.gitconfig,
+# а у нового пользователя HOME другой и .gitconfig пустой.
+sudo -u aco-hetzner  -i bash -lc "git config --global user.name 'agent-crew-orchestrator' && git config --global user.email 'orchestrator@agents.invalid' && git config --global credential.'https://github.com'.helper '!/usr/bin/gh auth git-credential'"
+sudo -u lang-hetzner -i bash -lc "git config --global user.name 'language-learning-ecosystem' && git config --global user.email 'orchestrator@agents.invalid' && git config --global credential.'https://github.com'.helper '!/usr/bin/gh auth git-credential'"
+sudo -u aco-hetzner  -i bash -lc 'git config --global --get-regexp "user\.|credential\." '   # проверка: три строки
+sudo -u lang-hetzner -i bash -lc 'git config --global --get-regexp "user\.|credential\." '
+# ssh-ключи — ТОЛЬКО если владелец назовёт путь, который по ssh действительно ходит:
+# sudo -u aco-hetzner ssh-keygen -t ed25519 -N '' -f /home/aco-hetzner/.ssh/id_ed25519
+# (публичные части — в deploy keys СВОЕГО репозитория, рука john)
 
 ### ШАГ 6 — юниты генерируются из-под новых пользователей, из ОСНОВНОГО чекаута (не из .worktrees)
 sudo -u aco-hetzner  -i bash -lc "cd /home/lle/projects/agent-crew-orchestrator && pnpm protocol orchestrator systemd install --ref origin/main --instance hetzner --write"
@@ -327,6 +334,40 @@ sudo visudo -f /etc/sudoers.d/aco-devops-spawn
 #   aco-hetzner ALL=(aco-devops) NOPASSWD: /home/lle/.nvm/versions/node/v24.18.0/bin/claude
 # строку с вызывающим 'lle' убрать тем же заходом — иначе право осталось шире, чем объявлено
 ```
+
+### 8.2a Чем git ходит на этом ящике — замер, из которого выросли шаги 5a и 3a
+
+Снято чтением `dev-core` 2026-09-03 ~21:1xZ в живом рабочем месте роли (записи не сделано ни одной);
+первоисточник — PR [#114](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/114),
+тред `048-session-privileges`, замер поднятой сессии 2026-08-29. Здесь он перемерен, а не перенесён.
+
+| замер | значение | что из этого следует для операции |
+| --- | --- | --- |
+| оба remote | `https://github.com/…` (`agent-crew-orchestrator` и `language-learning-ecosystem`) | ssh-путь не используется НИ ОДНИМ контуром |
+| `ssh-add -l` | `The agent has no identities` | ключи в `~/.ssh` контуру сегодня не нужны — шаг 5a их не заводит |
+| `url.https://github.com/.insteadOf` | `git@github.com:`, `git@github-crew:` — **`/home/lle/.gitconfig`** | ssh-форма всё равно переписывалась бы в HTTPS; после смены `HOME` этой строки нет, и она НЕ нужна |
+| `credential.https://github.com.helper` | два источника: `/home/lle/.gitconfig` (`!/usr/bin/gh auth git-credential`) и **`command line`** — хелпер с `$GH_TOKEN`, который протокол подставляет процессу через `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0` | токен контура переезд `HOME` ПЕРЕЖИВАЕТ (он в окружении процесса); хелпер из `.gitconfig` — нет |
+| `user.name`, `user.email` | только `/home/lle/.gitconfig` | **`git commit` рукой роли под новым пользователем упрётся в `Please tell me who you are`** — почта своей личностью подписывается сама (`roles/identity.ts`), а коммит КОДА в рабочем месте роли — нет |
+
+Последняя строка — не вывод: поведение git при пустом доме снято командой (одноразовый репозиторий
+в `mktemp -d`, живого ящика не касается), `HOME=<пусто> XDG_CONFIG_HOME=<пусто> GIT_CONFIG_NOSYSTEM=1
+git commit` → `Author identity unknown / *** Please tell me who you are.`, **код возврата 128** —
+это `die()` git, а не единица (перемерено дважды: git 2.43.0 на этом ящике и git 2.55.0 у ревьюера,
+исход один). Где лежат сами ключи конфига — тоже замер (`git config --list --show-origin
+--show-scope`).
+
+**Поэтому шаг 5a кладёт новому пользователю `.gitconfig`, а не ssh-ключ.** Прежняя формулировка
+шага («без ключей шаг „push“ приёмки красный») фактом не подтверждается: push красный будет, но по
+другой причине и чинится другой строкой.
+
+**И та же причина делает одну строку §8.5 зелёной по неверному основанию** — она названа там же.
+
+**Членство в группе не действует на уже запущенный процесс** (`box-setup.md` §0, §1 этого плана,
+и третий факт того же PR #114: `deluser lle sudo` живого демона не разоружает). Для шага 3a это
+значит: `usermod -aG` для `lle` и `aco-devops` **не виден ни одной уже идущей оболочке**, включая ту,
+из которой john набирает блок. Оба демона блок останавливает и поднимает заново — их это чинит; для
+проверки прав читается `id` ВНУТРИ поднятой сессии, а `id -nG <user>` показывает базу и здесь
+зелёный по неверной причине.
 
 ### 8.3 Каталоги аккаунта вендора и вход ПОД каждым новым пользователем
 
@@ -380,6 +421,15 @@ sudo -u aco-hetzner XDG_RUNTIME_DIR=/run/user/$(id -u lang-hetzner) systemctl --
 sudo -u aco-hetzner cat /home/lang-hetzner/.ssh/id_ed25519 /home/lle/.ssh/id_ed25519          # отказ ОС
 sudo -u aco-hetzner sudo -n true                                                              # отказ по ОТСУТСТВИЮ ПРАВА
 ```
+
+**Строка про `git push --dry-run` — вторая ловушка того же класса, и её надо читать по ПРИЧИНЕ
+отказа.** `sudo -u aco-hetzner -i` даёт оболочку без `GH_TOKEN` и без `.gitconfig` соседа, а
+чекаут соседа после шага 4 остаётся читаемым «прочим» (сегодня `drwxrwsr-x lle contour` — замер §1,
+перепроверен `dev-core` 2026-09-03 ~21:2xZ; `chmod -R g+rwX` шага 4 биты «прочих» не трогает).
+Значит push упрётся в отсутствие креденшла ЕЩЁ ДО того, как проявится разведение, и
+«отказ» тут ничего не доказывает. Честная форма — прочитать текст отказа: разведение доказывает
+только отказ ОС (`Permission denied` на файле/каталоге соседа), а не `could not read Username` /
+`authentication failed`. Доказательной строкой разведения остаётся `touch … PROBE` выше.
 
 **Последняя строка стоит последней не для симметрии.** `sudo -n true` отказывает уже сегодня под
 `lle` — по отсутствию пароля, а не права. Читают её только вместе с `id` (в группах нового
