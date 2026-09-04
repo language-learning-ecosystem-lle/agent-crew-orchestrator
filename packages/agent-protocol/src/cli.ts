@@ -445,6 +445,7 @@ import {
   attemptsFor,
   checkoutBranch,
   describeInstallSkipped,
+  describeRepairRefusal,
   describeRepairStood,
   describeSelfRestartBlock,
   describeSelfRestartForm,
@@ -463,6 +464,8 @@ import {
   INSTALL_INPUTS,
   installNeeded,
   parseSelfRestartMemory,
+  type RepairFailure,
+  type RepairOutcome,
   renderSelfRestartMemory,
   repairMoveVerdict,
   SELF_RESTART_EXIT_CODE,
@@ -913,17 +916,26 @@ const throwVersionVerdicts = (): void => {
  * after, and the branch the pull ran on, which is the fact the old answer had no way to
  * see. `ref` is what the caller judges by; it is what the expected branch is taken from,
  * so no literal `main` lives in the repair.
+ *
+ * AND SINCE THREAD 123 IT ANSWERS WITH THE CAUSE, not with a `false`: the five ways this
+ * chain can fail all had their line on the stream and none of them could leave the
+ * function, so the one caller with a courier behind it had nothing to hand over. What that
+ * cause READS LIKE is {@link describeRepairRefusal}; here it is only carried out.
  */
 const repairCheckoutInPlace = (input: {
   readonly checkout: string;
   readonly ref: string;
   /** The SHA this process's modules were loaded at, when it is known. */
   readonly loaded?: string;
-}): boolean => {
+}): RepairOutcome => {
   const checkout = input.checkout;
   const head = (): string =>
     execFileSync("git", ["-C", checkout, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-  const step = (what: string, run: readonly [string, readonly string[]]): boolean => {
+  /** `undefined` is the step going through — the failure is a fact, not the absence of one. */
+  const step = (
+    what: string,
+    run: readonly [string, readonly string[]],
+  ): RepairFailure | undefined => {
     err(`agent-protocol: daemon — ${describeSelfRestartStep(what, checkout)}`);
     try {
       const said = execFileSync(run[0], [...run[1]], {
@@ -933,34 +945,36 @@ const repairCheckoutInPlace = (input: {
       err(
         `agent-protocol: daemon — ${describeSelfRestartStepOk(what, said.trim().split("\n").slice(-3).join(" · "))}`,
       );
-      return true;
+      return undefined;
     } catch (error) {
       const failure = error as { stderr?: string; stdout?: string; status?: number };
-      const why = ((failure.stderr ?? failure.stdout ?? "") as string).replace(/\s+/g, " ").trim();
-      err(
-        `agent-protocol: daemon — ${describeSelfRestartStepFailed(what, why === "" ? `code ${failure.status ?? "?"}` : why)}`,
-      );
-      return false;
+      const said = ((failure.stderr ?? failure.stdout ?? "") as string).replace(/\s+/g, " ").trim();
+      // ONE RESOLVED CAUSE FOR BOTH READERS: the log and the standoff must not be able to
+      // say different things about one failure, so the fallback to the exit code is taken
+      // once, here, and the line and the published sentence are built from the same string.
+      const why = said === "" ? `code ${failure.status ?? "?"}` : said;
+      err(`agent-protocol: daemon — ${describeSelfRestartStepFailed(what, why)}`);
+      return { kind: "step", step: what, why };
     }
+  };
+  const unreadableHead = (error: unknown): RepairOutcome => {
+    const why = (error as Error).message;
+    err(`agent-protocol: daemon — ${describeSelfRestartStepFailed("git rev-parse HEAD", why)}`);
+    return { kind: "failed", failure: { kind: "step", step: "git rev-parse HEAD", why } };
   };
   let before: string;
   try {
     before = head();
   } catch (error) {
-    err(
-      `agent-protocol: daemon — ${describeSelfRestartStepFailed("git rev-parse HEAD", (error as Error).message)}`,
-    );
-    return false;
+    return unreadableHead(error);
   }
-  if (!step("git pull --ff-only", ["git", ["-C", checkout, "pull", "--ff-only"]])) return false;
+  const pulled = step("git pull --ff-only", ["git", ["-C", checkout, "pull", "--ff-only"]]);
+  if (pulled !== undefined) return { kind: "failed", failure: pulled };
   let after: string;
   try {
     after = head();
   } catch (error) {
-    err(
-      `agent-protocol: daemon — ${describeSelfRestartStepFailed("git rev-parse HEAD", (error as Error).message)}`,
-    );
-    return false;
+    return unreadableHead(error);
   }
   // THE PULL SUCCEEDING IS NOT THE REPAIR SUCCEEDING (thread 096). On a branch that is not
   // the ref's, `--ff-only` returns zero, moves nothing, and used to be reported as a cure.
@@ -974,7 +988,7 @@ const repairCheckoutInPlace = (input: {
   });
   if (move.kind === "stood") {
     err(`agent-protocol: daemon — ${describeRepairStood(move.why)}`);
-    return false;
+    return { kind: "failed", failure: { kind: "stood", why: move.why } };
   }
   // THE SPAN IS THE VERDICT'S, NOT THE PULL'S (thread 096, the reviewer's finding on #266):
   // when the tree was already carrying newer code, `before` and `after` are one commit and
@@ -998,9 +1012,10 @@ const repairCheckoutInPlace = (input: {
     err(
       `agent-protocol: daemon — ${describeInstallSkipped({ from: move.installFrom, fromMeans: move.installFromMeans, to: move.to })}`,
     );
-    return true;
+    return { kind: "repaired" };
   }
-  return step("pnpm install", ["pnpm", ["--dir", checkout, "install"]]);
+  const installed = step("pnpm install", ["pnpm", ["--dir", checkout, "install"]]);
+  return installed === undefined ? { kind: "repaired" } : { kind: "failed", failure: installed };
 };
 
 /**
@@ -1106,15 +1121,19 @@ const repairOnVersionVerdict = (argv: readonly string[], error: ProtocolVersionE
   err(`agent-protocol: daemon — ${describeVersionRepair(verdict.target, checkout)}`);
   // A REPAIR THAT FAILED IS THE STAND, not a handback: leaving for a supervisor over code
   // that did not move is the crash loop at restart speed this whole thread is about.
+  // THE CAUSE IS CARRIED HERE AND DELIBERATELY NOT PUBLISHED (thread 123, §3.3 of the
+  // statement): this path has no subject to publish a standoff about — no drift reading,
+  // no live daemon whose standing state the courier reads — so the phases above are the
+  // whole of the answer, exactly as before.
   if (
-    !repairCheckoutInPlace({
+    repairCheckoutInPlace({
       checkout,
       ref,
       // The vintage is read a dozen lines above, in THIS tick: on the version path the
       // loaded SHA is the tree's own HEAD, so the second success condition of the verdict
       // cannot fire here — it belongs to the daemon, whose vintage is from its startup.
       ...(isVintage(read) ? { loaded: read.sha } : {}),
-    })
+    }).kind !== "repaired"
   ) {
     err(
       `agent-protocol: daemon — ${describeVersionStand("the repair itself failed (its phases are above)", checkout)}`,
@@ -11709,12 +11728,46 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
    * SHA its modules were loaded at (read once, at startup — so a tree somebody pulled by
    * hand under a running daemon still makes a replacement worth raising).
    */
-  const repairInPlace = (drift: CodeDrift): boolean =>
+  const repairInPlace = (drift: CodeDrift): RepairOutcome =>
     repairCheckoutInPlace({
       checkout: drift.vintage.checkout,
       ref: drift.ref,
       loaded: drift.vintage.sha,
     });
+
+  /**
+   * THE STANDING STATE OF THIS DRIFT, PUT WHERE THE COURIER CAN READ IT (thread 044). The
+   * log is read by whoever is already looking at the box, and the whole class this repair
+   * comes from is the drift NOBODY was looking at. A failure to publish costs a digest line
+   * and must not cost the daemon: the tick is not the place a diagnostic may refuse from.
+   *
+   * ONE WRITER FOR BOTH REFUSALS (thread 123). The block ("the daemon did not go") and the
+   * repair that failed ("it went and it did not hold") are one fact to the reader — the box
+   * is behind and not getting itself out — and they were two code paths, of which only the
+   * first published. `why` absent means there was nothing to say: `parseDriftStandoff`
+   * refuses a standoff without one, so nothing is written rather than something invented.
+   */
+  const publishDriftStandoff = (drift: CodeDrift, why: string | undefined): void => {
+    if (why === undefined) return;
+    try {
+      writeOut(
+        paths.daemonDrift,
+        renderDriftStandoff({
+          refSha: drift.refSha,
+          sha: drift.vintage.sha,
+          ref: drift.ref,
+          ...(drift.behind === undefined ? {} : { behind: drift.behind }),
+          ...(drift.since === undefined ? {} : { since: drift.since }),
+          why,
+          at: eventTimestamp(new Date()),
+        }),
+      );
+    } catch (error) {
+      err(
+        `agent-protocol: daemon — the drift standoff was not published to '${paths.daemonDrift}' (${(error as Error).message}); the digest will not carry it, and only this log will say the box is behind`,
+      );
+    }
+  };
 
   const selfRestart = (drift: CodeDrift): SelfRestartOutcome => {
     const memory = existsSync(paths.daemonSelfRestart)
@@ -11740,28 +11793,8 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // long, and why nothing is being pulled — one line, so that a reader who greps for
       // it, or a courier that carries it, has the whole fact and not half of it.
       err(`agent-protocol: daemon — ${describeSelfRestartStand(verdict.block, drift, new Date())}`);
-      // AND IT IS PUBLISHED WHERE THE COURIER CAN READ IT (thread 044). The log is read by
-      // whoever is already looking at the box, and the whole class this repair comes from is
-      // the drift NOBODY was looking at. A failure to publish costs a digest line and must
-      // not cost the daemon: the tick is not the place a diagnostic may refuse from.
-      try {
-        writeOut(
-          paths.daemonDrift,
-          renderDriftStandoff({
-            refSha: drift.refSha,
-            sha: drift.vintage.sha,
-            ref: drift.ref,
-            ...(drift.behind === undefined ? {} : { behind: drift.behind }),
-            ...(drift.since === undefined ? {} : { since: drift.since }),
-            why: describeSelfRestartBlock(verdict.block),
-            at: eventTimestamp(new Date()),
-          }),
-        );
-      } catch (error) {
-        err(
-          `agent-protocol: daemon — the drift standoff was not published to '${paths.daemonDrift}' (${(error as Error).message}); the digest will not carry it, and only this log will say the box is behind`,
-        );
-      }
+      // AND IT IS PUBLISHED WHERE THE COURIER CAN READ IT — see `publishDriftStandoff`.
+      publishDriftStandoff(drift, describeSelfRestartBlock(verdict.block));
       return "stood";
     }
     err(
@@ -11795,7 +11828,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // leaving with a code the supervisor answers.
     const form = selfRestartForm(process.env);
     err(`agent-protocol: daemon — ${describeSelfRestartForm(form)}`);
-    if (form === "supervised") return repairInPlace(drift) ? "handback" : "stood";
+    if (form === "supervised") {
+      // THE REPAIR THAT WENT AND DID NOT HOLD IS ALSO THE COURIER'S (thread 123). Until
+      // now this ending was visible in the log alone: the digest carried the reason the
+      // daemon did NOT go and repair, and never the reason the repair did not work — while
+      // the drift it is about goes on being measured, and the reader goes on being told
+      // nothing. Same file, same fields, same subject; only the sentence differs.
+      const repaired = repairInPlace(drift);
+      if (repaired.kind === "repaired") return "handback";
+      publishDriftStandoff(drift, describeRepairRefusal(repaired.failure));
+      return "stood";
+    }
     try {
       // The child speaks into the daemon's own log rather than into 'ignore', and the
       // wiring lives in `spawnSelfRestart` so that a test can drive exactly the case that
