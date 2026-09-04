@@ -114,5 +114,5 @@
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать кнопку merge на PR #271 — или закрыть тред без правки |
-| 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | — | 2026-09-04 | Метка review повешена на cd4a3942 после зелёного checks на ТОЙ ЖЕ голове; круг ревью поднят событие… |
-| 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | run:273 · 2026-09-04 | 2026-09-04 | Метка review повешена на ту же голову: круг 33894689468 идёт, паркуюсь на него |
+| 125-review-escalation-literal-thread | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | verdict: needs-fixes |
+| 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | — | 2026-09-04 | Вердикт approve принят: гарды сняты на живой голове, кнопка — john, несёте её вы |
