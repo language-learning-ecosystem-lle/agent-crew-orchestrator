@@ -12,10 +12,17 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { HANG_CEILING_MS, waitFor } from "../testing/wait-for.js";
+import {
+  codeDriftOverdue,
+  type DriftStandoff,
+  parseDriftStandoff,
+  renderDriftStandoff,
+} from "./code-age.js";
 import { daemonArgvFor } from "./restart.js";
 import {
   attemptsFor,
   describeInstallSkipped,
+  describeRepairRefusal,
   describeRepairStood,
   describeSelfRestartBlock,
   describeSelfRestartForm,
@@ -882,5 +889,104 @@ describe("whether the repair moved anything", () => {
     expect(said).toContain("THE REPAIR MOVED NOTHING");
     expect(said).toContain("NOT leaving");
     expect(said).toContain("restart loop");
+  });
+});
+
+/**
+ * WHAT THE COURIER IS GIVEN WHEN THE REPAIR ITSELF FAILED (thread 123).
+ *
+ * The five ways `repairCheckoutInPlace` can fail are two SHAPES here — a step that
+ * refused, and every step returning zero over a tree that did not move — and the reason
+ * this is a function of this module rather than an expression at the call site is that the
+ * call site is a daemon tick: a sentence decided there has no unit, which is exactly what
+ * the predicate of the repair cost us before #266.
+ */
+describe("what the digest is told when the repair failed", () => {
+  /** Every one of the five paths of the repair, each with its own line. */
+  it("names the step that refused, for each step that can refuse", () => {
+    const rev = describeRepairRefusal({
+      kind: "step",
+      step: "git rev-parse HEAD",
+      why: "fatal: not a git repository",
+    });
+    expect(rev).toContain("git rev-parse HEAD");
+    expect(rev).toContain("fatal: not a git repository");
+
+    const pull = describeRepairRefusal({
+      kind: "step",
+      step: "git pull --ff-only",
+      why: "fatal: Not possible to fast-forward, aborting.",
+    });
+    expect(pull).toContain("git pull --ff-only");
+    expect(pull).toContain("Not possible to fast-forward");
+
+    const install = describeRepairRefusal({
+      kind: "step",
+      step: "pnpm install",
+      why: "ERR_PNPM_LOCKFILE_CONFIG_MISMATCH",
+    });
+    expect(install).toContain("pnpm install");
+    expect(install).toContain("ERR_PNPM_LOCKFILE_CONFIG_MISMATCH");
+
+    // A refused step and a stood tree must not read as one another: the first is a command
+    // an operator can retype, the second is a tree an operator has to move.
+    for (const said of [rev, pull, install]) expect(said).toContain("FAILED at");
+  });
+
+  /** The fifth path — the field shape of thread 096, and the one with a cause already. */
+  it("carries the verdict of a repair that ran clean and moved nothing, verbatim", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before: "a".repeat(40),
+      after: "a".repeat(40),
+      branch: { kind: "branch", name: "core/gate-checks-from-actions" },
+    });
+    if (move.kind !== "stood") throw new Error("the fixture must stand");
+    const said = describeRepairRefusal({ kind: "stood", why: move.why });
+    expect(said).toContain("did not move");
+    expect(said).toContain("is on 'core/gate-checks-from-actions'");
+    expect(said).toContain("Put it back: git -C");
+    // What separates this refusal from the OTHER one the digest already carries: there, the
+    // daemon never went; here it went and the going did not hold.
+    expect(said).toContain("The decision to repair was taken and it did not hold");
+  });
+
+  /**
+   * A CAUSE THAT SAYS NOTHING PUBLISHES NOTHING. `parseDriftStandoff` refuses a standoff
+   * without a `why`, and a made-up sentence would reach the one reader who cannot check it.
+   */
+  it("publishes nothing at all when the failure could not say what it was", () => {
+    expect(describeRepairRefusal({ kind: "step", step: "pnpm install", why: "" })).toBeUndefined();
+    expect(describeRepairRefusal({ kind: "stood", why: "   \n  " })).toBeUndefined();
+  });
+
+  /**
+   * THE WHOLE OF THE COMPATIBILITY CLAIM, MACHINE-CHECKED (thread 123, curator's measure
+   * (i)): a standoff built from this new branch is read by the EXISTING parser, with no
+   * new field and no edit on the reading side. A parser touched in the same diff would be
+   * the signal that the format was moved after all — the border this package was given.
+   */
+  it("renders a standoff the existing parser reads, with no new field", () => {
+    const why = describeRepairRefusal({
+      kind: "step",
+      step: "git pull --ff-only",
+      why: "fatal: Not possible to fast-forward, aborting.",
+    });
+    if (why === undefined) throw new Error("this failure has a cause");
+    const standoff: DriftStandoff = {
+      refSha: "b".repeat(40),
+      sha: "c".repeat(40),
+      ref: "origin/main",
+      behind: 4,
+      since: "2026-09-04T01:00:00Z",
+      why,
+      at: "2026-09-04T01:30:00Z",
+    };
+    const read = parseDriftStandoff(renderDriftStandoff(standoff));
+    expect(read).toEqual(standoff);
+    // And the band the ninth class rings on is read off the same two fields as before: the
+    // subject of this file is the drift, not who wrote the sentence in it.
+    expect(codeDriftOverdue(standoff, new Date("2026-09-04T05:00:00Z"))).toBe(true);
   });
 });

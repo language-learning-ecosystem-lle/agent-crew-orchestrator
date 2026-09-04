@@ -517,6 +517,50 @@ export const describeRepairStood = (why: string): string =>
   `SELF-RESTART: THE REPAIR MOVED NOTHING — ${why}. NOT leaving: a supervisor would raise a process that loads the same code this one is running, which is a restart loop and not a repair; this daemon stays up and behind, and the attempt is counted`;
 
 /**
+ * WHAT THE REPAIR FAILED AT — the fact a `boolean` erased (thread 123). The repair has two
+ * ways to not repair and they are one class for the caller ("the box is still behind") and
+ * two facts for a reader: a COMMAND that did not run, and every command running clean over
+ * a tree that did not move ({@link repairMoveVerdict}). Both already had their line on the
+ * stream; neither could leave the function, so neither reached the courier.
+ */
+export type RepairFailure =
+  /** A step of the chain refused: the step by name, and what it said. */
+  | { readonly kind: "step"; readonly step: string; readonly why: string }
+  /** Every step returned zero and the tree stood where it was — `move.why` verbatim. */
+  | { readonly kind: "stood"; readonly why: string };
+
+/**
+ * THE ANSWER OF THE REPAIR, and the reason it is not a `boolean` any more: `false` is a
+ * fact with its cause thrown away, and the caller that publishes has nothing to publish.
+ */
+export type RepairOutcome =
+  | { readonly kind: "repaired" }
+  | { readonly kind: "failed"; readonly failure: RepairFailure };
+
+/**
+ * WHAT THE COURIER CARRIES WHEN THE REPAIR ITSELF FAILED (thread 123) — the sentence for
+ * `DriftStandoff.why`, decided here rather than at the call site so that it has a unit at
+ * all. The digest already carries the OTHER refusal of this same block ("the daemon did not
+ * go and repair", {@link describeSelfRestartBlock}); this is the one that was visible only
+ * in the log, and the two are the same fact to whoever reads the digest: the box is behind
+ * and is not getting itself out.
+ *
+ * A CAUSE THAT IS EMPTY PUBLISHES NOTHING. `parseDriftStandoff` refuses a standoff without
+ * a `why`, and inventing a sentence for a failure that could not say what it was would put
+ * a made-up reason in front of the one reader who cannot check it — silence is honest, the
+ * log still has the phases, and the drift itself keeps being measured every tick.
+ */
+export const describeRepairRefusal = (failure: RepairFailure): string | undefined => {
+  const why = failure.why.replace(/\s+/g, " ").trim();
+  if (why === "") return undefined;
+  const what =
+    failure.kind === "stood"
+      ? `the self-repair ran and this tree did not move — ${why}`
+      : `the self-repair FAILED at '${failure.step}' (${why})`;
+  return `${what}. The decision to repair was taken and it did not hold: this box stays up on the old code, and what moves it now is a hand`;
+};
+
+/**
  * Why the installer was not run — silence here would read as "it ran and said nothing".
  *
  * AND IT NAMES THE SPAN IT MEASURED (thread 096, the reviewer's finding on #266). The old

@@ -690,6 +690,48 @@ describe("a supervised daemon that finds itself behind its ref", () => {
   );
 
   it(
+    "publishes the refusal of the repair where the courier reads it, not only in the log",
+    () => {
+      // THE DEFECT OF THREAD 123, END TO END. The case above proves the daemon SAYS why the
+      // repair did not hold; this proves the digest can be told. Until now the two refusals
+      // of one block were asymmetric — "the daemon did not go and repair" was published and
+      // "it went and it did not hold" lived in the log alone — and the difference is
+      // invisible from outside the box: a reader of the digest is told nothing in both
+      // cases where the box is behind, which is indistinguishable from no drift at all.
+      const home = homeContour({ foreign: true });
+      const standoffPath = join(home.repo, ".orchestrator", "daemon-drift.json");
+      expect(existsSync(standoffPath)).toBe(false);
+
+      const ran = tickRun(home.cli, home.repo, { INVOCATION_ID: "test-invocation" });
+
+      // The premise: this really is the repair-failed branch and not the block above it —
+      // the daemon went, the pull ran clean, and the tree stood.
+      expect(ran.said).toContain("git pull --ff-only — ok");
+      expect(ran.said).toContain("THE REPAIR MOVED NOTHING");
+
+      // THE FILE, ON THIS DISK, READ BY THE PARSER THAT WAS NOT TOUCHED IN THIS DIFF. A
+      // wrong path, a swallowed write or a field renamed on one side of the bridge all
+      // leave the log intact and the digest empty.
+      expect(existsSync(standoffPath)).toBe(true);
+      const standoff = parseDriftStandoff(readFileSync(standoffPath, "utf8"));
+      expect(standoff?.refSha).toBe(git(home.repo, "rev-parse", "origin/main").trim());
+      expect(standoff?.sha).toBe(git(home.repo, "rev-parse", "HEAD").trim());
+      expect(standoff?.ref).toBe("origin/main");
+
+      // AND THE CAUSE IS THE ONE THE DAEMON PRINTED, not a second sentence composed for the
+      // digest: the courier carries `why` verbatim, so a standoff that says something else
+      // than the log is a box with two stories about one tick.
+      expect(standoff?.why).toContain("the self-repair ran and this tree did not move");
+      expect(standoff?.why).toContain("is on 'core/gate-checks-from-actions'");
+      expect(standoff?.why).toContain("not the 'main' of 'origin/main'");
+      expect(standoff?.why).toContain("Put it back: git -C");
+      // The block's own sentence is NOT what was published: this is the other refusal.
+      expect(standoff?.why).not.toContain("no self-restart");
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  it(
     "asks the installer about the span from the LOADED code when a hand moved the tree",
     async () => {
       // THE SECOND SUCCESS CONDITION, END TO END (thread 096, the reviewer's finding on

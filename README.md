@@ -5415,6 +5415,17 @@ pulls:
   the tick that finds no drift; the courier reads it, applies the band and carries the sentence
   unchanged. It never re-derives the reason: that verdict needs leases, holds, flags, a tree and
   an attempt count that only the daemon holds;
+- **and the repair that WENT and did not hold is published on the same terms** (thread 123).
+  The block has two endings — the daemon did not go to repair, and it went and the repair
+  failed — and until now only the first reached `daemon-drift.json`; the second lived in the
+  log alone, which is the same silence the class was written against. All five ways the repair
+  can fail (either `git rev-parse HEAD`, `git pull --ff-only`, a tree that stood after a clean
+  pull, `pnpm install`) now name themselves in the file's `why`, in the daemon's own words. **No
+  new field, no new class and no new reason to ring:** the standoff is the same seven keys, read
+  by the same `parseDriftStandoff`, and the band is still judged on `since`/`behind` — this is
+  the ninth class speaking in a case where it used to be mute, not a tenth. A failure that could
+  not say what it was publishes NOTHING: a standoff without a `why` is refused by the parser,
+  and a sentence invented for the digest would be one its only reader cannot check;
 - **and nothing was made to pull harder.** No live session is stopped, no window is forced: the
   statement of the thread reserves that for john, and the line reports rather than orders. Two
   of the named branches needed no code at all — an expired hold and a leftover stop flag were
