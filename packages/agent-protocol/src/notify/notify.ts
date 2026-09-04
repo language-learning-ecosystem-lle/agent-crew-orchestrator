@@ -1600,6 +1600,14 @@ export const planNotifications = (input: {
   // A BOX UPGRADING INTO THE LEDGER DOES NOT RE-RING WHAT IT ALREADY SAID: an absent ledger is
   // seeded from the parks the state remembers announcing, and only then is "not in the ledger"
   // read as "never told". Empty is not absent — see {@link NotifyState.asked}.
+  //
+  // THE BOUNDARY OF THAT SEEDING, DECLARED: it can only seed from what the state STILL holds.
+  // A park announced before the ledger existed and whose `parked` row had already left the
+  // state by the upgrade tick — lifted, as this whole class is about — seeds nothing, and from
+  // here it is indistinguishable from a park nobody was ever told about: both are a key the
+  // state does not carry. Such a park rings once more on the upgrade tick. That is a one-time
+  // cost of the rollout, bounded by the ledger written in that same tick, and not the endless
+  // re-ring this class prevents; measured dry against the live mail on 2026-09-04, it was 0.
   if (input.seen.asked === undefined)
     for (const park of input.seen.parked) askedKeys.add(`${parkedKey(park)}\t${park.since}`);
   const missedParks = (input.declaredParks ?? [])
