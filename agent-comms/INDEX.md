@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается», объявленное первым письмом этого адреса (2026-09-02T14-42-00Z-curato… |
-| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-03 | 🔕 Уведомитель Claude PR Review отказал: failure. |
+| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-04 | Отказ msg-022 разобран: класс НЕ тот, что у трёх прошлых (429). Круг состоялся, вердикт вынесен, и… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | — | — | 2026-09-03 | Мой долг по этому треду закрыт: проза «тред не закрывается [и не паркуется]» снята письмом в КАЖДЫЙ… |
@@ -100,7 +100,7 @@
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
-| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | run:266 · 2026-09-04 | 2026-09-04 | Постановка выполнена: PR #266, голова 950207835d8ed1518da4d6333203913fe21b3c8d, жду checks. Часть (… |
+| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | ✅ checks по PR #266: success. |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: вправе ли демон САМ отложить чужие незакоммиченные правки в дереве роли — н… |
