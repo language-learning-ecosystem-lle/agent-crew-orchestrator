@@ -39,7 +39,9 @@
  * NOTHING IS GUESSED AND NOTHING IS SKIPPED. A `TMPDIR` that is already neutral is left
  * exactly as it is (a runner keeps running what it ran); one that is inside a repository is
  * moved to the platform's shared temp — the very place a runner uses — and if THAT is
- * inside a repository too, the suite refuses by name instead of going quietly red.
+ * inside a repository too, the suite refuses by name instead of going quietly red. And the
+ * probe that answers all three questions is not allowed to fail quietly either (thread
+ * `120-enclosing-repo-probe-silent`): a `git` that never ran says nothing, not «no».
  */
 import { spawnSync } from "node:child_process";
 
@@ -57,18 +59,66 @@ export class TmpBaseError extends Error {
 }
 
 /**
+ * What ONE launch of the probe came back with: the part of `spawnSync`'s return that says
+ * whether the question reached git at all, and what git said if it did.
+ */
+export type GitProbeLaunch = {
+  /** Set when the launch itself failed — no binary on `PATH`, `EACCES`, and the like. */
+  readonly error?: Error;
+  /** `null` when the process never produced an exit code of its own. */
+  readonly status: number | null;
+  readonly signal?: NodeJS.Signals | null;
+  readonly stdout?: string | null;
+};
+
+/**
+ * READ ONE LAUNCH OF THE PROBE — pure for the same reason `neutralTmpBase` is: the branch
+ * where the launch never happened cannot be reproduced on the box that runs this suite,
+ * which has git by construction (the contour it stands in is a checkout).
+ *
+ * `status !== 0` on its own would collapse two different things into one word:
+ *
+ * - git ANSWERED «this is no repository» — `rev-parse` outside a work tree, exit `128`;
+ * - git was never asked — no binary on `PATH`, an `ENOENT` and `status === null`.
+ *
+ * The second is not an answer. A probe that could not run must not speak in the voice of one
+ * that ran and said «no», because that is precisely how the premise this file exists to
+ * check stops being checked while the suite goes on claiming it checked it.
+ *
+ * A non-zero code that is not `128` is still read as «no» here on purpose: telling git's own
+ * refusals apart from one another is a different question from whether git ran, and it is
+ * not the one this file asks.
+ */
+export const enclosingRepositoryOfLaunch = (
+  dir: string,
+  launch: GitProbeLaunch,
+): string | undefined => {
+  if (launch.error !== undefined || launch.status === null) {
+    const cause =
+      launch.error !== undefined
+        ? launch.error.message
+        : `it was killed by ${launch.signal ?? "a signal it did not name"}`;
+    throw new TmpBaseError(
+      `this suite asks git which work tree '${dir}' stands in, and the question could not be put at all: ${cause}. That is NOT the answer 'no repository' — until git runs, whether the temp base of this suite is inside a checkout is unknown, and every fixture that must not be a repository is built on a guess. Put a working 'git' on PATH and run the suite again`,
+    );
+  }
+  if (launch.status !== 0) return undefined;
+  const top = (launch.stdout ?? "").trim();
+  return top.length === 0 ? undefined : top;
+};
+
+/**
  * The work tree a directory stands in, or `undefined` when it stands in none. Asked of git
  * itself rather than by walking up looking for `.git`, because git's own answer is what the
  * code under test gets — worktree files, `--separate-git-dir` and ceilings included.
+ *
+ * Raises `TmpBaseError` when git could not be asked: see `enclosingRepositoryOfLaunch`.
  */
-export const enclosingRepository = (dir: string): string | undefined => {
-  const result = spawnSync("git", ["-C", dir, "rev-parse", "--show-toplevel"], {
-    encoding: "utf8",
-  });
-  if (result.status !== 0) return undefined;
-  const top = (result.stdout ?? "").trim();
-  return top.length === 0 ? undefined : top;
-};
+export const enclosingRepository = (dir: string): string | undefined =>
+  enclosingRepositoryOfLaunch(
+    dir,
+    spawnSync("git", ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8" }),
+  );
 
 /** The base this suite will hand to `mkdtemp`, and where it came from. */
 export type TmpBaseChoice = {
