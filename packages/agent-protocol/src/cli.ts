@@ -533,6 +533,7 @@ import {
   mainCheckoutVerdict,
   planWorkspace,
   planWorkspaceIdentity,
+  type WorkspaceDirt,
   type WorkspaceFacts,
   type WorkspacePlan,
   workspacePath,
@@ -6236,7 +6237,73 @@ const workspaceSignature = (path: string): { name?: string; email?: string } => 
   return { ...(name === undefined ? {} : { name }), ...(email === undefined ? {} : { email }) };
 };
 
-const workspaceFacts = (path: string): WorkspaceFacts => {
+/** `git diff --name-status` letters, read into the word a human would use. */
+const DIRT_WHAT: Record<string, string> = {
+  M: "modified",
+  A: "added",
+  D: "deleted",
+  T: "type changed",
+  U: "unmerged",
+};
+
+/**
+ * WHAT IS UNCOMMITTED, READ ONLY WHEN THERE IS SOMETHING (thread 099) — three git calls,
+ * and they are only made after `status --porcelain` has already come back non-empty, so
+ * a clean tree (the ordinary launch) pays for none of them.
+ *
+ * WHY NOT `status --porcelain`, WHICH IS ALREADY IN HAND. Its format is COLUMNAR — two
+ * characters of state, a space, the path — and `gitAsk` trims what it reads, so a tree
+ * whose first entry is an unstaged modification (` M CARD.md`) arrives with that leading
+ * space gone and parses as state `M ` and path `ARD.md`. A path that does not exist,
+ * printed inside a repair command, in a refusal a human is meant to paste. Caught by the
+ * process test rather than by a unit — the trim is in the caller, not in the format.
+ *
+ * SO EVERY READ HERE IS TAB-DELIMITED OR ONE-PATH-PER-LINE, and nothing depends on a
+ * leading space surviving anything: `--name-status` for what happened to a tracked path,
+ * `--numstat` for the lines (the only one that counts them), `ls-files --others` for the
+ * untracked (the only one that sees them). `--no-renames` keeps a rename two ordinary
+ * entries rather than an `old => new` form that would read as a path.
+ */
+const workspaceDirt = (path: string): WorkspaceDirt => {
+  const lines = (args: readonly string[]): readonly string[] =>
+    (gitAsk(["-C", path, ...args]) ?? "").split("\n").filter((line) => line !== "");
+  const counted = new Map<string, { added?: number; removed?: number }>();
+  for (const line of lines(["diff", "HEAD", "--numstat", "--no-renames"])) {
+    const [added, removed, file] = line.split("\t");
+    if (file === undefined) continue;
+    // A BINARY FILE IS `-\t-\t<path>` — it is listed, and its counts stay absent, which
+    // `describeWorkspaceDirt` prints as "not counted" rather than as zero changes.
+    counted.set(file, {
+      ...(added === "-" || added === undefined ? {} : { added: Number(added) }),
+      ...(removed === "-" || removed === undefined ? {} : { removed: Number(removed) }),
+    });
+  }
+  const tracked = lines(["diff", "HEAD", "--name-status", "--no-renames"]).flatMap((line) => {
+    const [code, file] = line.split("\t");
+    if (code === undefined || file === undefined) return [];
+    return [
+      {
+        path: file,
+        what: DIRT_WHAT[code[0] ?? ""] ?? `git status '${code}'`,
+        ...(counted.get(file) ?? {}),
+      },
+    ];
+  });
+  const untracked = lines(["ls-files", "--others", "--exclude-standard"]).map((file) => ({
+    path: file,
+    what: "untracked",
+  }));
+  return { files: [...tracked, ...untracked] };
+};
+
+/**
+ * WHAT GIT SAYS ABOUT A TREE — and the composition of its dirt only WHEN ASKED (thread
+ * 099). The extra reads are three git calls, which is nothing at a launch and is not
+ * nothing on the release path: a release runs after the session group is already down,
+ * it is the last thing a killed supervisor does, and it must not grow git calls for an
+ * answer nobody there uses (`dirtLeftByFinish` needs the boolean and no more).
+ */
+const workspaceFacts = (path: string, want: { readonly dirt?: boolean } = {}): WorkspaceFacts => {
   if (!existsSync(path)) return { exists: false };
   const branch = gitAsk(["-C", path, "rev-parse", "--abbrev-ref", "HEAD"]);
   const head = gitAsk(["-C", path, "rev-parse", "HEAD"]);
@@ -6248,6 +6315,11 @@ const workspaceFacts = (path: string): WorkspaceFacts => {
   }
   const locked = lockTextOf(path);
   const holder = locked === undefined ? undefined : lockHolderPid(locked);
+  // READ ONCE AND USED TWICE (thread 099): the same output answers "is it dirty" and
+  // "what is in it". `undefined` — the status call itself failed — keeps its old meaning
+  // of dirty, and yields no composition to print, which is what `dirt: undefined` says.
+  const porcelain = gitAsk(["-C", path, "status", "--porcelain"]);
+  const dirty = porcelain !== "";
   // WHO THIS TREE SIGNS AS — asked of git, in the tree, the way git will answer it when
   // it commits (thread 052): `config --get` resolves worktree → local → global → system
   // once, by git. An unset key exits 1, which `gitAsk` returns as `undefined` — that is
@@ -6256,7 +6328,10 @@ const workspaceFacts = (path: string): WorkspaceFacts => {
     exists: true,
     branch,
     head,
-    dirty: gitAsk(["-C", path, "status", "--porcelain"]) !== "",
+    dirty,
+    ...(want.dirt === true && dirty && porcelain !== undefined
+      ? { dirt: workspaceDirt(path) }
+      : {}),
     signature: workspaceSignature(path),
     ...(locked === undefined ? {} : { locked }),
     ...(holder === undefined ? {} : { lockHolderAlive: processAlive(holder) }),
@@ -6674,7 +6749,7 @@ const runPreflight = (
           workspaceVerdict({
             role: role.id,
             path,
-            facts: workspaceFacts(path),
+            facts: workspaceFacts(path, { dirt: true }),
             base: base.commit,
             baseRef: base.ref,
           }),
@@ -8540,7 +8615,7 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
     out(`workspaces (base ${base.ref} ${base.commit.slice(0, 8)}):`);
     for (const role of roles) {
       const path = workspacePath({ repo, worktrees: workdirSection.worktrees, role: role.id });
-      const facts = workspaceFacts(path);
+      const facts = workspaceFacts(path, { dirt: true });
       const verdict = workspaceVerdict({
         role: role.id,
         path,
@@ -10593,7 +10668,7 @@ const settleRun = (input: {
   // ONLY FOR A TREE THAT ALREADY EXISTS. A workspace that is about to be created is empty
   // by construction, and installing into it is the ritual's step, not this door's — a
   // check that refused every first launch of a new role would be a door against itself.
-  const facts = workspaceFacts(path);
+  const facts = workspaceFacts(path, { dirt: true });
   if (facts.exists) {
     const build = checkWorkspacePackage({
       role: role.id,
@@ -10609,6 +10684,8 @@ const settleRun = (input: {
   // prompt. No new event, no second read of the disk — the same move as the self-turn
   // delivery: judge by what is already in hand.
   const plan = planWorkspace({
+    role: role.id,
+    path,
     facts,
     base: base.commit,
     resuming: continuation.mode === "resume",

@@ -8,7 +8,9 @@ import { describe, expect, it } from "vitest";
 import {
   checkWorkspaceSignature,
   createWorkspaceLocks,
+  describeDirtyWorkspaceRepair,
   describeFinishDirt,
+  describeWorkspaceDirt,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
   dirtLeftByFinish,
@@ -23,6 +25,8 @@ import {
 } from "./workspace.js";
 
 const BASE = "1111111111111111111111111111111111111111";
+const ROLE = "dev-core";
+const WORKSPACE = "/repo/.worktrees/dev-core";
 const OTHER = "2222222222222222222222222222222222222222";
 
 describe("where a role works", () => {
@@ -78,7 +82,15 @@ describe("whose workspace a checkout is", () => {
 
 describe("the plan for a fresh package", () => {
   it("no worktree yet → create it", () => {
-    expect(planWorkspace({ facts: { exists: false }, base: BASE, resuming: false })).toEqual({
+    expect(
+      planWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
+        facts: { exists: false },
+        base: BASE,
+        resuming: false,
+      }),
+    ).toEqual({
       action: "create",
     });
   });
@@ -86,6 +98,8 @@ describe("the plan for a fresh package", () => {
   it("already detached at the base → nothing to do", () => {
     expect(
       planWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
         facts: { exists: true, branch: "HEAD", head: BASE, dirty: false },
         base: BASE,
         resuming: false,
@@ -98,6 +112,8 @@ describe("the plan for a fresh package", () => {
     // did. This is the state john met after every package of the first wave.
     expect(
       planWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
         facts: { exists: true, branch: "agent-protocol/english", head: OTHER, dirty: false },
         base: BASE,
         resuming: false,
@@ -107,6 +123,8 @@ describe("the plan for a fresh package", () => {
 
   it("DIRTY with nobody to attribute it to → a refusal, never a move", () => {
     const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
       facts: { exists: true, branch: "HEAD", head: BASE, dirty: true },
       base: BASE,
       resuming: false,
@@ -115,9 +133,108 @@ describe("the plan for a fresh package", () => {
     expect(plan.action).toBe("refuse");
     // The repair is a judgement call (commit, stash, or read and discard) and the
     // package does not make it for the human — there is no run to blame the dirt on,
-    // so it may be the human's own.
-    expect(plan.action === "refuse" && plan.reason).toContain("by hand");
+    // so it may be the human's own. Which is why both gestures are OFFERED and neither
+    // is taken (thread 099).
     expect(plan.action === "refuse" && plan.reason).toContain("no finished run");
+    expect(plan.action === "refuse" && plan.reason).toContain(`git -C ${WORKSPACE} stash push -u`);
+  });
+});
+
+/**
+ * A REFUSAL THAT CAN BE ACTED ON FROM WHERE IT IS READ (thread 099). The door was right
+ * and useless in the same breath: sixteen minutes of a stopped contour on 2026-09-03
+ * went on finding out what was in the tree and inventing the commands that clear it,
+ * both of which the refusal already had the facts for.
+ */
+describe("what the dirty-tree refusal has to say", () => {
+  const DIRT = {
+    files: [
+      {
+        path: ".github/workflows/claude-review.yml",
+        what: "modified",
+        added: 12,
+        removed: 3,
+      },
+      { path: "notes.md", what: "untracked" },
+    ],
+  };
+
+  it("names the paths, the change in each, and counts the ones it does not list", () => {
+    expect(describeWorkspaceDirt(DIRT)).toBe(
+      "2 path(s) — .github/workflows/claude-review.yml (modified, +12/-3), notes.md (untracked, not counted)",
+    );
+    // AN UNCOUNTED FILE SAYS SO rather than reading as an empty change: git has never
+    // seen it, and a zero there would be a number nobody measured.
+    expect(describeWorkspaceDirt(DIRT)).toContain("not counted");
+  });
+
+  it("a long list is cut, and the cut is announced with its own number", () => {
+    const many = {
+      files: Array.from({ length: 9 }, (_, index) => ({
+        path: `file-${index}.ts`,
+        what: "untracked",
+      })),
+    };
+    const text = describeWorkspaceDirt(many);
+
+    expect(text).toContain("9 path(s)");
+    expect(text).toContain("file-4.ts");
+    expect(text).not.toContain("file-5.ts");
+    // The silent cap is the defect this avoids: five listed paths and no remainder read
+    // as "five paths changed".
+    expect(text).toContain("and 4 more not listed here");
+  });
+
+  it("the refusal carries the composition, both repairs, and the reach of the lock", () => {
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true, dirt: DIRT },
+      base: BASE,
+      resuming: false,
+      thread: "099-dirty-tree-locks-the-role",
+      previousReason: "exited-without-handoff",
+    });
+    const reason = plan.action === "refuse" ? plan.reason : "";
+
+    expect(plan.action).toBe("refuse");
+    // (1) WHAT lies there — decidable without going to the box.
+    expect(reason).toContain(".github/workflows/claude-review.yml");
+    expect(reason).toContain("+12/-3");
+    // (2) THE REACH — the field case's real surprise: three pairs of one role skipped in
+    // one tick, and only the daemon's journal said why.
+    expect(reason).toContain("EVERY thread it holds a turn on");
+    // (3) TWO REPAIRS, as commands, in THIS tree, on a branch named after THIS thread.
+    expect(reason).toContain(
+      `git -C ${WORKSPACE} checkout -b dev-core/099-dirty-tree-locks-the-role`,
+    );
+    expect(reason).toContain(
+      `git -C ${WORKSPACE} push -u origin dev-core/099-dirty-tree-locks-the-role`,
+    );
+    expect(reason).toContain(`git -C ${WORKSPACE} stash push -u -m`);
+    // And the diagnosis it already had is not traded away for the repair.
+    expect(reason).toContain("ENDED ITS OWN TURN ('exited-without-handoff')");
+  });
+
+  it("dirt that did not read degrades to the command that reads it, never to silence", () => {
+    const text = describeDirtyWorkspaceRepair({ role: ROLE, path: WORKSPACE, thread: "099-x" });
+
+    expect(text).toContain(`git -C ${WORKSPACE} status --porcelain`);
+    expect(text).toContain(`git -C ${WORKSPACE} stash push -u`);
+  });
+
+  it("preflight names the composition on the line a human reads before the tick", () => {
+    const check = workspaceVerdict({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: { exists: true, branch: "HEAD", head: BASE, dirty: true, dirt: DIRT },
+      base: BASE,
+      baseRef: "origin/main",
+    });
+
+    expect(check.status).toBe("info");
+    expect(check.detail).toContain("has unsaved changes: 2 path(s)");
+    expect(check.detail).toContain("notes.md");
   });
 });
 
@@ -131,6 +248,8 @@ describe("the plan for a fresh package", () => {
 describe("dirt in the workspace, by whose it is", () => {
   const dirtyAfter = (previousReason: string) =>
     planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
       facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true },
       base: BASE,
       resuming: false,
@@ -182,6 +301,8 @@ describe("dirt in the workspace, by whose it is", () => {
 
   it("a broken run that never announced a session still gets a labelled stash", () => {
     const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
       facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true },
       base: BASE,
       resuming: false,
@@ -199,6 +320,8 @@ describe("dirt in the workspace, by whose it is", () => {
     // damage as moving it, arriving through a new door.
     expect(
       planWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
         facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true },
         base: BASE,
         resuming: true,
@@ -213,6 +336,8 @@ describe("dirt in the workspace, by whose it is", () => {
     // The lock says the tree is somebody's right now; a stash there would be taken out
     // from under a live session.
     const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
       facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true, locked: "dev-core pid 4" },
       base: BASE,
       resuming: false,
@@ -227,6 +352,8 @@ describe("dirt in the workspace, by whose it is", () => {
   it("a CLEAN tree after a break is moved, not stashed — there is nothing to park", () => {
     expect(
       planWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
         facts: { exists: true, branch: "HEAD", head: OTHER, dirty: false },
         base: BASE,
         resuming: false,
@@ -257,6 +384,8 @@ describe("the plan for a resumed run", () => {
     // one thing a resume must never do.
     expect(
       planWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
         facts: { exists: true, branch: "pkg/x", head: OTHER, dirty: true },
         base: BASE,
         resuming: true,
@@ -265,7 +394,13 @@ describe("the plan for a resumed run", () => {
   });
 
   it("a resume into a workspace that no longer exists is a loud refusal", () => {
-    const plan = planWorkspace({ facts: { exists: false }, base: BASE, resuming: true });
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: { exists: false },
+      base: BASE,
+      resuming: true,
+    });
 
     expect(plan.action).toBe("refuse");
     expect(plan.action === "refuse" && plan.reason).toContain("resume");
@@ -440,6 +575,8 @@ describe("a workspace somebody else has locked", () => {
     // john, 2026-07-25 22:20: the lock guards the tree from a second mutator — a
     // manual run racing the daemon, or a human moving the worktree under a session.
     const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
       facts: { exists: true, branch: "pkg/x", head: OTHER, dirty: false, locked: LIVE },
       base: BASE,
       resuming: false,
@@ -455,6 +592,8 @@ describe("a workspace somebody else has locked", () => {
     // The lock is held from before the mutation until the lease is released, so a run
     // that would touch nothing on disk still cannot put a second session into the tree.
     const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
       facts: { exists: true, branch: "pkg/x", head: OTHER, dirty: true, locked: LIVE },
       base: BASE,
       resuming: true,
@@ -465,6 +604,8 @@ describe("a workspace somebody else has locked", () => {
 
   it("a lock whose process is gone reads as LEFT BEHIND and asks for a hand, not for a wait", () => {
     const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
       facts: {
         exists: true,
         branch: "HEAD",

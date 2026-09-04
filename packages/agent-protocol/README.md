@@ -4172,6 +4172,34 @@ daemon's modules are resolved from it once, at start, so it must stay on
   The whole fork is decided by `planWorkspace`, a pure function, and only carried out by
   the CLI: it is the one branch in the package that touches work nobody committed, so it
   is held by a test rather than by a reading of the code.
+- **Both refusals say WHAT is in the tree and HOW to clear it** (thread 099). The door was
+  right and still cost a stopped contour: on 2026-09-03 one edit of `claude-review.yml`
+  left by a cut-off session held `dev-core` for sixteen minutes with five threads waiting,
+  and the sixteen minutes went on finding out what was in the tree and inventing the
+  gestures that clear it. The refusal now carries three things it already had the facts
+  for:
+  - **the composition** — every uncommitted path with what happened to it and how many
+    lines (`CARD.md (modified, +1/-0)`, `notes.md (untracked, not counted)`). An untracked
+    file is listed and NOT counted: git has never seen it, and a zero there would be a
+    number nobody measured. Long lists are cut at five paths and the remainder is counted
+    out loud, so five listed can never be read as five changed;
+  - **the reach** — `'<role>' is skipped on EVERY thread it holds a turn on, not only this
+    one`. The workspace belongs to the role, so one dirty tree stops all of its pairs in
+    the same tick, and until now the daemon's journal was the only place that said so;
+  - **the two repairs, as commands against this tree** — `git -C <workspace> checkout -b
+    <role>/<thread> && … commit … && … push -u origin <role>/<thread>` to keep the work,
+    or `git -C <workspace> stash push -u -m 'wip(<thread>): …'` to park it. It PROPOSES
+    and never performs: whether the circuit may park a role's uncommitted work by itself
+    is john's open question in that thread.
+
+  The same composition is printed on the preflight line (`has unsaved changes: 1 path(s) —
+  …`), which is read before a tick rather than after a skip. The reads are
+  `git diff HEAD --name-status --no-renames`, `--numstat` and `ls-files --others`, and
+  they are made only after `status --porcelain` has already come back non-empty — a clean
+  tree, which is the ordinary launch, pays for none of them. `status --porcelain` itself is
+  NOT parsed for the composition: its format is columnar, the reader trims what git prints,
+  and ` M CARD.md` then parses as the path `ARD.md` — a path that does not exist, inside a
+  command a human is meant to paste. The process test is what caught that.
 - **A run that ends its own turn and leaves the tree dirty is NAMED IN ITS OWN RELEASE**
   (the second half of requirement 5, `dirtLeftByFinish`). The bullet above decides what to
   do with such a tree at the NEXT launch, which is the wrong end of the run to learn it

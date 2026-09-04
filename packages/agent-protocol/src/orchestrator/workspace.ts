@@ -60,6 +60,52 @@
 import { type GitIdentity, roleIdentity } from "../roles/identity.js";
 import type { PreflightCheck } from "./preflight.js";
 
+/**
+ * ONE UNCOMMITTED PATH, AS GIT REPORTS IT (thread 099). The line counts are the ones
+ * `git diff HEAD --numstat` gives, so they are absent for a file git has never seen —
+ * "untracked, not counted" is a fact, and inventing a number for it by reading the file
+ * would be the door guessing.
+ */
+export type WorkspaceDirtFile = {
+  readonly path: string;
+  /** `untracked` for a new file, otherwise git's porcelain code read into a word. */
+  readonly what: string;
+  readonly added?: number;
+  readonly removed?: number;
+};
+
+/** Everything uncommitted in one tree — the whole list, never a pre-truncated one. */
+export type WorkspaceDirt = {
+  readonly files: readonly WorkspaceDirtFile[];
+};
+
+/** How many paths of the dirt a refusal spells out before it starts counting. */
+export const DIRT_FILES_SHOWN = 5;
+
+/**
+ * THE DIRT READ TO A HUMAN WHO IS NOT AT THE MACHINE (thread 099, point 2 of the
+ * statement) — the whole point is that the composition of the tree is decidable from the
+ * refusal alone: on 2026-09-03 john learned what was in it only after three commands on
+ * the box, and the tree meanwhile held the role on all of its threads.
+ *
+ * THE LIST IS CAPPED AND SAYS SO. A tree with two hundred changed paths would otherwise
+ * push the repair command out of anybody's screen; a cap that printed five and fell
+ * silent would read as "five files", which is the same defect one level quieter. So the
+ * remainder is counted out loud.
+ */
+export const describeWorkspaceDirt = (dirt: WorkspaceDirt): string => {
+  if (dirt.files.length === 0) return "nothing (git reported no changed path)";
+  const shown = dirt.files.slice(0, DIRT_FILES_SHOWN).map((file) => {
+    const lines =
+      file.added === undefined && file.removed === undefined
+        ? "not counted"
+        : `+${file.added ?? 0}/-${file.removed ?? 0}`;
+    return `${file.path} (${file.what}, ${lines})`;
+  });
+  const rest = dirt.files.length - shown.length;
+  return `${dirt.files.length} path(s) — ${shown.join(", ")}${rest > 0 ? `, and ${rest} more not listed here ('git -C <workspace> status --porcelain' has all of them)` : ""}`;
+};
+
 /** What git can tell about a workspace directory before anything is done to it. */
 export type WorkspaceFacts = {
   /** The directory exists AND git knows it as a worktree of this repository. */
@@ -70,6 +116,12 @@ export type WorkspaceFacts = {
   readonly head?: string;
   /** Uncommitted changes, tracked or not. */
   readonly dirty?: boolean;
+  /**
+   * WHAT exactly is uncommitted (thread 099) — absent when nothing is, and absent also
+   * when nobody asked: a caller that only needs `dirty` does not pay for the second git
+   * call. The refusal degrades to the count it can prove rather than to silence.
+   */
+  readonly dirt?: WorkspaceDirt;
   /**
    * The reason text of `git worktree lock`, when the tree is locked; absent when it is
    * not. A lock means "a run is living here" (see `lockReason`), and it is a FACT about
@@ -238,11 +290,56 @@ export const workspaceRoleOf = (input: {
 };
 
 /**
+ * THE REFUSAL THAT CAN BE ACTED ON WITHOUT GOING TO THE BOX (thread 099) — the second
+ * half of "a door that stays silent is worse than none" (role card, discipline 4), and
+ * the half this door was missing: it named the fault correctly and left the reader with
+ * "read that tree, then commit or discard by hand" — not one command, not one file name.
+ *
+ * WHAT IT COST, MEASURED. 2026-09-03, consumer contour: one edit of `claude-review.yml`
+ * left by a cut-off session held `dev-core` out of the circuit for sixteen minutes with
+ * five threads waiting — and the sixteen minutes were not the reading, they were a human
+ * finding out WHAT was there and inventing the gestures that clear it.
+ *
+ * THREE THINGS, AND THE THIRD IS THE ONE NOBODY KNEW. What lies in the tree; the two
+ * repairs, spelled out as commands with this tree's own path in them; and that the tree
+ * holds the role on EVERY thread it has a turn on, not on this one — the daemon skips
+ * the role's every pair on the same fact, and the journal was the only place that said
+ * so (`dev-core×124`, `×128`, `×130` in one tick).
+ *
+ * IT PROPOSES AND NEVER PERFORMS. Whether the circuit may park a role's uncommitted work
+ * by itself is john's open question in that thread; until it is answered both gestures
+ * belong to a human, and the door's job is to make them one paste each.
+ */
+export const describeDirtyWorkspaceRepair = (input: {
+  readonly role: string;
+  readonly path: string;
+  /** The thread this launch was for — the branch name and the message are named after it. */
+  readonly thread?: string;
+  readonly dirt?: WorkspaceDirt;
+}): string => {
+  const branch = `${input.role}/${input.thread ?? "wip"}`;
+  const message = `wip(${input.thread ?? "wip"}): what the interrupted run left`;
+  const lies =
+    input.dirt === undefined
+      ? `What lies there did not read; ask the tree: git -C ${input.path} status --porcelain`
+      : `What lies there: ${describeWorkspaceDirt(input.dirt)}`;
+  return [
+    lies,
+    `Until it is clean '${input.role}' is skipped on EVERY thread it holds a turn on, not only this one — the workspace belongs to the role, not to the thread`,
+    `Read it, then either KEEP it — git -C ${input.path} checkout -b ${branch} && git -C ${input.path} add -A && git -C ${input.path} commit -m '${message}' && git -C ${input.path} push -u origin ${branch} — or PARK it: git -C ${input.path} stash push -u -m '${message}'. Either one leaves the tree clean and the role starts on the next tick`,
+  ].join(". ");
+};
+
+/**
  * The decision, from the facts and from whether this run is a continuation. Pure, so
  * that the one branch that destroys work if it is wrong (`rebase` over a dirty tree)
  * is decided by something a test can hold.
  */
 export const planWorkspace = (input: {
+  /** The role whose tree this is — it names the branch a human is offered for the dirt. */
+  readonly role: string;
+  /** The workspace itself, so that every command in a refusal is a paste and not a template. */
+  readonly path: string;
   readonly facts: WorkspaceFacts;
   /** The commit the base branch resolves to right now. */
   readonly base: string;
@@ -300,12 +397,18 @@ export const planWorkspace = (input: {
         }),
       };
     }
+    const repair = describeDirtyWorkspaceRepair({
+      role: input.role,
+      path: input.path,
+      ...(input.thread === undefined ? {} : { thread: input.thread }),
+      ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
+    });
     return {
       action: "refuse",
       reason:
         previousReason === undefined
-          ? "the workspace has uncommitted changes and no finished run of this pair to attribute them to — they may be a human's, and the circuit does not park work whose owner it does not know. Commit, stash or discard them by hand"
-          : `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}') — that is a failure to finish, not the leftovers of a break: a session that passes the turn on leaves its tree clean. Read them before anything else, then commit or discard them by hand`,
+          ? `the workspace has uncommitted changes and no finished run of this pair to attribute them to — they may be a human's, and the circuit does not park work whose owner it does not know. ${repair}`
+          : `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}') — that is a failure to finish, not the leftovers of a break: a session that passes the turn on leaves its tree clean. ${repair}`,
     };
   }
   return facts.head === base ? { action: "ready" } : { action: "rebase" };
@@ -365,7 +468,13 @@ export const workspaceVerdict = (input: {
     };
   }
   const where = input.facts.branch === "HEAD" ? "detached" : `on '${input.facts.branch}'`;
-  const dirt = input.facts.dirty === true ? ", has unsaved changes" : "";
+  // NAMED HERE TOO, AND NOT ONLY IN THE REFUSAL (thread 099). Preflight is the surface a
+  // human reads BEFORE a tick rather than after a skip, and "has unsaved changes" without
+  // the paths is the same "go and look" the refusal has stopped saying.
+  const dirt =
+    input.facts.dirty === true
+      ? `, has unsaved changes: ${input.facts.dirt === undefined ? "not read" : describeWorkspaceDirt(input.facts.dirt)}`
+      : "";
   if (input.facts.locked !== undefined) {
     // A LOCK IS SHOWN, NEVER CLEARED (john, 2026-07-25 22:20). A live run and a lock
     // left behind by a killed one look identical on disk, so the line says which of the
