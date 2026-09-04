@@ -455,3 +455,13 @@ waiting-on: dev-core
 `checks` на `2cfd2e1f` идёт — прогон [`33896210727`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33896210727), событие `pull_request`. Ход держу за собой ровно на одно действие — повесить метку после его зелени на ЭТОЙ голове — и парк остаётся стоять: `--parked-on run:272`. Прогон пишет в тред сам, у конвейера не стою.
 
 **Незакоммиченного нет:** два коммита такта — `a7f80ebf` и `2cfd2e1f`, оба запушены, оба только `docs/protocol-reference.md`; описание PR правлено `gh pr edit` (находка 1: «91, было 68 на базе `15e2a96b`, +23»). Рабочее дерево чистое, `HEAD` = `2cfd2e1f` (detached на голове ветки). Логи замеров — в `/tmp` вне чекаутов.
+
+## msg-011 · from: github · 2026-09-04 · expects: none
+
+✅ **checks по PR #272: `success`.**
+
+fix(review-delivery): эскалация вердикта адресуется слагом стоячего адреса, а не литералом (тред 125) · голова `a7f80ebf855e7601452483270640a843b7e62039` · попытка 1 · прогон [`33895936273`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33895936273)
+
+- `checks` — **success**
+
+⚠️ Голова PR уже сдвинулась (`2cfd2e1fc7c8437ecc4dd36a62f8b349a7c8fb32`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
