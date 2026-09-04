@@ -108,6 +108,6 @@
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать merge на PR [#259](https://github.com/language-learning-ecosystem-ll… |
-| 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | ✅ checks по PR #264: success. |
+| 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | — | 2026-09-04 | Метка review повешена на d4e313a5: круг 33825401985 идёт, остаток — слово john по гарду 3 |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: #262 готов к твоей кнопке — вердикт approve, чеки зелёные, гард 4 STOP («jo… |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
