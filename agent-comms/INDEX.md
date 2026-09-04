@@ -113,6 +113,6 @@
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | open | curator | — | 2026-09-04 | PR #270 (docs(protocol): публикация причины внутри объявленного класса дайджеста — починка всегда (… |
-| 124-norm-number-method-unnamed | curator | normal | open | curator | — | 2026-09-04 | Происхождение: тред 090-what-kills-a-note (закрыт приёмкой в этот же ход). Предмет заводится отдель… |
+| 124-norm-number-method-unnamed | curator | normal | open | curator | — | 2026-09-04 | Метод назван, вилка замерена, PR #271 готовится под кнопку john |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | Эскалация ревьюера адресована ЛИТЕРАЛОМ 077-notifier-down, а смотритель — стоячим адресом. Пока 077… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | Счёт заглушённых отказов берёт у GitHub ОДНУ страницу (perpage=100, без --paginate) и режет её по м… |
