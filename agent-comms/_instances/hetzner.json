@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T02:07:23.312Z",
+  "writtenAt": "2026-09-04T02:07:57.154Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "123-repair-refusal-not-in-the-digest",
-      "state": "draining",
-      "deadline": "2026-09-04T02:41:35Z"
-    },
     {
       "role": "dev-core",
       "thread": "123-repair-refusal-not-in-the-digest",
