@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-03T23:59:13.093Z",
+  "writtenAt": "2026-09-04T00:00:17.511Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "062-contour-boundary",
       "state": "running",
       "deadline": "2026-09-04T00:59:10Z"
-    },
-    {
-      "role": "curator",
-      "thread": "121-reviewer-md-lacks-the-class",
-      "state": "running",
-      "deadline": "2026-09-04T00:37:42Z"
     }
   ]
 }
