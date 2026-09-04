@@ -55,6 +55,29 @@ check "парк на человеке вычитан из отказа" "john" \
 check "отказ не про парк — значения нет" "" "$(park_value_of "new-message: --waiting-on 'nobody' is not a role")"
 check "пустой текст — значения нет" "" "$(park_value_of "")"
 
+# ВТОРАЯ ФОРМА ОТКАЗА — та, которой дверь отвечает СЕНТИНЕЛУ `park_probe` (тред 127).
+# Отказ про молчание (выше) адресован ПОДНЯТОЙ СЕССИИ, и после #265 `reviewer-pr` его не
+# получает вовсе — значит сегодняшняя дорога чтения парка идёт через эту форму, и она
+# обязана быть измерена дословно, а не по памяти. Строки сняты с живой двери на чистом
+# `main` 80908d3e (`--park-lifted probe:no-such-park` в сухом прогоне).
+check "парк на человеке вычитан из отказа про сентинел" "john" \
+  "$(park_value_of "agent-protocol: --park-lifted 'probe:no-such-park' — the park standing on '904-фикстура' is 'john' (a decision of john's, since 2026-09-03T00:10:00Z). Name the park you are ending, or re-read the thread: a lift declared about another park says nothing about this one")"
+check "СВОЙ круг вычитан из отказа про сентинел" "run:225" \
+  "$(park_value_of "agent-protocol: --park-lifted 'probe:no-such-park' — the park standing on '902-фикстура' is 'run:225' (the round running on PR #225, since 2026-09-03T00:10:00Z). Name the park you are ending, or re-read the thread: a lift declared about another park says nothing about this one")"
+check "ЧУЖОЙ merge вычитан из отказа про сентинел" "pr:191" \
+  "$(park_value_of "agent-protocol: --park-lifted 'probe:no-such-park' — the park standing on '906-фикстура' is 'pr:191' (the merge of PR #191, since 2026-09-03T00:10:00Z). Name the park you are ending, or re-read the thread: a lift declared about another park says nothing about this one")"
+# САМ СЕНТИНЕЛ ЗНАЧЕНИЕМ ПАРКА НЕ СТАНОВИТСЯ: он стои́т в той же строке первым, и наивный
+# разбор «первые кавычки после --park-lifted» вернул бы его — то есть письмо ушло бы с
+# `--parked-on probe:no-such-park`, и дверь отказала бы записи. Якорь — `the park standing
+# on … is`, а не близость к флагу.
+check "сентинел не выдаётся за стоящий парк" "да" \
+  "$(case "$(park_value_of "agent-protocol: --park-lifted 'probe:no-such-park' — the park standing on '904-ф' is 'john' (a decision of john's, since 2026-09-03T00:10:00Z)")" in "$PARK_PROBE_SENTINEL") printf 'нет' ;; *) printf 'да' ;; esac)"
+# ПАРКА НЕТ — дверь на сентинел отвечает НОТОЙ и выходит нулём, то есть до разбора дело не
+# доходит вовсе; но если текст ноты всё же попадёт сюда, парка в нём нет и выдумывать его
+# нечего.
+check "нота «ничего не запарковано» парком не притворяется" "" \
+  "$(park_value_of "agent-protocol: --park-lifted 'probe:no-such-park': nothing is parked on '901-фикстура' any more — the park was lifted before this write (somebody wrote into the thread first). The message is sent as it is")"
+
 # --- 3. Шапка verdict.md ------------------------------------------------------
 
 VERDICT_FILE="$REVIEW_DELIVERY_DIR/verdict.md"
