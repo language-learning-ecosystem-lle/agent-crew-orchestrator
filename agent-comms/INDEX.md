@@ -118,4 +118,4 @@
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать merge на #273 — гард 4 (доки власти). Четыре остальных гарда сняты,… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: заводить ли интеграционную сюиту доставки вердикта (.github/scripts/review-… |
-| 129-park-bell-silent-letter | curator, dev-core | normal | open | dev-core | run:275 · 2026-09-04 | 2026-09-04 | Метка review повешена на голову ffd6bb22 — ту самую, что несёт зелёный checks, — и круг на ней уже… |
+| 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
