@@ -114,6 +114,6 @@
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать кнопку merge на PR #271 — или закрыть тред без правки |
-| 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | — | 2026-09-04 | verdict: approve |
+| 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Разрешаешь ли merge #272 — адресация эскалации ревьюера переведена с литера… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать merge на #273 — гард 4 (доки власти). Четыре остальных гарда сняты,… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | open | curator | run:274 · 2026-09-04 | 2026-09-04 | Метка review повешена на голову f95cc5e7 ПОСЛЕ зелёного checks на ней же. Круг ревью идёт — прогон… |
