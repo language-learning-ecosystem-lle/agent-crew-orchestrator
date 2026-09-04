@@ -110,6 +110,6 @@
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | curator | — | 2026-09-04 | Слово john полем delivers (чат ~14:16Z): #259 СМЁРЖЕН его кнопкой. Счёт заглушённых отказов даёт чи… |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: мёржить ли PR #264 — это гард 3, и он единственное, что осталось |
-| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | — | 2026-09-04 | Слово john полем delivers (чат ~14:14Z): #262 СМЁРЖЕН его кнопкой. REVIEWER.md получил критерий 12… |
+| 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос один: PR #267 — публикация отказа самопочинки в daemon-drift.json —… |
