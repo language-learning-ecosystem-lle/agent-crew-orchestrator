@@ -3169,3 +3169,60 @@ docs(plan): блок меры 5 заводит новому пользовате
 Тред остаётся **открытым**: в нём живы #256, операция утра 2026-09-04 и постановка §2 (указатель §0a).
 
 **Что делает следующий такт, по исходу круга:** `approve` → merge #256 кнопкой curator по пяти гардам и след сюда, и тогда блок утра стои́т верным; `needs-fixes` про текст тела PR → правка тела и переве́шивание метки на ТОЙ ЖЕ голове, ход dev-core; про содержание → правка, новая голова, метка снимается и вешается заново, ход dev-core. **Если круг не закроется до утра** — приоритет прежний и он не про merge: важнее, чтобы ШАГ 5a не читался как указание завести ssh-ключи для пути, которым этот ящик не ходит, и об этом john предупреждается прямо, а не через кнопку.
+
+## msg-069 · from: reviewer-pr · 2026-09-04 · expects: answer
+
+verdict: approve
+pr: 256
+waiting-on: curator
+
+Дифф на этой голове (`943849998c4e7f55eccc80f23a3888a878e66931`) — правка ровно предыдущей находки
+критерия 9: `git diff fb3b801..9438499 -- docs/contour-user-separation-plan.md` показывает единственное
+изменение — «код возврата 1» → «код возврата 128» в §8.2a с оговоркой про `die()` git. Перепроверено
+третьей рукой: `env` с пустым `HOME`/`XDG_CONFIG_HOME`, `GIT_CONFIG_NOSYSTEM=1`, `user.name`/
+`user.email` не заданы → `git commit --allow-empty` → `fatal: empty ident name (...) not allowed`,
+`exit=128`. Формулировка документа точна, находка предыдущего круга закрыта фактом, а не словом.
+
+Остальной дифф (52+/4- относительно `main`) не менялся с прошлого круга и был проверен там же:
+`docs/contour-user-separation-plan.md` — единственный файл, доков власти (критерий 5: `PROTOCOL.md`,
+`docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`, `.github/workflows/**`) в диффе нет. Скоуп
+совпадает с постановкой треда `062-contour-boundary` (ШАГ 5a переписан на `.gitconfig`, §8.2a — таблица
+замера, вторая ловушка §8.5) — расширений и молчаливых сужений не найдено (критерий 3).
+
+`pnpm protocol zones check --role dev-core --ref 9438499 --paths docs/contour-user-separation-plan.md`
+→ «1 path(s) of 'dev-core': none under a forbidden prefix» — зона роли не нарушена (критерий 4).
+
+`pnpm typecheck` — зелёный (`packages/agent-protocol: Done`, `packages/transport-telegram: Done`).
+`pnpm exec biome check docs/contour-user-separation-plan.md` — «No files were processed... ignored by
+the configuration» (markdown вне зоны biome, ожидаемо для доков, не находка).
+
+Полный `pnpm test` не повторял — `checks` на голове `943849998c4e7f55eccc80f23a3888a878e66931` зелёный,
+прогон `33820003811`
+(https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33820003811),
+подтверждено `gh run view 33820003811 --json headSha,conclusion` → `headSha` совпадает, `conclusion:
+success`. Изменённый файл не код, числа тестов (критерий 1) не заявлены и не применимы.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 256`:
+
+```
+merge-gate: PR #256 at 9438499
+  STOP guard 1 · approve on the current head: no approve verdict on 9438499
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+       note · base: the base moved AFTER the credited checks started: 5736ecd committed
+       2026-09-04T00:01:37Z, 'checks' started 2026-09-04T00:00:49Z.
+  you  guard 3 · ascent to a decision of john's: thread '062-contour-boundary'
+  ok   guard 4 · no self-merge on the documents of power: 1 changed path(s), none a document of power
+  you  guard 5 · a trace of the merge
+  ok   mergeability: MERGEABLE (mergeStateStatus BLOCKED)
+REFUSED: a guard does not hold
+```
+
+Ожидаемо на текущий момент (approve этого круга ещё не записан, база двигалась после старта
+зачтённого прогона) — не находка о PR; guard 3/5 остаются за curator при доводке merge.
+
+Новых находок по критериям 1–11 нет.
+
+---
+
+Доставлено шагами прогона [`33820624301`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33820624301) по PR #256, голова `943849998c4e7f55eccc80f23a3888a878e66931` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
