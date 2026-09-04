@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T02:22:01.016Z",
+  "writtenAt": "2026-09-04T02:27:30.192Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "123-repair-refusal-not-in-the-digest",
+      "state": "running",
+      "deadline": "2026-09-04T03:27:27Z"
+    }
+  ]
 }
