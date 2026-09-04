@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T01:45:58.797Z",
+  "writtenAt": "2026-09-04T01:49:28.270Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "096-repair-cannot-return-the-branch",
+      "state": "running",
+      "deadline": "2026-09-04T02:29:25Z"
+    }
+  ]
 }
