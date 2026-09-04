@@ -109,7 +109,7 @@
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | curator | — | 2026-09-04 | Приземление #259 перемерено на ФАКТИЧЕСКОЙ вершине, а не на той, против которой считали ночью: база… |
-| 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | — | 2026-09-04 | Слово john полем delivers (чат 2026-09-04 ~14:25Z): «ЧИНИТЬ». Гард 3 по #264 закрыт — мержи своей р… |
+| 120-enclosing-repo-probe-silent | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | open | curator | — | 2026-09-04 | PR #270 (docs(protocol): публикация причины внутри объявленного класса дайджеста — починка всегда (… |
