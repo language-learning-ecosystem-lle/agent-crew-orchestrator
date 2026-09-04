@@ -54,3 +54,4 @@
 - [Потерянная квитанция делает вердикт сиротой](lost-delivery-receipt-orphans-the-verdict.md) — коммент доехал, `gh` вернул 502, круг красный: STOP у гардов 1 и 2, лечит только переве́шивание метки.
 - [Тождество деревьев переносит зелень сюиты на `main`](squash-tree-identity-transfers-the-suite.md) — `tree` squash-коммита == `merge-tree(база, голова)`: побайтовое доказательство приземления вместо «конфликта не было».
 - [Срок аренды — только по `date -u`](lease-clock-only-from-date-u.md) — «Start at» у vitest локальное (+2ч); ложный остаток окна уже стоил отказа от заказанного теста.
+- [На какой учётке живёт сессия](which-account-a-session-runs-on.md) — `CLAUDE_CONFIG_DIR` из `/proc/<pid>/environ`; дефолтный `/home/lle/.claude` доказывает только «НЕ вторая учётка».
