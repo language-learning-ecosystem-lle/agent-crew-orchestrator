@@ -158,6 +158,14 @@ const homeContour = (options?: {
    * there is nothing to decide.
    */
   readonly current?: boolean;
+  /**
+   * THE FIELD SHAPE OF 2026-09-02 (thread 078 → 096): the tree is left ON A BRANCH THAT IS
+   * NOT THE REF'S, and that branch has an upstream of its own and is not behind it — so
+   * `git pull --ff-only` succeeds, moves nothing, and the drift against `origin/main`
+   * stands. It is the one fixture in which the repair's two commands both return zero and
+   * the box is not repaired at all.
+   */
+  readonly foreign?: boolean;
 }): { readonly repo: string; readonly cli: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-selfrestart-home-"));
   const origin = join(base, "origin.git");
@@ -191,7 +199,12 @@ const homeContour = (options?: {
   // The third shape: the HEAD is left ON the ref commit, so `codeAge` reads `match` and the
   // tick decides nothing — which is precisely the tick that has to clear a standoff.
   if (options?.current === true) git(repo, "checkout", "-q", "main");
-  else if (options?.pullable === true) git(repo, "reset", "--hard", "-q", loaded);
+  else if (options?.foreign === true) {
+    // A branch of somebody's own work, tracking its own upstream and level with it: the
+    // pull below is a real success that changes nothing.
+    git(repo, "checkout", "-q", "-b", "core/gate-checks-from-actions", loaded);
+    git(repo, "push", "-q", "-u", "origin", "core/gate-checks-from-actions");
+  } else if (options?.pullable === true) git(repo, "reset", "--hard", "-q", loaded);
   else git(repo, "checkout", "-q", loaded);
   return { repo, cli: join(repo, "src", "cli.ts") };
 };
@@ -563,6 +576,46 @@ describe("a supervised daemon that finds itself behind its ref", () => {
         readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
       );
       expect(memory?.attempts).toBe(1);
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  it(
+    "does NOT leave when the pull succeeded on a foreign branch and moved nothing",
+    () => {
+      // THE FIELD CASE OF THREAD 078, RAISED AS A DAEMON (096). Both commands of the repair
+      // return zero here — the branch has an upstream and is level with it — and until this
+      // test existed the box read that as healed: it left with code 75 and the supervisor
+      // raised a fresh process over the very same commit, at restart speed.
+      const home = homeContour({ foreign: true });
+      const stoodOn = git(home.repo, "rev-parse", "HEAD").trim();
+      expect(stoodOn).not.toBe(git(home.repo, "rev-parse", "origin/main").trim());
+
+      const ran = tickRun(home.cli, home.repo, { INVOCATION_ID: "test-invocation" });
+
+      // The premise: the pull itself was a success. Without this line the case could pass
+      // through the OTHER refusal (a failed step) and prove nothing about this one.
+      expect(ran.said).toContain("git pull --ff-only — ok");
+      expect(ran.said).not.toContain("git pull --ff-only FAILED");
+
+      // The refusal, with the fact nobody could see before it: which branch the pull ran on.
+      expect(ran.said).toContain("THE REPAIR MOVED NOTHING");
+      expect(ran.said).toContain("is on 'core/gate-checks-from-actions'");
+      expect(ran.said).toContain("not the 'main' of 'origin/main'");
+      expect(ran.said).toContain("Put it back: git -C");
+      expect(ran.said).toContain("NOT leaving");
+
+      // And the two things a false "healed" costs: the exit a supervisor answers, and the
+      // installer running over a tree that never moved.
+      expect(ran.status).not.toBe(SELF_RESTART_EXIT_CODE);
+      expect(ran.said).not.toContain(`leaving with code ${SELF_RESTART_EXIT_CODE}`);
+      expect(ran.said).not.toContain("pnpm install");
+      // The tree is where it was: a repair that refuses touches nothing at all — the branch
+      // of a checkout is the operator's hand and no part of this process (thread 078).
+      expect(git(home.repo, "rev-parse", "HEAD").trim()).toBe(stoodOn);
+      expect(git(home.repo, "rev-parse", "--abbrev-ref", "HEAD").trim()).toBe(
+        "core/gate-checks-from-actions",
+      );
     },
     2 * HANG_CEILING_MS,
   );

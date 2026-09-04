@@ -443,7 +443,9 @@ import {
 } from "./orchestrator/scope.js";
 import {
   attemptsFor,
+  checkoutBranch,
   describeInstallSkipped,
+  describeRepairStood,
   describeSelfRestartBlock,
   describeSelfRestartForm,
   describeSelfRestartGo,
@@ -462,6 +464,7 @@ import {
   installNeeded,
   parseSelfRestartMemory,
   renderSelfRestartMemory,
+  repairMoveVerdict,
   SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
   type SelfRestartOutcome,
@@ -903,8 +906,21 @@ const throwVersionVerdicts = (): void => {
  * not drift apart (thread 040): the drift block of a tick (thread 003) and a version
  * verdict met anywhere in the process. It is `restart --pull` minus the restart — the
  * supervisor is asked for the fresh process by an exit code, not by a child.
+ *
+ * IT ANSWERS WHETHER LEAVING IS WORTH ANYTHING, and since thread 096 it answers it for
+ * real: the pull is judged by what it DID to the tree, not by its exit code. The rule is
+ * {@link repairMoveVerdict} and the three impure reads are here — `HEAD` before, `HEAD`
+ * after, and the branch the pull ran on, which is the fact the old answer had no way to
+ * see. `ref` is what the caller judges by; it is what the expected branch is taken from,
+ * so no literal `main` lives in the repair.
  */
-const repairCheckoutInPlace = (checkout: string): boolean => {
+const repairCheckoutInPlace = (input: {
+  readonly checkout: string;
+  readonly ref: string;
+  /** The SHA this process's modules were loaded at, when it is known. */
+  readonly loaded?: string;
+}): boolean => {
+  const checkout = input.checkout;
   const head = (): string =>
     execFileSync("git", ["-C", checkout, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const step = (what: string, run: readonly [string, readonly string[]]): boolean => {
@@ -937,9 +953,32 @@ const repairCheckoutInPlace = (checkout: string): boolean => {
     return false;
   }
   if (!step("git pull --ff-only", ["git", ["-C", checkout, "pull", "--ff-only"]])) return false;
+  let after: string;
+  try {
+    after = head();
+  } catch (error) {
+    err(
+      `agent-protocol: daemon — ${describeSelfRestartStepFailed("git rev-parse HEAD", (error as Error).message)}`,
+    );
+    return false;
+  }
+  // THE PULL SUCCEEDING IS NOT THE REPAIR SUCCEEDING (thread 096). On a branch that is not
+  // the ref's, `--ff-only` returns zero, moves nothing, and used to be reported as a cure.
+  const move = repairMoveVerdict({
+    checkout,
+    ref: input.ref,
+    before,
+    after,
+    branch: checkoutBranch(checkout),
+    ...(input.loaded === undefined ? {} : { loaded: input.loaded }),
+  });
+  if (move.kind === "stood") {
+    err(`agent-protocol: daemon — ${describeRepairStood(move.why)}`);
+    return false;
+  }
   let changed: readonly string[] = [];
   try {
-    changed = execFileSync("git", ["-C", checkout, "diff", "--name-only", before, "HEAD"], {
+    changed = execFileSync("git", ["-C", checkout, "diff", "--name-only", before, after], {
       encoding: "utf8",
     })
       .split("\n")
@@ -1059,7 +1098,16 @@ const repairOnVersionVerdict = (argv: readonly string[], error: ProtocolVersionE
   err(`agent-protocol: daemon — ${describeVersionRepair(verdict.target, checkout)}`);
   // A REPAIR THAT FAILED IS THE STAND, not a handback: leaving for a supervisor over code
   // that did not move is the crash loop at restart speed this whole thread is about.
-  if (!repairCheckoutInPlace(checkout)) {
+  if (
+    !repairCheckoutInPlace({
+      checkout,
+      ref,
+      // The vintage is read a dozen lines above, in THIS tick: on the version path the
+      // loaded SHA is the tree's own HEAD, so the second success condition of the verdict
+      // cannot fire here — it belongs to the daemon, whose vintage is from its startup.
+      ...(isVintage(read) ? { loaded: read.sha } : {}),
+    })
+  ) {
     err(
       `agent-protocol: daemon — ${describeVersionStand("the repair itself failed (its phases are above)", checkout)}`,
     );
@@ -11647,8 +11695,18 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
    * by THIS process, because under a supervisor there is no child that could outlive it.
    * It answers whether the tree actually moved: only then is leaving worth anything.
    */
-  /** The daemon's name for it — the body is module-level, shared with the version path. */
-  const repairInPlace = (checkout: string): boolean => repairCheckoutInPlace(checkout);
+  /**
+   * The daemon's name for it — the body is module-level, shared with the version path.
+   * The drift carries both facts the verdict needs: the ref this box judges by, and the
+   * SHA its modules were loaded at (read once, at startup — so a tree somebody pulled by
+   * hand under a running daemon still makes a replacement worth raising).
+   */
+  const repairInPlace = (drift: CodeDrift): boolean =>
+    repairCheckoutInPlace({
+      checkout: drift.vintage.checkout,
+      ref: drift.ref,
+      loaded: drift.vintage.sha,
+    });
 
   const selfRestart = (drift: CodeDrift): SelfRestartOutcome => {
     const memory = existsSync(paths.daemonSelfRestart)
@@ -11729,7 +11787,7 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // leaving with a code the supervisor answers.
     const form = selfRestartForm(process.env);
     err(`agent-protocol: daemon — ${describeSelfRestartForm(form)}`);
-    if (form === "supervised") return repairInPlace(drift.vintage.checkout) ? "handback" : "stood";
+    if (form === "supervised") return repairInPlace(drift) ? "handback" : "stood";
     try {
       // The child speaks into the daemon's own log rather than into 'ignore', and the
       // wiring lives in `spawnSelfRestart` so that a test can drive exactly the case that

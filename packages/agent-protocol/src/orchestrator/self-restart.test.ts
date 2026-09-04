@@ -16,6 +16,7 @@ import { daemonArgvFor } from "./restart.js";
 import {
   attemptsFor,
   describeInstallSkipped,
+  describeRepairStood,
   describeSelfRestartBlock,
   describeSelfRestartForm,
   describeSelfRestartHandback,
@@ -25,10 +26,12 @@ import {
   describeVersionRepair,
   describeVersionStand,
   describeVersionVerdictMet,
+  expectedBranchOfRef,
   INSTALL_INPUTS,
   installNeeded,
   parseSelfRestartMemory,
   renderSelfRestartMemory,
+  repairMoveVerdict,
   SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
   type SelfRestartBlock,
@@ -38,6 +41,7 @@ import {
   spawnSelfRestart,
   versionRepairVerdict,
 } from "./self-restart.js";
+import { describePutItBack } from "./workspace.js";
 
 const CLI = fileURLToPath(new URL("../cli.ts", import.meta.url));
 const TSX = fileURLToPath(new URL("../../../../node_modules/.bin/tsx", import.meta.url));
@@ -658,5 +662,141 @@ describe("what a daemon does with a config newer than its build", () => {
     expect(stand).toContain("start limit stays intact");
     expect(stand).toContain("cd '/srv/circuit'");
     expect(stand).toContain("systemctl --user restart");
+  });
+});
+
+/**
+ * THE REPAIR THAT REPAIRED NOTHING AND SAID IT HAD (thread 096).
+ *
+ * The field case is thread 078: the main checkout stood on `core/gate-checks-from-actions`
+ * for 5h54m with eleven commits of `origin/main` missing from it, and the box could not
+ * heal, because the only repair it has is `git pull --ff-only` ON THE CURRENT BRANCH — on
+ * a foreign one that returns zero, moves nothing, and used to be reported as a cure. Both
+ * readers of that answer act on it: the daemon leaves for its supervisor and the version
+ * path exits 75, so a lie here costs a whole restart cycle over exactly the same code.
+ *
+ * The cases below are the predicate alone — no daemon, no clock, no checkout — which is
+ * the reason it is a function and not an `if` inside the tick.
+ */
+describe("whether the repair moved anything", () => {
+  const before = "a".repeat(40);
+  const after = "b".repeat(40);
+
+  it("is a success when HEAD moved — whatever branch that happened on", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before,
+      after,
+      branch: { kind: "branch", name: "main" },
+      loaded: before,
+    });
+    expect(move.kind).toBe("moved");
+    if (move.kind !== "moved") return;
+    expect(move.to).toBe(after);
+  });
+
+  /**
+   * THE CASE THE WHOLE THREAD IS ABOUT. The refusal has to carry the fact nobody could
+   * see: the pull was successful, and it was successful ON THE WRONG BRANCH.
+   */
+  it("stands on a foreign branch, naming both branches, the checkout and the pull's success", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before,
+      after: before,
+      branch: { kind: "branch", name: "core/gate-checks-from-actions" },
+      loaded: before,
+    });
+    expect(move.kind).toBe("stood");
+    if (move.kind !== "stood") return;
+    expect(move.why).toContain("'core/gate-checks-from-actions'");
+    expect(move.why).toContain("'main'");
+    expect(move.why).toContain("/srv/circuit");
+    expect(move.why).toContain("SUCCEEDED and moved nothing");
+    // The command an operator types is the door's own text, not a second copy of it:
+    // the branch of the main checkout is moved by a hand and never by this process.
+    expect(move.why).toContain(describePutItBack({ repo: "/srv/circuit", expectedBranch: "main" }));
+  });
+
+  it("names a detached tree for what it is rather than as a branch called HEAD", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before,
+      after: before,
+      branch: { kind: "branch", name: "HEAD" },
+    });
+    expect(move.kind).toBe("stood");
+    if (move.kind !== "stood") return;
+    expect(move.why).toContain("is DETACHED (on no branch)");
+    expect(move.why).not.toContain("is on 'HEAD'");
+  });
+
+  it("stands on the RIGHT branch too — and says why a replacement would change nothing", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before,
+      after: before,
+      branch: { kind: "branch", name: "main" },
+      loaded: before,
+    });
+    expect(move.kind).toBe("stood");
+    if (move.kind !== "stood") return;
+    expect(move.why).toContain("the branch of 'origin/main'");
+    expect(move.why).toContain("a replacement would run exactly this code");
+  });
+
+  /**
+   * THE SECOND SUCCESS CONDITION, and it is what keeps this repair from REGRESSING: a
+   * daemon reads its vintage once, at start, so a tree the operator pulled by hand under
+   * a running box has nowhere left to move — and a fresh process still loads code this
+   * one is not running. "Moved nothing" and "there is nothing newer here" are different
+   * facts, and only the second one is a reason to stand.
+   */
+  it("is a success when the tree already carries code this process is not running", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before: after,
+      after,
+      branch: { kind: "branch", name: "main" },
+      loaded: before,
+    });
+    expect(move.kind).toBe("moved");
+  });
+
+  it("stands when the branch could not be read — an unmeasured branch is not 'some branch'", () => {
+    const move = repairMoveVerdict({
+      checkout: "/srv/circuit",
+      ref: "origin/main",
+      before,
+      after: before,
+      branch: { kind: "unreadable", problem: "not a git repository" },
+    });
+    expect(move.kind).toBe("stood");
+    if (move.kind !== "stood") return;
+    expect(move.why).toContain("not a git repository");
+  });
+
+  /** The expected branch comes from the ref this box judges by — never a literal `main`. */
+  it("takes the expected branch from the ref, in every spelling a caller passes", () => {
+    expect(expectedBranchOfRef("origin/main")).toBe("main");
+    expect(expectedBranchOfRef("refs/heads/main")).toBe("main");
+    expect(expectedBranchOfRef("refs/remotes/origin/main")).toBe("main");
+    expect(expectedBranchOfRef("main")).toBe("main");
+    // A ref that is no branch is left alone: it then names itself in the refusal, which
+    // is legible, where a guessed branch name would not be.
+    expect(expectedBranchOfRef("v0.2.8")).toBe("v0.2.8");
+  });
+
+  /** The line an operator reads, and the ending it shares with a failed step. */
+  it("says the repair moved nothing and that this daemon is NOT leaving on it", () => {
+    const said = describeRepairStood("'git pull --ff-only' in '/srv/circuit' SUCCEEDED");
+    expect(said).toContain("THE REPAIR MOVED NOTHING");
+    expect(said).toContain("NOT leaving");
+    expect(said).toContain("restart loop");
   });
 });

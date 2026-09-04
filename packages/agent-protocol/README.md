@@ -5344,7 +5344,22 @@ before either form acts:
 - **and a failed repair cancels the exit.** A pull or install that fails leaves the daemon
   UP, behind, and loud — the attempt is already counted, so the ceiling closes it after two.
   Leaving there would hand the supervisor a process that comes straight back to the same
-  drift, at restart speed, until systemd's start limit puts the unit in `failed`.
+  drift, at restart speed, until systemd's start limit puts the unit in `failed`;
+- **and a repair that MOVED NOTHING is a failed repair** (thread 096). `git pull --ff-only`
+  runs on the CURRENT branch of the checkout and is never told which branch that ought to
+  be, so on a tree standing on somebody else's branch it returns zero, changes nothing, and
+  used to be reported as a cure — the field state of 2026-09-02, where the main checkout
+  stood on a foreign branch for 5h54m with eleven commits of `origin/main` missing from it.
+  The success of the repair is now the tree: `HEAD` after the pull differs from `HEAD`
+  before it, or the tree already carries code this process is not running (the daemon reads
+  its own vintage once, at start, so a checkout the operator pulled by hand under a live box
+  still makes a replacement worth raising). Anything else is a refusal that NAMES the
+  checkout, the branch the tree is on (or that it is DETACHED), the branch the ref means,
+  and the fact that the pull itself succeeded — and it ends in the same `Put it back: git
+  -C … checkout … && git -C … pull --ff-only` the preflight door prints, because the branch
+  of a checkout is moved by the operator and by nothing in this process (`PROTOCOL.md`,
+  «Главный чекаут трогает только оператор»). The expected branch is taken from the `--ref`
+  this box judges by; there is no literal `main` in the repair.
 
 Two things follow for the operator, and both are said by the commands that touch them.
 `Restart=on-failure` is now **load-bearing**: a unit edited to `Restart=no` turns the repair
