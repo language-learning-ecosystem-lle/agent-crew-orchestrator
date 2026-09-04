@@ -351,8 +351,10 @@ sudo visudo -f /etc/sudoers.d/aco-devops-spawn
 
 Последняя строка — не вывод: поведение git при пустом доме снято командой (одноразовый репозиторий
 в `mktemp -d`, живого ящика не касается), `HOME=<пусто> XDG_CONFIG_HOME=<пусто> GIT_CONFIG_NOSYSTEM=1
-git commit` → `Author identity unknown / *** Please tell me who you are.`, код возврата 1. Где лежат
-сами ключи конфига — тоже замер (`git config --list --show-origin --show-scope`).
+git commit` → `Author identity unknown / *** Please tell me who you are.`, **код возврата 128** —
+это `die()` git, а не единица (перемерено дважды: git 2.43.0 на этом ящике и git 2.55.0 у ревьюера,
+исход один). Где лежат сами ключи конфига — тоже замер (`git config --list --show-origin
+--show-scope`).
 
 **Поэтому шаг 5a кладёт новому пользователю `.gitconfig`, а не ssh-ключ.** Прежняя формулировка
 шага («без ключей шаг „push“ приёмки красный») фактом не подтверждается: push красный будет, но по
