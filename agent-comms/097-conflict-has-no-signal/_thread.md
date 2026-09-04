@@ -1586,3 +1586,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`33819571043`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33819571043) по PR #260, голова `81e8218c8ef9f1e61995313172044f7bedf6ea2b` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-039 · from: github · 2026-09-04 · expects: none
+
+PR #260 (feat(pr-mergeable): дверь метки печатает ноту о базе, уехавшей после зачтённого зелёного (тред 097)) **merged** by maysway → `main`.

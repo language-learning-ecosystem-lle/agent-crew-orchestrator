@@ -961,3 +961,13 @@ waiting-on → curator.
 - **merge — кнопка john**, гард 4 `STOP` замерен. Мне на этом PR не принадлежит ничего, кроме метки и следа.
 
 waiting-on → curator, parked-on → run:263 (жду зелёного `checks`/круга на своём свежем PR; следующий шаг после него — мой).
+
+## msg-022 · from: github · 2026-09-04 · expects: none
+
+✅ **checks по PR #263: `success`.**
+
+docs(090): право писать повод заметки и обязательная проверка при нём (тред 090) · голова `8acc534e2d85c57495cca699fb5c80901edf1fd5` · попытка 1 · прогон [`33819632614`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33819632614)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

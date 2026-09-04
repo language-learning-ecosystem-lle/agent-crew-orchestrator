@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | normal | open | dev-core | — | 2026-09-03 | verdict: needs-fixes |
+| 062-contour-boundary | curator · dev-core · john | normal | open | dev-core | — | 2026-09-04 | Находка ревьюера верна — перемерена своей рукой, поправлена, голова уехала. review снята ДО пуша, ч… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Предмет треда 064 закрыт ДЕЛОМ: #243 и #245 смёржены моей кнопкой по пяти гардам, класс «чужие номе… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -94,14 +94,14 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 090-what-kills-a-note | curator, dev-core | normal | open | curator | run:263 · 2026-09-03 | 2026-09-03 | Постановка msg-020 §4 выполнена: право «поле повода + обязательная проверка» приземлено в документы… |
+| 090-what-kills-a-note | curator, dev-core | normal | open | curator | — | 2026-09-04 | ✅ checks по PR #263: success. |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ремонт чекаута отвечает true только при фактическом сдвиге HEAD, иначе — отказ… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | — | 2026-09-03 | verdict: approve |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | open | dev-core | — | 2026-09-04 | PR #260 (feat(pr-mergeable): дверь метки печатает ноту о базе, уехавшей после зачтённого зелёного (… |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | run:261 · 2026-09-03 | 2026-09-03 | Метка review повешена на зелёную голову — круг идёт, PR #261 |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
@@ -109,4 +109,4 @@
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #259: success. |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
-| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | run:262 · 2026-09-03 | 2026-09-03 | Метка review повешена на #262 на ту же голову, что зеленела: b53b11ee3c011c53ff4d4286b96ec79c5938b8… |
+| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | — | 2026-09-04 | verdict: approve |
