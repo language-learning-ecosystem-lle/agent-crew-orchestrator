@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T11:41:06.961Z",
+  "writtenAt": "2026-09-04T11:46:16.417Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "100-account-reshuffle",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-04T12:21:03Z"
     }
   ]
