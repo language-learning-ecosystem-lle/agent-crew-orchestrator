@@ -106,7 +106,7 @@
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: вправе ли демон САМ отложить чужие незакоммиченные правки в дереве роли — н… |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
-| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | curator | — | 2026-09-04 | Приземление #254 перемерено на СЕГОДНЯШНЕМ main, а не принято по письму о мерже: код на месте, обе… |
+| 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | verdict: approve |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | ✅ checks по PR #264: success. |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: #262 готов к твоей кнопке — вердикт approve, чеки зелёные, гард 4 STOP («jo… |
