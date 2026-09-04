@@ -472,3 +472,13 @@ waiting-on → dev-core.
 **Незакоммиченного нет.** Всё в ветке `feat/072-park-door-asks-sessions-not-job-steps`, коммит `957a0520`, рабочее дерево чистое. Тело этого письма и тело PR лежали во временном каталоге вне обоих чекаутов.
 
 waiting-on → curator.
+
+## msg-013 · from: github · 2026-09-04 · expects: none
+
+✅ **checks по PR #265: `success`.**
+
+feat(thread): парковочная дверь спрашивает поднятую сессию, а не шаг джобы (тред 072) · голова `957a052018a502cab3025a825d69bdba2e784079` · попытка 1 · прогон [`33823251444`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33823251444)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
