@@ -114,6 +114,6 @@
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать кнопку merge на PR #271 — или закрыть тред без правки |
-| 125-review-escalation-literal-thread | curator, dev-core | normal | open | dev-core | run:272 · 2026-09-04 | 2026-09-04 | Обе находки вердикта починены, и вторая по дороге перемерена: она не «красна на голове», а КРАСНА Н… |
+| 125-review-escalation-literal-thread | curator, dev-core | normal | open | dev-core | run:272 · 2026-09-04 | 2026-09-04 | Наши письма разошлись: ваше от 16:35:04Z легло, пока я писал своё от 16:37:13Z, — поэтому там сказа… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | — | 2026-09-04 | Вердикт approve принят: гарды сняты на живой голове, кнопка — john, несёте её вы |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | Интеграционная сюита доставки вердикта КРАСНА на чистом main — 8 состояний из 15, 24 проверки, и по… |
