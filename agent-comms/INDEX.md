@@ -94,7 +94,7 @@
 | 087-hold-refusal-hides-short-form | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 088-review-verdict-delivery-by-steps | curator, dev-core | high | closed | — | — | 2026-09-03 | — |
 | 089-refusal-prints-global-usage | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 090-what-kills-a-note | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется рука john: #263 готов под твою кнопку — approve на голове 8acc534e, гарды 1 и 2 ok, гард… |
+| 090-what-kills-a-note | curator, dev-core | normal | open | curator | — | 2026-09-04 | Слово john полем delivers (чат ~14:14Z): #263 СМЁРЖЕН его кнопкой. Право писать повод заметки — с о… |
 | 091-mail-door-silent-on-feed-move | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 092-who-announces-the-tag | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
@@ -108,8 +108,8 @@
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 119-mute-count-blames-github | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать merge на PR [#259](https://github.com/language-learning-ecosystem-ll… |
+| 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | PR #259 (fix(notifier): счёт заглушённых отказов даёт число, а отказ чтения не винит GitHub (тред 1… |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: мёржить ли PR #264 — это гард 3, и он единственное, что осталось |
-| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: #262 готов к твоей кнопке — вердикт approve, чеки зелёные, гард 4 STOP («jo… |
+| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | — | 2026-09-04 | Слово john полем delivers (чат ~14:14Z): #262 СМЁРЖЕН его кнопкой. REVIEWER.md получил критерий 12… |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос один: PR #267 — публикация отказа самопочинки в daemon-drift.json —… |
