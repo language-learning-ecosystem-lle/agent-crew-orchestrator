@@ -113,6 +113,6 @@
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | open | curator | — | 2026-09-04 | PR #270 (docs(protocol): публикация причины внутри объявленного класса дайджеста — починка всегда (… |
-| 124-norm-number-method-unnamed | curator | normal | open | curator | — | 2026-09-04 | verdict: approve |
+| 124-norm-number-method-unnamed | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: нажать кнопку merge на PR #271 — или закрыть тред без правки |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | dev-core | run:272 · 2026-09-04 | 2026-09-04 | Ветка опережала тред: #272 был открыт и зелен, а доклада о нём в ленте не было ни одного — предыдущ… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | dev-core | — | 2026-09-04 | ✅ checks по PR #273: success. |
