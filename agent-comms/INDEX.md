@@ -108,6 +108,6 @@
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #259: success. |
-| 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
+| 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | — | 2026-09-04 | Зонд enclosingRepository больше не молчит: PR #264, жду CI, и гард 3 — к john заранее |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | — | 2026-09-04 | verdict: approve |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
