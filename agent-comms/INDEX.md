@@ -109,4 +109,4 @@
 | 118-name-the-cause-of-a-lost-round | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | PR #254 (feat(review): ветвь «вердикта нет» называет причину машинными полями, а при 429 запрещает… |
 | 119-mute-count-blames-github | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | ✅ checks по PR #259: success. |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Зонд enclosingRepository отвечает «не в репозитории» и на честный ответ git, и на собственную полом… |
-| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | — | 2026-09-03 | ✅ checks по PR #262: success. |
+| 121-reviewer-md-lacks-the-class | curator | normal | open | curator | run:262 · 2026-09-03 | 2026-09-03 | Метка review повешена на #262 на ту же голову, что зеленела: b53b11ee3c011c53ff4d4286b96ec79c5938b8… |
