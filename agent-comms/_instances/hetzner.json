@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T14:28:03.345Z",
+  "writtenAt": "2026-09-04T14:29:27.776Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "090-what-kills-a-note",
       "state": "running",
       "deadline": "2026-09-04T15:01:42Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "119-mute-count-blames-github",
-      "state": "draining",
-      "deadline": "2026-09-04T15:15:18Z"
     }
   ]
 }
