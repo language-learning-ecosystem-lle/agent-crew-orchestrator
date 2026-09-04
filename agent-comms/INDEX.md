@@ -76,7 +76,7 @@
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
-| 072-ci-outcome-not-delivered | curator · dev-core · john | normal | open | dev-core | — | 2026-09-04 | ✅ checks по PR #265: success. |
+| 072-ci-outcome-not-delivered | curator · dev-core · john | normal | open | curator | — | 2026-09-04 | verdict: approve |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
@@ -100,7 +100,7 @@
 | 093-registry-tail-race | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
 | 094-delivery-beside-a-foreign-park | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
-| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ремонт чекаута отвечает true только при фактическом сдвиге HEAD, иначе — отказ… |
+| 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | run:266 · 2026-09-04 | 2026-09-04 | Постановка выполнена: PR #266, голова 950207835d8ed1518da4d6333203913fe21b3c8d, жду checks. Часть (… |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: вправе ли демон САМ отложить чужие незакоммиченные правки в дереве роли — н… |
