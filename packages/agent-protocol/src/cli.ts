@@ -5043,6 +5043,15 @@ const runNotify = async (input: {
               since: park.since,
               question: park.question,
               asks: park.asks,
+              // WHETHER THE PERSON'S WORD CAME AFTER IT (thread 129): the courier owes a call
+              // for a park that stopped standing because the TURN under it ended (thread 042),
+              // and owes nothing for one that stopped standing because it was answered. The
+              // two are one absence in the composition above, and only the feed tells them
+              // apart — `delivers: <the same person>`, the same field the walk lifts on.
+              answered: thread.messages.some(
+                (message) =>
+                  message.fields.delivers === park.person && message.fields.date > park.since,
+              ),
             },
           ],
     ),
@@ -5620,6 +5629,11 @@ const runNotify = async (input: {
         // is `plan.parked` for every other one. Writing the current stamp here would record
         // a repeat as told on a tick that told nobody anything.
         parked: plan.parkedIfSilent,
+        // AND THE LEDGER MOVES EVEN HERE (thread 129): this branch is reachable only with
+        // `freshParked` empty — a question never told raises its own letter, missed ones
+        // included — so nothing untold is recorded as told, and what is written is the
+        // surviving ledger pruned to the parks the open mail still declares.
+        asked: plan.asked,
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
         drift: plan.drift?.since,
@@ -5666,6 +5680,8 @@ const runNotify = async (input: {
         waiting: plan.waiting,
         stalled: plan.stalled,
         parked: plan.parked,
+        // What this letter says out loud is what the ledger records (thread 129).
+        asked: plan.asked,
         auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
         gh: plan.gh?.since,
         drift: plan.drift?.since,
@@ -5709,6 +5725,8 @@ const runNotify = async (input: {
       waiting: plan.waiting,
       stalled: plan.stalled,
       parked: plan.parked,
+      // What this letter says out loud is what the ledger records (thread 129).
+      asked: plan.asked,
       auth: plan.auth === undefined ? undefined : authAlarmKey(plan.auth),
       gh: plan.gh?.since,
       drift: plan.drift?.since,
