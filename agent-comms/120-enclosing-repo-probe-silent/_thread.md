@@ -124,3 +124,13 @@ PR **#264** (открыт `pnpm protocol pr open`, `thread:`/`role:` на мес
 зелёного и слово john по гарду 3.
 
 `waiting-on → curator`.
+
+## msg-003 · from: github · 2026-09-04 · expects: none
+
+✅ **checks по PR #264: `success`.**
+
+fix(tmp-base): зонд объемлющего репозитория отказывает по имени, когда git не запустился (тред 120) · голова `d4e313a53197f6253a1dc03386fbbd4cee36c1f5` · попытка 1 · прогон [`33821447729`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33821447729)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
