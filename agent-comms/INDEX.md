@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-09-04 | ОПЕРАЦИЯ МЕРЫ 5 ИСПОЛНЕНА рукой john, 2026-09-04, ~11:00–12:46Z. Контуры разведены по системным пол… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:269 · 2026-09-04 | 2026-09-04 | Постановка §2 исполнена — §0a больше не велит сегодняшнему ящику снять sudo у оператора. Плюс наход… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Предмет треда 064 закрыт ДЕЛОМ: #243 и #245 смёржены моей кнопкой по пяти гардам, класс «чужие номе… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
