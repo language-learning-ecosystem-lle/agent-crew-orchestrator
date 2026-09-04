@@ -159,12 +159,29 @@ describe("a config that cannot be re-read does not kill a running daemon", () =>
         // BACK TO READING, by itself: no restart, no human. Measured as "the warnings
         // stop coming" against a tick counter that keeps moving — the daemon prints a
         // queue line every tick, so a frozen process cannot fake this.
-        const settled = warnings();
-        const ticks = output.split("agent-protocol: daemon").length;
-        await until(
-          () => output.split("agent-protocol: daemon").length > ticks + 4,
-          "the daemon to keep ticking after the remote came back",
-        );
+        //
+        // THE SAMPLE IS TAKEN WHEN THE WARNINGS STOP, NOT AT THE INSTANT OF THE RESTORE.
+        // The restore is a rename, but a tick already reading when it lands began against
+        // the moved-away remote and still fails and still prints — so a count frozen at
+        // the restore forbids a warning the daemon was already owed. That is a race and
+        // not an invariant, and it went red on the runner: run `33906421557` (thread 129,
+        // head `0042acda`), `expected 3 to be 2` on this line, with the whole rest of the
+        // file untouched by the commit under it. So the counter re-arms while warnings are
+        // still arriving, and the claim becomes the one the comment above already makes:
+        // FOUR CONSECUTIVE TICKS WITH NOTHING NEW SAID. A daemon that never resumed keeps
+        // re-arming it and dies on the hang ceiling with its output — the failure this
+        // assertion is for is not weakened, only the instant it was sampled at.
+        let settled = warnings();
+        let ticks = output.split("agent-protocol: daemon").length;
+        await until(() => {
+          const said = warnings();
+          if (said !== settled) {
+            settled = said;
+            ticks = output.split("agent-protocol: daemon").length;
+            return false;
+          }
+          return output.split("agent-protocol: daemon").length > ticks + 4;
+        }, "four ticks after the remote came back with no further warning");
         expect(warnings()).toBe(settled);
       } finally {
         child.kill("SIGKILL");
