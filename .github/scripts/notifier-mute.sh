@@ -48,6 +48,7 @@
 # ИСПОЛЬЗОВАНИЕ:
 #   source "${GITHUB_WORKSPACE}/.code/.github/scripts/notifier-mute.sh"
 #   read -r VERDICT LAST_AT AGE <<<"$(notifier_mute_decide "$MESSAGES" "$WF_NAME" "$NOW_ISO")"
+#   MUTED_IDS="$(notifier_mute_muted_ids "$RUNS_JSON" "$LAST_AT" "$RUN_ID")"
 #
 # Проверка правила — `bash .github/scripts/notifier-mute.test.sh`; она же
 # гоняется в сьюте (`src/roles/notifier-mute.process.test.ts`), потому что
@@ -161,4 +162,39 @@ notifier_mute_decide() { # <каталог messages> <уведомитель> <I
   else
     printf 'deliver %s %s\n' "$last_at" "$age"
   fi
+}
+
+# ОТБОР ЗАГЛУШЁННЫХ ПРОГОНОВ — предикат громкости глушения (тред 119).
+#
+# Печатает через пробел id прогонов ЭТОГО уведомителя, которые завершились
+# отказом позже прошлого письма и потому уехали в тишину; ветвление и
+# формулировки остаются телом `notifier-watch.yml` — сюда уехал только предикат,
+# ровно ради того, чтобы его гонял юнит.
+#
+# ПОЧЕМУ ВЫНЕСЕНО, А НЕ ОСТАЛОСЬ ФИЛЬТРОМ `gh --jq`. Прежняя форма стояла в
+# `--jq` одной строкой с запросом, и `.conclusion` в ней бралось у массива-
+# литерала (`[...] | index(.conclusion)`) — тип-ошибка ПРИ ЛЮБЫХ ДАННЫХ, а не
+# «когда API моргнул». `gh` вернул её кодом 1, неотличимым от отказа сети, и
+# письмо объявляло причиной отказ GitHub. Здесь связка `as $c` разводит `.` и
+# аргумент, а отдельная команда разводит два отказа: запрос и разбор.
+#
+# ДВИЖОК ТОТ ЖЕ, ЧТО В БОЮ. `gh --jq` считает встроенным gojq, а не `jq`, — то
+# есть тест локальным `jq` судил бы не тот код. Поэтому фильтр гоняется бинарём
+# `jq` и в шаге, и в юните: расхождения движков между ними больше нет.
+notifier_mute_muted_ids() { # <файл с ответом /actions/workflows/{id}/runs> <ISO прошлого письма> <id этого прогона>
+  local runs="${1:?notifier_mute_muted_ids: не назван файл с ответом}"
+  local last_at="${2:?notifier_mute_muted_ids: не названа метка прошлого письма}"
+  local run_id="${3:?notifier_mute_muted_ids: не назван id текущего прогона}"
+  # Свой прогон отсекается по id, а не по времени: он тоже создан позже прошлого
+  # письма, и заглушённым не является — письмо о нём как раз и едет.
+  jq -r --arg last_at "$last_at" --arg run_id "$run_id" '
+    [ .workflow_runs[]
+      | select((.id | tostring) != $run_id)
+      | select(.created_at > $last_at)
+      | select(.conclusion as $c
+               | ["failure", "timed_out", "startup_failure", "action_required", "stale"]
+               | index($c))
+      | .id | tostring
+    ] | join(" ")
+  ' -- "$runs"
 }
