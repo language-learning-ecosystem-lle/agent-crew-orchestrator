@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T14:32:14.049Z",
+  "writtenAt": "2026-09-04T14:55:31.912Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "123-repair-refusal-not-in-the-digest",
       "state": "running",
       "deadline": "2026-09-04T15:12:11Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "123-repair-refusal-not-in-the-digest",
+      "state": "running",
+      "deadline": "2026-09-04T15:55:28Z"
     }
   ]
 }
