@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T00:59:03.606Z",
+  "writtenAt": "2026-09-04T00:59:19.423Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "072-ci-outcome-not-delivered",
       "state": "running",
       "deadline": "2026-09-04T01:33:14Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "096-repair-cannot-return-the-branch",
+      "state": "running",
+      "deadline": "2026-09-04T01:59:16Z"
     }
   ]
 }
