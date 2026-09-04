@@ -84,6 +84,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 import { type CodeDrift, describeDriftSize } from "./code-age.js";
+import { describePutItBack, describeWhereItStands } from "./workspace.js";
 
 /** How many times one target SHA may be attempted before the box stands and speaks. */
 export const SELF_RESTART_MAX_ATTEMPTS = 2;
@@ -389,9 +390,147 @@ export const installNeeded = (changed: readonly string[]): boolean =>
     ),
   );
 
-/** Why the installer was not run — silence here would read as "it ran and said nothing". */
-export const describeInstallSkipped = (): string =>
-  `SELF-RESTART: pnpm install skipped — the pull moved none of ${INSTALL_INPUTS.join(", ")}, so what is installed already matches what the tree declares`;
+/**
+ * DID THE REPAIR ACTUALLY REPAIR ANYTHING (thread 096) — the question this chain has been
+ * ANSWERING WRONG since it was written, measured on `origin/main` of 2026-09-03.
+ *
+ * The two steps return whether the COMMANDS succeeded, and both readers of that answer
+ * take it to mean something else entirely: the daemon leaves for its supervisor
+ * (`handback`) and the version path exits with {@link SELF_RESTART_EXIT_CODE}, and both
+ * of those are worth doing only if a fresh process would load DIFFERENT code. `git pull
+ * --ff-only` runs on the CURRENT branch of the checkout and is never told which branch
+ * that ought to be — so in the state of the field case of 2026-09-02 (the main checkout
+ * left standing on `core/gate-checks-from-actions` for 5h54m) the pull succeeds, moves
+ * nothing, and the repair reports success. The very drift it exists to end is then read
+ * as ended, and the price is paid by a whole restart cycle rather than by one line.
+ *
+ * WHAT MAKES LEAVING WORTH ANYTHING, and it is two facts rather than one:
+ *   1. the tree MOVED — `HEAD` after the pull is not `HEAD` before it. That is the repair
+ *      doing its job, whatever branch it happened on;
+ *   2. or the tree was ALREADY carrying code this process is not running — the operator
+ *      (or another box) pulled it while this daemon was up, so `HEAD` had nowhere to move
+ *      and a replacement still loads something newer than what is in memory. The daemon
+ *      reads its vintage ONCE, at start (`readCodeVintage` in the tick), so this is not a
+ *      hypothetical: it is the ordinary shape of "somebody fixed it by hand".
+ * Neither of them is "the tree arrived at the target": a pull that moved the tree to
+ * something short of the ref is still a repair that did something, and demanding arrival
+ * would be a NEW refusal rather than the contract this function already declares.
+ *
+ * AND THE REFUSAL IS NOT A `false` — it CARRIES the reason, because the branch is the one
+ * fact nobody could see: the checkout, where it stands, what was expected of it, and that
+ * the pull itself was perfectly successful. Putting the tree back is the operator's hand
+ * and no part of this process (thread 078, john 2026-09-03: the main checkout is touched
+ * by the operator only), so the refusal ends in the same command the preflight door prints.
+ */
+export type RepairMove =
+  | {
+      readonly kind: "moved";
+      readonly from: string;
+      readonly to: string;
+      /**
+       * THE SPAN THE INSTALL QUESTION MUST BE ASKED OVER, and it is not the pull's own diff
+       * (thread 096, the reviewer's finding on #266). Under the SECOND condition `before`
+       * and `after` are the same commit — the tree was already carrying newer code, so the
+       * pull had nowhere to move it — and `git diff before after` is then EMPTY whatever
+       * the dependencies did between the code this process loaded and that tree. Asked over
+       * that span, `installNeeded` answered "nothing to install" without measuring anything,
+       * and the successor came up on a tree whose `pnpm-lock.yaml` no `node_modules` matched.
+       *
+       * The anchor is what `node_modules` was last installed against, and that is the code
+       * this process is RUNNING when it is known — not the tree as the repair found it.
+       */
+      readonly installFrom: string;
+      /** What {@link installFrom} is, so the line that skips the installer can name it. */
+      readonly installFromMeans: string;
+    }
+  | { readonly kind: "stood"; readonly why: string };
+
+/**
+ * The branch as git answers it — the literal `HEAD` of a detached tree included, which
+ * {@link describeWhereItStands} is what names. A read that FAILS is its own case: a branch
+ * nobody could measure must not be reported as "some branch".
+ */
+export type CheckoutBranch =
+  | { readonly kind: "branch"; readonly name: string }
+  | { readonly kind: "unreadable"; readonly problem: string };
+
+/**
+ * THE BRANCH A REF NAMES, and why it is not the literal `main` anywhere in this file. The
+ * project declares its branch in `orchestrator.workdir.branch`, but this path must work
+ * with no config at all — it is reached, among other ways, precisely when the config could
+ * not be read (a version verdict). What both callers do have is the ref they judge by, on
+ * their own command line: `origin/main`. A ref that is not a branch (a tag, a SHA) is
+ * returned unchanged and names itself in the refusal — wrong-looking is better than a
+ * silent guess.
+ */
+export const expectedBranchOfRef = (ref: string): string =>
+  ref
+    .replace(/^refs\/heads\//, "")
+    .replace(/^refs\/remotes\//, "")
+    .replace(/^origin\//, "");
+
+export const repairMoveVerdict = (input: {
+  readonly checkout: string;
+  /** The ref this process judges by, as it was named on the command line. */
+  readonly ref: string;
+  readonly before: string;
+  readonly after: string;
+  readonly branch: CheckoutBranch;
+  /** The SHA of the code this process is RUNNING; absent when it could not be dated. */
+  readonly loaded?: string;
+}): RepairMove => {
+  if (input.after !== input.before || (input.loaded !== undefined && input.loaded !== input.after))
+    return {
+      kind: "moved",
+      from: input.before,
+      to: input.after,
+      installFrom: input.loaded ?? input.before,
+      installFromMeans:
+        input.loaded === undefined
+          ? "the tree as this repair found it"
+          : "the code this process is running",
+    };
+  const expected = expectedBranchOfRef(input.ref);
+  const pulled = `'git pull --ff-only' in '${input.checkout}' SUCCEEDED and moved nothing: HEAD is still ${short(input.before)}`;
+  if (input.branch.kind === "unreadable")
+    return {
+      kind: "stood",
+      why: `${pulled}, and the branch of that tree could not be read (${input.branch.problem}), so it is not even known whether the pull ran on '${expected}'`,
+    };
+  if (input.branch.name !== expected)
+    return {
+      kind: "stood",
+      why: `${pulled}. The tree ${describeWhereItStands(input.branch.name)}, not the '${expected}' of '${input.ref}' — and a pull runs on the CURRENT branch, so no repair from here can ever bring '${input.ref}' into this tree. ${describePutItBack({ repo: input.checkout, expectedBranch: expected })}`,
+    };
+  return {
+    kind: "stood",
+    why: `${pulled}. The tree ${describeWhereItStands(input.branch.name)}, the branch of '${input.ref}', and it is as far along it as this disk goes — so there is nothing newer to load and a replacement would run exactly this code. What moves this box is a fetch that reaches the remote, or new code on '${input.ref}'`,
+  };
+};
+
+/**
+ * THE REPAIR SAID NOTHING WAS WRONG AND CHANGED NOTHING — the line that did not exist, and
+ * whose absence is what let a foreign branch look like a healed one. Same ending as a
+ * failed step (`NOT leaving`): the two are one class — a repair that did not repair.
+ */
+export const describeRepairStood = (why: string): string =>
+  `SELF-RESTART: THE REPAIR MOVED NOTHING — ${why}. NOT leaving: a supervisor would raise a process that loads the same code this one is running, which is a restart loop and not a repair; this daemon stays up and behind, and the attempt is counted`;
+
+/**
+ * Why the installer was not run — silence here would read as "it ran and said nothing".
+ *
+ * AND IT NAMES THE SPAN IT MEASURED (thread 096, the reviewer's finding on #266). The old
+ * line said "the pull moved none of …", which is a claim about the pull's own diff — and
+ * on the second success condition the pull moved nothing at all, so that sentence was true
+ * and told the reader the opposite of the fact. A line that names its span is one a reader
+ * can check; see {@link RepairMove}.`installFrom`.
+ */
+export const describeInstallSkipped = (span: {
+  readonly from: string;
+  readonly fromMeans: string;
+  readonly to: string;
+}): string =>
+  `SELF-RESTART: pnpm install skipped — none of ${INSTALL_INPUTS.join(", ")} differs across ${short(span.from)}..${short(span.to)} (${span.fromMeans} → the tree a replacement would load), so what is installed already matches what the tree declares`;
 
 /**
  * THE LINE THAT NAMES WHAT THE HANDOVER COST THIS TICK (condition 6, 2026-08-07). It is
@@ -606,6 +745,26 @@ export type WorkingTreeState =
  * overwrite, and a repair that dies half-way through phase 3 is worse than one that never
  * started. A read that FAILS is not "clean": it becomes its own refusal.
  */
+/**
+ * THE SECOND READ THE RULE CANNOT DO FOR ITSELF (thread 096) — which branch the tree the
+ * repair just pulled is actually on. `--abbrev-ref` is asked rather than `--symbolic-full-name`
+ * because its answer on a detached tree is the literal `HEAD`, and that is the spelling
+ * the door already refuses in ({@link describeWhereItStands}); a second vocabulary for the
+ * same state is how two refusals about one tree stop looking like one tree.
+ */
+export const checkoutBranch = (checkout: string): CheckoutBranch => {
+  try {
+    return {
+      kind: "branch",
+      name: execFileSync("git", ["-C", checkout, "rev-parse", "--abbrev-ref", "HEAD"], {
+        encoding: "utf8",
+      }).trim(),
+    };
+  } catch (error) {
+    return { kind: "unreadable", problem: (error as Error).message.replace(/\s+/g, " ").trim() };
+  }
+};
+
 export const workingTreeState = (checkout: string): WorkingTreeState => {
   let said: string;
   try {
