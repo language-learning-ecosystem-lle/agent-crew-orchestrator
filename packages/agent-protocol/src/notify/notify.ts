@@ -485,6 +485,18 @@ export type ParkedThread = {
    */
   readonly asks: boolean;
   /**
+   * WHETHER THE PERSON'S WORD HAS ARRIVED SINCE (thread 129) — a later message of the same
+   * thread carrying `delivers: <this person>`. Filled in only for the DECLARED parks
+   * ({@link NotificationInput.declaredParks}), where a park that no longer stands has to be
+   * told from one that was ANSWERED, and left undefined everywhere else.
+   *
+   * It exists because a park stops standing for two different reasons and the courier owes a
+   * call for exactly one of them: the person answered (nothing is owed), or the turn the park
+   * was declared on ended under it (thread 042) — and then the question is still unanswered
+   * and the person has still not been told it was ever asked.
+   */
+  readonly answered?: boolean | undefined;
+  /**
    * WHOSE TURN THE PARK WAS DECLARED ON (thread 042) — {@link Parking.holder}, carried through.
    * A park covers the pair it was declared about; the pair that inherited it by a later handoff
    * is NOT parked, it is unraised, and telling the two apart is the whole of check (в).
@@ -807,6 +819,25 @@ export type NotifyState = {
    */
   readonly reminded?: readonly ParkReminder[] | undefined;
   /**
+   * EVERY PERSON-PARK THIS BOX HAS EVER TOLD THE HUMAN ABOUT, by pair AND stamp (thread 129).
+   *
+   * Not a composition and not the same question {@link parked} answers. `parked` is what stands
+   * NOW, and a park drops out of it the moment it stops standing — which is exactly when the
+   * courier loses the only record that it was ever announced. That is harmless while the park
+   * has to be STANDING to be called about, and it is a repeating call the moment it does not:
+   * without this ledger a park announced at one tick and lifted at the next would come back as
+   * "never told" for ever after, and ring every two minutes.
+   *
+   * The stamp is part of the key here (unlike {@link parked}, thread 030 Д-2), because what is
+   * remembered is a MESSAGE having been told, not a pair being in some state: a pair re-parked
+   * by a new message is a new question and is owed its own call.
+   *
+   * Absent means this box has never written the ledger — a state file from before this class
+   * existed. It must not read as "every park ever declared is untold", so a box upgrading into
+   * it seeds the ledger from what it already knows was announced (see `buildPlan`).
+   */
+  readonly asked?: readonly ParkedThread[] | undefined;
+  /**
    * The {@link accountAlarmKey}s of the account STATES already announced (thread 036) — the
    * composition, like `unaccepted` and unlike `freezes`: a state ends by the window reopening
    * or the config being repaired, and both drop the fact from what the caller hands over, so
@@ -888,6 +919,21 @@ export type NotificationPlan = {
    * from the first.
    */
   readonly freshParked: readonly ParkedThread[];
+  /**
+   * THE QUESTIONS NOBODY WAS EVER TOLD (thread 129): a person-park that ASKED, whose person has
+   * not answered, and which stopped standing before any tick of this box saw it. They ring
+   * exactly like {@link freshParked} and are counted apart from it — see the comment at their
+   * computation for why the third counter must not swallow them.
+   */
+  readonly missedParks: readonly ParkedThread[];
+  /**
+   * WHAT THE STATE MUST REMEMBER TELLING (thread 129) — {@link NotifyState.asked} for the next
+   * tick: the ledger this run was handed, pruned to the parks the open mail still declares,
+   * plus every question this letter says out loud. It is not a composition and not a call: a
+   * caller that sends nothing still writes it, exactly as it writes {@link parkedIfSilent},
+   * or the same question would be told twice.
+   */
+  readonly asked: readonly ParkedThread[];
   /**
    * THE PARKS IN FORCE THAT ARE ASKING A HUMAN — all of them, announced or not.
    *
@@ -1141,6 +1187,12 @@ export const renderNotifyState = (state: NotifyState): string => {
     // what tells a park re-declared under the same key from one standing untouched, and that
     // difference is the whole of the downgrade "call → line". The line keeps its four columns.
     ...state.parked.map((park) => `parked\t${park.person}\t${park.thread}\t${park.since}`),
+    // THE LEDGER OF WHAT WAS TOLD (thread 129), sorted so that a diff of the file stays
+    // readable: it is the one class here that only grows while a thread is open, and an
+    // unordered append would make every tick's diff unreadable.
+    ...[...(state.asked ?? [])]
+      .map((park) => `asked\t${park.person}\t${park.thread}\t${park.since}`)
+      .sort(),
     // The two box-wide events are one line each and carry only their identity: what
     // identifies them is the shelf and the run of refusals, and the rest is re-read from
     // the journal and the outage file every time. The auth key is itself two columns
@@ -1189,6 +1241,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const waiting: WaitingPair[] = [];
   const stalled: StalledTurn[] = [];
   const parked: ParkedThread[] = [];
+  const asked: ParkedThread[] = [];
   const freezes: string[] = [];
   const unaccepted: UnacceptedTurn[] = [];
   const reminded: ParkReminder[] = [];
@@ -1221,6 +1274,14 @@ export const parseNotifyState = (raw: string): NotifyState => {
       if (person !== undefined && thread !== undefined && since !== undefined) {
         parked.push({ person, thread, since, question: "", asks: false });
       }
+      continue;
+    }
+    if (columns[0] === "asked") {
+      const [, person, thread, since] = columns;
+      // Neither the question nor `asks` is stored, exactly as for `parked` above: what
+      // identifies the event is the message, and its text is re-read from the feed.
+      if (person !== undefined && thread !== undefined && since !== undefined)
+        asked.push({ person, thread, since, question: "", asks: false });
       continue;
     }
     if (columns[0] === "remind") {
@@ -1331,6 +1392,10 @@ export const parseNotifyState = (raw: string): NotifyState => {
     ...(freezes.length === 0 ? {} : { freezes }),
     ...(unaccepted.length === 0 ? {} : { unaccepted }),
     ...(reminded.length === 0 ? {} : { reminded }),
+    // ABSENT AND EMPTY ARE NOT THE SAME LEDGER (thread 129): absent is a box that has never
+    // written one and seeds it below; empty is a box whose every told park has gone with its
+    // thread. Written as absent only when there was no line at all.
+    ...(asked.length === 0 ? {} : { asked }),
     ...(accounts.length === 0 ? {} : { accounts }),
     ...(eventParks.length === 0 ? {} : { eventParks }),
     ...(mergeable.length === 0 ? {} : { mergeable }),
@@ -1484,7 +1549,7 @@ export const planNotifications = (input: {
   // quiet about it and the state remembers it was told. `asks` is the message's own word:
   // `expects: none` says it wants nothing of anybody, and ❓ over it is a lie by mark.
   const askingParked = parked.filter((park) => park.asks);
-  const freshParked = askingParked.filter((park) => !seenParks.has(parkedKey(park)));
+  const freshStandingParked = askingParked.filter((park) => !seenParks.has(parkedKey(park)));
   // THE REPEAT, TOLD FROM THE FIRST TELLING BY THE STAMP AND BY NOTHING ELSE (thread 030,
   // Д-2). An informational re-park is not here for the same reason it is not in `freshParked`:
   // `asks` is the message's own word, and 016 re-declared its park daily asking nothing.
@@ -1513,6 +1578,78 @@ export const planNotifications = (input: {
     })
     .filter((park) => byRole.get(park.person)?.style === "direct")
     .sort((a, b) => a.thread.localeCompare(b.thread));
+  // THE PARK THAT ASKED AND STOPPED STANDING BEFORE ANY TICK SAW IT (thread 129, measured in
+  // the field 2026-09-04 and once before on 2026-09-03). A park on a person covers THE TURN IT
+  // WAS DECLARED ON (thread 042) — and the turn can end under it within minutes, on a message
+  // that is not an answer at all: the circuit's own `checks` announcement handing the turn to
+  // the author ends curator's turn, and with it the park declared on it. Live: the question to
+  // john of 17:01:36Z stopped standing at 17:10:27Z on exactly such a line, and the human was
+  // never told it had been asked. Nothing anywhere goes red — the composition simply no longer
+  // has it, `freshParked` never sees it, and the lift line below cannot speak about a park that
+  // was never announced. The question then stands unasked for as long as the thread lives.
+  //
+  // So the call does not depend on a tick falling inside the park's lifetime. What is required
+  // of it is what the freeze is not: the message ASKED (`asks`), the person's word has NOT
+  // arrived since (`answered`), and this box has not told them already (the ledger). The freeze
+  // itself is untouched — the scheduler keeps reading `parkingOf` and a lifted park stays
+  // lifted for it; this is the courier's question ("is a question standing unanswered") and it
+  // is a different one.
+  const askedKeys = new Set(
+    (input.seen.asked ?? []).map((park) => `${parkedKey(park)}\t${park.since}`),
+  );
+  // A BOX UPGRADING INTO THE LEDGER DOES NOT RE-RING WHAT IT ALREADY SAID: an absent ledger is
+  // seeded from the parks the state remembers announcing, and only then is "not in the ledger"
+  // read as "never told". Empty is not absent — see {@link NotifyState.asked}.
+  //
+  // THE BOUNDARY OF THAT SEEDING, DECLARED: it can only seed from what the state STILL holds.
+  // A park announced before the ledger existed and whose `parked` row had already left the
+  // state by the upgrade tick — lifted, as this whole class is about — seeds nothing, and from
+  // here it is indistinguishable from a park nobody was ever told about: both are a key the
+  // state does not carry. Such a park rings once more on the upgrade tick. That is a one-time
+  // cost of the rollout, bounded by the ledger written in that same tick, and not the endless
+  // re-ring this class prevents; measured dry against the live mail on 2026-09-04, it was 0.
+  if (input.seen.asked === undefined)
+    for (const park of input.seen.parked) askedKeys.add(`${parkedKey(park)}\t${park.since}`);
+  const missedParks = (input.declaredParks ?? [])
+    .filter(
+      (park) =>
+        park.asks &&
+        park.answered !== true &&
+        byRole.get(park.person)?.style === "direct" &&
+        !standingKeys.has(parkedKey(park)) &&
+        seenParks.get(parkedKey(park)) !== park.since &&
+        !askedKeys.has(`${parkedKey(park)}\t${park.since}`),
+    )
+    .sort((a, b) => a.thread.localeCompare(b.thread) || a.since.localeCompare(b.since));
+  // WHAT THIS TICK LEAVES TOLD: the ledger it was handed, plus everything it says out loud in
+  // this letter. `freshParked` and `restatedParked` are in it as much as the missed ones —
+  // otherwise a park announced while it stood and lifted afterwards would come back through
+  // the filter above the moment its `parked` row leaves the state, which is the repeating call
+  // this class is here to prevent. Pruned to the parks the OPEN mail still declares, so the
+  // ledger dies with the thread instead of growing for ever.
+  // A LIST OF THEIR OWN, AND NOT `freshParked` (thread 129): the three counters describe THE
+  // CALL in its three tenses — in force / asking / rang this tick — and a missed park is in
+  // none of them, because the freeze it was declared with is gone. Folding it into the third
+  // number would print `0 parked, 0 of them asking, 1 of those new`, a sentence that contradicts
+  // itself in one line. The LINE is the same line, in the same slot and the same words: what
+  // the person is owed is the question, and the form of the call is not this repair's business.
+  const freshParked = freshStandingParked;
+  const toldParks = new Map<string, ParkedThread>();
+  for (const park of [...freshParked, ...restatedParked, ...missedParks])
+    toldParks.set(`${parkedKey(park)}\t${park.since}`, park);
+  // The ledger it was handed survives only where the OPEN mail still declares that park: a
+  // thread that closed takes its questions with it (`personParksOf` says nothing about a closed
+  // thread), and a ledger that outlived them would grow for ever. A caller that hands no
+  // declarations at all is not making a statement about the mail, so nothing is pruned then.
+  for (const park of input.declaredParks ?? [])
+    if (askedKeys.has(`${parkedKey(park)}\t${park.since}`))
+      toldParks.set(`${parkedKey(park)}\t${park.since}`, park);
+  if (input.declaredParks === undefined)
+    for (const park of input.seen.asked ?? [])
+      toldParks.set(`${parkedKey(park)}\t${park.since}`, park);
+  const asked = [...toldParks.values()].sort(
+    (a, b) => a.thread.localeCompare(b.thread) || a.since.localeCompare(b.since),
+  );
   const parkedIfSilent = [
     ...parked.map((park) => {
       const announced = restatedKeys.has(parkedKey(park))
@@ -1935,7 +2072,7 @@ export const planNotifications = (input: {
   // not taken, because the digest is a courier of events and the standing picture is what
   // `cli mail` and the operator frame are for — a state line repeated for days is the same
   // noise with a smaller mark.
-  for (const park of freshParked) {
+  for (const park of [...freshParked, ...missedParks]) {
     lines.push({
       kind: "parked",
       thread: park.thread,
@@ -2068,6 +2205,8 @@ export const planNotifications = (input: {
     unexplained,
     freshUnaccepted,
     freshParked,
+    missedParks,
+    asked,
     askingParked,
     unaddressedParked,
     restatedParked,
@@ -2382,6 +2521,9 @@ export const announcedOf = (plan: NotificationPlan): readonly string[] => [
       `${event.pair.role}×${event.pair.thread} (${event.kind === "frozen" ? "frozen for good" : "exhausted"})`,
   ),
   ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
+  // Named apart in the operator's line as they are counted apart (thread 129): what happened is
+  // not "a park is standing", it is "a question was asked and its park is gone".
+  ...plan.missedParks.map((park) => `${park.thread} (asked of ${park.person}, park lifted)`),
   // A REMINDER IS NAMED AMONG WHAT RANG, not among what rode along: it raises the letter, and
   // the age is the half of it the operator cannot reconstruct from the thread id.
   ...plan.remindedParked.map((park) => `${park.thread} (reminded ${park.person}, ${park.age})`),

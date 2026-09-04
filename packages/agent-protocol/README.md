@@ -856,7 +856,14 @@ apart along lines the package already had:
   disappearance is the trade of 051 made backwards. The courier's line names it as a fourth
   number when there is one: `N parked, K of them asking, M of those new, R restated,
   P reminded, L lifted, X with nobody to call: …` (the last four clauses appear only when
-  they are not zero). What
+  they are not zero). A question whose park stopped standing BEFORE this box ever ticked is
+  none of those numbers and still rings (thread 129): a park covers the turn it was declared
+  on, that turn can end minutes later on a message that is not an answer, and after it the
+  question exists nowhere in the composition. It is told in the same slot and the same words,
+  raises its own letter like a reminder, is named apart in the command's own line
+  (`<thread> (asked of <person>, park lifted)`), and rings once — the state keeps a ledger
+  line `asked <person> <thread> <stamp>` of every question already told, keyed by the stamp
+  because a re-parked thread is a new question. What
   the pair key costs is stated rather than hidden: if the person answers and a NEW question
   is parked on the same thread before the courier has ticked once, the composition was never
   empty and the new question is read as a repeat — a race in one tick window, which loses
