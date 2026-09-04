@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T16:00:25.108Z",
+  "writtenAt": "2026-09-04T16:00:53.146Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "072-ci-outcome-not-delivered",
       "state": "running",
       "deadline": "2026-09-04T16:58:55Z"
+    },
+    {
+      "role": "curator",
+      "thread": "123-repair-refusal-not-in-the-digest",
+      "state": "running",
+      "deadline": "2026-09-04T16:40:50Z"
     }
   ]
 }
