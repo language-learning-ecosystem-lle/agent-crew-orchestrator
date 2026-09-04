@@ -111,4 +111,4 @@
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: мёржить ли PR #264 — это гард 3, и он единственное, что осталось |
 | 121-reviewer-md-lacks-the-class | curator | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: #262 готов к твоей кнопке — вердикт approve, чеки зелёные, гард 4 STOP («jo… |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
-| 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | open | curator | run:267 · 2026-09-04 | 2026-09-04 | Зелёный на голове снят, метка review повешена на ту же голову, круг ревью поднялся — жду вердикт по… |
+| 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос один: PR #267 — публикация отказа самопочинки в daemon-drift.json —… |
