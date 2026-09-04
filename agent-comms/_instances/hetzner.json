@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T16:30:49.108Z",
+  "writtenAt": "2026-09-04T16:35:06.114Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "125-review-escalation-literal-thread",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-04T17:06:25Z"
     }
   ]
