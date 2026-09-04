@@ -35,7 +35,7 @@
  * One tick is enough (`--once`): the verdict is taken every tick from the same facts, and
  * a second round would only add ways to be slow.
  */
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
@@ -53,7 +53,7 @@ import { describe, expect, it } from "vitest";
 
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
-import { HANG_CEILING_MS } from "../testing/wait-for.js";
+import { HANG_CEILING_MS, waitFor } from "../testing/wait-for.js";
 import { parseDriftStandoff, renderDriftStandoff } from "./code-age.js";
 import { parseSelfRestartMemory, SELF_RESTART_EXIT_CODE } from "./self-restart.js";
 
@@ -158,6 +158,14 @@ const homeContour = (options?: {
    * there is nothing to decide.
    */
   readonly current?: boolean;
+  /**
+   * THE FIELD SHAPE OF 2026-09-02 (thread 078 → 096): the tree is left ON A BRANCH THAT IS
+   * NOT THE REF'S, and that branch has an upstream of its own and is not behind it — so
+   * `git pull --ff-only` succeeds, moves nothing, and the drift against `origin/main`
+   * stands. It is the one fixture in which the repair's two commands both return zero and
+   * the box is not repaired at all.
+   */
+  readonly foreign?: boolean;
 }): { readonly repo: string; readonly cli: string } => {
   const base = mkdtempSync(join(tmpdir(), "agent-protocol-selfrestart-home-"));
   const origin = join(base, "origin.git");
@@ -191,7 +199,12 @@ const homeContour = (options?: {
   // The third shape: the HEAD is left ON the ref commit, so `codeAge` reads `match` and the
   // tick decides nothing — which is precisely the tick that has to clear a standoff.
   if (options?.current === true) git(repo, "checkout", "-q", "main");
-  else if (options?.pullable === true) git(repo, "reset", "--hard", "-q", loaded);
+  else if (options?.foreign === true) {
+    // A branch of somebody's own work, tracking its own upstream and level with it: the
+    // pull below is a real success that changes nothing.
+    git(repo, "checkout", "-q", "-b", "core/gate-checks-from-actions", loaded);
+    git(repo, "push", "-q", "-u", "origin", "core/gate-checks-from-actions");
+  } else if (options?.pullable === true) git(repo, "reset", "--hard", "-q", loaded);
   else git(repo, "checkout", "-q", loaded);
   return { repo, cli: join(repo, "src", "cli.ts") };
 };
@@ -234,6 +247,75 @@ const tickRun = (
 };
 
 const tick = (cli: string, repo: string): string => tickRun(cli, repo).said;
+
+/**
+ * A DAEMON LEFT TICKING — the one shape `--once` cannot make, and the reason the second
+ * success condition of the repair had no process test until now (thread 096, the reviewer's
+ * finding on #266).
+ *
+ * That condition is about a tree that moved BETWEEN the vintage read and a tick, and a
+ * process which reads its vintage and ticks once in the same breath has no such moment:
+ * `loaded === before` there by construction, whatever the fixture does beforehand. So this
+ * daemon is raised WITHOUT `--once` over a box with no drift at all, and the drift is
+ * staged by the test while it runs — which is exactly the field shape: an operator pulling
+ * the main checkout by hand under a live circuit.
+ *
+ * Both streams into one string, as in {@link tickRun}: the verdicts are on stderr and the
+ * queue on stdout, and a case reads whichever it needs.
+ */
+const tickingDaemon = (
+  cli: string,
+  repo: string,
+  env?: Readonly<Record<string, string>>,
+): {
+  readonly said: () => string;
+  readonly ended: Promise<number | null>;
+  readonly stop: () => void;
+} => {
+  const child = spawn(
+    TSX,
+    [
+      cli,
+      "orchestrator",
+      "daemon",
+      "--ref",
+      "origin/main",
+      "--repo",
+      repo,
+      "--exec",
+      "/bin/true",
+      "--tick",
+      "1",
+      "--poll",
+      "1",
+    ],
+    {
+      cwd: repo,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...sandbox(configHome(repo)), ...(env ?? {}) },
+    },
+  );
+  let heard = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk: string) => {
+    heard += chunk;
+  });
+  child.stderr.on("data", (chunk: string) => {
+    heard += chunk;
+  });
+  return {
+    said: () => heard,
+    ended: new Promise<number | null>((resolve) => {
+      child.on("exit", (code) => resolve(code));
+    }),
+    // A case that fails early must not leave a daemon ticking over a temporary repository
+    // for the rest of the suite: every exit from the case goes through this.
+    stop: () => {
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    },
+  };
+};
 
 /**
  * THE CHECKOUT THE CODE COMES FROM — a copy of these sources with a git history of its
@@ -563,6 +645,104 @@ describe("a supervised daemon that finds itself behind its ref", () => {
         readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
       );
       expect(memory?.attempts).toBe(1);
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  it(
+    "does NOT leave when the pull succeeded on a foreign branch and moved nothing",
+    () => {
+      // THE FIELD CASE OF THREAD 078, RAISED AS A DAEMON (096). Both commands of the repair
+      // return zero here — the branch has an upstream and is level with it — and until this
+      // test existed the box read that as healed: it left with code 75 and the supervisor
+      // raised a fresh process over the very same commit, at restart speed.
+      const home = homeContour({ foreign: true });
+      const stoodOn = git(home.repo, "rev-parse", "HEAD").trim();
+      expect(stoodOn).not.toBe(git(home.repo, "rev-parse", "origin/main").trim());
+
+      const ran = tickRun(home.cli, home.repo, { INVOCATION_ID: "test-invocation" });
+
+      // The premise: the pull itself was a success. Without this line the case could pass
+      // through the OTHER refusal (a failed step) and prove nothing about this one.
+      expect(ran.said).toContain("git pull --ff-only — ok");
+      expect(ran.said).not.toContain("git pull --ff-only FAILED");
+
+      // The refusal, with the fact nobody could see before it: which branch the pull ran on.
+      expect(ran.said).toContain("THE REPAIR MOVED NOTHING");
+      expect(ran.said).toContain("is on 'core/gate-checks-from-actions'");
+      expect(ran.said).toContain("not the 'main' of 'origin/main'");
+      expect(ran.said).toContain("Put it back: git -C");
+      expect(ran.said).toContain("NOT leaving");
+
+      // And the two things a false "healed" costs: the exit a supervisor answers, and the
+      // installer running over a tree that never moved.
+      expect(ran.status).not.toBe(SELF_RESTART_EXIT_CODE);
+      expect(ran.said).not.toContain(`leaving with code ${SELF_RESTART_EXIT_CODE}`);
+      expect(ran.said).not.toContain("pnpm install");
+      // The tree is where it was: a repair that refuses touches nothing at all — the branch
+      // of a checkout is the operator's hand and no part of this process (thread 078).
+      expect(git(home.repo, "rev-parse", "HEAD").trim()).toBe(stoodOn);
+      expect(git(home.repo, "rev-parse", "--abbrev-ref", "HEAD").trim()).toBe(
+        "core/gate-checks-from-actions",
+      );
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  it(
+    "asks the installer about the span from the LOADED code when a hand moved the tree",
+    async () => {
+      // THE SECOND SUCCESS CONDITION, END TO END (thread 096, the reviewer's finding on
+      // #266). The pull moves nothing here — the tree is already on the target — so the
+      // whole install question rides on which span it is asked over: `before..after` is one
+      // commit against itself and empty whatever the dependencies did, and a skip decided
+      // there would raise the successor over `node_modules` matching nothing.
+      const home = homeContour({ current: true });
+      const loaded = git(home.repo, "rev-parse", "HEAD").trim();
+      const daemon = tickingDaemon(home.cli, home.repo, { INVOCATION_ID: "test-invocation" });
+      try {
+        // The banner is the moment the vintage was taken (read ONCE, at startup): every
+        // line below it is a tree moving UNDER a running box, which is the premise.
+        expect(
+          await waitFor(() => daemon.said().includes(`code: ${loaded.slice(0, 8)} loaded from`)),
+        ).toBe(true);
+
+        // TWO STEPS, IN THIS ORDER, so that no tick can ever see the shape this case is NOT
+        // about. The commit moves `HEAD` while `origin/main` stays where it is — vintage and
+        // ref still agree, there is no drift and no tick acts on one. The push moves the
+        // tracking ref, and the drift appears on a tree that is ALREADY on its target. The
+        // file is a source, not an install input: the skip is the correct answer here, and
+        // what the case is about is the span the skip was decided over.
+        writeFileSync(join(home.repo, "NOTE.md"), "the hand that pulled this tree\n");
+        git(home.repo, "add", "NOTE.md");
+        git(home.repo, "commit", "-qm", "the operator pulled it by hand");
+        const moved = git(home.repo, "rev-parse", "HEAD").trim();
+        git(home.repo, "push", "-q", "origin", "main");
+
+        expect(await waitFor(() => daemon.said().includes("pnpm install skipped"))).toBe(true);
+        const said = daemon.said();
+        // The premise, asserted rather than assumed: the pull ran, succeeded, and left the
+        // tree exactly where it found it. Without these two lines the case could pass
+        // through the ORDINARY condition and prove nothing about this one.
+        expect(said).toContain("git pull --ff-only — ok");
+        expect(said).not.toContain("THE REPAIR MOVED NOTHING");
+        expect(git(home.repo, "rev-parse", "HEAD").trim()).toBe(moved);
+
+        // AND THE FINDING ITSELF: the span is `loaded..after`, not `after..after`. Under the
+        // old anchor this line read `<moved>..<moved>` — a diff of a commit against itself,
+        // which is empty by arithmetic and says nothing about `pnpm-lock.yaml`.
+        expect(said).toContain(`${loaded.slice(0, 8)}..${moved.slice(0, 8)}`);
+        expect(said).not.toContain(`${moved.slice(0, 8)}..${moved.slice(0, 8)}`);
+        expect(said).toContain("the code this process is running");
+        // The claim that was never measured in this branch is gone from the stream.
+        expect(said).not.toContain("the pull moved none of");
+
+        // And the repair was still worth leaving for: a replacement loads code this process
+        // is not running, which is the whole of the second condition.
+        expect(await daemon.ended).toBe(SELF_RESTART_EXIT_CODE);
+      } finally {
+        daemon.stop();
+      }
     },
     2 * HANG_CEILING_MS,
   );

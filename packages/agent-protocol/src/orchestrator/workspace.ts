@@ -773,6 +773,38 @@ export const createWorkspaceLocks = (git: WorkspaceLockGit): WorkspaceLocks => {
  * and is the number the reader needs. It is a convenience and degrades on its own: an
  * uncountable distance costs the number and never the verdict.
  */
+/**
+ * WHERE A TREE STANDS, IN WORDS — `git rev-parse --abbrev-ref HEAD` answers a detached
+ * tree with the literal `HEAD`, which inside a refusal reads as a branch somebody made.
+ * It is named for what it is, in one place, because the repair refuses on the same
+ * reading as the door (thread 096).
+ */
+export const describeWhereItStands = (branch: string): string =>
+  branch === "HEAD" ? "is DETACHED (on no branch)" : `is on '${branch}'`;
+
+/**
+ * THE COMMAND THAT PUTS THE MAIN CHECKOUT BACK — one text, two speakers (thread 096).
+ *
+ * The preflight door says it before a daemon starts; the in-place repair says it when it
+ * finds itself pulling a branch that is not the project's, because `git pull --ff-only`
+ * runs on the CURRENT branch and a repair there moves nothing. Both refusals end in the
+ * same two commands a hand must type, and a second copy of them would part ways with this
+ * one on the first edit — so there is exactly this one, and it is exported for the sake of
+ * the other caller rather than for its own.
+ *
+ * IT IS NOT SOMETHING THE PROCESS MAY RUN. The branch of the main checkout is moved by the
+ * operator and by nobody else (`PROTOCOL.md`, "Главный чекаут трогает только оператор",
+ * john's decision of 2026-09-03): under a foreign branch there is regularly work that is
+ * not committed, and a daemon cannot tell that tree from an abandoned one.
+ */
+export const describePutItBack = (input: {
+  readonly repo: string;
+  readonly expectedBranch: string;
+  /** Named only when it is true: a stash is a step, and a step nobody needs is noise. */
+  readonly dirty?: boolean;
+}): string =>
+  `Put it back: git -C ${input.repo} checkout ${input.expectedBranch} && git -C ${input.repo} pull --ff-only${input.dirty === true ? " (save or stash the unsaved changes first)" : ""}`;
+
 export const mainCheckoutVerdict = (input: {
   readonly repo: string;
   readonly branch: string;
@@ -788,14 +820,11 @@ export const mainCheckoutVerdict = (input: {
       ? `the distance to 'origin/${input.expectedBranch}' did not read`
       : `${input.behind} commit(s) of 'origin/${input.expectedBranch}' are missing from it`;
   if (input.branch !== input.expectedBranch) {
-    // A detached HEAD reads back as the literal branch name `HEAD`, which in a refusal
-    // would look like a branch somebody made. It is named for what it is.
-    const where =
-      input.branch === "HEAD" ? "is DETACHED (on no branch)" : `is on '${input.branch}'`;
+    const where = describeWhereItStands(input.branch);
     return {
       name: "main checkout",
       status: "fail",
-      detail: `${input.repo} ${where}, not the project's '${input.expectedBranch}' — ${distance}. The daemon loads its modules from this tree, so the circuit would execute THAT code, not what is merged${dirt}. Put it back: git -C ${input.repo} checkout ${input.expectedBranch} && git -C ${input.repo} pull --ff-only${input.dirty ? " (save or stash the unsaved changes first)" : ""}`,
+      detail: `${input.repo} ${where}, not the project's '${input.expectedBranch}' — ${distance}. The daemon loads its modules from this tree, so the circuit would execute THAT code, not what is merged${dirt}. ${describePutItBack({ repo: input.repo, expectedBranch: input.expectedBranch, dirty: input.dirty })}`,
     };
   }
   return {
