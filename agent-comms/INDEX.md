@@ -101,7 +101,7 @@
 | 094-delivery-beside-a-foreign-park | curator, john | normal | closed | — | — | 2026-09-03 | — |
 | 095-cut-guard-one-sided | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | open | dev-core | — | 2026-09-03 | Постановка dev-core: ремонт чекаута отвечает true только при фактическом сдвиге HEAD, иначе — отказ… |
-| 097-conflict-has-no-signal | curator · dev-core · john | high | open | curator | — | 2026-09-04 | #260 в main (squash 5736ecdd), и приземление доказано не «конфликта нет», а ПОБАЙТОВЫМ равенством д… |
+| 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-04 | verdict: approve |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
