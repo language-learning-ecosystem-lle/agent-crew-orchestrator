@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T15:18:42.936Z",
+  "writtenAt": "2026-09-04T15:20:29.184Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "120-enclosing-repo-probe-silent",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-04T15:52:49Z"
     }
   ]
