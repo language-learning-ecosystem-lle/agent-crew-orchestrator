@@ -119,7 +119,7 @@
           "kind": "claude-code",
           "model": "claude-opus-5[1m]"
         },
-        "account": "lle-second"
+        "account": "lle-main"
       }
     },
     {
