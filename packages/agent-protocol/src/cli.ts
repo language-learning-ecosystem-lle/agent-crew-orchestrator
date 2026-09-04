@@ -5586,6 +5586,11 @@ const runNotify = async (input: {
     (plan.fresh.length === 0 &&
       plan.freshStalled.length === 0 &&
       plan.freshParked.length === 0 &&
+      // AND A QUESTION NEVER TOLD RAISES ITS OWN LETTER (thread 129), like the reminder below
+      // and for the same reason: it is the ONLY line anybody will ever write about it — the
+      // park it was declared with is gone, so no other class of this digest can name it, and a
+      // line that waits for somebody else's event is owed to a letter that never comes.
+      plan.missedParks.length === 0 &&
       // A REMINDER RAISES ITS OWN LETTER (thread 043, Д-4), unlike the restatement and the lift
       // beside it. Those two ride in somebody else's letter because a second call about a
       // question already asked is Д-2; a reminder is the only line anybody will ever write about

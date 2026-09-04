@@ -603,7 +603,10 @@ describe("a park ANNOUNCED AND LIFTED — a line, never a call (thread 030, (в2
     const told = planNotifications({
       targets: TARGETS,
       waiting: [],
-      seen: { waiting: [], stalled: [], parked: owed.parked },
+      // The caller writes BOTH halves of what it said (thread 129): the composition, which no
+      // longer holds the key, and the ledger of questions already told — without the second a
+      // park announced and lifted would read as never told and ring again for ever.
+      seen: { waiting: [], stalled: [], parked: owed.parked, asked: owed.asked },
       parked: [],
       declaredParks: [PARKED],
       templates: PARK_TEMPLATE,
@@ -2215,7 +2218,10 @@ describe("парк, снятый до того, как его объявили (
 
   it("звонит о вопросе, который никто не задал человеку", () => {
     const plan = tick(EMPTY);
-    expect(plan.freshParked).toEqual([MISSED]);
+    // СЧИТАЕТСЯ ОТДЕЛЬНО, ЗВОНИТ ТЕМ ЖЕ: три числа сводки описывают стоячий парк, и «0 стоит,
+    // 0 из них спрашивает, 1 из них новых» — фраза, противоречащая себе в одной строке.
+    expect(plan.missedParks).toEqual([MISSED]);
+    expect(plan.freshParked).toEqual([]);
     expect(plan.lines.map((line) => line.text)).toContain(
       "❓ 125-review-escalation-literal-thread ждёт твоего решения: Разрешаешь ли merge #272?",
     );
@@ -2229,7 +2235,7 @@ describe("парк, снятый до того, как его объявили (
     expect(state.asked).toEqual([
       { person: "john", thread: MISSED.thread, since: MISSED.since, question: "", asks: false },
     ]);
-    expect(tick(state).freshParked).toEqual([]);
+    expect(tick(state).missedParks).toEqual([]);
   });
 
   it("о ПЕРЕПАРКОВАННОМ том же треде спрашивает заново — ключ несёт штамп", () => {
@@ -2237,12 +2243,12 @@ describe("парк, снятый до того, как его объявили (
       renderNotifyState({ waiting: [], stalled: [], parked: [], asked: tick(EMPTY).asked }),
     );
     const again = { ...MISSED, since: "2026-09-04T17:49:45Z" };
-    expect(tick(state, [again]).freshParked).toEqual([again]);
+    expect(tick(state, [again]).missedParks).toEqual([again]);
   });
 
   it("молчит, когда слово человека пришло, и когда письмо ничего не просило", () => {
-    expect(tick(EMPTY, [{ ...MISSED, answered: true }]).freshParked).toEqual([]);
-    expect(tick(EMPTY, [{ ...MISSED, asks: false }]).freshParked).toEqual([]);
+    expect(tick(EMPTY, [{ ...MISSED, answered: true }]).missedParks).toEqual([]);
+    expect(tick(EMPTY, [{ ...MISSED, asks: false }]).missedParks).toEqual([]);
   });
 
   it("коробка, впервые заведшая книгу, не перезванивает объявленное ею раньше", () => {
@@ -2250,6 +2256,6 @@ describe("парк, снятый до того, как его объявили (
     // строка `parked` уже ушла из состояния своим ходом. Отсутствие книги не читается как
     // «ничего никогда не говорили».
     const old: NotifyState = { waiting: [], stalled: [], parked: [MISSED] };
-    expect(tick(old).freshParked).toEqual([]);
+    expect(tick(old).missedParks).toEqual([]);
   });
 });

@@ -920,6 +920,13 @@ export type NotificationPlan = {
    */
   readonly freshParked: readonly ParkedThread[];
   /**
+   * THE QUESTIONS NOBODY WAS EVER TOLD (thread 129): a person-park that ASKED, whose person has
+   * not answered, and which stopped standing before any tick of this box saw it. They ring
+   * exactly like {@link freshParked} and are counted apart from it — see the comment at their
+   * computation for why the third counter must not swallow them.
+   */
+  readonly missedParks: readonly ParkedThread[];
+  /**
    * WHAT THE STATE MUST REMEMBER TELLING (thread 129) — {@link NotifyState.asked} for the next
    * tick: the ledger this run was handed, pruned to the parks the open mail still declares,
    * plus every question this letter says out loud. It is not a composition and not a call: a
@@ -1612,13 +1619,15 @@ export const planNotifications = (input: {
   // the filter above the moment its `parked` row leaves the state, which is the repeating call
   // this class is here to prevent. Pruned to the parks the OPEN mail still declares, so the
   // ledger dies with the thread instead of growing for ever.
-  // THE CALL IS ONE LIST (thread 129): a question never told is a question never told, and
-  // whether the freeze it was declared with is still in force changes nothing about the person
-  // who has not been asked. They ride in the same slot, are counted in the same "of those new",
-  // and are told apart nowhere downstream — the form of the call is not this repair's business.
-  const freshParked = [...freshStandingParked, ...missedParks];
+  // A LIST OF THEIR OWN, AND NOT `freshParked` (thread 129): the three counters describe THE
+  // CALL in its three tenses — in force / asking / rang this tick — and a missed park is in
+  // none of them, because the freeze it was declared with is gone. Folding it into the third
+  // number would print `0 parked, 0 of them asking, 1 of those new`, a sentence that contradicts
+  // itself in one line. The LINE is the same line, in the same slot and the same words: what
+  // the person is owed is the question, and the form of the call is not this repair's business.
+  const freshParked = freshStandingParked;
   const toldParks = new Map<string, ParkedThread>();
-  for (const park of [...freshParked, ...restatedParked])
+  for (const park of [...freshParked, ...restatedParked, ...missedParks])
     toldParks.set(`${parkedKey(park)}\t${park.since}`, park);
   // The ledger it was handed survives only where the OPEN mail still declares that park: a
   // thread that closed takes its questions with it (`personParksOf` says nothing about a closed
@@ -2055,7 +2064,7 @@ export const planNotifications = (input: {
   // not taken, because the digest is a courier of events and the standing picture is what
   // `cli mail` and the operator frame are for — a state line repeated for days is the same
   // noise with a smaller mark.
-  for (const park of freshParked) {
+  for (const park of [...freshParked, ...missedParks]) {
     lines.push({
       kind: "parked",
       thread: park.thread,
@@ -2188,6 +2197,7 @@ export const planNotifications = (input: {
     unexplained,
     freshUnaccepted,
     freshParked,
+    missedParks,
     asked,
     askingParked,
     unaddressedParked,
@@ -2503,6 +2513,9 @@ export const announcedOf = (plan: NotificationPlan): readonly string[] => [
       `${event.pair.role}×${event.pair.thread} (${event.kind === "frozen" ? "frozen for good" : "exhausted"})`,
   ),
   ...plan.freshParked.map((park) => `${park.thread} (parked on ${park.person})`),
+  // Named apart in the operator's line as they are counted apart (thread 129): what happened is
+  // not "a park is standing", it is "a question was asked and its park is gone".
+  ...plan.missedParks.map((park) => `${park.thread} (asked of ${park.person}, park lifted)`),
   // A REMINDER IS NAMED AMONG WHAT RANG, not among what rode along: it raises the letter, and
   // the age is the half of it the operator cannot reconstruct from the thread id.
   ...plan.remindedParked.map((park) => `${park.thread} (reminded ${park.person}, ${park.age})`),
