@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T01:18:46.159Z",
+  "writtenAt": "2026-09-04T01:18:58.672Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "119-mute-count-blames-github",
       "state": "running",
       "deadline": "2026-09-04T01:53:08Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "096-repair-cannot-return-the-branch",
-      "state": "draining",
-      "deadline": "2026-09-04T02:16:16Z"
     }
   ]
 }
