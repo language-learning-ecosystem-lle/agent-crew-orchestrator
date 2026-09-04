@@ -74,12 +74,27 @@ export type RoleRegistry = {
    * about the park"), a workflow step cannot say it, and so the merge stopped returning the turn
    * to the author of a PR at all. Six merges in one day went into silence.
    *
-   * DERIVED FROM `wake` AND FROM THE ABSENCE OF A CARD, not from `kind`: `kind` is a project's
-   * label for a vendor and this package does not interpret it (see `roles/schema.ts`). The two
-   * facts are read for one reason each — `wake.mode: 'event'` says nobody of the circuit raises
-   * it as a session, and no `instructions` says there is no card it reads, hence no norm it
-   * could apply and no judgement it could form. A participant with a card (`reviewer-pr`) meets
-   * every door as before, and so does a human (`wake.mode: 'self'`) writing by hand.
+   * DERIVED FROM `wake` ALONE, not from `kind`: `kind` is a project's label for a vendor and
+   * this package does not interpret it (see `roles/schema.ts`). `wake.mode: 'event'` is the
+   * whole predicate, and it says exactly the thing that matters here — NOBODY OF THE CIRCUIT
+   * RAISES THIS PARTICIPANT AS A SESSION, so whatever it writes is written by a step of a job.
+   * That is not a reading of the field, it is enforced by `roleLaunchability`, which refuses to
+   * raise anything whose `wake.mode` is not `watch`. A human (`self`), an assistant
+   * (`via-human`), an agent with a session (`watch`) and a resident process (`resident`) all
+   * meet every door as before: the norm for roles is not weakened by a letter.
+   *
+   * IT WAS NARROWER ONCE, AND THE NARROWING WAS MEASURED WRONG. Until 2026-09-04 this asked for
+   * a second fact — no `instructions`, i.e. no card the writer reads, «hence no norm it could
+   * apply». That reasoning confused WHO SIGNS with WHO SENDS. `reviewer-pr` has a card
+   * (`REVIEWER.md`) and its letters are signed by it, but they are written by a step of the
+   * review job: there is no session behind them either, and no more of a judgement about a park
+   * than the merge notifier has. The consumer contour measured the hole on 2026-09-03 — round
+   * `33751725081` on its PR #485, step «доставка 1 из 3»: the thread stood parked on john, the
+   * step called `new-message` without a park verdict, this door refused, and an `approve`
+   * reached the PR comment and the review status but NOT the feed. The feed is the only channel
+   * that WAKES anybody — neither the scheduler nor `mail` reads a PR comment — so the class is
+   * «any PR whose thread is parked when the verdict lands loses that verdict in the one channel
+   * that moves the queue», and the author learns of it by eye.
    */
   isMachineWriter(id: RoleId): boolean;
   /**
@@ -193,7 +208,7 @@ export const createRoleRegistry = (config: RolesSection): RoleRegistry => {
     },
     isMachineWriter: (id) => {
       const role = byId.get(id);
-      return role !== undefined && role.wake.mode === "event" && role.instructions === undefined;
+      return role !== undefined && role.wake.mode === "event";
     },
     watchTargets: () =>
       active.flatMap((role) =>

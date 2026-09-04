@@ -66,6 +66,17 @@ const CONFIG = {
       wake: { mode: "event" },
       summary: "the circuit announcing its own facts",
     },
+    {
+      // THE OTHER JOB STEP, AND THE ONE THE CARD USED TO HIDE (thread 072, 2026-09-04): a
+      // verdict is signed by a role and written by a step of the review job. `instructions`
+      // is here on purpose — it is the fact the first cut of the boundary read as "an author".
+      id: "reviewer-pr",
+      kind: "gh-action",
+      status: "active",
+      wake: { mode: "event" },
+      summary: "the review round",
+      instructions: [{ kind: "in-repo", path: "REVIEWER.md" }],
+    },
   ],
 };
 
@@ -1926,6 +1937,44 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
   });
 
+  /**
+   * AND THE VERDICT OF A REVIEW ROUND GOES THROUGH IT TOO (thread 072, 2026-09-04). THE JOINT,
+   * and it is the same one the first cut of this exception missed: `--from reviewer-pr` →
+   * the registry → the door → the file. The unit level cannot see it, because the unit is
+   * handed `machineWriter: true` and the whole defect was that the registry answered `false`
+   * for this name — the participant HAS a card (`REVIEWER.md`) and is still a step of a job.
+   *
+   * MEASURED IN THE CONSUMER CONTOUR on 2026-09-03: round `33751725081` on their PR #485, step
+   * «доставка 1 из 3». Their thread `110` stood parked on john, the step called `new-message`
+   * with no verdict about the park, this door refused, and the `approve` reached the PR comment
+   * and the review status but NOT the feed — the only channel that wakes anybody. The verdict
+   * that would have moved the queue was legible to eyes alone.
+   */
+  it("WRITES the verdict of a review round into a standing park — a card does not make it a session", () => {
+    const contest = contour();
+    park(contest);
+
+    // The letter in the shape the review job writes it: a verdict about a PR, which says
+    // nothing about the question this thread is frozen on and cannot be made to.
+    const result = direct(contest, "reviewer-pr", "--verdict", "approve", "--pr", "485");
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(result.out).toContain("NOT lifted and NOT touched");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(2);
+    // The park it landed beside is untouched on disk as well: the letter carries no park field
+    // and the verdict it DOES carry is in the header, where the reader of the feed finds it.
+    // (Read by name, not through `written` — that helper takes the FIRST file, which here is
+    // the park letter itself.)
+    const dir = join(contest.root, "016-x", "messages");
+    const landed = parseMessageFile(
+      readFileSync(join(dir, readdirSync(dir).sort().at(-1) as string), "utf8"),
+    );
+    expect(landed.fields.from).toBe("reviewer-pr");
+    expect(landed.fields.parkedOn).toBeUndefined();
+    expect(landed.fields.verdict).toBe("approve");
+  });
+
   it("REGRESSION: a ROLE writing the very same letter is still refused by name", () => {
     const contest = contour();
     park(contest);
@@ -1934,6 +1983,18 @@ describe("a letter into a thread that is already parked (thread 058)", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(1);
+  });
+
+  it("REGRESSION: and so is a role's own verdict-shaped letter — the exception is the SENDER, not the fields", () => {
+    const contest = contour();
+    park(contest);
+
+    const result = direct(contest, "curator", "--verdict", "approve", "--pr", "485");
+
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("PARKED behind a decision of john's");
+    expect(result.out).toContain("--parked-on john");
     expect(readdirSync(join(contest.root, "016-x", "messages"))).toHaveLength(1);
   });
 

@@ -91,13 +91,15 @@ describe("RoleRegistry", () => {
   });
 
   /**
-   * WHO IS A MACHINE EVENT AND WHO IS AN AUTHOR (thread 072). The mail's doors ask an author
-   * for a judgement — what this letter does about the park standing on the thread — and the
-   * circuit's own announcement has nobody to make one. The line is drawn over `wake` and the
-   * presence of a card, never over `kind`: `kind` is a project's label for a vendor and this
-   * package does not read it (a `gh-action` WITH a card is an author, and it is `reviewer-pr`).
+   * WHO SENDS, NOT WHO SIGNS (thread 072; the boundary widened 2026-09-04). The mail's doors
+   * ask for a judgement — what this letter does about the park standing on the thread — and a
+   * step of a job has nobody to make one, whatever name it signs with. The line is drawn over
+   * `wake` and NEVER over `kind` (a vendor's label this package does not read) and never over
+   * the presence of a card: `reviewer-pr` HAS `REVIEWER.md` and is still a step of the review
+   * job, which is exactly what the consumer contour's round `33751725081` measured — an
+   * `approve` that reached the PR and not the feed.
    */
-  it("tells the circuit's own event from an author: no session of ours raises it, and it reads no card", () => {
+  it("tells a job step from a raised session: 'event' is the whole predicate, a card does not make an author", () => {
     const notifier = {
       id: "github",
       kind: "gh-action",
@@ -112,11 +114,20 @@ describe("RoleRegistry", () => {
     const registry = registryOf(john, curator, devCore, reviewerWithCard, notifier);
 
     expect(registry.isMachineWriter("github")).toBe(true);
-    // A card means there is a norm to apply and somebody applying it — every door as before.
-    expect(registry.isMachineWriter("reviewer-pr")).toBe(false);
-    // A human writing by hand is not an event either, card or no card.
+    // A CARD DOES NOT MAKE AN AUTHOR: nobody is raised as this participant, so the verdict it
+    // signs is written by a workflow step and there is no session to ask about the park.
+    expect(registry.isMachineWriter("reviewer-pr")).toBe(true);
+    // ...and the same participant WITHOUT a card is no different: the card was never the fact.
+    expect(registryOf(john, reviewer).isMachineWriter("reviewer-pr")).toBe(true);
+    // REGRESSION, the half the norm keeps: everybody the circuit can raise, and every human,
+    // meets the door as before. A card is irrelevant here too — `dev-core` has none in this
+    // fixture and is still asked, because a session of ours IS raised as it.
     expect(registry.isMachineWriter("john")).toBe(false);
+    expect(registry.isMachineWriter("curator")).toBe(false);
     expect(registry.isMachineWriter("dev-core")).toBe(false);
+    expect(
+      registryOf(john, { ...devCore, wake: { mode: "resident" } }).isMachineWriter("dev-core"),
+    ).toBe(false);
     expect(registry.isMachineWriter("nobody")).toBe(false);
   });
 
