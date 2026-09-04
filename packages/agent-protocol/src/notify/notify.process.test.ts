@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
+import { describeRepairRefusal } from "../orchestrator/self-restart.js";
 import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHomeInside, sandbox } from "../testing/process-sandbox.js";
 
@@ -1178,7 +1179,7 @@ describe("the drift of the box reaches the digest — the standoff read off disk
   /** The state the DAEMON leaves behind: a standoff, and optionally the pid of a live one. */
   const standing = (
     contest: ReturnType<typeof contour>,
-    options: { readonly since: string; readonly daemon: boolean },
+    options: { readonly since: string; readonly daemon: boolean; readonly why?: string },
   ): void => {
     const state = join(contest.repo, ".orchestrator");
     mkdirSync(state, { recursive: true });
@@ -1190,7 +1191,9 @@ describe("the drift of the box reaches the digest — the standoff read off disk
         ref: "origin/main",
         behind: 3,
         since: options.since,
-        why: "no self-restart while sessions are live (dev-core/044-selfheal-blind-spots)",
+        why:
+          options.why ??
+          "no self-restart while sessions are live (dev-core/044-selfheal-blind-spots)",
         at: "2026-07-25T20:00:00Z",
       })}\n`,
     );
@@ -1225,6 +1228,37 @@ describe("the drift of the box reaches the digest — the standoff read off disk
     expect(result.out.indexOf("this box is running code")).toBeLessThan(
       result.out.indexOf("⏳ твой ход: 044-x"),
     );
+  });
+
+  /**
+   * THE OTHER REFUSAL OF THE SAME BLOCK (thread 123). The case above carries the sentence
+   * of a daemon that did NOT go and repair; this one carries the sentence of a daemon that
+   * WENT and whose repair did not hold — the ending that reached the log and nothing else.
+   * The `why` is not a literal here: it comes out of the dictionary the daemon publishes
+   * from, so a change of wording on one side cannot leave this seam asserting a fossil.
+   */
+  it("carries the refusal of the repair itself, and not only the refusal to try", () => {
+    const why = describeRepairRefusal({
+      kind: "stood",
+      why: "'git pull --ff-only' in '/srv/circuit' SUCCEEDED and moved nothing: HEAD is still 8acff3fc. The tree is on 'core/gate-checks-from-actions', not the 'main' of 'origin/main'",
+    });
+    if (why === undefined) throw new Error("this failure has a cause");
+    const contest = contour({});
+    contest.thread("123-x", "john");
+    standing(contest, { since: OVERDUE, daemon: true, why });
+    contest.commit();
+
+    const result = run(contest);
+
+    expect(result.code).toBe(0);
+    // The class fires on the same two fields as before: nothing here rings on WHO wrote the
+    // sentence, which is the whole of the compatibility claim of this package.
+    expect(result.out).toContain("this box is running code 8acff3fc while origin/main is a27d7cdd");
+    expect(result.out).toContain("3 commit(s) behind");
+    // And the cause, verbatim through the door — the fact that used to stop at the log.
+    expect(result.out).toContain("the self-repair ran and this tree did not move");
+    expect(result.out).toContain("not the 'main' of 'origin/main'");
+    expect(result.out).toContain("The decision to repair was taken and it did not hold");
   });
 
   it("it rings ONCE for the period — the same standoff on the next run is not news", () => {
