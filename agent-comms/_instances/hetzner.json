@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T01:55:17.798Z",
+  "writtenAt": "2026-09-04T02:00:06.138Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "096-repair-cannot-return-the-branch",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-04T02:29:25Z"
     }
   ]
