@@ -76,7 +76,7 @@
 | 069-session-path | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 070-session-tmpdir-breaks-tests | curator, dev-core, john | normal | open | devops | — | 2026-09-02 | PR #183 смёржен в main squash-коммитом ce86549c787973658edf92eecc5de68a0e86d3b1 (15:52:23Z). Гарды… |
 | 071-test-depends-on-box-env | curator, dev-core, john | normal | closed | — | — | 2026-09-02 | — |
-| 072-ci-outcome-not-delivered | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: распространяется ли ваше исключение от 02.09 («первый вариант») на письма r… |
+| 072-ci-outcome-not-delivered | curator · dev-core · john | high | open | curator | — | 2026-09-04 | Слово john полем delivers (чат 2026-09-04 ~15:39Z): «А» — исключение расширяется ПРЕДИКАТОМ. Гард 3… |
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
