@@ -3096,6 +3096,49 @@ the refusal further from the decision, not closer. Like `pr open`, this door cat
 honest mistake and is bypassed by not using it — the load-bearing half stays at the merge
 gate, which refuses a merge that is not `MERGEABLE` anyway.
 
+**The second answer: the base moved AFTER the credited green `checks` started** (john's
+word of 2026-09-03, quoted in thread `097`: «ДА, ТОЛЬКО НОТА»). A head can be perfectly
+right and the MEASURE behind it stale — a `pull_request` run reads the head merged with the
+base OF ITS OWN MOMENT, and a base that moves afterwards does not rerun it. `mergeable` is
+still `MERGEABLE`, there is no conflict, and the green a `review` label leans on is a
+reading of a tree that is no longer the result of this merge. Measured twice in twenty-four
+hours: `#249` — thirteen seconds between the green and the base move, `#252` — four minutes
+twenty-five seconds. Until this note the class was caught by exactly one door, `merge-gate`,
+and only AT THE BUTTON, i.e. after the round had already been paid for.
+
+```
+pr mergeable: the base MOVED after the credited 'checks' started — the base moved AFTER the
+credited checks started: 9303cb9 committed 2026-09-03T22:41:00Z, 'checks' started
+2026-09-03T22:30:00Z. …
+pr mergeable: the base moved THROUGH 1 path(s) this pull request also changes:
+packages/agent-protocol/src/cli.ts — the green a 'review' label would lean on measured a
+tree that no longer results from this merge
+pr mergeable: the branch applies to its base — the 'review' label may be hung
+```
+
+- **it only speaks — the exit code is untouched in every branch.** `0` on a settled
+  `MERGEABLE` with the note printed, `1` on everything else. Refusing the label on a stale
+  green would be a narrowing of the announced route, which is a norm of its own;
+- **it says facts, never advice**: the sha of the base and when it landed, the name of the
+  credited run and when it started, and the paths the base moved through that this pull
+  request also changes;
+- **the empty intersection is printed too** («the base moved OUTSIDE the paths of this pull
+  request»): a shift that cannot change the merge is INERT, and inert is a measurement —
+  silence is indistinguishable from «the door never looked»;
+- **four states, each said**: the base did not move / it moved inside the paths of the PR /
+  it moved outside them / whether it moved is UNKNOWN — no green attempt credited on this
+  head, no readable base, no start stamp. The last is a named line, never a crash;
+- **the judgement is the merge gate's own** (`baseDriftOf`), not a second copy of it: two
+  doors answering one question in two wordings drift apart in a month. The note adds exactly
+  one thing the gate does not compute — the paths;
+- **the price, as a number.** Zero extra asks about the pull request: the settle loop above
+  already asks `gh pr view` at least twice and the note's fields ride in the same `--json`.
+  On top of that, **one** `gh api` call for the head of the base branch, and **two** more —
+  the base commit as of the credited start, and the comparison of the two — spent ONLY when
+  the base actually moved. Nothing at all on the refusing branch: a label nobody hangs has
+  no reader. Worst case three, and the command is run by hand before a label, never in a
+  loop.
+
 ### `pr open` — how a role opens a pull request, and what is refused before it exists (thread 052)
 
 ```

@@ -1007,11 +1007,33 @@ export type BaseDrift = {
   /** `current`: measured, the base is older than the credited checks — nothing to say. */
   readonly state: "current" | "drift" | "unknown";
   readonly detail: string;
+  /**
+   * The START of the EARLIEST credited check, ISO, present only on `drift` — the moment the
+   * base has to be dated against, handed out so a caller can ask WHICH COMMITS the base
+   * moved through since then (`describeBaseNote`). Not a second measurement: it is the very
+   * stamp `detail` already prints, exposed as a field instead of only as prose, because a
+   * caller that re-derived it from the checks would be the second reading this file exists
+   * to prevent.
+   */
+  readonly creditedSince?: string | undefined;
 };
+
+/**
+ * THE THREE FACTS THE DRIFT IS COMPUTED FROM — and the whole reason this is a type of its
+ * own (thread `097`, john's word of 2026-09-03 «ДА, ТОЛЬКО НОТА»).
+ *
+ * The second door that asks this question is `pr mergeable`, and it asks it BEFORE the
+ * label rather than at the button. It has no reviews, no rounds and no verdict to judge, so
+ * demanding a whole {@link PullRequestFacts} of it would force it to invent the fields it
+ * does not read — and an invented field is how a second reading of the same question is
+ * born. Narrowing the parameter instead keeps ONE judgement with two callers: the merge
+ * gate passes its full facts (still assignable), the label door passes exactly these three.
+ */
+export type BaseDriftFacts = Pick<PullRequestFacts, "checks" | "baseSha" | "baseCommittedAt">;
 
 const isoOf = (moment: number): string => new Date(moment).toISOString().replace(/\.\d{3}Z$/, "Z");
 
-export const baseDriftOf = (pr: PullRequestFacts): BaseDrift => {
+export const baseDriftOf = (pr: BaseDriftFacts): BaseDrift => {
   const credited = latestAttemptPerName(pr.checks.map(asAttempt)).filter(checkIsGreen);
   if (credited.length === 0)
     return {
@@ -1043,6 +1065,7 @@ export const baseDriftOf = (pr: PullRequestFacts): BaseDrift => {
     };
   return {
     state: "drift",
+    creditedSince: isoOf(earliest),
     detail: `the base moved AFTER the credited checks started: ${base.slice(0, 7)} committed ${baseAt}, '${first?.name ?? "?"}' started ${isoOf(earliest)}. A 'pull_request' run measures the head merged with the base OF ITS OWN MOMENT, and a base that moves does not rerun it — the green guard 2 credits is a reading of a tree that is no longer the result of this merge. Conservative: a base move that cannot change the merge is named too`,
   };
 };

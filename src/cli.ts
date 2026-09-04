@@ -87,7 +87,9 @@ import {
   workdirState,
 } from "./fs/git.js";
 import { resolveMailRoot } from "./fs/mail-root.js";
+import { type BaseMovePaths, describeBaseNote } from "./merge/base-note.js";
 import {
+  baseDriftOf,
   describeMergeGate,
   describePowerDocuments,
   describeVersionBumpFollowUp,
@@ -13709,6 +13711,175 @@ const ghMergeReadySource = (repo: string): MergeReadySource => {
   };
 };
 
+/**
+ * WHERE THE BASE BRANCH IS NOW (023.3, input repaired in 023.4) — ONE read with TWO callers
+ * since thread 097: the merge gate at the button, and `pr mergeable` before the label.
+ *
+ * `gh pr view` dates the commits of the PR and never the base's head, and the base SHA it
+ * does report is the one the branch was CUT from — dating THAT is a measurement of nothing,
+ * and that is the exact defect 023.4 repaired. So the BRANCH is asked for by name, and the
+ * answer carries both halves of the one fact: which commit the base is at now, and when it
+ * landed there. Half an answer is no answer — a SHA with no date, or a date with no SHA,
+ * would be read downstream as a measurement that happened.
+ *
+ * A failure here is NOT fatal to either caller and is not reported twice: nothing is
+ * computed from it, and the note downstream says «unknown» in its own words, which is the
+ * whole of the one-sided degradation this scope asks for.
+ */
+const readBaseHead = (input: {
+  readonly repo: string;
+  readonly env: NodeJS.ProcessEnv;
+  readonly branch: string | null | undefined;
+}): { sha: string; committedAt: string } | undefined => {
+  const branch = input.branch;
+  if (branch === undefined || branch === null || branch.trim().length === 0) return undefined;
+  try {
+    const answer = execFileSync(
+      "gh",
+      [
+        "api",
+        `repos/{owner}/{repo}/commits/${branch.trim()}`,
+        "--jq",
+        "[.sha, .commit.committer.date] | @tsv",
+      ],
+      {
+        cwd: input.repo,
+        encoding: "utf8",
+        env: input.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 1024 * 1024,
+      },
+    ).trim();
+    const [sha, committedAt] = answer.split(/\s+/);
+    if (sha === undefined || sha.length === 0) return undefined;
+    if (committedAt === undefined || committedAt.length === 0) return undefined;
+    return { sha, committedAt };
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * WHICH PATHS THE BASE MOVED THROUGH between the start of the credited `checks` and now —
+ * the only fact the note of thread 097 adds to what the merge gate already computes, and
+ * the only one that costs calls of its own. TWO of them, and both are spent ONLY on the
+ * `drift` branch: the commit the base stood at when the credited run began (`until`, which
+ * GitHub answers by commit date — the same dating assumption `baseDriftOf` states out loud),
+ * and the comparison of that commit with the base's head.
+ *
+ * NEITHER FAILURE IS FATAL AND NEITHER IS SILENT: every way out that is not a list of paths
+ * carries the REASON in its own words, because «the door did not look» and «the door looked
+ * and could not tell» are the two answers a reader must never have to guess between.
+ *
+ * `--jq` is asked for as a separate argument rather than folded into the request, and the
+ * filter tolerates a missing `files` (GitHub omits it on very large comparisons): a filter
+ * that threw would print its OWN defect as a refusal of the API.
+ */
+const readBaseMovePaths = (input: {
+  readonly repo: string;
+  readonly env: NodeJS.ProcessEnv;
+  readonly branch: string;
+  readonly since: string;
+  readonly baseSha: string;
+}): BaseMovePaths => {
+  const api = (path: string, jq: string): string =>
+    execFileSync("gh", ["api", path, "--jq", jq], {
+      cwd: input.repo,
+      encoding: "utf8",
+      env: input.env,
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 16 * 1024 * 1024,
+    }).trim();
+
+  let before: string;
+  try {
+    before = api(
+      `repos/{owner}/{repo}/commits?sha=${encodeURIComponent(input.branch)}&until=${encodeURIComponent(input.since)}&per_page=1`,
+      ".[0].sha // empty",
+    );
+  } catch (error) {
+    return {
+      state: "unread",
+      why: `the base commit as of ${input.since} was not read: ${(error as Error).message.split("\n")[0]}`,
+    };
+  }
+  if (before.length === 0)
+    return {
+      state: "unread",
+      why: `the base branch '${input.branch}' reports no commit at or before ${input.since}`,
+    };
+  try {
+    const answer = api(
+      `repos/{owner}/{repo}/compare/${encodeURIComponent(before)}...${encodeURIComponent(input.baseSha)}`,
+      '(.files // []) | map(.filename) | join("\\n")',
+    );
+    return { state: "read", paths: answer.split("\n").filter((line) => line.trim().length > 0) };
+  } catch (error) {
+    return {
+      state: "unread",
+      why: `${before.slice(0, 7)}…${input.baseSha.slice(0, 7)} was not compared: ${(error as Error).message.split("\n")[0]}`,
+    };
+  }
+};
+
+/**
+ * THE NOTE, ASSEMBLED — the reads live here, the judgement lives in `describeBaseNote`, and
+ * the split is the point: nothing in this function can decide anything, and nothing in that
+ * one can call `gh`.
+ *
+ * IT CANNOT THROW. Every branch that fails returns a SAID line, because the caller prints
+ * this before an exit code it is forbidden to touch (john's boundary 1): a note that threw
+ * would turn a printed sentence into a refusal, which is exactly the norm nobody granted.
+ */
+const baseNoteOf = (input: {
+  readonly repo: string;
+  readonly env: NodeJS.ProcessEnv;
+  readonly raw: string | undefined;
+}): readonly string[] => {
+  let payload: unknown = null;
+  try {
+    payload = JSON.parse(input.raw ?? "null");
+  } catch (error) {
+    return [
+      `whether the base moved under the credited 'checks' is UNKNOWN — the answer of gh is not JSON (${(error as Error).message.split("\n")[0]}). The word above was read from 'mergeable' alone and stands`,
+    ];
+  }
+  const parsed = ghPullRequestSchema.safeParse(payload);
+  if (!parsed.success)
+    return [
+      `whether the base moved under the credited 'checks' is UNKNOWN — the answer of gh is not the shape this note reads (${parsed.error.issues
+        .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+        .join("; ")}). The word above was read from 'mergeable' alone and stands`,
+    ];
+  const baseHead = readBaseHead({
+    repo: input.repo,
+    env: input.env,
+    branch: parsed.data.baseRefName,
+  });
+  const facts = pullRequestFacts(parsed.data, baseHead);
+  const drift = baseDriftOf(facts);
+  const branch = parsed.data.baseRefName?.trim();
+  const moved =
+    drift.state === "drift" &&
+    drift.creditedSince !== undefined &&
+    branch !== undefined &&
+    branch.length > 0 &&
+    baseHead !== undefined
+      ? readBaseMovePaths({
+          repo: input.repo,
+          env: input.env,
+          branch,
+          since: drift.creditedSince,
+          baseSha: baseHead.sha,
+        })
+      : undefined;
+  return describeBaseNote({
+    drift,
+    changedPaths: facts.changedPaths,
+    ...(moved === undefined ? {} : { moved }),
+  });
+};
+
 const mergeGate = (argv: readonly string[]): void => {
   const number = required(argv, "--pr");
   if (!/^\d+$/.test(number)) {
@@ -13834,44 +14005,9 @@ const mergeGate = (argv: readonly string[]): void => {
       out(`merge-gate: --working-cards matches no role's instructions: ${stray.join(", ")}`);
     }
   }
-  // WHERE THE BASE BRANCH IS NOW (023.3, input repaired in 023.4), the second read: `gh pr
-  // view` dates the commits of the PR and never the base's head, and the base SHA it does
-  // report is the one the branch was cut from — dating THAT is a measurement of nothing.
-  // The BRANCH is asked for by name, and the answer carries both halves of the one fact:
-  // which commit the base is at now, and when it landed there.
-  // A failure here is NOT fatal and is not even reported twice — nothing is computed from
-  // it, and the note downstream says "unknown" in its own words, which is the whole of the
-  // one-sided degradation this scope asks for.
-  const baseHead = ((): { sha: string; committedAt: string } | undefined => {
-    const branch = parsed.data.baseRefName;
-    if (branch === undefined || branch === null || branch.trim().length === 0) return undefined;
-    try {
-      const answer = execFileSync(
-        "gh",
-        [
-          "api",
-          `repos/{owner}/{repo}/commits/${branch.trim()}`,
-          "--jq",
-          "[.sha, .commit.committer.date] | @tsv",
-        ],
-        {
-          cwd: repo,
-          encoding: "utf8",
-          env: platform.env,
-          stdio: ["ignore", "pipe", "pipe"],
-          maxBuffer: 1024 * 1024,
-        },
-      ).trim();
-      const [sha, committedAt] = answer.split(/\s+/);
-      // Half an answer is no answer: a SHA with no date, or a date with no SHA, would be
-      // read downstream as a measurement that happened.
-      if (sha === undefined || sha.length === 0) return undefined;
-      if (committedAt === undefined || committedAt.length === 0) return undefined;
-      return { sha, committedAt };
-    } catch {
-      return undefined;
-    }
-  })();
+  // WHERE THE BASE BRANCH IS NOW, the second read — `readBaseHead`, shared with the door
+  // before the label (thread 097). The reasoning lives there.
+  const baseHead = readBaseHead({ repo, env: platform.env, branch: parsed.data.baseRefName });
 
   // WHICH ROUND OF REVIEW PRODUCED THE VERDICT (thread 027), the third read: GitHub anchors
   // a review to the head the PR has WHEN THE VERDICT IS SENT, so a round that started on an
@@ -13974,18 +14110,33 @@ const prMergeable = (argv: readonly string[]): void => {
   out(`pr mergeable: credentials — ${platform.note}`);
 
   let reading: MergeabilityReading;
+  let raw: string | undefined;
   try {
     reading = readMergeability({
-      ask: () =>
-        mergeableWordOf(
-          execFileSync("gh", ["pr", "view", number, "--json", "mergeable,mergeStateStatus"], {
+      ask: () => {
+        // ONE MORE FIELD SET, ZERO MORE CALLS (thread 097, the note): the settle loop asks
+        // `gh pr view` at least twice whatever happens, so the facts the note is computed
+        // from ride along in the very same asks. The word this loop judges is still read
+        // out of `mergeable` alone and nothing else here can change it.
+        raw = execFileSync(
+          "gh",
+          [
+            "pr",
+            "view",
+            number,
+            "--json",
+            "number,headRefOid,body,statusCheckRollup,reviews,commits,files,baseRefName,mergeable,mergeStateStatus",
+          ],
+          {
             cwd: repo,
             encoding: "utf8",
             env: platform.env,
             stdio: ["ignore", "pipe", "pipe"],
-            maxBuffer: 8 * 1024 * 1024,
-          }),
-        ),
+            maxBuffer: 16 * 1024 * 1024,
+          },
+        );
+        return mergeableWordOf(raw);
+      },
       pause: (ms) => {
         Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
       },
@@ -14005,6 +14156,12 @@ const prMergeable = (argv: readonly string[]): void => {
 
   out(`pr mergeable: PR #${number} — ${reading.detail}`);
   if (isMergeable(reading)) {
+    // THE SECOND ANSWER OF THIS DOOR (thread 097, john 2026-09-03: «ДА, ТОЛЬКО НОТА»). It
+    // is computed HERE and not above the refusal on purpose: the note is about the green a
+    // `review` label would lean on, and on the refusing branch no label is hung, so the two
+    // extra `gh` calls would buy a sentence with no reader. It changes nothing below it —
+    // the return is the same `return` it always was.
+    for (const line of baseNoteOf({ repo, env: platform.env, raw })) out(`pr mergeable: ${line}`);
     out("pr mergeable: the branch applies to its base — the 'review' label may be hung");
     return;
   }
