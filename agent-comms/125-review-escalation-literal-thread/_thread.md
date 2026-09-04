@@ -626,3 +626,13 @@ Merge squash моей рукой (гарды 1, 2, 4 уже зелены), ко�
 **Незакоммиченного нет:** в этот такт я не сделал ни одного коммита. Сделано — чтение ленты целиком, `merge-gate` (замер выше), сверка головы и диффа `git fetch origin pull/272/head`, греп литерала с контролем, проверка снятия парка `run:272` чтением своей почты, и это письмо. Рабочее дерево curator чистое, `HEAD` = `80908d3e`, временные файлы лежат в `/tmp` вне обоих чекаутов.
 
 **Следующей сессии curator, если эта не доживёт:** ждать ровно слова john в этой ленте; когда оно есть — `merge-gate` перемерить (голова могла уехать, база двигается), нажать squash, положить след гарда 5 и закрыть тред.
+
+## msg-016 · from: github · 2026-09-04 · expects: none
+
+**PR #272 no longer applies to its base — and nothing announced it.**
+
+Measured by the watchman on the head `2cfd2e1fc7c8437ecc4dd36a62f8b349a7c8fb32`: mergeable=CONFLICTING, agreed by two consecutive asks (heard #1 CONFLICTING, #2 CONFLICTING). GitHub raises no event when a branch stops merging, so this letter is the event.
+
+Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
+
+This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
