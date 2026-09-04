@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T15:30:27.499Z",
+  "writtenAt": "2026-09-04T15:31:00.401Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "119-mute-count-blames-github",
-      "state": "draining",
-      "deadline": "2026-09-04T16:01:41Z"
-    },
     {
       "role": "dev-core",
       "thread": "125-review-escalation-literal-thread",
