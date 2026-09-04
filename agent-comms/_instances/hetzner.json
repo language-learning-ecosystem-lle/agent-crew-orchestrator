@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T19:03:34.825Z",
+  "writtenAt": "2026-09-04T19:07:56.866Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "129-park-bell-silent-letter",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-04T19:41:41Z"
     }
   ]
