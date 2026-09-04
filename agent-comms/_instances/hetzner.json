@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T19:01:44.707Z",
+  "writtenAt": "2026-09-04T19:03:34.825Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "129-park-bell-silent-letter",
+      "state": "running",
+      "deadline": "2026-09-04T20:03:31Z"
+    },
     {
       "role": "curator",
       "thread": "129-park-bell-silent-letter",
