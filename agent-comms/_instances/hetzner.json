@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-04T17:16:20.268Z",
+  "writtenAt": "2026-09-04T17:21:36.245Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "127-verdict-delivery-suite-red-on-main",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-04T18:09:46Z"
     }
   ]
