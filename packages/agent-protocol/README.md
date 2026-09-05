@@ -2368,7 +2368,19 @@ agent-protocol orchestrator status --ref <ref> [--now <iso>] [--mode-file <p>] [
                             # owed, one that asks NOBODY ('expects: none') reads as a MODE the thread stands
                             # in: nothing is late, and the lift is named in both (thread 063),
                             # the neighbours' digests, and how old the mail on disk is; then the static half
-                            # (paths, permissions, resolution)
+                            # (paths, permissions, resolution, where each role WORKS)
+                            # AND, beside the workspaces, THE SERVICE BRANCHES AND HOW OLD THEY ARE (B.3,
+                            # thread 099): every 'wip/<role>/<thread>-<YYYYMMDDTHHMMZ>' this repository holds —
+                            # what the circuit committed for a run that ended without committing it. One
+                            # 'for-each-ref' answers for every role at once (linked worktrees share .git).
+                            # The age comes from the NAME and from nowhere else: the name is where the
+                            # tidy-up put the instant, and a second reading of one fact is how two readings
+                            # start to differ. 'none' is PRINTED rather than left silent — an empty
+                            # inventory that said nothing could not be told from one that was never read,
+                            # and a git call that does not answer says THAT instead of 'none'. A 'wip/'
+                            # name this package did not write is listed and called unreadable, never
+                            # dropped from the count. Nothing here DELETES a branch: the end of one is the
+                            # hand of the role that finds its own (john's §3, thread 099)
                             # AND, only when it is true, HOW OLD THE CODE IN THE LIVE DAEMON IS (023.2):
                             # the SHA it loaded, the SHA of --ref on disk, the distance, since when it
                             # is up. A daemon on the ref gets no line at all

@@ -533,6 +533,7 @@ import {
   describeFailedTidyUp,
   describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
+  describeServiceBranches,
   describeStrandedWorkspace,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
@@ -8838,6 +8839,32 @@ const orchestratorStatus = async (rawArgv: readonly string[]): Promise<void> => 
         baseRef: base.ref,
       });
       out(`  ${role.id}: ${verdict.detail}`);
+    }
+  }
+
+  // B.3 (thread 099): AND THE WORK THE CIRCUIT PUT SOMEWHERE FOR A ROLE THAT NEVER CAME
+  // BACK. The block above says where each role WORKS; a service branch is work that role
+  // left behind, and until this line it was visible to nothing but a `git branch` typed by
+  // hand. Beside the workspaces because it is the same tree's other half.
+  //
+  // ONE CALL FOR EVERY ROLE AT ONCE, and that is a fact of git rather than a shortcut:
+  // linked worktrees SHARE `.git`, so every role's service branches are refs of this one
+  // repository. `refs/heads/wip/` is the namespace `serviceBranchName` writes into.
+  //
+  // A FAILED READ IS NAMED, NEVER SILENT (discipline 4). `undefined` here means the git
+  // call itself did not answer — and an empty inventory printed in that case would say
+  // "there are none" about a question that was never asked.
+  const wip = gitAsk(["-C", repo, "for-each-ref", "--format=%(refname:short)", "refs/heads/wip/"]);
+  if (wip === undefined) {
+    out(
+      `service branches: NOT READ — 'git -C ${repo} for-each-ref refs/heads/wip/' did not answer; work the circuit committed for a role may be lying there unnamed`,
+    );
+  } else {
+    for (const line of describeServiceBranches(
+      wip.split("\n").filter((name) => name !== ""),
+      orchestratorNow(argv),
+    )) {
+      out(line);
     }
   }
 };
