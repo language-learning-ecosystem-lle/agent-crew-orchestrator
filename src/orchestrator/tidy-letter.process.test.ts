@@ -517,6 +517,19 @@ describe("a standing tidy-up failure gets ONE letter, not one per tick", () => {
     expect(second.out).not.toContain("the outcome is posted to the standing address");
     expect(dirty(workspace)).toBe(true);
 
+    // R5 — AND THE REFUSAL NAMES THE INCIDENT BEHIND THE HEAD. Three halves, each its own
+    // assert: (a) that the circuit's tidy-up failed and this head is its doing, (b) where
+    // that was told — the standing address and whose turn waits on it, (c) that the cause
+    // the tree has right now is still there, whole: the sentence is ADDED, never swapped
+    // in. Without (c) this fix would trade one misleading refusal for another.
+    expect(second.out).toContain(
+      "this head is where the circuit's own tidy-up of 'dev-core' left it",
+    );
+    expect(second.out).toContain("that tidy-up FAILED");
+    expect(second.out).toContain(TIDY_UP_SLUG);
+    expect(second.out).toContain("turn for 'curator'");
+    expect(second.out).toContain("read the incident there");
+
     // THE THIRD TICK, ASKED FOR BY NAME (curator, §4 of the statement — a measurement the
     // stand gives for free): it says the same thing as the second, and it too says nothing
     // about the tidy-up that failed. So the class is stable rather than converging on the
@@ -526,5 +539,9 @@ describe("a standing tidy-up failure gets ONE letter, not one per tick", () => {
     expect(lettersIn(mail)).toBe(1);
     expect(third.out).toContain("is not 'dev-core's to write to");
     expect(third.out).not.toContain("the index is broken");
+    // …and the tick after the tick still carries the account: the class is stable, so the
+    // pointer to the incident has to be as stable as the refusal it stands beside.
+    expect(third.out).toContain("that tidy-up FAILED");
+    expect(third.out).toContain(TIDY_UP_SLUG);
   }, 240_000);
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   describeDeliveredTidyUpLetter,
+  describeStandingTidyUpIncident,
   describeUndeliveredTidyUpLetter,
   planTidyUpDelivery,
   planTidyUpLetter,
@@ -347,5 +348,69 @@ describe("the lock on the repeat — one letter per incident, and the tick says 
     const signature = tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: FAILED });
     const decided = planTidyUpDelivery({ role: "dev-core", signature, memo: memoOf(signature) });
     expect((decided as { readonly said: string }).said).not.toContain("the branch is");
+  });
+});
+
+/**
+ * R5 — THE REFUSAL OF THE TICKS AFTER THE INCIDENT NAMES IT.
+ *
+ * Measured in the class "the branch was made, the commit refused": ticks 2..N never reach
+ * the tidy-up, refuse on a head the CIRCUIT itself moved, and say nothing about why that
+ * head is there. Each of the three halves of the requirement is checked on its own here —
+ * (a) that the tidy-up failed, (b) where it was told, (c) that nothing of the refusal the
+ * tree has right now is taken away, which is asserted at the call site in the process test
+ * because the composing is done there.
+ */
+describe("the standing incident, said inside the refusal of every tick after it (R5)", () => {
+  const memo = memoOf("whatever the signature was", {
+    branch: "wip/dev-core/012-x-20260905T1600Z",
+    outcome: "failed",
+  });
+
+  it("(a) says that the tidy-up FAILED and that this head is its doing", () => {
+    const said = describeStandingTidyUpIncident({ role: "dev-core", memo });
+    expect(said).toContain("dev-core");
+    expect(said).toContain("FAILED");
+    expect(said).toContain("this head is where the circuit's own tidy-up");
+  });
+
+  it("(b) says WHERE it was told — the standing address, the moment, the turn, the branch", () => {
+    const said = describeStandingTidyUpIncident({ role: "dev-core", memo });
+    expect(said).toContain(TIDY_UP_SLUG);
+    expect(said).toContain("2026-09-05T16:00:00Z");
+    expect(said).toContain("turn for 'curator'");
+    expect(said).toContain("wip/dev-core/012-x-20260905T1600Z");
+    // …and it sends the reader THERE rather than reading like a delivery of its own.
+    expect(said).toContain("read the incident there");
+    expect(said).not.toContain("the outcome is posted");
+  });
+
+  it("never claims a failure it does not know: a tidy-up that WENT is said as what it was", () => {
+    const said = describeStandingTidyUpIncident({
+      role: "dev-core",
+      memo: memoOf("s", { branch: "wip/dev-core/012-x-a", outcome: "done" }),
+    });
+    expect(said).toContain("committed the work here");
+    expect(said).not.toContain("FAILED");
+  });
+
+  it("a ledger written before R5 has no outcome — and the line says exactly that, not a guess", () => {
+    const said = describeStandingTidyUpIncident({
+      role: "dev-core",
+      memo: memoOf("s", { branch: "wip/dev-core/012-x-a" }),
+    });
+    expect(said).toContain("is not recorded in the ledger");
+    expect(said).not.toContain("FAILED");
+    // Where to look survives the missing field: that half is what the reader needs most.
+    expect(said).toContain(TIDY_UP_SLUG);
+  });
+
+  it("the stranded outcome is neither of the two — the work is saved, the tree was not moved back", () => {
+    const said = describeStandingTidyUpIncident({
+      role: "dev-core",
+      memo: memoOf("s", { branch: "wip/dev-core/012-x-a", outcome: "stranded" }),
+    });
+    expect(said).toContain("could not move the tree back");
+    expect(said).not.toContain("FAILED");
   });
 });
