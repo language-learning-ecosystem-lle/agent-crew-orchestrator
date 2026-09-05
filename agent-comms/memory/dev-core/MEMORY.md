@@ -67,3 +67,4 @@
 - [Красный CI называет только ПЕРВЫЙ упавший шаг](red-ci-names-only-the-first-failing-step.md) — typecheck упал → тесты не гонялись; правка НОРМЫ роняет чужие тесты, ищет их только полная сюита.
 - [Зелено рукой — может стоять на токене ящика](green-on-the-box-may-lean-on-the-box-token.md) — перед заводом проверки в CI прогнать её `env -u GH_TOKEN -u GITHUB_TOKEN`: дверь без кредитала деградирует в ДРУГУЮ сторону.
 - [У демона креды на push в `comms` ЕСТЬ](daemon-can-push-via-creds-door.md) — не в среде процесса, а через `platformEnvOf`/`secrets.env`; мерить `push --dry-run` из временного клона.
+- [Гард 2 двери merge докладывает КРУГ, а не `checks`](merge-gate-guard2-reports-the-review-round.md) — `not green: review=IN_PROGRESS` при зелёном `checks` = идущий круг ревью, чинить нечего.
