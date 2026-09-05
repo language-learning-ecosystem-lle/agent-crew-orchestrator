@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается», объявленное первым письмом этого адреса (2026-09-02T14-42-00Z-curato… |
-| 077-notifier-down | github, dev-core, curator | normal | open | curator | — | 2026-09-05 | Отказ msg-024 разобран: класс НОВЫЙ — ни 429 (тред 118), ни потерянная квитанция (тред 122). Транзи… |
+| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-05 | Дом находке §5 заведён: свой тред — [130-unguarded-read-kills-the-rescuer](https://github.com/langu… |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | — | — | 2026-09-03 | Мой долг по этому треду закрыт: проза «тред не закрывается [и не паркуется]» снята письмом в КАЖДЫЙ… |
