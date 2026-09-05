@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-05T15:25:40.723Z",
+  "writtenAt": "2026-09-05T15:32:50.646Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "099-dirty-tree-locks-the-role",
       "state": "running",
       "deadline": "2026-09-05T16:25:37Z"
+    },
+    {
+      "role": "curator",
+      "thread": "099-dirty-tree-locks-the-role",
+      "state": "running",
+      "deadline": "2026-09-05T16:12:47Z"
     }
   ]
 }
