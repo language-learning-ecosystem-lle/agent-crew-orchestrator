@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-05T11:25:03.663Z",
+  "writtenAt": "2026-09-05T11:35:26.152Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "062-contour-boundary",
       "state": "running",
       "deadline": "2026-09-05T12:25:00Z"
+    },
+    {
+      "role": "curator",
+      "thread": "124-norm-number-method-unnamed",
+      "state": "running",
+      "deadline": "2026-09-05T12:15:23Z"
     }
   ]
 }
