@@ -103,7 +103,7 @@
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-05 | verdict: needs-fixes |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | run:279 · 2026-09-05 | 2026-09-05 | Обе правки в голове f67ea5fe: имя чужой роли бьёт подпись; «commit FAILED» больше не печатается пов… |
 | 100-account-reshuffle | curator · dev-core · john | normal | closed | — | — | 2026-09-04 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
