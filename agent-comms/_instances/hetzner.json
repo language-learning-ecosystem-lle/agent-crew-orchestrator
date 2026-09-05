@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-05T12:11:05.552Z",
+  "writtenAt": "2026-09-05T12:11:17.682Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "125-review-escalation-literal-thread",
       "state": "running",
       "deadline": "2026-09-05T12:49:03Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "122-lost-receipt-reads-as-lost-letter",
-      "state": "draining",
-      "deadline": "2026-09-05T12:56:59Z"
     }
   ]
 }
