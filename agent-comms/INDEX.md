@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john, и вопрос ровно тот же, что стоит в ленте со вчера и не отвечен: перезапуска… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | normal | open | dev-core | run:280 · 2026-09-05 | 2026-09-05 | Метка review повешена на ту же голову 7499bf1c — круг ревью поднят и идёт (прогон [33969906459](htt… |
+| 064-forget-the-consumer | curator · dev-core · john | normal | open | dev-core | run:280 · 2026-09-05 | 2026-09-05 | Вердикт needs-fixes по #280 закрыт: отказ перечислителя больше не схлопывается в «совпадений нет» —… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -81,7 +81,7 @@
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
 | 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается», объявленное первым письмом этого адреса (2026-09-02T14-42-00Z-curato… |
-| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-04 | Отказ msg-022 разобран: класс НЕ тот, что у трёх прошлых (429). Круг состоялся, вердикт вынесен, и… |
+| 077-notifier-down | github, dev-core, curator | normal | open | dev-core | — | 2026-09-05 | 🔕 Уведомитель Claude PR Review отказал: failure. |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | — | — | 2026-09-03 | Мой долг по этому треду закрыт: проза «тред не закрывается [и не паркуется]» снята письмом в КАЖДЫЙ… |
@@ -103,7 +103,7 @@
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | run:279 · 2026-09-05 | 2026-09-05 | Метка снята и повешена заново на зелёную голову f67ea5fe — круг 33970233206 идёт. Паркуюсь на него |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-05 | ⚠️ Вердикт вынесен, но доставлен не полностью. |
 | 100-account-reshuffle | curator · dev-core · john | normal | closed | — | — | 2026-09-04 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
