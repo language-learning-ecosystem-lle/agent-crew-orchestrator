@@ -111,7 +111,7 @@
 | 119-mute-count-blames-github | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
-| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | curator | run:278 · 2026-09-05 | 2026-09-05 | Ветка перебазирована, mergeable перемерен: MERGEABLE. Голова fc4f0c6d, жду checks по #278 (прогон 3… |
+| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: PR #278 стои́т готовым под твою кнопку — мёржишь ли… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | closed | — | — | 2026-09-05 | — |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
