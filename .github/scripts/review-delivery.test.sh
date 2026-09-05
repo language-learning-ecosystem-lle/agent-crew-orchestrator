@@ -395,6 +395,178 @@ check "контроль: греп читает тот самый файл" "да
 check "и старого имени переменной, за которым читатель искал бы номер, тоже нет" "" \
   "$(grep -n 'REVIEW_ESCALATION_THREAD' ./review-delivery.sh)"
 
+# --- 12. Доставку судит ЦЕЛЬ, а не код выхода клиента (тред 122) ---------------
+
+# ЗАМЕР (curator, перемерен его рукой; первоисточник — круг по PR #260, прогон
+# 33817342342): коммент вердикта был ЗАПИСАН в 23:29:40Z, а в 23:29:51Z клиент получил
+# `502` и объявил «НЕ доставлен». Повтора POST не было — потерялась КВИТАНЦИЯ. Джоба
+# покраснела, гард 1 сказал STOP на доставленном вердикте, и был оплачен полный второй
+# круг, вынесший тот же `approve`. Ниже гоняется ровно эта развилка.
+PROBE_CALLS="${REVIEW_DELIVERY_DIR}/probe.calls"
+: > "$PROBE_CALLS"
+probe_calls() { wc -l < "$PROBE_CALLS" | tr -d ' '; }
+# СТАБ ПРОБЫ — обычная shell-функция, подставляемая в шов: сети в этом файле нет и
+# появиться не должна. Каждый вызов инкрементит счётчик — им и меряется первая граница.
+stub_probe() { # <код выхода, которым проба ответит>
+  printf 'call\n' >> "$PROBE_CALLS"
+  return "${1:-0}"
+}
+
+# (г) НУЛЕВОЙ ВЫХОД КЛИЕНТА — ПЕРЕЧИТЫВАНИЯ НЕ ПРОИСХОДИТ. Без счётчика первой границы
+# («успешная ветвь не трогается вовсе») машинно нет, и пункт не считается закрытым.
+: > "$PROBE_CALLS"
+OUT="$(delivery_confirmed 'коммент в PR' 0 stub_probe 1 2>&1)"; CODE=$?
+check "клиент вышел нулём — доставка состоялась" "0" "$CODE"
+check "клиент вышел нулём — проба НЕ вызвана ни разу (граница 1, счётчик)" "0" "$(probe_calls)"
+check "и в лог о ней не сказано ничего" "" "$OUT"
+
+# (а) НЕНУЛЕВОЙ ВЫХОД + ПРОБА НАШЛА ЗАПИСЬ → доставка состоялась, и это НАЗВАНО.
+: > "$PROBE_CALLS"
+OUT="$(delivery_confirmed 'коммент в PR' 1 stub_probe 0 2>&1)"; CODE=$?
+check "запись найдена после ненулевого выхода — доставка состоялась" "0" "$CODE"
+check "и проба вызвана ровно один раз" "1" "$(probe_calls)"
+check "потерянная квитанция названа в логе, а не проглочена" "да" \
+  "$(printf '%s' "$OUT" | grep -q '::warning::.*СВОЯ ЗАПИСЬ В ЦЕЛИ НАЙДЕНА' && echo да || echo нет)"
+
+# (б) НЕНУЛЕВОЙ ВЫХОД + ЗАПИСИ НЕТ → `failed`, ровно как сегодня.
+: > "$PROBE_CALLS"
+OUT="$(delivery_confirmed 'коммент в PR' 1 stub_probe 1 2>&1)"; CODE=$?
+check "записи в цели нет — доставка несостоявшаяся (поведение сегодняшнее)" "1" "$CODE"
+check "и сказано, что перечитывание записи не нашло" "да" \
+  "$(printf '%s' "$OUT" | grep -q '::error::.*перечитывание цели своей записи не нашло' && echo да || echo нет)"
+
+# (в) ПРОБА ОТКАЗАЛА САМА → `failed` НАЗВАННОЙ строкой, а не молчанием. Без третьего
+# исхода «не смог посмотреть» неотличимо от «не доехало» — тот же дефект классом ниже.
+OUT="$(delivery_confirmed 'коммент в PR' 1 stub_probe 3 2>&1)"; CODE=$?
+check "перечитывание отказало само — доставка несостоявшаяся" "1" "$CODE"
+check "и отказ пробы назван ОТДЕЛЬНОЙ строкой, а не подведён под «не доехало»" "да" \
+  "$(printf '%s' "$OUT" | grep -q '::error::.*ПЕРЕЧИТЫВАНИЕ ЦЕЛИ САМО ОТКАЗАЛО (код 3)' && echo да || echo нет)"
+# ПРОБЫ НЕ НАЗВАНО — тоже отказ по имени: молчаливое «доставлено» здесь было бы худшим
+# из возможных ответов.
+OUT="$(delivery_confirmed 'коммент в PR' 1 2>&1)"; CODE=$?
+check "пробы не названо — доставка несостоявшаяся" "1" "$CODE"
+check "и это сказано по имени" "да" \
+  "$(printf '%s' "$OUT" | grep -q 'пробы перечитывания не названо' && echo да || echo нет)"
+
+# УЧЁТ ПИШЕТСЯ ТЕМ ЖЕ `delivery_mark` — правится ТО, ЧТО в него кладётся, а не то, как
+# читается итог.
+delivery_attempt comment 1 stub_probe 0 >/dev/null 2>&1
+check "найденная запись кладётся в учёт как ok" "ok" "$(delivery_state comment)"
+delivery_attempt comment 1 stub_probe 1 >/dev/null 2>&1
+check "ненайденная — как failed" "failed" "$(delivery_state comment)"
+: > "$PROBE_CALLS"
+delivery_attempt status 0 stub_probe 1 >/dev/null 2>&1
+check "нулевой выход — ok и по-прежнему без единого вызова пробы" "ok" "$(delivery_state status)"
+check "счётчик подтверждает: успешная ветвь пробу не зовёт" "0" "$(probe_calls)"
+
+# ЧИСЛО НАЙДЕННЫХ ЗАПИСЕЙ — ТРЕТИЙ ИСХОД НА НЕЧИСЛЕ. «Пусто» это не «ноль записей», а
+# непонятый ответ: приведи его к нулю — и отказ разбора оденется в «не доехало».
+delivery_probe_count 1 'комментов' ; check "одна своя запись — найдена" "0" "$?"
+delivery_probe_count 0 'комментов' ; check "ноль записей — не найдена" "1" "$?"
+ERRTXT="$(delivery_probe_count '' 'комментов PR #260' 2>&1)"; CODE=$?
+check "ответ не число — третий исход, а не «ноль»" "2" "$CODE"
+check "и он назван строкой" "да" \
+  "$(printf '%s' "$ERRTXT" | grep -q 'дало не число' && echo да || echo нет)"
+
+# ПРОБА КОММЕНТА В PR — НА СТАБЕ `gh` (функция шадовит бинарник; сети нет).
+# ДВА ЛИТЕРАЛА И ОБА В ОДНОМ КОММЕНТЕ. Фикстура — тот самый случай: за прогон в PR
+# уходят ДВА коммента, и оба несут номер прогона; будь литерал один, проба ИТОГА приняла
+# бы коммент ВЕРДИКТА за свой и объявила доставку состоявшейся.
+GITHUB_REPOSITORY=lle/agent-crew-orchestrator
+export GITHUB_REPOSITORY
+gh() { # <api> <--paginate> <путь>
+  case "${GH_STUB_MODE:-ok}" in
+    fail) echo 'HTTP 502: Bad Gateway'; return 1 ;;
+    garbage) printf 'не json вовсе\n'; return 0 ;;
+  esac
+  printf '%s\n' '[
+    {"body":"verdict: approve\n\n---\n\nДоставлено шагами прогона [`33817342342`](u) по PR #260"},
+    {"body":"⚠️ **Вердикт вынесен, но доставлен не полностью.** … прогон [`33817342342`](u)."},
+    {"body":"Доставлено шагами прогона [`33333333333`](u) по PR #260 — ЧУЖОЙ круг."}
+  ]'
+}
+delivery_probe_pr_comment 260 33817342342 'Доставлено шагами прогона' >/dev/null 2>&1
+check "коммент вердикта опознан парой «номер прогона + фраза сноски»" "0" "$?"
+delivery_probe_pr_comment 260 33817342342 'Вердикт вынесен, но доставлен не полностью' >/dev/null 2>&1
+check "коммент итога опознан своей фразой, а не чужой" "0" "$?"
+delivery_probe_pr_comment 260 33817342342 'Ревью не состоялось: вердикт не сформирован' >/dev/null 2>&1
+check "фразы этого прогона нет — записи нет (второй исход)" "1" "$?"
+delivery_probe_pr_comment 260 39999999999 'Доставлено шагами прогона' >/dev/null 2>&1
+check "фраза есть, но прогон ЧУЖОЙ — записи нет" "1" "$?"
+GH_STUB_MODE=fail
+delivery_probe_pr_comment 260 33817342342 'Доставлено шагами прогона' >/dev/null 2>&1
+check "GitHub отказал запросу — третий исход, а не «не доехало»" "2" "$?"
+GH_STUB_MODE=garbage
+OUT="$(delivery_probe_pr_comment 260 33817342342 'Доставлено шагами прогона' 2>&1)"; CODE=$?
+check "ответ не разобрался — третий исход, и это ОТДЕЛЬНАЯ от отказа API ветвь" "2" "$CODE"
+check "и отказ разбора не выдаётся за отказ GitHub" "да" \
+  "$(printf '%s' "$OUT" | grep -q 'не разобран' && echo да || echo нет)"
+unset GH_STUB_MODE
+
+# ПРОБА ФОРМАЛЬНОГО СТАТУСА — ТРОЙКОЙ «автор + состояние + окно», потому что тела у него
+# нет (оно константно от круга к кругу, и добавить в него номер прогона нельзя: форма
+# сообщения не меняется). Фикстура несёт ровно ту опасность, которую окно и отсекает:
+# `APPROVED` ПРЕДЫДУЩЕГО круга тем же автором.
+gh() {
+  printf '%s\n' '[
+    {"user":{"login":"github-actions[bot]"},"state":"APPROVED","submitted_at":"2026-09-03T22:00:00Z"},
+    {"user":{"login":"john"},"state":"CHANGES_REQUESTED","submitted_at":"2026-09-03T23:29:45Z"},
+    {"user":{"login":"github-actions[bot]"},"state":"CHANGES_REQUESTED","submitted_at":"2026-09-03T23:29:40Z"}
+  ]'
+}
+delivery_probe_pr_review 260 CHANGES_REQUESTED 2026-09-03T23:29:00Z >/dev/null 2>&1
+check "свой статус в окне — найден" "0" "$?"
+delivery_probe_pr_review 260 APPROVED 2026-09-03T23:29:00Z >/dev/null 2>&1
+check "approve ПРЕДЫДУЩЕГО круга окном отсечён — записи нет" "1" "$?"
+delivery_probe_pr_review 260 CHANGES_REQUESTED 2026-09-03T23:30:00Z >/dev/null 2>&1
+check "часы раннера впереди — промах в безопасную сторону (сегодняшнее поведение)" "1" "$?"
+# ЧУЖОЙ АВТОР СВОЕЙ ЗАПИСЬЮ НЕ СТАНОВИТСЯ: человек, нажавший request-changes в ту же
+# секунду, не доказывает доставку статуса джобой.
+gh() {
+  printf '%s\n' '[{"user":{"login":"john"},"state":"CHANGES_REQUESTED","submitted_at":"2026-09-03T23:29:45Z"}]'
+}
+delivery_probe_pr_review 260 CHANGES_REQUESTED 2026-09-03T23:29:00Z >/dev/null 2>&1
+check "статус чужого автора за свой не принимается" "1" "$?"
+unset -f gh
+
+# ПРОБА ПИСЬМА В ТРЕД — ПО СВОЕМУ ФАЙЛУ В УДАЛЁННОЙ ЛЕНТЕ. Гоняется на настоящем git
+# (сети нет: remote — путь на диске), потому что вопрос ровно в том, ЧТО читается —
+# `FETCH_HEAD` или диск. Читай она диск, ответ был бы «доставлено» и тогда, когда не
+# уехало НИЧЕГО: письмо лежит в рабочем дереве и закоммичено локально ещё до push.
+MAIL_DIR="${REVIEW_DELIVERY_DIR}/mail-origin"
+LETTER='agent-comms/122-lost-receipt-reads-as-lost-letter/messages/004-reviewer-pr.md'
+(
+  set -e
+  mkdir -p "$MAIL_DIR" && cd "$MAIL_DIR" && git init -q -b comms .
+  git config user.email t@e && git config user.name t
+  mkdir -p "$(dirname "$LETTER")" && printf 'письмо\n' > "$LETTER"
+  git add -A && git commit -q -m 'письмо доехало'
+) >/dev/null 2>&1
+(
+  cd "$REVIEW_DELIVERY_DIR"
+  MAIL_REMOTE="$MAIL_DIR"
+  git init -q .comms-fallback
+  delivery_probe_thread_file "$LETTER" >/dev/null 2>&1
+  echo "$?" > found.txt
+  delivery_probe_thread_file 'agent-comms/122-lost-receipt-reads-as-lost-letter/messages/999-нет.md' >/dev/null 2>&1
+  echo "$?" > absent.txt
+  delivery_probe_thread_file '' >/dev/null 2>&1
+  echo "$?" > empty.txt
+  MAIL_REMOTE="${REVIEW_DELIVERY_DIR}/нет-такой-почты"
+  delivery_probe_thread_file "$LETTER" >/dev/null 2>&1
+  echo "$?" > unreachable.txt
+)
+check "своё письмо есть в удалённой ленте — квитанция потеряна, письмо доехало" "0" \
+  "$(cat "${REVIEW_DELIVERY_DIR}/found.txt")"
+check "своего письма в ленте нет — доставка несостоявшаяся" "1" \
+  "$(cat "${REVIEW_DELIVERY_DIR}/absent.txt")"
+# ИМЯ СВОЕГО ФАЙЛА НЕ ОПРЕДЕЛИЛОСЬ — третий исход. И `${1:?}` тут стоять не может: в
+# неинтерактивном bash он убил бы ШАГ целиком.
+check "имени своего письма нет — третий исход, а не «не доехало»" "2" \
+  "$(cat "${REVIEW_DELIVERY_DIR}/empty.txt")"
+check "почта недостижима — перечитывание отказало САМО (третий исход)" "2" \
+  "$(cat "${REVIEW_DELIVERY_DIR}/unreachable.txt")"
+
 if [ "$FAILED" = "0" ]; then
   echo "доставка вердикта: все проверки прошли"
 else
