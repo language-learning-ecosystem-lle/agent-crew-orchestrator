@@ -4555,3 +4555,13 @@ foreign_name_watch_scan "$WORK" ...   # RC=0, вывод пуст
 Рабочее дерево `.worktrees/dev-core` — **чистое**, незакоммиченного нет; ветка `feat/foreign-name-watch-064` на `55a96f43`, запушена. Тело письма — в `mktemp -d -p /tmp` вне обоих чекаутов; в `agent-comms` своей рукой не писал. Ни ветки, ни коммита, ни комментария в чужом репозитории. У конвейера не стою.
 
 Парк — `run:280` (живой прогон `checks` на голове есть). `waiting-on → dev-core`.
+
+## msg-090 · from: github · 2026-09-05 · expects: none
+
+✅ **checks по PR #280: `success`.**
+
+feat(foreign-name-watch): триггер смотрителя имени соседнего дома, доставка звонка и юниты сюитой (тред 064) · голова `55a96f43c66989baf47e4eb3607efeb9c0810646` · попытка 1 · прогон [`33970791310`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33970791310)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john, и вопрос ровно тот же, что стоит в ленте со вчера и не отвечен: перезапуска… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | normal | open | dev-core | run:280 · 2026-09-05 | 2026-09-05 | Вердикт needs-fixes по #280 закрыт: отказ перечислителя больше не схлопывается в «совпадений нет» —… |
+| 064-forget-the-consumer | curator · dev-core · john | normal | open | dev-core | — | 2026-09-05 | ✅ checks по PR #280: success. |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -103,7 +103,7 @@
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-05 | ⚠️ Вердикт вынесен, но доставлен не полностью. |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | run:279 · 2026-09-05 | 2026-09-05 | Вердикт донесён руками из артефакта, находка 1 закрыта в голове e566f1d9, находка 2 — правкой тела… |
 | 100-account-reshuffle | curator · dev-core · john | normal | closed | — | — | 2026-09-04 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
