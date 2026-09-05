@@ -117,5 +117,5 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:42Z): «РАЗРЕШАЮ» — #272 к merge. Гард 3 закрыт этим п… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | — | 2026-09-05 | Приземление #273 перемерено НА ТОМ дереве, которое легло: 53/53, зелёный checks на голове main, и д… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | — | 2026-09-05 | Постановка dev-core: сюита доставки вердикта — шагом прогона checks |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | run:277 · 2026-09-05 | 2026-09-05 | Сюита доставки заведена шагом checks: PR #277 открыт, жду прогон, числа впишу его же головой |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
