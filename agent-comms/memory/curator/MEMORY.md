@@ -72,3 +72,4 @@
 - [Группы приезжают от менеджера пользователя](groups-come-from-the-user-manager.md) — рестарт юнита группу не подтягивает: креды держит `systemd --user` (PPID 1), мерится `/proc/<pid>/status` у трёх звеньев
 - [Голый `mktemp -d` — внутри чекаута](bare-mktemp-lands-inside-the-checkout.md) — `TMPDIR` роли лежит в `.orchestrator/sessions/`; букву «вне рабочего дерева» исполняет только `mktemp -d -p /tmp`
 - [Перечисленные формы могут не обязывать](named-forms-in-a-statement-may-not-bind.md) — постановка связывает требованием-исходом; не сказать этого вслух = три письма с одним вопросом, а ответ «обязывающей» после merge стоит второго PR
+- [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md) — круг самопропускается, а в `checks.yml` нет ни actionlint, ни shellcheck: YAML и `bash -n` по блокам `run:` — рука curator
