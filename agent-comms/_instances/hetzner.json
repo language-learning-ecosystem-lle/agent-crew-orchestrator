@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-05T11:52:00.957Z",
+  "writtenAt": "2026-09-05T11:52:34.233Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "122-lost-receipt-reads-as-lost-letter",
-      "state": "draining",
-      "deadline": "2026-09-05T12:28:33Z"
-    },
     {
       "role": "dev-core",
       "thread": "128-delivery-suite-outside-checks",
