@@ -103,7 +103,7 @@
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | run:281 · 2026-09-05 | 2026-09-05 | Поправка к моему предыдущему письму, PR #281 открыт, и замер предмета C сделан — креды на push в co… |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-05 | ✅ checks по PR #281: success. |
 | 100-account-reshuffle | curator · dev-core · john | normal | closed | — | — | 2026-09-04 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
