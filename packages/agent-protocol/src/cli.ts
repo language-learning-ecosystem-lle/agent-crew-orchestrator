@@ -530,7 +530,10 @@ import {
 import {
   checkWorkspaceSignature,
   createWorkspaceLocks,
+  describeFailedTidyUp,
+  describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
+  describeStrandedWorkspace,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
   dirtLeftByFinish,
@@ -6432,6 +6435,12 @@ const workspaceFacts = (path: string, want: { readonly dirt?: boolean } = {}): W
     ...(want.dirt === true && dirty && porcelain !== undefined
       ? { dirt: workspaceDirt(path) }
       : {}),
+    // WHO SIGNED THE HEAD (thread 099) — asked only when the answer can change a
+    // decision: a dirty tree standing ON A BRANCH, where it is the proof that the
+    // branch is the role's own. A clean launch, and a detached one, pay nothing.
+    ...(want.dirt === true && dirty && branch !== "HEAD"
+      ? { headAuthor: gitAsk(["-C", path, "log", "-1", "--format=%ae"]) ?? "" }
+      : {}),
     signature: workspaceSignature(path),
     ...(locked === undefined ? {} : { locked }),
     ...(holder === undefined ? {} : { lockHolderAlive: processAlive(holder) }),
@@ -6532,8 +6541,35 @@ const applyWorkspacePlan = (input: {
   readonly repo: string;
   readonly path: string;
   readonly base: string;
+  readonly role: string;
   readonly plan: WorkspacePlan;
-}): void => {
+}):
+  | { readonly ok: true; readonly note?: string }
+  | {
+      readonly ok: false;
+      readonly cause: string;
+      /**
+       * WHAT ALREADY LANDED BEFORE THE FAILURE — present only when the commit itself
+       * succeeded and a later step did not. The caller tells the two refusals apart by
+       * this field, because they say opposite things to a human: "your work is still
+       * uncommitted" versus "your work is committed, the tree just did not move back".
+       */
+      readonly committed?: {
+        readonly head: string;
+        readonly branch: string;
+        /** The push failure, when there was one; absent means it went. */
+        readonly push?: string;
+      };
+      /**
+       * WHERE THE DIRT NOW STANDS when the commit did not go — present when the tree is
+       * dirty ON A BRANCH rather than detached, which is every failure of `add`/`commit`
+       * (the `checkout -b` before them has already carried the work across, and a plan
+       * with `create: false` was standing on the role's own branch to begin with). Absent
+       * means the very first step is what failed and the tree never moved. The two ask a
+       * human for different gestures, so the caller tells them apart by this field.
+       */
+      readonly dirtyOn?: { readonly branch: string; readonly created: boolean };
+    } => {
   switch (input.plan.action) {
     case "create":
       mkdirSync(dirname(input.path), { recursive: true });
@@ -6545,13 +6581,91 @@ const applyWorkspacePlan = (input: {
         ["-C", input.repo, "worktree", "add", "--detach", input.path, input.base],
         `creating the workspace '${input.path}'`,
       );
-      return;
+      return { ok: true };
     case "rebase":
       gitRun(
         ["-C", input.path, "checkout", "--detach", "--quiet", input.base],
         `moving the workspace '${input.path}' to the base`,
       );
-      return;
+      return { ok: true };
+    case "commit": {
+      // THE ONE GESTURE THAT IS NOT REVERSIBLE BY FORGETTING IT (thread 099, john of
+      // 2026-09-05) — and it is the safest of the three shapes that were on the table:
+      // a commit leaves the work at a NAMED address, where a stash leaves it visible to
+      // nobody and a discard leaves it nowhere.
+      //
+      // IT DOES NOT `fail()`. Everything above exits the process on a git error, which
+      // is right for "the operator asked for a worktree and got none"; here the tree is
+      // somebody's unsaved work, and a failed commit has to come back as a REFUSAL WITH
+      // A CAUSE (john's §4 exception) — a stack trace would leave the daemon with the
+      // same silent dirty tree the whole thread is about.
+      const plan = input.plan;
+      const step = (args: readonly string[], env?: NodeJS.ProcessEnv): string | undefined => {
+        try {
+          execFileSync("git", args, {
+            stdio: ["ignore", "pipe", "pipe"],
+            ...(env === undefined ? {} : { env }),
+          });
+          return undefined;
+        } catch (error) {
+          const detail = ((error as { stderr?: Buffer }).stderr?.toString() ?? "").trim();
+          return `git ${args.slice(2).join(" ")} — ${detail === "" ? (error as Error).message : detail}`;
+        }
+      };
+      if (plan.create) {
+        const failed = step(["-C", input.path, "checkout", "-q", "-b", plan.branch]);
+        // NOTHING MOVED — and that is the ONE failure after which the tree is still
+        // detached where the session left it. Everything below this line runs with the
+        // work already carried onto `plan.branch` by that checkout.
+        if (failed !== undefined) return { ok: false, cause: failed };
+      }
+      // FROM HERE ON THE TREE IS ON THE BRANCH (the reviewer's finding on #279): a
+      // failure of `add`/`commit` leaves the dirt standing on `plan.branch`, whether
+      // this attempt created it a line ago or found the role already on it.
+      const dirtyOn = { branch: plan.branch, created: plan.create };
+      const staged = step(["-C", input.path, "add", "-A"]);
+      if (staged !== undefined) return { ok: false, cause: staged, dirtyOn };
+      // SIGNED BY THE ROLE AND NOT BY THE OWNER OF THE PROCESS (john's §1.2). Through
+      // the environment rather than through config, for the reason `identity.ts` gives:
+      // `GIT_AUTHOR_*` outranks configuration, so this holds even in a tree whose
+      // per-worktree signature has not been written yet — and it is written AFTER the
+      // plan is applied, which is exactly this case.
+      const who = roleIdentity(input.role);
+      const committed = step(["-C", input.path, "commit", "--quiet", "-m", plan.message], {
+        ...process.env,
+        GIT_AUTHOR_NAME: who.name,
+        GIT_AUTHOR_EMAIL: who.email,
+        GIT_COMMITTER_NAME: who.name,
+        GIT_COMMITTER_EMAIL: who.email,
+      });
+      if (committed !== undefined) return { ok: false, cause: committed, dirtyOn };
+      // THE PUSH IS NOT A CONDITION OF ANYTHING (john's §1.2): the tree is clean and the
+      // role starts on the next tick whether or not this box can reach the network. Its
+      // failure is named, never raised.
+      const pushed = step(["-C", input.path, "push", "-q", "-u", "origin", plan.branch]);
+      const head = gitAsk(["-C", input.path, "rev-parse", "--short", "HEAD"]) ?? "?";
+      const moved = step(["-C", input.path, "checkout", "--detach", "--quiet", input.base]);
+      // THE COMMIT IS ALREADY MADE HERE, so this failure is NOT the failure of the
+      // commit: the work is saved, the tree is clean, and only the head is in the wrong
+      // place. It travels back with what landed, so the caller can say that instead of
+      // the one text that used to cover both.
+      if (moved !== undefined)
+        return {
+          ok: false,
+          cause: moved,
+          committed: {
+            head,
+            branch: plan.branch,
+            ...(pushed === undefined ? {} : { push: pushed }),
+          },
+        };
+      return {
+        ok: true,
+        note: `${input.role}: what the '${plan.from}' run left uncommitted is committed as ${head} on '${plan.branch}'${
+          pushed === undefined ? " and pushed" : ` — NOT pushed (${pushed}); it is on this box only`
+        }`,
+      };
+    }
     case "stash":
       // THE ONE COMMAND IN THIS PACKAGE THAT TOUCHES WORK NOBODY COMMITTED (thread 023,
       // requirement 5). It is `stash push` and not `checkout --`/`clean` on purpose:
@@ -6570,9 +6684,9 @@ const applyWorkspacePlan = (input: {
         ["-C", input.path, "checkout", "--detach", "--quiet", input.base],
         `moving the workspace '${input.path}' to the base`,
       );
-      return;
+      return { ok: true };
     default:
-      return; // ready / keep / refuse — nothing to do on disk
+      return { ok: true }; // ready / keep / refuse — nothing to do on disk
   }
 };
 
@@ -10790,6 +10904,14 @@ const settleRun = (input: {
     base: base.commit,
     resuming: continuation.mode === "resume",
     thread,
+    baseRef: base.ref,
+    // NOW, HANDED IN (thread 099): it names the service branch, and the decision stays a
+    // pure function a test can hold to the minute.
+    at: eventTimestamp(new Date()),
+    // THE CONTOUR'S ROLES, AND NO NEW CONFIG KEY FOR THEM (thread 099, curator's ruling
+    // of 2026-09-05): the same ids the thread is already parsed with. They are what
+    // keeps a head on `curator/017-…` foreign even when this role signed it.
+    roles: input.ids,
     ...(previousReason === undefined ? {} : { previousReason }),
     ...(previous?.session === undefined ? {} : { previousSession: previous.session }),
   });
@@ -10816,7 +10938,7 @@ const settleRun = (input: {
       at: eventTimestamp(new Date()),
     });
     if (plan.action === "create") {
-      applyWorkspacePlan({ repo, path, base: base.commit, plan });
+      applyWorkspacePlan({ repo, path, base: base.commit, role: role.id, plan });
       if (!workspaceLocks.take({ repo, path, reason })) {
         return { ok: false, reason: `the workspace '${path}' was locked as it was created`, lines };
       }
@@ -10828,7 +10950,51 @@ const settleRun = (input: {
           lines,
         };
       }
-      applyWorkspacePlan({ repo, path, base: base.commit, plan });
+      const applied = applyWorkspacePlan({ repo, path, base: base.commit, role: role.id, plan });
+      // A TIDY-UP THAT DID NOT WORK IS A REFUSAL WITH A CAUSE (thread 099, john's §4
+      // exception): the tree is still dirty, so the launch stops exactly as it did
+      // before this right existed — but naming what was tried and how git answered.
+      if (!applied.ok && plan.action === "commit") {
+        return {
+          ok: false,
+          // THREE FAILURES, THREE TEXTS, and each of the other two used to be told in
+          // this one's words. `committed` present means the commit went and the move back
+          // did not: the tree is clean, the dirt read above is already inside that commit.
+          // `dirtyOn` present means the work is still uncommitted but no longer where the
+          // session left it — it stands on a branch, and the repair has to say so.
+          reason:
+            applied.committed === undefined
+              ? applied.dirtyOn === undefined
+                ? describeFailedTidyUp({
+                    role: role.id,
+                    path,
+                    branch: plan.branch,
+                    cause: applied.cause,
+                    thread,
+                    ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
+                  })
+                : describeFailedTidyUpOnItsBranch({
+                    role: role.id,
+                    path,
+                    branch: applied.dirtyOn.branch,
+                    created: applied.dirtyOn.created,
+                    message: plan.message,
+                    base: base.commit,
+                    cause: applied.cause,
+                    ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
+                  })
+              : describeStrandedWorkspace({
+                  role: role.id,
+                  path,
+                  branch: applied.committed.branch,
+                  head: applied.committed.head,
+                  cause: applied.cause,
+                  ...(applied.committed.push === undefined ? {} : { push: applied.committed.push }),
+                }),
+          lines,
+        };
+      }
+      if (applied.ok && applied.note !== undefined) lines.push(`workspace — ${applied.note}`);
     }
   }
   // AFTER the tree exists and before the session is spawned (027): a `create` has just
