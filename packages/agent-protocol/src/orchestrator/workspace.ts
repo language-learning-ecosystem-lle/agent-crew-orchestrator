@@ -365,11 +365,12 @@ export const describeDirtyWorkspaceRepair = (input: {
  *    base COMMIT (`create`/`rebase` both `checkout --detach`). The dirt of a session
  *    that never branched lands here, and this is the field case john repaired by hand
  *    twice;
- *  - `own` — a branch the role itself is standing on. Two independent proofs, because
- *    the branch names in the field carry no role (`feat/042-…` is as much dev-core's as
- *    `dev-core/128-…`): the NAME (`<role>/…`) or the AUTHOR of the commit the head
- *    points at, which is the role's own signature (`roleIdentity`) written by the very
- *    mechanism that signs this workspace. Either one is a fact; neither is a guess;
+ *  - `own` — a branch the role itself is standing on. Two proofs, in THIS ORDER,
+ *    because the branch names in the field carry no role (`feat/042-…` is as much
+ *    dev-core's as `dev-core/128-…`): the NAME (`<role>/…`), and — only for a name that
+ *    carries no role of the contour's at all — the AUTHOR of the commit the head points
+ *    at, which is the role's own signature (`roleIdentity`) written by the very
+ *    mechanism that signs this workspace;
  *  - `base` — the base branch itself. It is shared, and john's §2 point 3 is dead
  *    literal about it: never a common branch. (Git normally makes this unreachable —
  *    the base is checked out in the operator's own tree — which is exactly why it is
@@ -377,12 +378,42 @@ export const describeDirtyWorkspaceRepair = (input: {
  *  - `foreign` — any other named branch: another role's, a human's, something checked
  *    out by hand. The right is narrow — "the role's own workspace, the role's own
  *    work" — and outside it the door keeps working the way it worked before.
+ *
+ * THE SIGNATURE DOES NOT OVERRULE ANOTHER ROLE'S NAME (curator, 2026-09-05, thread 099,
+ * ruling on this very fork). A head on `curator/017-…` signed by `dev-core` is FOREIGN,
+ * and the two errors cost different things: a false `own` commits and force-pushes into
+ * a branch that carries another role's name — if a PR is open under it, the head moves
+ * and a verdict is annulled — while a false `foreign` is the refusal that stood here
+ * before this right existed. And the NAME is what a human reads: john's own hand-repairs
+ * addressed the work by branch name, not by `git log`.
+ *
+ * WHICH MEANS THE CONTOUR'S ROLES ARE AN INPUT, and what happens without them is a
+ * DECISION rather than an oversight: with no list, "carries no role's name" cannot be
+ * told from "carries another role's name", so the signature is not consulted at all and
+ * the head is `foreign` with `roles-unknown` on it — the refusal names that it judged
+ * without the list. A forgotten argument on the live call must not quietly restore the
+ * behaviour this ruling replaced.
  */
 export type WorkspaceHeadOwner =
   | { readonly kind: "detached" }
   | { readonly kind: "own"; readonly branch: string }
   | { readonly kind: "base"; readonly branch: string }
-  | { readonly kind: "foreign"; readonly branch: string };
+  | {
+      readonly kind: "foreign";
+      readonly branch: string;
+      readonly why: WorkspaceHeadForeignCause;
+      /** The role the name belongs to — only on `another-role`, and only that role's id. */
+      readonly owner?: string;
+    };
+
+/** Why a named head is not the role's — the three answers the refusal has to tell apart. */
+export type WorkspaceHeadForeignCause =
+  /** The first segment of the name is another role of this contour. Signature ignored. */
+  | "another-role"
+  /** No role's name in it, and the head is not signed by this role either. */
+  | "not-signed"
+  /** The contour's roles were not handed in, so the name could not be judged at all. */
+  | "roles-unknown";
 
 export const classifyWorkspaceHead = (input: {
   readonly role: string;
@@ -392,6 +423,12 @@ export const classifyWorkspaceHead = (input: {
   readonly baseRef?: string;
   /** The author email of the commit the head points at, when it was read. */
   readonly headAuthor?: string;
+  /**
+   * The ids of the contour's roles — the daemon already parses the thread with them, so
+   * this introduces no config key of its own. Absent is a named state, not a default:
+   * see `roles-unknown` above.
+   */
+  readonly roles?: readonly string[];
 }): WorkspaceHeadOwner => {
   const branch = input.branch;
   if (branch === undefined || branch === "" || branch === "HEAD") return { kind: "detached" };
@@ -399,9 +436,12 @@ export const classifyWorkspaceHead = (input: {
   if (base !== undefined && (base === branch || base.endsWith(`/${branch}`)))
     return { kind: "base", branch };
   if (branch.startsWith(`${input.role}/`)) return { kind: "own", branch };
+  if (input.roles === undefined) return { kind: "foreign", branch, why: "roles-unknown" };
+  const owner = input.roles.find((id) => id !== input.role && branch.startsWith(`${id}/`));
+  if (owner !== undefined) return { kind: "foreign", branch, why: "another-role", owner };
   return input.headAuthor === roleIdentity(input.role).email
     ? { kind: "own", branch }
-    : { kind: "foreign", branch };
+    : { kind: "foreign", branch, why: "not-signed" };
 };
 
 /**
@@ -469,6 +509,57 @@ export const describeFailedTidyUp = (input: {
   )}`;
 
 /**
+ * THE TIDY-UP THAT WORKED AND THEN GOT STUCK — the commit landed, and the step AFTER it
+ * (putting the workspace back on the base commit) is what git refused.
+ *
+ * IT IS A SEPARATE TEXT BECAUSE EVERY WORD OF THE OTHER ONE WOULD BE FALSE HERE
+ * (reviewer's finding on #279, 2026-09-05): the commit did NOT fail, the tree is NOT
+ * dirty, the dirt listing was taken BEFORE the commit and now names paths that are
+ * safely inside it, and `describeDirtyWorkspaceRepair`'s `checkout -b` would refuse on a
+ * branch that already exists. What a human has to do here is the opposite gesture — the
+ * work is saved and the tree needs moving, not saving.
+ *
+ * The launch still stops: a workspace left on a branch is not a tree the next run may
+ * rebase, and the refusal that says so is cheaper than a run that starts on the wrong
+ * head.
+ */
+export const describeStrandedWorkspace = (input: {
+  readonly role: string;
+  readonly path: string;
+  readonly branch: string;
+  readonly head: string;
+  readonly cause: string;
+  /** How the push went, when it did not go: the same string the successful note carries. */
+  readonly push?: string;
+}): string =>
+  [
+    `the workspace had uncommitted changes and the circuit committed them for '${input.role}': they are commit ${input.head} on '${input.branch}'${input.push === undefined ? " and pushed" : ` — NOT pushed (${input.push}); it is on this box only`}`,
+    `nothing is dirty and nothing is lost — what failed is the step after it, moving the workspace back to the base: ${input.cause}`,
+    `so the tree is CLEAN and still standing on '${input.branch}'. Read why git refused, then put it back by hand — git -C ${input.path} status --porcelain && git -C ${input.path} checkout --detach <base> — and '${input.role}' starts on the next tick`,
+  ].join(". ");
+
+/**
+ * WHY THIS HEAD IS NOT THE ROLE'S, IN THE REFUSAL ITSELF. A door that refuses without
+ * naming what to fix is a defect even when the logic is right, and the three causes are
+ * repaired by three different gestures: another role's branch is a tree somebody moved
+ * by hand, an unsigned one is dirt of unknown authorship, and `roles-unknown` is a
+ * caller that forgot an argument — a fault of ours, and it says so.
+ */
+const describeForeignHead = (input: {
+  readonly role: string;
+  readonly owner: Extract<WorkspaceHeadOwner, { kind: "foreign" }>;
+}): string => {
+  switch (input.owner.why) {
+    case "another-role":
+      return `a branch named for '${input.owner.owner}', another role of this contour — and a head signed by '${input.role}' does NOT make it this role's to write to: the name is the address a human reads, and a commit landing under it would move a head that is not ours`;
+    case "roles-unknown":
+      return `a branch this plan could not judge: the contour's roles were not handed to it, so a name carrying no role could not be told apart from one carrying another role's, and the head was taken as foreign rather than guessed at (the caller owes the plan its role ids)`;
+    default:
+      return `a branch that is not '${input.role}'s to write to (neither named for the role nor signed by it)`;
+  }
+};
+
+/**
  * The decision, from the facts and from whether this run is a continuation. Pure, so
  * that the one branch that destroys work if it is wrong (`rebase` over a dirty tree)
  * is decided by something a test can hold.
@@ -504,6 +595,12 @@ export const planWorkspace = (input: {
    * falls back to the refusal, out loud rather than under a made-up name.
    */
   readonly at?: string;
+  /**
+   * The ids of the contour's roles — handed straight to `classifyWorkspaceHead`, which
+   * needs them to keep another role's NAME from being overruled by this role's
+   * signature. Absent is a named state and it refuses: see `roles-unknown` there.
+   */
+  readonly roles?: readonly string[];
 }): WorkspacePlan => {
   const { facts, base, resuming, previousReason } = input;
   if (facts.exists && facts.locked !== undefined) {
@@ -563,6 +660,7 @@ export const planWorkspace = (input: {
         ...(facts.branch === undefined ? {} : { branch: facts.branch }),
         ...(input.baseRef === undefined ? {} : { baseRef: input.baseRef }),
         ...(facts.headAuthor === undefined ? {} : { headAuthor: facts.headAuthor }),
+        ...(input.roles === undefined ? {} : { roles: input.roles }),
       });
       const message = dirtCommitMessage({
         role: input.role,
@@ -595,7 +693,7 @@ export const planWorkspace = (input: {
           reason: `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}'), and its head is on '${owner.branch}' — ${
             owner.kind === "base"
               ? "the BASE branch, which every role shares"
-              : `a branch that is not '${input.role}'s to write to (neither named for the role nor signed by it)`
+              : describeForeignHead({ role: input.role, owner })
           }: the circuit commits a role's leftovers onto the role's own head and never onto a common or a foreign one. ${repair}`,
         };
     }

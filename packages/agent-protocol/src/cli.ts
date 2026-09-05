@@ -532,6 +532,7 @@ import {
   createWorkspaceLocks,
   describeFailedTidyUp,
   describeFinishDirt,
+  describeStrandedWorkspace,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
   dirtLeftByFinish,
@@ -6543,7 +6544,22 @@ const applyWorkspacePlan = (input: {
   readonly plan: WorkspacePlan;
 }):
   | { readonly ok: true; readonly note?: string }
-  | { readonly ok: false; readonly cause: string } => {
+  | {
+      readonly ok: false;
+      readonly cause: string;
+      /**
+       * WHAT ALREADY LANDED BEFORE THE FAILURE — present only when the commit itself
+       * succeeded and a later step did not. The caller tells the two refusals apart by
+       * this field, because they say opposite things to a human: "your work is still
+       * uncommitted" versus "your work is committed, the tree just did not move back".
+       */
+      readonly committed?: {
+        readonly head: string;
+        readonly branch: string;
+        /** The push failure, when there was one; absent means it went. */
+        readonly push?: string;
+      };
+    } => {
   switch (input.plan.action) {
     case "create":
       mkdirSync(dirname(input.path), { recursive: true });
@@ -6612,7 +6628,20 @@ const applyWorkspacePlan = (input: {
       const pushed = step(["-C", input.path, "push", "-q", "-u", "origin", plan.branch]);
       const head = gitAsk(["-C", input.path, "rev-parse", "--short", "HEAD"]) ?? "?";
       const moved = step(["-C", input.path, "checkout", "--detach", "--quiet", input.base]);
-      if (moved !== undefined) return { ok: false, cause: moved };
+      // THE COMMIT IS ALREADY MADE HERE, so this failure is NOT the failure of the
+      // commit: the work is saved, the tree is clean, and only the head is in the wrong
+      // place. It travels back with what landed, so the caller can say that instead of
+      // the one text that used to cover both.
+      if (moved !== undefined)
+        return {
+          ok: false,
+          cause: moved,
+          committed: {
+            head,
+            branch: plan.branch,
+            ...(pushed === undefined ? {} : { push: pushed }),
+          },
+        };
       return {
         ok: true,
         note: `${input.role}: what the '${plan.from}' run left uncommitted is committed as ${head} on '${plan.branch}'${
@@ -10862,6 +10891,10 @@ const settleRun = (input: {
     // NOW, HANDED IN (thread 099): it names the service branch, and the decision stays a
     // pure function a test can hold to the minute.
     at: eventTimestamp(new Date()),
+    // THE CONTOUR'S ROLES, AND NO NEW CONFIG KEY FOR THEM (thread 099, curator's ruling
+    // of 2026-09-05): the same ids the thread is already parsed with. They are what
+    // keeps a head on `curator/017-…` foreign even when this role signed it.
+    roles: input.ids,
     ...(previousReason === undefined ? {} : { previousReason }),
     ...(previous?.session === undefined ? {} : { previousSession: previous.session }),
   });
@@ -10907,14 +10940,28 @@ const settleRun = (input: {
       if (!applied.ok && plan.action === "commit") {
         return {
           ok: false,
-          reason: describeFailedTidyUp({
-            role: role.id,
-            path,
-            branch: plan.branch,
-            cause: applied.cause,
-            thread,
-            ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
-          }),
+          // TWO FAILURES, TWO TEXTS. `committed` present means the commit went and the
+          // move back did not: the tree is clean, the dirt read above is already inside
+          // that commit, and repeating "still dirty" over it would name a fact that
+          // stopped being true a moment ago.
+          reason:
+            applied.committed === undefined
+              ? describeFailedTidyUp({
+                  role: role.id,
+                  path,
+                  branch: plan.branch,
+                  cause: applied.cause,
+                  thread,
+                  ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
+                })
+              : describeStrandedWorkspace({
+                  role: role.id,
+                  path,
+                  branch: applied.committed.branch,
+                  head: applied.committed.head,
+                  cause: applied.cause,
+                  ...(applied.committed.push === undefined ? {} : { push: applied.committed.push }),
+                }),
           lines,
         };
       }

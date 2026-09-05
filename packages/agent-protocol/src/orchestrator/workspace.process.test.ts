@@ -326,8 +326,15 @@ describe("dirt left by a broken run is parked, not left standing", () => {
    * THE HEAD IS A FOREIGN BRANCH, and that is what keeps this case a REFUSAL after the
    * right of 2026-09-05: the circuit commits a role's leftovers onto the role's own head
    * and never onto a common or a foreign one. Neither named for `dev-core` nor signed by
-   * it — the two facts `classifyWorkspaceHead` accepts — so the whole text john ran three
-   * commands to assemble by hand is still the thing a human is handed here.
+   * it — so the whole text john ran three commands to assemble by hand is still the thing
+   * a human is handed here.
+   *
+   * WHICH OF THE TWO FOREIGN CAUSES IT IS, said out loud because the name `curator/017-x`
+   * invites the other reading: THIS contour declares one role, so `curator` is not another
+   * role of it, and the head falls to "not signed by the role" rather than to "named for
+   * another role". The second cause — the fork curator ruled on 2026-09-05, where the name
+   * settles it and the signature does not overrule — is held beside `classifyWorkspaceHead`
+   * in `workspace.test.ts`, which is where a contour with more than one role is cheap.
    */
   it("a MODIFIED tracked file on a FOREIGN head → the refusal counts its lines and offers the branch by thread", () => {
     const { repo } = contour();

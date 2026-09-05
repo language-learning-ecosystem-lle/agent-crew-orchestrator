@@ -303,4 +303,56 @@ describe("the circuit commits what a finished run left behind — on a real tree
     expect(readFileSync(join(workspace, "NOTE.md"), "utf8")).toBe("a new file\n");
     expect(existsSync(join(workspace, "NOTE.md"))).toBe(true);
   }, 180_000);
+
+  /**
+   * THE OTHER HALF OF THE SAME REFUSAL, and it was one text for both until the reviewer
+   * of #279 took them apart: the commit SUCCEEDS and the step after it — putting the
+   * workspace back on the base — is what git refuses. Everything the failed-commit text
+   * says would be false here, and the shim above could not have caught it: it refused
+   * `commit` and let `checkout` through, so it only ever exercised the path where the
+   * text is true.
+   */
+  it("a commit that WENT and a move-back that did not says so, over a tree that is CLEAN", () => {
+    const { repo } = contour();
+    const workspace = join(repo, ".worktrees", "dev-core");
+
+    leaveDirtBehind(repo, workspace);
+
+    // This shim refuses the mirror image of the one above: `commit` goes through, and
+    // the `checkout --detach` that follows it does not. `worktree add --detach` is a
+    // different spelling and is deliberately left alone.
+    const shimDir = join(repo, "gitshim-detach");
+    mkdirSync(shimDir, { recursive: true });
+    const realGit = execFileSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).trim();
+    const shim = join(shimDir, "git");
+    writeFileSync(
+      shim,
+      `#!/bin/sh\ncase " $* " in *" checkout --detach "*) echo "fatal: Unable to create '.git/index.lock': File exists" >&2 ; exit 128 ;; esac\nexec ${realGit} "$@"\n`,
+    );
+    chmodSync(shim, 0o755);
+
+    const second = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], {
+      PATH: `${shimDir}:${process.env.PATH ?? ""}`,
+    });
+
+    const branch = git(workspace, "branch", "--list", "wip/*")
+      .trim()
+      .replace(/^\*?\s*/, "");
+
+    // WHAT IT SAYS: the work is saved and where, and what actually failed.
+    expect(second.out).toContain(`on '${branch}'`);
+    expect(second.out).toContain("nothing is dirty and nothing is lost");
+    expect(second.out).toContain("Unable to create '.git/index.lock'");
+    expect(second.out).toContain(`git -C ${workspace} checkout --detach`);
+    // WHAT IT MUST NOT SAY — the three facts that stopped being true the moment the
+    // commit landed. Each of them sent a human after work that is not missing.
+    expect(second.out).not.toContain("the commit FAILED");
+    expect(second.out).not.toContain("The tree is still dirty");
+    expect(second.out).not.toContain(`git -C ${workspace} stash push -u`);
+    // AND THE TREE AGREES WITH THE TEXT: clean, still on the service branch, the work
+    // whole inside the commit rather than hanging in the worktree.
+    expect(dirty(workspace)).toBe(false);
+    expect(git(workspace, "rev-parse", "--abbrev-ref", "HEAD").trim()).toBe(branch);
+    expect(git(workspace, "show", `${branch}:NOTE.md`)).toBe("a new file\n");
+  }, 180_000);
 });

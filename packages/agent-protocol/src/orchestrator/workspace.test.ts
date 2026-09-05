@@ -12,6 +12,7 @@ import {
   describeDirtyWorkspaceRepair,
   describeFailedTidyUp,
   describeFinishDirt,
+  describeStrandedWorkspace,
   describeWorkspaceDirt,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
@@ -29,6 +30,8 @@ import {
 
 const BASE = "1111111111111111111111111111111111111111";
 const ROLE = "dev-core";
+/** The contour's role ids, as the daemon hands them in (`settleRun`'s `ids`). */
+const ROLES = ["dev-core", "curator", "reviewer-pr"];
 const WORKSPACE = "/repo/.worktrees/dev-core";
 const OTHER = "2222222222222222222222222222222222222222";
 
@@ -991,6 +994,7 @@ describe("planWorkspace — committing what an ended run left", () => {
         previousReason: "completed",
         baseRef: "origin/main",
         at: AT,
+        roles: ROLES,
       }),
     ).toMatchObject({ action: "commit", branch: "feat/042-usage-four-doorless-commands" });
   });
@@ -1007,12 +1011,56 @@ describe("planWorkspace — committing what an ended run left", () => {
       previousReason: "completed",
       baseRef: "origin/main",
       at: AT,
+      roles: ROLES,
     });
     expect(plan.action).toBe("refuse");
     if (plan.action !== "refuse") return;
     expect(plan.reason).toContain("feat/042-usage-four-doorless-commands");
     expect(plan.reason).toContain("not 'dev-core's to write to");
     expect(plan.reason).toContain("git -C /repo/.worktrees/dev-core status --porcelain");
+  });
+
+  it("A BRANCH NAMED FOR ANOTHER ROLE IS REFUSED EVEN WHEN THIS ROLE SIGNED THE HEAD", () => {
+    // curator's ruling of 2026-09-05 in this thread, at the plan level: the refusal
+    // names the role the branch belongs to and says out loud that the signature did not
+    // buy the right, so a reader is not left comparing `git log` with the door.
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("curator/017-schema-numbers", { headAuthor: "dev-core@agents.invalid" }),
+      base: BASE,
+      resuming: false,
+      previousReason: "completed",
+      baseRef: "origin/main",
+      at: AT,
+      roles: ROLES,
+    });
+    expect(plan.action).toBe("refuse");
+    if (plan.action !== "refuse") return;
+    expect(plan.reason).toContain("a branch named for 'curator', another role of this contour");
+    expect(plan.reason).toContain("does NOT make it this role's to write to");
+    expect(plan.reason).toContain("git -C /repo/.worktrees/dev-core status --porcelain");
+  });
+
+  it("WITHOUT THE ROLE LIST the plan refuses and names the missing fact, not the head", () => {
+    // The degradation must be loud: a caller that forgets `roles` gets a refusal that
+    // blames the caller, never a silent `commit` under the pre-ruling rule.
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("feat/042-usage-four-doorless-commands", {
+        headAuthor: "dev-core@agents.invalid",
+      }),
+      base: BASE,
+      resuming: false,
+      previousReason: "completed",
+      baseRef: "origin/main",
+      at: AT,
+    });
+    expect(plan.action).toBe("refuse");
+    if (plan.action !== "refuse") return;
+    expect(plan.reason).toContain("the contour's roles were not handed to it");
+    expect(plan.reason).toContain("the caller owes the plan its role ids");
   });
 
   it("THE BASE BRANCH IS NEVER COMMITTED ONTO — it is shared, and it is named as shared", () => {
@@ -1122,26 +1170,67 @@ describe("classifyWorkspaceHead — the four states a role's tree is found in", 
     );
   });
 
-  it("THE SIGNATURE OUTRANKS THE NAME — a branch called for another role, written by this one", () => {
-    // The judgement is deliberate and it is the only place the two proofs disagree: the
-    // name is a convention anybody can type, the author of the head is a fact about who
-    // actually wrote what is standing there. A `curator/…` branch whose commits are
-    // dev-core's is dev-core's work under a misleading name, and its leftovers belong
-    // with it. Named here so that a reader disagreeing has one line to change.
+  it("ANOTHER ROLE'S NAME OUTRANKS THIS ROLE'S SIGNATURE — the fork curator ruled on", () => {
+    // The one place the two proofs disagree, and the ruling of 2026-09-05 (thread 099)
+    // decides it by the cost of being wrong: a false `own` commits — and pushes — into a
+    // branch carrying another role's name, moving a head that may have a PR and a
+    // verdict on it, while a false `foreign` is only the refusal that stood here before
+    // the right existed. The name is also the address a human reads.
     expect(
       classifyWorkspaceHead({
         role: ROLE,
         branch: "curator/017-something",
         headAuthor: "dev-core@agents.invalid",
-      }).kind,
-    ).toBe("own");
+        roles: ["dev-core", "curator", "reviewer-pr"],
+      }),
+    ).toEqual({
+      kind: "foreign",
+      branch: "curator/017-something",
+      why: "another-role",
+      owner: "curator",
+    });
+  });
+
+  it("a name carrying NO role of the contour is still decided by the signature", () => {
+    // The other half of the ruling, and the reason the signature stays: the contour's
+    // branches are `feat/…`/`fix/…` almost to the last one, and a right that only
+    // recognised `dev-core/…` would cover next to nothing.
+    expect(
+      classifyWorkspaceHead({
+        role: ROLE,
+        branch: "feat/042-something",
+        headAuthor: "dev-core@agents.invalid",
+        roles: ["dev-core", "curator"],
+      }),
+    ).toEqual({ kind: "own", branch: "feat/042-something" });
   });
 
   it("a branch nobody proved is neither refused silently nor taken: it is 'foreign'", () => {
-    expect(classifyWorkspaceHead({ role: ROLE, branch: "release/agent-protocol-v0.2.5" })).toEqual({
+    expect(
+      classifyWorkspaceHead({
+        role: ROLE,
+        branch: "release/agent-protocol-v0.2.5",
+        roles: ["dev-core", "curator"],
+      }),
+    ).toEqual({
       kind: "foreign",
       branch: "release/agent-protocol-v0.2.5",
+      why: "not-signed",
     });
+  });
+
+  it("WITHOUT THE ROLE LIST the signature is not consulted at all, and the answer says so", () => {
+    // The degradation is named rather than silent (curator's requirement in the same
+    // ruling): with no list, "carries no role's name" cannot be told from "carries
+    // another role's name", so a forgotten argument must NOT quietly hand back the
+    // behaviour the ruling replaced. It refuses, and it says which fact it lacked.
+    expect(
+      classifyWorkspaceHead({
+        role: ROLE,
+        branch: "feat/042-something",
+        headAuthor: "dev-core@agents.invalid",
+      }),
+    ).toEqual({ kind: "foreign", branch: "feat/042-something", why: "roles-unknown" });
   });
 });
 
@@ -1181,5 +1270,47 @@ describe("describeFailedTidyUp — the tidy-up that did not work (john's §4 exc
     expect(text).toContain("CARD.md (modified, +1/-0)");
     expect(text).toContain("skipped on EVERY thread it holds a turn on");
     expect(text).toContain("git -C /repo/.worktrees/dev-core stash push -u");
+  });
+});
+
+describe("describeStrandedWorkspace — the commit went, the step after it did not", () => {
+  // The reviewer's finding on #279: one text used to cover two opposite facts. Here the
+  // work IS saved, so every word about dirt would be false — and the repair a human
+  // needs is to move a head, not to rescue a file.
+  const text = describeStrandedWorkspace({
+    role: ROLE,
+    path: WORKSPACE,
+    branch: "wip/dev-core/099-x-20260905T1231Z",
+    head: "abc1234",
+    cause:
+      "git checkout --detach --quiet 1111111 — Unable to create '.git/index.lock': File exists",
+  });
+
+  it("says where the work landed and that nothing is dirty and nothing is lost", () => {
+    expect(text).toContain("commit abc1234 on 'wip/dev-core/099-x-20260905T1231Z'");
+    expect(text).toContain("nothing is dirty and nothing is lost");
+    expect(text).toContain("Unable to create '.git/index.lock'");
+  });
+
+  it("NEVER says the commit failed, nor that the tree is dirty, nor offers 'checkout -b'", () => {
+    expect(text).not.toContain("the commit FAILED");
+    expect(text).not.toContain("still dirty");
+    expect(text).not.toContain("uncommitted changes the circuit");
+    expect(text).not.toContain("checkout -b");
+    expect(text).not.toContain("stash push");
+  });
+
+  it("carries the push outcome, because 'on this box only' is what a searcher needs", () => {
+    expect(
+      describeStrandedWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
+        branch: "wip/dev-core/099-x-20260905T1231Z",
+        head: "abc1234",
+        cause: "git checkout — busy",
+        push: "git push -q -u origin … — could not read Username",
+      }),
+    ).toContain("NOT pushed (git push -q -u origin … — could not read Username)");
+    expect(text).toContain("and pushed");
   });
 });
