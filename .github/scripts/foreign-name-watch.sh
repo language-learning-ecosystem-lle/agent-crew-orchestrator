@@ -74,8 +74,9 @@ foreign_name_watch_allowed() { # <файл исключений> <путь> <т�
 }
 
 # ЗАМЕР. Печатает находки строками `<путь>\t<номер>\t<текст>`, отсортированными по пути.
-# Отказ чтения дерева — ненулевой код и причина в stdout (Т4): «класс не найден» и «я не
-# смотрела» обязаны быть разными исходами.
+# Любой из ТРЁХ отказов Т4 — ненулевой код и причина в stdout: «класс не найден» и «я не
+# смотрела» обязаны быть разными исходами. Отказы: дерево не прочитано, набор имён не собран
+# (включая неопределённый собственный адрес), ОТКАЗАЛ ПЕРЕЧИСЛИТЕЛЬ.
 foreign_name_watch_scan() { # <дерево> <файл имён> <файл исключений>
   local tree="$1" names_file="$2" allow="$3"
   if [ ! -d "$tree" ]; then
@@ -103,13 +104,41 @@ foreign_name_watch_scan() { # <дерево> <файл имён> <файл ис�
   local prune=() d
   for d in "${FOREIGN_NAME_WATCH_MACHINE_DIRS[@]}"; do prune+=(-name "$d" -o); done
 
-  local raw
-  if ! raw="$(find "$tree" \( "${prune[@]}" -false \) -prune -o -type f -print0 2>/dev/null \
-      | xargs -0 -r grep -nIE "$pattern" /dev/null 2>/dev/null)"; then
-    # `grep` без совпадений отдаёт 1 — это не отказ. Отказ дерева ловится проверкой выше;
-    # различить их иначе нельзя, и врать «прочитано» здесь дешевле, чем звонить ложно.
-    raw=''
+  # ОТКАЗ ПЕРЕЧИСЛИТЕЛЯ — ТРЕТИЙ ИМЕНОВАННЫЙ ОТКАЗ Т4, И ОН НЕ СХЛОПЫВАЕТСЯ В «СОВПАДЕНИЙ
+  # НЕТ». `grep` без совпадений отдаёт 1, а `xargs` за ним — 123: это НЕ отказ. Но `find`,
+  # споткнувшийся о подкаталог без прав, и `grep`, не прочитавший файл, при `2>/dev/null`
+  # давали ровно «класс не найден» вместо «я не смотрела» — тот самый класс, ради которого
+  # Т4 писан. Поэтому перечисление и чтение РАЗВЕДЕНЫ: сначала список файлов на диск, потом
+  # поиск по нему; у каждого шага свой stderr, и непустой stderr — отказ наравне с кодом.
+  local scratch
+  if ! scratch="$(mktemp -d)"; then
+    printf 'перечислитель отказал: не удалось завести временный каталог под список файлов дерева %s\n' "$tree"
+    return 1
   fi
+  local listing="$scratch/files" find_err="$scratch/find.err" grep_err="$scratch/grep.err"
+  local raw rc why
+
+  if find "$tree" \( "${prune[@]}" -false \) -prune -o -type f -print0 \
+      > "$listing" 2> "$find_err"; then rc=0; else rc=$?; fi
+  if [ "$rc" -ne 0 ] || [ -s "$find_err" ]; then
+    why="$(head -n 1 "$find_err")"
+    rm -rf "$scratch"
+    printf 'перечислитель отказал: обход дерева %s вернул код %s%s\n' "$tree" "$rc" "${why:+; $why}"
+    return 1
+  fi
+
+  if raw="$(xargs -0 -r grep -nIE "$pattern" /dev/null < "$listing" 2> "$grep_err")"
+  then rc=0; else rc=$?; fi
+  # 0 — совпадения есть; 1 (сам `grep`) и 123 (`xargs` за ним) — совпадений нет. Прочий код,
+  # как и любой stderr, — отказ чтения: `grep` на нечитаемом файле отдаёт 2, а `xargs` его
+  # тоже сворачивает в 123, поэтому разводит их именно stderr, а не код.
+  if { [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ] && [ "$rc" -ne 123 ]; } || [ -s "$grep_err" ]; then
+    why="$(head -n 1 "$grep_err")"
+    rm -rf "$scratch"
+    printf 'перечислитель отказал: чтение файлов дерева %s вернуло код %s%s\n' "$tree" "$rc" "${why:+; $why}"
+    return 1
+  fi
+  rm -rf "$scratch"
 
   printf '%s\n' "$raw" | while IFS= read -r hit; do
     [ -n "$hit" ] || continue
