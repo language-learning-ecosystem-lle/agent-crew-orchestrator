@@ -71,3 +71,4 @@
 - [Шаг Actions запускается как `bash -e`](github-step-shell-is-bash-e.md) — `set -uo pipefail` его не снимает: неохраняемое `VAR=$(gh …)` роняет шаг и уносит охраняемые доставки ниже.
 - [Спасатель не должен делить домен отказа](rescue-path-must-not-share-the-fault-domain.md) — шаг «скажи, что не доехало» повторял тот же неохраняемый вызов; спас зазор в 1 секунду.
 - [`BLOCKED` — часто просто идущий круг](blocked-merge-state-may-be-just-the-open-round.md) — `MERGEABLE`+`BLOCKED` при метке `review`: базу судит `mergeable`, ребейз тут убил бы вердикт.
+- [Открытый стоячий адрес тоже никого не поднимает](open-standing-address-still-raises-nobody.md) — `expects: none` человеку не звонит, а роль привязана к одному треду: письмо не читает никто.
