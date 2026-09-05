@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-05T12:08:54.493Z",
+  "writtenAt": "2026-09-05T12:09:06.013Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "125-review-escalation-literal-thread",
+      "state": "running",
+      "deadline": "2026-09-05T12:49:03Z"
+    },
     {
       "role": "dev-core",
       "thread": "122-lost-receipt-reads-as-lost-letter",
