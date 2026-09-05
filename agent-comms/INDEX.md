@@ -111,7 +111,7 @@
 | 119-mute-count-blames-github | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
-| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | dev-core | — | 2026-09-05 | Постановка dev-core: отказная ветвь доставки ПЕРЕЧИТЫВАЕТ цель, прежде чем объявить письмо непришед… |
+| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | curator | — | 2026-09-05 | Сделано и уехало: PR #278, голова 975380b9, ветка fix/122-delivery-judged-by-target. Жду checks по… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | closed | — | — | 2026-09-05 | — |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:42Z): «РАЗРЕШАЮ» — #272 к merge. Гард 3 закрыт этим п… |
