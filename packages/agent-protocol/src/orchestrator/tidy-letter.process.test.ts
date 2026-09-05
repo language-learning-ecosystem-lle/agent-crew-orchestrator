@@ -187,6 +187,27 @@ const receiverOf = (mail: string): string | undefined =>
   readdirSync(join(mail, "agent-comms")).find((entry) => entry.endsWith(`-${TIDY_UP_SLUG}`));
 
 /**
+ * HOW MANY LETTERS STAND IN THE ADDRESS — counted as FILES, which is the measure of thread
+ * 133: the defect being closed is a receiver a human reads filling up with one letter per
+ * minute about one incident, and that is a count of files and nothing else.
+ *
+ * Every receiver of the address is counted, not only the newest: a lock that let the
+ * second letter open a SECOND receiver would leave the first one at exactly one message
+ * and pass a test that looked at one folder.
+ */
+const lettersIn = (mail: string): number =>
+  readdirSync(join(mail, "agent-comms"))
+    .filter((entry) => entry.endsWith(`-${TIDY_UP_SLUG}`))
+    .reduce(
+      (total, entry) =>
+        total +
+        readdirSync(join(mail, "agent-comms", entry, "messages")).filter((name) =>
+          name.endsWith(".md"),
+        ).length,
+      0,
+    );
+
+/**
  * THE LETTER AS A READER OF THE THREAD SEES IT. Not `readFileSync` on the message: the
  * claim under test is that the letter ARRIVED, and a file in a directory the loader
  * rejects — a bad header, a sender the registry does not know, a thread that never got
@@ -394,4 +415,116 @@ describe("the outcome of a tidy-up leaves as a letter — through the real door,
     const third = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"]);
     expect(third.out).not.toContain("uncommitted changes");
   }, 180_000);
+});
+
+/**
+ * THE REPEAT, OVER TWO TICKS (thread `133-tidy-letter-repeats-every-tick`) — the fact one
+ * tick cannot hold, and the reason the tests above missed the defect entirely: they each
+ * measured a single run, and "one letter" and "one letter PER TICK" look the same there.
+ *
+ * The two classes are the two the probe on the live contour separated, and they must stay
+ * two: they fail at DIFFERENT steps of the tidy-up and the state they leave the tree in is
+ * different, so a single case would prove the lock for one of them and assume it for the
+ * other.
+ *
+ * EVERY TICK IS ITS OWN PROCESS here, exactly as it is under the daemon. That is also the
+ * answer to "does the lock survive a restart of the daemon": nothing of it is held in
+ * memory, so the second run below reads the ledger of the first off the disk — which is
+ * the same thing a daemon started a minute ago does.
+ */
+describe("a standing tidy-up failure gets ONE letter, not one per tick", () => {
+  it("class 'nothing moved': the second tick posts NOTHING and says why — 1 letter, not 2", () => {
+    const { repo, mail } = contour([DEV_CORE, GITHUB, CURATOR]);
+    const workspace = join(repo, ".worktrees", "dev-core");
+
+    leaveDirtBehind(repo, workspace);
+    // The FIRST step of the tidy-up refuses: the branch is never created, so nothing about
+    // the tree changes between ticks and every tick plans exactly the same commit again.
+    // This is the class the probe measured at 1 → 2.
+    const shimDir = refusingGit(repo, "gitshim", " -b wip/", "fatal: cannot create branch");
+    const env = { PATH: `${shimDir}:${process.env.PATH ?? ""}` };
+
+    const first = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], env);
+    expect(first.out).toContain(
+      `letter — the outcome is posted to the standing address '${TIDY_UP_SLUG}', turn for 'curator'`,
+    );
+    expect(lettersIn(mail)).toBe(1);
+
+    const second = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], env);
+
+    // R1 — THE COUNT, which is the whole requirement: the standing address holds one
+    // letter about one incident after two ticks over the same standing dirt.
+    expect(lettersIn(mail)).toBe(1);
+    // R2 — AND THE TICK IS NOT SILENT ABOUT IT. A quiet suppression is indistinguishable
+    // from a tidy-up that worked, which is the reason the second half of the requirement
+    // exists at all: it says the incident was already told, and where the letter is.
+    expect(second.out).toContain("letter — SUPPRESSED");
+    expect(second.out).toContain(TIDY_UP_SLUG);
+    expect(second.out).toContain("turn for 'curator'");
+    expect(second.out).not.toContain("the outcome is posted to the standing address");
+    // …and the incident itself is unchanged: the tree is still dirty and the launch is
+    // still refused with its cause, exactly as on the first tick. The lock is on the
+    // LETTER and on nothing else.
+    expect(second.out).toContain("the commit FAILED");
+    expect(dirty(workspace)).toBe(true);
+  }, 240_000);
+
+  it("A NEW incident over the same tree breaks the lock — a different cause is news (R3)", () => {
+    const { repo, mail } = contour([DEV_CORE, GITHUB, CURATOR]);
+    const workspace = join(repo, ".worktrees", "dev-core");
+
+    leaveDirtBehind(repo, workspace);
+    const first = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], {
+      PATH: `${refusingGit(repo, "gitshim", " -b wip/", "fatal: cannot create branch")}:${process.env.PATH ?? ""}`,
+    });
+    expect(first.out).toContain("the outcome is posted to the standing address");
+    expect(lettersIn(mail)).toBe(1);
+
+    // The SAME tree, the SAME step, a DIFFERENT answer from git. Nothing else moved — so
+    // if the count stays at 1 here, the lock has swallowed a happening nobody was told
+    // about, which is a worse defect than the flood it replaces.
+    const second = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], {
+      PATH: `${refusingGit(repo, "gitshim2", " -b wip/", "fatal: index.lock exists")}:${process.env.PATH ?? ""}`,
+    });
+    expect(second.out).toContain("the outcome is posted to the standing address");
+    expect(second.out).not.toContain("SUPPRESSED");
+    expect(lettersIn(mail)).toBe(2);
+    expect(readBack(repo, mail, receiverOf(mail) as string)).toContain("fatal: index.lock exists");
+    expect(dirty(workspace)).toBe(true);
+  }, 240_000);
+
+  it("class 'branch made, commit refused': one letter over two ticks, and the second tick's own refusal is named", () => {
+    const { repo, mail } = contour([DEV_CORE, GITHUB, CURATOR]);
+    const workspace = join(repo, ".worktrees", "dev-core");
+
+    leaveDirtBehind(repo, workspace);
+    const env = {
+      PATH: `${refusingGit(repo, "gitshim", " -m wip(", "fatal: the index is broken")}:${process.env.PATH ?? ""}`,
+    };
+    const first = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], env);
+    expect(first.out).toContain("the outcome is posted to the standing address");
+    expect(lettersIn(mail)).toBe(1);
+
+    // THE SECOND TICK NEVER REACHES THE TIDY-UP in this class: the first one left the head
+    // on the service branch, and a head that is not the role's to write to is refused
+    // BEFORE any commit is planned. So the count holding at 1 here is not the lock's doing
+    // — and this test says which of the two it is, because a count alone would credit the
+    // lock with a silence the tree's own state produced.
+    const second = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], env);
+    expect(lettersIn(mail)).toBe(1);
+    expect(second.out).toContain("wip/dev-core/012-x-");
+    expect(second.out).toContain("is not 'dev-core's to write to");
+    expect(second.out).not.toContain("the outcome is posted to the standing address");
+    expect(dirty(workspace)).toBe(true);
+
+    // THE THIRD TICK, ASKED FOR BY NAME (curator, §4 of the statement — a measurement the
+    // stand gives for free): it says the same thing as the second, and it too says nothing
+    // about the tidy-up that failed. So the class is stable rather than converging on the
+    // original incident, and whether that silence is worth an item of its own is a
+    // decision that now stands on a measurement instead of on a shared guess.
+    const third = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], env);
+    expect(lettersIn(mail)).toBe(1);
+    expect(third.out).toContain("is not 'dev-core's to write to");
+    expect(third.out).not.toContain("the index is broken");
+  }, 240_000);
 });
