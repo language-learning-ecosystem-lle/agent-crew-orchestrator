@@ -73,3 +73,4 @@
 - [Голый `mktemp -d` — внутри чекаута](bare-mktemp-lands-inside-the-checkout.md) — `TMPDIR` роли лежит в `.orchestrator/sessions/`; букву «вне рабочего дерева» исполняет только `mktemp -d -p /tmp`
 - [Перечисленные формы могут не обязывать](named-forms-in-a-statement-may-not-bind.md) — постановка связывает требованием-исходом; не сказать этого вслух = три письма с одним вопросом, а ответ «обязывающей» после merge стоит второго PR
 - [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md) — круг самопропускается, а в `checks.yml` нет ни actionlint, ни shellcheck: YAML и `bash -n` по блокам `run:` — рука curator
+- [«Кредов не нужно» с ящика не мерится](no-credentials-needed-is-unmeasured-on-the-box.md) — токен стоит в среде молча, а дверь без него ПРОПУСКАЕТ вместо отказа: приёмка — прогон с `env -u GH_TOKEN`, а не отсутствие `secrets.*`
