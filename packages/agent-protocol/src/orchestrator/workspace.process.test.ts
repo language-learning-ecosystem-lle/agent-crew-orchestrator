@@ -278,7 +278,20 @@ describe("dirt left by a broken run is parked, not left standing", () => {
     );
   });
 
-  it("the previous run FINISHED its turn and left dirt → refused, and the refusal names it", () => {
+  /**
+   * THE CASE THAT CHANGED ITS ANSWER (thread 099, john of 2026-09-05). Until that
+   * decision this was a REFUSAL: dirt of a run that ended its own turn was read by a
+   * human first, and the role stood on every thread it held until somebody came. The
+   * right is now open — the dirt is committed for the role — and the case is kept here
+   * rather than deleted because it is the OTHER turn-ending reason: `completed`, not the
+   * `exited-without-handoff` of the field case, and the right is about the class of
+   * endings and not about one word of it.
+   *
+   * What did NOT change: the tree is still never stashed and never discarded on this
+   * path — the work goes to a NAMED address, which is the whole difference between a
+   * commit and the two gestures that lose it.
+   */
+  it("the previous run FINISHED its turn and left dirt → committed for the role, and it starts", () => {
     const { repo } = contour();
     stub(repo);
     git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
@@ -287,10 +300,19 @@ describe("dirt left by a broken run is parked, not left standing", () => {
 
     const result = run(repo);
 
-    expect(result.code).toBe(2);
-    expect(result.out).toContain("ENDED ITS OWN TURN");
-    // Untouched, and NOT stashed: an error of finishing is read by a human first.
-    expect(readFileSync(join(workspace(repo), "half-done.txt"), "utf8")).toContain("finished turn");
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("committing what the 'completed' run left uncommitted");
+    // THE TREE IS CLEAN AND THE PACKAGE ACTUALLY STARTED — the point of the right.
+    expect(git(workspace(repo), "status", "--porcelain")).toBe("");
+    expect(existsSync(join(repo, "cwd.txt"))).toBe(true);
+    // AND THE WORK IS AT A NAMED ADDRESS, whole — not stashed, not thrown away.
+    const branch = git(workspace(repo), "branch", "--list", "wip/*")
+      .trim()
+      .replace(/^\*?\s*/, "");
+    expect(branch).toMatch(/^wip\/dev-core\/012-x-\d{8}T\d{4}Z$/);
+    expect(git(workspace(repo), "show", `${branch}:half-done.txt`)).toBe(
+      "left behind by a finished turn\n",
+    );
     expect(git(workspace(repo), "stash", "list")).toBe("");
   });
 
@@ -300,11 +322,17 @@ describe("dirt left by a broken run is parked, not left standing", () => {
    * against a real repository: the pure function can only be handed numbers, and the two
    * git calls that produce them (`status --porcelain` for the names, `diff HEAD
    * --numstat` for the counts) are the seam nothing else covers.
+   *
+   * THE HEAD IS A FOREIGN BRANCH, and that is what keeps this case a REFUSAL after the
+   * right of 2026-09-05: the circuit commits a role's leftovers onto the role's own head
+   * and never onto a common or a foreign one. Neither named for `dev-core` nor signed by
+   * it — the two facts `classifyWorkspaceHead` accepts — so the whole text john ran three
+   * commands to assemble by hand is still the thing a human is handed here.
    */
-  it("a MODIFIED tracked file → the refusal counts its lines and offers the branch by thread", () => {
+  it("a MODIFIED tracked file on a FOREIGN head → the refusal counts its lines and offers the branch by thread", () => {
     const { repo } = contour();
     stub(repo);
-    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
+    git(repo, "worktree", "add", "-q", "-b", "curator/017-x", workspace(repo));
     writeFileSync(join(workspace(repo), "CARD.md"), "the role card\nrewritten by the run\n");
     seedRun(repo, "exited-without-handoff");
 
@@ -312,6 +340,10 @@ describe("dirt left by a broken run is parked, not left standing", () => {
 
     expect(result.code).toBe(2);
     expect(result.out).toContain("ENDED ITS OWN TURN ('exited-without-handoff')");
+    // AND IT SAYS WHOSE HEAD IT REFUSED TO WRITE ON — the half that is new: a refusal
+    // that only said "uncommitted changes" would now read as the door being broken.
+    expect(result.out).toContain("its head is on 'curator/017-x'");
+    expect(result.out).toContain("not 'dev-core's to write to");
     // WHAT IS IN THE TREE, by name and by size — the three commands john ran by hand.
     expect(result.out).toContain("1 path(s) — CARD.md (modified, +1/-0)");
     // WHAT IT COSTS — the role, not the thread.
