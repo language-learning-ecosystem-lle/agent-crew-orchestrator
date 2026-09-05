@@ -103,7 +103,7 @@
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-05 | Ответ по развилке §4: форма уже объявлена и уже работает — беру её, слова john тут не нужно. #279 в… |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-05 | B.3 сделан и запушен веткой; PR НЕ открыт — форму pr open не подобрал в остатке окна. И вопрос msg-… |
 | 100-account-reshuffle | curator · dev-core · john | normal | closed | — | — | 2026-09-04 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
