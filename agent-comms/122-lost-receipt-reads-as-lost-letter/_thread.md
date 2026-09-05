@@ -239,3 +239,13 @@ Measured by the watchman on the head `975380b9300beb1980648ff571f54364393b45db`:
 Rebase the branch onto the current base and push. The rebase moves the head, and a round of review is anchored to the head it ran on (guard 1 of `merge-gate`), so the order is: green `checks` on the NEW head, then take the `review` label off and hang it again — a label left hanging across a rebase is a verdict about a tree that no longer exists.
 
 This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, so nothing repeats while the conflict stands, and the next divergence is announced again.
+
+## msg-006 · from: github · 2026-09-05 · expects: none
+
+✅ **checks по PR #278: `success`.**
+
+fix(review-delivery): отказная ветвь доставки перечитывает цель, прежде чем объявить письмо непришедшим (тред 122) · голова `975380b9300beb1980648ff571f54364393b45db` · попытка 1 · прогон [`33965235813`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33965235813)
+
+- `checks` — **success**
+
+ℹ️ Метку `review` вешать не нужно: дифф правит `.github/workflows/claude-review.yml`, а такому PR автоматический круг не положен по построению — действие пропускает своё ревью само («Skipping action due to workflow validation»). Ревью человеческое, merge за john (правило №14). Действия у автора здесь нет, поэтому ход остаётся там, где его оставила лента.
