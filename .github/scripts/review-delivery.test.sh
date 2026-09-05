@@ -567,6 +567,58 @@ check "имени своего письма нет — третий исход, 
 check "почта недостижима — перечитывание отказало САМО (третий исход)" "2" \
   "$(cat "${REVIEW_DELIVERY_DIR}/unreachable.txt")"
 
+# --- 13. Стык треда 122 с тредом 125: путь письма берётся у ПРИЁМНИКА ----------
+
+# ПОЧЕМУ ЭТОТ РАЗДЕЛ ЕСТЬ ОТДЕЛЬНО. Раздел 12 меряет пробу, которой УЖЕ дали путь; здесь
+# меряется то, откуда путь берётся, — и это не косметика, а стык, родившийся на
+# перебазировке: до треда 125 адрес и имя каталога были одним словом, после него у
+# СТОЯЧЕГО адреса на руках остаётся слаг. Общая переменная стыка одна — каталог письма.
+ADDED_LETTER='agent-comms/077-notifier-down/_meta.md
+agent-comms/077-notifier-down/messages/2026-09-05T12-00-00Z-reviewer-pr.md
+agent-comms/INDEX.md'
+check "путь письма опознан по ФАКТИЧЕСКОМУ приёмнику" \
+  'agent-comms/077-notifier-down/messages/2026-09-05T12-00-00Z-reviewer-pr.md' \
+  "$(letter_path "$ADDED_LETTER" 077-notifier-down)"
+# ЦЕНА СТЫКА, НАЗВАННАЯ МАШИННО: слаг — не каталог, и греп по нему не нашёл бы своего
+# файла НИКОГДА. Эта проверка и есть мутация: верни в код слаг — она станет красной.
+check "слаг вместо приёмника пути НЕ даёт — потому он туда и не подставляется" "" \
+  "$(letter_path "$ADDED_LETTER" notifier-down)"
+# ИМЕНОВАННЫЙ ТРЕД (ветвь вердикта) — тот же вызов, и он не стал хуже от стоячего адреса.
+check "именованный тред — путь тот же" \
+  'agent-comms/122-lost-receipt-reads-as-lost-letter/messages/004-reviewer-pr.md' \
+  "$(letter_path 'agent-comms/122-lost-receipt-reads-as-lost-letter/messages/004-reviewer-pr.md
+agent-comms/INDEX.md' 122-lost-receipt-reads-as-lost-letter)"
+# ПРИЁМНИКА НЕТ — ПУТИ НЕТ, а не путь по пустому каталогу: `^agent-comms//messages/` не
+# совпал бы ни с чем, но и грепа тут быть не должно вовсе.
+check "приёмник не назван — пусто, а не выдуманный путь" "" \
+  "$(letter_path "$ADDED_LETTER" '')"
+# ЗАПИСЬ ЕСТЬ, А ПИСЬМА В НЕЙ НЕТ (INDEX и `_meta` письмом не являются) — тоже пусто, и
+# дальше это третий исход пробы, а не «не доехало».
+check "под приёмником нет messages/ — пусто" "" \
+  "$(letter_path 'agent-comms/077-notifier-down/_meta.md
+agent-comms/INDEX.md' 077-notifier-down)"
+# ЧУЖОЙ ПРИЁМНИК ТОГО ЖЕ СЛАГА за свой не принимается: письмо легло в 077, а спрашивают
+# про 126 — это разные треды, и совпадение хвоста имени их не роднит.
+check "письмо соседнего приёмника того же слага — не своё" "" \
+  "$(letter_path "$ADDED_LETTER" 126-notifier-down)"
+
+# А ЧЕМ `deliver_to_thread` ЕГО ЗОВЁТ — ГРЕПОМ, и это единственный способ: сам вызов
+# живёт за `git push` в почту, которого у этого файла нет. Мутация, от которой держит
+# проверка, — вернуть в аргумент `"$thread"` (адрес): проверки выше остались бы зелёными,
+# потому что зовут `letter_path` напрямую. Рядом два контроля — что шаблон ловит форму,
+# которую ищет, и что читается ТОТ файл (тот же приём, что в разделе 11).
+check "путь письма запрашивается ПРИЁМНИКОМ" "да" \
+  "$(grep -qF 'letter_path "$(git -C .comms-fallback show' ./review-delivery.sh \
+     && grep -qE '^[[:space:]]*--diff-filter=A HEAD\)" "\$landed"\)"$' ./review-delivery.sh \
+     && echo да || echo нет)"
+check "и адресом (\$thread/\$address) — не запрашивается нигде" "" \
+  "$(grep -nE '^[[:space:]]*--diff-filter=A HEAD\)" "\$(thread|address)"\)"$' ./review-delivery.sh)"
+check "контроль: шаблон ловит ту самую форму" "да" \
+  "$(printf '  --diff-filter=A HEAD)" "$landed")"\n' \
+     | grep -qE '^[[:space:]]*--diff-filter=A HEAD\)" "\$landed"\)"$' && echo да || echo нет)"
+check "контроль: греп читает тот самый файл" "да" \
+  "$(grep -qF 'letter_path() {' ./review-delivery.sh && echo да || echo нет)"
+
 if [ "$FAILED" = "0" ]; then
   echo "доставка вердикта: все проверки прошли"
 else
