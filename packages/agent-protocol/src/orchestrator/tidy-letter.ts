@@ -271,7 +271,7 @@ export type TidyUpMemo = {
  * COMPOSITION OF THE DIRT. Change any one of them and it is a different happening, which
  * is exactly what R3 of the statement of work asks to be checked one by one.
  *
- * The join is ` ` for the ordinary reason: no field of it can contain the separator,
+ * The join is `\u0000` for the ordinary reason: no field of it can contain the separator,
  * so two different signatures cannot collapse into one text.
  */
 export const tidyUpSignature = (input: {
@@ -287,7 +287,7 @@ export const tidyUpSignature = (input: {
     outcome.kind === "failed" ? "" : outcome.head,
     outcome.kind === "done" ? "" : outcome.cause,
     input.dirt === undefined ? "не прочитано" : describeWorkspaceDirt(input.dirt),
-  ].join(" ");
+  ].join("\u0000");
 };
 
 /**
