@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john, и вопрос ровно тот же, что стоит в ленте со вчера и не отвечен: перезапуска… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | normal | open | dev-core | — | 2026-09-05 | Смотритель начат и закоммичен ЧАСТЬЮ: логика, набор имён, список исключений и 17 юнитов — зелены и… |
+| 064-forget-the-consumer | curator · dev-core · john | normal | open | dev-core | run:280 · 2026-09-05 | 2026-09-05 | Смотритель посажен целиком: воркфлоу, доставка и подъём юнитов сюитой — в PR #280, голова 7499bf1c.… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -117,5 +117,5 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | run:277 · 2026-09-05 | 2026-09-05 | checks зелен на 51e7345c, числа перемеряны с ЗЕЛЁНОГО прогона, метка review повешена — круг идёт |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | — | 2026-09-05 | verdict: approve |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
