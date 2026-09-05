@@ -503,6 +503,7 @@ import {
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
 import {
   describeDeliveredTidyUpLetter,
+  describeStandingTidyUpIncident,
   describeUndeliveredTidyUpLetter,
   planTidyUpDelivery,
   planTidyUpLetter,
@@ -6851,6 +6852,10 @@ const postTidyUpLetter = (input: {
       signature,
       at: eventTimestamp(new Date()),
       waitingOn: letter.waitingOn,
+      // WHICH OUTCOME, recorded because the refusal of the next tick may have to say it
+      // (R5) — and it may never guess: "the tidy-up failed" and "your work is committed
+      // here" are opposite statements about one branch.
+      outcome: input.outcome.kind,
       ...(input.outcome.branch === undefined ? {} : { branch: input.outcome.branch }),
     });
     return describeDeliveredTidyUpLetter({ waitingOn: letter.waitingOn });
@@ -11121,7 +11126,22 @@ const settleRun = (input: {
       baseRef: base.ref,
     })}`,
   );
-  if (plan.action === "refuse") return { ok: false, reason: plan.reason, lines };
+  if (plan.action === "refuse") {
+    // R5 (thread 133): a refusal over a head the circuit's own tidy-up put there names
+    // that incident and where it was told. The ledger is the same one the lock reads, and
+    // the memo is used ONLY when it speaks of the branch this head is standing on — an
+    // account of another branch would be a pointer away from this refusal, not into it.
+    // Nothing here weakens the refusal: the reason it already had is the first sentence.
+    const standing = readTidyUpMemos(pathsFrom(argv).tidyLetters)[role.id];
+    return {
+      ok: false,
+      reason:
+        standing !== undefined && facts.branch !== undefined && standing.branch === facts.branch
+          ? `${plan.reason}. ${describeStandingTidyUpIncident({ role: role.id, memo: standing })}`
+          : plan.reason,
+      lines,
+    };
+  }
   if (input.write) {
     // THE ORDER OF THESE TWO IS THE REQUIREMENT (john, 22:20): the lock is taken
     // BEFORE the tree is mutated, so that a second orchestrator cannot be moving the

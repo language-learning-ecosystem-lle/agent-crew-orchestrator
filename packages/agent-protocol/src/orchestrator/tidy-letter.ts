@@ -263,6 +263,16 @@ export type TidyUpMemo = {
   readonly waitingOn: string;
   /** The branch the work or the dirt stands on, when the outcome knew one. */
   readonly branch?: string;
+  /**
+   * WHICH OF THE THREE OUTCOMES that letter carried (R5 of thread 133). It is read by
+   * the refusal of the ticks that come after, and the distinction is the whole point
+   * there: "the tidy-up FAILED" and "the circuit committed your work here" are opposite
+   * statements about the same branch, and a refusal is allowed to make neither of them
+   * up. Optional because a ledger written before R5 has no such field, and a reader that
+   * threw on one would turn an old file into a broken launch: absent reads as "which
+   * outcome is not recorded", and the refusal then says only what it can stand behind.
+   */
+  readonly outcome?: TidyUpOutcome["kind"];
 };
 
 /**
@@ -305,6 +315,43 @@ export const describeSuppressedTidyUpLetter = (input: {
   readonly memo: TidyUpMemo;
 }): string =>
   `letter — SUPPRESSED, nothing new to say: this very outcome for '${input.role}' was already posted to the standing address '${TIDY_UP_SLUG}' at ${input.memo.at}, turn for '${input.memo.waitingOn}' — read it there${
+    input.memo.branch === undefined ? "" : `; the branch is '${input.memo.branch}'`
+  }`;
+
+/**
+ * THE STANDING INCIDENT, SAID INSIDE THE REFUSAL OF EVERY TICK AFTER IT (R5 of thread
+ * `133-tidy-letter-repeats-every-tick`, curator's ruling of 2026-09-05).
+ *
+ * MEASURED (msg-003 §4 of 133, now the third tick of the process test): in the class
+ * "the branch was made, the commit refused" the ticks that follow never reach the tidy-up
+ * at all — the head was left on the service branch, and a head that is not the role's to
+ * write to is refused BEFORE any commit is planned. So their refusal names a cause the
+ * CIRCUIT ITSELF created and says nothing about the incident behind it; the third tick
+ * does not even carry the cause git gave the first. A human arriving an hour later reads
+ * a diagnosis that leads away from what happened, once per tick.
+ *
+ * The requirement of thread 099 was "one letter AND the cause is named". The first half
+ * is the lock above; this is the second half in the one place the reader actually looks
+ * on ticks 2..N — the refusal. It ADDS a sentence and removes nothing: the cause the tree
+ * has right now is still the cause, and the refusal is still a refusal.
+ *
+ * It is only ever said about the branch the head is standing on: a memo about some other
+ * branch is not an account of THIS refusal, and pointing at it would be the same defect
+ * in the other direction.
+ */
+export const describeStandingTidyUpIncident = (input: {
+  readonly role: string;
+  readonly memo: TidyUpMemo;
+}): string =>
+  `And this head is where the circuit's own tidy-up of '${input.role}' left it: ${
+    input.memo.outcome === "failed"
+      ? "that tidy-up FAILED"
+      : input.memo.outcome === "stranded"
+        ? "that tidy-up committed the work and could not move the tree back"
+        : input.memo.outcome === "done"
+          ? "that tidy-up committed the work here"
+          : "what that tidy-up did is not recorded in the ledger"
+  }, and it was posted to the standing address '${TIDY_UP_SLUG}' at ${input.memo.at}, turn for '${input.memo.waitingOn}' — read the incident there, not here${
     input.memo.branch === undefined ? "" : `; the branch is '${input.memo.branch}'`
   }`;
 
