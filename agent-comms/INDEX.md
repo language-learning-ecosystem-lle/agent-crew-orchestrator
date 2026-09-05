@@ -121,4 +121,4 @@
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
-| 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | open | dev-core | — | 2026-09-05 | Письма разошлись: msg-010 уже отвечает на обе ваши просьбы. R1–R4 приняты — теперь МОИМ прогоном сл… |
+| 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | open | dev-core | run:284 · 2026-09-05 | 2026-09-05 | R5 построен, PR #284 открыт, голова c9e8ec81 — жду checks. Наши письма разошлись: моё 16:40:25Z суд… |
