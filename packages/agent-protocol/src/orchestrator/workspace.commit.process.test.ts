@@ -265,7 +265,15 @@ describe("the circuit commits what a finished run left behind — on a real tree
     );
   }, 180_000);
 
-  it("a commit git refuses is a REFUSAL WITH A CAUSE over a tree that is still dirty", () => {
+  /**
+   * THE REVIEWER'S FINDING ON #279 (2026-09-05) IS WHAT THIS TEST NOW MEASURES. It was
+   * here before and it passed for the wrong reason: it shimmed `commit` and let
+   * `checkout -b` through to the real git — so it always ran the path where the branch
+   * DOES get created — and then asserted only the text and the file, never
+   * `rev-parse --abbrev-ref HEAD`. The tree it described as "untouched" was standing on
+   * a branch that nothing named out loud.
+   */
+  it("a commit git refuses leaves the dirt ON THE BRANCH the attempt made, and says so", () => {
     const { repo } = contour();
     const workspace = join(repo, ".worktrees", "dev-core");
 
@@ -297,11 +305,27 @@ describe("the circuit commits what a finished run left behind — on a real tree
     expect(second.out).toContain("CARD.md");
     expect(second.out).toContain("skipped on EVERY thread it holds a turn on");
     expect(second.out).toContain(`git -C ${workspace} stash push -u`);
-    // AND THE TREE IS UNTOUCHED: a failed tidy-up leaves the work exactly where the
-    // session left it, which is the reason this stop exists at all.
+    // THE WORK IS STILL UNCOMMITTED — that much was always true, and it is the reason
+    // this stop exists at all.
     expect(dirty(workspace)).toBe(true);
     expect(readFileSync(join(workspace, "NOTE.md"), "utf8")).toBe("a new file\n");
     expect(existsSync(join(workspace, "NOTE.md"))).toBe(true);
+
+    // AND THE TREE IS **NOT** WHERE THE SESSION LEFT IT: `checkout -b` ran before the
+    // refusal and carried the dirt onto the service branch. This is the assertion the
+    // old test was missing — the text was judged, the tree never was.
+    const branch = git(workspace, "rev-parse", "--abbrev-ref", "HEAD").trim();
+    expect(branch).toMatch(/^wip\/dev-core\/012-x-/);
+    // THE REFUSAL NAMES THAT BRANCH. Without it the branch exists and no reader of the
+    // message can learn of it except by git archaeology — the very thing §2 of this
+    // thread's statement forbids of a service branch.
+    expect(second.out).toContain(branch);
+    expect(second.out).toContain("NO LONGER detached");
+    // AND IT DOES NOT SEND A HUMAN TO BRANCH A SECOND TIME. `checkout -b` here would
+    // succeed (git carries the dirt again) and leave this branch behind for nobody.
+    expect(second.out).not.toContain("checkout -b");
+    expect(second.out).toContain(`git -C ${workspace} add -A && git -C ${workspace} commit -m`);
+    expect(second.out).toContain(`git -C ${workspace} branch -D ${branch}`);
   }, 180_000);
 
   /**

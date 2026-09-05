@@ -490,6 +490,11 @@ export const dirtCommitMessage = (input: {
  * thing that is new: WHAT the circuit tried and how git answered. Without that line a
  * reader cannot tell "the circuit may not touch this" from "the circuit tried and
  * failed", and those two ask a human for opposite things.
+ *
+ * THIS TEXT IS FOR THE NARROW CASE WHERE NOTHING MOVED — the very first step of the
+ * attempt (`checkout -b`) is what git refused, so the tree is still detached exactly
+ * where the session left it and #261's repair is still literally true. The moment the
+ * branch exists, it is not: see `describeFailedTidyUpOnItsBranch`.
  */
 export const describeFailedTidyUp = (input: {
   readonly role: string;
@@ -499,7 +504,7 @@ export const describeFailedTidyUp = (input: {
   readonly thread?: string;
   readonly dirt?: WorkspaceDirt;
 }): string =>
-  `the workspace has uncommitted changes the circuit was allowed to commit for '${input.role}' — and the commit FAILED: ${input.cause} (branch '${input.branch}'). The tree is still dirty, so this is the same stop as before, with a cause. ${describeDirtyWorkspaceRepair(
+  `the workspace has uncommitted changes the circuit was allowed to commit for '${input.role}' — and the commit FAILED before it started: ${input.cause} (branch '${input.branch}' was never created). The tree is still dirty and still detached, so this is the same stop as before, with a cause. ${describeDirtyWorkspaceRepair(
     {
       role: input.role,
       path: input.path,
@@ -507,6 +512,55 @@ export const describeFailedTidyUp = (input: {
       ...(input.dirt === undefined ? {} : { dirt: input.dirt }),
     },
   )}`;
+
+/**
+ * THE TIDY-UP THAT FAILED WITH THE TREE ALREADY ON A BRANCH — the third of the four
+ * ends the attempt has, and the one that was speaking somebody else's text until the
+ * reviewer of #279 measured it (2026-09-05).
+ *
+ * WHY IT CANNOT BE THE TEXT ABOVE. The attempt gets as far as `checkout -b` before
+ * `add -A`/`commit` refuses, and git carries uncommitted work across that checkout — so
+ * the tree is dirty ON THE SERVICE BRANCH, no longer detached, and the branch exists.
+ * `describeDirtyWorkspaceRepair`'s `checkout -b <role>/<thread>` would then branch a
+ * SECOND time off it and leave the first behind: a branch nothing has ever named out
+ * loud, which the statement of this thread (curator, §2) forbids exactly — a service
+ * branch owes a human its name, its end, and who sweeps it.
+ *
+ * AND IT COVERS THE OTHER HALF OF THE SAME SHAPE: a tree that was already standing on
+ * the role's OWN branch (`create: false`) and whose commit failed. Nothing moved there,
+ * but `checkout -b` onto a branch that exists refuses all the same — the repair has to
+ * be "finish it where it stands" in both, and `created` is the one word that differs:
+ * it tells a human whether this attempt made that branch (and may therefore take it
+ * back) or found it already there.
+ */
+export const describeFailedTidyUpOnItsBranch = (input: {
+  readonly role: string;
+  readonly path: string;
+  readonly branch: string;
+  /** Did THIS attempt create the branch the tree now stands on, or was it already its own? */
+  readonly created: boolean;
+  /** The message the commit would have carried — the repair offers the same one. */
+  readonly message: string;
+  /** The base commit, so "take the branch back" is a command and not a placeholder. */
+  readonly base: string;
+  readonly cause: string;
+  readonly dirt?: WorkspaceDirt;
+}): string =>
+  [
+    `the workspace has uncommitted changes the circuit was allowed to commit for '${input.role}' — and the commit FAILED: ${input.cause}`,
+    input.created
+      ? `the attempt got as far as creating the service branch '${input.branch}' and moving the workspace onto it, so the tree is NO LONGER detached: it is dirty ON THAT BRANCH, and nothing is lost`
+      : `the tree is still dirty on '${input.branch}', the role's own branch, where the session left it`,
+    input.dirt === undefined
+      ? `What lies there did not read; ask the tree: git -C ${input.path} status --porcelain`
+      : `What lies there: ${describeWorkspaceDirt(input.dirt)}`,
+    `Until it is clean '${input.role}' is skipped on EVERY thread it holds a turn on, not only this one — the workspace belongs to the role, not to the thread`,
+    `Read why git refused, then either FINISH it WHERE IT NOW STANDS — git -C ${input.path} add -A && git -C ${input.path} commit -m '${input.message}' && git -C ${input.path} push -u origin ${input.branch} — or PARK it: git -C ${input.path} stash push -u -m '${input.message}'${
+      input.created
+        ? ` && git -C ${input.path} checkout --detach ${input.base} && git -C ${input.path} branch -D ${input.branch}, which also takes back the branch this attempt made`
+        : ""
+    }. Either one leaves the tree clean and the role starts on the next tick`,
+  ].join(". ");
 
 /**
  * THE TIDY-UP THAT WORKED AND THEN GOT STUCK — the commit landed, and the step AFTER it

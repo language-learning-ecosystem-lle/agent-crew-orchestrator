@@ -11,6 +11,7 @@ import {
   createWorkspaceLocks,
   describeDirtyWorkspaceRepair,
   describeFailedTidyUp,
+  describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
   describeStrandedWorkspace,
   describeWorkspaceDirt,
@@ -1270,6 +1271,83 @@ describe("describeFailedTidyUp — the tidy-up that did not work (john's §4 exc
     expect(text).toContain("CARD.md (modified, +1/-0)");
     expect(text).toContain("skipped on EVERY thread it holds a turn on");
     expect(text).toContain("git -C /repo/.worktrees/dev-core stash push -u");
+  });
+
+  // THE NARROWING that makes #261's repair true again: this text speaks only for the
+  // failure of the FIRST step, and it says so — a `checkout -b` that never happened is
+  // exactly what leaves the tree detached and the branch non-existent.
+  it("says the branch was never created and the tree is still detached", () => {
+    expect(text).toContain("was never created");
+    expect(text).toContain("still dirty and still detached");
+    expect(text).toContain("checkout -b dev-core/099-x");
+  });
+});
+
+/**
+ * THE REVIEWER'S FINDING ON #279 (2026-09-05), and it is the same class as the one that
+ * PR had already fixed one step further along: the attempt mutates the tree before it
+ * fails, and the refusal goes on describing the tree as it was.
+ */
+describe("describeFailedTidyUpOnItsBranch — the commit failed with the tree already on a branch", () => {
+  const created = describeFailedTidyUpOnItsBranch({
+    role: ROLE,
+    path: WORKSPACE,
+    branch: "wip/dev-core/099-x-20260905T1231Z",
+    created: true,
+    message: "wip(099-x): what the 'exited-without-handoff' run of 'dev-core' left uncommitted",
+    base: "1111111",
+    cause: "git add -A — fatal: the index is broken",
+    dirt: { files: [{ path: "CARD.md", what: "modified", added: 1, removed: 0 }] },
+  });
+
+  it("names the branch this attempt made, and that the tree is no longer detached", () => {
+    expect(created).toContain("creating the service branch 'wip/dev-core/099-x-20260905T1231Z'");
+    expect(created).toContain("NO LONGER detached");
+    expect(created).toContain("fatal: the index is broken");
+  });
+
+  it("keeps composition and the scope of the hold — the refusal of #261 loses nothing", () => {
+    expect(created).toContain("CARD.md (modified, +1/-0)");
+    expect(created).toContain("skipped on EVERY thread it holds a turn on");
+  });
+
+  // THE DEFECT ITSELF: `checkout -b` here would branch a second time off the branch the
+  // attempt just made and leave the first one behind, named nowhere.
+  it("NEVER offers 'checkout -b' — it finishes the commit where the tree now stands", () => {
+    expect(created).not.toContain("checkout -b");
+    expect(created).toContain(
+      `git -C ${WORKSPACE} add -A && git -C ${WORKSPACE} commit -m 'wip(099-x): what the 'exited-without-handoff' run of 'dev-core' left uncommitted' && git -C ${WORKSPACE} push -u origin wip/dev-core/099-x-20260905T1231Z`,
+    );
+  });
+
+  it("and the PARK gesture takes the branch back, by name and from the base commit", () => {
+    expect(created).toContain(`git -C ${WORKSPACE} stash push -u -m`);
+    expect(created).toContain(`git -C ${WORKSPACE} checkout --detach 1111111`);
+    expect(created).toContain(`git -C ${WORKSPACE} branch -D wip/dev-core/099-x-20260905T1231Z`);
+  });
+
+  // THE OTHER HALF OF THE SHAPE — nothing was created, the role was already standing on
+  // its own branch. The repair is the same one; there is no branch to take back.
+  const found = describeFailedTidyUpOnItsBranch({
+    role: ROLE,
+    path: WORKSPACE,
+    branch: "dev-core/099-x",
+    created: false,
+    message: "wip(099-x): what the 'exited-without-handoff' run of 'dev-core' left uncommitted",
+    base: "1111111",
+    cause: "git commit --quiet -m … — fatal: cannot lock ref",
+  });
+
+  it("on the role's OWN branch it claims no creation and offers no deletion", () => {
+    expect(found).toContain("the role's own branch, where the session left it");
+    expect(found).not.toContain("creating the service branch");
+    expect(found).not.toContain("branch -D");
+    expect(found).not.toContain("checkout -b");
+    expect(found).toContain(`git -C ${WORKSPACE} push -u origin dev-core/099-x`);
+  });
+
+  it("and with no dirt read it asks the tree instead of inventing a composition", () => {
+    expect(found).toContain(`git -C ${WORKSPACE} status --porcelain`);
   });
 });
 

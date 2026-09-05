@@ -531,6 +531,7 @@ import {
   checkWorkspaceSignature,
   createWorkspaceLocks,
   describeFailedTidyUp,
+  describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
   describeStrandedWorkspace,
   describeWorkspaceIdentity,
@@ -6559,6 +6560,15 @@ const applyWorkspacePlan = (input: {
         /** The push failure, when there was one; absent means it went. */
         readonly push?: string;
       };
+      /**
+       * WHERE THE DIRT NOW STANDS when the commit did not go — present when the tree is
+       * dirty ON A BRANCH rather than detached, which is every failure of `add`/`commit`
+       * (the `checkout -b` before them has already carried the work across, and a plan
+       * with `create: false` was standing on the role's own branch to begin with). Absent
+       * means the very first step is what failed and the tree never moved. The two ask a
+       * human for different gestures, so the caller tells them apart by this field.
+       */
+      readonly dirtyOn?: { readonly branch: string; readonly created: boolean };
     } => {
   switch (input.plan.action) {
     case "create":
@@ -6604,10 +6614,17 @@ const applyWorkspacePlan = (input: {
       };
       if (plan.create) {
         const failed = step(["-C", input.path, "checkout", "-q", "-b", plan.branch]);
+        // NOTHING MOVED — and that is the ONE failure after which the tree is still
+        // detached where the session left it. Everything below this line runs with the
+        // work already carried onto `plan.branch` by that checkout.
         if (failed !== undefined) return { ok: false, cause: failed };
       }
+      // FROM HERE ON THE TREE IS ON THE BRANCH (the reviewer's finding on #279): a
+      // failure of `add`/`commit` leaves the dirt standing on `plan.branch`, whether
+      // this attempt created it a line ago or found the role already on it.
+      const dirtyOn = { branch: plan.branch, created: plan.create };
       const staged = step(["-C", input.path, "add", "-A"]);
-      if (staged !== undefined) return { ok: false, cause: staged };
+      if (staged !== undefined) return { ok: false, cause: staged, dirtyOn };
       // SIGNED BY THE ROLE AND NOT BY THE OWNER OF THE PROCESS (john's §1.2). Through
       // the environment rather than through config, for the reason `identity.ts` gives:
       // `GIT_AUTHOR_*` outranks configuration, so this holds even in a tree whose
@@ -6621,7 +6638,7 @@ const applyWorkspacePlan = (input: {
         GIT_COMMITTER_NAME: who.name,
         GIT_COMMITTER_EMAIL: who.email,
       });
-      if (committed !== undefined) return { ok: false, cause: committed };
+      if (committed !== undefined) return { ok: false, cause: committed, dirtyOn };
       // THE PUSH IS NOT A CONDITION OF ANYTHING (john's §1.2): the tree is clean and the
       // role starts on the next tick whether or not this box can reach the network. Its
       // failure is named, never raised.
@@ -10940,20 +10957,32 @@ const settleRun = (input: {
       if (!applied.ok && plan.action === "commit") {
         return {
           ok: false,
-          // TWO FAILURES, TWO TEXTS. `committed` present means the commit went and the
-          // move back did not: the tree is clean, the dirt read above is already inside
-          // that commit, and repeating "still dirty" over it would name a fact that
-          // stopped being true a moment ago.
+          // THREE FAILURES, THREE TEXTS, and each of the other two used to be told in
+          // this one's words. `committed` present means the commit went and the move back
+          // did not: the tree is clean, the dirt read above is already inside that commit.
+          // `dirtyOn` present means the work is still uncommitted but no longer where the
+          // session left it — it stands on a branch, and the repair has to say so.
           reason:
             applied.committed === undefined
-              ? describeFailedTidyUp({
-                  role: role.id,
-                  path,
-                  branch: plan.branch,
-                  cause: applied.cause,
-                  thread,
-                  ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
-                })
+              ? applied.dirtyOn === undefined
+                ? describeFailedTidyUp({
+                    role: role.id,
+                    path,
+                    branch: plan.branch,
+                    cause: applied.cause,
+                    thread,
+                    ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
+                  })
+                : describeFailedTidyUpOnItsBranch({
+                    role: role.id,
+                    path,
+                    branch: applied.dirtyOn.branch,
+                    created: applied.dirtyOn.created,
+                    message: plan.message,
+                    base: base.commit,
+                    cause: applied.cause,
+                    ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
+                  })
               : describeStrandedWorkspace({
                   role: role.id,
                   path,
