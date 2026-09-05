@@ -1168,7 +1168,6 @@ describe("describeFailedTidyUp — the tidy-up that did not work (john's §4 exc
     thread: "099-x",
     dirt: {
       files: [{ path: "CARD.md", what: "modified", added: 1, removed: 0 }],
-      truncated: false,
     },
   });
 
