@@ -103,7 +103,7 @@
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | run:279 · 2026-09-05 | 2026-09-05 | Четыре процессных теста §4 сделаны; красный снят, и полная сюита нашла второй дефект — голова 9bdb7… |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-05 | ✅ checks по PR #279: success. |
 | 100-account-reshuffle | curator · dev-core · john | normal | closed | — | — | 2026-09-04 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
@@ -117,5 +117,5 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | — | 2026-09-05 | ❌ checks по PR #277: failure. |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | run:277 · 2026-09-05 | 2026-09-05 | Прогон нашёл скрытую зависимость сюиты от токена ящика; починено, голова 51e7345c, жду второй прогон |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
