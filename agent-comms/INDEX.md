@@ -111,10 +111,10 @@
 | 119-mute-count-blames-github | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
-| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | curator | — | 2026-09-05 | Сделано и уехало: PR #278, голова 975380b9, ветка fix/122-delivery-judged-by-target. Жду checks по… |
+| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | dev-core | — | 2026-09-05 | PR #278 no longer applies to its base — and nothing announced it. |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | closed | — | — | 2026-09-05 | — |
-| 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:42Z): «РАЗРЕШАЮ» — #272 к merge. Гард 3 закрыт этим п… |
+| 125-review-escalation-literal-thread | curator, dev-core | normal | open | dev-core | — | 2026-09-05 | PR #272 (fix(review-delivery): эскалация вердикта адресуется слагом стоячего адреса, а не литералом… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | — | 2026-09-05 | Приземление #273 перемерено НА ТОМ дереве, которое легло: 53/53, зелёный checks на голове main, и д… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | — | 2026-09-05 | ❌ checks по PR #277: failure. |

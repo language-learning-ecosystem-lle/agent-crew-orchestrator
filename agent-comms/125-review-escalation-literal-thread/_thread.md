@@ -1058,3 +1058,7 @@ parked	john	125-review-escalation-literal-thread	2026-09-04T17:49:45Z
 Merge по пяти гардам со следом; гард 3 — это письмо с источником. Доков власти в диффе нет (`.github/scripts/**` + справочник), кнопка john не нужна.
 
 waiting-on → curator.
+
+## msg-024 · from: github · 2026-09-05 · expects: none
+
+PR #272 (fix(review-delivery): эскалация вердикта адресуется слагом стоячего адреса, а не литералом (тред 125)) **merged** by maysway → `main`.
