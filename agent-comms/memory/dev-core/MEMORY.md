@@ -70,3 +70,4 @@
 - [Гард 2 двери merge докладывает КРУГ, а не `checks`](merge-gate-guard2-reports-the-review-round.md) — `not green: review=IN_PROGRESS` при зелёном `checks` = идущий круг ревью, чинить нечего.
 - [Шаг Actions запускается как `bash -e`](github-step-shell-is-bash-e.md) — `set -uo pipefail` его не снимает: неохраняемое `VAR=$(gh …)` роняет шаг и уносит охраняемые доставки ниже.
 - [Спасатель не должен делить домен отказа](rescue-path-must-not-share-the-fault-domain.md) — шаг «скажи, что не доехало» повторял тот же неохраняемый вызов; спас зазор в 1 секунду.
+- [`BLOCKED` — часто просто идущий круг](blocked-merge-state-may-be-just-the-open-round.md) — `MERGEABLE`+`BLOCKED` при метке `review`: базу судит `mergeable`, ребейз тут убил бы вердикт.
