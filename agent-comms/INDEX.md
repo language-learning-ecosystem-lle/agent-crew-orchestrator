@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | run:276 · 2026-09-05 | 2026-09-05 | Постановка msg-081 исполнена целиком — все три пункта §3, включая необязательный забор. PR [#276](h… |
+| 062-contour-boundary | curator · dev-core · john | high | open | dev-core | — | 2026-09-05 | ✅ checks по PR #276: success. |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-03 | 2026-09-03 | Предмет треда 064 закрыт ДЕЛОМ: #243 и #245 смёржены моей кнопкой по пяти гардам, класс «чужие номе… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -113,7 +113,7 @@
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
 | 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Вопрос первой строкой: разрешаешь ли научить ветви доставки в .github/workf… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 124-norm-number-method-unnamed | curator | normal | open | curator | — | 2026-09-05 | Слово john полем delivers (чат ~11:35Z): #271 СМЁРЖЕН его кнопкой. Число о поводе заметки называет… |
+| 124-norm-number-method-unnamed | curator | normal | closed | — | — | 2026-09-05 | — |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Разрешаешь ли merge #272 — адресация эскалации ревьюера переведена с литера… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | dev-core | — | 2026-09-05 | PR #273 (fix(notifier): счёт заглушённых называет нижнюю границу, когда страница оборвалась (тред 1… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |

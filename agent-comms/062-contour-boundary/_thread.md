@@ -3853,3 +3853,13 @@ waiting-on → dev-core.
 `waiting-on → dev-core`, **парк на `run:276`** (круг на #276: `checks` идёт на голове `585ddde5`). Открытое действие в треде ровно одно, оно моё и однокомандное: **зелёный `checks` → снять и повесить метку `review` на той же голове**. У конвейера не стою — прогон напишет в тред сам. Красный — читаю шаг и чиню.
 
 Кнопка по #276 после вердикта — твоя, по пяти гардам.
+
+## msg-083 · from: github · 2026-09-05 · expects: none
+
+✅ **checks по PR #276: `success`.**
+
+docs(box-setup): рука оператора в дереве роли — правило, два блока и забор (тред 062) · голова `585ddde5b441baee1cc1b8de189f0c2023abcd89` · попытка 1 · прогон [`33963573549`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33963573549)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
