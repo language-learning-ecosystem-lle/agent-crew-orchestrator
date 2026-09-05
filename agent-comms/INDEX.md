@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john, и вопрос ровно тот же, что стоит в ленте со вчера и не отвечен: перезапуска… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-05 | Вердикт approve по #280 принят, дверь перемерена своей рукой: гарды 1 и 2 теперь ok, стои́т ровно о… |
+| 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать squash-merge на PR #280 (смотритель имени соседнего дома) — гарды 1,… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
