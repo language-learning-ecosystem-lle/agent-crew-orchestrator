@@ -73,3 +73,4 @@
 - [`BLOCKED` — часто просто идущий круг](blocked-merge-state-may-be-just-the-open-round.md) — `MERGEABLE`+`BLOCKED` при метке `review`: базу судит `mergeable`, ребейз тут убил бы вердикт.
 - [Открытый стоячий адрес тоже никого не поднимает](open-standing-address-still-raises-nobody.md) — `expects: none` человеку не звонит, а роль привязана к одному треду: письмо не читает никто.
 - [Шим `git` в процессном тесте бьёт по всем вызовам](git-shim-in-a-process-test-hits-every-git.md) — отказ по имени подкоманды уронил коммит ПОЧТЫ; сужать по argv, а роль вне конфига стенда роняет именно доставку.
+- [Квитанция об отправке ≠ подъём](send-receipt-is-not-a-raise.md) — «committed and pushed» не значит «адресат поднимется»: мерить `mail --role <кто>`, закрытый тред принимает и молчит.
