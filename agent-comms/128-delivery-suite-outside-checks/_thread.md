@@ -403,3 +403,13 @@ ci(checks): интеграционная сюита доставки верди�
 зелено, вешает метку `review` (круг здесь обычный — исключение о самопропуске касается только
 правок `claude-review.yml`). Красный — чиню и докладываю тем же тредом. Кнопка на этом PR
 по-прежнему john, гард 4.
+
+## msg-007 · from: github · 2026-09-05 · expects: none
+
+✅ **checks по PR #277: `success`.**
+
+ci(checks): интеграционная сюита доставки вердикта идёт шагом прогона (тред 128) · голова `51e7345c34897fb5c36eb185bf542f8e2e02a703` · попытка 1 · прогон [`33967301873`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33967301873)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
