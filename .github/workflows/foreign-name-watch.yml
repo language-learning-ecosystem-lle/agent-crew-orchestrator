@@ -1,0 +1,232 @@
+name: Foreign Name Watch
+
+# СМОТРИТЕЛЬ ИМЕНИ СОСЕДНЕГО ДОМА — ЗВОНИТ, А НЕ КРАСНИТ (тред 064, слово john
+# 2026-09-05: «ЗАВОДИМ: СМОТРИТЕЛЬ, НАБОР ИМЁН МИНУС СВОИ АДРЕСА»).
+#
+# ЗАЧЕМ. Класс 064 — операционное знание соседнего дома в тексте этого
+# репозитория — был вычищен (6 мест → 0 на живом `origin/main`), приёмка закрыта
+# на `ae4deb13`, И КЛАСС ВЕРНУЛСЯ: `1b0b48fb` принёс имя соседа в `packages/**`
+# снова, из PR ЧУЖОГО треда. Греп рукой держит класс ровно до следующего пакета.
+#
+# ПОЧЕМУ ЗВОНОК, А НЕ ОТКАЗ — слово john дословно: «это гигиена прозы, а не
+# авария. Красный PR блокирует чужие треды из-за комментария — цена ложится на
+# все треды сразу, а починка всё равно ждёт следующего такта. Звонок дешевле и
+# достаточен.» Отсюда: находка едет ПИСЬМОМ, прогон при находке ЗЕЛЁНЫЙ,
+# `checks` не трогается. Красным смотритель бывает ровно в одном случае — не смог
+# доставить письмо.
+#
+# ФАЙЛ ТОНКИЙ ПО ПОСТРОЕНИЮ. Вся логика (замер, вычитание собственного адреса,
+# исключения, дельта против родителя, тексты писем) живёт в
+# `.github/scripts/foreign-name-watch.sh` и проверяется прогоном
+# (`foreign-name-watch.test.sh`, его поднимает сюита —
+# `packages/agent-protocol/src/roles/foreign-name-watch.process.test.ts`). Здесь —
+# чекаут, установка, вызов, одна доставка: своя поверхность отказа у смотрителя
+# обязана быть меньше, чем у того, за кем он следит. Тот же довод, что у
+# `notifier-watch.yml`.
+
+on:
+  # ТРИГГЕР — PUSH В ДЕФОЛТНУЮ ВЕТКУ (Т8). Это ровно тот момент, которым класс
+  # возвращается: `1b0b48fb` пришёл мержем. РАСПИСАНИЯ ЗДЕСЬ НЕТ НАМЕРЕННО —
+  # расход раннера это деньги, а `push` ловит событие точнее, чем крон, который
+  # переспрашивает дерево между мержами. Появится основание для крона — оно
+  # называется в треде, а не добавляется строкой.
+  push:
+    branches: [main]
+  # ДИСПАТЧ ОБЯЗАТЕЛЕН, И ОН ДЕЛАЕТ НАСТОЯЩЕЕ ДЕЛО (Т9): без него полевая
+  # приёмка невозможна — push в `main` ради проверки не устраивают. Никакого
+  # `if: github.event_name == 'push'` в джобе нет и быть не должно: «диспатч,
+  # который ничего не пишет» — уже пойманный класс (`Merge Notify` стоял на
+  # `if: merged == true`, и пропущенные письма переиграть было нечем).
+  workflow_dispatch:
+
+# `concurrency` ЗДЕСЬ НЕТ, И ЭТО ВЫБОР. Группа с `cancel-in-progress: false`
+# держит в очереди ровно один ОЖИДАЮЩИЙ прогон, то есть следующий push отменил бы
+# предыдущего ожидающего — а отменённый смотритель это НЕ отправленное письмо, и
+# узнать о нём неоткуда (замер класса — `notifier-watch.yml`, абзац про
+# `cancelled`). Дублей два прогона подряд не дадут: дельта считается против
+# родителя коммита (Т7), у каждого коммита он свой.
+
+jobs:
+  watch:
+    # HOSTED — по типу репозитория (тред 006), обоснование в `checks.yml`.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # запись письма в ветку comms
+    steps:
+      # Первый чекаут — ПОЧТА: в неё пишет доставка.
+      - uses: actions/checkout@v5
+        with:
+          ref: comms
+          fetch-depth: 0
+
+      # Второй чекаут — КОД, и ИМЕННО ТА ГОЛОВА, о которой звонят. `ref: main`
+      # здесь сказал бы «голова ветки сейчас», а звонить надо про коммит события:
+      # между push и стартом джобы в `main` успевает лечь следующий merge, и
+      # письмо называло бы чужую голову.
+      # `fetch-depth: 2` — ради РОДИТЕЛЯ: дельта Т7 считается против него, а на
+      # клоне глубины 1 `HEAD^` не существует вовсе.
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          path: .code
+      # `dest` на hosted инертен (свежая машина на джобу) и оставлен как страховка
+      # от возврата на пул — каноническое объяснение класса в `comms-derived.yml`.
+      - uses: pnpm/action-setup@v5
+        with:
+          dest: ${{ runner.tool_cache }}/setup-pnpm
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .code/.nvmrc
+          cache: pnpm
+          cache-dependency-path: .code/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: .code
+
+      - name: Замерить и позвонить
+        env:
+          HEAD_SHA: ${{ github.sha }}
+          # СТОЯЧИЙ АДРЕС — СЛАГ, А НЕ ЛИТЕРАЛ ТРЕДА (Т6, тред 080). Литерал
+          # `NNN-slug` делает канал недоставляемым МОЛЧА: письмо в закрытый или
+          # паркованный тред дверь принимает, прогон зелёный, а `waitingOnOf`
+          # отвечает «никого» — звонок доезжает и никого не будит.
+          THREAD_SLUG: foreign-name-in-the-tree
+          THREAD_TITLE: "Стоячий адрес: имя соседнего дома в этом дереве"
+          # Участники берутся ОТСЮДА и каждый сверяется дверью с конфигом:
+          # неизвестный завалил бы доставку. Состав — по образцу `MAIN_RED_*`.
+          THREAD_PARTICIPANTS: github,dev-core,curator
+          # ХОД НА CURATOR: разбор находки есть ПОСТАНОВКА, а не починка чужой
+          # рукой — что именно делать с местом, решает она.
+          WAITING_ON: curator
+        run: |
+          set -euo pipefail
+
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          source "${GITHUB_WORKSPACE}/.code/.github/scripts/foreign-name-watch.sh"
+
+          # ПРАВИЛО БЕРЁТСЯ С ГОЛОВЫ И ПРИМЕНЯЕТСЯ К ОБЕИМ СТОРОНАМ дельты:
+          # набор имён и список исключений — данные головы, и мерить ими родителя
+          # правильно. Иначе правка самого списка исключений выглядела бы как
+          # появление или исчезновение мест в дереве.
+          NAMES="${GITHUB_WORKSPACE}/.code/.github/scripts/foreign-name-watch.names"
+          ALLOW="${GITHUB_WORKSPACE}/.code/.github/scripts/foreign-name-watch.allow"
+
+          WORK="$(mktemp -d)"
+          HEAD_TREE="$WORK/head"; PARENT_TREE="$WORK/parent"
+          HEAD_HITS="$WORK/head.hits"; PARENT_HITS="$WORK/parent.hits"
+          FRESH="$WORK/fresh"; KNOWN="$WORK/known"
+          BODY_TMP="$(mktemp)"   # тело — ВНЕ чекаута почты: доставка делает
+                                 # reset --hard и снесла бы файл, лежащий внутри.
+          UNREAD=''
+
+          # ДЕРЕВЬЯ РАСПАКОВЫВАЮТСЯ, А НЕ СКАНИРУЮТСЯ НА МЕСТЕ. Чекаут `.code`
+          # после установки несёт `node_modules`, и хотя машинные каталоги в
+          # скрипте перечислены явно, мерить надо ровно то дерево, которое лежит в
+          # коммите: область — ВСЁ дерево (Т2), и «всё» обязано значить содержимое
+          # коммита, а не содержимое рабочего каталога раннера.
+          mkdir -p "$HEAD_TREE" "$PARENT_TREE"
+          if ! (cd .code && git archive "$HEAD_SHA") | tar -x -C "$HEAD_TREE"; then
+            UNREAD="дерево головы \`${HEAD_SHA}\` не распаковано — отказал git archive"
+          fi
+
+          # 1/2 · ЗАМЕР ГОЛОВЫ. Отказ замера — не молчание: письмо всё равно
+          # уходит и говорит «НЕ ПРОЧИТАНО» и почему (Т4). Молчаливый `exit 0`
+          # здесь дал бы «класс не найден» вместо «я не смотрела» — тот самый
+          # класс, что 2026-09-05 поймали трижды за день.
+          if [ -z "$UNREAD" ]; then
+            echo "1/2 · замер головы ${HEAD_SHA}"
+            if ! foreign_name_watch_scan "$HEAD_TREE" "$NAMES" "$ALLOW" > "$HEAD_HITS"; then
+              # Скрипт печатает причину в stdout и возвращает ненулевой код.
+              UNREAD="$(tr '\n' ' ' < "$HEAD_HITS" | sed -E 's/[[:space:]]+$//')"
+              echo "::warning::замер головы отказал: ${UNREAD}"
+            fi
+          fi
+
+          if [ -n "$UNREAD" ]; then
+            foreign_name_watch_unread_letter "$UNREAD" "$HEAD_SHA" "$RUN_URL" > "$BODY_TMP"
+            SUBJECT="имя соседнего дома НЕ ПРОЧИТАНО на ${HEAD_SHA}"
+          else
+            HITS_N="$(wc -l < "$HEAD_HITS" | tr -d ' ')"
+            echo "Совпадений на голове: ${HITS_N}"
+
+            # 2/2 · РОДИТЕЛЬ. Дельта Т7 — «место, которого не было у родителя»:
+            # состояния в файле для этого заводить не надо, родитель даёт то же
+            # самое даром. Корневой коммит и отказ распаковки — не тишина: они
+            # называются в теле, и тогда новыми едут ВСЕ места (см. пятый
+            # аргумент `foreign_name_watch_letter`).
+            PARENT_UNREAD=''
+            : > "$PARENT_HITS"
+            if [ "$HITS_N" != 0 ]; then
+              if ! PARENT_SHA="$(cd .code && git rev-parse --verify "${HEAD_SHA}^" 2>/dev/null)"; then
+                PARENT_UNREAD='у коммита нет родителя в этом клоне (корневой коммит либо обрезанная история)'
+              elif ! (cd .code && git archive "$PARENT_SHA") | tar -x -C "$PARENT_TREE"; then
+                PARENT_UNREAD="дерево родителя \`${PARENT_SHA}\` не распаковано — отказал git archive"
+              elif ! foreign_name_watch_scan "$PARENT_TREE" "$NAMES" "$ALLOW" > "$PARENT_HITS"; then
+                PARENT_UNREAD="$(tr '\n' ' ' < "$PARENT_HITS" | sed -E 's/[[:space:]]+$//')"
+                : > "$PARENT_HITS"
+              fi
+              [ -z "$PARENT_UNREAD" ] || echo "::warning::родитель не прочитан: ${PARENT_UNREAD}"
+            fi
+
+            foreign_name_watch_new_places "$HEAD_HITS" "$PARENT_HITS" > "$FRESH"
+            foreign_name_watch_known_places "$HEAD_HITS" "$PARENT_HITS" > "$KNOWN"
+
+            if [ ! -s "$FRESH" ]; then
+              # ПУСТО ИЛИ ВСЁ ЗНАКОМО — ПИСЬМА НЕТ ВОВСЕ (Т7). Замер, ради
+              # которого это правило стои́т: девять писем в `077` за тринадцать
+              # минут. Известные и непочиненные места молчат до тех пор, пока
+              # рядом не появится новое, — и тогда едут хвостом того же письма.
+              SAY="Новых мест с именем соседнего дома нет (совпадений на голове: ${HITS_N}, все были и у родителя)."
+              echo "::notice::${SAY}"
+              printf '🏠 %s\n\nГолова: `%s`\n' "$SAY" "$HEAD_SHA" >> "${GITHUB_STEP_SUMMARY}"
+              exit 0
+            fi
+            foreign_name_watch_letter "$FRESH" "$KNOWN" "$HEAD_SHA" "$RUN_URL" "$PARENT_UNREAD" > "$BODY_TMP"
+            SUBJECT="новых мест с именем соседнего дома: $(wc -l < "$FRESH" | tr -d ' ')"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # ДОСТАВКА — СУЩЕСТВУЮЩЕЙ ДВЕРЬЮ, своего транспорта не изобретаем:
+          # `comms-push.sh` объявляет потолок попыток и различает гонку и отказ
+          # сервера, а запись каждый раз пересобирается ПОВЕРХ свежего
+          # `origin/comms` — протокол append-only.
+          source "${GITHUB_WORKSPACE}/.code/.github/scripts/comms-push.sh"
+          echo "2/2 · запись в стоячий адрес '${THREAD_SLUG}' (${SUBJECT})"
+          for attempt in $(seq 1 "$COMMS_PUSH_ATTEMPTS"); do
+            git fetch --no-tags origin comms
+            git reset --hard origin/comms
+            # Адрес решается ВНУТРИ попытки, после reset: команда выбирает
+            # приёмник по той ленте, на которую мы сейчас пушим.
+            if ! (cd .code && pnpm -F agent-protocol --silent cli new-message \
+                  --root "${GITHUB_WORKSPACE}/agent-comms" --repo . --ref origin/main \
+                  --ensure-thread "$THREAD_SLUG" --title "$THREAD_TITLE" \
+                  --participants "$THREAD_PARTICIPANTS" \
+                  --from github --expects none --waiting-on "$WAITING_ON" \
+                  --worker gh-action \
+                  --body-file "$BODY_TMP" --write --no-push); then
+              echo "::error::new-message отказал — звонок «${SUBJECT}» (голова ${HEAD_SHA}) НЕ записан в адрес '${THREAD_SLUG}'."
+              exit 1
+            fi
+            # КУДА ЛЕГЛО — СПРАШИВАЕТСЯ У ДЕРЕВА, а не у вывода команды: приёмник
+            # мог быть открыт этим же вызовом, и его номер отсюда иначе не узнать.
+            LANDED_IN="$(git status --porcelain --untracked-files=all -- agent-comms \
+              | sed -nE 's#^.. "?agent-comms/([0-9]{3}-[a-z0-9-]+)/.*#\1#p' | sort -u | head -1)"
+            if [ -z "$LANDED_IN" ]; then
+              echo "::error::new-message отчитался об успехе, но под agent-comms/ ничего не появилось — звонок «${SUBJECT}» НЕ записан."
+              exit 1
+            fi
+            git add agent-comms
+            git commit -m "chore(comms): смотритель имени соседнего дома — звонок в тред ${LANDED_IN}"
+            if comms_push "$attempt"; then
+              echo "Звонок «${SUBJECT}» доставлен в тред ${LANDED_IN} (адрес '${THREAD_SLUG}')."
+              printf '🏠 %s — доставлено в `%s`.\n\nГолова: `%s`\n' "$SUBJECT" "$LANDED_IN" "$HEAD_SHA" >> "${GITHUB_STEP_SUMMARY}"
+              exit 0
+            fi
+          done
+
+          # ПОСЛЕДНЕЕ ЗВЕНО НАЗЫВАЕТСЯ, А НЕ ЗАКРЫВАЕТСЯ (Т1): красным смотритель
+          # бывает ровно здесь — когда письмо не доехало.
+          echo "::error::Не удалось доставить звонок «${SUBJECT}» (голова ${HEAD_SHA}) в адрес '${THREAD_SLUG}' за ${COMMS_PUSH_ATTEMPTS} попыток."
+          exit 1
