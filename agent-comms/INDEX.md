@@ -103,7 +103,7 @@
 | 096-repair-cannot-return-the-branch | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 097-conflict-has-no-signal | curator · dev-core · john | high | closed | — | — | 2026-09-04 | — |
 | 098-box-red-process-tests | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
-| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: вправе ли демон САМ отложить чужие незакоммиченные правки в дереве роли — н… |
+| 099-dirty-tree-locks-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:51Z): ДЕМОН ВПРАВЕ — но не «откладывать», а КОММИТИТЬ… |
 | 100-account-reshuffle | curator · dev-core · john | normal | closed | — | — | 2026-09-04 | — |
 | 116-role-memory-cost | curator | normal | closed | — | — | 2026-09-03 | — |
 | 117-unfit-tags-and-the-silent-skip | curator, dev-core, john | normal | closed | — | — | 2026-09-03 | — |
@@ -111,7 +111,7 @@
 | 119-mute-count-blames-github | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
-| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:45Z): «РАЗРЕШАЮ» — отказная ветвь доставки ПЕРЕЧИТЫВА… |
+| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | dev-core | — | 2026-09-05 | Постановка dev-core: отказная ветвь доставки ПЕРЕЧИТЫВАЕТ цель, прежде чем объявить письмо непришед… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | closed | — | — | 2026-09-05 | — |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:42Z): «РАЗРЕШАЮ» — #272 к merge. Гард 3 закрыт этим п… |
