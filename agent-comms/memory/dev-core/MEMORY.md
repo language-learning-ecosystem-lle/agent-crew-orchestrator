@@ -40,7 +40,7 @@
 - [Коммутативность merge — не доказательство целости](commutative-merge-is-not-proof-nothing-was-eaten.md) — одно дерево во всех порядках ≠ «ничего не съедено»; блоки побайтово + арифметика строк, а «удаления» отставшей ветки мерить трёхточечным диффом.
 - [Тихая потеря — это неподнятый ход](silent-loss-is-the-unraised-turn.md) — закрытый/паркованный тред письмо ПРИНИМАЕТ (от `github` — всегда) и никого не поднимает: красноты не будет.
 - [Номер треда уникален, слаг — нет](thread-id-unique-by-number-only.md) — `threadNumberTaker` сверяет только `NNN`; `076-main-red-alarm` и `112-main-red-alarm` уживаются.
-- [Окно отказов считается прогонами смотрителя](notifier-watch-runs-count-the-window.md) — `199 skipped + 1 success` у `Notifier Watch` доказывает «отказ один»; перебор четырёх воркфлоу `-L 300` до начала окна не достаёт.
+- [Окно отказов: покрытие доказывается, кем бы ни считали](notifier-watch-runs-count-the-window.md) — счёт `Notifier Watch` короче перебора четырёх, но `-L 300` и у него до начала окна не достаёт: мерить `.[-1].createdAt`.
 - [Свою невлитую дверь гонять детач-чекаутом](run-an-unmerged-door-by-detach-checkout.md) — воркtree в `/tmp` дверь почвы отказывает; прогон своей команды по живому PR нашёл дефект, невидимый 3425 тестам.
 - [Тело шага `.yml` вынимается и гоняется](yaml-step-body-is-testable-when-extracted.md) — текст ветви проверяем без живого круга; но `env:` шага харнесс подменяет — сверять отдельно.
 - [Ассерт «файла нет» — это «ничего не объявлено»](existence-assert-is-a-proxy-for-nothing-announced.md) — новый писатель общего файла состояния краснит чужие проверки; ассерт сужают, запись не отменяют.
@@ -68,3 +68,5 @@
 - [Зелено рукой — может стоять на токене ящика](green-on-the-box-may-lean-on-the-box-token.md) — перед заводом проверки в CI прогнать её `env -u GH_TOKEN -u GITHUB_TOKEN`: дверь без кредитала деградирует в ДРУГУЮ сторону.
 - [У демона креды на push в `comms` ЕСТЬ](daemon-can-push-via-creds-door.md) — не в среде процесса, а через `platformEnvOf`/`secrets.env`; мерить `push --dry-run` из временного клона.
 - [Гард 2 двери merge докладывает КРУГ, а не `checks`](merge-gate-guard2-reports-the-review-round.md) — `not green: review=IN_PROGRESS` при зелёном `checks` = идущий круг ревью, чинить нечего.
+- [Шаг Actions запускается как `bash -e`](github-step-shell-is-bash-e.md) — `set -uo pipefail` его не снимает: неохраняемое `VAR=$(gh …)` роняет шаг и уносит охраняемые доставки ниже.
+- [Спасатель не должен делить домен отказа](rescue-path-must-not-share-the-fault-domain.md) — шаг «скажи, что не доехало» повторял тот же неохраняемый вызов; спас зазор в 1 секунду.
