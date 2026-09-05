@@ -7,9 +7,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   checkWorkspaceSignature,
+  classifyWorkspaceHead,
   createWorkspaceLocks,
   describeDirtyWorkspaceRepair,
+  describeFailedTidyUp,
+  describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
+  describeStrandedWorkspace,
   describeWorkspaceDirt,
   describeWorkspaceIdentity,
   describeWorkspacePlan,
@@ -19,6 +23,7 @@ import {
   mainCheckoutVerdict,
   planWorkspace,
   planWorkspaceIdentity,
+  serviceBranchName,
   workspacePath,
   workspaceRoleOf,
   workspaceVerdict,
@@ -26,6 +31,8 @@ import {
 
 const BASE = "1111111111111111111111111111111111111111";
 const ROLE = "dev-core";
+/** The contour's role ids, as the daemon hands them in (`settleRun`'s `ids`). */
+const ROLES = ["dev-core", "curator", "reviewer-pr"];
 const WORKSPACE = "/repo/.worktrees/dev-core";
 const OTHER = "2222222222222222222222222222222222222222";
 
@@ -915,5 +922,473 @@ describe("the workspace is signed by the role whose name it bears (thread 052)",
         signature: { name: "dev-core", email: "dev-core@agents.invalid" },
       }).ok,
     ).toBe(false);
+  });
+});
+
+/**
+ * THE RIGHT TO COMMIT A ROLE'S LEFTOVERS (thread 099, john of 2026-09-05). Every test
+ * here is about a BORDER of that right: whose dirt it is, and whose head it sits on.
+ * The right is narrow on purpose, and the tests that keep it narrow are the ones that
+ * matter — a wrong `commit` writes somebody else's unsaved work under a role's name.
+ */
+describe("planWorkspace — committing what an ended run left", () => {
+  const AT = "2026-09-05T12:31:07Z";
+  const dirty = (branch: string, extra: Record<string, unknown> = {}) => ({
+    exists: true,
+    branch,
+    head: OTHER,
+    dirty: true,
+    ...extra,
+  });
+
+  it("a detached dirty tree lands on a service branch named role, thread and time", () => {
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("HEAD"),
+      base: BASE,
+      resuming: false,
+      thread: "099-dirty-tree-locks-the-role",
+      previousReason: "exited-without-handoff",
+      baseRef: "origin/main",
+      at: AT,
+    });
+    expect(plan).toEqual({
+      action: "commit",
+      branch: "wip/dev-core/099-dirty-tree-locks-the-role-20260905T1231Z",
+      create: true,
+      message:
+        "wip(099-dirty-tree-locks-the-role): what the 'exited-without-handoff' run of 'dev-core' left uncommitted",
+      from: "exited-without-handoff",
+    });
+  });
+
+  it("a dirty tree on the role's own branch commits THERE, and starts no branch", () => {
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("dev-core/128-delivery-suite-in-checks"),
+      base: BASE,
+      resuming: false,
+      thread: "128-delivery-suite-in-checks",
+      previousReason: "completed",
+      baseRef: "origin/main",
+      at: AT,
+    });
+    expect(plan).toMatchObject({
+      action: "commit",
+      branch: "dev-core/128-delivery-suite-in-checks",
+      create: false,
+    });
+  });
+
+  it("a branch that carries no role is the role's when the head is SIGNED by it", () => {
+    expect(
+      planWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
+        facts: dirty("feat/042-usage-four-doorless-commands", {
+          headAuthor: "dev-core@agents.invalid",
+        }),
+        base: BASE,
+        resuming: false,
+        previousReason: "completed",
+        baseRef: "origin/main",
+        at: AT,
+        roles: ROLES,
+      }),
+    ).toMatchObject({ action: "commit", branch: "feat/042-usage-four-doorless-commands" });
+  });
+
+  it("and the same branch signed by somebody else is refused, by name", () => {
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("feat/042-usage-four-doorless-commands", {
+        headAuthor: "curator@agents.invalid",
+      }),
+      base: BASE,
+      resuming: false,
+      previousReason: "completed",
+      baseRef: "origin/main",
+      at: AT,
+      roles: ROLES,
+    });
+    expect(plan.action).toBe("refuse");
+    if (plan.action !== "refuse") return;
+    expect(plan.reason).toContain("feat/042-usage-four-doorless-commands");
+    expect(plan.reason).toContain("not 'dev-core's to write to");
+    expect(plan.reason).toContain("git -C /repo/.worktrees/dev-core status --porcelain");
+  });
+
+  it("A BRANCH NAMED FOR ANOTHER ROLE IS REFUSED EVEN WHEN THIS ROLE SIGNED THE HEAD", () => {
+    // curator's ruling of 2026-09-05 in this thread, at the plan level: the refusal
+    // names the role the branch belongs to and says out loud that the signature did not
+    // buy the right, so a reader is not left comparing `git log` with the door.
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("curator/017-schema-numbers", { headAuthor: "dev-core@agents.invalid" }),
+      base: BASE,
+      resuming: false,
+      previousReason: "completed",
+      baseRef: "origin/main",
+      at: AT,
+      roles: ROLES,
+    });
+    expect(plan.action).toBe("refuse");
+    if (plan.action !== "refuse") return;
+    expect(plan.reason).toContain("a branch named for 'curator', another role of this contour");
+    expect(plan.reason).toContain("does NOT make it this role's to write to");
+    expect(plan.reason).toContain("git -C /repo/.worktrees/dev-core status --porcelain");
+  });
+
+  it("WITHOUT THE ROLE LIST the plan refuses and names the missing fact, not the head", () => {
+    // The degradation must be loud: a caller that forgets `roles` gets a refusal that
+    // blames the caller, never a silent `commit` under the pre-ruling rule.
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("feat/042-usage-four-doorless-commands", {
+        headAuthor: "dev-core@agents.invalid",
+      }),
+      base: BASE,
+      resuming: false,
+      previousReason: "completed",
+      baseRef: "origin/main",
+      at: AT,
+    });
+    expect(plan.action).toBe("refuse");
+    if (plan.action !== "refuse") return;
+    expect(plan.reason).toContain("the contour's roles were not handed to it");
+    expect(plan.reason).toContain("the caller owes the plan its role ids");
+  });
+
+  it("THE BASE BRANCH IS NEVER COMMITTED ONTO — it is shared, and it is named as shared", () => {
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("main", { headAuthor: "dev-core@agents.invalid" }),
+      base: BASE,
+      resuming: false,
+      previousReason: "completed",
+      baseRef: "origin/main",
+      at: AT,
+    });
+    expect(plan.action).toBe("refuse");
+    if (plan.action !== "refuse") return;
+    expect(plan.reason).toContain("the BASE branch, which every role shares");
+  });
+
+  it("DIRT WITH NO KNOWN RUN IS STILL REFUSED — the border of the right john drew", () => {
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("HEAD"),
+      base: BASE,
+      resuming: false,
+      thread: "099-dirty-tree-locks-the-role",
+      baseRef: "origin/main",
+      at: AT,
+    });
+    expect(plan.action).toBe("refuse");
+    if (plan.action !== "refuse") return;
+    expect(plan.reason).toContain("no finished run of this pair to attribute them to");
+  });
+
+  it("dirt of a CUT-OFF run still stashes — this package did not touch that branch", () => {
+    expect(
+      planWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
+        facts: dirty("HEAD"),
+        base: BASE,
+        resuming: false,
+        thread: "099-dirty-tree-locks-the-role",
+        previousReason: "quota-exhausted",
+        previousSession: "s-1",
+        baseRef: "origin/main",
+        at: AT,
+      }),
+    ).toEqual({
+      action: "stash",
+      from: "quota-exhausted",
+      label: "wip 099-dirty-tree-locks-the-role s-1 quota-exhausted",
+    });
+  });
+
+  it("no timestamp — no invented branch name: it refuses and says why", () => {
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("HEAD"),
+      base: BASE,
+      resuming: false,
+      previousReason: "completed",
+      baseRef: "origin/main",
+    });
+    expect(plan.action).toBe("refuse");
+    if (plan.action !== "refuse") return;
+    expect(plan.reason).toContain("no timestamp to name a service branch with");
+  });
+
+  it("the line printed before it is carried out names the branch and what made the dirt", () => {
+    expect(
+      describeWorkspacePlan({
+        role: ROLE,
+        path: WORKSPACE,
+        plan: {
+          action: "commit",
+          branch: "wip/dev-core/099-x-20260905T1231Z",
+          create: true,
+          message: "wip(099-x): …",
+          from: "exited-without-handoff",
+        },
+        base: BASE,
+        baseRef: "origin/main",
+      }),
+    ).toContain(
+      "committing what the 'exited-without-handoff' run left uncommitted onto a new service branch 'wip/dev-core/099-x-20260905T1231Z'",
+    );
+  });
+});
+
+describe("classifyWorkspaceHead — the four states a role's tree is found in", () => {
+  it("the literal HEAD, an empty answer and no answer at all are all 'detached'", () => {
+    for (const branch of ["HEAD", "", undefined])
+      expect(
+        classifyWorkspaceHead({ role: ROLE, ...(branch === undefined ? {} : { branch }) }),
+      ).toEqual({ kind: "detached" });
+  });
+
+  it("the base is recognised under both spellings — 'main' and 'origin/main'", () => {
+    expect(classifyWorkspaceHead({ role: ROLE, branch: "main", baseRef: "origin/main" })).toEqual({
+      kind: "base",
+      branch: "main",
+    });
+    expect(classifyWorkspaceHead({ role: ROLE, branch: "main", baseRef: "main" }).kind).toBe(
+      "base",
+    );
+  });
+
+  it("ANOTHER ROLE'S NAME OUTRANKS THIS ROLE'S SIGNATURE — the fork curator ruled on", () => {
+    // The one place the two proofs disagree, and the ruling of 2026-09-05 (thread 099)
+    // decides it by the cost of being wrong: a false `own` commits — and pushes — into a
+    // branch carrying another role's name, moving a head that may have a PR and a
+    // verdict on it, while a false `foreign` is only the refusal that stood here before
+    // the right existed. The name is also the address a human reads.
+    expect(
+      classifyWorkspaceHead({
+        role: ROLE,
+        branch: "curator/017-something",
+        headAuthor: "dev-core@agents.invalid",
+        roles: ["dev-core", "curator", "reviewer-pr"],
+      }),
+    ).toEqual({
+      kind: "foreign",
+      branch: "curator/017-something",
+      why: "another-role",
+      owner: "curator",
+    });
+  });
+
+  it("a name carrying NO role of the contour is still decided by the signature", () => {
+    // The other half of the ruling, and the reason the signature stays: the contour's
+    // branches are `feat/…`/`fix/…` almost to the last one, and a right that only
+    // recognised `dev-core/…` would cover next to nothing.
+    expect(
+      classifyWorkspaceHead({
+        role: ROLE,
+        branch: "feat/042-something",
+        headAuthor: "dev-core@agents.invalid",
+        roles: ["dev-core", "curator"],
+      }),
+    ).toEqual({ kind: "own", branch: "feat/042-something" });
+  });
+
+  it("a branch nobody proved is neither refused silently nor taken: it is 'foreign'", () => {
+    expect(
+      classifyWorkspaceHead({
+        role: ROLE,
+        branch: "release/agent-protocol-v0.2.5",
+        roles: ["dev-core", "curator"],
+      }),
+    ).toEqual({
+      kind: "foreign",
+      branch: "release/agent-protocol-v0.2.5",
+      why: "not-signed",
+    });
+  });
+
+  it("WITHOUT THE ROLE LIST the signature is not consulted at all, and the answer says so", () => {
+    // The degradation is named rather than silent (curator's requirement in the same
+    // ruling): with no list, "carries no role's name" cannot be told from "carries
+    // another role's name", so a forgotten argument must NOT quietly hand back the
+    // behaviour the ruling replaced. It refuses, and it says which fact it lacked.
+    expect(
+      classifyWorkspaceHead({
+        role: ROLE,
+        branch: "feat/042-something",
+        headAuthor: "dev-core@agents.invalid",
+      }),
+    ).toEqual({ kind: "foreign", branch: "feat/042-something", why: "roles-unknown" });
+  });
+});
+
+describe("serviceBranchName — a name that answers role, thread and time (john's §3.2)", () => {
+  it("groups every one of them under 'wip/' and cuts the instant to the minute", () => {
+    expect(serviceBranchName({ role: ROLE, thread: "099-dirty", at: "2026-09-05T12:31:07Z" })).toBe(
+      "wip/dev-core/099-dirty-20260905T1231Z",
+    );
+  });
+
+  it("a run with no thread still gets a name, and the name says which part is missing", () => {
+    expect(serviceBranchName({ role: ROLE, at: "2026-09-05T12:31:07Z" })).toBe(
+      "wip/dev-core/no-thread-20260905T1231Z",
+    );
+  });
+});
+
+describe("describeFailedTidyUp — the tidy-up that did not work (john's §4 exception)", () => {
+  const text = describeFailedTidyUp({
+    role: ROLE,
+    path: WORKSPACE,
+    branch: "wip/dev-core/099-x-20260905T1231Z",
+    cause: "git commit --quiet -m … — nothing to commit, working tree clean",
+    thread: "099-x",
+    dirt: {
+      files: [{ path: "CARD.md", what: "modified", added: 1, removed: 0 }],
+    },
+  });
+
+  it("names what was tried and how git answered — not only that something is wrong", () => {
+    expect(text).toContain("the commit FAILED");
+    expect(text).toContain("nothing to commit, working tree clean");
+    expect(text).toContain("wip/dev-core/099-x-20260905T1231Z");
+  });
+
+  it("and keeps everything the refusal of #261 carried: composition, scope, both repairs", () => {
+    expect(text).toContain("CARD.md (modified, +1/-0)");
+    expect(text).toContain("skipped on EVERY thread it holds a turn on");
+    expect(text).toContain("git -C /repo/.worktrees/dev-core stash push -u");
+  });
+
+  // THE NARROWING that makes #261's repair true again: this text speaks only for the
+  // failure of the FIRST step, and it says so — a `checkout -b` that never happened is
+  // exactly what leaves the tree detached and the branch non-existent.
+  it("says the branch was never created and the tree is still detached", () => {
+    expect(text).toContain("was never created");
+    expect(text).toContain("still dirty and still detached");
+    expect(text).toContain("checkout -b dev-core/099-x");
+  });
+});
+
+/**
+ * THE REVIEWER'S FINDING ON #279 (2026-09-05), and it is the same class as the one that
+ * PR had already fixed one step further along: the attempt mutates the tree before it
+ * fails, and the refusal goes on describing the tree as it was.
+ */
+describe("describeFailedTidyUpOnItsBranch — the commit failed with the tree already on a branch", () => {
+  const created = describeFailedTidyUpOnItsBranch({
+    role: ROLE,
+    path: WORKSPACE,
+    branch: "wip/dev-core/099-x-20260905T1231Z",
+    created: true,
+    message: "wip(099-x): what the 'exited-without-handoff' run of 'dev-core' left uncommitted",
+    base: "1111111",
+    cause: "git add -A — fatal: the index is broken",
+    dirt: { files: [{ path: "CARD.md", what: "modified", added: 1, removed: 0 }] },
+  });
+
+  it("names the branch this attempt made, and that the tree is no longer detached", () => {
+    expect(created).toContain("creating the service branch 'wip/dev-core/099-x-20260905T1231Z'");
+    expect(created).toContain("NO LONGER detached");
+    expect(created).toContain("fatal: the index is broken");
+  });
+
+  it("keeps composition and the scope of the hold — the refusal of #261 loses nothing", () => {
+    expect(created).toContain("CARD.md (modified, +1/-0)");
+    expect(created).toContain("skipped on EVERY thread it holds a turn on");
+  });
+
+  // THE DEFECT ITSELF: `checkout -b` here would branch a second time off the branch the
+  // attempt just made and leave the first one behind, named nowhere.
+  it("NEVER offers 'checkout -b' — it finishes the commit where the tree now stands", () => {
+    expect(created).not.toContain("checkout -b");
+    expect(created).toContain(
+      `git -C ${WORKSPACE} add -A && git -C ${WORKSPACE} commit -m 'wip(099-x): what the 'exited-without-handoff' run of 'dev-core' left uncommitted' && git -C ${WORKSPACE} push -u origin wip/dev-core/099-x-20260905T1231Z`,
+    );
+  });
+
+  it("and the PARK gesture takes the branch back, by name and from the base commit", () => {
+    expect(created).toContain(`git -C ${WORKSPACE} stash push -u -m`);
+    expect(created).toContain(`git -C ${WORKSPACE} checkout --detach 1111111`);
+    expect(created).toContain(`git -C ${WORKSPACE} branch -D wip/dev-core/099-x-20260905T1231Z`);
+  });
+
+  // THE OTHER HALF OF THE SHAPE — nothing was created, the role was already standing on
+  // its own branch. The repair is the same one; there is no branch to take back.
+  const found = describeFailedTidyUpOnItsBranch({
+    role: ROLE,
+    path: WORKSPACE,
+    branch: "dev-core/099-x",
+    created: false,
+    message: "wip(099-x): what the 'exited-without-handoff' run of 'dev-core' left uncommitted",
+    base: "1111111",
+    cause: "git commit --quiet -m … — fatal: cannot lock ref",
+  });
+
+  it("on the role's OWN branch it claims no creation and offers no deletion", () => {
+    expect(found).toContain("the role's own branch, where the session left it");
+    expect(found).not.toContain("creating the service branch");
+    expect(found).not.toContain("branch -D");
+    expect(found).not.toContain("checkout -b");
+    expect(found).toContain(`git -C ${WORKSPACE} push -u origin dev-core/099-x`);
+  });
+
+  it("and with no dirt read it asks the tree instead of inventing a composition", () => {
+    expect(found).toContain(`git -C ${WORKSPACE} status --porcelain`);
+  });
+});
+
+describe("describeStrandedWorkspace — the commit went, the step after it did not", () => {
+  // The reviewer's finding on #279: one text used to cover two opposite facts. Here the
+  // work IS saved, so every word about dirt would be false — and the repair a human
+  // needs is to move a head, not to rescue a file.
+  const text = describeStrandedWorkspace({
+    role: ROLE,
+    path: WORKSPACE,
+    branch: "wip/dev-core/099-x-20260905T1231Z",
+    head: "abc1234",
+    cause:
+      "git checkout --detach --quiet 1111111 — Unable to create '.git/index.lock': File exists",
+  });
+
+  it("says where the work landed and that nothing is dirty and nothing is lost", () => {
+    expect(text).toContain("commit abc1234 on 'wip/dev-core/099-x-20260905T1231Z'");
+    expect(text).toContain("nothing is dirty and nothing is lost");
+    expect(text).toContain("Unable to create '.git/index.lock'");
+  });
+
+  it("NEVER says the commit failed, nor that the tree is dirty, nor offers 'checkout -b'", () => {
+    expect(text).not.toContain("the commit FAILED");
+    expect(text).not.toContain("still dirty");
+    expect(text).not.toContain("uncommitted changes the circuit");
+    expect(text).not.toContain("checkout -b");
+    expect(text).not.toContain("stash push");
+  });
+
+  it("carries the push outcome, because 'on this box only' is what a searcher needs", () => {
+    expect(
+      describeStrandedWorkspace({
+        role: ROLE,
+        path: WORKSPACE,
+        branch: "wip/dev-core/099-x-20260905T1231Z",
+        head: "abc1234",
+        cause: "git checkout — busy",
+        push: "git push -q -u origin … — could not read Username",
+      }),
+    ).toContain("NOT pushed (git push -q -u origin … — could not read Username)");
+    expect(text).toContain("and pushed");
   });
 });

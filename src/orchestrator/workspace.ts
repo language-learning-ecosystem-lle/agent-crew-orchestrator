@@ -145,11 +145,18 @@ export type WorkspaceFacts = {
    * whose commits would carry the machine owner's name or none at all.
    */
   readonly signature?: { readonly name?: string; readonly email?: string };
+  /**
+   * WHO WROTE THE COMMIT THE HEAD POINTS AT (thread 099) — the second proof that a
+   * branch under a dirty tree is the role's own, for the branch names that carry no
+   * role in them (`feat/…`, `fix/…`). Absent when nobody asked or when the head is
+   * detached, and absence is simply "no such proof", never "not the role's".
+   */
+  readonly headAuthor?: string;
 };
 
 /**
- * WHAT THE ORCHESTRATOR IS ABOUT TO DO WITH THE WORKSPACE. Six outcomes, and the
- * split matters because three of them are actions on somebody's disk:
+ * WHAT THE ORCHESTRATOR IS ABOUT TO DO WITH THE WORKSPACE. Seven outcomes, and the
+ * split matters because four of them are actions on somebody's disk:
  *
  *  - `ready` — it is already detached at the base commit; nothing to do;
  *  - `create` — there is no worktree yet (a new role, a fresh clone, a new machine);
@@ -163,9 +170,15 @@ export type WorkspaceFacts = {
  *    the run that made it, then the tree is moved to the base like any other. The one
  *    branch here that touches work nobody committed, which is why it is decided by a
  *    pure function and carried out by a single reversible git command;
- *  - `refuse` — dirt with an owner the package will not overrule: a run that ended its
- *    own turn, or no known run at all. Named with the repair, because there the repair
- *    is a judgement call (commit it, stash it, or read it and delete it).
+ *  - `commit` — dirt left by a run that ENDED ITS OWN TURN, in a tree whose head the
+ *    role owns: committed under the role's signature, onto that branch or onto a
+ *    service branch this plan names (john, 2026-09-05, thread 099). Nothing is hidden
+ *    and nothing is destroyed — the work keeps an address a human can read a week
+ *    later, and the role starts on the next tick instead of on the next human;
+ *  - `refuse` — dirt with an owner the package will not overrule: no known run at all
+ *    (the changes may be a human's), or a head that is not the role's to commit onto.
+ *    Named with the repair, because there the repair is a judgement call (commit it,
+ *    stash it, or read it and delete it).
  */
 export type WorkspacePlan =
   | { readonly action: "ready" }
@@ -173,6 +186,16 @@ export type WorkspacePlan =
   | { readonly action: "rebase" }
   | { readonly action: "keep" }
   | { readonly action: "stash"; readonly label: string; readonly from: string }
+  | {
+      readonly action: "commit";
+      /** Where it lands — an existing branch of the role, or one this plan names. */
+      readonly branch: string;
+      /** `true` — the branch does not exist yet and the commit starts it. */
+      readonly create: boolean;
+      readonly message: string;
+      /** The release reason of the run that left the dirt — it goes into the message. */
+      readonly from: string;
+    }
   | { readonly action: "refuse"; readonly reason: string };
 
 /**
@@ -331,6 +354,266 @@ export const describeDirtyWorkspaceRepair = (input: {
 };
 
 /**
+ * WHOSE HEAD THE DIRTY TREE IS SITTING ON (thread 099, john's §2 of 2026-09-05) — the
+ * fork the right to commit is decided by, and it is a DECISION for every state, not a
+ * default for the ones nobody enumerated.
+ *
+ * THE STATES, MEASURED RATHER THAN REMEMBERED (the branches this contour actually made:
+ * `dev-core/128-…`, `core/gate-checks-from-actions`, `feat/042-…`, `fix/122-…`, `main`):
+ *
+ *  - `detached` — the ordinary state, because every launch puts the tree back on the
+ *    base COMMIT (`create`/`rebase` both `checkout --detach`). The dirt of a session
+ *    that never branched lands here, and this is the field case john repaired by hand
+ *    twice;
+ *  - `own` — a branch the role itself is standing on. Two proofs, in THIS ORDER,
+ *    because the branch names in the field carry no role (`feat/042-…` is as much
+ *    dev-core's as `dev-core/128-…`): the NAME (`<role>/…`), and — only for a name that
+ *    carries no role of the contour's at all — the AUTHOR of the commit the head points
+ *    at, which is the role's own signature (`roleIdentity`) written by the very
+ *    mechanism that signs this workspace;
+ *  - `base` — the base branch itself. It is shared, and john's §2 point 3 is dead
+ *    literal about it: never a common branch. (Git normally makes this unreachable —
+ *    the base is checked out in the operator's own tree — which is exactly why it is
+ *    written down as a decision rather than left to that accident.);
+ *  - `foreign` — any other named branch: another role's, a human's, something checked
+ *    out by hand. The right is narrow — "the role's own workspace, the role's own
+ *    work" — and outside it the door keeps working the way it worked before.
+ *
+ * THE SIGNATURE DOES NOT OVERRULE ANOTHER ROLE'S NAME (curator, 2026-09-05, thread 099,
+ * ruling on this very fork). A head on `curator/017-…` signed by `dev-core` is FOREIGN,
+ * and the two errors cost different things: a false `own` commits and force-pushes into
+ * a branch that carries another role's name — if a PR is open under it, the head moves
+ * and a verdict is annulled — while a false `foreign` is the refusal that stood here
+ * before this right existed. And the NAME is what a human reads: john's own hand-repairs
+ * addressed the work by branch name, not by `git log`.
+ *
+ * WHICH MEANS THE CONTOUR'S ROLES ARE AN INPUT, and what happens without them is a
+ * DECISION rather than an oversight: with no list, "carries no role's name" cannot be
+ * told from "carries another role's name", so the signature is not consulted at all and
+ * the head is `foreign` with `roles-unknown` on it — the refusal names that it judged
+ * without the list. A forgotten argument on the live call must not quietly restore the
+ * behaviour this ruling replaced.
+ */
+export type WorkspaceHeadOwner =
+  | { readonly kind: "detached" }
+  | { readonly kind: "own"; readonly branch: string }
+  | { readonly kind: "base"; readonly branch: string }
+  | {
+      readonly kind: "foreign";
+      readonly branch: string;
+      readonly why: WorkspaceHeadForeignCause;
+      /** The role the name belongs to — only on `another-role`, and only that role's id. */
+      readonly owner?: string;
+    };
+
+/** Why a named head is not the role's — the three answers the refusal has to tell apart. */
+export type WorkspaceHeadForeignCause =
+  /** The first segment of the name is another role of this contour. Signature ignored. */
+  | "another-role"
+  /** No role's name in it, and the head is not signed by this role either. */
+  | "not-signed"
+  /** The contour's roles were not handed in, so the name could not be judged at all. */
+  | "roles-unknown";
+
+export const classifyWorkspaceHead = (input: {
+  readonly role: string;
+  /** `git rev-parse --abbrev-ref HEAD` — the literal `HEAD` when the head is detached. */
+  readonly branch?: string;
+  /** The base as the launch resolved it (`origin/main`), so `main` is recognised on both spellings. */
+  readonly baseRef?: string;
+  /** The author email of the commit the head points at, when it was read. */
+  readonly headAuthor?: string;
+  /**
+   * The ids of the contour's roles — the daemon already parses the thread with them, so
+   * this introduces no config key of its own. Absent is a named state, not a default:
+   * see `roles-unknown` above.
+   */
+  readonly roles?: readonly string[];
+}): WorkspaceHeadOwner => {
+  const branch = input.branch;
+  if (branch === undefined || branch === "" || branch === "HEAD") return { kind: "detached" };
+  const base = input.baseRef;
+  if (base !== undefined && (base === branch || base.endsWith(`/${branch}`)))
+    return { kind: "base", branch };
+  if (branch.startsWith(`${input.role}/`)) return { kind: "own", branch };
+  if (input.roles === undefined) return { kind: "foreign", branch, why: "roles-unknown" };
+  const owner = input.roles.find((id) => id !== input.role && branch.startsWith(`${id}/`));
+  if (owner !== undefined) return { kind: "foreign", branch, why: "another-role", owner };
+  return input.headAuthor === roleIdentity(input.role).email
+    ? { kind: "own", branch }
+    : { kind: "foreign", branch, why: "not-signed" };
+};
+
+/**
+ * THE NAME OF A SERVICE BRANCH, AND THE NAME IS THE WHOLE ANSWER TO "how are they
+ * visible" (john's §3 point 2, thread 099): role, thread, time — the three questions
+ * somebody asks a week later, in that order, without opening the branch.
+ *
+ * `wip/` FIRST so that every one of them is one glob away (`git branch --list 'wip/*'`)
+ * and none of them can ever be mistaken for a package's branch: a service branch is the
+ * circuit's note to a role, not work anybody promised to finish.
+ *
+ * THE TIME COMES IN, it is never read here: a name that depends on the wall clock cannot
+ * be asserted by a test, and this package has paid for that once already.
+ */
+export const serviceBranchName = (input: {
+  readonly role: string;
+  readonly thread?: string;
+  /** An ISO instant — `2026-09-05T12:31:07Z`; only its date and minutes reach the name. */
+  readonly at: string;
+}): string =>
+  `wip/${input.role}/${input.thread ?? "no-thread"}-${input.at
+    .replace(/[-:]/g, "")
+    .replace(/\.\d+Z?$/, "")
+    .replace(/(\d{8}T\d{4})\d{2}Z?$/, "$1Z")}`;
+
+/**
+ * The message of that commit. It says what a reader of `git log` needs and nothing
+ * else: the thread it belongs to, and that the run did not write it — the circuit did,
+ * after that run ended without cleaning up.
+ */
+export const dirtCommitMessage = (input: {
+  readonly thread?: string;
+  readonly reason: string;
+  readonly role: string;
+}): string =>
+  `wip(${input.thread ?? "no-thread"}): what the '${input.reason}' run of '${input.role}' left uncommitted`;
+
+/**
+ * THE TIDY-UP THAT DID NOT WORK (john's §4 exception, thread 099). john took the
+ * repeat-lock off the SUCCESSFUL path — a tree that got committed is clean by the next
+ * tick, and there is nothing to say twice — but a failed commit leaves the tree dirty,
+ * and then the door is back where it was: refusing every tick.
+ *
+ * So the refusal keeps everything the refusal of #261 had — what lies there, that the
+ * ROLE and not the thread is held, both repairs as one paste each — and adds the one
+ * thing that is new: WHAT the circuit tried and how git answered. Without that line a
+ * reader cannot tell "the circuit may not touch this" from "the circuit tried and
+ * failed", and those two ask a human for opposite things.
+ *
+ * THIS TEXT IS FOR THE NARROW CASE WHERE NOTHING MOVED — the very first step of the
+ * attempt (`checkout -b`) is what git refused, so the tree is still detached exactly
+ * where the session left it and #261's repair is still literally true. The moment the
+ * branch exists, it is not: see `describeFailedTidyUpOnItsBranch`.
+ */
+export const describeFailedTidyUp = (input: {
+  readonly role: string;
+  readonly path: string;
+  readonly branch: string;
+  readonly cause: string;
+  readonly thread?: string;
+  readonly dirt?: WorkspaceDirt;
+}): string =>
+  `the workspace has uncommitted changes the circuit was allowed to commit for '${input.role}' — and the commit FAILED before it started: ${input.cause} (branch '${input.branch}' was never created). The tree is still dirty and still detached, so this is the same stop as before, with a cause. ${describeDirtyWorkspaceRepair(
+    {
+      role: input.role,
+      path: input.path,
+      ...(input.thread === undefined ? {} : { thread: input.thread }),
+      ...(input.dirt === undefined ? {} : { dirt: input.dirt }),
+    },
+  )}`;
+
+/**
+ * THE TIDY-UP THAT FAILED WITH THE TREE ALREADY ON A BRANCH — the third of the four
+ * ends the attempt has, and the one that was speaking somebody else's text until the
+ * reviewer of #279 measured it (2026-09-05).
+ *
+ * WHY IT CANNOT BE THE TEXT ABOVE. The attempt gets as far as `checkout -b` before
+ * `add -A`/`commit` refuses, and git carries uncommitted work across that checkout — so
+ * the tree is dirty ON THE SERVICE BRANCH, no longer detached, and the branch exists.
+ * `describeDirtyWorkspaceRepair`'s `checkout -b <role>/<thread>` would then branch a
+ * SECOND time off it and leave the first behind: a branch nothing has ever named out
+ * loud, which the statement of this thread (curator, §2) forbids exactly — a service
+ * branch owes a human its name, its end, and who sweeps it.
+ *
+ * AND IT COVERS THE OTHER HALF OF THE SAME SHAPE: a tree that was already standing on
+ * the role's OWN branch (`create: false`) and whose commit failed. Nothing moved there,
+ * but `checkout -b` onto a branch that exists refuses all the same — the repair has to
+ * be "finish it where it stands" in both, and `created` is the one word that differs:
+ * it tells a human whether this attempt made that branch (and may therefore take it
+ * back) or found it already there.
+ */
+export const describeFailedTidyUpOnItsBranch = (input: {
+  readonly role: string;
+  readonly path: string;
+  readonly branch: string;
+  /** Did THIS attempt create the branch the tree now stands on, or was it already its own? */
+  readonly created: boolean;
+  /** The message the commit would have carried — the repair offers the same one. */
+  readonly message: string;
+  /** The base commit, so "take the branch back" is a command and not a placeholder. */
+  readonly base: string;
+  readonly cause: string;
+  readonly dirt?: WorkspaceDirt;
+}): string =>
+  [
+    `the workspace has uncommitted changes the circuit was allowed to commit for '${input.role}' — and the commit FAILED: ${input.cause}`,
+    input.created
+      ? `the attempt got as far as creating the service branch '${input.branch}' and moving the workspace onto it, so the tree is NO LONGER detached: it is dirty ON THAT BRANCH, and nothing is lost`
+      : `the tree is still dirty on '${input.branch}', the role's own branch, where the session left it`,
+    input.dirt === undefined
+      ? `What lies there did not read; ask the tree: git -C ${input.path} status --porcelain`
+      : `What lies there: ${describeWorkspaceDirt(input.dirt)}`,
+    `Until it is clean '${input.role}' is skipped on EVERY thread it holds a turn on, not only this one — the workspace belongs to the role, not to the thread`,
+    `Read why git refused, then either FINISH it WHERE IT NOW STANDS — git -C ${input.path} add -A && git -C ${input.path} commit -m '${input.message}' && git -C ${input.path} push -u origin ${input.branch} — or PARK it: git -C ${input.path} stash push -u -m '${input.message}'${
+      input.created
+        ? ` && git -C ${input.path} checkout --detach ${input.base} && git -C ${input.path} branch -D ${input.branch}, which also takes back the branch this attempt made`
+        : ""
+    }. Either one leaves the tree clean and the role starts on the next tick`,
+  ].join(". ");
+
+/**
+ * THE TIDY-UP THAT WORKED AND THEN GOT STUCK — the commit landed, and the step AFTER it
+ * (putting the workspace back on the base commit) is what git refused.
+ *
+ * IT IS A SEPARATE TEXT BECAUSE EVERY WORD OF THE OTHER ONE WOULD BE FALSE HERE
+ * (reviewer's finding on #279, 2026-09-05): the commit did NOT fail, the tree is NOT
+ * dirty, the dirt listing was taken BEFORE the commit and now names paths that are
+ * safely inside it, and `describeDirtyWorkspaceRepair`'s `checkout -b` would refuse on a
+ * branch that already exists. What a human has to do here is the opposite gesture — the
+ * work is saved and the tree needs moving, not saving.
+ *
+ * The launch still stops: a workspace left on a branch is not a tree the next run may
+ * rebase, and the refusal that says so is cheaper than a run that starts on the wrong
+ * head.
+ */
+export const describeStrandedWorkspace = (input: {
+  readonly role: string;
+  readonly path: string;
+  readonly branch: string;
+  readonly head: string;
+  readonly cause: string;
+  /** How the push went, when it did not go: the same string the successful note carries. */
+  readonly push?: string;
+}): string =>
+  [
+    `the workspace had uncommitted changes and the circuit committed them for '${input.role}': they are commit ${input.head} on '${input.branch}'${input.push === undefined ? " and pushed" : ` — NOT pushed (${input.push}); it is on this box only`}`,
+    `nothing is dirty and nothing is lost — what failed is the step after it, moving the workspace back to the base: ${input.cause}`,
+    `so the tree is CLEAN and still standing on '${input.branch}'. Read why git refused, then put it back by hand — git -C ${input.path} status --porcelain && git -C ${input.path} checkout --detach <base> — and '${input.role}' starts on the next tick`,
+  ].join(". ");
+
+/**
+ * WHY THIS HEAD IS NOT THE ROLE'S, IN THE REFUSAL ITSELF. A door that refuses without
+ * naming what to fix is a defect even when the logic is right, and the three causes are
+ * repaired by three different gestures: another role's branch is a tree somebody moved
+ * by hand, an unsigned one is dirt of unknown authorship, and `roles-unknown` is a
+ * caller that forgot an argument — a fault of ours, and it says so.
+ */
+const describeForeignHead = (input: {
+  readonly role: string;
+  readonly owner: Extract<WorkspaceHeadOwner, { kind: "foreign" }>;
+}): string => {
+  switch (input.owner.why) {
+    case "another-role":
+      return `a branch named for '${input.owner.owner}', another role of this contour — and a head signed by '${input.role}' does NOT make it this role's to write to: the name is the address a human reads, and a commit landing under it would move a head that is not ours`;
+    case "roles-unknown":
+      return `a branch this plan could not judge: the contour's roles were not handed to it, so a name carrying no role could not be told apart from one carrying another role's, and the head was taken as foreign rather than guessed at (the caller owes the plan its role ids)`;
+    default:
+      return `a branch that is not '${input.role}'s to write to (neither named for the role nor signed by it)`;
+  }
+};
+
+/**
  * The decision, from the facts and from whether this run is a continuation. Pure, so
  * that the one branch that destroys work if it is wrong (`rebase` over a dirty tree)
  * is decided by something a test can hold.
@@ -355,6 +638,23 @@ export const planWorkspace = (input: {
   readonly previousSession?: string;
   /** The thread this run is for — the other half of the label. */
   readonly thread?: string;
+  /**
+   * The base as the launch names it (`origin/main`) — read only to recognise the base
+   * BRANCH under a dirty head, which is the one head a commit may never land on.
+   */
+  readonly baseRef?: string;
+  /**
+   * NOW, as an ISO instant, passed in and never read here: it names the service branch
+   * (`serviceBranchName`). Absent — the plan cannot name one, and a detached dirty tree
+   * falls back to the refusal, out loud rather than under a made-up name.
+   */
+  readonly at?: string;
+  /**
+   * The ids of the contour's roles — handed straight to `classifyWorkspaceHead`, which
+   * needs them to keep another role's NAME from being overruled by this role's
+   * signature. Absent is a named state and it refuses: see `roles-unknown` there.
+   */
+  readonly roles?: readonly string[];
 }): WorkspacePlan => {
   const { facts, base, resuming, previousReason } = input;
   if (facts.exists && facts.locked !== undefined) {
@@ -403,12 +703,60 @@ export const planWorkspace = (input: {
       ...(input.thread === undefined ? {} : { thread: input.thread }),
       ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
     });
+    // THE RIGHT, AND EXACTLY AS WIDE AS IT WAS GIVEN (john, 2026-09-05, thread 099):
+    // dirt of a run that ENDED ITS OWN TURN, in a tree whose head the role owns, is
+    // committed for it. Everything outside that — unattributed dirt just below, a
+    // shared or foreign head just after — keeps the refusal it had, because outside it
+    // the package would be committing somebody else's work under a role's name.
+    if (previousReason !== undefined) {
+      const owner = classifyWorkspaceHead({
+        role: input.role,
+        ...(facts.branch === undefined ? {} : { branch: facts.branch }),
+        ...(input.baseRef === undefined ? {} : { baseRef: input.baseRef }),
+        ...(facts.headAuthor === undefined ? {} : { headAuthor: facts.headAuthor }),
+        ...(input.roles === undefined ? {} : { roles: input.roles }),
+      });
+      const message = dirtCommitMessage({
+        role: input.role,
+        reason: previousReason,
+        ...(input.thread === undefined ? {} : { thread: input.thread }),
+      });
+      if (owner.kind === "own")
+        return {
+          action: "commit",
+          branch: owner.branch,
+          create: false,
+          message,
+          from: previousReason,
+        };
+      if (owner.kind === "detached" && input.at !== undefined)
+        return {
+          action: "commit",
+          branch: serviceBranchName({
+            role: input.role,
+            at: input.at,
+            ...(input.thread === undefined ? {} : { thread: input.thread }),
+          }),
+          create: true,
+          message,
+          from: previousReason,
+        };
+      if (owner.kind === "base" || owner.kind === "foreign")
+        return {
+          action: "refuse",
+          reason: `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}'), and its head is on '${owner.branch}' — ${
+            owner.kind === "base"
+              ? "the BASE branch, which every role shares"
+              : describeForeignHead({ role: input.role, owner })
+          }: the circuit commits a role's leftovers onto the role's own head and never onto a common or a foreign one. ${repair}`,
+        };
+    }
     return {
       action: "refuse",
       reason:
         previousReason === undefined
           ? `the workspace has uncommitted changes and no finished run of this pair to attribute them to — they may be a human's, and the circuit does not park work whose owner it does not know. ${repair}`
-          : `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}') — that is a failure to finish, not the leftovers of a break: a session that passes the turn on leaves its tree clean. ${repair}`,
+          : `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}'), and the plan was given no timestamp to name a service branch with — the tree is detached, so there is no head of the role's to commit onto either. ${repair}`,
     };
   }
   return facts.head === base ? { action: "ready" } : { action: "rebase" };
@@ -434,6 +782,8 @@ export const describeWorkspacePlan = (input: {
       return `${input.role}: ${input.path} — kept as it is (the run is a resume)`;
     case "stash":
       return `${input.role}: ${input.path} — parking what the '${input.plan.from}' run left uncommitted as a stash ('${input.plan.label}'), then moving to ${at}`;
+    case "commit":
+      return `${input.role}: ${input.path} — committing what the '${input.plan.from}' run left uncommitted ${input.plan.create ? "onto a new service branch" : "onto its own branch"} '${input.plan.branch}', then moving to ${at}`;
     case "refuse":
       return `${input.role}: ${input.path} — ${input.plan.reason}`;
   }
