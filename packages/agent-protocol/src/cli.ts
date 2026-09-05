@@ -29,6 +29,7 @@ import {
   closeSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
@@ -40,7 +41,7 @@ import {
   writeSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { homedir, hostname } from "node:os";
+import { homedir, hostname, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -500,6 +501,12 @@ import {
   failureClassOf,
 } from "./orchestrator/thaw.js";
 import { type Candidate, describePlan, describeSkip, planTick } from "./orchestrator/tick.js";
+import {
+  describeDeliveredTidyUpLetter,
+  describeUndeliveredTidyUpLetter,
+  planTidyUpLetter,
+  type TidyUpOutcome,
+} from "./orchestrator/tidy-letter.js";
 import {
   isAssistantStep,
   modelOf,
@@ -6545,7 +6552,19 @@ const applyWorkspacePlan = (input: {
   readonly role: string;
   readonly plan: WorkspacePlan;
 }):
-  | { readonly ok: true; readonly note?: string }
+  | {
+      readonly ok: true;
+      readonly note?: string;
+      /**
+       * WHERE THE TIDY-UP PUT THE WORK — the `commit` outcome only. The note above says
+       * the same thing in a sentence for a human; these two are the same facts as DATA,
+       * because the letter of item C has to carry the address rather than the prose (a
+       * caller that re-parsed the note would be reading one fact in two ways).
+       */
+      readonly head?: string;
+      /** The push failure, when there was one; absent means it went. */
+      readonly push?: string;
+    }
   | {
       readonly ok: false;
       readonly cause: string;
@@ -6662,6 +6681,8 @@ const applyWorkspacePlan = (input: {
         };
       return {
         ok: true,
+        head,
+        ...(pushed === undefined ? {} : { push: pushed }),
         note: `${input.role}: what the '${plan.from}' run left uncommitted is committed as ${head} on '${plan.branch}'${
           pushed === undefined ? " and pushed" : ` — NOT pushed (${pushed}); it is on this box only`
         }`,
@@ -6688,6 +6709,92 @@ const applyWorkspacePlan = (input: {
       return { ok: true };
     default:
       return { ok: true }; // ready / keep / refuse — nothing to do on disk
+  }
+};
+
+/**
+ * POSTING THE OUTCOME OF A TIDY-UP (thread 099, item C) — the IO half of
+ * `planTidyUpLetter`, and the one place the daemon writes into the mail.
+ *
+ * IT SPAWNS THIS VERY CLI RATHER THAN CALLING `newMessage` IN PROCESS, and that choice is
+ * the mechanism curator left to me (msg-030 §4). Three reasons, in order of weight:
+ *
+ *  1. `newMessage` refuses with `fail()`, which EXITS THE PROCESS. In the daemon that is
+ *     not a refused letter, it is a dead circuit — every role of the box stops because one
+ *     role's tree was tidied up and a participant was misspelled in the config;
+ *  2. the outcome then reads as an EXIT CODE, which is exactly the requirement over this
+ *     path: the delivery either returned 0 or it did not, and there is no branch in which
+ *     a failure can be mistaken for a success;
+ *  3. it is the form already in the contour — `ci-outcome.yml` and `notifier-watch.yml`
+ *     run the same command as a process, and the tui runs its actions the same way
+ *     (`process.execPath` + `process.argv[1]`, so it works under tsx and under a build).
+ *
+ * IT NEVER THROWS AND IT NEVER FAILS THE CALLER. The tidy-up has already happened by the
+ * time this runs; a letter that did not go must not undo a commit that did. The return is
+ * one journal line either way — and the failing one says the work's address, because when
+ * the letter is lost that line is the only trace of it.
+ */
+const postTidyUpLetter = (input: {
+  readonly role: string;
+  readonly path: string;
+  readonly thread: string;
+  readonly mailRoot: string;
+  readonly repo?: string;
+  readonly ref?: string;
+  readonly dirt?: WorkspaceDirt;
+  readonly outcome: TidyUpOutcome;
+}): string => {
+  const letter = planTidyUpLetter({
+    role: input.role,
+    path: input.path,
+    thread: input.thread,
+    root: input.mailRoot,
+    outcome: input.outcome,
+    ...(input.repo === undefined ? {} : { repo: input.repo }),
+    ...(input.ref === undefined ? {} : { ref: input.ref }),
+    ...(input.dirt === undefined ? {} : { dirt: input.dirt }),
+  });
+  // WHERE THE WORK IS, carried into the failure line: `done` and `stranded` both know an
+  // address, and that address is the whole content of the letter that did not arrive.
+  const at =
+    input.outcome.kind === "failed"
+      ? undefined
+      : { branch: input.outcome.branch, head: input.outcome.head };
+  const said = (cause: string): string =>
+    describeUndeliveredTidyUpLetter({
+      role: input.role,
+      waitingOn: letter.waitingOn,
+      cause,
+      ...(at === undefined ? {} : { at }),
+    });
+  // The body goes to a file OUTSIDE both checkouts — the mail's and the role's — for the
+  // reason every writer in this protocol does it: a stray file in either tree is the very
+  // fault this thread exists about.
+  let dir: string | undefined;
+  try {
+    dir = mkdtempSync(join(tmpdir(), "agent-protocol-tidy-"));
+    const bodyFile = join(dir, "letter.md");
+    writeFileSync(bodyFile, `${letter.body}\n`, "utf8");
+    const child = spawnSync(
+      process.execPath,
+      [...process.execArgv, process.argv[1] as string, ...letter.argv, "--body-file", bodyFile],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    if (child.error !== undefined) return said(`it could not be run — ${child.error.message}`);
+    if (child.status !== 0) {
+      const tail = `${child.stdout ?? ""}${child.stderr ?? ""}`
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "");
+      return said(
+        `'new-message' exited ${child.status ?? "on a signal"} — ${tail[tail.length - 1] ?? "it said nothing"}`,
+      );
+    }
+    return describeDeliveredTidyUpLetter({ waitingOn: letter.waitingOn });
+  } catch (error) {
+    return said((error as Error).message);
+  } finally {
+    if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
   }
 };
 
@@ -10978,6 +11085,49 @@ const settleRun = (input: {
         };
       }
       const applied = applyWorkspacePlan({ repo, path, base: base.commit, role: role.id, plan });
+      // THE OUTCOME IS POSTED WHATEVER IT IS (thread 099, item C) — before the refusal is
+      // returned, because the refusal returns out of this function and the letter about a
+      // tidy-up that failed is the one the whole item exists for. `--repo`/`--ref` are
+      // forwarded verbatim so the child resolves the config exactly as this process did.
+      const letterInto = {
+        role: role.id,
+        path,
+        thread,
+        mailRoot,
+        ...(flag(argv, "--repo") === undefined ? {} : { repo: flag(argv, "--repo") as string }),
+        ...(flag(argv, "--ref") === undefined ? {} : { ref: flag(argv, "--ref") as string }),
+        ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
+      };
+      if (applied.ok && applied.note !== undefined) lines.push(`workspace — ${applied.note}`);
+      if (plan.action === "commit") {
+        lines.push(
+          postTidyUpLetter({
+            ...letterInto,
+            outcome: applied.ok
+              ? {
+                  kind: "done",
+                  branch: plan.branch,
+                  head: applied.head ?? "?",
+                  ...(applied.push === undefined ? {} : { push: applied.push }),
+                }
+              : applied.committed === undefined
+                ? {
+                    kind: "failed",
+                    cause: applied.cause,
+                    ...(applied.dirtyOn === undefined ? {} : { branch: applied.dirtyOn.branch }),
+                  }
+                : {
+                    kind: "stranded",
+                    branch: applied.committed.branch,
+                    head: applied.committed.head,
+                    cause: applied.cause,
+                    ...(applied.committed.push === undefined
+                      ? {}
+                      : { push: applied.committed.push }),
+                  },
+          }),
+        );
+      }
       // A TIDY-UP THAT DID NOT WORK IS A REFUSAL WITH A CAUSE (thread 099, john's §4
       // exception): the tree is still dirty, so the launch stops exactly as it did
       // before this right existed — but naming what was tried and how git answered.
@@ -11021,7 +11171,6 @@ const settleRun = (input: {
           lines,
         };
       }
-      if (applied.ok && applied.note !== undefined) lines.push(`workspace — ${applied.note}`);
     }
   }
   // AFTER the tree exists and before the session is spawned (027): a `create` has just
