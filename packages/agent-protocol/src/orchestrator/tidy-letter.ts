@@ -231,3 +231,96 @@ export const describeUndeliveredTidyUpLetter = (input: {
 /** The delivered letter, as one line of the same journal — the counterpart of the above. */
 export const describeDeliveredTidyUpLetter = (input: { readonly waitingOn: string }): string =>
   `letter — the outcome is posted to the standing address '${TIDY_UP_SLUG}', turn for '${input.waitingOn}'`;
+
+/**
+ * THE LOCK ON THE REPEAT (thread `133-tidy-letter-repeats-every-tick`) — the half of §1.3
+ * of thread 099 that fell between two acceptances: "a dirty tree standing for hours means
+ * ONE letter about ONE incident, and the cause is named".
+ *
+ * MEASURED, not deduced (msg-001 of 133, a probe on the live contour): two `orchestrator
+ * run --fresh` over one dirty tree in the class "nothing moved" — the shim refuses the
+ * first step of the tidy-up — left 1 → 2 letters in the standing address. Every tick plans
+ * the commit again, fails again and posts again; ticks are a minute apart, so a standing
+ * incident floods the receiver a human reads.
+ *
+ * WHAT IS COMPARED IS A SIGNATURE OF THE INCIDENT, not the fact that a letter was ever
+ * sent. A lock that swallowed a NEW incident would be worse than the defect it fixes: the
+ * role, the cause git gave and the composition of the dirt are all part of it, so a
+ * different failure over the same tree still gets its letter.
+ *
+ * The `done` and `stranded` outcomes carry a fresh sha in every one of them, so they never
+ * collide with a previous signature and this lock is inert for them by construction — it
+ * is written over the whole outcome rather than over the failing branch only because
+ * "which outcome was last told about this tree" is one fact and splitting it into two
+ * would need the reader to know which of them to trust.
+ */
+export type TidyUpMemo = {
+  /** The signature of the incident the last letter carried. */
+  readonly signature: string;
+  /** When that letter went, as it goes into the journal line of every suppressed tick. */
+  readonly at: string;
+  /** Whose turn that letter left — part of "where to look", not decoration. */
+  readonly waitingOn: string;
+  /** The branch the work or the dirt stands on, when the outcome knew one. */
+  readonly branch?: string;
+};
+
+/**
+ * THE THREE THINGS THAT MAKE AN INCIDENT ITSELF, joined into one line: the ROLE whose tree
+ * it is, the CAUSE the tidy-up failed with (or the address it succeeded at), and the
+ * COMPOSITION OF THE DIRT. Change any one of them and it is a different happening, which
+ * is exactly what R3 of the statement of work asks to be checked one by one.
+ *
+ * The join is `\u0000` for the ordinary reason: no field of it can contain the separator,
+ * so two different signatures cannot collapse into one text.
+ */
+export const tidyUpSignature = (input: {
+  readonly role: string;
+  readonly dirt?: WorkspaceDirt;
+  readonly outcome: TidyUpOutcome;
+}): string => {
+  const { outcome } = input;
+  return [
+    input.role,
+    outcome.kind,
+    outcome.kind === "failed" ? (outcome.branch ?? "") : outcome.branch,
+    outcome.kind === "failed" ? "" : outcome.head,
+    outcome.kind === "done" ? "" : outcome.cause,
+    input.dirt === undefined ? "не прочитано" : describeWorkspaceDirt(input.dirt),
+  ].join("\u0000");
+};
+
+/**
+ * THE TICK THAT SAYS NOTHING NEW, as one line of the daemon's journal — and a line it MUST
+ * print (R2). A silent suppression is indistinguishable from "the tidy-up went", and that
+ * indistinguishability is the reason the second half of the requirement was written at
+ * all: a human reading the log an hour later has to see that the incident is still
+ * standing and where the one letter about it is.
+ *
+ * So it says both halves: that this incident has ALREADY been told about, and WHERE —
+ * the standing address, whose turn is waiting on it, and the branch when there is one.
+ */
+export const describeSuppressedTidyUpLetter = (input: {
+  readonly role: string;
+  readonly memo: TidyUpMemo;
+}): string =>
+  `letter — SUPPRESSED, nothing new to say: this very outcome for '${input.role}' was already posted to the standing address '${TIDY_UP_SLUG}' at ${input.memo.at}, turn for '${input.memo.waitingOn}' — read it there${
+    input.memo.branch === undefined ? "" : `; the branch is '${input.memo.branch}'`
+  }`;
+
+/**
+ * THE DECISION, as a pure function over the signature and what was remembered: post, or
+ * stay quiet with a line that says why. Nothing here reads the disk — the caller owns
+ * both the reading of the ledger and the writing of it, and writes ONLY after a delivery
+ * that actually returned 0, because a letter that never arrived has told nobody and must
+ * be tried again on the next tick.
+ */
+export const planTidyUpDelivery = (input: {
+  readonly role: string;
+  readonly signature: string;
+  /** What the previous letter about THIS role's tree carried; absent — there was none. */
+  readonly memo?: TidyUpMemo;
+}): { readonly post: true } | { readonly post: false; readonly said: string } =>
+  input.memo !== undefined && input.memo.signature === input.signature
+    ? { post: false, said: describeSuppressedTidyUpLetter({ role: input.role, memo: input.memo }) }
+    : { post: true };
