@@ -84,6 +84,19 @@ export type OrchestratorPaths = {
    */
   readonly daemonDrift: string;
   /**
+   * WHAT THE STANDING ADDRESS HAS ALREADY BEEN TOLD ABOUT EACH ROLE'S TREE (thread
+   * `133-tidy-letter-repeats-every-tick`, `TidyUpMemo`): the signature of the last tidy-up
+   * letter that was actually DELIVERED, keyed by role. Written by the tick that posted it,
+   * read by every tick after — which is why it is a file and not a variable: the incident
+   * this locks stands for hours across many runs, and each run is its own process.
+   *
+   * Disposable like everything else here, and disposable in the SAFE direction: losing it
+   * costs one extra letter about an incident already told, never a silence about a new
+   * one. That also answers what a restart of the daemon does to the lock — nothing: the
+   * ledger is on disk, so the tick after a restart is quiet exactly as the tick before it.
+   */
+  readonly tidyLetters: string;
+  /**
    * THE TRACE OF STATE-CHANGING CAPABILITY CALLS (thread `047-devops-role`, curator's requirement
    * «посторонний обязан после факта установить, КАКОЙ вызов был сделан, кем, с какими параметрами
    * и с каким исходом, НЕ ЧИТАЯ транскрипт сессии»). Its own file rather than a line in
@@ -135,6 +148,7 @@ const MERGE_READY_OUTAGE = "merge-ready-outage.json";
 const DAEMON_CODE = "daemon-code.json";
 const DAEMON_SELF_RESTART = "self-restart.json";
 const DAEMON_DRIFT = "daemon-drift.json";
+const TIDY_LETTERS = "tidy-letters.json";
 const DAEMON_LOG = "daemon.log";
 const DAEMON_PID = "daemon.pid";
 
@@ -166,6 +180,7 @@ export const orchestratorPaths = (input: {
     daemonCode: join(state, DAEMON_CODE),
     daemonSelfRestart: join(state, DAEMON_SELF_RESTART),
     daemonDrift: join(state, DAEMON_DRIFT),
+    tidyLetters: join(state, TIDY_LETTERS),
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
     capabilities: join(state, CAPABILITIES),

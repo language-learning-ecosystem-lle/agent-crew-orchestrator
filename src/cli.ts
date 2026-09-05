@@ -504,8 +504,11 @@ import { type Candidate, describePlan, describeSkip, planTick } from "./orchestr
 import {
   describeDeliveredTidyUpLetter,
   describeUndeliveredTidyUpLetter,
+  planTidyUpDelivery,
   planTidyUpLetter,
+  type TidyUpMemo,
   type TidyUpOutcome,
+  tidyUpSignature,
 } from "./orchestrator/tidy-letter.js";
 import {
   isAssistantStep,
@@ -6734,16 +6737,68 @@ const applyWorkspacePlan = (input: {
  * one journal line either way — and the failing one says the work's address, because when
  * the letter is lost that line is the only trace of it.
  */
+/**
+ * THE LEDGER OF WHAT THE STANDING ADDRESS HAS ALREADY BEEN TOLD (thread 133), read and
+ * written as one small JSON object keyed by role.
+ *
+ * BOTH HALVES FAIL SOFT, and in the same direction: an unreadable, malformed or missing
+ * ledger reads as "nothing was ever said" — one letter too many about an incident already
+ * told — and a write that cannot land leaves the next tick to post again. The opposite
+ * direction, a lock that survives a failure to record it, would silence an incident nobody
+ * ever heard about, and that is the defect this whole file exists to close.
+ */
+const readTidyUpMemos = (path: string): Record<string, TidyUpMemo> => {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, TidyUpMemo>)
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+const rememberTidyUpMemo = (path: string, role: string, memo: TidyUpMemo): void => {
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(
+      path,
+      `${JSON.stringify({ ...readTidyUpMemos(path), [role]: memo }, null, 2)}\n`,
+      "utf8",
+    );
+  } catch {
+    // Recording is not the letter: it went, and the reader has it. The cost of this
+    // silence is one repeated letter on the next tick, which is the safe direction.
+  }
+};
+
 const postTidyUpLetter = (input: {
   readonly role: string;
   readonly path: string;
   readonly thread: string;
   readonly mailRoot: string;
+  /** The ledger of thread 133 — where this role's last delivered letter is remembered. */
+  readonly memos: string;
   readonly repo?: string;
   readonly ref?: string;
   readonly dirt?: WorkspaceDirt;
   readonly outcome: TidyUpOutcome;
 }): string => {
+  // THE LOCK ON THE REPEAT, ASKED BEFORE ANYTHING IS SPAWNED (thread 133): the same
+  // incident over the same tree says nothing new, and the tick says so out loud instead of
+  // going quiet — a suppression nobody can see reads exactly like a tidy-up that worked.
+  const signature = tidyUpSignature({
+    role: input.role,
+    outcome: input.outcome,
+    ...(input.dirt === undefined ? {} : { dirt: input.dirt }),
+  });
+  const remembered = readTidyUpMemos(input.memos)[input.role];
+  const decided = planTidyUpDelivery({
+    role: input.role,
+    signature,
+    ...(remembered === undefined ? {} : { memo: remembered }),
+  });
+  if (!decided.post) return decided.said;
   const letter = planTidyUpLetter({
     role: input.role,
     path: input.path,
@@ -6790,6 +6845,14 @@ const postTidyUpLetter = (input: {
         `'new-message' exited ${child.status ?? "on a signal"} — ${tail[tail.length - 1] ?? "it said nothing"}`,
       );
     }
+    // DELIVERED — and only now is it remembered. Everything above this line returns
+    // through `said()`, so an incident nobody was told about leaves no lock behind.
+    rememberTidyUpMemo(input.memos, input.role, {
+      signature,
+      at: eventTimestamp(new Date()),
+      waitingOn: letter.waitingOn,
+      ...(input.outcome.branch === undefined ? {} : { branch: input.outcome.branch }),
+    });
     return describeDeliveredTidyUpLetter({ waitingOn: letter.waitingOn });
   } catch (error) {
     return said((error as Error).message);
@@ -11094,6 +11157,9 @@ const settleRun = (input: {
         path,
         thread,
         mailRoot,
+        // The ledger of thread 133 lives in the state directory, and it is resolved here
+        // rather than inside the poster so that the poster stays a function of its input.
+        memos: pathsFrom(argv).tidyLetters,
         ...(flag(argv, "--repo") === undefined ? {} : { repo: flag(argv, "--repo") as string }),
         ...(flag(argv, "--ref") === undefined ? {} : { ref: flag(argv, "--ref") as string }),
         ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
