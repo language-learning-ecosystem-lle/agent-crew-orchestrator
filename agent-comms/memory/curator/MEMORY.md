@@ -75,3 +75,4 @@
 - [PR по `claude-review.yml` не мерит НИКТО](review-yml-pr-is-unmeasured-before-merge.md) — круг самопропускается, а в `checks.yml` нет ни actionlint, ни shellcheck: YAML и `bash -n` по блокам `run:` — рука curator
 - [«Кредов не нужно» с ящика не мерится](no-credentials-needed-is-unmeasured-on-the-box.md) — токен стоит в среде молча, а дверь без него ПРОПУСКАЕТ вместо отказа: приёмка — прогон с `env -u GH_TOKEN`, а не отсутствие `secrets.*`
 - [Полевой класс гарда 3 умирает на `claude-review.yml`](guard3-field-class-dies-on-review-yml.md) — круг самопропускается → условие «ревьюер подтвердил» невыполнимо → слово john нужно ДО работы, а не только под кнопкой
+- [Смотритель с гейтом дельты молчит на чистом дереве](delta-gated-watcher-is-silent-on-a-clean-tree.md) — зелёный молчаливый прогон доказывает замер, не доставку; приёмка — диспатч на ветке с положенной рукой находкой
