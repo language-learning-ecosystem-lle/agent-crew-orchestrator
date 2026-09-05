@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-05T12:11:17.682Z",
+  "writtenAt": "2026-09-05T12:11:32.433Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "099-dirty-tree-locks-the-role",
+      "state": "running",
+      "deadline": "2026-09-05T13:11:29Z"
+    },
     {
       "role": "curator",
       "thread": "125-review-escalation-literal-thread",
