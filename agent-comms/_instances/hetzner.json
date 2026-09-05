@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-05T16:35:21.081Z",
+  "writtenAt": "2026-09-05T16:37:13.663Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "133-tidy-letter-repeats-every-tick",
       "state": "running",
       "deadline": "2026-09-05T17:15:18Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "133-tidy-letter-repeats-every-tick",
+      "state": "running",
+      "deadline": "2026-09-05T17:37:10Z"
     }
   ]
 }
