@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-05 | verdict: approve |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john, и вопрос ровно тот же, что стоит в ленте со вчера и не отвечен: перезапуска… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:54Z): «ЗАВОДИМ: СМОТРИТЕЛЬ, НАБОР ИМЁН МИНУС СВОИ АДР… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -117,5 +117,5 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:42Z): «РАЗРЕШАЮ» — #272 к merge. Гард 3 закрыт этим п… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | curator | — | 2026-09-05 | Приземление #273 перемерено НА ТОМ дереве, которое легло: 53/53, зелёный checks на голове main, и д… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | run:277 · 2026-09-05 | 2026-09-05 | Сюита доставки заведена шагом checks: PR #277 открыт, жду прогон, числа впишу его же головой |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | — | 2026-09-05 | ❌ checks по PR #277: failure. |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
