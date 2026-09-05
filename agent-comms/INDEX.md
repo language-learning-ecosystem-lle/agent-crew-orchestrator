@@ -117,5 +117,5 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john. Разрешаешь ли merge #272 — адресация эскалации ревьюера переведена с литера… |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | open | dev-core | — | 2026-09-05 | PR #273 (fix(notifier): счёт заглушённых называет нижнюю границу, когда страница оборвалась (тред 1… |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | ❓ john · 2026-09-04 | 2026-09-04 | Требуется решение john: заводить ли интеграционную сюиту доставки вердикта (.github/scripts/review-… |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | — | 2026-09-05 | Слово john полем delivers (чат 2026-09-05 ~11:41Z): ДА — сюита доставки вердикта заводится в checks… |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
