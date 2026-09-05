@@ -468,6 +468,103 @@ export const serviceBranchName = (input: {
     .replace(/(\d{8}T\d{4})\d{2}Z?$/, "$1Z")}`;
 
 /**
+ * WHOSE SERVICE BRANCH THIS IS, AND WHEN IT WAS MADE — the inverse of
+ * `serviceBranchName` and the ONLY reader of that name (B.3, thread 099; john's §3
+ * point 3: "ветка не живёт вечно молча — возраст называется в сводке").
+ *
+ * THE NAME IS THE SOURCE AND THERE IS NO SECOND ONE. The commit date of the branch
+ * would be a second answer to the same question, and two readings of one fact is how
+ * they start to differ: `serviceBranchName` PUT the instant into the name for exactly
+ * this reader, so this reader takes it from there. It also means the summary costs one
+ * `for-each-ref` and no per-branch git call.
+ *
+ * WHAT A NAME THAT DOES NOT PARSE MEANS. `wip/…` is a namespace, not a lock — a human
+ * can push anything under it. Such a branch is NOT dropped from the count: it is listed
+ * and said to be unreadable, because a service branch that vanishes from the summary is
+ * the very silence B.3 exists to close.
+ */
+export type ServiceBranchFacts = {
+  /** The ref name as git printed it. */
+  readonly name: string;
+  /** The role the name claims; absent when the name is not one this package made. */
+  readonly role?: string;
+  /** The thread the name claims; absent for `no-thread` and for an unreadable name. */
+  readonly thread?: string;
+  /** The instant the name carries, to the minute; absent when the name is unreadable. */
+  readonly at?: Date;
+};
+
+/** `wip/<role>/<thread>-<YYYYMMDDTHHMMZ>` — the shape `serviceBranchName` writes. */
+const SERVICE_BRANCH = /^wip\/([^/]+)\/(.+)-(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})Z$/;
+
+export const readServiceBranchName = (name: string): ServiceBranchFacts => {
+  const parsed = SERVICE_BRANCH.exec(name);
+  if (parsed === null) return { name };
+  const [, role, thread, year, month, day, hour, minute] = parsed;
+  const at = new Date(`${year}-${month}-${day}T${hour}:${minute}:00Z`);
+  // A NAME CAN CARRY DIGITS AND STILL NOT CARRY A MOMENT (`…-20261305T1231Z`). The
+  // regexp counts digits; only the calendar knows whether they are a date, and a row
+  // that printed `Invalid Date` would be worse than one saying the name is unreadable.
+  if (Number.isNaN(at.getTime())) return { name };
+  return {
+    name,
+    role: role as string,
+    ...(thread === "no-thread" ? {} : { thread: thread as string }),
+    at,
+  };
+};
+
+/**
+ * An age a human reads rather than counts. Days appear because these branches are
+ * measured in days by construction — one is made when a run ends without committing,
+ * and it lives until a role comes back to its own workspace.
+ */
+export const serviceBranchAge = (seconds: number): string => {
+  const whole = Math.max(0, Math.round(seconds));
+  if (whole < 90) return `${whole}s`;
+  const minutes = Math.round(whole / 60);
+  if (minutes < 90) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h ${minutes % 60}m`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+};
+
+/**
+ * THE SUMMARY'S ANSWER TO "AND WHAT IF THE ROLE NEVER CAME BACK" (B.3, thread 099).
+ *
+ * WHY IT SPEAKS WHEN THERE ARE NONE, unlike the merge-ready tier and the code age. Those
+ * two are alarms and silence is their good news; this is an INVENTORY, and an inventory
+ * that prints nothing leaves "no service branches exist" indistinguishable from "the
+ * summary does not know about them" — which is the state this whole thread is about.
+ *
+ * NO THRESHOLD AND NO ⚠ ON AGE. john's requirement is that the age be NAMED, and a term
+ * ("old after N days") would be a policy nobody has decided, plus a config key
+ * curator's §5 forbids. The reader is given the number and the branch's own address; the
+ * end of the branch stays the hand of the role that finds it (B.1).
+ */
+export const describeServiceBranches = (
+  branches: readonly string[],
+  now: Date,
+): readonly string[] => {
+  if (branches.length === 0) {
+    return ["service branches: none — no run has left uncommitted work for the circuit to commit"];
+  }
+  const rows = [...branches].sort().map((name) => {
+    const facts = readServiceBranchName(name);
+    if (facts.role === undefined || facts.at === undefined) {
+      return `  ${name} — ⚠ THIS NAME SAYS NEITHER WHOSE NOR WHEN: it is not one this package writes ('wip/<role>/<thread>-<YYYYMMDDTHHMMZ>'), so no role is named to take it or drop it`;
+    }
+    const age = serviceBranchAge((now.getTime() - facts.at.getTime()) / 1000);
+    const thread = facts.thread === undefined ? "no thread named" : `thread ${facts.thread}`;
+    return `  ${name} — ${facts.role} · ${thread} · ${age} old (made ${facts.at.toISOString()})`;
+  });
+  return [
+    `service branches (${branches.length}) — what the circuit committed for a run that ended without committing it; the role that finds its own TAKES IT OR DROPS IT, saying why:`,
+    ...rows,
+  ];
+};
+
+/**
  * The message of that commit. It says what a reader of `git log` needs and nothing
  * else: the thread it belongs to, and that the run did not write it — the circuit did,
  * after that run ended without cleaning up.

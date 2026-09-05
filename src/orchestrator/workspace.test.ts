@@ -13,6 +13,7 @@ import {
   describeFailedTidyUp,
   describeFailedTidyUpOnItsBranch,
   describeFinishDirt,
+  describeServiceBranches,
   describeStrandedWorkspace,
   describeWorkspaceDirt,
   describeWorkspaceIdentity,
@@ -23,6 +24,8 @@ import {
   mainCheckoutVerdict,
   planWorkspace,
   planWorkspaceIdentity,
+  readServiceBranchName,
+  serviceBranchAge,
   serviceBranchName,
   workspacePath,
   workspaceRoleOf,
@@ -1246,6 +1249,100 @@ describe("serviceBranchName — a name that answers role, thread and time (john'
     expect(serviceBranchName({ role: ROLE, at: "2026-09-05T12:31:07Z" })).toBe(
       "wip/dev-core/no-thread-20260905T1231Z",
     );
+  });
+});
+
+describe("readServiceBranchName — the name read back, and nothing else read instead (B.3)", () => {
+  it("gives back exactly what serviceBranchName put in: role, thread and the minute", () => {
+    const name = serviceBranchName({ role: ROLE, thread: "099-dirty", at: "2026-09-05T12:31:07Z" });
+    expect(readServiceBranchName(name)).toEqual({
+      name,
+      role: ROLE,
+      thread: "099-dirty",
+      at: new Date("2026-09-05T12:31:00Z"),
+    });
+  });
+
+  it("'no-thread' comes back as NO thread, never as a thread of that name", () => {
+    const facts = readServiceBranchName(serviceBranchName({ role: ROLE, at: "2026-09-05T12:31Z" }));
+    expect(facts.thread).toBeUndefined();
+    expect(facts.role).toBe(ROLE);
+  });
+
+  it("a thread slug carrying its own dashes survives the round trip", () => {
+    expect(
+      readServiceBranchName("wip/dev-core/099-dirty-tree-locks-the-role-20260905T1231Z").thread,
+    ).toBe("099-dirty-tree-locks-the-role");
+  });
+
+  it("a name this package did not write says neither whose nor when", () => {
+    expect(readServiceBranchName("wip/somebodys-hand")).toEqual({ name: "wip/somebodys-hand" });
+  });
+
+  it("digits that are not a date are NOT a date — the calendar decides, not the regexp", () => {
+    expect(readServiceBranchName("wip/dev-core/099-x-20261305T1231Z").at).toBeUndefined();
+  });
+});
+
+describe("serviceBranchAge — an age a human reads (B.3)", () => {
+  it("counts in days once a branch has lived through them", () => {
+    expect(serviceBranchAge(3 * 86_400 + 5 * 3600)).toBe("3d 5h");
+  });
+
+  it("counts in hours and minutes below two days", () => {
+    expect(serviceBranchAge(5 * 3600 + 7 * 60)).toBe("5h 7m");
+  });
+
+  it("counts in minutes, and in seconds while there is barely an age at all", () => {
+    expect(serviceBranchAge(20 * 60)).toBe("20m");
+    expect(serviceBranchAge(30)).toBe("30s");
+  });
+});
+
+describe("describeServiceBranches — the inventory in the summary (john's §3.3)", () => {
+  const NOW = new Date("2026-09-08T15:31:00Z");
+
+  it("says 'none' OUT LOUD — an empty inventory that printed nothing would be silence", () => {
+    const [line, ...rest] = describeServiceBranches([], NOW);
+    expect(rest).toEqual([]);
+    expect(line).toContain("service branches: none");
+  });
+
+  it("names the count, the role, the thread and the AGE of every branch", () => {
+    const lines = describeServiceBranches(
+      [
+        "wip/curator/no-thread-20260905T1231Z",
+        "wip/dev-core/099-dirty-tree-locks-the-role-20260908T1231Z",
+      ],
+      NOW,
+    );
+    expect(lines[0]).toContain("service branches (2)");
+    // Sorted by name, so the frame does not reshuffle between two reads of one state.
+    expect(lines[1]).toContain("wip/curator/no-thread-20260905T1231Z");
+    expect(lines[1]).toContain("curator");
+    expect(lines[1]).toContain("no thread named");
+    expect(lines[1]).toContain("3d 3h old");
+    expect(lines[2]).toContain("dev-core");
+    expect(lines[2]).toContain("thread 099-dirty-tree-locks-the-role");
+    expect(lines[2]).toContain("3h 0m old");
+  });
+
+  it("says WHOSE HAND the reader owes the end of the branch to", () => {
+    expect(describeServiceBranches(["wip/dev-core/099-x-20260908T1231Z"], NOW)[0]).toContain(
+      "TAKES IT OR DROPS IT",
+    );
+  });
+
+  it("an unreadable name is LISTED and called unreadable, never dropped from the count", () => {
+    const lines = describeServiceBranches(
+      ["wip/by-hand", "wip/dev-core/099-x-20260908T1231Z"],
+      NOW,
+    );
+    expect(lines[0]).toContain("service branches (2)");
+    expect(lines[1]).toContain("wip/by-hand");
+    expect(lines[1]).toContain("SAYS NEITHER WHOSE NOR WHEN");
+    // And it does not invent an age for it — the row that cannot be dated says so.
+    expect(lines[1]).not.toContain("old");
   });
 });
 
