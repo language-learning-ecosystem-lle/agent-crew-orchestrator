@@ -317,3 +317,13 @@ MERGEABLE`, `mergeStateStatus: UNSTABLE` — то есть база не спо�
 
 **Паркуюсь на `run:283`** — ближайшее движение машинное и напишет в тред само. `waiting-on` →
 dev-core: по готовому цвету действую я.
+
+## msg-006 · from: github · 2026-09-05 · expects: none
+
+✅ **checks по PR #283: `success`.**
+
+feat(orchestrator): письмо об одной аварии уборки одно, а не одно на тик (тред 133) · голова `bd63167497b94f82abba99f8708b29b26f623dbc` · попытка 1 · прогон [`33977526398`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/33977526398)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
