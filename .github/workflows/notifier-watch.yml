@@ -234,6 +234,18 @@ jobs:
           # именем. Читателя ветвь посылает в лог ЭТОГО прогона смотрителя, где
           # и напечатана настоящая ошибка, а не в Actions наблюдаемого.
           #
+          # ЧИСЛО ЛИБО ПОЛНОЕ, ЛИБО НАЗВАНО НИЖНЕЙ ГРАНИЦЕЙ (тред 126). Запрос
+          # берёт ОДНУ страницу, и до этой правки он брал сто новейших прогонов
+          # воркфлоу вообще: у `Comms Derived` сотня накрывает около пятнадцати
+          # часов (замер 2026-09-04: всего 2060 прогонов), а письма об одном
+          # уведомителе, разделённые сутками, — обычное дело, и число уезжало
+          # вниз МОЛЧА. Теперь интервал стоит в самом запросе (`created=>` метка
+          # прошлого письма, `%3E` — это `>`), а полнота выборки читается из
+          # `total_count` против длины страницы: непоместившееся называется
+          # числом, а строка говорит «НЕ МЕНЕЕ N» вместо точного N. Запрос
+          # по-прежнему ОДИН — `--paginate` стоил бы ceil(total/100) запросов
+          # ровно в аварии, когда API и так может не отвечать.
+          #
           # ТЕЛО ВЫРЕЗАЕТСЯ ТЕСТОМ ПО МАРКЕРАМ НИЖЕ и гоняется на подложных
           # данных (`notifier-mute.test.sh`, раздел «три исхода»): формулировки
           # обязаны остаться в этом файле — `.github/scripts/**` не покрыт
@@ -246,18 +258,25 @@ jobs:
             RUNS_JSON="$(mktemp)"
             MUTED_UNREAD=''
             MUTED_IDS=''
-            if ! gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/${WF_ID}/runs?per_page=100&status=completed" > "$RUNS_JSON"; then
+            MUTED_SHORTFALL=''
+            if ! gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/${WF_ID}/runs?per_page=100&status=completed&created=%3E${LAST_AT}" > "$RUNS_JSON"; then
               MUTED_UNREAD='список прогонов не получен — запрос к GitHub не выполнен'
             elif ! MUTED_IDS="$(notifier_mute_muted_ids "$RUNS_JSON" "$LAST_AT" "$RUN_ID")"; then
               MUTED_UNREAD='список прогонов получен, но не разобран — отказал отбор отказных прогонов'
+            elif ! MUTED_SHORTFALL="$(notifier_mute_page_shortfall "$RUNS_JSON")"; then
+              MUTED_UNREAD='список прогонов получен и разобран, но полнота выборки не сосчитана — отказал счёт непоместившихся прогонов'
             fi
             if [ -n "$MUTED_UNREAD" ]; then
               MUTED_LINE="🔇 Сколько отказов этого уведомителя заглушено с прошлого письма (\`${LAST_AT}\`) — НЕ ПРОЧИТАНО: ${MUTED_UNREAD}. Само письмо это не задержало. Настоящая ошибка напечатана в логе ЭТОГО прогона смотрителя — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}, шаг «Позвонить в тред-приёмник»; в прогонах \`${WF_NAME}\` её нет."
             else
               # shellcheck disable=SC2086
               set -- $MUTED_IDS
-              if [ "$#" -gt 0 ]; then
-                MUTED_LINE="🔇 **Заглушено с прошлого письма (\`${LAST_AT}\`) отказов того же уведомителя: $#** — прогоны $(printf '%s, ' "$@" | sed 's/, $//'). Правило — окно ${NOTIFIER_MUTE_WINDOW_SEC} с по имени уведомителя (\`.github/scripts/notifier-mute.sh\`)."
+              MUTED_RUNS=''
+              [ "$#" -eq 0 ] || MUTED_RUNS=" — прогоны $(printf '%s, ' "$@" | sed 's/, $//')"
+              if [ "$MUTED_SHORTFALL" != 0 ]; then
+                MUTED_LINE="🔇 **Заглушено с прошлого письма (\`${LAST_AT}\`) отказов того же уведомителя: НЕ МЕНЕЕ $#**${MUTED_RUNS}. Это НИЖНЯЯ ГРАНИЦА, а не число: за один запрос GitHub отдаёт 100 новейших прогонов, а с прошлого письма у \`${WF_NAME}\` их завершилось больше — ${MUTED_SHORTFALL} в выборку не поместились, и отказы среди них не сосчитаны. Правило — окно ${NOTIFIER_MUTE_WINDOW_SEC} с по имени уведомителя (\`.github/scripts/notifier-mute.sh\`)."
+              elif [ "$#" -gt 0 ]; then
+                MUTED_LINE="🔇 **Заглушено с прошлого письма (\`${LAST_AT}\`) отказов того же уведомителя: $#**${MUTED_RUNS}. Правило — окно ${NOTIFIER_MUTE_WINDOW_SEC} с по имени уведомителя (\`.github/scripts/notifier-mute.sh\`)."
               else
                 MUTED_LINE="🔇 С прошлого письма (\`${LAST_AT}\`) других отказов этого уведомителя не было — заглушать было нечего."
               fi
