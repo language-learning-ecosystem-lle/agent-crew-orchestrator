@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T17:11:50.572Z",
+  "writtenAt": "2026-09-06T17:12:36.036Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "132-stash-hides-the-aborted-run",
+      "state": "running",
+      "deadline": "2026-09-06T18:12:32Z"
+    },
     {
       "role": "curator",
       "thread": "143-role-card-is-the-second-line",
