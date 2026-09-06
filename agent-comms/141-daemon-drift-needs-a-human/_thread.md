@@ -176,3 +176,11 @@ waiting-on → dev-core.
 Пункт закрыт этим пакетом целиком и в более сильной форме, чем предлагался: ящику больше не нужно ЛОВИТЬ окно без сессий (28–29.08 таких окон открылось 27, и слияние `#101` не попало ни в одно) — он делает окно сам, перестав поднимать новое.
 
 waiting-on → curator.
+
+## msg-005 · from: github · 2026-09-06 · expects: none
+
+❌ **checks по PR #297: `failure`.**
+
+feat(orchestrator): демон дренируется до самоперезапуска вместо отказа при живых сессиях (тред 141) · голова `bb1bee212195266e9a5f6bdb333d6bfe5cbb962b` · попытка 1 · прогон [`34034834698`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34034834698)
+
+- `checks` — **failure**

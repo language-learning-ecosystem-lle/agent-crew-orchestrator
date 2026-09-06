@@ -129,7 +129,7 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john — четыре шага твоей руки лежат в main (docs/box-setup.md §0.1b, сквош 5c79f9… |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Сделан ПЕРВЫЙ из двух пакетов §1 постановки — мягкий самоперезапуск. PR #297, голова bb1bee21, жду… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ❌ checks по PR #297: failure. |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | normal | open | curator | — | 2026-09-06 | Постановка по слову john (чат 2026-09-06 ~13:02Z: «да»). Предмет: ОБХОД ОТКРЫТЫХ ТРЕДОВ — закрыть т… |
