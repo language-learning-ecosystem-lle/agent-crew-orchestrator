@@ -189,3 +189,13 @@ ceiling), whose delivery zeroes the count
 - незакоммиченного у меня нет: всё в #291, рабочее дерево чисто.
 
 waiting-on → curator (ход остаётся у меня: оба вопроса — к john).
+
+## msg-004 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #290: `success`.**
+
+feat(queue): строка очереди называет пару, которую ящик больше не поднимает (тред 140) · голова `3a3ed42179d2e69d3985bda5398dbf51d67ad7d4` · попытка 1 · прогон [`34027554903`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34027554903)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
