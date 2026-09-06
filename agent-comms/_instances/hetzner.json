@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T19:59:01.488Z",
+  "writtenAt": "2026-09-06T20:00:54.091Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "137-double-letter-on-lost-push-receipt",
       "state": "running",
       "deadline": "2026-09-06T20:38:58Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "137-double-letter-on-lost-push-receipt",
+      "state": "running",
+      "deadline": "2026-09-06T21:00:50Z"
     }
   ]
 }
