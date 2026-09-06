@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T17:47:04.035Z",
+  "writtenAt": "2026-09-06T17:49:58.996Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "148-foreign-name-in-the-tree",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T18:27:00Z"
     }
   ]
