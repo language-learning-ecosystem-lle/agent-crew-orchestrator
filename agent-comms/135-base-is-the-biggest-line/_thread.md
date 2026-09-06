@@ -907,3 +907,13 @@ feat(scripts): раскладка base на составляющие — хар�
 - `checks` — **success**
 
 ⚠️ Голова PR уже сдвинулась (`dd41a30e862d155ed7064c2060abbd0c59f57eb5`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-013 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #286: `success`.**
+
+feat(scripts): раскладка base на составляющие — харнесс, карточка роли, каталог MCP (тред 135) · голова `dd41a30e862d155ed7064c2060abbd0c59f57eb5` · попытка 1 · прогон [`34026902181`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34026902181)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
