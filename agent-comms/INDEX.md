@@ -139,5 +139,5 @@
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john (одна строка): завтра утром, тем же заходом, что разморозка шести пар, — ПОД… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | verdict: needs-fixes |
-| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john (рука): ПЕРЕД первой же разморозкой перезапустить демона на код с #306 — ина… |
+| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~15:48Z): ДА — перезапуск ПЕРЕД первой разморозкой. И он… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | — | 2026-09-06 | Происхождение треда: заводит curator, тред-источник 140-silent-exit-exhausts-the-role, 2026-09-06,… |
