@@ -53,9 +53,19 @@ const flag = (view: LeaseView, closed: boolean): string => {
     // "UNTIL THEN" ONLY WHERE THERE IS A "THEN" (thread 016, defect 2). The tail used to be
     // glued on unconditionally, and after #23 gave the terminal branches their own words the
     // half-sentence pointed at a moment its own sentence no longer named.
+    // AND THE FRAME NAMES THE WAY OUT, not only the circle (thread 150). The sentence below
+    // explains exactly why nothing lifts this by itself — the count is zeroed by a delivery,
+    // every shape of a delivery is written by a run, and the run is what is refused — and
+    // until `orchestrator thaw` existed it had no move to end on. It is added ONLY to the
+    // freeze with no term: a pair mid-backoff is thawed by the box at a moment this same
+    // line already names, and a command offered there would be noise on top of an answer.
     return `  ⚠ EXHAUSTED (${describeFreeze(freeze)}) — no more attempts${
       freezeHasTerm(freeze) ? " until then" : ""
-    }; what zeroes the count is a DELIVERY OF THIS PAIR (a completed run, a handoff, or a break whose own session signed a message in the mail), and every shape of it is written by a run, see the journal`;
+    }; what zeroes the count is a DELIVERY OF THIS PAIR (a completed run, a handoff, or a break whose own session signed a message in the mail), and every shape of it is written by a run, see the journal${
+      freezeHasTerm(freeze)
+        ? ""
+        : `. The move is 'orchestrator thaw --role ${view.role} --thread ${view.thread} --by <you> --write', which gives the pair one more launch`
+    }`;
   }
   // WHICH deadline has passed is said out loud, because the two mean opposite things:
   // an overrun of the work window is a session that did not fit, an overrun of a WAIT
