@@ -97,3 +97,13 @@ GITHUB_REPOSITORY=language-learning-ecosystem-lle/agent-crew-orchestrator \
 Запаркован на `run:313`: у PR нет метки `review`, а зелёный `checks` на PR без метки — то самое
 названное исключение, на котором `ci-outcome.yml` возвращает ход роли из строки `role:`
 (`docs/install-notes.md`, §1). Красный исход вернёт ход тем же письмом.
+
+## msg-003 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #313: `success`.**
+
+chore(foreign-name-watch): пути живого ящика в install-notes — законное место, названное причиной (тред 148) · голова `cccb23ae5dffb4296e78f70fb524a6737f2714ce` · попытка 1 · прогон [`34048929905`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34048929905)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
