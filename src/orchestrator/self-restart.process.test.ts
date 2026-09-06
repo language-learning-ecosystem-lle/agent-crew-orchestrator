@@ -60,6 +60,7 @@ import {
   describeSelfRestartDrain,
   parseSelfRestartMemory,
   SELF_RESTART_EXIT_CODE,
+  selfRestartEvent,
 } from "./self-restart.js";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
@@ -523,7 +524,18 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       // not going anywhere until the session it is waiting for closes by itself.
       expect(said).not.toContain("SELF-RESTART: the loaded code is behind");
       expect(said).not.toContain("handed over to the restart process");
-      expect(existsSync(join(home.repo, ".orchestrator", "self-restart.json"))).toBe(false);
+      // "NO ATTEMPT IS SPENT" IS ASKED OF THE COUNT, NOT OF THE FILE. This line used to
+      // read `existsSync(...) === false`, and that was a proxy: nothing was written on a
+      // drain, so absence stood in for the property. Since the drain stamps the moment it
+      // began (the fact the letter about a restart cannot recover afterwards), the file is
+      // there and the property is unchanged — so it is now measured where it lives. The
+      // narrowing is deliberate: an existence assert says "nothing was announced", which
+      // is a different and no longer true statement.
+      const drained = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      expect(drained?.attempts).toBe(0);
+      expect(drained?.target).toBe(git(home.repo, "rev-parse", "origin/main").trim());
 
       // THE STANDOFF IS PUBLISHED, AND IT IS A FILE ON THIS DISK (thread 044). The line
       // above proves the daemon SAID it; only this proves the courier can READ it, and the
@@ -554,6 +566,82 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       expect(standoff?.since).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     },
     2 * HANG_CEILING_MS,
+  );
+
+  it(
+    "carries the facts of the event across the exit — a SECOND process reads what the first wrote",
+    () => {
+      // THE ONE CLASS A UNIT CANNOT MEASURE (thread 141, curator's statement of
+      // 2026-09-06 §1: "факты переживают выход процесса файлом, и файл этот пишется ДО
+      // выхода"). The letter about a self-restart is written by the process that came up
+      // AFTER it, and its four facts live in the one that left. A version of this that
+      // held them in memory passes every unit ever written for it and delivers a letter
+      // with an empty middle on the box — so the test is two SEPARATE invocations of the
+      // CLI, and the second is given nothing but the disk.
+      const home = homeContour();
+      const journal = join(home.repo, ".orchestrator", "journal.jsonl");
+      mkdirSync(join(home.repo, ".orchestrator"), { recursive: true });
+      writeFileSync(
+        journal,
+        `${JSON.stringify({
+          kind: "lease-acquired",
+          ts: "2026-07-25T10:00:00Z",
+          role: "dev-core",
+          thread: "055-x",
+          deadline: "2099-01-01T00:00:00Z",
+        })}\n`,
+      );
+
+      // TICK 1 — a session is live, so the box drains and stamps the moment it began.
+      expect(tick(home.cli, home.repo)).toContain("DRAINING TO RESTART");
+      const began = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      expect(began?.drainSince).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      // "What the code WAS" is stamped while it still is: the successor can only ever read
+      // the SHA it now runs, so a `from` taken after the restart would name the wrong end.
+      expect(began?.from).toBe(git(home.repo, "rev-parse", "HEAD").trim());
+      expect(began?.behind).toBe(1);
+
+      // TICK 2 — the session has closed. Same box, NEW process: the wait ends, the box
+      // goes, and the memory it leaves for its successor must still carry the beginning of
+      // a wait that happened in a process which no longer exists.
+      writeFileSync(
+        journal,
+        `${readFileSync(journal, "utf8")}${JSON.stringify({
+          kind: "lease-released",
+          ts: "2026-07-25T11:00:00Z",
+          role: "dev-core",
+          thread: "055-x",
+          reason: "completed",
+        })}\n`,
+      );
+      expect(tick(home.cli, home.repo)).toContain("SELF-RESTART: the loaded code is behind");
+
+      const memory = parseSelfRestartMemory(
+        readFileSync(join(home.repo, ".orchestrator", "self-restart.json"), "utf8"),
+      );
+      // The attempt is now spent — the `go` is a try and it is counted, exactly as before.
+      expect(memory?.attempts).toBe(1);
+      // AND THE STAMP OF THE FIRST PROCESS SURVIVED THE SECOND'S WRITE. This is the whole
+      // case: a `go` that rebuilt the record from what it can see would silently drop the
+      // one fact nothing else holds, and every assertion above would still pass.
+      expect(memory?.drainSince).toBe(began?.drainSince);
+      expect(memory?.from).toBe(began?.from);
+      expect(memory?.behind).toBe(1);
+
+      // And the successor, reading that file and nothing else, recognises the restart as
+      // its own and gets all four facts of it — the input of the letter, end to end.
+      const event = selfRestartEvent({
+        memory,
+        loaded: git(home.repo, "rev-parse", "origin/main").trim(),
+      });
+      expect(event?.from).toBe(began?.from);
+      expect(event?.to).toBe(git(home.repo, "rev-parse", "origin/main").trim());
+      expect(event?.behind).toBe(1);
+      expect(event?.waitedForSec).toBeGreaterThanOrEqual(0);
+    },
+    3 * HANG_CEILING_MS,
   );
 
   it(
