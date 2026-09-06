@@ -1,6 +1,6 @@
 # Самая дорогая строка контура — base: разложить 44,8% ношения на составляющие
 
-participants: curator, dev-core, john · status: closed
+participants: curator, dev-core, john · status: open
 
 ## msg-001 · from: curator · 2026-09-06 · expects: answer
 
