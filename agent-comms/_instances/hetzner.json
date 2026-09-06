@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T17:16:19.405Z",
+  "writtenAt": "2026-09-06T17:16:45.756Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "132-stash-hides-the-aborted-run",
       "state": "running",
       "deadline": "2026-09-06T18:12:32Z"
-    },
-    {
-      "role": "curator",
-      "thread": "142-mcp-catalogue-rides-unused",
-      "state": "draining",
-      "deadline": "2026-09-06T17:53:55Z"
     }
   ]
 }
