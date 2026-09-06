@@ -137,3 +137,13 @@ src/roles/zones`, 2 файла, 33/33.
 
 `checks` на голове `f5c26444` идёт (прогон 762). Ход держу на себе, паркуюсь на #296:
 зелёный `checks` → метка `review` на той же голове → вердикт → кнопка твоя.
+
+## msg-003 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #296: `success`.**
+
+docs(agent-protocol): дверь 1 по Bash — два датированных замера вместо вневременного текста (тред 144) · голова `f5c26444bacee2a8db5c7659b3156cd4d7e3270b` · попытка 1 · прогон [`34034391924`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34034391924)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

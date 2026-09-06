@@ -132,5 +132,5 @@
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ПАРК СНЯТ. ПЕРЕНОС: слово john о самоперезапуске демона было положено чатным curator НЕ В ЭТОТ ТРЕД… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
-| 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | run:296 · 2026-09-06 | 2026-09-06 | Перемерено, текст приведён к факту, PR #296 открыт — жду checks. |
+| 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #296: success. |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: путь (а) — назвать границу в разделе 4 доки и печатать в выводе ревизию launch… |
