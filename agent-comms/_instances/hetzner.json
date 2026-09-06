@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T15:33:06.488Z",
+  "writtenAt": "2026-09-06T15:33:21.201Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "150-no-way-to-thaw-an-exhausted-pair",
       "state": "draining",
       "deadline": "2026-09-06T16:30:43Z"
+    },
+    {
+      "role": "curator",
+      "thread": "132-stash-hides-the-aborted-run",
+      "state": "running",
+      "deadline": "2026-09-06T16:13:17Z"
     }
   ]
 }
