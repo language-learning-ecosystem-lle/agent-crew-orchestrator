@@ -85,3 +85,4 @@
 - [Предложенное вердиктом действие бывает красно своим же критерием](reviewer-proposed-fix-can-break-its-own-criterion.md) — перечитывай `REVIEWER.md`, а не абзац вердикта; ищи санкционированную дверь пакета.
 - [`intent: policy` не отдаёт полей почты](config-intent-data-vs-policy.md) — выбор `data`/`policy` для исторических ref меряется `protocolVersion` по ревизиям окна.
 - [«Не звонит ничто» проверяется в `notify.state`](silence-claim-is-checked-in-notify-state.md) — ключ пишется только после успешной доставки; `daemon.log` тут не доказывает ничего.
+- [`mail` судит по чекауту, не по `--ref`](mail-reads-the-checkout-not-the-ref.md) — расхождение с `thread show` про статус треда: сначала думать «чекаут почты отстаёт», а не «дефект».
