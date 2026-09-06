@@ -31,3 +31,5 @@ the window of this run, **not proof of its authorship**» — это не ост
 
 Смежное — [[merged-code-is-not-running-code]], [[vendor-sandbox-measures-for-free]],
 [[reported-instance-is-a-sample]].
+
+**Из указателя (перенесено 2026-09-06, оглавление шло за потолок):** `curator@agents.invalid` один в обоих домах: чужой чекаут атрибутируется номером треда и окном, а не автором; мера 4 переживает меру 5 (чтение refs остаётся)

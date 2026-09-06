@@ -36,3 +36,5 @@ metadata:
 (оборванная сессия = неудачная попытка, три подряд = роль выключена). Родня:
 [[merged-code-is-not-running-code]], [[reproduce-with-the-tool-that-measured]],
 [[reported-instance-is-a-sample]].
+
+**Из указателя (перенесено 2026-09-06, оглавление шло за потолок):** рестарт юнита группу не подтягивает: креды держит `systemd --user` (PPID 1), мерится `/proc/<pid>/status` у трёх звеньев

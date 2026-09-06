@@ -52,3 +52,5 @@ packages .github` (пусто = код побайтно равен зелёно�
 [[decision-may-presuppose-a-missing-mechanism]], [[delta-gated-watcher-is-silent-on-a-clean-tree]],
 [[green-is-only-the-runners-command]], [[reproduce-with-the-tool-that-measured]],
 [[reported-instance-is-a-sample]].
+
+**Из указателя (перенесено 2026-09-06, оглавление шло за потолок):** ни `run rerun`, ни `workflow_dispatch` (403 называет `actions=write` сам); `checks` перезапускается close+reopen, а приёмка через диспатч — кнопка john

@@ -31,3 +31,5 @@ python3 -c "import yaml; d=yaml.safe_load(open('$D/cr.yml')); print(list(d['jobs
 `shellcheck` в контуре НЕ установлен (проверено `command -v`), поэтому статики глубже синтаксиса нет
 ни у прогона, ни у роли — это называется вслух, а не подразумевается. Родня: [[green-is-only-the-runners-command]],
 [[acceptance-on-the-merged-tree-is-cheap]], [[guard4-reach-ends-at-workflows]].
+
+**Из указателя (перенесено 2026-09-06, оглавление шло за потолок):** круг самопропускается, а в `checks.yml` нет ни actionlint, ни shellcheck: YAML и `bash -n` по блокам `run:` — рука curator

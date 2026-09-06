@@ -29,3 +29,5 @@ metadata:
 проверяется точно: `git rev-parse <сквош>^{tree}` = перемеренному дереву. Связано:
 [[pinned-blob-rots-in-the-review-circle]], [[base-move-note-answered-by-measure]],
 [[acceptance-on-the-merged-tree-is-cheap]], [[norm-or-repair-is-read-in-the-diff]].
+
+**Из указателя (перенесено 2026-09-06, оглавление шло за потолок):** `git diff origin/main <голова>` на отставшей ветке печатает чужие мержи как удаления и кладёт в дифф доки власти, которых там нет
