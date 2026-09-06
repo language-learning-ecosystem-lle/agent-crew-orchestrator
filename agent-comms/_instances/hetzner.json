@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T10:02:21.548Z",
+  "writtenAt": "2026-09-06T10:06:08.330Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "135-base-is-the-biggest-line",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T11:02:18Z"
     },
     {
