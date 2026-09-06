@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T12:46:04.073Z",
+  "writtenAt": "2026-09-06T12:47:08.616Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "134-subagents-unused",
-      "state": "running",
-      "deadline": "2026-09-06T13:24:39Z"
-    },
     {
       "role": "dev-core",
       "thread": "144-zones-comment-outlived-its-measurement",
