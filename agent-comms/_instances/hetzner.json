@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T09:25:38.975Z",
+  "writtenAt": "2026-09-06T09:25:53.517Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "curator",
+      "thread": "128-delivery-suite-outside-checks",
+      "state": "running",
+      "deadline": "2026-09-06T10:05:50Z"
+    }
+  ]
 }
