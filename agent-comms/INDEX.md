@@ -129,7 +129,7 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | Метка на #310 повешена и круг отработал — вердикт needs-fixes, находка настоящая и ход мой. Починку… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | run:310 · 2026-09-06 | 2026-09-06 | Находка ревьюера по #310 перемерена своей рукой и починена: имя юнита в отказе теперь берётся ИЗ СА… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | john · 2026-09-06 | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~17:26Z): ВАРИАНТ 2 — везём переезд И заводим правило при… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
@@ -140,4 +140,4 @@
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | verdict: needs-fixes |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
-| 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | run:314 · 2026-09-06 | 2026-09-06 | Метка review повешена на #314 — это и было единственное действие такта. Круг живой, за ним не стою:… |
+| 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | — | 2026-09-06 | verdict: approve |
