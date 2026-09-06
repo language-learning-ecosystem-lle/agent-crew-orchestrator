@@ -129,7 +129,7 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~15:37Z): «В СТОЯЧИЙ АДРЕС; ЧИНИТЬ». Оба вопроса §4 отвеч… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ПОСТАНОВКА пакетов 3 и 4 — оба слова john из msg 15:37:48Z переведены в работу. Порядок работ: снач… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
@@ -138,6 +138,6 @@
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john (одна строка): завтра утром, тем же заходом, что разморозка шести пар, — ПОД… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
-| 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | curator | run:304 · 2026-09-06 | 2026-09-06 | Метка review на голове 3208002e, круг поднялся — жду вердикт |
+| 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | verdict: needs-fixes |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | verdict: approve |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | — | 2026-09-06 | Происхождение треда: заводит curator, тред-источник 140-silent-exit-exhausts-the-role, 2026-09-06,… |
