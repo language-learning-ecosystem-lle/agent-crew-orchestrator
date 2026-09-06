@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: dba3e827-bdc5-4116-98bc-8d15ab97a478
-  modified: 2026-09-06T09:06:11.101Z
+  modified: 2026-09-06T14:05:31.271Z
 ---
 
 Номера тредов ПЛОСКИЕ: `fs/comms.ts:34` — `const THREAD_DIR = /^\d{3}-/`. Каталог `047.1-…` не матчится и невидим для `thread show`, `mail` и демона. При этом `new-thread --write` такой id ПРИНИМАЕТ, коммитит и пушит с ответом «opened … committed and pushed» — измерено 2026-09-02, каталог `agent-comms/047.1-devops-enablement-acceptance`, коммит `3a17566c`, остался мусором в ветке (файлы почты рукой не убираются).
@@ -17,5 +17,7 @@ metadata:
 **Этот каталог ломает ЛЮБОЙ счёт тредов, и расхождение читается как арифметика.** Измерено 2026-09-04 (тред 124, находка ревьюера «115 против 114»): `git ls-tree --name-only origin/comms agent-comms/ | grep -cE 'agent-comms/[0-9]{3}-'` → 114, тот же счёт без дефиса (`[0-9]{3}`) → 115. Лишний ровно один — `047.1-devops-enablement-acceptance`. Два счётчика, оба правые, спорят о методе, а выглядят как ошибка на единицу ([[verify-the-grep-pattern-not-its-result]]).
 
 **Свободный номер ищется ЦИКЛОМ по двери, а не чтением корня почты.** `new-thread --id NNN-slug` отказывает на занятом номере и НАЗЫВАЕТ занявшего («the number … is already taken by `<id>` — a thread number is its short address, pick the next free one»), запись при этом не делается. Значит `for n in 136 137 138; do new-thread --id $n-… --write && break; done` даёт дом с первой попытки и без `ls` — измерено 2026-09-06 (135 занят `135-base-is-the-biggest-line`, лёг 136). `ls` корня остаётся нужен для другого вопроса — «есть ли уже ДОМ под этот предмет».
+
+**Закрыть такой каталог НЕЧЕМ — двери нет и на закрытие.** Измерено 2026-09-06T14:02:09Z (тред 147, обход открытых тредов): `thread status --thread 047.1-… --status closed --write` отказывает по имени тем же обходчиком («not a thread the mail can read … Sub-thread numbering ('NNN.M') is not a form this protocol has»). То есть каталог остаётся `open` навсегда: в очередь он не встаёт (невидим такту), а из перечня открытых не уходит (сырое чтение `_meta.md` его видит). Починка — переименование каталога рукой в ветке `comms`, мимо R3, то есть не роль. В обходе такой каталог называется отдельным пунктом «осиротел по построению», а не «забыли закрыть».
 
 **Номер выдаёт дверь, а не набирающий.** `new-message --ensure-thread` принимает ТОЛЬКО хвост-слаг: полный id она отказывает по имени («a whole thread id, not a slug … would be opened as `<next free NNN>-123-…`, i.e. a number in front of a number»), потому что сама печатает «no thread of this address exists yet — opening `NNN-<slug>` as its receiver». Измерено 2026-09-04 при заведении `123-repair-refusal-not-in-the-digest`: отказ немой цены, но `ls` корня почты всё равно нужен — чтобы знать, СУЩЕСТВУЕТ ли уже дом под этот предмет, а не чтобы вычислить номер. `thread status` при этом требует `--from <role>` (без него печатает usage, а не закрывает).
