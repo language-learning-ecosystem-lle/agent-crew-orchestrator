@@ -1611,11 +1611,40 @@ const mailFormUndeclared =
  * two endings it does not have, and the measured consequence is that the session attempts
  * them anyway. The 018 norm is not narrowed for anybody else: what narrows is the
  * DESCRIPTION handed to the one role whose second exit is closed by construction.
+ *
+ * AND THE EMPTY TURN IS NAMED, because the text used to leave it out and the omission cost
+ * a role three days (thread `140`, curator's measurement of 2026-09-06). Read line by line,
+ * the paragraph above describes the end of WORK on both sides: the two legal endings both
+ * carry something ("report in the thread", a blocking wait held open), and the sentence that
+ * forbids the third ending forbids leaving-in-order-to-WAIT and only that. Leaving because
+ * there is nothing worth doing was not in the text at all. The field case is unambiguous and
+ * it is not a crash: on 2026-09-03 the `devops` session exited 0 after 15 turns with
+ * "18 minutes left on the lease — plenty of margin, nothing left to do productively though,
+ * so I'm ending here rather than burning the rest of the window" — and wrote nothing into the
+ * thread. Three of those in a row put the pair at the attempt ceiling, and five threads
+ * (`047`, `056`, `057`, `070`, `079`) then sat for three days looking like work in progress.
+ * Formally that session broke "exactly two endings"; practically the text gave it no reason
+ * to think so, and a norm nobody can find in their own prompt is not a norm they broke.
+ *
+ * SO IT SAYS TWO THINGS, and the second is the one that makes it bite. First: an empty turn
+ * IS a report — the second ending covers it, the letter is short, and the shortness is the
+ * point. Second: the box counts a raise WITHOUT A DELIVERY as a failed attempt whatever the
+ * exit code, and the third one takes the pair out of the queue — so the window "saved" by
+ * leaving early is paid for with the role's own next lift. The session that got this wrong
+ * was being frugal on purpose; an argument against it has to answer the frugality in its own
+ * terms, which the price does and an instruction does not.
+ *
+ * THE CEILING HALF IS SAID ONLY TO THE WRITING RUN, and that is a measurement rather than a
+ * convenience: a handoff is detected from the mail (`observe.ts`), so a run held to read-only
+ * tools cannot produce one and its attempt is spent by construction, whatever it does. Telling
+ * it "silence costs you an attempt" would be the same species of invented fact the norm of
+ * 2026-08-30 removed from this very paragraph. What is true for it — that a finding of "there
+ * is nothing here" is an answer and has to be PRINTED like one — is what it is told instead.
  */
 const runEndsNorm = (form: MailForm, run: RunFacts): string =>
   form.writesHeldBy !== undefined
-    ? "ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So your run ends in exactly ONE way: you PRINT your answer and stop. There is no second ending for you — parking for input and passing the turn are both writes into the mail, and this run cannot make one. Never sit in the foreground waiting a run out — a CI job, a review round, a verdict on a pull request: none of them can report back into this process, and the wait only burns the clock and holds your role's one slot against the queue. If the work does not fit inside this run, print what you have and say plainly what is missing: a printed partial answer is delivered, an unprinted perfect one dies with the process."
-    : `ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (${awaitInputCall(form, run)} above, or a command of YOUR OWN work you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead. AND THE FOREGROUND ENDING IS NEVER FOR SOMEONE ELSE'S RUN: a CI job, a review round, a verdict on a PR you opened or labelled all report into the thread by themselves, so waiting one out here only burns the clock and holds your role's one slot against the queue. Started one? Say so in the thread, park on it (\`--parked-on run:<N>\` or \`pr:<N>\`) when nothing else can move, and pass the turn — the next tick reads the finished verdict.`;
+    ? "ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So your run ends in exactly ONE way: you PRINT your answer and stop. There is no second ending for you — parking for input and passing the turn are both writes into the mail, and this run cannot make one. Never sit in the foreground waiting a run out — a CI job, a review round, a verdict on a pull request: none of them can report back into this process, and the wait only burns the clock and holds your role's one slot against the queue. If the work does not fit inside this run, print what you have and say plainly what is missing: a printed partial answer is delivered, an unprinted perfect one dies with the process. AND FINDING NOTHING TO DO IS NOT A REASON TO PRINT NOTHING: \"there is no work here\" is an ANSWER — print what you looked at, why it is empty and what you think should happen next, in the same words you would use to report work. An exit with an empty stream is indistinguishable from a crash to everyone downstream, and the emptiness you found is exactly the thing nobody else knows yet."
+    : `ENDING YOUR TURN ENDS THIS SESSION — there is no waking back up. When you stop with nothing queued, the process exits; anything that arrives afterwards (a background task finishing, a CI run, a reviewer's verdict) reaches a dead process, and no resume happens. So a run ends in exactly one of two ways: you WAIT IN THE FOREGROUND on a blocking call that holds the turn open (${awaitInputCall(form, run)} above, or a command of YOUR OWN work you run and wait out), or you report in the thread and pass the turn on, leaving the waking-up to the circuit. Finishing your turn meaning to come back when something reports is never one of them — say what you are waiting for in the thread and hand the turn over instead. AND THE FOREGROUND ENDING IS NEVER FOR SOMEONE ELSE'S RUN: a CI job, a review round, a verdict on a PR you opened or labelled all report into the thread by themselves, so waiting one out here only burns the clock and holds your role's one slot against the queue. Started one? Say so in the thread, park on it (\`--parked-on run:<N>\` or \`pr:<N>\`) when nothing else can move, and pass the turn — the next tick reads the finished verdict. AND NEITHER IS FINISHING BECAUSE THERE IS NOTHING WORTH DOING: an EMPTY TURN IS STILL REPORTED — "I found no work here" is a report, and the second ending above is the one it goes out by. Write what you looked at, why it is empty and who you think acts next; short is fine, silent is not. THE PRICE IS YOUR OWN NEXT LIFT: a raise that delivers nothing counts as a FAILED ATTEMPT however cleanly the process exits, and after the third one the box stops raising this pair altogether — nothing lifts it by itself and no message into this thread lifts it either. So leaving early to save the window spends the role instead of the window, and until somebody notices, the thread goes on looking to every reader like work in progress.`;
 
 /**
  * THE NORM OF WINDING DOWN, in the session's own prompt (R20, john's decision) — the

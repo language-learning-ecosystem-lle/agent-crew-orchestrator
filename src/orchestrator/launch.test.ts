@@ -351,6 +351,97 @@ describe("buildLaunchPrompt", () => {
 });
 
 /**
+ * THE EMPTY TURN IS AN ENDING THE PROMPT NAMES (thread `140-silent-exit-exhausts-the-role`).
+ *
+ * WHY IT IS TESTED HERE AND NOT IN `PROTOCOL.md`. Norm 018 itself says that the text a
+ * session reads is `runEndsNorm` in this file, and curator's measurement of 2026-09-06
+ * confirmed it word for word against a live raise: a paragraph added to `PROTOCOL.md`
+ * does not reach a raised session at all. So the norm and its CARRIER are two changes,
+ * and this suite is the carrier's half.
+ *
+ * WHAT WAS MISSING, read off the old text rather than guessed: both legal endings
+ * described the end of WORK, and the sentence forbidding the third ending forbade
+ * leaving-in-order-to-WAIT and only that. The `devops` session of 2026-09-03 exited 0,
+ * on time, with 18 minutes of lease left and nothing written into its thread — "nothing
+ * left to do productively" is a case the paragraph did not mention, so it read as one
+ * the paragraph allowed. Three of those cost the pair its place in the queue and five
+ * threads three days of looking busy.
+ *
+ * BOTH BRANCHES ARE ASSERTED, AND THEY ARE ASSERTED TO DIFFER. The writing run is told
+ * the price (a raise without a delivery is a failed attempt, the third takes the pair off
+ * the queue); the read-only run is NOT, because its attempt is spent by construction —
+ * a handoff is read out of the mail it cannot write — and saying otherwise would be the
+ * invented fact thread `038` took out of this same paragraph.
+ */
+describe("buildLaunchPrompt — an empty turn is still reported (thread 140)", () => {
+  const base = {
+    role: "devops",
+    thread: "047-devops-role",
+    instructions: [{ path: "docs/roles/devops.md", text: "the card" }],
+    deadline: "2026-09-06T15:00:00Z",
+    windDownSeconds: 720,
+    mail: { command: "cli", root: "/mail/agent-comms", ref: "origin/main" },
+  } as const;
+
+  it("NAMES LEAVING-BECAUSE-THERE-IS-NOTHING-TO-DO AS AN ENDING THAT STILL WRITES", () => {
+    // The field sentence, near enough verbatim: "nothing left to do productively though,
+    // so I'm ending here rather than burning the rest of the window". The paragraph has
+    // to answer it in its own terms — the empty finding IS the report — or the next
+    // session reasons the same way from the same silence.
+    const prompt = buildLaunchPrompt(base);
+    expect(prompt).toContain("NEITHER IS FINISHING BECAUSE THERE IS NOTHING WORTH DOING");
+    expect(prompt).toContain("an EMPTY TURN IS STILL REPORTED");
+    // And it says what goes in the letter, so that "report it" is an instruction and not
+    // a mood: a session told only "write something" writes an apology.
+    expect(prompt).toContain("what you looked at, why it is empty and who you think acts next");
+    expect(prompt).toContain("short is fine, silent is not");
+  });
+
+  it("PRICES THE SILENT EXIT IN THE ROLE'S OWN NEXT LIFT — the half that answers the frugality", () => {
+    // The session was not careless, it was SAVING the window on purpose. An instruction
+    // does not argue with that; the count does, and the count is the fact it had no way
+    // of knowing: the attempt is spent by the raise, not by the exit code.
+    const prompt = buildLaunchPrompt(base);
+    expect(prompt).toContain("a raise that delivers nothing counts as a FAILED ATTEMPT");
+    expect(prompt).toContain("however cleanly the process exits");
+    expect(prompt).toContain("after the third one the box stops raising this pair altogether");
+    // ...including that no letter into this thread brings it back — the move a reader
+    // reaches for first, and the one that does nothing.
+    expect(prompt).toContain("no message into this thread lifts it either");
+  });
+
+  it("A RUN THAT CANNOT WRITE IS TOLD THE SAME NORM IN THE ENDING IT HAS — and NOT the count", () => {
+    // Its one ending is the print, so the empty finding is a thing to PRINT. The ceiling
+    // half is withheld deliberately: a handoff is detected out of the mail (`observe.ts`),
+    // this run cannot write the mail, so its attempt is spent whatever it does — telling
+    // it the silence costs an attempt would be false, and false in exactly the way the
+    // norm of 2026-08-30 removed from this paragraph.
+    const prompt = buildLaunchPrompt({
+      ...base,
+      mail: { writesHeldBy: "sandbox-read-only" },
+    });
+    expect(prompt).toContain("FINDING NOTHING TO DO IS NOT A REASON TO PRINT NOTHING");
+    expect(prompt).toContain("indistinguishable from a crash");
+    expect(prompt).not.toContain("FAILED ATTEMPT");
+    expect(prompt).not.toContain("stops raising this pair");
+    // ...and it is not handed the writing run's ending on the way in, either.
+    expect(prompt).not.toContain("EMPTY TURN IS STILL REPORTED");
+  });
+
+  it("keeps the empty turn inside the endings paragraph, not in the landing one (thread 018)", () => {
+    // The two answer different questions — "a finished turn is final" vs "land before the
+    // deadline" — and winding down is an ending WITH work in hand. Putting the empty turn
+    // in the landing paragraph would read as "report emptiness only near the deadline".
+    const prompt = buildLaunchPrompt(base);
+    const noResume = prompt.indexOf("ENDING YOUR TURN ENDS THIS SESSION");
+    const landing = prompt.indexOf("YOUR RUN HAS A DEADLINE");
+    const empty = prompt.indexOf("NEITHER IS FINISHING BECAUSE THERE IS NOTHING WORTH DOING");
+    expect(empty).toBeGreaterThan(noResume);
+    expect(empty).toBeLessThan(landing);
+  });
+});
+
+/**
  * THE PROMPT STOPS INVENTING FACTS ABOUT THE ROLE (`PROTOCOL.md`, john's decision of
  * 2026-08-30, thread `038-pilot-codex-live-run`).
  *
