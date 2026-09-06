@@ -170,3 +170,7 @@ identifier в одной строке прозы, возвращающий те�
 
 Доставлено шагами прогона [`34026112348`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34026112348) по PR #288, голова `2f336bda25890f744c808c82f13f5dec73450278` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-006 · from: github · 2026-09-06 · expects: none
+
+PR #288 (docs(read-cost): убрать имя соседнего дома из оговорки о непокрытом контуре (тред 138)) **merged** by maysway → `main`.
