@@ -140,14 +140,6 @@ for (const [model, ts] of byModel) {
 
 const git = (args) => execFileSync("git", ["-C", REPO, ...args], { encoding: "utf8" });
 
-/** Какой файл карточки у роли — по конфигу репозитория (текущему; см. «непокрытое» в доке). */
-const config = JSON.parse(readFileSync(join(REPO, "agent-protocol.json"), "utf8"));
-const cardPathOf = new Map();
-for (const r of config.roles ?? []) {
-  const doc = (r.instructions ?? []).find((d) => d.kind === "in-repo" && d.path);
-  if (doc) cardPathOf.set(r.id ?? r.name, doc.path);
-}
-
 /** История одного пути: [{ts, sha}], новые первыми. */
 const historyCache = new Map();
 function historyOf(path) {
@@ -180,6 +172,38 @@ function fileAt(path, ts) {
     }
   }
   return blobCache.get(key);
+}
+
+const CONFIG_PATH = "agent-protocol.json";
+const configCache = new Map();
+/**
+ * Конфиг и раскладка «роль → путь карточки» на момент `ts`; `null` — конфига тогда ещё не было
+ * или он не разбирается. Читается тем же `git show`, что и сама карточка, а НЕ живым рабочим
+ * деревом: роль или путь её карточки, дописанные в фиче-ветке или изменённые за окно, иначе
+ * выглядели бы действующими всё окно назад. За окно 01.09…06.09 конфиг менялся дважды.
+ */
+function configAt(ts) {
+  const rev = historyOf(CONFIG_PATH).find((c) => c.ts <= ts);
+  const key = rev?.sha ?? "none";
+  if (!configCache.has(key)) {
+    let entry = null;
+    const text = rev ? fileAt(CONFIG_PATH, ts) : null;
+    if (text) {
+      try {
+        const config = JSON.parse(text);
+        const cardPathOf = new Map();
+        for (const r of config.roles ?? []) {
+          const doc = (r.instructions ?? []).find((d) => d.kind === "in-repo" && d.path);
+          if (doc) cardPathOf.set(r.id ?? r.name, doc.path);
+        }
+        entry = { config, cardPathOf };
+      } catch {
+        entry = null;
+      }
+    }
+    configCache.set(key, entry);
+  }
+  return configCache.get(key);
 }
 
 /**
@@ -222,10 +246,13 @@ function memoryCharsAt(role, ts) {
 
 /** Шаблон промпта оркестратора и карточка — ровно так, как их складывает `buildLaunchPrompt`. */
 function promptPartsAt(tick) {
-  const path = cardPathOf.get(tick.role);
+  const at = configAt(tick.ts);
+  if (!at) return null;
+  const path = at.cardPathOf.get(tick.role);
   if (!path) return null;
   const text = fileAt(path, tick.ts);
   if (text === null) return null;
+  const { config } = at;
   const mail = {
     command: "node --import tsx packages/agent-protocol/src/cli.ts",
     root: `${config.orchestrator?.mailCheckout ?? ""}/${config.mail?.dir ?? "agent-comms"}`,
