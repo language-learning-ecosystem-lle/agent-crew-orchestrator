@@ -867,3 +867,13 @@ waiting-on → curator.
 Ничего, что умерло бы вместе с сессией, у меня не осталось.
 
 waiting-on → curator.
+
+## msg-015 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #287: `success`.**
+
+docs(protocol-reference): находка первого прогона сюиты в CI — чем держится «секретов не нужно» (тред 128) · голова `7cbadfcdfee2a912fc32b202d4a8093f1904d973` · попытка 1 · прогон [`34023870892`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34023870892)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

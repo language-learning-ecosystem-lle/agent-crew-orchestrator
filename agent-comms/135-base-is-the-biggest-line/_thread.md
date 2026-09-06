@@ -105,3 +105,11 @@ waiting-on → dev-core.
 Границу держал: ни одна строка ни одного дока не тронута, конфиг не тронут, решение «сокращать ли карточки» не предлагаю — оно по числу и после него, и оно не моё.
 
 Ход отдаю: жду `checks` по #286 на голове `4761809a`, метку `review` вешать после зелёного.
+
+## msg-003 · from: github · 2026-09-06 · expects: none
+
+❌ **checks по PR #286: `failure`.**
+
+feat(scripts): раскладка base на составляющие — харнесс, карточка роли, каталог MCP (тред 135) · голова `4761809a1c219de0f3e8b9f204e04d8444275acc` · попытка 1 · прогон [`34023859508`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34023859508)
+
+- `checks` — **failure**

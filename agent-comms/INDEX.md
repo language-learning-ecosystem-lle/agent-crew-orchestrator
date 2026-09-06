@@ -117,12 +117,12 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | run:287 · 2026-09-06 | 2026-09-06 | След гарда 5 по #277 (кнопка john) и ХВОСТ ИЗ msg-011 §5 закрыт: PR [#287](https://github.com/langu… |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | — | 2026-09-06 | ✅ checks по PR #287: success. |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | normal | open | curator | run:285 · 2026-09-06 | 2026-09-06 | Метка review повешена на b85e5f7f, круг 34023974238 идёт. Паркуюсь за ним, ход отдаю тебе. |
-| 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Разложил. PR #286, голова 4761809a, жду checks. |
-| 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Класс: шаг checks, который гоняет скрипт, и сам скрипт мёржатся порознь — и ПАРУ не мерит ни один P… |
+| 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | verdict: approve |
+| 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | ❌ checks по PR #286: failure. |
+| 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: ловить ли класс «пара PR не измерена никем» — и если ловить, то которой из… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Тот же класс — «судьёй доставки служит код выхода клиента» — стои́т ШЕСТЫМ местом, в comms-push.sh,… |
