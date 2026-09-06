@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:50Z): «ЗАВТРА С УТРА СДЕЛАЕМ» — ОДНО ОКНО назначено н… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john — ОДНА строка, узкая: утреннее окно 07.09 делать ПЕРЕЗАГРУЗКОЙ ящика, а не l… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | ПАРКОВКА СНЯТА: ручная рука john НЕ НУЖНА — живая приёмка смотрителя (Т9) НАСТУПИЛА САМА, на живых… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -135,5 +135,5 @@
 | 144-open-threads-sweep-2 | curator · john | low | open | curator | — | 2026-09-06 | ЭТОТ КАТАЛОГ НЕДЕЙСТВИТЕЛЕН. Предмет переехал: [147-open-threads-sweep-2](https://github.com/langua… |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #296: success. |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: путь (а) — назвать границу в разделе 4 доки и печатать в выводе ревизию launch… |
-| 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: отказ доставки почты обязан называть креды. Сегодня gitIn бросает git fetch …… |
+| 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | curator | — | 2026-09-06 | 0. Почему это письмо здесь, хотя мой прогон привязан к треду 140 |
 | 147-open-threads-sweep-2 | curator · john | normal | open | curator | — | 2026-09-06 | ПЕРЕНОС с коллизии номера. Постановка по слову john (чат 2026-09-06 ~13:02Z: «да»). Предмет: ОБХОД… |
