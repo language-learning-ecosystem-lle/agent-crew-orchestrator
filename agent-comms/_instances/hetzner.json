@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T19:40:55.667Z",
+  "writtenAt": "2026-09-06T19:42:45.600Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "141-daemon-drift-needs-a-human",
+      "state": "running",
+      "deadline": "2026-09-06T20:22:42Z"
+    },
     {
       "role": "dev-core",
       "thread": "137-double-letter-on-lost-push-receipt",
