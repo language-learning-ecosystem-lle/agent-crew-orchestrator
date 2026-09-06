@@ -736,9 +736,12 @@ const stubGhWithBase = (
     base === undefined
       ? 'echo "gh: HTTP 404" >&2\n  exit 1'
       : `printf '%s\\t%s\\n' ${JSON.stringify(base.sha)} ${JSON.stringify(base.date)}`;
+  // Only the FIRST `api` ask is recorded: since thread 136 the door may spend further asks
+  // on the pair note after this one, and the question this file pins is which ref the SECOND
+  // READ names — the reads that follow it are somebody else's test.
   const script = `#!/bin/sh
 if [ "$1" = "api" ]; then
-  echo "$2" > ${JSON.stringify(join(repo, "second-ask.txt"))}
+  [ -f ${JSON.stringify(join(repo, "second-ask.txt"))} ] || echo "$2" > ${JSON.stringify(join(repo, "second-ask.txt"))}
   ${answer}
 else
   cat <<'PAYLOAD'
@@ -1160,5 +1163,188 @@ describe("merge-gate refuses a tree of another contour", () => {
     expect(result.out).toContain("no contour of this box");
     expect(result.out).toContain("'hetzner'");
     expect(result.out).not.toContain("READY");
+  });
+});
+
+/**
+ * THE PAIR NOBODY MEASURED (thread `136-unmeasured-pair-of-step-and-script`, john's word of
+ * 2026-09-06). `pair-note.test.ts` proves the JUDGEMENT; only the process can prove the three
+ * things the statement of work asks for and a unit cannot see: that the exit code is the SAME
+ * with the note and without it on identical guards, that the note stands beside the guards as
+ * `note · pair:` and is not read as a sixth one, and that a pull request WITHOUT the sign adds
+ * not a single line to the output.
+ */
+describe("merge-gate — the pair note, end to end (thread 136)", () => {
+  const BASE = "6da63f3c8f0a4f6c2e1b9d0a7c5e4f3b2a1908d7";
+  const BEFORE = "f61e8d6c1b2a3948576castore".slice(0, 40).padEnd(40, "0");
+  const SCRIPT = ".github/scripts/review-delivery.integration.sh";
+  const WORKFLOW_TEXT = `jobs:\n  checks:\n    steps:\n      - run: bash ${SCRIPT}\n`;
+
+  /**
+   * A `gh` that answers each of the door's asks by the shape of the ask — `pr view`, the head
+   * of the base branch, the commit the base stood at, the comparison, and the CONTENTS of a
+   * candidate. `movedPaths` is what the base moved through; `contents` is the text served for
+   * every `contents/` ask, and an empty string means the file has nothing to name.
+   */
+  const stubGhWithPair = (
+    repo: string,
+    payload: unknown,
+    over: {
+      baseDate: string;
+      movedPaths: readonly string[];
+      contents?: string;
+      contentsFail?: boolean;
+    },
+  ): string => {
+    const bin = join(repo, "stub-bin-pair");
+    mkdirSync(bin, { recursive: true });
+    const contents =
+      over.contentsFail === true
+        ? 'echo "gh: HTTP 404" >&2; exit 1;;'
+        : `cat <<'BODY'\n${over.contents ?? ""}\nBODY\nexit 0;;`;
+    const script = `#!/bin/sh
+if [ "$1" = "api" ]; then
+  echo "$*" >> ${JSON.stringify(join(repo, "pair-asks.txt"))}
+  case "$*" in
+    */contents/*) ${contents}
+    *compare*) printf '%s\\n' ${JSON.stringify(over.movedPaths.join("\n"))}; exit 0;;
+    *commits?sha=*|*commits\\?sha=*) printf '%s\\n' ${JSON.stringify(BEFORE)}; exit 0;;
+    *) printf '%s\\t%s\\n' ${JSON.stringify(BASE)} ${JSON.stringify(over.baseDate)}; exit 0;;
+  esac
+else
+  cat <<'PAYLOAD'
+${JSON.stringify(payload)}
+PAYLOAD
+fi
+`;
+    const path = join(bin, "gh");
+    writeFileSync(path, script, "utf8");
+    chmodSync(path, 0o755);
+    return bin;
+  };
+
+  /** A PR that passes every guard that is a fact, changing the SCRIPT the workflow executes. */
+  const pairPayload = (files: readonly string[]): unknown =>
+    mergeable({
+      baseRefName: "main",
+      files: files.map((path) => ({ path })),
+      statusCheckRollup: [
+        {
+          name: "checks",
+          status: "COMPLETED",
+          conclusion: "SUCCESS",
+          startedAt: "2026-07-30T00:02:00Z",
+          completedAt: "2026-07-30T00:04:05Z",
+        },
+      ],
+    });
+
+  it("names the pair beside the guards — and the exit code is the one the guards give", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGhWithPair(repo, pairPayload([SCRIPT]), {
+        baseDate: "2026-07-30T00:03:00Z",
+        movedPaths: [".github/workflows/checks.yml"],
+        contents: WORKFLOW_TEXT,
+      }),
+      REVIEWED,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("note · pair: NOBODY MEASURED THIS PAIR");
+    expect(result.out).toContain(".github/workflows/checks.yml");
+    expect(result.out).toContain(SCRIPT);
+    expect(result.out).toContain("NOT a refusal");
+    // Not a sixth guard: the note is `note ·`, and the count of guards is untouched.
+    expect(result.out).not.toContain("guard 6");
+    // Guard 1 is an obligation here because this stub answers nothing about Actions — the
+    // note is what the test is about, and it changed no guard's state.
+    expect(result.out).toContain("guards 1, 3 and 5 are yours to answer");
+  });
+
+  /**
+   * THE CONTROL ZERO of the statement of work: the same guards, the same payload, the same
+   * exit code — with the sign and without it. What differs is the note and nothing else.
+   */
+  it("the exit code is identical with the note and without it", () => {
+    const repo = repoWithConfig();
+    const withNote = run(
+      repo,
+      stubGhWithPair(repo, pairPayload([SCRIPT]), {
+        baseDate: "2026-07-30T00:03:00Z",
+        movedPaths: [".github/workflows/checks.yml"],
+        contents: WORKFLOW_TEXT,
+      }),
+      REVIEWED,
+    );
+    const other = repoWithConfig();
+    const withoutNote = run(
+      other,
+      stubGhWithPair(other, pairPayload([SCRIPT]), {
+        baseDate: "2026-07-30T00:01:00Z",
+        movedPaths: [],
+      }),
+      REVIEWED,
+    );
+
+    expect(withNote.code).toBe(withoutNote.code);
+    expect(withNote.out).toContain("note · pair:");
+    expect(withoutNote.out).not.toContain("note · pair:");
+  });
+
+  it("an ordinary pull request gets NOT ONE new line — and nothing is asked of contents", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGhWithPair(repo, pairPayload(["packages/agent-protocol/src/cli.ts"]), {
+        // The base is older than the credited check: no drift, so the note reads nothing.
+        baseDate: "2026-07-30T00:01:00Z",
+        movedPaths: ["docs/protocol-reference.md"],
+      }),
+      REVIEWED,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).not.toContain("note · pair:");
+    expect(result.out).not.toContain("PAIR");
+    const asks = readFileSync(join(repo, "pair-asks.txt"), "utf8");
+    expect(asks).not.toContain("/contents/");
+    expect(asks).not.toContain("compare");
+  });
+
+  it("drift with no executor candidate on either side is silent too, and reads no contents", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGhWithPair(repo, pairPayload(["packages/agent-protocol/src/cli.ts"]), {
+        baseDate: "2026-07-30T00:03:00Z",
+        movedPaths: ["docs/protocol-reference.md"],
+      }),
+      REVIEWED,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("note · base:");
+    expect(result.out).not.toContain("note · pair:");
+    expect(readFileSync(join(repo, "pair-asks.txt"), "utf8")).not.toContain("/contents/");
+  });
+
+  it("a content that did not read is SAID in one line, and the exit code stands", () => {
+    const repo = repoWithConfig();
+    const result = run(
+      repo,
+      stubGhWithPair(repo, pairPayload([SCRIPT]), {
+        baseDate: "2026-07-30T00:03:00Z",
+        movedPaths: [".github/workflows/checks.yml"],
+        contentsFail: true,
+      }),
+      REVIEWED,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("note · pair:");
+    expect(result.out).toContain("was NOT measured");
+    expect(result.out).toContain("This is not 'there is no pair'");
   });
 });

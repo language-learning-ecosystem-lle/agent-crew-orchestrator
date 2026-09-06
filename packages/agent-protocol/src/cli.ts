@@ -90,6 +90,7 @@ import {
 import { resolveMailRoot } from "./fs/mail-root.js";
 import { type BaseMovePaths, describeBaseNote } from "./merge/base-note.js";
 import {
+  type BaseDrift,
   baseDriftOf,
   describeMergeGate,
   describePowerDocuments,
@@ -111,6 +112,12 @@ import {
   readReviewRuns,
 } from "./merge/gh.js";
 import { isMergeable, type MergeabilityReading, readMergeability } from "./merge/mergeability.js";
+import {
+  type CandidateContent,
+  CONTENT_READS,
+  describePairNote,
+  executorCandidatesOf,
+} from "./merge/pair-note.js";
 import { judgePrDescription, PR_FIELDS_FORM } from "./merge/pr-open.js";
 import {
   type AccountAlarm,
@@ -14737,6 +14744,104 @@ const baseNoteOf = (input: {
   });
 };
 
+/**
+ * THE PAIR NOTE, ASSEMBLED — the reads live here, the judgement lives in `describePairNote`,
+ * and the split is the same one the base note is built on: nothing in this function decides
+ * anything, and nothing in that one can call `gh`.
+ *
+ * IT CANNOT THROW, and every way out that is not an answer carries its REASON: the caller
+ * prints this beside an exit code it is forbidden to touch (john's word of 2026-09-06,
+ * thread 136 — a note, not a refusal).
+ *
+ * WHAT IT COSTS, in the three states the statement of work names. No drift — ZERO calls,
+ * which is every ordinary pull request. Drift and no executor candidate on either side —
+ * two calls, the very pair `readBaseMovePaths` already spends before the label, and not one
+ * read of content. Drift with candidates — those two plus at most {@link CONTENT_READS} more,
+ * and above that ceiling nothing is read and the number is SAID.
+ */
+const pairNoteOf = (input: {
+  readonly repo: string;
+  readonly env: NodeJS.ProcessEnv;
+  readonly drift: BaseDrift;
+  readonly changedPaths: readonly string[];
+  readonly branch: string | undefined;
+  readonly baseSha: string | undefined;
+  readonly headSha: string;
+}): readonly string[] => {
+  const branch = input.branch?.trim();
+  if (
+    input.drift.state !== "drift" ||
+    input.drift.creditedSince === undefined ||
+    branch === undefined ||
+    branch.length === 0 ||
+    input.baseSha === undefined
+  )
+    return describePairNote({ drift: input.drift, changedPaths: input.changedPaths });
+
+  const moved = readBaseMovePaths({
+    repo: input.repo,
+    env: input.env,
+    branch,
+    since: input.drift.creditedSince,
+    baseSha: input.baseSha,
+  });
+  if (moved.state === "unread")
+    return describePairNote({ drift: input.drift, changedPaths: input.changedPaths, moved });
+
+  const candidates = executorCandidatesOf({
+    changedPaths: input.changedPaths,
+    movedPaths: moved.paths,
+  });
+  if (candidates.length > CONTENT_READS)
+    return describePairNote({
+      drift: input.drift,
+      changedPaths: input.changedPaths,
+      moved,
+      overCeiling: candidates.length,
+    });
+
+  // EACH CANDIDATE ON ITS OWN REF, and that is the whole reason the side travels with the
+  // path: the executor changed by this pull request exists in the form the PR gives it, and
+  // the one that landed in the base exists in the form the base has now. Reading both at one
+  // ref would judge a text neither side wrote.
+  const contents = candidates.map((candidate): CandidateContent => {
+    const ref = candidate.side === "pr" ? input.headSha : (input.baseSha as string);
+    try {
+      const text = execFileSync(
+        "gh",
+        [
+          "api",
+          "-H",
+          "Accept: application/vnd.github.raw",
+          `repos/{owner}/{repo}/contents/${candidate.path}?ref=${encodeURIComponent(ref)}`,
+        ],
+        {
+          cwd: input.repo,
+          encoding: "utf8",
+          env: input.env,
+          stdio: ["ignore", "pipe", "pipe"],
+          maxBuffer: 16 * 1024 * 1024,
+        },
+      );
+      return { path: candidate.path, side: candidate.side, state: "read", text };
+    } catch (error) {
+      return {
+        path: candidate.path,
+        side: candidate.side,
+        state: "unread",
+        why: `at ${ref.slice(0, 7)}: ${(error as Error).message.split("\n")[0]}`,
+      };
+    }
+  });
+
+  return describePairNote({
+    drift: input.drift,
+    changedPaths: input.changedPaths,
+    moved,
+    contents,
+  });
+};
+
 const mergeGate = (argv: readonly string[]): void => {
   const number = required(argv, "--pr");
   if (!/^\d+$/.test(number)) {
@@ -14907,7 +15012,19 @@ const mergeGate = (argv: readonly string[]): void => {
     mergeability,
   });
 
-  for (const line of describeMergeGate(verdict)) out(line);
+  // THE PAIR NOBODY MEASURED (thread 136, john's word of 2026-09-06). Never a guard, never
+  // part of `curatorMayMerge`, and silent on every pull request without the narrow sign —
+  // the reasoning lives in `merge/pair-note.ts`.
+  const pairNote = pairNoteOf({
+    repo,
+    env: platform.env,
+    drift: verdict.baseDrift,
+    changedPaths: parsed.data.files.map((file) => file.path),
+    branch: parsed.data.baseRefName ?? undefined,
+    baseSha: baseHead?.sha,
+    headSha: parsed.data.headRefOid,
+  });
+  for (const line of describeMergeGate(verdict, pairNote)) out(line);
   // THE FOLLOW-UP THE BUTTON DOES NOT PERFORM (thread 040). Not a guard and never fatal:
   // it changes no verdict, it names the thing that has to happen on the boxes AFTER the
   // merge — and it is printed last so that it is the sentence left on the screen.

@@ -1366,17 +1366,35 @@ const obligationsOf = (verdict: MergeGateVerdict): string => {
   return numbers.length === 1 ? `guard ${listed} is` : `guards ${listed} are`;
 };
 
-/** The verdict as lines for a terminal; the last one is the answer. */
-export const describeMergeGate = (verdict: MergeGateVerdict): readonly string[] => [
+/**
+ * The verdict as lines for a terminal; the last one is the answer.
+ *
+ * `pairNote` is the note of thread 136 — «nobody measured this pair» — and it arrives as
+ * TEXT for the same reason the base note's paths do: its judgement is pure
+ * (`describePairNote`) and its readings cost `gh` calls, which this file does not make. An
+ * empty list is the ordinary case and prints nothing.
+ */
+export const describeMergeGate = (
+  verdict: MergeGateVerdict,
+  pairNote: readonly string[] = [],
+): readonly string[] => [
   `merge-gate: PR #${verdict.number} at ${verdict.headSha.slice(0, 7)}`,
   ...verdict.guards.flatMap((guard) => {
     const line = `  ${guard.state === "pass" ? "ok  " : guard.state === "fail" ? "STOP" : "you "} guard ${guard.guard} · ${guard.title}: ${guard.detail}`;
     // Under guard 2 and indented under it, because that is what it is about — a fact the
     // guard does not ask, marked `note` so no reader can mistake it for a sixth guard or
     // for a state of the fifth (023.3). It changes no answer below it.
-    return guard.guard === 2 && verdict.baseDrift.state !== "current"
-      ? [line, `       note · base: ${verdict.baseDrift.detail}`]
-      : [line];
+    if (guard.guard !== 2) return [line];
+    return [
+      line,
+      ...(verdict.baseDrift.state === "current"
+        ? []
+        : [`       note · base: ${verdict.baseDrift.detail}`]),
+      // The pair note stands beside the base note and under the same guard: both are about
+      // the base that moved under the credited green, and a reader who found one there
+      // must not have to look elsewhere for the other.
+      ...pairNote.map((sentence) => `       note · pair: ${sentence}`),
+    ];
   }),
   // Beside the guards and before the answer — a fact, said in its own words so nobody
   // reads it as a sixth guard (D2).

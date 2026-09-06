@@ -3041,6 +3041,40 @@ the answer and nothing checked the question. The second ask is now pinned to the
 test, and both halves of the reading (which commit, and when it landed) travel together:
 half an answer is treated as no answer, because a SHA with no date would print as silence.
 
+**The pair nobody measured, said under the same guard — `note · pair` (thread 136).** The
+note above says the base MOVED; this one says what that move is tied to. Two pull requests
+are each green on their own and the PAIR of them is measured by nobody: each `pull_request`
+run read the head merged with the base of its own moment, and the first reading of the two
+together is the push run on `main` AFTER the merge — which writes to nobody when it is
+green. Measured by curator over all 278 merges of the twenty days to 2026-09-06: **187** of
+them had a head that did not contain the base of that moment; **42** had both sides editing
+one file in `packages/**`; **4** had the narrow sign — one side editing a file that
+EXECUTES a file the other side edits (`#26`, `#217`, `#258`, `#277`). john's word of
+2026-09-06 took the third door of four and only in the narrow form: «ТРЕТЬЯ,
+ПРЕДУПРЕЖДЕНИЕМ, УЗКИЙ ПРИЗНАК». The wide sign was refused by name — 42 firings in twenty
+days land on `cli.ts`, which everybody edits, and a note that fires twice in three days is
+background.
+
+**What it is tied to is a LITERAL path name, and the note says so itself.** The candidates
+are `.github/workflows/**/*.yml|*.yaml` and `**/*.sh` and nothing else; the tie exists when
+the TEXT of such a candidate — read at its own ref, the PR head for the PR's side and the
+base head for the base's — contains a path from the OPPOSITE side. Both directions are
+asked, because which of the two files travels in the pull request is an accident of the
+day. What this misses is named in the note's own words: «a test imports a module» and «a
+step depends on behaviour without naming the file» are not caught at all. A door that lets
+a reader believe it is exhaustive is worse than one that says what it misses.
+
+**It only speaks, and it is silent on ordinary pull requests.** The exit code, the five
+guards and `curatorMayMerge` are untouched in every branch — locked by process test, which
+runs the same payload with the sign and without it. Three states, not two: a tie is printed
+under guard 2 beside `note · base`; a tie MEASURED AND ABSENT is not a line; a measurement
+that did not happen (the drift unknown, the comparison unread, a content unread, or more
+candidates than the ceiling of 24) is ONE line naming what did not read — never a silent
+truncation, because silence there is indistinguishable from «the door never looked». What
+it costs: **zero** extra `gh` calls without drift, which is the ordinary pull request; two
+on drift (the same pair `pr mergeable` already spends, `readBaseMovePaths` re-used rather
+than written twice); and at most 24 more only when a candidate exists on one of the sides.
+
 **`mergeable` is read, and it is NOT a sixth guard.** The five are a norm of the role
 card and of `PROTOCOL.md`; code does not add to them. But the gate was blind to the
 mergeability of the branch altogether — a PR with a conflicting tree, one clean set of
