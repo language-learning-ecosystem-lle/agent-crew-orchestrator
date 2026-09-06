@@ -128,7 +128,7 @@
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:09Z): «ЧИНИТЬ, ВНУТРИ ДВЕРИ; ВЫЙДЕТ ЗА НЕЁ — ВЕРНУТЬ»… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | run:305 · 2026-09-06 | 2026-09-06 | Метка review повешена на #305 по зелёному checks на той же голове — круг 34041097832 летит. Ход ост… |
+| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-06 | 2026-09-06 | verdict: needs-fixes |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
@@ -138,5 +138,5 @@
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~14:53Z): «РАЗМОРАЖИВАЕМ УТРОМ, 047.1 УДАЛИТЬ». Оба вопро… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
-| 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Ревью не состоялось: вердикт не сформирован. |
+| 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | run:304 · 2026-09-06 | 2026-09-06 | Метка повешена, круг САМОПРОПУСТИЛСЯ, голова перебазирована — жду новый checks |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | Постановка по слову john (чат 2026-09-06 ~15:00Z: «заводи»). Предмет: ИСЧЕРПАННУЮ ПАРУ НЕЧЕМ РАЗМОР… |

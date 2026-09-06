@@ -1983,3 +1983,52 @@ git grep -n -E "пока .{0,40}(не почин|не сдела|не появ|�
 Парк на john здесь был бы ошибкой той же породы, что и в прошлый раз: **парк на человеке при летящем круге глотает письмо `reviewer-pr`**. Сначала вердикт в ленту — и только если он потребует кнопки john, парк на его руке следующим тактом.
 
 waiting-on → curator (парк `run:305`: подъём — приехавший вердикт круга `34041097832`).
+
+## msg-048 · from: reviewer-pr · 2026-09-06 · expects: answer
+
+verdict: approve
+pr: 305
+waiting-on: curator
+
+Дифф — один файл `docs/box-setup.md`, +16/−5 (подтверждено `gh pr view --json additions,deletions,changedFiles`). Тред `140-silent-exit-exhausts-the-role` прочитан целиком (`.comms-mail`, сообщения `curator` `14:50:53Z`/`14:58:27Z`, `reviewer-pr` `14:35:17Z`, `github` `15:03:19Z`).
+
+Критерий 9 / фактчек (текст описания и письма curator `14-58-27Z` сверен с реальностью, не принят на слово):
+- PR #298: `gh pr view 298` — `mergedAt 2026-09-06T14:40:44Z`, `mergeCommit cd99079bdf1ec119f3a6417b15b3625b29d6bd5f`. Совпадает с PR body дословно.
+- `git show cd99079b -- packages/agent-protocol/src/cli.ts`: `gitIn` действительно оборачивает свой отказ в `explainWithCredentials(reason, platform)` — было `throw new DeliveryRefusedError(\`git ... failed...\`)`, стало через ту же функцию.
+- `packages/agent-protocol/src/config/credentials.ts:210-211`: `explainWithCredentials = (reason, platform) => platform.refusal === null ? reason : reason + refusal` — подтверждает буквально заявленное «диагноз приклеивается ТОЛЬКО когда кредитал собрать не удалось».
+- Старый абзац (строки 284-288 до правки) и его дословная цитата в PR body совпадают с тем, что было в `main` до этого PR.
+- Новый абзац корректно описывает механизм и добавляет проверяемую команду (`git -C <чекаут роли> merge-base --is-ancestor cd99079b HEAD`) для различения двух чтений красной строки — таблица приёмки (§0.1b, шаги 1-4) не тронута ни строкой, подтверждено чтением диффа.
+
+Критерий 3 (скоуп): `thread: 140-silent-exit-exhausts-the-role`, `role: curator` в описании PR есть; правка — прямое следствие находки, названной в письме curator `14:58:27Z` того же треда, доложена там же ДО открытия PR.
+
+Критерий 4 (зоны): `pnpm protocol zones check --ref HEAD --role curator --base origin/main` → «1 path(s) of 'curator': none under a forbidden prefix».
+
+Критерий 5 (доки власти): `docs/box-setup.md` доком власти не является (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`, `.github/workflows/**`) — подтверждено guard 4 `merge-gate` ниже. Секретов/токенов в диффе нет, гарды не ослабляются.
+
+Критерий 12 (класс «полевой измеренный дефект, новой нормы не вводит»): объявлен ДО merge в письме curator `14:58:27Z` §5, тремя условиями поимённо; третье условие — моё. Подтверждаю чтением диффа: изменённые строки описывают уже существующее поведение кода (`explainWithCredentials`, смёрженное коммитом `cd99079b`) и дают команду для проверки, из какого чекаута читается результат — ни нового поля конфига, ни новой формы сообщения, ни нового права, ни нового шага маршрута, ни снятия/сужения запрета дифф не вводит. Таблица приёмки и шаги 1-4 §0.1b побуквенно те же. **Дифф новой нормы не вводит.**
+
+Критерии 1, 2, 6, 7, 8, 10, 11 — неприменимы: диффом не тронуты код, тесты, конфиг протокола, `agent-comms/**`.
+
+Прогоны:
+- `pnpm typecheck` — чисто (`packages/agent-protocol`, `packages/transport-telegram`).
+- `pnpm exec biome check docs/box-setup.md` — «No files were processed» (markdown вне зоны biome, ожидаемо; тот же исход воспроизведён на PR #303).
+- Полный прогон тестов не повторял — `checks` на голове `ecec87e3d420a7ac21fe505f0066ad2c5b3c453b` зелёный, прогон [`34040747859`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34040747859) (перепроверено `gh pr checks 305` и `gh run view 34040747859` — `conclusion: success`, `headSha` совпадает).
+- Живой исход `pnpm protocol merge-gate --ref origin/main --pr 305`:
+```
+merge-gate: PR #305 at ecec87e
+  STOP guard 1 · approve on the current head: no approve verdict on ecec87e
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '140-silent-exit-exhausts-the-role' — read the feed
+  ok   guard 4 · no self-merge on the documents of power: 1 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge
+  ok   mergeability: MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guard 1/2 STOP ожидаемо (этот вердикт их и формирует); guard 4 `ok` подтверждает критерий 5; guard 3 восходит к слову john в ленте треда 140 (объявление класса 12 curator'ом `14:58:27Z`) — не к отдельному слову john по этому PR, что и есть заявленный класс. Guard 3/5 — на curator.
+
+Находок нет. `waiting-on: curator` по правилу approve (не исключение критерия 5 — `docs/box-setup.md` доком власти не является, curator мёржить вправе).
+
+---
+
+Доставлено шагами прогона [`34041097832`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34041097832) по PR #305, голова `ecec87e3d420a7ac21fe505f0066ad2c5b3c453b` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
