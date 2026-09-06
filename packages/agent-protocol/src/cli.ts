@@ -222,6 +222,14 @@ import {
 } from "./orchestrator/doctor.js";
 import { chainRefusals, describeChainRefusal } from "./orchestrator/failover.js";
 import {
+  describeDeliveredFreezeLetter,
+  FREEZE_LETTER_TURN,
+  type FrozenPair,
+  freezeLetterKey,
+  planFreezeLetters,
+  renderFreezeLetter,
+} from "./orchestrator/freeze-letter.js";
+import {
   deployKeyHint,
   githubSummary,
   hasHostEntry,
@@ -4966,6 +4974,91 @@ type MergeabilityPass = {
 /** The identity every letter about the platform is signed with — a merge, an outcome, this. */
 const MERGEABILITY_LETTER_FROM = "github";
 
+/**
+ * THE LETTER INTO THE FEED OF A FROZEN PAIR (thread 149, the norm john declared on
+ * 2026-09-06). The rules of what is written and when live in `orchestrator/freeze-letter.ts`;
+ * this is the half that touches the world, and it is written beside the mergeability
+ * watchman because it is the same shape: the courier composes, `deliverMessage` owns the
+ * lock, the retry and the push, and the MARK IS SET ONLY FOR A LETTER THAT LANDED.
+ *
+ * A pair whose thread is not in the mail, or whose role the config does not know, is
+ * REFUSED BY NAME and NOT remembered — the same fork the watchman makes, and for the same
+ * reason: remembering it would make the circuit silent about that freeze for as long as it
+ * lasts, which is the defect this whole class was written against.
+ */
+const writeFreezeLetters = (input: {
+  readonly mailRoot: string;
+  readonly branch: string;
+  readonly registry: RoleRegistry;
+  readonly pairs: readonly FrozenPair[];
+  readonly said: readonly string[];
+  readonly ceiling: number;
+  readonly say: (line: string) => void;
+}): readonly string[] => {
+  const plan = planFreezeLetters({ pairs: input.pairs, said: input.said, ceiling: input.ceiling });
+  const kept = new Set(plan.said);
+  const checkout = repoOf(input.mailRoot);
+  for (const letter of plan.letters) {
+    // THE THREE REFUSALS `planThreadMessage` ANSWERS WITH `fail()` ARE ASKED HERE INSTEAD: it
+    // is a command's subroutine, and exiting the process inside the daemon's tick would take
+    // the box down over one pair's row in a journal. MEASURED, not foreseen: the first run of
+    // the suite with this pass wired in turned two daemon process tests red — a config with no
+    // `github` role among its own killed the whole tick with `role 'github' is not listed in
+    // the config`, and the daemon's line about the exhausted candidate never got printed. The
+    // SENDER is as much a refusal as the addressee, and the box must lose one letter over it,
+    // not its tick.
+    const cause = !input.registry.isKnown(MERGEABILITY_LETTER_FROM)
+      ? `the sender '${MERGEABILITY_LETTER_FROM}' is not a role of this config, so nothing can be signed with it`
+      : !input.registry.isKnown(letter.role)
+        ? `role '${letter.role}' is not in the config`
+        : existsSync(join(input.mailRoot, letter.thread))
+          ? undefined
+          : `thread '${letter.thread}' is not in the mail`;
+    if (cause !== undefined) {
+      input.say(
+        `freeze — ${letter.role}×${letter.thread} is frozen and the letter was NOT written: ${cause}. Nothing is remembered, so this repeats until it is fixed`,
+      );
+      kept.delete(freezeLetterKey(letter));
+      continue;
+    }
+    try {
+      deliverMessage({
+        git: gitIn(checkout),
+        write: writeOut,
+        branch: input.branch,
+        subject: deliverySubject({
+          from: MERGEABILITY_LETTER_FROM,
+          thread: letter.thread,
+          mailDir: relative(checkout, input.mailRoot),
+        }),
+        identity: roleIdentity(MERGEABILITY_LETTER_FROM),
+        stage: () =>
+          planThreadMessage(input.mailRoot, letter.thread, input.registry, {
+            from: MERGEABILITY_LETTER_FROM,
+            expects: "none",
+            // NEVER THE FROZEN ROLE (see `FREEZE_LETTER_TURN`): a turn addressed to a pair
+            // the circuit will not raise is a turn nobody can take.
+            waitingOn: FREEZE_LETTER_TURN,
+            text: renderFreezeLetter(letter),
+          }),
+        note: (line) => input.say(line),
+        lock: mailLockFor({
+          checkout,
+          holder: `freeze of ${letter.role}×${letter.thread} → ${letter.thread}`,
+          note: (line) => input.say(line),
+        }),
+      });
+      input.say(describeDeliveredFreezeLetter(letter));
+    } catch (error) {
+      kept.delete(freezeLetterKey(letter));
+      input.say(
+        `freeze — ${letter.role}×${letter.thread} is frozen and the letter was NOT delivered: ${(error as Error).message}; nothing is remembered, the next tick writes it again`,
+      );
+    }
+  }
+  return [...kept].sort();
+};
+
 const runNotify = async (input: {
   readonly argv: readonly string[];
   readonly write: boolean;
@@ -5450,6 +5543,39 @@ const runNotify = async (input: {
       }),
     );
   }
+  // THE LETTER A FROZEN PAIR CANNOT WRITE FOR ITSELF (thread 149) — it rides here for the
+  // reason the watchman above does: this is the one pass of the circuit that walks every
+  // tick, holds the fold the freeze is read from and may write into the mail. It is NOT
+  // gated on the `orchestrator` section beyond what already gates its input: the pairs come
+  // from the journal, which is read only when there is one, so a mail-only invocation has an
+  // empty set and writes nothing. And a dry run never touches the feed — `--write` or
+  // nothing, on the rule the watchman states above.
+  let freezeLettersSaid = seen.freezeLetters;
+  if (write && exhaustedPairs.length > 0) {
+    freezeLettersSaid = writeFreezeLetters({
+      mailRoot: root,
+      branch: loaded.config.mail.branch,
+      registry,
+      pairs: exhaustedPairs,
+      said: seen.freezeLetters ?? [],
+      ceiling: gatesFrom(argv).maxAttempts.value,
+      say,
+    });
+    // WRITTEN AT ONCE, like the watchman's marks above and for the identical reason: the
+    // letters are already in the feed, and every other exit of this command leaves the state
+    // alone on purpose. A mark held back until the end of the run would be lost to a
+    // transport that could not deliver the digest — and the next tick would write a SECOND
+    // letter about a freeze the feed already carries.
+    writeOut(
+      statePath,
+      renderNotifyState({
+        ...seen,
+        mergeable: mergeableSaid,
+        mergeableOutage: renderGhOutage(mergeableOutage).trim(),
+        freezeLetters: freezeLettersSaid,
+      }),
+    );
+  }
   const plan = planNotifications({
     targets,
     waiting,
@@ -5692,6 +5818,7 @@ const runNotify = async (input: {
         // The watchman's own marks, carried through unchanged: this command's other classes
         // are the composition of THIS run, and that one is not (see `watchMergeability`).
         mergeable: mergeableSaid,
+        freezeLetters: freezeLettersSaid,
         // The counter and what has already rung about it, on the rule of `gh` beside it: the
         // run is carried verbatim, the announced stamp is dropped when the run ends, so the
         // NEXT outage rings again.
@@ -5732,6 +5859,7 @@ const runNotify = async (input: {
         // The watchman's own marks, carried through unchanged: this command's other classes
         // are the composition of THIS run, and that one is not (see `watchMergeability`).
         mergeable: mergeableSaid,
+        freezeLetters: freezeLettersSaid,
         mergeableOutage: renderGhOutage(mergeableOutage).trim(),
         mergeableRang: plan.mergeability?.since,
       }),
@@ -5776,6 +5904,7 @@ const runNotify = async (input: {
       eventParks: plan.eventParkKeys,
       // The watchman's own marks, carried through unchanged (see `watchMergeability`).
       mergeable: mergeableSaid,
+      freezeLetters: freezeLettersSaid,
       mergeableOutage: renderGhOutage(mergeableOutage).trim(),
       mergeableRang: plan.mergeability?.since,
     }),

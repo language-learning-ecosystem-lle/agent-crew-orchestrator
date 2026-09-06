@@ -648,6 +648,15 @@ export type ExhaustedPair = {
   readonly thaw?: string | null | undefined;
   /** Failed attempts behind the series — printed in the text, not part of the identity. */
   readonly attempts?: number | undefined;
+  /**
+   * HOW THE LAST ATTEMPT ENDED, in the journal's own word (thread 149). Carried for the
+   * letter into the feed, which owes the reader that fact by the norm john declared on
+   * 2026-09-06 — the phone call says the CLASS of the freeze, and a class does not name
+   * what happened. `null` is a fact rather than a gap: a pair whose last event carries no
+   * reason (a view built by hand, a stop) has none to name, and inventing one here would
+   * be the same guess in a quieter form.
+   */
+  readonly reason?: string | null | undefined;
 };
 
 /**
@@ -680,6 +689,9 @@ export const exhaustedPairsOf = (input: {
       thread: view.thread,
       since: view.exhaustedSince as string,
       attempts: view.attempt,
+      // The word of the LAST release of the pair, whatever it was — the fold already
+      // carries it, and the letter of thread 149 is the first reader that needs it.
+      reason: view.reason,
       // In force ONLY while the pair is actually standing at the ceiling: a thawed pair is
       // in the gap of its series, and a freeze that is not in force says nothing.
       ...(view.exhausted ? { failureClass: view.exhaustedClass, thaw: view.thawAt ?? null } : {}),
@@ -868,6 +880,20 @@ export type NotifyState = {
    * rightly so — but our letter is already in the feed).
    */
   readonly mergeable?: readonly string[] | undefined;
+  /**
+   * The {@link freezeLetterKey}s of the SERIES already written about IN THE FEED (thread 149)
+   * — a second mark over the same fact as `freezes`, and separate from it on purpose.
+   *
+   * The two are spent by two different outcomes: `freezes` is written only when the transport
+   * delivered the digest, this one only when the letter landed in the mail. One key for both
+   * would make either failure erase the other's memory — a phone call swallowed because a
+   * letter went, or a SECOND letter into the feed because a phone was out of reach — and the
+   * second of those is the repeat this class exists to make impossible.
+   *
+   * Written by the letter's own pass at the moment it lands, on the rule `mergeable` above
+   * follows and for the identical reason.
+   */
+  readonly freezeLetters?: readonly string[] | undefined;
   /**
    * THE WATCHMAN'S RUN OF REFUSALS, verbatim as `orchestrator/outage.ts` renders it — this
    * file CARRIES it and does not read it. It lives here rather than in a file of its own
@@ -1226,6 +1252,10 @@ export const renderNotifyState = (state: NotifyState): string => {
     // nor the word heard is stored — a push into a conflicting branch is the SAME break, and
     // the word is re-measured every tick.
     ...(state.mergeable ?? []).map((entry) => `mergeable\t${entry}`),
+    // Four columns (role, thread, since): the SERIES, and nothing about the freeze in force
+    // — that one is re-read from the journal every tick, and what identifies the letter is
+    // the run of attempts it was written about. Sorted, like the freezes above it.
+    ...[...(state.freezeLetters ?? [])].sort().map((entry) => `freeze-letter\t${entry}`),
     // TWO COLUMNS, THE SECOND ONE OPAQUE: the run is whatever `renderGhOutage` made of it,
     // and this file neither parses nor re-words it. JSON carries no raw tab (a tab inside a
     // string is escaped), so the columns of this file survive it.
@@ -1243,6 +1273,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
   const parked: ParkedThread[] = [];
   const asked: ParkedThread[] = [];
   const freezes: string[] = [];
+  const freezeLetters: string[] = [];
   const unaccepted: UnacceptedTurn[] = [];
   const reminded: ParkReminder[] = [];
   const accounts: string[] = [];
@@ -1363,6 +1394,18 @@ export const parseNotifyState = (raw: string): NotifyState => {
       if (columns[1] !== undefined) mergeableRang = columns[1];
       continue;
     }
+    if (columns[0] === "freeze-letter") {
+      // Four columns exactly (role, thread, since) — a short line is dropped rather than
+      // half-read, on the rule of the freeze below: a key that is not the key writes the
+      // same letter into the feed a second time, which is the one thing this mark exists
+      // against. Read BEFORE `freeze`, because `startsWith` is not how these are told
+      // apart — the whole first column is.
+      const [, role, thread, since] = columns;
+      if (role !== undefined && thread !== undefined && since !== undefined) {
+        freezeLetters.push(`${role}\t${thread}\t${since}`);
+      }
+      continue;
+    }
     if (columns[0] === "freeze") {
       // Four columns exactly (kind, role, thread, since) — a short line is dropped rather
       // than half-read: a key that is not the key announces the same freeze a second time.
@@ -1399,6 +1442,7 @@ export const parseNotifyState = (raw: string): NotifyState => {
     ...(accounts.length === 0 ? {} : { accounts }),
     ...(eventParks.length === 0 ? {} : { eventParks }),
     ...(mergeable.length === 0 ? {} : { mergeable }),
+    ...(freezeLetters.length === 0 ? {} : { freezeLetters }),
     ...(mergeableOutage === undefined ? {} : { mergeableOutage }),
     ...(mergeableRang === undefined ? {} : { mergeableRang }),
   };

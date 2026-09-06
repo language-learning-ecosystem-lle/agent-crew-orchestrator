@@ -1283,6 +1283,10 @@ describe("exhaustedPairsOf — the closures the journal does not carry", () => {
         thread: "013-exhausted-visibility",
         since: "2026-08-19T09:00:00Z",
         attempts: 3,
+        // The word of the last release rides with the pair since thread 149 — the letter
+        // into the feed owes the reader "what the last attempt ended with", and the class
+        // of the freeze does not say it.
+        reason: "exited-without-handoff",
         failureClass: "substantive",
         thaw: null,
       },
@@ -1301,6 +1305,7 @@ describe("exhaustedPairsOf — the closures the journal does not carry", () => {
         thread: "013-exhausted-visibility",
         since: "2026-08-19T09:00:00Z",
         attempts: 3,
+        reason: "exited-without-handoff",
       },
     ]);
   });
