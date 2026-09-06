@@ -492,9 +492,11 @@ import {
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
 import { stateWord } from "./orchestrator/state-word.js";
 import {
+  daemonAlreadyUpRefusal,
   foregroundRefusal,
   planSystemdUnit,
   unitNameFor,
+  unitOfThisProcess,
   worktreeInstallVerdict,
 } from "./orchestrator/systemd.js";
 import { putGroupDown } from "./orchestrator/takedown.js";
@@ -13748,8 +13750,22 @@ const orchestratorUp = async (argv: readonly string[]): Promise<void> => {
 
   const already = runningDaemon(pidFile);
   if (already !== undefined) {
+    // THE ORDER, NOT THE DIAGNOSIS (thread 141): the old line named `down` and stopped
+    // there, which is true and not enough — the hand that hit it under systemd was left
+    // to work out by itself that the box was now outside the unit. The unit is named from
+    // WHAT SYSTEMD PUT IN THIS PROCESS'S ENVIRONMENT (`%n`, see `UNIT_NAME_ENV`) and from
+    // nothing else: the argv and the unit's file name are computed independently at
+    // install time (`--unit-name` renames the file without touching the argv), so an
+    // argv-derived name is a guess that a box with `--unit-name` makes wrong — and an
+    // unknown name is said as unknown rather than filled in.
     fail(
-      `a daemon is already up, pid ${already} (${pidFile}) — 'orchestrator down' stops it; its output is ${log}`,
+      daemonAlreadyUpRefusal({
+        pid: already,
+        pidFile,
+        log,
+        foreground,
+        unit: unitOfThisProcess(),
+      }),
       2,
     );
     return;

@@ -20,6 +20,7 @@ import { basename, join } from "node:path";
 
 import { PLATFORM_TOKEN_KEYS } from "../config/credentials.js";
 import { LAUNCH_ENV } from "../orchestrator/launch.js";
+import { UNIT_NAME_ENV } from "../orchestrator/systemd.js";
 import { BOX_URL_KEY, CIRCUIT_URL_KEY } from "../orchestrator/watchdog.js";
 
 /**
@@ -122,7 +123,20 @@ export const sandbox = (home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.Pro
   // box — and it did, the minute the flag was read: two cases of this package's own
   // process tests flipped. A sandbox inherits the ambient environment for convenience; the
   // two variables that would make it a DIFFERENT BOX are removed by name.
-  const { CLAUDE_CONFIG_DIR: _ambient, INVOCATION_ID: _supervisor, ...ambient } = process.env;
+  //
+  // THE NAME OF THE UNIT TRAVELS THE SAME WAY (thread 141): since the generated unit
+  // carries `Environment=AGENT_PROTOCOL_UNIT=%n`, every process under it — including a
+  // session the circuit raises, including a suite run inside that session — inherits the
+  // name of the LIVE box's unit. The case whose whole claim is "no unit is named here, so
+  // the refusal says how to find one" would then read `agent-protocol.service` off the
+  // circuit and go green on the box for a reason that is not the package's, red on the
+  // runner. Same direction, same loss as the three above.
+  const {
+    CLAUDE_CONFIG_DIR: _ambient,
+    INVOCATION_ID: _supervisor,
+    [UNIT_NAME_ENV]: _unit,
+    ...ambient
+  } = process.env;
   for (const name of Object.values(LAUNCH_ENV)) delete ambient[name];
   for (const name of Object.keys(ambient))
     if (boxMonitor(name) || platformToken(name)) delete ambient[name];

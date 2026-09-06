@@ -81,7 +81,7 @@ const state = (repo: string, ...names: string[]): string => join(repo, ".orchest
 /** The agent binary the preflight probes — a real file, so the daemon starts at all. */
 const EXEC = ["--exec", "/bin/echo"];
 
-const run = (repo: string, ...args: string[]) => {
+const runUnder = (repo: string, extra: NodeJS.ProcessEnv, ...args: string[]) => {
   const done = spawnSync(TSX, [CLI, ...args], {
     cwd: repo,
     encoding: "utf8",
@@ -91,10 +91,13 @@ const run = (repo: string, ...args: string[]) => {
       GIT_AUTHOR_EMAIL: "t@e",
       GIT_COMMITTER_NAME: "t",
       GIT_COMMITTER_EMAIL: "t@e",
+      ...extra,
     }),
   });
   return { status: done.status, stdout: done.stdout ?? "", stderr: done.stderr ?? "" };
 };
+
+const run = (repo: string, ...args: string[]) => runUnder(repo, {}, ...args);
 
 describe("a flag on the floor beats the restart policy", () => {
   it("a force flag refuses the foreground start CLEANLY — nothing raised, exit 0", () => {
@@ -136,6 +139,91 @@ describe("a flag on the floor beats the restart policy", () => {
 
     expect(done.status).toBe(0);
     expect(`${done.stdout}${done.stderr}`).toContain("the daemon stopped — the stop flag");
+  });
+});
+
+/**
+ * THE DOOR OVER A LIVING DAEMON, MEASURED AS A PROCESS (thread 141). The sentence itself
+ * is pinned in `systemd.test.ts`; what a pure function cannot answer is the half john paid
+ * for on the box: the EXIT CODE, and that the refusal happens before `up` touches any
+ * state. The pid file is given a pid that IS alive — this test process — so the door
+ * refuses without raising anything (the same trick, for the same reason, as
+ * `instance-flag.process.test.ts`).
+ */
+describe("'up' over a daemon that is already up", () => {
+  const live = (repo: string): string[] => {
+    const pidFile = join(repo, "live.pid");
+    writeFileSync(pidFile, `${process.pid}\n`, "utf8");
+    return ["--pid-file", pidFile];
+  };
+
+  it("under a unit: code 2 KEPT, and the sentence carries the whole repair", () => {
+    const repo = contour();
+    mkdirSync(state(repo), { recursive: true });
+
+    const done = run(repo, "orchestrator", "up", "--foreground", ...live(repo));
+
+    // NOT the clean exit its neighbour above gets, and that is the decision of this
+    // package: a zero here would report a green `systemctl restart` over a box that is
+    // still unsupervised. The unit stays honestly red while the daemon is outside it.
+    expect(done.status).toBe(2);
+    const said = `${done.stdout}${done.stderr}`;
+    expect(said).toContain("a daemon is already up");
+    expect(said).toContain("'orchestrator down'");
+    // NO UNIT NAME IS INVENTED HERE, and that is the fix of this PR's own review: this
+    // process runs under no unit, so it holds no name — and the sentence hands over the
+    // command that prints the real one instead of a plausible guess.
+    expect(said).toContain(`systemctl --user list-units "agent-protocol*"`);
+    expect(said).not.toContain("systemctl --user restart agent-protocol");
+    expect(said).toContain("Do NOT type 'orchestrator up'");
+    // Nothing was raised and nothing was enabled: the refusal is the FIRST thing `up`
+    // does, so a refused start leaves the box exactly as it found it.
+    expect(existsSync(state(repo, "daemon.pid"))).toBe(false);
+    expect(existsSync(state(repo, "enabled"))).toBe(false);
+  });
+
+  it("the unit's own name reaches the sentence from the UNIT, not from the argv", () => {
+    const repo = contour();
+    mkdirSync(state(repo), { recursive: true });
+
+    // THE BOX THE REVIEWER OF THIS PR NAMED, run as a process (thread 141). Its install
+    // was `systemd install --instance main --unit-name custom.service`: the file is
+    // `custom.service`, and the `ExecStart` it generated carries `--instance main`,
+    // because the two are computed independently. The first form of this refusal read the
+    // argv and ordered `systemctl --user restart agent-protocol@main.service` — no such
+    // unit on that box. Now the unit hands its own name down (`Environment=…=%n`), which
+    // is what this environment stands for.
+    const done = runUnder(
+      repo,
+      { AGENT_PROTOCOL_UNIT: "custom.service" },
+      "orchestrator",
+      "up",
+      "--foreground",
+      "--instance",
+      "main",
+      ...live(repo),
+    );
+
+    expect(done.status).toBe(2);
+    const said = `${done.stdout}${done.stderr}`;
+    expect(said).toContain("systemctl --user restart custom.service");
+    expect(said).not.toContain("agent-protocol@main.service");
+  });
+
+  it("in a terminal: code 2 as before, and the stop flag is NOT lifted by a refused start", () => {
+    const repo = contour();
+    mkdirSync(state(repo), { recursive: true });
+    writeFileSync(state(repo, "stop"), "", "utf8");
+
+    const done = run(repo, "orchestrator", "up", ...live(repo));
+
+    expect(done.status).toBe(2);
+    const said = `${done.stdout}${done.stderr}`;
+    expect(said).toContain("a daemon is already up");
+    expect(said).toContain("only otherwise with 'orchestrator up'");
+    // The half that would be a genuine bug: `up` clears a stop flag left by `down`, and a
+    // refused `up` must not do it — a hand that hit this refusal still has its stop.
+    expect(existsSync(state(repo, "stop"))).toBe(true);
   });
 });
 

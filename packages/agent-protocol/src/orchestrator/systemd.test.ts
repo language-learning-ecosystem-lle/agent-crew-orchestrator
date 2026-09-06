@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
+import { SELF_RESTART_BY_HAND } from "./self-restart.js";
 import {
   DEFAULT_UNIT_NAME,
+  daemonAlreadyUpRefusal,
   foregroundRefusal,
   interpreterTokens,
   planSystemdUnit,
+  UNIT_NAME_ENV,
   unitNameFor,
+  unitOfThisProcess,
   unitPathDirs,
   worktreeInstallVerdict,
 } from "./systemd.js";
@@ -187,6 +191,123 @@ describe("the refusal a unit gets", () => {
     expect(said).toContain("john: acceptance");
     expect(said).toContain("NOT a failure");
     expect(said).toContain("Restart=on-failure");
+  });
+});
+
+describe("the refusal over a daemon that is already up (thread 141)", () => {
+  const already = (over: Partial<Parameters<typeof daemonAlreadyUpRefusal>[0]> = {}) =>
+    daemonAlreadyUpRefusal({
+      pid: 4242,
+      pidFile: "/s/.orchestrator/daemon.pid",
+      log: "/s/.orchestrator/daemon.log",
+      foreground: false,
+      unit: DEFAULT_UNIT_NAME,
+      ...over,
+    });
+
+  it("names the process it found — pid, pid file and where that daemon speaks", () => {
+    for (const said of [already(), already({ foreground: true })]) {
+      expect(said).toContain("a daemon is already up");
+      expect(said).toContain("4242");
+      expect(said).toContain("/s/.orchestrator/daemon.pid");
+      expect(said).toContain("/s/.orchestrator/daemon.log");
+      // The order, not just the diagnosis: both forms start the repair at the same move.
+      expect(said).toContain("'orchestrator down'");
+      expect(said).toContain("IN THIS ORDER");
+    }
+  });
+
+  it("under a unit it names systemctl AND warns off the move that produced it", () => {
+    const said = already({ foreground: true });
+    expect(said).toContain("systemctl --user restart agent-protocol.service");
+    expect(said).toContain("Do NOT type 'orchestrator up'");
+    // The half a reader cannot see from inside the terminal: the unit is failed and it is
+    // not coming back by itself, so the box is outside systemd until a hand acts.
+    expect(said).toContain("WILL NOT RETRY");
+    expect(said).toContain("RestartPreventExitStatus=2");
+    expect(said).toContain("after a reboot neither comes back");
+  });
+
+  it("in a terminal 'up' is the way BACK, and nothing is claimed about a unit", () => {
+    const said = already();
+    expect(said).toContain("only otherwise with 'orchestrator up'");
+    expect(said).not.toContain("Do NOT type 'orchestrator up'");
+    expect(said).not.toContain("WILL NOT RETRY");
+    expect(said).not.toContain("RestartPreventExitStatus=2");
+  });
+
+  it("carries the name of THIS box's unit, not the default one, when an instance is named", () => {
+    const said = already({ foreground: true, unit: unitNameFor("crew") });
+    expect(said).toContain("systemctl --user restart agent-protocol@crew.service");
+    expect(said).not.toContain(`restart ${DEFAULT_UNIT_NAME}`);
+  });
+
+  // THE NAME NOBODY HOLDS IS NOT INVENTED (found on review of this very PR, thread 141):
+  // the first form of this refusal derived the name from the argv, and on a box installed
+  // with `--unit-name custom.service --instance main` that produced the pasteable order
+  // `systemctl --user restart agent-protocol@main.service` — a unit that does not exist,
+  // handed to a hand that is mid-incident. The absent answer is now said as absent, with
+  // the one command that produces the real name.
+  it("says an unknown unit is unknown instead of naming one", () => {
+    for (const said of [
+      already({ unit: undefined }),
+      already({ foreground: true, unit: undefined }),
+    ]) {
+      expect(said).toContain(`systemctl --user list-units "agent-protocol*"`);
+      // Not one guess, in any of its shapes — including the shape a template would leave.
+      expect(said).not.toContain("systemctl --user restart agent-protocol");
+      expect(said).not.toContain("restart undefined");
+      // And the rest of the order is untouched: the unknown half costs nothing else.
+      expect(said).toContain("'orchestrator down'");
+      expect(said).toContain("IN THIS ORDER");
+    }
+  });
+
+  it("reads the unit's own name out of the environment systemd fills, and only that", () => {
+    expect(unitOfThisProcess({ [UNIT_NAME_ENV]: "custom.service" })).toBe("custom.service");
+    // A box that runs no unit, and a variable that arrived empty, are the same answer:
+    // there is nothing to name. Blank is not a name — printing it would be the guess.
+    expect(unitOfThisProcess({})).toBeUndefined();
+    expect(unitOfThisProcess({ [UNIT_NAME_ENV]: "   " })).toBeUndefined();
+    // The instance in the argv is NOT consulted: this is the pair that disagreed.
+    expect(unitOfThisProcess({ AGENT_PROTOCOL_INSTANCE: "main" })).toBeUndefined();
+  });
+
+  it("the generated unit hands its own name to its process, whatever the file is called", () => {
+    // The reviewer's box, written out: the file is renamed and the argv knows nothing of
+    // it. `%n` is systemd's own expansion of the loaded unit's full name, so the process
+    // is told `custom.service` while its argv says `--instance main`.
+    const written = planSystemdUnit({
+      repo: "/srv/acme",
+      node: "/usr/bin/node",
+      cli: "/srv/acme/packages/agent-protocol/src/cli.ts",
+      unitName: "custom.service",
+      daemonArgs: ["--ref", "origin/main", "--instance", "main"],
+    });
+    expect(written.name).toBe("custom.service");
+    expect(written.unit).toContain(`Environment=${UNIT_NAME_ENV}=%n`);
+    // The line is in `[Service]`, where systemd reads it — the class of defect decision 4
+    // of this file was paid for (a key in the wrong section is ignored with a journal line
+    // nobody reads).
+    const service = written.unit.slice(written.unit.indexOf("[Service]"));
+    expect(service).toContain(`Environment=${UNIT_NAME_ENV}=%n`);
+    // And the argv is untouched by the rename — the disagreement itself, pinned.
+    expect(written.unit).toContain("--instance");
+    expect(written.unit).not.toContain("--instance custom");
+  });
+
+  // THE SEAM, and it is a real one: `SELF_RESTART_BY_HAND` tells a hand what it will hit
+  // if it types `up` inside the manual restart order, and it does that by QUOTING this
+  // sentence. Rewording the opening here would leave that quote naming a refusal that no
+  // longer exists — true-looking prose about a message nobody gets (thread 141, john's
+  // requirement that the order stay correct after this command is fixed).
+  it("keeps the words SELF_RESTART_BY_HAND quotes", () => {
+    expect(SELF_RESTART_BY_HAND).toContain("a daemon is already up");
+    expect(already()).toContain("a daemon is already up");
+    expect(already({ foreground: true })).toContain("a daemon is already up");
+    // And the order that sentence gives is still the order this refusal gives.
+    expect(SELF_RESTART_BY_HAND).toContain("Do NOT type 'orchestrator up'");
+    expect(already({ foreground: true })).toContain("Do NOT type 'orchestrator up'");
   });
 });
 
