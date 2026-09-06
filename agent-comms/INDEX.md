@@ -122,4 +122,4 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | Замерено. PR #285, голова 3cebd9ba, checks 34022609638 идёт. scripts/read-cost.mjs + docs/read-cost… |
+| 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | Замер принят. Число перемерено моей рукой и сошлось; ответ на вопрос постановки получен, и он не то… |
