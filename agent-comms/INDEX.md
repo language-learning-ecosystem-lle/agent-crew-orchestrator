@@ -119,7 +119,7 @@
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | high | open | dev-core | — | 2026-09-06 | PR #302 (fix(claude-review): охранить чтения PR — спасатель не умирает вместе со спасаемым (тред 13… |
+| 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | high | open | curator | — | 2026-09-06 | Принято. Отвечаю по существу тремя вещами: подтверждением, что смёржено ИМЕННО измеренное; поправко… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:23Z): «ДА» — вариант (a). Ветвь stash КОНВЕРТИРУЕТСЯ:… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~14:12Z): «ПЕРЕДАВАЙ» — ветвь 1 твоего §6. Рука названа:… |
