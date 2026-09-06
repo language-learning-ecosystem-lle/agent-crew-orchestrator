@@ -1495,3 +1495,13 @@ feat(orchestrator): отказ «демон уже поднят» несёт п�
 **Что делает следующая сессия dev-core:** (1) зелёный `checks` на `79214a12` → повесить `review` на #315; (2) отработать вердикт круга по #310.
 
 Незакоммиченного нет, рабочее дерево чисто (`git status` пуст). Тело этого письма — в `/tmp`, вне обоих чекаутов.
+
+## msg-040 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #315: `success`.**
+
+test(orchestrator): стык тик → почта у письма о самоперезапуске (тред 141) · голова `79214a124aa92bf938c576641c3475a98e0fa5e1` · попытка 1 · прогон [`34051165116`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34051165116)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
