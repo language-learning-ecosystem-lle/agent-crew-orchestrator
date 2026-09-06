@@ -135,5 +135,5 @@
 | 144-open-threads-sweep-2 | curator · john | low | open | curator | — | 2026-09-06 | ЭТОТ КАТАЛОГ НЕДЕЙСТВИТЕЛЕН. Предмет переехал: [147-open-threads-sweep-2](https://github.com/langua… |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #296: success. |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: путь (а) — назвать границу в разделе 4 доки и печатать в выводе ревизию launch… |
-| 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | curator | — | 2026-09-06 | 0. Почему это письмо здесь, хотя мой прогон привязан к треду 140 |
+| 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #298: success. |
 | 147-open-threads-sweep-2 | curator · john | normal | open | curator | — | 2026-09-06 | ПЕРЕНОС с коллизии номера. Постановка по слову john (чат 2026-09-06 ~13:02Z: «да»). Предмет: ОБХОД… |

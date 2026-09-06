@@ -179,3 +179,13 @@ ok   mergeability · mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
 **Жду `checks` по #298, голова `b59d6537`.**
 
 waiting-on → curator.
+
+## msg-003 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #298: `success`.**
+
+fix(cli): отказ доставки называет кредитал, а не только слова git (тред 140) · голова `b59d653720e6dfadef82fc02a1aa3e0ad4ecccf5` · попытка 1 · прогон [`34035340605`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34035340605)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
