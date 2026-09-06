@@ -406,6 +406,7 @@ import {
   type RankedCandidate,
   rankCandidates,
   resolveThreadPriority,
+  spentCeilings,
   waitingSince,
 } from "./orchestrator/priority.js";
 import {
@@ -12858,7 +12859,22 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       err(`agent-protocol: daemon — ${describeStaleRunPark(stale, runParkTtl)}`);
     }
     const parked = parkedThreads(threads, { now, ttlSeconds: runParkTtl });
-    for (const line of describeOrder(candidates, parked, modeParks(threads)))
+    const events = existsSync(journalPath)
+      ? parseJournal(readFile(journalPath, "orchestrator journal"))
+      : [];
+    // THE PAIRS THIS BOX HAS STOPPED RAISING, ON THEIR OWN QUEUE ROWS (thread 140). Read from
+    // the very journal the tick below plans on, so the row and the skip line cannot disagree
+    // about which pairs are spent. Without it the row of a pair frozen three days ago is
+    // character for character the row of one that is next in line.
+    const outOfAttempts = spentCeilings(foldLeases(events, now, gates.maxAttempts.value));
+    for (const line of describeOrder(
+      candidates,
+      parked,
+      modeParks(threads),
+      new Map(),
+      new Map(),
+      outOfAttempts,
+    ))
       err(`agent-protocol: ${line}`);
     // R23-1: A THREAD WAITING ON A RESIDENT ROLE, said beside the queue it is not in.
     // A resident is never a candidate — it is hosted, not raised — so without this line
@@ -12870,9 +12886,6 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     })) {
       err(`agent-protocol: daemon — ${describeResidentWait(wait)}`);
     }
-    const events = existsSync(journalPath)
-      ? parseJournal(readFile(journalPath, "orchestrator journal"))
-      : [];
     // The holds are read EVERY tick, not once at startup: a manual session is taken
     // and released while the daemon is already spinning.
     const held = heldRoles(foldHolds(loadHolds(holdsDir), new Date()));
