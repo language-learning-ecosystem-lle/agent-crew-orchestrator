@@ -1,6 +1,6 @@
 ---
 title: Стоячий адрес: отказ уведомителя
 participants: github, dev-core, curator
-status: open
+status: closed
 turn: explicit
 ---
