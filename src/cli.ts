@@ -491,14 +491,24 @@ import {
   repairMoveVerdict,
   SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
+  type SelfRestartEvent,
   type SelfRestartOutcome,
   selfRestartArgv,
+  selfRestartEvent,
   selfRestartForm,
   selfRestartVerdict,
   spawnSelfRestart,
   versionRepairVerdict,
   workingTreeState,
 } from "./orchestrator/self-restart.js";
+import {
+  describeDeliveredSelfRestartLetter,
+  describeUndeliveredSelfRestartLetter,
+  planSelfRestartDelivery,
+  planSelfRestartLetter,
+  type SelfRestartMemo,
+  selfRestartSignature,
+} from "./orchestrator/self-restart-letter.js";
 import {
   namedSharedLeftovers,
   sharedPlaces,
@@ -7005,6 +7015,108 @@ const postTidyUpLetter = (input: {
 };
 
 /**
+ * THE LEDGER OF WHAT THE SELF-RESTART ADDRESS HAS ALREADY BEEN TOLD (thread 141), and it
+ * fails soft in the same direction as the tidy one: unreadable or missing reads as "nothing
+ * was ever said", which costs one repeated letter and never a silence.
+ */
+const readSelfRestartMemo = (path: string): SelfRestartMemo | undefined => {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+    return typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed) &&
+      typeof (parsed as SelfRestartMemo).signature === "string"
+      ? (parsed as SelfRestartMemo)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const rememberSelfRestartMemo = (path: string, memo: SelfRestartMemo): void => {
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${JSON.stringify(memo, null, 2)}\n`, "utf8");
+  } catch {
+    // Recording is not the letter: it went, and the reader has it. The cost of this
+    // silence is one repeated letter on the next tick, which is the safe direction.
+  }
+};
+
+/**
+ * POSTING THE SELF-RESTART (thread 141, package 3) — the IO half of
+ * `planSelfRestartLetter`, and the second place the daemon writes into the mail.
+ *
+ * The mechanism is `postTidyUpLetter`'s, for the three reasons written over it, and the
+ * ordering is the same one those reasons force: the lock is asked BEFORE anything is
+ * spawned, and the ledger is written only after a delivery that actually returned 0 — a
+ * letter that never arrived has told nobody, and a lock over it would silence the very
+ * event this package exists to announce.
+ *
+ * IT NEVER THROWS AND IT NEVER FAILS THE CALLER. The restart has already happened by the
+ * time this runs; a letter that did not go must not colour a tick that is otherwise doing
+ * its work. The return is one journal line either way, and the failing one carries the
+ * facts of the event, so the log alone is enough to reconstruct it.
+ */
+const postSelfRestartLetter = (input: {
+  readonly event: SelfRestartEvent;
+  readonly served: string;
+  readonly mailRoot: string;
+  /** Where this box's last delivered letter is remembered. */
+  readonly memo: string;
+  readonly repo?: string;
+  readonly ref?: string;
+}): string => {
+  const signature = selfRestartSignature(input.event);
+  const remembered = readSelfRestartMemo(input.memo);
+  const decided = planSelfRestartDelivery({
+    signature,
+    ...(remembered === undefined ? {} : { memo: remembered }),
+  });
+  if (!decided.post) return decided.said;
+  const letter = planSelfRestartLetter({
+    event: input.event,
+    served: input.served,
+    root: input.mailRoot,
+    ...(input.repo === undefined ? {} : { repo: input.repo }),
+    ...(input.ref === undefined ? {} : { ref: input.ref }),
+  });
+  const said = (cause: string): string =>
+    describeUndeliveredSelfRestartLetter({ event: input.event, cause });
+  // The body goes to a file OUTSIDE both checkouts, for the reason every writer in this
+  // protocol does it: a stray file in either tree is a refused launch on the next tick.
+  let dir: string | undefined;
+  try {
+    dir = mkdtempSync(join(tmpdir(), "agent-protocol-self-restart-"));
+    const bodyFile = join(dir, "letter.md");
+    writeFileSync(bodyFile, `${letter.body}\n`, "utf8");
+    const child = spawnSync(
+      process.execPath,
+      [...process.execArgv, process.argv[1] as string, ...letter.argv, "--body-file", bodyFile],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    if (child.error !== undefined) return said(`it could not be run — ${child.error.message}`);
+    if (child.status !== 0) {
+      const tail = `${child.stdout ?? ""}${child.stderr ?? ""}`
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "");
+      return said(
+        `'new-message' exited ${child.status ?? "on a signal"} — ${tail[tail.length - 1] ?? "it said nothing"}`,
+      );
+    }
+    // DELIVERED — and only now is it remembered. Everything above returns through `said()`,
+    // so a restart nobody was told about leaves no lock behind.
+    rememberSelfRestartMemo(input.memo, { signature, at: eventTimestamp(new Date()) });
+    return describeDeliveredSelfRestartLetter();
+  } catch (error) {
+    return said((error as Error).message);
+  } finally {
+    if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+/**
  * SIGNING THE WORKSPACE (027) — the IO half of `planWorkspaceIdentity`: two settings in
  * the tree's own config file, and the extension that makes git read that file at all.
  *
@@ -13202,6 +13314,38 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         err(`agent-protocol: daemon — ${describeUnreadableCodeAge(reading.problem)}`);
       } else if (reading.kind === "match") {
         codeNote = undefined;
+        // 141, package 3 — AND THIS IS WHERE THE SUCCESSOR RECOGNISES ITSELF. The code
+        // matches the ref, so if a memory says some process was trying to REACH this very
+        // sha, that process was this box and the restart it decided has landed. Nothing
+        // else in the daemon can say so: the process that decided it is gone, and the only
+        // thing that crossed its exit is the file (#309).
+        //
+        // It is said HERE rather than at startup because a restart is not the only way to
+        // arrive at a matching sha — a hand may pull the tree under a running daemon — and
+        // the memory is what tells those apart, not the moment of the reading. The lock in
+        // `postSelfRestartLetter` is what keeps the ticks that follow quiet.
+        //
+        // A letter that cannot go must not colour the tick: the poster never throws, and
+        // its one line goes to the same log the restart itself was written to.
+        const restarted = selfRestartEvent({
+          loaded: vintage.sha,
+          memory: existsSync(paths.daemonSelfRestart)
+            ? parseSelfRestartMemory(readFile(paths.daemonSelfRestart, "the self-restart memory"))
+            : undefined,
+        });
+        if (restarted !== undefined)
+          err(
+            `agent-protocol: daemon — ${postSelfRestartLetter({
+              event: restarted,
+              served: servedCheckout,
+              mailRoot: rootOr(argv, () => paths.mailRoot),
+              memo: paths.selfRestartLetters,
+              ...(flag(argv, "--repo") === undefined
+                ? {}
+                : { repo: flag(argv, "--repo") as string }),
+              ...(flag(argv, "--ref") === undefined ? {} : { ref: flag(argv, "--ref") as string }),
+            })}`,
+          );
         // THE STANDOFF IS OVER, SO THE FILE GOES (thread 044). It states a STATE and not an
         // event, and a state file that outlives its subject is how a courier comes to ring
         // about a drift that was repaired an hour ago — the false reason of thread 042, in
