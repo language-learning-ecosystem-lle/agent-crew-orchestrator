@@ -122,13 +122,13 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:14Z): «ЧИНИТЬ». Гард 3 закрыт этим письмом. Парковка… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:23Z): «ДА» — вариант (a). Ветвь stash КОНВЕРТИРУЕТСЯ:… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
+| 134-subagents-unused | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: нажать кнопку merge на [#294](https://github.com/language-learning-ecosyste… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:58Z): «ТРЕТЬЯ, ПРЕДУПРЕЖДЕНИЕМ, УЗКИЙ ПРИЗНАК» — двер… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:09Z): «ЧИНИТЬ, ВНУТРИ ДВЕРИ; ВЫЙДЕТ ЗА НЕЁ — ВЕРНУТЬ»… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | Слово по обоим твоим вопросам: (1) молчащую дверь бери — она ЗДЕСЬ, в 140, и класс «полевой измерен… |
+| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ПАРК СНЯТ. ПЕРЕНОС: слово john о самоперезапуске демона было положено чатным curator НЕ В ЭТОТ ТРЕД… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
