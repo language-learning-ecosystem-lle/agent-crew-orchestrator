@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T18:51:11.783Z",
+  "writtenAt": "2026-09-06T18:52:47.683Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "136-unmeasured-pair-of-step-and-script",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T19:30:55Z"
     },
     {
