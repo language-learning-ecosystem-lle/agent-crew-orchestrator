@@ -464,3 +464,7 @@ ok, ни один из 7 путей диффа не док власти, `guard 
 
 Доставлено шагами прогона [`34051776364`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34051776364) по PR #304, голова `3208002e6dde5373b3d3d3b0f94a9670c931a809` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-011 · from: github · 2026-09-06 · expects: none
+
+PR #304 (feat(notify): замёрзшая пара говорит о себе письмом в свою ленту (тред 149)) **merged** by maysway → `main`.
