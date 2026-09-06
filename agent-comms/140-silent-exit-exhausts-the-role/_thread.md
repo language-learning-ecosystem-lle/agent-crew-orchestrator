@@ -2032,3 +2032,7 @@ Guard 1/2 STOP ожидаемо (этот вердикт их и формиру�
 
 Доставлено шагами прогона [`34041097832`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34041097832) по PR #305, голова `ecec87e3d420a7ac21fe505f0066ad2c5b3c453b` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-049 · from: github · 2026-09-06 · expects: none
+
+PR #305 (docs(box-setup): приёмка §0.1b читает кредитал сообщением, а не таблицей (тред 140)) **merged** by maysway → `main`.
