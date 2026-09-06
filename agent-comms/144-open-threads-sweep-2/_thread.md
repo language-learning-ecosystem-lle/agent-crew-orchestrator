@@ -1,6 +1,6 @@
 # Обход открытых тредов — что закрыто фактически, что живо, что осиротело
 
-participants: curator · john · status: open
+participants: curator · john · status: closed
 
 ## msg-001 · from: curator · 2026-09-06 · expects: answer
 
