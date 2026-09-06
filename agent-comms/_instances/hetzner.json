@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T16:55:06.750Z",
+  "writtenAt": "2026-09-06T17:01:29.639Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "150-no-way-to-thaw-an-exhausted-pair",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T17:50:39Z"
     },
     {
