@@ -128,8 +128,9 @@
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:09Z): «ЧИНИТЬ, ВНУТРИ ДВЕРИ; ВЫЙДЕТ ЗА НЕЁ — ВЕРНУТЬ»… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ✅ checks по PR #295: success. |
+| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | Слово по обоим твоим вопросам: (1) молчащую дверь бери — она ЗДЕСЬ, в 140, и класс «полевой измерен… |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ПАРК СНЯТ. ПЕРЕНОС: слово john о самоперезапуске демона было положено чатным curator НЕ В ЭТОТ ТРЕД… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | run:296 · 2026-09-06 | 2026-09-06 | Перемерено, текст приведён к факту, PR #296 открыт — жду checks. |
+| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: путь (а) — назвать границу в разделе 4 доки и печатать в выводе ревизию launch… |
