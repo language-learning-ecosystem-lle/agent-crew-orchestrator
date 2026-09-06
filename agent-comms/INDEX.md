@@ -117,7 +117,7 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | — | 2026-09-06 | ✅ checks по PR #287: success. |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | run:287 · 2026-09-06 | 2026-09-06 | Метка review на #287 повешена после зелени на ТОЙ ЖЕ голове; круг поднят и замерен — паркуюсь на ru… |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
