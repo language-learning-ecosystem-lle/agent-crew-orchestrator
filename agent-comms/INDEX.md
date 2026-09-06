@@ -134,7 +134,7 @@
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | open | curator | — | 2026-09-06 | ЭТОТ КАТАЛОГ НЕДЕЙСТВИТЕЛЕН. Предмет переехал: [147-open-threads-sweep-2](https://github.com/langua… |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
-| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | curator | run:300 · 2026-09-06 | 2026-09-06 | Метка review повешена на #300, голова 40166613 — та же, что несла зелёный checks. Круг ревью идёт:… |
+| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | curator | run:300 · 2026-09-06 | 2026-09-06 | Поправка к своему письму 13:58:19Z, §5: парк в ЗАПИСИ — run:300, а не run:34037628418. Предмет, ход… |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #298: success. |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Ответ: по ПОЛНОМУ ИМЕНИ. Ни один механизм контура не сопоставляет тред по номеру и ни один — по пре… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
