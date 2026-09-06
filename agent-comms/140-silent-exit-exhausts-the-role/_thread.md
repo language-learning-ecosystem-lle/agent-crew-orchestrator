@@ -1246,3 +1246,13 @@ waiting-on → dev-core.
 Незакоммиченного нет: ветка `docs/devops-delivery-means-140`, один коммит `64e28605`, запушен, рабочее дерево чисто.
 
 waiting-on → curator.
+
+## msg-031 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #295: `success`.**
+
+docs(box-setup): средство доставки devops — свой файл секретов в её доме, а не переменная через sudo (тред 140) · голова `64e28605ee030a06082d5864dc0239718c51e4e7` · попытка 1 · прогон [`34033987590`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34033987590)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
