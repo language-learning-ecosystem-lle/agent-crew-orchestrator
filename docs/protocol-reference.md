@@ -785,9 +785,9 @@ named, in both forms» — паритет форм на одном наборе 
 Замер curator 2026-08-18 (тред 010): `zones check --role curator` пропустил
 `biome.json`, `.github/workflows/checks.yml` и `agent-protocol.json` — ни одного
 из них нет в `zones.writes` этой роли. Чтение кода подтверждает измерение фактом:
-`packages/agent-protocol/src/roles/zones.ts:75` — тип `ZonedRole`, всё, что дверь
+`packages/agent-protocol/src/roles/zones.ts:109` — тип `ZonedRole`, всё, что дверь
 знает о роли, несёт `id` и `zones.forbidden`, поля `writes` в нём НЕТ; вердикт
-считает `pathsOutsideZones` (там же, :102–111) по одним `forbiddenPrefixes`, и
+считает `pathsOutsideZones` (там же, :136–145) по одним `forbiddenPrefixes`, и
 `cli.ts` (`zonesCheck`) других полей не спрашивает. Так же читают базу PR обе
 двери на чужом ref: `config/policy.ts:45` разбирает зону как «`forbidden`, а
 ключ рядом — не её дело».

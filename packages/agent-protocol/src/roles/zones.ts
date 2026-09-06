@@ -15,27 +15,60 @@
  *
  *  1. **The launch deny rules** (`zoneDenyRules`) — turned into the settings the
  *     session is raised with, so the tool itself refuses the edit as it happens and
- *     the session sees the refusal. Known hole: a `Bash` write is seen by this door
- *     UNRELIABLY (measured, see below) — door 2 exists for exactly that.
+ *     the session sees the refusal. Whether it also sees a `Bash` write is a MEASURED
+ *     FACT WITH A DATE and not a property of this door (see below): a compound command
+ *     slipped through in 2026-07-28 and no form slipped through in 2026-09-06. Door 2
+ *     exists so that the answer never has to be leaned on.
  *  2. **The pre-commit guard** (`pathsOutsideZones` over the staged paths) — the
  *     file may be touched on disk, it does not get into history.
  *  3. **The CI step** (`pathsOutsideZones` over the PR diff, role taken from the
  *     `role:` line of the description) — red before the review.
  *
- * THE CHAIN IS ONLY AS HONEST AS ITS HOLES ARE NAMED. Door 1 sees a `Bash` write
- * UNRELIABLY, and "unreliably" is the whole statement — it is neither the guarantee
- * nor the plain hole the first writing of this block assumed. Measured on a raised
- * `dev-core` session (2026-07-28, current `main`), the forbidden prefix of the command
- * as it was typed anonymised here: `printf x > apps/acme-service/probe.md` on its own,
- * and `rm` of a file under that prefix, were both
- * REFUSED — the tool applies its file deny rules to bash commands as well, which this
- * block did not know; the SAME write inside a longer compound command
- * (`node -v; printf … > … && git add … && git rev-parse HEAD > …`) went through and
- * created the file. So door 1 is best-effort for `Bash`, never something to lean on,
- * and door 2 is what actually holds that class: the file the compound command wrote
- * was refused at `git commit` with HEAD unmoved. Door 2 does not see
- * `git commit --no-verify` — door 3
- * catches it, and only door 3 can: the verdict is passed on the runner, over the diff
+ * THE CHAIN IS ONLY AS HONEST AS ITS HOLES ARE NAMED — AND WHAT DOOR 1 DOES WITH A
+ * `Bash` WRITE IS DECIDED BY THE VENDOR TOOL, NOT BY THIS PACKAGE. It is therefore
+ * written here as two DATED MEASUREMENTS and not as a property, because it has already
+ * changed once under a text that read as timeless.
+ *
+ * THE OLDER MEASUREMENT (2026-07-28, a raised `dev-core` session, the forbidden prefix
+ * of the commands anonymised here): `printf x > apps/acme-service/probe.md` on its own,
+ * and `rm` of a file under that prefix, were both REFUSED — the tool applies its file
+ * deny rules to bash commands as well, which the first writing of this block did not
+ * know; the SAME write inside a longer compound command (`node -v; printf … > … &&
+ * git add … && git rev-parse HEAD > …`) WENT THROUGH and created the file. Door 2 is
+ * what held that class: the file the compound command wrote was refused at
+ * `git commit` with HEAD unmoved.
+ *
+ * THE NEWER MEASUREMENT (2026-09-06, thread `144-zones-comment-outlived-its-measurement`,
+ * a raised `dev-core` session on `Claude Code 2.1.233`, the deny rules exactly as this
+ * module emits them — `Edit(<prefix>)` and `Edit(<prefix>/**)`, read off the argv of the
+ * live session rather than off this code): THE COMPOUND FORM NO LONGER GOES THROUGH.
+ * Six shapes of a write at the forbidden prefix — the bare redirect, the `node -v;`
+ * compound, the whole 2026-07-28 chain with `git add`, an `rm`, a relative redirect
+ * after `cd` into another directory, and a `cp` — were refused six times out of six,
+ * each with `Permission to use Bash with command <the whole line> has been denied`, and
+ * the tree was clean afterwards (`git status --porcelain` and a `find` for the probe
+ * names both empty). The refusal judges THE WHOLE STRING BEFORE ANY PART OF IT RUNS:
+ * `node -v` never printed. Controls were taken FIRST, because a refusal means nothing
+ * without them — the same bare and compound writes at an ALLOWED path created their
+ * files, a write under a near-miss prefix (`<prefix>x`) created its file, and a
+ * read-only `ls <prefix>` passed. So it is the WRITE TARGET, matched at a path
+ * separator, that is judged, and not the mere string.
+ *
+ * WHAT CHANGED IS NOT ESTABLISHED, AND THAT IS SAID INSTEAD OF GUESSED. Our side did
+ * not move: `writingTools` and the two patterns per prefix below are byte-identical to
+ * what they were at the older measurement. So the door that changed is the vendor's —
+ * but WHICH VERSION changed it could not be measured on the box: no session transcript
+ * from that week is still on disk, and the installed package ships no changelog. THE PRICE,
+ * said out loud because its absence is the very defect this paragraph is repairing:
+ * the newer measurement is true FOR ONE VERSION ON ONE DAY, a vendor update can move it
+ * back without a line of ours changing, and door 1 is therefore still best-effort for
+ * `Bash` and still never something to lean on. DELIBERATELY NOT COVERED: other vendors
+ * and other `agent.kind`s (a `codex` session is held by its sandbox, not by
+ * `permissions.deny` — this door does not exist there at all), writes made through a
+ * tool that does not touch the local disk, and every version other than the one named.
+ *
+ * DOOR 2 DOES NOT SEE `git commit --no-verify` — door 3 catches it, and only door 3
+ * can: the verdict is passed on the runner, over the diff
  * of the PR, where there is no local hook to skip. What stays open with door 3 in
  * place is said here rather than left to be discovered: the step judges by the
  * `role:` line of the PR DESCRIPTION, which the author writes themselves. A MISSING
