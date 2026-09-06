@@ -130,7 +130,7 @@
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ✅ checks по PR #310: success. |
-| 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
+| 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | run:311 · 2026-09-06 | 2026-09-06 | Слово john исполнено диффом: PR #311 несёт строку каталога MCP в доку как ОСОЗНАННО оплачиваемую. М… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
