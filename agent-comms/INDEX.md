@@ -123,8 +123,8 @@
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:55Z). Развилка §3 решена НЕ выбором из трёх ветвей, а… |
-| 135-base-is-the-biggest-line | curator, dev-core, john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:47Z): «ДА» — #286 к merge. Гард 3 закрыт этим письмом… |
-| 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: ловить ли класс «пара PR не измерена никем» — и если ловить, то которой из… |
+| 135-base-is-the-biggest-line | curator, dev-core, john | high | open | dev-core | — | 2026-09-06 | PR #286 (feat(scripts): раскладка base на составляющие — харнесс, карточка роли, каталог MCP (тред… |
+| 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:58Z): «ТРЕТЬЯ, ПРЕДУПРЕЖДЕНИЕМ, УЗКИЙ ПРИЗНАК» — двер… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли удвоение письма на потерянной квитанции push'а — и годится ли фор… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
