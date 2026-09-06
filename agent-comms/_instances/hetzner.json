@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T15:20:36.486Z",
+  "writtenAt": "2026-09-06T15:26:45.545Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "147-open-threads-sweep-2",
       "state": "running",
       "deadline": "2026-09-06T16:00:32Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "150-no-way-to-thaw-an-exhausted-pair",
-      "state": "draining",
-      "deadline": "2026-09-06T16:07:45Z"
     }
   ]
 }
