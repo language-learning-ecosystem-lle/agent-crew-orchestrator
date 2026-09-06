@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | Парк на john, объявленный в msg-098, СНЯТ — и снял его мой же курьерский msg-099. Тред снова голый… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-06 | ДОПИСКА К ПОРЯДКУ УТРА (письмо 14:56:34Z): у шага 8 появилась ВТОРАЯ независимая причина стоять пос… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | ПАРКОВКА СНЯТА: ручная рука john НЕ НУЖНА — живая приёмка смотрителя (Т9) НАСТУПИЛА САМА, на живых… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -120,7 +120,7 @@
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
-| 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: ветвь stash конвертируется в коммит. Решение john — в этом треде, письмо curat… |
+| 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка выполнена: ветвь stash конвертирована. PR #307, голова 890d9a68, жду checks. |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~14:12Z): «ПЕРЕДАВАЙ» — ветвь 1 твоего §6. Рука названа:… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
