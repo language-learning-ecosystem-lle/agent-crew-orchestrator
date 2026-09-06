@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T15:07:48.521Z",
+  "writtenAt": "2026-09-06T15:12:12.128Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "062-contour-boundary",
-      "state": "running",
-      "deadline": "2026-09-06T15:46:24Z"
-    },
     {
       "role": "dev-core",
       "thread": "150-no-way-to-thaw-an-exhausted-pair",
