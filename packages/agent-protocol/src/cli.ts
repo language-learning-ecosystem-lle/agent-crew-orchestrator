@@ -1561,8 +1561,22 @@ const gitIn =
     } catch (error) {
       const failure = error as { stderr?: string; status?: number };
       const said = (failure.stderr ?? "").trim();
+      // AND THE DIAGNOSIS ASSEMBLED ONE LINE ABOVE JOINS THE REFUSAL (thread 140, measured
+      // 2026-09-06). Without it this door printed `git fetch --quiet origin comms failed
+      // (code 128): ssh: Could not resolve…` and NOT ONE WORD about the credential — while
+      // `platform` already knew which secrets file was named, whether it existed and whether
+      // it carried a token. Four silent exits of `devops` read for three days as "the network
+      // is down" when the fact was "the token is not in this user's home".
+      //
+      // The same enrichment as everywhere else in the package and by the same function
+      // (`explainWithCredentials`): it appends ONLY when no credential could be assembled, so
+      // a git failure that has nothing to do with a login keeps saying exactly what it said
+      // before. A missing token is not a broken call, and this is not a gate.
       throw new DeliveryRefusedError(
-        `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
+        explainWithCredentials(
+          `git ${args.join(" ")} failed (code ${failure.status ?? "?"})${said === "" ? "" : `:\n${said}`}`,
+          platform,
+        ),
       );
     }
   };

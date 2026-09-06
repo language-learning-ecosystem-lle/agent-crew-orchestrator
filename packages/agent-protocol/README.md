@@ -379,7 +379,14 @@ child `gh` and `git` it runs. Nothing has to be exported before the call, and no
 `git` gets the same environment: a credential helper for `github.com` that reads the
 token out of its own environment, and `GIT_TERMINAL_PROMPT=0` — a `Username for
 'https://github.com'` on the stdin of a session nobody is watching is a hang, not a
-failure.
+failure. **And it degrades the same way** (thread 140): when a delivery's `git` fails —
+the fetch or the push of `new-message`, `new-thread`, a digest — the refusal carries git's
+own words AND, if no credential could be assembled, the same four sentences naming the
+file. Before that it carried git's words alone, and `git fetch --quiet origin comms failed
+(code 128)` read for three days as "the network is down" when the fact was "the token is
+not in the home of the user this role runs as". A git failure that had a login keeps
+saying exactly what it said before: the diagnosis joins the reason, it never replaces it,
+and it is not a gate.
 
 **And a SESSION the orchestrator raises gets that same environment** (thread 065, the last
 mile). The three rules above are the door of a command; a role's own `gh pr list` and
