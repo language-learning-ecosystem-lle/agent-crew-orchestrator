@@ -58,7 +58,7 @@
 - [Одно дерево во всех порядках ≠ целость](same-tree-proves-no-conflict-not-integrity.md) — целость мерится `diff` база↔слитое с нулём удалений
 - [Потолок памяти мерит ОГЛАВЛЕНИЕ](memory-ceiling-measures-the-index.md) — переполняет длина крючков (82 % его байт), а не число заметок; смерть по поводу этой цены не платит
 - [У PAT нет записи в Actions](rerun-checks-without-moving-the-head.md) — ни `run rerun`, ни `workflow_dispatch` (403 называет `actions=write`); `checks` перезапускается close+reopen
-- [Обе формы парка берут номер PR](park-forms-both-take-the-pr-number.md) — `run:<pr>` ждёт круга на PR, `pr:<n>` снимается только заголовком `merged-pr:`; id прогона в парк не едет
+- [Обе формы парка берут номер PR](park-forms-both-take-the-pr-number.md) — `run:<pr>` ждёт ЛЮБОГО прогона в полёте, `pr:<n>` снимается только заголовком `merged-pr:`; id прогона в парк не едет
 - [Незапушенная ветка — невидимая работа](unpushed-branch-is-invisible-work.md) — умершая сессия оставляет коммит без push; спрашивать склад refs ДО написания диффа
 - [Мерж обнуляет сливаемость у всех PR](merge-blanks-mergeability-for-all-prs.md) — после мержа в `main` все открытые PR отвечают `UNKNOWN`; `gh pr list --json … mergeable` — один вызов на все
 - [Git-личность общая у контуров](git-identity-is-shared-across-contours.md) — `curator@agents.invalid` один в обоих домах: чужой чекаут атрибутируется номером треда и окном, а не автором
