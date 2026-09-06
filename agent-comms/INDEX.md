@@ -128,7 +128,7 @@
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:09Z): «ЧИНИТЬ, ВНУТРИ ДВЕРИ; ВЫЙДЕТ ЗА НЕЁ — ВЕРНУТЬ»… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
+| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john — два вопроса, оба про devops и оба держат пять замороженных пар: (1) почини… |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДРЕЙФ ЗАКРЫТ рукой john. И операция вскрыла ЧЕТВЁРТУЮ половину предмета — она про то, почему проста… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: отключаем ли MCP-коннекторы у ролей этого контура — 262 такта их несли, нол… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: сокращаем ли карточки ролей — 24,7% base и $74.33 за неделю, и самая дорога… |
