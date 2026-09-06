@@ -401,7 +401,7 @@ describe("the outcome of a tidy-up leaves as a letter — through the real door,
    * `git stash list` with no address a message could name. That is the whole of john's
    * argument, and this is the assert that it actually happened.
    */
-  it("the run was CUT OFF, not finished: the letter still goes, with that reason in it", () => {
+  it("the run was CUT OFF, not finished: the letter still goes, and names the work's address", () => {
     const { repo, mail } = contour([DEV_CORE, GITHUB, CURATOR]);
     const workspace = join(repo, ".worktrees", "dev-core");
 

@@ -407,9 +407,7 @@ describe("dirt left by a broken run is committed, not left standing", () => {
       { cwd: repo, encoding: "utf8", env: sandbox(configHome(repo)) },
     );
 
-    expect(`${result.stdout}${result.stderr}`).toContain(
-      "committing what the 'stalled' run left",
-    );
+    expect(`${result.stdout}${result.stderr}`).toContain("committing what the 'stalled' run left");
     expect(readFileSync(join(workspace(repo), "half-done.txt"), "utf8")).toContain("interrupted");
     expect(git(workspace(repo), "stash", "list")).toBe("");
   });
