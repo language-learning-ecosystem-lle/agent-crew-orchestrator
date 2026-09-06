@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T12:45:50.780Z",
+  "writtenAt": "2026-09-06T12:46:04.073Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "134-subagents-unused",
       "state": "running",
       "deadline": "2026-09-06T13:24:39Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "144-zones-comment-outlived-its-measurement",
+      "state": "running",
+      "deadline": "2026-09-06T13:46:00Z"
     }
   ]
 }
