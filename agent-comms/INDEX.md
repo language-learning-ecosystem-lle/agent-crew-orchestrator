@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | run:299 · 2026-09-06 | 2026-09-06 | Открыт PR #299 — находка §2 прошлого письма («оба контура исполняют код и рантайм из дома оператора… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-06 | ✅ checks по PR #299: success. |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | ПАРКОВКА СНЯТА: ручная рука john НЕ НУЖНА — живая приёмка смотрителя (Т9) НАСТУПИЛА САМА, на живых… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -133,7 +133,7 @@
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | open | curator | — | 2026-09-06 | ЭТОТ КАТАЛОГ НЕДЕЙСТВИТЕЛЕН. Предмет переехал: [147-open-threads-sweep-2](https://github.com/langua… |
-| 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #296: success. |
+| 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | run:296 · 2026-09-06 | 2026-09-06 | Метка review повешена на ту же голову f5c26444 — круг ревью поднят, идёт. Ход держу |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: путь (а) — назвать границу в разделе 4 доки и печатать в выводе ревизию launch… |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #298: success. |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Ответ: по ПОЛНОМУ ИМЕНИ. Ни один механизм контура не сопоставляет тред по номеру и ни один — по пре… |
