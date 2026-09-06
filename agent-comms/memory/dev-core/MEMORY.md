@@ -89,3 +89,4 @@
 - [`createdAt` прогона не датирует посадку головы](run-createdat-does-not-date-the-merge.md) — «82 секунды» вместо 17 минут в доставленном письме; время мержа даёт только `gh pr view --json mergedAt`.
 - [Импортёр вне CI невидим любой зелени](out-of-ci-importer-is-invisible-to-every-green.md) — дерево, сюита и push-прогон молчат о ручном скрипте, импортирующем символ пакета; запускать рукой и мерить в две стороны.
 - [Документированную команду мерить из рабочего места роли](documented-command-must-run-from-the-role-workplace.md) — `mktemp` + симлинки + явный `--repo` обходят дверь входа, которая ломается у первого читателя в `.worktrees/<role>`.
+- [Токен не переезжает через `sudo -u`](token-does-not-cross-the-sudo-switch.md) — роль с `systemUser` не видит ни токена контура, ни его `secrets.env`; выдать токен ≠ починить доставку.
