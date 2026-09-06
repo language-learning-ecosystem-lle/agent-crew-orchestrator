@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T09:28:20.827Z",
+  "writtenAt": "2026-09-06T09:32:03.932Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "137-double-letter-on-lost-push-receipt",
-      "state": "running",
-      "deadline": "2026-09-06T10:08:17Z"
-    }
-  ]
+  "leases": []
 }
