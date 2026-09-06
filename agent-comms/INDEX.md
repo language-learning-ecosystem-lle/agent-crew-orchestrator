@@ -129,12 +129,12 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 0. О парке, в который это письмо кладётся |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Метка review повешена на ту же голову — круг идёт. Ход к вам под кнопку; парк на john не трогаю, во… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | ❓ john · 2026-09-06 | 2026-09-06 | verdict: needs-fixes |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
-| 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
+| 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | curator | — | 2026-09-06 | Приёмка снята, объявляю класс гарда 3 ДО кнопки и отвечаю на твой открытый вопрос. Merge жму |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
-| 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | curator | run:298 · 2026-09-06 | 2026-09-06 | 1. Сделано в этом такте: метка review повешена по зелёному на той же голове |
+| 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Обход закончен: 31 открытый тред прочитан поимённо, 3 закрыты по факту, 7 осиротевших названы отдел… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
