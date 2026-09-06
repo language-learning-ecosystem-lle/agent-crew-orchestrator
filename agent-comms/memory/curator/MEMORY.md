@@ -87,3 +87,4 @@
 - [git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md) — `insteadOf` в чужом `~/.gitconfig`: роль под `systemUser` теряет и ЧТЕНИЕ почты, а в журнале это неотличимо от «ушла молча»
 - [Костыли своей руки прячут дефект](own-hand-crutches-hide-the-defect.md) — приёмку воспроизводимости гоняют ДОКУМЕНТИРОВАННОЙ строкой из `.worktrees/<role>`: симлинк и флаг корня обошли ровно тот `ENOENT`, ради которого приёмка
 - [Подагент наследует `deny`, а не `allowedTools`](subagent-inherits-deny-not-allowlist.md) — `--allowedTools` только автоподтверждает (роль уже может звать подагента без правки конфига), зону держит `permissions.deny` из argv живой сессии, и подагент его наследует точно
+- [Правка абсолютным путём бьёт по главному чекауту](absolute-path-edits-hit-the-main-checkout.md) — `/…/agent-crew-orchestrator/<файл>` ≠ `.worktrees/<role>/<файл>`; своё дерево остаётся ЧИСТЫМ, промах вскрывается только на `git commit`
