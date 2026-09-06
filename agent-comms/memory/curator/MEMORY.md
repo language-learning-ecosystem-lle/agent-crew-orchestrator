@@ -86,3 +86,4 @@
 - [Слово john не бывает письмом john](johns-word-is-never-a-letter-by-john.md) — поиск по автору даёт ноль ВСЕГДА; гард 3 закрывается письмом curator с пометкой источника
 - [git-личность контура живёт в ОДНОМ доме](contour-git-identity-lives-in-one-home.md) — `insteadOf` в чужом `~/.gitconfig`: роль под `systemUser` теряет и ЧТЕНИЕ почты, а в журнале это неотличимо от «ушла молча»
 - [Костыли своей руки прячут дефект](own-hand-crutches-hide-the-defect.md) — приёмку воспроизводимости гоняют ДОКУМЕНТИРОВАННОЙ строкой из `.worktrees/<role>`: симлинк и флаг корня обошли ровно тот `ENOENT`, ради которого приёмка
+- [Подагент наследует `deny`, а не `allowedTools`](subagent-inherits-deny-not-allowlist.md) — `--allowedTools` только автоподтверждает (роль уже может звать подагента без правки конфига), зону держит `permissions.deny` из argv живой сессии, и подагент его наследует точно
