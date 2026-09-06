@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T14:25:24.003Z",
+  "writtenAt": "2026-09-06T14:27:03.911Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "140-silent-exit-exhausts-the-role",
       "state": "running",
       "deadline": "2026-09-06T14:59:43Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "149-frozen-pair-writes-to-the-feed",
+      "state": "running",
+      "deadline": "2026-09-06T15:27:00Z"
     }
   ]
 }
