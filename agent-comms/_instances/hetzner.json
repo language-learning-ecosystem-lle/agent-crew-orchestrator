@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T14:52:08.432Z",
+  "writtenAt": "2026-09-06T14:53:13.735Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "140-silent-exit-exhausts-the-role",
       "state": "running",
       "deadline": "2026-09-06T15:32:04Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "146-delivery-refusal-swallows-the-credential-diagnosis",
-      "state": "draining",
-      "deadline": "2026-09-06T15:43:05Z"
     }
   ]
 }
