@@ -210,8 +210,38 @@ export type SelfRestartMemory = {
   /** The SHA of the ref this box has been trying to reach. */
   readonly target: string;
   readonly attempts: number;
-  /** When the last attempt was made — UTC ISO to the second. */
+  /**
+   * When the box last RECORDED A DECISION about this target — UTC ISO to the second.
+   * It used to be "when the last attempt was made", and it still is on every `go`; the
+   * drain (below) writes it too, on the one tick that starts one. Nothing branches on it:
+   * it is read by a human and, together with {@link SelfRestartMemory.drainSince}, it is
+   * what makes "how long it waited for the sessions" a subtraction rather than a guess.
+   */
   readonly at: string;
+  /**
+   * WHEN THIS BOX STARTED WAITING THE SESSIONS OUT — the first `drain` tick for this
+   * target, and never a later one (thread 141, curator's statement of 2026-09-06).
+   *
+   * THIS IS THE ONE FACT OF THE EVENT THAT EXISTS NOWHERE ELSE. The letter about a
+   * self-restart is written by the process that came up AFTER it, and john's requirement
+   * over that letter names four facts — what the code was, what it became, how far behind
+   * it was, AND HOW LONG IT WAITED FOR THE SESSION. The first three are still readable
+   * after the fact (the drift and this memory carry them); the fourth exists only while
+   * the old process is draining, and dies with it unless it is stamped here first.
+   *
+   * Optional because a memory written before this field, or by a box that went straight
+   * to `go` with zero leases, has no such moment — and "the box did not wait" is a true
+   * answer the letter is allowed to give. An invented one would not be.
+   */
+  readonly drainSince?: string;
+  /**
+   * THE CODE THE BOX WAS EXECUTING WHEN IT DECIDED — "what the code was", the half of the
+   * event that the successor cannot read anywhere: by the time it writes, the only SHA it
+   * can see is the one it now runs, which is {@link SelfRestartMemory.target}.
+   */
+  readonly from?: string;
+  /** How far behind the ref the box was at that moment; absent when it could not be counted. */
+  readonly behind?: number;
 };
 
 export const renderSelfRestartMemory = (memory: SelfRestartMemory): string =>
@@ -230,7 +260,21 @@ export const parseSelfRestartMemory = (raw: string): SelfRestartMemory | undefin
       typeof value.at !== "string"
     )
       return undefined;
-    return { target: value.target, attempts: value.attempts, at: value.at };
+    // THE OPTIONAL HALF IS DROPPED, NOT REFUSED. The memory is what stops a repair loop,
+    // and a file whose `drainSince` somebody hand-edited into a number must still be read
+    // as "two attempts spent" — refusing the whole record over a decoration would spend a
+    // third. What cannot be trusted is simply not carried, and the letter then says the
+    // fact is unknown instead of saying a wrong one.
+    return {
+      target: value.target,
+      attempts: value.attempts,
+      at: value.at,
+      ...(typeof value.drainSince === "string" ? { drainSince: value.drainSince } : {}),
+      ...(typeof value.from === "string" ? { from: value.from } : {}),
+      ...(typeof value.behind === "number" && Number.isInteger(value.behind) && value.behind >= 0
+        ? { behind: value.behind }
+        : {}),
+    };
   } catch {
     return undefined;
   }
@@ -239,6 +283,89 @@ export const parseSelfRestartMemory = (raw: string): SelfRestartMemory | undefin
 /** How many attempts this box has already spent ON THIS target — a memory of another is none. */
 export const attemptsFor = (memory: SelfRestartMemory | undefined, target: string): number =>
   memory === undefined || memory.target !== target ? 0 : memory.attempts;
+
+/**
+ * WHAT THE FIRST TICK OF A DRAIN WRITES DOWN, and what every tick after it does not.
+ *
+ * A drain is not one tick: while the sessions run, the verdict answers `drain` every
+ * thirty seconds, and a moment re-stamped on each of them would say the box started
+ * waiting a moment ago — which is exactly the fact the letter is not allowed to invent.
+ * So the stamp is written ONCE and then defended: `undefined` means "the memory already
+ * says this, do not touch the file".
+ *
+ * IT MUST NOT SPEND AN ATTEMPT. `attemptsFor` reads `attempts` and the ceiling switches
+ * the whole repair off at two — so the count is carried over untouched (a memory of
+ * ANOTHER target is zero, by the same rule as everywhere else). Draining is waiting, not
+ * trying: it is the one state of this machine that costs nothing and may last hours.
+ */
+export const rememberSelfRestartDrain = (input: {
+  readonly memory: SelfRestartMemory | undefined;
+  readonly target: string;
+  /** The SHA the box is executing right now — "what the code was", seen while it still is. */
+  readonly from: string;
+  readonly behind?: number;
+  /** Now, as the caller stamps everything else — UTC ISO to the second. */
+  readonly at: string;
+}): SelfRestartMemory | undefined => {
+  const { memory } = input;
+  const known = memory !== undefined && memory.target === input.target;
+  if (known && memory.drainSince !== undefined) return undefined;
+  return {
+    target: input.target,
+    attempts: attemptsFor(memory, input.target),
+    at: input.at,
+    drainSince: input.at,
+    from: input.from,
+    ...(input.behind === undefined ? {} : { behind: input.behind }),
+  };
+};
+
+/**
+ * THE EVENT, READ BY THE PROCESS THAT CAME UP AFTER IT — the successor recognising itself.
+ *
+ * The test is one comparison and it is the whole of the identity: the memory's `target` is
+ * the SHA the old process was trying to REACH, and the successor is by definition the
+ * process that runs it. A memory pointing anywhere else belongs to a repair that did not
+ * arrive (or arrived at some third SHA, which is a drift of its own and not this event),
+ * and it is answered with `undefined` rather than with a letter about somebody else's
+ * restart.
+ *
+ * `waitedFor` is a SUBTRACTION of two stamps, not a duration anybody stored: the drain
+ * began at `drainSince` and ended when the box wrote its `go` at `at`. Both are optional in
+ * the file, and an unparseable or backwards pair yields `undefined` — "how long it waited"
+ * is then simply not known, which is a thing the letter can say and a negative number is
+ * not.
+ */
+export type SelfRestartEvent = {
+  /** The SHA the box was executing before the restart; absent — the memory predates the field. */
+  readonly from?: string;
+  /** The SHA it is executing now, which is what it was trying to reach. */
+  readonly to: string;
+  readonly behind?: number;
+  /** How long the box waited the live sessions out, in whole seconds. */
+  readonly waitedForSec?: number;
+  /** When the box decided to go — the end of the wait and the moment of the restart. */
+  readonly at: string;
+};
+
+export const selfRestartEvent = (input: {
+  readonly memory: SelfRestartMemory | undefined;
+  /** The SHA of the code THIS process is running. */
+  readonly loaded: string;
+}): SelfRestartEvent | undefined => {
+  const { memory } = input;
+  if (memory === undefined || memory.target !== input.loaded) return undefined;
+  const began = memory.drainSince === undefined ? Number.NaN : Date.parse(memory.drainSince);
+  const ended = Date.parse(memory.at);
+  const waited = Math.round((ended - began) / 1000);
+  return {
+    ...(memory.from === undefined ? {} : { from: memory.from }),
+    to: memory.target,
+    ...(memory.behind === undefined ? {} : { behind: memory.behind }),
+    ...(Number.isFinite(waited) && waited >= 0 ? { waitedForSec: waited } : {}),
+    at: memory.at,
+  };
+};
 
 /**
  * THE WHOLE RULE. The order of the checks is the order a human would ask them in, and it

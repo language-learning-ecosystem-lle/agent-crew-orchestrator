@@ -471,6 +471,7 @@ import {
   parseSelfRestartMemory,
   type RepairFailure,
   type RepairOutcome,
+  rememberSelfRestartDrain,
   renderSelfRestartMemory,
   repairMoveVerdict,
   SELF_RESTART_EXIT_CODE,
@@ -12287,6 +12288,29 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         `agent-protocol: daemon — ${describeSelfRestartDraining(verdict.roles, drift, new Date())}`,
       );
       publishDriftStandoff(drift, describeSelfRestartDrain(verdict.roles));
+      // THE MOMENT THE WAIT BEGAN IS STAMPED WHILE IT STILL EXISTS (thread 141). The
+      // process that will tell anybody about this restart is the one that comes up after
+      // it, and by then this fact is gone: nothing but the file crosses the exit. Written
+      // on the FIRST drain tick only (`rememberSelfRestartDrain` answers `undefined` for
+      // every later one), and it spends no attempt — draining is waiting, not trying.
+      const stamp = rememberSelfRestartDrain({
+        memory,
+        target: drift.refSha,
+        from: drift.vintage.sha,
+        ...(drift.behind === undefined ? {} : { behind: drift.behind }),
+        at: eventTimestamp(new Date()),
+      });
+      if (stamp !== undefined)
+        try {
+          writeOut(paths.daemonSelfRestart, renderSelfRestartMemory(stamp));
+        } catch (error) {
+          // A drain that cannot record its start still drains: the restart is the safety
+          // half and it does not depend on this. What is lost is one fact of the letter,
+          // and the line says so rather than letting the letter invent it later.
+          err(
+            `agent-protocol: daemon — the drain start was not recorded in '${paths.daemonSelfRestart}' (${(error as Error).message}); the restart still stands, but how long this box waited for the sessions will not be known afterwards`,
+          );
+        }
       drainingFor = verdict.roles;
       return "draining";
     }
@@ -12305,6 +12329,18 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
           target: verdict.target,
           attempts: verdict.attempt,
           at: eventTimestamp(new Date()),
+          // THE THREE FACTS OF THE EVENT, WRITTEN BEFORE THE EXIT. `from` and `behind` are
+          // read off the drift this decision was made on — the successor cannot see either
+          // (the only SHA it can read is the one it now runs, which is `target`). The start
+          // of the wait is carried over from the drain that led here; a `go` that took no
+          // drain has none, and "it waited for nothing" is then the true answer.
+          from: drift.vintage.sha,
+          ...(drift.behind === undefined ? {} : { behind: drift.behind }),
+          ...(memory !== undefined &&
+          memory.target === verdict.target &&
+          memory.drainSince !== undefined
+            ? { drainSince: memory.drainSince }
+            : {}),
         }),
       );
     } catch (error) {

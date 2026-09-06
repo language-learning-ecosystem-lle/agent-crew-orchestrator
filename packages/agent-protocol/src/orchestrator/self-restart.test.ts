@@ -40,12 +40,14 @@ import {
   INSTALL_INPUTS,
   installNeeded,
   parseSelfRestartMemory,
+  rememberSelfRestartDrain,
   renderSelfRestartMemory,
   repairMoveVerdict,
   SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
   type SelfRestartBlock,
   selfRestartArgv,
+  selfRestartEvent,
   selfRestartForm,
   selfRestartVerdict,
   spawnSelfRestart,
@@ -270,6 +272,140 @@ describe("the memory of attempts", () => {
   it("refuses anything that is not the shape — a lost memory is zero attempts, not a wrong one", () => {
     for (const raw of ["", "not json", "{}", '{"target":"x","attempts":-1,"at":"t"}'])
       expect(parseSelfRestartMemory(raw)).toBeUndefined();
+  });
+
+  it("carries the facts of the event through a round trip, and reads a file written before them", () => {
+    const memory = {
+      target: "c".repeat(40),
+      attempts: 1,
+      at: "2026-09-06T13:00:00Z",
+      drainSince: "2026-09-06T11:00:00Z",
+      from: "a".repeat(40),
+      behind: 13,
+    };
+    expect(parseSelfRestartMemory(renderSelfRestartMemory(memory))).toEqual(memory);
+    // A memory written by the build before this field is READ, not refused: it is what
+    // stops a repair loop, and losing it over a missing decoration costs an attempt.
+    expect(
+      parseSelfRestartMemory('{"target":"c","attempts":2,"at":"2026-09-06T13:00:00Z"}'),
+    ).toEqual({ target: "c", attempts: 2, at: "2026-09-06T13:00:00Z" });
+  });
+
+  it("drops an optional field it cannot trust instead of refusing the whole record", () => {
+    // The count survives; the fact the letter would have told a human does not travel
+    // wrong. Not-known is a thing the letter may say — a hand-edited number is not.
+    expect(
+      parseSelfRestartMemory(
+        '{"target":"c","attempts":2,"at":"t","drainSince":7,"from":null,"behind":-3}',
+      ),
+    ).toEqual({ target: "c", attempts: 2, at: "t" });
+  });
+});
+
+describe("the memory of the EVENT — the four facts that have to outlive the process", () => {
+  const target = "b".repeat(40);
+  const loaded = "a".repeat(40);
+
+  it("stamps the start of the wait on the FIRST drain tick and never re-stamps it", () => {
+    const first = rememberSelfRestartDrain({
+      memory: undefined,
+      target,
+      from: loaded,
+      behind: 13,
+      at: "2026-09-06T11:00:00Z",
+    });
+    expect(first).toEqual({
+      target,
+      attempts: 0,
+      at: "2026-09-06T11:00:00Z",
+      drainSince: "2026-09-06T11:00:00Z",
+      from: loaded,
+      behind: 13,
+    });
+    // Thirty seconds later, and every thirty seconds after that: nothing is written. A
+    // re-stamp would say the box started waiting a moment ago — the one fact of the four
+    // that cannot be recovered afterwards, replaced by a false one.
+    expect(
+      rememberSelfRestartDrain({
+        memory: first,
+        target,
+        from: loaded,
+        behind: 13,
+        at: "2026-09-06T11:00:30Z",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("does not spend an attempt — draining is waiting, not trying", () => {
+    const stamp = rememberSelfRestartDrain({
+      memory: { target, attempts: 1, at: "2026-09-06T10:00:00Z" },
+      target,
+      from: loaded,
+      at: "2026-09-06T11:00:00Z",
+    });
+    expect(stamp?.attempts).toBe(1);
+    expect(attemptsFor(stamp, target)).toBe(1);
+    // And a memory of ANOTHER target counts for nothing here either, by the same rule as
+    // everywhere else: a new commit on the ref is a fresh repair.
+    expect(
+      rememberSelfRestartDrain({
+        memory: { target: "z".repeat(40), attempts: 2, at: "2026-09-06T10:00:00Z" },
+        target,
+        from: loaded,
+        at: "2026-09-06T11:00:00Z",
+      })?.attempts,
+    ).toBe(0);
+  });
+
+  it("gives the successor all four facts, and the wait as a subtraction of two stamps", () => {
+    const event = selfRestartEvent({
+      memory: {
+        target,
+        attempts: 1,
+        at: "2026-09-06T13:00:00Z",
+        drainSince: "2026-09-06T11:00:00Z",
+        from: loaded,
+        behind: 13,
+      },
+      loaded: target,
+    });
+    expect(event).toEqual({
+      from: loaded,
+      to: target,
+      behind: 13,
+      waitedForSec: 7200,
+      at: "2026-09-06T13:00:00Z",
+    });
+  });
+
+  it("says nothing about a memory that is not this process's own restart", () => {
+    const memory = { target, attempts: 1, at: "2026-09-06T13:00:00Z", from: loaded };
+    // The successor is the process RUNNING the SHA the old one was trying to reach. A
+    // memory pointing anywhere else is a repair that did not arrive, and a letter about it
+    // would be a letter about somebody else's restart.
+    expect(selfRestartEvent({ memory, loaded })).toBeUndefined();
+    expect(selfRestartEvent({ memory, loaded: "c".repeat(40) })).toBeUndefined();
+    expect(selfRestartEvent({ memory: undefined, loaded: target })).toBeUndefined();
+  });
+
+  it("leaves the wait UNKNOWN rather than inventing one when the stamps do not give it", () => {
+    // A `go` that took no drain never waited — and an unparseable or backwards pair is not
+    // a duration either. Absent is a thing the letter can say; a negative number is not.
+    const base = { target, attempts: 1, at: "2026-09-06T13:00:00Z", from: loaded };
+    expect(selfRestartEvent({ memory: base, loaded: target })?.waitedForSec).toBeUndefined();
+    expect(
+      selfRestartEvent({ memory: { ...base, drainSince: "not a time" }, loaded: target })
+        ?.waitedForSec,
+    ).toBeUndefined();
+    expect(
+      selfRestartEvent({ memory: { ...base, drainSince: "2026-09-06T14:00:00Z" }, loaded: target })
+        ?.waitedForSec,
+    ).toBeUndefined();
+    // And the facts that ARE there are still delivered — one unknown does not blank the rest.
+    expect(selfRestartEvent({ memory: base, loaded: target })).toMatchObject({
+      from: loaded,
+      to: target,
+    });
   });
 
   it("counts nothing for a target it does not remember — a new commit is a fresh repair", () => {
