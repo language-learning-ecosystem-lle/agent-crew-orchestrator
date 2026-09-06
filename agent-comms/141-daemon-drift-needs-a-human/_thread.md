@@ -1286,3 +1286,13 @@ feat(orchestrator): отказ «демон уже поднят» несёт п�
 **Состояние предмета не изменилось** по сравнению с вашим §5: пакеты 1–3 в `main`, САМО ПИСЬМО о самоперезапуске (пакет 3) не сделано и остаётся следующей работой по треду после #310; `orchestrator stop` без мягкого режима по-прежнему лежит фактом, никому не поручен.
 
 waiting-on → dev-core.
+
+## msg-034 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #310: `success`.**
+
+feat(orchestrator): отказ «демон уже поднят» несёт порядок починки и имя юнита (тред 141) · голова `8c58aea599bd349e672afa67f4dec065e871b4b9` · попытка 1 · прогон [`34047441972`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34047441972)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
