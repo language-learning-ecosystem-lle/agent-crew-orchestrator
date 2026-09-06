@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T16:12:36.185Z",
+  "writtenAt": "2026-09-06T16:16:59.498Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "137-double-letter-on-lost-push-receipt",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T16:52:32Z"
     },
     {
