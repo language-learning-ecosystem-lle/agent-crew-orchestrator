@@ -26,9 +26,12 @@
  * THE CONDITIONS ARE ALL "AND", and each one is a fact of the box rather than an
  * opinion about it:
  *   1. `drift` — the loaded code is not the ref (023.2 measures it; silence on a match).
- *   2. no leases — nothing is running under this daemon. A graceful restart with a live
- *      session waits for it, and a wait of unknown length started by nobody is exactly
- *      the state a human should be present for; with zero leases the stop is immediate.
+ *   2. no leases — nothing is running under this daemon. This one is NOT a refusal since
+ *      thread 141: a live session is waited out (`drain`), because "a wait needs a human"
+ *      made the repair impossible on any circuit that works — 13 commits and 22 hours of
+ *      drift, measured on this box on 2026-09-05, under a line saying so every tick. The
+ *      box now does what a hand would: launches nothing new, lets the session finish, and
+ *      takes this same verdict again on the tick where the last lease closes.
  *   3. THE DAEMON SERVES THE CHECKOUT ITS CODE CAME FROM. A repair is `git pull` plus a
  *      relaunch OF ONE TREE, and a daemon whose modules were loaded from somewhere else
  *      than the circuit home it serves would pull a tree it does not judge by — the case
@@ -43,7 +46,7 @@
  *      --ff-only` in that very checkout: a pull over somebody's unsaved work is the one
  *      irreversible thing in the whole chain, and refusing it costs a line of log.
  *   5. the attempt ceiling — `SELF_RESTART_MAX_ATTEMPTS` per TARGET (see below).
- *   6. anything unmet → today's behaviour verbatim: stand, and say so every tick
+ *   6. anything unmet EXCEPT (2) → today's behaviour verbatim: stand, and say so every tick
  *      (variant (1) stays the floor; (3) only ever runs on top of a clean box).
  *
  * THE CEILING IS KEYED BY THE TARGET SHA, and that is what makes it self-clearing. A
@@ -126,12 +129,18 @@ export const SELF_RESTART_MAX_ATTEMPTS = 2;
 export type SelfRestartForm = "supervised" | "detached";
 
 /**
- * WHAT ONE TICK'S REPAIR DID, in the three words the caller has to tell apart: it stood
- * (nothing happened, the plan is this daemon's to act on), it spawned (the detached form
- * handed over — withhold the plan and keep ticking), or it handed back (the supervised
- * form repaired the tree — withhold the plan and LEAVE).
+ * WHAT ONE TICK'S REPAIR DID, in the four words the caller has to tell apart: it stood
+ * (nothing happened, the plan is this daemon's to act on), it is DRAINING (the box is
+ * waiting out the sessions it will not interrupt — withhold the plan and keep ticking, and
+ * nothing else changes), it spawned (the detached form handed over — withhold the plan and
+ * keep ticking), or it handed back (the supervised form repaired the tree — withhold the
+ * plan and LEAVE).
+ *
+ * `draining` and `spawned` are one instruction to the caller and two facts to a reader, and
+ * that is exactly why they are two words: a tick that withholds its plan for the length of
+ * somebody's session must not be logged as a handover that never came.
  */
-export type SelfRestartOutcome = "stood" | "spawned" | "handback";
+export type SelfRestartOutcome = "stood" | "draining" | "spawned" | "handback";
 
 /**
  * The exit code of a daemon asking its supervisor for a fresh process. Any non-zero code
@@ -155,7 +164,6 @@ export const selfRestartForm = (env: NodeJS.ProcessEnv): SelfRestartForm =>
 
 /** Why a box that is behind is nevertheless not restarting itself right now. */
 export type SelfRestartBlock =
-  | { readonly kind: "leases"; readonly roles: readonly string[] }
   | { readonly kind: "stopping" }
   | { readonly kind: "held"; readonly roles: readonly string[] }
   | { readonly kind: "foreign-checkout"; readonly code: string; readonly served: string }
@@ -165,6 +173,31 @@ export type SelfRestartBlock =
 
 export type SelfRestartVerdict =
   | { readonly kind: "go"; readonly target: string; readonly attempt: number }
+  /**
+   * THE ONE OBSTACLE THAT LEAVES BY ITSELF (thread 141, john 2026-09-06: «пусть
+   * перезапускается сам, мягко и с письмом»). Live sessions used to be a `stand` — and on a
+   * circuit that works, a `stand` is FOREVER: the box measured 13 commits and 22 hours of
+   * drift while honestly printing the reason every thirty seconds, and the more work the
+   * crew had the longer that lasted. The refusal was legal and its consequence was a class:
+   * the system sees the fault, names it, and stays in it because the way out needs a hand
+   * nobody asked for.
+   *
+   * DRAINING IS THAT HAND, TYPED BY THE BOX. It is not a new mechanism and not a harder
+   * one — it is exactly what `orchestrator down` does and what a human types for a graceful
+   * stop: LAUNCH NOTHING NEW, let what is running finish, and repair on the tick where the
+   * last lease closes ({@link SelfRestartVerdict} `go` takes it from there, unchanged). No
+   * session is interrupted, because an interrupted session is a spent attempt and three of
+   * those switch a role off by the ceiling (thread 140) — a hard restart is not "brisker"
+   * here, it is DANGEROUS, and it is not introduced by this or any verdict.
+   *
+   * IT IS DELIBERATELY THE LAST CHECK, and that is a reordering of this function. While
+   * leases were a refusal they were named first, because "the thing that will change on its
+   * own" was the kindest sentence to give an operator. Now they change on their own AND the
+   * box acts on it, so a drift standing on a dirty tree or a spent ceiling must name THAT:
+   * those are the states that need the hand, and a line saying "waiting for dev-core" over a
+   * tree that will refuse the pull anyway would send the reader to wait for nothing.
+   */
+  | { readonly kind: "drain"; readonly target: string; readonly roles: readonly string[] }
   | { readonly kind: "stand"; readonly block: SelfRestartBlock };
 
 /**
@@ -209,9 +242,10 @@ export const attemptsFor = (memory: SelfRestartMemory | undefined, target: strin
 
 /**
  * THE WHOLE RULE. The order of the checks is the order a human would ask them in, and it
- * is not arbitrary: the two that describe WORK IN FLIGHT (leases, a stop already under
- * way) come before the two that describe the box's tidiness, so the line an operator
- * reads names the thing that will change on its own first.
+ * is not arbitrary: everything that needs A HAND is asked first, and LIVE SESSIONS — the
+ * one obstacle that goes away by itself, and the one this box now waits out rather than
+ * refuses over — is asked last, immediately before the go. See the `drain` arm of
+ * {@link SelfRestartVerdict} for why that order is the whole point of the change.
  */
 export const selfRestartVerdict = (input: {
   /** The SHA the ref resolves to on disk — the target of the repair, and the memory's key. */
@@ -237,7 +271,6 @@ export const selfRestartVerdict = (input: {
   readonly ceiling: number;
 }): SelfRestartVerdict => {
   const live = [...input.running, ...input.openLeases.filter((id) => !input.running.includes(id))];
-  if (live.length > 0) return { kind: "stand", block: { kind: "leases", roles: live } };
   if (input.stopping) return { kind: "stand", block: { kind: "stopping" } };
   if (input.held.length > 0) return { kind: "stand", block: { kind: "held", roles: input.held } };
   // Before anything is said about the tree: a complaint about the state of a checkout
@@ -262,6 +295,8 @@ export const selfRestartVerdict = (input: {
       kind: "stand",
       block: { kind: "attempts", attempts: input.attempts, ceiling: input.ceiling },
     };
+  // EVERYTHING A HAND WOULD HAVE TO FIX IS CLEAN, AND ONLY WORK IS IN FLIGHT: wait it out.
+  if (live.length > 0) return { kind: "drain", target: input.target, roles: live };
   return { kind: "go", target: input.target, attempt: input.attempts + 1 };
 };
 
@@ -306,8 +341,6 @@ export const describeSelfRestartStand = (
 /** The condition alone — the half of the line above that names WHY, and the whole of R4. */
 export const describeSelfRestartBlock = (block: SelfRestartBlock): string => {
   switch (block.kind) {
-    case "leases":
-      return `no self-restart while sessions are live (${block.roles.join(", ")}) — a graceful restart would wait for them, and that wait needs a human`;
     case "stopping":
       return "no self-restart while a stop is already down — somebody is stopping this box";
     case "held":
@@ -329,6 +362,41 @@ export const describeSelfRestartBlock = (block: SelfRestartBlock): string => {
       return `no self-restart — this target has already been attempted ${block.attempts}/${block.ceiling} times; standing and saying so, as before (see 'daemon.log' for what the restart said)`;
   }
 };
+
+/**
+ * THE BOX IS WAITING OUT THE WORK, said with the same measurement the refusal carries and
+ * for the same reason (thread 044): a reader who has only this line has the whole fact.
+ *
+ * IT IS NOT A REFUSAL AND MUST NOT READ AS ONE. The sentence it replaces ("no self-restart
+ * while sessions are live … that wait needs a human") was true and it taught the reader the
+ * wrong thing: it named a state nothing in the box was going to leave. This one names a
+ * DECISION already taken and the one event that completes it — the last session ending —
+ * so that a person who reads it knows there is nothing for them to do.
+ */
+export const describeSelfRestartDraining = (
+  roles: readonly string[],
+  drift: CodeDrift,
+  now: Date,
+): string => `the code is ${describeDriftSize(drift, now)} — ${describeSelfRestartDrain(roles)}`;
+
+/** The condition alone — the drain's half of what {@link describeSelfRestartBlock} does. */
+export const describeSelfRestartDrain = (roles: readonly string[]): string =>
+  `DRAINING TO RESTART: this box is behind and everything else about it is clean, so it launches NOTHING new and waits for the sessions that are live (${roles.join(", ")}) to finish by themselves; on the tick where the last one closes it repairs the tree and comes back on the new code. No session is interrupted — a torn session counts as a failed attempt and switches its role off by the ceiling, so nothing here kills anything, and no hand is needed`;
+
+/**
+ * WHAT THE DRAIN COST THIS TICK — the pairs that stayed in the mail, named the way the
+ * handover names them ({@link describeSelfRestartWithheld}) and for the same reason: an
+ * invariant nobody can check in a log is one nobody can trust. The difference from the
+ * handover's line is the ENDING: this box is not leaving, so the queue is not being taken
+ * by a successor seconds later — it waits, and the reader is owed that distinction.
+ */
+export const describeDrainWithheld = (
+  pairs: readonly string[],
+  roles: readonly string[],
+): string =>
+  pairs.length === 0
+    ? `SELF-RESTART: this tick launches nothing — the box is draining to restart (waiting for ${roles.join(", ")}) and there was nothing to withhold`
+    : `SELF-RESTART: this tick launches NOTHING (${pairs.join(", ")} stay in the queue) — the box is draining to restart and a session started now would extend the wait by its whole length; the pairs are not consumed and the tick that repairs, or any tick after the drain ends, reads them again`;
 
 /**
  * THE LINE AFTER, from the spawning side. The other half of "after" is written by the

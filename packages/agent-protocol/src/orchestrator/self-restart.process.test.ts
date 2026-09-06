@@ -55,7 +55,11 @@ import { CURRENT_PROTOCOL_VERSION } from "../schema/version.js";
 import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { HANG_CEILING_MS, waitFor } from "../testing/wait-for.js";
 import { parseDriftStandoff, renderDriftStandoff } from "./code-age.js";
-import { parseSelfRestartMemory, SELF_RESTART_EXIT_CODE } from "./self-restart.js";
+import {
+  describeSelfRestartDrain,
+  parseSelfRestartMemory,
+  SELF_RESTART_EXIT_CODE,
+} from "./self-restart.js";
 
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 const NODE_MODULES = fileURLToPath(new URL("../../../../node_modules", import.meta.url));
@@ -385,9 +389,19 @@ describe("the self-restart of a daemon serving somebody else's checkout", () => 
  * is a file it owns, and the process measuring it appears in that journal nowhere at all.
  *
  * One positive and one negative, and the negative is the half that matters: the same
- * drift, one condition removed, and the box must go back to standing and saying so —
- * variant (1) is the floor under all of this, and a rule whose "go" is tested while its
- * "stand" is assumed is a rule tested only in the direction it is supposed to work.
+ * drift, one condition removed, and the box must NOT go on repairing — variant (1) is the
+ * floor under all of this, and a rule whose "go" is tested while its refusal to go is
+ * assumed is a rule tested only in the direction it is supposed to work.
+ *
+ * WHAT THE NEGATIVE MEANS CHANGED IN THREAD 141, and this file is where the change had to
+ * be measured a second time. Until then a live lease was a REFUSAL ("no self-restart while
+ * sessions are live … that wait needs a human"), and the negative case asserted that
+ * sentence. Now the same condition is a DRAIN: the tick raises nobody and waits the session
+ * out by itself. What still has to hold is every fact this case was written for — the tree
+ * is not touched, no attempt is recorded, no handover is announced, and the box is not
+ * silent about any of it — so the case keeps its shape and changes only the sentence it
+ * measures. The unit at `self-restart.test.ts` decides the verdict; only a real daemon over
+ * a real drift proves that the verdict reaches the log and the standoff file at all.
  */
 describe("the self-restart of a daemon serving the checkout its own code came from", () => {
   it(
@@ -463,7 +477,7 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
   );
 
   it(
-    "stands and says why while a lease is live — a wait of unknown length needs a human",
+    "drains and says so while a lease is live — the wait is the box's own, not a human's",
     () => {
       const home = homeContour();
       // The one difference from the case above: somebody is working under this box. The
@@ -484,10 +498,28 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       const said = tick(home.cli, home.repo);
 
       expect(said).toContain("the LOADED CODE is not the ref");
-      // Variant (1), naming the pair it is waiting for: silence about standing is the
-      // whole failure this family of lines was written against.
-      expect(said).toContain("no self-restart while sessions are live (dev-core/055-x)");
-      // And nothing was done — neither of the two impure halves of a repair.
+      // Variant (1), naming the pair it is waiting for: silence about the wait is the
+      // whole failure this family of lines was written against, and a drain that says
+      // nothing is exactly the tacit drift of thread 141.
+      expect(said).toContain("DRAINING TO RESTART");
+      expect(said).toContain("(dev-core/055-x)");
+      // AND IT DOES NOT READ AS A REFUSAL. The distinction is the point of the whole
+      // change: a reader of this line must not go looking for something to do, so the
+      // sentence says the wait ends by itself and asks for no hand.
+      expect(said).toContain("no hand is needed");
+      // The sentence it replaced, named so that a revert cannot pass here quietly. The
+      // narrower "does not read as a refusal" property is measured on the line itself in
+      // `self-restart.test.ts`; at this level other lines of a tick may legitimately ask
+      // for a hand, so the assertion is about THIS sentence and not about the word.
+      expect(said).not.toContain("no self-restart while sessions are live");
+      // The drain reached the launch decision rather than merely being printed: this tick
+      // raised nobody, and said which sessions it is waiting out while doing so.
+      expect(said).toContain("SELF-RESTART: this tick launches nothing");
+      expect(said).toContain("draining to restart (waiting for dev-core/055-x)");
+      // And nothing was done — neither of the two impure halves of a repair. This is what
+      // separates a drain from a restart, and it is unchanged by 141: the tree is not
+      // touched, no attempt is spent, and no successor is announced, because the box is
+      // not going anywhere until the session it is waiting for closes by itself.
       expect(said).not.toContain("SELF-RESTART: the loaded code is behind");
       expect(said).not.toContain("handed over to the restart process");
       expect(existsSync(join(home.repo, ".orchestrator", "self-restart.json"))).toBe(false);
@@ -507,10 +539,14 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       expect(standoff?.ref).toBe("origin/main");
       expect(standoff?.behind).toBe(1);
       // The reason VERBATIM — the courier composes and never re-derives this verdict, so
-      // the sentence the digest will carry has to be the sentence the daemon printed.
-      expect(standoff?.why).toBe(
-        "no self-restart while sessions are live (dev-core/055-x) — a graceful restart would wait for them, and that wait needs a human",
-      );
+      // the sentence the digest will carry has to be the sentence the daemon printed. It is
+      // compared against the composer rather than a copy of its 400 characters: a copy here
+      // would only prove that two strings in this repository match, while this proves the
+      // bridge carries THE drain sentence, built for THESE pairs — the failure it is written
+      // against is a standoff published from the wrong arm or with the roles dropped, which
+      // reads as a plausible sentence and is a digest line about somebody else's box. What
+      // the sentence must SAY is pinned in `self-restart.test.ts`.
+      expect(standoff?.why).toBe(describeSelfRestartDrain(["dev-core/055-x"]));
       expect(said).toContain(standoff?.why ?? "<unread>");
       // And the clock the band is judged on: the drift has a beginning, so a reader two
       // hours later is told about it rather than left with an undated fact.
@@ -548,6 +584,9 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       // — or not clear it at all — and the case would be measuring nothing.
       expect(said).not.toContain("the LOADED CODE is not the ref");
       expect(said).not.toContain("no self-restart");
+      // Both endings of a drift, not just the one that existed when this case was written:
+      // on a box that is ON its ref neither the refusal nor the drain of 141 may fire.
+      expect(said).not.toContain("DRAINING TO RESTART");
       expect(existsSync(standoff)).toBe(false);
     },
     2 * HANG_CEILING_MS,
