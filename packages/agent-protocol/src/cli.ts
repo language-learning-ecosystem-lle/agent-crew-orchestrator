@@ -492,6 +492,7 @@ import {
 import { type OperatorFrame, renderFrame } from "./orchestrator/snapshot.js";
 import { stateWord } from "./orchestrator/state-word.js";
 import {
+  daemonAlreadyUpRefusal,
   foregroundRefusal,
   planSystemdUnit,
   unitNameFor,
@@ -13739,8 +13740,21 @@ const orchestratorUp = async (argv: readonly string[]): Promise<void> => {
 
   const already = runningDaemon(pidFile);
   if (already !== undefined) {
+    // THE ORDER, NOT THE DIAGNOSIS (thread 141): the old line named `down` and stopped
+    // there, which is true and not enough — the hand that hit it under systemd was left
+    // to work out by itself that the box was now outside the unit. The name of the unit
+    // is taken from the argv rather than from the machine config on purpose: the argv is
+    // what the generated `ExecStart` carries (`--instance <id>`, see `systemd install`),
+    // so it answers without a second read that could fail on its own and swallow this
+    // refusal.
     fail(
-      `a daemon is already up, pid ${already} (${pidFile}) — 'orchestrator down' stops it; its output is ${log}`,
+      daemonAlreadyUpRefusal({
+        pid: already,
+        pidFile,
+        log,
+        foreground,
+        unit: unitNameFor(flag(args, "--instance")),
+      }),
       2,
     );
     return;

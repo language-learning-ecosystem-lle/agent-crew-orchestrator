@@ -4923,6 +4923,24 @@ while `down` is "stop the watch". An `up` on top of a living daemon is REFUSED: 
 one journal would take the same pair twice, and the second banner would look like a healthy
 start. `up` accepts every flag `daemon` does — it is the same daemon with its start-up done.
 
+**What that refusal SAYS, and why its code is still 2** (thread 141, 2026-09-06). The refusal
+named `orchestrator down` and stopped there, which is true and was not enough: a hand raised a
+daemon with `up` on a box that runs the unit, the `systemctl restart` typed afterwards hit this
+door, the unit went to `failed`, and the box spent the day outside systemd — a reboot would not
+have brought it back. So the sentence now carries the whole repair instead of the diagnosis: the
+pid and the pid file it found, then `orchestrator down` → wait for zero daemon processes → raise
+it again, and WITH WHICH COMMAND. Under `--foreground` that is `systemctl --user restart <unit>`
+— the unit name taken from the `--instance` in the argv, which is what the generated `ExecStart`
+carries — plus the two facts a reader cannot see from inside the terminal: this unit is now
+failed and will NOT retry by itself (`RestartPreventExitStatus=2`), and typing `up` to bring it
+back lands the box right back here. In a terminal it is `up` itself, once the running daemon is
+down. The EXIT CODE does not change, and that is a decision rather than an omission: the force
+flag's refusal in the foreground exits 0 because `Restart=on-failure` would otherwise re-raise
+it every `RestartSec`, and that reasoning does not carry over here — the unit this package
+writes prevents a restart on code 2 anyway, so a zero would buy nothing except a green
+`systemctl restart` over a box that is still unsupervised. The unit stays honestly red while the
+daemon is outside it.
+
 **`orchestrator restart`.** Picking up fresh code as ONE gesture, because until now it was a
 hand-run pipeline: `down`, then waiting out the live sessions (unpredictably long — once it
 ended in a force stop), then `git pull --ff-only`, then `pnpm install`, then `up` with the

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { SELF_RESTART_BY_HAND } from "./self-restart.js";
 import {
   DEFAULT_UNIT_NAME,
+  daemonAlreadyUpRefusal,
   foregroundRefusal,
   interpreterTokens,
   planSystemdUnit,
@@ -187,6 +189,69 @@ describe("the refusal a unit gets", () => {
     expect(said).toContain("john: acceptance");
     expect(said).toContain("NOT a failure");
     expect(said).toContain("Restart=on-failure");
+  });
+});
+
+describe("the refusal over a daemon that is already up (thread 141)", () => {
+  const already = (over: Partial<Parameters<typeof daemonAlreadyUpRefusal>[0]> = {}) =>
+    daemonAlreadyUpRefusal({
+      pid: 4242,
+      pidFile: "/s/.orchestrator/daemon.pid",
+      log: "/s/.orchestrator/daemon.log",
+      foreground: false,
+      unit: DEFAULT_UNIT_NAME,
+      ...over,
+    });
+
+  it("names the process it found — pid, pid file and where that daemon speaks", () => {
+    for (const said of [already(), already({ foreground: true })]) {
+      expect(said).toContain("a daemon is already up");
+      expect(said).toContain("4242");
+      expect(said).toContain("/s/.orchestrator/daemon.pid");
+      expect(said).toContain("/s/.orchestrator/daemon.log");
+      // The order, not just the diagnosis: both forms start the repair at the same move.
+      expect(said).toContain("'orchestrator down'");
+      expect(said).toContain("IN THIS ORDER");
+    }
+  });
+
+  it("under a unit it names systemctl AND warns off the move that produced it", () => {
+    const said = already({ foreground: true });
+    expect(said).toContain("systemctl --user restart agent-protocol.service");
+    expect(said).toContain("Do NOT type 'orchestrator up'");
+    // The half a reader cannot see from inside the terminal: the unit is failed and it is
+    // not coming back by itself, so the box is outside systemd until a hand acts.
+    expect(said).toContain("WILL NOT RETRY");
+    expect(said).toContain("RestartPreventExitStatus=2");
+    expect(said).toContain("after a reboot neither comes back");
+  });
+
+  it("in a terminal 'up' is the way BACK, and nothing is claimed about a unit", () => {
+    const said = already();
+    expect(said).toContain("only otherwise with 'orchestrator up'");
+    expect(said).not.toContain("Do NOT type 'orchestrator up'");
+    expect(said).not.toContain("WILL NOT RETRY");
+    expect(said).not.toContain("RestartPreventExitStatus=2");
+  });
+
+  it("carries the name of THIS box's unit, not the default one, when an instance is named", () => {
+    const said = already({ foreground: true, unit: unitNameFor("crew") });
+    expect(said).toContain("systemctl --user restart agent-protocol@crew.service");
+    expect(said).not.toContain(`restart ${DEFAULT_UNIT_NAME}`);
+  });
+
+  // THE SEAM, and it is a real one: `SELF_RESTART_BY_HAND` tells a hand what it will hit
+  // if it types `up` inside the manual restart order, and it does that by QUOTING this
+  // sentence. Rewording the opening here would leave that quote naming a refusal that no
+  // longer exists — true-looking prose about a message nobody gets (thread 141, john's
+  // requirement that the order stay correct after this command is fixed).
+  it("keeps the words SELF_RESTART_BY_HAND quotes", () => {
+    expect(SELF_RESTART_BY_HAND).toContain("a daemon is already up");
+    expect(already()).toContain("a daemon is already up");
+    expect(already({ foreground: true })).toContain("a daemon is already up");
+    // And the order that sentence gives is still the order this refusal gives.
+    expect(SELF_RESTART_BY_HAND).toContain("Do NOT type 'orchestrator up'");
+    expect(already({ foreground: true })).toContain("Do NOT type 'orchestrator up'");
   });
 });
 

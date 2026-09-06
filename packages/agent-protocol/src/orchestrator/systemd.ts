@@ -441,3 +441,43 @@ export const foregroundRefusal = (input: {
   readonly signature: string;
 }): string =>
   `the force flag is down ('${input.flagPath}') — ${input.signature}. Nothing was raised, and this is NOT a failure of the unit: the flag is doing its job, so the exit is clean and 'Restart=on-failure' will not fight it. Lift it deliberately ('orchestrator up --clear-force', or remove the file) and start the unit again`;
+
+/**
+ * WHAT `up` SAYS OVER A DAEMON THAT IS ALREADY RUNNING — the refusal john paid for on a
+ * live box (2026-09-06, thread `141-daemon-drift-needs-a-human`): a hand raised a daemon
+ * with `up`, the `systemctl restart` typed after it hit this door, the unit went to
+ * `failed` and the box spent the rest of the day OUTSIDE systemd — a reboot would not
+ * have brought it back. John's word on it: "the refusal has to be readable: say it plainly
+ * and name what to do", and the reason it is the COMMAND that is fixed and not a line in a
+ * handbook — "in an incident nobody reads the text, they read the output of the command".
+ *
+ * WHY THE CODE STAYS NON-ZERO AND ONLY THE TEXT CHANGES (decision of curator, thread 141,
+ * over a measurement of mine). The obvious cheap fix was the neighbour's: {@link
+ * foregroundRefusal} exits 0, so copy that. It does not carry over. That one exits 0
+ * because under `Restart=on-failure` a code-2 refusal would be re-raised every `RestartSec`
+ * — but the unit this package writes also carries `RestartPreventExitStatus=2`, so the
+ * loop it was avoiding cannot happen here at all. What a zero WOULD buy is a green
+ * `systemctl restart` over a box that is still unsupervised: the unit reports success and
+ * goes `inactive` while a hand-raised daemon runs on. That is the same "silent ≠ idle"
+ * class as the banner over a daemon that had already left. So the unit stays honestly red
+ * while the box is outside systemd, and the whole of the repair is in the sentence.
+ *
+ * The two forms differ in the ONE thing the reader needs and cannot infer: which command
+ * brings the box back. Under a unit that is `systemctl`, and typing `up` there is exactly
+ * the move that produced this refusal — so the foreground form says so out loud. In a
+ * terminal it is `up` itself, once the running daemon is down.
+ *
+ * The opening words are load-bearing beyond this file: `SELF_RESTART_BY_HAND` quotes them
+ * to name what a hand will hit if it types `up` inside the manual restart order (test:
+ * `systemd.test.ts`, "the sentence SELF_RESTART_BY_HAND quotes").
+ */
+export const daemonAlreadyUpRefusal = (input: {
+  readonly pid: number;
+  readonly pidFile: string;
+  readonly log: string;
+  readonly foreground: boolean;
+  readonly unit: string;
+}): string =>
+  input.foreground
+    ? `a daemon is already up, pid ${input.pid} ('${input.pidFile}') — it was raised outside this unit, and two daemons on one journal would take the same pair twice, so nothing was raised here. THIS UNIT IS NOW FAILED AND WILL NOT RETRY BY ITSELF ('RestartPreventExitStatus=2'), while that daemon keeps running with nothing supervising it — after a reboot neither comes back. IN THIS ORDER: 'orchestrator down', wait until no daemon process is left, then 'systemctl --user restart ${input.unit}'. Do NOT type 'orchestrator up' to bring it back — that raises a daemon of its own and lands this box right back here. What the running one has been saying is in '${input.log}'`
+    : `a daemon is already up, pid ${input.pid} ('${input.pidFile}') — nothing was raised and nothing was changed, because two daemons on one journal would take the same pair twice. To replace it, IN THIS ORDER: 'orchestrator down', wait until no daemon process is left, then raise it again — with the service if this box runs one ('systemctl --user restart ${input.unit}'), and only otherwise with 'orchestrator up'. What this one has been saying is in '${input.log}'`;
