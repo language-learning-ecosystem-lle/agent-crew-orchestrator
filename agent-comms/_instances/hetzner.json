@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T09:10:35.230Z",
+  "writtenAt": "2026-09-06T09:10:50.519Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "128-delivery-suite-outside-checks",
       "state": "running",
       "deadline": "2026-09-06T09:47:13Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "135-base-is-the-biggest-line",
-      "state": "draining",
-      "deadline": "2026-09-06T10:01:53Z"
     }
   ]
 }
