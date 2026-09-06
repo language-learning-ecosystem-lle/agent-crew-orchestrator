@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T19:40:31.614Z",
+  "writtenAt": "2026-09-06T19:40:55.667Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "147-open-threads-sweep-2",
-      "state": "draining",
-      "deadline": "2026-09-06T20:17:58Z"
-    },
     {
       "role": "dev-core",
       "thread": "137-double-letter-on-lost-push-receipt",
