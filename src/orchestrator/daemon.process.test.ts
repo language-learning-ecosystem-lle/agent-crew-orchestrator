@@ -226,6 +226,40 @@ const daemon = (repo: string, extra: readonly string[] = []): { code: number; ou
   return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
 };
 
+/**
+ * THE OPERATOR'S WAY OUT OF A FREEZE, typed against this contour (thread 150).
+ *
+ * `--journal` IS NAMED HERE, and NOT because the test wants it. The command's own usage
+ * marks the flag optional — without it the path comes from the config, the way the daemon
+ * gets it. That fall-back is unreachable as shipped in #306: it goes through `pathsFrom`,
+ * which demands `--ref`, and `--ref` is not in this command's argv spec, so the door
+ * refuses it as an unknown flag. Measured, both halves, on this contour. Reported into
+ * thread 150 rather than patched from inside a test PR; when the door is fixed, the honest
+ * form of this helper is `--repo` alone, which then proves the stronger thing — that the
+ * two processes agree on one journal instead of being handed the same string.
+ */
+const thaw = (repo: string, extra: readonly string[] = []): { code: number; out: string } => {
+  const result = spawnSync(
+    TSX,
+    [
+      CLI,
+      "orchestrator",
+      "thaw",
+      "--journal",
+      journalPath(repo),
+      "--role",
+      "dev-core",
+      "--thread",
+      "012-x",
+      "--by",
+      "john",
+      ...extra,
+    ],
+    { cwd: repo, encoding: "utf8", stdio: "pipe", env: sandbox(configHome(repo)) },
+  );
+  return { code: result.status ?? 1, out: `${result.stdout ?? ""}${result.stderr ?? ""}` };
+};
+
 const journalKinds = (repo: string): string[] =>
   existsSync(journalPath(repo))
     ? parseJournal(readFileSync(journalPath(repo), "utf8")).map((event) => event.kind)
@@ -268,6 +302,40 @@ describe("the daemon says why it raised nobody (the defect of 2026-07-26)", () =
     const result = daemon(repo, ["--max-attempts", "5"]);
 
     expect(result.out).toContain("attempts-per-pair ≤ 5 (flag)");
+    expect(result.out).not.toContain("skipped: exhausted");
+    expect(journalKinds(repo)).toContain("launch");
+  });
+
+  it("a THAW lets the frozen pair go: the next tick raises it, and the ceiling stays at 3", () => {
+    // THE CHAIN §4 OF THE STATEMENT OF WORK ASKED FOR, end to end: freeze artificially →
+    // lift it the announced way → the pair comes up at the next tick. Neither half proves
+    // it alone. `thaw-command.process.test.ts` stops at the line the command prints and the
+    // event it appends — that a DIFFERENT process, reading the same file with its own path
+    // resolution and its own fold, then RAISES the pair is a claim only a tick can make;
+    // and the twin above makes the same assertion with `--max-attempts`, which reaches the
+    // launch by moving the ceiling instead of by lifting the freeze.
+    const repo = contour();
+    enable(repo);
+    seedFailures(repo, 3);
+
+    // Frozen for the daemon FIRST — otherwise the launch at the end could be attributed to
+    // the fixture rather than to the thaw.
+    expect(daemon(repo).out).toContain("candidate dev-core×012-x skipped: exhausted");
+
+    const lifted = thaw(repo, ["--write"]);
+    expect(lifted.code).toBe(0);
+    expect(lifted.out).toContain("was thawed by john");
+    expect(journalKinds(repo)).toContain("thaw");
+    // AND THE THAW RAISED NOTHING ITSELF — it says so, and the journal agrees. The launch
+    // below therefore belongs to the daemon's tick, which is the whole difference between
+    // this command and a manual `run`.
+    expect(lifted.out).toContain("nothing was launched here");
+    expect(journalKinds(repo)).not.toContain("launch");
+
+    const result = daemon(repo);
+
+    // The ceiling is untouched: the same default 3 the first tick refused by.
+    expect(result.out).toContain("attempts-per-pair ≤ 3 (default)");
     expect(result.out).not.toContain("skipped: exhausted");
     expect(journalKinds(repo)).toContain("launch");
   });
