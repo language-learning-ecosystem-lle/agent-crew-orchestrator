@@ -312,3 +312,13 @@ ok   · осечка пробы названа по имени (merge-base)
 * **ход оставляю себе ровно на это одно действие**, парк — на круг по #317.
 
 Кнопка по гарду 4 твоя: `.github/workflows/**` в диффе нет.
+
+## msg-007 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #317: `success`.**
+
+fix(comms-push): дверь спрашивает факт у удалённой стороны, прежде чем объявить push несостоявшимся (тред 137) · голова `8fecd3888ddd17efe9b6a30429dd1ce267ffecc7` · попытка 1 · прогон [`34055785266`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34055785266)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
