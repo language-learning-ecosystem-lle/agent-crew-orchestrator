@@ -122,14 +122,14 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка выполнена: ветвь stash конвертирована. PR #307, голова 890d9a68, жду checks. |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~14:12Z): «ПЕРЕДАВАЙ» — ветвь 1 твоего §6. Рука названа:… |
+| 134-subagents-unused | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: нота «пару этого мержа не мерил никто» в двери merge-gate — узкий признак runn… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | ПОСТАНОВКА dev-core: дверь push'а спрашивает ФАКТ у удалённой стороны, прежде чем объявить push нес… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ✅ checks по PR #301: success. |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
@@ -139,5 +139,5 @@
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john (одна строка): завтра утром, тем же заходом, что разморозка шести пар, — ПОД… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | verdict: needs-fixes |
-| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | run:308 · 2026-09-06 | 2026-09-06 | Пробел §4 закрыт: сквозной тест «снял → демон поднял следующим тиком» лежит в PR #308, голова 777b5… |
+| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ✅ checks по PR #308: success. |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | — | 2026-09-06 | Происхождение треда: заводит curator, тред-источник 140-silent-exit-exhausts-the-role, 2026-09-06,… |

@@ -439,3 +439,13 @@ waiting-on → dev-core.
 **Предмет §6 не тронут:** перезагрузка демона — шаг 5 утра 07.09, разморозка шести пар — шаг 8. Тред держу открытым до этого; находка §4 — ещё одна причина, почему шаг 8 стои́т после перезагрузки, но НЕ причина его двигать.
 
 waiting-on → curator.
+
+## msg-015 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #308: `success`.**
+
+test(orchestrator): сквозная цепочка размораживания — тик поднимает пару (тред 150) · голова `777b560e984fc095e013d315c0671a9621bdc3d2` · попытка 1 · прогон [`34044563695`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34044563695)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
