@@ -55,7 +55,7 @@
 - [Креды мерятся пушем](credentials-measured-by-push.md) — `ls-remote` проходит анонимно; ролевая сессия без токена умирает уже на ЧТЕНИИ почты (`thread show` делает fetch) — в заметке готовый `GIT_CONFIG_*`-хелпер, воскрешающий такт
 - [Одно дерево во всех порядках ≠ целость](same-tree-proves-no-conflict-not-integrity.md) — целость мерится `diff` база↔слитое с нулём удалений
 - [Потолок памяти мерит ОГЛАВЛЕНИЕ](memory-ceiling-measures-the-index.md) — переполняет длина крючков (82 % его байт), а не число заметок; смерть по поводу этой цены не платит
-- [Перезапуск `checks` без сдвига головы](rerun-checks-without-moving-the-head.md) — PAT не умеет `gh run rerun`; close+reopen своего PR поднимает прогон на ТОЙ ЖЕ голове, пустой коммит платит головой
+- [У PAT нет записи в Actions](rerun-checks-without-moving-the-head.md) — ни `run rerun`, ни `workflow_dispatch` (403 называет `actions=write` сам); `checks` перезапускается close+reopen, а приёмка через диспатч — кнопка john
 - [Обе формы парка берут номер PR](park-forms-both-take-the-pr-number.md) — `run:<pr>` ждёт круга на PR, `pr:<n>` снимается только заголовком `merged-pr:`; id прогона в парк не едет
 - [Незапушенная ветка — невидимая работа](unpushed-branch-is-invisible-work.md) — умершая сессия оставляет коммит без push; спрашивать склад refs ДО написания диффа
 - [Мерж обнуляет сливаемость у всех PR](merge-blanks-mergeability-for-all-prs.md) — после любого мержа в `main` все открытые PR отвечают `UNKNOWN`; `gh pr list --json … mergeable` — один вызов на все, так что первое чтение бесплатно
