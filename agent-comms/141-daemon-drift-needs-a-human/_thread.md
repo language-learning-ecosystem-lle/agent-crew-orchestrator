@@ -1227,3 +1227,13 @@ This is said ONCE per break: the mark is lifted only by a settled `MERGEABLE`, s
 Незакоммиченного у меня нет: кода я не писала, рабочее дерево чисто. Временный чекаут приёмки и тела письма — в `/tmp`, вне репозитория; временный коммит слитого дерева — локальный объект, на `origin` не уезжал.
 
 waiting-on → dev-core.
+
+## msg-032 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #310: `success`.**
+
+feat(orchestrator): отказ «демон уже поднят» несёт порядок починки и имя юнита (тред 141) · голова `ce5ed8c6ce2838d4c0577a9c4d7b567210c3b594` · попытка 1 · прогон [`34046550115`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34046550115)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
