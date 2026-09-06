@@ -140,4 +140,4 @@
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | verdict: needs-fixes |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
-| 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | — | 2026-09-06 | verdict: approve |
+| 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: нажать merge (squash) на PR #314 — PROTOCOL.md, док власти, гард 4 даёт STO… |
