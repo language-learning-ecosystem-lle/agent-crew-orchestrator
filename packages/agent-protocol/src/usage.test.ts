@@ -242,6 +242,14 @@ const MUST_BE_ACCEPTED: readonly (readonly [string, readonly string[]])[] = [
     ],
   ],
   ["orchestrator log", ["--ref", "origin/main", "--journal", "/tmp/journal.jsonl"]],
+  // `thaw` WITHOUT `--journal` — the form the tick, the notifier and `status` all print,
+  // and the form that was refused as shipped in #306 (thread 150): the fall-back reads the
+  // config, the config read demands a ref, and `--ref` was in no line of this command.
+  ["orchestrator thaw", ["--role", "devops", "--thread", "079-stuck", "--by", "john", "--write"]],
+  [
+    "orchestrator thaw",
+    ["--role", "devops", "--thread", "079-stuck", "--by", "john", "--ref", "origin/main"],
+  ],
   ["orchestrator enable", ["--ref", "origin/main", "--repo", "/tmp/repo", "--write"]],
   ["orchestrator disable", ["--ref", "origin/main", "--repo", "/tmp/repo", "--write"]],
   [
@@ -863,6 +871,37 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       }
     }
     expect(strays).toEqual([]);
+  });
+
+  /**
+   * THE CLASS THE DEFECT OF `thaw` BELONGED TO (thread 150, measured 2026-09-06).
+   *
+   * `--journal` in square brackets is a promise with a second half nobody writes down:
+   * without it the path comes out of the config, and reading the config goes through
+   * `configFrom`, which demands `--ref`. A command that offers the flag as optional and
+   * does NOT accept `--ref` therefore has an unreachable fall-back — the brackets lie,
+   * and the refusal names a flag the argument door then rejects as unknown. That is
+   * exactly what `orchestrator thaw` shipped as in #306.
+   *
+   * It is a check of the TABLE and not of a call, because the defect is a disagreement
+   * between two texts: the line the operator is shown and the spec the door is built
+   * from are the same string, and this reads it the way the door does.
+   */
+  it("every command that offers `--journal` as optional also accepts `--ref` (150)", () => {
+    const offenders: string[] = [];
+    for (const [key, spec] of parseUsage(USAGE)) {
+      if (!spec.value.includes("--journal")) continue;
+      if (!spec.value.includes("--ref")) offenders.push(key);
+    }
+    expect(offenders).toEqual([]);
+    // The guard would be vacuous if nothing were in the class — name the members, so a
+    // rename that empties the set goes red here instead of going quiet.
+    const withJournal = [...parseUsage(USAGE)]
+      .filter(([, spec]) => spec.value.includes("--journal"))
+      .map(([key]) => key);
+    expect(withJournal).toContain("orchestrator thaw");
+    expect(withJournal).toContain("orchestrator log");
+    expect(withJournal).toContain("orchestrator daemon");
   });
 
   it("refuses the typo `orchestrator up` used to swallow behind `--clear-force` (042)", () => {

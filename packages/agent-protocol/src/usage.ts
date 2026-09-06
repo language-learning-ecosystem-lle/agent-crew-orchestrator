@@ -798,7 +798,7 @@ The strict forms below keep every flag they had.
                               # the ceiling off; the refusal at the door cannot be switched off
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
-  agent-protocol orchestrator thaw   --role <id> --thread <slug> --by <who> [--note <t>] [--journal <p>] [--now <iso>] [--max-attempts <n>] [--write]
+  agent-protocol orchestrator thaw   --role <id> --thread <slug> --by <who> [--note <t>] [--journal <p>] [--ref <ref>] [--now <iso>] [--max-attempts <n>] [--write]
                               # LETS A PAIR STOPPED BY THE ATTEMPT CEILING GO (150). The count
                               # is zeroed by a DELIVERY, a delivery is written by a RUN of the
                               # pair, and the ceiling refuses that run — a closed circle whose
@@ -814,6 +814,10 @@ The strict forms below keep every flag they had.
                               # stop. The move is a person's, typed on the box
                               # Refuses by name on an unknown pair and on a pair that is NOT
                               # frozen, naming its attempt count and state
+                              # WITHOUT '--journal' the path comes from the config, the way the
+                              # daemon gets it, and '--ref' defaults to 'orchestrator.ref' — the
+                              # operator's ref, as for 'up'/'down'/'hold'. So the announced form
+                              # (role, thread, by) is typed as printed and needs no path
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
   agent-protocol orchestrator stop   --mode graceful --ref <ref> [--stop-flag <p>] [--write]
   agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--repo <p>] [--force-flag <p>] [--root <mail>] [--write]

@@ -2440,7 +2440,7 @@ agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
 agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--write]
 agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--write]   # the role is taken by a manual session
-agent-protocol orchestrator thaw   --role <id> --thread <slug> --by <who> [--note <t>] [--journal <p>] [--now <iso>] [--max-attempts <n>] [--write]
+agent-protocol orchestrator thaw   --role <id> --thread <slug> --by <who> [--note <t>] [--journal <p>] [--ref <ref>] [--now <iso>] [--max-attempts <n>] [--write]
                             # LETS A PAIR STOPPED BY THE ATTEMPT CEILING GO (thread 150). The count is zeroed by a
                             # DELIVERY, a delivery is written by a RUN of the pair, and the ceiling refuses that run —
                             # a closed circle whose only exit used to be `run --max-attempts` above the ceiling
@@ -2454,6 +2454,10 @@ agent-protocol orchestrator thaw   --role <id> --thread <slug> --by <who> [--not
                             # its own ceiling is a role the ceiling does not stop
                             # Refuses by name on an unknown pair, and on a pair that is NOT frozen (naming its attempt
                             # count, its state and its release reason)
+                            # THE ANNOUNCED FORM IS THE WHOLE FORM: without `--journal` the path comes out of the
+                            # config, the way the daemon gets it, and `--ref` falls back to `orchestrator.ref` of the
+                            # working tree (the operator's ref, as for `up`/`down`/`hold`), printing which ref it took.
+                            # `--journal` stays an override for a box whose config is not what is being read
 agent-protocol metrics      [--ref <ref>] [--root <comms>] [--journal <p>] [--sessions <p>] \
                             [--since <iso>] [--now <iso>] [--role <id>] [--thread <slug>] \
                             [--no-streams] [--metrics-cache <p>] [--json]
@@ -2603,10 +2607,18 @@ The three reasons behind the "not committed" column, in full:
   touch many files at once and the config half goes through a PR by rule, so the commit is
   the human's decision, not the tool's. `schema migrate` says this in its own output;
 - **the operational state is not in git at all** (`orchestrator record/enable/disable/
-  hold/stop/run`, the state file of `notify`). It lives under `orchestrator.state`
+  hold/stop/thaw/run`, the state file of `notify`). It lives under `orchestrator.state`
   (`.orchestrator/` here, gitignored) because it is a fact about THIS machine — there is
   nothing to deliver. `notify` does deliver, through its transport plugin; a commit is not
   its channel.
+
+**"no git" is about the WRITE, and WHERE that state lives is still read from the config**
+— which is read at a ref, like every other reading this package does. That is why the
+machine-local commands take `--ref` (`record`, `hold`, `stop`, `log`) or fall back to
+`orchestrator.ref` of the working tree (`up`, `down`, `hold <role>`, `resume`, `thaw`):
+the path comes out of a version of the config that was chosen, not guessed. Naming the
+file directly (`--journal`, `--stop-flag`, `--holds`, …) is the override that skips that
+reading, and it is what a box whose config is not the one being read is given.
 
 `orchestrator run` is in that last class by its state, and it is the one entry where the
 word means something else: **`--write` there is not "write the file", it is "do it"**.
