@@ -125,11 +125,11 @@
 | 134-subagents-unused | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | closed | — | — | 2026-09-06 | — |
-| 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | verdict: approve |
+| 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | closed | — | — | 2026-09-06 | — |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | run:318 · 2026-09-06 | 2026-09-06 | 318 отдан кругу: checks зелёный (34055992947, 19:55:33Z), метка review повешена в 19:55:48Z на голо… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: needs-fixes |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | john · 2026-09-06 | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~17:26Z): ВАРИАНТ 2 — везём переезд И заводим правило при… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
