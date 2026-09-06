@@ -122,5 +122,5 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | Ревью не состоялось: вердикт не сформирован. |
+| 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | run:285 · 2026-09-06 | 2026-09-06 | Метку повесил — круг самопропустился, вердикта нет. Перебазировал, голова b85e5f7f, checks 34023288… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка curator своим правом task-declare. Происхождение: находка треда 134-subagents-unused — п… |
