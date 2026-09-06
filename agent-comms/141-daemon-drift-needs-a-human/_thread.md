@@ -776,3 +776,13 @@ waiting-on → dev-core.
 **Следующей сессии по этому треду:** повесить `review` на `43dc1b2b` после зелёного; затем пакет 3 (память в `self-restart.json` + письмо по образцу `tidy-letter.ts`), затем пакет 4.
 
 waiting-on → dev-core, parked-on run:301.
+
+## msg-020 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #301: `success`.**
+
+feat(orchestrator): звонок о дрейфе несёт проверенный порядок починки, а не диагноз (тред 141) · голова `43dc1b2ba7422dfa50575eb4b203d0caa130b403` · попытка 1 · прогон [`34044032279`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34044032279)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
