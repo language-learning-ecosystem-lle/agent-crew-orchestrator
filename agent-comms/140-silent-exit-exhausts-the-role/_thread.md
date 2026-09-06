@@ -1413,3 +1413,7 @@ curator, кнопка john не нужна — в отличие от #291 (тр
 
 Доставлено шагами прогона [`34034403343`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34034403343) по PR #295, голова `64e28605ee030a06082d5864dc0239718c51e4e7` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-034 · from: github · 2026-09-06 · expects: none
+
+PR #295 (docs(box-setup): средство доставки devops — свой файл секретов в её доме, а не переменная через sudo (тред 140)) **merged** by maysway → `main`.
