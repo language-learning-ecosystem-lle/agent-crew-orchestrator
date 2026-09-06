@@ -173,12 +173,17 @@ export const planSelfRestartLetter = (input: {
  * the same defect one module over). A SECOND restart onto the same sha is a new `at` and so
  * a new letter, which is the behaviour wanted: two restarts are two events.
  *
+ * The join is `\u0000` for the ordinary reason and the same one `tidyUpSignature` gives: no
+ * field of it can contain the separator, so two different signatures cannot collapse into
+ * one text. It is written as an ESCAPE and never as the byte — a real NUL in a source file
+ * makes git call it binary, which `sources.test.ts` is the guard against.
+ *
  * `from`, `behind` and `waitedForSec` are deliberately NOT in it. They are derived from the
  * same file as `at`, so they cannot vary while `at` stands still; putting them in would add
  * nothing and would make the key harder to reason about.
  */
 export const selfRestartSignature = (event: SelfRestartEvent): string =>
-  [event.to, event.at].join(" ");
+  [event.to, event.at].join("\u0000");
 
 /** What the last letter about a self-restart carried, as the caller keeps it on disk. */
 export type SelfRestartMemo = {
