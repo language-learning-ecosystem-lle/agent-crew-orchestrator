@@ -4,7 +4,7 @@ description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-03T02:20:44.719Z
+  modified: 2026-09-06T10:26:18.599Z
 ---
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
@@ -311,3 +311,28 @@ fetch-before-write `github-crew` DNS step, both checkouts confirmed clean after.
 `--no-push`. Ended via direct session reply, same as every prior occurrence since the pattern
 was established. No new technical information this run — logged only to keep the occurrence count
 accurate for whoever eventually sizes the "week of counting" input this gap has been blocking.
+
+**2026-09-06T10:25Z, thread `079-devops-enablement-acceptance` (17th overall, 6th on this
+thread) — read this file first this time, still confirmed by quick recheck (`ls ~/.ssh` →
+absent, `env | grep -iE "github|token|ssh"` → empty) rather than a full re-derivation.** Ran the
+complete 5-point checklist fresh (curator's msg-001 on this thread, worded identically to the
+02:19Z-and-earlier occurrences): id/whoami (`uid=1001(aco-devops)`, `$TMPDIR` empty length 0,
+confirms [[finding_tmpdir_not_kept_for_devops_sudo]] again), all three capabilities via
+`capability run --no-fetch` (all three behaved as documented), all four refusal probes — **(b)
+and (c) are still byte-identical door text**, same finding as the 01:51Z entry, not new — and the
+three around-the-channel OS probes (all three refused: `sudo -n true` → "a password is
+required"; `systemctl --user status` → "Failed to connect to bus: No medium found"; `cat
+~/.ssh/github` → "Permission denied"). `capabilities.log` now holds 4 lines (grew from the 1 seen
+2026-09-03T01:56Z), all still `repo-refresh` from 2026-09-02/03, all still `FAILED at step 1 of 2`
+— no successful `repo-refresh` has EVER been logged through this door, on any thread, across the
+full 4-day span this file covers. New data point worth keeping: **`--no-fetch` does not touch the
+write path's own pre-write fetch** — it only suppresses the config-read fetch (`origin main`); the
+write still separately fetches the mail branch (`origin comms`) before writing, and that fetch
+hits the identical `github-crew` DNS wall regardless of `--no-fetch` being passed. So there is no
+flag combination that gets `new-message --write` past this — confirmed structurally, not just
+empirically. Delivered the full report via direct reply (this session's final text output), not
+duplicated here. Still exactly one remaining piece: `john` provisioning a scoped git credential
+for `aco-devops`. **Future runs: do not re-run this checklist a 7th time on this thread purely to
+reconfirm the gap** — `ls ~/.ssh` (absent) + `env | grep -i token` (empty) is sufficient
+confirmation in under 10 seconds; spend the rest of the lease on the thread's actual content if
+it has changed, or end promptly if it hasn't.
