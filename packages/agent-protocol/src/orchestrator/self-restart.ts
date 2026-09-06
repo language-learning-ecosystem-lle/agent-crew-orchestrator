@@ -164,7 +164,13 @@ export const selfRestartForm = (env: NodeJS.ProcessEnv): SelfRestartForm =>
 
 /** Why a box that is behind is nevertheless not restarting itself right now. */
 export type SelfRestartBlock =
-  | { readonly kind: "stopping" }
+  /**
+   * `flag` is the file that is actually down, when the caller knows which of the two it
+   * was. It is optional because the sentence has to survive not knowing: a repair that
+   * says "delete the stop flag" without naming it is still the right move, and a path
+   * invented to fill the slot would send a hand to a file that is not there.
+   */
+  | { readonly kind: "stopping"; readonly flag?: string }
   | { readonly kind: "held"; readonly roles: readonly string[] }
   | { readonly kind: "foreign-checkout"; readonly code: string; readonly served: string }
   | { readonly kind: "dirty"; readonly checkout: string; readonly paths: readonly string[] }
@@ -256,6 +262,12 @@ export const selfRestartVerdict = (input: {
   readonly openLeases: readonly string[];
   /** The stop or force flag is down — somebody is already stopping this box. */
   readonly stopping: boolean;
+  /**
+   * WHICH of the two is down, when the caller knows. It is carried rather than derived
+   * because the repair sentence tells a hand to delete that file, and the only place that
+   * knows whether it was the stop flag or the force flag is the tick that looked.
+   */
+  readonly stopFlag?: string;
   /** Roles taken by manual sessions — an operator is at this box. */
   readonly held: readonly string[];
   /** The state of the checkout the loaded code came from — the tree `pull` would move. */
@@ -271,7 +283,14 @@ export const selfRestartVerdict = (input: {
   readonly ceiling: number;
 }): SelfRestartVerdict => {
   const live = [...input.running, ...input.openLeases.filter((id) => !input.running.includes(id))];
-  if (input.stopping) return { kind: "stand", block: { kind: "stopping" } };
+  if (input.stopping)
+    return {
+      kind: "stand",
+      block: {
+        kind: "stopping",
+        ...(input.stopFlag === undefined ? {} : { flag: input.stopFlag }),
+      },
+    };
   if (input.held.length > 0) return { kind: "stand", block: { kind: "held", roles: input.held } };
   // Before anything is said about the tree: a complaint about the state of a checkout
   // this daemon does not serve would name a true fact for the wrong reason.
@@ -338,8 +357,84 @@ export const describeSelfRestartStand = (
   now: Date,
 ): string => `the code is ${describeDriftSize(drift, now)} — ${describeSelfRestartBlock(block)}`;
 
-/** The condition alone — the half of the line above that names WHY, and the whole of R4. */
-export const describeSelfRestartBlock = (block: SelfRestartBlock): string => {
+/**
+ * THE SEQUENCE THAT WORKS, CARRIED BY THE CALL ITSELF (thread 141 §4.2 and §5, curator
+ * 2026-09-06). The drift alarm used to be a diagnosis: it said how far behind the box was
+ * and why it was not moving, and stopped there. What that cost is measured, not supposed —
+ * john ended the 22-hour drift by hand on 2026-09-06 and it took him over an hour and
+ * three false stops of a live daemon, because every trap below is invisible until you step
+ * in it. A call that names the fault and not the move is the same class the whole thread is
+ * about, one layer up: the system sees the problem, says it out loud, and the reader is
+ * still on their own.
+ *
+ * ALL FOUR CLAUSES ARE FIELD-MEASURED, and none of them follows from the names:
+ *   - `down`, NOT `stop` — `stop` demands `--mode force` and tearing a session spends an
+ *     attempt, and three of those switch a role off by the ceiling (thread 140);
+ *   - the flag comes up BY DELETING THE FILE, never by `orchestrator up` — `up` raises a
+ *     daemon ITSELF, so the `systemctl restart` after it dies with «a daemon is already up»
+ *     and leaves this box running outside systemd, where a reboot does not bring it back;
+ *   - the install is needed ONLY if the pull moved the manifests — john's ran for 595ms to
+ *     say `Already up to date`, and it was the step he lost the most time to;
+ *   - and it needs `CI=true`, because pnpm wanting to re-create `node_modules` asks for a
+ *     confirmation it cannot ask for without a TTY (`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`)
+ *     and hangs SILENTLY instead of refusing.
+ *
+ * It is one exported constant and not four sentences in six branches so that the blocks
+ * below cannot drift apart from each other, and so that a change to the box's real repair
+ * has exactly one place to land.
+ */
+export const SELF_RESTART_BY_HAND =
+  "BY HAND, and this order is measured (2026-09-06, thread 141): 'orchestrator restart --pull' does the whole of it in one action; step by step it is 'orchestrator down' (NOT 'stop' — that one demands '--mode force' and tears live sessions), wait for zero daemon processes, pull the tree, lift the stop flag BY DELETING THE FILE, then 'systemctl restart'. Do NOT type 'orchestrator up' anywhere in that sequence: it raises a daemon itself, the restart after it dies with 'a daemon is already up' and this box is then outside systemd and will not come back after a reboot. An install is needed ONLY if the pull moved 'package.json', 'pnpm-lock.yaml' or 'pnpm-workspace.yaml', and it needs 'CI=true' or pnpm hangs silently with no TTY";
+
+/**
+ * WHAT THE HAND HAS TO DO ABOUT THIS BLOCK — one move per state, and for four of the six
+ * it is NOT a restart.
+ *
+ * THAT IS THE POINT AND IT IS THE SAME LESSON AS {@link SELF_RESTART_BY_HAND}: since the
+ * drain landed, a box whose only obstacle was work in flight gets itself out, so every
+ * block left here is a state where something is genuinely stuck — and in most of them the
+ * one stuck thing is small (a hold, a dirty tree) and the box takes it from there by
+ * itself. Sending a reader through the full stop-pull-restart order for a stray untracked
+ * file would be teaching them to do by hand what the box does better, which is how an hour
+ * goes. So the sentence says which of the two it is, every time.
+ */
+export const describeSelfRestartRepair = (block: SelfRestartBlock): string => {
+  switch (block.kind) {
+    // THE TRAP LIVES EXACTLY HERE. Whoever put this box down is the one who will bring it
+    // back, and `up` is the obvious word for that — so the warning belongs in the sentence
+    // they are reading while they are down, not in the one they get three attempts later.
+    case "stopping":
+      return `WHEN YOU BRING IT BACK: lift ${
+        block.flag === undefined ? "the stop flag" : `'${block.flag}'`
+      } BY DELETING THE FILE and raise the box with the service ('systemctl restart') — 'orchestrator up' raises a daemon itself, and the restart typed after it dies with 'a daemon is already up' and leaves this box outside systemd. Pull the tree before you raise it and the drift is gone with the same move`;
+    case "held":
+      return `THE HAND IS ALREADY AT THIS BOX: release the hold ('orchestrator hold --mode release --role <role> --write') and this daemon drains and repairs itself on its own — nothing below needs typing`;
+    case "foreign-checkout":
+      return "NOTHING TO TYPE BLIND: one of the two paths is wrong — the home this daemon serves or the checkout its code was loaded from — and which one is a decision about how this box is configured, not a repair to run over it";
+    case "dirty":
+      return "CLEAN THAT TREE AND STOP THERE: this daemon takes it from there by itself on the next tick — it needs no stop, no pull and no install from a hand";
+    case "tree-unreadable":
+      return "LOOK AT THAT TREE FIRST: once its state reads at all, this daemon judges it and repairs itself — a pull typed over a tree neither of you can read is the one move to avoid";
+    // The ceiling is the only block that means the box TRIED and could not: the self-repair
+    // already ran, so what is left is genuinely the whole manual order.
+    case "attempts":
+      return `THE BOX HAS SPENT ITS TRIES AND WILL NOT TRY AGAIN — ${SELF_RESTART_BY_HAND}`;
+  }
+};
+
+/**
+ * The condition alone — the half of the line above that names WHY, and the whole of R4.
+ *
+ * IT NOW ENDS IN THE MOVE ({@link describeSelfRestartRepair}), in the same string and not
+ * beside it, for the reason the measurement is in it too (thread 044): this sentence is
+ * what the courier carries into the digest as one line, and a reader who has only this line
+ * has to have the whole of it — what is wrong, and what to do.
+ */
+export const describeSelfRestartBlock = (block: SelfRestartBlock): string =>
+  `${describeSelfRestartCause(block)}. ${describeSelfRestartRepair(block)}`;
+
+/** The fault by itself, with nothing said about the repair — the older half of the line. */
+export const describeSelfRestartCause = (block: SelfRestartBlock): string => {
   switch (block.kind) {
     case "stopping":
       return "no self-restart while a stop is already down — somebody is stopping this box";
@@ -625,7 +720,11 @@ export const describeRepairRefusal = (failure: RepairFailure): string | undefine
     failure.kind === "stood"
       ? `the self-repair ran and this tree did not move — ${why}`
       : `the self-repair FAILED at '${failure.step}' (${why})`;
-  return `${what}. The decision to repair was taken and it did not hold: this box stays up on the old code, and what moves it now is a hand`;
+  // AND IT SAYS WHAT THE HAND TYPES (§5). "What moves it now is a hand" was the whole of
+  // the old ending, and it is the sharpest place in the file to stop short: the box has
+  // already tried and failed here, so unlike every block but the ceiling there is nothing
+  // left that fixes itself, and the reader who gets this line is the one who has to act.
+  return `${what}. The decision to repair was taken and it did not hold: this box stays up on the old code, and what moves it now is a hand — ${SELF_RESTART_BY_HAND}`;
 };
 
 /**

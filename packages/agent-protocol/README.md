@@ -5363,6 +5363,37 @@ The courier carries the drain sentence in place of the old refusal (`daemon-drif
 below), which is the half a person outside the box reads: it names a decision already taken
 and the one event that completes it, so nobody goes looking for something to type.
 
+**And where there IS something to type, the call now says what it is (thread 141, §4.2 and
+§5 of the statement).** Every sentence in this block used to end at the fault — «what moves
+it now is a hand» — and the hand was told nothing. The price is measured, not supposed: john
+ended the 22-hour drift by hand on 2026-09-06 and it cost him over an hour and three false
+stops of a live daemon, because each of the four traps is invisible until you step in it.
+So `describeSelfRestartRepair` gives every block its move, `SELF_RESTART_BY_HAND` holds the
+one order that works, and `describeSelfRestartBlock` is the two of them in ONE string —
+because the courier carries one line and a reader who has only that line has to have the
+whole of it (the rule of thread 044, applied to the move rather than to the measurement).
+
+- **`orchestrator restart --pull` does the whole of it in one action**, and it is named
+  before the steps. Step by step: `down` (**not** `stop` — that one demands `--mode force`
+  and tears live sessions, and a torn session is a spent attempt), wait for zero daemon
+  processes, pull, lift the stop flag **by deleting the file**, then `systemctl restart`.
+- **`orchestrator up` is refused by name inside the sequence.** It raises a daemon ITSELF,
+  so the `systemctl restart` typed after it dies with «a daemon is already up» and leaves
+  the box running outside systemd, where a reboot does not bring it back. The warning sits
+  in the `stopping` line as well as in the order, because `up` is the obvious word for
+  bringing back a box you put down, and that is the moment the reader is standing at.
+- **The install is needed ONLY if the pull moved `package.json`, `pnpm-lock.yaml` or
+  `pnpm-workspace.yaml`, and it needs `CI=true`** — pnpm wanting to re-create `node_modules`
+  asks for a confirmation it cannot ask for with no TTY
+  (`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`) and hangs SILENTLY instead of refusing. The
+  install john finally got through ran for 595ms to say `Already up to date`.
+- **Four of the six blocks are NOT sent through that order at all**, and that is the same
+  lesson rather than a softer one: since the drain landed, a box blocked on a hold, a dirty
+  tree or an unreadable one gets itself out the moment that one thing is gone, so its line
+  names the one thing and says the box takes it from there. Only the spent ceiling — the one
+  block that means the box already tried — and the failed repair (`describeRepairRefusal`)
+  carry the whole manual sequence.
+
 **A version verdict is that same repair asked for in words, and until thread 040 it killed
 the box instead** (measured on this repository 2026-08-28 19:45Z, the third outage of the
 class in a week). A config declaring a `protocolVersion` this build does not know is a
