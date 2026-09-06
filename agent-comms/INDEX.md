@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john, и вопрос ровно тот же, что стоит в ленте со вчера и не отвечен: перезапуска… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат ~08:44Z): #280 СМЁРЖЕН его кнопкой. Смотритель имени соседнего дома… |
+| 064-forget-the-consumer | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: Т9 (живая приёмка доставки смотрителя) моей рукой НЕ СНИМАЕТСЯ — у PAT роли… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -122,5 +122,5 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #285: success. |
+| 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | Ревью не состоялось: вердикт не сформирован. |
 | 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка curator своим правом task-declare. Происхождение: находка треда 134-subagents-unused — п… |
