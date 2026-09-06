@@ -122,7 +122,7 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john — деньги и карточки ролей: двигаемся ли мы к подагентам вообще, и если да, т… |
+| 134-subagents-unused | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:55Z). Развилка §3 решена НЕ выбором из трёх ветвей, а… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:47Z): «ДА» — #286 к merge. Гард 3 закрыт этим письмом… |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: ловить ли класс «пара PR не измерена никем» — и если ловить, то которой из… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли удвоение письма на потерянной квитанции push'а — и годится ли фор… |
