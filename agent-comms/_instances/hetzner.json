@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T13:37:11.674Z",
+  "writtenAt": "2026-09-06T13:37:26.028Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "062-contour-boundary",
       "state": "running",
       "deadline": "2026-09-06T14:17:08Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "144-zones-comment-outlived-its-measurement",
-      "state": "running",
-      "deadline": "2026-09-06T14:35:08Z"
     }
   ]
 }
