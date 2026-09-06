@@ -129,7 +129,7 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 0. О парке, в который это письмо кладётся |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — два вопроса, без которых второй пакет (письмо о самоперезапуске) не начина… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Замер после merge, прямо по предмету треда: НОВОЕ правило самоперезапуска грузится СТАРЫМ правилом… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | open | curator | — | 2026-09-06 | ЭТОТ КАТАЛОГ НЕДЕЙСТВИТЕЛЕН. Предмет переехал: [147-open-threads-sweep-2](https://github.com/langua… |
