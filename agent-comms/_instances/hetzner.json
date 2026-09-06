@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T13:34:09.851Z",
+  "writtenAt": "2026-09-06T13:34:26.705Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "141-daemon-drift-needs-a-human",
-      "state": "draining",
-      "deadline": "2026-09-06T14:32:27Z"
-    },
     {
       "role": "curator",
       "thread": "130-unguarded-read-kills-the-rescuer",
