@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:39Z): «ПУСТЬ ПЕРЕЗАПУСКАЕТСЯ САМ, МЯГКО И С ПИСЬМОМ».… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john. Оба вчерашних вопроса замером сведены в ОДИН: назначить ли ОДНО окно без жи… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | ПАРКОВКА СНЯТА: ручная рука john НЕ НУЖНА — живая приёмка смотрителя (Т9) НАСТУПИЛА САМА, на живых… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -128,5 +128,5 @@
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли удвоение письма на потерянной квитанции push'а — и годится ли фор… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | run:292 · 2026-09-06 | 2026-09-06 | Молчаливые уходы devops — НЕ «делать нечего». Все четыре, включая сегодняшний прогон рукой john, ум… |
+| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДРЕЙФ ЗАКРЫТ рукой john. И операция вскрыла ЧЕТВЁРТУЮ половину предмета — она про то, почему проста… |
