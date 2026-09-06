@@ -1,3 +1,4 @@
+- [Дверь почты падает на чужом `index.lock`](mail-door-dies-on-a-foreign-index-lock.md) — код 128, ретрай внутри команды не покрывает; переждать и повторить, чужой лок не снимать
 - [Дифф PR берут от merge-base](pr-diff-base-is-the-merge-base.md) — `git diff origin/main <голова>` на отставшей ветке печатает чужие мержи как удаления и врёт про доки власти
 - [Низкий приоритет всё равно поднимают](low-priority-still-gets-raised.md) — `--priority low` только упорядочивает очередь; кандидатом делает `waitingOnOf`, вычёркивает `--waiting-on "—"`
 - [Деревья ролей делят один склад refs](role-worktrees-share-one-ref-store.md) — чужой тег виден без `fetch` — это улика и мина; годность тега мерится деревом и `version` внутри, а не именем
