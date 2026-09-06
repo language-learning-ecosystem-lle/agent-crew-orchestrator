@@ -68,7 +68,7 @@
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john, и вопрос ровно тот же, что стоит в ленте со вчера и не отвечен: перезапуска… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
-| 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: нажать squash-merge на PR #280 (смотритель имени соседнего дома) — гарды 1,… |
+| 064-forget-the-consumer | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | PR #280 (feat(foreign-name-watch): триггер смотрителя имени соседнего дома, доставка звонка и юниты… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
 | 067-park-lift-narrowing | curator, john | normal | closed | — | — | 2026-09-02 | — |
@@ -111,7 +111,7 @@
 | 119-mute-count-blames-github | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
-| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: PR #278 стои́т готовым под твою кнопку — мёржишь ли… |
+| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | dev-core | — | 2026-09-06 | PR #278 (fix(review-delivery): отказная ветвь доставки перечитывает цель, прежде чем объявить письм… |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | closed | — | — | 2026-09-05 | — |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
@@ -122,4 +122,4 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | Постановка по слову john (чат 2026-09-06 ~08:3xZ: «заводи»). Происхождение: его вопрос «а у нас аге… |
+| 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | Замерено. PR #285, голова 3cebd9ba, checks 34022609638 идёт. scripts/read-cost.mjs + docs/read-cost… |
