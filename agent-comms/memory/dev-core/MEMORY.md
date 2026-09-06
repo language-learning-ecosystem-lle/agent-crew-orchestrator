@@ -82,3 +82,5 @@
 - [Метка `review` переживает force-push и глушит подъём](label-survives-force-push-and-mutes-the-lift.md) — не снял до зелёного `checks` — круга нет и звонка нет: замок, который ловится чужой рукой.
 - [Самопропуск круга бывает и от ОТСТАВШЕЙ ветки](review-self-skips-on-a-stale-branch-too.md) — не только «PR правит воркфлоу»: `git diff origin/main <голова> -- .github/workflows/` разводит два случая с противоположным лечением.
 - [Часы уезжают в ключ схлопывания через argv](clock-leaks-into-a-dedup-key-through-argv.md) — «1 красный из 8» и все тики в одной минуте: подпись аварии несёт минуту текстом причины, цитирующей argv.
+- [Предложенное вердиктом действие бывает красно своим же критерием](reviewer-proposed-fix-can-break-its-own-criterion.md) — перечитывай `REVIEWER.md`, а не абзац вердикта; ищи санкционированную дверь пакета.
+- [`intent: policy` не отдаёт полей почты](config-intent-data-vs-policy.md) — выбор `data`/`policy` для исторических ref меряется `protocolVersion` по ревизиям окна.
