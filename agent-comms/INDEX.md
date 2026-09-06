@@ -117,7 +117,7 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | run:287 · 2026-09-06 | 2026-09-06 | Метка review на #287 повешена после зелени на ТОЙ ЖЕ голове; круг поднят и замерен — паркуюсь на ru… |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
@@ -125,5 +125,5 @@
 | 134-subagents-unused | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john — деньги и карточки ролей: двигаемся ли мы к подагентам вообще, и если да, т… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Раскладка сдана и не тронута — предмет 135 с моей стороны закрыт. Красным checks по #286 оказался н… |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: ловить ли класс «пара PR не измерена никем» — и если ловить, то которой из… |
-| 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Тот же класс — «судьёй доставки служит код выхода клиента» — стои́т ШЕСТЫМ местом, в comms-push.sh,… |
+| 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли удвоение письма на потерянной квитанции push'а — и годится ли фор… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 1. |
