@@ -1728,6 +1728,33 @@ agent-protocol notify  --ref <ref> [--root <comms>] [--state <p>] [--env-file <p
                             # pair is refused before it runs — so no message into the thread lifts it.
                             # What does: `--max-attempts` above the ceiling (one run through, its
                             # handoff zeroes the count), or the retroactive shape above
+                            # AND WITH `--write` THE TERMINAL FREEZE IS ALSO WRITTEN INTO THE FEED OF
+                            # THE PAIR'S OWN THREAD (thread 149, john's norm of 2026-09-06): `from:
+                            # github`, `expects: none`, the turn to `curator` — never to the frozen
+                            # role, whose whole state is never being raised again. The phone call above
+                            # goes to a person; the LIE is in the thread, which reads as "the work is
+                            # in progress" (measured in thread 140: five pairs of `devops` stood so for
+                            # three days). The body carries four facts and the fourth is the norm: the
+                            # pair, the attempts against the ceiling, WHAT THE LAST ATTEMPT ENDED WITH,
+                            # and WHAT LIFTS THE FREEZE — including, out loud, that answering in that
+                            # thread does not
+                            # ONLY THE TERMINAL ONE: a freeze with a thaw ahead of it ends by a clock
+                            # the box already holds, so a letter about it would describe a stop that
+                            # was over before it was read. Rules in `orchestrator/freeze-letter.ts`
+                            # ONE LETTER PER SERIES, and by a SECOND mark (`freeze-letter <role>
+                            # <thread> <stamp>`) rather than the `freeze` keys above. The two are spent
+                            # by two different outcomes — the digest's key by a delivered phone call,
+                            # this one by a letter that landed — and one key for both would let either
+                            # failure erase the other's memory. It is written AT ONCE, the moment the
+                            # letter lands, for the reason the watchman's marks below are: a transport
+                            # that refuses a minute later must not make the next tick write a SECOND
+                            # letter into a feed that already carries one
+                            # A DRY RUN NEVER WRITES INTO THE MAIL, and a pair whose thread is not in
+                            # the mail or whose role the config does not know is refused BY NAME and
+                            # NOT remembered — the next tick tries again, because a remembered refusal
+                            # is silence for as long as the freeze lasts
+                            # NOT COVERED BY A TEST: the live delivery out of `notify` into the real
+                            # mail at a real exhaustion — that is field acceptance, at the first one
                             # A CLOSED THREAD IS NOT A FROZEN PAIR (thread 016): the category counts
                             # over the fold MINUS the pairs whose thread is closed. The neighbouring
                             # categories get this at the source (`waitingOnOf`/`parkingOf` answer
