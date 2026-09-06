@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T17:01:29.639Z",
+  "writtenAt": "2026-09-06T17:02:07.191Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "150-no-way-to-thaw-an-exhausted-pair",
-      "state": "draining",
-      "deadline": "2026-09-06T17:50:39Z"
-    },
     {
       "role": "curator",
       "thread": "142-mcp-catalogue-rides-unused",
