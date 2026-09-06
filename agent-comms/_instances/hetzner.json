@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T13:17:29.824Z",
+  "writtenAt": "2026-09-06T13:17:49.178Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "062-contour-boundary",
       "state": "running",
       "deadline": "2026-09-06T13:50:59Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "141-daemon-drift-needs-a-human",
+      "state": "running",
+      "deadline": "2026-09-06T14:17:45Z"
     }
   ]
 }
