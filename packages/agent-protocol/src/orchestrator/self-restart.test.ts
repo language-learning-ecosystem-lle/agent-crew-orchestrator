@@ -26,10 +26,12 @@ import {
   describeRepairRefusal,
   describeRepairStood,
   describeSelfRestartBlock,
+  describeSelfRestartCause,
   describeSelfRestartDrain,
   describeSelfRestartDraining,
   describeSelfRestartForm,
   describeSelfRestartHandback,
+  describeSelfRestartRepair,
   describeSelfRestartStand,
   describeSelfRestartStepFailed,
   describeSelfRestartWithheld,
@@ -42,6 +44,7 @@ import {
   parseSelfRestartMemory,
   renderSelfRestartMemory,
   repairMoveVerdict,
+  SELF_RESTART_BY_HAND,
   SELF_RESTART_EXIT_CODE,
   SELF_RESTART_MAX_ATTEMPTS,
   type SelfRestartBlock,
@@ -487,7 +490,11 @@ describe("the refusal carries its own measurement (thread 044)", () => {
 });
 
 describe("the line said instead", () => {
-  it("names the blocking fact in every case, and never advises", () => {
+  // THE TITLE OF THIS CASE USED TO END «and never advises», and thread 141 §4.2/§5 is the
+  // decision that reversed it: the drift alarm that names the fault and stops is the class
+  // the thread is about, one layer up. What it still holds is the FIRST half — the fault is
+  // stated before the move, and the line opens on the fault.
+  it("names the blocking fact in every case, before anything it advises", () => {
     const lines = [
       describeSelfRestartBlock({ kind: "stopping" }),
       describeSelfRestartBlock({ kind: "held", roles: ["dev-core"] }),
@@ -526,6 +533,128 @@ describe("the line said instead", () => {
     });
     expect(said).toContain("uncommitted work in '/box/repo'");
     expect(said).not.toContain("ignore rule");
+  });
+});
+
+/**
+ * §4.2 AND §5 OF THE STATEMENT (thread 141): the call carries the healing order, not the
+ * diagnosis. Every clause held here is one john stepped in by hand on 2026-09-06, so a
+ * green here is not "the sentence reads well" — it is "the four traps that cost an hour
+ * cannot fall out of the text without a test going red".
+ */
+describe("the call carries the order that heals, not just the fault", () => {
+  const BLOCKS: readonly SelfRestartBlock[] = [
+    { kind: "stopping" },
+    { kind: "stopping", flag: "/box/.orchestrator/stop" },
+    { kind: "held", roles: ["dev-core"] },
+    { kind: "foreign-checkout", code: "/box/a", served: "/box/b" },
+    { kind: "dirty", checkout: "/box/repo", paths: ["M x"] },
+    { kind: "tree-unreadable", checkout: "/box/repo", problem: "x" },
+    { kind: "attempts", attempts: 3, ceiling: 3 },
+  ];
+
+  it("gives every block both halves — the fault, then the move — in ONE string", () => {
+    for (const block of BLOCKS) {
+      const line = describeSelfRestartBlock(block);
+      // One string and not two, because the courier carries one: a reader who has only
+      // this line has to have the whole of it (the rule of thread 044, applied to the move).
+      expect(line).toContain(describeSelfRestartCause(block));
+      expect(line).toContain(describeSelfRestartRepair(block));
+      expect(describeSelfRestartRepair(block).trim()).not.toBe("");
+    }
+  });
+
+  // THE FOUR TRAPS, each measured on the box and none of them derivable from the names.
+  it("names `down` as the graceful stop and refuses `up` in the sequence", () => {
+    expect(SELF_RESTART_BY_HAND).toContain("'orchestrator down'");
+    expect(SELF_RESTART_BY_HAND).toContain("--mode force");
+    expect(SELF_RESTART_BY_HAND).toContain("Do NOT type 'orchestrator up'");
+    expect(SELF_RESTART_BY_HAND).toContain("a daemon is already up");
+    expect(SELF_RESTART_BY_HAND).toContain("systemctl restart");
+  });
+
+  it("says the flag comes up by deleting the file, and the install only if the lock moved", () => {
+    expect(SELF_RESTART_BY_HAND).toContain("BY DELETING THE FILE");
+    expect(SELF_RESTART_BY_HAND).toContain("ONLY if the pull moved");
+    for (const manifest of ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"])
+      expect(SELF_RESTART_BY_HAND).toContain(manifest);
+    // `CI=true`: without it pnpm hangs SILENTLY rather than refusing, which is why the
+    // sentence carries it — a hang has no error text to search for.
+    expect(SELF_RESTART_BY_HAND).toContain("CI=true");
+  });
+
+  it("names the one action that does the whole of it, before the steps", () => {
+    const one = SELF_RESTART_BY_HAND.indexOf("'orchestrator restart --pull'");
+    const steps = SELF_RESTART_BY_HAND.indexOf("'orchestrator down'");
+    expect(one).toBeGreaterThanOrEqual(0);
+    expect(one).toBeLessThan(steps);
+  });
+
+  /**
+   * THE HALF OF THIS THAT IS NOT ABOUT SAYING MORE. Since the drain landed, a box blocked
+   * on a hold or a dirty tree gets ITSELF out the moment that one thing is gone — so
+   * handing its reader the full stop-pull-restart order would teach them to do by hand what
+   * the box does better, which is exactly the hour this thread is paying for.
+   */
+  it("does NOT send a hand through the restart order where the box takes it from there", () => {
+    for (const block of [
+      { kind: "held", roles: ["dev-core"] },
+      { kind: "dirty", checkout: "/box/repo", paths: ["M x"] },
+      { kind: "tree-unreadable", checkout: "/box/repo", problem: "x" },
+    ] as const) {
+      const said = describeSelfRestartRepair(block);
+      expect(said).not.toContain("systemctl restart");
+      expect(said).not.toContain(SELF_RESTART_BY_HAND);
+      expect(said).toMatch(/itself|by itself/);
+    }
+    expect(describeSelfRestartRepair({ kind: "held", roles: ["dev-core"] })).toContain(
+      "orchestrator hold --mode release",
+    );
+  });
+
+  it("gives the whole order to the ceiling — the one block where the box already tried", () => {
+    expect(describeSelfRestartRepair({ kind: "attempts", attempts: 3, ceiling: 3 })).toContain(
+      SELF_RESTART_BY_HAND,
+    );
+  });
+
+  // The trap bites the person who is reading the `stopping` line, at the moment they read
+  // it — `up` is the obvious word for bringing back a box you put down.
+  it("warns about `up` in the stopping line itself, and names the flag when it knows it", () => {
+    const known = describeSelfRestartRepair({ kind: "stopping", flag: "/box/.orchestrator/stop" });
+    expect(known).toContain("'/box/.orchestrator/stop'");
+    expect(known).toContain("BY DELETING THE FILE");
+    expect(known).toContain("'orchestrator up' raises a daemon itself");
+    // And it survives not knowing which flag was down: the move is right either way, and a
+    // path invented to fill the slot would send a hand to a file that is not there.
+    const unknown = describeSelfRestartRepair({ kind: "stopping" });
+    expect(unknown).toContain("the stop flag");
+    expect(unknown).not.toContain("undefined");
+  });
+
+  it("carries the flag the tick actually found into the block", () => {
+    const verdict = selfRestartVerdict({
+      ...facts,
+      stopping: true,
+      stopFlag: "/box/.orchestrator/force",
+    });
+    expect(verdict.kind).toBe("stand");
+    expect(verdict.kind === "stand" ? verdict.block : undefined).toEqual({
+      kind: "stopping",
+      flag: "/box/.orchestrator/force",
+    });
+  });
+
+  /**
+   * THE SHARPEST PLACE TO STOP SHORT: the repair already RAN here and failed, so unlike
+   * every block but the ceiling there is nothing left that fixes itself. The old sentence
+   * ended at «what moves it now is a hand» and told that hand nothing.
+   */
+  it("tells the digest what to type when the self-repair itself failed", () => {
+    const said = describeRepairRefusal({ kind: "step", step: "git pull --ff-only", why: "boom" });
+    expect(said).toContain("git pull --ff-only");
+    expect(said).toContain("what moves it now is a hand");
+    expect(said).toContain(SELF_RESTART_BY_HAND);
   });
 });
 

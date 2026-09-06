@@ -56,6 +56,7 @@ import { configHome, sandbox } from "../testing/process-sandbox.js";
 import { HANG_CEILING_MS, waitFor } from "../testing/wait-for.js";
 import { parseDriftStandoff, renderDriftStandoff } from "./code-age.js";
 import {
+  describeSelfRestartBlock,
   describeSelfRestartDrain,
   parseSelfRestartMemory,
   SELF_RESTART_EXIT_CODE,
@@ -588,6 +589,114 @@ describe("the self-restart of a daemon serving the checkout its own code came fr
       // on a box that is ON its ref neither the refusal nor the drain of 141 may fire.
       expect(said).not.toContain("DRAINING TO RESTART");
       expect(existsSync(standoff)).toBe(false);
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  /**
+   * WHICH FILE IS DOWN — A FACT THAT ONLY EXISTS ON DISK (thread 141, the reviewer's
+   * finding on #301).
+   *
+   * The sentence a stopped box carries tells a hand to lift the flag BY DELETING THE FILE,
+   * and the whole of its worth is the path in it: "the stop flag" without a name is the
+   * sentence that cost john an hour and a fallen service. But the name is not decided by
+   * the verdict — the verdict is a pure function and is handed the path already chosen. The
+   * choosing is a layer of the CLI door (`cli.ts`, `selfRestart`): two `existsSync` reads
+   * and a priority between them. A unit that calls `selfRestartVerdict` with a constructed
+   * `stopFlag` proves the sentence carries what it was given; it cannot prove the tick
+   * looked at the disk at all, nor that it looked in the right order. That is the seam, and
+   * these two cases are the only place it is measured — a door that silently degraded to
+   * the unnamed sentence would leave every unit in this package green.
+   *
+   * Two cases and not one, because one cannot separate the priority from the accident:
+   * with both flags down, "names the stop flag" and "names whichever it found" are the same
+   * observation. So the first case puts BOTH down and requires the stop flag by name and
+   * the force flag ABSENT from the line; the second leaves only the force flag and requires
+   * the other arm to reach the same sentence. A tick that always names `stopFlag` passes
+   * the first and fails the second; a tick that always names `forceFlag` fails the first.
+   */
+  const stoppedContour = (
+    which: readonly ("stop" | "force")[],
+  ): { readonly home: ReturnType<typeof homeContour>; readonly flags: Record<string, string> } => {
+    const home = homeContour();
+    mkdirSync(join(home.repo, ".orchestrator"), { recursive: true });
+    const flags: Record<string, string> = {
+      stop: join(home.repo, ".orchestrator", "stop"),
+      force: join(home.repo, ".orchestrator", "force"),
+    };
+    // The files a hand (or `orchestrator down`) leaves behind, written the way those
+    // commands write them: the stop flag is empty, the force flag carries who and why.
+    for (const name of which)
+      writeFileSync(
+        flags[name] as string,
+        name === "force" ? JSON.stringify({ by: "john", note: "the box is coming down" }) : "",
+      );
+    return { home, flags };
+  };
+
+  it(
+    "names the stop flag it actually found on disk — and the stop wins over the force",
+    () => {
+      const { home, flags } = stoppedContour(["stop", "force"]);
+
+      const said = tick(home.cli, home.repo);
+
+      // The premise, asserted rather than assumed: this tick met a real drift and stood on
+      // the stop rather than on anything else. Without it the assertions below could pass
+      // on a box that never reached the verdict at all.
+      expect(said).toContain("the LOADED CODE is not the ref");
+      expect(said).toContain("no self-restart while a stop is already down");
+      // THE FINDING ITSELF: the path is the file this fixture put on the disk, quoted, and
+      // it is the STOP one — the force flag is down too and must not be the name a hand is
+      // sent to delete, because deleting it would leave the stop in place and the box down.
+      expect(said).toContain(`lift '${flags.stop}' BY DELETING THE FILE`);
+      // And the trap, in the same breath as the file — this is the minute it bites.
+      expect(said).toContain("'orchestrator up' raises a daemon itself");
+
+      // THE BRIDGE INTO THE DIGEST, verbatim from the composer and not from a copy: the
+      // courier carries this string as one line, so what the reader is told to delete is
+      // decided here. Compared against `describeSelfRestartBlock` with the path this test
+      // wrote, which is the one comparison that fails when the door picks the wrong file.
+      const standoff = parseDriftStandoff(
+        readFileSync(join(home.repo, ".orchestrator", "daemon-drift.json"), "utf8"),
+      );
+      expect(standoff?.why).toBe(
+        describeSelfRestartBlock({ kind: "stopping", flag: flags.stop as string }),
+      );
+      // The "not the other one" half is asked OF THE SENTENCE and not of the stream: the
+      // startup banner names both files by construction (`stop '…', force '…'`), so a
+      // stream-wide assertion here would fail on a correct daemon and prove nothing.
+      expect(standoff?.why).not.toContain(flags.force as string);
+      expect(said).toContain(standoff?.why ?? "<unread>");
+      // Nothing was repaired under a stop: the box is going down, not around.
+      expect(said).not.toContain("SELF-RESTART: the loaded code is behind");
+      expect(existsSync(join(home.repo, ".orchestrator", "self-restart.json"))).toBe(false);
+    },
+    2 * HANG_CEILING_MS,
+  );
+
+  it(
+    "names the force flag when that is the one down — the other arm of the same read",
+    () => {
+      const { home, flags } = stoppedContour(["force"]);
+
+      const said = tick(home.cli, home.repo);
+
+      expect(said).toContain("the LOADED CODE is not the ref");
+      expect(said).toContain("no self-restart while a stop is already down");
+      // The other file, by name — and the stop flag, which does NOT exist on this disk,
+      // may not be the one named: a door that prints `paths.stopFlag` unconditionally would
+      // send a hand to delete a file that is not there and leave the box down for good.
+      expect(said).toContain(`lift '${flags.force}' BY DELETING THE FILE`);
+
+      const standoff = parseDriftStandoff(
+        readFileSync(join(home.repo, ".orchestrator", "daemon-drift.json"), "utf8"),
+      );
+      expect(standoff?.why).toBe(
+        describeSelfRestartBlock({ kind: "stopping", flag: flags.force as string }),
+      );
+      // Asked of the sentence rather than of the stream, for the reason above.
+      expect(standoff?.why).not.toContain(flags.stop as string);
     },
     2 * HANG_CEILING_MS,
   );

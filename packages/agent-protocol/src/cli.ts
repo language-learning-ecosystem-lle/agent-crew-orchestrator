@@ -12252,6 +12252,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     const memory = existsSync(paths.daemonSelfRestart)
       ? parseSelfRestartMemory(readFile(paths.daemonSelfRestart, "the self-restart memory"))
       : undefined;
+    const flagDown = existsSync(stopFlag)
+      ? stopFlag
+      : existsSync(forceFlag)
+        ? forceFlag
+        : undefined;
     const verdict = selfRestartVerdict({
       target: drift.refSha,
       running: runningRoles(),
@@ -12259,7 +12264,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         existsSync(journalPath) ? parseJournal(readFile(journalPath, "orchestrator journal")) : [],
         new Date(),
       ).map((lease) => `${lease.role}/${lease.thread}`),
-      stopping: existsSync(stopFlag) || existsSync(forceFlag),
+      stopping: flagDown !== undefined,
+      // WHICH file is down, because the repair sentence tells a hand to delete it by name
+      // rather than to type `orchestrator up` — the trap that cost john a fallen service.
+      ...(flagDown === undefined ? {} : { stopFlag: flagDown }),
       held: heldRoles(foldHolds(loadHolds(holdsDir), new Date())),
       tree: workingTreeState(drift.vintage.checkout),
       checkout: drift.vintage.checkout,
