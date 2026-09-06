@@ -130,3 +130,5 @@
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДРЕЙФ ЗАКРЫТ рукой john. И операция вскрыла ЧЕТВЁРТУЮ половину предмета — она про то, почему проста… |
+| 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: отключаем ли MCP-коннекторы у ролей этого контура — 262 такта их несли, нол… |
+| 143-role-card-is-the-second-line | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: сокращаем ли карточки ролей — 24,7% base и $74.33 за неделю, и самая дорога… |
