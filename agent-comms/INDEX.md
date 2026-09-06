@@ -132,3 +132,4 @@
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДРЕЙФ ЗАКРЫТ рукой john. И операция вскрыла ЧЕТВЁРТУЮ половину предмета — она про то, почему проста… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: отключаем ли MCP-коннекторы у ролей этого контура — 262 такта их несли, нол… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: сокращаем ли карточки ролей — 24,7% base и $74.33 за неделю, и самая дорога… |
+| 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка правом task-declare. Происхождение: тред 134-subagents-unused, msg-013 §4 — находка, сня… |
