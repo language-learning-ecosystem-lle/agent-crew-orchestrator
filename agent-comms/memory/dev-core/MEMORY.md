@@ -84,3 +84,4 @@
 - [Часы уезжают в ключ схлопывания через argv](clock-leaks-into-a-dedup-key-through-argv.md) — «1 красный из 8» и все тики в одной минуте: подпись аварии несёт минуту текстом причины, цитирующей argv.
 - [Предложенное вердиктом действие бывает красно своим же критерием](reviewer-proposed-fix-can-break-its-own-criterion.md) — перечитывай `REVIEWER.md`, а не абзац вердикта; ищи санкционированную дверь пакета.
 - [`intent: policy` не отдаёт полей почты](config-intent-data-vs-policy.md) — выбор `data`/`policy` для исторических ref меряется `protocolVersion` по ревизиям окна.
+- [«Не звонит ничто» проверяется в `notify.state`](silence-claim-is-checked-in-notify-state.md) — ключ пишется только после успешной доставки; `daemon.log` тут не доказывает ничего.
