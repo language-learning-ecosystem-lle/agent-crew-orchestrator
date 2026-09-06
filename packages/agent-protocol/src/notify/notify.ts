@@ -255,8 +255,14 @@ export const BOX_ALARM_TEMPLATES: Readonly<Record<BoxAlarmKind, string>> = {
   // rollout is invented without john. The line reports; the person decides.
   "code-drift":
     "this box is running code {sha} while {ref} is {refSha}: {size}, and it has not picked the new code up — {why}. Nothing in the mail is wrong; what the circuit is executing is not what was merged",
+  // AND THE MOVE IT NAMES IS A CALL, not a description of one (thread 150, question 3).
+  // The line used to point at `orchestrator run --max-attempts` — true, and the exit
+  // actually used by hand on 2026-09-06, but it is prose about a flag: the reader has to
+  // work out which number goes above which ceiling, in the middle of the incident this
+  // letter announces. A command that has to be reconstructed does not exist for the
+  // person reading it at that moment.
   frozen:
-    "{role}×{thread} is frozen for good: {detail}. The circuit will not raise this pair again by itself, and no message into that thread lifts it — the move is a run let through by hand (`orchestrator run --max-attempts` above the ceiling), whose handoff zeroes the count",
+    "{role}×{thread} is frozen for good: {detail}. The circuit will not raise this pair again by itself, and no message into that thread lifts it — the move is `agent-protocol orchestrator thaw --role {role} --thread {thread} --by <you> --write`, typed on the box, which gives the pair one more launch",
   // THE TENTH CLASS IS THE ONE SENTENCE THIS MAP DOES NOT WRITE (thread 036, the tail of §4).
   // Its three texts already exist and are already the tested ones — `describeFailover`,
   // `describeAccountPause` and `describeRefusals` of `orchestrator/failover.ts`, landed in

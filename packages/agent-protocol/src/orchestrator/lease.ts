@@ -408,6 +408,19 @@ type Acc = {
    * Cleared by exactly the thing that ends the series — a delivery zeroing the counter.
    */
   ceilingSince: string | null;
+  /**
+   * A PERSON HAS LET THIS PAIR GO SINCE ITS LAST LAUNCH (thread 150) — the flag the
+   * `thaw` event sets, and the reason a thaw is not simply "zero the counter": a freeze
+   * can also be stated OUTRIGHT, by a release named `exhausted`, and that name stands in
+   * the journal for good. Zeroing the count would leave such a pair frozen and the
+   * command silently useless.
+   *
+   * SPENT BY THE NEXT `lease-acquired`, which is what makes a thaw one more life rather
+   * than a ceiling switched off: the run it bought either delivers (and the counter is
+   * zeroed by the delivery, the normal way) or fails, and the next freeze needs its own
+   * hand again.
+   */
+  handThawed: boolean;
   lastEvent: OrchestratorEvent["kind"];
   /** The stamp of that last event — see {@link LeaseView.lastAt}. */
   lastAt: string;
@@ -468,6 +481,7 @@ export const foldLeases = (
         externalFailure: false,
         releasedAt: null,
         ceilingSince: null,
+        handThawed: false,
         lastEvent: event.kind,
         lastAt: event.ts,
       };
@@ -502,6 +516,10 @@ export const foldLeases = (
       case "lease-acquired":
         cur.state = "running";
         cur.attempt += 1;
+        // THE THAW IS SPENT HERE (thread 150): the life a person gave the pair is the
+        // launch that follows, and from this line on the ceiling judges it exactly as
+        // it judges any other pair.
+        cur.handThawed = false;
         cur.deadline = event.deadline;
         // The transcript of the run that starts here supersedes the previous one's: the
         // panel showing "the session of this pair" must follow the pair, not stay on the
@@ -580,6 +598,17 @@ export const foldLeases = (
         cur.state = "stopped";
         cur.reason = event.mode;
         break;
+      case "thaw":
+        // A HAND ON THE COUNTER (thread 150), and it does exactly what a delivery does to
+        // it — plus the flag, which is what a delivery does not need: a delivery also
+        // replaces the release reason, and a thaw arrives after the release and leaves it
+        // where it is. THE STATE IS NOT TOUCHED: the pair stays released, which is what
+        // it is; the tick then finds it launchable again because it is no longer at the
+        // ceiling. Nothing here raises anything — the next tick does, by the ordinary road.
+        cur.attempt = 0;
+        cur.ceilingSince = null;
+        cur.handThawed = true;
+        break;
     }
   }
 
@@ -598,7 +627,11 @@ export const foldLeases = (
     // R19's two endings and `quota-exhausted` were taken off this list, now a third
     // case of it rather than a new policy (john, 2026-07-30).
     const failed = isFailedTerminal(cur.state, cur.reason) && !cur.deliveredToSelf;
-    const atCeiling = cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts);
+    // A PAIR A PERSON HAS LET GO IS NOT AT THE CEILING (thread 150) — and the flag is read
+    // HERE rather than by zeroing the counter alone, because `reason === "exhausted"` is
+    // the other half of the disjunction and no counter reaches it.
+    const atCeiling =
+      !cur.handThawed && (cur.reason === "exhausted" || (failed && cur.attempt >= maxAttempts));
     // THE FREEZE HAS A CLASS AND, FOR ONE OF THE TWO, AN END (thread 013). The class is
     // read off the release rather than judged here: the supervisor saw the stream, this
     // fold sees only the journal. The thaw is a stamp, so the whole policy is one

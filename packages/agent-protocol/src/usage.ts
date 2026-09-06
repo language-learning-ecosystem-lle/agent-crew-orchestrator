@@ -795,6 +795,22 @@ The strict forms below keep every flag they had.
                               # the ceiling off; the refusal at the door cannot be switched off
   agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--now <iso>] [--holds <d>] [--write]
   agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--holds <d>] [--write]
+  agent-protocol orchestrator thaw   --role <id> --thread <slug> --by <who> [--note <t>] [--journal <p>] [--now <iso>] [--max-attempts <n>] [--write]
+                              # LETS A PAIR STOPPED BY THE ATTEMPT CEILING GO (150). The count
+                              # is zeroed by a DELIVERY, a delivery is written by a RUN of the
+                              # pair, and the ceiling refuses that run — a closed circle whose
+                              # only exit used to be '--max-attempts' above the ceiling, written
+                              # down nowhere. It gives ONE life, spent by the next launch: the
+                              # ceiling itself is not touched, and a pair that fails again is
+                              # frozen again with no second hand needed
+                              # IT RAISES NOTHING. The pair becomes a candidate and the daemon
+                              # takes it at its next tick, by the ordinary road — unlike
+                              # 'run --max-attempts', which spawns the session then and there
+                              # A RAISED SESSION IS REFUSED (AGENT_PROTOCOL_WORKER is set): a
+                              # role that lifts its own ceiling is a role the ceiling does not
+                              # stop. The move is a person's, typed on the box
+                              # Refuses by name on an unknown pair and on a pair that is NOT
+                              # frozen, naming its attempt count and state
   agent-protocol orchestrator log    --ref <ref> [--journal <p>]
   agent-protocol orchestrator stop   --mode graceful --ref <ref> [--stop-flag <p>] [--write]
   agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--repo <p>] [--force-flag <p>] [--root <mail>] [--write]
