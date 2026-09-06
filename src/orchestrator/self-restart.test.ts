@@ -21,10 +21,13 @@ import {
 import { daemonArgvFor } from "./restart.js";
 import {
   attemptsFor,
+  describeDrainWithheld,
   describeInstallSkipped,
   describeRepairRefusal,
   describeRepairStood,
   describeSelfRestartBlock,
+  describeSelfRestartDrain,
+  describeSelfRestartDraining,
   describeSelfRestartForm,
   describeSelfRestartHandback,
   describeSelfRestartStand,
@@ -75,10 +78,14 @@ describe("selfRestartVerdict", () => {
     });
   });
 
-  it("stands while this daemon is running a session", () => {
+  // 141. The whole change of this thread, and the reason the four tests below are `drain`
+  // where they used to be `stand`: on a circuit that works, a refusal over live sessions is
+  // a refusal forever — 13 commits and 22 hours of it, measured on this box on 2026-09-05.
+  it("drains rather than refusing while this daemon is running a session", () => {
     expect(selfRestartVerdict({ ...facts, running: ["dev-core"] })).toEqual({
-      kind: "stand",
-      block: { kind: "leases", roles: ["dev-core"] },
+      kind: "drain",
+      target: facts.target,
+      roles: ["dev-core"],
     });
   });
 
@@ -86,8 +93,9 @@ describe("selfRestartVerdict", () => {
     // The orphan is the case a `running` check alone would miss: this process holds
     // nothing, and yet somebody's turn is unclosed in the journal.
     expect(selfRestartVerdict({ ...facts, openLeases: ["curator/019"] })).toEqual({
-      kind: "stand",
-      block: { kind: "leases", roles: ["curator/019"] },
+      kind: "drain",
+      target: facts.target,
+      roles: ["curator/019"],
     });
   });
 
@@ -97,7 +105,20 @@ describe("selfRestartVerdict", () => {
       running: ["dev-core"],
       openLeases: ["dev-core"],
     });
-    expect(verdict).toEqual({ kind: "stand", block: { kind: "leases", roles: ["dev-core"] } });
+    expect(verdict).toEqual({ kind: "drain", target: facts.target, roles: ["dev-core"] });
+  });
+
+  it("takes the go on the tick where the last session has closed", () => {
+    // The drain has no second mechanism: it is the ORDINARY verdict, asked again on a box
+    // whose leases have gone to zero by themselves. Same facts, one field apart.
+    expect(selfRestartVerdict({ ...facts, running: ["dev-core"] })).toMatchObject({
+      kind: "drain",
+    });
+    expect(selfRestartVerdict({ ...facts, running: [] })).toEqual({
+      kind: "go",
+      target: facts.target,
+      attempt: 1,
+    });
   });
 
   it("stands while a stop is already down", () => {
@@ -201,14 +222,42 @@ describe("selfRestartVerdict", () => {
     });
   });
 
-  it("puts work in flight before tidiness in the reason it gives", () => {
-    // Both are true; the operator is told about the one that will change on its own.
+  it("names the state that needs a hand ahead of the one that leaves by itself", () => {
+    // 141 REVERSES THE OLD ORDER, and this is why. Both facts are true; while live sessions
+    // were a refusal the kind sentence was "waiting for dev-core", because the operator had
+    // nothing to do about it. Now the box waits that one out on its own — so a drift that
+    // will ALSO be refused by a dirty tree must say so, or the reader waits for a drain
+    // whose ending repairs nothing.
     const verdict = selfRestartVerdict({
       ...facts,
       running: ["dev-core"],
       tree: { kind: "dirty", paths: ["?? scratch.md"] },
     });
-    expect(verdict).toMatchObject({ block: { kind: "leases" } });
+    expect(verdict).toMatchObject({ kind: "stand", block: { kind: "dirty" } });
+  });
+
+  it("does not drain over a stop somebody else has already put down", () => {
+    // A drain ends in a restart. A box being stopped by a hand is going somewhere else, and
+    // withholding its plan under the name of a repair would hide whose decision it was.
+    expect(selfRestartVerdict({ ...facts, running: ["dev-core"], stopping: true })).toEqual({
+      kind: "stand",
+      block: { kind: "stopping" },
+    });
+  });
+
+  it("does not drain once the ceiling is spent — waiting would end in nothing", () => {
+    expect(
+      selfRestartVerdict({ ...facts, running: ["dev-core"], attempts: SELF_RESTART_MAX_ATTEMPTS }),
+    ).toMatchObject({ kind: "stand", block: { kind: "attempts" } });
+  });
+
+  it("does not drain a daemon whose code came from another checkout", () => {
+    // Every process test of this package is that box: a daemon over a temporary repository
+    // with the loader pointing at the developer's tree. Draining there would withhold the
+    // plan of a circuit whose drift no repair from here could ever close.
+    expect(
+      selfRestartVerdict({ ...facts, running: ["dev-core"], checkout: "/elsewhere/repo" }),
+    ).toMatchObject({ kind: "stand", block: { kind: "foreign-checkout" } });
   });
 });
 
@@ -386,14 +435,29 @@ describe("the refusal carries its own measurement (thread 044)", () => {
   };
   const now = new Date("2026-08-29T09:24:02Z");
 
-  // (а) of the statement's «Проверяемость»: live sessions — the line names the drift AND
-  // the condition, and nothing is pulled.
+  // (а) of the statement's «Проверяемость»: the line names the drift AND the condition,
+  // and nothing is pulled. Live sessions used to be the case shown here; since 141 they
+  // are a drain and not a block, and the drain's own line is measured below.
   it("names the distance, the age and the condition in ONE sentence", () => {
-    const said = describeSelfRestartStand({ kind: "leases", roles: ["curator"] }, drift, now);
+    const said = describeSelfRestartStand({ kind: "held", roles: ["curator"] }, drift, now);
     expect(said).toContain("3 commit(s) behind");
     expect(said).toContain("6h");
     expect(said).toContain("curator");
-    expect(said).toContain("sessions are live");
+    expect(said).toContain("an operator is at this box");
+  });
+
+  // 141: the same whole-fact shape for the state that is NOT a refusal — one line carries
+  // how far behind, for how long, and whose sessions are being waited out.
+  it("says the same three facts while draining, without reading as a refusal", () => {
+    const said = describeSelfRestartDraining(["dev-core", "curator/019"], drift, now);
+    expect(said).toContain("3 commit(s) behind");
+    expect(said).toContain("drifting for 6h");
+    expect(said).toContain("dev-core, curator/019");
+    expect(said).toContain("DRAINING TO RESTART");
+    // The sentence a person must not read here is the one that sent them looking for a
+    // hand to type: this box is not asking for one.
+    expect(said).not.toContain("needs a human");
+    expect(said).not.toContain("no self-restart");
   });
 
   // (в): the ceiling is its own reason and keeps saying so — with the size beside it now.
@@ -425,7 +489,6 @@ describe("the refusal carries its own measurement (thread 044)", () => {
 describe("the line said instead", () => {
   it("names the blocking fact in every case, and never advises", () => {
     const lines = [
-      describeSelfRestartBlock({ kind: "leases", roles: ["dev-core"] }),
       describeSelfRestartBlock({ kind: "stopping" }),
       describeSelfRestartBlock({ kind: "held", roles: ["dev-core"] }),
       describeSelfRestartBlock({ kind: "dirty", checkout: "/box/repo", paths: ["?? a"] }),
@@ -433,9 +496,9 @@ describe("the line said instead", () => {
       describeSelfRestartBlock({ kind: "attempts", attempts: 2, ceiling: 2 }),
     ];
     for (const line of lines) expect(line.startsWith("no self-restart")).toBe(true);
-    expect(lines[0]).toContain("dev-core");
-    expect(lines[3]).toContain("/box/repo");
-    expect(lines[5]).toContain("2/2");
+    expect(lines[1]).toContain("dev-core");
+    expect(lines[2]).toContain("/box/repo");
+    expect(lines[4]).toContain("2/2");
   });
 
   // 003: the two dirty trees are two different repairs, and the line that calls both of
@@ -488,6 +551,32 @@ describe("the line of a tick that hands over", () => {
     const said = describeSelfRestartWithheld([]);
     expect(said).toContain("this tick launches nothing");
     expect(said).toContain("nothing to withhold");
+  });
+
+  // 141: the drain withholds the same plan for a different reason, and the two endings are
+  // opposite — a successor takes the queue seconds later, a drain waits out a session.
+  it("names the drain's own ending, and never claims a successor is about to read the queue", () => {
+    const said = describeDrainWithheld(["dev-core×141-z"], ["curator/019"]);
+    expect(said).toContain("this tick launches NOTHING");
+    expect(said).toContain("dev-core×141-z");
+    expect(said).toContain("draining to restart");
+    expect(said).not.toContain("successor");
+  });
+
+  it("speaks on an empty plan while draining too, and names whose session it waits for", () => {
+    const said = describeDrainWithheld([], ["curator/019"]);
+    expect(said).toContain("this tick launches nothing");
+    expect(said).toContain("curator/019");
+  });
+
+  // R4: a drain is a state a person reads and must be able to act on — by NOT acting.
+  it("the drain sentence names the decision, the wait and that no session is killed", () => {
+    const said = describeSelfRestartDrain(["dev-core"]);
+    expect(said).toContain("launches NOTHING new");
+    expect(said).toContain("dev-core");
+    expect(said).toContain("repairs the tree and comes back on the new code");
+    expect(said).toContain("No session is interrupted");
+    expect(said).toContain("no hand is needed");
   });
 });
 
