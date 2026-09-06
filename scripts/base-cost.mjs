@@ -45,6 +45,7 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadProtocolConfig } from "../packages/agent-protocol/src/index.ts";
 import { buildLaunchPrompt } from "../packages/agent-protocol/src/orchestrator/launch.ts";
 
 const argv = process.argv.slice(2);
@@ -177,33 +178,35 @@ function fileAt(path, ts) {
 const CONFIG_PATH = "agent-protocol.json";
 const configCache = new Map();
 /**
- * Конфиг и раскладка «роль → путь карточки» на момент `ts`; `null` — конфига тогда ещё не было
- * или он не разбирается. Читается тем же `git show`, что и сама карточка, а НЕ живым рабочим
- * деревом: роль или путь её карточки, дописанные в фиче-ветке или изменённые за окно, иначе
- * выглядели бы действующими всё окно назад. За окно 01.09…06.09 конфиг менялся дважды.
+ * Конфиг и раскладка «роль → путь карточки» на момент `ts`; `null` — конфига тогда ещё не было.
+ *
+ * Читается САНКЦИОНИРОВАННОЙ дверью пакета — `loadProtocolConfig` с явным `ref`. Ни живым
+ * рабочим деревом, ни `git show` мимо пакета: и то и другое критерий 10 называет в одном
+ * перечислении, а перекос у них один — роль или путь её карточки, дописанные в фиче-ветке или
+ * изменённые за окно, выглядели бы действующими всё окно назад.
+ *
+ * `intent` — умолчательный `data`: нужны и пути карточек, и поля почты для `buildLaunchPrompt`,
+ * а `policy` вторых не отдаёт намеренно. Версионный гейт на этом окне не срабатывает — замерено:
+ * `protocolVersion` во ВСЕХ ревизиях конфига окна равен 25. Окно, пересекающее бамп версии,
+ * дверь остановит по имени; это громкий отказ, а не тихое неверное число (см. «непокрытое» в доке).
+ *
+ * Кеш по sha ревизии: тактов сотни, а ревизий конфига за окно единицы.
  */
 function configAt(ts) {
   const rev = historyOf(CONFIG_PATH).find((c) => c.ts <= ts);
-  const key = rev?.sha ?? "none";
-  if (!configCache.has(key)) {
-    let entry = null;
-    const text = rev ? fileAt(CONFIG_PATH, ts) : null;
-    if (text) {
-      try {
-        const config = JSON.parse(text);
-        const cardPathOf = new Map();
-        for (const r of config.roles ?? []) {
-          const doc = (r.instructions ?? []).find((d) => d.kind === "in-repo" && d.path);
-          if (doc) cardPathOf.set(r.id ?? r.name, doc.path);
-        }
-        entry = { config, cardPathOf };
-      } catch {
-        entry = null;
-      }
+  if (!rev) return null;
+  if (!configCache.has(rev.sha)) {
+    // `fetch: false` — сказано вслух, как требует дверь: ходим по конкретным sha, сеть не нужна.
+    // Отказ версионного гейта НЕ глушится: пусть падает с названной причиной, а не считает молча.
+    const { config } = loadProtocolConfig({ repo: REPO, ref: rev.sha, fetch: false });
+    const cardPathOf = new Map();
+    for (const r of config.roles ?? []) {
+      const doc = (r.instructions ?? []).find((d) => d.kind === "in-repo" && d.path);
+      if (doc) cardPathOf.set(r.id ?? r.name, doc.path);
     }
-    configCache.set(key, entry);
+    configCache.set(rev.sha, { config, cardPathOf });
   }
-  return configCache.get(key);
+  return configCache.get(rev.sha);
 }
 
 /**
