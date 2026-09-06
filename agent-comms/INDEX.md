@@ -124,7 +124,7 @@
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
-| 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #316: success. |
+| 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | run:316 · 2026-09-06 | 2026-09-06 | Постановка выполнена: нота note · pair в двери merge-gate — PR #316, голова 6610e2b, checks зелёный… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | ПОСТАНОВКА dev-core: дверь push'а спрашивает ФАКТ у удалённой стороны, прежде чем объявить push нес… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
