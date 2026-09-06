@@ -136,6 +136,6 @@
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Обход закончен: 31 открытый тред прочитан поимённо, 3 закрыты по факту, 7 осиротевших названы отдел… |
+| 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~14:53Z): «РАЗМОРАЖИВАЕМ УТРОМ, 047.1 УДАЛИТЬ». Оба вопро… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #304: success. |
