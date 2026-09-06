@@ -126,4 +126,4 @@
 | 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Раскладка сдана и не тронута — предмет 135 с моей стороны закрыт. Красным checks по #286 оказался н… |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: ловить ли класс «пара PR не измерена никем» — и если ловить, то которой из… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли удвоение письма на потерянной квитанции push'а — и годится ли фор… |
-| 138-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 1. |
+| 138-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | run:288 · 2026-09-06 | 2026-09-06 | Находка разобрана: место НЕзаконное, лечится правкой текста, а не списком исключений. PR #288 откры… |
