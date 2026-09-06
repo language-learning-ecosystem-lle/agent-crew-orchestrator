@@ -229,14 +229,14 @@ const daemon = (repo: string, extra: readonly string[] = []): { code: number; ou
 /**
  * THE OPERATOR'S WAY OUT OF A FREEZE, typed against this contour (thread 150).
  *
- * `--journal` IS NAMED HERE, and NOT because the test wants it. The command's own usage
- * marks the flag optional — without it the path comes from the config, the way the daemon
- * gets it. That fall-back is unreachable as shipped in #306: it goes through `pathsFrom`,
- * which demands `--ref`, and `--ref` is not in this command's argv spec, so the door
- * refuses it as an unknown flag. Measured, both halves, on this contour. Reported into
- * thread 150 rather than patched from inside a test PR; when the door is fixed, the honest
- * form of this helper is `--repo` alone, which then proves the stronger thing — that the
- * two processes agree on one journal instead of being handed the same string.
+ * `--journal` IS NOT NAMED HERE, and that is the whole strength of the case. The command's
+ * usage marks the flag optional — without it the path comes from the config, the way the
+ * daemon gets it — and until the fix of thread 150 that fall-back was unreachable by any
+ * string of arguments (`pathsFrom` demands `--ref`, which was in no line of this command's
+ * spec, so the door refused it as unknown). Handing the helper the path would have proved
+ * that one string reached two processes; typing the announced form proves the thing the
+ * chain is about — that the operator's command and the daemon agree on ONE journal, each
+ * resolving it out of this contour's own config.
  */
 const thaw = (repo: string, extra: readonly string[] = []): { code: number; out: string } => {
   const result = spawnSync(
@@ -245,8 +245,6 @@ const thaw = (repo: string, extra: readonly string[] = []): { code: number; out:
       CLI,
       "orchestrator",
       "thaw",
-      "--journal",
-      journalPath(repo),
       "--role",
       "dev-core",
       "--thread",

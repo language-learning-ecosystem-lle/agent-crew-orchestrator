@@ -13501,7 +13501,24 @@ const THAW_USAGE =
  * a role that has just met the freeze.
  */
 const orchestratorThaw = (argv: readonly string[]): void => {
-  const journalPath = flag(argv, "--journal") ?? pathsFrom(argv).journal;
+  // THE PATH IS RESOLVED THE WAY THE DAEMON RESOLVES IT, and `--journal` is what its own
+  // usage always said it was — an override (thread 150, the finding of msg-014). As shipped
+  // in #306 the fall-back was unreachable by any string of arguments: `pathsFrom` goes to
+  // `configFrom`, which demands `--ref`, and `--ref` was not in this command's argv spec —
+  // so the announced form refused by naming a flag the door then rejected as unknown. Both
+  // halves were measured on a live contour, and a command whose whole reason is to be the
+  // way out of a closed circle stood in one.
+  //
+  // `withOperatorRef` IS THE ANSWER RATHER THAN A REQUIRED `--ref`, and the reason is the
+  // one written above it: this is an operator's command, typed by a person on the box, and
+  // the project has already declared which history governs in `orchestrator.ref`. The
+  // three places that PRINT this call — the skip line of the tick, the freeze letter of
+  // the notifier and the stall line of `status` — all print it without a path and without
+  // a ref, which is exactly the form that now works.
+  //
+  // IT IS REACHED ONLY WHEN THE PATH IS NOT GIVEN (`??` short-circuits): a box handed an
+  // explicit `--journal` must not start needing a config to read one, which is the very
+  // independence from stuck machinery the process test of this command asserts.
   const roleId = flag(argv, "--role") ?? fail(`--role is not set\n${THAW_USAGE}`, 2);
   const thread = flag(argv, "--thread") ?? fail(`--thread is not set\n${THAW_USAGE}`, 2);
   const by = flag(argv, "--by") ?? fail(`--by is not set\n${THAW_USAGE}`, 2);
@@ -13516,6 +13533,12 @@ const orchestratorThaw = (argv: readonly string[]): void => {
     );
     return;
   }
+  // THE ARGUMENTS ARE JUDGED BEFORE THE BOX IS READ, and the order is not cosmetic: the
+  // resolution below opens the config, so with it first a forgotten `--by` was answered by
+  // whatever the config read had to say — an operator sent to look at their repository over
+  // a typo in their own line. What the caller can fix in the line they just typed is named
+  // from the line they just typed.
+  const journalPath = flag(argv, "--journal") ?? pathsFrom(withOperatorRef(argv)).journal;
   const note = flag(argv, "--note");
   const write = argv.includes("--write");
   const now = orchestratorNow(argv);
@@ -13650,6 +13673,12 @@ const orchestratorHold = (argv: readonly string[]): void => {
  * is not a choice at all: the project already declared it in `orchestrator.ref`, and
  * making the operator retype it on every command was ceremony without a decision
  * behind it.
+ *
+ * `thaw` JOINED THEM ON 2026-09-06 (thread 150) for the same reason and one sharper:
+ * it is typed by a person in the middle of an incident, and the lines that PRINT it —
+ * the tick's skip line, the notifier's freeze letter, `status`'s stall line — print no
+ * path and no ref. A command that demanded either would be announced in a form that
+ * does not run, which is what it was.
  *
  * The bootstrap is the one thing to be honest about: the pointer is read FROM THE
  * WORKING TREE (the same exception `schema migrate` makes, for the same reason —
