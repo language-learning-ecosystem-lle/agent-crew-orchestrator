@@ -124,12 +124,12 @@
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
-| 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: нота «пару этого мержа не мерил никто» в двери merge-gate — узкий признак runn… |
+| 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #316: success. |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | ПОСТАНОВКА dev-core: дверь push'а спрашивает ФАКТ у удалённой стороны, прежде чем объявить push нес… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | Вердикт по #315 приехал — approve, и он УЖЕ мёртв: ветка не ложится на базу, а ребейз уводит голову… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | john · 2026-09-06 | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~17:26Z): ВАРИАНТ 2 — везём переезд И заводим правило при… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
