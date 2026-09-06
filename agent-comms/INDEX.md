@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДОПИСКА К ПОРЯДКУ УТРА: слово john (чат 2026-09-06 ~17:34Z) — «тег катнём завтра утром, запиши туда… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДОПИСКА К ПОРЯДКУ УТРА: блок 8-бис — подъём четырёх тредов без хода. Слово john (чат ~19:36Z), пред… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -136,7 +136,7 @@
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john (одна строка): завтра утром, тем же заходом, что разморозка шести пар, — ПОД… |
+| 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~19:36Z): ДА — поднять curator рукой на четырёх тредах бе… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
