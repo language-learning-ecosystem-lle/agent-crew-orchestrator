@@ -42,7 +42,7 @@
  * Ничего не пишет и ничего не отправляет.
  */
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadProtocolConfig } from "../packages/agent-protocol/src/index.ts";
@@ -53,9 +53,45 @@ const flag = (name, fallback) => {
   const i = argv.indexOf(`--${name}`);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : fallback;
 };
-const REPO = flag("repo", join(dirname(fileURLToPath(import.meta.url)), ".."));
+
+/**
+ * Дом контура один на репозиторий и лежит В ГЛАВНОМ ЧЕКАУТЕ: рабочее место роли
+ * (`.worktrees/<role>`) — тот же репозиторий, но `.orchestrator/` в нём НЕТ. Скрипт лежит рядом с
+ * `packages/`, то есть в каком-то из чекаутов, и «рядом со мной» домом контура не является.
+ * Поэтому умолчание берётся не от файла скрипта, а от git: `--git-common-dir` у рабочего дерева
+ * указывает на `.git` главного чекаута, у главного — на свой собственный.
+ */
+function repoOfCheckout(dir) {
+  try {
+    const commonDir = execFileSync("git", ["-C", dir, "rev-parse", "--git-common-dir"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (commonDir) return dirname(commonDir.startsWith("/") ? commonDir : join(dir, commonDir));
+  } catch {
+    /* не чекаут git — тогда честно остаёмся при каталоге рядом со скриптом */
+  }
+  return dir;
+}
+
+const SCRIPT_CHECKOUT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const REPO = flag("repo", repoOfCheckout(SCRIPT_CHECKOUT));
 const HOME = flag("home", join(REPO, ".orchestrator"));
 const SINCE = flag("since", "2026-09-01");
+
+// Дверь, которая молчит, хуже отсутствующей: без журнала контура считать нечего, и сказать об этом
+// надо ИМЕНЕМ пути и флагом, которым это чинится, а не стеком `ENOENT` из первого `readFileSync`.
+const missing = ["journal.jsonl", "sessions"].filter((p) => !existsSync(join(HOME, p)));
+if (missing.length > 0) {
+  console.error(
+    [
+      `base-cost: дома контура нет — под ${HOME} не найдено: ${missing.join(", ")}`,
+      `  репозиторий: ${REPO} (чекаут скрипта: ${SCRIPT_CHECKOUT})`,
+      "  укажи чекаут, в котором лежит `.orchestrator/`: --repo <путь> (или сам дом: --home <путь>)",
+    ].join("\n"),
+  );
+  process.exit(1);
+}
 
 // ── 1. Журнал контура: живые такты с фактической ценой ──────────────────────────────────────────
 
