@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T12:38:30.870Z",
+  "writtenAt": "2026-09-06T12:38:43.606Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "134-subagents-unused",
       "state": "running",
       "deadline": "2026-09-06T13:12:45Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "140-silent-exit-exhausts-the-role",
+      "state": "running",
+      "deadline": "2026-09-06T13:38:40Z"
     }
   ]
 }
