@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T15:06:13.871Z",
+  "writtenAt": "2026-09-06T15:06:28.067Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "062-contour-boundary",
+      "state": "running",
+      "deadline": "2026-09-06T15:46:24Z"
+    },
     {
       "role": "dev-core",
       "thread": "149-frozen-pair-writes-to-the-feed",
