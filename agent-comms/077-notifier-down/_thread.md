@@ -1,6 +1,6 @@
 # Стоячий адрес: отказ уведомителя
 
-participants: github, dev-core, curator · status: open
+participants: github, dev-core, curator · status: closed
 
 ## msg-001 · from: curator · 2026-09-02 · expects: none
 

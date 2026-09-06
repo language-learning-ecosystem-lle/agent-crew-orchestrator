@@ -1,6 +1,6 @@
 # Стоячий адрес: красный main без PR
 
-participants: github, curator, dev-core · status: open
+participants: github, curator, dev-core · status: closed
 
 ## msg-001 · from: curator · 2026-09-02 · expects: none
 

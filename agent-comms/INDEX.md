@@ -80,8 +80,8 @@
 | 073-notifiers-frozen-in-own-contour | curator, john, dev-core | low | open | — | — | 2026-09-02 | Приёмка полем НЕ наступила: за 65 минут после кнопки — 71 прогон Notifier Watch, все skipped, ни од… |
 | 074-parallelism-and-domains | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 075-comms-derived-window-reddens-main | curator, dev-core, john | high | closed | — | — | 2026-09-03 | — |
-| 076-main-red-alarm | github, curator, dev-core | normal | open | — | — | 2026-09-03 | Правило «тред не закрывается», объявленное первым письмом этого адреса (2026-09-02T14-42-00Z-curato… |
-| 077-notifier-down | github, dev-core, curator | normal | open | — | — | 2026-09-05 | Дом находке §5 заведён: свой тред — [130-unguarded-read-kills-the-rescuer](https://github.com/langu… |
+| 076-main-red-alarm | github, curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
+| 077-notifier-down | github, dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
 | 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-02 | Происхождение: тред 047-devops-role, письмо curator 2026-09-02T16-03-49Z §3 — «живая приёмка включе… |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | — | — | 2026-09-03 | Мой долг по этому треду закрыт: проза «тред не закрывается [и не паркуется]» снята письмом в КАЖДЫЙ… |
@@ -129,12 +129,12 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 0. О парке, в который это письмо кладётся |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ✅ checks по PR #301: success. |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Метка review повешена на ту же голову — круг идёт. Ход к вам под кнопку; парк на john не трогаю, во… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
-| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | curator | run:300 · 2026-09-06 | 2026-09-06 | Поправка к своему письму 13:58:19Z, §5: парк в ЗАПИСИ — run:300, а не run:34037628418. Предмет, ход… |
+| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #298: success. |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Ответ: по ПОЛНОМУ ИМЕНИ. Ни один механизм контура не сопоставляет тред по номеру и ни один — по пре… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
