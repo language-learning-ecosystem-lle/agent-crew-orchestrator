@@ -42,7 +42,7 @@
 - [Названный случай — образец, а не класс](reported-instance-is-a-sample.md) — чужая находка перечисляется скриптом по всему предмету ДО постановки: названный случай был нулевым по цене
 - [Машинный конфиг — в `$HOME`, не в репозитории](machine-config-is-instance-file.md) — адрес `~/.config/agent-protocol/instances/hetzner.json`, его `secrets.envFile` называет свой креды-файл
 - [Хвост PR требует своего треда](pr-tail-sweep-needs-the-owning-thread.md) — чужой PR не домерживается: след гарда 5 обязан лечь в ленту ЕГО треда, а тред-владелец бывает ЗАКРЫТ — сверять `status:`
-- [Общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md) — чужой merge делает PR `CONFLICTING`, и цена — АННУЛИРОВАННЫЙ вердикт: approve жать в тот же такт
+- [Общий хвост файла сериализует мержи](protocol-reference-tail-serializes-merges.md) — чужой merge делает PR `CONFLICTING`, и цена — АННУЛИРОВАННЫЙ вердикт: approve жать в тот же такт, а свою кнопку — ПЕРЕД меткой на соседа
 - [Переезд шага отменяет объявленное исключение](moved-step-repeals-declared-exception.md) — приёмка переписанного шага читается КОДОМ ВЫХОДА на каждом классе, что различал старый
 - [Штамп письма зажимается вперёд](message-stamp-is-clamped-forward.md) — время в теле письма позже своего штампа невозможно; `thread show --for` перечитывают НЕПОСРЕДСТВЕННО перед отправкой
 - [`mergedBy` не называет руку](merged-by-does-not-name-the-hand.md) — обе кнопки печатают `maysway` (PAT того же аккаунта): руку john доказывает гард 4 `STOP` + письмо ДО merge, не поле
