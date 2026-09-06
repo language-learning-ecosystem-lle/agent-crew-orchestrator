@@ -33,7 +33,11 @@
  * lives in `cli.ts` beside the tidy-up itself.
  */
 
-import { describeWorkspaceDirt, type WorkspaceDirt } from "./workspace.js";
+import {
+  describeWorkspaceDirt,
+  maskServiceBranchInstant,
+  type WorkspaceDirt,
+} from "./workspace.js";
 
 /**
  * THE STANDING ADDRESS. No number in it: `--ensure-thread` takes whichever receiver of
@@ -283,6 +287,30 @@ export type TidyUpMemo = {
  *
  * The join is `\u0000` for the ordinary reason: no field of it can contain the separator,
  * so two different signatures cannot collapse into one text.
+ *
+ * AND THE WALL CLOCK IS TAKEN OUT OF IT (thread `139-wall-clock-in-the-incident-signature`,
+ * curator's statement of 2026-09-06). The name of a service branch carries the minute it
+ * was built in (`serviceBranchName`), and it reaches this line by TWO doors, not one:
+ *
+ *  - as the `branch` FIELD — every `done` and `stranded` outcome has one, and a `failed`
+ *    one has it whenever the dirt was already carried onto the branch (`dirtyOn`);
+ *  - as TEXT INSIDE `cause` — the class "nothing moved" fails on `checkout -b <branch>`
+ *    itself, and the cause the caller builds is that very argv (`cli.ts`, action `commit`).
+ *
+ * So two ticks over ONE standing incident, falling either side of a minute boundary, gave
+ * two signatures and two letters — the very flood thread 133's lock was written to close.
+ * Measured in thread 135 §2 (a unit on two causes one minute apart; 8 runs of the process
+ * test, the single red one the single one whose ticks crossed 09:21:00) and once as a red
+ * `checks` on a PR that had touched none of this.
+ *
+ * THE MASK IS APPLIED TO THE JOINED LINE, not field by field: it is the identity as a
+ * whole that must not depend on the clock, and a field added here later would otherwise
+ * have to remember this on its own. It cannot merge two signatures into one — the
+ * separator is not in the pattern, so no match can span two fields.
+ *
+ * NOTHING A HUMAN READS GOES THROUGH IT. The letter, the journal line and
+ * `TidyUpMemo.branch` all keep the full name with its minute: what is COMPARED changes,
+ * what is SAID does not.
  */
 export const tidyUpSignature = (input: {
   readonly role: string;
@@ -290,7 +318,7 @@ export const tidyUpSignature = (input: {
   readonly outcome: TidyUpOutcome;
 }): string => {
   const { outcome } = input;
-  return [
+  const line = [
     input.role,
     outcome.kind,
     outcome.kind === "failed" ? (outcome.branch ?? "") : outcome.branch,
@@ -298,6 +326,7 @@ export const tidyUpSignature = (input: {
     outcome.kind === "done" ? "" : outcome.cause,
     input.dirt === undefined ? "не прочитано" : describeWorkspaceDirt(input.dirt),
   ].join("\u0000");
+  return maskServiceBranchInstant(line);
 };
 
 /**

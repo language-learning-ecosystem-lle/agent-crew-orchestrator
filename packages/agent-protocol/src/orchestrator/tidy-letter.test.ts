@@ -352,6 +352,126 @@ describe("the lock on the repeat — one letter per incident, and the tick says 
 });
 
 /**
+ * THE WALL CLOCK IS NOT PART OF AN INCIDENT (thread
+ * `139-wall-clock-in-the-incident-signature`) — the other half of R1 above, and the half
+ * that was missing: the lock held for two ticks in one minute and broke for two ticks a
+ * second apart across a minute boundary, because the name of the service branch carries
+ * the minute it was built in.
+ *
+ * ONE CASE PER DOOR the statement asked to be enumerated, and the doors are enumerated by
+ * OUTCOME, since which fields the signature reads depends on the kind:
+ *
+ *  | outcome           | the branch name reaches the signature… |
+ *  | `failed`, no branch | as TEXT in `cause` — the argv of the `checkout -b` that refused |
+ *  | `failed`, on its branch | by the `branch` FIELD (`dirtyOn`), the cause naming `add`/`commit` |
+ *  | `stranded`        | by the `branch` FIELD |
+ *  | `done`            | by the `branch` FIELD |
+ *
+ * The two `done`/`stranded` rows are the reason this is written per outcome rather than
+ * "the field and the text": their lock is inert anyway (each carries a fresh sha), so a
+ * fix measured only where it changes behaviour would leave two of the four doors unread.
+ */
+describe("one standing incident is ONE incident across a minute boundary", () => {
+  /** The same refusal of the same first step, one minute apart — the class 'nothing moved'. */
+  const nothingMoved = (minute: string) =>
+    ({
+      kind: "failed",
+      cause: `git checkout -q -b wip/dev-core/139-wall-clock-in-the-incident-signature-20260906T${minute}Z — fatal: cannot create branch`,
+    }) as const;
+
+  it("class 'nothing moved': the minute rides in the CAUSE, and two ticks are still one incident", () => {
+    const before = tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: nothingMoved("0920") });
+    const after = tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: nothingMoved("0921") });
+    expect(after).toBe(before);
+    expect(
+      planTidyUpDelivery({ role: "dev-core", signature: after, memo: memoOf(before) }).post,
+    ).toBe(false);
+    // …and the mask took the MINUTE and not the name: what is left still says which
+    // branch the incident is about, or the lock would fold two trees into one.
+    expect(after).toContain("wip/dev-core/139-wall-clock-in-the-incident-signature-");
+    expect(after).not.toContain("20260906T0920Z");
+  });
+
+  it("class 'the branch was made, the commit refused': the minute rides in the FIELD", () => {
+    const onBranch = (minute: string) =>
+      ({
+        kind: "failed",
+        branch: `wip/dev-core/012-x-20260906T${minute}Z`,
+        cause: "git add -A — fatal: the index is broken",
+      }) as const;
+    const before = tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: onBranch("0920") });
+    const after = tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: onBranch("0921") });
+    expect(after).toBe(before);
+    expect(
+      planTidyUpDelivery({ role: "dev-core", signature: after, memo: memoOf(before) }).post,
+    ).toBe(false);
+  });
+
+  it("the `stranded` outcome: the field is masked there too, whatever the lock does with it", () => {
+    const stranded = (minute: string) =>
+      ({
+        kind: "stranded",
+        branch: `wip/dev-core/012-x-20260906T${minute}Z`,
+        head: "ab12cd3",
+        cause: "git checkout --detach --quiet main — fatal: the tree is busy",
+      }) as const;
+    expect(tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: stranded("0921") })).toBe(
+      tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: stranded("0920") }),
+    );
+  });
+
+  it("the `done` outcome: the field is masked there too — the sha, not the clock, keeps it apart", () => {
+    const done = (minute: string, head: string) =>
+      ({ kind: "done", branch: `wip/dev-core/012-x-20260906T${minute}Z`, head }) as const;
+    expect(
+      tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: done("0921", "ab12cd3") }),
+    ).toBe(tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: done("0920", "ab12cd3") }));
+    // …and the fresh sha of a real second commit still makes it a new happening, which is
+    // the property the row above must not have taken away.
+    expect(
+      tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: done("0921", "ef45ab6") }),
+    ).not.toBe(tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: done("0920", "ab12cd3") }));
+  });
+
+  it("a DIFFERENT branch is still a different incident — only the instant is masked", () => {
+    const on = (branch: string) =>
+      ({ kind: "failed", branch, cause: "git add -A — fatal" }) as const;
+    // The two names differ in the THREAD, which is the half of the name that says which
+    // work stands there: a mask that ate it would fold two trees into one letter.
+    expect(
+      tidyUpSignature({
+        role: "dev-core",
+        dirt: DIRT,
+        outcome: on("wip/dev-core/012-x-20260906T0920Z"),
+      }),
+    ).not.toBe(
+      tidyUpSignature({
+        role: "dev-core",
+        dirt: DIRT,
+        outcome: on("wip/dev-core/013-y-20260906T0920Z"),
+      }),
+    );
+  });
+
+  it("a new CAUSE on the same branch is still news, minute or no minute (R3 of thread 133)", () => {
+    const first = tidyUpSignature({ role: "dev-core", dirt: DIRT, outcome: nothingMoved("0920") });
+    const second = tidyUpSignature({
+      role: "dev-core",
+      dirt: DIRT,
+      outcome: {
+        kind: "failed",
+        cause:
+          "git checkout -q -b wip/dev-core/139-wall-clock-in-the-incident-signature-20260906T0921Z — fatal: index.lock exists",
+      },
+    });
+    expect(second).not.toBe(first);
+    expect(
+      planTidyUpDelivery({ role: "dev-core", signature: second, memo: memoOf(first) }).post,
+    ).toBe(true);
+  });
+});
+
+/**
  * R5 — THE REFUSAL OF THE TICKS AFTER THE INCIDENT NAMES IT.
  *
  * Measured in the class "the branch was made, the commit refused": ticks 2..N never reach
