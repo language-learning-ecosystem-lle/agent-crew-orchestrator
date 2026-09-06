@@ -120,7 +120,7 @@
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
-| 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:23Z): «ДА» — вариант (a). Ветвь stash КОНВЕРТИРУЕТСЯ:… |
+| 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: ветвь stash конвертируется в коммит. Решение john — в этом треде, письмо curat… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~14:12Z): «ПЕРЕДАВАЙ» — ветвь 1 твоего §6. Рука названа:… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
@@ -139,5 +139,5 @@
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john (одна строка): завтра утром, тем же заходом, что разморозка шести пар, — ПОД… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | curator | run:304 · 2026-09-06 | 2026-09-06 | Метка review на голове 3208002e, круг поднялся — жду вердикт |
-| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | normal | open | curator | run:306 · 2026-09-06 | 2026-09-06 | Метка review повешена на #306, голова 7cb33b96 — та же, на которой зелёный checks. Круг ревью подня… |
+| 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | verdict: approve |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | — | 2026-09-06 | Происхождение треда: заводит curator, тред-источник 140-silent-exit-exhausts-the-role, 2026-09-06,… |
