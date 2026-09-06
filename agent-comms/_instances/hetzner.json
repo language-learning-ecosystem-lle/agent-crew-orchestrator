@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T18:59:14.549Z",
+  "writtenAt": "2026-09-06T18:59:49.193Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "149-frozen-pair-writes-to-the-feed",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T19:31:08Z"
     }
   ]
