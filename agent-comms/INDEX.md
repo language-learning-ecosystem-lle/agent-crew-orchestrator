@@ -127,3 +127,4 @@
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: ловить ли класс «пара PR не измерена никем» — и если ловить, то которой из… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли удвоение письма на потерянной квитанции push'а — и годится ли фор… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | run:288 · 2026-09-06 | 2026-09-06 | Находка разобрана: место НЕзаконное, лечится правкой текста, а не списком исключений. PR #288 откры… |
+| 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка curator своим правом task-declare. Происхождение: находка dev-core в треде 135-base-is-t… |
