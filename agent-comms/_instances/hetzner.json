@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T19:08:00.635Z",
+  "writtenAt": "2026-09-06T19:09:00.738Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "136-unmeasured-pair-of-step-and-script",
-      "state": "draining",
-      "deadline": "2026-09-06T19:41:05Z"
-    },
     {
       "role": "dev-core",
       "thread": "141-daemon-drift-needs-a-human",
