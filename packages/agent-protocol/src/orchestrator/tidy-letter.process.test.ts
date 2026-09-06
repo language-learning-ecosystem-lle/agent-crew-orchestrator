@@ -26,7 +26,14 @@
  * and that check is also what makes case 3 cheap to provoke.
  */
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -180,6 +187,22 @@ const leaveDirtBehind = (repo: string, workspace: string): void => {
       `printf 'edited by the session\\n' > ${workspace}/CARD.md\nprintf 'a new file\\n' > ${workspace}/NOTE.md`,
     ),
   ]);
+};
+
+/**
+ * THE SAME DIRT, RE-ATTRIBUTED TO A RUN THE CIRCUIT CUT OFF (thread 132). The release
+ * reason of the finished run is rewritten in the journal rather than produced by a real
+ * break, and that is deliberate: a genuine `quota-exhausted` costs a burnt quota and a
+ * genuine `timeout` costs the wall clock of the suite, while what the tidy-up reads is
+ * this one word — the reason of the last `lease-released` of the pair. Forging the word
+ * is forging the whole of the input.
+ */
+const callItACutOff = (repo: string): void => {
+  const path = join(repo, ".orchestrator", "journal.jsonl");
+  const lines = readFileSync(path, "utf8").trimEnd().split("\n");
+  const last = lines.findLastIndex((line) => JSON.parse(line).kind === "lease-released");
+  lines[last] = JSON.stringify({ ...JSON.parse(lines[last] as string), reason: "timeout" });
+  writeFileSync(path, `${lines.join("\n")}\n`);
 };
 
 /** The receiver of the standing address, as it stands in the feed — or nothing. */
@@ -366,6 +389,47 @@ describe("the outcome of a tidy-up leaves as a letter — through the real door,
     expect(turnsOf(repo, mail, "curator")).not.toContain(receiver as string);
     // …and the tidy-up itself is what the letter is about: the tree is clean and the role
     // is raisable, which is the state the letter claims.
+    expect(dirty(workspace)).toBe(false);
+  }, 180_000);
+
+  /**
+   * THE LETTER GOES OUT FOR A RUN THE CIRCUIT CUT OFF TOO (thread 132, curator's §3).
+   * The gate is `plan.action === "commit"` and it was not touched by that thread — which
+   * is exactly why this case has to exist: a gate on an action is NOT the same fact as a
+   * letter somebody read. Before the conversion this dirt went into a stash, the plan
+   * never said `commit`, and no letter was ever posted; the work lived in one machine's
+   * `git stash list` with no address a message could name. That is the whole of john's
+   * argument, and this is the assert that it actually happened.
+   */
+  it("the run was CUT OFF, not finished: the letter still goes, and names the work's address", () => {
+    const { repo, mail } = contour([DEV_CORE, GITHUB, CURATOR]);
+    const workspace = join(repo, ".worktrees", "dev-core");
+
+    leaveDirtBehind(repo, workspace);
+    callItACutOff(repo);
+    const second = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"]);
+
+    expect(second.out).toContain("committing what the 'timeout' run left uncommitted");
+    expect(second.out).toContain(
+      `letter — the outcome is posted to the standing address '${TIDY_UP_SLUG}', turn for 'dev-core'`,
+    );
+    expect(second.out).not.toContain("NOT DELIVERED");
+
+    // THE FEED, not the journal line: the address exists and carries the work's address.
+    const receiver = receiverOf(mail);
+    expect(receiver, `no receiver of '${TIDY_UP_SLUG}' in the feed`).toBeDefined();
+    const shown = readBack(repo, mail, receiver as string);
+    const branch = serviceBranch(workspace);
+    expect(branch).toMatch(/^wip\/dev-core\/012-x-/);
+    expect(shown).toContain(branch);
+    // The letter carries the ADDRESS; which run made the work is on the commit itself,
+    // and that is where a reader of the branch asks for it.
+    expect(git(workspace, "log", "-1", "--format=%s", branch)).toContain(
+      "what the 'timeout' run of 'dev-core' left uncommitted",
+    );
+    // …and the role is the one raised by it — the whole point of giving the work an
+    // address instead of a stash.
+    expect(turnsOf(repo, mail, "dev-core")).toContain(receiver as string);
     expect(dirty(workspace)).toBe(false);
   }, 180_000);
 

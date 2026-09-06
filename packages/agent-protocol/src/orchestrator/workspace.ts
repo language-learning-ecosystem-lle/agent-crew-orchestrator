@@ -43,16 +43,33 @@
  * question the plan asks is no longer "is it dirty" but WHOSE DIRT IT IS, and the
  * answer is already in hand — the reason the previous run of this pair was released:
  *
- *  - the circuit cut the run off (`quota-exhausted`, `timeout`, `supervisor-gone`,
- *    `stalled`) — the leftovers are an interrupted session's, nobody chose to leave
- *    them, and they are PARKED IN A STASH labelled with the run that made them. Nothing
- *    is lost and nothing is decided: a stash is the one gesture that is both reversible
- *    and complete;
- *  - the run ended its own turn (`completed` and every other handoff) and left dirt
- *    behind — that is an ERROR OF FINISHING, and the refusal names it as one. A session
- *    that passes the turn on leaves a clean tree; anything else is a defect to read;
+ *  - there IS a run to attribute the dirt to — whatever released it, the circuit cutting
+ *    it off (`quota-exhausted`, `timeout`, `supervisor-gone`, `stalled`) or the run
+ *    ending its own turn (`completed` and every other handoff) — and the leftovers are
+ *    COMMITTED for it, onto the role's own head or onto a service branch this plan
+ *    names. The work keeps an address a human can read a week later;
  *  - there is no previous run to attribute the dirt to — it may be a human's, and the
- *    package does not stash a human's work on a guess.
+ *    package does not touch a human's work on a guess;
+ *  - the head under the dirt is not the role's to write to (the base branch, another
+ *    role's) — the refusal stands, because there a commit would move a head that is
+ *    not ours.
+ *
+ * ONE DIRT, ONE FATE (john, 2026-09-06, thread 132). Until then those two reasons had two
+ * outcomes: a cut-off run's leftovers were PARKED IN A STASH, an ended run's were
+ * committed. john struck the split — there must not be two different fates for the same
+ * dirt depending on who cut the session off — on the argument that decided the commit in
+ * the first place: WHAT IS HIDDEN IS VISIBLE TO NOBODY. A stash has no author in a common
+ * place and no address a letter can name; it lives in one machine's `git stash list`, and
+ * the role rises on the next tick with a clean tree and no way to learn its own work
+ * exists. The risk that a cut-off run is likelier to have been interrupted MID-EDIT — so
+ * the commit may not even build — john weighed and accepted in the same words as on
+ * 2026-09-05: a half-finished commit is finished by the next session, hidden work is lost
+ * silently.
+ *
+ * The difference between the two reasons did NOT disappear; it stayed where it belongs —
+ * `dirtLeftByFinish`, which names dirt left by a run that ENDED its turn as an error of
+ * finishing, in that run's release event. That is a different question, and it is still
+ * asked.
  *
  * This module is the pure core: facts in, a plan and a verdict out. The git calls
  * live in the CLI, where the IO is.
@@ -155,8 +172,8 @@ export type WorkspaceFacts = {
 };
 
 /**
- * WHAT THE ORCHESTRATOR IS ABOUT TO DO WITH THE WORKSPACE. Seven outcomes, and the
- * split matters because four of them are actions on somebody's disk:
+ * WHAT THE ORCHESTRATOR IS ABOUT TO DO WITH THE WORKSPACE. Six outcomes, and the
+ * split matters because three of them are actions on somebody's disk:
  *
  *  - `ready` — it is already detached at the base commit; nothing to do;
  *  - `create` — there is no worktree yet (a new role, a fresh clone, a new machine);
@@ -166,15 +183,13 @@ export type WorkspaceFacts = {
  *  - `keep` — a RESUMED run (R18): the session is being continued, and its tree is
  *    the state it was continuing from. Moving it would be the one thing a resume must
  *    never do;
- *  - `stash` — dirt left by a run THE CIRCUIT CUT OFF: parked under a label that names
- *    the run that made it, then the tree is moved to the base like any other. The one
- *    branch here that touches work nobody committed, which is why it is decided by a
- *    pure function and carried out by a single reversible git command;
- *  - `commit` — dirt left by a run that ENDED ITS OWN TURN, in a tree whose head the
- *    role owns: committed under the role's signature, onto that branch or onto a
- *    service branch this plan names (john, 2026-09-05, thread 099). Nothing is hidden
- *    and nothing is destroyed — the work keeps an address a human can read a week
- *    later, and the role starts on the next tick instead of on the next human;
+ *  - `commit` — dirt left by ANY run this plan can name, in a tree whose head the role
+ *    owns: committed under the role's signature, onto that branch or onto a service
+ *    branch this plan names (john, 2026-09-05, thread 099; extended to the runs the
+ *    circuit cut off by john, 2026-09-06, thread 132). The one branch here that touches
+ *    work nobody committed, which is why it is decided by a pure function. Nothing is
+ *    hidden and nothing is destroyed — the work keeps an address a human can read a
+ *    week later, and the role starts on the next tick instead of on the next human;
  *  - `refuse` — dirt with an owner the package will not overrule: no known run at all
  *    (the changes may be a human's), or a head that is not the role's to commit onto.
  *    Named with the repair, because there the repair is a judgement call (commit it,
@@ -185,7 +200,6 @@ export type WorkspacePlan =
   | { readonly action: "create" }
   | { readonly action: "rebase" }
   | { readonly action: "keep" }
-  | { readonly action: "stash"; readonly label: string; readonly from: string }
   | {
       readonly action: "commit";
       /** Where it lands — an existing branch of the role, or one this plan names. */
@@ -203,12 +217,19 @@ export type WorkspacePlan =
  * more. Every other reason in `RELEASE_REASONS` is a turn that ENDED: `completed` and
  * the two interactive endings (`input-timeout`, `exited-while-waiting`) pass the turn
  * on, `exited-without-handoff` is a session that stopped talking of its own accord, and
- * `forced` is a human's decision about that tree — none of the five is a break the
- * package may tidy up after on its own.
+ * `forced` is a human's decision about that tree.
+ *
+ * WHAT THE LIST STILL DECIDES, AND WHAT IT NO LONGER DOES (thread 132). It has exactly
+ * one reader left — `dirtLeftByFinish`, which asks whether the run being released should
+ * have left a clean tree behind it. `planWorkspace` used to read it too, to send a
+ * cut-off run's dirt into a stash instead of a commit; john struck that fork on
+ * 2026-09-06, so the fate of the dirt no longer depends on this list at all. The two
+ * questions were never the same one, and keeping the list here is what lets the surviving
+ * one go on being asked.
  *
  * Kept as strings rather than as `ReleaseReason` so that a journal line from a future
  * version does not have to be understood before it can be judged: an unknown reason is
- * simply not in this set, and falls to the refusal.
+ * simply not in this set, and falls to the loud side.
  */
 export const ABORTED_RUN_REASONS: readonly string[] = [
   "quota-exhausted",
@@ -217,19 +238,6 @@ export const ABORTED_RUN_REASONS: readonly string[] = [
   "supervisor-gone",
   "stalled",
 ];
-
-/**
- * The label a parked tree is found by. It is an ADDRESS, not a note: thread, session
- * and cause, in the order somebody looking for their work would ask for them
- * (`git stash list` prints it whole). A run that never announced a session id still
- * gets a label — `no-session` is a fact about that run, and a stash without a name
- * would be worse than one with an incomplete one.
- */
-export const stashLabel = (input: {
-  readonly thread?: string;
-  readonly session?: string;
-  readonly reason: string;
-}): string => `wip ${input.thread ?? "no-thread"} ${input.session ?? "no-session"} ${input.reason}`;
 
 /**
  * THE SAME FORK READ FROM THE OTHER END OF THE RUN (thread 023, requirement 5, second
@@ -762,12 +770,12 @@ export const planWorkspace = (input: {
   /**
    * How the PREVIOUS run of this (role, thread) ended — the whole input the dirt
    * question is answered from. Absent when the pair has no finished run behind it, and
-   * that absence is meaningful: unattributed dirt is never parked.
+   * that absence is meaningful: unattributed dirt is never touched. WHICH reason it is
+   * no longer changes the outcome (thread 132) — it is carried into the commit message,
+   * so a reader of `git log` learns how the run that left the work ended.
    */
   readonly previousReason?: string;
-  /** The session id of that run, when it announced one; it goes into the stash label. */
-  readonly previousSession?: string;
-  /** The thread this run is for — the other half of the label. */
+  /** The thread this run is for — it names the branch and the commit message. */
   readonly thread?: string;
   /**
    * The base as the launch names it (`origin/main`) — read only to recognise the base
@@ -817,28 +825,19 @@ export const planWorkspace = (input: {
   }
   if (resuming) return { action: "keep" };
   if (facts.dirty === true) {
-    if (previousReason !== undefined && ABORTED_RUN_REASONS.includes(previousReason)) {
-      return {
-        action: "stash",
-        from: previousReason,
-        label: stashLabel({
-          ...(input.thread === undefined ? {} : { thread: input.thread }),
-          ...(input.previousSession === undefined ? {} : { session: input.previousSession }),
-          reason: previousReason,
-        }),
-      };
-    }
     const repair = describeDirtyWorkspaceRepair({
       role: input.role,
       path: input.path,
       ...(input.thread === undefined ? {} : { thread: input.thread }),
       ...(facts.dirt === undefined ? {} : { dirt: facts.dirt }),
     });
-    // THE RIGHT, AND EXACTLY AS WIDE AS IT WAS GIVEN (john, 2026-09-05, thread 099):
-    // dirt of a run that ENDED ITS OWN TURN, in a tree whose head the role owns, is
-    // committed for it. Everything outside that — unattributed dirt just below, a
-    // shared or foreign head just after — keeps the refusal it had, because outside it
-    // the package would be committing somebody else's work under a role's name.
+    // THE RIGHT, AND EXACTLY AS WIDE AS IT WAS GIVEN (john, 2026-09-05, thread 099;
+    // widened to every release reason by john, 2026-09-06, thread 132): dirt of a run
+    // this plan can NAME, in a tree whose head the role owns, is committed for it — and
+    // it makes no difference whether that run ended its own turn or the circuit cut it
+    // off. Everything outside that — unattributed dirt just below, a shared or foreign
+    // head just after — keeps the refusal it had, because outside it the package would
+    // be committing somebody else's work under a role's name.
     if (previousReason !== undefined) {
       const owner = classifyWorkspaceHead({
         role: input.role,
@@ -875,7 +874,7 @@ export const planWorkspace = (input: {
       if (owner.kind === "base" || owner.kind === "foreign")
         return {
           action: "refuse",
-          reason: `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}'), and its head is on '${owner.branch}' — ${
+          reason: `the workspace has uncommitted changes left by the '${previousReason}' run of this pair, and its head is on '${owner.branch}' — ${
             owner.kind === "base"
               ? "the BASE branch, which every role shares"
               : describeForeignHead({ role: input.role, owner })
@@ -886,8 +885,8 @@ export const planWorkspace = (input: {
       action: "refuse",
       reason:
         previousReason === undefined
-          ? `the workspace has uncommitted changes and no finished run of this pair to attribute them to — they may be a human's, and the circuit does not park work whose owner it does not know. ${repair}`
-          : `the workspace has uncommitted changes left by a run that ENDED ITS OWN TURN ('${previousReason}'), and the plan was given no timestamp to name a service branch with — the tree is detached, so there is no head of the role's to commit onto either. ${repair}`,
+          ? `the workspace has uncommitted changes and no finished run of this pair to attribute them to — they may be a human's, and the circuit does not commit work whose owner it does not know. ${repair}`
+          : `the workspace has uncommitted changes left by the '${previousReason}' run of this pair, and the plan was given no timestamp to name a service branch with — the tree is detached, so there is no head of the role's to commit onto either. ${repair}`,
     };
   }
   return facts.head === base ? { action: "ready" } : { action: "rebase" };
@@ -911,8 +910,6 @@ export const describeWorkspacePlan = (input: {
       return `${input.role}: ${input.path} — moving to ${at}`;
     case "keep":
       return `${input.role}: ${input.path} — kept as it is (the run is a resume)`;
-    case "stash":
-      return `${input.role}: ${input.path} — parking what the '${input.plan.from}' run left uncommitted as a stash ('${input.plan.label}'), then moving to ${at}`;
     case "commit":
       return `${input.role}: ${input.path} — committing what the '${input.plan.from}' run left uncommitted ${input.plan.create ? "onto a new service branch" : "onto its own branch"} '${input.plan.branch}', then moving to ${at}`;
     case "refuse":
