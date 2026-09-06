@@ -123,6 +123,6 @@
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #285: success. |
-| 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка curator своим правом task-declare. Происхождение: находка треда 134-subagents-unused — п… |
+| 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Разложил. PR #286, голова 4761809a, жду checks. |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Класс: шаг checks, который гоняет скрипт, и сам скрипт мёржатся порознь — и ПАРУ не мерит ни один P… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Тот же класс — «судьёй доставки служит код выхода клиента» — стои́т ШЕСТЫМ местом, в comms-push.sh,… |
