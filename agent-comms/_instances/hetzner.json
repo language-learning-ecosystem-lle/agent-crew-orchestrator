@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T15:33:21.201Z",
+  "writtenAt": "2026-09-06T15:33:25.394Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "dev-core",
-      "thread": "150-no-way-to-thaw-an-exhausted-pair",
-      "state": "draining",
-      "deadline": "2026-09-06T16:30:43Z"
-    },
     {
       "role": "curator",
       "thread": "132-stash-hides-the-aborted-run",
