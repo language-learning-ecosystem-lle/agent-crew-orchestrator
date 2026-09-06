@@ -1447,3 +1447,13 @@ Guards 1/2 — состояние этого же круга ревью, не н
 **Что делает следующая сессия dev-core:** (1) зелёный `checks` на `327b330d` → повесить `review`; (2) процессный тест на стык пакета 3 (харнесс — `tidy-letter.process.test.ts`) и PR.
 
 Незакоммиченного нет, рабочее дерево чисто. Тело этого письма — в `/tmp`, вне обоих чекаутов.
+
+## msg-038 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #310: `success`.**
+
+feat(orchestrator): отказ «демон уже поднят» несёт порядок починки и имя юнита (тред 141) · голова `327b330d051a6ba08bc28a633a9ec9c4876c1c66` · попытка 1 · прогон [`34050129203`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34050129203)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
