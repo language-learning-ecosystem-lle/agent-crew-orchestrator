@@ -219,13 +219,14 @@ describe("the role gets a workspace of its own (R17)", () => {
 });
 
 /**
- * THE LEFTOVERS OF A RUN THE CIRCUIT CUT OFF (thread 023, requirement 5). The pure
- * function decides WHETHER to park them; only a real git can show that the parking is
- * complete and reversible — that the untracked file went in too, that the tree came out
- * clean and at the base, and that the work is retrievable by the label. A stub cannot
- * be wrong about that in the way that matters.
+ * THE LEFTOVERS OF A RUN THE CIRCUIT CUT OFF (thread 023, requirement 5; the fate of
+ * them decided again by john on 2026-09-06, thread 132). The pure function decides WHAT
+ * to do with them; only a real git can show that the doing is complete — that the
+ * untracked file went in too, that the tree came out clean and at the base, and that the
+ * work is retrievable at an address a human can be told over mail. A stub cannot be
+ * wrong about that in the way that matters.
  */
-describe("dirt left by a broken run is parked, not left standing", () => {
+describe("dirt left by a broken run is committed, not left standing", () => {
   /** A finished run of this pair in the journal, released the given way. */
   const seedRun = (repo: string, reason: string, over: Record<string, unknown> = {}): void => {
     const base = { ts: "2026-07-25T10:00:00Z", role: "dev-core", thread: "012-x" };
@@ -245,13 +246,21 @@ describe("dirt left by a broken run is parked, not left standing", () => {
     writeFileSync(journalPath(repo), `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
   };
 
-  it("the previous run timed out → the tree is stashed under its name and the package starts", () => {
+  /**
+   * THE CASE THAT CHANGED ITS ANSWER A SECOND TIME (thread 132, john of 2026-09-06).
+   * It used to end in `git stash push -u`: the tree came out clean, and the work lived
+   * in one machine's `git stash list` under a label nobody outside that machine could
+   * read. john struck the split — the same dirt must not have two fates depending on who
+   * cut the session off — so this now ends exactly where the `completed` case below ends,
+   * and the assert that proves it is the EMPTY stash beside the named branch.
+   */
+  it("the previous run timed out → the dirt is committed under its name and the package starts", () => {
     const { repo } = contour();
     stub(repo);
-    git(repo, "worktree", "add", "-q", "-b", "pkg/previous", workspace(repo));
+    git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
     // Both kinds of leftovers: a modified tracked file and an untracked new one. The
-    // second is the common one — a session's new module — and it is the one a stash
-    // without `-u` would silently leave behind for `checkout --detach` to trip over.
+    // second is the common one — a session's new module — and it is the one `add -A`
+    // has to pick up for the commit to be the whole of what the session was holding.
     writeFileSync(join(workspace(repo), "CARD.md"), "the role card, half rewritten\n");
     writeFileSync(join(workspace(repo), "new-module.ts"), "what the session was writing\n");
     // `timeout` is a break the circuit made AND is not resumable (R18) — so this is a
@@ -261,21 +270,27 @@ describe("dirt left by a broken run is parked, not left standing", () => {
     const result = run(repo);
 
     expect(result.code).toBe(0);
-    expect(result.out).toContain("parking what the 'timeout' run left uncommitted");
+    expect(result.out).toContain("committing what the 'timeout' run left uncommitted");
     // THE TREE IS CLEAN AND AT THE BASE — the package actually started.
     expect(git(workspace(repo), "status", "--porcelain")).toBe("");
     expect(git(workspace(repo), "rev-parse", "HEAD").trim()).toBe(
       git(repo, "rev-parse", "origin/main").trim(),
     );
     expect(existsSync(join(repo, "cwd.txt"))).toBe(true);
-    // AND NOTHING WAS LOST: the label is the address, and both files come back.
-    const stash = git(workspace(repo), "stash", "list");
-    expect(stash).toContain("wip 012-x 8f3a2b1c-0d4e-4f56-9a7b-1c2d3e4f5a6b timeout");
-    git(workspace(repo), "stash", "apply", "-q", "stash@{0}");
-    expect(readFileSync(join(workspace(repo), "CARD.md"), "utf8")).toContain("half rewritten");
-    expect(readFileSync(join(workspace(repo), "new-module.ts"), "utf8")).toContain(
+    // AND NOTHING WAS LOST AND NOTHING WAS HIDDEN: the branch is the address, both files
+    // are in it, and the stash — where all of this used to go — is EMPTY.
+    const branch = git(workspace(repo), "branch", "--list", "wip/*")
+      .trim()
+      .replace(/^\*?\s*/, "");
+    expect(branch).toMatch(/^wip\/dev-core\/012-x-\d{8}T\d{4}Z$/);
+    expect(git(workspace(repo), "show", `${branch}:CARD.md`)).toContain("half rewritten");
+    expect(git(workspace(repo), "show", `${branch}:new-module.ts`)).toContain(
       "what the session was writing",
     );
+    expect(git(workspace(repo), "log", "-1", "--format=%s", branch)).toContain(
+      "what the 'timeout' run of 'dev-core' left uncommitted",
+    );
+    expect(git(workspace(repo), "stash", "list")).toBe("");
   });
 
   /**
@@ -346,7 +361,7 @@ describe("dirt left by a broken run is parked, not left standing", () => {
     const result = run(repo);
 
     expect(result.code).toBe(2);
-    expect(result.out).toContain("ENDED ITS OWN TURN ('exited-without-handoff')");
+    expect(result.out).toContain("left by the 'exited-without-handoff' run of this pair");
     // AND IT SAYS WHOSE HEAD IT REFUSED TO WRITE ON — the half that is new: a refusal
     // that only said "uncommitted changes" would now read as the door being broken.
     expect(result.out).toContain("its head is on 'curator/017-x'");
@@ -363,7 +378,7 @@ describe("dirt left by a broken run is parked, not left standing", () => {
     expect(git(workspace(repo), "stash", "list")).toBe("");
   });
 
-  it("a dry run says what it WOULD park and touches nothing", () => {
+  it("a dry run says what it WOULD commit and touches nothing", () => {
     const { repo } = contour();
     stub(repo);
     git(repo, "worktree", "add", "-q", "--detach", workspace(repo));
@@ -392,7 +407,7 @@ describe("dirt left by a broken run is parked, not left standing", () => {
       { cwd: repo, encoding: "utf8", env: sandbox(configHome(repo)) },
     );
 
-    expect(`${result.stdout}${result.stderr}`).toContain("parking what the 'stalled' run left");
+    expect(`${result.stdout}${result.stderr}`).toContain("committing what the 'stalled' run left");
     expect(readFileSync(join(workspace(repo), "half-done.txt"), "utf8")).toContain("interrupted");
     expect(git(workspace(repo), "stash", "list")).toBe("");
   });
