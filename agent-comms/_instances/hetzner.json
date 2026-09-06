@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T09:13:00.697Z",
+  "writtenAt": "2026-09-06T09:13:29.621Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "134-subagents-unused",
       "state": "running",
       "deadline": "2026-09-06T10:11:29Z"
+    },
+    {
+      "role": "curator",
+      "thread": "136-unmeasured-pair-of-step-and-script",
+      "state": "running",
+      "deadline": "2026-09-06T09:53:26Z"
     }
   ]
 }
