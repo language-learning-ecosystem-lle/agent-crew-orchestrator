@@ -29,6 +29,11 @@ const detail = (event: OrchestratorEvent): string => {
       const note = event.note === undefined ? "" : `: ${event.note}`;
       return ` (${event.mode}${by}${note})`;
     }
+    // WHO LET THE PAIR GO AND WHY (thread 150) — the same three facts as a forced stop,
+    // and for the same reason: the ceiling is a door, and a door somebody opened is only
+    // readable afterwards if the history says whose hand it was.
+    case "thaw":
+      return ` (by ${event.by}${event.note === undefined ? "" : `: ${event.note}`})`;
     default:
       return ""; // launch, handoff-detected — no details
   }

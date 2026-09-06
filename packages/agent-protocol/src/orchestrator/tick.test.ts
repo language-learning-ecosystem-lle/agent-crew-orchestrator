@@ -541,6 +541,10 @@ describe("describeSkip — the line an operator reads", () => {
     expect(line).toContain("exhausted");
     expect(line).toContain("13 failed attempts");
     expect(line).toContain("ceiling 3 (default)");
+    // AND IT NAMES THE MOVE, with this pair already in the call (thread 150). This is the
+    // line a person tails while wondering why nothing moves, and until the thaw existed it
+    // could only point at two more surfaces that did not name a command either.
+    expect(line).toContain("orchestrator thaw --role dev-core --thread 016 --by <you> --write");
   });
 
   it("the auth skip dictates the login of the role's OWN tool", () => {

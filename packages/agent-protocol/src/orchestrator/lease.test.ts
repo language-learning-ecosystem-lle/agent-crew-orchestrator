@@ -947,3 +947,75 @@ describe("SPENDS_ATTEMPT — one row per ending, one test per row (thread 023)",
     }
   });
 });
+
+describe("the hand on the ceiling — `thaw` (thread 150)", () => {
+  const thaw = (role: string, thread: string, by = "john"): OrchestratorEvent => ({
+    kind: "thaw",
+    ts: ts(),
+    role,
+    thread,
+    by,
+  });
+  const spent = (): OrchestratorEvent[] => {
+    const events: OrchestratorEvent[] = [];
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(acquire("dev-core", "t", FUTURE), release("dev-core", "t", "timeout"));
+    }
+    return events;
+  };
+
+  it("a pair at the ceiling comes back launchable, with the count at zero", () => {
+    const events = spent();
+    expect(only(events)).toMatchObject({ exhausted: true, launchable: false });
+    events.push(thaw("dev-core", "t"));
+    expect(only(events)).toMatchObject({ attempt: 0, exhausted: false, launchable: true });
+  });
+
+  it("a freeze STATED by the release (`exhausted`) is lifted too — the counter alone is not enough", () => {
+    const events = [acquire("dev-core", "t", PAST), release("dev-core", "t", "exhausted")];
+    expect(only(events)).toMatchObject({ exhausted: true });
+    events.push(thaw("dev-core", "t"));
+    // The reason still says `exhausted` — the journal is append-only — and the pair is free.
+    // `exhausted` is the field both gates read (`tick` skips on it, `planLaunch` refuses on
+    // it); `launchable` stays false here because this release is not one of the four FAILED
+    // terminals, which is true of it before the thaw as well.
+    expect(only(events)).toMatchObject({ reason: "exhausted", exhausted: false });
+  });
+
+  it("the life is ONE: the launch spends it, and the next ceiling freezes the pair again", () => {
+    const events = [...spent(), thaw("dev-core", "t")];
+    events.push(acquire("dev-core", "t", FUTURE), release("dev-core", "t", "timeout"));
+    expect(only(events), "one failure after the thaw is not the ceiling").toMatchObject({
+      attempt: 1,
+      exhausted: false,
+    });
+    for (let i = 1; i < MAX_ATTEMPTS; i += 1) {
+      events.push(acquire("dev-core", "t", FUTURE), release("dev-core", "t", "timeout"));
+    }
+    expect(
+      only(events),
+      "the new series reaches the same ceiling with no second hand",
+    ).toMatchObject({ attempt: MAX_ATTEMPTS, exhausted: true });
+  });
+
+  it("the SERIES ends with the freeze: the next one is stamped afresh, so the courier rings again", () => {
+    const events = spent();
+    const first = (only(events) as LeaseView).exhaustedSince;
+    expect(first).toBeDefined();
+    events.push(thaw("dev-core", "t"));
+    expect(only(events).exhaustedSince).toBeUndefined();
+    for (let i = 0; i < MAX_ATTEMPTS; i += 1) {
+      events.push(acquire("dev-core", "t", FUTURE), release("dev-core", "t", "timeout"));
+    }
+    const second = (only(events) as LeaseView).exhaustedSince;
+    expect(second).toBeDefined();
+    expect(second).not.toBe(first);
+  });
+
+  it("the thaw does not raise anything: the state stays released", () => {
+    expect(only([...spent(), thaw("dev-core", "t")])).toMatchObject({
+      state: "released",
+      lastEvent: "thaw",
+    });
+  });
+});

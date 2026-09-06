@@ -637,7 +637,11 @@ export const describeSkip = (
     case "waiting":
       return `candidate ${pair} skipped: the session is parked on a question of its own (R19) — it is waiting for an ANSWER, not for a launch; see 'orchestrator status' for the ceiling of that wait`;
     case "exhausted":
-      return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal`;
+      // THE LINE THE DAEMON REPEATS EVERY TICK NAMES THE MOVE (thread 150). It is the surface
+      // a stuck circuit is actually read from — the one a person tails while wondering why
+      // nothing moves — and until the thaw existed it could only send them to two more
+      // surfaces. `status` says which freeze this is; this one says how to end it.
+      return `candidate ${pair} skipped: exhausted — ${skip.attempt} failed attempts since its last delivery, ceiling ${ceiling.value} (${ceiling.source}); see 'orchestrator status' and the journal, and 'orchestrator thaw --role ${skip.role} --thread ${skip.thread} --by <you> --write' lets it go`;
     case "parked": {
       // The two parks read differently on purpose (thread 023): one is waiting for a person
       // to decide and lifts with their answer, the other is waiting for a merge and lifts on

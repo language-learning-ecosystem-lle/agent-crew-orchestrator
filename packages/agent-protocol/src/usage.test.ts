@@ -472,6 +472,10 @@ describe("the shipped USAGE, read as the table of legal flags", () => {
       orchestratorRun: "'orchestrator run'",
       orchestratorStop: "stop",
       orchestratorHold: "hold",
+      // `thaw --write` appends ONE event to the machine-local journal and raises nothing
+      // (thread 150) — the same line as the state above, and deliberately not
+      // `orchestrator run`'s: the launch it makes possible is the daemon's, at its next tick.
+      orchestratorThaw: "thaw",
       // The operator's short forms do not READ the word, they supply it: typing
       // `hold <role>` IS the decision (thread 019). Same command, same line.
       orchestratorHoldShort: "hold",

@@ -2440,6 +2440,20 @@ agent-protocol orchestrator stop   --mode graceful --ref <ref> [--write]
 agent-protocol orchestrator stop   --mode force --ref <ref> --by <who> --reason <why> --thread <slug> [--write]
 agent-protocol orchestrator hold   --mode take    --ref <ref> --role <id> --by <who> [--ttl <sec>] [--note <t>] [--write]
 agent-protocol orchestrator hold   --mode release --ref <ref> --role <id> [--write]   # the role is taken by a manual session
+agent-protocol orchestrator thaw   --role <id> --thread <slug> --by <who> [--note <t>] [--journal <p>] [--now <iso>] [--max-attempts <n>] [--write]
+                            # LETS A PAIR STOPPED BY THE ATTEMPT CEILING GO (thread 150). The count is zeroed by a
+                            # DELIVERY, a delivery is written by a RUN of the pair, and the ceiling refuses that run —
+                            # a closed circle whose only exit used to be `run --max-attempts` above the ceiling
+                            # ONE LIFE, spent by the next `lease-acquired`: the ceiling is not touched and a pair that
+                            # fails again is frozen again, needing its own hand — a thaw is not a ceiling switched off
+                            # IT RAISES NOTHING. The pair becomes a candidate; the daemon takes it at the next tick, by
+                            # the ordinary road — unlike `run --max-attempts`, which spawns the session then and there
+                            # `--by` is REQUIRED: the journal is where "who let this pair go" is read afterwards; it is
+                            # not checked against the config, because the hand is a person's and a person is not a role
+                            # A RAISED SESSION IS REFUSED by name (`AGENT_PROTOCOL_WORKER` is set) — a role that lifts
+                            # its own ceiling is a role the ceiling does not stop
+                            # Refuses by name on an unknown pair, and on a pair that is NOT frozen (naming its attempt
+                            # count, its state and its release reason)
 agent-protocol metrics      [--ref <ref>] [--root <comms>] [--journal <p>] [--sessions <p>] \
                             [--since <iso>] [--now <iso>] [--role <id>] [--thread <slug>] \
                             [--no-streams] [--metrics-cache <p>] [--json]
@@ -2574,6 +2588,7 @@ the push are one action:
 | `orchestrator enable`/`disable` | the gate flag — **no git**: machine-local state |
 | `orchestrator hold` (take/release) | the hold file — **no git**: machine-local state |
 | `orchestrator stop` (graceful/force) | the stop/force flag — **no git**: machine-local state |
+| `orchestrator thaw` | appends a `thaw` event to the journal — **no git**: machine-local state |
 | `orchestrator run` | **acts** — prepares and locks the workdir, appends the launch events, raises the agent; **no git**: all of it machine-local |
 | `notify` | the notify state + the message — **no git**: delivery is the transport (R4) |
 
@@ -3829,6 +3844,18 @@ Two stops of different strength, plus `log` for the owner of the decision (here:
   right under the force.
 - **`orchestrator log`** is the history of events in order, readably (unlike
   `status`, which shows the current state of the leases): what, when and with whom.
+- **`orchestrator thaw`** is the way out of the attempt ceiling, and until 2026-09-06
+  there was none. The counter is zeroed by a **delivery of the pair**, every shape of
+  which is written by a **run** of it — and the run is exactly what the ceiling refuses
+  (`the launch was refused (exhausted)`). The only exit was `run --max-attempts` above
+  the ceiling, which works and is written down nowhere: it was found that morning by
+  reading the shape of a command in the middle of an incident. The command appends one
+  event (`thaw {by, note}` — who/why/when, self-sufficient like the forced stop's) and
+  **raises nothing**: the pair becomes a candidate and the daemon takes it at its next
+  tick, under the daemon's own hands rather than in the operator's foreground. The life
+  is **one**, spent by the next `lease-acquired`, so the ceiling keeps its meaning — a
+  pair that fails again is frozen again and needs its own hand. The freeze letter of the
+  courier carries this exact call with the role and thread already in it.
 
 **A machine reboot (john's decision — both modes, the choice is made at
 installation).** The package does NOT register itself with the system:

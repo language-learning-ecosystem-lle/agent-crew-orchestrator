@@ -13423,6 +13423,104 @@ ${usageFor(USAGE, ["orchestrator hold", "orchestrator resume"])}`;
 const holdRequired = (argv: readonly string[], name: string): string =>
   flag(argv, name) ?? fail(`${name} is not set\n${HOLD_USAGE}`, 2);
 
+const THAW_USAGE =
+  "usage: orchestrator thaw --role <role> --thread <thread> --by <who> [--note <text>] [--write]";
+
+/**
+ * LETTING A FROZEN PAIR GO (thread `150-no-way-to-thaw-an-exhausted-pair`).
+ *
+ * WHAT WAS MEASURED, 2026-09-06. A pair stopped by the attempt ceiling had no command to
+ * lift it: the help of `orchestrator` had no word about a reset, a counter or exhaustion,
+ * and a hand-typed `orchestrator run` was refused by the very ceiling — `the launch was
+ * refused (exhausted)`. The counter is zeroed by a DELIVERY of the pair, every shape of
+ * which is written by a RUN of it, and the run is what the ceiling refuses: a closed
+ * circle whose only exit was `--max-attempts` above the ceiling, and that exit was written
+ * down nowhere. `devops` was raised through it by hand at 10:22Z that morning.
+ *
+ * THE CEILING IS NOT TOUCHED, and this command does not weaken it: it does not raise
+ * anything, it does not change the number, and the life it gives is ONE — spent by the
+ * next `lease-acquired` (see `handThawed` in `lease.ts`). What it changes is that the
+ * freeze now has a named way out instead of a flag somebody has to rediscover.
+ *
+ * WHY `--max-attempts` IS NOT THE ANSWER, even though it works. It raises the pair
+ * IMMEDIATELY, in the foreground of whoever typed it, on that person's terminal and under
+ * that person's environment — a manual run, with everything R13/R14 have to double-check
+ * about one. A thaw makes the pair a CANDIDATE and leaves the raising to the next tick of
+ * the daemon: the same road every other pair takes, so the session comes up under the
+ * daemon's own hands and the operator's move is over in one line.
+ *
+ * WHOSE HAND IT IS. `--by` is required — a door opened by nobody in particular is not a
+ * door, and the journal is where "who let this pair go" is read afterwards. A raised
+ * SESSION is refused outright: a role that could thaw itself is a role the ceiling does
+ * not stop, and the ceiling exists precisely for the pair that fails on its own cause.
+ * The refusal is by name and says what to do instead, because the role that types this is
+ * a role that has just met the freeze.
+ */
+const orchestratorThaw = (argv: readonly string[]): void => {
+  const journalPath = flag(argv, "--journal") ?? pathsFrom(argv).journal;
+  const roleId = flag(argv, "--role") ?? fail(`--role is not set\n${THAW_USAGE}`, 2);
+  const thread = flag(argv, "--thread") ?? fail(`--thread is not set\n${THAW_USAGE}`, 2);
+  const by = flag(argv, "--by") ?? fail(`--by is not set\n${THAW_USAGE}`, 2);
+  // A RAISED SESSION IS NOT A HAND (thread 150, question 2 of the statement of work). The
+  // variable is the launch contract's own (`LAUNCH_ENV.worker`), so this asks "was this
+  // process spawned by the orchestrator" and not "does the caller look like a role" — a
+  // human typing the command on the box has no such variable, whichever role they name.
+  if (process.env[LAUNCH_ENV.worker] !== undefined) {
+    fail(
+      `a raised session may not thaw a pair: ${LAUNCH_ENV.worker} is set, so this is a session the orchestrator started, and a role that lifts its own ceiling is a role the ceiling does not stop. Say so in the thread — the thaw is a person's move, typed on the box`,
+      2,
+    );
+    return;
+  }
+  const note = flag(argv, "--note");
+  const write = argv.includes("--write");
+  const now = orchestratorNow(argv);
+  const events = existsSync(journalPath)
+    ? parseJournal(readFile(journalPath, "orchestrator journal"))
+    : [];
+  // THE SAME CEILING THE DAEMON JUDGES BY (`--max-attempts`), for the reason `status`
+  // reads it: a command that judged "frozen" by another number would refuse to thaw a
+  // pair the daemon is refusing to raise.
+  const ceiling = gatesFrom(argv).maxAttempts.value;
+  const view = foldLeases(events, now, ceiling).find(
+    (candidate) => candidate.role === roleId && candidate.thread === thread,
+  );
+  if (view === undefined) {
+    fail(
+      `${roleId}×${thread} — this journal has no such pair, so there is no freeze to lift. Check the names against 'orchestrator status' (a thread is named by its full '<NNN>-<slug>')`,
+      2,
+    );
+    return;
+  }
+  // NOTHING TO LIFT IS A REFUSAL AND NOT A SHRUG. A thaw of a live pair would spend the
+  // one life it gives on a pair that is not asking for it, and — because the flag is
+  // cleared by the NEXT acquire — that life would be gone before the pair ever froze.
+  if (!view.exhausted) {
+    fail(
+      `${roleId}×${thread} is not frozen — it stands at ${view.attempt}/${view.ceiling} attempts, state '${view.state}'${view.reason === null ? "" : ` (${view.reason})`}. There is nothing for a thaw to lift; if the pair is not being raised, 'orchestrator status' names the reason`,
+      2,
+    );
+    return;
+  }
+  if (!write) {
+    out(
+      `agent-protocol: would thaw ${roleId}×${thread} (frozen at ${view.attempt}/${view.ceiling}${view.exhaustedSince === undefined ? "" : `, since ${view.exhaustedSince}`}) by ${by}; --write performs it`,
+    );
+    return;
+  }
+  appendEvent(journalPath, {
+    kind: "thaw",
+    ts: eventTimestamp(now),
+    role: roleId,
+    thread,
+    by,
+    ...(note === undefined ? {} : { note }),
+  });
+  out(
+    `agent-protocol: ${roleId}×${thread} was thawed by ${by} — the attempt count is back at 0/${view.ceiling} and the pair is a candidate again; the daemon raises it at its next tick (nothing was launched here)`,
+  );
+};
+
 /**
  * A hold on a manual session (S5): `take` declares the role taken until a
  * deadline, `release` removes it. The deadline is written INTO THE FILE
@@ -15087,6 +15185,8 @@ const main = async (argv: readonly string[]): Promise<void> => {
     const first = rest[0];
     if (first !== undefined && !first.startsWith("-")) orchestratorHoldShort(rest);
     else orchestratorHold(rest);
+  } else if (command === "orchestrator" && subcommand === "thaw") {
+    orchestratorThaw(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "preflight") {
     orchestratorPreflight(argv.slice(2));
   } else if (command === "orchestrator" && subcommand === "enable") {
