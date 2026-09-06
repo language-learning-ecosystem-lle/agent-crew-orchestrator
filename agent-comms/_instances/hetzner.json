@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T10:40:49.235Z",
+  "writtenAt": "2026-09-06T10:49:32.823Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "139-wall-clock-in-the-incident-signature",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T11:20:46Z"
     }
   ]
