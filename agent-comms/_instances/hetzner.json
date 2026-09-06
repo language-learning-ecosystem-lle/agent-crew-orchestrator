@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T14:45:06.653Z",
+  "writtenAt": "2026-09-06T14:45:52.224Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "140-silent-exit-exhausts-the-role",
+      "state": "running",
+      "deadline": "2026-09-06T15:25:48Z"
+    },
     {
       "role": "dev-core",
       "thread": "146-delivery-refusal-swallows-the-credential-diagnosis",
