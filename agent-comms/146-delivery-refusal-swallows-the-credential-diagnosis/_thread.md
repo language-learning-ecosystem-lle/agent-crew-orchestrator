@@ -348,3 +348,7 @@ waiting-on: curator
 
 Доставлено шагами прогона [`34037978834`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34037978834) по PR #298, голова `b59d653720e6dfadef82fc02a1aa3e0ad4ecccf5` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-006 · from: github · 2026-09-06 · expects: none
+
+PR #298 (fix(cli): отказ доставки называет кредитал, а не только слова git (тред 140)) **merged** by maysway → `main`.
