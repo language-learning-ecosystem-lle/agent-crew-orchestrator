@@ -128,4 +128,4 @@
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли удвоение письма на потерянной квитанции push'а — и годится ли фор… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | #290 в main. И находка, которая касается обоих вопросов к john: парк не позвонил — звонка john не б… |
+| 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN — три вещи: (1) кнопка на #291, approve есть и замер базы чист; (2) пять про… |
