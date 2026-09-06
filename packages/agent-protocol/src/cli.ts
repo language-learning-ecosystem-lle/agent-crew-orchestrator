@@ -446,10 +446,13 @@ import {
 import {
   attemptsFor,
   checkoutBranch,
+  describeDrainWithheld,
   describeInstallSkipped,
   describeRepairRefusal,
   describeRepairStood,
   describeSelfRestartBlock,
+  describeSelfRestartDrain,
+  describeSelfRestartDraining,
   describeSelfRestartForm,
   describeSelfRestartGo,
   describeSelfRestartHandback,
@@ -12144,6 +12147,14 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   /** The last unreadable-ref complaint, so an unanswerable ref is said once, not per tick. */
   let codeNote: string | undefined;
   /**
+   * WHOSE SESSIONS THIS TICK IS WAITING OUT (thread 141), set by `selfRestart` on a `drain`
+   * verdict and read once, below, by the line that names what the drain cost. It lives here
+   * rather than being returned because the outcome is what the CALLER acts on and the roles
+   * are what the reader is owed: two audiences, one decision, and a wider return type would
+   * put the reader's half in the path of the safety half.
+   */
+  let drainingFor: readonly string[] = [];
+  /**
    * 055.2 — THE BOX PICKS UP ITS OWN NEW CODE. Called from the tick on every drift, it
    * asks the pure verdict (`selfRestartVerdict`) and does at most one thing with the
    * answer: spawn the SAME `restart --pull` a hand would type, detached, and let it stop
@@ -12250,6 +12261,20 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
       // AND IT IS PUBLISHED WHERE THE COURIER CAN READ IT — see `publishDriftStandoff`.
       publishDriftStandoff(drift, describeSelfRestartBlock(verdict.block));
       return "stood";
+    }
+    // 141 — THE OBSTACLE THAT LEAVES BY ITSELF IS WAITED OUT, NOT REFUSED OVER. Nothing is
+    // stopped, nothing is killed and no flag is written: the whole of the drain is that this
+    // tick raises nobody (the caller does that on `draining`, exactly as it does on a
+    // handover), so the sessions that are live run to their own end and the tick that finds
+    // zero leases takes the `go` above. The courier carries the same sentence, so a reader
+    // outside the box learns that the wait is the box's own and not theirs.
+    if (verdict.kind === "drain") {
+      err(
+        `agent-protocol: daemon — ${describeSelfRestartDraining(verdict.roles, drift, new Date())}`,
+      );
+      publishDriftStandoff(drift, describeSelfRestartDrain(verdict.roles));
+      drainingFor = verdict.roles;
+      return "draining";
     }
     err(
       `agent-protocol: daemon — ${describeSelfRestartGo({
@@ -12969,6 +12994,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
      * block of `self-restart.ts` for the morning that proved a comment is not enough.
      */
     let handedOverToRepair = false;
+    /**
+     * 141 — AND WHETHER THE WITHHOLDING IS A DRAIN RATHER THAN A HANDOVER. Both withhold
+     * the plan, and the two sentences a reader needs are opposite: a handover's queue is
+     * taken by a successor seconds later, a drain's waits for a session to end.
+     */
+    let draining = false;
     /** The tree was repaired in place and this process is leaving for its supervisor. */
     let handBackTarget: string | undefined;
     if (vintage !== undefined) {
@@ -12980,8 +13011,10 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
         // safe to repair unattended. The verdict is pure (`self-restart.ts`); everything
         // impure about the decision is here and is exactly two things: reading the tree
         // the pull would move, and spawning the manual command.
+        drainingFor = [];
         const outcome = selfRestart(reading.drift);
         handedOverToRepair = outcome !== "stood";
+        draining = outcome === "draining";
         if (outcome === "handback") handBackTarget = reading.drift.refSha;
       } else if (reading.kind === "unknown" && reading.problem !== codeNote) {
         // Said when it CHANGES, not every tick: an unresolvable ref is one fault, and
@@ -13113,9 +13146,16 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // invariant that speaks only when it bites cannot be checked in a log.
     if (handedOverToRepair)
       err(
-        `agent-protocol: daemon — ${describeSelfRestartWithheld(
-          planned.map((candidate) => `${candidate.role}×${candidate.thread}`),
-        )}`,
+        `agent-protocol: daemon — ${
+          draining
+            ? describeDrainWithheld(
+                planned.map((candidate) => `${candidate.role}×${candidate.thread}`),
+                drainingFor,
+              )
+            : describeSelfRestartWithheld(
+                planned.map((candidate) => `${candidate.role}×${candidate.thread}`),
+              )
+        }`,
       );
     // THE EXIT THAT IS THE REPAIR (thread 003). It happens HERE and not inside
     // `selfRestart`: withholding the plan is the invariant condition 6 buys, and it has to

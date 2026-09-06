@@ -5296,10 +5296,38 @@ than the silence of a match.
 
 Variant (3) of S24 — the daemon repairing its own drift — was built in 055.2 and is
 described by the rule it runs on (`self-restart.ts`): on a drift, and only on a box with
-zero leases, no stop/force flag, no operator hold, a clean tree and a checkout the daemon
-actually serves, the process repairs itself; anything unmet is S24 verbatim (stand, and say
-why, every tick). The attempt ceiling is keyed by the TARGET SHA, which is what makes it
-self-clearing: a new commit on the ref is a new target with a fresh count.
+no stop/force flag, no operator hold, a clean tree, a checkout the daemon actually serves
+and attempts left under the ceiling, the process repairs itself; anything unmet is S24
+verbatim (stand, and say why, every tick). The attempt ceiling is keyed by the TARGET SHA,
+which is what makes it self-clearing: a new commit on the ref is a new target with a fresh
+count.
+
+**Live sessions are the one obstacle the box WAITS OUT instead of refusing over (thread 141,
+john 2026-09-06).** They used to be the first condition of the conjunction above, and on a
+circuit that works a refusal over them is a refusal forever: on 2026-09-05 this box executed
+code 13 commits and 22 hours old, printing its own honest reason every thirty seconds
+(`no self-restart while sessions are live … that wait needs a human`), and the more work the
+crew had the longer that lasted. So the verdict has a third answer beside `go` and `stand` —
+`drain`, which is what `orchestrator down` and a human's graceful stop already do:
+
+- the tick **launches nothing new** and says so, naming the pairs it left in the mail and
+  whose sessions it is waiting for. Nothing is consumed and nothing is counted as an attempt;
+- the live sessions **run to their own end** — no session is ever interrupted, because a torn
+  session is a spent attempt and three of those switch a role off by the ceiling (thread 140).
+  A hard restart is not the brisker option here, it is the dangerous one, and no path
+  introduces it;
+- the tick on which the last lease closes asks the SAME verdict and gets `go`: the tree is
+  repaired and the supervised process leaves with `75` for its supervisor, unchanged;
+- and **the order of the checks is reversed by this**. Everything that needs a hand — a stop
+  already down, an operator hold, a foreign checkout, a dirty tree, a spent ceiling — is asked
+  FIRST, and leases last. While leases were a refusal, naming them first was the kind sentence
+  ("the thing that will change on its own"); now that the box acts on them, a drift that would
+  ALSO be refused by a dirty tree has to say so, or the reader waits out a drain whose ending
+  repairs nothing.
+
+The courier carries the drain sentence in place of the old refusal (`daemon-drift.json`,
+below), which is the half a person outside the box reads: it names a decision already taken
+and the one event that completes it, so nobody goes looking for something to type.
 
 **A version verdict is that same repair asked for in words, and until thread 040 it killed
 the box instead** (measured on this repository 2026-08-28 19:45Z, the third outage of the
@@ -5423,8 +5451,9 @@ blind spots of the conjunction above were measured on 28–29.08 and neither is 
 rule: (1) on an active circuit the zero-lease window may not be caught for hours — 27 windows
 opened that day and the merge of `#101` (03:24:02Z) rode into none of them until a hand pulled
 in the morning; (2) a role raised to ask "did the fix roll out?" holds a lease and BLOCKS the
-very rollout it is measuring. What changed is what the box SAYS, and nothing about when it
-pulls:
+very rollout it is measuring. What changed THEN is what the box SAYS, and nothing about when
+it pulls (both blind spots are what the drain above finally closes — a box that waits the
+window out no longer has to catch one):
 
 - **the refusal states its own size.** It used to name the condition only (`no self-restart
   while sessions are live (curator)`) while the distance lived one line up, in a sentence
