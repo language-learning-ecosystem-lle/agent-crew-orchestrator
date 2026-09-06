@@ -122,7 +122,7 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: охранить четыре неохраняемых чтения в .github/workflows/claude-review.yml, нач… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:23Z): «ДА» — вариант (a). Ветвь stash КОНВЕРТИРУЕТСЯ:… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: ревизию пяти объявленных подагентов у потребителя (db-forensic, fixture-cur… |
+| 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~14:12Z): «ПЕРЕДАВАЙ» — ветвь 1 твоего §6. Рука названа:… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:58Z): «ТРЕТЬЯ, ПРЕДУПРЕЖДЕНИЕМ, УЗКИЙ ПРИЗНАК» — двер… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:09Z): «ЧИНИТЬ, ВНУТРИ ДВЕРИ; ВЫЙДЕТ ЗА НЕЁ — ВЕРНУТЬ»… |
