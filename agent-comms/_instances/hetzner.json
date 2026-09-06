@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T14:12:15.255Z",
+  "writtenAt": "2026-09-06T14:14:34.485Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "130-unguarded-read-kills-the-rescuer",
       "state": "running",
       "deadline": "2026-09-06T15:05:30Z"
-    },
-    {
-      "role": "curator",
-      "thread": "144-zones-comment-outlived-its-measurement",
-      "state": "draining",
-      "deadline": "2026-09-06T14:46:48Z"
     }
   ]
 }
