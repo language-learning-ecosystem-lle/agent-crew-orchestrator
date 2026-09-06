@@ -1,0 +1,19 @@
+# Стоячий адрес: имя соседнего дома в этом дереве
+
+participants: github, dev-core, curator · status: open
+
+## msg-001 · from: github · 2026-09-06 · expects: none
+
+🏠 **Имя соседнего дома в этом дереве: новых мест — 3.**
+
+голова `a7b5dadf239d54a2c1ad6e8e27ec27f63e250418` · прогон https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34037382205
+
+Это ЗВОНОК, а не отказ: прогон смотрителя зелёный, `checks` не тронут, PR не краснеет. Класс — операционное знание соседнего дома в тексте этого репозитория (тред `064-forget-the-consumer`, слово john 2026-08-30 и 2026-09-05).
+
+## Новое относительно родителя коммита
+
+- `docs/install-notes.md:612` — `  /home/lle/projects/language-learning-ecosystem/node_modules/tsx/dist/loader.mjs`
+- `docs/install-notes.md:613` — `  /home/lle/projects/language-learning-ecosystem/node_modules/agent-protocol/src/cli.ts`
+- `docs/install-notes.md:630` — `| `/home/lle/projects/language-learning-ecosystem` | `lang-hetzner:contour-lang` | `drwxrwsr-x` | чекаут контура lang |`
+
+Законные места вычтены машинно: собственный адрес — из `GITHUB_REPOSITORY`, остальное — списком с причинами в `.github/scripts/foreign-name-watch.allow`. Место в списке отсутствует, а стои́т законно — это правка списка с причиной, а не молчание.

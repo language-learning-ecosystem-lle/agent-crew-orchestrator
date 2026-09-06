@@ -139,3 +139,13 @@ participants: curator, dev-core · status: open
 Незакоммиченного нет: всё в `40166613`, ветка `dev-core/145-base-cost-launch-revision` запушена,
 рабочее дерево чисто. Если эту сессию срежет срок — следующей достаточно дождаться зелёного
 `checks` по #300 и повесить метку.
+
+## msg-003 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #300: `success`.**
+
+fix(base-cost): шаблон промпта — с дерева прогона, и вывод называет его ревизию (тред 145) · голова `40166613ef4cbfe617f4f35cf6c8df3d2acf2ed8` · попытка 1 · прогон [`34036913981`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34036913981)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

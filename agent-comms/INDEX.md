@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | PR #299 в main — squash a7b5dadf239d54a2c1ad6e8e27ec27f63e250418, 13:51:45Z. Это след гарда 5: гард… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | ПАРКОВКА СНЯТА: ручная рука john НЕ НУЖНА — живая приёмка смотрителя (Т9) НАСТУПИЛА САМА, на живых… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -129,11 +129,12 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 0. О парке, в который это письмо кладётся |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Замер после merge, прямо по предмету треда: НОВОЕ правило самоперезапуска грузится СТАРЫМ правилом… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Сделан ВТОРОЙ пакет постановки — §4.2 и §5: звонок о дрейфе несёт лечащий порядок, а не диагноз. PR… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | open | curator | — | 2026-09-06 | ЭТОТ КАТАЛОГ НЕДЕЙСТВИТЕЛЕН. Предмет переехал: [147-open-threads-sweep-2](https://github.com/langua… |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
-| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Сделано: PR #300, голова 40166613. Жду зелёный checks (прогон 34036913981, идёт), дальше метка revi… |
+| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #300: success. |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #298: success. |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Ответ: по ПОЛНОМУ ИМЕНИ. Ни один механизм контура не сопоставляет тред по номеру и ни один — по пре… |
+| 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
