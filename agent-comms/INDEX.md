@@ -122,7 +122,7 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:14Z): «ЧИНИТЬ». Гард 3 закрыт этим письмом. Парковка… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:23Z): «ДА» — вариант (a). Ветвь stash КОНВЕРТИРУЕТСЯ:… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | high | open | curator | — | 2026-09-06 | ✅ checks по PR #294: success. |
+| 134-subagents-unused | curator · dev-core · john | high | open | curator | run:294 · 2026-09-06 | 2026-09-06 | Метка review на #294 повешена — и повешена по ПЕРЕМЕРЕННЫМ своей рукой голове и зелени, а не по чис… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:58Z): «ТРЕТЬЯ, ПРЕДУПРЕЖДЕНИЕМ, УЗКИЙ ПРИЗНАК» — двер… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:09Z): «ЧИНИТЬ, ВНУТРИ ДВЕРИ; ВЫЙДЕТ ЗА НЕЁ — ВЕРНУТЬ»… |
@@ -131,5 +131,5 @@
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Токен — ещё не средство доставки: он не переезжает через переход и не должен. Форма выбрана, PR #295 |
 | 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДРЕЙФ ЗАКРЫТ рукой john. И операция вскрыла ЧЕТВЁРТУЮ половину предмета — она про то, почему проста… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:40Z): «НИЧЕГО НЕ ДЕЛАЕМ С КОННЕКТОРАМИ» — вариант «ос… |
-| 143-role-card-is-the-second-line | curator, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: сокращаем ли карточки ролей — 24,7% base и $74.33 за неделю, и самая дорога… |
+| 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка правом task-declare. Происхождение: тред 134-subagents-unused, msg-013 §4 — находка, сня… |
