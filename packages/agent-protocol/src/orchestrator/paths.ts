@@ -97,6 +97,16 @@ export type OrchestratorPaths = {
    */
   readonly tidyLetters: string;
   /**
+   * THE SAME LEDGER FOR THE SELF-RESTART LETTER (thread 141, package 3), and a SEPARATE
+   * file rather than a key in the one above on purpose: the tidy ledger is keyed by role
+   * and this one has no key at all — a box has one self-restart memory — and a reader of
+   * either file should not have to know which shape it is holding.
+   *
+   * Disposable in the same safe direction: losing it costs one repeated letter about a
+   * restart already told, never a silence about one nobody heard of.
+   */
+  readonly selfRestartLetters: string;
+  /**
    * THE TRACE OF STATE-CHANGING CAPABILITY CALLS (thread `047-devops-role`, curator's requirement
    * «посторонний обязан после факта установить, КАКОЙ вызов был сделан, кем, с какими параметрами
    * и с каким исходом, НЕ ЧИТАЯ транскрипт сессии»). Its own file rather than a line in
@@ -149,6 +159,7 @@ const DAEMON_CODE = "daemon-code.json";
 const DAEMON_SELF_RESTART = "self-restart.json";
 const DAEMON_DRIFT = "daemon-drift.json";
 const TIDY_LETTERS = "tidy-letters.json";
+const SELF_RESTART_LETTERS = "self-restart-letters.json";
 const DAEMON_LOG = "daemon.log";
 const DAEMON_PID = "daemon.pid";
 
@@ -181,6 +192,7 @@ export const orchestratorPaths = (input: {
     daemonSelfRestart: join(state, DAEMON_SELF_RESTART),
     daemonDrift: join(state, DAEMON_DRIFT),
     tidyLetters: join(state, TIDY_LETTERS),
+    selfRestartLetters: join(state, SELF_RESTART_LETTERS),
     daemonLog: join(state, DAEMON_LOG),
     daemonPid: join(state, DAEMON_PID),
     capabilities: join(state, CAPABILITIES),
