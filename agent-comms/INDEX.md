@@ -137,7 +137,7 @@
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john (одна строка): завтра утром, тем же заходом, что разморозка шести пар, — ПОД… |
-| 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | run:313 · 2026-09-06 | 2026-09-06 | Метка review повешена на #313 — круг пошёл на той же голове; ход отдаю кругу |
+| 148-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | verdict: needs-fixes |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
-| 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | run:314 · 2026-09-06 | 2026-09-06 | Работа §3 сделана своей рукой, PR открыт: #314, голова 405c921fd489fac48bc9e55d94bbfe863bf1ab9c, ве… |
+| 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | — | 2026-09-06 | ✅ checks по PR #314: success. |

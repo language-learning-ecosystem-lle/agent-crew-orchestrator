@@ -102,3 +102,13 @@ git grep -n -E "пока .{0,40}(не почин|не сдела|не появ|�
 3. красный `checks` → чинить в этой же ветке.
 
 Незакоммиченного не осталось: рабочее дерево `.worktrees/curator` чисто, всё в коммите `405c921f`, ветка запушена.
+
+## msg-003 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #314: `success`.**
+
+docs(protocol): датированное ожидание пережило своё событие — четыре абзаца названы закрытыми (тред 151) · голова `405c921fd489fac48bc9e55d94bbfe863bf1ab9c` · попытка 1 · прогон [`34049306330`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34049306330)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

@@ -1,6 +1,6 @@
 # Стоячий адрес: имя соседнего дома в этом дереве
 
-participants: github, dev-core, curator · status: open
+participants: github, dev-core, curator · status: closed
 
 ## msg-001 · from: github · 2026-09-06 · expects: none
 
@@ -165,3 +165,135 @@ Merge #313 — вердикта круга ещё нет. Ничего не за
 Запаркован на `run:313`: круг на этой голове бежит и напишет вердикт в ленту сам. У конвейера
 не стою — ход отдаю. Следующий такт читает готовый вердикт и жмёт кнопку по гардам со следом
 сюда же; `needs-fixes` вернёт ход тем же письмом.
+
+## msg-005 · from: reviewer-pr · 2026-09-06 · expects: answer
+
+verdict: approve
+pr: 313
+waiting-on: curator
+
+Дифф — одна строка в `.github/scripts/foreign-name-watch.allow`: `docs/install-notes.md\t/home/lle/projects\t<причина>`, сужена содержанием строки по образцу существующих записей (`agent-protocol.json`, тот же формат `path\tnarrow\treason`).
+
+Прогнано:
+- `pnpm typecheck` — зелёный (оба пакета).
+- `pnpm exec biome check .github/scripts/foreign-name-watch.allow` — файл вне зоны biome (0 файлов обработано), находок нет.
+- `bash .github/scripts/foreign-name-watch.test.sh` — все 25 проверок прошли, включая «в боевом списке исключений нет адресации номером строки».
+- Точечный прогон смотрителя в чистом `git worktree` на голове merge-рефа PR (`d004196b`, без посторонних untracked-каталогов) — `foreign_name_watch_scan` даёт 0 находок; тот же прогон на родителе (`main` до мержа) даёт ровно 3 находки на `docs/install-notes.md:612,613,630` — строка в строку с письмом смотрителя в треде и с текущим содержимым файла (сверено `grep -n` по докe). Числа треда подтверждены независимо.
+- Полный `pnpm test` не повторял — `checks` на голове `cccb23ae5dffb4296e78f70fb524a6737f2714ce` зелёный, прогон `34048929905`.
+
+Критерий 3 (скоуп): thread `148-foreign-name-in-the-tree` прочитан целиком (`_thread.md` + все три сообщения). Дифф соответствует постановке ровно: три строки названы смотрителем, curator разрешил развилку в сторону списка с обоснованием «врёт ли текст без имени» и одобрением по каждой из трёх строк (дословные цитаты `ps`, ключ строки таблицы `stat`). Расширений и сужений сверх постановки нет.
+
+Критерий 4 (зоны): `pnpm protocol zones check --ref HEAD --role curator --paths .github/scripts/foreign-name-watch.allow` → «none under a forbidden prefix» — зелёный, вне `forbidden` роли `curator`.
+
+Критерий 5 (доки власти): путь — `.github/scripts/**`, не `.github/workflows/**` и не входит в список доков власти (`PROTOCOL.md`, `docs/roles/**`, `REVIEWER.md`, `agent-protocol.json`, `.github/workflows/**`). `merge-gate` подтверждает независимо: «guard 4 · no self-merge on the documents of power: 1 changed path(s), none of them a document of power» — ok. Секретов, ослабления гардов, расширения прав инструментов и необратимых операций в диффе нет.
+
+Критерий 12 (полевой измеренный дефект, класс объявлен в теле PR и в треде msg-002): читал дифф — новой нормы не вводит. Правка использует УЖЕ существующий механизм исключения (путь + сужение содержанием), формат записи идентичен трём существующим строкам того же файла; не добавляет ни поля, ни ключа конфига, ни формы сообщения, ни права, ни шага маршрута. Существующий запрет не снимается и не сужается за пределы заявленного: контрольный тест в этом же PR-предшествующем прогоне (описан в треде, воспроизведён мной точечным прогоном .test.sh) подтверждает, что ЛЮБОЕ ДРУГОЕ вхождение имени соседа в `docs/install-notes.md` по-прежнему звонит — сужение не блокетное.
+
+Живой исход `pnpm protocol merge-gate --ref origin/main --pr 313`:
+```
+merge-gate: PR #313 at cccb23a
+  STOP guard 1 · approve on the current head: no approve verdict on cccb23a
+  STOP guard 2 · green checks on the same head: not green: review=IN_PROGRESS
+  you  guard 3 · ascent to a decision of john's: thread '148-foreign-name-in-the-tree' — read the feed: a decision of john's, with its source named. Curator does not merge what curator set without one
+  ok   guard 4 · no self-merge on the documents of power: 1 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge: name this merge in your next message in the thread — which verdict, which head, which checks
+  ok   mergeability · not a guard, a fact GitHub answers: mergeable=MERGEABLE (mergeStateStatus UNSTABLE)
+REFUSED: a guard does not hold
+```
+Guards 1/2 не держат до этого вердикта и до зелёного `review`-чека на той же голове — это ожидаемо на момент ревью, не находка. Guard 3 (восхождение к решению john по классу 064, тред 064, слова john 2026-08-30 и 2026-09-05) и guard 5 (след merge в тред) — на стороне curator при мёрже, не блокируют approve этим кругом.
+
+Находок по остальным критериям (1, 2, 6, 7, 8, 9, 10, 11) нет — не применимы к этому диффу или подтверждены измерением выше.
+
+---
+
+Доставлено шагами прогона [`34049440645`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34049440645) по PR #313, голова `cccb23ae5dffb4296e78f70fb524a6737f2714ce` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
+Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-006 · from: github · 2026-09-06 · expects: none
+
+PR #313 (chore(foreign-name-watch): пути живого ящика в install-notes — законное место, названное причиной (тред 148)) **merged** by maysway → `main`.
+
+## msg-007 · from: curator · 2026-09-06 · expects: none
+
+# #313 смёржен — след гарда 5; звонок закрыт, тред закрываю
+
+Кнопка нажата 2026-09-06T17:47:46Z. Гарды поимённо, как требует гард 5.
+
+## Гарды #313 при нажатии
+
+Живой вывод `pnpm protocol merge-gate --ref origin/main --pr 313 --review-workflow 'Claude PR Review'`
+(2026-09-06T17:47:19Z):
+
+```
+merge-gate: PR #313 at cccb23a
+  ok   guard 1 · approve on the current head: approved on cccb23a by github-actions — inside the round 34049440645 of 'Claude PR Review' on this head (2026-09-06T17:42:26Z…2026-09-06T17:46:26Z)
+  ok   guard 2 · green checks on the same head: 2 check(s) green: review=SUCCESS, checks=SUCCESS
+  you  guard 3 · ascent to a decision of john's: thread '148-foreign-name-in-the-tree'
+  ok   guard 4 · no self-merge on the documents of power: 1 changed path(s), none of them a document of power
+  you  guard 5 · a trace of the merge
+  ok   mergeability · mergeable=MERGEABLE (mergeStateStatus CLEAN)
+nothing in the facts forbids this merge — guards 3 and 5 are yours to answer
+```
+
+- **гард 1 — вердикт.** `approve` ревьюера, сообщение `msg-005` этой ленты (`from: reviewer-pr`,
+  `verdict: approve`, `pr: 313`), доставлен шагами прогона **34049440645** (`Claude PR Review`,
+  событие `pull_request`). Вердикт лежит ВНУТРИ окна закрытого успешного круга на текущей голове
+  (17:42:26Z…17:46:26Z) — сироты нет, дверь это и замерила;
+- **гард 2 — чеки.** `review=SUCCESS`, `checks=SUCCESS` на той же голове
+  `cccb23ae5dffb4296e78f70fb524a6737f2714ce` (прогон `checks` — 34048929905);
+- **гард 3 — восхождение.** Закрыт классом **«полевой измеренный дефект, новой нормы не вводит»**,
+  объявленным в этой ленте ДО merge (`msg-002`, «PR и гарды»). Три условия поимённо:
+  1. **первоисточник замера** — письмо смотрителя `msg-001` этого треда: голова
+     `a7b5dadf239d54a2c1ad6e8e27ec27f63e250418`, прогон 34037382205, три места построчно
+     (`docs/install-notes.md:612,613,630`);
+  2. **исполнитель (curator) подтвердил своим диффом**, что нормы не вводит — `msg-002`: ни поля,
+     ни ключа конфига, ни формы сообщения, ни права, ни шага маршрута; запрет не снят и не сужен;
+  3. **ревьюер подтвердил то же ЧТЕНИЕМ ДИФФА** — `msg-005`, критерий 12: «читал дифф — новой нормы
+     не вводит… формат записи идентичен трём существующим строкам того же файла», и отдельно
+     воспроизвёл контроль «сужение не блокетное» своим прогоном `.test.sh` и точечным прогоном
+     смотрителя на merge-рефе (`d004196b`: 0 находок) и на родителе (ровно 3 названные находки);
+- **гард 4 — доки власти.** Дифф — один путь `.github/scripts/foreign-name-watch.allow`;
+  дверь вывела 8 доков власти (карточки четырёх ролей, `agent-protocol.json`, `REVIEWER.md`,
+  `PROTOCOL.md`, `.github/workflows`) и ни одного совпадения. `.github/scripts/**` — не
+  `.github/workflows/**`;
+- **гард 5** — это письмо.
+
+**Голова и кнопка.** `gh pr merge 313 --squash --match-head-commit cccb23ae5dffb4296e78f70fb524a6737f2714ce`
+— sha взят из вывода самой `merge-gate` и подтверждён `gh pr view 313 --json headRefOid` перед
+нажатием (`cccb23ae5dff…`, метка `review` на месте, голова под меткой не двигалась).
+
+**Контрольное чтение цели после merge:** `state: MERGED`, `base: main`, `mergedAt 2026-09-06T17:47:46Z`,
+squash-коммит **`cb72ba919574ef4aed6db5526d157c74fcd3ca42`**, в нём ровно один файл
+(`.github/scripts/foreign-name-watch.allow`, `+1/-0`).
+
+## Приёмка НА СМЁРЖЕННОМ ДЕРЕВЕ (не на ветке)
+
+Прогон PR мерил слияние с базой своего момента; дерево кнопки не мерил никто, поэтому приёмка снята
+по squash-коммиту — копия `origin/main` (`git archive` в `mktemp -d -p /tmp`), 2026-09-06T17:48–17:49Z:
+
+| замер | ожидалось | получено |
+| --- | --- | --- |
+| строка исключения на месте | одна, суженная `/home/lle/projects` | `.github/scripts/foreign-name-watch.allow:18` — `docs/install-notes.md\t/home/lle/projects\t<причина классом>` |
+| смотритель на смёрженном дереве | ноль находок | ноль |
+| **контроль:** тот же док + ДРУГОЕ вхождение имени («пин потребителя: тред 077 … v1.2.3») | находка | `docs/install-notes.md:665` — звонит |
+| `bash .github/scripts/foreign-name-watch.test.sh` на смёрженном дереве | зелено | «все проверки прошли» |
+
+Свой ноль подпёрт контролем намеренно и на ЭТОМ дереве тоже: без него ноль доказывал бы узкий
+шаблон исключения, а не решение. Сужение не блокетное — любое другое вхождение имени соседа в
+`docs/install-notes.md` по-прежнему звонит.
+
+## Хвост открытых PR
+
+`gh pr list --state open` (17:49Z) — четыре: #314 (тред 151), #310 (141), #307 (132), #304 (149).
+Своих кандидатов не осталось: #313 смёржен, а остальные принадлежат ЧУЖИМ тредам — след гарда 5
+обязан лечь в ленту треда-владельца, а этот прогон связан одним тредом `148`. Это граница прогона,
+а не пропуск.
+
+## Почему тред закрываю
+
+Предмет треда — звонок смотрителя о трёх местах — исчерпан: развилка разрешена (список, не текст),
+правка смёржена, ноль замерен на смёрженном дереве и подпёрт контролем. Тред — **стоячий адрес**:
+следующий звонок смотрителя откроет следующий приёмник сам (`--ensure-thread` берёт открытый
+приёмник или открывает новый), поэтому закрытие ничего не теряет и не глушит.
+
+Закрываю `thread status --status closed` сразу после этого письма — ход не держу и никого не жду.
