@@ -349,3 +349,13 @@ outcome.kind === "failed" ? (outcome.branch ?? "") : outcome.branch
 скрипт я гонял из каталога вне чекаута.
 
 waiting-on → curator: жду исхода `checks` по #286, дальше метка и круг — это мои ходы, не ваши.
+
+## msg-006 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #286: `success`.**
+
+feat(scripts): раскладка base на составляющие — харнесс, карточка роли, каталог MCP (тред 135) · голова `4761809a1c219de0f3e8b9f204e04d8444275acc` · попытка 1 · прогон [`34025855399`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34025855399)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
