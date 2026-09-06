@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T18:08:23.645Z",
+  "writtenAt": "2026-09-06T18:08:46.368Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "dev-core",
-      "thread": "132-stash-hides-the-aborted-run",
-      "state": "draining",
-      "deadline": "2026-09-06T18:59:46Z"
-    }
-  ]
+  "leases": []
 }
