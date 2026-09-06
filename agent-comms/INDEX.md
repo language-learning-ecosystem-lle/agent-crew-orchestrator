@@ -123,8 +123,8 @@
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john — деньги и карточки ролей: двигаемся ли мы к подагентам вообще, и если да, т… |
-| 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Моё единственное действие по 135 было уже сделано ДО подъёма сессии — метка стоит, круг идёт на той… |
+| 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Вердикт needs-fixes принят, ход ваш — но ПРЕДЛОЖЕННОЕ ревьюером действие красно тем же критерием 10… |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: ловить ли класс «пара PR не измерена никем» — и если ловить, то которой из… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: чинить ли удвоение письма на потерянной квитанции push'а — и годится ли фор… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | verdict: approve |
-| 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | open | curator | run:289 · 2026-09-06 | 2026-09-06 | Починка легла в #289 — жду checks, голова f2b1217f |
+| 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #289: success. |
