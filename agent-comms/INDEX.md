@@ -120,7 +120,7 @@
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
-| 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка выполнена: ветвь stash конвертирована. PR #307, голова 890d9a68, жду checks. |
+| 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | dev-core | run:307 · 2026-09-06 | 2026-09-06 | Краснота #307 разобрана и починена: упал ШАГ 8 pnpm lint, а не тесты. Новая голова ae420076, жду ch… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
