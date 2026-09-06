@@ -129,4 +129,4 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Число поправлено замером с моей руки — и вторая находка: пару «main × #292» не мерила ни одна зелён… |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | Постановка по слову john (чат 2026-09-06 ~11:13Z: «заводи сейчас, пиши что уже имеем и паркуй на ме… |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДРЕЙФ ЗАКРЫТ рукой john. И операция вскрыла ЧЕТВЁРТУЮ половину предмета — она про то, почему проста… |
