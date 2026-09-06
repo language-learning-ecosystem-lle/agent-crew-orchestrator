@@ -2504,8 +2504,8 @@ by **REPLANNING, not rebasing**: the feed is append-only and the stamps are mono
 so the loser of a race has to change its NAME as well as its place — a rebase would
 carry the old name across and leave two messages in an order their names deny. A dirty
 mail checkout is a **REFUSAL**, never a repair (the same rule the workspace of a run
-follows, R17 — there a break of the circuit's own making is parked in a stash instead,
-but nothing is ever overwritten): the retry resets the checkout hard, and doing that over somebody's unfinished
+follows, R17 — there dirt the circuit can attribute to a run is committed for the role
+instead, but nothing is ever overwritten): the retry resets the checkout hard, and doing that over somebody's unfinished
 message destroys work to deliver ours. Hence the body file lives outside the checkout —
 an untracked draft beside the mail is dirt like any other. `--no-push` is the ONE named
 exception, for a caller that legitimately owns its git: the CI workflows write from a
@@ -4189,18 +4189,32 @@ daemon's modules are resolved from it once, at start, so it must stay on
   every case over dirt left by a run the circuit itself had cut off. The plan therefore
   reads the release reason of the pair's previous run, which the launch is holding
   anyway:
-  - the circuit **cut the run off** (`quota-exhausted`, `timeout`, `supervisor-gone`,
-    `stalled`) → the tree is **parked in a stash** labelled `wip <thread> <session>
-    <reason>` and then moved to the base like any other. `git stash push -u` — the
-    untracked files go in too, and it is the one gesture that is both complete and
-    reversible (`git stash apply`). Nothing is lost and nothing is judged;
-  - the run **ended its own turn** (`completed`, `exited-without-handoff`, the two
-    interactive endings, `forced`) → a **refusal that calls the dirt what it is: an
-    error of finishing.** A session that passes the turn on leaves a clean tree, so this
-    is a defect to read, not leftovers to tidy;
-  - **no finished run to attribute the dirt to** → a refusal as well: it may be a
-    human's, and the package does not park work whose owner it does not know. An
-    unknown reason from a future version falls here too — the break list is a whitelist.
+  - **there is a run to attribute the dirt to** — whatever released it, the circuit
+    cutting it off (`quota-exhausted`, `timeout`, `supervisor-gone`, `stalled`) or the
+    run ending its own turn (`completed`, `exited-without-handoff`, the two interactive
+    endings, `forced`) → the tree is **committed for the role**, under the role's
+    signature, and then moved to the base like any other. Where it lands is decided by
+    the head under the dirt: the role's OWN branch → a commit onto that branch; a
+    detached head → a **service branch** `wip/<role>/<thread>-<YYYYMMDDTHHMMZ>` this plan
+    names. The message is `wip(<thread>): what the '<reason>' run of '<role>' left
+    uncommitted`, so `git log` says which run left the work and how it ended;
+  - **no finished run to attribute the dirt to** → a refusal: it may be a human's, and
+    the package does not touch work whose owner it does not know;
+  - **a head that is not the role's to write to** — the base branch, which every role
+    shares, or another role's — → a refusal as well: the circuit commits a role's
+    leftovers onto the role's own head and never onto a common or a foreign one.
+
+  **ONE DIRT, ONE FATE** (john, 2026-09-06, thread 132). Until then the first bullet was
+  two: a cut-off run's leftovers went into a `git stash` and an ended run's into a commit.
+  john struck the split — there must not be two different fates for the same dirt
+  depending on who cut the session off — on the argument that decided the commit in the
+  first place: **what is hidden is visible to nobody.** A stash has no author in a common
+  place and no address a letter can name; it lives in one machine's `git stash list`, and
+  the role rises on the next tick with a clean tree and no way to learn its own work
+  exists. That a cut-off run is likelier to have been interrupted MID-EDIT — so the commit
+  may not even build — was weighed and accepted: a half-finished commit is finished by the
+  next session, hidden work is lost silently. What the break list still decides is a
+  DIFFERENT question, the one in the `dirtLeftByFinish` bullet below.
 
   The whole fork is decided by `planWorkspace`, a pure function, and only carried out by
   the CLI: it is the one branch in the package that touches work nobody committed, so it
@@ -4222,8 +4236,8 @@ daemon's modules are resolved from it once, at start, so it must stay on
   - **the two repairs, as commands against this tree** — `git -C <workspace> checkout -b
     <role>/<thread> && … commit … && … push -u origin <role>/<thread>` to keep the work,
     or `git -C <workspace> stash push -u -m 'wip(<thread>): …'` to park it. It PROPOSES
-    and never performs: whether the circuit may park a role's uncommitted work by itself
-    is john's open question in that thread.
+    and never performs — and it is reached only where the circuit may NOT tidy up by
+    itself: unattributed dirt, or a head that is not the role's.
 
   The same composition is printed on the preflight line (`has unsaved changes: 1 path(s) —
   …`), which is read before a tick rather than after a skip. The reads are
@@ -4243,8 +4257,10 @@ daemon's modules are resolved from it once, at start, so it must stay on
   `log` as `LEFT THE WORKSPACE DIRTY`, so the question "which run left this" is asked of
   the journal) and a sentence on stderr that names the tree and what it costs the next
   package. The condition is the COMPLEMENT of the break list, so the two halves cannot
-  drift apart: dirt after `quota-exhausted`/`timeout`/`supervisor-gone`/`stalled` is the
-  stash's business, everything else is an error of finishing. The flag is `true` or
+  drift apart: dirt after `quota-exhausted`/`timeout`/`supervisor-gone`/`stalled` is
+  nobody's failure to finish — nobody chose to leave it — and everything else is one.
+  This is the ONE question the break list still answers: what happens to the tree at the
+  next launch stopped depending on it in thread 132. The flag is `true` or
   absent, never `false` — a run raised without workspaces declared works in the operator's
   own checkout, whose state the circuit never judges, and a `false` there would be a claim
   nobody made.

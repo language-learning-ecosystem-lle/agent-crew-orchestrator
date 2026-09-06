@@ -2307,10 +2307,12 @@ describe("the tree a finished run leaves behind (thread 023, requirement 5)", ()
     expect(seen).not.toContain("LEFT ITS WORKSPACE DIRTY");
   }, 60_000);
 
-  it("dirt after a break the circuit made is NOT this failure — it belongs to the stash", () => {
+  it("dirt after a break the circuit made is NOT this failure — nobody chose to leave it", () => {
     // The control that separates the two halves of the requirement on live git: the same
     // dirty tree, but the run is cut off by its own wall clock. Nothing is named at the
-    // release, and the next launch parks it in a stash instead (workspace.process.test).
+    // release — the next launch commits the tree for the role either way (thread 132,
+    // workspace.process.test), and THAT is a different question from this one: what is
+    // asserted here is that a cut-off run is not accused of failing to finish.
     const { repo } = contour(WORKSPACES);
     const exec = stub(repo, "printf 'half a refactor\\n' > wip.txt\nsleep 300");
 

@@ -1,6 +1,6 @@
 /**
  * The workspace decision (R17). Two branches here touch work nobody committed —
- * `rebase` moves somebody's tree, `stash` parks what is standing in it — so the tests
+ * `rebase` moves somebody's tree, `commit` writes what is standing in it — so the tests
  * are mostly about the states in which each of them must NOT be reached.
  */
 import { describe, expect, it } from "vitest";
@@ -222,8 +222,11 @@ describe("what the dirty-tree refusal has to say", () => {
       `git -C ${WORKSPACE} push -u origin dev-core/099-dirty-tree-locks-the-role`,
     );
     expect(reason).toContain(`git -C ${WORKSPACE} stash push -u -m`);
-    // And the diagnosis it already had is not traded away for the repair.
-    expect(reason).toContain("ENDED ITS OWN TURN ('exited-without-handoff')");
+    // And the diagnosis it already had is not traded away for the repair: the refusal
+    // still names the run the dirt is attributed to. It no longer calls that run one
+    // that "ENDED ITS OWN TURN" — after thread 132 a cut-off run reaches this same text,
+    // and of it that would be untrue.
+    expect(reason).toContain("left by the 'exited-without-handoff' run of this pair");
   });
 
   it("dirt that did not read degrades to the command that reads it, never to silence", () => {
@@ -249,13 +252,15 @@ describe("what the dirty-tree refusal has to say", () => {
 });
 
 /**
- * THE FORK THAT DESTROYS WORK IF IT IS WRONG (thread 023, requirement 5) — dirt after a
- * break is PARKED, dirt after a finished turn is REFUSED. Every case is here rather
- * than a representative one: the cost of the wrong branch is somebody's uncommitted
- * afternoon, and the CLI is only allowed to run `git stash push -u` because this
- * function decided it.
+ * THE FORK THAT DESTROYS WORK IF IT IS WRONG (thread 023, requirement 5; widened by
+ * john on 2026-09-06, thread 132) — dirt the plan can ATTRIBUTE is committed, dirt it
+ * cannot is refused, and WHICH release reason attributed it no longer changes anything.
+ * Every case is here rather than a representative one: the cost of the wrong branch is
+ * somebody's uncommitted afternoon, and the CLI is only allowed to write a commit into
+ * somebody's tree because this function decided it.
  */
 describe("dirt in the workspace, by whose it is", () => {
+  const AT = "2026-09-05T12:31:07Z";
   const dirtyAfter = (previousReason: string) =>
     planWorkspace({
       role: ROLE,
@@ -265,68 +270,50 @@ describe("dirt in the workspace, by whose it is", () => {
       resuming: false,
       thread: "023-daemon-parallelism",
       previousReason,
-      previousSession: "8f3a2b1c-0d4e",
+      baseRef: "origin/main",
+      at: AT,
     });
 
-  it.each(["quota-exhausted", "timeout", "supervisor-gone", "stalled"])(
-    "the circuit cut the previous run off ('%s') → the leftovers are stashed, not refused",
-    (reason) => {
-      const plan = dirtyAfter(reason);
-
-      expect(plan.action).toBe("stash");
-      // The label is the address the work is found by: thread, session, cause.
-      expect(plan).toEqual({
-        action: "stash",
-        from: reason,
-        label: `wip 023-daemon-parallelism 8f3a2b1c-0d4e ${reason}`,
-      });
-    },
-  );
-
   it.each([
+    "quota-exhausted",
+    "auth-failed",
+    "timeout",
+    "supervisor-gone",
+    "stalled",
     "completed",
     "exited-without-handoff",
     "input-timeout",
     "exited-while-waiting",
     "forced",
   ])(
-    "the previous run ENDED ITS OWN TURN ('%s') → a refusal that calls the dirt a failure to finish",
+    "dirt of the '%s' run is COMMITTED — one dirt, one fate, whoever ended the session",
     (reason) => {
-      const plan = dirtyAfter(reason);
-
-      expect(plan.action).toBe("refuse");
-      // The wording is half the requirement: a silent skip of the next launch is what
-      // cost four hand-made stashes in one morning, and "leftovers of a broken session"
-      // was the wrong name for a tree a session walked away from.
-      expect(plan.action === "refuse" && plan.reason).toContain("ENDED ITS OWN TURN");
-      expect(plan.action === "refuse" && plan.reason).toContain(reason);
+      // john, 2026-09-06: what is hidden is visible to nobody. Before this the first
+      // five reasons went into a `git stash` on one machine and the last five into a
+      // commit; the list above is the whole of `RELEASE_REASONS`, and every line of it
+      // now ends in the same place.
+      expect(dirtyAfter(reason)).toEqual({
+        action: "commit",
+        branch: "wip/dev-core/023-daemon-parallelism-20260905T1231Z",
+        create: true,
+        message: `wip(023-daemon-parallelism): what the '${reason}' run of 'dev-core' left uncommitted`,
+        from: reason,
+      });
     },
   );
 
-  it("a release reason this version does not know is NOT a break — it is refused", () => {
-    // The set is a whitelist on purpose: a journal line from a future version must not
-    // be able to talk this branch into stashing somebody's tree.
-    expect(dirtyAfter("something-invented-later").action).toBe("refuse");
+  it("a release reason this version does not know is attributed like any other", () => {
+    // The whitelist stopped deciding the fate of the tree (thread 132), so a journal
+    // line from a future version is no longer a fork — it is a name carried into the
+    // message, and the work still gets an address instead of a stash nobody sees.
+    const plan = dirtyAfter("something-invented-later");
+
+    expect(plan.action).toBe("commit");
+    expect(plan.action === "commit" && plan.message).toContain("'something-invented-later' run");
   });
 
-  it("a broken run that never announced a session still gets a labelled stash", () => {
-    const plan = planWorkspace({
-      role: ROLE,
-      path: WORKSPACE,
-      facts: { exists: true, branch: "HEAD", head: OTHER, dirty: true },
-      base: BASE,
-      resuming: false,
-      thread: "023-daemon-parallelism",
-      previousReason: "supervisor-gone",
-    });
-
-    expect(plan.action === "stash" && plan.label).toBe(
-      "wip 023-daemon-parallelism no-session supervisor-gone",
-    );
-  });
-
-  it("a RESUME still keeps the tree — the stash rule never reaches a continued session", () => {
-    // The state a resume continues from IS the dirt; parking it would be the same
+  it("a RESUME still keeps the tree — the dirt rule never reaches a continued session", () => {
+    // The state a resume continues from IS the dirt; committing it would be the same
     // damage as moving it, arriving through a new door.
     expect(
       planWorkspace({
@@ -337,14 +324,13 @@ describe("dirt in the workspace, by whose it is", () => {
         resuming: true,
         thread: "023-daemon-parallelism",
         previousReason: "supervisor-gone",
-        previousSession: "8f3a2b1c-0d4e",
       }),
     ).toEqual({ action: "keep" });
   });
 
   it("a LOCKED tree is refused before the dirt is even considered", () => {
-    // The lock says the tree is somebody's right now; a stash there would be taken out
-    // from under a live session.
+    // The lock says the tree is somebody's right now; a commit there would be written
+    // out from under a live session.
     const plan = planWorkspace({
       role: ROLE,
       path: WORKSPACE,
@@ -359,7 +345,7 @@ describe("dirt in the workspace, by whose it is", () => {
     expect(plan.action === "refuse" && plan.reason).toContain("locked");
   });
 
-  it("a CLEAN tree after a break is moved, not stashed — there is nothing to park", () => {
+  it("a CLEAN tree after a break is moved, not tidied up — there is nothing to save", () => {
     expect(
       planWorkspace({
         role: ROLE,
@@ -371,20 +357,6 @@ describe("dirt in the workspace, by whose it is", () => {
         previousReason: "timeout",
       }),
     ).toEqual({ action: "rebase" });
-  });
-
-  it("the operator is told what is being parked BEFORE it happens, with the label", () => {
-    const line = describeWorkspacePlan({
-      role: "dev-core",
-      path: "/repo/.worktrees/dev-core",
-      plan: { action: "stash", from: "timeout", label: "wip 023-x s1 timeout" },
-      base: BASE,
-      baseRef: "origin/main",
-    });
-
-    expect(line).toContain("wip 023-x s1 timeout");
-    expect(line).toContain("timeout");
-    expect(line).toContain("origin/main 11111111");
   });
 });
 
@@ -843,7 +815,7 @@ describe("the dirt a run leaves at its own ending", () => {
     }
   });
 
-  it("dirt after a break the CIRCUIT made is not this failure — it is the stash of the first half", () => {
+  it("dirt after a break the CIRCUIT made is not this failure — nobody chose to leave it", () => {
     for (const reason of ["quota-exhausted", "timeout", "supervisor-gone", "stalled"]) {
       expect(dirtLeftByFinish({ reason, dirty: true })).toBe(false);
     }
@@ -934,7 +906,7 @@ describe("the workspace is signed by the role whose name it bears (thread 052)",
  * The right is narrow on purpose, and the tests that keep it narrow are the ones that
  * matter — a wrong `commit` writes somebody else's unsaved work under a role's name.
  */
-describe("planWorkspace — committing what an ended run left", () => {
+describe("planWorkspace — committing what the previous run left", () => {
   const AT = "2026-09-05T12:31:07Z";
   const dirty = (branch: string, extra: Record<string, unknown> = {}) => ({
     exists: true,
@@ -1099,24 +1071,96 @@ describe("planWorkspace — committing what an ended run left", () => {
     expect(plan.reason).toContain("no finished run of this pair to attribute them to");
   });
 
-  it("dirt of a CUT-OFF run still stashes — this package did not touch that branch", () => {
-    expect(
+  /**
+   * ONE DIRT, ONE FATE — PROVED BY TWO LISTS THAT MATCH (john, 2026-09-06, thread 132,
+   * curator's §3). A single case of "a cut-off run now commits" would leave the other
+   * four head states unmeasured, and the whole of the decision is that the head — not
+   * the release reason — decides. So every head state is walked twice, once under a run
+   * that ENDED its own turn and once under a run the CIRCUIT CUT OFF, and the two plans
+   * are required to be the same object once the word naming the reason is substituted:
+   * the branch, the `create` flag, the refusal text, all of it.
+   */
+  const ENDED = "completed";
+  const CUT_OFF = "quota-exhausted";
+  const HEAD_STATES = [
+    {
+      what: "the role's own branch → committed there, and no branch is started",
+      facts: dirty("dev-core/132-stash-hides-the-aborted-run"),
+      at: AT,
+      action: "commit",
+    },
+    {
+      what: "detached with a timestamp → a service branch this plan names",
+      facts: dirty("HEAD"),
+      at: AT,
+      action: "commit",
+    },
+    {
+      what: "detached with NO timestamp → refused, no name is invented",
+      facts: dirty("HEAD"),
+      at: undefined,
+      action: "refuse",
+    },
+    {
+      what: "the base branch → refused, it is the one every role shares",
+      facts: dirty("main", { headAuthor: "dev-core@agents.invalid" }),
+      at: AT,
+      action: "refuse",
+    },
+    {
+      what: "another role's branch → refused, and it is named",
+      facts: dirty("curator/017-schema-numbers", { headAuthor: "dev-core@agents.invalid" }),
+      at: AT,
+      action: "refuse",
+    },
+  ];
+
+  it.each(HEAD_STATES)("$what — identically for an ended run and for a cut-off one", (state) => {
+    const planFor = (reason: string) =>
       planWorkspace({
         role: ROLE,
         path: WORKSPACE,
-        facts: dirty("HEAD"),
+        facts: state.facts,
         base: BASE,
         resuming: false,
-        thread: "099-dirty-tree-locks-the-role",
-        previousReason: "quota-exhausted",
-        previousSession: "s-1",
+        thread: "132-stash-hides-the-aborted-run",
+        previousReason: reason,
         baseRef: "origin/main",
-        at: AT,
-      }),
-    ).toEqual({
-      action: "stash",
+        roles: ROLES,
+        ...(state.at === undefined ? {} : { at: state.at }),
+      });
+    const ended = planFor(ENDED);
+    const cutOff = planFor(CUT_OFF);
+
+    expect(ended.action).toBe(state.action);
+    expect(cutOff.action).toBe(state.action);
+    // The reason is not erased — it is carried into the message and into the refusal, so
+    // a reader learns HOW the run that left the work ended. It just decides nothing.
+    expect(JSON.stringify(cutOff).split(CUT_OFF).join(ENDED)).toBe(JSON.stringify(ended));
+  });
+
+  it("the cut-off run's commit names ITS OWN reason, never the ended one's", () => {
+    // The substitution above would pass on a plan that dropped the reason altogether;
+    // this is the assert that keeps `from` and the message honest.
+    const plan = planWorkspace({
+      role: ROLE,
+      path: WORKSPACE,
+      facts: dirty("HEAD"),
+      base: BASE,
+      resuming: false,
+      thread: "132-stash-hides-the-aborted-run",
+      previousReason: "quota-exhausted",
+      baseRef: "origin/main",
+      at: AT,
+    });
+
+    expect(plan).toEqual({
+      action: "commit",
+      branch: "wip/dev-core/132-stash-hides-the-aborted-run-20260905T1231Z",
+      create: true,
+      message:
+        "wip(132-stash-hides-the-aborted-run): what the 'quota-exhausted' run of 'dev-core' left uncommitted",
       from: "quota-exhausted",
-      label: "wip 099-dirty-tree-locks-the-role s-1 quota-exhausted",
     });
   });
 

@@ -6710,25 +6710,6 @@ const applyWorkspacePlan = (input: {
         }`,
       };
     }
-    case "stash":
-      // THE ONE COMMAND IN THIS PACKAGE THAT TOUCHES WORK NOBODY COMMITTED (thread 023,
-      // requirement 5). It is `stash push` and not `checkout --`/`clean` on purpose:
-      // every one of those destroys, while a stash is complete (`-u` takes the untracked
-      // files too — a session's new file is the most common leftover of all) and
-      // reversible by one gesture (`git stash apply`) for as long as the reflog lives.
-      // The decision to run it at all was taken in `planWorkspace`, where a test holds
-      // it; here there is nothing left to judge.
-      gitRun(
-        ["-C", input.path, "stash", "push", "-u", "-m", input.plan.label],
-        `parking the leftovers in the workspace '${input.path}'`,
-      );
-      // And then the tree goes to the base like any other clean one — the stash left it
-      // clean, and a run that stopped half way would be a workspace parked but not moved.
-      gitRun(
-        ["-C", input.path, "checkout", "--detach", "--quiet", input.base],
-        `moving the workspace '${input.path}' to the base`,
-      );
-      return { ok: true };
     default:
       return { ok: true }; // ready / keep / refuse — nothing to do on disk
   }
@@ -11133,7 +11114,6 @@ const settleRun = (input: {
     // keeps a head on `curator/017-…` foreign even when this role signed it.
     roles: input.ids,
     ...(previousReason === undefined ? {} : { previousReason }),
-    ...(previous?.session === undefined ? {} : { previousSession: previous.session }),
   });
   lines.push(
     `workspace — ${describeWorkspacePlan({
