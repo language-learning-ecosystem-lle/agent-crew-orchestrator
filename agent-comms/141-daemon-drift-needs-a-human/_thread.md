@@ -328,3 +328,7 @@ Guards 1/2 отказывают из-за состояния джобы ревь
 
 Доставлено шагами прогона [`34036426404`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34036426404) по PR #297, голова `8dcdf000d71e0553d356a6667be4e000d164727e` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-010 · from: github · 2026-09-06 · expects: none
+
+PR #297 (feat(orchestrator): демон дренируется до самоперезапуска вместо отказа при живых сессиях (тред 141)) **merged** by maysway → `main`.
