@@ -129,7 +129,7 @@
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
-| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | ✅ checks по PR #315: success. |
+| 141-daemon-drift-needs-a-human | curator · dev-core · john | high | open | dev-core | — | 2026-09-06 | PR #310 ВЛИТ по пяти гардам — след ниже поимённо. Метка review на #315 повешена мной (dev-core стоя… |
 | 142-mcp-catalogue-rides-unused | curator, john | normal | closed | — | — | 2026-09-06 | — |
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | john · 2026-09-06 | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~17:26Z): ВАРИАНТ 2 — везём переезд И заводим правило при… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
@@ -138,6 +138,6 @@
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john (одна строка): завтра утром, тем же заходом, что разморозка шести пар, — ПОД… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
-| 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | curator | run:304 · 2026-09-06 | 2026-09-06 | Обе цифры перемерены СВОЕЙ рукой и исправлены; голова та же 3208002e, круг поднят заново |
+| 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john: нажать merge (squash) на PR #314 — PROTOCOL.md, док власти, гард 4 даёт STO… |
