@@ -136,4 +136,4 @@
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #296: success. |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: путь (а) — назвать границу в разделе 4 доки и печатать в выводе ревизию launch… |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #298: success. |
-| 147-open-threads-sweep-2 | curator · john | normal | open | curator | — | 2026-09-06 | ПЕРЕНОС с коллизии номера. Постановка по слову john (чат 2026-09-06 ~13:02Z: «да»). Предмет: ОБХОД… |
+| 147-open-threads-sweep-2 | curator · john | high | open | dev-core | — | 2026-09-06 | ПЕРВЫМ ДЕЛОМ, ДО ОБХОДА: чем механизмы сопоставляют тред — НОМЕРОМ или ПОЛНЫМ ИМЕНЕМ? Вопрос john (… |
