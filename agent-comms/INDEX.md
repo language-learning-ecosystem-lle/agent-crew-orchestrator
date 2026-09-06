@@ -117,7 +117,7 @@
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 126-mute-count-reads-one-page | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | PR #277 (ci(checks): интеграционная сюита доставки вердикта идёт шагом прогона (тред 128)) merged b… |
+| 128-delivery-suite-outside-checks | curator, dev-core | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат ~08:44Z): #277 СМЁРЖЕН его кнопкой. Сюита доставки вердикта — шагом… |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
