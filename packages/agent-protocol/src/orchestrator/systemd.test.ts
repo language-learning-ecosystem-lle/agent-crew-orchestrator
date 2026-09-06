@@ -7,7 +7,9 @@ import {
   foregroundRefusal,
   interpreterTokens,
   planSystemdUnit,
+  UNIT_NAME_ENV,
   unitNameFor,
+  unitOfThisProcess,
   unitPathDirs,
   worktreeInstallVerdict,
 } from "./systemd.js";
@@ -238,6 +240,60 @@ describe("the refusal over a daemon that is already up (thread 141)", () => {
     const said = already({ foreground: true, unit: unitNameFor("crew") });
     expect(said).toContain("systemctl --user restart agent-protocol@crew.service");
     expect(said).not.toContain(`restart ${DEFAULT_UNIT_NAME}`);
+  });
+
+  // THE NAME NOBODY HOLDS IS NOT INVENTED (found on review of this very PR, thread 141):
+  // the first form of this refusal derived the name from the argv, and on a box installed
+  // with `--unit-name custom.service --instance main` that produced the pasteable order
+  // `systemctl --user restart agent-protocol@main.service` — a unit that does not exist,
+  // handed to a hand that is mid-incident. The absent answer is now said as absent, with
+  // the one command that produces the real name.
+  it("says an unknown unit is unknown instead of naming one", () => {
+    for (const said of [
+      already({ unit: undefined }),
+      already({ foreground: true, unit: undefined }),
+    ]) {
+      expect(said).toContain(`systemctl --user list-units "agent-protocol*"`);
+      // Not one guess, in any of its shapes — including the shape a template would leave.
+      expect(said).not.toContain("systemctl --user restart agent-protocol");
+      expect(said).not.toContain("restart undefined");
+      // And the rest of the order is untouched: the unknown half costs nothing else.
+      expect(said).toContain("'orchestrator down'");
+      expect(said).toContain("IN THIS ORDER");
+    }
+  });
+
+  it("reads the unit's own name out of the environment systemd fills, and only that", () => {
+    expect(unitOfThisProcess({ [UNIT_NAME_ENV]: "custom.service" })).toBe("custom.service");
+    // A box that runs no unit, and a variable that arrived empty, are the same answer:
+    // there is nothing to name. Blank is not a name — printing it would be the guess.
+    expect(unitOfThisProcess({})).toBeUndefined();
+    expect(unitOfThisProcess({ [UNIT_NAME_ENV]: "   " })).toBeUndefined();
+    // The instance in the argv is NOT consulted: this is the pair that disagreed.
+    expect(unitOfThisProcess({ AGENT_PROTOCOL_INSTANCE: "main" })).toBeUndefined();
+  });
+
+  it("the generated unit hands its own name to its process, whatever the file is called", () => {
+    // The reviewer's box, written out: the file is renamed and the argv knows nothing of
+    // it. `%n` is systemd's own expansion of the loaded unit's full name, so the process
+    // is told `custom.service` while its argv says `--instance main`.
+    const written = planSystemdUnit({
+      repo: "/srv/acme",
+      node: "/usr/bin/node",
+      cli: "/srv/acme/packages/agent-protocol/src/cli.ts",
+      unitName: "custom.service",
+      daemonArgs: ["--ref", "origin/main", "--instance", "main"],
+    });
+    expect(written.name).toBe("custom.service");
+    expect(written.unit).toContain(`Environment=${UNIT_NAME_ENV}=%n`);
+    // The line is in `[Service]`, where systemd reads it — the class of defect decision 4
+    // of this file was paid for (a key in the wrong section is ignored with a journal line
+    // nobody reads).
+    const service = written.unit.slice(written.unit.indexOf("[Service]"));
+    expect(service).toContain(`Environment=${UNIT_NAME_ENV}=%n`);
+    // And the argv is untouched by the rename — the disagreement itself, pinned.
+    expect(written.unit).toContain("--instance");
+    expect(written.unit).not.toContain("--instance custom");
   });
 
   // THE SEAM, and it is a real one: `SELF_RESTART_BY_HAND` tells a hand what it will hit

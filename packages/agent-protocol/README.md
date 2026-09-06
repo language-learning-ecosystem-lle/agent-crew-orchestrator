@@ -4930,8 +4930,7 @@ door, the unit went to `failed`, and the box spent the day outside systemd — a
 have brought it back. So the sentence now carries the whole repair instead of the diagnosis: the
 pid and the pid file it found, then `orchestrator down` → wait for zero daemon processes → raise
 it again, and WITH WHICH COMMAND. Under `--foreground` that is `systemctl --user restart <unit>`
-— the unit name taken from the `--instance` in the argv, which is what the generated `ExecStart`
-carries — plus the two facts a reader cannot see from inside the terminal: this unit is now
+— plus the two facts a reader cannot see from inside the terminal: this unit is now
 failed and will NOT retry by itself (`RestartPreventExitStatus=2`), and typing `up` to bring it
 back lands the box right back here. In a terminal it is `up` itself, once the running daemon is
 down. The EXIT CODE does not change, and that is a decision rather than an omission: the force
@@ -4940,6 +4939,21 @@ it every `RestartSec`, and that reasoning does not carry over here — the unit 
 writes prevents a restart on code 2 anyway, so a zero would buy nothing except a green
 `systemctl restart` over a box that is still unsupervised. The unit stays honestly red while the
 daemon is outside it.
+
+**WHERE THAT UNIT NAME COMES FROM, and why it is not the argv** (thread 141, found reviewing the
+change above). `systemd install` computes the name of the unit FILE and the flags of its daemon
+independently — `--unit-name` renames the file and never touches the argv, `--daemon-args`
+replaces the argv and never sees the file — so `--instance main --unit-name custom.service` gives
+a box whose unit is `custom.service` and whose `ExecStart` says `--instance main`. A refusal
+deriving the name from its own argv there orders `systemctl --user restart
+agent-protocol@main.service`, and no such service exists: a pasteable line that costs the reader
+the incident twice. So the generated unit carries the answer instead —
+`Environment=AGENT_PROTOCOL_UNIT=%n`, systemd's own expansion of the full name of the unit AS
+LOADED, which stays right under any `--unit-name`, under any argv, and after an operator renames
+the file. When this process holds no such name (no unit, or a unit file written before that line)
+the sentence does NOT invent one: it hands over `systemctl --user list-units "agent-protocol*"`,
+which prints the real name. A box installed before this change keeps its unit until the next
+`systemd install` — it gets the "find the name" form, never a wrong name.
 
 **`orchestrator restart`.** Picking up fresh code as ONE gesture, because until now it was a
 hand-run pipeline: `down`, then waiting out the live sessions (unpredictably long — once it
