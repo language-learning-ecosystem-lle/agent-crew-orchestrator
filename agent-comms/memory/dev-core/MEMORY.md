@@ -100,3 +100,4 @@
 - [Предсказанное число тестов доказывает ребейз](predicted-test-count-proves-a-rebase.md) — арифметика, названная ДО прогона, закрывает add/add; сверенная после — не закрывает ничего.
 - [Стенд `gh`, разбирающий вызовы по `$2`, промахивается](gh-stub-dispatch-on-argv-position-misroutes.md) — вызов с `-H` уходит в ветку по умолчанию; разбирать `"$*"`.
 - [Потерянную квитанцию push'а воспроизводит обёртка `receive-pack`](lost-push-receipt-is-reproducible-by-receive-pack.md) — без сети; ключ конфига по URL, `remote.<путь>.receivepack` git отвергает.
+- [`headSha` прогона не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) — скрипты едут вторым чекаутом `ref: main`: по событию PR исполняется УЖЕ ВЛИТЫЙ сквош.
