@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T09:14:10.532Z",
+  "writtenAt": "2026-09-06T09:17:16.817Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "135-base-is-the-biggest-line",
+      "state": "running",
+      "deadline": "2026-09-06T10:17:14Z"
+    },
     {
       "role": "curator",
       "thread": "136-unmeasured-pair-of-step-and-script",
