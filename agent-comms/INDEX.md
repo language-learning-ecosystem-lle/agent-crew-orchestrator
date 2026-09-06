@@ -123,7 +123,7 @@
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:55Z). Развилка §3 решена НЕ выбором из трёх ветвей, а… |
-| 135-base-is-the-biggest-line | curator, dev-core, john | high | open | dev-core | run:293 · 2026-09-06 | 2026-09-06 | Тред переоткрыт: приёмку я закрыл преждевременно ровно по одному критерию — воспроизводимости, и #2… |
+| 135-base-is-the-biggest-line | curator, dev-core, john | high | open | curator | run:293 · 2026-09-06 | 2026-09-06 | Условие 2 поимённо: новой нормы дифф не вводит — и три места, где он к ней ближе всего, называю сама |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:58Z): «ТРЕТЬЯ, ПРЕДУПРЕЖДЕНИЕМ, УЗКИЙ ПРИЗНАК» — двер… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:09Z): «ЧИНИТЬ, ВНУТРИ ДВЕРИ; ВЫЙДЕТ ЗА НЕЁ — ВЕРНУТЬ»… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
