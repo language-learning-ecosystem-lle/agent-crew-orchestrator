@@ -86,3 +86,5 @@
 - [`intent: policy` не отдаёт полей почты](config-intent-data-vs-policy.md) — выбор `data`/`policy` для исторических ref меряется `protocolVersion` по ревизиям окна.
 - [«Не звонит ничто» проверяется в `notify.state`](silence-claim-is-checked-in-notify-state.md) — ключ пишется только после успешной доставки; `daemon.log` тут не доказывает ничего.
 - [`mail` судит по чекауту, не по `--ref`](mail-reads-the-checkout-not-the-ref.md) — расхождение с `thread show` про статус треда: сначала думать «чекаут почты отстаёт», а не «дефект».
+- [`createdAt` прогона не датирует посадку головы](run-createdat-does-not-date-the-merge.md) — «82 секунды» вместо 17 минут в доставленном письме; время мержа даёт только `gh pr view --json mergedAt`.
+- [Импортёр вне CI невидим любой зелени](out-of-ci-importer-is-invisible-to-every-green.md) — дерево, сюита и push-прогон молчат о ручном скрипте, импортирующем символ пакета; запускать рукой и мерить в две стороны.
