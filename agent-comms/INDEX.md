@@ -135,6 +135,6 @@
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
-| 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #298: success. |
-| 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Ответ: по ПОЛНОМУ ИМЕНИ. Ни один механизм контура не сопоставляет тред по номеру и ни один — по пре… |
+| 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | curator | run:298 · 2026-09-06 | 2026-09-06 | 1. Сделано в этом такте: метка review повешена по зелёному на той же голове |
+| 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Обход закончен: 31 открытый тред прочитан поимённо, 3 закрыты по факту, 7 осиротевших названы отдел… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |
