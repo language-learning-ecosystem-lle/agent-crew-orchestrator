@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T14:19:19.073Z",
+  "writtenAt": "2026-09-06T14:19:47.464Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "curator",
+      "thread": "140-silent-exit-exhausts-the-role",
+      "state": "running",
+      "deadline": "2026-09-06T14:59:43Z"
+    },
     {
       "role": "dev-core",
       "thread": "145-base-cost-plays-yesterday-with-todays-template",
