@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T11:57:16.925Z",
+  "writtenAt": "2026-09-06T11:59:06.695Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,6 +8,12 @@
     "pilot-codex"
   ],
   "leases": [
+    {
+      "role": "dev-core",
+      "thread": "135-base-is-the-biggest-line",
+      "state": "running",
+      "deadline": "2026-09-06T12:59:03Z"
+    },
     {
       "role": "curator",
       "thread": "135-base-is-the-biggest-line",
