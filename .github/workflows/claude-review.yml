@@ -655,12 +655,16 @@ jobs:
           [ -n "$VERDICT" ] && VERDICT_ARGS="--verdict ${VERDICT} --pr ${PR}"
 
           # ДОСТАВКА 1 — КОММЕНТ В PR (живой канал первым).
-          if gh pr comment "$PR" --body-file "$BODY_TMP"; then
-            delivery_mark comment ok
+          # СУДИТ ЕЁ ЦЕЛЬ, А НЕ КОД ВЫХОДА `gh` (тред 122): ровно эта ветвь 2026-09-03
+          # объявила «НЕ доставлен» уже записанный коммент, получив `502` через одиннадцать
+          # секунд после записи, и стоила круга ревью. Опознание — парой литералов СВОЕГО
+          # текста (номер прогона + постоянная фраза сноски); в тело ради этого не добавлено
+          # ничего.
+          COMMENT_CODE=0
+          gh pr comment "$PR" --body-file "$BODY_TMP" || COMMENT_CODE=$?
+          if delivery_attempt comment "$COMMENT_CODE" \
+              delivery_probe_pr_comment "$PR" "$RUN_ID" 'Доставлено шагами прогона'; then
             echo "Вердикт доставлен комментом в PR #${PR}."
-          else
-            delivery_mark comment failed
-            echo "::error::коммент в PR #${PR} НЕ доставлен."
           fi
 
           # ДОСТАВКА 2 — ТРЕД. Некуда писать — это САМО ПО СЕБЕ находка ревьюера; в PR
@@ -761,10 +765,21 @@ jobs:
           # `verdict.md` на диске. Раньше падение одного лишь статуса было либо невидимо,
           # либо печаталось как «не сработала ни одна из трёх».
           source "${GITHUB_WORKSPACE}/.code/.github/scripts/review-delivery.sh"
-          if gh pr review "$PR" "$event" --body "$line — полный текст комментом в этом PR и сообщением в треде постановки (доставка 3 из 3, .github/workflows/claude-review.yml)."; then
-            delivery_mark status ok
-          else
-            delivery_mark status failed
+          # СУДИТ ЭТУ ДОСТАВКУ ЦЕЛЬ, А НЕ КОД ВЫХОДА `gh` (тред 122): тот же `502` после
+          # ЗАПИСАННОГО review покрасил бы джобу немедленно. Опознание здесь — не литерал:
+          # тело статуса константно от круга к кругу, номера прогона в нём нет, а добавить
+          # его нельзя (форма сообщения не меняется). Значит тройка «автор github-actions +
+          # состояние + окно», и начало окна снимается ПЕРЕД записью, а не берётся от начала
+          # прогона: чем у́же окно, тем меньше в нём чужих кругов.
+          case "$event" in
+            --approve) STATE=APPROVED ;;
+            *)         STATE=CHANGES_REQUESTED ;;
+          esac
+          STATUS_SINCE="$(date -u +%FT%TZ)"
+          STATUS_CODE=0
+          gh pr review "$PR" "$event" --body "$line — полный текст комментом в этом PR и сообщением в треде постановки (доставка 3 из 3, .github/workflows/claude-review.yml)." || STATUS_CODE=$?
+          if ! delivery_attempt status "$STATUS_CODE" \
+              delivery_probe_pr_review "$PR" "$STATE" "$STATUS_SINCE"; then
             echo "::error::формальный review-статус НЕ выставлен"
             exit 1
           fi
@@ -849,6 +864,9 @@ jobs:
               printf 'Недоехавшую доставку повторить нечем автоматически — перезапуск круга (снять и повесить метку `review` заново) вынесет НОВЫЙ вердикт и потратит ещё один прогон; если текст уже виден в этом PR, дешевле донести его руками.\n'
             } > "$BODY_TMP"
             COMMIT_MSG="chore(comms): вердикт по PR #${PR} доставлен не полностью"
+            # ФРАЗА СВОЕГО ТЕКСТА — вторым литералом опознания (тред 122). Одного номера
+            # прогона мало: за прогон в PR уходят ДВА коммента, и оба его несут.
+            SUMMARY_MARK='Вердикт вынесен, но доставлен не полностью'
           else
             {
               printf '**Ревью не состоялось: вердикт не сформирован.**\n\n'
@@ -892,6 +910,7 @@ jobs:
               fi
             } > "$BODY_TMP"
             COMMIT_MSG="chore(comms): ревью PR #${PR} не состоялось — вердикт не сформирован"
+            SUMMARY_MARK='Ревью не состоялось: вердикт не сформирован'
           fi
 
           # Роль сверяется С КОНФИГОМ И ЧЕРЕЗ ПАКЕТ (как в merge-notify): опечатка иначе
@@ -911,7 +930,13 @@ jobs:
           fi
 
           # ДОСТАВКА 1 — КОММЕНТ В PR (живой канал первым, см. шапку шага).
-          gh pr comment "$PR" --body-file "$BODY_TMP" \
+          # И ЗДЕСЬ СУДИТ ЦЕЛЬ (тред 122): доставка ИТОГА доставок стои́т на том же приёме,
+          # что и доставка вердикта, и теряет квитанцию тем же `502`. Учёта у неё нет —
+          # `delivery_mark` этот шаг не ведёт, — поэтому зовётся предикат напрямую.
+          SUMMARY_COMMENT_CODE=0
+          gh pr comment "$PR" --body-file "$BODY_TMP" || SUMMARY_COMMENT_CODE=$?
+          delivery_confirmed "итог доставок комментом в PR #${PR}" "$SUMMARY_COMMENT_CODE" \
+            delivery_probe_pr_comment "$PR" "$RUN_ID" "$SUMMARY_MARK" \
             || { echo "::error::об исходе доставок не сообщено даже комментом в PR."; exit 1; }
           echo "Об исходе доставок сообщено комментом в PR #${PR}."
 
