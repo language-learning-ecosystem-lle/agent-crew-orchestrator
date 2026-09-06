@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T19:32:08.433Z",
+  "writtenAt": "2026-09-06T19:36:48.290Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "151-dated-waiting-outlived-its-event",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T20:12:04Z"
     },
     {
