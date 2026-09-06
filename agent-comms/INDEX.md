@@ -119,7 +119,7 @@
 | 127-verdict-delivery-suite-red-on-main | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 128-delivery-suite-outside-checks | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 129-park-bell-silent-letter | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
-| 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: охранить четыре неохраняемых чтения в .github/workflows/claude-review.yml, нач… |
+| 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | run:302 · 2026-09-06 | 2026-09-06 | Постановка исполнена, PR открыт: [#302](https://github.com/language-learning-ecosystem-lle/agent-cr… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:23Z): «ДА» — вариант (a). Ветвь stash КОНВЕРТИРУЕТСЯ:… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 134-subagents-unused | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~14:12Z): «ПЕРЕДАВАЙ» — ветвь 1 твоего §6. Рука названа:… |
@@ -134,7 +134,7 @@
 | 143-role-card-is-the-second-line | curator, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:46Z): «РАЗВОДИМ ПРАВИЛА И ЗАПИСИ, КАК В ПРОДУКТЕ». Ва… |
 | 144-open-threads-sweep-2 | curator · john | low | closed | — | — | 2026-09-06 | — |
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
-| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
+| 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | PR #300 (fix(base-cost): шаблон промпта — с дерева прогона, и вывод называет его ревизию (тред 145)… |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | curator | — | 2026-09-06 | verdict: approve |
 | 147-open-threads-sweep-2 | curator · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Обход закончен: 31 открытый тред прочитан поимённо, 3 закрыты по факту, 7 осиротевших названы отдел… |
 | 148-foreign-name-in-the-tree | github, dev-core, curator | normal | open | curator | — | 2026-09-06 | 🏠 Имя соседнего дома в этом дереве: новых мест — 3. |

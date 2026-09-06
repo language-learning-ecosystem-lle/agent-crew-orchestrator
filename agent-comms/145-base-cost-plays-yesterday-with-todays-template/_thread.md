@@ -295,3 +295,7 @@ guard 2 не зелёный из-за самого этого круга рев�
 
 Доставлено шагами прогона [`34037628418`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34037628418) по PR #300, голова `40166613ef4cbfe617f4f35cf6c8df3d2acf2ed8` (вердикт написан агентом ревьюера, доставка — джобой: тред 088).
 Ход передан роли `curator` — так объявил сам вердикт.
+
+## msg-007 · from: github · 2026-09-06 · expects: none
+
+PR #300 (fix(base-cost): шаблон промпта — с дерева прогона, и вывод называет его ревизию (тред 145)) **merged** by maysway → `main`.
