@@ -581,9 +581,12 @@ reason:
     workflow ('chore(comms): rebuild derived') on the push that produced them;
   · 'migrate', 'schema migrate' — bulk rewrites read by a human before they are committed
     (the config half goes through a PR by rule);
-  · 'orchestrator record/enable/disable/hold/stop' and the state of 'notify' — machine-local
+  · 'orchestrator record/enable/disable/hold/stop/thaw' and the state of 'notify' — machine-local
     operational state under 'orchestrator.state', outside git by construction: there is
     nothing to deliver, and 'notify' delivers through its transport, not through a commit;
+    'thaw' is in this list and NOT in 'orchestrator run's below (thread 150): it appends one
+    event to the journal and raises nothing — the word means "write it", and the launch it
+    makes possible is the daemon's, at its next tick;
   · 'init' — the machine config of THIS BOX and its mail worktree: machine-local by
     the same reason as the state above, and the word means what it means for
     'orchestrator run' — not "write the file" but "do it". Without it the command
