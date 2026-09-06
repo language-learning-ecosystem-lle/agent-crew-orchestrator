@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T13:55:15.075Z",
+  "writtenAt": "2026-09-06T13:55:50.062Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "062-contour-boundary",
       "state": "running",
       "deadline": "2026-09-06T14:30:12Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "145-base-cost-plays-yesterday-with-todays-template",
+      "state": "running",
+      "deadline": "2026-09-06T14:55:46Z"
     }
   ]
 }
