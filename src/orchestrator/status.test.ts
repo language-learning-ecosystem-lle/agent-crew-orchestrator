@@ -76,6 +76,35 @@ describe("renderStatus", () => {
     }
   });
 
+  // THE MARK NAMES A MOVE, NOT ONLY A CIRCLE (thread 150). The sentence about what zeroes
+  // the count is correct and was, until the thaw existed, an explanation of why the reader
+  // could do nothing: the count is zeroed by a delivery, a delivery is written by a run, and
+  // the run is what is refused. A frame that ends there sends its reader looking for a
+  // command that had no name — which is the morning of 2026-09-06.
+  it("a freeze with NO term names the thaw, with this pair already in the call", () => {
+    const line = renderStatus([
+      view({
+        role: "devops",
+        thread: "079-stuck",
+        exhausted: true,
+        exhaustedClass: "substantive",
+        thawAt: null,
+      }),
+    ]);
+    expect(line).toContain("orchestrator thaw --role devops --thread 079-stuck --by <you> --write");
+  });
+
+  // AND A FREEZE THAT ENDS BY ITSELF DOES NOT, because the same line already names the
+  // moment it ends at: a command offered beside an answer is noise, and the reader of an
+  // external backoff has nothing to do.
+  it("a freeze WITH a term offers no command — the box thaws that one itself", () => {
+    const line = renderStatus([
+      view({ exhausted: true, exhaustedClass: "external", thawAt: "2026-08-19T12:15:00Z" }),
+    ]);
+    expect(line).toContain("thaws at 2026-08-19T12:15:00Z");
+    expect(line).not.toContain("orchestrator thaw");
+  });
+
   // THE MARK IS A CALL TO A HAND, AND A CLOSED THREAD HAS NOTHING TO CALL ONE FOR (thread
   // 016, п.2). The row itself stays — the frame prints the history of the journal, and that
   // history happened — but `⚠ EXHAUSTED` and the advice about zeroing the count go, because

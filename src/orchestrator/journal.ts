@@ -347,6 +347,28 @@ export const orchestratorEventSchema = z.discriminatedUnion("kind", [
     ...base,
     reason: z.enum(REFUSAL_REASONS),
   }),
+  // A PERSON LET A FROZEN PAIR GO (thread 150). The attempt counter is zeroed by a
+  // DELIVERY, every shape of which is written by a RUN of the pair — and the ceiling is
+  // what refuses that run. The circle closes on itself, and until this event the only way
+  // out was `--max-attempts` above the ceiling, found by reading the shape of a command
+  // in the middle of an incident.
+  //
+  // AN EVENT AND NOT A FILE, unlike a hold. A hold is a STATE that has to be seen while
+  // it lasts and taken away afterwards; a thaw is a MOMENT — it happens once, gives the
+  // pair one more life, and is spent by the launch that follows. Put in a file it would
+  // have to be deleted by somebody, and a forgotten one would uncap the ceiling silently.
+  // In the journal it lands in the same order as the freeze it answers, so "who let this
+  // pair go, when and why" is read off the same lines as everything else about the pair.
+  //
+  // `by` IS REQUIRED, and it is the whole of "who is entitled": the ceiling is a door,
+  // and a door opened by nobody in particular is not a door. It is not checked against
+  // the registry — the hand that thaws is a person's, and a person is not always a role.
+  z.object({
+    kind: z.literal("thaw"),
+    ...base,
+    by: z.string().min(1),
+    note: z.string().min(1).optional(),
+  }),
 ]);
 
 export type OrchestratorEvent = z.infer<typeof orchestratorEventSchema>;
