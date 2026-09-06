@@ -14,7 +14,10 @@
  * ИЗ ЧЕГО ОН СЛОЖЕН — и что из этого видно из журналов контура:
  *   1. системный промпт харнесса и схемы ВСТРОЕННЫХ инструментов — в ленту не пишутся вовсе;
  *   2. каталог MCP-коннекторов — в ленту пишутся ИМЕНА (`system.init.tools`), не схемы;
- *   3. промпт оркестратора (шаблон `buildLaunchPrompt`) — восстанавливается точно, код тут же;
+ *   3. промпт оркестратора (шаблон `buildLaunchPrompt`) — складывается кодом, но кодом ИЗ ДЕРЕВА
+ *      ПРОГОНА, а не с ревизии такта: импорт статический. Единственная составляющая, которая берётся
+ *      не на момент такта; вывод печатает ревизию `launch.ts`, которой сложен шаблон, а граница
+ *      названа в разделе 4 доки;
  *   4. карточка роли (`instructions` конфига) — восстанавливается точно из истории git на момент
  *      такта;
  *   5. память роли — `MEMORY.md`, харнесс подаёт его как `claudeMd`; файл не под git, поэтому его
@@ -42,7 +45,7 @@
  * Ничего не пишет и ничего не отправляет.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadProtocolConfig } from "../packages/agent-protocol/src/index.ts";
@@ -283,6 +286,56 @@ function memoryCharsAt(role, ts) {
   return rows.reduce((s, r) => s + (r.born === null || r.born <= ts ? r.chars : 0), 0);
 }
 
+/**
+ * Ревизия `launch.ts`, которой ЭТОТ прогон складывал шаблон промпта.
+ *
+ * Шаблон — единственная составляющая, которая берётся НЕ с ревизии такта: `buildLaunchPrompt`
+ * импортирован статически, то есть приезжает из дерева прогона. Значит число строки «промпт
+ * оркестратора» обязано нести свою ревизию с собой, иначе его нельзя перепроверить чужой рукой.
+ *
+ * Читается ИЗ ДЕРЕВА ПРОГОНА — из файла, который реально импортировался, а не из `--repo` и не из
+ * `origin/main`: `--repo` говорит, где журналы, и может указывать в другой чекаут, а `origin/main`
+ * не знает ни о выложенном в дерево старом файле, ни о невлитой ветке. `realpathSync` — потому что
+ * рабочий способ запуска «каталог с симлинком на `packages`» описан в доке, и судить надо тот
+ * чекаут, куда симлинк ВЕДЁТ.
+ *
+ * Опознание — ПО СОДЕРЖИМОМУ, а не по `git log`: выложить в дерево старый файл
+ * (`git checkout <sha> -- <path>`) историю пути не двигает, и `git log` назвал бы ревизию, которой
+ * в дереве нет. Сличается blob файла с blob'ом того же пути на каждой ревизии его истории; берётся
+ * НОВЕЙШАЯ совпавшая. Не совпало ни с одной (правка в дереве) — так и печатается, вместе с blob'ом:
+ * дверь, которая молчит, хуже отсутствующей, а тихое «ревизия такая-то» тут было бы враньём.
+ */
+function launchRevision() {
+  const path = "packages/agent-protocol/src/orchestrator/launch.ts";
+  let file = join(SCRIPT_CHECKOUT, path);
+  try {
+    file = realpathSync(file);
+    const at = (args) =>
+      execFileSync("git", ["-C", dirname(file), ...args], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    const blob = at(["hash-object", "--", file]);
+    // Путь внутри ЕГО чекаута: под симлинком/подмодулем он может не совпасть с `path` выше.
+    const rel = at(["ls-files", "--full-name", "--", file]);
+    if (!rel) return { file, blob, error: "файл не под git в дереве прогона" };
+    // Пути в `log` — абсолютные: cwd здесь каталог файла, а `rel` считается от корня чекаута.
+    for (const line of at(["log", "--format=%H\t%cI", "--", file]).split("\n").filter(Boolean)) {
+      const [sha, ts] = line.split("\t");
+      let past = null;
+      try {
+        past = at(["rev-parse", `${sha}:${rel}`]);
+      } catch {
+        /* на той ревизии путь назывался иначе — переименование, не наш случай */
+      }
+      if (past === blob) return { file: rel, blob, sha, ts };
+    }
+    return { file: rel, blob, error: "содержимое не совпало ни с одной ревизией истории пути" };
+  } catch (e) {
+    return { file, error: `ревизию не прочитать: ${e.message}` };
+  }
+}
+
 /** Шаблон промпта оркестратора и карточка — ровно так, как их складывает `buildLaunchPrompt`. */
 function promptPartsAt(tick) {
   const at = configAt(tick.ts);
@@ -407,6 +460,18 @@ console.log(`# Из чего сложен \`base\` — замер по ${rows.le
 console.log(
   `Подгонка на ${fitRows.length} тактах со свежим промптом (${rows.length - fitRows.length} ` +
     `продолжений R18 отброшены: карточка им не пересылается).\n`,
+);
+
+// Шаблон промпта — единственная составляющая, взятая не с ревизии такта. Число, не назвавшее свою
+// ревизию, чужой рукой не перепроверяется, а именно это дока обещает первой строкой.
+const launchRev = launchRevision();
+console.log(
+  `Шаблон промпта сложен кодом ИЗ ДЕРЕВА ПРОГОНА, а не с ревизии такта: \`${launchRev.file}\` — ` +
+    (launchRev.sha
+      ? `ревизия ${launchRev.sha.slice(0, 8)} от ${launchRev.ts}.`
+      : `РЕВИЗИЯ НЕ ОПРЕДЕЛЕНА (${launchRev.error}${launchRev.blob ? `, blob ${launchRev.blob.slice(0, 8)}` : ""}).`) +
+    ` На тактах, поднятых ДРУГИМ шаблоном, строка «промпт оркестратора» смещена, и смещение` +
+    ` впитывает α — см. «Чего замер НЕ покрывает» в \`docs/base-cost-measurement.md\`.\n`,
 );
 console.log("| коэффициент | значение | что это |");
 console.log("| --- | ---: | --- |");
