@@ -125,3 +125,4 @@
 | 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | run:285 · 2026-09-06 | 2026-09-06 | Метку повесил — круг самопропустился, вердикта нет. Перебазировал, голова b85e5f7f, checks 34023288… |
 | 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка curator своим правом task-declare. Происхождение: находка треда 134-subagents-unused — п… |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Класс: шаг checks, который гоняет скрипт, и сам скрипт мёржатся порознь — и ПАРУ не мерит ни один P… |
+| 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Тот же класс — «судьёй доставки служит код выхода клиента» — стои́т ШЕСТЫМ местом, в comms-push.sh,… |
