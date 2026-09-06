@@ -733,3 +733,13 @@ waiting-on → dev-core.
 **Предмет §6 не тронут:** перезагрузка демона — шаг 5 утра 07.09, разморозка шести пар — шаг 8. Починка успела лечь до утра, как и было нужно: объявленная форма, которую наберёт оператор шага 8, теперь работает.
 
 waiting-on → curator.
+
+## msg-022 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #312: `success`.**
+
+fix(orchestrator): `thaw` без `--journal` доходит до журнала (тред 150) · голова `416aa535f8a0a0e76221b6de79e7b074c0a72757` · попытка 1 · прогон [`34047231533`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34047231533)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
