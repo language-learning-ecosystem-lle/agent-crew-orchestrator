@@ -46,6 +46,7 @@
  * being talkative — a conversation where three roles spoke while one was awaited
  * would look older than one where the same handoff happened yesterday in silence.
  */
+import type { RoleId } from "../roles/schema.js";
 import type { Message, ThreadPriorityValue } from "../thread/message.js";
 import { type ParkedOn, parkedOnKind } from "../thread/thread.js";
 import type { Candidate } from "./tick.js";
@@ -308,6 +309,26 @@ export const describeOrder = (
    * guessing, by the rule of §2.5: a state whose signal is not in hand is not invented.
    */
   shelved: ReadonlyMap<string, string> = new Map(),
+  /**
+   * THE PAIRS THE BOX HAS STOPPED RAISING ALTOGETHER (thread 140) — {@link pairKey} → the
+   * ceiling it spent. This is the one hold of the five that is not a wait at all, and until
+   * this argument existed it was the only one the row said NOTHING about: measured on
+   * 2026-09-06, five pairs of `devops` had stood at the ceiling since 02–03.09 and their
+   * rows read `queue 2/17: devops×047-devops-role — priority high, waiting since
+   * 2026-09-02T21:40:32Z`, which is character for character what a pair that IS going to be
+   * raised looks like. Three days of "waiting since" that nobody was waiting through.
+   *
+   * The daemon has always said it in a skip line, and the operator's frame has no skip
+   * lines — the same gap the busy and the shelved marks above were written for, and the
+   * reason this belongs on the row rather than beside it: a queue row is read as a promise
+   * of a launch, and for these pairs it is a false one.
+   *
+   * KEYED BY THE PAIR AND NEVER BY ONE OF ITS HALVES: the ceiling belongs to (role, thread)
+   * — `devops` was frozen on five threads and launchable on none of them, but a role that
+   * is spent on one thread and fresh on another is the ordinary case, and a map keyed by the
+   * role alone would mark the fresh row too.
+   */
+  outOfAttempts: ReadonlyMap<string, SpentCeiling> = new Map(),
 ): string[] =>
   ordered.map((candidate, at) => {
     const waited =
@@ -354,8 +375,71 @@ export const describeOrder = (
       window === undefined
         ? ""
         : ` · ⏸ HELD BY A CLOSED WINDOW — ${window}; nothing is owed and nobody is late, the pair is raised when the window reopens`;
-    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}${taken}${paused}`;
+    // AND THE ONE HOLD THAT IS NOT A WAIT, last because it outranks the four above as a
+    // reading: whatever else holds this pair, the box is not going to raise it at all.
+    const spent = outOfAttempts.get(pairKey(candidate.role, candidate.thread));
+    const stopped = spent === undefined ? "" : ` · ⛔ ${describeSpentCeiling(spent)}`;
+    return `queue ${at + 1}/${ordered.length}: ${candidate.role}×${candidate.thread} — priority ${candidate.priority}, ${waited}${held}${freeze}${taken}${paused}${stopped}`;
   });
+
+/**
+ * THE CEILING ONE PAIR HAS SPENT, as the row says it (thread 140).
+ *
+ * `thaw` is the whole of the difference between the two states behind one word: an external
+ * freeze knocks again by itself at a stated moment and needs nobody, a substantive one is
+ * terminal from its first second and moves only on a hand. Carried from `LeaseView` rather
+ * than judged here — the fold reads the journal, this file renders a queue.
+ */
+export type SpentCeiling = {
+  /** Failed attempts since this pair last delivered, and the ceiling they were counted against. */
+  readonly attempts: number;
+  readonly ceiling: number;
+  /** When the freeze lifts by itself; `null` — it does not, and only a hand moves the pair. */
+  readonly thaw: string | null;
+};
+
+/**
+ * The key of one pair in the map of {@link describeOrder} — role AND thread, and never one
+ * of the two alone. Exported so that whoever builds the map and whoever reads it cannot
+ * disagree about its shape.
+ */
+export const pairKey = (role: RoleId, thread: string): string => `${role}\t${thread}`;
+
+/**
+ * THE MAP, OFF THE FOLD THE TICK ALREADY HAS — `exhausted` and not `exhaustedSince`, because
+ * the row is about what holds the pair RIGHT NOW: a pair mid-series that has thawed is
+ * launchable, and marking it would be the same lie in the other direction.
+ */
+export const spentCeilings = (
+  views: readonly {
+    readonly role: RoleId;
+    readonly thread: string;
+    readonly attempt: number;
+    readonly ceiling: number;
+    readonly exhausted: boolean;
+    readonly thawAt?: string | null | undefined;
+  }[],
+): ReadonlyMap<string, SpentCeiling> =>
+  new Map(
+    views
+      .filter((view) => view.exhausted)
+      .map((view) => [
+        pairKey(view.role, view.thread),
+        { attempts: view.attempt, ceiling: view.ceiling, thaw: view.thawAt ?? null },
+      ]),
+  );
+
+/**
+ * The sentence itself. It says the three things its reader needs and no diagnosis: how the
+ * ceiling was spent, that this row promises nothing, and which of the two moves is the one
+ * that exists — a clock's, or a person's.
+ */
+const describeSpentCeiling = (spent: SpentCeiling): string =>
+  `OUT OF ATTEMPTS — ${spent.attempts} of ${spent.ceiling} failed since this pair last delivered, so the box does NOT raise it and this row promises no launch; ${
+    spent.thaw === null
+      ? "nothing lifts it by itself and no message into that thread lifts it either — the move is a run let through by hand ('orchestrator run --max-attempts' above the ceiling), whose delivery zeroes the count"
+      : `the vendor's side spent it, so the box knocks again by itself at ${spent.thaw} — nothing to do`
+  }`;
 
 /** The frozen half of a queue row: what holds the turn, and what will let it go. */
 const describeFreeze = (

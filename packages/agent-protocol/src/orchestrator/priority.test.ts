@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Message } from "../thread/message.js";
+import type { LeaseView } from "./lease.js";
 import {
   DEFAULT_THREAD_PRIORITY,
   describeOrder,
   orderCandidates,
   type RankedCandidate,
   resolveThreadPriority,
+  spentCeilings,
   threadNumber,
   waitingSince,
 } from "./priority.js";
@@ -291,5 +293,81 @@ describe("describeOrder (R5) — the queue is readable without the code", () => 
     );
     expect(lines[0]).toContain("⏸ PARKED behind the merge of PR #127 (R27)");
     expect(lines[0]).not.toContain("MODE");
+  });
+
+  describe("the pair the box has stopped raising (thread 140)", () => {
+    const queue = orderCandidates([
+      { role: "devops", thread: "047-devops-role", priority: "high" },
+      { role: "devops", thread: "140-live", priority: "high" },
+    ]);
+    const view = (thread: string, over: Partial<LeaseView> = {}): LeaseView =>
+      ({
+        role: "devops",
+        thread,
+        state: "released",
+        attempt: 3,
+        ceiling: 3,
+        exhausted: true,
+        thawAt: null,
+        ...over,
+      }) as LeaseView;
+
+    it("the row of a spent pair stops reading as a promise of a launch", () => {
+      // THE FIELD CASE OF 2026-09-06, verbatim: `devops×047-devops-role` had stood at 3/3
+      // since 02.09 and its row said `priority high, waiting since …` and nothing else —
+      // the same row a pair that is next in line gets.
+      const [spent, live] = describeOrder(
+        queue,
+        new Map(),
+        new Set(),
+        new Map(),
+        new Map(),
+        spentCeilings([view("047-devops-role")]),
+      );
+      expect(spent).toContain("⛔ OUT OF ATTEMPTS — 3 of 3 failed since this pair last delivered");
+      expect(spent).toContain("promises no launch");
+      expect(spent).toContain("orchestrator run --max-attempts");
+      // AND THE NEIGHBOUR ROW IS UNTOUCHED — the ceiling belongs to the PAIR: `devops` is
+      // spent on one thread and next in line on the other, which is the ordinary case.
+      expect(live).not.toContain("OUT OF ATTEMPTS");
+    });
+
+    it("a freeze that ends by itself names the clock and asks for no hand", () => {
+      // The two states behind one word: a `--max-attempts` run against a backoff that was
+      // going to knock again on its own is a launch spent for nothing.
+      const [line] = describeOrder(
+        queue,
+        new Map(),
+        new Set(),
+        new Map(),
+        new Map(),
+        spentCeilings([view("047-devops-role", { thawAt: "2026-09-06T12:00:00Z" })]),
+      );
+      expect(line).toContain("knocks again by itself at 2026-09-06T12:00:00Z");
+      expect(line).not.toContain("--max-attempts");
+    });
+
+    it("a pair mid-series that has thawed is NOT marked", () => {
+      // `spentCeilings` reads `exhausted` and not `exhaustedSince`: the row is about what
+      // holds the pair right now, and a thawed pair is launchable. Marking it would be the
+      // same lie as the silence this repairs, pointing the other way.
+      const [line] = describeOrder(
+        queue,
+        new Map(),
+        new Set(),
+        new Map(),
+        new Map(),
+        spentCeilings([
+          view("047-devops-role", { exhausted: false, thawAt: "2026-09-06T09:00:00Z" }),
+        ]),
+      );
+      expect(line).not.toContain("OUT OF ATTEMPTS");
+    });
+
+    it("an absent map leaves every row exactly as it read before", () => {
+      expect(describeOrder(queue)).toEqual(
+        describeOrder(queue, new Map(), new Set(), new Map(), new Map(), new Map()),
+      );
+    });
   });
 });

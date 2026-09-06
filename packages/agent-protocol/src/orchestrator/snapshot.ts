@@ -55,8 +55,8 @@ import { renderInstances } from "./instances.js";
 import { CLAUDE_CODE, kindOf } from "./kind.js";
 import type { LeaseView } from "./lease.js";
 import { describeGhOutage, type GhOutage, ghAlarmDue } from "./outage.js";
-import type { RankedCandidate, RoleElsewhere } from "./priority.js";
-import { describeOrder } from "./priority.js";
+import type { RankedCandidate, RoleElsewhere, SpentCeiling } from "./priority.js";
+import { describeOrder, spentCeilings } from "./priority.js";
 import { describeQuotaShelf, type QuotaShelf } from "./quota.js";
 import { type ResidentWait, renderResidentWaits } from "./resident.js";
 import { stateWord, timeLeftWord } from "./state-word.js";
@@ -267,12 +267,14 @@ export const renderQueue = (
   busy: ReadonlyMap<string, RoleElsewhere> = new Map(),
   /** Roles whose every account is shelved (thread 063) — role → the window that reopens first. */
   shelved: ReadonlyMap<string, string> = new Map(),
+  /** Pairs the box has stopped raising (thread 140) — carried, not re-derived. */
+  outOfAttempts: ReadonlyMap<string, SpentCeiling> = new Map(),
 ): string => {
   const lines = ["queue:"];
   if (queue.length === 0) {
     lines.push("  nobody is waiting on a role this box raises");
   } else {
-    for (const line of describeOrder(queue, parked, modeParked, busy, shelved))
+    for (const line of describeOrder(queue, parked, modeParked, busy, shelved, outOfAttempts))
       lines.push(`  ${line}`);
   }
   for (const note of notes) lines.push(`  ⚠ ${note}`);
@@ -566,6 +568,11 @@ export const renderFrame = (frame: OperatorFrame): string =>
       // read in front of a stalled contour. The declared accounts ride in the frame already —
       // `renderAuth` dictates a login off them — so no new field enters the frame for this mark.
       shelvedRoles(frame.now, frame.queue, frame.quota, frame.accounts),
+      // AND FROM THE LEASES THE FIRST SECTION IS PRINTED FROM (thread 140), by the rule the
+      // two marks above follow: the frame already holds the fold, and a queue row that reads
+      // like a promise of a launch for a pair the box will never raise is the one reading that
+      // contradicts what `renderStatus` says three blocks up.
+      spentCeilings(frame.leases),
     ),
     // Beside the queue, because it is the same question answered for the pairs that are
     // NOT in it: `renderResidentWaits` returns nothing when the project has no resident
