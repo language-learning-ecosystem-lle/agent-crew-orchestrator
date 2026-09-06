@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | Парк на john снят ВТОРОЙ раз за час — и снова курьерским письмом моей же чатовой руки (msg-101, 15:… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | john · 2026-09-06 | 2026-09-06 | ДОПИСКА К ПОРЯДКУ УТРА: слово john (чат 2026-09-06 ~17:34Z) — «тег катнём завтра утром, запиши туда… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
