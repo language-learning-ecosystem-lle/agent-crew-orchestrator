@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T14:05:33.634Z",
+  "writtenAt": "2026-09-06T14:06:38.555Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "147-open-threads-sweep-2",
-      "state": "running",
-      "deadline": "2026-09-06T14:38:24Z"
-    },
     {
       "role": "dev-core",
       "thread": "130-unguarded-read-kills-the-rescuer",
