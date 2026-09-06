@@ -1,11 +1,18 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T18:23:01.781Z",
+  "writtenAt": "2026-09-06T18:23:20.983Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": []
+  "leases": [
+    {
+      "role": "dev-core",
+      "thread": "149-frozen-pair-writes-to-the-feed",
+      "state": "running",
+      "deadline": "2026-09-06T19:23:17Z"
+    }
+  ]
 }
