@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 4505cf34-a50f-48f9-8e44-5aa101dee031
-  modified: 2026-09-04T00:59:33.965Z
+  modified: 2026-09-06T14:50:48.284Z
 ---
 
 Вопрос к john требует `--parked-on john`, но парк, поставленный ПОКА круг ревью летит, глотает письмо
@@ -20,3 +20,10 @@ metadata:
 **How to apply:** перед `--parked-on` перечитать ленту (`thread show --for`) и убедиться, что вердикт
 ЛЕЖИТ в ней; не лёг к свёртке — парк не ставить, отдельный дом дешевле съеденного вердикта. См.
 [[park-door-refuses-silent-letters]], [[metka-is-the-end-of-the-turn]].
+
+**И следствие того же порядка (замерено 2026-09-06, тред 140, письмо `14:50:00Z`):** к моменту, когда
+роль поднята приехавшим вердиктом, парк `run:<pr>` УЖЕ снят — снимает его само письмо `reviewer-pr`
+(`--verdict … --pr N`), а не ответ на него. Поэтому `--park-lifted run:N` в ответном письме всегда
+протухший; дверь на это **не отказывает**, а печатает «nothing is parked … any more — the park was
+lifted before this write» и **отправляет письмо как есть**. Ставить в таком письме надо только НОВЫЙ
+`--parked-on`, лифт не называть. См. [[park-forms-both-take-the-pr-number]].
