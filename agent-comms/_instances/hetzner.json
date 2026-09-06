@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T14:05:10.343Z",
+  "writtenAt": "2026-09-06T14:05:33.634Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "147-open-threads-sweep-2",
       "state": "running",
       "deadline": "2026-09-06T14:38:24Z"
+    },
+    {
+      "role": "dev-core",
+      "thread": "130-unguarded-read-kills-the-rescuer",
+      "state": "running",
+      "deadline": "2026-09-06T15:05:30Z"
     }
   ]
 }
