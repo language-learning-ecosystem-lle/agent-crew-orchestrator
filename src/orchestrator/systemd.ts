@@ -202,6 +202,37 @@ export const unitNameFor = (instance?: string): string =>
     ? DEFAULT_UNIT_NAME
     : `${DEFAULT_UNIT_NAME.replace(/\.service$/, "")}@${instance}.service`;
 
+/**
+ * THE UNIT SAYS ITS OWN NAME, AND ONLY IT MAY (thread 141, found on review of the refusal
+ * below). The name of the unit FILE and the flags of its `ExecStart` are computed
+ * independently at install time — `--unit-name` renames the file and never touches the
+ * daemon's argv, `--daemon-args` replaces the argv and never touches the file — so a
+ * process deriving "which unit am I" from its own argv states a name that may not exist
+ * on the box: `systemd install --instance main --unit-name custom.service` would have an
+ * `up` refusal order `systemctl --user restart agent-protocol@main.service`, and there is
+ * no such unit. A refusal that names a unit nobody can restart is worse than one that
+ * names none.
+ *
+ * So the generated unit carries the answer instead of leaving it to be inferred: systemd
+ * expands `%n` to the FULL NAME OF THE UNIT AS LOADED, which is the file's real name
+ * whatever it was called and however the argv was overridden — and it keeps following the
+ * file if an operator renames it afterwards.
+ */
+export const UNIT_NAME_ENV = "AGENT_PROTOCOL_UNIT";
+
+/**
+ * The unit this process runs under, as systemd itself named it — `undefined` when there
+ * is no unit, or when the unit was written before this line existed. THE ABSENT ANSWER IS
+ * A REAL ANSWER HERE and it is passed on as such: the sentence built from it says how to
+ * find the name rather than guessing one (`daemonAlreadyUpRefusal`).
+ */
+export const unitOfThisProcess = (
+  env: Readonly<NodeJS.ProcessEnv> = process.env,
+): string | undefined => {
+  const named = env[UNIT_NAME_ENV]?.trim();
+  return named === undefined || named === "" ? undefined : named;
+};
+
 /** What `systemd install` may do from the checkout it was typed in — see below. */
 export type WorktreeInstallVerdict =
   /** Nothing to say: the home checkout, an installed package, another repository. */
@@ -403,6 +434,13 @@ StartLimitBurst=5
 [Service]
 Type=simple
 WorkingDirectory=${params.workingDir}
+# THE UNIT TELLS ITS PROCESS ITS OWN NAME (thread 141): '%n' is systemd's own expansion of
+# the full unit name as loaded, so this holds whatever the file was called ('--unit-name')
+# and whatever the argv below says ('--daemon-args' can carry no instance at all). It is
+# read by the refusal 'up' gives over a living daemon, which has to name the unit to
+# restart — and the two are computed independently at install time, so an argv-derived
+# guess can name a unit that does not exist on this box.
+Environment=${UNIT_NAME_ENV}=%n
 ${
   params.path === undefined || params.path.length === 0
     ? ""
@@ -441,3 +479,60 @@ export const foregroundRefusal = (input: {
   readonly signature: string;
 }): string =>
   `the force flag is down ('${input.flagPath}') — ${input.signature}. Nothing was raised, and this is NOT a failure of the unit: the flag is doing its job, so the exit is clean and 'Restart=on-failure' will not fight it. Lift it deliberately ('orchestrator up --clear-force', or remove the file) and start the unit again`;
+
+/**
+ * WHAT `up` SAYS OVER A DAEMON THAT IS ALREADY RUNNING — the refusal john paid for on a
+ * live box (2026-09-06, thread `141-daemon-drift-needs-a-human`): a hand raised a daemon
+ * with `up`, the `systemctl restart` typed after it hit this door, the unit went to
+ * `failed` and the box spent the rest of the day OUTSIDE systemd — a reboot would not
+ * have brought it back. John's word on it: "the refusal has to be readable: say it plainly
+ * and name what to do", and the reason it is the COMMAND that is fixed and not a line in a
+ * handbook — "in an incident nobody reads the text, they read the output of the command".
+ *
+ * WHY THE CODE STAYS NON-ZERO AND ONLY THE TEXT CHANGES (decision of curator, thread 141,
+ * over a measurement of mine). The obvious cheap fix was the neighbour's: {@link
+ * foregroundRefusal} exits 0, so copy that. It does not carry over. That one exits 0
+ * because under `Restart=on-failure` a code-2 refusal would be re-raised every `RestartSec`
+ * — but the unit this package writes also carries `RestartPreventExitStatus=2`, so the
+ * loop it was avoiding cannot happen here at all. What a zero WOULD buy is a green
+ * `systemctl restart` over a box that is still unsupervised: the unit reports success and
+ * goes `inactive` while a hand-raised daemon runs on. That is the same "silent ≠ idle"
+ * class as the banner over a daemon that had already left. So the unit stays honestly red
+ * while the box is outside systemd, and the whole of the repair is in the sentence.
+ *
+ * The two forms differ in the ONE thing the reader needs and cannot infer: which command
+ * brings the box back. Under a unit that is `systemctl`, and typing `up` there is exactly
+ * the move that produced this refusal — so the foreground form says so out loud. In a
+ * terminal it is `up` itself, once the running daemon is down.
+ *
+ * The opening words are load-bearing beyond this file: `SELF_RESTART_BY_HAND` quotes them
+ * to name what a hand will hit if it types `up` inside the manual restart order (test:
+ * `systemd.test.ts`, "the sentence SELF_RESTART_BY_HAND quotes").
+ */
+/**
+ * The half of the order that names WHAT TO RESTART. A name this process actually holds is
+ * printed as a command that can be pasted; a name it does not hold is NOT invented — the
+ * sentence hands over the one command that answers it instead, because a pasteable line
+ * naming a unit that does not exist costs the reader the incident twice (thread 141).
+ */
+const restartOrder = (unit: string | undefined): string =>
+  unit === undefined
+    ? `restart the unit of this box, whose name 'systemctl --user list-units "agent-protocol*"' prints — it is not named here because this process does not carry it (a unit file written before ${UNIT_NAME_ENV}, or no unit at all), and a guess would send the hand at a service that does not exist`
+    : `'systemctl --user restart ${unit}'`;
+
+export const daemonAlreadyUpRefusal = (input: {
+  readonly pid: number;
+  readonly pidFile: string;
+  readonly log: string;
+  readonly foreground: boolean;
+  /**
+   * The unit this process runs under, from {@link unitOfThisProcess} — `undefined` when
+   * there is none, or when this box's unit was written before it carried its own name.
+   * NOT DERIVED FROM THE ARGV: see {@link UNIT_NAME_ENV} for the box on which those two
+   * disagree.
+   */
+  readonly unit: string | undefined;
+}): string =>
+  input.foreground
+    ? `a daemon is already up, pid ${input.pid} ('${input.pidFile}') — it was raised outside this unit, and two daemons on one journal would take the same pair twice, so nothing was raised here. THIS UNIT IS NOW FAILED AND WILL NOT RETRY BY ITSELF ('RestartPreventExitStatus=2'), while that daemon keeps running with nothing supervising it — after a reboot neither comes back. IN THIS ORDER: 'orchestrator down', wait until no daemon process is left, then ${restartOrder(input.unit)}. Do NOT type 'orchestrator up' to bring it back — that raises a daemon of its own and lands this box right back here. What the running one has been saying is in '${input.log}'`
+    : `a daemon is already up, pid ${input.pid} ('${input.pidFile}') — nothing was raised and nothing was changed, because two daemons on one journal would take the same pair twice. To replace it, IN THIS ORDER: 'orchestrator down', wait until no daemon process is left, then raise it again — with the service if this box runs one (${restartOrder(input.unit)}), and only otherwise with 'orchestrator up'. What this one has been saying is in '${input.log}'`;
