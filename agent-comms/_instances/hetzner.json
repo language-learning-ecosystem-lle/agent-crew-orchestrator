@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T13:40:26.295Z",
+  "writtenAt": "2026-09-06T13:41:09.006Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,6 +13,12 @@
       "thread": "145-base-cost-plays-yesterday-with-todays-template",
       "state": "running",
       "deadline": "2026-09-06T14:37:53Z"
+    },
+    {
+      "role": "curator",
+      "thread": "141-daemon-drift-needs-a-human",
+      "state": "running",
+      "deadline": "2026-09-06T14:21:05Z"
     }
   ]
 }
