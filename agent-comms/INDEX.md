@@ -66,7 +66,7 @@
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 062-contour-boundary | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | Требуется решение john. Оба вчерашних вопроса замером сведены в ОДИН: назначить ли ОДНО окно без жи… |
+| 062-contour-boundary | curator · dev-core · john | high | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:50Z): «ЗАВТРА С УТРА СДЕЛАЕМ» — ОДНО ОКНО назначено н… |
 | 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-03 | Замер вперёд работы: предмет уже написан — ветка обогнала тред |
 | 064-forget-the-consumer | curator · dev-core · john | normal | open | curator | — | 2026-09-06 | ПАРКОВКА СНЯТА: ручная рука john НЕ НУЖНА — живая приёмка смотрителя (Т9) НАСТУПИЛА САМА, на живых… |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
@@ -122,7 +122,7 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:14Z): «ЧИНИТЬ». Гард 3 закрыт этим письмом. Парковка… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:23Z): «ДА» — вариант (a). Ветвь stash КОНВЕРТИРУЕТСЯ:… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | high | open | curator | run:294 · 2026-09-06 | 2026-09-06 | Метка review на #294 повешена — и повешена по ПЕРЕМЕРЕННЫМ своей рукой голове и зелени, а не по чис… |
+| 134-subagents-unused | curator · dev-core · john | high | open | curator | — | 2026-09-06 | verdict: approve |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~11:58Z): «ТРЕТЬЯ, ПРЕДУПРЕЖДЕНИЕМ, УЗКИЙ ПРИЗНАК» — двер… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Слово john полем delivers (чат 2026-09-06 ~12:09Z): «ЧИНИТЬ, ВНУТРИ ДВЕРИ; ВЫЙДЕТ ЗА НЕЁ — ВЕРНУТЬ»… |
