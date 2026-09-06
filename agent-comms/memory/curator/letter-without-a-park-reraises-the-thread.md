@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: f6de3653-2cbe-42b4-a693-3eea1b6b43f1
-  modified: 2026-09-03T16:31:27.618Z
+  modified: 2026-09-06T13:17:34.213Z
 ---
 
 Ход завершается парком ЛИБО ходом другой роли. Письмо с `expects: none` и
@@ -25,3 +25,13 @@ metadata:
 постановкой или закрыть тред ([[closing-a-thread-is-a-third-door]]), а не оставлять
 `waiting-on` себе. Проверка задним числом: подняли в тред, где делать нечего —
 виновато СВОЁ прошлое письмо, а не дверь.
+
+**Форм person-парка РОВНО ДВЕ, и вторая тихая НАВСЕГДА** (прочитано в коде, а не выведено:
+`notify.ts`, комментарий у `freshParked` — «a park in force but already announced is silent from
+the second digest on, and **one declared by an informational message is silent from the first**»;
+рядом, у `ParkedThread`: у person-парка «NO AGE THRESHOLD», он звонит ОДИН раз на письме, которое
+спросило). То есть `--parked-on <человек> --expects none` не звонит ни разу и ни через сколько —
+это и есть «худший из исходов» карточки, названный механизмом. Выбор между формами не про
+вежливость: если ход не двинется без человека, звонящая форма (`--expects ack`) — единственная, и
+вопрос ставится ПЕРВОЙ строкой ([[park-bell-carries-the-old-first-line]]). Тихую форму берут
+только там, где человек уже назначил своё действие сам И кто-то другой гарантированно снимет парк.
