@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T10:49:32.823Z",
+  "writtenAt": "2026-09-06T10:49:55.428Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "dev-core",
       "thread": "140-silent-exit-exhausts-the-role",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T11:40:40Z"
     },
     {
