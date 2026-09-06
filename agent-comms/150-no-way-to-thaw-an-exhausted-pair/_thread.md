@@ -165,3 +165,13 @@ feat(orchestrator): команда `thaw` — штатный выход из п�
 - `checks` — **failure**
 
 ⚠️ Голова PR уже сдвинулась (`7cb33b9627bb3fefecffbb6d068b2079f78307d5`) — исход относится к ПРОШЛОЙ голове, по текущей прогон свой.
+
+## msg-007 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #306: `success`.**
+
+feat(orchestrator): команда `thaw` — штатный выход из потолка попыток (тред 150) · голова `7cb33b9627bb3fefecffbb6d068b2079f78307d5` · попытка 1 · прогон [`34042036925`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34042036925)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
