@@ -514,6 +514,40 @@ export const readServiceBranchName = (name: string): ServiceBranchFacts => {
   };
 };
 
+/** What the instant of a service branch name is replaced BY, wherever it is masked out. */
+export const SERVICE_BRANCH_INSTANT_MASK = "<когда>";
+
+/**
+ * The same shape as `SERVICE_BRANCH`, unanchored and global — a service branch name is
+ * masked wherever it stands INSIDE a text (the argv of a refused git command carries it
+ * that way), not only when it is a whole string on its own.
+ *
+ * The head is lazy so that a thread slug of any number of dashes still gives the instant
+ * to the tail: `wip/dev-core/139-wall-clock-20260906T0921Z` splits after `wall-clock`.
+ */
+const SERVICE_BRANCH_INSTANT = /(wip\/[^/\s]+\/\S*?)-\d{8}T\d{4}Z\b/g;
+
+/**
+ * THE SAME NAME WITH THE MINUTE TAKEN OUT (thread `139-wall-clock-in-the-incident-signature`).
+ *
+ * `serviceBranchName` PUTS the wall clock into the name on purpose — role, thread, time
+ * are the three questions asked a week later. That is right for everything a HUMAN reads
+ * and wrong for everything that is an IDENTITY: two ticks over one standing incident,
+ * lying either side of a minute boundary, produce two names, and anything keyed on the
+ * name then calls one happening two.
+ *
+ * MEASURED (thread 135, §2; the red `checks` 34023859508 on #286): the repeat-lock of
+ * thread 133 is exactly such a key, and it let a second letter through once per minute
+ * boundary — including in the suite, where the same coincidence reddens whichever PR was
+ * unlucky enough to be running.
+ *
+ * SO THE MASK IS FOR IDENTITIES AND FOR NOTHING ELSE. Nothing a human reads goes through
+ * it: the letter, the journal line and the branch git actually made all keep the full
+ * name with its minute, because the address of the work is the whole point of them.
+ */
+export const maskServiceBranchInstant = (text: string): string =>
+  text.replace(SERVICE_BRANCH_INSTANT, `$1-${SERVICE_BRANCH_INSTANT_MASK}`);
+
 /**
  * An age a human reads rather than counts. Days appear because these branches are
  * measured in days by construction — one is made when a run ends without committing,

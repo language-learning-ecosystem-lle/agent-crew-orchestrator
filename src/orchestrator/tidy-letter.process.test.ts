@@ -29,7 +29,7 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -264,6 +264,49 @@ const serviceBranch = (workspace: string): string =>
     .trim()
     .replace(/^\*?\s*/, "");
 
+/**
+ * THE CLOCK OF A TICK, MOVED ON PURPOSE (thread `139-wall-clock-in-the-incident-signature`).
+ *
+ * The defect being closed depends on WHICH MINUTE a tick falls in, and a suite that waits
+ * for the scheduler to be unlucky is not a test of it: the measurement in thread 135 took
+ * eight runs of this file to catch one red, and that same coincidence reddens whichever
+ * PR happens to be in CI. So the boundary is forced.
+ *
+ * `faketime` is not on this box, so the shift goes in as an ESM `--import` through
+ * `NODE_OPTIONS` — which is also why it is written to a file the test owns rather than
+ * kept in the package: nothing outside a test may ever load it. It is an OFFSET and never
+ * a freeze: `orchestrator run` measures its own wall-clock window against this same
+ * `Date`, and a stopped clock would hang the run instead of testing it.
+ *
+ * The environment carries it to the CHILD AND THE GRANDCHILD alike — the CLI spawns
+ * `new-message` as a process of its own, and a delivery living in a different minute from
+ * the tick that made it is not the state under test.
+ */
+const CLOCK_SHIFT = "AGENT_PROTOCOL_TEST_CLOCK_SHIFT";
+
+const clockShift = (repo: string): string => {
+  const path = join(repo, "clock-shift.mjs");
+  writeFileSync(
+    path,
+    [
+      `const shift = Number(process.env.${CLOCK_SHIFT} ?? "0");`,
+      "const Real = Date;",
+      "class Shifted extends Real {",
+      "  constructor(...args) {",
+      "    if (args.length === 0) super(Real.now() + shift);",
+      "    else super(...args);",
+      "  }",
+      "  static now() {",
+      "    return Real.now() + shift;",
+      "  }",
+      "}",
+      "globalThis.Date = Shifted;",
+      "",
+    ].join("\n"),
+  );
+  return path;
+};
+
 /** A `git` ahead of the real one that refuses exactly the commands matching `pattern`. */
 const refusingGit = (repo: string, dir: string, pattern: string, message: string): string => {
   const shimDir = join(repo, dir);
@@ -465,6 +508,74 @@ describe("a standing tidy-up failure gets ONE letter, not one per tick", () => {
     // …and the incident itself is unchanged: the tree is still dirty and the launch is
     // still refused with its cause, exactly as on the first tick. The lock is on the
     // LETTER and on nothing else.
+    expect(second.out).toContain("the commit FAILED");
+    expect(dirty(workspace)).toBe(true);
+  }, 240_000);
+
+  /**
+   * THE SAME CLASS, WITH THE MINUTE BOUNDARY BETWEEN THE TWO TICKS (thread
+   * `139-wall-clock-in-the-incident-signature`) — and the case above is green without it,
+   * which is the whole reason this one exists: two ticks of a suite normally land in one
+   * minute, and the lock was broken for exactly the pairs that do not.
+   *
+   * MEASURED BEFORE THE FIX (thread 135 §2): eight runs of this file, one red — the one
+   * whose two ticks fell either side of 09:21:00 — and a red `checks` on PR #286, whose
+   * diff touched neither this file nor anything it runs.
+   *
+   * THE BOUNDARY IS FORCED AND THEN VERIFIED, not assumed: the second tick's clock is a
+   * minute ahead of the first's, and the branch names the two ticks planned are read out
+   * of the journal and asserted DIFFERENT. Without that assert a lock that had quietly
+   * stopped depending on the clock at all would pass this case for the wrong reason.
+   *
+   * ONE OF THE FOUR DOORS §3 of the statement enumerates is reachable here, and it is the
+   * one that was measured: the class 'nothing moved' re-plans the same tidy-up on every
+   * tick, so its cause carries a fresh minute every time. The other three carry the minute
+   * in the `branch` FIELD and cannot reach a second letter through a live tick — `done`
+   * and `stranded` leave a clean tree, and 'the branch was made, the commit refused' is
+   * refused before the tidy-up from the second tick onwards (the case below this one
+   * measures exactly that). They are held by the units beside `tidyUpSignature`.
+   */
+  it("the two ticks fall either side of a MINUTE BOUNDARY — still one incident, 1 letter", () => {
+    const { repo, mail } = contour([DEV_CORE, GITHUB, CURATOR]);
+    const workspace = join(repo, ".worktrees", "dev-core");
+
+    leaveDirtBehind(repo, workspace);
+    const shimDir = refusingGit(repo, "gitshim", " -b wip/", "fatal: cannot create branch");
+    const loader = pathToFileURL(clockShift(repo)).href;
+    const env = (shift: number): Record<string, string> => ({
+      PATH: `${shimDir}:${process.env.PATH ?? ""}`,
+      NODE_OPTIONS: `--import ${loader}`,
+      [CLOCK_SHIFT]: String(shift),
+    });
+
+    const first = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], env(0));
+    expect(first.out).toContain(
+      `letter — the outcome is posted to the standing address '${TIDY_UP_SLUG}', turn for 'curator'`,
+    );
+    expect(lettersIn(mail)).toBe(1);
+
+    // A WHOLE MINUTE, so the crossing does not depend on how long the first tick took:
+    // the second tick's clock is at least 60s past the first's whatever the box's speed,
+    // and two instants 60s apart cannot share a minute.
+    const second = runWith(repo, ["--exec", stub(repo, "true"), "--fresh"], env(60_000));
+
+    // THE BOUNDARY WAS ACTUALLY CROSSED — the two ticks planned two different branch
+    // names, which is the input the defect needed and the thing a suite cannot arrange
+    // by waiting.
+    const planned = (out: string): string => {
+      const found = /wip\/dev-core\/012-x-\d{8}T\d{4}Z/.exec(out);
+      expect(found, "the journal of the tick names no service branch").not.toBeNull();
+      return (found as RegExpExecArray)[0];
+    };
+    expect(planned(second.out)).not.toBe(planned(first.out));
+
+    // …AND THE INCIDENT IS STILL ONE INCIDENT. This is the assert that was red before the
+    // fix: the standing address holds one letter, and the tick says out loud that it
+    // suppressed a second.
+    expect(lettersIn(mail)).toBe(1);
+    expect(second.out).toContain("letter — SUPPRESSED");
+    expect(second.out).not.toContain("the outcome is posted to the standing address");
+    // The incident itself is untouched, exactly as in the case above.
     expect(second.out).toContain("the commit FAILED");
     expect(dirty(workspace)).toBe(true);
   }, 240_000);
