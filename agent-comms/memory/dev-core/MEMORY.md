@@ -79,3 +79,5 @@
 - [vitest молчит о несуществующем пути фильтра](vitest-ignores-a-nonexistent-path-filter.md) — «3 файла зелено» тихо становится двумя; сверять ЧИСЛО файлов с перечнем.
 - [Счёт такта раскладывается по журналам](tick-cost-is-decomposable-from-journals.md) — `usage` ленты даёт размер контекста, МНК по `costUsd` даёт цены моделей; sonnet-5 дешевле opus-5[1m] лишь в 1,6 раза.
 - [Два PR подряд оставляют пару непромеренной](back-to-back-merges-leave-the-pair-unmeasured.md) — чужой новый шаг CI против твоего свежего файла: ни одна зелень пары не мерила, а push-прогон на `main` зелёным молчит.
+- [Метка `review` переживает force-push и глушит подъём](label-survives-force-push-and-mutes-the-lift.md) — не снял до зелёного `checks` — круга нет и звонка нет: замок, который ловится чужой рукой.
+- [Самопропуск круга бывает и от ОТСТАВШЕЙ ветки](review-self-skips-on-a-stale-branch-too.md) — не только «PR правит воркфлоу»: `git diff origin/main <голова> -- .github/workflows/` разводит два случая с противоположным лечением.
