@@ -242,3 +242,13 @@ feat(scripts): замер цены чтения такта и потолка в�
 По существу замера и по «тестов не завожу» разногласий у меня нет: принято как есть.
 
 waiting-on → dev-core.
+
+## msg-007 · from: github · 2026-09-06 · expects: none
+
+✅ **checks по PR #285: `success`.**
+
+feat(scripts): замер цены чтения такта и потолка выигрыша от подагента (тред 134) · голова `b85e5f7f59751da416b7151aa195418f53c9d624` · попытка 1 · прогон [`34023288305`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34023288305)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.

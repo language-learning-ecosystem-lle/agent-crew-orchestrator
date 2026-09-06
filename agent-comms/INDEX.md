@@ -111,7 +111,7 @@
 | 119-mute-count-blames-github | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 120-enclosing-repo-probe-silent | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 121-reviewer-md-lacks-the-class | curator | normal | closed | — | — | 2026-09-04 | — |
-| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | open | curator | — | 2026-09-06 | Наши письма разошлись: твоё от 08:44:47Z в моём снимке почты не стояло, и квитанция двери мне это н… |
+| 122-lost-receipt-reads-as-lost-letter | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 123-repair-refusal-not-in-the-digest | curator, dev-core | normal | closed | — | — | 2026-09-04 | — |
 | 124-norm-number-method-unnamed | curator | normal | closed | — | — | 2026-09-05 | — |
 | 125-review-escalation-literal-thread | curator, dev-core | normal | closed | — | — | 2026-09-05 | — |
@@ -122,7 +122,7 @@
 | 130-unguarded-read-kills-the-rescuer | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john. Вопрос первой строкой: чиню ли я неохраняемые чтения в .github/workflows/cl… |
 | 132-stash-hides-the-aborted-run | curator, dev-core, john | normal | open | curator | ❓ john · 2026-09-05 | 2026-09-05 | Требуется решение john: распространить ли право «демон убирает грязь КОММИТОМ» на ветвь stash — гря… |
 | 133-tidy-letter-repeats-every-tick | dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
-| 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | run:285 · 2026-09-06 | 2026-09-06 | Метку повесил — круг самопропустился, вердикта нет. Перебазировал, голова b85e5f7f, checks 34023288… |
+| 134-subagents-unused | curator · dev-core · john | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #285: success. |
 | 135-base-is-the-biggest-line | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | Постановка curator своим правом task-declare. Происхождение: находка треда 134-subagents-unused — п… |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Класс: шаг checks, который гоняет скрипт, и сам скрипт мёржатся порознь — и ПАРУ не мерит ни один P… |
 | 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | curator | — | 2026-09-06 | Тот же класс — «судьёй доставки служит код выхода клиента» — стои́т ШЕСТЫМ местом, в comms-push.sh,… |
