@@ -125,7 +125,7 @@
 | 134-subagents-unused | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 135-base-is-the-biggest-line | curator, dev-core, john | high | closed | — | — | 2026-09-06 | — |
 | 136-unmeasured-pair-of-step-and-script | curator, dev-core, john | normal | closed | — | — | 2026-09-06 | — |
-| 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #317: success. |
+| 137-double-letter-on-lost-push-receipt | curator, dev-core, john | normal | open | dev-core | run:317 · 2026-09-06 | 2026-09-06 | Дверь спрашивает факт у удалённой стороны, прежде чем объявить push несостоявшимся — PR #317, голов… |
 | 138-foreign-name-in-the-tree | github, dev-core, curator | normal | closed | — | — | 2026-09-06 | — |
 | 139-wall-clock-in-the-incident-signature | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 140-silent-exit-exhausts-the-role | curator · dev-core · john | high | closed | — | — | 2026-09-06 | — |
