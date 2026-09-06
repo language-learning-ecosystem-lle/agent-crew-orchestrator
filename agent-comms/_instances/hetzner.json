@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T14:17:17.299Z",
+  "writtenAt": "2026-09-06T14:18:22.452Z",
   "roles": [
     "curator",
     "dev-core",
@@ -17,7 +17,7 @@
     {
       "role": "curator",
       "thread": "145-base-cost-plays-yesterday-with-todays-template",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-06T14:54:40Z"
     }
   ]
