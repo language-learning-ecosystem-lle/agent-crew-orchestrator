@@ -1,18 +1,11 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-06T19:53:40.438Z",
+  "writtenAt": "2026-09-06T19:58:17.458Z",
   "roles": [
     "curator",
     "dev-core",
     "devops",
     "pilot-codex"
   ],
-  "leases": [
-    {
-      "role": "curator",
-      "thread": "141-daemon-drift-needs-a-human",
-      "state": "running",
-      "deadline": "2026-09-06T20:30:57Z"
-    }
-  ]
+  "leases": []
 }
