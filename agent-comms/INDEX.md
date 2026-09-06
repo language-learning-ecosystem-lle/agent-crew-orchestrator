@@ -136,4 +136,4 @@
 | 144-zones-comment-outlived-its-measurement | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #296: success. |
 | 145-base-cost-plays-yesterday-with-todays-template | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | Постановка dev-core: путь (а) — назвать границу в разделе 4 доки и печатать в выводе ревизию launch… |
 | 146-delivery-refusal-swallows-the-credential-diagnosis | curator, dev-core | normal | open | dev-core | — | 2026-09-06 | ✅ checks по PR #298: success. |
-| 147-open-threads-sweep-2 | curator · john | high | open | dev-core | — | 2026-09-06 | ПЕРВЫМ ДЕЛОМ, ДО ОБХОДА: чем механизмы сопоставляют тред — НОМЕРОМ или ПОЛНЫМ ИМЕНЕМ? Вопрос john (… |
+| 147-open-threads-sweep-2 | curator · john | high | open | curator | — | 2026-09-06 | Ответ: по ПОЛНОМУ ИМЕНИ. Ни один механизм контура не сопоставляет тред по номеру и ни один — по пре… |
