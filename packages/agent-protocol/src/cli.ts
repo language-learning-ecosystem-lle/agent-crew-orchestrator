@@ -4384,18 +4384,30 @@ const newThread = (argv: readonly string[]): void => {
   // directory names of the mail are the whole check — cheap, and it is the only place
   // a number is handed out. Names starting with `_` are the derived state of the
   // branch (`_instances/`), not threads.
-  const existingThreads = existsSync(root)
-    ? readdirSync(root, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_"))
-        .map((entry) => entry.name)
-    : [];
-  const taker = threadNumberTaker(id, existingThreads);
-  if (taker !== undefined) {
-    fail(
-      `the number of thread '${id}' is already taken by '${taker}' — a thread number is its short address, pick the next free one`,
-      2,
-    );
-  }
+  //
+  // AND IT IS A QUESTION, NOT AN ANSWER, BECAUSE THE FEED MOVES UNDER IT (thread 159).
+  // Until now it was asked ONCE, here, against the directory names on THIS disk — and
+  // this disk is whatever the last fetch left behind. Delivery fetches inside the
+  // attempt; the re-check it ran after that fetch asked `existsSync(threadDir)`, which
+  // is the FULL id and not the number. So the two halves disagreed: the number was
+  // judged against a stale feed and never judged again against the fresh one. That is
+  // the shape of the collisions measured on 06.09 and 07.09 — `144`/`144` ten minutes
+  // apart and `156`/`156` inside one hour — where two writers hold the same number in
+  // hand and neither is looking at the other's push yet. The whole check is therefore a
+  // closure, called both before the work (cheap, refuses without touching git) and again
+  // inside the attempt, where the answer is finally about the feed the write lands on.
+  const numberTaker = (): string | undefined => {
+    const existingThreads = existsSync(root)
+      ? readdirSync(root, { withFileTypes: true })
+          .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_"))
+          .map((entry) => entry.name)
+      : [];
+    return threadNumberTaker(id, existingThreads);
+  };
+  const numberTakenBy = (taker: string): string =>
+    `the number of thread '${id}' is already taken by '${taker}' — a thread number is its short address, pick the next free one`;
+  const taker = numberTaker();
+  if (taker !== undefined) fail(numberTakenBy(taker), 2);
 
   const text = readFile(required(argv, "--body-file"), "body of the first message");
   const title = required(argv, "--title");
@@ -4529,6 +4541,16 @@ const newThread = (argv: readonly string[]): void => {
         if (existsSync(threadDir)) {
           throw new DeliveryRefusedError(
             `thread '${id}' appeared in the feed while we were delivering — somebody took the id first. Nothing was written; pick the next free number`,
+          );
+        }
+        // AND THE NUMBER IS ASKED AGAIN, HERE, WHERE THE FEED IS FRESH (thread 159). The
+        // line above catches the same id; a collision is the same NUMBER under another
+        // slug, which is a different directory and passes it untouched. This is the only
+        // point in the command that has seen the other writer's push.
+        const raced = numberTaker();
+        if (raced !== undefined) {
+          throw new DeliveryRefusedError(
+            `${numberTakenBy(raced)}. It was free when this command started and was taken while we were delivering — nothing was written`,
           );
         }
         return {
