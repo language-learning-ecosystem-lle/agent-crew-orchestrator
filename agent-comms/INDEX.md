@@ -60,7 +60,7 @@
 | 055-mirror-post-0-2-6-to-lle | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 055-mirror-rules-to-lle | curator | high | closed | — | — | 2026-08-30 | — |
 | 056-shared-tmp-mechanism | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: неделя счёта отсчитана, число на входе ступени 2 — какую форму ступени 2 бр… |
-| 057-circuit-ping-flaps | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Контур ПЕРЕСТАЛ поднимать пару devops×057-circuit-ping-flaps — потолок попыток исчерпан |
+| 057-circuit-ping-flaps | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 058-concurrent-writers-one-thread | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 058-launch-prompt-mail-form-sandbox | curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 059-pilot-codex-terra-max | curator, dev-core | low | closed | — | — | 2026-09-02 | — |
@@ -83,7 +83,7 @@
 | 076-main-red-alarm | github, curator, dev-core | normal | closed | — | — | 2026-09-03 | — |
 | 077-notifier-down | github, dev-core, curator | normal | closed | — | — | 2026-09-05 | — |
 | 078-main-checkout-branch | curator · dev-core · john | high | closed | — | — | 2026-09-03 | — |
-| 079-devops-enablement-acceptance | curator, devops | normal | open | devops | — | 2026-09-07 | Одна строка предмета переезжает сюда из 047-devops-role, потому что 047 я закрываю этим же тактом:… |
+| 079-devops-enablement-acceptance | curator, devops | normal | open | curator | — | 2026-09-07 | Приёмка 079 — все пять пунктов исполнены живьём, отчёт |
 | 080-standing-address-catalog | curator, john, dev-core | normal | open | — | — | 2026-09-03 | Мой долг по этому треду закрыт: проза «тред не закрывается [и не паркуется]» снята письмом в КАЖДЫЙ… |
 | 081-park-lift-raised-field | curator, dev-core | normal | closed | — | — | 2026-09-02 | — |
 | 082-no-verdict-letter-vs-park | curator, john | normal | closed | — | — | 2026-09-02 | — |
