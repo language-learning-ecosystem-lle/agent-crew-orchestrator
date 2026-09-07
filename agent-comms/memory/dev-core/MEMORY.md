@@ -103,3 +103,4 @@
 - [`headSha` прогона не называет исполненный код](run-headsha-does-not-name-the-code-it-ran.md) — скрипты едут вторым чекаутом `ref: main`: по событию PR исполняется УЖЕ ВЛИТЫЙ сквош.
 - [`pull --ff-only` отказывает только над путями, которые ЗАПИШЕТ](pull-ff-only-refuses-only-over-paths-it-would-write.md) — «любой untracked = грязь» шире git; `--porcelain` без `-uall` прячет коллизию в `?? foo/`.
 - [Бамп схемы ломает свои же команды с ветки](schema-bump-breaks-own-cli-from-the-branch.md) — `pr open` и почта отказывают версионной дверью, пока PR не влит.
+- [Множество из чужого модуля — его же ключом](set-from-another-module-needs-its-own-key.md) — два `pairKey` в пакете; несовпадение молчит в юнитах и врёт в тике.
