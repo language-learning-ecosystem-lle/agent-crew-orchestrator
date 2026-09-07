@@ -13619,6 +13619,42 @@ const orchestratorLog = (argv: readonly string[]): void => {
 };
 
 /**
+ * WHAT `orchestrator stop` WITHOUT `--mode` IS ANSWERED WITH — THE CHOICE, BY BOTH NAMES
+ * (thread 141, john's word of 2026-09-07 ~13:29Z: "we fix it").
+ *
+ * The refusal this replaces said `--mode is not set` and printed this command's own two
+ * forms. Both halves are true and neither is the answer. The question a hand has when it
+ * types `orchestrator stop` is not "which flag did I forget", it is "how do I stop this
+ * thing" — and THE SOFT STOP AN OPERATOR ACTUALLY WANTS IS NOT ON THIS COMMAND AT ALL. It
+ * is `orchestrator down`: the same stop flag, plus the two lines that answer the question
+ * that follows a stop — the PID TO WATCH ("is it gone yet") and that launches stay
+ * enabled. `stop --mode graceful` sets the flag and says neither, so a hand that obeyed
+ * the old refusal was sent to the worse of the two soft stops, by a text that never named
+ * the better one. john stopped the daemon in the field twice on 2026-09-07 and used
+ * `down` both times.
+ *
+ * IN AN OUTAGE PEOPLE READ THE OUTPUT OF THE COMMAND, NOT THE MANUAL (john's argument,
+ * the same word). So the cure travels in the refusal itself, and the two kinds of stop
+ * are named side by side to be CHOSEN between rather than guessed at.
+ *
+ * NOTHING IS STOPPED AND NOTHING IS WRITTEN BY IT, and the exit code says which kind of
+ * "no" this is: `2` is this file's code for the FORM of a call being wrong (`fail(…, 2)`),
+ * while a stop that was asked for properly and then did not happen leaves through `1`.
+ * A hand that did not say which stop it wanted has not suffered a failed stop, and the
+ * two must not be read as one by whatever is looking at the exit code.
+ *
+ * THE FORMS ARE CUT FROM `USAGE` AND NEVER RETYPED (`usageFor`), for the reason `usage.ts`
+ * gives: a refusal that spells a form by hand is the first text to fall behind the code.
+ * `down` comes out first because that is its place in the table, and it is also the one
+ * being reached for.
+ */
+const STOP_MODE_REFUSAL = `'orchestrator stop' will not choose the kind of stop for you: --mode is not set, and the two are different stops. NOTHING HAS BEEN STOPPED AND NOTHING HAS BEEN WRITTEN by this refusal.
+  SOFT, and the one usually wanted — 'orchestrator down': the daemon finishes the sessions it is running and exits at its next tick. It prints the pid to watch and says launches stay enabled.
+  HARD — 'orchestrator stop --mode force --by <who> --reason <why> --thread <slug>': the trace goes to the thread first and the flag second, and the sessions running right now are put down.
+  ('orchestrator stop --mode graceful' sets the same flag as 'down' and prints neither the pid nor the line about launches.)
+${usageFor(USAGE, ["orchestrator down", "orchestrator stop"])}`;
+
+/**
  * A forced stop (S4). `graceful` creates the stop flag: the daemon lets the
  * current session run to its natural terminal state and goes dark (through
  * draining), taking nothing new. `force` posts a TRACE IN THE THREAD (who/why) and
@@ -13632,7 +13668,11 @@ const orchestratorLog = (argv: readonly string[]): void => {
  * that arrives a couple of seconds later, instead of a stop nobody can account for.
  */
 const orchestratorStop = (argv: readonly string[]): void => {
-  const mode = required(argv, "--mode");
+  // NOT `required` — that door answers "flag X is not set", which is the one thing this
+  // caller does not need to be told (`STOP_MODE_REFUSAL` above). Everything downstream of
+  // here is unchanged, `restart` included: it always passes `--mode` explicitly and so
+  // never reaches this refusal.
+  const mode = flag(argv, "--mode") ?? fail(STOP_MODE_REFUSAL, 2);
   if (mode !== "graceful" && mode !== "force") {
     fail(`--mode '${mode}' — allowed values are graceful | force`, 2);
     return;
