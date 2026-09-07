@@ -44,7 +44,7 @@
 | 040-schema-bump-kills-daemon | curator · dev-core · john | high | closed | — | — | 2026-08-29 | — |
 | 041-model-effort-pair | curator, dev-core | normal | closed | — | — | 2026-08-29 | — |
 | 042-unaccepted-turn-silent | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
-| 043-stale-park-reminders | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | ХОД НАЗНАЧЕН РУКОЙ. Тред стои́т без хода с 30.08 — не потому, что о нём забыли, а потому, что двери… |
+| 043-stale-park-reminders | curator · dev-core · john | normal | closed | — | — | 2026-09-07 | — |
 | 044-selfheal-blind-spots | curator · dev-core · john | high | open | — | — | 2026-08-29 | 106 ВЛИТ моей рукой по слову john. Merge-коммит c33d777572b26a64f15e6f60a4b36a7980c1b937, 2026-08-2… |
 | 045-ship-signal-fixes-to-lle | curator · dev-core · john | high | closed | — | — | 2026-08-30 | — |
 | 046-open-threads-sweep | curator · john | high | closed | — | — | 2026-08-29 | — |
