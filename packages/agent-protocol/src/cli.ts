@@ -417,6 +417,11 @@ import {
 import {
   DEFAULT_THREAD_PRIORITY,
   describeOrder,
+  // THE KEY OF A FROZEN PAIR IS THIS ONE (thread 155): the mail has a `pairKey` of its own and
+  // the two spell a pair differently, so a ground judged with the wrong one never matches and
+  // every named ground reads as fallen away. The set comes from `spentCeilings` — the key must
+  // come from the same module, and the daemon test is what caught it.
+  pairKey as frozenPairKey,
   orderCandidates,
   type RankedCandidate,
   rankCandidates,
@@ -689,6 +694,13 @@ import {
   VERDICT_VALUES,
 } from "./thread/message.js";
 import { migrateLegacyThread, verifyMigration } from "./thread/migrate.js";
+import {
+  describeGroundGone,
+  foldGroundNotes,
+  type GroundedPark,
+  groundsGone,
+  judgeParkGround,
+} from "./thread/park-ground.js";
 import { judgeParkNumber } from "./thread/park-number.js";
 import { judgeParkSeen } from "./thread/park-seen.js";
 import { describePrPark } from "./thread/pr-park.js";
@@ -3611,6 +3623,35 @@ const parkMoverFrom = (
 };
 
 /**
+ * THE DOOR OF A NAMED GROUND (thread 155) — `--park-ground <fact>` on both writing commands: the
+ * FACT the park is taken against, in a form the box can ask on its own.
+ *
+ * Two refusals and no third, both about the flag and neither about the park: the value must be a
+ * ground this version can read (`judgeParkGround`), and a ground must come WITH a park — a fact
+ * named on a message that freezes nothing is a check nobody will ever run, written into a feed
+ * that cannot take it back. The absence of the flag is never refused: that is the park of every
+ * day, and this field is for the rest (see `park-ground.ts`).
+ *
+ * No permission gates it, for the reason none gates a park.
+ */
+const parkGroundFrom = (
+  argv: readonly string[],
+  input: { readonly parkedOn: string | undefined },
+): string | undefined => {
+  const value = flag(argv, "--park-ground");
+  if (value === undefined) return undefined;
+  if (input.parkedOn === undefined) {
+    return fail(
+      `--park-ground '${value}' without '--parked-on': this field names the fact THE PARK is taken against, and there is no park on this message. Either park the turn ('--parked-on <person|pr:N|run:N>') or leave the ground off — a ground with nothing to qualify is a check that never runs`,
+      2,
+    );
+  }
+  const verdict = judgeParkGround(value);
+  if (!verdict.ok) return fail(verdict.reason, 2);
+  return verdict.ground.raw;
+};
+
+/**
  * THE DOOR OF A VERDICT (thread 042, decision of john 2026-08-29) — `--verdict <approve|
  * needs-fixes>` together with `--pr <number>`, on both writing commands.
  *
@@ -3957,6 +3998,7 @@ const newMessage = (argv: readonly string[]): void => {
   const parkedOn = parkedOnFrom(argv, { registry });
   const delivers = deliversFrom(argv, { registry });
   const parkMover = parkMoverFrom(argv, { registry });
+  const parkGround = parkGroundFrom(argv, { parkedOn });
   // A PARK BY MEANING THAT IS NOT A PARK BY FIELD (thread 022) — checked here, where the flags
   // can still be retyped, because the feed is append-only and such a header cannot be taken
   // back: it names its own author as the one who acts next, asks for something, and says
@@ -4135,6 +4177,7 @@ const newMessage = (argv: readonly string[]): void => {
       ...(launchDirective === undefined ? {} : { launch: launchDirective }),
       ...(priority === undefined ? {} : { priority }),
       ...(parkedOn === undefined ? {} : { parkedOn }),
+      ...(parkGround === undefined ? {} : { parkGround }),
       ...(delivers === undefined ? {} : { delivers }),
       ...(parkMover === undefined ? {} : { parkMover }),
       ...(mergedPr === undefined ? {} : { mergedPr }),
@@ -4375,6 +4418,10 @@ const newThread = (argv: readonly string[]): void => {
   // without a word into an append-only feed.
   const delivers = deliversFrom(argv, { registry });
   const parkMover = parkMoverFrom(argv, { registry });
+  // AND THE SAME GROUND, by the same door (thread 155), for the reason `delivers` is here: a flag
+  // one command of the pair parses and the other swallows goes into an append-only feed without
+  // a word (the lesson of 075).
+  const parkGround = parkGroundFrom(argv, { parkedOn });
   // AND THE SAME VERDICT, by the same door (thread 042), for the reason `delivers` is here and
   // not for a use case: the lesson of 075 is that a flag one command of the pair parses and the
   // other swallows goes into an append-only feed without a word. What the field does in an
@@ -4432,6 +4479,7 @@ const newThread = (argv: readonly string[]): void => {
         expects,
         ...(waitingOn === undefined ? {} : { waitingOn }),
         ...(parkedOn === undefined ? {} : { parkedOn }),
+        ...(parkGround === undefined ? {} : { parkGround }),
         ...(delivers === undefined ? {} : { delivers }),
         ...(parkMover === undefined ? {} : { parkMover }),
         ...verdictFields,
@@ -12310,6 +12358,11 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
   // The run of identical `gh` refusals, carried across ticks in memory AND on disk: the
   // memory is what makes the fold a fold, the file is what the courier and the operator
   // frame read. A daemon that restarts picks the file back up (see the read below).
+  // THE GROUNDS ALREADY NAMED (thread 155) — the memory that makes the note once per transition
+  // rather than once per tick. In memory and not on disk deliberately: a restart of the daemon
+  // says each standing gone-ground once more, which is the cheapest possible failure of this
+  // feature and the one an operator wants after a restart anyway.
+  let groundsSaid: ReadonlySet<string> = new Set<string>();
   let ghOutage: GhOutage | undefined = existsSync(paths.mergeReadyOutage)
     ? parseGhOutage(readFile(paths.mergeReadyOutage, "merge-ready outage state"))
     : undefined;
@@ -13171,6 +13224,12 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     for (const stale of staleRunParks(threads, { now, ttlSeconds: runParkTtl })) {
       err(`agent-protocol: daemon — ${describeStaleRunPark(stale, runParkTtl)}`);
     }
+    // A PARK WHOSE NAMED GROUND HAS FALLEN AWAY IS SAID ONCE (thread 155). It is a NOTE and
+    // nothing else: the park still stands, still freezes the thread, and only a hand lifts it —
+    // what changes is that "the fact this was taken against is gone" stops being answerable by
+    // memory alone. The set of frozen pairs it is judged against is the very one the queue below
+    // is planned from (`outOfAttempts`), so the sentence and the plan cannot disagree; and the
+    // fold is what keeps it from being said at every tick for a park that stands for days.
     const parked = parkedThreads(threads, { now, ttlSeconds: runParkTtl });
     const events = existsSync(journalPath)
       ? parseJournal(readFile(journalPath, "orchestrator journal"))
@@ -13180,6 +13239,17 @@ const orchestratorDaemon = async (argv: readonly string[]): Promise<void> => {
     // about which pairs are spent. Without it the row of a pair frozen three days ago is
     // character for character the row of one that is next in line.
     const outOfAttempts = spentCeilings(foldLeases(events, now, gates.maxAttempts.value));
+    const gone: readonly GroundedPark[] = groundsGone(
+      threads.map((thread) => ({
+        thread: thread.id,
+        parking: parkingOf(thread, mergedPrs(threads)),
+      })),
+      { frozen: new Set(outOfAttempts.keys()), key: frozenPairKey },
+    );
+    const groundNotes = foldGroundNotes(groundsSaid, gone);
+    groundsSaid = groundNotes.seen;
+    for (const entry of groundNotes.say)
+      err(`agent-protocol: daemon — ${describeGroundGone(entry)}`);
     for (const line of describeOrder(
       candidates,
       parked,

@@ -82,6 +82,13 @@ export type NewMessageInput = {
   readonly delivers?: string;
   /** Who will move the event this turn is parked behind (thread 061, form (B)). */
   readonly parkMover?: string;
+  /**
+   * THE FACT THE PARK IS TAKEN AGAINST (thread 155) — carried through this door and not only
+   * through the flags for the reason `parked-on` itself is: both writing commands come through
+   * here, and a field one of them passes and the other drops goes into an append-only feed
+   * without a word (the lesson of 075).
+   */
+  readonly parkGround?: string;
   /** The PR this message announces as merged — it lifts the parks that wait on it (thread 023). */
   readonly mergedPr?: number;
   /**
@@ -173,6 +180,7 @@ export const planNewMessage = (input: NewMessageInput): PlannedFile => {
     ...(input.launch === undefined ? {} : { launch: input.launch }),
     ...(input.priority === undefined ? {} : { priority: input.priority }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
+    ...(input.parkGround === undefined ? {} : { parkGround: input.parkGround }),
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
     ...(input.parkMover === undefined ? {} : { parkMover: input.parkMover }),
     ...(input.mergedPr === undefined ? {} : { mergedPr: input.mergedPr }),
@@ -237,6 +245,8 @@ export type NewThreadInput = {
    * same reason, and judged in `planNewMessage` with everything else about the pair.
    */
   readonly parkMover?: string;
+  /** The fact the park on the opening message is taken against (thread 155). */
+  readonly parkGround?: string;
   /**
    * The verdict of a review round and its PR (thread 042) — passed through for the reason
    * `delivers` and `parked-on` are: the first message is a message, and a rule held by one
@@ -289,6 +299,7 @@ export const planNewThread = (input: NewThreadInput): PlannedFile[] => {
     expects: input.expects,
     ...(input.waitingOn === undefined ? {} : { waitingOn: input.waitingOn }),
     ...(input.parkedOn === undefined ? {} : { parkedOn: input.parkedOn }),
+    ...(input.parkGround === undefined ? {} : { parkGround: input.parkGround }),
     ...(input.delivers === undefined ? {} : { delivers: input.delivers }),
     ...(input.parkMover === undefined ? {} : { parkMover: input.parkMover }),
     ...(input.verdict === undefined ? {} : { verdict: input.verdict }),
