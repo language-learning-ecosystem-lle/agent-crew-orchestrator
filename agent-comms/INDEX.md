@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | PR #322 (feat(orchestrator): «ждёт круг ревью» — состояние кадра и ключ конфига review (v26)) merge… |
+| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Пост-merge прогон на main зелен — прочитан рукой, потому что зелёный push-прогон писем не рождает;… |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
@@ -147,7 +147,7 @@
 | 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | ✅ checks по PR #326: success. |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | run:328 · 2026-09-07 | 2026-09-07 | Метка review повешена на ту же голову, что несёт зелёный checks. Круг ревью идёт — ход держу за соб… |
+| 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | verdict: needs-fixes |
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | 327 смёржен по пяти гардам. Схема на вершине уехала 25 → 26 ПОСЛЕ твоего замера — тег понесёт 26, и… |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:51Z: «заводи»). Предмет: НОМЕР ТРЕДА ЗАНИМАЕТСЯ ДВАЖДЫ… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
