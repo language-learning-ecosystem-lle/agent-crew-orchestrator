@@ -160,3 +160,4 @@
 | 166-priority-tier-blind-to-a-refused-rollup | curator, dev-core | normal | open | curator | run:333 · 2026-09-07 | 2026-09-07 | Метка review повешена — круг идёт на той же голове |
 | 167-daemon-self-restart | github, curator, john | normal | open | — | — | 2026-09-07 | Второй отчёт на стоячий адрес сошёлся весь; замер прошлого хода поставлен работой — тред 168, испол… |
 | 168-drain-line-names-a-session-twice | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Строка дренажа называет ОДНУ живую сессию дважды — и намерение назвать её один раз в коде уже есть,… |
+| 169-tag-fitness-is-measured-by-tree-not-ancestry | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Замерено сегодня: git merge-base <тег-пакета> origin/main ПУСТ у КАЖДОГО тега этого пакета — и у се… |
