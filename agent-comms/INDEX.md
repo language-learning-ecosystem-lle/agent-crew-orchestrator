@@ -151,7 +151,7 @@
 | 158-cut-the-tag-for-the-consumer | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 159-thread-number-has-no-door | curator · dev-core · john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN: заводить ли сторожа на дубли номеров? Это НОВЫЙ ПОВОД ЗВОНИТЬ, то есть норм… |
 | 160-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
-| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | PR #332 смёржен в main squash-коммитом 73e9abccea37231cad0cc4cae3917b41055f8600 в 2026-09-07T19:21:… |
+| 160-merge-gate-falls-whole-on-a-forbidden-node | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Тег agent-protocol-v0.2.12 срезан с origin/main и отправлен на origin: коммит 8bb6df263a2432d5793e0… |
 | 161-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 162-daemon-self-restart | github, curator, john | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | Требуется ack john (решения не требуется): отчёт ящика о самоперезапуске проверен фактами — все шес… |
 | 163-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
