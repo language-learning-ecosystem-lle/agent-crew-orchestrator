@@ -2423,6 +2423,17 @@ agent-protocol new-thread   --root <comms> --ref <ref> --id <NNN-slug> --title <
                             # the NUMBER is refused if a thread already holds it (029): `NNN` is a short
                             # address, and `029` handed out twice made "тред 029" mean two things.
                             # nothing is renamed after the fact — the full id stays unique, the door changes
+                            # AND IT IS ASKED TWICE — before the work and again INSIDE the delivery, after
+                            # the fetch (159). Once was not enough: the first question is about the
+                            # directory names on the WRITER'S disk, and that disk is whatever the last
+                            # fetch left there, while the only check repeated after the fetch asked the
+                            # FULL id (`existsSync`) — and a collision is the same number under a DIFFERENT
+                            # slug, which is a different directory. So the number was judged against a
+                            # stale feed and never against the one the write lands on. Four pairs were
+                            # measured living in the branch (`048`, `055`, `144` ten minutes apart, `156`
+                            # inside one hour); the second refusal says so — "taken while we were
+                            # delivering" — and, like the first, names the taker so the next free number
+                            # can be picked without going to look for the collision
                             # AND THE FORM of the id is refused BY NAME (086): the id must be `NNN-<slug>` —
                             # three digits and a dash — because that is the only shape the walker of the mail
                             # reads. `--id 047.1-…` used to be accepted, pushed and reported as delivered,
