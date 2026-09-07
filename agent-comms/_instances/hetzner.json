@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T11:06:01.991Z",
+  "writtenAt": "2026-09-07T11:07:16.506Z",
   "roles": [
     "curator",
     "dev-core",
@@ -11,7 +11,7 @@
     {
       "role": "curator",
       "thread": "079-devops-enablement-acceptance",
-      "state": "running",
+      "state": "draining",
       "deadline": "2026-09-07T11:39:37Z"
     },
     {
