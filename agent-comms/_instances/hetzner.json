@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T15:56:52.043Z",
+  "writtenAt": "2026-09-07T15:57:50.798Z",
   "roles": [
     "curator",
     "dev-core",
@@ -8,12 +8,6 @@
     "pilot-codex"
   ],
   "leases": [
-    {
-      "role": "curator",
-      "thread": "063-state-model-rewrite",
-      "state": "draining",
-      "deadline": "2026-09-07T16:30:25Z"
-    },
     {
       "role": "dev-core",
       "thread": "157-pr-open-body-inside-checkout",
