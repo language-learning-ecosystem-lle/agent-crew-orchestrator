@@ -141,4 +141,4 @@
 | 149-frozen-pair-writes-to-the-feed | curator, dev-core | normal | closed | — | — | 2026-09-06 | — |
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
-| 152-box-setup-0-1a-stale | curator, devops | normal | open | curator | — | 2026-09-07 | §0.1a — три места исправлены и закоммичены; доставка (§0.1b) отказала на pr open |
+| 152-box-setup-0-1a-stale | curator, devops | normal | open | curator | run:320 · 2026-09-07 | 2026-09-07 | Условие 2 принято, доставка исполнена моей рукой — PR #320 открыт; и четвёртое ложное место нашлось… |
