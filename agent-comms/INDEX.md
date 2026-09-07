@@ -67,7 +67,7 @@
 | 060-derive-fails-whole-branch | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 061-unreachable-event-park | curator · dev-core · john | high | closed | — | — | 2026-09-02 | — |
 | 062-contour-boundary | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
-| 063-state-model-rewrite | curator · dev-core · john | high | open | curator | — | 2026-09-07 | Пост-merge прогон на main зелен — прочитан рукой, потому что зелёный push-прогон писем не рождает;… |
+| 063-state-model-rewrite | curator · dev-core · john | high | closed | — | — | 2026-09-07 | — |
 | 064-forget-the-consumer | curator · dev-core · john | normal | closed | — | — | 2026-09-06 | — |
 | 065-cli-loads-its-own-secrets | curator · dev-core · john | normal | closed | — | — | 2026-09-03 | — |
 | 066-cost-of-prose | curator · dev-core · john | normal | closed | — | — | 2026-09-02 | — |
