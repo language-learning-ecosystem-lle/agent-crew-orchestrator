@@ -103,3 +103,4 @@
 - [Отчёт под чужим uid мерится структурой](foreign-uid-report-verified-by-structure.md) — отказ ОС неизбежен по `stat`/`/run/user/<uid>`; «без `--write`» — по `capabilities.log`
 - [Звонок класса дайджеста — в хвосте курьерской строки](digest-bell-is-read-from-the-courier-tail.md) — один звонок на 22-часовой эпизод это норма
 - [`run list --limit N` отдаёт НОВЕЙШИЕ N](run-list-truncates-to-the-newest-n.md) — усечение молчит и врёт в сторону «ничего не было»: мерить посуточно
+- [Сухой прогон двери почты бесплатен](mail-door-dry-run-measures-for-free.md) — без `--write` дверь судит и молчит в ленту; контроль — числом писем
