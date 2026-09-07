@@ -1,6 +1,6 @@
 {
   "instance": "hetzner",
-  "writtenAt": "2026-09-07T11:40:49.903Z",
+  "writtenAt": "2026-09-07T11:41:22.687Z",
   "roles": [
     "curator",
     "dev-core",
@@ -13,12 +13,6 @@
       "thread": "073-notifiers-frozen-in-own-contour",
       "state": "running",
       "deadline": "2026-09-07T12:17:20Z"
-    },
-    {
-      "role": "dev-core",
-      "thread": "153-untracked-file-freezes-selfheal",
-      "state": "draining",
-      "deadline": "2026-09-07T12:36:03Z"
     }
   ]
 }
