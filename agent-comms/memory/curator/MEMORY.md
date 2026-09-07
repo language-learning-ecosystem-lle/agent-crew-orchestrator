@@ -106,3 +106,4 @@
 - [Сухой прогон двери почты бесплатен](mail-door-dry-run-measures-for-free.md) — без `--write` дверь судит и молчит в ленту; контроль — числом писем
 - [Причина пропуска в системном письме — константа](system-letter-explains-its-own-gap-by-fixed-prose.md) — мерь файлом и веткой кода: `git show <тот sha>:<путь>`
 - [Перенос парка вперёд ПЕРЕОБЪЯВЛЯЕТ его](carrying-a-park-forward-redeclares-it.md) — `since`/`question`/`holder` новые, `park-ground` пропадает молча
+- [Проза, отпускающая ход, требует заголовка](prose-releasing-the-turn-needs-the-header.md) — «ход никому» без `--waiting-on "—"` дверь отвергает; бэктики она не читает
