@@ -282,6 +282,41 @@ the behaviour of protocol version 17 unchanged. `--power-docs` still ADDS to the
 what the config does not know yet. The full reasoning, and why the list is read from the
 BASE of a pull request, is with the command.
 
+### What the round of review is called here — `review`
+
+An optional top-level object with both halves required together: `label` is the GitHub
+label a role hangs on a pull request to open a round, and `workflow` is the `name:` of the
+workflow that answers it (the first line of the workflow file, not the file's name).
+
+```json
+"review": { "label": "review", "workflow": "Claude PR Review" }
+```
+
+It is read by ONE reader: the merge-ready tier of the queue (`orchestrator status` and the
+tick, one computation). A pull request that carries the label and has no verdict against
+the head it has NOW puts its thread into a state the frame had no word for — until protocol
+version 26 that pair read as `released (completed)`, "finished — the turn was passed",
+while its package stood open. The row now says so:
+
+```
+queue 1/1: dev-core×063-state-model-rewrite — priority normal, waiting since … · ⏳ WAITING
+FOR A ROUND OF REVIEW — the label is on PR #240 and no verdict stands against the head it
+has now. Whether the round is still running or the label was left on a head that has since
+moved is NOT asked (that is an Actions call per pull request per tick) — …
+```
+
+**It SAYS a state and moves nobody.** The order of the queue is bit for bit the same with
+the key and without it: ordering by it would hand a machine the `thread-priority` right and
+give "who goes next" a second answer.
+
+**Absence is silence, not a default.** Without the key the tier says nothing about rounds of
+review — `review` is one repository's word, and a package that guessed it would be inventing
+project knowledge, exactly as with `powerDocuments` above.
+
+**The merge door does not read it.** `merge-gate` keeps taking the reviewer's workflow as
+`--review-workflow` on its command line; the door is invoked by hand against a repository
+this config may not even describe.
+
 ### How this box invokes the mail — `mailCommand`
 
 An optional top-level string: the prefix a raised session types before `thread show` and

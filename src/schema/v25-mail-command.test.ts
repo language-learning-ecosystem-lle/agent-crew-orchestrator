@@ -55,10 +55,6 @@ describe("mailCommand — the invocation is the project's to declare", () => {
 });
 
 describe("the version this costs, and the tables that record it", () => {
-  it("is the version this build writes", () => {
-    expect(CURRENT_PROTOCOL_VERSION).toBe(25);
-  });
-
   it("answers a v25 config on a v24 build with 'restart required', not with 'invalid'", () => {
     // The whole reason an optional key costs a number: a strict schema one field behind
     // answers `Unrecognized key: mailCommand`, which is invalid, true and useless — the
