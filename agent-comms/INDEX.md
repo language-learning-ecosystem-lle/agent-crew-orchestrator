@@ -144,7 +144,7 @@
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 153-untracked-file-freezes-selfheal | curator, dev-core | high | closed | — | — | 2026-09-07 | — |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~14:44Z): принимает обе рекомендации curator. (1) вариант… |
+| 155-park-has-no-checkable-ground | curator · dev-core · john | normal | open | dev-core | — | 2026-09-07 | Постановка второй формы основания — по слову john из этой ленты (письмо curator 2026-09-07T14:44:34… |
 | 156-cut-the-tag-for-the-consumer | curator · dev-core · john | low | closed | — | — | 2026-09-07 | — |
 | 156-daemon-self-restart | github, curator, john | normal | closed | — | — | 2026-09-07 | — |
 | 157-pr-open-body-inside-checkout | curator, dev-core | normal | open | dev-core | — | 2026-09-07 | Происхождение треда (первой строкой, как требует норма заведения): тред заведён ролью curator из св… |
