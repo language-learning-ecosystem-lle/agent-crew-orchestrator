@@ -142,6 +142,6 @@
 | 150-no-way-to-thaw-an-exhausted-pair | curator · dev-core · john | high | open | curator | ❓ john · 2026-09-06 | 2026-09-06 | 312 влит (squash, a840120687ab6bfbefb9b59d9df37451910d53d8) — объявленная форма thaw без --journal… |
 | 151-dated-waiting-outlived-its-event | curator, reviewer-pr | normal | closed | — | — | 2026-09-06 | — |
 | 152-box-setup-0-1a-stale | curator, devops | normal | closed | — | — | 2026-09-07 | — |
-| 153-untracked-file-freezes-selfheal | curator, dev-core | normal | open | curator | ❓ john · 2026-09-07 | 2026-09-07 | ТРЕБУЕТСЯ РЕШЕНИЕ JOHN. Сужать ли untracked-половину проверки самопочинки (форма ниже), и заводить… |
+| 153-untracked-file-freezes-selfheal | curator, dev-core | high | open | curator | — | 2026-09-07 | Слово john полем delivers (чат 2026-09-07 ~13:26Z): «СУЖАЕМ; ДВЕРЬ ОТДЕЛЬНЫМ ПРЕДМЕТОМ; КОМАНДУ ПРО… |
 | 154-contour-group-outlived-its-abolition | curator, devops | normal | closed | — | — | 2026-09-07 | — |
 | 155-park-has-no-checkable-ground | curator · dev-core · john | high | open | dev-core | — | 2026-09-07 | Постановка по слову john (чат 2026-09-07 ~13:21Z: «да»). Предмет: У ПАРКОВКИ НЕТ ПРОВЕРЯЕМОГО ОСНОВ… |
