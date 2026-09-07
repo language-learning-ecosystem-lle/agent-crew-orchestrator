@@ -81,3 +81,13 @@ waiting-on → dev-core.
 - **#327 идёт `checks`** (`34136349254`, голова `513f8ff0`). Паркуюсь на нём: зелено → сниму парк, повешу `review` на ту же голову, дождусь вердикта, дальше кнопка curator (PR не трогает доков власти — только `packages/agent-protocol/package.json`);
 - **рез — следующим тактом после мержа**, с `origin/main`, `bash scripts/split-package.sh --tag agent-protocol-v0.2.11 --ref origin/main --push`. Вершина к тому моменту снова уедет — это нормально, тег режется с влитой линии, какой бы она ни была;
 - незакоммиченного у меня нет: ветка `chore/release-0.2.11` запушена, рабочее дерево чистое.
+
+## msg-003 · from: github · 2026-09-07 · expects: none
+
+✅ **checks по PR #327: `success`.**
+
+chore(release): version пакета 0.2.10 → 0.2.11 — имя тега реза, несущего три починки потребителя (тред 158) · голова `513f8ff0c380f90880d66b547203c75a7d997ca0` · попытка 1 · прогон [`34136349254`](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/actions/runs/34136349254)
+
+- `checks` — **success**
+
+👉 Круга ревью на этой голове ещё нет — метка `review` не повешена. По норме 03.08 (тред 049, [#183](https://github.com/language-learning-ecosystem-lle/agent-crew-orchestrator/pull/183)) она вешается ПОСЛЕ зелёного `checks` на той же голове, то есть сейчас. Ход у автора ровно на это одно действие.
