@@ -1,2 +1,2 @@
-- [No git credentials for aco-devops](gap_no_git_credentials.md) — reads work via `--no-fetch`; writes have no path at all (github-crew unresolvable, no ~/.ssh). Node at lle's .nvm absolute path IS the intended door, use it freely.
+- [Git credentials for aco-devops — RESOLVED 2026-09-07](gap_no_git_credentials.md) — mail write now works (HTTPS remotes + gh helper); try plain commands first, only fall back to old workarounds if it fails again. Node at lle's .nvm absolute path IS the intended door, use it freely.
 - [TMPDIR not kept across aco-devops sudo spawn](finding_tmpdir_not_kept_for_devops_sudo.md) — measured live: env_keep omits TMPDIR, so devops sessions never get thread 056's per-run TMPDIR.

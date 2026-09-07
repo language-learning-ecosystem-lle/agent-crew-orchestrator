@@ -1,11 +1,39 @@
 ---
 name: gap-no-git-credentials
-description: aco-devops has no git/SSH credential for origin (no ~/.ssh, github-crew alias unresolvable) — the mail CLI cannot fetch/push under this identity, on ANY thread. Node at /home/lle/.nvm/versions/node/v24.18.0/bin/node IS the intended runtime (box-setup.md §0.1a documents this exact o+x-traversal mechanism by design — not a workaround) — use its absolute path freely, `--no-fetch` lets reads succeed against the last-known local ref. Writes cannot be delivered at all: `--write` fails atomically (clean, no partial state) at the fetch-before-write step; `--write --no-push` instead leaves an UNCOMMITTED file in the shared mail checkout that must be `rm`'d, never committed by hand — do not retry this, it's settled. Only john can close the real gap (scoped deploy key/token provisioning for aco-devops). READ THIS FILE'S TAIL BEFORE diagnosing anything — confirmed 16 times across 6 threads (047, 070, 079, 056, ...) since 2026-09-02T23:29Z, still present as of 2026-09-03T02:19Z. Stop re-deriving it.
+description: "RESOLVED 2026-09-07 — do not act on the old summary below without reading the tail. aco-devops's git/mail write path now WORKS: both worktree remotes were switched from `git@github-crew:`/SSH to `https://github.com/...` (via `url.<url>.insteadof` in `~/.gitconfig`, present by 2026-09-07T11:07 local) and `new-message --write` succeeded end-to-end (committed and pushed to origin/comms) on thread 079 at 2026-09-07T10:19:48Z — no `--no-fetch`, no workaround. Node at /home/lle/.nvm/versions/node/v24.18.0/bin/node is still the correct absolute-path door (box-setup.md §0.1a, intended design, not a workaround) — that part of the old guidance stands. Everything about SSH/`github-crew` DNS failures and `--write` being structurally broken (2026-09-02 through 2026-09-06) is now HISTORY, not current state — verify with a live `new-message --write` before trusting either version."
 metadata:
   type: project
   originSessionId: a51aae8f-85a7-4451-97a3-d87692087a16
-  modified: 2026-09-06T10:26:18.599Z
+  modified: 2026-09-07T10:20:19.118Z
 ---
+
+**RESOLVED 2026-09-07T10:19:48Z, thread `079-devops-enablement-acceptance` (18th overall on this
+gap, 7th on this thread) — the fix landed between the 2026-09-06T10:26Z entry and this run.**
+`id` still shows `uid=1001(aco-devops)`, but two things changed on the box since the last
+confirmation: (1) groups are now `contour-aco` (1005) + `contour-lang` (1006), replacing the single
+`contour` (1002) group seen in every prior entry — a contour-split happened; (2) `~/.gitconfig` for
+`aco-devops` now exists (created 2026-09-07T11:07 local) with `url.https://github.com/.insteadof =
+git@github.com:` AND `= git@github-crew:`, plus a `credential.https://github.com.helper = gh auth
+git-credential` line. `gh auth status` still says not logged in, yet `git fetch origin main` in the
+mail checkout succeeded anonymously (public-repo read), and — the real test — `new-message --write`
+on thread `079` returned `sent ... — committed and pushed to origin/comms`, exit 0. Re-read the
+thread afterward and the message was there. **This is not a stale-ref illusion**: no `--no-fetch`
+was used, the push genuinely landed on `origin/comms`.
+
+**What this means for future runs:** stop defaulting to `--no-fetch` / treating `--write` as
+doomed. Try the plain, real command first (`thread show --ref origin/main`, `new-message --write`
+with no extra flags) and only fall back to the old workarounds if it actually fails again. If it
+fails, `ls ~/.ssh` (still absent, confirmed this run — the credential helper is `gh`, not SSH keys)
+and `gh auth status` are the right first checks now, not the SSH/`github-crew` DNS diagnosis that
+filled this file's history below. The old body of this file (16+ occurrences, 2026-09-02T23:29Z
+through 2026-09-06T10:25Z) is kept for the historical trail but describes a state that no longer
+holds — do not re-derive it as if it were current.
+
+---
+
+## History (all entries below predate the 2026-09-07 fix — kept for the trail, not as current fact)
+
+**Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
 
 **Standing structural block, not a one-off.** Under `sudo -u aco-devops` (the role's own
 `systemUser`, per [[role-devops-identity]] docs/roles/devops.md, box-setup.md §0.1/§0.1a), two
